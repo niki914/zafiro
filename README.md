@@ -7,9 +7,9 @@
 [![downloads](https://img.shields.io/github/downloads/Xposed-Modules-Repo/com.niki.breeno.openai/total)](https://github.com/niki914/agentic-nexus)
 
 <div align="center">
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/raw/using_mcp.jpg?raw=true" alt="using" width="200"/>
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/raw/memory.jpg?raw=true" alt="memory" width="200"/>
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/raw/mcp_status.jpg?raw=true" alt="status" width="200"/>
+  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/using_mcp.jpg?raw=true" alt="using_mcp" width="200"/>
+  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/memory.jpg?raw=true" alt="memory" width="200"/>
+  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/mcp_status.jpg?raw=true" alt="mcp_status" width="200"/>
 </div>
 
 Nexus 把你每天都在用的那个语音助手交回到你手里: 你来决定它用哪个模型、怎么思考、能做什么。它不再是一个只会查天气、定闹钟的固定程序，而是一个真正属于你的智能体——你说一句话，它就能调动整台手机替你完成
@@ -17,7 +17,7 @@ Nexus 把你每天都在用的那个语音助手交回到你手里: 你来决定
 > 当前仍处于 Beta 阶段，能力与稳定性会持续打磨。源码暂不公开
 
 <div align="center">
-  <img src="https://github.com/https://github.com/niki914/agentic-nexus/blob/main/res/full.gif?raw=true" alt="full" width="600"/>
+  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/full.gif?raw=true" alt="assistants" width="600"/>
 </div>
 
 ### 它为什么值得一试
@@ -50,7 +50,7 @@ Nexus 不只是一层模型转发，它内置了一套运行时工具系统
 > 命令执行类能力很强，也意味着风险，请只添加你理解且信任的命令
 
 <div align="center">
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/raw/custom_tool_using__long.jpg?raw=true" alt="long" width="200"/>
+  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/custom_tool_using__long.jpg?raw=true" alt="custom_tool_using" width="200"/>
 </div>
 
 ### 兼容性
