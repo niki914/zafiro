@@ -1,3 +1,9 @@
+<div align="right">
+
+**[English](README_EN.md)** | 中文
+
+</div>
+
 # Nexus
 
 > 让手机里的语音助手，接入你自己的模型，并真正开始替你做事
