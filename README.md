@@ -6,19 +6,25 @@
 [![release](https://img.shields.io/github/v/release/Xposed-Modules-Repo/com.niki.breeno.openai?include_prereleases)](https://github.com/niki914/agentic-nexus)
 [![downloads](https://img.shields.io/github/downloads/Xposed-Modules-Repo/com.niki.breeno.openai/total)](https://github.com/niki914/agentic-nexus)
 
-<div align="center">
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/using_mcp.jpg?raw=true" alt="using_mcp" width="200"/>
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/memory.jpg?raw=true" alt="memory" width="200"/>
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/mcp_status.jpg?raw=true" alt="mcp_status" width="200"/>
-</div>
+<table align="center">
+<tr>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/using_mcp.jpg?raw=true" alt="using_mcp" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/memory.jpg?raw=true" alt="memory" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/mcp_status.jpg?raw=true" alt="mcp_status" width="200"/></td>
+</tr>
+</table>
 
 Nexus 把你每天都在用的那个语音助手交回到你手里: 你来决定它用哪个模型、怎么思考、能做什么。它不再是一个只会查天气、定闹钟的固定程序，而是一个真正属于你的智能体——你说一句话，它就能调动整台手机替你完成
 
 > 当前仍处于 Beta 阶段，能力与稳定性会持续打磨。源码暂不公开
 
-<div align="center">
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/full.gif?raw=true" alt="assistants" width="600"/>
-</div>
+<table align="center">
+<tr>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/gh_mcp.gif?raw=true" alt="gh_mcp" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/hyper.gif?raw=true" alt="hyper" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/magisk.gif?raw=true" alt="magisk" width="200"/></td>
+</tr>
+</table>
 
 ### 它为什么值得一试
 
