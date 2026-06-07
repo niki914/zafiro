@@ -8,9 +8,9 @@
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/using_mcp.jpg?raw=true" alt="using_mcp" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/memory.jpg?raw=true" alt="memory" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/mcp_status.jpg?raw=true" alt="mcp_status" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/gh_mcp.gif?raw=true" alt="gh_mcp" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/hyper.gif?raw=true" alt="hyper" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/magisk.gif?raw=true" alt="magisk" width="200"/></td>
 </tr>
 </table>
 
@@ -20,9 +20,9 @@ Nexus hands the voice assistant you use every day back to you: you decide which 
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/gh_mcp.gif?raw=true" alt="gh_mcp" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/hyper.gif?raw=true" alt="hyper" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/magisk.gif?raw=true" alt="magisk" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/using_mcp.jpg?raw=true" alt="using_mcp" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/memory.jpg?raw=true" alt="memory" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/mcp_status.jpg?raw=true" alt="mcp_status" width="200"/></td>
 </tr>
 </table>
 
@@ -65,6 +65,10 @@ Nexus is more than a model proxy — it ships with a runtime tool system:
 - When the current device does not yet support takeover, you can still use Nexus's built-in chat interface.
 - Supports DeepSeek, OpenAI, Anthropic, Google and other models, as well as compatible API endpoints.
 - Bring your own API key — Nexus does not bundle model accounts.
+
+### Technical Foundation
+
+Nexus's conversation engine is built on [s3ss10n](https://github.com/niki914/s3ss10n) — a Chat Completions client library based on OkHttp, supporting mainstream protocols, e.g. OpenAI, automatic tool calling, and MCP. If you're building your own Agent app on Android, s3ss10n is available as a standalone library.
 
 ### FAQ
 

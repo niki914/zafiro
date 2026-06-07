@@ -14,9 +14,9 @@
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/using_mcp.jpg?raw=true" alt="using_mcp" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/memory.jpg?raw=true" alt="memory" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/mcp_status.jpg?raw=true" alt="mcp_status" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/gh_mcp.gif?raw=true" alt="gh_mcp" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/hyper.gif?raw=true" alt="hyper" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/magisk.gif?raw=true" alt="magisk" width="200"/></td>
 </tr>
 </table>
 
@@ -26,9 +26,9 @@ Nexus 把你每天都在用的那个语音助手交回到你手里: 你来决定
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/gh_mcp.gif?raw=true" alt="gh_mcp" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/hyper.gif?raw=true" alt="hyper" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/magisk.gif?raw=true" alt="magisk" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/using_mcp.jpg?raw=true" alt="using_mcp" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/memory.jpg?raw=true" alt="memory" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/mcp_status.jpg?raw=true" alt="mcp_status" width="200"/></td>
 </tr>
 </table>
 
@@ -71,6 +71,10 @@ Nexus 不只是一层模型转发，它内置了一套运行时工具系统
 - 当当前设备暂不支持接管时，仍可使用 Nexus 内置的对话界面
 - 支持 DeepSeek、OpenAI、Anthropic、Google 等模型，也可填写兼容接口
 - 自带模型服务的 API Key 即可使用，Nexus 不内置模型账号
+
+### 技术基础
+
+Nexus 的对话引擎构建在 [s3ss10n](https://github.com/niki914/s3ss10n) 之上——一个基于 OkHttp 的 Chat Completions 客户端库，支持 OpenAI 等主流协议、自动工具调用与 MCP。如果你想在 Android 上构建自己的 Agent 应用，s3ss10n 可作为独立库使用。
 
 ### 常见问题
 
