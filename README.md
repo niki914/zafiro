@@ -9,8 +9,8 @@
 > 让手机里的语音助手，接入你自己的模型，并真正开始替你做事
 
 [![stars](https://img.shields.io/github/stars/niki914/agentic-nexus?label=stars)](https://github.com/niki914/agentic-nexus)
-[![release](https://img.shields.io/github/v/release/Xposed-Modules-Repo/com.niki.breeno.openai?include_prereleases)](https://github.com/niki914/agentic-nexus)
-[![downloads](https://img.shields.io/github/downloads/Xposed-Modules-Repo/com.niki.breeno.openai/total)](https://github.com/niki914/agentic-nexus)
+[![release](https://img.shields.io/github/v/release/niki914/agentic-nexus?include_prereleases)](https://github.com/niki914/agentic-nexus/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/niki914/agentic-nexus/total)](https://github.com/niki914/agentic-nexus/releases/latest)
 
 <table align="center">
 <tr>
