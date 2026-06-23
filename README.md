@@ -28,9 +28,13 @@ Nexus 把你每天都在用的那个语音助手交回到你手里: 你来决定
 
 它是一个 Agent, 普通的 AI 应用止步于"换个模型回答"。Nexus 在做的事不同——
 
-<div align="center">
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/custom_tool_using__long.jpg?raw=true" alt="custom_tool_using" width="200"/>
-</div>
+<table align="center">
+<tr>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/termux_long_cn.jpg?raw=true" alt="termux" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/headless_cc_cn.jpg?raw=true" alt="cc" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/skill_long_cn.jpg?raw=true" alt="skill" width="200"/></td>
+</tr>
+</table>
 
 - **Skills 系统**: Agent 应用的敲门砖——为你的助手带来更多种可能性
 - **MCP**: 自由加入各种工具组，Notion、GitHub、HomeKit...资源决定上限
