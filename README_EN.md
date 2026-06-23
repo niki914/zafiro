@@ -14,79 +14,51 @@
 </tr>
 </table>
 
-Nexus hands the voice assistant you use every day back to you: you decide which model it runs, how it thinks, and what it can do. It is no longer a fixed program that can only check the weather or set alarms, but an agent that truly belongs to you — say a single sentence, and it can orchestrate your entire phone to get it done.
+Nexus hands the voice assistant you use every day back to you: you decide which model it runs, how it thinks, and what it can do. It is no longer a fixed program that can only check the weather or set alarms, but an Agent that truly belongs to you — say a single sentence, and it can orchestrate your entire phone to get it done.
 
 > Currently in Beta — capabilities and stability are being continuously improved. Source code is not yet public.
 
+### Why It's Worth Trying
+
+It's an Agent. Ordinary AI apps stop at "swap the model's answers." What Nexus is doing is different —
+
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/using_mcp.jpg?raw=true" alt="using_mcp" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/memory.jpg?raw=true" alt="memory" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/mcp_status.jpg?raw=true" alt="mcp_status" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/termux_long_en.jpg?raw=true" alt="termux" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/headless_cc_en.jpg?raw=true" alt="cc" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/skill_long_en.jpg?raw=true" alt="skill" width="200"/></td>
 </tr>
 </table>
 
-### Why It's Worth Trying
+- **Skills System**: The gateway to Agent applications — bringing more possibilities to your assistant
+- **MCP**: Freely plug in tool sets — Notion, GitHub, HomeKit... your resources define the ceiling
+- **Takeover Rules**: You define when the Agent should step in and take over, and when to let the system assistant set alarms
+- **Memory System**: Remembers your preferences, even across new conversations
+- **Conversation History**: Browse and replay any conversation. Every step of your Agent's growth is traceable
 
-- A genuinely polished interface: blending Apple Liquid Glass with Material3 — minimal, restrained, elegant. From onboarding to chat to settings, every screen holds up to scrutiny.
-- You own the model: freely choose your model and service. What was once a vendor-locked assistant capability becomes a personal configuration you can swap at will.
-- Beyond chat: built-in memory, tool calling, and extension capabilities evolve the assistant from "can answer" to "can act".
-- Low barrier to entry: core experiences are not tied to complex prerequisites — it just works without fuss.
+**Built Deeply into Android**
 
-### The Real Highlight: One Sentence to Command Your Entire Phone
+This is where Nexus pulls away from being just another ChatBot —
 
-Ordinary model-swapping tools stop at "swap the model's answers." Nexus aims to connect Agent capabilities with Android system powers — through Shell and custom tools, your phone can do incredible things:
+- **Terminal, Three Tiers**: Normal app permissions -> [Shizuku](https://github.com/rikkaapps/shizuku) -> Root
+- **SSH, Bridging Two Worlds**: Connect to [Termux](https://github.com/termux/termux-app), and your Android gains a Linux environment; connect to your dev machine, and the Agent can operate your workstation
 
-- Open any app: "Open my expense tracker" — the assistant launches the app directly.
-- Jump to any website: hand your frequently visited pages to the assistant; a single sentence gets you there.
-- Run your scripts: let the Agent write a script with cat, then wrap it as a tool like `bash /sdcard/backup.sh` — trigger it with one sentence from then on.
-- Send app notifications: when a task finishes, proactively push a notification to let you know.
+But the key isn't even these capabilities themselves — it's that **you don't need to understand the terminal**. Tell the Agent what you want to do, and it writes its own commands, executes them, and handles the results. All you need is the outcome.
 
-One level up is MCP: imagine connecting a Mi Home MCP, paired with a rooted phone — "Dim the living room lights, set the AC to 26°C" — your voice assistant does it all. The more MCPs you connect, the larger the world your assistant can reach.
-
-### Tools & Memory
-
-Nexus is more than a model proxy — it ships with a runtime tool system:
-
-- Memory: remembers your preferences and important information, persisting across new conversations.
-- Built-in tools: manage toggles for preset foundational capabilities.
-- Custom tools: wrap fixed commands into tools the assistant can understand and invoke.
-- MCP: connect to external services, auto-discover and use more capabilities.
-
-> Command execution capabilities are powerful, which also means risk — only add commands you understand and trust.
-
-<div align="center">
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/custom_tool_using__long.jpg?raw=true" alt="custom_tool_using" width="200"/>
-</div>
-
-### Compatibility
-
-- Adapted for mainstream voice assistants (e.g., Breeno, XiaoAi), with more adaptations ongoing.
-- When the current device does not yet support takeover, you can still use Nexus's built-in chat interface.
-- Supports DeepSeek, OpenAI, Anthropic, Google and other models, as well as compatible API endpoints.
-- Bring your own API key — Nexus does not bundle model accounts.
+This unlocks the ultimate play: **connect [claude-code](https://github.com/anthropics/claude-code) for headless AI Coding** — the Agent on your phone commands cc to do the work, code runs on the remote machine, done in a single sentence. If you know, you know.
 
 ### Technical Foundation
 
-Nexus's conversation engine is built on [s3ss10n](https://github.com/niki914/s3ss10n) — a Chat Completions client library based on OkHttp, supporting mainstream protocols, e.g. OpenAI, automatic tool calling, and MCP. If you're building your own Agent app on Android, s3ss10n is available as a standalone library.
+AI Conversations & Tooling: [s3ss10n](https://github.com/niki914/s3ss10n)
+UI: Material3 × [Liquid Glass](https://github.com/Kyant0/AndroidLiquidGlass)
+Shell & SSH Terminal: [libterm](https://github.com/niki914/libterm)
 
-### FAQ
+### Compatibility
 
-#### Is Nexus a chat app?
-
-It has a very usable built-in chat interface, but its core goal is to let your everyday voice assistant connect to your own model and get things done for you.
-
-#### Does it support all phone models and OS versions?
-
-No guarantees. Internal implementations of system assistants change across versions; adaptations proceed gradually by model and version. Uncovered versions may have limited experiences.
-
-#### Does it bundle models or proxy services?
-
-No. You need to provide your own model service, API key, and network environment.
-
-#### Will the project be open-sourced?
-
-Source code is not yet public. This page serves to introduce features, collect feedback, and publish usage guides.
+- Adapted for mainstream voice assistants (e.g., Breeno, XiaoAi), with more adaptations ongoing
+- When the current device does not yet support takeover, you can still use Nexus's built-in chat interface
+- Supports DeepSeek, OpenAI, Anthropic, Google and other models, as well as compatible API endpoints
+- Bring your own API key — Nexus does not bundle model accounts
 
 ### Feedback
 
