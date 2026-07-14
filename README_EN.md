@@ -16,7 +16,7 @@
 
 Nexus hands the voice assistant you use every day back to you: you decide which model it runs, how it thinks, and what it can do. It is no longer a fixed program that can only check the weather or set alarms, but an Agent that truly belongs to you — say a single sentence, and it can orchestrate your entire phone to get it done.
 
-> Currently in Beta — capabilities and stability are being continuously improved. Source code is not yet public.
+> Currently in Beta — capabilities and stability are being continuously improved. The source is now open: grab a build from [Releases](https://github.com/niki914/agentic-nexus/releases/latest), or build it yourself (see below).
 
 ### Why It's Worth Trying
 
@@ -59,6 +59,37 @@ Shell & SSH Terminal: [libterm](https://github.com/niki914/libterm)
 - When the current device does not yet support takeover, you can still use Nexus's built-in chat interface
 - Supports DeepSeek, OpenAI, Anthropic, Google and other models, as well as compatible API endpoints
 - Bring your own API key — Nexus does not bundle model accounts
+
+### Build from Source
+
+The source is open — you can build it yourself.
+
+Requirements: JDK 17 and the Android SDK (or Android Studio).
+
+Debug build (uses an auto-generated debug signature, no setup needed):
+
+```bash
+./gradlew assembleDebug
+```
+
+Output: `app/build/outputs/apk/debug/app-debug.apk`.
+
+Release build: official releases are signed with the author's private key, which is **not** included in this repository. To build a release yourself, use your own signing key:
+
+```bash
+# 1. Generate a keystore
+keytool -genkeypair -v -keystore my-release.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias my_key
+
+# 2. Pass signing info via -P (or write it into gradle.properties)
+./gradlew assembleRelease \
+  -PRELEASE_STORE_FILE=/abs/path/my-release.jks \
+  -PRELEASE_STORE_PASSWORD=yourStorePassword \
+  -PRELEASE_KEY_ALIAS=my_key \
+  -PRELEASE_KEY_PASSWORD=yourKeyPassword
+```
+
+Output: `app/build/outputs/apk/release/app-release.apk`. A self-signed release has a different signature from the official build and cannot be installed over it without uninstalling first.
 
 ### Feedback
 
