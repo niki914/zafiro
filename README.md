@@ -92,9 +92,13 @@ Nexus 不提供内置模型账号。使用前需要准备相应模型服务的 A
 
 ## 语音助手兼容性
 
+> [!IMPORTANT]
+> 语音助手换源依赖 Root 权限和 [LSPosed](https://github.com/lsposed/lsposed) 能力
+
+
 Nexus 已适配部分主流 Android 厂商的系统语音助手，包括：
 
-- OPPO / OnePlus 小布助手
+- OPPO / OnePlus / Realme 小布助手
 - Xiaomi 小爱同学
 
 更多设备与语音助手仍在持续适配中。
