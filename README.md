@@ -1,12 +1,12 @@
 <div align="right">
 
-**[English](README_EN.md)** | 中文
+English | **[中文](README_CN.md)**
 
 </div>
 
 # Nexus
 
-> 将 Android 系统语音助手连接到你自己的模型，并赋予它调用工具、执行任务和操作设备的能力。
+> Connect your phone's system voice assistant to your own model, and give it the ability to call tools, execute tasks, and operate your device.
 
 [![stars](https://img.shields.io/github/stars/niki914/agentic-nexus?label=stars)](https://github.com/niki914/agentic-nexus)
 [![release](https://img.shields.io/github/v/release/niki914/agentic-nexus?include_prereleases)](https://github.com/niki914/agentic-nexus/releases/latest)
@@ -14,171 +14,169 @@
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/gh_mcp.gif?raw=true" alt="通过 MCP 使用 GitHub 工具" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/hyper.gif?raw=true" alt="Nexus 语音助手交互演示" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/magisk.gif?raw=true" alt="通过终端操作 Android 设备" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/gh_mcp.gif?raw=true" alt="Using GitHub tools via MCP" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/hyper.gif?raw=true" alt="Nexus voice assistant interaction demo" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/magisk.gif?raw=true" alt="Operating an Android device via terminal" width="200"/></td>
 </tr>
 </table>
 
-Nexus 是一个面向 Android 的可扩展语音 Agent。
+Nexus is an extensible voice Agent for Android.
 
-它可以接管部分系统语音助手入口，将你的语音请求交给自定义模型处理，并通过 Skills、MCP、Shell 和 SSH 等能力完成实际任务。
+It can take over some of the system voice assistant entry points, hand your voice requests to a custom model, and complete real tasks through capabilities such as Skills, MCP, Shell, and SSH.
 
-你可以自行选择模型服务、配置工具与行为规则。对于不应由 Agent 处理的请求，Nexus 也可以将其交还给原有的系统助手。
+You can choose your own model service, and configure tools and behavior rules. For requests that should not be handled by the Agent, Nexus can also hand them back to the original system assistant.
 
 > [!IMPORTANT]
-> Nexus 当前仍处于 Beta 阶段，功能、兼容性与稳定性仍在持续改进。
+> Nexus is still in Beta — functionality, compatibility, and stability are being continuously improved.
 >
-> 项目源码已开放，你可以前往 [Releases](https://github.com/niki914/agentic-nexus/releases/latest) 下载发布版本，或参考 [自行构建](#自行构建) 从源码编译。
+> The source is now open. You can download a release from [Releases](https://github.com/niki914/agentic-nexus/releases/latest), or refer to [Build from Source](#build-from-source) to compile it yourself.
 
-## 核心能力
+## Core Capabilities
 
-### 可扩展的 Agent 系统
+### Extensible Agent System
 
-Nexus 不仅用于更换语音助手背后的语言模型。它提供了一套可扩展的 Agent 运行环境，使模型能够根据请求调用工具、访问外部服务并执行多步骤任务。
+Nexus is not just about swapping the language model behind your voice assistant. It provides an extensible Agent runtime that lets the model call tools, access external services, and execute multi-step tasks based on your requests.
 
-- **Skills**：通过可复用的技能描述扩展 Agent 的任务处理能力
-- **MCP**：接入 GitHub、Notion、HomeKit 等外部工具与数据源
-- **接管规则**：定义哪些请求由 Nexus 处理，哪些请求交还系统助手
-- **记忆系统**：跨会话保存用户偏好与长期上下文
-- **会话历史**：查看、继续或复刻过去的 Agent 会话
+- **Skills**: Extend the Agent's task-handling ability through reusable skill descriptions
+- **MCP**: Connect to external tools and data sources such as GitHub, Notion, and HomeKit
+- **Takeover Rules**: Define which requests are handled by Nexus and which are handed back to the system assistant
+- **Memory System**: Persist user preferences and long-term context across sessions
+- **Conversation History**: View, continue, or fork past Agent conversations
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/termux_long_cn.jpg?raw=true" alt="通过 Termux 执行任务" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/headless_cc_cn.jpg?raw=true" alt="远程调用 Claude Code" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/skill_long_cn.jpg?raw=true" alt="使用 Skills 扩展 Agent 能力" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/termux_long_en.jpg?raw=true" alt="Executing tasks via Termux" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/headless_cc_en.jpg?raw=true" alt="Calling Claude Code remotely" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/skill_long_en.jpg?raw=true" alt="Extending Agent capabilities with Skills" width="200"/></td>
 </tr>
 </table>
 
-### Android 系统能力
+### Android System Capabilities
 
-Nexus 可以根据设备环境和用户授权，以不同权限等级执行终端任务：
+Nexus can execute terminal tasks at different privilege levels depending on the device environment and user authorization:
 
-1. **普通应用权限**：执行无需额外授权的基础操作
-2. **[Shizuku](https://github.com/rikkaapps/shizuku)**：获得更完整的 Android 系统操作能力
-3. **Root**：在已 Root 设备上执行高级系统任务
+1. **Normal app permissions**: Perform basic operations that require no extra authorization
+2. **[Shizuku](https://github.com/rikkaapps/shizuku)**: Gain more complete Android system operation capabilities
+3. **Root**: Execute advanced system tasks on rooted devices
 
-不同权限等级对应不同的可用能力。Nexus 不要求设备必须 Root，用户可以根据自己的设备条件进行选择。
+Different privilege levels correspond to different available capabilities. Nexus does not require the device to be rooted; users can choose according to their own device conditions.
 
-### Shell 与 SSH
+### Shell & SSH
 
-Nexus 可以连接本地或远程终端环境：
+Nexus can connect to local or remote terminal environments:
 
-- 连接 [Termux](https://github.com/termux/termux-app)，在 Android 设备上使用 Linux 命令和工具
-- 通过 SSH 连接开发机或服务器，执行远程任务
-- 让 Agent 根据自然语言请求生成命令、执行命令并分析结果
+- Connect to [Termux](https://github.com/termux/termux-app) to use Linux commands and tools on your Android device
+- Connect to a dev machine or server via SSH to execute remote tasks
+- Let the Agent generate commands, execute them, and analyze results based on natural-language requests
 
-因此，用户不需要手动编写每一条终端命令，只需描述目标，由 Agent 规划并完成相应操作。
+As a result, you don't need to write every terminal command by hand — just describe the goal, and the Agent plans and completes the corresponding operations.
 
-### 无头 AI Coding
+### Headless AI Coding
 
-通过 SSH，Nexus 可以连接运行在开发机或服务器上的
-[Claude Code](https://github.com/anthropics/claude-code)。
+Through SSH, Nexus can connect to [Claude Code](https://github.com/anthropics/claude-code) running on a dev machine or server.
 
-你可以直接通过手机语音下达开发任务，由 Nexus 负责连接远程环境、调用 Coding Agent，并将执行结果带回当前会话。
+You can issue development tasks directly by voice from your phone, and Nexus will connect to the remote environment, invoke the Coding Agent, and bring the results back to the current conversation.
 
-## 模型支持
+## Model Support
 
-Nexus 支持配置多种模型服务，包括：
+Nexus supports configuring a variety of model services, including:
 
 - OpenAI
 - Anthropic
 - Google
 - DeepSeek
-- 兼容接口
+- Compatible endpoints
 
-Nexus 不提供内置模型账号。使用前需要准备相应模型服务的 API Key，并在应用中完成配置。
+Nexus does not provide built-in model accounts. Before use, you need to prepare an API Key for the corresponding model service and configure it in the app.
 
-## 语音助手兼容性
+## Voice Assistant Compatibility
 
 > [!IMPORTANT]
-> 语音助手换源依赖 Root 权限和 [LSPosed](https://github.com/lsposed/lsposed) 能力
+> Voice assistant source-switching depends on Root access and [LSPosed](https://github.com/lsposed/lsposed).
 
+Nexus has been adapted for some mainstream Android vendors' system voice assistants, including:
 
-Nexus 已适配部分主流 Android 厂商的系统语音助手，包括：
+- OPPO / OnePlus / Realme Breeno
+- Xiaomi XiaoAi
 
-- OPPO / OnePlus / Realme 小布助手
-- Xiaomi 小爱同学
+More devices and voice assistants are being continuously adapted.
 
-更多设备与语音助手仍在持续适配中。
+Actual availability may be affected by phone model, system version, voice assistant version, and vendor system restrictions. When a device does not yet support system assistant takeover, you can still use Nexus's built-in chat interface.
 
-实际可用性可能受到手机型号、系统版本、语音助手版本及厂商系统限制的影响。当设备暂不支持系统助手接管时，仍可使用 Nexus 内置的对话界面。
+## Technical Components
 
-## 技术组件
+Nexus is built on the following projects:
 
-Nexus 基于以下项目构建：
+- AI Conversations & Tooling: [s3ss10n](https://github.com/niki914/s3ss10n)
+- User Interface: Material 3 Expressive × [AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass)
+- Shell & SSH: [libterm](https://github.com/niki914/libterm)
 
-- AI 对话与 Tooling：[s3ss10n](https://github.com/niki914/s3ss10n)
-- 用户界面：Material 3 Expressive × [AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass)
-- Shell 与 SSH：[libterm](https://github.com/niki914/libterm)
+## Download & Usage
 
-## 下载与使用
+Please head to [Releases](https://github.com/niki914/agentic-nexus/releases/latest) to download the latest version.
 
-请前往 [Releases](https://github.com/niki914/agentic-nexus/releases/latest) 下载最新版本。
+Before first use, please prepare:
 
-首次使用前，请准备：
+- A compatible Android device
+- At least one API Key for a supported model service
+- Configure Shizuku, Root, Termux, or SSH as needed (optional)
 
-- 一台兼容的 Android 设备
-- 至少一个受支持模型服务的 API Key
-- 根据所需能力配置 Shizuku、Root、Termux 或 SSH（可选）
+For specific configuration methods and current version support, please refer to the in-app instructions.
 
-具体配置方式与当前版本支持情况，请以应用内说明为准。
+## Build from Source
 
-## 自行构建
+The source of this repository is open — you can also compile it yourself.
 
-本仓库源码已开放，你也可以从源码自行编译。
+**Requirements**: JDK 17 and the Android SDK (or Android Studio directly).
 
-**环境要求**：JDK 17、Android SDK（或直接使用 Android Studio）。
+### Debug Build
 
-### Debug 版本
-
-Debug 版本使用自动生成的调试签名，无需额外配置：
+The Debug build uses an auto-generated debug signature, no extra setup needed:
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-产物位于 `app/build/outputs/apk/debug/app-debug.apk`。
+Output is at `app/build/outputs/apk/debug/app-debug.apk`.
 
-### Release 版本
+### Release Build
 
-官方发布版本使用作者的私有密钥签名，该密钥不包含在本仓库中。若要自行构建 Release 版本，需要使用你自己的签名密钥：
+Official releases are signed with the author's private key, which is not included in this repository. To build a Release version yourself, use your own signing key:
 
 ```bash
-# 1. 生成一个密钥库（keystore）
+# 1. Generate a keystore
 keytool -genkeypair -v -keystore my-release.jks \
   -keyalg RSA -keysize 2048 -validity 10000 -alias my_key
 
-# 2. 通过 -P 传入签名信息（也可写入 gradle.properties 替换占位符）
+# 2. Pass signing info via -P (or write it into gradle.properties to replace the placeholders)
 ./gradlew assembleRelease \
-  -PRELEASE_STORE_FILE=/绝对路径/my-release.jks \
-  -PRELEASE_STORE_PASSWORD=你的库密码 \
+  -PRELEASE_STORE_FILE=/abs/path/my-release.jks \
+  -PRELEASE_STORE_PASSWORD=yourStorePassword \
   -PRELEASE_KEY_ALIAS=my_key \
-  -PRELEASE_KEY_PASSWORD=你的密钥密码
+  -PRELEASE_KEY_PASSWORD=yourKeyPassword
 ```
 
-产物位于 `app/build/outputs/apk/release/app-release.apk`。
+Output is at `app/build/outputs/apk/release/app-release.apk`.
 
 > [!NOTE]
-> 自行签名的 Release 版本与官方发布版本签名不同，无法直接覆盖安装到已安装官方版本的设备上（需先卸载）。
+> A self-signed Release build has a different signature from the official release and cannot be installed directly over a device that already has the official version (you must uninstall it first).
 
-## 反馈问题
+## Feedback
 
-如果遇到问题，请尽量提供以下信息：
+If you run into problems, please try to provide the following information:
 
-- 手机型号与 Android 系统版本
-- 当前使用的系统语音助手
-- 系统语音助手版本
-- Nexus 版本
-- 问题复现步骤
-- 截图或录屏
-- 相关日志（如可获取）
+- Phone model and Android system version
+- The system voice assistant currently in use
+- The system voice assistant version
+- Nexus version
+- Steps to reproduce
+- Screenshots or screen recordings
+- Relevant logs (if available)
 
-完整的信息可以显著提高问题定位效率。
+Complete information can significantly improve the efficiency of diagnosing issues.
 
-社区与反馈入口请以应用内“关于”页面展示的信息为准。
+For community and feedback entry points, please refer to the information shown on the in-app "About" page.
 
-## 说明
+## Notes
 
-Nexus 仍处于快速迭代阶段，部分功能可能发生调整。涉及 Shell、Shizuku 或 Root 的操作具有更高的系统权限，请在理解相关命令与风险的前提下使用。
+Nexus is still in a phase of rapid iteration, and some features may change. Operations involving Shell, Shizuku, or Root carry higher system privileges — please use them with an understanding of the relevant commands and risks.
