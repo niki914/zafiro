@@ -31,6 +31,14 @@ You can choose your own model service, and configure tools and behavior rules. F
 >
 > The source is now open. You can download a release from [Releases](https://github.com/niki914/agentic-nexus/releases/latest), or refer to [Build from Source](#build-from-source) to compile it yourself.
 
+> [!NOTE]
+> The core "system voice assistant takeover" feature requires **Root + [LSPosed](https://github.com/lsposed/lsposed)**, and currently only supports:
+>
+> - OPPO / OnePlus / Realme Breeno
+> - Xiaomi XiaoAi
+>
+> More devices and voice assistants are being continuously adapted. Actual availability may be affected by phone model, system version, voice assistant version, and vendor system restrictions. When a device does not yet support system assistant takeover, you can still use Nexus's built-in chat interface with all Agent capabilities.
+
 ## Core Capabilities
 
 ### Extensible Agent System
@@ -88,20 +96,6 @@ Nexus supports configuring a variety of model services, including:
 - Compatible endpoints
 
 Nexus does not provide built-in model accounts. Before use, you need to prepare an API Key for the corresponding model service and configure it in the app.
-
-## Voice Assistant Compatibility
-
-> [!IMPORTANT]
-> Voice assistant source-switching depends on Root access and [LSPosed](https://github.com/lsposed/lsposed).
-
-Nexus has been adapted for some mainstream Android vendors' system voice assistants, including:
-
-- OPPO / OnePlus / Realme Breeno
-- Xiaomi XiaoAi
-
-More devices and voice assistants are being continuously adapted.
-
-Actual availability may be affected by phone model, system version, voice assistant version, and vendor system restrictions. When a device does not yet support system assistant takeover, you can still use Nexus's built-in chat interface.
 
 ## Technical Components
 
@@ -161,7 +155,9 @@ Output is at `app/build/outputs/apk/release/app-release.apk`.
 > [!NOTE]
 > A self-signed Release build has a different signature from the official release and cannot be installed directly over a device that already has the official version (you must uninstall it first).
 
-## Feedback
+## Community & Feedback
+
+Join the [Telegram community](https://t.me/+ZPX2xtSl6RwyZGNl) to chat, ask questions, or report issues.
 
 If you run into problems, please try to provide the following information:
 
@@ -174,8 +170,6 @@ If you run into problems, please try to provide the following information:
 - Relevant logs (if available)
 
 Complete information can significantly improve the efficiency of diagnosing issues.
-
-For community and feedback entry points, please refer to the information shown on the in-app "About" page.
 
 ## Notes
 

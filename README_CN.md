@@ -31,6 +31,14 @@ Nexus 是一个面向 Android 的可扩展语音 Agent。
 >
 > 项目源码已开放，你可以前往 [Releases](https://github.com/niki914/agentic-nexus/releases/latest) 下载发布版本，或参考 [自行构建](#自行构建) 从源码编译。
 
+> [!NOTE]
+> 核心的「接管系统语音助手」功能依赖 **Root + [LSPosed](https://github.com/lsposed/lsposed)**，目前仅适配：
+>
+> - OPPO / OnePlus / Realme 小布助手
+> - Xiaomi 小爱同学
+>
+> 更多设备与语音助手仍在持续适配中，实际可用性可能受手机型号、系统版本、语音助手版本及厂商系统限制的影响。当设备暂不支持系统助手接管时，仍可使用 Nexus 内置的对话界面与全部 Agent 能力。
+
 ## 核心能力
 
 ### 可扩展的 Agent 系统
@@ -90,21 +98,6 @@ Nexus 支持配置多种模型服务，包括：
 
 Nexus 不提供内置模型账号。使用前需要准备相应模型服务的 API Key，并在应用中完成配置。
 
-## 语音助手兼容性
-
-> [!IMPORTANT]
-> 语音助手换源依赖 Root 权限和 [LSPosed](https://github.com/lsposed/lsposed) 能力
-
-
-Nexus 已适配部分主流 Android 厂商的系统语音助手，包括：
-
-- OPPO / OnePlus / Realme 小布助手
-- Xiaomi 小爱同学
-
-更多设备与语音助手仍在持续适配中。
-
-实际可用性可能受到手机型号、系统版本、语音助手版本及厂商系统限制的影响。当设备暂不支持系统助手接管时，仍可使用 Nexus 内置的对话界面。
-
 ## 技术组件
 
 Nexus 基于以下项目构建：
@@ -163,7 +156,9 @@ keytool -genkeypair -v -keystore my-release.jks \
 > [!NOTE]
 > 自行签名的 Release 版本与官方发布版本签名不同，无法直接覆盖安装到已安装官方版本的设备上（需先卸载）。
 
-## 反馈问题
+## 社区与反馈
+
+欢迎加入 [Telegram 社区](https://t.me/+ZPX2xtSl6RwyZGNl) 交流、提问或反馈问题。
 
 如果遇到问题，请尽量提供以下信息：
 
@@ -176,8 +171,6 @@ keytool -genkeypair -v -keystore my-release.jks \
 - 相关日志（如可获取）
 
 完整的信息可以显著提高问题定位效率。
-
-社区与反馈入口请以应用内“关于”页面展示的信息为准。
 
 ## 说明
 
