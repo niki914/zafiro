@@ -130,6 +130,7 @@ object XRepo {
                 StoreDescriptorRegistry.RULES_EXECUTION_ID,
                 RuleSettingsCodec.encodeExecutionRules(LocalSettingsDefaults.defaultExecutionRules),
             )
+            skills.seedDefaults()
             true
         }
     }
