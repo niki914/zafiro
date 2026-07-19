@@ -31,5 +31,5 @@ data class NodeInfo(
     val isScrollable: Boolean,
     val isChecked: Boolean,
     val children: List<NodeInfo>,
-    val moreCount: Int,
+    val moreSummary: List<String> = emptyList(),
 )

@@ -41,6 +41,13 @@ object AccessibilityController {
     private var serviceInstance: IAccessibility? = null
     private val nodeCache = ConcurrentHashMap<Int, AccessibilityNodeInfo>()
 
+    private data class ScreenContext(
+        val root: AccessibilityNodeInfo,
+        val widthPixels: Int,
+        val heightPixels: Int,
+        val appPackage: String,
+    )
+
     fun setService(service: IAccessibility) {
         serviceInstance = service
     }
@@ -117,18 +124,13 @@ object AccessibilityController {
      * @return [ScreenSnapshot] containing the YAML string and node count, or failure.
      */
     suspend fun captureScreen(): Result<ScreenSnapshot> {
-        ensureService().getOrElse { return Result.failure(it) }
+        val ctx = try {
+            refreshNodeCache()
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
 
-        val root = serviceInstance!!.windowRoot
-            ?: return Result.failure(RuntimeException("No active window"))
-
-        val ctx = ContextProvider.await()
-        val dm = ctx.resources.displayMetrics
-        val appPkg = root.packageName?.toString() ?: "unknown"
-
-        val yaml = TreeFormatter.format(root, dm.widthPixels, dm.heightPixels, appPkg)
-
-        rebuildCache(root)
+        val yaml = TreeFormatter.format(ctx.root, ctx.widthPixels, ctx.heightPixels, ctx.appPackage)
 
         if (nodeCache.size <= 1) {
             return Result.failure(
@@ -142,6 +144,32 @@ object AccessibilityController {
         }
 
         return Result.success(ScreenSnapshot(yaml, nodeCache.size))
+    }
+
+    /**
+     * Refreshes the node cache and returns screen context information.
+     *
+     * 1. Calls [ensureService] (throws on failure).
+     * 2. Obtains the root node from [IAccessibility.rootInActiveWindow].
+     * 3. Reads display metrics via [Context] and the current foreground package.
+     * 4. Rebuilds [nodeCache] via DFS so indices match TreeFormatter's allocation order.
+     *
+     * @return [ScreenContext] containing root node, display dimensions, and app package.
+     * @throws RuntimeException if the service is unavailable or there is no active window.
+     */
+    private suspend fun refreshNodeCache(): ScreenContext {
+        ensureService().getOrElse { throw it }
+
+        val root = serviceInstance!!.windowRoot
+            ?: throw RuntimeException("No active window")
+
+        val ctx = ContextProvider.await()
+        val dm = ctx.resources.displayMetrics
+        val appPkg = root.packageName?.toString() ?: "unknown"
+
+        rebuildCache(root)
+
+        return ScreenContext(root, dm.widthPixels, dm.heightPixels, appPkg)
     }
 
     /**
@@ -163,6 +191,110 @@ object AccessibilityController {
         for (i in 0 until node.childCount) {
             node.getChild(i)?.let { indexTree(it, counter) }
         }
+    }
+
+    /**
+     * Searches the node cache for nodes matching the given keywords.
+     *
+     * If the cache is empty, triggers [refreshNodeCache] first.
+     *
+     * @param keywords List of keywords to match against node text and content description.
+     * @param matchMode "all" requires every keyword to match; any other value matches any keyword.
+     * @param limit Maximum number of results to return.
+     * @return YAML-formatted search results with indices, types, bounds, and positions.
+     */
+    suspend fun searchNodes(
+        keywords: List<String>,
+        matchMode: String,
+        limit: Int,
+    ): Result<String> {
+        try {
+            ensureService().getOrElse { return Result.failure(it) }
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
+
+        if (nodeCache.isEmpty()) {
+            try {
+                refreshNodeCache()
+            } catch (e: Exception) {
+                return Result.failure(e)
+            }
+        }
+
+        val ctx = ContextProvider.await()
+        val screenW = ctx.resources.displayMetrics.widthPixels
+        val screenH = ctx.resources.displayMetrics.heightPixels
+
+        val lowerKw = keywords.map { it.lowercase() }
+
+        val matches = nodeCache.entries.mapNotNull { (index, node) ->
+            val text = node.text?.toString() ?: ""
+            val desc = node.contentDescription?.toString() ?: ""
+            val combined = "$text $desc".lowercase()
+
+            val matched = when (matchMode) {
+                "all" -> lowerKw.all { it in combined }
+                else -> lowerKw.any { it in combined }
+            }
+
+            if (matched) index to node else null
+        }
+
+        val results = matches.take(limit)
+
+        val sb = StringBuilder()
+        sb.append("matched: ${results.size}")
+        if (matches.size > limit) {
+            sb.append(" # truncated: max_results($limit), total_hits: ${matches.size}")
+        }
+        sb.append("\nnodes:\n")
+
+        for ((index, node) in results) {
+            sb.append("  - ")
+            sb.append(formatSearchResultNode(index, node, screenW, screenH))
+            sb.append("\n")
+        }
+
+        return Result.success(sb.toString())
+    }
+
+    private fun formatSearchResultNode(
+        index: Int,
+        node: AccessibilityNodeInfo,
+        screenW: Int,
+        screenH: Int,
+    ): String {
+        val className = node.className?.toString() ?: ""
+        val type = PruningRules.mapSemanticType(className, null)
+        val text = PruningRules.normalizeText(node.text?.toString() ?: "")
+        val desc = PruningRules.normalizeText(node.contentDescription?.toString() ?: "")
+
+        val androidRect = android.graphics.Rect()
+        node.getBoundsInScreen(androidRect)
+        val bounds = Rect(androidRect.left, androidRect.top, androidRect.right, androidRect.bottom)
+        val pos = PruningRules.posOf(bounds, screenW, screenH)
+
+        val sb = StringBuilder()
+        sb.append("{i: $index, t: ${type.name.lowercase()}, b: [${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}], pos: $pos")
+
+        if (text.isNotEmpty()) {
+            val quoted = if (PruningRules.needsQuoting(text)) "\"${text.replace("\"", "\\\"")}\"" else text
+            sb.append(", txt: $quoted")
+        }
+        if (desc.isNotEmpty()) {
+            val quoted = if (PruningRules.needsQuoting(desc)) "\"${desc.replace("\"", "\\\"")}\"" else desc
+            sb.append(", h: $quoted")
+        }
+
+        if (node.isClickable) sb.append(", tap: true")
+        if (node.isLongClickable) sb.append(", hold: true")
+        if (node.isEditable) sb.append(", edit: true")
+        if (node.isScrollable) sb.append(", scroll: true")
+        if (node.isChecked) sb.append(", checked: true")
+
+        sb.append("}")
+        return sb.toString()
     }
 
     /**

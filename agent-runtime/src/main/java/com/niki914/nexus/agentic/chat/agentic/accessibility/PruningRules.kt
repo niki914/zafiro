@@ -33,6 +33,58 @@ object PruningRules {
                 node.children.isEmpty()
     }
 
+    fun isZeroArea(bounds: Rect): Boolean {
+        return bounds.right == bounds.left || bounds.bottom == bounds.top
+    }
+
+    fun shouldCollapse(node: NodeInfo, depth: Int): Boolean {
+        return depth > 0 &&
+            node.semanticType == SemanticType.CONTAINER &&
+            node.text.isEmpty() &&
+            node.contentDesc.isEmpty() &&
+            !node.isClickable &&
+            !node.isLongClickable &&
+            !node.isEditable &&
+            !node.isScrollable &&
+            !node.isChecked
+    }
+
+    fun posOf(bounds: Rect, screenWidth: Int, screenHeight: Int): String {
+        val cx = bounds.centerX
+        val cy = bounds.centerY
+        val w3 = screenWidth / 3
+        val w23 = 2 * screenWidth / 3
+        val h3 = screenHeight / 3
+        val h23 = 2 * screenHeight / 3
+
+        val vert = when {
+            cy < h3 -> "top"
+            cy < h23 -> ""
+            else -> "bottom"
+        }
+        val hori = when {
+            cx < w3 -> "left"
+            cx < w23 -> ""
+            else -> "right"
+        }
+
+        return when {
+            vert.isNotEmpty() && hori.isNotEmpty() -> "$vert-$hori"
+            vert.isNotEmpty() -> vert
+            hori.isNotEmpty() -> hori
+            else -> "center"
+        }
+    }
+
+    fun buildMoreSummary(node: NodeInfo): String {
+        val raw = when {
+            node.text.isNotBlank() -> node.text.trim()
+            node.contentDesc.isNotBlank() -> node.contentDesc.trim()
+            else -> "(empty)"
+        }
+        return if (raw.length > 20) raw.take(20) + "…" else raw
+    }
+
     fun needsQuoting(text: String): Boolean {
         return text.any { c ->
             c in ":{}[],#&*?|-><!%@'\"" || c.isWhitespace()

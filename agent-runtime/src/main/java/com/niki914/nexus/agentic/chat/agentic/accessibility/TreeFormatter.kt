@@ -38,7 +38,7 @@ object TreeFormatter {
             isScrollable = false,
             isChecked = false,
             children = nodes,
-            moreCount = 0,
+            moreSummary = emptyList(),
         )
         return toYaml(rootNode, screenWidth, screenHeight, appPackage, nodeCounter, depthExceeded)
     }
@@ -93,11 +93,11 @@ object TreeFormatter {
             )
         }
 
-        var moreCount = 0
+        val moreSummaries = mutableListOf<String>()
         if (isScrollable) {
             val filtered = childResults.filterNot { child ->
                 val offScreen = PruningRules.isCompletelyOffScreen(child.bounds, screenHeight)
-                if (offScreen) moreCount++
+                if (offScreen) moreSummaries.add(PruningRules.buildMoreSummary(child))
                 offScreen
             }
             childResults.clear()
@@ -116,10 +116,18 @@ object TreeFormatter {
             isScrollable = isScrollable,
             isChecked = isChecked,
             children = childResults.toList(),
-            moreCount = moreCount,
+            moreSummary = moreSummaries.toList(),
         )
 
         if (PruningRules.isEmptyShell(candidate) && depth > 0) {
+            return childResults
+        }
+
+        if (PruningRules.shouldCollapse(candidate, depth)) {
+            return childResults
+        }
+
+        if (depth > 0 && PruningRules.isZeroArea(candidate.bounds)) {
             return childResults
         }
 
@@ -139,7 +147,7 @@ object TreeFormatter {
         sb.append("app: $appPackage\n")
         sb.append("tree:\n")
         for (child in node.children) {
-            sb.append("  - ${nodeToYamlLine(child, indent = 2)}\n")
+            sb.append("  - ${nodeToYamlLine(child, indent = 2, screenWidth, screenHeight)}\n")
         }
         if (nodeCounter.get() >= 200) {
             sb.append("# truncated: max_nodes(200)\n")
@@ -150,9 +158,9 @@ object TreeFormatter {
         return sb.toString()
     }
 
-    private fun nodeToYamlLine(node: NodeInfo, indent: Int): String {
+    private fun nodeToYamlLine(node: NodeInfo, indent: Int, screenWidth: Int, screenHeight: Int): String {
         val sb = StringBuilder()
-        sb.append("{i: ${node.index}, t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}]")
+        sb.append("{i: ${node.index}, t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${PruningRules.posOf(node.bounds, screenWidth, screenHeight)}")
 
         if (node.text.isNotEmpty()) {
             sb.append(", txt: ${quoteIfNeeded(node.text)}")
@@ -173,7 +181,7 @@ object TreeFormatter {
             sb.append(", ch: [\n")
             for ((index, child) in children.withIndex()) {
                 sb.append(" ".repeat(indent + 2))
-                sb.append("- ${nodeToYamlLine(child, indent + 2)}")
+                sb.append("- ${nodeToYamlLine(child, indent + 2, screenWidth, screenHeight)}")
                 if (index == children.lastIndex) {
                     sb.append("]")
                 } else {
@@ -182,8 +190,8 @@ object TreeFormatter {
             }
         }
 
-        if (node.moreCount > 0) {
-            sb.append(", more: ${node.moreCount}")
+        if (node.moreSummary.isNotEmpty()) {
+            sb.append(", more: [${node.moreSummary.joinToString(", ") { quoteIfNeeded(it) }}]")
         }
 
         sb.append("}")

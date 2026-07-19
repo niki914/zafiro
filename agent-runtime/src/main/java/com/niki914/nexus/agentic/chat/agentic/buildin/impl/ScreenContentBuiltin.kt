@@ -19,7 +19,7 @@ class ScreenContentBuiltin : RawBuiltinTool() {
             "i=index, t=semantic_type(button/input/text/image/list/list_item/switch/checkbox/tab/chip/toolbar/dialog/container), " +
             "b=bounds[left,top,right,bottom], txt=display_text, h=content_description/identifier, " +
             "tap=clickable, hold=long_clickable, edit=editable, scroll=scrollable, checked=checked_state, " +
-            "ch=children, more=off_screen_children_count."
+            "ch=children, more=off_screen_children_text_summaries."
 
     override val defaultEnabled: Boolean = true
 

@@ -80,7 +80,7 @@ class PruningRulesTest {
             isScrollable = false,
             isChecked = false,
             children = emptyList(),
-            moreCount = 0,
+            moreSummary = emptyList(),
         )
         assertTrue(PruningRules.isEmptyShell(node))
     }
@@ -99,7 +99,7 @@ class PruningRulesTest {
             isScrollable = false,
             isChecked = false,
             children = emptyList(),
-            moreCount = 0,
+            moreSummary = emptyList(),
         )
         assertFalse(PruningRules.isEmptyShell(node))
     }
@@ -119,5 +119,217 @@ class PruningRulesTest {
         assertFalse(PruningRules.needsQuoting(""))
         // Contains whitespace -> needs quoting.
         assertTrue(PruningRules.needsQuoting("a b"))
+    }
+
+    @Test
+    fun shouldCollapse_positive() {
+        val node = NodeInfo(
+            index = 0,
+            semanticType = SemanticType.CONTAINER,
+            text = "",
+            contentDesc = "",
+            bounds = Rect(0, 0, 0, 0),
+            isClickable = false,
+            isLongClickable = false,
+            isEditable = false,
+            isScrollable = false,
+            isChecked = false,
+            children = emptyList(),
+            moreSummary = emptyList(),
+        )
+        assertTrue(PruningRules.shouldCollapse(node, 1))
+    }
+
+    @Test
+    fun shouldCollapse_negative_hasText() {
+        val node = NodeInfo(
+            index = 0,
+            semanticType = SemanticType.CONTAINER,
+            text = "hello",
+            contentDesc = "",
+            bounds = Rect(0, 0, 0, 0),
+            isClickable = false,
+            isLongClickable = false,
+            isEditable = false,
+            isScrollable = false,
+            isChecked = false,
+            children = emptyList(),
+            moreSummary = emptyList(),
+        )
+        assertFalse(PruningRules.shouldCollapse(node, 1))
+    }
+
+    @Test
+    fun shouldCollapse_negative_depth0() {
+        val node = NodeInfo(
+            index = 0,
+            semanticType = SemanticType.CONTAINER,
+            text = "",
+            contentDesc = "",
+            bounds = Rect(0, 0, 0, 0),
+            isClickable = false,
+            isLongClickable = false,
+            isEditable = false,
+            isScrollable = false,
+            isChecked = false,
+            children = emptyList(),
+            moreSummary = emptyList(),
+        )
+        assertFalse(PruningRules.shouldCollapse(node, 0))
+    }
+
+    @Test
+    fun shouldCollapse_negative_clickable() {
+        val node = NodeInfo(
+            index = 0,
+            semanticType = SemanticType.CONTAINER,
+            text = "",
+            contentDesc = "",
+            bounds = Rect(0, 0, 0, 0),
+            isClickable = true,
+            isLongClickable = false,
+            isEditable = false,
+            isScrollable = false,
+            isChecked = false,
+            children = emptyList(),
+            moreSummary = emptyList(),
+        )
+        assertFalse(PruningRules.shouldCollapse(node, 1))
+    }
+
+    @Test
+    fun posOf_topLeft() {
+        assertEquals("top-left", PruningRules.posOf(Rect(50, 100, 150, 300), 1080, 2400))
+    }
+
+    @Test
+    fun posOf_topRight() {
+        assertEquals("top-right", PruningRules.posOf(Rect(850, 100, 950, 300), 1080, 2400))
+    }
+
+    @Test
+    fun posOf_bottomLeft() {
+        assertEquals("bottom-left", PruningRules.posOf(Rect(50, 2100, 150, 2300), 1080, 2400))
+    }
+
+    @Test
+    fun posOf_bottomRight() {
+        assertEquals("bottom-right", PruningRules.posOf(Rect(850, 2100, 950, 2300), 1080, 2400))
+    }
+
+    @Test
+    fun posOf_center() {
+        assertEquals("center", PruningRules.posOf(Rect(500, 1100, 580, 1300), 1080, 2400))
+    }
+
+    @Test
+    fun posOf_top() {
+        assertEquals("top", PruningRules.posOf(Rect(500, 100, 580, 300), 1080, 2400))
+    }
+
+    @Test
+    fun posOf_left() {
+        assertEquals("left", PruningRules.posOf(Rect(50, 1100, 150, 1300), 1080, 2400))
+    }
+
+    @Test
+    fun posOf_right() {
+        assertEquals("right", PruningRules.posOf(Rect(850, 1100, 950, 1300), 1080, 2400))
+    }
+
+    @Test
+    fun posOf_bottom() {
+        assertEquals("bottom", PruningRules.posOf(Rect(500, 2100, 580, 2300), 1080, 2400))
+    }
+
+    @Test
+    fun buildMoreSummary_withText() {
+        assertEquals(
+            "hello world",
+            PruningRules.buildMoreSummary(
+                NodeInfo(
+                    index = 0,
+                    semanticType = SemanticType.TEXT,
+                    text = "hello world",
+                    contentDesc = "",
+                    bounds = Rect(0, 0, 0, 0),
+                    isClickable = false,
+                    isLongClickable = false,
+                    isEditable = false,
+                    isScrollable = false,
+                    isChecked = false,
+                    children = emptyList(),
+                    moreSummary = emptyList(),
+                )
+            )
+        )
+    }
+
+    @Test
+    fun buildMoreSummary_fallbackToContentDesc() {
+        assertEquals(
+            "desc",
+            PruningRules.buildMoreSummary(
+                NodeInfo(
+                    index = 0,
+                    semanticType = SemanticType.TEXT,
+                    text = "",
+                    contentDesc = "desc",
+                    bounds = Rect(0, 0, 0, 0),
+                    isClickable = false,
+                    isLongClickable = false,
+                    isEditable = false,
+                    isScrollable = false,
+                    isChecked = false,
+                    children = emptyList(),
+                    moreSummary = emptyList(),
+                )
+            )
+        )
+    }
+
+    @Test
+    fun buildMoreSummary_empty() {
+        assertEquals(
+            "(empty)",
+            PruningRules.buildMoreSummary(
+                NodeInfo(
+                    index = 0,
+                    semanticType = SemanticType.TEXT,
+                    text = "",
+                    contentDesc = "",
+                    bounds = Rect(0, 0, 0, 0),
+                    isClickable = false,
+                    isLongClickable = false,
+                    isEditable = false,
+                    isScrollable = false,
+                    isChecked = false,
+                    children = emptyList(),
+                    moreSummary = emptyList(),
+                )
+            )
+        )
+    }
+
+    @Test
+    fun buildMoreSummary_truncated() {
+        val result = PruningRules.buildMoreSummary(
+            NodeInfo(
+                index = 0,
+                semanticType = SemanticType.TEXT,
+                text = "this is a very long text that exceeds twenty chars",
+                contentDesc = "",
+                bounds = Rect(0, 0, 0, 0),
+                isClickable = false,
+                isLongClickable = false,
+                isEditable = false,
+                isScrollable = false,
+                isChecked = false,
+                children = emptyList(),
+                moreSummary = emptyList(),
+            )
+        )
+        assertTrue(result.startsWith("this is a very long "))
+        assertTrue(result.contains("…"))
     }
 }

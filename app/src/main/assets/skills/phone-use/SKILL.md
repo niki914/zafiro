@@ -1,6 +1,15 @@
 ---
 name: Phone Use
-description: Control the Android device through accessibility-based UI interactions. Use for tasks that require reading app screens, locating UI nodes, and simulating touch, swipe, or key input on device. Prefer purpose-built tools or APIs when available.
+description: >-
+  The agent MUST load this skill whenever the user asks to perform an action on the Android device:
+  opening or switching apps, tapping/clicking UI elements, typing text into fields, scrolling lists,
+  swiping, pressing Back/Home/Recents, or any task that requires interacting with on-screen content.
+  This is the ONLY way to control the device — do NOT attempt to use non-existent APIs or platform tools.
+  For opening apps: always prefer search_apps(query=...) first to find the correct package name,
+  because app names depend on the device language (e.g., "设置" vs "Settings").
+  For non-native apps (Flutter/Unity/WebView): the tree will be empty — stop and report, do not retry.
+  For identifying specific UI elements in large trees: use search_nodes(keywords=[...]) before screen_content.
+  Always call screen_content again after every action before planning the next step.
 ---
 
 ## Overview
@@ -12,6 +21,7 @@ Four core tools:
 | Tool | Purpose |
 |:-----|:--------|
 | `screen_content` | Read the current screen's accessibility tree as YAML |
+| `search_nodes` | Search the current screen for nodes matching keywords. Returns matched indices for use with `node_action` |
 | `node_action` | Click, long-click, set text, or scroll on a UI node by its index |
 | `gesture` | Swipe/drag by screen coordinates |
 | `key_event` | Inject system key events (Back, Home, Recents, etc.) |
@@ -36,6 +46,35 @@ Returns the current screen's accessibility tree as a YAML string. No arguments.
 **Response format:** The tool returns raw YAML output. On failure, the string starts with `error: `.
 
 **Non-native app detection:** If the tree is empty or contains only a root node, the current app likely uses a non-native UI framework (Flutter, Unity, WebView, game engine) that does not expose standard Android accessibility node trees. No amount of retrying will help. **Stop immediately and report to the user.**
+
+### search_nodes
+
+```
+search_nodes(keywords: string[], match_mode?: string, limit?: integer)
+```
+
+| Param | Type | Required | Description |
+|:------|:-----|:---------|:------------|
+| `keywords` | string[] | yes | Keywords for case-insensitive substring matching on node text (`txt`) and content description (`h`) |
+| `match_mode` | string | no | `"any"` (default, match any keyword) or `"all"` (match all keywords) |
+| `limit` | integer | no | Maximum results to return (default 10) |
+
+```json
+{"keywords": ["收藏", "我的"]}
+{"keywords": ["settings"], "match_mode": "all", "limit": 5}
+```
+
+Use `search_nodes` when the screen has many nodes and you need to locate specific UI elements by their text or description. It returns a concise YAML list of matching nodes with their indices, types, bounds, and positions — use the returned indices directly with `node_action`. This is faster than parsing the full `screen_content` tree.
+
+**Response format:** The tool returns raw YAML output:
+```yaml
+matched: 3
+nodes:
+  - {i: 12, t: tab, b: [0,2160,360,2400], pos: bottom-left, txt: 收藏, tap: true}
+  - {i: 15, t: tab, b: [360,2160,720,2400], pos: bottom, txt: 我的, tap: true}
+```
+
+If no nodes match, `matched: 0` with an empty `nodes:` section. On failure, the string starts with `error: `.
 
 ### node_action
 
@@ -165,6 +204,18 @@ screen_content()
 
 This returns a YAML accessibility tree. Each node has an index (`i`) you use with `node_action`.
 
+### 2b. Search for specific elements (optional)
+
+When the screen has many nodes (e.g., a long list or a complex layout) and you know what text or label you're looking for, use `search_nodes` to narrow down candidate indices:
+
+```
+search_nodes(keywords: ["目标文本"])
+```
+
+This returns a short list of matching nodes with their indices. Use the returned index directly with `node_action`. This avoids scanning the full tree.
+
+After acting on a search result, always re-read with `screen_content` before the next action — indices from `search_nodes` are also ephemeral.
+
 ### 3. Act on the tree
 
 Use `node_action` with the node's index:
@@ -198,6 +249,7 @@ The `screen_content` output header includes the foreground app package and scree
 | `i` | Node index — use with `node_action` |
 | `t` | Semantic type: `button`, `input`, `text`, `image`, `list`, `list_item`, `switch`, `checkbox`, `tab`, `chip`, `toolbar`, `dialog`, `container` |
 | `b` | Bounds `[left, top, right, bottom]` in pixels |
+| `pos` | 3×3 grid position: `top-left`, `top`, `top-right`, `left`, `center`, `right`, `bottom-left`, `bottom`, `bottom-right` |
 | `txt` | Display text (quoted if it contains special characters) |
 | `h` | Content description / accessibility identifier |
 | `tap` | Node is clickable (only shown when true) |
@@ -206,7 +258,7 @@ The `screen_content` output header includes the foreground app package and scree
 | `scroll` | Node is scrollable (only shown when true) |
 | `checked` | Node has checked state — switches, checkboxes (only shown when true) |
 | `ch` | Child nodes |
-| `more` | Count of off-screen children truncated from output |
+| `more` | Summaries of off-screen children (text or `(empty)`), each truncated to 20 characters |
 
 Boolean attributes (`tap`, `hold`, `edit`, `scroll`, `checked`) are only emitted when true. If absent, the attribute is false.
 
@@ -220,6 +272,7 @@ Boolean attributes (`tap`, `hold`, `edit`, `scroll`, `checked`) are only emitted
 | Tap/swipe by coordinates | `shell` if no node index exists |
 | Work when accessibility is unavailable | `shell` |
 | Interact with a non-native app | neither works — report and stop |
+| Find a specific UI element by text in a large tree | `search_nodes` first, then `node_action` with the returned index |
 
 ## Important Notes
 
@@ -227,6 +280,7 @@ Boolean attributes (`tap`, `hold`, `edit`, `scroll`, `checked`) are only emitted
 - **Indices are ephemeral.** Every `screen_content` call produces a fresh tree with new indices. Never pass an index from a previous read.
 - **Service auto-setup.** The first tool call automatically enables the accessibility service via root. This takes up to 5 seconds. If root is unavailable, the tool returns an error.
 - **Prefer indices over coordinates.** When the tree has a matching node, use `node_action` with its index. Fall back to `gesture` with coordinates only for unlabeled targets.
+- **Search before scanning.** When you have a specific target label or text, use `search_nodes` to get candidate indices instead of visually scanning the full `screen_content` YAML tree. It's faster and less error-prone.
 - **Coordinates are screen pixels.** Not normalized. Screen dimensions are in the `screen_content` header.
 - **No screenshots.** You see only the accessibility tree, not a visual image. If the tree lacks enough context, describe what you can see and ask the user.
 - **Scroll actions use the node's center.** `scroll_forward` and `scroll_backward` target the node at the given index, not arbitrary coordinates.

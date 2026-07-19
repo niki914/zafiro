@@ -12,6 +12,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.impl.KeyEventBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.NodeActionBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ScreenContentBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SearchAppsBuiltin
+import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SearchNodesBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SshTerminalBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.TerminalBuiltin
 
@@ -38,6 +39,7 @@ class BuiltinToolRegistry(
                 SshTerminalBuiltin(),
                 SearchAppsBuiltin(),
                 ScreenContentBuiltin(),
+                SearchNodesBuiltin(),
                 NodeActionBuiltin(),
                 GestureBuiltin(),
                 KeyEventBuiltin(),
