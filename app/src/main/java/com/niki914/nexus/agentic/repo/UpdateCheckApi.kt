@@ -24,6 +24,7 @@ object UpdateCheckHolder {
     val result: StateFlow<UpdateCheckResult?> = _result.asStateFlow()
 
     private var fired = false
+    private var dismissed = false
 
     suspend fun runOnce(currentVersion: String) {
         if (fired) return
@@ -31,6 +32,13 @@ object UpdateCheckHolder {
         val r = UpdateCheckApi.check(currentVersion)
         _result.value = r
     }
+
+    fun dismiss() {
+        dismissed = true
+        _result.value = UpdateCheckResult(hasUpdate = false, remoteVersion = null, releaseUrl = null)
+    }
+
+    fun isDismissed(): Boolean = dismissed
 }
 
 private object UpdateCheckApi {

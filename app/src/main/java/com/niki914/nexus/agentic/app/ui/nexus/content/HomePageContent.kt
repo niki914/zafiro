@@ -242,33 +242,24 @@ fun HomePageContent(
 
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()
     if (updateCheckResult?.hasUpdate == true) {
-        UpdateAvailableDialog(
-            remoteVersion = updateCheckResult!!.remoteVersion.orEmpty(),
-            releaseUrl = updateCheckResult!!.releaseUrl.orEmpty(),
+        val uriHandler = LocalUriHandler.current
+        val remoteVersion = updateCheckResult!!.remoteVersion.orEmpty()
+        val releaseUrl = updateCheckResult!!.releaseUrl.orEmpty()
+        ConfirmationLiquidDialog(
+            visible = true,
+            onDismissRequest = { UpdateCheckHolder.dismiss() },
+            title = stringResource(R.string.update_dialog_title),
+            text = stringResource(R.string.update_dialog_text, remoteVersion),
+            positiveButtonText = stringResource(R.string.update_dialog_confirm),
+            negativeButtonText = stringResource(R.string.update_dialog_cancel),
+            onPositiveClick = {
+                uriHandler.openUri(releaseUrl)
+                UpdateCheckHolder.dismiss()
+            },
+            onNegativeClick = { UpdateCheckHolder.dismiss() },
+            dismissOnBackgroundTap = false,
         )
     }
-}
-
-@Composable
-private fun UpdateAvailableDialog(
-    remoteVersion: String,
-    releaseUrl: String,
-) {
-    val uriHandler = LocalUriHandler.current
-    var visible by remember { mutableStateOf(true) }
-    ConfirmationLiquidDialog(
-        visible = visible,
-        onDismissRequest = { visible = false },
-        title = stringResource(R.string.update_dialog_title),
-        text = stringResource(R.string.update_dialog_text, remoteVersion),
-        positiveButtonText = stringResource(R.string.update_dialog_confirm),
-        negativeButtonText = stringResource(R.string.update_dialog_cancel),
-        onPositiveClick = {
-            uriHandler.openUri(releaseUrl)
-        },
-        onNegativeClick = { visible = false },
-        dismissOnBackgroundTap = false,
-    )
 }
 
 @Composable
