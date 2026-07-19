@@ -97,12 +97,21 @@ object AccessibilityController {
         val currentResult = runShellCommand(
             "settings get secure enabled_accessibility_services"
         )
-        val currentServices = currentResult.stdout
-        val newValue = if (currentServices.isNotEmpty() && currentServices != "null") {
-            "$currentServices:$serviceName"
-        } else {
-            serviceName
+        if (!currentResult.success) {
+            return Result.failure(
+                RuntimeException("Failed to read enabled accessibility services: ${currentResult.stderr}")
+            )
         }
+
+        val existing = currentResult.stdout
+            .takeUnless { it.isBlank() || it == "null" }
+            ?.split(":")
+            .orEmpty()
+            .filter { it.isNotBlank() }
+            .toMutableSet()
+        existing += serviceName
+        val newValue = existing.joinToString(":")
+
         val putResult = runShellCommand("settings put secure enabled_accessibility_services $newValue")
         if (!putResult.success) {
             return Result.failure(
