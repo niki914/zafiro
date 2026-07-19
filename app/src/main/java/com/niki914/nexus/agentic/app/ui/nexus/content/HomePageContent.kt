@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -49,6 +50,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.nexus.agentic.app.R
+import com.niki914.nexus.agentic.app.ui.infra.ConfirmationLiquidDialog
 import com.niki914.nexus.agentic.app.ui.infra.LocalLiquidViewportAvoidanceController
 import com.niki914.nexus.agentic.app.ui.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.nexus.agentic.app.ui.infra.liquidScreenHazeSource
@@ -64,6 +66,7 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatTurn
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatUiState
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatViewModel
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
+import com.niki914.nexus.agentic.repo.UpdateCheckHolder
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 import com.niki914.nexus.agentic.app.ui.nexus.nav.TextTitle
 import com.niki914.nexus.agentic.app.ui.nexus.nav.TopBarActionSpec
@@ -236,6 +239,27 @@ fun HomePageContent(
             )
         },
     )
+
+    val updateCheckResult by UpdateCheckHolder.result.collectAsState()
+    if (updateCheckResult?.hasUpdate == true) {
+        val uriHandler = LocalUriHandler.current
+        val remoteVersion = updateCheckResult!!.remoteVersion.orEmpty()
+        val releaseUrl = updateCheckResult!!.releaseUrl.orEmpty()
+        ConfirmationLiquidDialog(
+            visible = true,
+            onDismissRequest = { UpdateCheckHolder.dismiss() },
+            title = stringResource(R.string.update_dialog_title),
+            text = stringResource(R.string.update_dialog_text, remoteVersion),
+            positiveButtonText = stringResource(R.string.update_dialog_confirm),
+            negativeButtonText = stringResource(R.string.update_dialog_cancel),
+            onPositiveClick = {
+                uriHandler.openUri(releaseUrl)
+                UpdateCheckHolder.dismiss()
+            },
+            onNegativeClick = { UpdateCheckHolder.dismiss() },
+            dismissOnBackgroundTap = false,
+        )
+    }
 }
 
 @Composable

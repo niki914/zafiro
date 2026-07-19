@@ -291,4 +291,8 @@
     <string name="mcp_delete_dialog_title">刪除 MCP 伺服器</string>
     <string name="mcp_delete_dialog_text">確定要刪除 MCP 伺服器「%1$s」嗎？此操作不可撤銷。</string>
     <string name="mcp_error_headers_non_string">請求標頭的值必須為字串</string>
+    <string name="update_dialog_title">發現新版本</string>
+    <string name="update_dialog_text">v%1$s 已發佈，建議升級</string>
+    <string name="update_dialog_confirm">前往更新</string>
+    <string name="update_dialog_cancel">稍後</string>
 </resources>

@@ -1,5 +1,6 @@
 package a0.a0.a0.a0.a0.a0
 
+import com.niki914.nexus.agentic.app.getInstalledPackageVersion
 import com.niki914.nexus.agentic.mod.HookLocalSettings
 import com.niki914.nexus.agentic.mod.XService
 import com.niki914.nexus.agentic.mod.feat.hyper.XiaoaiChatHook
@@ -60,16 +61,17 @@ class Entrance : IXposed() {
                 isNetworkError -> {
                     XService.postNotification(
                         title = "网络异常",
-                        content = "网络异常，请在检查网络后重试",
+                        content = "网络连接失败，请检查网络后重试",
                         uri = null,
                     )
                 }
 
                 isNoSupportedVersion -> {
-                    XService.postNotification(
-                        title = "版本未支持",
-                        content = "当前版本未支持，请提交 issue 反馈",
-                        uri = null,
+                    XService.postUnsupportedVersionNotification(
+                        hostApp = HostApp.fromPackageName(targetPkg),
+                        hostVersion = targetPkg?.let {
+                            ctx.getInstalledPackageVersion(it)?.versionName
+                        },
                     )
                 }
             }
