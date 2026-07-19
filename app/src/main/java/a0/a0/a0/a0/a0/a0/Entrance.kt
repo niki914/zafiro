@@ -1,5 +1,6 @@
 package a0.a0.a0.a0.a0.a0
 
+import android.content.pm.PackageManager
 import com.niki914.nexus.agentic.mod.HookLocalSettings
 import com.niki914.nexus.agentic.mod.XService
 import com.niki914.nexus.agentic.mod.feat.hyper.XiaoaiChatHook
@@ -28,6 +29,23 @@ import kotlinx.coroutines.launch
 class Entrance : IXposed() {
     companion object {
         private val scope by lazy { CoroutineScope(Dispatchers.Default + SupervisorJob()) }
+
+        private fun hostDisplayName(packageName: String?): String {
+            return when (HostApp.fromPackageName(packageName)) {
+                HostApp.Breeno -> "小布助手"
+                HostApp.XiaoAi -> "小爱同学"
+                else -> "助手"
+            }
+        }
+
+        private fun hostVersionName(ctx: android.content.Context, packageName: String?): String? {
+            if (packageName == null) return null
+            return try {
+                ctx.packageManager.getPackageInfo(packageName, 0).versionName
+            } catch (_: PackageManager.NameNotFoundException) {
+                null
+            }
+        }
     }
 
     override fun getTarget() =
@@ -60,16 +78,19 @@ class Entrance : IXposed() {
                 isNetworkError -> {
                     XService.postNotification(
                         title = "网络异常",
-                        content = "网络异常，请在检查网络后重试",
+                        content = "网络连接失败，请检查网络后重试",
                         uri = null,
                     )
                 }
 
                 isNoSupportedVersion -> {
+                    val hostName = hostDisplayName(targetPkg)
+                    val hostVersion = hostVersionName(ctx, targetPkg)
                     XService.postNotification(
-                        title = "版本未支持",
-                        content = "当前版本未支持，请提交 issue 反馈",
-                        uri = null,
+                        title = "宿主版本未适配",
+                        content = "当前${hostName}版本还未被 Nexus 支持" +
+                            (hostVersion?.let { "\n宿主版本：$it" } ?: ""),
+                        uri = "https://github.com/niki914/agentic-nexus/issues/new",
                     )
                 }
             }
