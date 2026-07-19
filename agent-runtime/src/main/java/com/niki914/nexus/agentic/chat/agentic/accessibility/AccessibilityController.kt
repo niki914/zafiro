@@ -48,6 +48,14 @@ object AccessibilityController {
         val appPackage: String,
     )
 
+    private data class ShellResult(
+        val exitCode: Int,
+        val stdout: String,
+        val stderr: String,
+    ) {
+        val success: Boolean get() = exitCode == 0
+    }
+
     fun setService(service: IAccessibility) {
         serviceInstance = service
     }
@@ -86,15 +94,21 @@ object AccessibilityController {
         val serviceName = "${ctx.packageName}/.mod.feat.NexusAccessibilityService"
 
         // 3. Enable the service in system settings
-        val currentServices = runShellCommand(
+        val currentResult = runShellCommand(
             "settings get secure enabled_accessibility_services"
-        ).trim()
+        )
+        val currentServices = currentResult.stdout
         val newValue = if (currentServices.isNotEmpty() && currentServices != "null") {
             "$currentServices:$serviceName"
         } else {
             serviceName
         }
-        runShellCommand("settings put secure enabled_accessibility_services $newValue")
+        val putResult = runShellCommand("settings put secure enabled_accessibility_services $newValue")
+        if (!putResult.success) {
+            return Result.failure(
+                RuntimeException("Failed to enable accessibility service: ${putResult.stderr}")
+            )
+        }
         runShellCommand("settings put secure accessibility_enabled 1")
 
         // 4. Poll for connection (max 5 s)
@@ -214,12 +228,12 @@ object AccessibilityController {
             return Result.failure(e)
         }
 
-        if (nodeCache.isEmpty()) {
-            try {
-                refreshNodeCache()
-            } catch (e: Exception) {
-                return Result.failure(e)
-            }
+        // Always refresh the cache so search runs against the current screen,
+        // not a previous screen_content call.
+        try {
+            refreshNodeCache()
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
 
         val ctx = ContextProvider.await()
@@ -350,9 +364,9 @@ object AccessibilityController {
 
         return when (action) {
             NodeAction.CLICK, NodeAction.LONG_CLICK -> {
-                // Re-validate the node before a coordinate-based tap, because
-                // shell taps are blind: a popup or layout shift since the last
-                // screen_content call would cause a mis-tap.
+                // Pre-tap validation: refresh the node to check liveness,
+                // bounds stability, and visibility. Shell taps are coordinate-
+                // based, so a stale or shifted node causes a mis-tap.
                 val oldVisible = node.isVisibleToUser
 
                 val refreshed = node.refresh()
@@ -381,26 +395,42 @@ object AccessibilityController {
 
                 if (oldVisible && !node.isVisibleToUser) {
                     return BuiltinToolResult.failure(
-                        "UI_OBSCURED",
-                        "Node $index is no longer visible (possibly covered by a popup or dialog). " +
+                        "NODE_HIDDEN",
+                        "Node $index is no longer visible (possibly covered). " +
                             "Re-read the screen and re-evaluate.",
                     )
                 }
 
-                if (action == NodeAction.LONG_CLICK) {
+                val result = if (action == NodeAction.LONG_CLICK) {
                     runShellCommand("input swipe $newCx $newCy $newCx $newCy 1500")
-                    BuiltinToolResult.success("shell long tap at ($newCx, $newCy)")
                 } else {
                     runShellCommand("input tap $newCx $newCy")
-                    BuiltinToolResult.success("shell tap at ($newCx, $newCy)")
                 }
+                if (!result.success) {
+                    return BuiltinToolResult.failure(
+                        "SHELL_FAILED",
+                        "Shell ${if (action == NodeAction.LONG_CLICK) "long tap" else "tap"} failed: ${result.stderr}",
+                    )
+                }
+                val name = if (action == NodeAction.LONG_CLICK) "long tap" else "tap"
+                BuiltinToolResult.success("shell $name at ($newCx, $newCy)")
             }
             NodeAction.SCROLL_FORWARD -> {
-                runShellCommand("input swipe $cx $cy $cx ${cy - 200} 300")
+                val result = runShellCommand("input swipe $cx $cy $cx ${cy - 200} 300")
+                if (!result.success) {
+                    return BuiltinToolResult.failure(
+                        "SHELL_FAILED", "Shell scroll forward failed: ${result.stderr}"
+                    )
+                }
                 BuiltinToolResult.success("shell scroll forward at ($cx, $cy)")
             }
             NodeAction.SCROLL_BACKWARD -> {
-                runShellCommand("input swipe $cx $cy $cx ${cy + 200} 300")
+                val result = runShellCommand("input swipe $cx $cy $cx ${cy + 200} 300")
+                if (!result.success) {
+                    return BuiltinToolResult.failure(
+                        "SHELL_FAILED", "Shell scroll backward failed: ${result.stderr}"
+                    )
+                }
                 BuiltinToolResult.success("shell scroll backward at ($cx, $cy)")
             }
             NodeAction.SET_TEXT -> {
@@ -433,7 +463,11 @@ object AccessibilityController {
         // Fallback to shell for non-SET_TEXT actions
         return if (action != NodeAction.SET_TEXT) {
             val shellResult = executeShellAction(node, index, action)
-            BuiltinToolResult.success("accessibility fallback: ${shellResult.message}")
+            if (shellResult.ok) {
+                BuiltinToolResult.success("accessibility fallback: ${shellResult.message}")
+            } else {
+                shellResult
+            }
         } else {
             BuiltinToolResult.failure(
                 "SET_TEXT_FAILED",
@@ -472,7 +506,12 @@ object AccessibilityController {
                 }
             }
             InteractionMethod.SHELL -> {
-                runShellCommand("input swipe $startX $startY $endX $endY $duration")
+                val result = runShellCommand("input swipe $startX $startY $endX $endY $duration")
+                if (!result.success) {
+                    return BuiltinToolResult.failure(
+                        "SHELL_FAILED", "Shell gesture failed: ${result.stderr}"
+                    )
+                }
                 BuiltinToolResult.success("gesture performed via shell")
             }
         }
@@ -524,22 +563,24 @@ object AccessibilityController {
             }
         }
 
-        runShellCommand("input keyevent $keyCode")
+        val result = runShellCommand("input keyevent $keyCode")
+        if (!result.success) {
+            return BuiltinToolResult.failure(
+                "SHELL_FAILED", "Shell keyevent $keyCode failed: ${result.stderr}"
+            )
+        }
         return BuiltinToolResult.success("shell keyevent $keyCode performed")
     }
 
-    /**
-     * Runs a shell command via `su -c` and returns stdout.
-     */
-    private fun runShellCommand(command: String): String {
+    private fun runShellCommand(command: String): ShellResult {
         return try {
-            Runtime.getRuntime()
-                .exec(arrayOf("su", "-c", command))
-                .inputStream
-                .bufferedReader()
-                .readText()
-        } catch (_: Exception) {
-            ""
+            val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+            val stdout = proc.inputStream.bufferedReader().readText().trim()
+            val stderr = proc.errorStream.bufferedReader().readText().trim()
+            val exitCode = proc.waitFor()
+            ShellResult(exitCode, stdout, stderr)
+        } catch (e: Exception) {
+            ShellResult(-1, "", e.message ?: "unknown error")
         }
     }
 }
