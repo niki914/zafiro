@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -39,13 +38,11 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.niki914.nexus.agentic.app.R
-import com.niki914.nexus.agentic.app.ui.infra.ConfirmationLiquidDialog
 import com.niki914.nexus.agentic.app.ui.infra.LiquidScreen
 import com.niki914.nexus.agentic.app.ui.infra.LiquidScreenSwipeContent
 import com.niki914.nexus.agentic.app.ui.infra.TitleDirection
@@ -54,7 +51,6 @@ import com.niki914.nexus.agentic.app.ui.infra.nav.rememberNavigationController
 import com.niki914.nexus.agentic.app.ui.infra.rememberLiquidScreenState
 import com.niki914.nexus.agentic.app.ui.nexus.model.AppLaunchDecision
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatViewModel
-import com.niki914.nexus.agentic.repo.UpdateCheckHolder
 import com.niki914.nexus.agentic.app.ui.nexus.model.StartupAssistantUi
 import com.niki914.nexus.agentic.app.ui.nexus.nav.HomePage
 import com.niki914.nexus.agentic.app.ui.nexus.nav.NexusPage
@@ -355,27 +351,6 @@ fun NexusApp(
                     }
                 }
             }
-
-            val updateCheckResult by UpdateCheckHolder.result.collectAsState()
-            val uriHandler = LocalUriHandler.current
-            var showUpdateDialog by remember { mutableStateOf(true) }
-            val hasUpdate = updateCheckResult?.hasUpdate == true && showUpdateDialog
-            ConfirmationLiquidDialog(
-                visible = hasUpdate,
-                onDismissRequest = { showUpdateDialog = false },
-                title = stringResource(R.string.update_dialog_title),
-                text = stringResource(
-                    R.string.update_dialog_text,
-                    updateCheckResult?.remoteVersion.orEmpty(),
-                ),
-                positiveButtonText = stringResource(R.string.update_dialog_confirm),
-                negativeButtonText = stringResource(R.string.update_dialog_cancel),
-                onPositiveClick = {
-                    updateCheckResult?.releaseUrl?.let { uriHandler.openUri(it) }
-                },
-                onNegativeClick = { showUpdateDialog = false },
-                dismissOnBackgroundTap = false,
-            )
         }
         currentChrome.overlay?.invoke()
     }

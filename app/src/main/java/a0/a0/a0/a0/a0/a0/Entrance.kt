@@ -1,6 +1,7 @@
 package a0.a0.a0.a0.a0.a0
 
 import android.content.pm.PackageManager
+import android.os.Build
 import com.niki914.nexus.agentic.mod.HookLocalSettings
 import com.niki914.nexus.agentic.mod.XService
 import com.niki914.nexus.agentic.mod.feat.hyper.XiaoaiChatHook
@@ -41,7 +42,16 @@ class Entrance : IXposed() {
         private fun hostVersionName(ctx: android.content.Context, packageName: String?): String? {
             if (packageName == null) return null
             return try {
-                ctx.packageManager.getPackageInfo(packageName, 0).versionName
+                val pi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ctx.packageManager.getPackageInfo(
+                        packageName,
+                        PackageManager.PackageInfoFlags.of(0)
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    ctx.packageManager.getPackageInfo(packageName, 0)
+                }
+                pi.versionName
             } catch (_: PackageManager.NameNotFoundException) {
                 null
             }

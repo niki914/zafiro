@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.repo
 
+import com.niki914.nexus.h.util.xTry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,35 +44,33 @@ private object UpdateCheckApi {
 
     suspend fun check(currentVersion: String): UpdateCheckResult {
         return withContext(Dispatchers.IO) {
-            try {
-                val body = fetchLatestRelease() ?: return@withContext noUpdate()
-                val obj = json.parseToJsonElement(body) as? JsonObject
-                    ?: return@withContext noUpdate()
-
-                if (obj["draft"]?.jsonPrimitive?.booleanOrNull == true) return@withContext noUpdate()
-                if (obj["prerelease"]?.jsonPrimitive?.booleanOrNull == true) return@withContext noUpdate()
-
-                val tagName = obj["tag_name"]?.jsonPrimitive?.content ?: return@withContext noUpdate()
-                val remoteVersion = semverRe.find(tagName)?.groupValues?.get(1)
-                    ?: return@withContext noUpdate()
-
-                if (!isNewer(remoteVersion, currentVersion)) return@withContext noUpdate()
-
-                val releaseUrl = obj["html_url"]?.jsonPrimitive?.content.orEmpty()
-                UpdateCheckResult(
-                    hasUpdate = true,
-                    remoteVersion = remoteVersion,
-                    releaseUrl = releaseUrl,
-                )
-            } catch (_: Exception) {
-                noUpdate()
-            }
+            xTry { resolveUpdateOrNull(currentVersion) } ?: noUpdate()
         }
+    }
+
+    private fun resolveUpdateOrNull(currentVersion: String): UpdateCheckResult {
+        val body = fetchLatestRelease() ?: return noUpdate()
+        val obj = json.parseToJsonElement(body) as? JsonObject ?: return noUpdate()
+
+        if (obj["draft"]?.jsonPrimitive?.booleanOrNull == true) return noUpdate()
+        if (obj["prerelease"]?.jsonPrimitive?.booleanOrNull == true) return noUpdate()
+
+        val tagName = obj["tag_name"]?.jsonPrimitive?.content ?: return noUpdate()
+        val remoteVersion = semverRe.find(tagName)?.groupValues?.get(1) ?: return noUpdate()
+
+        if (!isNewer(remoteVersion, currentVersion)) return noUpdate()
+
+        val releaseUrl = obj["html_url"]?.jsonPrimitive?.content.orEmpty()
+        return UpdateCheckResult(
+            hasUpdate = true,
+            remoteVersion = remoteVersion,
+            releaseUrl = releaseUrl,
+        )
     }
 
     private fun fetchLatestRelease(): String? {
         val request = Request.Builder().url(GITHUB_API_LATEST).build()
-        return try {
+        return xTry {
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful && response.body != null) {
                     response.body!!.string()
@@ -79,8 +78,6 @@ private object UpdateCheckApi {
                     null
                 }
             }
-        } catch (_: Exception) {
-            null
         }
     }
 
