@@ -1,8 +1,7 @@
 package com.niki914.nexus.agentic.repo
 
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
+import com.niki914.nexus.agentic.app.getInstalledPackageVersion
 import com.niki914.nexus.agentic.mod.WebSettings
 import com.niki914.nexus.agentic.mod.parseJsonObject
 import com.niki914.nexus.h.util.OsFamily
@@ -260,8 +259,8 @@ class WebSettingsApi internal constructor(
             XValues.AppType.Me -> resolveTargetHostPackage(context)
             XValues.AppType.Unknown -> null
         } ?: return null
-        val versionCode = getInstalledPackageVersionCode(context, packageName) ?: return null
-        return WebSettingsTarget(packageName, versionCode)
+        val version = context.getInstalledPackageVersion(packageName) ?: return null
+        return WebSettingsTarget(packageName, version.versionCode)
     }
 
     private fun resolveTargetHostPackage(context: Context): String? {
@@ -275,29 +274,7 @@ class WebSettingsApi internal constructor(
             addAll(HostApp.packageNames.filter { it != preferredPackageName })
         }
         return candidatePackages.firstOrNull { packageName ->
-            getInstalledPackageVersionCode(context, packageName) != null
-        }
-    }
-
-    private fun getInstalledPackageVersionCode(context: Context, packageName: String): Long? {
-        return try {
-            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.packageManager.getPackageInfo(
-                    packageName,
-                    PackageManager.PackageInfoFlags.of(0)
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.getPackageInfo(packageName, 0)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                packageInfo.longVersionCode
-            } else {
-                @Suppress("DEPRECATION")
-                packageInfo.versionCode.toLong()
-            }
-        } catch (_: PackageManager.NameNotFoundException) {
-            null
+            context.getInstalledPackageVersion(packageName) != null
         }
     }
 

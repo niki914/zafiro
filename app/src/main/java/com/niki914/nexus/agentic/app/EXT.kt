@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.app
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.result.ActivityResultLauncher
@@ -12,22 +13,27 @@ import com.niki914.nexus.h.util.OsUtils
 import com.niki914.nexus.ipc.HostApp
 import com.niki914.nexus.ipc.XValues
 
-fun Activity.getInstalledPackageVersionCode(packageName: String): Long? {
+data class InstalledPackageVersion(
+    val versionName: String?,
+    val versionCode: Long,
+)
+
+fun Context.getInstalledPackageVersion(packageName: String): InstalledPackageVersion? {
     return try {
-        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val pi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
         } else {
             @Suppress("DEPRECATION")
             packageManager.getPackageInfo(packageName, 0)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            packageInfo.longVersionCode
+        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            pi.longVersionCode
         } else {
             @Suppress("DEPRECATION")
-            packageInfo.versionCode.toLong()
+            pi.versionCode.toLong()
         }
+        InstalledPackageVersion(versionName = pi.versionName, versionCode = versionCode)
     } catch (_: PackageManager.NameNotFoundException) {
-        // TODO P1 report
         null
     }
 }
@@ -55,11 +61,11 @@ fun preferredHostAppFor(osFamily: OsFamily): HostApp? {
 fun Activity.resolveTargetHostPackage(osFamily: OsFamily): String? {
     val preferredPkg = preferredHostAppFor(osFamily)?.packageName
     val candidatePkgs = buildList {
-        if (preferredPkg != null) add(preferredPkg)
+        preferredPkg?.let { add(it) }
         addAll(XValues.appList.filter { it != preferredPkg })
     }
     return candidatePkgs.firstOrNull { pkg ->
-        getInstalledPackageVersionCode(pkg) != null
+        getInstalledPackageVersion(pkg) != null
     }
 }
 

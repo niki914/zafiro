@@ -5,9 +5,9 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.core.net.toUri
 
-enum class HostApp(val packageName: String) {
-    Breeno("com.heytap.speechassist"),
-    XiaoAi("com.miui.voiceassist");
+enum class HostApp(val packageName: String, val displayName: String) {
+    Breeno("com.heytap.speechassist", "小布助手"),
+    XiaoAi("com.miui.voiceassist", "小爱同学");
 
     companion object {
         fun fromPackageName(packageName: String?): HostApp? {
