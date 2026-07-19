@@ -292,4 +292,8 @@
     <string name="mcp_delete_dialog_title">Delete MCP Server</string>
     <string name="mcp_delete_dialog_text">Are you sure you want to delete the MCP server \"%1$s\"? This action cannot be undone.</string>
     <string name="mcp_error_headers_non_string">Header values must be strings</string>
+    <string name="update_dialog_title">New Version Available</string>
+    <string name="update_dialog_text">v%1$s is now available. Upgrade to get the latest features and fixes.</string>
+    <string name="update_dialog_confirm">Update</string>
+    <string name="update_dialog_cancel">Later</string>
 </resources>
