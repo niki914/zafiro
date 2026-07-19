@@ -333,13 +333,14 @@ object AccessibilityController {
             )
 
         return when (method) {
-            InteractionMethod.SHELL -> executeShellAction(node, action)
-            InteractionMethod.ACCESSIBILITY -> executeAccessibilityAction(node, action, text)
+            InteractionMethod.SHELL -> executeShellAction(node, index, action)
+            InteractionMethod.ACCESSIBILITY -> executeAccessibilityAction(node, index, action, text)
         }
     }
 
     private fun executeShellAction(
         node: AccessibilityNodeInfo,
+        index: Int,
         action: NodeAction,
     ): BuiltinToolResult {
         val rect = android.graphics.Rect()
@@ -348,13 +349,51 @@ object AccessibilityController {
         val cy = rect.centerY()
 
         return when (action) {
-            NodeAction.CLICK -> {
-                runShellCommand("input tap $cx $cy")
-                BuiltinToolResult.success("shell tap at ($cx, $cy)")
-            }
-            NodeAction.LONG_CLICK -> {
-                runShellCommand("input swipe $cx $cy $cx $cy 1500")
-                BuiltinToolResult.success("shell long tap at ($cx, $cy)")
+            NodeAction.CLICK, NodeAction.LONG_CLICK -> {
+                // Re-validate the node before a coordinate-based tap, because
+                // shell taps are blind: a popup or layout shift since the last
+                // screen_content call would cause a mis-tap.
+                val oldVisible = node.isVisibleToUser
+
+                val refreshed = node.refresh()
+                if (!refreshed) {
+                    return BuiltinToolResult.failure(
+                        "NODE_STALE",
+                        "Node $index no longer exists on screen. " +
+                            "The UI changed since the last screen_content call — re-read and try again.",
+                    )
+                }
+
+                val newRect = android.graphics.Rect()
+                node.getBoundsInScreen(newRect)
+                val newCx = newRect.centerX()
+                val newCy = newRect.centerY()
+
+                val dx = Math.abs(newCx - cx)
+                val dy = Math.abs(newCy - cy)
+                if (dx > 50 || dy > 50) {
+                    return BuiltinToolResult.failure(
+                        "UI_CHANGED",
+                        "Node $index moved ${dx}x${dy}px since last screen_content. " +
+                            "A layout shift may have occurred — re-read the screen.",
+                    )
+                }
+
+                if (oldVisible && !node.isVisibleToUser) {
+                    return BuiltinToolResult.failure(
+                        "UI_OBSCURED",
+                        "Node $index is no longer visible (possibly covered by a popup or dialog). " +
+                            "Re-read the screen and re-evaluate.",
+                    )
+                }
+
+                if (action == NodeAction.LONG_CLICK) {
+                    runShellCommand("input swipe $newCx $newCy $newCx $newCy 1500")
+                    BuiltinToolResult.success("shell long tap at ($newCx, $newCy)")
+                } else {
+                    runShellCommand("input tap $newCx $newCy")
+                    BuiltinToolResult.success("shell tap at ($newCx, $newCy)")
+                }
             }
             NodeAction.SCROLL_FORWARD -> {
                 runShellCommand("input swipe $cx $cy $cx ${cy - 200} 300")
@@ -365,7 +404,6 @@ object AccessibilityController {
                 BuiltinToolResult.success("shell scroll backward at ($cx, $cy)")
             }
             NodeAction.SET_TEXT -> {
-                // Guarded in executeNodeAction; kept for exhaustive when
                 BuiltinToolResult.failure(
                     "METHOD_NOT_SUPPORTED", "set_text requires accessibility method"
                 )
@@ -375,6 +413,7 @@ object AccessibilityController {
 
     private fun executeAccessibilityAction(
         node: AccessibilityNodeInfo,
+        index: Int,
         action: NodeAction,
         text: String?,
     ): BuiltinToolResult {
@@ -393,7 +432,7 @@ object AccessibilityController {
 
         // Fallback to shell for non-SET_TEXT actions
         return if (action != NodeAction.SET_TEXT) {
-            val shellResult = executeShellAction(node, action)
+            val shellResult = executeShellAction(node, index, action)
             BuiltinToolResult.success("accessibility fallback: ${shellResult.message}")
         } else {
             BuiltinToolResult.failure(
