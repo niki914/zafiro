@@ -99,12 +99,12 @@ class AgentRuntimeClient(private val context: Context) {
     fun submit(
         query: String,
         params: Bundle = Bundle.EMPTY,
-        onEvent: (AgentEvent) -> Unit,
+        onFrame: (text: String, isFirst: Boolean, isFinal: Boolean) -> Unit,
     ): Result<Unit> {
         val svc = service
         if (svc == null) {
             pendingSubmits.add {
-                submit(query, params, onEvent)
+                submit(query, params, onFrame)
             }
             return Result.success(Unit)
         }
@@ -112,7 +112,7 @@ class AgentRuntimeClient(private val context: Context) {
             val callback = object : IAgentEventCallback.Stub() {
                 override fun onEvent(event: AgentEvent?) {
                     if (event != null) {
-                        mainHandler.post { onEvent(event) }
+                        mainHandler.post { onFrame(event.text, event.isFirst, event.isFinal) }
                     }
                 }
             }

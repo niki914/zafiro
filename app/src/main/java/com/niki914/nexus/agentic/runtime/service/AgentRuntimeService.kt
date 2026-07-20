@@ -12,9 +12,7 @@ import android.os.Bundle
 import android.os.DeadObjectException
 import android.os.IBinder
 import com.niki914.nexus.agentic.chat.LLMController
-import com.niki914.nexus.agentic.chat.LlmStreamEvent
-import com.niki914.nexus.agentic.chat.ToolCallStatus
-import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
+import com.niki914.nexus.agentic.chat.collectAsFull
 import com.niki914.nexus.agentic.runtime.ipc.AgentEvent
 import com.niki914.nexus.agentic.runtime.ipc.IAgentEventCallback
 import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
@@ -22,17 +20,12 @@ import com.niki914.nexus.ipc.HostApp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import java.util.concurrent.atomic.AtomicInteger
 
 class AgentRuntimeService : Service() {
-
-    // --- Lifecycle ---
 
     override fun onCreate() {
         super.onCreate()
@@ -47,7 +40,6 @@ class AgentRuntimeService : Service() {
     }
 
     override fun onDestroy() {
-        // Cancel active turn if any
         if (turnMutex.isLocked) {
             scope.launch {
                 try {
@@ -60,28 +52,16 @@ class AgentRuntimeService : Service() {
         super.onDestroy()
     }
 
-    // --- Internal state ---
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val turnMutex = Mutex()
     @Volatile
     private var activeCallback: IAgentEventCallback? = null
-    private val eventSequence = AtomicInteger(0)
-
-    // --- Text merge buffer ---
-
-    private val textBuffer = StringBuilder()
-    private var isFirstText = true
-    private var flushJob: Job? = null
 
     companion object {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "agent_runtime"
         private const val MAX_QUERY_LENGTH = 8192
-        private const val FLUSH_INTERVAL_MS = 80L
     }
-
-    // --- Notification ---
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -114,8 +94,6 @@ class AgentRuntimeService : Service() {
             .build()
     }
 
-    // --- AIDL Stub ---
-
     private inner class StubImpl : IAgentRuntimeService.Stub() {
 
         override fun getStatus(): Int {
@@ -127,51 +105,38 @@ class AgentRuntimeService : Service() {
             params: Bundle?,
             callback: IAgentEventCallback?,
         ) {
-            // Guard: client always passes non-null query and callback
             val q = query ?: return
             val cb = callback ?: return
 
-            // Validate query
             if (q.isBlank() || q.length > MAX_QUERY_LENGTH) {
                 try {
                     cb.onEvent(
                         AgentEvent(
-                            sequence = 0,
-                            timestamp = System.currentTimeMillis(),
-                            eventType = "Error",
-                            errorCode = "INVALID_REQUEST",
-                            errorMessage = "Query is blank or exceeds maximum length of $MAX_QUERY_LENGTH characters",
+                            text = "Query is blank or exceeds maximum length of $MAX_QUERY_LENGTH characters",
+                            isFirst = true,
+                            isFinal = true,
                         )
                     )
-                } catch (_: DeadObjectException) {
-                    // Client died while sending error
-                }
+                } catch (_: DeadObjectException) {}
                 return
             }
 
-            // Try to acquire the turn lock
             if (!turnMutex.tryLock()) {
                 try {
                     cb.onEvent(
                         AgentEvent(
-                            sequence = 0,
-                            timestamp = System.currentTimeMillis(),
-                            eventType = "Error",
-                            errorCode = "TURN_CONFLICT",
-                            errorMessage = "Another turn is already in progress",
+                            text = "Another turn is already in progress",
+                            isFirst = true,
+                            isFinal = true,
                         )
                     )
-                } catch (_: DeadObjectException) {
-                    // Client died while sending error
-                }
+                } catch (_: DeadObjectException) {}
                 return
             }
 
-            // Register death recipient on the callback binder
             try {
                 cb.asBinder().linkToDeath(deathRecipient, 0)
             } catch (_: Exception) {
-                // Client binder already dead; release lock and return
                 turnMutex.unlock()
                 return
             }
@@ -199,42 +164,28 @@ class AgentRuntimeService : Service() {
         }
     }
 
-    // --- Turn execution ---
-
     private suspend fun executeTurn(query: String) {
         try {
-            eventSequence.set(0)
-            synchronized(textBuffer) {
-                textBuffer.clear()
-            }
-            isFirstText = true
-
-            LLMController.stream(query).collect { event ->
-                mapAndSend(event)
+            LLMController.stream(query).collectAsFull { frame ->
+                sendEvent(
+                    AgentEvent(
+                        text = frame.text,
+                        isFirst = frame.isFirst,
+                        isFinal = frame.isFinal,
+                    )
+                )
             }
         } catch (e: CancellationException) {
-            flushTextBuffer()
-            sendEvent(
-                AgentEvent(
-                    sequence = eventSequence.getAndIncrement(),
-                    timestamp = System.currentTimeMillis(),
-                    eventType = "Cancelled",
-                )
-            )
             throw e
         } catch (e: Exception) {
             sendEvent(
                 AgentEvent(
-                    sequence = eventSequence.getAndIncrement(),
-                    timestamp = System.currentTimeMillis(),
-                    eventType = "Error",
-                    errorCode = "INTERNAL_ERROR",
-                    errorMessage = e.message,
+                    text = e.message ?: "Internal error",
+                    isFirst = true,
+                    isFinal = true,
                 )
             )
         } finally {
-            flushTextBuffer()
-            // Unlink death recipient
             activeCallback?.let { cb ->
                 try {
                     cb.asBinder().unlinkToDeath(deathRecipient, 0)
@@ -248,124 +199,6 @@ class AgentRuntimeService : Service() {
         }
     }
 
-    // --- Event mapping ---
-
-    private suspend fun mapAndSend(event: LlmStreamEvent) {
-        when (event) {
-            LlmStreamEvent.RoundStarted -> {
-                flushTextBuffer()
-                isFirstText = true
-            }
-
-            is LlmStreamEvent.TextDelta -> {
-                synchronized(textBuffer) {
-                    textBuffer.append(event.delta)
-                }
-                scheduleFlush()
-            }
-
-            is LlmStreamEvent.ToolRunning -> {
-                flushTextBuffer()
-                sendEvent(
-                    AgentEvent(
-                        sequence = eventSequence.getAndIncrement(),
-                        timestamp = System.currentTimeMillis(),
-                        eventType = "ToolRunning",
-                        toolName = event.call.name,
-                        toolLabel = event.call.label,
-                    )
-                )
-            }
-
-            is LlmStreamEvent.ToolSucceeded -> {
-                flushTextBuffer()
-                sendEvent(
-                    AgentEvent(
-                        sequence = eventSequence.getAndIncrement(),
-                        timestamp = System.currentTimeMillis(),
-                        eventType = "ToolSucceeded",
-                        toolName = event.call.name,
-                        toolOutput = event.outputText,
-                    )
-                )
-            }
-
-            is LlmStreamEvent.ToolFailed -> {
-                flushTextBuffer()
-                sendEvent(
-                    AgentEvent(
-                        sequence = eventSequence.getAndIncrement(),
-                        timestamp = System.currentTimeMillis(),
-                        eventType = "ToolFailed",
-                        toolName = event.call.name,
-                        toolError = event.message,
-                    )
-                )
-            }
-
-            is LlmStreamEvent.Completed -> {
-                flushTextBuffer()
-                sendEvent(
-                    AgentEvent(
-                        sequence = eventSequence.getAndIncrement(),
-                        timestamp = System.currentTimeMillis(),
-                        eventType = "Completed",
-                        text = event.fullText,
-                    )
-                )
-            }
-
-            is LlmStreamEvent.Error -> {
-                flushTextBuffer()
-                val code = when (event.code) {
-                    com.niki914.nexus.agentic.chat.LlmErrorCode.ConfigRequired -> "CONFIG_REQUIRED"
-                    com.niki914.nexus.agentic.chat.LlmErrorCode.TurnConflict -> "TURN_CONFLICT"
-                    null -> "LLM_REQUEST_FAILED"
-                }
-                sendEvent(
-                    AgentEvent(
-                        sequence = eventSequence.getAndIncrement(),
-                        timestamp = System.currentTimeMillis(),
-                        eventType = "Error",
-                        errorCode = code,
-                        errorMessage = event.message,
-                    )
-                )
-            }
-        }
-    }
-
-    private suspend fun flushTextBuffer() {
-        flushJob?.cancel()
-        flushJob = null
-        val text = synchronized(textBuffer) {
-            if (textBuffer.isEmpty()) return
-            val t = textBuffer.toString()
-            textBuffer.clear()
-            t
-        }
-        val first = isFirstText
-        isFirstText = false
-        sendEvent(
-            AgentEvent(
-                sequence = eventSequence.getAndIncrement(),
-                timestamp = System.currentTimeMillis(),
-                eventType = "TextDelta",
-                text = text,
-                isFirst = first,
-                isFinal = false,
-            )
-        )
-    }
-
-    private fun scheduleFlush() {
-        if (flushJob != null) return
-        flushJob = scope.launch {
-            delay(FLUSH_INTERVAL_MS)
-            flushTextBuffer()
-        }
-    }
-
     private fun sendEvent(event: AgentEvent) {
         try {
             activeCallback?.onEvent(event)
@@ -373,8 +206,6 @@ class AgentRuntimeService : Service() {
             handleBinderDeath()
         }
     }
-
-    // --- Binder death ---
 
     private val deathRecipient = IBinder.DeathRecipient {
         handleBinderDeath()
@@ -385,9 +216,6 @@ class AgentRuntimeService : Service() {
             try {
                 LLMController.stopCurrentRound()
             } catch (_: Exception) {}
-            try {
-                TerminalSessionPool.closeAll()
-            } catch (_: Exception) {}
             activeCallback = null
             if (turnMutex.isLocked) {
                 runCatching { turnMutex.unlock() }
@@ -395,8 +223,6 @@ class AgentRuntimeService : Service() {
             LLMController.resetRunningState()
         }
     }
-
-    // --- Caller validation ---
 
     private fun validateCaller(): Boolean {
         val callingUid = Binder.getCallingUid()

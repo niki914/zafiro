@@ -2,7 +2,6 @@ package com.niki914.nexus.agentic.mod.feat.hyper
 
 import com.niki914.nexus.agentic.chat.ActiveTurnStore
 import com.niki914.nexus.agentic.mod.feat.AbstractAssistantHook
-import com.niki914.nexus.agentic.runtime.ipc.AgentEvent
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.BlockNativeInstructionByWhitelistHook
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.BlockNativeTtsPlaybackHook
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.CaptureInputHook
@@ -73,24 +72,10 @@ class XiaoaiChatHook( // TODO P2(由于标记 Beta 所以放缓) NewRoom / 卡�
 
         val eventContext = XEvent.snapshotContext()
         XEvent.withContext(eventContext) {
-            client!!.submit(query = query) { event ->
+            client!!.submit(query = query) { text, isFirst, isFinal ->
                 scope.launch {
                     targetReady.await()
-                    when (event.eventType) {
-                        "TextDelta" -> renderStreamCard(
-                            turnId, roomId, event.text!!, event.isFirst, event.isFinal
-                        )
-                        "Completed" -> renderStreamCard(
-                            turnId, roomId, event.text!!, false, true
-                        )
-                        "Error", "Cancelled" -> {
-                            renderStreamCard(
-                                turnId, roomId,
-                                event.errorMessage ?: "Service error",
-                                true, true
-                            )
-                        }
-                    }
+                    renderStreamCard(turnId, roomId, text, isFirst, isFinal)
                 }
             }.onFailure { error ->
                 scope.launch {
@@ -98,7 +83,7 @@ class XiaoaiChatHook( // TODO P2(由于标记 Beta 所以放缓) NewRoom / 卡�
                     renderStreamCard(
                         turnId, roomId,
                         error.message ?: "Service unavailable",
-                        true, true
+                        true, true,
                     )
                 }
             }

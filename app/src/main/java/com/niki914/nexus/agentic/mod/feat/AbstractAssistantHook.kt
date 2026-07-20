@@ -9,7 +9,6 @@ import com.niki914.nexus.agentic.takeover.TakeoverDecision
 import com.niki914.nexus.agentic.takeover.TakeoverResolver
 import com.niki914.nexus.h.core.runtime.Hook
 import com.niki914.nexus.agentic.runtime.client.AgentRuntimeClient
-import com.niki914.nexus.agentic.runtime.ipc.AgentEvent
 import com.niki914.nexus.h.xevent.XEvent
 import com.niki914.nexus.h.xevent.XEventContext
 import de.robv.android.xposed.callbacks.XC_LoadPackage
@@ -119,12 +118,6 @@ abstract class AbstractAssistantHook(protected val scope: CoroutineScope) : Hook
         XEvent.clearContext()
     }
 
-    protected open fun onToolRunning(turnId: Long, roomId: String, toolName: String, toolLabel: String) = Unit
-    protected open fun onToolSucceeded(turnId: Long, roomId: String, toolName: String, outputText: String?) = Unit
-    protected open fun onToolFailed(turnId: Long, roomId: String, toolName: String, message: String) = Unit
-    protected open fun onTurnError(turnId: Long, roomId: String, message: String, errorCode: String?) = Unit
-    protected open fun onTurnCancelled(turnId: Long, roomId: String) = Unit
-
     protected abstract fun installSessionHooks(lpparam: XC_LoadPackage.LoadPackageParam)
 
     protected abstract fun installResponseHooks(lpparam: XC_LoadPackage.LoadPackageParam)
@@ -145,25 +138,23 @@ abstract class AbstractAssistantHook(protected val scope: CoroutineScope) : Hook
         XEvent.withContext(eventContext) {
             val cl = client
             if (cl == null) {
-                onTurnError(turnId, roomId, "Runtime client not initialized", "SERVICE_UNAVAILABLE")
+                scope.launch {
+                    renderStreamCard(turnId, roomId, "Runtime client not initialized", true, true)
+                }
                 return@withContext
             }
-            cl.submit(query = query) { event ->
-                when (event.eventType) {
-                    "TextDelta" -> scope.launch {
-                        renderStreamCard(turnId, roomId, event.text!!, event.isFirst, event.isFinal)
-                    }
-                    "ToolRunning" -> onToolRunning(turnId, roomId, event.toolName!!, event.toolLabel!!)
-                    "ToolSucceeded" -> onToolSucceeded(turnId, roomId, event.toolName!!, event.toolOutput)
-                    "ToolFailed" -> onToolFailed(turnId, roomId, event.toolName!!, event.toolError.orEmpty())
-                    "Completed" -> scope.launch {
-                        renderStreamCard(turnId, roomId, event.text!!, false, true)
-                    }
-                    "Error" -> onTurnError(turnId, roomId, event.errorMessage.orEmpty(), event.errorCode)
-                    "Cancelled" -> onTurnCancelled(turnId, roomId)
+            cl.submit(query = query) { text, isFirst, isFinal ->
+                scope.launch {
+                    renderStreamCard(turnId, roomId, text, isFirst, isFinal)
                 }
             }.onFailure { error ->
-                onTurnError(turnId, roomId, error.message ?: "Service unavailable", "SERVICE_UNAVAILABLE")
+                scope.launch {
+                    renderStreamCard(
+                        turnId, roomId,
+                        error.message ?: "Service unavailable",
+                        true, true,
+                    )
+                }
             }
         }
     }
