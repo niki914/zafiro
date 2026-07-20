@@ -41,6 +41,18 @@ object AccessibilityController {
     private var serviceInstance: IAccessibility? = null
     private val nodeCache = ConcurrentHashMap<Int, AccessibilityNodeInfo>()
 
+    /** Set by the app module before any screen-interaction calls. */
+    @Volatile
+    var pointerOverlay: IPointerOverlay? = null
+
+    private var pointerShown = false
+
+    /** Reset pointer state and hide overlay at end of an agent turn. */
+    fun onTurnEnd() {
+        pointerShown = false
+        pointerOverlay?.hide()
+    }
+
     private data class ScreenContext(
         val root: AccessibilityNodeInfo,
         val widthPixels: Int,
@@ -151,6 +163,16 @@ object AccessibilityController {
             refreshNodeCache()
         } catch (e: Exception) {
             return Result.failure(e)
+        }
+
+        // First captureScreen of the session: reveal pointer at random centre-area position
+        if (!pointerShown) {
+            pointerShown = true
+            pointerOverlay?.let { overlay ->
+                val rx = ctx.widthPixels / 3f + Math.random().toFloat() * (ctx.widthPixels / 3f)
+                val ry = ctx.heightPixels / 3f + Math.random().toFloat() * (ctx.heightPixels / 3f)
+                overlay.show(rx, ry)
+            }
         }
 
         val yaml = TreeFormatter.format(ctx.root, ctx.widthPixels, ctx.heightPixels, ctx.appPackage)
@@ -355,6 +377,11 @@ object AccessibilityController {
                 "NODE_NOT_FOUND", "Node $index not found in cache"
             )
 
+        // Fly pointer to node centre before acting
+        val nodeRect = android.graphics.Rect()
+        node.getBoundsInScreen(nodeRect)
+        pointerOverlay?.animateTo(nodeRect.centerX().toFloat(), nodeRect.centerY().toFloat())
+
         return when (method) {
             InteractionMethod.SHELL -> executeShellAction(node, index, action)
             InteractionMethod.ACCESSIBILITY -> executeAccessibilityAction(node, index, action, text)
@@ -504,6 +531,10 @@ object AccessibilityController {
                 "SERVICE_UNAVAILABLE", e.message ?: "Service unavailable"
             )
         }
+
+        // Fly pointer along the swipe path before executing
+        pointerOverlay?.showSwipe(startX, startY, endX, endY, duration)
+
         return when (method) {
             InteractionMethod.ACCESSIBILITY -> {
                 val success =

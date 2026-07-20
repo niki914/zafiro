@@ -5,6 +5,7 @@ import com.niki914.nexus.agentic.chat.agentic.PromptComposerInput
 import com.niki914.nexus.agentic.chat.agentic.SessionToolBinder
 import com.niki914.nexus.agentic.chat.agentic.ToolCallDispatcher
 import com.niki914.nexus.agentic.chat.agentic.ToolManager
+import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
 import com.niki914.nexus.agentic.chat.agentic.mcp.McpDiscoveryCacheStore
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.agentic.chat.agentic.stream.LlmStreamEventMapper
@@ -204,10 +205,12 @@ object LLMController {
                     )
                 )
             }
+            AccessibilityController.onTurnEnd()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {
                 throw throwable
             }
+            AccessibilityController.onTurnEnd()
             XEvent.llmError(
                 fields = mapOf(
                     "stage" to "send",

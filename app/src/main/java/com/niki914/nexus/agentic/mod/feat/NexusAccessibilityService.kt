@@ -6,6 +6,7 @@ import android.graphics.Path
 import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.niki914.nexus.agentic.app.overlay.PointerOverlay
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
 import com.niki914.nexus.agentic.chat.agentic.accessibility.IAccessibility
 
@@ -14,6 +15,11 @@ class NexusAccessibilityService : AccessibilityService(), IAccessibility {
     override fun onServiceConnected() {
         super.onServiceConnected()
         AccessibilityController.setService(this)
+        if (AccessibilityController.pointerOverlay == null) {
+            val overlay = PointerOverlay()
+            overlay.init(this)
+            AccessibilityController.pointerOverlay = overlay
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
