@@ -1,5 +1,6 @@
 package com.niki914.nexus.h.util
 
+import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
 
@@ -42,7 +43,7 @@ fun Class<*>.inspect(): String {
 
 fun XC_LoadPackage.LoadPackageParam.inspectClass(className: String) {
     runCatching {
-        val clazz = findClass(className)!!
+        val clazz = XposedHelpers.findClass(className, classLoader)
         xlog(clazz.inspect())
     }.onFailure {
         xlog("Inspect failed for $className: ${it.message}")

@@ -82,7 +82,7 @@
 
         <service
             android:name="com.niki914.nexus.agentic.runtime.service.AgentRuntimeService"
-            android:exported="false"
+            android:exported="true"
             android:foregroundServiceType="specialUse">
             <intent-filter>
                 <action android:name="com.niki914.nexus.agentic.runtime.BIND" />

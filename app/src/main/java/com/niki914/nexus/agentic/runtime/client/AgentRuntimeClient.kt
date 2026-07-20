@@ -39,6 +39,7 @@ class AgentRuntimeClient(private val context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
+        private const val NEXUS_PACKAGE = "com.niki914.nexus.agentic"
         private const val BIND_ACTION = "com.niki914.nexus.agentic.runtime.BIND"
         private const val SERVICE_CLASS = "com.niki914.nexus.agentic.runtime.service.AgentRuntimeService"
         private const val MAX_RETRIES = 3
@@ -54,7 +55,7 @@ class AgentRuntimeClient(private val context: Context) {
         deathRecipient = IBinder.DeathRecipient { handleBinderDeath() }
 
         val intent = Intent(BIND_ACTION).apply {
-            setClassName(context.packageName, SERVICE_CLASS)
+            setClassName(NEXUS_PACKAGE, SERVICE_CLASS)
         }
 
         val result = try {
