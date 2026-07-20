@@ -295,7 +295,7 @@ class AgentRuntimeService : Service() {
     private suspend fun executeTurn(query: String, callback: IRenderFrameCallback) {
         val thisTurn = activeTurn.get()
         try {
-            LLMController.stream(query).collectAsFull { frame ->
+            LLMController.stream(query, this@AgentRuntimeService).collectAsFull { frame ->
                 sendFrame(
                     callback,
                     RenderFrame(text = frame.text, isFirst = frame.isFirst, isFinal = frame.isFinal),

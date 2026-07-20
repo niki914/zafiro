@@ -33,8 +33,6 @@ object LLMController {
     private val turnMutex = Mutex()
 
     internal const val CONFIG_REQUIRED_MESSAGE = "请先填写配置"
-    private const val DEFAULT_USER_ERROR_MESSAGE = "请求失败，请重试"
-
     private val promptComposer =
         PromptComposer()
     private val toolManager =
@@ -143,7 +141,8 @@ object LLMController {
         runtimeState?.session?.replaceHistory(history)
     }
 
-    fun stream(query: String): Flow<LlmStreamEvent> = channelFlow {
+    fun stream(query: String, context: Context): Flow<LlmStreamEvent> = channelFlow {
+        val defaultErrorMessage = context.getString(R.string.error_llm_request_failed)
         if (!turnMutex.tryLock()) {
             send(LlmStreamEvent.Error("A turn is already active"))
             return@channelFlow
@@ -157,7 +156,7 @@ object LLMController {
                     throw throwable
                 }
                 runtimeState ?: run {
-                    val message = throwable.toUserErrorMessage()
+                    val message = throwable.toUserErrorMessage(defaultErrorMessage)
                     XEvent.llmError(
                         fields = mapOf(
                             "stage" to "refresh",
@@ -176,7 +175,7 @@ object LLMController {
                 }
             }
             if (state == null) {
-                send(LlmStreamEvent.Error(DEFAULT_USER_ERROR_MESSAGE))
+                send(LlmStreamEvent.Error(defaultErrorMessage))
                 return@channelFlow
             }
 
@@ -192,7 +191,7 @@ object LLMController {
                     )
                 )
                 state.session.send(query).collect { event ->
-                    val mapped = LlmStreamEventMapper.map(event, accumulator, startedAtMs)
+                    val mapped = LlmStreamEventMapper.map(event, accumulator, startedAtMs, defaultErrorMessage)
                     mapped?.let {
                         if (it is LlmStreamEvent.Error && !streamErrorReported) {
                             streamErrorReported = true
@@ -223,12 +222,12 @@ object LLMController {
                     fields = mapOf(
                         "stage" to "send",
                         "errorType" to throwable.eventTypeName(),
-                        "message" to throwable.toUserErrorMessage()
+                        "message" to throwable.toUserErrorMessage(defaultErrorMessage)
                     )
                 )
                 send(
                     LlmStreamEvent.Error(
-                        message = throwable.toUserErrorMessage(),
+                        message = throwable.toUserErrorMessage(defaultErrorMessage),
                         throwable = throwable,
                         code = throwable.toUserErrorCode(),
                     )
@@ -301,11 +300,11 @@ object LLMController {
         }
     }
 
-    private fun Throwable.toUserErrorMessage(context: Context? = null): String {
+    private fun Throwable.toUserErrorMessage(fallbackMessage: String): String {
         return message
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
-            ?: (context?.getString(R.string.error_llm_request_failed) ?: DEFAULT_USER_ERROR_MESSAGE)
+            ?: fallbackMessage
     }
 
     private fun Throwable.toUserErrorCode(): LlmErrorCode? {

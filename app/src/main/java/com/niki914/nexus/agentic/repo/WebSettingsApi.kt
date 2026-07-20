@@ -7,11 +7,8 @@ import com.niki914.nexus.agentic.mod.parseJsonObject
 import com.niki914.nexus.h.util.OsFamily
 import com.niki914.nexus.h.util.OsUtils
 import com.niki914.nexus.ipc.HostApp
-import com.niki914.nexus.ipc.IpcWriteResult
-import com.niki914.nexus.ipc.IpcReadResult
-
-import com.niki914.nexus.ipc.XIpcBridge
 import com.niki914.nexus.ipc.XValues
+import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -89,11 +86,7 @@ class WebSettingsApi internal constructor(
         context: Context,
         target: WebSettingsTarget,
     ): WebSettingsResult.Success? {
-        val json = when (val result = XIpcBridge.readWebSettingsJson(context, repo.storeClient)) {
-            is IpcReadResult.Success -> result.json
-            is IpcReadResult.Unreachable -> return null
-            is IpcReadResult.NotFound -> return null
-        }
+        val json = repo.store.readJson(context, StoreDescriptorRegistry.WEB_SETTINGS_ID)
         val settings = WebSettings(parseJsonObject(json))
         if (settings.config == null) {
             return null
@@ -182,8 +175,8 @@ class WebSettingsApi internal constructor(
         if (settings.config == null) {
             return WebSettingsResult.RequestFailed(WebSettingsFailureReason.InvalidConfig)
         }
-        val writeResult = XIpcBridge.writeWebSettingsJson(context, settings.props.toString(), repo.storeClient)
-        if (writeResult is IpcWriteResult.Unreachable) {
+        val ok = repo.store.writeJsonFromOwner(context, StoreDescriptorRegistry.WEB_SETTINGS_ID, settings.props.toString())
+        if (!ok) {
             return WebSettingsResult.RequestFailed(WebSettingsFailureReason.IpcUnreachable)
         }
         return WebSettingsResult.Success(

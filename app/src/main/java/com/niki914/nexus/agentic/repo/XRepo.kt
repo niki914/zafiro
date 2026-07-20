@@ -4,7 +4,6 @@ import android.content.Context
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.nexus.h.util.ContextProvider
-import com.niki914.nexus.ipc.XIpcBridge
 import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -39,28 +38,28 @@ object XRepo {
 
     private val writeMutex = Mutex()
     private var appContext: Context? = null
-    private var store: DomainSettingsStore = XIpcDomainSettingsStore
+    private var installedStoreForTest = false
+    internal var store: DomainSettingsStore = XIpcDomainSettingsStore(null)
+        private set
 
-    var storeClient: XIpcBridge.StoreClient? = null
-        set(value) {
-            field = value
-            XIpcDomainSettingsStore.client = value
-        }
-
-    fun init(context: Context) {
+    internal fun init(context: Context, store: DomainSettingsStore = XIpcDomainSettingsStore(null)) {
         if (appContext == null) {
             appContext = context.applicationContext ?: context
+            if (!installedStoreForTest) {
+                this.store = store
+            }
         }
     }
 
     internal fun installStoreForTest(store: DomainSettingsStore) {
         this.store = store
+        installedStoreForTest = true
     }
 
     internal fun resetForTest() {
         appContext = null
-        storeClient = null
-        store = XIpcDomainSettingsStore
+        store = XIpcDomainSettingsStore(null)
+        installedStoreForTest = false
     }
 
     internal suspend fun context(): Context {

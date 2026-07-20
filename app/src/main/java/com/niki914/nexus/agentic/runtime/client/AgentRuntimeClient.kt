@@ -4,9 +4,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.DeadObjectException
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.RemoteException
 import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
 import com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService
 import com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback
@@ -17,6 +19,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 class ServiceUnavailableException :
     IllegalStateException("Agent runtime service is not connected")
@@ -79,6 +84,16 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
         return result
     }
 
+    suspend fun connectAndAwait(timeoutMs: Long = 5_000): Boolean {
+        connect()
+        val state = withTimeoutOrNull(timeoutMs.milliseconds) {
+            connectionState.first { s ->
+                s == ConnectionState.Connected || s == ConnectionState.Unavailable
+            }
+        }
+        return state == ConnectionState.Connected
+    }
+
     fun disconnect() {
         deathRecipient?.let { dr ->
             binder?.let { b ->
@@ -133,39 +148,101 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
 
     override fun readStore(storeId: String): String? {
         val svc = storeService ?: return null
-        return svc.readStore(storeId)
+        return try {
+            svc.readStore(storeId)
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            null
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            null
+        }
     }
 
     override fun writeStore(storeId: String, json: String): Boolean {
         val svc = storeService ?: return false
-        svc.writeStore(storeId, json)
-        return true
+        return try {
+            svc.writeStore(storeId, json)
+            true
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            false
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            false
+        }
     }
 
     override fun mutateStore(storeId: String, path: String, valueJson: String): String? {
         val svc = storeService ?: return null
-        return svc.mutateStore(storeId, path, valueJson)
+        return try {
+            svc.mutateStore(storeId, path, valueJson)
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            null
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            null
+        }
     }
 
     override fun postNotification(title: String, content: String, uri: String?): Boolean {
         val svc = storeService ?: return false
-        svc.postNotification(title, content, uri)
-        return true
+        return try {
+            svc.postNotification(title, content, uri)
+            true
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            false
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            false
+        }
     }
 
     override fun postNetworkErrorNotification(): Boolean {
         val svc = storeService ?: return false
-        svc.postNetworkErrorNotification()
-        return true
+        return try {
+            svc.postNetworkErrorNotification()
+            true
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            false
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            false
+        }
     }
 
     override fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?): Boolean {
         val svc = storeService ?: return false
-        svc.postUnsupportedVersionNotification(hostPackageName, hostVersion)
-        return true
+        return try {
+            svc.postUnsupportedVersionNotification(hostPackageName, hostVersion)
+            true
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            false
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            false
+        }
     }
 
     // --- Binder death ---
+
+    private fun onBinderUnreachable() {
+        service = null
+        storeService = null
+        binder = null
+        mainHandler.post {
+            deathRecipient = null
+            if (bound) {
+                try { context.unbindService(serviceConnection) } catch (_: Exception) {}
+                bound = false
+            }
+            scheduleReconnect()
+        }
+    }
 
     private fun handleBinderDeath() {
         mainHandler.post {

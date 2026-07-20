@@ -7,6 +7,7 @@ import com.niki914.nexus.agentic.mod.feat.hyper.XiaoaiChatHook
 import com.niki914.nexus.agentic.mod.feat.oppo.BreenoChatHook
 import com.niki914.nexus.agentic.repo.WebSettingsFailureReason
 import com.niki914.nexus.agentic.repo.WebSettingsResult
+import com.niki914.nexus.agentic.repo.XIpcDomainSettingsStore
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.agentic.runtime.client.AgentRuntimeClient
 import com.niki914.nexus.h.IXposed
@@ -39,10 +40,9 @@ class Entrance : IXposed() {
 //        HookSideLoader.load(scope, FloatWindowHook(), params)
         scope.launch(Dispatchers.IO) {
             val ctx = ContextProvider.await()
-            XRepo.init(ctx)
             val client = AgentRuntimeClient(ctx)
-            client.connect()
-            XRepo.storeClient = client
+            client.connectAndAwait()
+            XRepo.init(ctx, XIpcDomainSettingsStore(client))
 
             HookLocalSettings.update(ctx, client)
             val webSettingsResult = XRepo.web.await()

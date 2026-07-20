@@ -20,7 +20,7 @@ class DomainSettingsStoreTest {
     fun readMissingStoreReturnsDescriptorDefaultJson() = runTest {
         val context = testContext(packageName = "com.niki914.nexus.agentic")
 
-        val json = XIpcDomainSettingsStore.readJson(context, StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)
+        val json = XIpcDomainSettingsStore(null).readJson(context, StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)
 
         assertEquals("""{"memories":[]}""", json)
     }
@@ -29,7 +29,7 @@ class DomainSettingsStoreTest {
     fun hostFullWriteReturnsFalseWithoutCreatingOwnerFile() = runTest {
         val context = testContext(packageName = "com.heytap.speechassist")
 
-        val success = XIpcDomainSettingsStore.writeJsonFromOwner(
+        val success = XIpcDomainSettingsStore(null).writeJsonFromOwner(
             context,
             StoreDescriptorRegistry.APP_STATE_ID,
             """{"onboarding_completed":true}"""

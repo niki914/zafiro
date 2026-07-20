@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.chat
 
+import android.content.Context
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
 import kotlinx.coroutines.flow.firstOrNull
@@ -9,6 +10,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 
 class LLMControllerRefreshSkillTest {
     @Test
@@ -57,8 +60,12 @@ class LLMControllerRefreshSkillTest {
         val previous = LLMController.refresh()
         gateway.failListEnabledSkills = IllegalStateException("skills failed")
 
+        val context = mock(Context::class.java).apply {
+            `when`(getString(com.niki914.nexus.agentic.runtime.R.string.error_llm_request_failed))
+                .thenReturn("Request failed")
+        }
         val firstEvent = withTimeoutOrNull(1_000) {
-            LLMController.stream("q").firstOrNull()
+            LLMController.stream("q", context).firstOrNull()
         }
 
         assertEquals(2, gateway.listEnabledSkillsCallCount)
