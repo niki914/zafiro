@@ -44,14 +44,7 @@
 | 文件 | 层级 | 源码依据 | 预期内容 |
 | --- | --- | --- | --- |
 | `reference/source-map.md` | Stable | `.wiki_generator/source_inventory.md`, `settings.gradle.kts`, `app/src/main/AndroidManifest.xml` | 关键类、目录、文件入口的相对路径地图 |
-| `reference/task-docs-registry.md` | Stable | `settings.gradle.kts`, `app/build.gradle.kts`, `agent-runtime/build.gradle.kts` | 仓库根目录任务文档与参考文档的注册表，并给出源码核对入口 |
 
-### repo root docs — 仓库根目录参考文档
-
-| 文件 | 层级 | 源码依据 | 预期内容 |
-| --- | --- | --- | --- |
-| `SESSION.md` | Unverified | `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/LLMController.kt`, `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/ToolManager.kt` | S3ss10n 库、LLM 与 MCP 网络请求的背景记录，使用前需回到源码核对 |
-| `apple-liquid-glass-philosophy.md` | Proposal | `app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/NexusApp.kt`, `app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/nav/NexusPage.kt` | Liquid Glass 视觉原则与组件设计参考，属于界面方向说明 |
 
 ## 检索建议
 
@@ -65,6 +58,6 @@
 | XiaoAi 响应目标捕获、文本流/TTS 拦截、分片注入 | `domains/hyperos-xiaoai.md` -> `architecture/render-pipeline.md` |
 | 配置来源、IPC、server、版本回退 | `architecture/config-resolution.md` -> `reference/source-map.md` |
 | LLMController、Prompt、Tool、MCP、事件流 | `architecture/llm-runtime.md` -> `overview/current-status.md` |
-| S3ss10n 库、LLM 及 MCP 网络请求 | `SESSION.md` |
-| UI、onboarding、settings tree、Liquid Glass、导航状态机 | `domains/ui-shell/index.md` -> `reference/task-docs-registry.md` -> `reference/source-map.md` |
-| 某个仓库根目录文档还能否作为现状参考 | `reference/task-docs-registry.md` -> `overview/current-status.md` -> 相关源码路径 |
+| UI、onboarding、settings tree、Liquid Glass、导航状态机 | `domains/ui-shell/index.md` -> `reference/source-map.md` |
+| 屏幕 Accessibility 树捕获、手机控制操作、Pointer overlay | `app/.../mod/feat/NexusAccessibilityService.kt` -> `agent-runtime/.../accessibility/AccessibilityController.kt` -> `app/.../overlay/PointerOverlay.kt` |
+| Skill 文件管理、运行加载、设置 UI | `app/.../repo/SkillApi.kt` -> `agent-runtime/.../buildin/impl/LoadSkillBuiltin.kt` -> `app/.../ui/nexus/content/SkillsSettingsContent.kt` |

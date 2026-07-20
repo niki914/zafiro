@@ -16,6 +16,7 @@
    - `app/src/main/java/com/niki914/nexus/agentic/repo/XRepo.kt` 的 `XRepo.init(ctx)` 初始化 repo 上下文。
    - `app/src/main/java/com/niki914/nexus/agentic/runtime/AppRuntimeBridge.kt` 的 `createAppRuntimeBridge()` 组装 `RuntimeBridge(settings = XRepoRuntimeGateway(), host = IpcRuntimeHostGateway())`。
    - `agent-runtime/src/main/java/com/niki914/nexus/agentic/runtime/settings/RuntimeEnvironment.kt` 通过 `RuntimeEnvironment.install(...)` 挂载这套 bridge；`RuntimeEnvironment` 实际位于 `agent-runtime` 模块，不在 `app` 模块。
+   - `app/src/main/java/com/niki914/nexus/agentic/runtime/client/AgentRuntimeClient.kt` 的 `AgentRuntimeClient(ctx).connect()` 连接 Nexus 主 App 进程中的 `AgentRuntimeService`（前台 Service，Binder IPC），用于后续 LLM 查询提交。
    - `app/src/main/java/com/niki914/nexus/agentic/mod/HookLocalSettings.kt` 的 `HookLocalSettings.update(ctx)` 刷新宿主进程本地设置缓存。
 
 4. **远端配置获取与 fallback 通知**
@@ -27,12 +28,13 @@
 5. **宿主路由**
    - `Entrance.onSettingsFetched()` 通过 `HostApp.fromPackageName(params.packageName)` 判断当前宿主。
    - 只有 `targetPkg == params.packageName` 时才继续安装，避免把别的宿主配置挂到当前进程。
-   - `HostApp.Breeno` 路由到 `app/src/main/java/com/niki914/nexus/agentic/mod/feat/oppo/BreenoChatHook.kt`。
-   - `HostApp.XiaoAi` 路由到 `app/src/main/java/com/niki914/nexus/agentic/mod/feat/hyper/XiaoaiChatHook.kt`。
+   - `HostApp.Breeno` 路由到 `BreenoChatHook(scope, client)`，其中 `client` 是上一步创建的 `AgentRuntimeClient` 实例，作为 `AssistantTextSource` 传入。
+   - `HostApp.XiaoAi` 路由到 `XiaoaiChatHook(scope, client)`，同理传入 `AgentRuntimeClient`。
 
 6. **宿主进程 Runtime 安装**
    - `h/src/main/java/com/niki914/nexus/h/core/runtime/RuntimeBootstrap.kt` 的 `installIfNeeded()` 为当前宿主进程安装单例 `Runtime`。
    - 当前 `Runtime` 只挂载命中的主业务 Hook；具体的 session、response、input subhook 在该主 Hook 的 `onHook()` 内继续安装。
+   - Hook 内部通过 `AssistantTextSource.submit(query)`（即 `AgentRuntimeClient`）将查询经 Binder IPC 提交给主 App 进程的 `AgentRuntimeService`，由 `LLMController.stream()` 处理后流式推回 `RenderFrame`。
 
 ## 每轮 query 的分流前置
 
@@ -56,6 +58,10 @@
 - `app/src/main/java/com/niki914/nexus/agentic/repo/WebSettingsApi.kt`
 - `app/src/main/java/com/niki914/nexus/agentic/repo/XRepo.kt`
 - `app/src/main/java/com/niki914/nexus/agentic/runtime/AppRuntimeBridge.kt`
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/IpcRuntimeHostGateway.kt`
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/service/AgentRuntimeService.kt`
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/client/AgentRuntimeClient.kt`
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/client/AssistantTextSource.kt`
 
 ### `agent-runtime/src/main/java/com/niki914/nexus/agentic/runtime/settings/`
 

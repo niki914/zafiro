@@ -35,7 +35,7 @@ UI Shell 当前分成两层：
 ### app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/nav/
 
 - `NexusPage.kt`：页面定义与 `routeKey`，包含 `ConversationHistoryPage`、`SettingsHomePage` 以及各类详情页。
-- `NexusSettingsGroup.kt`：当前设置分组枚举，包含 `ModelConfig`、`Memory`、`BuiltinTools`、`CustomShellTools`、`Mcp`、`Takeover`、`ExecutionRules`、`About`。
+- `NexusSettingsGroup.kt`：当前设置分组枚举，包含 `ModelConfig`、`Memory`、`BuiltinTools`、`Skills`、`CustomShellTools`、`Mcp`、`Takeover`、`ExecutionRules`、`About`。
 
 ### app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/model/
 
@@ -47,7 +47,8 @@ UI Shell 当前分成两层：
 - `StartupPageRoute.kt`、`ProviderPickPageRoute.kt`、`ConfigurePageRoute.kt`、`DonePageRoute.kt`：onboarding 主流程。
 - `HomePageRoute.kt`：从首页进入会话历史或设置首页。
 - `ConversationHistoryPageRoute.kt`：加载会话列表、处理选中、删除当前会话和返回。
-- `SettingsHomePageRoute.kt`、`SettingsDetailPageRoute.kt`：设置树首页与详情页分发。
+- `SettingsHomePageRoute.kt`、`SettingsDetailPageRoute.kt`、`SettingsProviderPickPageRoute.kt`、`SettingsConfigurePageRoute.kt`：设置树首页、详情页分发，以及从设置重新进入 provider 选择与配置。
+- `SkillDetailRoute.kt`：Skill 详情编辑页路由。
 
 ### app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/content/
 
@@ -57,6 +58,8 @@ UI Shell 当前分成两层：
 - `SettingsDetailPageContent.kt`：把当前设置分组分发到各自内容页。
 - `ConfigurePageContent.kt`、`DonePageContent.kt`：onboarding 配置页与完成页。
 - `EditableSettingsDetailScaffold.kt`：设置详情共用壳，处理未保存返回和删除按钮 chrome。
+- `SkillsSettingsContent.kt`：Skill 设置首页，列出已安装 skill、支持导入和开关。
+- `SkillDetailContent.kt`：Skill 详情编辑内容页，支持加载、编辑、保存与删除。
 
 ## ConversationHistory 链路与状态桥
 

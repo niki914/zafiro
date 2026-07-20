@@ -6,8 +6,38 @@
 
 ### Builtin tools
 
-- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt` 的默认注册表当前包含 9 个 builtin 实现：`CreateCustomToolBuiltin`、`LaunchAppBuiltin`、`MemorizeBuiltin`、`NotifyBuiltin`、`OpenUriBuiltin`、`ReadCustomToolBuiltin`、`TerminalBuiltin`、`SshTerminalBuiltin`、`SearchAppsBuiltin`。
-- `app/src/main/java/com/niki914/nexus/agentic/repo/XRepo.kt` 的 `BuiltinToolApi` 仍兼容旧 `run_command` 开关读取，但实际注册表并不是“2 个 builtin tools”，而是上面的 9 个默认实现。
+- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt` 的默认注册表当前包含 15 个 builtin 实现：`CreateCustomToolBuiltin`、`LaunchAppBuiltin`、`MemorizeBuiltin`、`NotifyBuiltin`、`OpenUriBuiltin`、`ReadCustomToolBuiltin`、`LoadSkillBuiltin`、`TerminalBuiltin`、`SshTerminalBuiltin`、`SearchAppsBuiltin`、`ScreenContentBuiltin`、`SearchNodesBuiltin`、`NodeActionBuiltin`、`GestureBuiltin`、`KeyEventBuiltin`。
+- `app/src/main/java/com/niki914/nexus/agentic/repo/XRepo.kt` 的 `BuiltinToolApi` 仍兼容旧 `run_command` 开关读取，但实际注册表并不是”2 个 builtin tools”，而是上面的 15 个默认实现。
+
+### Accessibility / phone-control system
+
+- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/accessibility/AccessibilityController.kt` 封装了设备端屏幕交互能力：截屏（AccessibilityNodeInfo 树捕获）、节点操作（`performAction`）、手势注入（`dispatchGesture`），以及在 accessibility 不可用时回退到 shell 模式。
+- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/accessibility/NodeModel.kt` 定义了 `NodeInfo`（含 `SemanticType` 枚举：`BUTTON`、`INPUT`、`TEXT`、`IMAGE`、`LIST`、`SWITCH`、`CHECKBOX` 等）和 `Rect` 边界模型。
+- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/accessibility/PruningRules.kt` 实现了基于 class name 和父类型的语义类型映射、越界裁剪、空壳节点过滤。
+- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/accessibility/TreeFormatter.kt` 将 `AccessibilityNodeInfo` 树格式化为 YAML 文本，供 LLM 读取当前屏幕结构。
+- 上述组件为 `ScreenContentBuiltin`、`SearchNodesBuiltin`、`NodeActionBuiltin`、`GestureBuiltin`、`KeyEventBuiltin` 提供底层能力（均在 `agent-runtime/.../buildin/impl/` 目录下）。
+
+### Skill system
+
+- `app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/nav/NexusSettingsGroup.kt` 定义了 `Skills` 设置组（title/summary/routeSuffix）。
+- `app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/nav/NexusPage.kt` 声明了 `SkillDetailPage` 页面数据类；`app/.../nexus/NexusPages.kt` 将其路由到 `SkillDetailRoute`。
+- Repo 层：`app/src/main/java/com/niki914/nexus/agentic/repo/SkillApi.kt`（public API，含 `listAll`/`listEnabled`/`getDetail`/`saveContent`/`setEnabled`/`delete`/`importSkill`/`seedDefaults`）、`SkillFileRepository.kt`（文件级 CRUD）、`SkillFrontmatterParser.kt`（YAML frontmatter 解析）、`SkillPathResolver.kt`（响应式路径解析）、`SkillEnabledStateStore.kt`（启用状态持久化）。
+- UI 层：`app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/content/SkillsSettingsContent.kt`（设置列表页）、`SkillDetailContent.kt`（详情编辑页）。
+- Runtime：`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/impl/LoadSkillBuiltin.kt`（LLM 可通过 `load_skill` 工具按 id 加载完整 SKILL.md 内容）。
+- 测试覆盖：`SkillApiTest`、`SkillFileRepositoryTest`、`SkillFrontmatterParserTest`、`SkillPathResolverTest`、`SkillEnabledStateStoreTest`、`LoadSkillBuiltinTest`、`LLMControllerRefreshSkillTest`。
+
+### AgentRuntimeService (IPC)
+
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/service/AgentRuntimeService.kt` 是一个 foreground service（声明在 `AndroidManifest.xml`），在系统主进程中运行。通过 Binder IPC（`IAgentRuntimeService.aidl`→`StubImpl`）暴露三个方法：`submit(query, callback)` 启动一轮 LLM 流式对话，`cancel()` 取消当前轮，`resetConversation()` 重置会话。
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/client/AgentRuntimeClient.kt` 负责 service 连接生命周期（绑定、断开、死亡回调、自动重连），实现了 `AssistantTextSource` 接口，将 LLM 流式输出通过 `Flow<RenderFrame>` 暴露给调用方。
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/ipc/IAgentRuntimeService.kt`、`IRenderFrameCallback.kt`、`RenderFrame.kt` 是自定义 Binder 接口和 Parcelable 数据类。
+- `app/src/main/java/a0/a0/a0/a0/a0/a0/Entrance.kt` 在 Xposed 入口处创建 `AgentRuntimeClient` 实例并传递到宿主接管流程。
+
+### PointerOverlay
+
+- `app/src/main/java/com/niki914/nexus/agentic/app/overlay/PointerOverlay.kt` 实现了一个屏幕上的视觉反馈覆盖层，在 agent 执行触摸/手势操作时显示指针动画（`show`/`animateTo`/`showSwipe`/`hide`）。
+- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/accessibility/IPointerOverlay.kt` 定义了 `AccessibilityController` 依赖的接口合约。
+- `AccessibilityController.pointerOverlay` 字段（见 `accessibility/AccessibilityController.kt` 第 46 行）由 app 模块在运行期注入 `PointerOverlay` 实例，将 agent-runtime 的交互抽象与 app 的 UI 层解耦。
 
 ### Store registry 与配置落盘模型
 

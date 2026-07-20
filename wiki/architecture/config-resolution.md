@@ -92,6 +92,33 @@
 - 在 `call()` 中把 `GET_STORE` / `MUTATE_STORE` / 兼容方法分发给 `XProviderDispatcher`。
 - 在 `openFile()` 中按 `StoreDescriptorRegistry.resolveDynamic(storeId)` 打开真实 store 文件；写入时创建 pipe，再由后台线程调用 `XIpcStoreRepository.writeJson()` 做原子落盘。
 
+### Agent Runtime Service (Binder IPC)
+
+除 ContentProvider 通道外，`app/src/main/java/com/niki914/nexus/agentic/runtime/service/AgentRuntimeService.kt` 是运行在 Nexus 主 App 进程的一个 Android 前台 Service（`NOTIFICATION_ID=1001`，通知渠道 `agent_runtime`），通过 `IAgentRuntimeService.Stub` 暴露 AIDL 风格的 Binder 接口，专门用于 LLM 运行时交互：
+
+- `submit(query, callback)`：提交一条用户查询，通过 `IRenderFrameCallback.onFrame(RenderFrame)` 流式推送 LLM 响应帧。同一时刻只允许一个活跃 turn；重复提交会收到错误回调。
+- `cancel()`：取消当前活跃 turn 的协程，同时调用 `LLMController.stopCurrentRound()`。
+- `resetConversation()`：重置对话状态，取消当前 turn 后调用 `LLMController.resetConversation()`。
+- Binder 意外死亡时（`IBinder.DeathRecipient`），自动取消当前 turn 并清理。
+
+`app/src/main/java/com/niki914/nexus/agentic/runtime/ipc/IAgentRuntimeService.kt` 是服务端接口及其 `Stub`/`Proxy` 实现。`app/src/main/java/com/niki914/nexus/agentic/runtime/ipc/IRenderFrameCallback.kt` 是 oneway Binder 回调接口，接收 `app/src/main/java/com/niki914/nexus/agentic/runtime/ipc/RenderFrame.kt`（Parcelable，含 `text`/`isFirst`/`isFinal` 字段）。
+
+`app/src/main/java/com/niki914/nexus/agentic/runtime/client/AgentRuntimeClient.kt` 是宿主进程侧的客户端，实现 `app/src/main/java/com/niki914/nexus/agentic/runtime/client/AssistantTextSource.kt` 接口：
+
+- 通过 `context.bindService()` 连接到 `AgentRuntimeService`（action=`com.niki914.nexus.agentic.runtime.BIND`）。
+- 将 Binder 调用封装为 `Flow<RenderFrame>`（基于 `callbackFlow`），供 `AbstractAssistantHook.dispatchQueryToLLM()` 消费。
+- 支持自动重连（最多 3 次，间隔 2s），并通过 `connectionState: StateFlow<ConnectionState>` 暴露连接状态（`Disconnected` / `Connecting` / `Connected` / `Reconnecting` / `Rejected` / `Unavailable`）。
+- 服务端 `validateCaller()` 校验调用方 UID，仅允许 Nexus 自身包名及 `HostApp.packageNames` 中的进程绑定。
+
+#### 与 ContentProvider IPC 的职责划分
+
+| 通道 | 用途 | 方向 |
+| --- | --- | --- |
+| `SettingsContentProvider`（ContentProvider） | settings store 读写、通知发送 | 双向：宿主 ↔ Nexus |
+| `AgentRuntimeService`（Binder Service） | LLM 查询提交、流式回调、对话管理 | 宿主 → Nexus（回调回宿主） |
+
+ContentProvider IPC 继续负责配置持久化和宿主通知；Agent Runtime Service IPC 接管 LLM 运行时交互。
+
 ### Store 仓库
 
 `ipc/src/main/java/com/niki914/nexus/ipc/store/XIpcStoreRepository.kt` 当前按 store 维度维护 `Mutex`：
@@ -104,10 +131,7 @@
 
 ## Web Settings 回退
 
-`app/src/main/java/com/niki914/nexus/agentic/repo/WebSettingsApi.kt`、`app/src/main/java/com/niki914/nexus/agentic/repo/WebSettingsModels.kt` 与 `server/server.py` 共同定义了当前仓库里的客户端回退逻辑和本地测试服务实现：
-
-- 客户端位于 `app/src/main/java/com/niki914/nexus/agentic/repo/WebSettingsApi.kt`。
-- 本地测试服务位于 `server/server.py`。
+`app/src/main/java/com/niki914/nexus/agentic/repo/WebSettingsApi.kt` 与 `app/src/main/java/com/niki914/nexus/agentic/repo/WebSettingsModels.kt` 共同定义了客户端回退逻辑。
 
 当前客户端行为如下：
 
@@ -115,8 +139,6 @@
 2. 若精确版本 404，则请求 https://gitee.com/niki914/nexus-res/raw/main/{packageName}/versions.json。
 3. 通过 `app/src/main/java/com/niki914/nexus/agentic/repo/WebSettingsModels.kt` 中的 `WebSettingsVersionFallback.nearestVersionCode()` 选择距离最近的版本；距离相同优先较低版本。
 4. 成功结果回写 `web_settings` store，并带上 `requested_version_code` 与 `resolved_version_code`。
-
-本地 `server/server.py` 的规则与客户端约定一致：优先命中按包名和 versionCode 组织的 config.json，未命中时在同包名目录下选择数值距离最近的版本目录回退。
 
 ## 关键源码
 
@@ -142,6 +164,22 @@
 ### `app/src/main/java/com/niki914/nexus/agentic/runtime/`
 
 - `app/src/main/java/com/niki914/nexus/agentic/runtime/AppRuntimeBridge.kt`
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/IpcRuntimeHostGateway.kt`
+
+### `app/src/main/java/com/niki914/nexus/agentic/runtime/service/`
+
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/service/AgentRuntimeService.kt`
+
+### `app/src/main/java/com/niki914/nexus/agentic/runtime/client/`
+
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/client/AgentRuntimeClient.kt`
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/client/AssistantTextSource.kt`
+
+### `app/src/main/java/com/niki914/nexus/agentic/runtime/ipc/`
+
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/ipc/IAgentRuntimeService.kt`
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/ipc/IRenderFrameCallback.kt`
+- `app/src/main/java/com/niki914/nexus/agentic/runtime/ipc/RenderFrame.kt`
 
 ### `app/src/main/java/com/niki914/nexus/agentic/mod/`
 
