@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicReference
 
@@ -129,6 +130,8 @@ class AgentRuntimeService : Service() {
 
         override fun resetConversation() {
             scope.launch {
+                val turn = activeTurn.getAndSet(null)
+                turn?.job?.cancelAndJoin()
                 try { LLMController.resetConversation() } catch (_: Exception) {}
             }
         }

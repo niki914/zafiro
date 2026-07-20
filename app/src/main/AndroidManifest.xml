@@ -84,6 +84,9 @@
             android:name="com.niki914.nexus.agentic.runtime.service.AgentRuntimeService"
             android:exported="true"
             android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="agent_runtime_ipc" />
             <intent-filter>
                 <action android:name="com.niki914.nexus.agentic.runtime.BIND" />
             </intent-filter>

@@ -134,7 +134,11 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
             deathRecipient = null
             service = null
             binder = null
-            _connectionState.value = ConnectionState.Disconnected
+            if (bound) {
+                try { context.unbindService(serviceConnection) } catch (_: Exception) {}
+                bound = false
+            }
+            scheduleReconnect()
         }
     }
 
@@ -160,41 +164,41 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
             service = null
             binder = null
             bound = false
-            _connectionState.value = ConnectionState.Reconnecting
-
-            retryCount++
-            if (retryCount <= MAX_RETRIES) {
-                mainHandler.postDelayed(
-                    {
-                        if (_connectionState.value == ConnectionState.Reconnecting) {
-                            reconnect()
-                        }
-                    },
-                    RETRY_DELAY_MS,
-                )
-            } else {
-                _connectionState.value = ConnectionState.Unavailable
-            }
+            scheduleReconnect()
         }
     }
 
-    private fun reconnect() {
-        if (bound) {
-            try { context.unbindService(serviceConnection) } catch (_: Exception) {}
-            bound = false
+    private fun scheduleReconnect() {
+        retryCount++
+        if (retryCount > MAX_RETRIES) {
+            _connectionState.value = ConnectionState.Unavailable
+            return
         }
-        _connectionState.value = ConnectionState.Connecting
+        _connectionState.value = ConnectionState.Reconnecting
+        mainHandler.postDelayed(
+            {
+                if (_connectionState.value == ConnectionState.Reconnecting) {
+                    doReconnect()
+                }
+            },
+            RETRY_DELAY_MS,
+        )
+    }
 
+    private fun doReconnect() {
         deathRecipient = IBinder.DeathRecipient { handleBinderDeath() }
+        _connectionState.value = ConnectionState.Connecting
 
         val intent = Intent(BIND_ACTION).apply {
             setClassName(NEXUS_PACKAGE, SERVICE_CLASS)
         }
 
         try {
-            context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
-            bound = true
+            bound = context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         } catch (e: Exception) {
+            bound = false
+        }
+        if (!bound) {
             _connectionState.value = ConnectionState.Unavailable
         }
     }
