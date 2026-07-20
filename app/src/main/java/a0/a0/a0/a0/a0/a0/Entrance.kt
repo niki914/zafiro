@@ -42,8 +42,9 @@ class Entrance : IXposed() {
             XRepo.init(ctx)
             val client = AgentRuntimeClient(ctx)
             client.connect()
+            XRepo.storeClient = client
 
-            HookLocalSettings.update(ctx)
+            HookLocalSettings.update(ctx, client)
             val webSettingsResult = XRepo.web.await()
             val targetPkg = params.packageName
             val isFallbackVersion =

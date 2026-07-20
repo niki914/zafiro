@@ -16,6 +16,7 @@ class IpcRuntimeHostGateway : RuntimeHostGateway {
             title = title,
             content = content,
             uri = uri,
+            client = null,
         ) is IpcWriteResult.Success
     }
 }

@@ -2,19 +2,20 @@ package com.niki914.nexus.agentic.mod
 
 import android.content.Context
 import com.niki914.nexus.h.util.ContextProvider
+import com.niki914.nexus.ipc.XIpcBridge
 
 object HookLocalSettings {
 
     @Volatile
     private var cached = LocalSettings()
 
-    suspend fun update(context: Context): LocalSettings {
-        return XService.getLocalSettings(context).also { cached = it }
+    suspend fun update(context: Context, client: XIpcBridge.StoreClient?): LocalSettings {
+        return XService.getLocalSettings(context, client).also { cached = it }
     }
 
-    suspend fun refreshFromHookContext(): LocalSettings {
+    suspend fun refreshFromHookContext(client: XIpcBridge.StoreClient?): LocalSettings {
         val context = ContextProvider.await()
-        return update(context)
+        return update(context, client)
     }
 
     fun current(): LocalSettings = cached

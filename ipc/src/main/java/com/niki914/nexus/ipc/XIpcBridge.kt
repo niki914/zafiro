@@ -21,40 +21,42 @@ object XIpcBridge {
 
     interface StoreClient {
         fun readStore(storeId: String): String?
-        fun writeStore(storeId: String, json: String)
+        fun writeStore(storeId: String, json: String): Boolean
         fun mutateStore(storeId: String, path: String, valueJson: String): String?
-        fun postNotification(title: String, content: String, uri: String?)
-        fun postNetworkErrorNotification()
-        fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?)
+        fun postNotification(title: String, content: String, uri: String?): Boolean
+        fun postNetworkErrorNotification(): Boolean
+        fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?): Boolean
     }
 
-    suspend fun readWebSettingsJson(context: Context, client: StoreClient? = null): IpcReadResult {
+    suspend fun readWebSettingsJson(context: Context, client: StoreClient?): IpcReadResult {
         return readStoreJson(context, StoreDescriptorRegistry.WEB_SETTINGS_ID, client)
     }
 
-    suspend fun writeWebSettingsJson(context: Context, json: String, client: StoreClient? = null): IpcWriteResult {
+    suspend fun writeWebSettingsJson(context: Context, json: String, client: StoreClient?): IpcWriteResult {
         return writeStoreJsonFromOwner(context, StoreDescriptorRegistry.WEB_SETTINGS_ID, json, client)
     }
 
-    suspend fun readLocalSettingsJson(context: Context, client: StoreClient? = null): IpcReadResult {
+    suspend fun readLocalSettingsJson(context: Context, client: StoreClient?): IpcReadResult {
         return readStoreJson(context, StoreDescriptorRegistry.LOCAL_SETTINGS_ID, client)
     }
 
-    suspend fun writeLocalSettingsJson(context: Context, json: String, client: StoreClient? = null): IpcWriteResult {
+    suspend fun writeLocalSettingsJson(context: Context, json: String, client: StoreClient?): IpcWriteResult {
         return writeStoreJsonFromOwner(context, StoreDescriptorRegistry.LOCAL_SETTINGS_ID, json, client)
     }
 
     suspend fun readStoreJson(
         context: Context,
         storeId: String,
-        client: StoreClient? = null
+        client: StoreClient?,
     ): IpcReadResult {
         StoreDescriptorRegistry.resolveDynamic(storeId) ?: return IpcReadResult.NotFound
-        return if (shouldUseBinder(context, client)) {
-            val json = client!!.readStore(storeId)
-            if (json != null) IpcReadResult.Success(json) else IpcReadResult.Unreachable
-        } else {
-            IpcReadResult.Success(XIpcStoreRepository.readJson(context, storeId))
+        return when (resolveTransport(context, client)) {
+            Transport.Binder -> {
+                val json = client!!.readStore(storeId)
+                if (json != null) IpcReadResult.Success(json) else IpcReadResult.Unreachable
+            }
+            Transport.Local -> IpcReadResult.Success(XIpcStoreRepository.readJson(context, storeId))
+            Transport.Unreachable -> IpcReadResult.Unreachable
         }
     }
 
@@ -62,15 +64,18 @@ object XIpcBridge {
         context: Context,
         storeId: String,
         json: String,
-        client: StoreClient? = null
+        client: StoreClient?,
     ): IpcWriteResult {
         StoreDescriptorRegistry.resolveDynamic(storeId) ?: return IpcWriteResult.Unreachable
-        return if (shouldUseBinder(context, client)) {
-            client!!.writeStore(storeId, json)
-            IpcWriteResult.Success
-        } else {
-            XIpcStoreRepository.writeJson(context, storeId, json)
-            IpcWriteResult.Success
+        return when (resolveTransport(context, client)) {
+            Transport.Binder -> {
+                if (client!!.writeStore(storeId, json)) IpcWriteResult.Success else IpcWriteResult.Unreachable
+            }
+            Transport.Local -> {
+                XIpcStoreRepository.writeJson(context, storeId, json)
+                IpcWriteResult.Success
+            }
+            Transport.Unreachable -> IpcWriteResult.Unreachable
         }
     }
 
@@ -79,26 +84,30 @@ object XIpcBridge {
         storeId: String,
         path: String,
         value: Any?,
-        client: StoreClient? = null
+        client: StoreClient?,
     ): IpcMutateResult {
         StoreDescriptorRegistry.resolveDynamic(storeId)
             ?: return IpcMutateResult(IpcWriteResult.Unreachable, null)
         val valueJson = serializeValue(value)
-        return if (shouldUseBinder(context, client)) {
-            val updatedJson = client!!.mutateStore(storeId, path, valueJson)
-            if (updatedJson != null) {
-                IpcMutateResult(IpcWriteResult.Success, updatedJson)
-            } else {
-                IpcMutateResult(IpcWriteResult.Unreachable, null)
+        return when (resolveTransport(context, client)) {
+            Transport.Binder -> {
+                val updatedJson = client!!.mutateStore(storeId, path, valueJson)
+                if (updatedJson != null) {
+                    IpcMutateResult(IpcWriteResult.Success, updatedJson)
+                } else {
+                    IpcMutateResult(IpcWriteResult.Unreachable, null)
+                }
             }
-        } else {
-            val updatedJson = XIpcStoreRepository.mutateJson(
-                context = context,
-                storeId = storeId,
-                path = path,
-                valueJson = valueJson
-            )
-            IpcMutateResult(IpcWriteResult.Success, updatedJson)
+            Transport.Local -> {
+                val updatedJson = XIpcStoreRepository.mutateJson(
+                    context = context,
+                    storeId = storeId,
+                    path = path,
+                    valueJson = valueJson
+                )
+                IpcMutateResult(IpcWriteResult.Success, updatedJson)
+            }
+            Transport.Unreachable -> IpcMutateResult(IpcWriteResult.Unreachable, null)
         }
     }
 
@@ -107,21 +116,26 @@ object XIpcBridge {
         title: String,
         content: String,
         uri: String?,
-        client: StoreClient? = null
+        client: StoreClient?,
     ): IpcWriteResult {
-        return if (shouldUseBinder(context, client)) {
-            client!!.postNotification(title, content, uri)
-            IpcWriteResult.Success
-        } else {
-            postLocalNotification(context, title, content, uri)
-            IpcWriteResult.Success
+        return when (resolveTransport(context, client)) {
+            Transport.Binder -> {
+                if (client!!.postNotification(title, content, uri)) IpcWriteResult.Success else IpcWriteResult.Unreachable
+            }
+            Transport.Local -> {
+                postLocalNotification(context, title, content, uri)
+                IpcWriteResult.Success
+            }
+            Transport.Unreachable -> IpcWriteResult.Unreachable
         }
     }
 
-    private fun shouldUseBinder(context: Context, client: StoreClient?): Boolean {
+    private enum class Transport { Local, Binder, Unreachable }
+
+    private fun resolveTransport(context: Context, client: StoreClient?): Transport {
         return when (XValues.getAppTypeOf(context)) {
-            XValues.AppType.Host -> client != null
-            XValues.AppType.Me -> false
+            XValues.AppType.Host -> if (client != null) Transport.Binder else Transport.Unreachable
+            XValues.AppType.Me -> Transport.Local
             XValues.AppType.Unknown -> throw IllegalStateException(
                 "XIpcBridge does not support package=${context.packageName}"
             )

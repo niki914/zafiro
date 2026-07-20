@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -30,6 +31,7 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.AboutSettingsItemId
 import com.niki914.nexus.agentic.app.ui.nexus.model.AboutSettingsItemUiState
 import com.niki914.nexus.agentic.app.ui.nexus.model.AboutSettingsUiState
 import com.niki914.nexus.agentic.app.ui.nexus.model.AboutSettingsViewModel
+import com.niki914.nexus.agentic.app.ui.nexus.model.buildIssueUri
 import com.niki914.nexus.cb.BaseTheme
 
 private const val ABOUT_SETTINGS_ROW_ID_PREFIX = "about.item."
@@ -39,11 +41,16 @@ fun AboutSettingsContent() {
     val viewModel = pageViewModel<AboutSettingsViewModel>()
     val uiState by viewModel.uiStateFlow.collectAsState()
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
 
     LaunchedEffect(viewModel, uriHandler) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 is AboutSettingsEffect.OpenUri -> uriHandler.openUri(effect.uri)
+                is AboutSettingsEffect.OpenFeedbackIssue -> {
+                    val body = context.resources.getString(effect.bodyTemplateRes)
+                    uriHandler.openUri(buildIssueUri(effect.title, body))
+                }
             }
         }
     }

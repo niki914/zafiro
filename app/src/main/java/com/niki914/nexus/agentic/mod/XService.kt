@@ -9,7 +9,7 @@ import com.niki914.nexus.ipc.XIpcBridge
 
 object XService {
 
-    suspend fun getLocalSettings(context: Context, client: XIpcBridge.StoreClient? = null): LocalSettings {
+    suspend fun getLocalSettings(context: Context, client: XIpcBridge.StoreClient?): LocalSettings {
         return when (val result = XIpcBridge.readLocalSettingsJson(context, client)) {
             is IpcReadResult.Success -> LocalSettings(parseJsonObject(result.json))
             is IpcReadResult.Unreachable -> LocalSettings()
@@ -17,7 +17,7 @@ object XService {
         }
     }
 
-    suspend fun putLocalSettings(context: Context, settings: LocalSettings, client: XIpcBridge.StoreClient? = null) {
+    suspend fun putLocalSettings(context: Context, settings: LocalSettings, client: XIpcBridge.StoreClient?) {
         XIpcBridge.writeLocalSettingsJson(context, settings.props.toString(), client)
     }
 
@@ -25,7 +25,7 @@ object XService {
         title: String,
         content: String,
         uri: String?,
-        client: XIpcBridge.StoreClient? = null
+        client: XIpcBridge.StoreClient?,
     ): Boolean {
         val context = ContextProvider.await()
         return XIpcBridge.postNotification(context, title, content, uri, client) is IpcWriteResult.Success

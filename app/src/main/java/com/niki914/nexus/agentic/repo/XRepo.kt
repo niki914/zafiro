@@ -4,6 +4,7 @@ import android.content.Context
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.nexus.h.util.ContextProvider
+import com.niki914.nexus.ipc.XIpcBridge
 import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -40,6 +41,12 @@ object XRepo {
     private var appContext: Context? = null
     private var store: DomainSettingsStore = XIpcDomainSettingsStore
 
+    var storeClient: XIpcBridge.StoreClient? = null
+        set(value) {
+            field = value
+            XIpcDomainSettingsStore.client = value
+        }
+
     fun init(context: Context) {
         if (appContext == null) {
             appContext = context.applicationContext ?: context
@@ -52,6 +59,7 @@ object XRepo {
 
     internal fun resetForTest() {
         appContext = null
+        storeClient = null
         store = XIpcDomainSettingsStore
     }
 

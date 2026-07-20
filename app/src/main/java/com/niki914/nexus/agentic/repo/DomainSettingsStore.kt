@@ -15,9 +15,13 @@ internal interface DomainSettingsStore {
 }
 
 internal object XIpcDomainSettingsStore : DomainSettingsStore {
+
+    @Volatile
+    var client: XIpcBridge.StoreClient? = null
+
     override suspend fun readJson(context: Context, storeId: String): String {
         val defaultJson = StoreDescriptorRegistry.resolveDynamic(storeId)?.defaultJson ?: EMPTY_JSON
-        return when (val result = XIpcBridge.readStoreJson(context, storeId)) {
+        return when (val result = XIpcBridge.readStoreJson(context, storeId, client)) {
             is IpcReadResult.Success -> result.json
             IpcReadResult.NotFound,
             IpcReadResult.Unreachable -> defaultJson
@@ -29,7 +33,7 @@ internal object XIpcDomainSettingsStore : DomainSettingsStore {
         storeId: String,
         json: String,
     ): Boolean {
-        return XIpcBridge.writeStoreJsonFromOwner(context, storeId, json) is IpcWriteResult.Success
+        return XIpcBridge.writeStoreJsonFromOwner(context, storeId, json, client) is IpcWriteResult.Success
     }
 
     override suspend fun mutateJson(
@@ -38,7 +42,7 @@ internal object XIpcDomainSettingsStore : DomainSettingsStore {
         path: String,
         value: Any?,
     ): Boolean {
-        return XIpcBridge.mutateStoreJson(context, storeId, path, value).writeResult is IpcWriteResult.Success
+        return XIpcBridge.mutateStoreJson(context, storeId, path, value, client).writeResult is IpcWriteResult.Success
     }
 
     private const val EMPTY_JSON = "{}"

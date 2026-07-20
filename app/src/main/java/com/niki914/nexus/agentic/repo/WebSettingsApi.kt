@@ -89,7 +89,7 @@ class WebSettingsApi internal constructor(
         context: Context,
         target: WebSettingsTarget,
     ): WebSettingsResult.Success? {
-        val json = when (val result = XIpcBridge.readWebSettingsJson(context)) {
+        val json = when (val result = XIpcBridge.readWebSettingsJson(context, repo.storeClient)) {
             is IpcReadResult.Success -> result.json
             is IpcReadResult.Unreachable -> return null
             is IpcReadResult.NotFound -> return null
@@ -182,7 +182,7 @@ class WebSettingsApi internal constructor(
         if (settings.config == null) {
             return WebSettingsResult.RequestFailed(WebSettingsFailureReason.InvalidConfig)
         }
-        val writeResult = XIpcBridge.writeWebSettingsJson(context, settings.props.toString())
+        val writeResult = XIpcBridge.writeWebSettingsJson(context, settings.props.toString(), repo.storeClient)
         if (writeResult is IpcWriteResult.Unreachable) {
             return WebSettingsResult.RequestFailed(WebSettingsFailureReason.IpcUnreachable)
         }

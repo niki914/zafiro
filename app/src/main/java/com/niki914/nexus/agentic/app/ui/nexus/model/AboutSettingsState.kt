@@ -1,7 +1,5 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
-import android.app.Application
-import android.content.Context
 import android.net.Uri
 import androidx.annotation.StringRes
 import com.niki914.nexus.agentic.app.R
@@ -20,9 +18,11 @@ data class AboutSettingsItemUiState(
     val id: AboutSettingsItemId,
     @StringRes val titleRes: Int,
     val uri: String?,
+    @StringRes val bodyTemplateRes: Int? = null,
+    val feedbackTitle: String? = null,
 ) {
     val canOpen: Boolean
-        get() = uri != null || id == AboutSettingsItemId.FeatureFeedback || id == AboutSettingsItemId.BugFeedback
+        get() = uri != null || bodyTemplateRes != null
 }
 
 data class AboutSettingsUiState(
@@ -35,6 +35,10 @@ sealed interface AboutSettingsIntent {
 
 sealed interface AboutSettingsEffect {
     data class OpenUri(val uri: String) : AboutSettingsEffect
+    data class OpenFeedbackIssue(
+        val title: String,
+        @StringRes val bodyTemplateRes: Int,
+    ) : AboutSettingsEffect
 }
 
 class AboutSettingsViewModel :
@@ -51,12 +55,12 @@ class AboutSettingsViewModel :
     }
 
     private fun openItem(id: AboutSettingsItemId) {
-        currentState.items
-            .firstOrNull { it.id == id }
-            ?.uri
-            ?.let { uri ->
-                sendEffect(AboutSettingsEffect.OpenUri(uri))
-            }
+        val item = currentState.items.firstOrNull { it.id == id } ?: return
+        when {
+            item.uri != null -> sendEffect(AboutSettingsEffect.OpenUri(item.uri))
+            item.bodyTemplateRes != null && item.feedbackTitle != null ->
+                sendEffect(AboutSettingsEffect.OpenFeedbackIssue(item.feedbackTitle, item.bodyTemplateRes))
+        }
     }
 }
 
@@ -85,23 +89,21 @@ private fun aboutSettingsItems(): List<AboutSettingsItemUiState> {
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.FeatureFeedback,
             titleRes = R.string.ui_settings_about_feedback_feature,
-            uri = issueUri(
-                title = FEATURE_FEEDBACK_TITLE,
-                body = getAppContext().getString(R.string.feedback_feature_template),
-            )
+            uri = null,
+            bodyTemplateRes = R.string.feedback_feature_template,
+            feedbackTitle = FEATURE_FEEDBACK_TITLE,
         ),
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.BugFeedback,
             titleRes = R.string.ui_settings_about_feedback_bug,
-            uri = issueUri(
-                title = BUG_FEEDBACK_TITLE,
-                body = getAppContext().getString(R.string.feedback_bug_template),
-            )
+            uri = null,
+            bodyTemplateRes = R.string.feedback_bug_template,
+            feedbackTitle = BUG_FEEDBACK_TITLE,
         ),
     )
 }
 
-private fun issueUri(title: String, body: String): String {
+internal fun buildIssueUri(title: String, body: String): String {
     return Uri.Builder()
         .scheme("https")
         .authority("github.com")
@@ -114,9 +116,3 @@ private fun issueUri(title: String, body: String): String {
 
 private const val FEATURE_FEEDBACK_TITLE = "[FEATURE] "
 private const val BUG_FEEDBACK_TITLE = "[BUG] "
-
-@Suppress("PrivateApi")
-private fun getAppContext(): Context {
-    val activityThread = Class.forName("android.app.ActivityThread")
-    return activityThread.getMethod("currentApplication").invoke(null) as Application
-}

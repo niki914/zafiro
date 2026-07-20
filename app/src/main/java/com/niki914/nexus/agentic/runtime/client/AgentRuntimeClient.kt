@@ -132,27 +132,37 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
     }
 
     override fun readStore(storeId: String): String? {
-        return storeService?.readStore(storeId)
+        val svc = storeService ?: return null
+        return svc.readStore(storeId)
     }
 
-    override fun writeStore(storeId: String, json: String) {
-        storeService?.writeStore(storeId, json)
+    override fun writeStore(storeId: String, json: String): Boolean {
+        val svc = storeService ?: return false
+        svc.writeStore(storeId, json)
+        return true
     }
 
     override fun mutateStore(storeId: String, path: String, valueJson: String): String? {
-        return storeService?.mutateStore(storeId, path, valueJson)
+        val svc = storeService ?: return null
+        return svc.mutateStore(storeId, path, valueJson)
     }
 
-    override fun postNotification(title: String, content: String, uri: String?) {
-        storeService?.postNotification(title, content, uri)
+    override fun postNotification(title: String, content: String, uri: String?): Boolean {
+        val svc = storeService ?: return false
+        svc.postNotification(title, content, uri)
+        return true
     }
 
-    override fun postNetworkErrorNotification() {
-        storeService?.postNetworkErrorNotification()
+    override fun postNetworkErrorNotification(): Boolean {
+        val svc = storeService ?: return false
+        svc.postNetworkErrorNotification()
+        return true
     }
 
-    override fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?) {
-        storeService?.postUnsupportedVersionNotification(hostPackageName, hostVersion)
+    override fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?): Boolean {
+        val svc = storeService ?: return false
+        svc.postUnsupportedVersionNotification(hostPackageName, hostVersion)
+        return true
     }
 
     // --- Binder death ---
@@ -187,7 +197,11 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
             }
 
             retryCount = 0
-            _connectionState.value = ConnectionState.Connected
+            _connectionState.value = if (svc != null && storeService != null) {
+                ConnectionState.Connected
+            } else {
+                ConnectionState.Unavailable
+            }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
