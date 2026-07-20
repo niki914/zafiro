@@ -15,11 +15,10 @@ class NexusAccessibilityService : AccessibilityService(), IAccessibility {
     override fun onServiceConnected() {
         super.onServiceConnected()
         AccessibilityController.setService(this)
-        if (AccessibilityController.pointerOverlay == null) {
-            val overlay = PointerOverlay()
-            overlay.init(this)
-            AccessibilityController.pointerOverlay = overlay
-        }
+        AccessibilityController.clearPointerOverlay()
+        val overlay = PointerOverlay()
+        overlay.init(this)
+        AccessibilityController.pointerOverlay = overlay
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -31,6 +30,7 @@ class NexusAccessibilityService : AccessibilityService(), IAccessibility {
     }
 
     override fun onDestroy() {
+        AccessibilityController.clearPointerOverlay()
         AccessibilityController.clearService()
         super.onDestroy()
     }

@@ -77,6 +77,12 @@ object AccessibilityController {
         nodeCache.clear()
     }
 
+    fun clearPointerOverlay() {
+        pointerOverlay?.hide()
+        pointerOverlay = null
+        pointerShown = false
+    }
+
     /**
      * Ensures the accessibility service is connected.
      *

@@ -205,12 +205,10 @@ object LLMController {
                     )
                 )
             }
-            AccessibilityController.onTurnEnd()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {
                 throw throwable
             }
-            AccessibilityController.onTurnEnd()
             XEvent.llmError(
                 fields = mapOf(
                     "stage" to "send",
@@ -225,6 +223,8 @@ object LLMController {
                     code = throwable.toUserErrorCode(),
                 )
             )
+        } finally {
+            AccessibilityController.onTurnEnd()
         }
     }.flowOn(Dispatchers.IO)
 

@@ -166,7 +166,7 @@ class PointerOverlay : IPointerOverlay {
             moveTo(sx, sy)
             lineTo(ex, ey)
         }
-        animatePathRaw(path2, ex, ey, fixedHeading = true)
+        animatePathRaw(path2, ex, ey, fixedHeading = true, durationMs = duration)
     }
 
     // ============================================================
@@ -240,6 +240,7 @@ class PointerOverlay : IPointerOverlay {
      */
     private suspend fun animatePathRaw(
         path: Path, toX: Float, toY: Float, fixedHeading: Boolean,
+        durationMs: Long? = null,
     ) {
         val pm = PathMeasure(path, false)
         val arcLen = pm.length
@@ -248,8 +249,8 @@ class PointerOverlay : IPointerOverlay {
         val pos = FloatArray(2); val tan = FloatArray(2)
 
         // Duration from speed profile: average ~55% of max
-        val durationMs =
-            (arcLen / (MAX_SPEED_PX_PER_S * 0.55f) * 1000f).toLong().coerceAtLeast(50L)
+        val durationMs = durationMs
+            ?: (arcLen / (MAX_SPEED_PX_PER_S * 0.55f) * 1000f).toLong().coerceAtLeast(50L)
 
         val startHeading = curHeading
 
@@ -284,6 +285,7 @@ class PointerOverlay : IPointerOverlay {
                 })
             }
             runningAnim = anim
+            cont.invokeOnCancellation { anim.cancel() }
             handler.post { anim.start() }
         }
     }
