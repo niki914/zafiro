@@ -2,25 +2,25 @@ package com.niki914.nexus.agentic.mod.feat.oppo
 
 import com.niki914.nexus.agentic.chat.ActiveTurnStore
 import com.niki914.nexus.agentic.chat.ConversationTurnState
-import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.nexus.agentic.chat.TurnMode
-import com.niki914.nexus.agentic.chat.collectAsFull
 import com.niki914.nexus.agentic.mod.feat.AbstractAssistantHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.BlockNativeCardHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.CaptureInputHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.ResetConversationSignalHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.SuppressCleanupHook
+import com.niki914.nexus.agentic.runtime.client.AssistantTextSource
 import com.niki914.nexus.h.util.call
 import com.niki914.nexus.h.util.findClass
-import com.niki914.nexus.h.xevent.XEvent
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** Breeno 宿主主 Hook，走回答卡片层做注入：复用同一张卡片并持续用累计文本全量刷新内容。 */
-class BreenoChatHook(scope: CoroutineScope) : AbstractAssistantHook(scope) {
+class BreenoChatHook(
+    scope: CoroutineScope,
+    textSource: AssistantTextSource,
+) : AbstractAssistantHook(scope, textSource) {
 
     override val name: String = "BreenoChatHook"
 
@@ -47,7 +47,6 @@ class BreenoChatHook(scope: CoroutineScope) : AbstractAssistantHook(scope) {
 
     override suspend fun onSessionReset() {
         super.onSessionReset()
-        LLMController.resetConversation()
         clearRenderSession()
     }
 
@@ -87,15 +86,6 @@ class BreenoChatHook(scope: CoroutineScope) : AbstractAssistantHook(scope) {
             },
             onInput = onInput
         ).onHook(lpparam)
-    }
-
-    override suspend fun dispatchQueryToLLM(turnId: Long, roomId: String, query: String) {
-        val eventContext = XEvent.snapshotContext()
-        XEvent.withContext(eventContext) {
-            LLMController.stream(query).collectAsFull { frame ->
-                renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
-            }
-        }
     }
 
     override suspend fun renderStreamCard(

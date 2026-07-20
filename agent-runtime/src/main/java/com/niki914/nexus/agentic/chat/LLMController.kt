@@ -24,9 +24,12 @@ import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.sync.Mutex
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 
 object LLMController {
+    private val turnMutex = Mutex()
+
     internal const val CONFIG_REQUIRED_MESSAGE = "请先填写配置"
     private const val DEFAULT_USER_ERROR_MESSAGE = "请求失败，请重试"
 
@@ -139,92 +142,99 @@ object LLMController {
     }
 
     fun stream(query: String): Flow<LlmStreamEvent> = channelFlow {
-        val state = try {
-            refresh()
-            runtimeState
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) {
-                throw throwable
+        if (!turnMutex.tryLock()) {
+            send(LlmStreamEvent.Error("A turn is already active"))
+            return@channelFlow
+        }
+        try {
+            val state = try {
+                refresh()
+                runtimeState
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) {
+                    throw throwable
+                }
+                runtimeState ?: run {
+                    val message = throwable.toUserErrorMessage()
+                    XEvent.llmError(
+                        fields = mapOf(
+                            "stage" to "refresh",
+                            "errorType" to throwable.eventTypeName(),
+                            "message" to message
+                        )
+                    )
+                    send(
+                        LlmStreamEvent.Error(
+                            message = message,
+                            throwable = throwable,
+                            code = throwable.toUserErrorCode(),
+                        )
+                    )
+                    return@channelFlow
+                }
             }
-            runtimeState ?: run {
-                val message = throwable.toUserErrorMessage()
+            if (state == null) {
+                send(LlmStreamEvent.Error(DEFAULT_USER_ERROR_MESSAGE))
+                return@channelFlow
+            }
+
+            val accumulator = StringBuilder()
+            val startedAtMs = System.currentTimeMillis()
+            var streamErrorReported = false
+            val sink: SendChannel<LlmStreamEvent> = this
+            try {
+                XEvent.llmRoundStarted(
+                    fields = mapOf(
+                        "queryLength" to query.length,
+                        "isUnlocked" to LockState.isUnlocked()
+                    )
+                )
+                state.session.send(query).collect { event ->
+                    val mapped = LlmStreamEventMapper.map(event, accumulator, startedAtMs)
+                    mapped?.let {
+                        if (it is LlmStreamEvent.Error && !streamErrorReported) {
+                            streamErrorReported = true
+                            XEvent.llmError(
+                                fields = mapOf(
+                                    "stage" to "session_event",
+                                    "errorType" to (it.throwable?.eventTypeName() ?: "SessionEvent"),
+                                    "message" to it.message
+                                )
+                            )
+                        }
+                        sink.send(it)
+                    }
+                }
+                if (!streamErrorReported) {
+                    XEvent.llmRoundCompleted(
+                        fields = mapOf(
+                            "textLength" to accumulator.length,
+                            "elapsedMs" to (System.currentTimeMillis() - startedAtMs)
+                        )
+                    )
+                }
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) {
+                    throw throwable
+                }
                 XEvent.llmError(
                     fields = mapOf(
-                        "stage" to "refresh",
+                        "stage" to "send",
                         "errorType" to throwable.eventTypeName(),
-                        "message" to message
+                        "message" to throwable.toUserErrorMessage()
                     )
                 )
                 send(
                     LlmStreamEvent.Error(
-                        message = message,
+                        message = throwable.toUserErrorMessage(),
                         throwable = throwable,
                         code = throwable.toUserErrorCode(),
                     )
                 )
-                return@channelFlow
             }
-        }
-        if (state == null) {
-            send(LlmStreamEvent.Error(DEFAULT_USER_ERROR_MESSAGE))
-            return@channelFlow
-        }
-
-        val accumulator = StringBuilder()
-        val startedAtMs = System.currentTimeMillis()
-        var streamErrorReported = false
-        val sink: SendChannel<LlmStreamEvent> = this
-        try {
-            XEvent.llmRoundStarted(
-                fields = mapOf(
-                    "queryLength" to query.length,
-                    "isUnlocked" to LockState.isUnlocked()
-                )
-            )
-            state.session.send(query).collect { event ->
-                val mapped = LlmStreamEventMapper.map(event, accumulator, startedAtMs)
-                mapped?.let {
-                    if (it is LlmStreamEvent.Error && !streamErrorReported) {
-                        streamErrorReported = true
-                        XEvent.llmError(
-                            fields = mapOf(
-                                "stage" to "session_event",
-                                "errorType" to (it.throwable?.eventTypeName() ?: "SessionEvent"),
-                                "message" to it.message
-                            )
-                        )
-                    }
-                    sink.send(it)
-                }
-            }
-            if (!streamErrorReported) {
-                XEvent.llmRoundCompleted(
-                    fields = mapOf(
-                        "textLength" to accumulator.length,
-                        "elapsedMs" to (System.currentTimeMillis() - startedAtMs)
-                    )
-                )
-            }
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) {
-                throw throwable
-            }
-            XEvent.llmError(
-                fields = mapOf(
-                    "stage" to "send",
-                    "errorType" to throwable.eventTypeName(),
-                    "message" to throwable.toUserErrorMessage()
-                )
-            )
-            send(
-                LlmStreamEvent.Error(
-                    message = throwable.toUserErrorMessage(),
-                    throwable = throwable,
-                    code = throwable.toUserErrorCode(),
-                )
-            )
         } finally {
             AccessibilityController.onTurnEnd()
+            turnMutex.unlock()
         }
     }.flowOn(Dispatchers.IO)
 
