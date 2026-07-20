@@ -7,6 +7,7 @@ import com.niki914.nexus.agentic.mod.feat.hyper.XiaoaiChatHook
 import com.niki914.nexus.agentic.mod.feat.oppo.BreenoChatHook
 import com.niki914.nexus.agentic.repo.WebSettingsFailureReason
 import com.niki914.nexus.agentic.repo.WebSettingsResult
+import com.niki914.nexus.agentic.repo.XIpcDomainSettingsStore
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.agentic.runtime.client.AgentRuntimeClient
 import com.niki914.nexus.h.IXposed
@@ -39,11 +40,11 @@ class Entrance : IXposed() {
 //        HookSideLoader.load(scope, FloatWindowHook(), params)
         scope.launch(Dispatchers.IO) {
             val ctx = ContextProvider.await()
-            XRepo.init(ctx)
             val client = AgentRuntimeClient(ctx)
-            client.connect()
+            client.connectAndAwait()
+            XRepo.init(ctx, XIpcDomainSettingsStore(client))
 
-            HookLocalSettings.update(ctx)
+            HookLocalSettings.update(ctx, client)
             val webSettingsResult = XRepo.web.await()
             val targetPkg = params.packageName
             val isFallbackVersion =
@@ -59,11 +60,7 @@ class Entrance : IXposed() {
 
             when {
                 isNetworkError -> {
-                    XService.postNotification(
-                        title = "网络异常",
-                        content = "网络连接失败，请检查网络后重试",
-                        uri = null,
-                    )
+                    XService.postNetworkErrorNotification(client)
                 }
 
                 isNoSupportedVersion -> {
@@ -72,6 +69,7 @@ class Entrance : IXposed() {
                         hostVersion = targetPkg?.let {
                             ctx.getInstalledPackageVersion(it)?.versionName
                         },
+                        client = client,
                     )
                 }
             }

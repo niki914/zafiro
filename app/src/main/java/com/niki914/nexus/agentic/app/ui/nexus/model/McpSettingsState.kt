@@ -75,9 +75,9 @@ sealed interface McpSettingsIntent {
 }
 
 sealed interface McpInlineError {
-    data class LoadFailed(val message: String) : McpInlineError
-    data class SaveFailed(val message: String) : McpInlineError
-    data class DeleteFailed(val message: String) : McpInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : McpInlineError
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : McpInlineError
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : McpInlineError
 }
 
 sealed interface McpSettingsEffect {
@@ -164,7 +164,8 @@ class McpSettingsViewModel :
                 copy(
                     isLoading = false,
                     inlineError = McpInlineError.LoadFailed(
-                        throwable.message ?: "读取 MCP 配置失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_mcp_load_failed,
                     ),
                 )
             }
@@ -356,7 +357,8 @@ class McpSettingsViewModel :
                 copy(
                     isSaving = false,
                     inlineError = McpInlineError.SaveFailed(
-                        throwable.message ?: "保存 MCP 配置失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_mcp_save_failed,
                     ),
                 )
             }
@@ -404,7 +406,8 @@ class McpSettingsViewModel :
                 copy(
                     isSaving = false,
                     inlineError = McpInlineError.DeleteFailed(
-                        throwable.message ?: "删除 MCP 配置失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_mcp_delete_failed,
                     ),
                 )
             }

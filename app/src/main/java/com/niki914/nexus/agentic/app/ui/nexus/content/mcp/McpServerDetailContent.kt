@@ -237,9 +237,9 @@ private fun mcpFieldErrorText(errorResId: Int?): String? {
 private fun mcpInlineErrorText(error: McpInlineError?): String? {
     return when (error) {
         null -> null
-        is McpInlineError.LoadFailed -> error.message
-        is McpInlineError.SaveFailed -> error.message
-        is McpInlineError.DeleteFailed -> error.message
+        is McpInlineError.LoadFailed -> error.message ?: stringResource(error.fallbackResId)
+        is McpInlineError.SaveFailed -> error.message ?: stringResource(error.fallbackResId)
+        is McpInlineError.DeleteFailed -> error.message ?: stringResource(error.fallbackResId)
     }
 }
 

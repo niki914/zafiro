@@ -293,17 +293,17 @@ private fun MemoryInlineErrorText(error: MemoryInlineError) {
     val message = when (error) {
         is MemoryInlineError.LoadFailed -> stringResource(
             R.string.memory_error_load_failed,
-            error.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
 
         is MemoryInlineError.SaveFailed -> stringResource(
             R.string.memory_error_save_failed,
-            error.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
 
         is MemoryInlineError.DeleteFailed -> stringResource(
             R.string.memory_error_delete_failed,
-            error.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
     }
     Text(

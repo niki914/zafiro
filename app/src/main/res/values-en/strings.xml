@@ -296,4 +296,50 @@
     <string name="update_dialog_text">v%1$s is now available. Upgrade to get the latest features and fixes.</string>
     <string name="update_dialog_confirm">Update</string>
     <string name="update_dialog_cancel">Later</string>
+
+    <!-- Notification strings -->
+    <string name="notif_network_error_title">Network Error</string>
+    <string name="notif_network_error_body">Network connection failed. Please check your network and try again.</string>
+    <string name="notif_unsupported_version_title">Unsupported Host Version</string>
+    <string name="notif_unsupported_version_body">The current %1$s version is not yet supported by Nexus\nHost version: %2$s</string>
+    <string name="notif_unsupported_issue_title">[BUG] Unsupported host version</string>
+    <string name="notif_unsupported_issue_body">## Issue Description\nThe current version of %1$s is not yet supported by Nexus\nHost version: %2$s\n\n## Steps to Reproduce\n\n\n## Device Info\n- Assistant: %1$s\n- Assistant version: %2$s\n- Module version:</string>
+
+    <!-- Fallback -->
+    <string name="fallback_assistant_name">Assistant</string>
+
+    <!-- Host App Display Names -->
+    <string name="host_breeno_display_name">Breeno</string>
+    <string name="host_xiaoai_display_name">XiaoAi</string>
+
+    <!-- Error: MCP -->
+    <string name="error_mcp_load_failed">Failed to load MCP configuration</string>
+    <string name="error_mcp_save_failed">Failed to save MCP configuration</string>
+    <string name="error_mcp_delete_failed">Failed to delete MCP configuration</string>
+
+    <!-- Error: Execution Rules -->
+    <string name="error_exec_rules_load_failed">Failed to load execution rules</string>
+    <string name="error_exec_rules_save_failed">Failed to save execution rules</string>
+    <string name="error_exec_rules_delete_failed">Failed to delete execution rules</string>
+
+    <!-- Error: Skill -->
+    <string name="error_skill_load_failed">Failed to load skills</string>
+    <string name="error_skill_save_failed">Failed to save skill</string>
+    <string name="error_skill_read_failed">Failed to read skill</string>
+    <string name="error_skill_import_failed">Failed to import skill</string>
+    <string name="error_skill_delete_failed">Failed to delete skill</string>
+
+    <!-- Error: Custom Tool -->
+    <string name="error_custom_tool_load_failed">Failed to load custom tools</string>
+    <string name="error_custom_tool_save_failed">Failed to save custom tool</string>
+    <string name="error_custom_tool_delete_failed">Failed to delete custom tool</string>
+
+    <!-- Error: Memory -->
+    <string name="error_memory_load_failed">Failed to load memories</string>
+    <string name="error_memory_save_failed">Failed to save memory</string>
+    <string name="error_memory_delete_failed">Failed to delete memory</string>
+
+    <!-- Feedback templates -->
+    <string name="feedback_feature_template">## Feature Suggestion\n\n## Use Case\n\n## Expected Result</string>
+    <string name="feedback_bug_template">## Issue Description\n\n## Steps to Reproduce\n\n## Expected Behavior\n\n## Actual Behavior\n\n## Device Info\n- Android version:\n- Assistant (Breeno or other):\n- Module version:\n\n## More\nYou can attach logs, screenshots, or recordings to help us understand the issue.</string>
 </resources>

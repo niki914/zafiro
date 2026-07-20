@@ -4,22 +4,29 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.DeadObjectException
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.RemoteException
 import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
+import com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService
 import com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback
 import com.niki914.nexus.agentic.runtime.ipc.RenderFrame
+import com.niki914.nexus.ipc.XIpcBridge
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 class ServiceUnavailableException :
     IllegalStateException("Agent runtime service is not connected")
 
-class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
+class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XIpcBridge.StoreClient {
 
     enum class ConnectionState {
         Disconnected,
@@ -34,6 +41,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
     val connectionState: StateFlow<ConnectionState> = _connectionState
 
     private var service: IAgentRuntimeService? = null
+    private var storeService: IAgentStoreService? = null
     private var binder: IBinder? = null
     private var bound = false
     private var deathRecipient: IBinder.DeathRecipient? = null
@@ -76,6 +84,16 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
         return result
     }
 
+    suspend fun connectAndAwait(timeoutMs: Long = 5_000): Boolean {
+        connect()
+        val state = withTimeoutOrNull(timeoutMs.milliseconds) {
+            connectionState.first { s ->
+                s == ConnectionState.Connected || s == ConnectionState.Unavailable
+            }
+        }
+        return state == ConnectionState.Connected
+    }
+
     fun disconnect() {
         deathRecipient?.let { dr ->
             binder?.let { b ->
@@ -89,6 +107,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
         }
         service = null
         binder = null
+        storeService = null
         retryCount = 0
         _connectionState.value = ConnectionState.Disconnected
     }
@@ -127,12 +146,109 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
         try { service?.resetConversation() } catch (_: Exception) {}
     }
 
+    override fun readStore(storeId: String): String? {
+        val svc = storeService ?: return null
+        return try {
+            svc.readStore(storeId)
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            null
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            null
+        }
+    }
+
+    override fun writeStore(storeId: String, json: String): Boolean {
+        val svc = storeService ?: return false
+        return try {
+            svc.writeStore(storeId, json)
+            true
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            false
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            false
+        }
+    }
+
+    override fun mutateStore(storeId: String, path: String, valueJson: String): String? {
+        val svc = storeService ?: return null
+        return try {
+            svc.mutateStore(storeId, path, valueJson)
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            null
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            null
+        }
+    }
+
+    override fun postNotification(title: String, content: String, uri: String?): Boolean {
+        val svc = storeService ?: return false
+        return try {
+            svc.postNotification(title, content, uri)
+            true
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            false
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            false
+        }
+    }
+
+    override fun postNetworkErrorNotification(): Boolean {
+        val svc = storeService ?: return false
+        return try {
+            svc.postNetworkErrorNotification()
+            true
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            false
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            false
+        }
+    }
+
+    override fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?): Boolean {
+        val svc = storeService ?: return false
+        return try {
+            svc.postUnsupportedVersionNotification(hostPackageName, hostVersion)
+            true
+        } catch (_: DeadObjectException) {
+            onBinderUnreachable()
+            false
+        } catch (_: RemoteException) {
+            onBinderUnreachable()
+            false
+        }
+    }
+
     // --- Binder death ---
+
+    private fun onBinderUnreachable() {
+        service = null
+        storeService = null
+        binder = null
+        mainHandler.post {
+            deathRecipient = null
+            if (bound) {
+                try { context.unbindService(serviceConnection) } catch (_: Exception) {}
+                bound = false
+            }
+            scheduleReconnect()
+        }
+    }
 
     private fun handleBinderDeath() {
         mainHandler.post {
             deathRecipient = null
             service = null
+            storeService = null
             binder = null
             if (bound) {
                 try { context.unbindService(serviceConnection) } catch (_: Exception) {}
@@ -148,6 +264,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             val svc = binder?.let { IAgentRuntimeService.Stub.asInterface(it) }
             service = svc
+            storeService = svc?.getStoreBinder()?.let { IAgentStoreService.Stub.asInterface(it) }
             this@AgentRuntimeClient.binder = binder
 
             deathRecipient?.let { dr ->
@@ -157,11 +274,16 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
             }
 
             retryCount = 0
-            _connectionState.value = ConnectionState.Connected
+            _connectionState.value = if (svc != null && storeService != null) {
+                ConnectionState.Connected
+            } else {
+                ConnectionState.Unavailable
+            }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             service = null
+            storeService = null
             binder = null
             bound = false
             scheduleReconnect()

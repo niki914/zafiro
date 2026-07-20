@@ -1,6 +1,8 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
+import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.cb.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
@@ -27,9 +29,9 @@ data class MemoryDeleteConfirmationState(
 )
 
 sealed interface MemoryInlineError {
-    data class LoadFailed(val message: String) : MemoryInlineError
-    data class SaveFailed(val message: String) : MemoryInlineError
-    data class DeleteFailed(val message: String) : MemoryInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : MemoryInlineError
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : MemoryInlineError
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : MemoryInlineError
 }
 
 sealed interface MemorySettingsIntent {
@@ -97,7 +99,8 @@ class MemorySettingsViewModel :
                 copy(
                     isLoading = false,
                     inlineError = MemoryInlineError.LoadFailed(
-                        throwable.message ?: "读取记忆失败",
+                        message = throwable.message,
+                        fallbackResId = R.string.error_memory_load_failed,
                     ),
                 )
             }
@@ -179,7 +182,8 @@ class MemorySettingsViewModel :
                 copy(
                     isSaving = false,
                     inlineError = MemoryInlineError.SaveFailed(
-                        throwable.message ?: "保存记忆失败",
+                        message = throwable.message,
+                        fallbackResId = R.string.error_memory_save_failed,
                     ),
                 )
             }
@@ -227,7 +231,8 @@ class MemorySettingsViewModel :
                     isSaving = false,
                     deleteConfirmation = null,
                     inlineError = MemoryInlineError.DeleteFailed(
-                        throwable.message ?: "删除记忆失败",
+                        message = throwable.message,
+                        fallbackResId = R.string.error_memory_delete_failed,
                     ),
                 )
             }

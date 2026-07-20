@@ -1,6 +1,5 @@
 package com.niki914.nexus.ipc.store
 
-import com.niki914.nexus.ipc.IpcContract
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -16,9 +15,9 @@ class StoreDescriptorRegistryTest {
 
     @Test
     fun legacyLocalSettingsStoreIdResolvesForProviderFileUri() {
-        val descriptor = StoreDescriptorRegistry.resolveDynamic(IpcContract.Store.LOCAL_SETTINGS.storeId)
+        val descriptor = StoreDescriptorRegistry.resolveDynamic("local_settings")
 
-        assertEquals(IpcContract.Store.LOCAL_SETTINGS.storeId, descriptor!!.id)
+        assertEquals("local_settings", descriptor!!.id)
         assertEquals("local_settings.json", descriptor.relativePath)
     }
 

@@ -56,7 +56,7 @@ fun SkillsSettingsContent(
                 SkillSettingsEffect.ShowNoSkillFileToast ->
                     Toast.makeText(context, R.string.skill_import_no_skill_file, Toast.LENGTH_SHORT).show()
                 is SkillSettingsEffect.ShowImportErrorToast ->
-                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, effect.message ?: context.getString(effect.fallbackResId), Toast.LENGTH_SHORT).show()
                 else -> {}
             }
         }
@@ -186,25 +186,27 @@ private fun skillSettingsSpec(uiState: SkillSettingsUiState): SettingsPageSpec {
 
 @Composable
 private fun skillPageDescription(uiState: SkillSettingsUiState): String {
-    return when {
-        uiState.inlineError is SkillInlineError.LoadFailed -> stringResource(
+    return when (val error = uiState.inlineError) {
+        is SkillInlineError.LoadFailed -> stringResource(
             R.string.skill_error_load_failed,
-            uiState.inlineError.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
 
-        uiState.inlineError is SkillInlineError.SaveFailed -> stringResource(
+        is SkillInlineError.SaveFailed -> stringResource(
             R.string.skill_error_save_failed,
-            uiState.inlineError.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
 
-        uiState.inlineError is SkillInlineError.DeleteFailed -> stringResource(
+        is SkillInlineError.DeleteFailed -> stringResource(
             R.string.skill_error_delete_failed,
-            uiState.inlineError.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
 
-        uiState.isLoading -> stringResource(R.string.skill_page_description)
-        uiState.items.isEmpty() -> stringResource(R.string.skill_empty)
-        else -> stringResource(R.string.skill_page_description)
+        null -> when {
+            uiState.isLoading -> stringResource(R.string.skill_page_description)
+            uiState.items.isEmpty() -> stringResource(R.string.skill_empty)
+            else -> stringResource(R.string.skill_page_description)
+        }
     }
 }
 

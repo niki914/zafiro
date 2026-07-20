@@ -38,21 +38,28 @@ object XRepo {
 
     private val writeMutex = Mutex()
     private var appContext: Context? = null
-    private var store: DomainSettingsStore = XIpcDomainSettingsStore
+    private var installedStoreForTest = false
+    internal var store: DomainSettingsStore = XIpcDomainSettingsStore(null)
+        private set
 
-    fun init(context: Context) {
+    internal fun init(context: Context, store: DomainSettingsStore = XIpcDomainSettingsStore(null)) {
         if (appContext == null) {
             appContext = context.applicationContext ?: context
+            if (!installedStoreForTest) {
+                this.store = store
+            }
         }
     }
 
     internal fun installStoreForTest(store: DomainSettingsStore) {
         this.store = store
+        installedStoreForTest = true
     }
 
     internal fun resetForTest() {
         appContext = null
-        store = XIpcDomainSettingsStore
+        store = XIpcDomainSettingsStore(null)
+        installedStoreForTest = false
     }
 
     internal suspend fun context(): Context {

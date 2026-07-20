@@ -1,10 +1,9 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
+import android.net.Uri
 import androidx.annotation.StringRes
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.cb.ComposeMVIViewModel
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 enum class AboutSettingsItemId {
     AuthorHomepage,
@@ -19,9 +18,11 @@ data class AboutSettingsItemUiState(
     val id: AboutSettingsItemId,
     @StringRes val titleRes: Int,
     val uri: String?,
+    @StringRes val bodyTemplateRes: Int? = null,
+    val feedbackTitle: String? = null,
 ) {
     val canOpen: Boolean
-        get() = uri != null || id == AboutSettingsItemId.FeatureFeedback || id == AboutSettingsItemId.BugFeedback
+        get() = uri != null || bodyTemplateRes != null
 }
 
 data class AboutSettingsUiState(
@@ -34,6 +35,10 @@ sealed interface AboutSettingsIntent {
 
 sealed interface AboutSettingsEffect {
     data class OpenUri(val uri: String) : AboutSettingsEffect
+    data class OpenFeedbackIssue(
+        val title: String,
+        @StringRes val bodyTemplateRes: Int,
+    ) : AboutSettingsEffect
 }
 
 class AboutSettingsViewModel :
@@ -50,12 +55,12 @@ class AboutSettingsViewModel :
     }
 
     private fun openItem(id: AboutSettingsItemId) {
-        currentState.items
-            .firstOrNull { it.id == id }
-            ?.uri
-            ?.let { uri ->
-                sendEffect(AboutSettingsEffect.OpenUri(uri))
-            }
+        val item = currentState.items.firstOrNull { it.id == id } ?: return
+        when {
+            item.uri != null -> sendEffect(AboutSettingsEffect.OpenUri(item.uri))
+            item.bodyTemplateRes != null && item.feedbackTitle != null ->
+                sendEffect(AboutSettingsEffect.OpenFeedbackIssue(item.feedbackTitle, item.bodyTemplateRes))
+        }
     }
 }
 
@@ -84,59 +89,30 @@ private fun aboutSettingsItems(): List<AboutSettingsItemUiState> {
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.FeatureFeedback,
             titleRes = R.string.ui_settings_about_feedback_feature,
-            uri = issueUri(
-                title = FEATURE_FEEDBACK_TITLE,
-                body = FEATURE_FEEDBACK_BODY,
-            )
+            uri = null,
+            bodyTemplateRes = R.string.feedback_feature_template,
+            feedbackTitle = FEATURE_FEEDBACK_TITLE,
         ),
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.BugFeedback,
             titleRes = R.string.ui_settings_about_feedback_bug,
-            uri = issueUri(
-                title = BUG_FEEDBACK_TITLE,
-                body = BUG_FEEDBACK_BODY,
-            )
+            uri = null,
+            bodyTemplateRes = R.string.feedback_bug_template,
+            feedbackTitle = BUG_FEEDBACK_TITLE,
         ),
     )
 }
 
-private fun issueUri(title: String, body: String): String {
-    return "$ISSUES_NEW_URI?title=${encodeUriQueryValue(title)}&body=${encodeUriQueryValue(body)}"
+internal fun buildIssueUri(title: String, body: String): String {
+    return Uri.Builder()
+        .scheme("https")
+        .authority("github.com")
+        .path("/niki914/agentic-nexus/issues/new")
+        .appendQueryParameter("title", title)
+        .appendQueryParameter("body", body)
+        .build()
+        .toString()
 }
-
-private fun encodeUriQueryValue(value: String): String {
-    return URLEncoder.encode(value, StandardCharsets.UTF_8.name())
-        .replace("+", "%20")
-}
-
-private const val ISSUES_NEW_URI = "https://github.com/niki914/agentic-nexus/issues/new"
 
 private const val FEATURE_FEEDBACK_TITLE = "[FEATURE] "
-private const val FEATURE_FEEDBACK_BODY = """## 功能建议
-
-## 使用场景
-
-## 预期效果
-"""
-
 private const val BUG_FEEDBACK_TITLE = "[BUG] "
-private const val BUG_FEEDBACK_BODY = """## 问题描述
-
-## 复现步骤
-1. 
-2. 
-3. 
-
-## 预期行为
-
-## 实际行为
-
-## 设备信息
-- Android 版本：
-- 助手（小布或其他）
-- 模块版本：
-
-## 更多
-
-可以补充日志、截图录屏等信息，以便于我们理解
-"""

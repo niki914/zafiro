@@ -11,6 +11,7 @@ object LlmStreamEventMapper {
         event: SessionEvent,
         accumulator: StringBuilder,
         startedAtMs: Long,
+        defaultErrorMessage: String,
     ): LlmStreamEvent? {
         return when (event) {
             is SessionEvent.RoundStarted -> LlmStreamEvent.RoundStarted
@@ -44,7 +45,7 @@ object LlmStreamEventMapper {
             )
 
             is SessionEvent.Error -> LlmStreamEvent.Error(
-                message = event.message.trim().ifEmpty { "请求失败，请重试" },
+                message = event.message.trim().ifEmpty { defaultErrorMessage },
                 throwable = event.cause,
             )
 

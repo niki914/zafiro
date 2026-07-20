@@ -208,9 +208,9 @@ private fun executionRulesFieldErrorText(errorResId: Int?): String? {
 private fun executionRulesInlineErrorText(error: ExecutionRulesInlineError?): String? {
     return when (error) {
         null -> null
-        is ExecutionRulesInlineError.LoadFailed -> error.message
-        is ExecutionRulesInlineError.SaveFailed -> error.message
-        is ExecutionRulesInlineError.DeleteFailed -> error.message
+        is ExecutionRulesInlineError.LoadFailed -> error.message ?: stringResource(error.fallbackResId)
+        is ExecutionRulesInlineError.SaveFailed -> error.message ?: stringResource(error.fallbackResId)
+        is ExecutionRulesInlineError.DeleteFailed -> error.message ?: stringResource(error.fallbackResId)
     }
 }
 

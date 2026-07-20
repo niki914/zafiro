@@ -295,4 +295,50 @@
     <string name="update_dialog_text">v%1$s 已发布，建议升级</string>
     <string name="update_dialog_confirm">前往更新</string>
     <string name="update_dialog_cancel">稍后</string>
+
+    <!-- Notification strings -->
+    <string name="notif_network_error_title">网络异常</string>
+    <string name="notif_network_error_body">网络连接失败，请检查网络后重试</string>
+
+    <!-- Error: MCP -->
+    <string name="error_mcp_load_failed">读取 MCP 配置失败</string>
+    <string name="error_mcp_save_failed">保存 MCP 配置失败</string>
+    <string name="error_mcp_delete_failed">删除 MCP 配置失败</string>
+
+    <!-- Error: Execution Rules -->
+    <string name="error_exec_rules_load_failed">读取执行规则失败</string>
+    <string name="error_exec_rules_save_failed">保存执行规则失败</string>
+    <string name="error_exec_rules_delete_failed">删除执行规则失败</string>
+
+    <!-- Error: Skill -->
+    <string name="error_skill_load_failed">读取 Skills 失败</string>
+    <string name="error_skill_save_failed">保存 Skill 失败</string>
+    <string name="error_skill_read_failed">读取 Skill 失败</string>
+    <string name="error_skill_import_failed">导入 Skill 失败</string>
+    <string name="error_skill_delete_failed">删除 Skill 失败</string>
+
+    <!-- Error: Custom Tool -->
+    <string name="error_custom_tool_load_failed">读取自定义工具失败</string>
+    <string name="error_custom_tool_save_failed">保存自定义工具失败</string>
+    <string name="error_custom_tool_delete_failed">删除自定义工具失败</string>
+
+    <!-- Error: Memory -->
+    <string name="error_memory_load_failed">读取记忆失败</string>
+    <string name="error_memory_save_failed">保存记忆失败</string>
+    <string name="error_memory_delete_failed">删除记忆失败</string>
+
+    <!-- Feedback templates -->
+    <string name="feedback_feature_template">## 功能建议\n\n## 使用场景\n\n## 预期效果</string>
+    <!-- Host App Display Names -->
+    <string name="host_breeno_display_name">小布助手</string>
+    <string name="host_xiaoai_display_name">小爱同学</string>
+
+    <!-- XService notifications -->
+    <string name="fallback_assistant_name">助手</string>
+    <string name="notif_unsupported_version_title">宿主版本未适配</string>
+    <string name="notif_unsupported_version_body">当前%1$s版本还未被 Nexus 支持\n宿主版本：%2$s</string>
+    <string name="notif_unsupported_issue_title">[BUG] 宿主版本未适配</string>
+    <string name="notif_unsupported_issue_body">## 问题描述\n当前%1$s版本还未被 Nexus 支持\n宿主版本：%2$s\n\n## 复现步骤\n\n\n## 设备信息\n- 助手：%1$s\n- 助手版本：%2$s\n- 模块版本：</string>
+
+    <string name="feedback_bug_template">## 问题描述\n\n## 复现步骤\n\n## 预期行为\n\n## 实际行为\n\n## 设备信息\n- Android 版本：\n- 助手（小布或其他）：\n- 模块版本：\n\n## 更多\n可以补充日志、截图录屏等信息，以便于我们理解</string>
 </resources>

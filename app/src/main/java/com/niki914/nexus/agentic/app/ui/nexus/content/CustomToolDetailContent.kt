@@ -241,17 +241,17 @@ private fun customToolInlineErrorText(error: CustomToolInlineError?): String? {
         null -> null
         is CustomToolInlineError.LoadFailed -> stringResource(
             R.string.custom_tool_error_load_failed,
-            error.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
 
         is CustomToolInlineError.SaveFailed -> stringResource(
             R.string.custom_tool_error_save_failed,
-            error.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
 
         is CustomToolInlineError.DeleteFailed -> stringResource(
             R.string.custom_tool_error_delete_failed,
-            error.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
     }
 }
