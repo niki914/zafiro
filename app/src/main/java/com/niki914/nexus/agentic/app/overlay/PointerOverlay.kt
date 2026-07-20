@@ -284,15 +284,29 @@ class PointerOverlay : IPointerOverlay {
                     override fun onAnimationRepeat(a: android.animation.Animator) {}
                 })
             }
-            runningAnim = anim
-            cont.invokeOnCancellation { anim.cancel() }
-            handler.post { anim.start() }
+            cont.invokeOnCancellation {
+                handler.post {
+                    if (runningAnim === anim) {
+                        anim.cancel()
+                        runningAnim = null
+                    }
+                }
+            }
+            handler.post {
+                if (cont.isActive) {
+                    runningAnim = anim
+                    anim.start()
+                }
+            }
         }
     }
 
     private fun cancelAnim() {
-        runningAnim?.cancel()
+        val anim = runningAnim
         runningAnim = null
+        if (anim != null) {
+            handler.post { anim.cancel() }
+        }
     }
 
     // ============================================================
