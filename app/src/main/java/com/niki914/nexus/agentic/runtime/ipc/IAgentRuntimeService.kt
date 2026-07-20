@@ -9,6 +9,7 @@ interface IAgentRuntimeService : IInterface {
     fun submit(query: String?, callback: IRenderFrameCallback?)
     fun cancel()
     fun resetConversation()
+    fun getStoreBinder(): IBinder?
 
     abstract class Stub : Binder(), IAgentRuntimeService {
         init {
@@ -39,6 +40,13 @@ interface IAgentRuntimeService : IInterface {
                     reply?.writeNoException()
                     return true
                 }
+                TRANSACTION_getStoreBinder -> {
+                    data.enforceInterface(DESCRIPTOR)
+                    val binder = getStoreBinder()
+                    reply?.writeNoException()
+                    reply?.writeStrongBinder(binder)
+                    return true
+                }
                 else -> return super.onTransact(code, data, reply, flags)
             }
         }
@@ -48,6 +56,7 @@ interface IAgentRuntimeService : IInterface {
             private const val TRANSACTION_submit = 1
             private const val TRANSACTION_cancel = 2
             private const val TRANSACTION_resetConversation = 3
+            private const val TRANSACTION_getStoreBinder = 100
 
             fun asInterface(obj: IBinder?): IAgentRuntimeService? {
                 if (obj == null) return null
@@ -95,6 +104,20 @@ interface IAgentRuntimeService : IInterface {
                     data.writeInterfaceToken(DESCRIPTOR)
                     remote.transact(TRANSACTION_resetConversation, data, reply, 0)
                     reply.readException()
+                } finally {
+                    reply.recycle()
+                    data.recycle()
+                }
+            }
+
+            override fun getStoreBinder(): IBinder? {
+                val data = Parcel.obtain()
+                val reply = Parcel.obtain()
+                try {
+                    data.writeInterfaceToken(DESCRIPTOR)
+                    remote.transact(TRANSACTION_getStoreBinder, data, reply, 0)
+                    reply.readException()
+                    return reply.readStrongBinder()
                 } finally {
                     reply.recycle()
                     data.recycle()

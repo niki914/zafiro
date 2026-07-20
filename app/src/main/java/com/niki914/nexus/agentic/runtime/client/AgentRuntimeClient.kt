@@ -8,8 +8,10 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
+import com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService
 import com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback
 import com.niki914.nexus.agentic.runtime.ipc.RenderFrame
+import com.niki914.nexus.ipc.XIpcBridge
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +21,7 @@ import kotlinx.coroutines.flow.callbackFlow
 class ServiceUnavailableException :
     IllegalStateException("Agent runtime service is not connected")
 
-class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
+class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XIpcBridge.StoreClient {
 
     enum class ConnectionState {
         Disconnected,
@@ -34,6 +36,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
     val connectionState: StateFlow<ConnectionState> = _connectionState
 
     private var service: IAgentRuntimeService? = null
+    private var storeService: IAgentStoreService? = null
     private var binder: IBinder? = null
     private var bound = false
     private var deathRecipient: IBinder.DeathRecipient? = null
@@ -89,6 +92,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
         }
         service = null
         binder = null
+        storeService = null
         retryCount = 0
         _connectionState.value = ConnectionState.Disconnected
     }
@@ -127,12 +131,37 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
         try { service?.resetConversation() } catch (_: Exception) {}
     }
 
+    override fun readStore(storeId: String): String? {
+        return storeService?.readStore(storeId)
+    }
+
+    override fun writeStore(storeId: String, json: String) {
+        storeService?.writeStore(storeId, json)
+    }
+
+    override fun mutateStore(storeId: String, path: String, valueJson: String): String? {
+        return storeService?.mutateStore(storeId, path, valueJson)
+    }
+
+    override fun postNotification(title: String, content: String, uri: String?) {
+        storeService?.postNotification(title, content, uri)
+    }
+
+    override fun postNetworkErrorNotification() {
+        storeService?.postNetworkErrorNotification()
+    }
+
+    override fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?) {
+        storeService?.postUnsupportedVersionNotification(hostPackageName, hostVersion)
+    }
+
     // --- Binder death ---
 
     private fun handleBinderDeath() {
         mainHandler.post {
             deathRecipient = null
             service = null
+            storeService = null
             binder = null
             if (bound) {
                 try { context.unbindService(serviceConnection) } catch (_: Exception) {}
@@ -148,6 +177,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             val svc = binder?.let { IAgentRuntimeService.Stub.asInterface(it) }
             service = svc
+            storeService = svc?.getStoreBinder()?.let { IAgentStoreService.Stub.asInterface(it) }
             this@AgentRuntimeClient.binder = binder
 
             deathRecipient?.let { dr ->
@@ -162,6 +192,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
 
         override fun onServiceDisconnected(name: ComponentName?) {
             service = null
+            storeService = null
             binder = null
             bound = false
             scheduleReconnect()

@@ -59,11 +59,7 @@ class Entrance : IXposed() {
 
             when {
                 isNetworkError -> {
-                    XService.postNotification(
-                        title = "网络异常",
-                        content = "网络连接失败，请检查网络后重试",
-                        uri = null,
-                    )
+                    XService.postNetworkErrorNotification(client)
                 }
 
                 isNoSupportedVersion -> {
@@ -72,6 +68,7 @@ class Entrance : IXposed() {
                         hostVersion = targetPkg?.let {
                             ctx.getInstalledPackageVersion(it)?.versionName
                         },
+                        client = client,
                     )
                 }
             }

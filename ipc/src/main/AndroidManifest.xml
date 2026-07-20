@@ -3,10 +3,5 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <application>
-        <provider
-            android:name="com.niki914.nexus.ipc.cp.SettingsContentProvider"
-            android:authorities="com.niki914.nexus.ipc.provider"
-            android:exported="true" />
-    </application>
+    <application />
 </manifest>

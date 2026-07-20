@@ -71,9 +71,9 @@ sealed interface CustomToolSettingsIntent {
 }
 
 sealed interface CustomToolInlineError {
-    data class LoadFailed(val message: String) : CustomToolInlineError
-    data class SaveFailed(val message: String) : CustomToolInlineError
-    data class DeleteFailed(val message: String) : CustomToolInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : CustomToolInlineError
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : CustomToolInlineError
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : CustomToolInlineError
 }
 
 sealed interface CustomToolSettingsEffect {
@@ -174,7 +174,8 @@ class CustomToolSettingsViewModel :
                 copy(
                     isLoading = false,
                     inlineError = CustomToolInlineError.LoadFailed(
-                        throwable.message ?: "读取自定义工具失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_custom_tool_load_failed,
                     ),
                 )
             }
@@ -246,7 +247,8 @@ class CustomToolSettingsViewModel :
                     },
                     isSaving = false,
                     inlineError = CustomToolInlineError.SaveFailed(
-                        throwable.message ?: "保存自定义工具失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_custom_tool_save_failed,
                     ),
                 )
             }
@@ -322,7 +324,8 @@ class CustomToolSettingsViewModel :
                 copy(
                     isSaving = false,
                     inlineError = CustomToolInlineError.SaveFailed(
-                        throwable.message ?: "保存自定义工具失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_custom_tool_save_failed,
                     ),
                 )
             }
@@ -371,7 +374,8 @@ class CustomToolSettingsViewModel :
                 copy(
                     isSaving = false,
                     inlineError = CustomToolInlineError.DeleteFailed(
-                        throwable.message ?: "删除自定义工具失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_custom_tool_delete_failed,
                     ),
                 )
             }
@@ -393,7 +397,7 @@ class CustomToolSettingsViewModel :
                 copy(
                     formState = formState,
                     isSaving = false,
-                    inlineError = CustomToolInlineError.SaveFailed(validation.message),
+                    inlineError = CustomToolInlineError.SaveFailed(validation.message, fallbackResId = R.string.error_custom_tool_save_failed),
                 )
             }
         }

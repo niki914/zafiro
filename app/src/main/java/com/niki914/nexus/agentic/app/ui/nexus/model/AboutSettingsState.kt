@@ -1,5 +1,7 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
+import android.app.Application
+import android.content.Context
 import androidx.annotation.StringRes
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.cb.ComposeMVIViewModel
@@ -86,7 +88,7 @@ private fun aboutSettingsItems(): List<AboutSettingsItemUiState> {
             titleRes = R.string.ui_settings_about_feedback_feature,
             uri = issueUri(
                 title = FEATURE_FEEDBACK_TITLE,
-                body = FEATURE_FEEDBACK_BODY,
+                body = getAppContext().getString(R.string.feedback_feature_template),
             )
         ),
         AboutSettingsItemUiState(
@@ -94,7 +96,7 @@ private fun aboutSettingsItems(): List<AboutSettingsItemUiState> {
             titleRes = R.string.ui_settings_about_feedback_bug,
             uri = issueUri(
                 title = BUG_FEEDBACK_TITLE,
-                body = BUG_FEEDBACK_BODY,
+                body = getAppContext().getString(R.string.feedback_bug_template),
             )
         ),
     )
@@ -112,31 +114,10 @@ private fun encodeUriQueryValue(value: String): String {
 private const val ISSUES_NEW_URI = "https://github.com/niki914/agentic-nexus/issues/new"
 
 private const val FEATURE_FEEDBACK_TITLE = "[FEATURE] "
-private const val FEATURE_FEEDBACK_BODY = """## 功能建议
-
-## 使用场景
-
-## 预期效果
-"""
-
 private const val BUG_FEEDBACK_TITLE = "[BUG] "
-private const val BUG_FEEDBACK_BODY = """## 问题描述
 
-## 复现步骤
-1. 
-2. 
-3. 
-
-## 预期行为
-
-## 实际行为
-
-## 设备信息
-- Android 版本：
-- 助手（小布或其他）
-- 模块版本：
-
-## 更多
-
-可以补充日志、截图录屏等信息，以便于我们理解
-"""
+@Suppress("PrivateApi")
+private fun getAppContext(): Context {
+    val activityThread = Class.forName("android.app.ActivityThread")
+    return activityThread.getMethod("currentApplication").invoke(null) as Application
+}

@@ -9,40 +9,37 @@ import com.niki914.nexus.ipc.XIpcBridge
 
 object XService {
 
-    suspend fun getLocalSettings(context: Context): LocalSettings {
-        return when (val result = XIpcBridge.readLocalSettingsJson(context)) {
+    suspend fun getLocalSettings(context: Context, client: XIpcBridge.StoreClient? = null): LocalSettings {
+        return when (val result = XIpcBridge.readLocalSettingsJson(context, client)) {
             is IpcReadResult.Success -> LocalSettings(parseJsonObject(result.json))
             is IpcReadResult.Unreachable -> LocalSettings()
             is IpcReadResult.NotFound -> LocalSettings()
         }
     }
 
-    suspend fun putLocalSettings(context: Context, settings: LocalSettings) {
-        XIpcBridge.writeLocalSettingsJson(context, settings.props.toString())
+    suspend fun putLocalSettings(context: Context, settings: LocalSettings, client: XIpcBridge.StoreClient? = null) {
+        XIpcBridge.writeLocalSettingsJson(context, settings.props.toString(), client)
     }
 
     suspend fun postNotification(
         title: String,
         content: String,
-        uri: String?
+        uri: String?,
+        client: XIpcBridge.StoreClient? = null
     ): Boolean {
         val context = ContextProvider.await()
-        return XIpcBridge.postNotification(context, title, content, uri) is IpcWriteResult.Success
+        return XIpcBridge.postNotification(context, title, content, uri, client) is IpcWriteResult.Success
     }
 
-    suspend fun postUnsupportedVersionNotification(
+    fun postNetworkErrorNotification(client: XIpcBridge.StoreClient) {
+        client.postNetworkErrorNotification()
+    }
+
+    fun postUnsupportedVersionNotification(
         hostApp: HostApp?,
         hostVersion: String?,
+        client: XIpcBridge.StoreClient
     ) {
-        val hostName = hostApp?.displayName ?: "助手"
-        postNotification(
-            title = "宿主版本未适配",
-            content = "当前${hostName}版本还未被 Nexus 支持" +
-                (hostVersion?.let { "\n宿主版本：$it" } ?: ""),
-            uri = ISSUES_NEW_URI,
-        )
+        client.postUnsupportedVersionNotification(hostApp?.packageName, hostVersion)
     }
-
-    private const val ISSUES_NEW_URI =
-        "https://github.com/niki914/agentic-nexus/issues/new"
 }

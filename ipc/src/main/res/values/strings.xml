@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="host_breeno_display_name">小布助手</string>
+    <string name="host_xiaoai_display_name">小爱同学</string>
+</resources>

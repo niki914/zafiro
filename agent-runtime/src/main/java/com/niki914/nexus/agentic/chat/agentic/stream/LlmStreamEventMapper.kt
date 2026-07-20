@@ -1,8 +1,10 @@
 package com.niki914.nexus.agentic.chat.agentic.stream
 
+import android.content.Context
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.chat.ToolCallKind
 import com.niki914.nexus.agentic.chat.ToolCallStatus
+import com.niki914.nexus.agentic.runtime.R
 import com.niki914.s3ss10n.SessionEvent
 import com.niki914.s3ss10n.ToolCallKind as SessionToolCallKind
 
@@ -11,6 +13,7 @@ object LlmStreamEventMapper {
         event: SessionEvent,
         accumulator: StringBuilder,
         startedAtMs: Long,
+        context: Context? = null,
     ): LlmStreamEvent? {
         return when (event) {
             is SessionEvent.RoundStarted -> LlmStreamEvent.RoundStarted
@@ -44,7 +47,7 @@ object LlmStreamEventMapper {
             )
 
             is SessionEvent.Error -> LlmStreamEvent.Error(
-                message = event.message.trim().ifEmpty { "请求失败，请重试" },
+                message = event.message.trim().ifEmpty { context?.getString(R.string.error_llm_request_failed) ?: "请求失败，请重试" },
                 throwable = event.cause,
             )
 

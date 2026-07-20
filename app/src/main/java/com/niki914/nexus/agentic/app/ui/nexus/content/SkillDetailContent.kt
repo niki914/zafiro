@@ -184,17 +184,17 @@ private fun skillInlineErrorText(error: SkillInlineError?): String? {
         null -> null
         is SkillInlineError.LoadFailed -> stringResource(
             R.string.skill_error_load_failed,
-            error.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
 
         is SkillInlineError.SaveFailed -> stringResource(
             R.string.skill_error_save_failed,
-            error.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
 
         is SkillInlineError.DeleteFailed -> stringResource(
             R.string.skill_error_delete_failed,
-            error.message,
+            error.message ?: stringResource(error.fallbackResId),
         )
     }
 }

@@ -1,5 +1,7 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
+import androidx.annotation.StringRes
+import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.cb.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
@@ -76,9 +78,9 @@ data class SkillSettingsUiState(
 )
 
 sealed interface SkillInlineError {
-    data class LoadFailed(val message: String) : SkillInlineError
-    data class SaveFailed(val message: String) : SkillInlineError
-    data class DeleteFailed(val message: String) : SkillInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : SkillInlineError
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : SkillInlineError
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : SkillInlineError
 }
 
 sealed interface SkillSettingsIntent {
@@ -98,7 +100,7 @@ sealed interface SkillSettingsIntent {
 sealed interface SkillSettingsEffect {
     data object ExitDetail : SkillSettingsEffect
     data object ShowNoSkillFileToast : SkillSettingsEffect
-    data class ShowImportErrorToast(val message: String) : SkillSettingsEffect
+    data class ShowImportErrorToast(val message: String?, @StringRes val fallbackResId: Int) : SkillSettingsEffect
 }
 
 class SkillSettingsViewModel(
@@ -162,7 +164,8 @@ class SkillSettingsViewModel(
                 copy(
                     isLoading = false,
                     inlineError = SkillInlineError.LoadFailed(
-                        throwable.message ?: "读取 Skills 失败",
+                        message = throwable.message,
+                        fallbackResId = R.string.error_skill_load_failed,
                     ),
                 )
             }
@@ -195,6 +198,7 @@ class SkillSettingsViewModel(
                         isSaving = false,
                         inlineError = SkillInlineError.SaveFailed(
                             validationMessage(validation),
+                            fallbackResId = R.string.error_skill_save_failed,
                         ),
                     )
                 }
@@ -213,7 +217,8 @@ class SkillSettingsViewModel(
                     items = previousItems,
                     isSaving = false,
                     inlineError = SkillInlineError.SaveFailed(
-                        throwable.message ?: "保存 Skill 失败",
+                        message = throwable.message,
+                        fallbackResId = R.string.error_skill_save_failed,
                     ),
                 )
             }
@@ -233,7 +238,7 @@ class SkillSettingsViewModel(
                 updateState {
                     copy(
                         isLoading = false,
-                        inlineError = SkillInlineError.LoadFailed("Skill not found."),
+                        inlineError = SkillInlineError.LoadFailed("Skill not found.", fallbackResId = R.string.error_skill_read_failed),
                     )
                 }
                 return
@@ -257,7 +262,8 @@ class SkillSettingsViewModel(
                 copy(
                     isLoading = false,
                     inlineError = SkillInlineError.LoadFailed(
-                        throwable.message ?: "读取 Skill 失败",
+                        message = throwable.message,
+                        fallbackResId = R.string.error_skill_read_failed,
                     ),
                 )
             }
@@ -289,6 +295,7 @@ class SkillSettingsViewModel(
                         isSaving = false,
                         inlineError = SkillInlineError.SaveFailed(
                             validationMessage(validation),
+                            fallbackResId = R.string.error_skill_save_failed,
                         ),
                     )
                 }
@@ -307,7 +314,8 @@ class SkillSettingsViewModel(
                 copy(
                     isSaving = false,
                     inlineError = SkillInlineError.SaveFailed(
-                        throwable.message ?: "保存 Skill 失败",
+                        message = throwable.message,
+                        fallbackResId = R.string.error_skill_save_failed,
                     ),
                 )
             }
@@ -345,6 +353,7 @@ class SkillSettingsViewModel(
                         isSaving = false,
                         inlineError = SkillInlineError.DeleteFailed(
                             validationMessage(validation),
+                            fallbackResId = R.string.error_skill_delete_failed,
                         ),
                     )
                 }
@@ -363,7 +372,8 @@ class SkillSettingsViewModel(
                 copy(
                     isSaving = false,
                     inlineError = SkillInlineError.DeleteFailed(
-                        throwable.message ?: "删除 Skill 失败",
+                        message = throwable.message,
+                        fallbackResId = R.string.error_skill_delete_failed,
                     ),
                 )
             }
@@ -392,13 +402,13 @@ class SkillSettingsViewModel(
                 }
                 is SkillImportResult.Error -> {
                     updateState { copy(isImporting = false) }
-                    sendEffect(SkillSettingsEffect.ShowImportErrorToast(result.message))
+                    sendEffect(SkillSettingsEffect.ShowImportErrorToast(message = result.message, fallbackResId = R.string.error_skill_import_failed))
                 }
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             updateState { copy(isImporting = false) }
-            sendEffect(SkillSettingsEffect.ShowImportErrorToast(throwable.message ?: "导入 Skill 失败"))
+            sendEffect(SkillSettingsEffect.ShowImportErrorToast(message = throwable.message, fallbackResId = R.string.error_skill_import_failed))
         }
     }
 
@@ -413,13 +423,13 @@ class SkillSettingsViewModel(
                 }
                 else -> {
                     updateState { copy(isImporting = false) }
-                    sendEffect(SkillSettingsEffect.ShowImportErrorToast("导入 Skill 失败"))
+                    sendEffect(SkillSettingsEffect.ShowImportErrorToast(message = null, fallbackResId = R.string.error_skill_import_failed))
                 }
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             updateState { copy(isImporting = false) }
-            sendEffect(SkillSettingsEffect.ShowImportErrorToast(throwable.message ?: "导入 Skill 失败"))
+            sendEffect(SkillSettingsEffect.ShowImportErrorToast(message = throwable.message, fallbackResId = R.string.error_skill_import_failed))
         }
     }
 

@@ -1,13 +1,12 @@
 package com.niki914.nexus.ipc.store
 
 import android.content.Context
-import com.niki914.nexus.ipc.IpcContract
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 
-internal object XIpcStoreRepository {
+object XIpcStoreRepository {
 
     private val storeMutexes = ConcurrentHashMap<String, Mutex>()
 
@@ -49,44 +48,6 @@ internal object XIpcStoreRepository {
         }
     }
 
-    suspend fun readJson(context: Context, store: IpcContract.Store): String {
-        val descriptor = legacyDescriptorFor(store)
-        return mutexFor(descriptor.id).withLock {
-            readPersistedJson(context, descriptor) ?: descriptor.defaultJson
-        }
-    }
-
-    suspend fun writeJson(
-        context: Context,
-        store: IpcContract.Store,
-        json: String
-    ): String {
-        val descriptor = legacyDescriptorFor(store)
-        return mutexFor(descriptor.id).withLock {
-            requireJsonObject(json)
-            writePersistedJson(context, descriptor, json)
-            json
-        }
-    }
-
-    suspend fun mutateJson(
-        context: Context,
-        store: IpcContract.Store,
-        path: String,
-        valueJson: String
-    ): String {
-        val descriptor = legacyDescriptorFor(store)
-        return mutexFor(descriptor.id).withLock {
-            val updatedJson = IpcJsonMutator.mutate(
-                json = readPersistedJson(context, descriptor) ?: descriptor.defaultJson,
-                path = path,
-                valueJson = valueJson
-            )
-            writePersistedJson(context, descriptor, updatedJson)
-            updatedJson
-        }
-    }
-
     private fun mutexFor(storeId: String): Mutex {
         return storeMutexes.computeIfAbsent(storeId) { Mutex() }
     }
@@ -118,17 +79,6 @@ internal object XIpcStoreRepository {
             JSONObject(json)
             true
         }.getOrDefault(false)
-    }
-
-    private fun legacyDescriptorFor(store: IpcContract.Store): StoreDescriptor {
-        return when (store) {
-            IpcContract.Store.WEB_SETTINGS -> StoreDescriptorRegistry.require(
-                StoreDescriptorRegistry.WEB_SETTINGS_ID
-            )
-            IpcContract.Store.LOCAL_SETTINGS -> StoreDescriptorRegistry.require(
-                StoreDescriptorRegistry.LOCAL_SETTINGS_ID
-            )
-        }
     }
 
     private const val EMPTY_JSON = "{}"

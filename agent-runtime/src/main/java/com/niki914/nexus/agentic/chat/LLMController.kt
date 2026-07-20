@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.chat
 
+import android.content.Context
 import com.niki914.nexus.agentic.chat.agentic.PromptComposer
 import com.niki914.nexus.agentic.chat.agentic.PromptComposerInput
 import com.niki914.nexus.agentic.chat.agentic.SessionToolBinder
@@ -9,6 +10,7 @@ import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityControl
 import com.niki914.nexus.agentic.chat.agentic.mcp.McpDiscoveryCacheStore
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.agentic.chat.agentic.stream.LlmStreamEventMapper
+import com.niki914.nexus.agentic.runtime.R
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.model.LlmApiType
 import com.niki914.nexus.h.util.LockState
@@ -299,11 +301,11 @@ object LLMController {
         }
     }
 
-    private fun Throwable.toUserErrorMessage(): String {
+    private fun Throwable.toUserErrorMessage(context: Context? = null): String {
         return message
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
-            ?: DEFAULT_USER_ERROR_MESSAGE
+            ?: (context?.getString(R.string.error_llm_request_failed) ?: DEFAULT_USER_ERROR_MESSAGE)
     }
 
     private fun Throwable.toUserErrorCode(): LlmErrorCode? {

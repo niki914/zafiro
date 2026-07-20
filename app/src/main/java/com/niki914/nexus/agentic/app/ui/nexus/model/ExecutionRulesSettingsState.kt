@@ -70,9 +70,9 @@ sealed interface ExecutionRulesSettingsIntent {
 }
 
 sealed interface ExecutionRulesInlineError {
-    data class LoadFailed(val message: String) : ExecutionRulesInlineError
-    data class SaveFailed(val message: String) : ExecutionRulesInlineError
-    data class DeleteFailed(val message: String) : ExecutionRulesInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : ExecutionRulesInlineError
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : ExecutionRulesInlineError
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : ExecutionRulesInlineError
 }
 
 sealed interface ExecutionRulesSettingsEffect {
@@ -161,7 +161,8 @@ class ExecutionRulesSettingsViewModel :
                 copy(
                     isLoading = false,
                     inlineError = ExecutionRulesInlineError.LoadFailed(
-                        throwable.message ?: "读取执行规则失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_exec_rules_load_failed,
                     ),
                 )
             }
@@ -236,7 +237,8 @@ class ExecutionRulesSettingsViewModel :
                     },
                     isSaving = false,
                     inlineError = ExecutionRulesInlineError.SaveFailed(
-                        throwable.message ?: "保存执行规则失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_exec_rules_save_failed,
                     ),
                 )
             }
@@ -334,7 +336,8 @@ class ExecutionRulesSettingsViewModel :
                 copy(
                     isSaving = false,
                     inlineError = ExecutionRulesInlineError.SaveFailed(
-                        throwable.message ?: "保存执行规则失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_exec_rules_save_failed,
                     ),
                 )
             }
@@ -385,7 +388,8 @@ class ExecutionRulesSettingsViewModel :
                 copy(
                     isSaving = false,
                     inlineError = ExecutionRulesInlineError.DeleteFailed(
-                        throwable.message ?: "删除执行规则失败"
+                        message = throwable.message,
+                        fallbackResId = R.string.error_exec_rules_delete_failed,
                     ),
                 )
             }

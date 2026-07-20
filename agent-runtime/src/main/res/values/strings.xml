@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="error_llm_request_failed">请求失败，请重试</string>
+</resources>
