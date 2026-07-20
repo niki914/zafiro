@@ -3,7 +3,7 @@ package com.niki914.nexus.agentic.runtime.ipc
 import android.os.Parcel
 import android.os.Parcelable
 
-data class AgentEvent(
+data class RenderFrame(
     val text: String,
     val isFirst: Boolean = false,
     val isFinal: Boolean = false,
@@ -17,13 +17,13 @@ data class AgentEvent(
         dest.writeInt(if (isFinal) 1 else 0)
     }
 
-    companion object CREATOR : Parcelable.Creator<AgentEvent> {
-        override fun createFromParcel(source: Parcel): AgentEvent = AgentEvent(
+    companion object CREATOR : Parcelable.Creator<RenderFrame> {
+        override fun createFromParcel(source: Parcel): RenderFrame = RenderFrame(
             text = source.readString() ?: "",
             isFirst = source.readInt() == 1,
             isFinal = source.readInt() == 1,
         )
 
-        override fun newArray(size: Int): Array<AgentEvent?> = arrayOfNulls(size)
+        override fun newArray(size: Int): Array<RenderFrame?> = arrayOfNulls(size)
     }
 }

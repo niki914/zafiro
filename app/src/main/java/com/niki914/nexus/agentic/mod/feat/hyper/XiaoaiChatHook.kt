@@ -7,17 +7,17 @@ import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.BlockNativeTtsPlaybackH
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.CaptureInputHook
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.CaptureResponseTargetHook
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.RenderTextStreamCardHook
+import com.niki914.nexus.agentic.runtime.client.AssistantTextSource
 import com.niki914.nexus.h.xevent.XEvent
 import com.niki914.nexus.h.xevent.XEventContext
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
-/** XiaoAi 宿主主 Hook，编排全部子 Hook 安装、会话生命周期、关键词接管判定及 LLM 流式分片注入管线。 */
-class XiaoaiChatHook( // TODO P2(由于标记 Beta 所以放缓) NewRoom / 卡片采用白名单模式避免放行不正确的卡片
-    scope: CoroutineScope
-) : AbstractAssistantHook(scope) {
+class XiaoaiChatHook(
+    scope: CoroutineScope,
+    textSource: AssistantTextSource,
+) : AbstractAssistantHook(scope, textSource) {
     override val name: String = "XiaoaiChatHook"
 
     private var renderTextStreamCardHook: RenderTextStreamCardHook? = null
@@ -28,7 +28,6 @@ class XiaoaiChatHook( // TODO P2(由于标记 Beta 所以放缓) NewRoom / 卡�
 
     override suspend fun onSessionReset() {
         super.onSessionReset()
-        client?.resetConversation()
         targetReady.cancel()
         targetReady = CompletableDeferred()
         capturedResponseTarget = null
@@ -72,20 +71,18 @@ class XiaoaiChatHook( // TODO P2(由于标记 Beta 所以放缓) NewRoom / 卡�
 
         val eventContext = XEvent.snapshotContext()
         XEvent.withContext(eventContext) {
-            client!!.submit(query = query) { text, isFirst, isFinal ->
-                scope.launch {
+            try {
+                textSource.submit(query).collect { frame ->
                     targetReady.await()
-                    renderStreamCard(turnId, roomId, text, isFirst, isFinal)
+                    renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
                 }
-            }.onFailure { error ->
-                scope.launch {
-                    targetReady.await()
-                    renderStreamCard(
-                        turnId, roomId,
-                        error.message ?: "Service unavailable",
-                        true, true,
-                    )
-                }
+            } catch (e: Exception) {
+                targetReady.await()
+                renderStreamCard(
+                    turnId, roomId,
+                    e.message ?: "Service unavailable",
+                    true, true,
+                )
             }
         }
     }

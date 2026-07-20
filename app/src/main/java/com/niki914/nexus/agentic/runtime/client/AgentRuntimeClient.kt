@@ -4,18 +4,22 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import com.niki914.nexus.agentic.runtime.ipc.AgentEvent
-import com.niki914.nexus.agentic.runtime.ipc.IAgentEventCallback
 import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
+import com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback
+import com.niki914.nexus.agentic.runtime.ipc.RenderFrame
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.util.concurrent.ConcurrentLinkedQueue
+import kotlinx.coroutines.flow.callbackFlow
 
-class AgentRuntimeClient(private val context: Context) {
+class ServiceUnavailableException :
+    IllegalStateException("Agent runtime service is not connected")
+
+class AgentRuntimeClient(private val context: Context) : AssistantTextSource {
 
     enum class ConnectionState {
         Disconnected,
@@ -35,7 +39,6 @@ class AgentRuntimeClient(private val context: Context) {
     private var deathRecipient: IBinder.DeathRecipient? = null
     private var retryCount = 0
 
-    private val pendingSubmits = ConcurrentLinkedQueue<() -> Unit>()
     private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
@@ -76,63 +79,52 @@ class AgentRuntimeClient(private val context: Context) {
     fun disconnect() {
         deathRecipient?.let { dr ->
             binder?.let { b ->
-                try {
-                    b.unlinkToDeath(dr, 0)
-                } catch (_: Exception) {}
+                try { b.unlinkToDeath(dr, 0) } catch (_: Exception) {}
             }
         }
         deathRecipient = null
         if (bound) {
-            try {
-                context.unbindService(serviceConnection)
-            } catch (_: Exception) {}
+            try { context.unbindService(serviceConnection) } catch (_: Exception) {}
             bound = false
         }
-        pendingSubmits.clear()
         service = null
         binder = null
+        retryCount = 0
         _connectionState.value = ConnectionState.Disconnected
     }
 
-    // --- IPC methods ---
+    // --- AssistantTextSource ---
 
-    fun submit(
-        query: String,
-        params: Bundle = Bundle.EMPTY,
-        onFrame: (text: String, isFirst: Boolean, isFinal: Boolean) -> Unit,
-    ): Result<Unit> {
+    override fun submit(query: String): Flow<RenderFrame> = callbackFlow {
         val svc = service
         if (svc == null) {
-            pendingSubmits.add {
-                submit(query, params, onFrame)
-            }
-            return Result.success(Unit)
+            close(ServiceUnavailableException())
+            return@callbackFlow
         }
-        return try {
-            val callback = object : IAgentEventCallback.Stub() {
-                override fun onEvent(event: AgentEvent?) {
-                    if (event != null) {
-                        mainHandler.post { onFrame(event.text, event.isFirst, event.isFinal) }
+        val callback = object : IRenderFrameCallback.Stub() {
+            override fun onFrame(frame: RenderFrame?) {
+                if (frame != null) {
+                    trySend(frame)
+                    if (frame.isFinal) {
+                        close()
                     }
                 }
             }
-            svc.submit(query, params, callback)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
+        try {
+            svc.submit(query, callback)
+        } catch (e: Exception) {
+            close(e)
+        }
+        awaitClose {}
     }
 
-    fun cancel() {
-        try {
-            service?.cancel()
-        } catch (_: Exception) {}
+    override suspend fun cancel() {
+        try { service?.cancel() } catch (_: Exception) {}
     }
 
-    fun resetConversation() {
-        try {
-            service?.resetConversation()
-        } catch (_: Exception) {}
+    override suspend fun resetConversation() {
+        try { service?.resetConversation() } catch (_: Exception) {}
     }
 
     // --- Binder death ---
@@ -142,7 +134,6 @@ class AgentRuntimeClient(private val context: Context) {
             deathRecipient = null
             service = null
             binder = null
-            pendingSubmits.clear()
             _connectionState.value = ConnectionState.Disconnected
         }
     }
@@ -155,27 +146,20 @@ class AgentRuntimeClient(private val context: Context) {
             service = svc
             this@AgentRuntimeClient.binder = binder
 
-            // Register death recipient
             deathRecipient?.let { dr ->
                 binder?.let { b ->
-                    try {
-                        b.linkToDeath(dr, 0)
-                    } catch (_: Exception) {}
+                    try { b.linkToDeath(dr, 0) } catch (_: Exception) {}
                 }
             }
 
+            retryCount = 0
             _connectionState.value = ConnectionState.Connected
-
-            // Drain pending submits
-            while (true) {
-                val pending = pendingSubmits.poll() ?: break
-                pending()
-            }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             service = null
             binder = null
+            bound = false
             _connectionState.value = ConnectionState.Reconnecting
 
             retryCount++
@@ -183,7 +167,7 @@ class AgentRuntimeClient(private val context: Context) {
                 mainHandler.postDelayed(
                     {
                         if (_connectionState.value == ConnectionState.Reconnecting) {
-                            connect()
+                            reconnect()
                         }
                     },
                     RETRY_DELAY_MS,
@@ -191,6 +175,27 @@ class AgentRuntimeClient(private val context: Context) {
             } else {
                 _connectionState.value = ConnectionState.Unavailable
             }
+        }
+    }
+
+    private fun reconnect() {
+        if (bound) {
+            try { context.unbindService(serviceConnection) } catch (_: Exception) {}
+            bound = false
+        }
+        _connectionState.value = ConnectionState.Connecting
+
+        deathRecipient = IBinder.DeathRecipient { handleBinderDeath() }
+
+        val intent = Intent(BIND_ACTION).apply {
+            setClassName(NEXUS_PACKAGE, SERVICE_CLASS)
+        }
+
+        try {
+            context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+            bound = true
+        } catch (e: Exception) {
+            _connectionState.value = ConnectionState.Unavailable
         }
     }
 }

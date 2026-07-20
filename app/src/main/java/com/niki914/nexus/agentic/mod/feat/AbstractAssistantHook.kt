@@ -4,25 +4,22 @@ import com.niki914.nexus.agentic.chat.ActiveTurnStore
 import com.niki914.nexus.agentic.chat.ConversationTurnState
 import com.niki914.nexus.agentic.chat.TurnMode
 import com.niki914.nexus.agentic.repo.XRepo
+import com.niki914.nexus.agentic.runtime.client.AssistantTextSource
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverTarget
 import com.niki914.nexus.agentic.takeover.TakeoverDecision
 import com.niki914.nexus.agentic.takeover.TakeoverResolver
 import com.niki914.nexus.h.core.runtime.Hook
-import com.niki914.nexus.agentic.runtime.client.AgentRuntimeClient
 import com.niki914.nexus.h.xevent.XEvent
 import com.niki914.nexus.h.xevent.XEventContext
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/**
- * 抽象语音助手 Hook 基类，规范核心生命周期与功能职责
- *
- * TODO 统一所有业务下的 subhooks、云 config、AbstractAssistantHook 方法命名
- */
-abstract class AbstractAssistantHook(protected val scope: CoroutineScope) : Hook {
+abstract class AbstractAssistantHook(
+    protected val scope: CoroutineScope,
+    protected val textSource: AssistantTextSource,
+) : Hook {
     protected open val floatResumeGraceWindowMs: Long = 1500L
-    var client: AgentRuntimeClient? = null
 
     protected fun installFloatScreenDetachHooks(
         lpparam: XC_LoadPackage.LoadPackageParam,
@@ -87,7 +84,7 @@ abstract class AbstractAssistantHook(protected val scope: CoroutineScope) : Hook
             )
 
             if (nextTurnState.mode == TurnMode.NativeTakeover) {
-                client?.cancel()
+                textSource.cancel()
                 return@withContext
             }
 
@@ -113,7 +110,7 @@ abstract class AbstractAssistantHook(protected val scope: CoroutineScope) : Hook
     }
 
     protected open suspend fun onSessionReset() {
-        client?.resetConversation()
+        textSource.resetConversation()
         ActiveTurnStore.clear()
         XEvent.clearContext()
     }
@@ -122,51 +119,28 @@ abstract class AbstractAssistantHook(protected val scope: CoroutineScope) : Hook
 
     protected abstract fun installResponseHooks(lpparam: XC_LoadPackage.LoadPackageParam)
 
-    /**
-     * 监听输入逻辑，当捕获到用户输入时，调用 [onInput] 回调
-     */
     protected abstract fun installInputHooks(
         lpparam: XC_LoadPackage.LoadPackageParam,
         onInput: (roomId: String, query: String) -> Unit
     )
 
-    /**
-     * 将查询分发给 LLM SDK
-     */
     protected open suspend fun dispatchQueryToLLM(turnId: Long, roomId: String, query: String) {
         val eventContext = XEvent.snapshotContext()
         XEvent.withContext(eventContext) {
-            val cl = client
-            if (cl == null) {
-                scope.launch {
-                    renderStreamCard(turnId, roomId, "Runtime client not initialized", true, true)
+            try {
+                textSource.submit(query).collect { frame ->
+                    renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
                 }
-                return@withContext
-            }
-            cl.submit(query = query) { text, isFirst, isFinal ->
-                scope.launch {
-                    renderStreamCard(turnId, roomId, text, isFirst, isFinal)
-                }
-            }.onFailure { error ->
-                scope.launch {
-                    renderStreamCard(
-                        turnId, roomId,
-                        error.message ?: "Service unavailable",
-                        true, true,
-                    )
-                }
+            } catch (e: Exception) {
+                renderStreamCard(
+                    turnId, roomId,
+                    e.message ?: "Service unavailable",
+                    true, true,
+                )
             }
         }
     }
 
-    /**
-     * 渲染流式返回的大模型文本卡片
-     * @param turnId 当前轮次 ID
-     * @param roomId 当前会话 roomId
-     * @param chunk 累加后的流式文本块
-     * @param isFirst 是否为第一片
-     * @param isFinal 是否为最后一片
-     */
     protected abstract suspend fun renderStreamCard(
         turnId: Long,
         roomId: String,

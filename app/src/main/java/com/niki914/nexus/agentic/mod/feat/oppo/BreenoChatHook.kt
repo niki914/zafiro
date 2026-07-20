@@ -8,6 +8,7 @@ import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.BlockNativeCardHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.CaptureInputHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.ResetConversationSignalHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.SuppressCleanupHook
+import com.niki914.nexus.agentic.runtime.client.AssistantTextSource
 import com.niki914.nexus.h.util.call
 import com.niki914.nexus.h.util.findClass
 import de.robv.android.xposed.callbacks.XC_LoadPackage
@@ -16,8 +17,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** Breeno 宿主主 Hook，走回答卡片层做注入：复用同一张卡片并持续用累计文本全量刷新内容。 */
-class BreenoChatHook(scope: CoroutineScope) : AbstractAssistantHook(scope) {
+class BreenoChatHook(
+    scope: CoroutineScope,
+    textSource: AssistantTextSource,
+) : AbstractAssistantHook(scope, textSource) {
 
     override val name: String = "BreenoChatHook"
 
@@ -44,7 +47,6 @@ class BreenoChatHook(scope: CoroutineScope) : AbstractAssistantHook(scope) {
 
     override suspend fun onSessionReset() {
         super.onSessionReset()
-        client?.resetConversation()
         clearRenderSession()
     }
 

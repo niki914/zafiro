@@ -5,10 +5,10 @@ import android.os.IBinder
 import android.os.IInterface
 import android.os.Parcel
 
-interface IAgentEventCallback : IInterface {
-    fun onEvent(event: AgentEvent?)
+interface IRenderFrameCallback : IInterface {
+    fun onFrame(frame: RenderFrame?)
 
-    abstract class Stub : Binder(), IAgentEventCallback {
+    abstract class Stub : Binder(), IRenderFrameCallback {
         init {
             attachInterface(this, DESCRIPTOR)
         }
@@ -17,14 +17,14 @@ interface IAgentEventCallback : IInterface {
 
         override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
             when (code) {
-                TRANSACTION_onEvent -> {
+                TRANSACTION_onFrame -> {
                     data.enforceInterface(DESCRIPTOR)
-                    val event = if (data.readInt() != 0) {
-                        AgentEvent.CREATOR.createFromParcel(data)
+                    val frame = if (data.readInt() != 0) {
+                        RenderFrame.CREATOR.createFromParcel(data)
                     } else {
                         null
                     }
-                    onEvent(event)
+                    onFrame(frame)
                     return true
                 }
                 else -> return super.onTransact(code, data, reply, flags)
@@ -32,31 +32,31 @@ interface IAgentEventCallback : IInterface {
         }
 
         companion object {
-            private const val DESCRIPTOR = "com.niki914.nexus.agentic.runtime.ipc.IAgentEventCallback"
-            private const val TRANSACTION_onEvent = 1
+            private const val DESCRIPTOR = "com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback"
+            private const val TRANSACTION_onFrame = 1
 
-            fun asInterface(obj: IBinder?): IAgentEventCallback? {
+            fun asInterface(obj: IBinder?): IRenderFrameCallback? {
                 if (obj == null) return null
                 val iin = obj.queryLocalInterface(DESCRIPTOR)
-                if (iin != null && iin is IAgentEventCallback) return iin
+                if (iin != null && iin is IRenderFrameCallback) return iin
                 return Proxy(obj)
             }
         }
 
-        private class Proxy(private val remote: IBinder) : IAgentEventCallback {
+        private class Proxy(private val remote: IBinder) : IRenderFrameCallback {
             override fun asBinder(): IBinder = remote
 
-            override fun onEvent(event: AgentEvent?) {
+            override fun onFrame(frame: RenderFrame?) {
                 val data = Parcel.obtain()
                 try {
                     data.writeInterfaceToken(DESCRIPTOR)
-                    if (event != null) {
+                    if (frame != null) {
                         data.writeInt(1)
-                        event.writeToParcel(data, 0)
+                        frame.writeToParcel(data, 0)
                     } else {
                         data.writeInt(0)
                     }
-                    remote.transact(TRANSACTION_onEvent, data, null, IBinder.FLAG_ONEWAY)
+                    remote.transact(TRANSACTION_onFrame, data, null, IBinder.FLAG_ONEWAY)
                 } finally {
                     data.recycle()
                 }

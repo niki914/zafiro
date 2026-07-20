@@ -88,8 +88,8 @@ class Entrance : IXposed() {
         val hostApp = HostApp.fromPackageName(params.packageName)
         val hookInstance: Hook? = when {
             targetPkg != params.packageName -> null
-            hostApp == HostApp.Breeno -> BreenoChatHook(scope).also { it.client = client }
-            hostApp == HostApp.XiaoAi -> XiaoaiChatHook(scope).also { it.client = client }
+            hostApp == HostApp.Breeno -> BreenoChatHook(scope, client)
+            hostApp == HostApp.XiaoAi -> XiaoaiChatHook(scope, client)
             else -> null
         }
 
