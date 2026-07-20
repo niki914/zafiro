@@ -77,6 +77,7 @@ internal fun toAssistantErrorUi(message: String, code: LlmErrorCode?): Assistant
             bodyRes = R.string.ui_home_error_config_required_body,
         )
 
+        LlmErrorCode.TurnConflict,
         null -> {
             val normalized = message.trim()
             if (normalized.isEmpty()) {

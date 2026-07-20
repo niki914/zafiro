@@ -2,10 +2,9 @@ package com.niki914.nexus.agentic.mod.feat.oppo
 
 import com.niki914.nexus.agentic.chat.ActiveTurnStore
 import com.niki914.nexus.agentic.chat.ConversationTurnState
-import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.nexus.agentic.chat.TurnMode
-import com.niki914.nexus.agentic.chat.collectAsFull
 import com.niki914.nexus.agentic.mod.feat.AbstractAssistantHook
+import com.niki914.nexus.agentic.runtime.ipc.AgentEvent
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.BlockNativeCardHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.CaptureInputHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.ResetConversationSignalHook
@@ -47,7 +46,7 @@ class BreenoChatHook(scope: CoroutineScope) : AbstractAssistantHook(scope) {
 
     override suspend fun onSessionReset() {
         super.onSessionReset()
-        LLMController.resetConversation()
+        client?.resetConversation()
         clearRenderSession()
     }
 
@@ -92,10 +91,55 @@ class BreenoChatHook(scope: CoroutineScope) : AbstractAssistantHook(scope) {
     override suspend fun dispatchQueryToLLM(turnId: Long, roomId: String, query: String) {
         val eventContext = XEvent.snapshotContext()
         XEvent.withContext(eventContext) {
-            LLMController.stream(query).collectAsFull { frame ->
-                renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
+            client!!.submit(query = query) { event ->
+                when (event.eventType) {
+                    "TextDelta" -> scope.launch {
+                        renderStreamCard(turnId, roomId, event.text!!, event.isFirst, event.isFinal)
+                    }
+                    "ToolRunning" -> onToolRunning(turnId, roomId, event.toolName!!, event.toolLabel!!)
+                    "ToolSucceeded" -> onToolSucceeded(turnId, roomId, event.toolName!!, event.toolOutput)
+                    "ToolFailed" -> onToolFailed(turnId, roomId, event.toolName!!, event.toolError.orEmpty())
+                    "Completed" -> scope.launch {
+                        renderStreamCard(turnId, roomId, event.text!!, false, true)
+                    }
+                    "Error" -> onTurnError(turnId, roomId, event.errorMessage.orEmpty(), event.errorCode)
+                    "Cancelled" -> onTurnCancelled(turnId, roomId)
+                }
+            }.onFailure { error ->
+                onTurnError(turnId, roomId, error.message ?: "Service unavailable", "SERVICE_UNAVAILABLE")
             }
         }
+    }
+
+    override fun onToolRunning(turnId: Long, roomId: String, toolName: String, toolLabel: String) {
+        scope.launch {
+            val statusText = "正在执行 $toolLabel..."
+            renderStreamCard(turnId, roomId, statusText, false, false)
+        }
+    }
+
+    override fun onToolSucceeded(turnId: Long, roomId: String, toolName: String, outputText: String?) {
+        scope.launch {
+            val statusText = outputText?.let { "$toolName 完成: $it" } ?: "$toolName 完成"
+            renderStreamCard(turnId, roomId, statusText, false, false)
+        }
+    }
+
+    override fun onToolFailed(turnId: Long, roomId: String, toolName: String, message: String) {
+        scope.launch {
+            val statusText = "$toolName 失败: $message"
+            renderStreamCard(turnId, roomId, statusText, false, false)
+        }
+    }
+
+    override fun onTurnError(turnId: Long, roomId: String, message: String, errorCode: String?) {
+        scope.launch {
+            renderStreamCard(turnId, roomId, message, true, true)
+        }
+    }
+
+    override fun onTurnCancelled(turnId: Long, roomId: String) {
+        scope.launch { clearRenderSession(turnId) }
     }
 
     override suspend fun renderStreamCard(

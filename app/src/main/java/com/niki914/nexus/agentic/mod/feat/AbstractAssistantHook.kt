@@ -2,13 +2,14 @@ package com.niki914.nexus.agentic.mod.feat
 
 import com.niki914.nexus.agentic.chat.ActiveTurnStore
 import com.niki914.nexus.agentic.chat.ConversationTurnState
-import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.nexus.agentic.chat.TurnMode
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverTarget
 import com.niki914.nexus.agentic.takeover.TakeoverDecision
 import com.niki914.nexus.agentic.takeover.TakeoverResolver
 import com.niki914.nexus.h.core.runtime.Hook
+import com.niki914.nexus.agentic.runtime.client.AgentRuntimeClient
+import com.niki914.nexus.agentic.runtime.ipc.AgentEvent
 import com.niki914.nexus.h.xevent.XEvent
 import com.niki914.nexus.h.xevent.XEventContext
 import de.robv.android.xposed.callbacks.XC_LoadPackage
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
  */
 abstract class AbstractAssistantHook(protected val scope: CoroutineScope) : Hook {
     protected open val floatResumeGraceWindowMs: Long = 1500L
+    var client: AgentRuntimeClient? = null
 
     protected fun installFloatScreenDetachHooks(
         lpparam: XC_LoadPackage.LoadPackageParam,
@@ -86,7 +88,7 @@ abstract class AbstractAssistantHook(protected val scope: CoroutineScope) : Hook
             )
 
             if (nextTurnState.mode == TurnMode.NativeTakeover) {
-                LLMController.stopCurrentRound(keepCurrentTurn = false)
+                client?.cancel()
                 return@withContext
             }
 
@@ -112,10 +114,16 @@ abstract class AbstractAssistantHook(protected val scope: CoroutineScope) : Hook
     }
 
     protected open suspend fun onSessionReset() {
-        LLMController.resetConversation()
+        client?.resetConversation()
         ActiveTurnStore.clear()
         XEvent.clearContext()
     }
+
+    protected open fun onToolRunning(turnId: Long, roomId: String, toolName: String, toolLabel: String) = Unit
+    protected open fun onToolSucceeded(turnId: Long, roomId: String, toolName: String, outputText: String?) = Unit
+    protected open fun onToolFailed(turnId: Long, roomId: String, toolName: String, message: String) = Unit
+    protected open fun onTurnError(turnId: Long, roomId: String, message: String, errorCode: String?) = Unit
+    protected open fun onTurnCancelled(turnId: Long, roomId: String) = Unit
 
     protected abstract fun installSessionHooks(lpparam: XC_LoadPackage.LoadPackageParam)
 
@@ -132,7 +140,33 @@ abstract class AbstractAssistantHook(protected val scope: CoroutineScope) : Hook
     /**
      * 将查询分发给 LLM SDK
      */
-    protected abstract suspend fun dispatchQueryToLLM(turnId: Long, roomId: String, query: String)
+    protected open suspend fun dispatchQueryToLLM(turnId: Long, roomId: String, query: String) {
+        val eventContext = XEvent.snapshotContext()
+        XEvent.withContext(eventContext) {
+            val cl = client
+            if (cl == null) {
+                onTurnError(turnId, roomId, "Runtime client not initialized", "SERVICE_UNAVAILABLE")
+                return@withContext
+            }
+            cl.submit(query = query) { event ->
+                when (event.eventType) {
+                    "TextDelta" -> scope.launch {
+                        renderStreamCard(turnId, roomId, event.text!!, event.isFirst, event.isFinal)
+                    }
+                    "ToolRunning" -> onToolRunning(turnId, roomId, event.toolName!!, event.toolLabel!!)
+                    "ToolSucceeded" -> onToolSucceeded(turnId, roomId, event.toolName!!, event.toolOutput)
+                    "ToolFailed" -> onToolFailed(turnId, roomId, event.toolName!!, event.toolError.orEmpty())
+                    "Completed" -> scope.launch {
+                        renderStreamCard(turnId, roomId, event.text!!, false, true)
+                    }
+                    "Error" -> onTurnError(turnId, roomId, event.errorMessage.orEmpty(), event.errorCode)
+                    "Cancelled" -> onTurnCancelled(turnId, roomId)
+                }
+            }.onFailure { error ->
+                onTurnError(turnId, roomId, error.message ?: "Service unavailable", "SERVICE_UNAVAILABLE")
+            }
+        }
+    }
 
     /**
      * 渲染流式返回的大模型文本卡片

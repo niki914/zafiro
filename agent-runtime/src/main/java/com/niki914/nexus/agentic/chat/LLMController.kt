@@ -27,6 +27,10 @@ import kotlinx.coroutines.flow.flowOn
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 
 object LLMController {
+    @Volatile
+    private var isRunning: Boolean = false
+    private val turnLock = Any()
+
     internal const val CONFIG_REQUIRED_MESSAGE = "请先填写配置"
     private const val DEFAULT_USER_ERROR_MESSAGE = "请求失败，请重试"
 
@@ -139,6 +143,7 @@ object LLMController {
     }
 
     fun stream(query: String): Flow<LlmStreamEvent> = channelFlow {
+        check(tryAcquireTurn()) { "A turn is already active" }
         val state = try {
             refresh()
             runtimeState
@@ -225,6 +230,7 @@ object LLMController {
             )
         } finally {
             AccessibilityController.onTurnEnd()
+            resetRunningState()
         }
     }.flowOn(Dispatchers.IO)
 
@@ -281,6 +287,14 @@ object LLMController {
             return memories
         }
         return listOfNotNull(config.memoryPrompt.trim().takeIf { it.isNotBlank() })
+    }
+
+    private fun tryAcquireTurn(): Boolean = synchronized(turnLock) {
+        if (isRunning) false else { isRunning = true; true }
+    }
+
+    fun resetRunningState() = synchronized(turnLock) {
+        isRunning = false
     }
 
     internal fun validateLlmConfig(config: LlmConfig) {

@@ -8,8 +8,7 @@ import com.niki914.nexus.agentic.mod.feat.oppo.BreenoChatHook
 import com.niki914.nexus.agentic.repo.WebSettingsFailureReason
 import com.niki914.nexus.agentic.repo.WebSettingsResult
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.agentic.runtime.createAppRuntimeBridge
-import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
+import com.niki914.nexus.agentic.runtime.client.AgentRuntimeClient
 import com.niki914.nexus.h.IXposed
 import com.niki914.nexus.h.core.runtime.Hook
 import com.niki914.nexus.h.core.runtime.Runtime
@@ -41,7 +40,8 @@ class Entrance : IXposed() {
         scope.launch(Dispatchers.IO) {
             val ctx = ContextProvider.await()
             XRepo.init(ctx)
-            RuntimeEnvironment.install(createAppRuntimeBridge())
+            val client = AgentRuntimeClient(ctx)
+            client.connect()
 
             HookLocalSettings.update(ctx)
             val webSettingsResult = XRepo.web.await()
@@ -78,18 +78,18 @@ class Entrance : IXposed() {
 
             val configObj = webSettingsResult.configOrNull()
             if (configObj != null) {
-                onSettingsFetched(params, targetPkg)
+                onSettingsFetched(params, targetPkg, client)
             }
         }
     }
 
-    private fun onSettingsFetched(params: XC_LoadPackage.LoadPackageParam, targetPkg: String?) {
+    private fun onSettingsFetched(params: XC_LoadPackage.LoadPackageParam, targetPkg: String?, client: AgentRuntimeClient) {
         // 根据 targetPkg 进行映射和 Hook 路由
         val hostApp = HostApp.fromPackageName(params.packageName)
         val hookInstance: Hook? = when {
             targetPkg != params.packageName -> null
-            hostApp == HostApp.Breeno -> BreenoChatHook(scope)
-            hostApp == HostApp.XiaoAi -> XiaoaiChatHook(scope)
+            hostApp == HostApp.Breeno -> BreenoChatHook(scope).also { it.client = client }
+            hostApp == HostApp.XiaoAi -> XiaoaiChatHook(scope).also { it.client = client }
             else -> null
         }
 

@@ -1,9 +1,8 @@
 package com.niki914.nexus.agentic.mod.feat.hyper
 
 import com.niki914.nexus.agentic.chat.ActiveTurnStore
-import com.niki914.nexus.agentic.chat.LLMController
-import com.niki914.nexus.agentic.chat.collectAsChunk
 import com.niki914.nexus.agentic.mod.feat.AbstractAssistantHook
+import com.niki914.nexus.agentic.runtime.ipc.AgentEvent
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.BlockNativeInstructionByWhitelistHook
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.BlockNativeTtsPlaybackHook
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.CaptureInputHook
@@ -14,10 +13,7 @@ import com.niki914.nexus.h.xevent.XEventContext
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.launch
 
 /** XiaoAi 宿主主 Hook，编排全部子 Hook 安装、会话生命周期、关键词接管判定及 LLM 流式分片注入管线。 */
 class XiaoaiChatHook( // TODO P2(由于标记 Beta 所以放缓) NewRoom / 卡片采用白名单模式避免放行不正确的卡片
@@ -33,7 +29,7 @@ class XiaoaiChatHook( // TODO P2(由于标记 Beta 所以放缓) NewRoom / 卡�
 
     override suspend fun onSessionReset() {
         super.onSessionReset()
-        LLMController.resetConversation()
+        client?.resetConversation()
         targetReady.cancel()
         targetReady = CompletableDeferred()
         capturedResponseTarget = null
@@ -76,15 +72,35 @@ class XiaoaiChatHook( // TODO P2(由于标记 Beta 所以放缓) NewRoom / 卡�
         targetReady = CompletableDeferred()
 
         val eventContext = XEvent.snapshotContext()
-        val sharedFlow = LLMController.stream(query)
-            .withXEventContext(eventContext)
-            .shareIn(scope, SharingStarted.Eagerly, replay = Int.MAX_VALUE)
-
-        targetReady.await() // TODO P1 死等风险
-
         XEvent.withContext(eventContext) {
-            sharedFlow.collectAsChunk { frame ->
-                renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
+            client!!.submit(query = query) { event ->
+                scope.launch {
+                    targetReady.await()
+                    when (event.eventType) {
+                        "TextDelta" -> renderStreamCard(
+                            turnId, roomId, event.text!!, event.isFirst, event.isFinal
+                        )
+                        "Completed" -> renderStreamCard(
+                            turnId, roomId, event.text!!, false, true
+                        )
+                        "Error", "Cancelled" -> {
+                            renderStreamCard(
+                                turnId, roomId,
+                                event.errorMessage ?: "Service error",
+                                true, true
+                            )
+                        }
+                    }
+                }
+            }.onFailure { error ->
+                scope.launch {
+                    targetReady.await()
+                    renderStreamCard(
+                        turnId, roomId,
+                        error.message ?: "Service unavailable",
+                        true, true
+                    )
+                }
             }
         }
     }
@@ -109,7 +125,4 @@ class XiaoaiChatHook( // TODO P2(由于标记 Beta 所以放缓) NewRoom / 卡�
             isFinal = isFinal
         )
     }
-
-    private fun <T> Flow<T>.withXEventContext(context: XEventContext?): Flow<T> =
-        flowOn(XEvent.asCoroutineContext(context))
 }
