@@ -166,8 +166,7 @@ class PointerOverlay : IPointerOverlay {
             moveTo(sx, sy)
             lineTo(ex, ey)
         }
-        val h = atan2(ey - sy, ex - sx)
-        animatePathRaw(path2, ex, ey, h)
+        animatePathRaw(path2, ex, ey, fixedHeading = true)
     }
 
     // ============================================================
@@ -231,12 +230,16 @@ class PointerOverlay : IPointerOverlay {
     // ============================================================
 
     private suspend fun animatePath(path: Path, toX: Float, toY: Float) {
-        animatePathRaw(path, toX, toY, IDLE_HEADING)
+        animatePathRaw(path, toX, toY, fixedHeading = false)
     }
 
-    /** Drive a [ValueAnimator] along [path], ending at (toX,toY) with [endHeading]. */
+    /**
+     * Drive a [ValueAnimator] along [path], ending at (toX,toY).
+     * When [fixedHeading] is true the pointer keeps its current angle (mouse-like);
+     * when false it rotates to follow the path tangent (fish-like).
+     */
     private suspend fun animatePathRaw(
-        path: Path, toX: Float, toY: Float, endHeading: Float,
+        path: Path, toX: Float, toY: Float, fixedHeading: Boolean,
     ) {
         val pm = PathMeasure(path, false)
         val arcLen = pm.length
@@ -248,6 +251,8 @@ class PointerOverlay : IPointerOverlay {
         val durationMs =
             (arcLen / (MAX_SPEED_PX_PER_S * 0.55f) * 1000f).toLong().coerceAtLeast(50L)
 
+        val startHeading = curHeading
+
         suspendCancellableCoroutine<Unit> { cont ->
             val anim = ValueAnimator.ofFloat(0f, 1f).apply {
                 interpolator = LinearInterpolator() // speed handled in update
@@ -256,7 +261,7 @@ class PointerOverlay : IPointerOverlay {
                     val timeFrac = it.animatedValue as Float
                     val distFrac = timeToDistance(timeFrac)
                     pm.getPosTan(distFrac * arcLen, pos, tan)
-                    val h = atan2(tan[1], tan[0])
+                    val h = if (fixedHeading) startHeading else atan2(tan[1], tan[0])
                     handler.post {
                         curX = pos[0]; curY = pos[1]; curHeading = h
                         applyTransform(pos[0], pos[1], h)
@@ -266,8 +271,9 @@ class PointerOverlay : IPointerOverlay {
                     override fun onAnimationStart(a: android.animation.Animator) {}
                     override fun onAnimationEnd(a: android.animation.Animator) {
                         runningAnim = null
-                        curX = toX; curY = toY; curHeading = endHeading
-                        handler.post { applyTransform(toX, toY, endHeading) }
+                        val h = if (fixedHeading) startHeading else IDLE_HEADING
+                        curX = toX; curY = toY; curHeading = h
+                        handler.post { applyTransform(toX, toY, h) }
                         if (cont.isActive) cont.resume(Unit)
                     }
                     override fun onAnimationCancel(a: android.animation.Animator) {
