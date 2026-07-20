@@ -65,6 +65,7 @@ class XiaoaiChatHook(
         CaptureInputHook(onInput = onInput).onHook(lpparam)
     }
 
+    // 覆盖基类：渲染前需等待宿主 UI 卡片就绪（TODO 死等风险：若 Hook 永不触发则挂死）
     override suspend fun dispatchQueryToLLM(turnId: Long, roomId: String, query: String) {
         targetReady.cancel()
         targetReady = CompletableDeferred()

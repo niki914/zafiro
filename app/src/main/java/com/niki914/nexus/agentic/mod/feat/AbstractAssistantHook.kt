@@ -124,6 +124,7 @@ abstract class AbstractAssistantHook(
         onInput: (roomId: String, query: String) -> Unit
     )
 
+    // 默认通过 textSource 提交查询并渲染；子类可覆盖以插入宿主特定的等待逻辑
     protected open suspend fun dispatchQueryToLLM(turnId: Long, roomId: String, query: String) {
         val eventContext = XEvent.snapshotContext()
         XEvent.withContext(eventContext) {
@@ -141,6 +142,7 @@ abstract class AbstractAssistantHook(
         }
     }
 
+    /** 将流式文本帧渲染到宿主 UI。Breeno 全量刷新单卡片，XiaoAi 流式注入文本节点。 */
     protected abstract suspend fun renderStreamCard(
         turnId: Long,
         roomId: String,
