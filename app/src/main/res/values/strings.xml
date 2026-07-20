@@ -328,11 +328,7 @@
     <string name="error_memory_delete_failed">删除记忆失败</string>
 
     <!-- Feedback templates -->
-    <string name="feedback_feature_template"><![CDATA[## 功能建议
-
-## 使用场景
-
-## 预期效果]]></string>
+    <string name="feedback_feature_template">## 功能建议\n\n## 使用场景\n\n## 预期效果</string>
     <!-- Host App Display Names -->
     <string name="host_breeno_display_name">小布助手</string>
     <string name="host_xiaoai_display_name">小爱同学</string>
@@ -341,20 +337,8 @@
     <string name="fallback_assistant_name">助手</string>
     <string name="notif_unsupported_version_title">宿主版本未适配</string>
     <string name="notif_unsupported_version_body">当前%1$s版本还未被 Nexus 支持\n宿主版本：%2$s</string>
+    <string name="notif_unsupported_issue_title">[BUG] 宿主版本未适配</string>
+    <string name="notif_unsupported_issue_body">## 问题描述\n当前%1$s版本还未被 Nexus 支持\n宿主版本：%2$s\n\n## 复现步骤\n\n\n## 设备信息\n- 助手：%1$s\n- 助手版本：%2$s\n- 模块版本：</string>
 
-    <string name="feedback_bug_template"><![CDATA[## 问题描述
-
-## 复现步骤
-
-## 预期行为
-
-## 实际行为
-
-## 设备信息
-- Android 版本：
-- 助手（小布或其他）：
-- 模块版本：
-
-## 更多
-可以补充日志、截图录屏等信息，以便于我们理解]]></string>
+    <string name="feedback_bug_template">## 问题描述\n\n## 复现步骤\n\n## 预期行为\n\n## 实际行为\n\n## 设备信息\n- Android 版本：\n- 助手（小布或其他）：\n- 模块版本：\n\n## 更多\n可以补充日志、截图录屏等信息，以便于我们理解</string>
 </resources>

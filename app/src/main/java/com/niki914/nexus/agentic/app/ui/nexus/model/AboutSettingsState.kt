@@ -2,11 +2,10 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import androidx.annotation.StringRes
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.cb.ComposeMVIViewModel
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 enum class AboutSettingsItemId {
     AuthorHomepage,
@@ -103,15 +102,15 @@ private fun aboutSettingsItems(): List<AboutSettingsItemUiState> {
 }
 
 private fun issueUri(title: String, body: String): String {
-    return "$ISSUES_NEW_URI?title=${encodeUriQueryValue(title)}&body=${encodeUriQueryValue(body)}"
+    return Uri.Builder()
+        .scheme("https")
+        .authority("github.com")
+        .path("/niki914/agentic-nexus/issues/new")
+        .appendQueryParameter("title", title)
+        .appendQueryParameter("body", body)
+        .build()
+        .toString()
 }
-
-private fun encodeUriQueryValue(value: String): String {
-    return URLEncoder.encode(value, StandardCharsets.UTF_8.name())
-        .replace("+", "%20")
-}
-
-private const val ISSUES_NEW_URI = "https://github.com/niki914/agentic-nexus/issues/new"
 
 private const val FEATURE_FEEDBACK_TITLE = "[FEATURE] "
 private const val BUG_FEEDBACK_TITLE = "[BUG] "

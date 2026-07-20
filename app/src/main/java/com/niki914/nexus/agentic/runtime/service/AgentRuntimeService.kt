@@ -9,6 +9,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.DeadObjectException
@@ -208,10 +209,19 @@ class AgentRuntimeService : Service() {
             val hostApp = HostApp.fromPackageName(hostPackageName)
             val hostName = hostApp?.let { ctx.displayNameFor(it) }
                 ?: ctx.getString(AppR.string.fallback_assistant_name)
+            val version = hostVersion ?: ""
+            val issueUri = Uri.Builder()
+                .scheme("https")
+                .authority("github.com")
+                .path("/niki914/agentic-nexus/issues/new")
+                .appendQueryParameter("title", ctx.getString(AppR.string.notif_unsupported_issue_title))
+                .appendQueryParameter("body", ctx.getString(AppR.string.notif_unsupported_issue_body, hostName, version))
+                .build()
+                .toString()
             postNotificationImpl(
                 ctx.getString(AppR.string.notif_unsupported_version_title),
-                ctx.getString(AppR.string.notif_unsupported_version_body, hostName, hostVersion ?: ""),
-                "https://github.com/niki914/agentic-nexus/issues/new"
+                ctx.getString(AppR.string.notif_unsupported_version_body, hostName, version),
+                issueUri
             )
         }
 

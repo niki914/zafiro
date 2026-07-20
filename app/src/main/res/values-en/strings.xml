@@ -302,6 +302,8 @@
     <string name="notif_network_error_body">Network connection failed. Please check your network and try again.</string>
     <string name="notif_unsupported_version_title">Unsupported Host Version</string>
     <string name="notif_unsupported_version_body">The current %1$s version is not yet supported by Nexus\nHost version: %2$s</string>
+    <string name="notif_unsupported_issue_title">[BUG] Unsupported host version</string>
+    <string name="notif_unsupported_issue_body">## Issue Description\nThe current version of %1$s is not yet supported by Nexus\nHost version: %2$s\n\n## Steps to Reproduce\n\n\n## Device Info\n- Assistant: %1$s\n- Assistant version: %2$s\n- Module version:</string>
 
     <!-- Fallback -->
     <string name="fallback_assistant_name">Assistant</string>
@@ -338,24 +340,6 @@
     <string name="error_memory_delete_failed">Failed to delete memory</string>
 
     <!-- Feedback templates -->
-    <string name="feedback_feature_template"><![CDATA[## Feature Suggestion
-
-## Use Case
-
-## Expected Result]]></string>
-    <string name="feedback_bug_template"><![CDATA[## Issue Description
-
-## Steps to Reproduce
-
-## Expected Behavior
-
-## Actual Behavior
-
-## Device Info
-- Android version:
-- Assistant (Breeno or other):
-- Module version:
-
-## More
-You can attach logs, screenshots, or recordings to help us understand the issue.]]></string>
+    <string name="feedback_feature_template">## Feature Suggestion\n\n## Use Case\n\n## Expected Result</string>
+    <string name="feedback_bug_template">## Issue Description\n\n## Steps to Reproduce\n\n## Expected Behavior\n\n## Actual Behavior\n\n## Device Info\n- Android version:\n- Assistant (Breeno or other):\n- Module version:\n\n## More\nYou can attach logs, screenshots, or recordings to help us understand the issue.</string>
 </resources>
