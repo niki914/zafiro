@@ -5,6 +5,7 @@ import com.niki914.nexus.agentic.chat.agentic.PromptComposerInput
 import com.niki914.nexus.agentic.chat.agentic.SessionToolBinder
 import com.niki914.nexus.agentic.chat.agentic.ToolCallDispatcher
 import com.niki914.nexus.agentic.chat.agentic.ToolManager
+import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
 import com.niki914.nexus.agentic.chat.agentic.mcp.McpDiscoveryCacheStore
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.agentic.chat.agentic.stream.LlmStreamEventMapper
@@ -222,6 +223,8 @@ object LLMController {
                     code = throwable.toUserErrorCode(),
                 )
             )
+        } finally {
+            AccessibilityController.onTurnEnd()
         }
     }.flowOn(Dispatchers.IO)
 

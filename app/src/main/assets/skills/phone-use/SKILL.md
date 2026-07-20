@@ -1,20 +1,20 @@
 ---
 name: Phone Use
-description: >-
-  The agent MUST load this skill whenever the user asks to perform an action on the Android device:
-  opening or switching apps, tapping/clicking UI elements, typing text into fields, scrolling lists,
-  swiping, pressing Back/Home/Recents, or any task that requires interacting with on-screen content.
-  This is the ONLY way to control the device — do NOT attempt to use non-existent APIs or platform tools.
-  For opening apps: always prefer search_apps(query=...) first to find the correct package name,
-  because app names depend on the device language (e.g., "设置" vs "Settings").
-  For non-native apps (Flutter/Unity/WebView): the tree will be empty — stop and report, do not retry.
-  For identifying specific UI elements in large trees: use search_nodes(keywords=[...]) before screen_content.
-  Always call screen_content again after every action before planning the next step.
+description: MUST Load this skill for ANY task that involves GUI interaction or device control —
+  opening apps, tapping, typing, scrolling, swiping, Back/Home/Recents, reading the screen,
+  or any workflow that touches on-screen content. Load this even when the user does not
+  explicitly mention the device — if the task implies a GUI operation, load this skill first.
 ---
 
 ## Overview
 
 Phone Use gives you the ability to see and interact with the Android device screen. It uses Android AccessibilityService (with root-assisted auto-setup) to read the UI tree and simulate user actions.
+
+This is the ONLY way to control the device — do NOT attempt to use non-existent APIs or platform tools.
+
+**When to load:** any GUI task. App launching, tapping, typing, scrolling, swiping, navigation keys, screen reading. Even when the user doesn't say "on the phone" — infer it from the task.
+
+**When NOT to retry:** non-native apps (Flutter, Unity, WebView, games). If `screen_content` returns empty/root-only, stop and report immediately.
 
 Four core tools:
 
@@ -100,6 +100,8 @@ node_action(action: string, index: integer, text?: string, method?: string)
 - `set_text` **only works with `accessibility`** (the default). Shell cannot type into text fields — the tool rejects it with `METHOD_NOT_SUPPORTED`.
 - `accessibility` tries the accessibility action first; non-set_text actions auto-fall-back to shell on failure.
 - `shell` uses `su -c input tap/swipe` directly, bypassing the accessibility service. Use it when the service is unavailable or as an explicit escape hatch.
+
+**Scroll limitation:** `scroll_forward` and `scroll_backward` move **1 step** per call. For multi-step scrolling, call them repeatedly — you do NOT need to re-read `screen_content` between each scroll. Verify after the batch.
 
 ### gesture
 
@@ -228,9 +230,11 @@ node_action(action: "scroll_forward", index: 15)
 
 For actions that don't target a single labeled node (e.g., swipe-to-refresh, drag items), use `gesture` with coordinates.
 
-### 4. Re-read after every action
+### 4. Re-read after state-changing actions
 
-**Always call `screen_content` again after each action before deciding the next step.** Indices are freshly assigned on every `screen_content` call and stale immediately. Never reuse an index from a previous screen read.
+**Re-read `screen_content` after actions that change screen state:** clicks, `launch_app`, `set_text`, `key_event` navigation. Indices are freshly assigned on every `screen_content` call and stale immediately. Never reuse an index from a previous screen read.
+
+**Exception — batch scrolling:** `scroll_forward`/`scroll_backward` move only 1 step. For multi-step scrolling, call them repeatedly without re-reading between each call. Verify with `screen_content` after the batch.
 
 ### 5. Navigate between apps
 
@@ -268,7 +272,7 @@ Boolean attributes (`tap`, `hold`, `edit`, `scroll`, `checked`) are only emitted
 |:------------------|:----|
 | Type text into a field | `accessibility` (only option) |
 | Tap a labeled UI element | `accessibility` (default, auto-fallbacks) |
-| Scroll a list | `accessibility` first |
+| Scroll a list or picker | `node_action` `scroll_forward`/`scroll_backward`. Batch multiple calls without re-reading between them. |
 | Tap/swipe by coordinates | `shell` if no node index exists |
 | Work when accessibility is unavailable | `shell` |
 | Interact with a non-native app | neither works — report and stop |
@@ -283,4 +287,4 @@ Boolean attributes (`tap`, `hold`, `edit`, `scroll`, `checked`) are only emitted
 - **Search before scanning.** When you have a specific target label or text, use `search_nodes` to get candidate indices instead of visually scanning the full `screen_content` YAML tree. It's faster and less error-prone.
 - **Coordinates are screen pixels.** Not normalized. Screen dimensions are in the `screen_content` header.
 - **No screenshots.** You see only the accessibility tree, not a visual image. If the tree lacks enough context, describe what you can see and ask the user.
-- **Scroll actions use the node's center.** `scroll_forward` and `scroll_backward` target the node at the given index, not arbitrary coordinates.
+- **Scroll actions use the node's center.** `scroll_forward` and `scroll_backward` target the node at the given index, not arbitrary coordinates. Each call moves 1 step. For multi-step scrolling, call repeatedly without re-reading `screen_content` between each call — verify after the batch.
