@@ -1,7 +1,7 @@
 package com.niki914.nexus.agentic.mod.feat.oppo
 
-import com.niki914.nexus.h.util.call
-import com.niki914.nexus.h.util.xTry
+import com.niki914.nexus.xposed.runtime.util.call
+import com.niki914.nexus.xposed.api.util.xTry
 
 object BreenoFeedbackAssembler {
     fun attachIfNeeded(bean: Any) {

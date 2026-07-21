@@ -9,7 +9,7 @@ import com.niki914.nexus.agentic.app.ui.nexus.NexusApp
 import com.niki914.nexus.agentic.app.ui.nexus.model.AppLaunchDecision
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.cb.BaseTheme
-import com.niki914.nexus.h.util.ContextProvider
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import kotlinx.coroutines.runBlocking
 
 // tag:niki914 | tag:nexus-x-log | message:niki914 | message:nexus-x-log

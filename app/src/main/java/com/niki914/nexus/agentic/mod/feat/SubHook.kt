@@ -1,8 +1,8 @@
 package com.niki914.nexus.agentic.mod.feat
 
-import com.niki914.nexus.h.core.runtime.Hook
-import com.niki914.nexus.h.util.hookMethod
-import com.niki914.nexus.h.util.resolveParamTypes
+import com.niki914.nexus.xposed.runtime.core.runtime.Hook
+import com.niki914.nexus.xposed.runtime.util.hookMethod
+import com.niki914.nexus.xposed.runtime.util.resolveParamTypes
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 

@@ -12,7 +12,7 @@ import com.niki914.libterm.runtime.LibTermRuntime
 import com.niki914.libterm.runtime.LibTermSession
 import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.libterm.runtime.TermResult
-import com.niki914.nexus.h.util.ContextProvider
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import java.util.UUID
 import kotlin.random.Random
 import kotlinx.coroutines.CancellationException

@@ -3,8 +3,8 @@ package com.niki914.nexus.agentic.mod.feat
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import com.niki914.nexus.h.util.hookMethod
-import com.niki914.nexus.h.util.resolveParamTypes
+import com.niki914.nexus.xposed.runtime.util.hookMethod
+import com.niki914.nexus.xposed.runtime.util.resolveParamTypes
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
 class FloatScreenResetDetector(

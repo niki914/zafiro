@@ -1,7 +1,7 @@
 package com.niki914.nexus.agentic.mod
 
 import android.content.Context
-import com.niki914.nexus.h.util.ContextProvider
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.nexus.ipc.HostApp
 import com.niki914.nexus.ipc.IpcReadResult
 import com.niki914.nexus.ipc.IpcWriteResult

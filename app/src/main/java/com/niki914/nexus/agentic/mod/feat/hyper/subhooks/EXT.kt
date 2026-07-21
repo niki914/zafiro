@@ -1,7 +1,7 @@
 package com.niki914.nexus.agentic.mod.feat.hyper.subhooks
 
 import com.niki914.nexus.agentic.mod.feat.hyper.XiaoaiConfigProvider
-import com.niki914.nexus.h.util.call
+import com.niki914.nexus.xposed.runtime.util.call
 
 fun injectedFlagKey(): String = XiaoaiConfigProvider.RenderTextStreamCard.injectedFlagKey
 

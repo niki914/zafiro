@@ -3,7 +3,7 @@ package com.niki914.nexus.agentic.repo
 import android.content.Context
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
-import com.niki914.nexus.h.util.ContextProvider
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

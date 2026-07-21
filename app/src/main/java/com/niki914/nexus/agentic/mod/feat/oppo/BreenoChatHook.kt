@@ -9,8 +9,8 @@ import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.CaptureInputHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.ResetConversationSignalHook
 import com.niki914.nexus.agentic.mod.feat.oppo.subhooks.SuppressCleanupHook
 import com.niki914.nexus.agentic.runtime.client.AssistantTextSource
-import com.niki914.nexus.h.util.call
-import com.niki914.nexus.h.util.findClass
+import com.niki914.nexus.xposed.runtime.util.call
+import com.niki914.nexus.xposed.runtime.util.findClass
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

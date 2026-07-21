@@ -1,6 +1,6 @@
 package com.niki914.nexus.ipc.store
 
-import com.niki914.nexus.h.util.xTry
+import com.niki914.nexus.xposed.api.util.xTry
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener

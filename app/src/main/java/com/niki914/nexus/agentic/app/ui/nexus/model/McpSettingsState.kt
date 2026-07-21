@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.cb.ComposeMVIViewModel
-import com.niki914.nexus.h.util.xTry
+import com.niki914.nexus.xposed.api.util.xTry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch

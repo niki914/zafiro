@@ -13,8 +13,8 @@ import com.niki914.nexus.agentic.chat.agentic.stream.LlmStreamEventMapper
 import com.niki914.nexus.agentic.runtime.R
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.model.LlmApiType
-import com.niki914.nexus.h.util.LockState
-import com.niki914.nexus.h.xevent.XEvent
+import com.niki914.nexus.xposed.api.util.LockState
+import com.niki914.nexus.xposed.api.xevent.XEvent
 import com.niki914.s3ss10n.ChatTurn
 import com.niki914.s3ss10n.Session
 import com.niki914.s3ss10n.SessionConfig

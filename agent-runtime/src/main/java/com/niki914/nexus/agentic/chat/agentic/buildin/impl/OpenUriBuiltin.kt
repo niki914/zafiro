@@ -5,7 +5,7 @@ import android.net.Uri
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.nexus.h.util.ContextProvider
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException

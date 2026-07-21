@@ -4,8 +4,8 @@ import android.content.Context
 import com.niki914.nexus.agentic.app.getInstalledPackageVersion
 import com.niki914.nexus.agentic.mod.WebSettings
 import com.niki914.nexus.agentic.mod.parseJsonObject
-import com.niki914.nexus.h.util.OsFamily
-import com.niki914.nexus.h.util.OsUtils
+import com.niki914.nexus.xposed.api.util.OsFamily
+import com.niki914.nexus.xposed.api.util.OsUtils
 import com.niki914.nexus.ipc.HostApp
 import com.niki914.nexus.ipc.XValues
 import com.niki914.nexus.ipc.store.StoreDescriptorRegistry

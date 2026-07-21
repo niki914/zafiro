@@ -70,7 +70,7 @@ android {
 dependencies {
     implementation(project(":agent-runtime"))
     implementation(project(":composebase"))
-    implementation(project(":h"))
+    implementation(project(":xposed-runtime"))
     implementation(project(":ipc"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")

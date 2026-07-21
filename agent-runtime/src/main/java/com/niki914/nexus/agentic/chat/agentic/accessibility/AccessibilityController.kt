@@ -13,7 +13,7 @@ import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.nexus.h.util.ContextProvider
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger

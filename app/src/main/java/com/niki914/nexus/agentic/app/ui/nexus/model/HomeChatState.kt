@@ -8,7 +8,7 @@ import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.nexus.agentic.chat.LlmErrorCode
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.h.util.ContextProvider
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.nexus.cb.ComposeMVIViewModel
 import com.niki914.s3ss10n.ChatTurn
 import kotlinx.coroutines.CancellationException
