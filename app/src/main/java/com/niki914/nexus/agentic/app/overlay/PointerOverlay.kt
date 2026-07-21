@@ -38,7 +38,7 @@ class PointerOverlay : IPointerOverlay {
         private const val CTRL_PERP_FRAC = 0.25f
 
         // --- Speed profile (slow -> fast -> slow) ---
-        private const val MAX_SPEED_PX_PER_S = 1500f
+        private const val MAX_SPEED_PX_PER_S = 4500f
         private const val MIN_SPEED_PX_PER_S = 200f
         private const val ACCEL_FRAC = 0.20f
         private const val DECEL_FRAC = 0.30f
