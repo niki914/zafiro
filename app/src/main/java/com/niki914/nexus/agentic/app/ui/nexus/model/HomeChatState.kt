@@ -8,8 +8,8 @@ import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.nexus.agentic.chat.LlmErrorCode
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.nexus.base.ComposeMVIViewModel
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.s3ss10n.ChatTurn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -124,9 +124,11 @@ internal interface HomeChatRuntime {
 private object LlmHomeChatRuntime : HomeChatRuntime {
     override fun stream(query: String): Flow<LlmStreamEvent> =
         LLMController.stream(query, runBlocking { ContextProvider.await() })
+
     override suspend fun resetConversation() = LLMController.resetConversation()
     override suspend fun stopCurrentRound(keepCurrentTurn: Boolean) =
         LLMController.stopCurrentRound(keepCurrentTurn)
+
     override suspend fun getHistory(): List<ChatTurn> = LLMController.getHistory()
     override suspend fun replaceHistory(history: List<ChatTurn>) =
         LLMController.replaceHistory(history)
@@ -161,9 +163,11 @@ class HomeChatViewModel internal constructor(
             is HomeChatIntent.ToggleToolRunExpanded -> toggleToolRunExpanded(
                 intent.turnId, intent.runStartIndex,
             )
+
             is HomeChatIntent.ToggleActionRow -> toggleActionRow(
                 intent.turnId, intent.source,
             )
+
             is HomeChatIntent.ReGenerateAt -> reGenerateAt(intent.turnId)
             is HomeChatIntent.ForkAt -> forkAt(intent.turnId)
         }

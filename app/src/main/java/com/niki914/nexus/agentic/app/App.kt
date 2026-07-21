@@ -3,7 +3,6 @@ package com.niki914.nexus.agentic.app
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
-import com.niki914.nexus.agentic.app.BuildConfig
 import com.niki914.nexus.agentic.app.conversation.ConversationRepo
 import com.niki914.nexus.agentic.repo.UpdateCheckHolder
 import com.niki914.nexus.agentic.repo.XRepo

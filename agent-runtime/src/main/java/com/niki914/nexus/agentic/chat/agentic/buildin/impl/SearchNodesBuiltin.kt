@@ -17,16 +17,16 @@ class SearchNodesBuiltin : RawBuiltinTool() {
 
     override val description: String =
         "Search the current screen's accessibility tree for nodes matching keywords. " +
-            "Use this before screen_content when you need to locate specific UI elements " +
-            "in a large tree — narrow down target indices first, then use node_action.\n\n" +
-            "Key use case: when the task is \"find and tap button X in a sea of nodes\", " +
-            "call search_nodes(keywords=[\"X\"]) first to get candidate indices, rather " +
-            "than parsing the full screen_content YAML.\n\n" +
-            "Parameters (JSON):\n" +
-            "- keywords: string array, required. Case-insensitive substring match on txt/h.\n" +
-            "- match_mode: \"any\" (default, match any keyword) or \"all\" (match all keywords).\n" +
-            "- limit: integer, default 10, max results returned.\n\n" +
-            "Returns YAML with matched node indices that can be used directly with node_action."
+                "Use this before screen_content when you need to locate specific UI elements " +
+                "in a large tree — narrow down target indices first, then use node_action.\n\n" +
+                "Key use case: when the task is \"find and tap button X in a sea of nodes\", " +
+                "call search_nodes(keywords=[\"X\"]) first to get candidate indices, rather " +
+                "than parsing the full screen_content YAML.\n\n" +
+                "Parameters (JSON):\n" +
+                "- keywords: string array, required. Case-insensitive substring match on txt/h.\n" +
+                "- match_mode: \"any\" (default, match any keyword) or \"all\" (match all keywords).\n" +
+                "- limit: integer, default 10, max results returned.\n\n" +
+                "Returns YAML with matched node indices that can be used directly with node_action."
 
     override val defaultEnabled: Boolean = true
 
@@ -77,7 +77,8 @@ class SearchNodesBuiltin : RawBuiltinTool() {
         val matchMode = obj["match_mode"]?.jsonPrimitive?.contentOrNull?.trim()?.lowercase()
             ?.takeIf { it == "any" || it == "all" } ?: "any"
 
-        val limit = obj["limit"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()?.coerceAtLeast(1) ?: 10
+        val limit =
+            obj["limit"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()?.coerceAtLeast(1) ?: 10
 
         return SearchNodesArguments(keywords, matchMode, limit)
     }

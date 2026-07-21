@@ -52,7 +52,10 @@ class LoadSkillBuiltinTest {
         val json = invoke("""{"skill_id":"skill-a"}""")
 
         assertEquals("OK", json["code"]!!.jsonPrimitive.content)
-        assertEquals("Skill content A", json["data"]!!.jsonObject["skill_content"]!!.jsonPrimitive.content)
+        assertEquals(
+            "Skill content A",
+            json["data"]!!.jsonObject["skill_content"]!!.jsonPrimitive.content
+        )
     }
 
     @Test
@@ -151,6 +154,10 @@ class LoadSkillBuiltinTest {
     }
 
     private object FakeRuntimeHostGatewayForLoadSkillTest : RuntimeHostGateway {
-        override suspend fun postNotification(title: String, content: String, uri: String?): Boolean = false
+        override suspend fun postNotification(
+            title: String,
+            content: String,
+            uri: String?
+        ): Boolean = false
     }
 }

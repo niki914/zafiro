@@ -111,7 +111,7 @@ class ToolManager(
 
     private fun String.withCustomShellGuidance(): String {
         return "$this\nRuns in a normal Android shell. Use `su -c 'cmd'` when root is required. " +
-            "If the command depends on a working directory, create it as `cd /path && cmd`."
+                "If the command depends on a working directory, create it as `cd /path && cmd`."
     }
 
 }

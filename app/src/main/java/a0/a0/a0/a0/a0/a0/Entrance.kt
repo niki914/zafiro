@@ -10,15 +10,15 @@ import com.niki914.nexus.agentic.repo.WebSettingsResult
 import com.niki914.nexus.agentic.repo.XIpcDomainSettingsStore
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.agentic.runtime.client.AgentRuntimeClient
+import com.niki914.nexus.store.HostApp
+import com.niki914.nexus.store.XValues
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.nexus.xposed.runtime.IXposed
 import com.niki914.nexus.xposed.runtime.core.runtime.Hook
 import com.niki914.nexus.xposed.runtime.core.runtime.Runtime
 import com.niki914.nexus.xposed.runtime.core.runtime.RuntimeBootstrap
 import com.niki914.nexus.xposed.runtime.util.ContextHook
-import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.nexus.xposed.runtime.util.HookSideLoader
-import com.niki914.nexus.store.HostApp
-import com.niki914.nexus.store.XValues
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -51,12 +51,12 @@ class Entrance : IXposed() {
                 webSettingsResult is WebSettingsResult.Success && webSettingsResult.isFallbackVersion
             val isNetworkError =
                 webSettingsResult is WebSettingsResult.RequestFailed &&
-                    webSettingsResult.reason == WebSettingsFailureReason.NetworkUnavailable
+                        webSettingsResult.reason == WebSettingsFailureReason.NetworkUnavailable
             val isNoSupportedVersion =
                 isFallbackVersion || (
-                    webSettingsResult is WebSettingsResult.RequestFailed &&
-                        webSettingsResult.reason == WebSettingsFailureReason.ServerError
-                    )
+                        webSettingsResult is WebSettingsResult.RequestFailed &&
+                                webSettingsResult.reason == WebSettingsFailureReason.ServerError
+                        )
 
             when {
                 isNetworkError -> {
@@ -81,7 +81,11 @@ class Entrance : IXposed() {
         }
     }
 
-    private fun onSettingsFetched(params: XC_LoadPackage.LoadPackageParam, targetPkg: String?, client: AgentRuntimeClient) {
+    private fun onSettingsFetched(
+        params: XC_LoadPackage.LoadPackageParam,
+        targetPkg: String?,
+        client: AgentRuntimeClient
+    ) {
         // 根据 targetPkg 进行映射和 Hook 路由
         val hostApp = HostApp.fromPackageName(params.packageName)
         val hookInstance: Hook? = when {

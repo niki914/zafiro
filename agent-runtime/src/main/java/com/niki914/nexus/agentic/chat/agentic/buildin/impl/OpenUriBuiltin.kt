@@ -43,7 +43,9 @@ class OpenUriBuiltin : BuiltinTool() {
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "open_uri arguments must be a JSON object with a uri field.",
                 hint = """Example: {"uri":"https://example.com"}""",
-                fieldErrors = mapOf("argumentsJson" to (throwable.message ?: "Invalid JSON object.")),
+                fieldErrors = mapOf(
+                    "argumentsJson" to (throwable.message ?: "Invalid JSON object.")
+                ),
             )
         }
 

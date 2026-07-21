@@ -199,7 +199,9 @@ class XRepoTest {
         val second = McpServer("weather", "http://127.0.0.1:51339/mcp")
         installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID to McpSettingsCodec.encodeServers(listOf(first, second)),
+                StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID to McpSettingsCodec.encodeServers(
+                    listOf(first, second)
+                ),
                 StoreDescriptorRegistry.mcpCacheStoreId("aslocate")!! to McpSettingsCodec.encodeCache(
                     serverId = "aslocate",
                     fingerprint = "",
@@ -234,7 +236,9 @@ class XRepoTest {
         )
         val store = installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.RULES_EXECUTION_ID to RuleSettingsCodec.encodeExecutionRules(listOf(initialRule))
+                StoreDescriptorRegistry.RULES_EXECUTION_ID to RuleSettingsCodec.encodeExecutionRules(
+                    listOf(initialRule)
+                )
             )
         )
 
@@ -329,7 +333,9 @@ class XRepoTest {
         )
         val store = installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_CUSTOM_ID to ToolSettingsCodec.encodeCustomTools(initialTools)
+                StoreDescriptorRegistry.TOOLS_CUSTOM_ID to ToolSettingsCodec.encodeCustomTools(
+                    initialTools
+                )
             )
         )
 
@@ -353,7 +359,9 @@ class XRepoTest {
         val store = installStore(
             FakeDomainSettingsStore(
                 StoreDescriptorRegistry.RULES_EXECUTION_ID to unsafeRuleSettings(),
-                StoreDescriptorRegistry.TOOLS_CUSTOM_ID to ToolSettingsCodec.encodeCustomTools(initialTools),
+                StoreDescriptorRegistry.TOOLS_CUSTOM_ID to ToolSettingsCodec.encodeCustomTools(
+                    initialTools
+                ),
             )
         )
 

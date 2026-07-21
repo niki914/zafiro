@@ -406,7 +406,12 @@ class McpSettingsViewModelTest {
         vararg initialJson: Pair<String, String>,
         failWrites: Boolean = false,
     ) {
-        XRepo.installStoreForTest(FakeDomainSettingsStore(*initialJson, ownerWriteSucceeds = !failWrites))
+        XRepo.installStoreForTest(
+            FakeDomainSettingsStore(
+                *initialJson,
+                ownerWriteSucceeds = !failWrites
+            )
+        )
         XRepo.init(context)
     }
 

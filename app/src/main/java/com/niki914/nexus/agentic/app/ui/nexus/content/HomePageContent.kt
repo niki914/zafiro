@@ -1,5 +1,9 @@
 package com.niki914.nexus.agentic.app.ui.nexus.content
 
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -20,9 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -39,13 +40,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import android.widget.Toast
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -66,10 +66,10 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatTurn
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatUiState
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatViewModel
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
-import com.niki914.nexus.agentic.repo.UpdateCheckHolder
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 import com.niki914.nexus.agentic.app.ui.nexus.nav.TextTitle
 import com.niki914.nexus.agentic.app.ui.nexus.nav.TopBarActionSpec
+import com.niki914.nexus.agentic.repo.UpdateCheckHolder
 import com.niki914.nexus.base.BaseTheme
 import kotlinx.coroutines.flow.collectLatest
 
@@ -394,6 +394,7 @@ private fun HomeChatTurnItem(
     modifier: Modifier = Modifier,
 ) {
     val canToggleAction = !isGenerating && turn.blocks.isNotEmpty()
+
     @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current

@@ -39,7 +39,12 @@ class ShellCommandSafetyPolicy(
                     .map(String::trim)
                     .filter(String::isNotBlank)
                     .forEach { pattern ->
-                        if (candidates.any { candidate -> TextPatternMatcher.matches(candidate, pattern) }) {
+                        if (candidates.any { candidate ->
+                                TextPatternMatcher.matches(
+                                    candidate,
+                                    pattern
+                                )
+                            }) {
                             return ShellCommandPolicyDecision(
                                 allowed = false,
                                 code = "RULE_BLOCKED",

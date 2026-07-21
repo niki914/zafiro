@@ -35,7 +35,8 @@ object UpdateCheckHolder {
 
     fun dismiss() {
         dismissed = true
-        _result.value = UpdateCheckResult(hasUpdate = false, remoteVersion = null, releaseUrl = null)
+        _result.value =
+            UpdateCheckResult(hasUpdate = false, remoteVersion = null, releaseUrl = null)
     }
 
     fun isDismissed(): Boolean = dismissed
@@ -102,5 +103,6 @@ private object UpdateCheckApi {
         return false
     }
 
-    private fun noUpdate() = UpdateCheckResult(hasUpdate = false, remoteVersion = null, releaseUrl = null)
+    private fun noUpdate() =
+        UpdateCheckResult(hasUpdate = false, remoteVersion = null, releaseUrl = null)
 }

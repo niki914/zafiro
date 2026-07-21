@@ -59,7 +59,12 @@ class AboutSettingsViewModel :
         when {
             item.uri != null -> sendEffect(AboutSettingsEffect.OpenUri(item.uri))
             item.bodyTemplateRes != null && item.feedbackTitle != null ->
-                sendEffect(AboutSettingsEffect.OpenFeedbackIssue(item.feedbackTitle, item.bodyTemplateRes))
+                sendEffect(
+                    AboutSettingsEffect.OpenFeedbackIssue(
+                        item.feedbackTitle,
+                        item.bodyTemplateRes
+                    )
+                )
         }
     }
 }

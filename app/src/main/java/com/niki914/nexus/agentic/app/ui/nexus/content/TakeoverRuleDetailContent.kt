@@ -20,8 +20,8 @@ import com.niki914.nexus.agentic.app.ui.infra.component.SettingsItemDivider
 import com.niki914.nexus.agentic.app.ui.infra.component.SettingsSegmentedSelector
 import com.niki914.nexus.agentic.app.ui.infra.nav.pageViewModel
 import com.niki914.nexus.agentic.app.ui.nexus.model.TakeoverDeleteConfirmationState
-import com.niki914.nexus.agentic.app.ui.nexus.model.TakeoverRuleFormState
 import com.niki914.nexus.agentic.app.ui.nexus.model.TakeoverInlineError
+import com.niki914.nexus.agentic.app.ui.nexus.model.TakeoverRuleFormState
 import com.niki914.nexus.agentic.app.ui.nexus.model.TakeoverSettingsEffect
 import com.niki914.nexus.agentic.app.ui.nexus.model.TakeoverSettingsIntent
 import com.niki914.nexus.agentic.app.ui.nexus.model.TakeoverSettingsUiState
@@ -109,7 +109,8 @@ fun TakeoverRuleDetailContent(
             when (effect) {
                 TakeoverSettingsEffect.ExitDetail -> onBack()
                 TakeoverSettingsEffect.FocusName -> requestedFocusField = TakeoverEditableField.Name
-                TakeoverSettingsEffect.FocusPatterns -> requestedFocusField = TakeoverEditableField.Patterns
+                TakeoverSettingsEffect.FocusPatterns -> requestedFocusField =
+                    TakeoverEditableField.Patterns
             }
         }
     }

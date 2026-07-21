@@ -23,23 +23,44 @@ object XIpcBridge {
         fun mutateStore(storeId: String, path: String, valueJson: String): String?
         fun postNotification(title: String, content: String, uri: String?): Boolean
         fun postNetworkErrorNotification(): Boolean
-        fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?): Boolean
+        fun postUnsupportedVersionNotification(
+            hostPackageName: String?,
+            hostVersion: String?
+        ): Boolean
     }
 
     suspend fun readWebSettingsJson(context: Context, client: StoreClient?): IpcReadResult {
         return readStoreJson(context, StoreDescriptorRegistry.WEB_SETTINGS_ID, client)
     }
 
-    suspend fun writeWebSettingsJson(context: Context, json: String, client: StoreClient?): IpcWriteResult {
-        return writeStoreJsonFromOwner(context, StoreDescriptorRegistry.WEB_SETTINGS_ID, json, client)
+    suspend fun writeWebSettingsJson(
+        context: Context,
+        json: String,
+        client: StoreClient?
+    ): IpcWriteResult {
+        return writeStoreJsonFromOwner(
+            context,
+            StoreDescriptorRegistry.WEB_SETTINGS_ID,
+            json,
+            client
+        )
     }
 
     suspend fun readLocalSettingsJson(context: Context, client: StoreClient?): IpcReadResult {
         return readStoreJson(context, StoreDescriptorRegistry.LOCAL_SETTINGS_ID, client)
     }
 
-    suspend fun writeLocalSettingsJson(context: Context, json: String, client: StoreClient?): IpcWriteResult {
-        return writeStoreJsonFromOwner(context, StoreDescriptorRegistry.LOCAL_SETTINGS_ID, json, client)
+    suspend fun writeLocalSettingsJson(
+        context: Context,
+        json: String,
+        client: StoreClient?
+    ): IpcWriteResult {
+        return writeStoreJsonFromOwner(
+            context,
+            StoreDescriptorRegistry.LOCAL_SETTINGS_ID,
+            json,
+            client
+        )
     }
 
     suspend fun readStoreJson(
@@ -53,6 +74,7 @@ object XIpcBridge {
                 val json = client!!.readStore(storeId)
                 if (json != null) IpcReadResult.Success(json) else IpcReadResult.Unreachable
             }
+
             Transport.Local -> IpcReadResult.Success(XIpcStoreRepository.readJson(context, storeId))
             Transport.Unreachable -> IpcReadResult.Unreachable
         }
@@ -67,12 +89,18 @@ object XIpcBridge {
         StoreDescriptorRegistry.resolveDynamic(storeId) ?: return IpcWriteResult.Unreachable
         return when (resolveTransport(context, client)) {
             Transport.Binder -> {
-                if (client!!.writeStore(storeId, json)) IpcWriteResult.Success else IpcWriteResult.Unreachable
+                if (client!!.writeStore(
+                        storeId,
+                        json
+                    )
+                ) IpcWriteResult.Success else IpcWriteResult.Unreachable
             }
+
             Transport.Local -> {
                 XIpcStoreRepository.writeJson(context, storeId, json)
                 IpcWriteResult.Success
             }
+
             Transport.Unreachable -> IpcWriteResult.Unreachable
         }
     }
@@ -96,6 +124,7 @@ object XIpcBridge {
                     IpcMutateResult(IpcWriteResult.Unreachable, null)
                 }
             }
+
             Transport.Local -> {
                 val updatedJson = XIpcStoreRepository.mutateJson(
                     context = context,
@@ -105,6 +134,7 @@ object XIpcBridge {
                 )
                 IpcMutateResult(IpcWriteResult.Success, updatedJson)
             }
+
             Transport.Unreachable -> IpcMutateResult(IpcWriteResult.Unreachable, null)
         }
     }
@@ -118,12 +148,19 @@ object XIpcBridge {
     ): IpcWriteResult {
         return when (resolveTransport(context, client)) {
             Transport.Binder -> {
-                if (client!!.postNotification(title, content, uri)) IpcWriteResult.Success else IpcWriteResult.Unreachable
+                if (client!!.postNotification(
+                        title,
+                        content,
+                        uri
+                    )
+                ) IpcWriteResult.Success else IpcWriteResult.Unreachable
             }
+
             Transport.Local -> {
                 postLocalNotification(context, title, content, uri)
                 IpcWriteResult.Success
             }
+
             Transport.Unreachable -> IpcWriteResult.Unreachable
         }
     }

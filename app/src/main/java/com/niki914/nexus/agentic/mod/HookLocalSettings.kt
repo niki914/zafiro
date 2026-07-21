@@ -1,8 +1,8 @@
 package com.niki914.nexus.agentic.mod
 
 import android.content.Context
-import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.nexus.store.XIpcBridge
+import com.niki914.nexus.xposed.api.util.ContextProvider
 
 object HookLocalSettings {
 

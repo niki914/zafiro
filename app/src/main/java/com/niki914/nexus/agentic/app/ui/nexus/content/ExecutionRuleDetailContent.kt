@@ -14,13 +14,13 @@ import androidx.compose.ui.unit.dp
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.app.ui.infra.ConfirmationLiquidDialog
 import com.niki914.nexus.agentic.app.ui.infra.ProvideLiquidScreenContentForPreview
-import com.niki914.nexus.agentic.app.ui.infra.component.SettingsSegmentedSelector
 import com.niki914.nexus.agentic.app.ui.infra.component.SettingsGroupCard
 import com.niki914.nexus.agentic.app.ui.infra.component.SettingsItemDivider
+import com.niki914.nexus.agentic.app.ui.infra.component.SettingsSegmentedSelector
 import com.niki914.nexus.agentic.app.ui.infra.nav.pageViewModel
 import com.niki914.nexus.agentic.app.ui.nexus.model.ExecutionRuleDeleteConfirmationState
-import com.niki914.nexus.agentic.app.ui.nexus.model.ExecutionRulesInlineError
 import com.niki914.nexus.agentic.app.ui.nexus.model.ExecutionRuleFormState
+import com.niki914.nexus.agentic.app.ui.nexus.model.ExecutionRulesInlineError
 import com.niki914.nexus.agentic.app.ui.nexus.model.ExecutionRulesSettingsEffect
 import com.niki914.nexus.agentic.app.ui.nexus.model.ExecutionRulesSettingsIntent
 import com.niki914.nexus.agentic.app.ui.nexus.model.ExecutionRulesSettingsUiState
@@ -208,9 +208,14 @@ private fun executionRulesFieldErrorText(errorResId: Int?): String? {
 private fun executionRulesInlineErrorText(error: ExecutionRulesInlineError?): String? {
     return when (error) {
         null -> null
-        is ExecutionRulesInlineError.LoadFailed -> error.message ?: stringResource(error.fallbackResId)
-        is ExecutionRulesInlineError.SaveFailed -> error.message ?: stringResource(error.fallbackResId)
-        is ExecutionRulesInlineError.DeleteFailed -> error.message ?: stringResource(error.fallbackResId)
+        is ExecutionRulesInlineError.LoadFailed -> error.message
+            ?: stringResource(error.fallbackResId)
+
+        is ExecutionRulesInlineError.SaveFailed -> error.message
+            ?: stringResource(error.fallbackResId)
+
+        is ExecutionRulesInlineError.DeleteFailed -> error.message
+            ?: stringResource(error.fallbackResId)
     }
 }
 

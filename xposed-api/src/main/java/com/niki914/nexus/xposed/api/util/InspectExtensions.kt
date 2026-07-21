@@ -97,15 +97,16 @@ fun describeClassLoader(classLoader: ClassLoader?): String {
     return "${classLoader.javaClass.name}@${System.identityHashCode(classLoader)}"
 }
 
-fun allFieldsOf(clazz: Class<*>): List<java.lang.reflect.Field> = xTry("allFieldsOf:${clazz.name}") {
-    val fields = mutableListOf<java.lang.reflect.Field>()
-    var current: Class<*>? = clazz
-    while (current != null && current != Any::class.java) {
-        fields += current.declaredFields
-        current = current.superclass
-    }
-    fields
-} ?: emptyList()
+fun allFieldsOf(clazz: Class<*>): List<java.lang.reflect.Field> =
+    xTry("allFieldsOf:${clazz.name}") {
+        val fields = mutableListOf<java.lang.reflect.Field>()
+        var current: Class<*>? = clazz
+        while (current != null && current != Any::class.java) {
+            fields += current.declaredFields
+            current = current.superclass
+        }
+        fields
+    } ?: emptyList()
 
 fun superClassesOf(clazz: Class<*>): List<String> = xTry("superClassesOf:${clazz.name}") {
     val chain = mutableListOf<String>()

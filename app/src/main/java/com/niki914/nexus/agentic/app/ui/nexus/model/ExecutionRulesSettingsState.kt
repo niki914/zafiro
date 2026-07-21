@@ -70,9 +70,14 @@ sealed interface ExecutionRulesSettingsIntent {
 }
 
 sealed interface ExecutionRulesInlineError {
-    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : ExecutionRulesInlineError
-    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : ExecutionRulesInlineError
-    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : ExecutionRulesInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        ExecutionRulesInlineError
+
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        ExecutionRulesInlineError
+
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        ExecutionRulesInlineError
 }
 
 sealed interface ExecutionRulesSettingsEffect {
@@ -140,6 +145,7 @@ class ExecutionRulesSettingsViewModel :
             ExecutionRulesSettingsIntent.DismissDeleteConfirmation -> updateState {
                 copy(deleteConfirmation = null)
             }
+
             ExecutionRulesSettingsIntent.ConfirmDelete -> confirmDelete()
         }
     }

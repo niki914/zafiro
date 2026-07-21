@@ -10,22 +10,20 @@ import com.niki914.libterm.runtime.CommandResult
 import com.niki914.libterm.runtime.LibTerm
 import com.niki914.libterm.runtime.LibTermRuntime
 import com.niki914.libterm.runtime.LibTermSession
-import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.libterm.runtime.TermResult
+import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.nexus.xposed.api.util.ContextProvider
-import java.util.UUID
-import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import java.util.UUID
+import kotlin.random.Random
 
 object TerminalSessionPool {
     private const val CUSTOM_TOOL_SESSION = "__custom_user"
@@ -42,7 +40,8 @@ object TerminalSessionPool {
     private val interactiveStates: MutableMap<String, InteractiveState> = linkedMapOf()
     private val executionLocks: MutableMap<String, Mutex> = linkedMapOf()
     private var handleGenerator: () -> String = ::randomPublicHandle
-    private var runtimePortFactory: suspend (CoroutineScope) -> TerminalRuntimePort = ::createLibTermRuntimePort
+    private var runtimePortFactory: suspend (CoroutineScope) -> TerminalRuntimePort =
+        ::createLibTermRuntimePort
 
     suspend fun open(identity: String, cwd: String? = null): TerminalOpenOutcome {
         val mappedIdentity = try {
@@ -269,8 +268,12 @@ object TerminalSessionPool {
         requestId: String? = null,
     ): TerminalInteractiveWriteOutcome {
         val (entry, state) = synchronized(lock) {
-            val entry = sessions[session] ?: return TerminalInteractiveWriteOutcome.SessionNotFound(session)
-            val state = interactiveStates[session] ?: return TerminalInteractiveWriteOutcome.NotInteractive(session)
+            val entry =
+                sessions[session] ?: return TerminalInteractiveWriteOutcome.SessionNotFound(session)
+            val state =
+                interactiveStates[session] ?: return TerminalInteractiveWriteOutcome.NotInteractive(
+                    session
+                )
             entry to state
         }
         val replay = requestId?.let { id ->
@@ -327,7 +330,9 @@ object TerminalSessionPool {
             if (!sessions.containsKey(session)) {
                 return TerminalInteractiveReadOutcome.SessionNotFound(session)
             }
-            interactiveStates[session] ?: return TerminalInteractiveReadOutcome.NotInteractive(session)
+            interactiveStates[session] ?: return TerminalInteractiveReadOutcome.NotInteractive(
+                session
+            )
         }
         val maxChars = maxBytes.coerceAtLeast(1)
         val snapshot = synchronized(state.lock) {
@@ -429,7 +434,8 @@ object TerminalSessionPool {
     ): TerminalAsyncStartOutcome {
         val startTimeMs = System.currentTimeMillis()
         val (entry, executeLock, holder) = synchronized(lock) {
-            val entry = sessions[session] ?: return TerminalAsyncStartOutcome.SessionNotFound(session)
+            val entry =
+                sessions[session] ?: return TerminalAsyncStartOutcome.SessionNotFound(session)
             val executeLock = executionLocks.getOrPut(session) { Mutex() }
             val holder = runtimeHolder ?: return TerminalAsyncStartOutcome.InvalidRequest(
                 "Terminal runtime is not initialized. Use open or open_and_exec first.",
@@ -460,7 +466,8 @@ object TerminalSessionPool {
         }
         val execJob = holder.scope.launch(start = CoroutineStart.LAZY) {
             try {
-                when (val result = entry.session.exec(command = command, timeoutMillis = timeoutMs)) {
+                when (val result =
+                    entry.session.exec(command = command, timeoutMillis = timeoutMs)) {
                     is TermResult.Success -> synchronized(state.lock) {
                         state.result = result.value
                     }
@@ -503,7 +510,10 @@ object TerminalSessionPool {
                 return TerminalAsyncReadOutcome.SessionNotFound(session)
             }
             val state = asyncStates[session]
-                ?: return TerminalAsyncReadOutcome.AsyncNotFound(session = session, asyncId = asyncId)
+                ?: return TerminalAsyncReadOutcome.AsyncNotFound(
+                    session = session,
+                    asyncId = asyncId
+                )
             if (state.asyncId != asyncId) {
                 return TerminalAsyncReadOutcome.AsyncNotFound(session = session, asyncId = asyncId)
             }
@@ -785,6 +795,7 @@ internal interface TerminalRuntimePort {
         cwd: String?,
         sshOptions: SshOpenOptions?,
     ): OpenResult<TerminalSessionPort>
+
     suspend fun close(sessionId: String)
     suspend fun closeAll(): Int
 }
@@ -929,7 +940,8 @@ sealed interface TerminalCommandOutcome {
 
     data class SessionNotFound(val session: String) : TerminalCommandOutcome
     data class Busy(val session: String, val asyncId: String?) : TerminalCommandOutcome
-    data class UnexpectedError(val throwable: Throwable, val elapsedSeconds: Long) : TerminalCommandOutcome
+    data class UnexpectedError(val throwable: Throwable, val elapsedSeconds: Long) :
+        TerminalCommandOutcome
 }
 
 sealed interface TerminalAsyncStartOutcome {
@@ -946,12 +958,19 @@ sealed interface TerminalAsyncReadOutcome {
         val elapsedSeconds: Long,
     ) : TerminalAsyncReadOutcome
 
-    data class Completed(val result: CommandResult, val elapsedSeconds: Long) : TerminalAsyncReadOutcome
-    data class TimedOut(val result: CommandResult, val elapsedSeconds: Long) : TerminalAsyncReadOutcome
-    data class Failure(val failure: TerminalFailure, val elapsedSeconds: Long) : TerminalAsyncReadOutcome
+    data class Completed(val result: CommandResult, val elapsedSeconds: Long) :
+        TerminalAsyncReadOutcome
+
+    data class TimedOut(val result: CommandResult, val elapsedSeconds: Long) :
+        TerminalAsyncReadOutcome
+
+    data class Failure(val failure: TerminalFailure, val elapsedSeconds: Long) :
+        TerminalAsyncReadOutcome
+
     data class AsyncNotFound(val session: String, val asyncId: String) : TerminalAsyncReadOutcome
     data class SessionNotFound(val session: String) : TerminalAsyncReadOutcome
-    data class UnexpectedError(val throwable: Throwable, val elapsedSeconds: Long) : TerminalAsyncReadOutcome
+    data class UnexpectedError(val throwable: Throwable, val elapsedSeconds: Long) :
+        TerminalAsyncReadOutcome
 }
 
 sealed interface TerminalCloseOutcome {

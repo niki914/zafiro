@@ -32,13 +32,13 @@ class TerminalBuiltin(
 
     override val description: String =
         "Manage Android terminal sessions. For one-shot commands, prefer open_and_exec, e.g. " +
-            """{"action":"open_and_exec","identity":"user","command":"pwd"}. """ +
-            "identity can be user, root, or shizuku. " +
-            "Shizuku depends on device support, a running service, and granted authorization. " +
-            "Use exec only with the opaque session handle returned by open or open_and_exec. " +
-            "Use is_async=true only with exec for long-running commands, then poll read_async_result by async_id. " +
-            "If SESSION_NOT_FOUND, call open first or use the returned handle instead of identity names. " +
-            "If SESSION_BUSY, wait or poll read_async_result when async_id is present."
+                """{"action":"open_and_exec","identity":"user","command":"pwd"}. """ +
+                "identity can be user, root, or shizuku. " +
+                "Shizuku depends on device support, a running service, and granted authorization. " +
+                "Use exec only with the opaque session handle returned by open or open_and_exec. " +
+                "Use is_async=true only with exec for long-running commands, then poll read_async_result by async_id. " +
+                "If SESSION_NOT_FOUND, call open first or use the returned handle instead of identity names. " +
+                "If SESSION_BUSY, wait or poll read_async_result when async_id is present."
 
     override val defaultEnabled: Boolean = true
 
@@ -131,8 +131,15 @@ class TerminalBuiltin(
                 identity = outcome.identity,
             )
 
-            is TerminalCommandOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(outcome.session)
-            is TerminalCommandOutcome.Busy -> TerminalToolResponse.sessionBusy(outcome.session, outcome.asyncId)
+            is TerminalCommandOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                outcome.session
+            )
+
+            is TerminalCommandOutcome.Busy -> TerminalToolResponse.sessionBusy(
+                outcome.session,
+                outcome.asyncId
+            )
+
             is TerminalCommandOutcome.UnexpectedError -> TerminalToolResponse.internalError(
                 throwable = outcome.throwable,
                 elapsedSeconds = outcome.elapsedSeconds,
@@ -160,9 +167,18 @@ class TerminalBuiltin(
                     elapsedSeconds = outcome.elapsedSeconds,
                 )
 
-                is TerminalAsyncStartOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(outcome.session)
-                is TerminalAsyncStartOutcome.Busy -> TerminalToolResponse.sessionBusy(outcome.session, outcome.asyncId)
-                is TerminalAsyncStartOutcome.InvalidRequest -> TerminalToolResponse.invalidRequest(outcome.message)
+                is TerminalAsyncStartOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                    outcome.session
+                )
+
+                is TerminalAsyncStartOutcome.Busy -> TerminalToolResponse.sessionBusy(
+                    outcome.session,
+                    outcome.asyncId
+                )
+
+                is TerminalAsyncStartOutcome.InvalidRequest -> TerminalToolResponse.invalidRequest(
+                    outcome.message
+                )
             }
         } else {
             when (val outcome = TerminalSessionPool.executeBlocking(
@@ -194,8 +210,15 @@ class TerminalBuiltin(
                     identity = outcome.identity,
                 )
 
-                is TerminalCommandOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(outcome.session)
-                is TerminalCommandOutcome.Busy -> TerminalToolResponse.sessionBusy(outcome.session, outcome.asyncId)
+                is TerminalCommandOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                    outcome.session
+                )
+
+                is TerminalCommandOutcome.Busy -> TerminalToolResponse.sessionBusy(
+                    outcome.session,
+                    outcome.asyncId
+                )
+
                 is TerminalCommandOutcome.UnexpectedError -> TerminalToolResponse.internalError(
                     throwable = outcome.throwable,
                     elapsedSeconds = outcome.elapsedSeconds,
@@ -207,7 +230,8 @@ class TerminalBuiltin(
     private suspend fun handleReadAsyncResult(args: TerminalToolArgs): String {
         val session = args.requireSession()
         val asyncId = args.requireAsyncId()
-        return when (val outcome = TerminalSessionPool.readAsyncResult(session = session, asyncId = asyncId)) {
+        return when (val outcome =
+            TerminalSessionPool.readAsyncResult(session = session, asyncId = asyncId)) {
             is TerminalAsyncReadOutcome.Running -> TerminalToolResponse.asyncRunning(
                 stdoutPartial = outcome.stdoutPartial,
                 stderrPartial = outcome.stderrPartial,
@@ -238,7 +262,10 @@ class TerminalBuiltin(
                 asyncId = outcome.asyncId,
             )
 
-            is TerminalAsyncReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(outcome.session)
+            is TerminalAsyncReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                outcome.session
+            )
+
             is TerminalAsyncReadOutcome.UnexpectedError -> TerminalToolResponse.internalError(
                 throwable = outcome.throwable,
                 elapsedSeconds = outcome.elapsedSeconds,
@@ -310,7 +337,11 @@ class TerminalBuiltin(
     private fun JsonObject.requireKnownKeys() {
         val unknownKeys = keys - REQUEST_KEYS
         if (unknownKeys.isNotEmpty()) {
-            throw IllegalArgumentException("Unknown terminal request field(s): ${unknownKeys.sorted().joinToString()}.")
+            throw IllegalArgumentException(
+                "Unknown terminal request field(s): ${
+                    unknownKeys.sorted().joinToString()
+                }."
+            )
         }
     }
 

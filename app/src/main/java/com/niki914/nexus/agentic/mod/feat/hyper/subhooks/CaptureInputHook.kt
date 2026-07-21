@@ -28,7 +28,11 @@ class CaptureInputHook(
         val dialogId = param.args.getOrNull(dialogIdArgIndex) as? String
         val query = param.args.getOrNull(queryArgIndex) as? String
 
-        if (dialogId.isNullOrBlank() || query.isNullOrBlank() || shouldSuppress(dialogId, query)) return
+        if (dialogId.isNullOrBlank() || query.isNullOrBlank() || shouldSuppress(
+                dialogId,
+                query
+            )
+        ) return
 
         onInput(dialogId, query)
     }

@@ -1,8 +1,5 @@
 package com.niki914.nexus.agentic.repo
 
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.array
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.boolean
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.orEmptyObjects
@@ -10,6 +7,9 @@ import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.parseObject
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.string
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.stringArray
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.stringValues
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRule as TakeoverRule
@@ -93,7 +93,11 @@ internal object RuleSettingsCodec {
                 TakeoverRule(
                     id = id,
                     name = name,
-                    target = TakeoverTarget.entries.firstOrNull { it.name == ruleObj.string(TARGET_KEY) }
+                    target = TakeoverTarget.entries.firstOrNull {
+                        it.name == ruleObj.string(
+                            TARGET_KEY
+                        )
+                    }
                         ?: TakeoverTarget.NEXUS,
                     enabled = ruleObj.boolean(ENABLED_KEY, default = true),
                     patterns = ruleObj.array(PATTERNS_KEY).stringValues(),

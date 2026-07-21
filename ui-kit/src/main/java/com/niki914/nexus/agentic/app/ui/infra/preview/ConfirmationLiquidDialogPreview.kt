@@ -45,7 +45,12 @@ private fun ConfirmationLiquidDialogPreviewContent() {
     }
 }
 
-@Preview(name = "Confirmation Liquid Dialog Light", showBackground = true, widthDp = 420, heightDp = 900)
+@Preview(
+    name = "Confirmation Liquid Dialog Light",
+    showBackground = true,
+    widthDp = 420,
+    heightDp = 900
+)
 @Composable
 private fun ConfirmationLiquidDialogLightPreview() {
     BaseTheme(darkTheme = false, dynamicColor = false) {

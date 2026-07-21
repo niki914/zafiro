@@ -159,6 +159,7 @@ class TakeoverSettingsViewModel :
             TakeoverSettingsIntent.DismissDeleteConfirmation -> updateState {
                 copy(deleteConfirmation = null)
             }
+
             TakeoverSettingsIntent.ConfirmDelete -> confirmDelete()
         }
     }

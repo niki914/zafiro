@@ -30,6 +30,7 @@ interface IAgentStoreService : IInterface {
                     reply?.writeString(result)
                     return true
                 }
+
                 TRANSACTION_writeStore -> {
                     data.enforceInterface(DESCRIPTOR)
                     val storeId = data.readString()
@@ -38,6 +39,7 @@ interface IAgentStoreService : IInterface {
                     reply?.writeNoException()
                     return true
                 }
+
                 TRANSACTION_mutateStore -> {
                     data.enforceInterface(DESCRIPTOR)
                     val storeId = data.readString()
@@ -48,6 +50,7 @@ interface IAgentStoreService : IInterface {
                     reply?.writeString(result)
                     return true
                 }
+
                 TRANSACTION_postNotification -> {
                     data.enforceInterface(DESCRIPTOR)
                     val title = data.readString()
@@ -57,12 +60,14 @@ interface IAgentStoreService : IInterface {
                     reply?.writeNoException()
                     return true
                 }
+
                 TRANSACTION_postNetworkErrorNotification -> {
                     data.enforceInterface(DESCRIPTOR)
                     postNetworkErrorNotification()
                     reply?.writeNoException()
                     return true
                 }
+
                 TRANSACTION_postUnsupportedVersionNotification -> {
                     data.enforceInterface(DESCRIPTOR)
                     val hostPackageName = data.readString()
@@ -71,12 +76,14 @@ interface IAgentStoreService : IInterface {
                     reply?.writeNoException()
                     return true
                 }
+
                 else -> return super.onTransact(code, data, reply, flags)
             }
         }
 
         companion object {
-            private const val DESCRIPTOR = "com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService"
+            private const val DESCRIPTOR =
+                "com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService"
             private const val TRANSACTION_readStore = 1
             private const val TRANSACTION_writeStore = 2
             private const val TRANSACTION_mutateStore = 3
@@ -171,7 +178,10 @@ interface IAgentStoreService : IInterface {
                 }
             }
 
-            override fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?) {
+            override fun postUnsupportedVersionNotification(
+                hostPackageName: String?,
+                hostVersion: String?
+            ) {
                 val data = Parcel.obtain()
                 val reply = Parcel.obtain()
                 try {

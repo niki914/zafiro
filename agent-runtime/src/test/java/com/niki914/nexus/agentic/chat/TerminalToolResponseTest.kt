@@ -51,7 +51,12 @@ class TerminalToolResponseTest {
     fun commandTimeoutKeepsPartialOutputAndOmitsExitCode() {
         val json = parse(
             TerminalToolResponse.commandTimeout(
-                result = commandResult(stdout = "partial", stderr = "warn", exitCode = null, timedOut = true),
+                result = commandResult(
+                    stdout = "partial",
+                    stderr = "warn",
+                    exitCode = null,
+                    timedOut = true
+                ),
                 elapsedSeconds = 10L,
                 timeoutMs = 10_000L,
                 session = "user",
@@ -144,7 +149,10 @@ class TerminalToolResponseTest {
 
         assertEquals("root", json["identity"]!!.jsonPrimitive.content)
         assertErrorCode("AUTHORIZATION_DENIED", json)
-        assertEquals("AuthorizationDenied", json["error"]!!.jsonObject["failure_type"]!!.jsonPrimitive.content)
+        assertEquals(
+            "AuthorizationDenied",
+            json["error"]!!.jsonObject["failure_type"]!!.jsonPrimitive.content
+        )
         assertEquals("root", json["error"]!!.jsonObject["identity"]!!.jsonPrimitive.content)
     }
 
@@ -162,7 +170,10 @@ class TerminalToolResponseTest {
 
         assertEquals("shizuku", json["identity"]!!.jsonPrimitive.content)
         assertErrorCode("BACKEND_UNAVAILABLE", json)
-        assertEquals("BackendUnavailable", json["error"]!!.jsonObject["failure_type"]!!.jsonPrimitive.content)
+        assertEquals(
+            "BackendUnavailable",
+            json["error"]!!.jsonObject["failure_type"]!!.jsonPrimitive.content
+        )
         assertEquals("shizuku", json["error"]!!.jsonObject["identity"]!!.jsonPrimitive.content)
     }
 
@@ -178,7 +189,10 @@ class TerminalToolResponseTest {
 
         assertEquals("user", json["session"]!!.jsonPrimitive.content)
         assertErrorCode("RUNTIME_TERMINATED", json)
-        assertEquals("RuntimeTerminated", json["error"]!!.jsonObject["failure_type"]!!.jsonPrimitive.content)
+        assertEquals(
+            "RuntimeTerminated",
+            json["error"]!!.jsonObject["failure_type"]!!.jsonPrimitive.content
+        )
     }
 
     @Test
@@ -195,13 +209,21 @@ class TerminalToolResponseTest {
 
         assertEquals("ssh", json["identity"]!!.jsonPrimitive.content)
         assertErrorCode("SSH_AUTHENTICATION_FAILED", json)
-        assertEquals("SshAuthenticationFailed", json["error"]!!.jsonObject["failure_type"]!!.jsonPrimitive.content)
+        assertEquals(
+            "SshAuthenticationFailed",
+            json["error"]!!.jsonObject["failure_type"]!!.jsonPrimitive.content
+        )
         assertEquals("ssh", json["error"]!!.jsonObject["identity"]!!.jsonPrimitive.content)
     }
 
     @Test
     fun internalErrorUsesStructuredError() {
-        val json = parse(TerminalToolResponse.internalError(IllegalStateException("boom"), elapsedSeconds = 6L))
+        val json = parse(
+            TerminalToolResponse.internalError(
+                IllegalStateException("boom"),
+                elapsedSeconds = 6L
+            )
+        )
 
         assertErrorCode("INTERNAL_ERROR", json)
         assertEquals("boom", json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content)

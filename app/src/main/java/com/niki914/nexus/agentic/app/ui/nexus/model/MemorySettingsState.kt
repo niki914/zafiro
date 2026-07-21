@@ -29,9 +29,14 @@ data class MemoryDeleteConfirmationState(
 )
 
 sealed interface MemoryInlineError {
-    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : MemoryInlineError
-    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : MemoryInlineError
-    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : MemoryInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        MemoryInlineError
+
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        MemoryInlineError
+
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        MemoryInlineError
 }
 
 sealed interface MemorySettingsIntent {

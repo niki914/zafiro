@@ -114,7 +114,8 @@ object LLMController {
                 enabledSkills = enabledSkills,
             )
         )
-        val finalConfig = configWithoutRuntimePrompt.copy(finalSystemPrompt = prompt.finalSystemPrompt)
+        val finalConfig =
+            configWithoutRuntimePrompt.copy(finalSystemPrompt = prompt.finalSystemPrompt)
         activeSession.update {
             applyRuntimeConfig(
                 config = finalConfig,
@@ -191,14 +192,20 @@ object LLMController {
                     )
                 )
                 state.session.send(query).collect { event ->
-                    val mapped = LlmStreamEventMapper.map(event, accumulator, startedAtMs, defaultErrorMessage)
+                    val mapped = LlmStreamEventMapper.map(
+                        event,
+                        accumulator,
+                        startedAtMs,
+                        defaultErrorMessage
+                    )
                     mapped?.let {
                         if (it is LlmStreamEvent.Error && !streamErrorReported) {
                             streamErrorReported = true
                             XEvent.llmError(
                                 fields = mapOf(
                                     "stage" to "session_event",
-                                    "errorType" to (it.throwable?.eventTypeName() ?: "SessionEvent"),
+                                    "errorType" to (it.throwable?.eventTypeName()
+                                        ?: "SessionEvent"),
                                     "message" to it.message
                                 )
                             )

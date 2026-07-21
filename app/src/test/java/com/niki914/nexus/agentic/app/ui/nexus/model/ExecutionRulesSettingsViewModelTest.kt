@@ -62,8 +62,14 @@ class ExecutionRulesSettingsViewModelTest {
         viewModel.sendIntent(ExecutionRulesSettingsIntent.ItemEnabledChanged(0, false))
         advanceUntilIdle()
 
-        assertEquals(ExecutionRuleEnabledMode.DISABLED, XRepo.executionRules.list().single().enabledMode)
-        assertEquals(ExecutionRuleEnabledMode.DISABLED, viewModel.uiStateFlow.value.items.single().enabledMode)
+        assertEquals(
+            ExecutionRuleEnabledMode.DISABLED,
+            XRepo.executionRules.list().single().enabledMode
+        )
+        assertEquals(
+            ExecutionRuleEnabledMode.DISABLED,
+            viewModel.uiStateFlow.value.items.single().enabledMode
+        )
     }
 
     @Test
@@ -82,7 +88,10 @@ class ExecutionRulesSettingsViewModelTest {
         val rule = XRepo.executionRules.list().single { it.name == "新规则" }
         assertEquals("新规则", rule.name)
         assertEquals(listOf("echo danger"), rule.patterns)
-        assertEquals(LocalSettingsDefaults.defaultExecutionRules.size + 1, XRepo.executionRules.list().size)
+        assertEquals(
+            LocalSettingsDefaults.defaultExecutionRules.size + 1,
+            XRepo.executionRules.list().size
+        )
         assertEquals(listOf(ExecutionRulesSettingsEffect.ExitDetail), effects)
         assertFalse(viewModel.uiStateFlow.value.isSaving)
     }
@@ -127,7 +136,11 @@ class ExecutionRulesSettingsViewModelTest {
         advanceUntilIdle()
         viewModel.sendIntent(ExecutionRulesSettingsIntent.StartEdit(0))
         viewModel.sendIntent(ExecutionRulesSettingsIntent.NameChanged("更新规则"))
-        viewModel.sendIntent(ExecutionRulesSettingsIntent.EnabledModeChanged(ExecutionRuleEnabledMode.ALWAYS))
+        viewModel.sendIntent(
+            ExecutionRulesSettingsIntent.EnabledModeChanged(
+                ExecutionRuleEnabledMode.ALWAYS
+            )
+        )
         viewModel.sendIntent(ExecutionRulesSettingsIntent.PatternsChanged("pm uninstall"))
         viewModel.sendIntent(ExecutionRulesSettingsIntent.Save)
         advanceUntilIdle()
@@ -158,11 +171,15 @@ class ExecutionRulesSettingsViewModelTest {
     }
 
     private fun rulesSettings(vararg rules: ExecutionRule): Pair<String, String> {
-        return StoreDescriptorRegistry.RULES_EXECUTION_ID to RuleSettingsCodec.encodeExecutionRules(rules.toList())
+        return StoreDescriptorRegistry.RULES_EXECUTION_ID to RuleSettingsCodec.encodeExecutionRules(
+            rules.toList()
+        )
     }
 
     private fun rulesSettings(rules: List<ExecutionRule>): Pair<String, String> {
-        return StoreDescriptorRegistry.RULES_EXECUTION_ID to RuleSettingsCodec.encodeExecutionRules(rules)
+        return StoreDescriptorRegistry.RULES_EXECUTION_ID to RuleSettingsCodec.encodeExecutionRules(
+            rules
+        )
     }
 
     private fun sampleRule(): ExecutionRule {

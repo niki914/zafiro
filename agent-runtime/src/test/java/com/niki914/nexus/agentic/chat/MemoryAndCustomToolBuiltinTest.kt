@@ -60,7 +60,12 @@ class MemoryAndCustomToolBuiltinTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
                 customTools = listOf(
-                    CustomTool("battery_status", "Read battery.", "dumpsys battery", enabled = true),
+                    CustomTool(
+                        "battery_status",
+                        "Read battery.",
+                        "dumpsys battery",
+                        enabled = true
+                    ),
                     CustomTool("wifi_status", "Read wifi.", "cmd wifi status", enabled = false),
                 )
             )
@@ -87,7 +92,12 @@ class MemoryAndCustomToolBuiltinTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
                 customTools = listOf(
-                    CustomTool("battery_status", "Read battery.", "dumpsys battery", enabled = true),
+                    CustomTool(
+                        "battery_status",
+                        "Read battery.",
+                        "dumpsys battery",
+                        enabled = true
+                    ),
                 )
             )
         )

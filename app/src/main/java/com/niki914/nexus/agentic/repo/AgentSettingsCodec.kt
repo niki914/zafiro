@@ -1,10 +1,5 @@
 package com.niki914.nexus.agentic.repo
 
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.array
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.boolean
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.obj
@@ -15,10 +10,18 @@ import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.stringValues
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentMemoryMode
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentProfile
 import com.niki914.nexus.store.StoreDescriptorRegistry
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.longOrNull
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 
 internal object AgentSettingsCodec {
-    fun parseRegistry(json: String, nowMillis: Long = System.currentTimeMillis()): List<RuntimeAgentProfile> {
+    fun parseRegistry(
+        json: String,
+        nowMillis: Long = System.currentTimeMillis()
+    ): List<RuntimeAgentProfile> {
         val agents = parseObject(json)
             .array(AGENTS_KEY)
             .orEmptyObjects()

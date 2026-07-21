@@ -12,6 +12,10 @@ import android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT
+import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController.ensureService
+import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController.nodeCache
+import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController.refreshNodeCache
+import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController.serviceInstance
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.xposed.api.util.ContextProvider
 import kotlinx.coroutines.delay
@@ -29,7 +33,13 @@ import java.util.concurrent.atomic.AtomicInteger
 interface IAccessibility {
     val windowRoot: AccessibilityNodeInfo?
     fun performAction(node: AccessibilityNodeInfo, action: Int, text: String?): Boolean
-    fun dispatchGesture(startX: Float, startY: Float, endX: Float, endY: Float, duration: Long): Boolean
+    fun dispatchGesture(
+        startX: Float,
+        startY: Float,
+        endX: Float,
+        endY: Float,
+        duration: Long
+    ): Boolean
 }
 
 enum class NodeAction { CLICK, LONG_CLICK, SET_TEXT, SCROLL_FORWARD, SCROLL_BACKWARD }
@@ -130,7 +140,8 @@ object AccessibilityController {
         existing += serviceName
         val newValue = existing.joinToString(":")
 
-        val putResult = runShellCommand("settings put secure enabled_accessibility_services $newValue")
+        val putResult =
+            runShellCommand("settings put secure enabled_accessibility_services $newValue")
         if (!putResult.success) {
             return Result.failure(
                 RuntimeException("Failed to enable accessibility service: ${putResult.stderr}")
@@ -187,9 +198,9 @@ object AccessibilityController {
             return Result.failure(
                 RuntimeException(
                     "No accessibility nodes found in the current window. " +
-                        "This app likely uses a non-native UI framework (Flutter, Unity, WebView, game engine) " +
-                        "that does not expose standard Android accessibility node trees. " +
-                        "screen_content, node_action, and gesture tools will not work with this app."
+                            "This app likely uses a non-native UI framework (Flutter, Unity, WebView, game engine) " +
+                            "that does not expose standard Android accessibility node trees. " +
+                            "screen_content, node_action, and gesture tools will not work with this app."
                 )
             )
         }
@@ -330,11 +341,13 @@ object AccessibilityController {
         sb.append("{i: $index, t: ${type.name.lowercase()}, b: [${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}], pos: $pos")
 
         if (text.isNotEmpty()) {
-            val quoted = if (PruningRules.needsQuoting(text)) "\"${text.replace("\"", "\\\"")}\"" else text
+            val quoted =
+                if (PruningRules.needsQuoting(text)) "\"${text.replace("\"", "\\\"")}\"" else text
             sb.append(", txt: $quoted")
         }
         if (desc.isNotEmpty()) {
-            val quoted = if (PruningRules.needsQuoting(desc)) "\"${desc.replace("\"", "\\\"")}\"" else desc
+            val quoted =
+                if (PruningRules.needsQuoting(desc)) "\"${desc.replace("\"", "\\\"")}\"" else desc
             sb.append(", h: $quoted")
         }
 
@@ -416,7 +429,7 @@ object AccessibilityController {
                     return BuiltinToolResult.failure(
                         "NODE_STALE",
                         "Node $index no longer exists on screen. " +
-                            "The UI changed since the last screen_content call — re-read and try again.",
+                                "The UI changed since the last screen_content call — re-read and try again.",
                     )
                 }
 
@@ -431,7 +444,7 @@ object AccessibilityController {
                     return BuiltinToolResult.failure(
                         "UI_CHANGED",
                         "Node $index moved ${dx}x${dy}px since last screen_content. " +
-                            "A layout shift may have occurred — re-read the screen.",
+                                "A layout shift may have occurred — re-read the screen.",
                     )
                 }
 
@@ -439,7 +452,7 @@ object AccessibilityController {
                     return BuiltinToolResult.failure(
                         "NODE_HIDDEN",
                         "Node $index is no longer visible (possibly covered). " +
-                            "Re-read the screen and re-evaluate.",
+                                "Re-read the screen and re-evaluate.",
                     )
                 }
 
@@ -457,6 +470,7 @@ object AccessibilityController {
                 val name = if (action == NodeAction.LONG_CLICK) "long tap" else "tap"
                 BuiltinToolResult.success("shell $name at ($newCx, $newCy)")
             }
+
             NodeAction.SCROLL_FORWARD -> {
                 val result = runShellCommand("input swipe $cx $cy $cx ${cy - 200} 300")
                 if (!result.success) {
@@ -466,6 +480,7 @@ object AccessibilityController {
                 }
                 BuiltinToolResult.success("shell scroll forward at ($cx, $cy)")
             }
+
             NodeAction.SCROLL_BACKWARD -> {
                 val result = runShellCommand("input swipe $cx $cy $cx ${cy + 200} 300")
                 if (!result.success) {
@@ -475,6 +490,7 @@ object AccessibilityController {
                 }
                 BuiltinToolResult.success("shell scroll backward at ($cx, $cy)")
             }
+
             NodeAction.SET_TEXT -> {
                 BuiltinToolResult.failure(
                     "METHOD_NOT_SUPPORTED", "set_text requires accessibility method"
@@ -551,6 +567,7 @@ object AccessibilityController {
                     BuiltinToolResult.failure("GESTURE_FAILED", "gesture failed via accessibility")
                 }
             }
+
             InteractionMethod.SHELL -> {
                 val result = runShellCommand("input swipe $startX $startY $endX $endY $duration")
                 if (!result.success) {
@@ -591,7 +608,8 @@ object AccessibilityController {
         }
 
         if (actionId != null) {
-            val success = (serviceInstance as? AccessibilityService)?.performGlobalAction(actionId) ?: false
+            val success =
+                (serviceInstance as? AccessibilityService)?.performGlobalAction(actionId) ?: false
             val actionName = when (keyCode) {
                 4 -> "BACK"
                 3 -> "HOME"

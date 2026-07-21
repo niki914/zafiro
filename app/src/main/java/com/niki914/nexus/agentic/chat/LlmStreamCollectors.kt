@@ -192,9 +192,11 @@ private class ChunkTextProjector(
 
             is LlmStreamEvent.ToolRunning -> {
                 appendToolLine(event.call, labels.called)
-                val calledFrame = LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false)
+                val calledFrame =
+                    LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false)
                 appendToolLine(event.call, labels.running)
-                val runningFrame = LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false)
+                val runningFrame =
+                    LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false)
                 listOf(calledFrame, runningFrame)
             }
 
@@ -229,7 +231,10 @@ private class ChunkTextProjector(
 
     private fun appendText(text: String) {
         if (text.isEmpty()) return
-        if (lastWasToolLine && fullText.isNotEmpty() && fullText.last() != '\n' && !text.startsWith("\n")) {
+        if (lastWasToolLine && fullText.isNotEmpty() && fullText.last() != '\n' && !text.startsWith(
+                "\n"
+            )
+        ) {
             fullText.append('\n')
         }
         assistantText.append(text)

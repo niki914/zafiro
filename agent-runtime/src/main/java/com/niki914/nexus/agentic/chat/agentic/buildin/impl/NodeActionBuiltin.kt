@@ -19,18 +19,19 @@ class NodeActionBuiltin : BuiltinTool() {
 
     override val description: String =
         "Perform an action on a UI node identified by its index from screen_content. " +
-            "Supports methods: accessibility (default) for set_text (only method that can type into text fields) " +
-            "and shell for tap/long_click/scroll via root input commands. " +
-            "Actions: click, long_click, set_text, scroll_forward, scroll_backward.\n\n" +
-            "scroll_forward/scroll_backward move 1 step per call. " +
-            "For multi-step scrolling: call them repeatedly — you do NOT need to re-read screen_content between each scroll. Verify after the batch."
+                "Supports methods: accessibility (default) for set_text (only method that can type into text fields) " +
+                "and shell for tap/long_click/scroll via root input commands. " +
+                "Actions: click, long_click, set_text, scroll_forward, scroll_backward.\n\n" +
+                "scroll_forward/scroll_backward move 1 step per call. " +
+                "For multi-step scrolling: call them repeatedly — you do NOT need to re-read screen_content between each scroll. Verify after the batch."
 
     override val defaultEnabled: Boolean = true
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
         config.string("action") {
-            description = "Action to perform: click, long_click, set_text, scroll_forward, scroll_backward."
+            description =
+                "Action to perform: click, long_click, set_text, scroll_forward, scroll_backward."
             required = true
         }
         config.integer("index") {
@@ -56,7 +57,9 @@ class NodeActionBuiltin : BuiltinTool() {
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "node_action arguments must be a JSON object with action, index, and optional text and method.",
                 hint = """Example: {"action":"click","index":42} or {"action":"set_text","index":7,"text":"hello"}""",
-                fieldErrors = mapOf("argumentsJson" to (throwable.message ?: "Invalid JSON object.")),
+                fieldErrors = mapOf(
+                    "argumentsJson" to (throwable.message ?: "Invalid JSON object.")
+                ),
             )
         }
 
@@ -101,7 +104,8 @@ class NodeActionBuiltin : BuiltinTool() {
             index = obj["index"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
                 ?: throw IllegalArgumentException("index must be a valid integer."),
             text = obj["text"]?.jsonPrimitive?.contentOrNull?.trim().takeIf { !it.isNullOrBlank() },
-            method = obj["method"]?.jsonPrimitive?.contentOrNull.orEmpty().trim().ifBlank { "accessibility" },
+            method = obj["method"]?.jsonPrimitive?.contentOrNull.orEmpty().trim()
+                .ifBlank { "accessibility" },
         )
     }
 

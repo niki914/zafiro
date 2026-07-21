@@ -36,8 +36,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestWatcher
-import org.junit.runner.RunWith
 import org.junit.runner.Description
+import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
@@ -377,7 +377,10 @@ class HomeChatViewModelTest {
     fun loadConversation_restoresHistoryButDoesNotRestoreDraft() = runTest {
         val conversations = FakeHomeConversationStore()
         val firstId = conversations.createConversation("first")
-        conversations.saveHistory(firstId, listOf(ChatTurn.User("first"), ChatTurn.Assistant("one")))
+        conversations.saveHistory(
+            firstId,
+            listOf(ChatTurn.User("first"), ChatTurn.Assistant("one"))
+        )
         conversations.setLastOpenedConversationId(firstId)
         val secondHistory = listOf(ChatTurn.User("second"), ChatTurn.Assistant("two"))
         val secondId = conversations.createConversation("second")
@@ -509,7 +512,8 @@ private class FakeHomeConversationStore : HomeConversationStore {
     }
 
     override suspend fun forkConversation(sourceId: String, keepTurnCount: Int): String {
-        val source = records[sourceId] ?: throw IllegalStateException("Source conversation not found: $sourceId")
+        val source = records[sourceId]
+            ?: throw IllegalStateException("Source conversation not found: $sourceId")
         val newId = "conversation-${nextId++}"
         val truncated = source.history.take(keepTurnCount)
         records[newId] = ConversationRecord(
@@ -554,12 +558,21 @@ private class FakeDomainSettingsStore : DomainSettingsStore {
             ?: "{}"
     }
 
-    override suspend fun writeJsonFromOwner(context: Context, storeId: String, json: String): Boolean {
+    override suspend fun writeJsonFromOwner(
+        context: Context,
+        storeId: String,
+        json: String
+    ): Boolean {
         values[storeId] = json
         return true
     }
 
-    override suspend fun mutateJson(context: Context, storeId: String, path: String, value: Any?): Boolean {
+    override suspend fun mutateJson(
+        context: Context,
+        storeId: String,
+        path: String,
+        value: Any?
+    ): Boolean {
         return false
     }
 }

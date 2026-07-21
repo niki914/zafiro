@@ -36,10 +36,12 @@ class FloatScreenResetDetector(
 
     private fun onFloatScreenDetachObserved(target: HookTarget, thisObject: Any?) {
         val detachObservedElapsed = SystemClock.elapsedRealtime()
-        val instanceInfo = thisObject?.let { "${it.javaClass.simpleName}@${Integer.toHexString(it.hashCode())}" } ?: "null"
-        
-        pendingFloatResetCheck?.let { 
-            floatResetHandler.removeCallbacks(it) 
+        val instanceInfo =
+            thisObject?.let { "${it.javaClass.simpleName}@${Integer.toHexString(it.hashCode())}" }
+                ?: "null"
+
+        pendingFloatResetCheck?.let {
+            floatResetHandler.removeCallbacks(it)
         }
 
         val check = Runnable {
@@ -58,7 +60,9 @@ class FloatScreenResetDetector(
 
     private fun onFloatResumeObserved(target: HookTarget, thisObject: Any?) {
         lastFloatResumeObservedElapsed = SystemClock.elapsedRealtime()
-        val instanceInfo = thisObject?.let { "${it.javaClass.simpleName}@${Integer.toHexString(it.hashCode())}" } ?: "null"
+        val instanceInfo =
+            thisObject?.let { "${it.javaClass.simpleName}@${Integer.toHexString(it.hashCode())}" }
+                ?: "null"
     }
 
     private fun installHookTargetObserver(

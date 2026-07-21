@@ -1,9 +1,9 @@
 package com.niki914.nexus.agentic.runtime
 
 import com.niki914.nexus.agentic.runtime.settings.RuntimeHostGateway
-import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.nexus.store.IpcWriteResult
 import com.niki914.nexus.store.XIpcBridge
+import com.niki914.nexus.xposed.api.util.ContextProvider
 
 class IpcRuntimeHostGateway : RuntimeHostGateway {
     override suspend fun postNotification(

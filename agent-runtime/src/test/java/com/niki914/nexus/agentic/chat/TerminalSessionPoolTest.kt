@@ -14,8 +14,8 @@ import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCloseOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalRuntimePort
-import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPort
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPort
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -105,8 +105,12 @@ class TerminalSessionPoolTest {
                 assertEquals("a3f9", firstSuccess.session)
                 assertEquals("b401", secondSuccess.session)
                 assertNotEquals(firstSuccess.session, secondSuccess.session)
-                assertTrue(TerminalSessionPool.publicHandleRegexForTest().matches(firstSuccess.session))
-                assertTrue(TerminalSessionPool.publicHandleRegexForTest().matches(secondSuccess.session))
+                assertTrue(
+                    TerminalSessionPool.publicHandleRegexForTest().matches(firstSuccess.session)
+                )
+                assertTrue(
+                    TerminalSessionPool.publicHandleRegexForTest().matches(secondSuccess.session)
+                )
                 assertEquals("user", firstSuccess.identity)
                 assertEquals("user", secondSuccess.identity)
                 assertEquals(2, fakeRuntime.openedSessions.size)

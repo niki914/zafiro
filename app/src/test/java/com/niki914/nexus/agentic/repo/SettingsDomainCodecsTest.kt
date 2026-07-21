@@ -73,7 +73,9 @@ class SettingsDomainCodecsTest {
         )
         val agents = jsonObject(json)["enabled_for_agents"]!!.jsonObject
 
-        assertEquals(listOf("main"), agents["launch_app"]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(
+            listOf("main"),
+            agents["launch_app"]!!.jsonArray.map { it.jsonPrimitive.content })
         assertTrue(agents["terminal"]!!.jsonArray.isEmpty())
     }
 
@@ -173,7 +175,10 @@ class SettingsDomainCodecsTest {
         assertEquals("filesystem_1", McpSettingsCodec.normalizeServerId("FileSystem 1"))
         assertEquals("mcp_example_com", McpSettingsCodec.normalizeServerId("mcp.example.com"))
         assertEquals("bad", McpSettingsCodec.normalizeServerId("../bad"))
-        assertEquals("https_mcp_example_com_mcp", McpSettingsCodec.normalizeServerId("https://mcp.example.com/mcp"))
+        assertEquals(
+            "https_mcp_example_com_mcp",
+            McpSettingsCodec.normalizeServerId("https://mcp.example.com/mcp")
+        )
         assertNull(McpSettingsCodec.normalizeServerId(" "))
     }
 
@@ -194,8 +199,14 @@ class SettingsDomainCodecsTest {
 
     @Test
     fun memoryParsesStringArrayAndSkipsObjectMissingContent() {
-        assertEquals(listOf("a"), MemorySettingsCodec.parseMemories("""{"memories":[" a ", " "]}"""))
-        assertEquals(emptyList<String>(), MemorySettingsCodec.parseMemories("""{"memories":[{"id":"x"}]}"""))
+        assertEquals(
+            listOf("a"),
+            MemorySettingsCodec.parseMemories("""{"memories":[" a ", " "]}""")
+        )
+        assertEquals(
+            emptyList<String>(),
+            MemorySettingsCodec.parseMemories("""{"memories":[{"id":"x"}]}""")
+        )
     }
 
     @Test
@@ -218,11 +229,26 @@ class SettingsDomainCodecsTest {
         )
 
         assertEquals(
-            listOf(ExecutionRule("deny_rm", "Deny rm", ExecutionRuleEnabledMode.ALWAYS, listOf("rm"))),
+            listOf(
+                ExecutionRule(
+                    "deny_rm",
+                    "Deny rm",
+                    ExecutionRuleEnabledMode.ALWAYS,
+                    listOf("rm")
+                )
+            ),
             executionRules,
         )
         assertEquals(
-            listOf(TakeoverRule("default", "Default", TakeoverTarget.NATIVE_ASSISTANT, true, listOf(".*"))),
+            listOf(
+                TakeoverRule(
+                    "default",
+                    "Default",
+                    TakeoverTarget.NATIVE_ASSISTANT,
+                    true,
+                    listOf(".*")
+                )
+            ),
             takeoverRules,
         )
     }

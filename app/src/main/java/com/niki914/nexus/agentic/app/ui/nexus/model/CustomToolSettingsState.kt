@@ -71,9 +71,14 @@ sealed interface CustomToolSettingsIntent {
 }
 
 sealed interface CustomToolInlineError {
-    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : CustomToolInlineError
-    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : CustomToolInlineError
-    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : CustomToolInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        CustomToolInlineError
+
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        CustomToolInlineError
+
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        CustomToolInlineError
 }
 
 sealed interface CustomToolSettingsEffect {
@@ -153,6 +158,7 @@ class CustomToolSettingsViewModel :
             CustomToolSettingsIntent.DismissDeleteConfirmation -> updateState {
                 copy(deleteConfirmation = null)
             }
+
             CustomToolSettingsIntent.ConfirmDelete -> confirmDelete()
         }
     }
@@ -397,7 +403,10 @@ class CustomToolSettingsViewModel :
                 copy(
                     formState = formState,
                     isSaving = false,
-                    inlineError = CustomToolInlineError.SaveFailed(validation.message, fallbackResId = R.string.error_custom_tool_save_failed),
+                    inlineError = CustomToolInlineError.SaveFailed(
+                        validation.message,
+                        fallbackResId = R.string.error_custom_tool_save_failed
+                    ),
                 )
             }
         }

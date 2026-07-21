@@ -39,8 +39,8 @@ import com.niki914.nexus.agentic.app.ui.infra.nav.pageViewModel
 import com.niki914.nexus.agentic.app.ui.nexus.PageBackHandler
 import com.niki914.nexus.agentic.app.ui.nexus.PageChromeContribution
 import com.niki914.nexus.agentic.app.ui.nexus.RegisterPageChrome
-import com.niki914.nexus.agentic.app.ui.nexus.model.MemoryEditDialogState
 import com.niki914.nexus.agentic.app.ui.nexus.model.MemoryDeleteConfirmationState
+import com.niki914.nexus.agentic.app.ui.nexus.model.MemoryEditDialogState
 import com.niki914.nexus.agentic.app.ui.nexus.model.MemoryInlineError
 import com.niki914.nexus.agentic.app.ui.nexus.model.MemorySettingsIntent
 import com.niki914.nexus.agentic.app.ui.nexus.model.MemorySettingsUiState

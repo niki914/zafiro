@@ -77,7 +77,8 @@ sealed interface McpSettingsIntent {
 sealed interface McpInlineError {
     data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : McpInlineError
     data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : McpInlineError
-    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : McpInlineError
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        McpInlineError
 }
 
 sealed interface McpSettingsEffect {
@@ -143,6 +144,7 @@ class McpSettingsViewModel :
             McpSettingsIntent.DismissDeleteConfirmation -> updateState {
                 copy(deleteConfirmation = null)
             }
+
             McpSettingsIntent.ConfirmDelete -> confirmDelete()
         }
     }

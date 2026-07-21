@@ -126,7 +126,10 @@ class LocalSettingsCodecTest {
 
     @Test
     fun parseExecutionRules_returnsEmptyListWhenMissing() {
-        assertEquals(emptyList<ExecutionRule>(), LocalSettingsCodec.parseExecutionRules(LocalSettings()))
+        assertEquals(
+            emptyList<ExecutionRule>(),
+            LocalSettingsCodec.parseExecutionRules(LocalSettings())
+        )
     }
 
     @Test

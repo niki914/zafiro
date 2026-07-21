@@ -87,7 +87,8 @@ private fun ExecutionRulesSettingsContentBody(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> {
-                    val index = executionRuleIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
+                    val index =
+                        executionRuleIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
                     val item = uiState.items.getOrNull(index) ?: return@SettingsSpecPageContent
                     onOpenRuleDetail(item.name, index, false)
                 }

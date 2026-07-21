@@ -46,8 +46,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.niki914.nexus.agentic.app.ui.infra.shape.G2CardShape
-import kotlin.math.absoluteValue
 import kotlin.math.abs
+import kotlin.math.absoluteValue
 import kotlin.math.exp
 
 @Composable
@@ -134,15 +134,16 @@ fun SwipeDismissSettingsItemCard(
                                 rawDistancePx = 0f
                             }
 
-                            val slopChange = awaitTouchSlopOrCancellation(pointerId) { change, overSlop ->
-                                pointerId = change.id
-                                dragAxis = resolveDragAxis(overSlop.x, overSlop.y)
-                                if (dragAxis == DragAxis.Horizontal) {
-                                    isDragging = true
-                                    rawDistancePx -= overSlop.x
-                                    change.consume()
+                            val slopChange =
+                                awaitTouchSlopOrCancellation(pointerId) { change, overSlop ->
+                                    pointerId = change.id
+                                    dragAxis = resolveDragAxis(overSlop.x, overSlop.y)
+                                    if (dragAxis == DragAxis.Horizontal) {
+                                        isDragging = true
+                                        rawDistancePx -= overSlop.x
+                                        change.consume()
+                                    }
                                 }
-                            }
 
                             when {
                                 slopChange == null -> {

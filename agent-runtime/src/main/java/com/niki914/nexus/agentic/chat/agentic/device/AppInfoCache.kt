@@ -86,7 +86,7 @@ class AppInfoCache(
             .filter { includeSystem || !it.isSystemApp }
             .filter {
                 it.appName.lowercase().contains(normalizedQuery) ||
-                    it.packageName.lowercase().contains(normalizedQuery)
+                        it.packageName.lowercase().contains(normalizedQuery)
             }
             .sortedWith(compareBy<AppInfo> { it.isSystemApp }.thenBy { it.appName.lowercase() })
             .take(limit.coerceIn(1, MAX_SEARCH_LIMIT))

@@ -77,8 +77,10 @@ private fun AboutSettingsContentBody(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> {
-                    val itemId = aboutSettingsItemIdFromRowId(action.id) ?: return@SettingsSpecPageContent
-                    val item = uiState.items.firstOrNull { it.id == itemId } ?: return@SettingsSpecPageContent
+                    val itemId =
+                        aboutSettingsItemIdFromRowId(action.id) ?: return@SettingsSpecPageContent
+                    val item = uiState.items.firstOrNull { it.id == itemId }
+                        ?: return@SettingsSpecPageContent
                     if (item.canOpen) {
                         onItemClick(itemId)
                     }
@@ -126,7 +128,8 @@ private fun aboutSettingsSpec(
     )
 }
 
-private fun aboutSettingsRowId(id: AboutSettingsItemId): String = "$ABOUT_SETTINGS_ROW_ID_PREFIX${id.name}"
+private fun aboutSettingsRowId(id: AboutSettingsItemId): String =
+    "$ABOUT_SETTINGS_ROW_ID_PREFIX${id.name}"
 
 private fun aboutSettingsItemIdFromRowId(id: String): AboutSettingsItemId? {
     if (!id.startsWith(ABOUT_SETTINGS_ROW_ID_PREFIX)) return null

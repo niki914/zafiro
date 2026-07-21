@@ -21,13 +21,12 @@ import androidx.core.net.toUri
 import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.nexus.agentic.chat.collectAsFull
 import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
-import com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback
 import com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService
+import com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback
 import com.niki914.nexus.agentic.runtime.ipc.RenderFrame
 import com.niki914.nexus.store.HostApp
-import com.niki914.nexus.store.displayNameFor
 import com.niki914.nexus.store.XIpcStoreRepository
-import com.niki914.nexus.agentic.app.R as AppR
+import com.niki914.nexus.store.displayNameFor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +37,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicReference
+import com.niki914.nexus.agentic.app.R as AppR
 
 class AgentRuntimeService : Service() {
 
@@ -136,7 +136,10 @@ class AgentRuntimeService : Service() {
             val turn = ActiveTurn(cb, job)
             if (!activeTurn.compareAndSet(null, turn)) {
                 job.cancel()
-                try { cb.asBinder().unlinkToDeath(deathRecipient, 0) } catch (_: Exception) {}
+                try {
+                    cb.asBinder().unlinkToDeath(deathRecipient, 0)
+                } catch (_: Exception) {
+                }
                 sendError(cb, "Another turn is already in progress")
             }
         }
@@ -145,7 +148,10 @@ class AgentRuntimeService : Service() {
             val turn = activeTurn.getAndSet(null) ?: return
             turn.job.cancel()
             scope.launch {
-                try { LLMController.stopCurrentRound() } catch (_: Exception) {}
+                try {
+                    LLMController.stopCurrentRound()
+                } catch (_: Exception) {
+                }
             }
         }
 
@@ -153,7 +159,10 @@ class AgentRuntimeService : Service() {
             scope.launch {
                 val turn = activeTurn.getAndSet(null)
                 turn?.job?.cancelAndJoin()
-                try { LLMController.resetConversation() } catch (_: Exception) {}
+                try {
+                    LLMController.resetConversation()
+                } catch (_: Exception) {
+                }
             }
         }
     }
@@ -203,7 +212,10 @@ class AgentRuntimeService : Service() {
             )
         }
 
-        override fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?) {
+        override fun postUnsupportedVersionNotification(
+            hostPackageName: String?,
+            hostVersion: String?
+        ) {
             if (!validateCaller()) return
             val ctx = this@AgentRuntimeService
             val hostApp = HostApp.fromPackageName(hostPackageName)
@@ -214,8 +226,14 @@ class AgentRuntimeService : Service() {
                 .scheme("https")
                 .authority("github.com")
                 .path("/niki914/agentic-nexus/issues/new")
-                .appendQueryParameter("title", ctx.getString(AppR.string.notif_unsupported_issue_title))
-                .appendQueryParameter("body", ctx.getString(AppR.string.notif_unsupported_issue_body, hostName, version))
+                .appendQueryParameter(
+                    "title",
+                    ctx.getString(AppR.string.notif_unsupported_issue_title)
+                )
+                .appendQueryParameter(
+                    "body",
+                    ctx.getString(AppR.string.notif_unsupported_issue_body, hostName, version)
+                )
                 .build()
                 .toString()
             postNotificationImpl(
@@ -253,7 +271,8 @@ class AgentRuntimeService : Service() {
         }
 
         private fun ensureNotificationChannel() {
-            val manager = this@AgentRuntimeService.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val manager =
+                this@AgentRuntimeService.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val channel = NotificationChannel(
                 STORE_CHANNEL_ID,
                 STORE_CHANNEL_NAME,
@@ -269,8 +288,10 @@ class AgentRuntimeService : Service() {
             val intent = Intent(Intent.ACTION_VIEW, uri.toUri()).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
-            val resolved = this@AgentRuntimeService.packageManager.resolveActivity(intent, 0) ?: return null
-            val pendingIntentFlags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            val resolved =
+                this@AgentRuntimeService.packageManager.resolveActivity(intent, 0) ?: return null
+            val pendingIntentFlags =
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             return PendingIntent.getActivity(
                 this@AgentRuntimeService,
                 resolved.activityInfo.packageName.hashCode(),
@@ -298,7 +319,11 @@ class AgentRuntimeService : Service() {
             LLMController.stream(query, this@AgentRuntimeService).collectAsFull { frame ->
                 sendFrame(
                     callback,
-                    RenderFrame(text = frame.text, isFirst = frame.isFirst, isFinal = frame.isFinal),
+                    RenderFrame(
+                        text = frame.text,
+                        isFirst = frame.isFirst,
+                        isFinal = frame.isFinal
+                    ),
                 )
             }
         } catch (e: CancellationException) {
@@ -309,7 +334,10 @@ class AgentRuntimeService : Service() {
                 RenderFrame(text = e.message ?: "Internal error", isFirst = true, isFinal = true),
             )
         } finally {
-            try { callback.asBinder().unlinkToDeath(deathRecipient, 0) } catch (_: Exception) {}
+            try {
+                callback.asBinder().unlinkToDeath(deathRecipient, 0)
+            } catch (_: Exception) {
+            }
             activeTurn.compareAndSet(thisTurn, null)
         }
     }
@@ -325,7 +353,8 @@ class AgentRuntimeService : Service() {
     private fun sendError(callback: IRenderFrameCallback, message: String) {
         try {
             callback.onFrame(RenderFrame(text = message, isFirst = true, isFinal = true))
-        } catch (_: DeadObjectException) {}
+        } catch (_: DeadObjectException) {
+        }
     }
 
     private val deathRecipient = IBinder.DeathRecipient {
@@ -336,7 +365,10 @@ class AgentRuntimeService : Service() {
         val turn = activeTurn.getAndSet(null) ?: return
         turn.job.cancel()
         scope.launch {
-            try { LLMController.stopCurrentRound() } catch (_: Exception) {}
+            try {
+                LLMController.stopCurrentRound()
+            } catch (_: Exception) {
+            }
         }
     }
 

@@ -29,7 +29,11 @@ internal class FakeDomainSettingsStore(
             ?: "{}"
     }
 
-    override suspend fun writeJsonFromOwner(context: Context, storeId: String, json: String): Boolean {
+    override suspend fun writeJsonFromOwner(
+        context: Context,
+        storeId: String,
+        json: String
+    ): Boolean {
         if (!ownerWriteSucceeds) {
             return false
         }
@@ -38,9 +42,15 @@ internal class FakeDomainSettingsStore(
         return true
     }
 
-    override suspend fun mutateJson(context: Context, storeId: String, path: String, value: Any?): Boolean {
+    override suspend fun mutateJson(
+        context: Context,
+        storeId: String,
+        path: String,
+        value: Any?
+    ): Boolean {
         mutateCalls += storeId to path
-        val current = Json.parseToJsonElement(jsonByStoreId[storeId] ?: "{}").jsonObject.toMutableMap()
+        val current =
+            Json.parseToJsonElement(jsonByStoreId[storeId] ?: "{}").jsonObject.toMutableMap()
         current[path] = value.toJsonElement()
         jsonByStoreId[storeId] = JsonObject(current).toString()
         return true
@@ -62,6 +72,7 @@ internal class FakeDomainSettingsStore(
             is Map<*, *> -> JsonObject(mapNotNull { (key, value) ->
                 key?.toString()?.let { it to value.toJsonElement() }
             }.toMap())
+
             is Iterable<*> -> JsonArray(map { item -> item.toJsonElement() })
             is Array<*> -> JsonArray(map { item -> item.toJsonElement() })
             else -> JsonPrimitive(toString())

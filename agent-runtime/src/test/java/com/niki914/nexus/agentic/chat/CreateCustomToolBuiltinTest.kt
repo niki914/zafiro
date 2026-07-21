@@ -43,7 +43,8 @@ class CreateCustomToolBuiltinTest {
             properties["description"]!!.jsonObject["type"]!!.jsonPrimitive.content
         )
         assertEquals("string", properties["command"]!!.jsonObject["type"]!!.jsonPrimitive.content)
-        val commandDescription = properties["command"]!!.jsonObject["description"]!!.jsonPrimitive.content
+        val commandDescription =
+            properties["command"]!!.jsonObject["description"]!!.jsonPrimitive.content
         assertTrue(commandDescription.contains("Normal Android shell"))
         assertTrue(commandDescription.contains("su -c"))
         assertTrue(commandDescription.contains("cd /path && cmd"))

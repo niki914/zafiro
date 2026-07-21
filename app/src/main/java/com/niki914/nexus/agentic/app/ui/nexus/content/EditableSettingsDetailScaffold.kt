@@ -52,15 +52,15 @@ fun EditableSettingsDetailChrome(
                     latestRightAction?.onClick?.invoke()
                 },
             ) ?: if (isCreating || onDelete == null) {
-                    null
-                } else {
-                    TopBarActionSpec(
-                        icon = Icons.Default.Delete,
-                        onClick = {
-                            latestOnDelete?.invoke()
-                        },
-                    )
-                },
+                null
+            } else {
+                TopBarActionSpec(
+                    icon = Icons.Default.Delete,
+                    onClick = {
+                        latestOnDelete?.invoke()
+                    },
+                )
+            },
             backHandler = PageBackHandler(
                 shouldConsumeBack = {
                     latestHasUnsavedChanges() || latestHasDeleteConfirmation()

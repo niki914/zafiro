@@ -2,7 +2,6 @@ package com.niki914.nexus.store
 
 import android.content.Context
 import android.content.ContextWrapper
-import java.io.File
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -12,6 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class XIpcStoreRepositoryTest {
 
@@ -22,7 +22,8 @@ class XIpcStoreRepositoryTest {
     fun missingFileReturnsDescriptorDefaultJson() = runTest {
         val context = testContext()
 
-        val json = XIpcStoreRepository.readJson(context, StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)
+        val json =
+            XIpcStoreRepository.readJson(context, StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)
 
         assertEquals("""{"memories":[]}""", json)
     }
@@ -41,10 +42,12 @@ class XIpcStoreRepositoryTest {
     @Test
     fun brokenJsonReturnsDescriptorDefaultJsonOnRead() = runTest {
         val context = testContext()
-        val descriptor = StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID)
+        val descriptor =
+            StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID)
         ConfigPersistence.fileFor(context, descriptor).writeUtf8("{broken")
 
-        val json = XIpcStoreRepository.readJson(context, StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID)
+        val json =
+            XIpcStoreRepository.readJson(context, StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID)
 
         assertEquals("""{"servers":[]}""", json)
     }
@@ -69,8 +72,10 @@ class XIpcStoreRepositoryTest {
     @Test
     fun mutateWritesOnlyTargetStoreFile() = runTest {
         val context = testContext()
-        val targetDescriptor = StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_BUILTIN_ID)
-        val otherDescriptor = StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_CUSTOM_ID)
+        val targetDescriptor =
+            StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_BUILTIN_ID)
+        val otherDescriptor =
+            StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_CUSTOM_ID)
         val otherFile = ConfigPersistence.fileFor(context, otherDescriptor)
         otherFile.writeUtf8("""{"tools":[]}""")
 
@@ -84,10 +89,11 @@ class XIpcStoreRepositoryTest {
         val targetFile = ConfigPersistence.fileFor(context, targetDescriptor)
         assertTrue(targetFile.exists())
         assertEquals(updated, targetFile.readText())
-        assertEquals(listOf("main"), JSONObject(updated)
-            .getJSONObject("enabled_for_agents")
-            .getJSONArray("launch_app")
-            .let { array -> List(array.length()) { index -> array.getString(index) } })
+        assertEquals(
+            listOf("main"), JSONObject(updated)
+                .getJSONObject("enabled_for_agents")
+                .getJSONArray("launch_app")
+                .let { array -> List(array.length()) { index -> array.getString(index) } })
         assertEquals("""{"tools":[]}""", otherFile.readText())
     }
 

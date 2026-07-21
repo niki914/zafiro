@@ -35,7 +35,8 @@ class LaunchAppBuiltin : BuiltinTool() {
             required = false
         }
         config.string("app_name") {
-            description = "App display name to launch. Fuzzy matching is allowed; ambiguous matches return candidates."
+            description =
+                "App display name to launch. Fuzzy matching is allowed; ambiguous matches return candidates."
             required = false
         }
         config.rawJsonSchema(LAUNCH_APP_SCHEMA)
@@ -52,7 +53,9 @@ class LaunchAppBuiltin : BuiltinTool() {
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "launch_app arguments must be a JSON object with package_name or app_name.",
                 hint = """Example: {"app_name":"微信"} or {"package_name":"com.tencent.mm"}""",
-                fieldErrors = mapOf("argumentsJson" to (throwable.message ?: "Invalid JSON object.")),
+                fieldErrors = mapOf(
+                    "argumentsJson" to (throwable.message ?: "Invalid JSON object.")
+                ),
             )
         }
 

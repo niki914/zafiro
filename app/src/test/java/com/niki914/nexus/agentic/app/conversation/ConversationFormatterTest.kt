@@ -17,12 +17,18 @@ class ConversationFormatterTest {
 
     @Test
     fun previewFromText_keepsExactlyTwentyCharacters() {
-        assertEquals("12345678901234567890", ConversationFormatter.previewFromText("12345678901234567890"))
+        assertEquals(
+            "12345678901234567890",
+            ConversationFormatter.previewFromText("12345678901234567890")
+        )
     }
 
     @Test
     fun previewFromText_truncatesLongTextWithEllipsis() {
-        assertEquals("12345678901234567890...", ConversationFormatter.previewFromText("123456789012345678901"))
+        assertEquals(
+            "12345678901234567890...",
+            ConversationFormatter.previewFromText("123456789012345678901")
+        )
     }
 
     @Test
@@ -100,8 +106,20 @@ class ConversationFormatterTest {
             listOf(
                 HomeChatBlock.Text("answer"),
                 HomeChatBlock.Tool(HomeToolStatus("ok-call", "search", HomeToolState.Succeeded)),
-                HomeChatBlock.Tool(HomeToolStatus("failed-ok-call", "memory", HomeToolState.Failed)),
-                HomeChatBlock.Tool(HomeToolStatus("failed-exit-call", "command", HomeToolState.Failed)),
+                HomeChatBlock.Tool(
+                    HomeToolStatus(
+                        "failed-ok-call",
+                        "memory",
+                        HomeToolState.Failed
+                    )
+                ),
+                HomeChatBlock.Tool(
+                    HomeToolStatus(
+                        "failed-exit-call",
+                        "command",
+                        HomeToolState.Failed
+                    )
+                ),
             ),
             turns.single().blocks,
         )

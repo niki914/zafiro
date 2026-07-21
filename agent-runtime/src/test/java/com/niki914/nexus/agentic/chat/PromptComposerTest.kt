@@ -91,7 +91,11 @@ class PromptComposerTest {
                 additionalInstructions = "",
                 enabledSkills = listOf(
                     skill(id = "skill-b", name = "Skill B", description = "Description B"),
-                    skill(id = "group-a/skill-a", name = "Group Skill", description = "Group description"),
+                    skill(
+                        id = "group-a/skill-a",
+                        name = "Group Skill",
+                        description = "Group description"
+                    ),
                 ),
             )
         )
@@ -180,7 +184,11 @@ class PromptComposerTest {
                         mcpSnapshot("docs", McpDiscoveryState.Available, discoveredToolCount = 20),
                         mcpSnapshot("loading", McpDiscoveryState.Discovering),
                         mcpSnapshot("broken", McpDiscoveryState.Failed, errorMessage = "boom"),
-                        mcpSnapshot("cached", McpDiscoveryState.UsingStaleCache, discoveredToolCount = 3),
+                        mcpSnapshot(
+                            "cached",
+                            McpDiscoveryState.UsingStaleCache,
+                            discoveredToolCount = 3
+                        ),
                     ).associateBy { it.serverName },
                     finalToolRegistry = ToolRegistrySnapshot.Empty,
                 ),

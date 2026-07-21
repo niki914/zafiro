@@ -11,15 +11,15 @@ class ScreenContentBuiltin : RawBuiltinTool() {
 
     override val description: String =
         "Read the current screen accessibility tree as YAML. " +
-            "If the tree is empty or contains only a root node, the current app likely uses " +
-            "a non-native UI framework (Flutter, Unity, WebView, game) that does not expose " +
-            "standard Android accessibility nodes — screen_content/node_action/gesture cannot " +
-            "interact with such apps, and you should stop retrying immediately." +
-            "\n\nKey glossary: " +
-            "i=index, t=semantic_type(button/input/text/image/list/list_item/switch/checkbox/tab/chip/toolbar/dialog/container), " +
-            "b=bounds[left,top,right,bottom], txt=display_text, h=content_description/identifier, " +
-            "tap=clickable, hold=long_clickable, edit=editable, scroll=scrollable, checked=checked_state, " +
-            "ch=children, more=off_screen_children_text_summaries."
+                "If the tree is empty or contains only a root node, the current app likely uses " +
+                "a non-native UI framework (Flutter, Unity, WebView, game) that does not expose " +
+                "standard Android accessibility nodes — screen_content/node_action/gesture cannot " +
+                "interact with such apps, and you should stop retrying immediately." +
+                "\n\nKey glossary: " +
+                "i=index, t=semantic_type(button/input/text/image/list/list_item/switch/checkbox/tab/chip/toolbar/dialog/container), " +
+                "b=bounds[left,top,right,bottom], txt=display_text, h=content_description/identifier, " +
+                "tap=clickable, hold=long_clickable, edit=editable, scroll=scrollable, checked=checked_state, " +
+                "ch=children, more=off_screen_children_text_summaries."
 
     override val defaultEnabled: Boolean = true
 
