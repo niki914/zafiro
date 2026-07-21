@@ -12,7 +12,7 @@
    - 同文件里保留了 `ActivityHook` 和 `FloatWindowHook` 的注释代码，但当前未参与实际启动链。
 
 3. **上下文与运行时桥接安装**
-   - `h/src/main/java/com/niki914/nexus/h/util/ContextProvider.kt` 的 `ContextProvider.await()` 等待宿主 `Context` 就绪。
+   - `xposed-api/src/main/java/com/niki914/nexus/xposed/api/util/ContextProvider.kt` 的 `ContextProvider.await()` 等待宿主 `Context` 就绪。
    - `app/src/main/java/com/niki914/nexus/agentic/repo/XRepo.kt` 的 `XRepo.init(ctx)` 初始化 repo 上下文。
    - `app/src/main/java/com/niki914/nexus/agentic/runtime/AppRuntimeBridge.kt` 的 `createAppRuntimeBridge()` 组装 `RuntimeBridge(settings = XRepoRuntimeGateway(), host = IpcRuntimeHostGateway())`。
    - `agent-runtime/src/main/java/com/niki914/nexus/agentic/runtime/settings/RuntimeEnvironment.kt` 通过 `RuntimeEnvironment.install(...)` 挂载这套 bridge；`RuntimeEnvironment` 实际位于 `agent-runtime` 模块，不在 `app` 模块。
@@ -32,7 +32,7 @@
    - `HostApp.XiaoAi` 路由到 `XiaoaiChatHook(scope, client)`，同理传入 `AgentRuntimeClient`。
 
 6. **宿主进程 Runtime 安装**
-   - `h/src/main/java/com/niki914/nexus/h/core/runtime/RuntimeBootstrap.kt` 的 `installIfNeeded()` 为当前宿主进程安装单例 `Runtime`。
+   - `xposed-runtime/src/main/java/com/niki914/nexus/xposed/runtime/core/runtime/RuntimeBootstrap.kt` 的 `installIfNeeded()` 为当前宿主进程安装单例 `Runtime`。
    - 当前 `Runtime` 只挂载命中的主业务 Hook；具体的 session、response、input subhook 在该主 Hook 的 `onHook()` 内继续安装。
    - Hook 内部通过 `AssistantTextSource.submit(query)`（即 `AgentRuntimeClient`）将查询经 Binder IPC 提交给主 App 进程的 `AgentRuntimeService`，由 `LLMController.stream()` 处理后流式推回 `RenderFrame`。
 
@@ -67,8 +67,11 @@
 
 - `agent-runtime/src/main/java/com/niki914/nexus/agentic/runtime/settings/RuntimeEnvironment.kt`
 
-### `h/src/main/java/com/niki914/nexus/h/`
+### `xposed-api/src/main/java/com/niki914/nexus/xposed/api/util/`
 
-- `h/src/main/java/com/niki914/nexus/h/core/runtime/RuntimeBootstrap.kt`
-- `h/src/main/java/com/niki914/nexus/h/util/ContextHook.kt`
-- `h/src/main/java/com/niki914/nexus/h/util/ContextProvider.kt`
+- `xposed-api/src/main/java/com/niki914/nexus/xposed/api/util/ContextProvider.kt`
+
+### `xposed-runtime/src/main/java/com/niki914/nexus/xposed/runtime/`
+
+- `xposed-runtime/src/main/java/com/niki914/nexus/xposed/runtime/core/runtime/RuntimeBootstrap.kt`
+- `xposed-runtime/src/main/java/com/niki914/nexus/xposed/runtime/util/ContextHook.kt`

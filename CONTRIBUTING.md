@@ -27,9 +27,10 @@ Rule: **wiki is the map, source is the truth.** If they conflict, trust the sour
 |--------|----------------|------------------------|
 | `app/` | Xposed entry point, host routing, settings UI (Compose), `AgentRuntimeService`, Breeno/XiaoAi hooks | Almost every task touches this. Be specific about which subpackage. |
 | `agent-runtime/` | `LLMController`, prompt assembly, Tool/Skill/MCP execution, streaming event mapping | Pure Kotlin, no Android UI. Changes here affect how the LLM is called and what tools it can use. |
-| `h/` | Xposed runtime wrappers, hook base classes, Context/Activity observation | Low-level Xposed infrastructure. Change rarely, test carefully. |
-| `ipc/` | AIDL definitions, Binder bridge, store persistence, `ContentProvider` | **Critical**: AIDL changes affect both the main app process AND the Xposed host process. Both sides must stay compatible. |
-| `composebase/` | Shared Compose primitives, `LiquidScreen` shell, navigation controller | UI infrastructure. Used by `app/` UI code. |
+| `xposed-api/` | Xposed event types, utility functions, shared constants | Shared types between main app and host processes. |
+| `xposed-runtime/` | Xposed runtime, hook base classes, Context/Activity observation | Low-level Xposed infrastructure. Change rarely, test carefully. |
+| `store/` | Store persistence, IPC bridge (`XIpcBridge`), config serialization | **Critical**: IPC changes affect both the main app process AND the Xposed host process. Both sides must stay compatible. |
+| `ui-kit/` | Shared Compose primitives, `LiquidScreen` shell, navigation controller | UI infrastructure. Used by `app/` UI code. |
 
 ## Build
 
@@ -65,7 +66,7 @@ Hook points target specific methods in the host voice assistant app. A host app 
 
 ### IPC crosses process boundaries
 
-The AIDL definitions in `ipc/` are the contract between the main app process and the Xposed host process. When you change an AIDL interface, both sides must be rebuilt and tested together. Don't add methods to an AIDL interface without checking all callers on both sides.
+The AIDL definitions in `app/src/main/java/.../runtime/ipc/` are the contract between the main app process and the Xposed host process. The `store/` module (`XIpcBridge`) handles config persistence and notification IPC. When you change an AIDL interface or the StoreClient contract, both sides must be rebuilt and tested together. Don't add methods without checking all callers on both sides.
 
 ### Never commit secrets
 

@@ -19,7 +19,7 @@
 | 文件 | 层级 | 源码依据 | 预期内容 |
 | --- | --- | --- | --- |
 | `overview/project-overview.md` | Stable | `settings.gradle.kts`, `app/build.gradle.kts`, `app/src/main/AndroidManifest.xml` | 项目定位、模块结构、宿主矩阵、关键入口、主要目录 |
-| `overview/current-status.md` | In Progress | `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt`, `ipc/src/main/java/com/niki914/nexus/ipc/store/StoreDescriptorRegistry.kt`, `app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/NexusPages.kt` | 当前能力分层、半落地链路、保留提案与未核实项 |
+| `overview/current-status.md` | In Progress | `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt`, `store/src/main/java/com/niki914/nexus/store/StoreDescriptorRegistry.kt`, `app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/NexusPages.kt` | 当前能力分层、半落地链路、保留提案与未核实项 |
 
 ### architecture/ — 核心机制与链路
 
@@ -28,7 +28,7 @@
 | `architecture/boot-sequence.md` | Stable | `app/src/main/java/a0/a0/a0/a0/a0/a0/Entrance.kt`, `app/src/main/java/com/niki914/nexus/agentic/app/App.kt`, `agent-runtime/src/main/java/com/niki914/nexus/agentic/runtime/settings/RuntimeEnvironment.kt` | Xposed 入口、Context 捕获、宿主路由、Hook 安装顺序 |
 | `architecture/turn-state.md` | Stable | `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/ActiveTurnStore.kt`, `app/src/main/java/com/niki914/nexus/agentic/mod/feat/AbstractAssistantHook.kt` | 会话状态、turnId、takeover 语义、session reset |
 | `architecture/render-pipeline.md` | Stable | `app/src/main/java/com/niki914/nexus/agentic/mod/feat/oppo/BreenoChatHook.kt`, `app/src/main/java/com/niki914/nexus/agentic/mod/feat/hyper/XiaoaiChatHook.kt` | Breeno 与 XiaoAi 的响应注入模型与差异 |
-| `architecture/config-resolution.md` | Stable | `app/src/main/java/com/niki914/nexus/agentic/repo/XRepo.kt`, `app/src/main/java/com/niki914/nexus/agentic/repo/XRepoRuntimeGateway.kt`, `ipc/src/main/java/com/niki914/nexus/ipc/store/XIpcStoreRepository.kt` | 本地配置、远程配置、IPC、server 回退逻辑 |
+| `architecture/config-resolution.md` | Stable | `app/src/main/java/com/niki914/nexus/agentic/repo/XRepo.kt`, `app/src/main/java/com/niki914/nexus/agentic/repo/XRepoRuntimeGateway.kt`, `store/src/main/java/com/niki914/nexus/store/XIpcStoreRepository.kt` | 本地配置、远程配置、IPC、server 回退逻辑 |
 | `architecture/llm-runtime.md` | In Progress | `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/LLMController.kt`, `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/ToolManager.kt`, `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt` | LLM 控制器、Prompt、Tool、MCP 与流式事件运行时 |
 
 ### domains/ — 业务专项导航

@@ -41,7 +41,7 @@
 
 ### Store registry 与配置落盘模型
 
-- `ipc/src/main/java/com/niki914/nexus/ipc/store/StoreDescriptorRegistry.kt` 当前注册了 11 个静态 store id：`web_settings`、`local_settings`、`agents.registry`、`agent.main.config`、`agent.main.memory`、`tools.builtin`、`tools.custom`、`tools.mcp.servers`、`rules.execution`、`rules.takeover`、`app.state`。
+- `store/src/main/java/com/niki914/nexus/store/StoreDescriptorRegistry.kt` 当前注册了 11 个静态 store id：`web_settings`、`local_settings`、`agents.registry`、`agent.main.config`、`agent.main.memory`、`tools.builtin`、`tools.custom`、`tools.mcp.servers`、`rules.execution`、`rules.takeover`、`app.state`。
 - 同一文件还支持两类动态 store：`agent.config.<agentId>` 会映射到 settings/agents/ 目录下按 agentId 命名的 config.json，`tools.mcp.cache.<serverId>` 会映射到 settings/tools/mcp/cache/ 目录下按 serverId 命名的 JSON 文件。
 - `app/src/main/java/com/niki914/nexus/agentic/repo/XRepo.kt` 的初始化逻辑会落盘 `agents.registry`、`agent.main.config`、`agent.main.memory`，说明 agent registry 已经不是纯文档概念。
 
@@ -65,7 +65,7 @@
 
 ### Multi-agent state
 
-- 多 agent 的数据层已经部分落地：`agents.registry`、`agent.config.<agentId>`、`RuntimeAgentProfile`、`AgentMemoryMode`、以及 builtin / custom / MCP 的 `enabled_for_agents` 编解码，分别可在 `ipc/src/main/java/com/niki914/nexus/ipc/store/StoreDescriptorRegistry.kt`、`app/src/main/java/com/niki914/nexus/agentic/repo/AgentSettingsCodec.kt`、`app/src/main/java/com/niki914/nexus/agentic/repo/ToolSettingsCodec.kt`、`app/src/main/java/com/niki914/nexus/agentic/repo/McpSettingsCodec.kt` 中回指。
+- 多 agent 的数据层已经部分落地：`agents.registry`、`agent.config.<agentId>`、`RuntimeAgentProfile`、`AgentMemoryMode`、以及 builtin / custom / MCP 的 `enabled_for_agents` 编解码，分别可在 `store/src/main/java/com/niki914/nexus/store/StoreDescriptorRegistry.kt`、`app/src/main/java/com/niki914/nexus/agentic/repo/AgentSettingsCodec.kt`、`app/src/main/java/com/niki914/nexus/agentic/repo/ToolSettingsCodec.kt`、`app/src/main/java/com/niki914/nexus/agentic/repo/McpSettingsCodec.kt` 中回指。
 - 但 runtime 侧还不是完整的多 agent 执行链：`agent-runtime/src/main/java/com/niki914/nexus/agentic/runtime/settings/RuntimeSettingsGateway.kt` 只有 `readLlmConfig(agentId)` 带 `agentId`，`listMcpServers()`、`listCustomTools()`、`listBuiltinToolSettings()`、`listExecutionRules()` 仍是无参接口；`app/src/main/java/com/niki914/nexus/agentic/repo/XRepoRuntimeGateway.kt` 也按这个形状实现。
 - `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/LLMController.kt` 当前直接调用 `gateway.readLlmConfig()` 的默认参数，并搭配上述无参列表接口刷新 runtime；因此“多 agent 已完整接通到运行时”目前没有源码证据，只能记为部分落地。
 

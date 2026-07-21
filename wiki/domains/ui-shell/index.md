@@ -5,9 +5,9 @@
 UI Shell 当前分成两层：
 
 - `app/` 侧入口、页面状态和路由装配集中在 `app/src/main/java/com/niki914/nexus/agentic/app/MainActivity.kt`、`app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/NexusApp.kt`、`app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/NexusPages.kt`。
-- `composebase/` 侧壳层、导航控制和通用设置组件集中在 `composebase/src/main/java/com/niki914/nexus/agentic/app/ui/infra/LiquidScreen.kt`、`composebase/src/main/java/com/niki914/nexus/agentic/app/ui/infra/nav/NavigationController.kt`、`composebase/src/main/java/com/niki914/nexus/agentic/app/ui/infra/component/SettingsListPageContent.kt`。
+- `ui-kit/` 侧壳层、导航控制和通用设置组件集中在 `ui-kit/src/main/java/com/niki914/nexus/agentic/app/ui/infra/LiquidScreen.kt`、`ui-kit/src/main/java/com/niki914/nexus/agentic/app/ui/infra/nav/NavigationController.kt`、`ui-kit/src/main/java/com/niki914/nexus/agentic/app/ui/infra/component/SettingsListPageContent.kt`。
 
-当前导航栈由 `composebase/src/main/java/com/niki914/nexus/agentic/app/ui/infra/nav/NavigationController.kt` 驱动，并由 `app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/NexusApp.kt` 持有页面栈与返回逻辑；这里没有接入 Jetpack Navigation。
+当前导航栈由 `ui-kit/src/main/java/com/niki914/nexus/agentic/app/ui/infra/nav/NavigationController.kt` 驱动，并由 `app/src/main/java/com/niki914/nexus/agentic/app/ui/nexus/NexusApp.kt` 持有页面栈与返回逻辑；这里没有接入 Jetpack Navigation。
 
 ## 当前导航事实
 
@@ -79,13 +79,13 @@ UI Shell 当前分成两层：
 
 ## Shell 与通用基建
 
-### composebase/src/main/java/com/niki914/nexus/agentic/app/ui/infra/
+### ui-kit/src/main/java/com/niki914/nexus/agentic/app/ui/infra/
 
 - `LiquidScreen.kt`：顶层 Liquid Shell，管理 action bar、blur layer、viewport avoidance 和 dialog host。
 - `LiquidScreenSwipeContent.kt`：页面切换动画壳。
-- `composebase/src/main/java/com/niki914/nexus/agentic/app/ui/infra/nav/NavigationController.kt`：自定义导航栈。
+- `ui-kit/src/main/java/com/niki914/nexus/agentic/app/ui/infra/nav/NavigationController.kt`：自定义导航栈。
 
-### composebase/src/main/java/com/niki914/nexus/agentic/app/ui/infra/component/
+### ui-kit/src/main/java/com/niki914/nexus/agentic/app/ui/infra/component/
 
 - `SettingsListPageContent.kt`：设置列表页通用容器。
 - `SettingsDetailFormScaffold.kt`：设置详情表单骨架。
@@ -101,6 +101,6 @@ UI Shell 当前分成两层：
 
 ## 当前边界
 
-- UI Shell 不只是一组页面；顶层壳、导航控制、page chrome 和通用设置组件都在 `composebase/`。
+- UI Shell 不只是一组页面；顶层壳、导航控制、page chrome 和通用设置组件都在 `ui-kit/`。
 - 设置树本身已经接通到当前全部枚举分组，但具体功能成熟度仍需结合 `wiki/overview/current-status.md` 和对应源码继续判断。
 - 宿主差异不在 `AppLaunchDecision`；首屏分流只区分是否完成 onboarding，宿主相关差异发生在 onboarding 流程和后续宿主链路。
