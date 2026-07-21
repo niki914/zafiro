@@ -1,4 +1,4 @@
-package com.niki914.nexus.ipc
+package com.niki914.nexus.store
 
 sealed interface IpcReadResult {
     data class Success(val json: String) : IpcReadResult

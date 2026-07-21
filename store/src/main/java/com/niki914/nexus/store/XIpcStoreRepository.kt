@@ -1,4 +1,4 @@
-package com.niki914.nexus.ipc.store
+package com.niki914.nexus.store
 
 import android.content.Context
 import java.util.concurrent.ConcurrentHashMap

@@ -1,4 +1,4 @@
-package com.niki914.nexus.ipc.store
+package com.niki914.nexus.store
 
 import com.niki914.nexus.xposed.api.util.xTry
 import org.json.JSONArray

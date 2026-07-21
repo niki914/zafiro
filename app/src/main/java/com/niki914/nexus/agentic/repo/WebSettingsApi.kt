@@ -6,9 +6,9 @@ import com.niki914.nexus.agentic.mod.WebSettings
 import com.niki914.nexus.agentic.mod.parseJsonObject
 import com.niki914.nexus.xposed.api.util.OsFamily
 import com.niki914.nexus.xposed.api.util.OsUtils
-import com.niki914.nexus.ipc.HostApp
-import com.niki914.nexus.ipc.XValues
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
+import com.niki914.nexus.store.HostApp
+import com.niki914.nexus.store.XValues
+import com.niki914.nexus.store.StoreDescriptorRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex

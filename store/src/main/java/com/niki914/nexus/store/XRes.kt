@@ -1,4 +1,4 @@
-package com.niki914.nexus.ipc
+package com.niki914.nexus.store
 
 import android.content.Context
 

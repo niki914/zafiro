@@ -1,4 +1,4 @@
-package com.niki914.nexus.ipc.store
+package com.niki914.nexus.store
 
 object StoreDescriptorRegistry {
 
@@ -36,9 +36,21 @@ object StoreDescriptorRegistry {
             """{"enabled_for_agents":{}}"""
         ),
         StoreDescriptor(TOOLS_CUSTOM_ID, "settings/tools/custom_tools.json", """{"tools":[]}"""),
-        StoreDescriptor(TOOLS_MCP_SERVERS_ID, "settings/tools/mcp/servers.json", """{"servers":[]}"""),
-        StoreDescriptor(RULES_EXECUTION_ID, "settings/rules/execution_rules.json", """{"rules":[]}"""),
-        StoreDescriptor(RULES_TAKEOVER_ID, "settings/rules/takeover_rules.json", """{"rules":[]}"""),
+        StoreDescriptor(
+            TOOLS_MCP_SERVERS_ID,
+            "settings/tools/mcp/servers.json",
+            """{"servers":[]}"""
+        ),
+        StoreDescriptor(
+            RULES_EXECUTION_ID,
+            "settings/rules/execution_rules.json",
+            """{"rules":[]}"""
+        ),
+        StoreDescriptor(
+            RULES_TAKEOVER_ID,
+            "settings/rules/takeover_rules.json",
+            """{"rules":[]}"""
+        ),
         StoreDescriptor(APP_STATE_ID, "settings/app_state.json")
     )
 

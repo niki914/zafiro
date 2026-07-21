@@ -1,4 +1,4 @@
-package com.niki914.nexus.ipc.store
+package com.niki914.nexus.store
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

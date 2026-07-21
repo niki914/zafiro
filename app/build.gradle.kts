@@ -71,7 +71,7 @@ dependencies {
     implementation(project(":agent-runtime"))
     implementation(project(":composebase"))
     implementation(project(":xposed-runtime"))
-    implementation(project(":ipc"))
+    implementation(project(":store"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("com.github.niki914:s3ss10n:2.1.6")

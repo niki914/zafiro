@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.niki914.nexus.ipc"
+    namespace = "com.niki914.nexus.store"
     compileSdk = 37
 
     defaultConfig {

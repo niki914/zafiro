@@ -17,8 +17,8 @@ import com.niki914.nexus.xposed.runtime.core.runtime.RuntimeBootstrap
 import com.niki914.nexus.xposed.runtime.util.ContextHook
 import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.nexus.xposed.runtime.util.HookSideLoader
-import com.niki914.nexus.ipc.HostApp
-import com.niki914.nexus.ipc.XValues
+import com.niki914.nexus.store.HostApp
+import com.niki914.nexus.store.XValues
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

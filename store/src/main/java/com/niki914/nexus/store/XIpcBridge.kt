@@ -1,4 +1,4 @@
-package com.niki914.nexus.ipc
+package com.niki914.nexus.store
 
 import android.Manifest
 import android.app.NotificationChannel
@@ -12,8 +12,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
-import com.niki914.nexus.ipc.store.XIpcStoreRepository
 import org.json.JSONArray
 import org.json.JSONObject
 

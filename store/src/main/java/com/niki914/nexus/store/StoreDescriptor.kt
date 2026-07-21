@@ -1,4 +1,4 @@
-package com.niki914.nexus.ipc.store
+package com.niki914.nexus.store
 
 data class StoreDescriptor(
     val id: String,

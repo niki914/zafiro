@@ -24,9 +24,9 @@ import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
 import com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback
 import com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService
 import com.niki914.nexus.agentic.runtime.ipc.RenderFrame
-import com.niki914.nexus.ipc.HostApp
-import com.niki914.nexus.ipc.displayNameFor
-import com.niki914.nexus.ipc.store.XIpcStoreRepository
+import com.niki914.nexus.store.HostApp
+import com.niki914.nexus.store.displayNameFor
+import com.niki914.nexus.store.XIpcStoreRepository
 import com.niki914.nexus.agentic.app.R as AppR
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

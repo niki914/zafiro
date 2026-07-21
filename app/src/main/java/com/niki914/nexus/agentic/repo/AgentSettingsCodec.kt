@@ -14,7 +14,7 @@ import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.string
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.stringValues
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentMemoryMode
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentProfile
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
+import com.niki914.nexus.store.StoreDescriptorRegistry
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 
 internal object AgentSettingsCodec {

@@ -1,10 +1,10 @@
 package com.niki914.nexus.agentic.repo
 
 import android.content.Context
-import com.niki914.nexus.ipc.IpcReadResult
-import com.niki914.nexus.ipc.IpcWriteResult
-import com.niki914.nexus.ipc.XIpcBridge
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
+import com.niki914.nexus.store.IpcReadResult
+import com.niki914.nexus.store.IpcWriteResult
+import com.niki914.nexus.store.XIpcBridge
+import com.niki914.nexus.store.StoreDescriptorRegistry
 
 internal interface DomainSettingsStore {
     suspend fun readJson(context: Context, storeId: String): String

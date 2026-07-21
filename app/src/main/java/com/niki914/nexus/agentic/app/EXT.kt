@@ -10,8 +10,8 @@ import androidx.core.content.ContextCompat
 import com.niki914.nexus.agentic.app.ui.nexus.model.StartupAssistantUi
 import com.niki914.nexus.xposed.api.util.OsFamily
 import com.niki914.nexus.xposed.api.util.OsUtils
-import com.niki914.nexus.ipc.HostApp
-import com.niki914.nexus.ipc.XValues
+import com.niki914.nexus.store.HostApp
+import com.niki914.nexus.store.XValues
 
 data class InstalledPackageVersion(
     val versionName: String?,
