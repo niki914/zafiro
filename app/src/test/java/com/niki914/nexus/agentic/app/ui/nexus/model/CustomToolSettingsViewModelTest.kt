@@ -7,7 +7,7 @@ import com.niki914.nexus.agentic.repo.FakeDomainSettingsStore
 import com.niki914.nexus.agentic.repo.RuleSettingsCodec
 import com.niki914.nexus.agentic.repo.ToolSettingsCodec
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
+import com.niki914.nexus.store.StoreDescriptorRegistry
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList

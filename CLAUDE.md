@@ -19,9 +19,9 @@ Nexus 是一个 Android Xposed 模块。它在语音助手 App 中截获用户 q
 
 ### 进程与 IPC 骨架
 
-- **宿主进程**：Xposed Hook 注入点。通过 `AgentRuntimeClient`（Binder）向主 App 提交 LLM 查询，通过 `ContentResolver` 读写 settings store
-- **主 App 进程**：运行 `AgentRuntimeService`（前台 Service，Binder IPC）和 `SettingsContentProvider`（ContentProvider）
-- **两条 IPC 通道**：ContentProvider（配置读写/通知） + Binder Service（LLM query 提交与 `RenderFrame` 流式回调）
+- **宿主进程**：Xposed Hook 注入点。通过 `AgentRuntimeClient`（Binder）向主 App 提交 LLM 查询，通过 `XIpcBridge.StoreClient`（Binder）读写 settings store
+- **主 App 进程**：运行 `AgentRuntimeService`（前台 Service，Binder IPC），持有 store 持久化的本地访问权
+- **两条 IPC 通道**：`XIpcBridge`（配置读写/通知，走 `StoreClient` Binder 接口） + `AgentRuntimeService`（LLM query 提交与 `RenderFrame` 流式回调）
 
 ## 工作原则
 

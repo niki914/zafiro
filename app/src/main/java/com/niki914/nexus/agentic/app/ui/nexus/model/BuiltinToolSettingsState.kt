@@ -4,7 +4,7 @@ import androidx.annotation.StringRes
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolSettingItem
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolSettingsManager
-import com.niki914.nexus.cb.ComposeMVIViewModel
+import com.niki914.nexus.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
 
 data class BuiltinToolSettingsUiState(

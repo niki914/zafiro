@@ -32,10 +32,10 @@ class SshTerminalBuiltin : BuiltinTool(), RawJsonBuiltinTool {
 
     override val description: String =
         "Manage interactive SSH terminal sessions. Open a terminal, send input with send_line, write, or interrupt, " +
-            "then read terminal output with read. password credentials are passed for this call. " +
-            "SSH command completion is unknowable, so exec/open_and_exec are intentionally unsupported. " +
-            "Credentials should not be echoed, " +
-            "and should not be stored by this tool. Private key authentication is not supported yet."
+                "then read terminal output with read. password credentials are passed for this call. " +
+                "SSH command completion is unknowable, so exec/open_and_exec are intentionally unsupported. " +
+                "Credentials should not be echoed, " +
+                "and should not be stored by this tool. Private key authentication is not supported yet."
 
     override val defaultEnabled: Boolean = true
 
@@ -74,7 +74,8 @@ class SshTerminalBuiltin : BuiltinTool(), RawJsonBuiltinTool {
 
     private suspend fun handleOpen(args: SshTerminalToolArgs): String {
         val sshOptions = args.requireOpenOptions()
-        return when (val outcome = TerminalSessionPool.openSsh(options = sshOptions, cwd = args.cwd)) {
+        return when (val outcome =
+            TerminalSessionPool.openSsh(options = sshOptions, cwd = args.cwd)) {
             is TerminalOpenOutcome.Success -> TerminalToolResponse.openSuccess(
                 session = outcome.session,
                 identity = outcome.identity,
@@ -117,13 +118,22 @@ class SshTerminalBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                 )
             ).toString()
 
-            is TerminalInteractiveWriteOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(outcome.session)
+            is TerminalInteractiveWriteOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                outcome.session
+            )
+
             is TerminalInteractiveWriteOutcome.NotInteractive -> TerminalToolResponse.invalidRequest(
                 "Session '${outcome.session}' is not an interactive SSH terminal."
             )
 
-            is TerminalInteractiveWriteOutcome.Busy -> TerminalToolResponse.sessionBusy(outcome.session, asyncId = null)
-            is TerminalInteractiveWriteOutcome.UnexpectedError -> TerminalToolResponse.internalError(outcome.throwable)
+            is TerminalInteractiveWriteOutcome.Busy -> TerminalToolResponse.sessionBusy(
+                outcome.session,
+                asyncId = null
+            )
+
+            is TerminalInteractiveWriteOutcome.UnexpectedError -> TerminalToolResponse.internalError(
+                outcome.throwable
+            )
         }
     }
 
@@ -146,7 +156,10 @@ class SshTerminalBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                 )
             ).toString()
 
-            is TerminalInteractiveReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(outcome.session)
+            is TerminalInteractiveReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                outcome.session
+            )
+
             is TerminalInteractiveReadOutcome.NotInteractive -> TerminalToolResponse.invalidRequest(
                 "Session '${outcome.session}' is not an interactive SSH terminal."
             )
@@ -190,9 +203,10 @@ class SshTerminalBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             connectTimeoutMs = obj.optionalLong("connect_timeout_ms")?.also { timeoutMs ->
                 require(timeoutMs > 0L) { "Field 'connect_timeout_ms' must be greater than 0." }
             }?.toInt() ?: SshOpenOptions.DEFAULT_CONNECT_TIMEOUT_MILLIS,
-            serverAliveIntervalMs = obj.optionalLong("server_alive_interval_ms")?.also { intervalMs ->
-                require(intervalMs >= 0L) { "Field 'server_alive_interval_ms' must be greater than or equal to 0." }
-            }?.toInt() ?: SshOpenOptions.DEFAULT_SERVER_ALIVE_INTERVAL_MILLIS,
+            serverAliveIntervalMs = obj.optionalLong("server_alive_interval_ms")
+                ?.also { intervalMs ->
+                    require(intervalMs >= 0L) { "Field 'server_alive_interval_ms' must be greater than or equal to 0." }
+                }?.toInt() ?: SshOpenOptions.DEFAULT_SERVER_ALIVE_INTERVAL_MILLIS,
             privateKeyPem = obj.optionalString("private_key_pem"),
             passphrase = obj.optionalString("passphrase"),
             readMode = obj.optionalString("mode")?.let(::parseReadMode),
@@ -249,7 +263,8 @@ class SshTerminalBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     }
 
     private fun SshTerminalToolArgs.requireText(): String {
-        return text ?: throw IllegalArgumentException("Field 'text' is required for action '${action.wireName}'.")
+        return text
+            ?: throw IllegalArgumentException("Field 'text' is required for action '${action.wireName}'.")
     }
 
     private fun parseReadMode(raw: String): TerminalInteractiveReadMode {
@@ -347,7 +362,7 @@ class SshTerminalBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                     "close" -> CLOSE
                     else -> throw IllegalArgumentException(
                         "Field 'action' must be one of open, send_line, write, interrupt, read, close. " +
-                            "SSH command completion is unknowable; use send_line plus read instead of exec."
+                                "SSH command completion is unknowable; use send_line plus read instead of exec."
                     )
                 }
             }

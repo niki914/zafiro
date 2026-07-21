@@ -60,9 +60,22 @@ class TreeFormatterTest {
         return sb.toString()
     }
 
-    private fun yamlLine(node: NodeInfo, indent: Int, screenWidth: Int = 1080, screenHeight: Int = 2400): String {
+    private fun yamlLine(
+        node: NodeInfo,
+        indent: Int,
+        screenWidth: Int = 1080,
+        screenHeight: Int = 2400
+    ): String {
         val sb = StringBuilder()
-        sb.append("{i: ${node.index}, t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${PruningRules.posOf(node.bounds, screenWidth, screenHeight)}")
+        sb.append(
+            "{i: ${node.index}, t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${
+                PruningRules.posOf(
+                    node.bounds,
+                    screenWidth,
+                    screenHeight
+                )
+            }"
+        )
 
         if (node.text.isNotEmpty()) {
             sb.append(", txt: ${quoteIfNeeded(node.text)}")
@@ -145,10 +158,18 @@ class TreeFormatterTest {
         )
         val yaml = yamlFromNodeInfo(
             NodeInfo(
-                index = -1, semanticType = SemanticType.CONTAINER,
-                text = "", contentDesc = "", bounds = Rect(0, 0, 1080, 2400),
-                isClickable = false, isLongClickable = false, isEditable = false,
-                isScrollable = false, isChecked = false, children = listOf(frame), moreSummary = emptyList(),
+                index = -1,
+                semanticType = SemanticType.CONTAINER,
+                text = "",
+                contentDesc = "",
+                bounds = Rect(0, 0, 1080, 2400),
+                isClickable = false,
+                isLongClickable = false,
+                isEditable = false,
+                isScrollable = false,
+                isChecked = false,
+                children = listOf(frame),
+                moreSummary = emptyList(),
             ),
         )
 
@@ -246,8 +267,10 @@ class TreeFormatterTest {
 
         assertTrue("must contain scrollable marker", yaml.contains("scroll: true"))
         assertTrue("must contain more summary", yaml.contains("more: [item8]"))
-        assertTrue("must not contain off-screen item",
-            !yaml.contains("b: [0,2500,1080,2660]"))
+        assertTrue(
+            "must not contain off-screen item",
+            !yaml.contains("b: [0,2500,1080,2660]")
+        )
     }
 
     @Test
@@ -280,11 +303,15 @@ class TreeFormatterTest {
 
         // The YAML must contain the escaped newline and must NOT contain a
         // raw newline that would break the YAML line.
-        assertTrue("must contain escaped newline",
-            yaml.contains("txt: line1\\nline2"))
+        assertTrue(
+            "must contain escaped newline",
+            yaml.contains("txt: line1\\nline2")
+        )
         // Verify no unescaped newline breaks the YAML line.
-        assertFalse("must not contain raw newline in txt field",
-            yaml.contains("line1\nline2"))
+        assertFalse(
+            "must not contain raw newline in txt field",
+            yaml.contains("line1\nline2")
+        )
     }
 
     @Test
@@ -385,8 +412,10 @@ class TreeFormatterTest {
             nodeCount = 200,
         )
 
-        assertTrue("must contain truncation marker",
-            yaml.contains("# truncated: max_nodes(200)"))
+        assertTrue(
+            "must contain truncation marker",
+            yaml.contains("# truncated: max_nodes(200)")
+        )
     }
 
     @Test
@@ -481,8 +510,10 @@ class TreeFormatterTest {
         )
 
         assertTrue("scrollable must have more marker", yaml.contains("scroll: true"))
-        assertTrue("must contain array-format more summary",
-            yaml.contains("""more: ["item 8", (empty)]"""))
+        assertTrue(
+            "must contain array-format more summary",
+            yaml.contains("""more: ["item 8", (empty)]""")
+        )
     }
 
     @Test
@@ -516,11 +547,17 @@ class TreeFormatterTest {
             ),
         )
 
-        assertTrue("leaf must appear in output directly under root",
-            yaml.contains("{i: 1, t: button"))
-        assertTrue("leaf text must be present",
-            yaml.contains("""txt: "collapsed-leaf""""))
-        assertFalse("must not contain intermediate container at index 0",
-            yaml.contains("{i: 0, t: container"))
+        assertTrue(
+            "leaf must appear in output directly under root",
+            yaml.contains("{i: 1, t: button")
+        )
+        assertTrue(
+            "leaf text must be present",
+            yaml.contains("""txt: "collapsed-leaf"""")
+        )
+        assertFalse(
+            "must not contain intermediate container at index 0",
+            yaml.contains("{i: 0, t: container")
+        )
     }
 }

@@ -39,14 +39,14 @@ object PruningRules {
 
     fun shouldCollapse(node: NodeInfo, depth: Int): Boolean {
         return depth > 0 &&
-            node.semanticType == SemanticType.CONTAINER &&
-            node.text.isEmpty() &&
-            node.contentDesc.isEmpty() &&
-            !node.isClickable &&
-            !node.isLongClickable &&
-            !node.isEditable &&
-            !node.isScrollable &&
-            !node.isChecked
+                node.semanticType == SemanticType.CONTAINER &&
+                node.text.isEmpty() &&
+                node.contentDesc.isEmpty() &&
+                !node.isClickable &&
+                !node.isLongClickable &&
+                !node.isEditable &&
+                !node.isScrollable &&
+                !node.isChecked
     }
 
     fun posOf(bounds: Rect, screenWidth: Int, screenHeight: Int): String {

@@ -2,14 +2,14 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
 import com.niki914.nexus.agentic.app.R
+import com.niki914.nexus.agentic.repo.SkillImportResult
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.cb.ComposeMVIViewModel
+import com.niki914.nexus.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
+import java.io.File
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLoadedSkill as LoadedSkill
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata as SkillMetadata
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillValidation as SkillValidation
-import java.io.File
-import com.niki914.nexus.agentic.repo.SkillImportResult
 
 interface SkillRepositoryProvider {
     suspend fun listAll(): List<SkillMetadata>
@@ -78,9 +78,14 @@ data class SkillSettingsUiState(
 )
 
 sealed interface SkillInlineError {
-    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : SkillInlineError
-    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : SkillInlineError
-    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : SkillInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        SkillInlineError
+
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        SkillInlineError
+
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        SkillInlineError
 }
 
 sealed interface SkillSettingsIntent {
@@ -100,7 +105,8 @@ sealed interface SkillSettingsIntent {
 sealed interface SkillSettingsEffect {
     data object ExitDetail : SkillSettingsEffect
     data object ShowNoSkillFileToast : SkillSettingsEffect
-    data class ShowImportErrorToast(val message: String?, @StringRes val fallbackResId: Int) : SkillSettingsEffect
+    data class ShowImportErrorToast(val message: String?, @StringRes val fallbackResId: Int) :
+        SkillSettingsEffect
 }
 
 class SkillSettingsViewModel(
@@ -238,7 +244,10 @@ class SkillSettingsViewModel(
                 updateState {
                     copy(
                         isLoading = false,
-                        inlineError = SkillInlineError.LoadFailed("Skill not found.", fallbackResId = R.string.error_skill_read_failed),
+                        inlineError = SkillInlineError.LoadFailed(
+                            "Skill not found.",
+                            fallbackResId = R.string.error_skill_read_failed
+                        ),
                     )
                 }
                 return
@@ -388,10 +397,12 @@ class SkillSettingsViewModel(
                     updateState { copy(isImporting = false) }
                     load()
                 }
+
                 is SkillImportResult.NoSkillFile -> {
                     updateState { copy(isImporting = false) }
                     sendEffect(SkillSettingsEffect.ShowNoSkillFileToast)
                 }
+
                 is SkillImportResult.Conflict -> {
                     updateState {
                         copy(
@@ -400,15 +411,26 @@ class SkillSettingsViewModel(
                         )
                     }
                 }
+
                 is SkillImportResult.Error -> {
                     updateState { copy(isImporting = false) }
-                    sendEffect(SkillSettingsEffect.ShowImportErrorToast(message = result.message, fallbackResId = R.string.error_skill_import_failed))
+                    sendEffect(
+                        SkillSettingsEffect.ShowImportErrorToast(
+                            message = result.message,
+                            fallbackResId = R.string.error_skill_import_failed
+                        )
+                    )
                 }
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             updateState { copy(isImporting = false) }
-            sendEffect(SkillSettingsEffect.ShowImportErrorToast(message = throwable.message, fallbackResId = R.string.error_skill_import_failed))
+            sendEffect(
+                SkillSettingsEffect.ShowImportErrorToast(
+                    message = throwable.message,
+                    fallbackResId = R.string.error_skill_import_failed
+                )
+            )
         }
     }
 
@@ -421,15 +443,26 @@ class SkillSettingsViewModel(
                     updateState { copy(isImporting = false) }
                     load()
                 }
+
                 else -> {
                     updateState { copy(isImporting = false) }
-                    sendEffect(SkillSettingsEffect.ShowImportErrorToast(message = null, fallbackResId = R.string.error_skill_import_failed))
+                    sendEffect(
+                        SkillSettingsEffect.ShowImportErrorToast(
+                            message = null,
+                            fallbackResId = R.string.error_skill_import_failed
+                        )
+                    )
                 }
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             updateState { copy(isImporting = false) }
-            sendEffect(SkillSettingsEffect.ShowImportErrorToast(message = throwable.message, fallbackResId = R.string.error_skill_import_failed))
+            sendEffect(
+                SkillSettingsEffect.ShowImportErrorToast(
+                    message = throwable.message,
+                    fallbackResId = R.string.error_skill_import_failed
+                )
+            )
         }
     }
 

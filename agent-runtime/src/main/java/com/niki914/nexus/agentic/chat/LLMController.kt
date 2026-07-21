@@ -13,8 +13,8 @@ import com.niki914.nexus.agentic.chat.agentic.stream.LlmStreamEventMapper
 import com.niki914.nexus.agentic.runtime.R
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.model.LlmApiType
-import com.niki914.nexus.h.util.LockState
-import com.niki914.nexus.h.xevent.XEvent
+import com.niki914.nexus.xposed.api.util.LockState
+import com.niki914.nexus.xposed.api.xevent.XEvent
 import com.niki914.s3ss10n.ChatTurn
 import com.niki914.s3ss10n.Session
 import com.niki914.s3ss10n.SessionConfig
@@ -114,7 +114,8 @@ object LLMController {
                 enabledSkills = enabledSkills,
             )
         )
-        val finalConfig = configWithoutRuntimePrompt.copy(finalSystemPrompt = prompt.finalSystemPrompt)
+        val finalConfig =
+            configWithoutRuntimePrompt.copy(finalSystemPrompt = prompt.finalSystemPrompt)
         activeSession.update {
             applyRuntimeConfig(
                 config = finalConfig,
@@ -191,14 +192,20 @@ object LLMController {
                     )
                 )
                 state.session.send(query).collect { event ->
-                    val mapped = LlmStreamEventMapper.map(event, accumulator, startedAtMs, defaultErrorMessage)
+                    val mapped = LlmStreamEventMapper.map(
+                        event,
+                        accumulator,
+                        startedAtMs,
+                        defaultErrorMessage
+                    )
                     mapped?.let {
                         if (it is LlmStreamEvent.Error && !streamErrorReported) {
                             streamErrorReported = true
                             XEvent.llmError(
                                 fields = mapOf(
                                     "stage" to "session_event",
-                                    "errorType" to (it.throwable?.eventTypeName() ?: "SessionEvent"),
+                                    "errorType" to (it.throwable?.eventTypeName()
+                                        ?: "SessionEvent"),
                                     "message" to it.message
                                 )
                             )

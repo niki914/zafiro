@@ -1,10 +1,10 @@
 package com.niki914.nexus.agentic.repo
 
 import android.content.Context
-import com.niki914.nexus.ipc.IpcReadResult
-import com.niki914.nexus.ipc.IpcWriteResult
-import com.niki914.nexus.ipc.XIpcBridge
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
+import com.niki914.nexus.store.IpcReadResult
+import com.niki914.nexus.store.IpcWriteResult
+import com.niki914.nexus.store.StoreDescriptorRegistry
+import com.niki914.nexus.store.XIpcBridge
 
 internal interface DomainSettingsStore {
     suspend fun readJson(context: Context, storeId: String): String
@@ -32,7 +32,12 @@ internal class XIpcDomainSettingsStore(
         storeId: String,
         json: String,
     ): Boolean {
-        return XIpcBridge.writeStoreJsonFromOwner(context, storeId, json, client) is IpcWriteResult.Success
+        return XIpcBridge.writeStoreJsonFromOwner(
+            context,
+            storeId,
+            json,
+            client
+        ) is IpcWriteResult.Success
     }
 
     override suspend fun mutateJson(
@@ -41,7 +46,13 @@ internal class XIpcDomainSettingsStore(
         path: String,
         value: Any?,
     ): Boolean {
-        return XIpcBridge.mutateStoreJson(context, storeId, path, value, client).writeResult is IpcWriteResult.Success
+        return XIpcBridge.mutateStoreJson(
+            context,
+            storeId,
+            path,
+            value,
+            client
+        ).writeResult is IpcWriteResult.Success
     }
 
     companion object {

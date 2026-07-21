@@ -3,8 +3,8 @@ package com.niki914.nexus.agentic.mod.feat
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import com.niki914.nexus.h.util.hookMethod
-import com.niki914.nexus.h.util.resolveParamTypes
+import com.niki914.nexus.xposed.runtime.util.hookMethod
+import com.niki914.nexus.xposed.runtime.util.resolveParamTypes
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
 class FloatScreenResetDetector(
@@ -36,10 +36,12 @@ class FloatScreenResetDetector(
 
     private fun onFloatScreenDetachObserved(target: HookTarget, thisObject: Any?) {
         val detachObservedElapsed = SystemClock.elapsedRealtime()
-        val instanceInfo = thisObject?.let { "${it.javaClass.simpleName}@${Integer.toHexString(it.hashCode())}" } ?: "null"
-        
-        pendingFloatResetCheck?.let { 
-            floatResetHandler.removeCallbacks(it) 
+        val instanceInfo =
+            thisObject?.let { "${it.javaClass.simpleName}@${Integer.toHexString(it.hashCode())}" }
+                ?: "null"
+
+        pendingFloatResetCheck?.let {
+            floatResetHandler.removeCallbacks(it)
         }
 
         val check = Runnable {
@@ -58,7 +60,9 @@ class FloatScreenResetDetector(
 
     private fun onFloatResumeObserved(target: HookTarget, thisObject: Any?) {
         lastFloatResumeObservedElapsed = SystemClock.elapsedRealtime()
-        val instanceInfo = thisObject?.let { "${it.javaClass.simpleName}@${Integer.toHexString(it.hashCode())}" } ?: "null"
+        val instanceInfo =
+            thisObject?.let { "${it.javaClass.simpleName}@${Integer.toHexString(it.hashCode())}" }
+                ?: "null"
     }
 
     private fun installHookTargetObserver(

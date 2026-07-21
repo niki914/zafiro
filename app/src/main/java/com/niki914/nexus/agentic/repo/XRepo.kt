@@ -3,8 +3,11 @@ package com.niki914.nexus.agentic.repo
 import android.content.Context
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
-import com.niki914.nexus.h.util.ContextProvider
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
+import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverTarget
+import com.niki914.nexus.agentic.runtime.settings.model.TAKEOVER_FIELD_NAME
+import com.niki914.nexus.agentic.runtime.settings.model.TAKEOVER_FIELD_PATTERNS
+import com.niki914.nexus.store.StoreDescriptorRegistry
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
@@ -19,11 +22,7 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmC
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpServer
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRule as TakeoverRule
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverSettings as TakeoverSettings
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverTarget
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRuleValidation as TakeoverRuleValidation
-import com.niki914.nexus.agentic.runtime.settings.model.TAKEOVER_FIELD_NAME
-import com.niki914.nexus.agentic.runtime.settings.model.TAKEOVER_FIELD_PATTERNS
 
 object XRepo {
     val mcp: McpApi = McpApi(this)
@@ -42,7 +41,10 @@ object XRepo {
     internal var store: DomainSettingsStore = XIpcDomainSettingsStore(null)
         private set
 
-    internal fun init(context: Context, store: DomainSettingsStore = XIpcDomainSettingsStore(null)) {
+    internal fun init(
+        context: Context,
+        store: DomainSettingsStore = XIpcDomainSettingsStore(null)
+    ) {
         if (appContext == null) {
             appContext = context.applicationContext ?: context
             if (!installedStoreForTest) {
@@ -87,7 +89,10 @@ object XRepo {
         }
     }
 
-    internal suspend fun updateJsonOrFalse(storeId: String, transform: (String) -> String?): Boolean {
+    internal suspend fun updateJsonOrFalse(
+        storeId: String,
+        transform: (String) -> String?
+    ): Boolean {
         return writeMutex.withLock {
             val context = context()
             val latest = store.readJson(context, storeId)
@@ -106,7 +111,12 @@ object XRepo {
     suspend fun tryPutDefaultSettings(): Boolean {
         return writeMutex.withLock {
             val context = context()
-            val appState = AppStateSettingsCodec.parse(store.readJson(context, StoreDescriptorRegistry.APP_STATE_ID))
+            val appState = AppStateSettingsCodec.parse(
+                store.readJson(
+                    context,
+                    StoreDescriptorRegistry.APP_STATE_ID
+                )
+            )
             if (appState.onboardingCompleted) {
                 return@withLock false
             }
@@ -120,7 +130,10 @@ object XRepo {
             writeJsonLocked(
                 context,
                 StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID,
-                MemorySettingsCodec.encodeMemories(LocalSettingsDefaults.defaultMemories, System.currentTimeMillis()),
+                MemorySettingsCodec.encodeMemories(
+                    LocalSettingsDefaults.defaultMemories,
+                    System.currentTimeMillis()
+                ),
             )
             writeJsonLocked(
                 context,
@@ -175,10 +188,10 @@ object XRepo {
         apiKey: String,
     ) {
         val updated = llm().copy(
-                provider = provider,
-                endpoint = endpoint,
-                model = model,
-                apiKey = apiKey,
+            provider = provider,
+            endpoint = endpoint,
+            model = model,
+            apiKey = apiKey,
         )
         saveLlm(updated)
     }
@@ -256,7 +269,10 @@ class AgentApi internal constructor(
         } else {
             current.map { if (it.id == normalizedId) normalized else it }
         }
-        repo.writeJson(StoreDescriptorRegistry.AGENT_REGISTRY_ID, AgentSettingsCodec.encodeRegistry(updated))
+        repo.writeJson(
+            StoreDescriptorRegistry.AGENT_REGISTRY_ID,
+            AgentSettingsCodec.encodeRegistry(updated)
+        )
         return null
     }
 
@@ -302,7 +318,10 @@ class AgentApi internal constructor(
         val normalizedId = AgentSettingsCodec.normalizeAgentId(agentId)
             ?: return AgentValidation("id", "Invalid agent id.")
         if (normalizedId == StoreDescriptorRegistry.MAIN_AGENT_ID) {
-            repo.writeJson(StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID, AgentSettingsCodec.encodeMainConfig(config))
+            repo.writeJson(
+                StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID,
+                AgentSettingsCodec.encodeMainConfig(config)
+            )
             return null
         }
         val profile = get(normalizedId) ?: return AgentValidation("id", "Agent does not exist.")
@@ -593,7 +612,8 @@ class McpApi internal constructor(
 
     suspend fun delete(name: String) {
         repo.updateJson(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID) { json ->
-            McpSettingsCodec.encodeServers(McpSettingsCodec.parseServers(json).filterNot { it.name == name })
+            McpSettingsCodec.encodeServers(
+                McpSettingsCodec.parseServers(json).filterNot { it.name == name })
         }
     }
 
@@ -636,7 +656,12 @@ class McpApi internal constructor(
         val storeId = StoreDescriptorRegistry.mcpCacheStoreId(serverId) ?: return
         repo.writeJson(
             storeId,
-            McpSettingsCodec.encodeCache(serverId, serverFingerprint(server), emptyList(), System.currentTimeMillis()),
+            McpSettingsCodec.encodeCache(
+                serverId,
+                serverFingerprint(server),
+                emptyList(),
+                System.currentTimeMillis()
+            ),
         )
     }
 
@@ -743,13 +768,17 @@ class CustomToolApi internal constructor(
         normalizedTools.forEach { tool ->
             validate(tool, overwrite = true)?.let { return it }
         }
-        repo.writeJson(StoreDescriptorRegistry.TOOLS_CUSTOM_ID, ToolSettingsCodec.encodeCustomTools(normalizedTools))
+        repo.writeJson(
+            StoreDescriptorRegistry.TOOLS_CUSTOM_ID,
+            ToolSettingsCodec.encodeCustomTools(normalizedTools)
+        )
         return null
     }
 
     suspend fun delete(name: String) {
         repo.updateJson(StoreDescriptorRegistry.TOOLS_CUSTOM_ID) { json ->
-            ToolSettingsCodec.encodeCustomTools(ToolSettingsCodec.parseCustomTools(json).filterNot { it.name == name })
+            ToolSettingsCodec.encodeCustomTools(
+                ToolSettingsCodec.parseCustomTools(json).filterNot { it.name == name })
         }
     }
 
@@ -841,7 +870,10 @@ class BuiltinToolApi internal constructor(
         return null
     }
 
-    private fun Map<String, Boolean>.enabledFlagFor(toolName: String, defaultEnabled: Boolean): Boolean {
+    private fun Map<String, Boolean>.enabledFlagFor(
+        toolName: String,
+        defaultEnabled: Boolean
+    ): Boolean {
         return if (toolName == TERMINAL_TOOL_NAME) {
             // 只读兼容旧 run_command 开关；写入仍使用当前 terminal key。
             this[TERMINAL_TOOL_NAME] ?: this[LEGACY_RUN_COMMAND_TOOL_NAME] ?: defaultEnabled

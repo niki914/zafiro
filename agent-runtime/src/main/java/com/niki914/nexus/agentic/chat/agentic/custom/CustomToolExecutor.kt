@@ -70,12 +70,16 @@ data class CustomCommandExecutionResult(
     val message: String = "",
 )
 
-private suspend fun executeTerminalCommand(command: String, timeoutMs: Long): CustomCommandExecutionResult {
-    return when (val outcome = TerminalSessionPool.executeCustomCommand(command = command, timeoutMs = timeoutMs)) {
+private suspend fun executeTerminalCommand(
+    command: String,
+    timeoutMs: Long
+): CustomCommandExecutionResult {
+    return when (val outcome =
+        TerminalSessionPool.executeCustomCommand(command = command, timeoutMs = timeoutMs)) {
         is TerminalCommandOutcome.Success -> {
             val exitCode = outcome.result.exitCode ?: -1
             val stdout = outcome.result.stdout.toByteArray().decodeToString() +
-                outcome.result.stderr.toByteArray().decodeToString()
+                    outcome.result.stderr.toByteArray().decodeToString()
             if (exitCode == 0) {
                 CustomCommandExecutionResult(ok = true, stdout = stdout)
             } else {

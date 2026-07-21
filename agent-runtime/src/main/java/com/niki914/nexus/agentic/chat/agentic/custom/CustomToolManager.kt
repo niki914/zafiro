@@ -315,7 +315,11 @@ class CustomToolManager(
             code = when {
                 message == "Reserved builtin tool name." -> "RESERVED_NAME"
                 message == "Already exists in custom_tools." -> "NAME_CONFLICT"
-                field == "command" && message.contains("execution rule", ignoreCase = true) -> "RULE_BLOCKED"
+                field == "command" && message.contains(
+                    "execution rule",
+                    ignoreCase = true
+                ) -> "RULE_BLOCKED"
+
                 else -> "INVALID_CUSTOM_TOOL"
             },
             message = "Custom tool validation failed.",

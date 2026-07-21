@@ -19,7 +19,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":h"))
+    implementation(project(":xposed-api"))
     implementation("com.github.niki914:s3ss10n:2.1.6")
     implementation("com.github.niki914.libterm:libterm-runtime:v5-0.5")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")

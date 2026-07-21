@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
+import com.niki914.nexus.agentic.repo.SkillImportResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
@@ -14,11 +15,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import com.niki914.nexus.agentic.repo.SkillImportResult
+import java.io.File
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLoadedSkill as LoadedSkill
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata as SkillMetadata
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillValidation as SkillValidation
-import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SkillSettingsViewModelTest {
@@ -60,7 +60,8 @@ class SkillSettingsViewModelTest {
 
     @Test
     fun load_withEmptyList_showsEmptyState() = runTest {
-        val viewModel = SkillSettingsViewModel(FakeSkillRepositoryProvider(listResult = emptyList()))
+        val viewModel =
+            SkillSettingsViewModel(FakeSkillRepositoryProvider(listResult = emptyList()))
 
         viewModel.sendIntent(SkillSettingsIntent.Load)
         advanceUntilIdle()
@@ -95,7 +96,12 @@ class SkillSettingsViewModelTest {
 
         viewModel.sendIntent(SkillSettingsIntent.Load)
         advanceUntilIdle()
-        viewModel.sendIntent(SkillSettingsIntent.ToggleEnabled(id = "skill/SKILL.md", enabled = false))
+        viewModel.sendIntent(
+            SkillSettingsIntent.ToggleEnabled(
+                id = "skill/SKILL.md",
+                enabled = false
+            )
+        )
         advanceUntilIdle()
 
         val state = viewModel.uiStateFlow.value
@@ -116,7 +122,12 @@ class SkillSettingsViewModelTest {
 
         viewModel.sendIntent(SkillSettingsIntent.Load)
         advanceUntilIdle()
-        viewModel.sendIntent(SkillSettingsIntent.ToggleEnabled(id = "skill/SKILL.md", enabled = false))
+        viewModel.sendIntent(
+            SkillSettingsIntent.ToggleEnabled(
+                id = "skill/SKILL.md",
+                enabled = false
+            )
+        )
         advanceUntilIdle()
 
         val state = viewModel.uiStateFlow.value
@@ -137,7 +148,12 @@ class SkillSettingsViewModelTest {
 
         viewModel.sendIntent(SkillSettingsIntent.Load)
         advanceUntilIdle()
-        viewModel.sendIntent(SkillSettingsIntent.ToggleEnabled(id = "skill/SKILL.md", enabled = false))
+        viewModel.sendIntent(
+            SkillSettingsIntent.ToggleEnabled(
+                id = "skill/SKILL.md",
+                enabled = false
+            )
+        )
         advanceUntilIdle()
 
         val state = viewModel.uiStateFlow.value
@@ -150,10 +166,20 @@ class SkillSettingsViewModelTest {
     @Test
     fun loadDetail_withContent_updatesFormSnapshot() = runTest {
         val viewModel = SkillSettingsViewModel(
-            FakeSkillRepositoryProvider(detailResult = loadedSkill(name = "Loaded", content = "# Skill")),
+            FakeSkillRepositoryProvider(
+                detailResult = loadedSkill(
+                    name = "Loaded",
+                    content = "# Skill"
+                )
+            ),
         )
 
-        viewModel.sendIntent(SkillSettingsIntent.LoadDetail(id = "skill/SKILL.md", fallbackTitle = "Fallback"))
+        viewModel.sendIntent(
+            SkillSettingsIntent.LoadDetail(
+                id = "skill/SKILL.md",
+                fallbackTitle = "Fallback"
+            )
+        )
         advanceUntilIdle()
 
         val formState = viewModel.uiStateFlow.value.formState
@@ -169,7 +195,12 @@ class SkillSettingsViewModelTest {
     fun loadDetail_whenMissing_setsLoadFailed() = runTest {
         val viewModel = SkillSettingsViewModel(FakeSkillRepositoryProvider(detailResult = null))
 
-        viewModel.sendIntent(SkillSettingsIntent.LoadDetail(id = "missing/SKILL.md", fallbackTitle = "Missing"))
+        viewModel.sendIntent(
+            SkillSettingsIntent.LoadDetail(
+                id = "missing/SKILL.md",
+                fallbackTitle = "Missing"
+            )
+        )
         advanceUntilIdle()
 
         val state = viewModel.uiStateFlow.value
@@ -183,7 +214,12 @@ class SkillSettingsViewModelTest {
             FakeSkillRepositoryProvider(detailResult = loadedSkill(content = "initial")),
         )
 
-        viewModel.sendIntent(SkillSettingsIntent.LoadDetail(id = "skill/SKILL.md", fallbackTitle = "Skill"))
+        viewModel.sendIntent(
+            SkillSettingsIntent.LoadDetail(
+                id = "skill/SKILL.md",
+                fallbackTitle = "Skill"
+            )
+        )
         advanceUntilIdle()
         viewModel.sendIntent(SkillSettingsIntent.ContentChanged("edited"))
         advanceUntilIdle()
@@ -199,7 +235,12 @@ class SkillSettingsViewModelTest {
         val provider = FakeSkillRepositoryProvider(detailResult = loadedSkill(content = "initial"))
         val viewModel = SkillSettingsViewModel(provider)
 
-        viewModel.sendIntent(SkillSettingsIntent.LoadDetail(id = "skill/SKILL.md", fallbackTitle = "Skill"))
+        viewModel.sendIntent(
+            SkillSettingsIntent.LoadDetail(
+                id = "skill/SKILL.md",
+                fallbackTitle = "Skill"
+            )
+        )
         advanceUntilIdle()
         viewModel.sendIntent(SkillSettingsIntent.ContentChanged("edited"))
         viewModel.sendIntent(SkillSettingsIntent.Save)
@@ -223,7 +264,12 @@ class SkillSettingsViewModelTest {
             ),
         )
 
-        viewModel.sendIntent(SkillSettingsIntent.LoadDetail(id = "skill/SKILL.md", fallbackTitle = "Skill"))
+        viewModel.sendIntent(
+            SkillSettingsIntent.LoadDetail(
+                id = "skill/SKILL.md",
+                fallbackTitle = "Skill"
+            )
+        )
         advanceUntilIdle()
         viewModel.sendIntent(SkillSettingsIntent.ContentChanged("edited"))
         viewModel.sendIntent(SkillSettingsIntent.Save)
@@ -243,7 +289,12 @@ class SkillSettingsViewModelTest {
         val provider = FakeSkillRepositoryProvider(detailResult = loadedSkill(name = "Delete Me"))
         val viewModel = SkillSettingsViewModel(provider)
 
-        viewModel.sendIntent(SkillSettingsIntent.LoadDetail(id = "skill/SKILL.md", fallbackTitle = "Skill"))
+        viewModel.sendIntent(
+            SkillSettingsIntent.LoadDetail(
+                id = "skill/SKILL.md",
+                fallbackTitle = "Skill"
+            )
+        )
         advanceUntilIdle()
         viewModel.sendIntent(SkillSettingsIntent.RequestDelete)
         advanceUntilIdle()
@@ -261,7 +312,12 @@ class SkillSettingsViewModelTest {
         val viewModel = SkillSettingsViewModel(provider)
         val effects = collectEffects(viewModel, count = 1)
 
-        viewModel.sendIntent(SkillSettingsIntent.LoadDetail(id = "skill/SKILL.md", fallbackTitle = "Skill"))
+        viewModel.sendIntent(
+            SkillSettingsIntent.LoadDetail(
+                id = "skill/SKILL.md",
+                fallbackTitle = "Skill"
+            )
+        )
         advanceUntilIdle()
         viewModel.sendIntent(SkillSettingsIntent.RequestDelete)
         viewModel.sendIntent(SkillSettingsIntent.ConfirmDelete)
@@ -283,7 +339,12 @@ class SkillSettingsViewModelTest {
         val viewModel = SkillSettingsViewModel(provider)
         val effects = collectEffects(viewModel, count = 1)
 
-        viewModel.sendIntent(SkillSettingsIntent.LoadDetail(id = "skill/SKILL.md", fallbackTitle = "Skill"))
+        viewModel.sendIntent(
+            SkillSettingsIntent.LoadDetail(
+                id = "skill/SKILL.md",
+                fallbackTitle = "Skill"
+            )
+        )
         advanceUntilIdle()
         viewModel.sendIntent(SkillSettingsIntent.RequestDelete)
         viewModel.sendIntent(SkillSettingsIntent.ConfirmDelete)

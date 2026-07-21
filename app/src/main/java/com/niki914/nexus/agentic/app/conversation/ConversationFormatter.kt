@@ -32,7 +32,7 @@ object ConversationFormatter {
                 is ChatTurn.Assistant -> turn.content.takeIf { it.isNotBlank() }
                 is ChatTurn.ToolResult,
                 is ChatTurn.System,
-                -> null
+                    -> null
             }
         }.orEmpty()
         return previewFromText(text)

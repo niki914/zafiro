@@ -76,7 +76,10 @@ class XiaoaiConfigJsonStructureTest {
             .getValue("target")
             .jsonObject
 
-        assertEquals(emptyList<JsonElement>(), business.getValue("instruction_constructor_param_types").jsonArray)
+        assertEquals(
+            emptyList<JsonElement>(),
+            business.getValue("instruction_constructor_param_types").jsonArray
+        )
         assertTrue(
             business
                 .getValue("instruction_header_constructor_param_types")

@@ -15,11 +15,11 @@ import android.widget.ImageView
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.chat.agentic.accessibility.IPointerOverlay
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
-import kotlin.coroutines.resume
 
 class PointerOverlay : IPointerOverlay {
 
@@ -30,8 +30,10 @@ class PointerOverlay : IPointerOverlay {
         // --- Curve shape ---
         /** Min control-point distance as fraction of path length (with-tip shots) */
         private const val CTRL_DIST_MIN_FRAC = 0.15f
+
         /** Max control-point distance as fraction of path length (against-tip arcs) */
         private const val CTRL_DIST_MAX_FRAC = 0.55f
+
         /** Max perpendicular offset fraction for figure-8 side-sweep */
         private const val CTRL_PERP_FRAC = 0.25f
 
@@ -97,8 +99,8 @@ class PointerOverlay : IPointerOverlay {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -116,7 +118,8 @@ class PointerOverlay : IPointerOverlay {
                     arrayOf("su", "-c", "appops set $pkg SYSTEM_ALERT_WINDOW allow")
                 )
                 proc.waitFor()
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
         }.start()
     }
 
@@ -212,7 +215,8 @@ class PointerOverlay : IPointerOverlay {
         val px = -hy
         val py = hx
 
-        val ctrlDist = (CTRL_DIST_MIN_FRAC + arcFactor * (CTRL_DIST_MAX_FRAC - CTRL_DIST_MIN_FRAC)) * dist
+        val ctrlDist =
+            (CTRL_DIST_MIN_FRAC + arcFactor * (CTRL_DIST_MAX_FRAC - CTRL_DIST_MIN_FRAC)) * dist
         val perpDist = arcFactor * CTRL_PERP_FRAC * dist
 
         return Path().apply {
@@ -246,7 +250,8 @@ class PointerOverlay : IPointerOverlay {
         val arcLen = pm.length
         if (arcLen <= 0f) return
 
-        val pos = FloatArray(2); val tan = FloatArray(2)
+        val pos = FloatArray(2);
+        val tan = FloatArray(2)
 
         // Duration from speed profile: average ~55% of max
         val durationMs = durationMs
@@ -277,10 +282,12 @@ class PointerOverlay : IPointerOverlay {
                         handler.post { applyTransform(toX, toY, h) }
                         if (cont.isActive) cont.resume(Unit)
                     }
+
                     override fun onAnimationCancel(a: android.animation.Animator) {
                         runningAnim = null
                         if (cont.isActive) cont.resume(Unit)
                     }
+
                     override fun onAnimationRepeat(a: android.animation.Animator) {}
                 })
             }
@@ -333,6 +340,7 @@ class PointerOverlay : IPointerOverlay {
             val p = t / ACCEL_FRAC
             MIN_SPEED_PX_PER_S + (MAX_SPEED_PX_PER_S - MIN_SPEED_PX_PER_S) * p * p
         }
+
         t < 1f - DECEL_FRAC -> MAX_SPEED_PX_PER_S
         else -> {
             val p = (t - (1f - DECEL_FRAC)) / DECEL_FRAC
@@ -356,12 +364,18 @@ class PointerOverlay : IPointerOverlay {
 
     private fun attachIfNeeded() {
         if (attached || wm == null || view == null || lp == null) return
-        try { wm!!.addView(view, lp); attached = true } catch (_: Exception) {}
+        try {
+            wm!!.addView(view, lp); attached = true
+        } catch (_: Exception) {
+        }
     }
 
     private fun detach() {
         if (!attached) return
-        try { wm?.removeView(view) } catch (_: Exception) {}
+        try {
+            wm?.removeView(view)
+        } catch (_: Exception) {
+        }
         attached = false
     }
 
@@ -373,7 +387,10 @@ class PointerOverlay : IPointerOverlay {
         // Drawable tip naturally points top-left; subtract IDLE_HEADING to
         // convert absolute screen heading to a rotation relative to default.
         view?.rotation = Math.toDegrees((headingRad - IDLE_HEADING).toDouble()).toFloat()
-        try { if (attached) wm?.updateViewLayout(view, p) } catch (_: Exception) {}
+        try {
+            if (attached) wm?.updateViewLayout(view, p)
+        } catch (_: Exception) {
+        }
     }
 
     private suspend fun delayOnMain(ms: Long) {

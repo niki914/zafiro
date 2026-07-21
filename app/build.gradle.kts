@@ -69,9 +69,9 @@ android {
 
 dependencies {
     implementation(project(":agent-runtime"))
-    implementation(project(":composebase"))
-    implementation(project(":h"))
-    implementation(project(":ipc"))
+    implementation(project(":ui-kit"))
+    implementation(project(":xposed-runtime"))
+    implementation(project(":store"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("com.github.niki914:s3ss10n:2.1.6")

@@ -216,8 +216,10 @@ internal object LocalSettingsCodec {
         return settings.shellSafetyPolicies
             .orEmptyObjects()
             .mapNotNull { obj ->
-                val id = obj.string(ID_KEY).trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                val name = obj.string(NAME_KEY).trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val id =
+                    obj.string(ID_KEY).trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val name =
+                    obj.string(NAME_KEY).trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 ExecutionRule(
                     id = id,
                     name = name,
@@ -258,8 +260,10 @@ internal object LocalSettingsCodec {
         return settings.takeoverRules
             .orEmptyObjects()
             .mapNotNull { obj ->
-                val id = obj.string(ID_KEY).trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                val name = obj.string(NAME_KEY).trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val id =
+                    obj.string(ID_KEY).trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val name =
+                    obj.string(NAME_KEY).trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 TakeoverRule(
                     id = id,
                     name = name,

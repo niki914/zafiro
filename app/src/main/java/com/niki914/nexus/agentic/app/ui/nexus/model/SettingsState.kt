@@ -3,7 +3,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 import androidx.annotation.StringRes
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.app.ui.nexus.nav.NexusSettingsGroup
-import com.niki914.nexus.cb.ComposeMVIViewModel
+import com.niki914.nexus.base.ComposeMVIViewModel
 
 data class SettingsSectionUiState(
     @StringRes val titleRes: Int,

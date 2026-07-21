@@ -26,7 +26,7 @@ import com.niki914.nexus.agentic.repo.WebSettingsFailureReason
 import com.niki914.nexus.agentic.repo.WebSettingsResult
 import com.niki914.nexus.agentic.repo.WebSettingsSource
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.cb.BaseTheme
+import com.niki914.nexus.base.BaseTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -219,7 +219,8 @@ private enum class StartupWebSettingsMockCase {
 }
 
 // 调首屏弹窗时只在 Debug 包启用；改成 null 即恢复真实 WebSettings 请求。
-private val DEBUG_STARTUP_WEB_SETTINGS_MOCK_CASE: StartupWebSettingsMockCase? = null // TODO P1 这个后面要删掉，之前都不记得有做了这个东西，结果调试包查了半天，才发现是这个问题
+private val DEBUG_STARTUP_WEB_SETTINGS_MOCK_CASE: StartupWebSettingsMockCase? =
+    null // TODO P1 这个后面要删掉，之前都不记得有做了这个东西，结果调试包查了半天，才发现是这个问题
 
 private fun defaultWebSettingsLoader(): WebSettingsLoader {
     val mockCase = DEBUG_STARTUP_WEB_SETTINGS_MOCK_CASE

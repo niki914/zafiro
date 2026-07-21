@@ -4,7 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.cb.ComposeMVIViewModel
+import com.niki914.nexus.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -29,9 +29,14 @@ data class MemoryDeleteConfirmationState(
 )
 
 sealed interface MemoryInlineError {
-    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : MemoryInlineError
-    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : MemoryInlineError
-    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : MemoryInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        MemoryInlineError
+
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        MemoryInlineError
+
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        MemoryInlineError
 }
 
 sealed interface MemorySettingsIntent {

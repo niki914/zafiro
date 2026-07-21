@@ -1,6 +1,6 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
-import com.niki914.nexus.h.util.OsFamily
+import com.niki914.nexus.xposed.api.util.OsFamily
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

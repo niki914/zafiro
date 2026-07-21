@@ -8,7 +8,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.device.AppInfo
 import com.niki914.nexus.agentic.chat.agentic.device.AppInfoProvider
 import com.niki914.nexus.agentic.chat.agentic.device.AppMatchResult
-import com.niki914.nexus.h.util.ContextProvider
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
@@ -35,7 +35,8 @@ class LaunchAppBuiltin : BuiltinTool() {
             required = false
         }
         config.string("app_name") {
-            description = "App display name to launch. Fuzzy matching is allowed; ambiguous matches return candidates."
+            description =
+                "App display name to launch. Fuzzy matching is allowed; ambiguous matches return candidates."
             required = false
         }
         config.rawJsonSchema(LAUNCH_APP_SCHEMA)
@@ -52,7 +53,9 @@ class LaunchAppBuiltin : BuiltinTool() {
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "launch_app arguments must be a JSON object with package_name or app_name.",
                 hint = """Example: {"app_name":"微信"} or {"package_name":"com.tencent.mm"}""",
-                fieldErrors = mapOf("argumentsJson" to (throwable.message ?: "Invalid JSON object.")),
+                fieldErrors = mapOf(
+                    "argumentsJson" to (throwable.message ?: "Invalid JSON object.")
+                ),
             )
         }
 

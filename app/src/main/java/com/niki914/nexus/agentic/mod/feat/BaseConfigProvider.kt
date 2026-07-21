@@ -1,7 +1,7 @@
 package com.niki914.nexus.agentic.mod.feat
 
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.h.util.xTry
+import com.niki914.nexus.xposed.api.util.xTry
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

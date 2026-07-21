@@ -1,13 +1,13 @@
 package com.niki914.nexus.agentic.repo
 
-import java.io.File
-import java.nio.file.Files
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
+import java.nio.file.Files
 
 class SkillPathResolverTest {
 
@@ -41,7 +41,10 @@ class SkillPathResolverTest {
         val twoLevel = resolver.resolveSkillFile("group-a/skill-a")
 
         assertEquals("skill-a/SKILL.md", (oneLevel as SkillPathResolution.Resolved).relativePath)
-        assertEquals("group-a/skill-a/SKILL.md", (twoLevel as SkillPathResolution.Resolved).relativePath)
+        assertEquals(
+            "group-a/skill-a/SKILL.md",
+            (twoLevel as SkillPathResolution.Resolved).relativePath
+        )
     }
 
     @Test

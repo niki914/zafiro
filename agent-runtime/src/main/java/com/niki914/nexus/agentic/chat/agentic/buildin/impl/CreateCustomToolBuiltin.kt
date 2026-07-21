@@ -35,7 +35,8 @@ class CreateCustomToolBuiltin : BuiltinTool() {
             required = true
         }
         config.string("command") {
-            description = "Normal Android shell command executed by the custom tool. Use su -c 'cmd' for root; use `cd /path && cmd` when the command depends on a working directory."
+            description =
+                "Normal Android shell command executed by the custom tool. Use su -c 'cmd' for root; use `cd /path && cmd` when the command depends on a working directory."
             required = true
         }
         config.boolean("enabled") {
@@ -152,13 +153,21 @@ class CreateCustomToolBuiltin : BuiltinTool() {
             code = when {
                 message == "Reserved builtin tool name." -> "RESERVED_NAME"
                 message == "Already exists in custom_tools." -> "NAME_CONFLICT"
-                field == "command" && message.contains("execution rule", ignoreCase = true) -> "RULE_BLOCKED"
+                field == "command" && message.contains(
+                    "execution rule",
+                    ignoreCase = true
+                ) -> "RULE_BLOCKED"
+
                 else -> "INVALID_CUSTOM_TOOL"
             },
             message = when {
                 message == "Reserved builtin tool name." -> "Custom tool name '$toolName' is reserved by a builtin tool."
                 message == "Already exists in custom_tools." -> "Custom tool name '$toolName' already exists."
-                field == "command" && message.contains("execution rule", ignoreCase = true) -> message
+                field == "command" && message.contains(
+                    "execution rule",
+                    ignoreCase = true
+                ) -> message
+
                 else -> "Custom tool validation failed."
             },
             hint = message,

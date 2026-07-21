@@ -5,9 +5,9 @@ import com.niki914.nexus.agentic.chat.TurnMode
 import com.niki914.nexus.agentic.mod.feat.HookTarget
 import com.niki914.nexus.agentic.mod.feat.SubHook
 import com.niki914.nexus.agentic.mod.feat.hyper.XiaoaiConfigProvider
-import com.niki914.nexus.h.util.call
-import com.niki914.nexus.h.util.getTag
-import com.niki914.nexus.h.xevent.XEvent
+import com.niki914.nexus.xposed.api.xevent.XEvent
+import com.niki914.nexus.xposed.runtime.util.call
+import com.niki914.nexus.xposed.runtime.util.getTag
 import de.robv.android.xposed.XC_MethodHook
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

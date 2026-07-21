@@ -27,12 +27,14 @@ interface IRenderFrameCallback : IInterface {
                     onFrame(frame)
                     return true
                 }
+
                 else -> return super.onTransact(code, data, reply, flags)
             }
         }
 
         companion object {
-            private const val DESCRIPTOR = "com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback"
+            private const val DESCRIPTOR =
+                "com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback"
             private const val TRANSACTION_onFrame = 1
 
             fun asInterface(obj: IBinder?): IRenderFrameCallback? {

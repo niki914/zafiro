@@ -56,6 +56,7 @@ class McpDiscoveryCacheStore {
                     (key as? String)?.let { it to value.toJsonElement() }
                 }.toMap()
             )
+
             is Iterable<*> -> JsonArray(map { it.toJsonElement() })
             is Array<*> -> JsonArray(map { it.toJsonElement() })
             else -> JsonPrimitive(toString())

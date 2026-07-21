@@ -13,7 +13,7 @@ import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
 import com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService
 import com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback
 import com.niki914.nexus.agentic.runtime.ipc.RenderFrame
-import com.niki914.nexus.ipc.XIpcBridge
+import com.niki914.nexus.store.XIpcBridge
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +26,8 @@ import kotlin.time.Duration.Companion.milliseconds
 class ServiceUnavailableException :
     IllegalStateException("Agent runtime service is not connected")
 
-class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XIpcBridge.StoreClient {
+class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
+    XIpcBridge.StoreClient {
 
     enum class ConnectionState {
         Disconnected,
@@ -52,7 +53,8 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
     companion object {
         private const val NEXUS_PACKAGE = "com.niki914.nexus.agentic"
         private const val BIND_ACTION = "com.niki914.nexus.agentic.runtime.BIND"
-        private const val SERVICE_CLASS = "com.niki914.nexus.agentic.runtime.service.AgentRuntimeService"
+        private const val SERVICE_CLASS =
+            "com.niki914.nexus.agentic.runtime.service.AgentRuntimeService"
         private const val MAX_RETRIES = 3
         private const val RETRY_DELAY_MS = 2000L
     }
@@ -97,12 +99,18 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
     fun disconnect() {
         deathRecipient?.let { dr ->
             binder?.let { b ->
-                try { b.unlinkToDeath(dr, 0) } catch (_: Exception) {}
+                try {
+                    b.unlinkToDeath(dr, 0)
+                } catch (_: Exception) {
+                }
             }
         }
         deathRecipient = null
         if (bound) {
-            try { context.unbindService(serviceConnection) } catch (_: Exception) {}
+            try {
+                context.unbindService(serviceConnection)
+            } catch (_: Exception) {
+            }
             bound = false
         }
         service = null
@@ -139,11 +147,17 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
     }
 
     override suspend fun cancel() {
-        try { service?.cancel() } catch (_: Exception) {}
+        try {
+            service?.cancel()
+        } catch (_: Exception) {
+        }
     }
 
     override suspend fun resetConversation() {
-        try { service?.resetConversation() } catch (_: Exception) {}
+        try {
+            service?.resetConversation()
+        } catch (_: Exception) {
+        }
     }
 
     override fun readStore(storeId: String): String? {
@@ -214,7 +228,10 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
         }
     }
 
-    override fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?): Boolean {
+    override fun postUnsupportedVersionNotification(
+        hostPackageName: String?,
+        hostVersion: String?
+    ): Boolean {
         val svc = storeService ?: return false
         return try {
             svc.postUnsupportedVersionNotification(hostPackageName, hostVersion)
@@ -237,7 +254,10 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
         mainHandler.post {
             deathRecipient = null
             if (bound) {
-                try { context.unbindService(serviceConnection) } catch (_: Exception) {}
+                try {
+                    context.unbindService(serviceConnection)
+                } catch (_: Exception) {
+                }
                 bound = false
             }
             scheduleReconnect()
@@ -251,7 +271,10 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
             storeService = null
             binder = null
             if (bound) {
-                try { context.unbindService(serviceConnection) } catch (_: Exception) {}
+                try {
+                    context.unbindService(serviceConnection)
+                } catch (_: Exception) {
+                }
                 bound = false
             }
             scheduleReconnect()
@@ -269,7 +292,10 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource, XI
 
             deathRecipient?.let { dr ->
                 binder?.let { b ->
-                    try { b.linkToDeath(dr, 0) } catch (_: Exception) {}
+                    try {
+                        b.linkToDeath(dr, 0)
+                    } catch (_: Exception) {
+                    }
                 }
             }
 

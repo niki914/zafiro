@@ -9,8 +9,8 @@ import com.niki914.libterm.runtime.TermResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.TerminalBuiltin
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalRuntimePort
-import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPort
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPort
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.flow.emptyFlow
@@ -57,7 +57,10 @@ class TerminalBuiltinTest {
         val json = invoke("""{"action":""")
 
         assertErrorCode("INVALID_REQUEST", json)
-        assertEquals("argumentsJson is not valid JSON.", json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content)
+        assertEquals(
+            "argumentsJson is not valid JSON.",
+            json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+        )
     }
 
     @Test
@@ -73,7 +76,10 @@ class TerminalBuiltinTest {
         val json = invoke("""{"action":"exec","session":"user","command":"   "}""")
 
         assertErrorCode("INVALID_REQUEST", json)
-        assertEquals("Field 'command' must not be blank.", json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content)
+        assertEquals(
+            "Field 'command' must not be blank.",
+            json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+        )
     }
 
     @Test
@@ -123,7 +129,8 @@ class TerminalBuiltinTest {
         )
         installFakeRuntime(fakeRuntime).use {
             installHandles("a3f9").use {
-                val json = invoke("""{"action":"open_and_exec","identity":"shizuku","command":"pwd"}""")
+                val json =
+                    invoke("""{"action":"open_and_exec","identity":"shizuku","command":"pwd"}""")
 
                 assertEquals("a3f9", json["session"]!!.jsonPrimitive.content)
                 assertEquals("shizuku", json["identity"]!!.jsonPrimitive.content)
@@ -159,7 +166,8 @@ class TerminalBuiltinTest {
     fun invokeRawJson_asyncExecReturnsSessionNotFoundWithoutOpening() = runTest {
         installRuntimeSettingsGatewayForTest()
 
-        val json = invoke("""{"action":"exec","session":"user","command":"sleep 10","is_async":true}""")
+        val json =
+            invoke("""{"action":"exec","session":"user","command":"sleep 10","is_async":true}""")
 
         assertErrorCode("SESSION_NOT_FOUND", json)
     }

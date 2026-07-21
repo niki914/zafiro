@@ -2,7 +2,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
 import com.niki914.nexus.agentic.app.R
-import com.niki914.nexus.h.util.OsFamily
+import com.niki914.nexus.xposed.api.util.OsFamily
 
 sealed interface StartupAssistantUi {
     @get:StringRes

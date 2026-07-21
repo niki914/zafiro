@@ -41,6 +41,7 @@ class LoadSkillBuiltin : BuiltinTool() {
                     fieldErrors = mapOf("argumentsJson" to result.message),
                 )
             }
+
             SkillIdParseResult.MissingId -> {
                 return BuiltinToolResult.failure(
                     code = "MISSING_SKILL_ID",

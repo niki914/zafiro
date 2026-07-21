@@ -2,7 +2,6 @@ package com.niki914.nexus.agentic.repo
 
 import android.content.Context
 import android.content.ContextWrapper
-import java.io.File
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -10,6 +9,7 @@ import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class XRepoRuntimeGatewayTest {
 
@@ -36,13 +36,15 @@ class XRepoRuntimeGatewayTest {
         XRepo.installStoreForTest(store)
         XRepo.init(context)
 
-        XRepo.saveLlm(com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig(
-            provider = "openai",
-            endpoint = "https://api.openai.com",
-            model = "gpt-4",
-            prompt = "Hello"
-        ))
-        
+        XRepo.saveLlm(
+            com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig(
+                provider = "openai",
+                endpoint = "https://api.openai.com",
+                model = "gpt-4",
+                prompt = "Hello"
+            )
+        )
+
         XRepo.memory.replaceAll(listOf("Fact 1", "Fact 2"))
 
         val gateway = XRepoRuntimeGateway(XRepo)
@@ -68,7 +70,10 @@ class XRepoRuntimeGatewayTest {
         assertEquals("Skill A", enabledSkills.single().name)
         assertEquals("Enabled skill", loadedSkill?.description)
         assertEquals("skill-a", loadedSkill?.id)
-        assertEquals(skillContent(name = "Skill A", description = "Enabled skill"), loadedSkill?.content)
+        assertEquals(
+            skillContent(name = "Skill A", description = "Enabled skill"),
+            loadedSkill?.content
+        )
         assertNull(gateway.loadSkill("missing"))
     }
 

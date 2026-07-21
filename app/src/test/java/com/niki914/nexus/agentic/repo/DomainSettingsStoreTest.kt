@@ -2,14 +2,14 @@ package com.niki914.nexus.agentic.repo
 
 import android.content.Context
 import android.content.ContextWrapper
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
-import java.io.File
+import com.niki914.nexus.store.StoreDescriptorRegistry
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class DomainSettingsStoreTest {
 
@@ -20,7 +20,10 @@ class DomainSettingsStoreTest {
     fun readMissingStoreReturnsDescriptorDefaultJson() = runTest {
         val context = testContext(packageName = "com.niki914.nexus.agentic")
 
-        val json = XIpcDomainSettingsStore(null).readJson(context, StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)
+        val json = XIpcDomainSettingsStore(null).readJson(
+            context,
+            StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID
+        )
 
         assertEquals("""{"memories":[]}""", json)
     }

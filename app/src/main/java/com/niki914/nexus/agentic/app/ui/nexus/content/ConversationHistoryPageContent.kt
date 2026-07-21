@@ -30,7 +30,7 @@ import com.niki914.nexus.agentic.app.ui.infra.component.SettingsGroupCard
 import com.niki914.nexus.agentic.app.ui.infra.component.SwipeDismissSettingsItemCard
 import com.niki914.nexus.agentic.app.ui.infra.liquidScreenHazeSource
 import com.niki914.nexus.agentic.app.ui.infra.liquidScreenTopPadding
-import com.niki914.nexus.cb.BaseTheme
+import com.niki914.nexus.base.BaseTheme
 
 internal data class ConversationHistoryUiState(
     val isLoading: Boolean = false,

@@ -54,10 +54,20 @@ class SkillPathResolver(
         }
         val skillFile = File(skillDir, SKILL_FILE_NAME)
         if (!isUnderSkillsRoot(skillFile)) {
-            return SkillPathResolution.Invalid(RuntimeSkillValidation("id", "Skill path escapes skills root."))
+            return SkillPathResolution.Invalid(
+                RuntimeSkillValidation(
+                    "id",
+                    "Skill path escapes skills root."
+                )
+            )
         }
         if (containsSymbolicLink(skillFile)) {
-            return SkillPathResolution.Invalid(RuntimeSkillValidation("id", "Skill path uses symbolic link."))
+            return SkillPathResolution.Invalid(
+                RuntimeSkillValidation(
+                    "id",
+                    "Skill path uses symbolic link."
+                )
+            )
         }
 
         return SkillPathResolution.Resolved(

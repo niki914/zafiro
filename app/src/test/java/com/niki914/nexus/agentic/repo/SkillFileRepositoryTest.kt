@@ -1,7 +1,5 @@
 package com.niki914.nexus.agentic.repo
 
-import java.io.File
-import java.nio.file.Files
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -10,6 +8,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
+import java.nio.file.Files
 
 class SkillFileRepositoryTest {
 
@@ -20,7 +20,11 @@ class SkillFileRepositoryTest {
     fun listAll_returnsOneAndTwoLevelSkillsSortedWithMetadataAndEnabledState() {
         val skillsRoot = temporaryFolder.newFolder("skills")
         writeSkill(skillsRoot, "skill-b", skillContent(name = "Shared", description = "Second"))
-        writeSkill(skillsRoot, "group-a/skill-a", skillContent(name = "Shared", description = "First"))
+        writeSkill(
+            skillsRoot,
+            "group-a/skill-a",
+            skillContent(name = "Shared", description = "First")
+        )
         writeSkill(skillsRoot, "a/b/c", skillContent(name = "Ignored", description = "Too deep"))
         File(skillsRoot, "status.json").writeText("""{"enabled":{"skill-b":false}}""")
 
@@ -29,7 +33,9 @@ class SkillFileRepositoryTest {
         assertEquals(listOf("group-a/skill-a", "skill-b"), skills.map { it.id })
         assertEquals(listOf("Shared", "Shared"), skills.map { it.name })
         assertEquals(listOf("First", "Second"), skills.map { it.description })
-        assertEquals(listOf("group-a/skill-a/SKILL.md", "skill-b/SKILL.md"), skills.map { it.relativePath })
+        assertEquals(
+            listOf("group-a/skill-a/SKILL.md", "skill-b/SKILL.md"),
+            skills.map { it.relativePath })
         assertEquals(listOf(true, false), skills.map { it.enabled })
         assertTrue(skills.all { File(it.absolutePath).isFile })
     }
@@ -141,7 +147,14 @@ class SkillFileRepositoryTest {
         assertTrue(skillsRoot.exists())
         assertEquals("keep", outside.readText())
         assertTrue(repository.load("group-a/skill-a") == null)
-        assertTrue(SkillEnabledStateStore(File(skillsRoot, "status.json")).isEnabled("group-a/skill-a"))
+        assertTrue(
+            SkillEnabledStateStore(
+                File(
+                    skillsRoot,
+                    "status.json"
+                )
+            ).isEnabled("group-a/skill-a")
+        )
         assertNotNull(repository.delete("missing"))
         assertNotNull(repository.delete("../escape"))
     }

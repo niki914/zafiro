@@ -48,7 +48,9 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "memorize arguments must be a JSON object with a content field.",
                 hint = """Example: {"content":"The user prefers concise answers."}""",
-                fieldErrors = mapOf("argumentsJson" to (throwable.message ?: "Invalid JSON object.")),
+                fieldErrors = mapOf(
+                    "argumentsJson" to (throwable.message ?: "Invalid JSON object.")
+                ),
             ).toJsonString()
         }
         if (content.isBlank()) {

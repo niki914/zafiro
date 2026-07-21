@@ -1,11 +1,11 @@
 package com.niki914.nexus.agentic.mod
 
 import android.content.Context
-import com.niki914.nexus.h.util.ContextProvider
-import com.niki914.nexus.ipc.HostApp
-import com.niki914.nexus.ipc.IpcReadResult
-import com.niki914.nexus.ipc.IpcWriteResult
-import com.niki914.nexus.ipc.XIpcBridge
+import com.niki914.nexus.store.HostApp
+import com.niki914.nexus.store.IpcReadResult
+import com.niki914.nexus.store.IpcWriteResult
+import com.niki914.nexus.store.XIpcBridge
+import com.niki914.nexus.xposed.api.util.ContextProvider
 
 object XService {
 
@@ -17,7 +17,11 @@ object XService {
         }
     }
 
-    suspend fun putLocalSettings(context: Context, settings: LocalSettings, client: XIpcBridge.StoreClient?) {
+    suspend fun putLocalSettings(
+        context: Context,
+        settings: LocalSettings,
+        client: XIpcBridge.StoreClient?
+    ) {
         XIpcBridge.writeLocalSettingsJson(context, settings.props.toString(), client)
     }
 
@@ -28,7 +32,13 @@ object XService {
         client: XIpcBridge.StoreClient?,
     ): Boolean {
         val context = ContextProvider.await()
-        return XIpcBridge.postNotification(context, title, content, uri, client) is IpcWriteResult.Success
+        return XIpcBridge.postNotification(
+            context,
+            title,
+            content,
+            uri,
+            client
+        ) is IpcWriteResult.Success
     }
 
     fun postNetworkErrorNotification(client: XIpcBridge.StoreClient) {

@@ -6,7 +6,7 @@ import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.FakeDomainSettingsStore
 import com.niki914.nexus.agentic.repo.McpSettingsCodec
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
+import com.niki914.nexus.store.StoreDescriptorRegistry
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
@@ -406,7 +406,12 @@ class McpSettingsViewModelTest {
         vararg initialJson: Pair<String, String>,
         failWrites: Boolean = false,
     ) {
-        XRepo.installStoreForTest(FakeDomainSettingsStore(*initialJson, ownerWriteSucceeds = !failWrites))
+        XRepo.installStoreForTest(
+            FakeDomainSettingsStore(
+                *initialJson,
+                ownerWriteSucceeds = !failWrites
+            )
+        )
         XRepo.init(context)
     }
 

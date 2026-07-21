@@ -28,18 +28,21 @@ interface IAgentRuntimeService : IInterface {
                     reply?.writeNoException()
                     return true
                 }
+
                 TRANSACTION_cancel -> {
                     data.enforceInterface(DESCRIPTOR)
                     cancel()
                     reply?.writeNoException()
                     return true
                 }
+
                 TRANSACTION_resetConversation -> {
                     data.enforceInterface(DESCRIPTOR)
                     resetConversation()
                     reply?.writeNoException()
                     return true
                 }
+
                 TRANSACTION_getStoreBinder -> {
                     data.enforceInterface(DESCRIPTOR)
                     val binder = getStoreBinder()
@@ -47,12 +50,14 @@ interface IAgentRuntimeService : IInterface {
                     reply?.writeStrongBinder(binder)
                     return true
                 }
+
                 else -> return super.onTransact(code, data, reply, flags)
             }
         }
 
         companion object {
-            private const val DESCRIPTOR = "com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService"
+            private const val DESCRIPTOR =
+                "com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService"
             private const val TRANSACTION_submit = 1
             private const val TRANSACTION_cancel = 2
             private const val TRANSACTION_resetConversation = 3

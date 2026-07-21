@@ -2,7 +2,7 @@ package com.niki914.nexus.agentic.chat.agentic.shell
 
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.util.TextPatternMatcher
-import com.niki914.nexus.h.util.LockState
+import com.niki914.nexus.xposed.api.util.LockState
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
@@ -39,7 +39,12 @@ class ShellCommandSafetyPolicy(
                     .map(String::trim)
                     .filter(String::isNotBlank)
                     .forEach { pattern ->
-                        if (candidates.any { candidate -> TextPatternMatcher.matches(candidate, pattern) }) {
+                        if (candidates.any { candidate ->
+                                TextPatternMatcher.matches(
+                                    candidate,
+                                    pattern
+                                )
+                            }) {
                             return ShellCommandPolicyDecision(
                                 allowed = false,
                                 code = "RULE_BLOCKED",

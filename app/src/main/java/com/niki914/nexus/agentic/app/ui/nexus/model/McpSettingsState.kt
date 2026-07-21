@@ -4,8 +4,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.cb.ComposeMVIViewModel
-import com.niki914.nexus.h.util.xTry
+import com.niki914.nexus.base.ComposeMVIViewModel
+import com.niki914.nexus.xposed.api.util.xTry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -77,7 +77,8 @@ sealed interface McpSettingsIntent {
 sealed interface McpInlineError {
     data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : McpInlineError
     data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : McpInlineError
-    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : McpInlineError
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        McpInlineError
 }
 
 sealed interface McpSettingsEffect {
@@ -143,6 +144,7 @@ class McpSettingsViewModel :
             McpSettingsIntent.DismissDeleteConfirmation -> updateState {
                 copy(deleteConfirmation = null)
             }
+
             McpSettingsIntent.ConfirmDelete -> confirmDelete()
         }
     }

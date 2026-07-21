@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.app.ui.nexus.content
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,6 +15,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -29,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -48,18 +53,12 @@ import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.app.ui.infra.component.LiquidTextField
 import com.niki914.nexus.agentic.app.ui.infra.shape.G2BubbleShape
 import com.niki914.nexus.agentic.app.ui.infra.shape.G2CapsuleShape
+import com.niki914.nexus.agentic.app.ui.infra.shape.G2CardShape
+import com.niki914.nexus.agentic.app.ui.nexus.model.ActionSource
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 import com.niki914.nexus.agentic.chat.LlmErrorCode
-import com.niki914.nexus.cb.BaseTheme
-
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.automirrored.filled.CallSplit
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.ui.graphics.vector.ImageVector
-import com.niki914.nexus.agentic.app.ui.infra.shape.G2CardShape
-import com.niki914.nexus.agentic.app.ui.nexus.model.ActionSource
+import com.niki914.nexus.base.BaseTheme
 
 private val ToolSucceededIndicatorColor = Color(0xFF4F8F6B)
 private val ToolFailedIndicatorColor = Color(0xFFB85C5C)

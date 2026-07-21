@@ -1,9 +1,9 @@
 package com.niki914.nexus.agentic.chat.agentic.accessibility
 
-import android.graphics.Rect as AndroidRect
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import android.graphics.Rect as AndroidRect
 
 object TreeFormatter {
 
@@ -158,9 +158,22 @@ object TreeFormatter {
         return sb.toString()
     }
 
-    private fun nodeToYamlLine(node: NodeInfo, indent: Int, screenWidth: Int, screenHeight: Int): String {
+    private fun nodeToYamlLine(
+        node: NodeInfo,
+        indent: Int,
+        screenWidth: Int,
+        screenHeight: Int
+    ): String {
         val sb = StringBuilder()
-        sb.append("{i: ${node.index}, t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${PruningRules.posOf(node.bounds, screenWidth, screenHeight)}")
+        sb.append(
+            "{i: ${node.index}, t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${
+                PruningRules.posOf(
+                    node.bounds,
+                    screenWidth,
+                    screenHeight
+                )
+            }"
+        )
 
         if (node.text.isNotEmpty()) {
             sb.append(", txt: ${quoteIfNeeded(node.text)}")

@@ -4,11 +4,11 @@ import android.content.Context
 import com.niki914.nexus.agentic.app.getInstalledPackageVersion
 import com.niki914.nexus.agentic.mod.WebSettings
 import com.niki914.nexus.agentic.mod.parseJsonObject
-import com.niki914.nexus.h.util.OsFamily
-import com.niki914.nexus.h.util.OsUtils
-import com.niki914.nexus.ipc.HostApp
-import com.niki914.nexus.ipc.XValues
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
+import com.niki914.nexus.store.HostApp
+import com.niki914.nexus.store.StoreDescriptorRegistry
+import com.niki914.nexus.store.XValues
+import com.niki914.nexus.xposed.api.util.OsFamily
+import com.niki914.nexus.xposed.api.util.OsUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -40,12 +40,12 @@ class WebSettingsApi internal constructor(
             val context = repo.context()
             val target = resolveTarget(context)
                 ?: return@withLock WebSettingsResult.RequestFailed(WebSettingsFailureReason.UnsupportedVersion)
-            
-            readCachedSettings(context, target)?.let { 
+
+            readCachedSettings(context, target)?.let {
                 cachedSuccess = it
-                return@withLock it 
+                return@withLock it
             }
-            
+
             val result = refreshFromNetwork(context, target)
             if (result is WebSettingsResult.Success) {
                 cachedSuccess = result
@@ -175,7 +175,11 @@ class WebSettingsApi internal constructor(
         if (settings.config == null) {
             return WebSettingsResult.RequestFailed(WebSettingsFailureReason.InvalidConfig)
         }
-        val ok = repo.store.writeJsonFromOwner(context, StoreDescriptorRegistry.WEB_SETTINGS_ID, settings.props.toString())
+        val ok = repo.store.writeJsonFromOwner(
+            context,
+            StoreDescriptorRegistry.WEB_SETTINGS_ID,
+            settings.props.toString()
+        )
         if (!ok) {
             return WebSettingsResult.RequestFailed(WebSettingsFailureReason.IpcUnreachable)
         }

@@ -31,7 +31,8 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Nexus"
 include(":app")
-include(":h")
-include(":composebase")
-include(":ipc")
+include(":xposed-api")
+include(":xposed-runtime")
+include(":ui-kit")
+include(":store")
 include(":agent-runtime")

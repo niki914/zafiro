@@ -1,6 +1,6 @@
 package com.niki914.nexus.agentic.repo
 
-import com.niki914.nexus.h.util.xTry
+import com.niki914.nexus.xposed.api.util.xTry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +35,8 @@ object UpdateCheckHolder {
 
     fun dismiss() {
         dismissed = true
-        _result.value = UpdateCheckResult(hasUpdate = false, remoteVersion = null, releaseUrl = null)
+        _result.value =
+            UpdateCheckResult(hasUpdate = false, remoteVersion = null, releaseUrl = null)
     }
 
     fun isDismissed(): Boolean = dismissed
@@ -102,5 +103,6 @@ private object UpdateCheckApi {
         return false
     }
 
-    private fun noUpdate() = UpdateCheckResult(hasUpdate = false, remoteVersion = null, releaseUrl = null)
+    private fun noUpdate() =
+        UpdateCheckResult(hasUpdate = false, remoteVersion = null, releaseUrl = null)
 }

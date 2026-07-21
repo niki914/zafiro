@@ -4,7 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.cb.ComposeMVIViewModel
+import com.niki914.nexus.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -70,9 +70,14 @@ sealed interface ExecutionRulesSettingsIntent {
 }
 
 sealed interface ExecutionRulesInlineError {
-    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : ExecutionRulesInlineError
-    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : ExecutionRulesInlineError
-    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : ExecutionRulesInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        ExecutionRulesInlineError
+
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        ExecutionRulesInlineError
+
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        ExecutionRulesInlineError
 }
 
 sealed interface ExecutionRulesSettingsEffect {
@@ -140,6 +145,7 @@ class ExecutionRulesSettingsViewModel :
             ExecutionRulesSettingsIntent.DismissDeleteConfirmation -> updateState {
                 copy(deleteConfirmation = null)
             }
+
             ExecutionRulesSettingsIntent.ConfirmDelete -> confirmDelete()
         }
     }

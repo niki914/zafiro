@@ -6,8 +6,8 @@ import com.niki914.libterm.SshOpenOptions
 import com.niki914.libterm.TerminalBytes
 import com.niki914.libterm.TerminalIdentity
 import com.niki914.libterm.runtime.CommandResult
-import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.libterm.runtime.TermResult
+import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SshTerminalBuiltin
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalRuntimePort
@@ -145,7 +145,8 @@ class SshTerminalBuiltinTest {
                 )
                 fakeRuntime.openedSessions.single().emitStdout("~→ ")
                 val prompt = invokeUntilStdout("""{"action":"read","session":"a3f9"}""", "~→ ")
-                val sent = invoke("""{"action":"send_line","session":"a3f9","text":"pwd","request_id":"r1"}""")
+                val sent =
+                    invoke("""{"action":"send_line","session":"a3f9","text":"pwd","request_id":"r1"}""")
                 fakeRuntime.openedSessions.single().emitStdout("pwd\r\n/home/alice\r\n~→ ")
                 val output = invokeUntilStdout(
                     """{"action":"read","session":"a3f9","mode":"delta"}""",
@@ -179,13 +180,18 @@ class SshTerminalBuiltinTest {
         installFakeRuntime(fakeRuntime).use {
             installHandles("a3f9").use {
                 invoke("""{"action":"open","host":"example.com","username":"alice","password":"secret"}""")
-                val first = invoke("""{"action":"write","session":"a3f9","text":"abc","request_id":"same"}""")
-                val second = invoke("""{"action":"write","session":"a3f9","text":"abc","request_id":"same"}""")
+                val first =
+                    invoke("""{"action":"write","session":"a3f9","text":"abc","request_id":"same"}""")
+                val second =
+                    invoke("""{"action":"write","session":"a3f9","text":"abc","request_id":"same"}""")
 
                 assertEquals(listOf("abc"), fakeRuntime.openedSessions.single().writes)
                 assertEquals("false", first["replayed"]!!.jsonPrimitive.content)
                 assertEquals("true", second["replayed"]!!.jsonPrimitive.content)
-                assertEquals(first["sequence"]!!.jsonPrimitive.content, second["sequence"]!!.jsonPrimitive.content)
+                assertEquals(
+                    first["sequence"]!!.jsonPrimitive.content,
+                    second["sequence"]!!.jsonPrimitive.content
+                )
             }
         }
     }
@@ -197,7 +203,8 @@ class SshTerminalBuiltinTest {
         installFakeRuntime(fakeRuntime).use {
             installHandles("a3f9").use {
                 invoke("""{"action":"open","host":"example.com","username":"alice","password":"secret"}""")
-                val interrupted = invoke("""{"action":"interrupt","session":"a3f9","request_id":"ctrl-c"}""")
+                val interrupted =
+                    invoke("""{"action":"interrupt","session":"a3f9","request_id":"ctrl-c"}""")
 
                 assertEquals(listOf("\u0003"), fakeRuntime.openedSessions.single().writes)
                 assertEquals("true", interrupted["accepted"]!!.jsonPrimitive.content)
@@ -215,7 +222,10 @@ class SshTerminalBuiltinTest {
                 invoke("""{"action":"open","host":"example.com","username":"alice","password":"secret"}""")
                 fakeRuntime.openedSessions.single().emitStdout("hello")
 
-                val snapshot = invokeUntilStdout("""{"action":"read","session":"a3f9","mode":"snapshot"}""", "hello")
+                val snapshot = invokeUntilStdout(
+                    """{"action":"read","session":"a3f9","mode":"snapshot"}""",
+                    "hello"
+                )
                 val delta = invokeUntilStdout("""{"action":"read","session":"a3f9"}""", "hello")
 
                 assertEquals("hello", snapshot["stdout"]!!.jsonPrimitive.content)
@@ -291,7 +301,8 @@ class SshTerminalBuiltinTest {
     private class FakeTerminalSession(
         override val id: String,
     ) : TerminalSessionPort {
-        override val stream = MutableSharedFlow<TerminalTextChunk>(replay = 16, extraBufferCapacity = 16)
+        override val stream =
+            MutableSharedFlow<TerminalTextChunk>(replay = 16, extraBufferCapacity = 16)
         val writes = mutableListOf<String>()
 
         suspend fun emitStdout(text: String) {

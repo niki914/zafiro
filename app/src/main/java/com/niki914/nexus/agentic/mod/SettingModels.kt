@@ -1,6 +1,6 @@
 package com.niki914.nexus.agentic.mod
 
-import com.niki914.nexus.h.util.xTry
+import com.niki914.nexus.xposed.api.util.xTry
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

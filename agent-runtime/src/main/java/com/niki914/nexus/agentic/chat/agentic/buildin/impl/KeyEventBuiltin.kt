@@ -17,8 +17,8 @@ class KeyEventBuiltin : BuiltinTool() {
 
     override val description: String =
         "Perform a system key event by Android key code. " +
-            "Standard key codes: BACK=4, HOME=3, RECENTS/APP_SWITCH=187, NOTIFICATIONS=83, QUICK_SETTINGS=84. " +
-            "Numeric key codes for other keys (volume, camera, etc.) are also supported."
+                "Standard key codes: BACK=4, HOME=3, RECENTS/APP_SWITCH=187, NOTIFICATIONS=83, QUICK_SETTINGS=84. " +
+                "Numeric key codes for other keys (volume, camera, etc.) are also supported."
 
     override val defaultEnabled: Boolean = true
 
@@ -39,7 +39,9 @@ class KeyEventBuiltin : BuiltinTool() {
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "key_event arguments must be a JSON object with a key field.",
                 hint = """Example: {"key":4} for BACK""",
-                fieldErrors = mapOf("argumentsJson" to (throwable.message ?: "Invalid JSON object.")),
+                fieldErrors = mapOf(
+                    "argumentsJson" to (throwable.message ?: "Invalid JSON object.")
+                ),
             )
         }
 

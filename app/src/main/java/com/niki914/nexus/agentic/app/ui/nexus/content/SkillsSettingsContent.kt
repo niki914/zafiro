@@ -1,14 +1,26 @@
 package com.niki914.nexus.agentic.app.ui.nexus.content
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.documentfile.provider.DocumentFile
 import com.niki914.nexus.agentic.app.R
+import com.niki914.nexus.agentic.app.ui.infra.ConfirmationLiquidDialog
 import com.niki914.nexus.agentic.app.ui.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.nexus.agentic.app.ui.infra.component.settings.SettingsPageSpec
 import com.niki914.nexus.agentic.app.ui.infra.component.settings.SettingsRowAction
@@ -17,26 +29,14 @@ import com.niki914.nexus.agentic.app.ui.infra.component.settings.SettingsSection
 import com.niki914.nexus.agentic.app.ui.infra.component.settings.SettingsSectionSpec
 import com.niki914.nexus.agentic.app.ui.infra.component.settings.SettingsSpecPageContent
 import com.niki914.nexus.agentic.app.ui.infra.nav.pageViewModel
+import com.niki914.nexus.agentic.app.ui.nexus.PageChromeContribution
+import com.niki914.nexus.agentic.app.ui.nexus.RegisterPageChrome
 import com.niki914.nexus.agentic.app.ui.nexus.model.SkillInlineError
 import com.niki914.nexus.agentic.app.ui.nexus.model.SkillListItem
+import com.niki914.nexus.agentic.app.ui.nexus.model.SkillSettingsEffect
 import com.niki914.nexus.agentic.app.ui.nexus.model.SkillSettingsIntent
 import com.niki914.nexus.agentic.app.ui.nexus.model.SkillSettingsUiState
 import com.niki914.nexus.agentic.app.ui.nexus.model.SkillSettingsViewModel
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
-import androidx.documentfile.provider.DocumentFile
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import com.niki914.nexus.agentic.app.ui.infra.ConfirmationLiquidDialog
-import com.niki914.nexus.agentic.app.ui.nexus.PageChromeContribution
-import com.niki914.nexus.agentic.app.ui.nexus.RegisterPageChrome
-import com.niki914.nexus.agentic.app.ui.nexus.model.SkillSettingsEffect
 import com.niki914.nexus.agentic.app.ui.nexus.nav.TopBarActionSpec
 import java.io.File
 
@@ -54,9 +54,16 @@ fun SkillsSettingsContent(
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 SkillSettingsEffect.ShowNoSkillFileToast ->
-                    Toast.makeText(context, R.string.skill_import_no_skill_file, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, R.string.skill_import_no_skill_file, Toast.LENGTH_SHORT)
+                        .show()
+
                 is SkillSettingsEffect.ShowImportErrorToast ->
-                    Toast.makeText(context, effect.message ?: context.getString(effect.fallbackResId), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        effect.message ?: context.getString(effect.fallbackResId),
+                        Toast.LENGTH_SHORT
+                    ).show()
+
                 else -> {}
             }
         }
@@ -75,7 +82,8 @@ fun SkillsSettingsContent(
                 viewModel.sendIntent(SkillSettingsIntent.Import(tempDir))
             } else {
                 tempDir.deleteRecursively()
-                Toast.makeText(context, R.string.skill_import_resolve_failed, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.skill_import_resolve_failed, Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     }
@@ -133,7 +141,8 @@ private fun SkillsSettingsContentBody(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> {
-                    val item = items.firstOrNull { it.id == action.id } ?: return@SettingsSpecPageContent
+                    val item =
+                        items.firstOrNull { it.id == action.id } ?: return@SettingsSpecPageContent
                     onOpenSkillDetail(item.id, item.title)
                 }
 

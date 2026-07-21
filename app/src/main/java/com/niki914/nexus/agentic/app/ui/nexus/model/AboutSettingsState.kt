@@ -3,7 +3,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 import android.net.Uri
 import androidx.annotation.StringRes
 import com.niki914.nexus.agentic.app.R
-import com.niki914.nexus.cb.ComposeMVIViewModel
+import com.niki914.nexus.base.ComposeMVIViewModel
 
 enum class AboutSettingsItemId {
     AuthorHomepage,
@@ -59,7 +59,12 @@ class AboutSettingsViewModel :
         when {
             item.uri != null -> sendEffect(AboutSettingsEffect.OpenUri(item.uri))
             item.bodyTemplateRes != null && item.feedbackTitle != null ->
-                sendEffect(AboutSettingsEffect.OpenFeedbackIssue(item.feedbackTitle, item.bodyTemplateRes))
+                sendEffect(
+                    AboutSettingsEffect.OpenFeedbackIssue(
+                        item.feedbackTitle,
+                        item.bodyTemplateRes
+                    )
+                )
         }
     }
 }

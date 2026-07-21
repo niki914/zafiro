@@ -42,43 +42,49 @@
 - `feat/hyper/subhooks/EXT.kt`: Hyper 子 Hook 扩展
 - `feat/hyper/subhooks/RenderTextStreamCardHook.kt`: 文本流卡片渲染
 
-## h 模块
+## xposed-api 模块
 
-### `h/src/main/java/com/niki914/nexus/h/`
+### `xposed-api/src/main/java/com/niki914/nexus/xposed/api/xevent/`
 
-- `IXposed.kt`: Xposed 入口接口定义
+- `XEvent.kt`
+- `XEventContext.kt`
+- `XEventEnvelope.kt`
+- `XEventType.kt`
+- `XEventUtils.kt`
 
-### `h/src/main/java/com/niki914/nexus/h/util/`
+### `xposed-api/src/main/java/com/niki914/nexus/xposed/api/util/`
 
-- `ActivityHook.kt`: Activity 生命周期 Hook
-- `ContextHook.kt`: 宿主 Context 捕获
-- `ContextProvider.kt`: Context 提供
-- `FloatWindowHook.kt`: 浮窗 Hook
-- `HookExtensions.kt`: Hook 扩展函数
-- `HookSideLoader.kt`: Hook 侧加载器
-- `InspectExtensions.kt`: 反射检查扩展
-- `Inspector.kt`: 反射检查器
-- `LockState.kt`: 锁状态检测
-- `OsUtils.kt`: 系统工具函数
-- `ReflectionExtensions.kt`: 反射扩展函数
-- `RootUtils.kt`: Root 权限工具
-- `XProvider.kt`: Xposed 内容提供者
-- `XTry.kt`: 异常捕获工具
-- `Xlogging.kt`: 日志工具
+- `ContextProvider.kt`
+- `InspectExtensions.kt`
+- `LockState.kt`
+- `OsUtils.kt`
+- `RootUtils.kt`
+- `XProvider.kt`
+- `XTry.kt`
+- `Xlogging.kt`
 
-### `h/src/main/java/com/niki914/nexus/h/core/runtime/`
+## xposed-runtime 模块
 
-- `Hook.kt`: Hook 核心抽象
-- `Runtime.kt`: Runtime 核心抽象
-- `RuntimeBootstrap.kt`: 宿主进程 runtime 安装
+### `xposed-runtime/src/main/java/com/niki914/nexus/xposed/runtime/`
 
-### `h/src/main/java/com/niki914/nexus/h/xevent/`
+- `IXposed.kt`
 
-- `XEvent.kt`: 交叉事件定义
-- `XEventContext.kt`: 事件上下文
-- `XEventEnvelope.kt`: 事件信封
-- `XEventType.kt`: 事件类型枚举
-- `XEventUtils.kt`: 事件工具函数
+### `xposed-runtime/src/main/java/com/niki914/nexus/xposed/runtime/util/`
+
+- `ActivityHook.kt`
+- `ContextHook.kt`
+- `FloatWindowHook.kt`
+- `HookExtensions.kt`
+- `HookSideLoader.kt`
+- `Inspector.kt`
+- `ReflectionExtensions.kt`
+- `XTryExt.kt`
+
+### `xposed-runtime/src/main/java/com/niki914/nexus/xposed/runtime/core/runtime/`
+
+- `Hook.kt`
+- `Runtime.kt`
+- `RuntimeBootstrap.kt`
 
 ## Runtime 与工具系统
 
@@ -254,25 +260,22 @@
 - `repo/XRepoRuntimeGateway.kt`: runtime 与 repository 桥接
 - `takeover/TakeoverResolver.kt`: query 到 takeover target 的决策
 
-## IPC 基础设施
+## Store 模块
 
-### `ipc/src/main/java/com/niki914/nexus/ipc/`
+### `store/src/main/java/com/niki914/nexus/store/`
 
-- `IpcResult.kt`: IPC 结果封装
-- `XIpcBridge.kt`: IPC 桥接入口
-- `XNotificationBridge.kt`: 通知 IPC 桥接
-- `XRes.kt`: IPC 资源封装
-- `cp/SettingsContentProvider.kt`: 设置 ContentProvider
-- `cp/XProviderDispatcher.kt`: 内容提供者分发器
-- `store/ConfigPersistence.kt`: 配置持久化
-- `store/IpcJsonMutator.kt`: IPC JSON 变更器
-- `store/StoreDescriptor.kt`: store 描述模型
-- `store/StoreDescriptorRegistry.kt`: store 描述注册表
-- `store/XIpcStoreRepository.kt`: 多 store 原子读写仓库
+- `ConfigPersistence.kt`
+- `IpcJsonMutator.kt`
+- `IpcResult.kt`
+- `StoreDescriptor.kt`
+- `StoreDescriptorRegistry.kt`
+- `XIpcBridge.kt`
+- `XIpcStoreRepository.kt`
+- `XRes.kt`
 
-## Compose 基础设施
+## UI Kit 模块
 
-### `composebase/src/main/java/com/niki914/nexus/agentic/app/ui/infra/`
+### `ui-kit/src/main/java/com/niki914/nexus/agentic/app/ui/infra/`
 
 - `ActionBarButton.kt`: 顶栏按钮基建
 - `ConfirmationLiquidDialog.kt`: 确认弹窗
@@ -321,7 +324,7 @@
 - `preview/SettingsInfraPreview.kt`: 设置基础设施预览
 - `shape/G2Shapes.kt`: G2 形状定义
 
-### `composebase/src/main/java/com/niki914/nexus/cb/`
+### `ui-kit/src/main/java/com/niki914/nexus/base/`
 
 - `BaseTheme.kt`: 基础主题
 - `ComposeMVIViewModel.kt`: MVI ViewModel 基类

@@ -1,10 +1,10 @@
 package com.niki914.nexus.agentic.repo
 
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.boolean
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.parseObject
 import com.niki914.nexus.agentic.repo.SettingsJsonCodecUtils.string
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 internal data class AppStateSettings(
     val onboardingCompleted: Boolean = false,

@@ -3,7 +3,7 @@ package com.niki914.nexus.agentic.mod.feat.oppo.subhooks
 import com.niki914.nexus.agentic.mod.feat.HookTarget
 import com.niki914.nexus.agentic.mod.feat.SubHook
 import com.niki914.nexus.agentic.mod.feat.oppo.BreenoConfigProvider
-import com.niki914.nexus.h.util.call
+import com.niki914.nexus.xposed.runtime.util.call
 import de.robv.android.xposed.XC_MethodHook
 
 /** 从宿主输入链路捕获用户 query 与 roomId，含去重逻辑，回调至 handleCapturedQuery。 */

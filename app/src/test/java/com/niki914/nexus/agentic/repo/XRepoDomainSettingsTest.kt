@@ -2,7 +2,7 @@ package com.niki914.nexus.agentic.repo
 
 import android.content.Context
 import android.content.ContextWrapper
-import com.niki914.nexus.ipc.store.StoreDescriptorRegistry
+import com.niki914.nexus.store.StoreDescriptorRegistry
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -49,9 +49,13 @@ class XRepoDomainSettingsTest {
 
         assertEquals(listOf(StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID), store.readIds)
         assertEquals(listOf(StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID), store.writeIds)
-        assertEquals("gpt-test", AgentSettingsCodec.parseMainConfig(store.jsonFor(
-            StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID
-        )).model)
+        assertEquals(
+            "gpt-test", AgentSettingsCodec.parseMainConfig(
+                store.jsonFor(
+                    StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID
+                )
+            ).model
+        )
     }
 
     @Test
@@ -105,9 +109,13 @@ class XRepoDomainSettingsTest {
         XRepo.memory.replaceAll(listOf(" A ", " ", "B"))
 
         assertEquals(listOf(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID), store.writeIds)
-        assertEquals(listOf("A", "B"), MemorySettingsCodec.parseMemories(store.jsonFor(
-            StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID
-        )))
+        assertEquals(
+            listOf("A", "B"), MemorySettingsCodec.parseMemories(
+                store.jsonFor(
+                    StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID
+                )
+            )
+        )
     }
 
     @Test
@@ -203,7 +211,8 @@ class XRepoDomainSettingsTest {
         XRepo.setOnboardingCompleted(true)
 
         assertEquals(listOf(StoreDescriptorRegistry.APP_STATE_ID), store.writeIds)
-        val root = Json.parseToJsonElement(store.jsonFor(StoreDescriptorRegistry.APP_STATE_ID)).jsonObject
+        val root =
+            Json.parseToJsonElement(store.jsonFor(StoreDescriptorRegistry.APP_STATE_ID)).jsonObject
         assertEquals("true", root["onboarding_completed"]!!.jsonPrimitive.content)
     }
 
@@ -240,7 +249,11 @@ class XRepoDomainSettingsTest {
                 ?: "{}"
         }
 
-        override suspend fun writeJsonFromOwner(context: Context, storeId: String, json: String): Boolean {
+        override suspend fun writeJsonFromOwner(
+            context: Context,
+            storeId: String,
+            json: String
+        ): Boolean {
             if (!ownerWriteSucceeds) {
                 return false
             }
@@ -249,9 +262,15 @@ class XRepoDomainSettingsTest {
             return true
         }
 
-        override suspend fun mutateJson(context: Context, storeId: String, path: String, value: Any?): Boolean {
+        override suspend fun mutateJson(
+            context: Context,
+            storeId: String,
+            path: String,
+            value: Any?
+        ): Boolean {
             mutateCalls += storeId to path
-            val current = Json.parseToJsonElement(jsonByStoreId[storeId] ?: "{}").jsonObject.toMutableMap()
+            val current =
+                Json.parseToJsonElement(jsonByStoreId[storeId] ?: "{}").jsonObject.toMutableMap()
             current[path] = value.toJsonElement()
             jsonByStoreId[storeId] = JsonObject(current).toString()
             return true
@@ -273,6 +292,7 @@ class XRepoDomainSettingsTest {
                 is Map<*, *> -> JsonObject(mapNotNull { (key, value) ->
                     key?.toString()?.let { it to value.toJsonElement() }
                 }.toMap())
+
                 is Iterable<*> -> JsonArray(map { item -> item.toJsonElement() })
                 is Array<*> -> JsonArray(map { item -> item.toJsonElement() })
                 else -> JsonPrimitive(toString())

@@ -8,7 +8,7 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverTarget
 import com.niki914.nexus.agentic.runtime.settings.model.TAKEOVER_FIELD_NAME
 import com.niki914.nexus.agentic.runtime.settings.model.TAKEOVER_FIELD_PATTERNS
-import com.niki914.nexus.cb.ComposeMVIViewModel
+import com.niki914.nexus.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -159,6 +159,7 @@ class TakeoverSettingsViewModel :
             TakeoverSettingsIntent.DismissDeleteConfirmation -> updateState {
                 copy(deleteConfirmation = null)
             }
+
             TakeoverSettingsIntent.ConfirmDelete -> confirmDelete()
         }
     }

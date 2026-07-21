@@ -18,8 +18,8 @@ class GestureBuiltin : BuiltinTool() {
 
     override val description: String =
         "Perform a swipe/drag gesture from (start_x, start_y) to (end_x, end_y). " +
-            "Use accessibility method for reliable in-app gestures. " +
-            "Use shell method when accessibility service is not connected or as fallback."
+                "Use accessibility method for reliable in-app gestures. " +
+                "Use shell method when accessibility service is not connected or as fallback."
 
     override val defaultEnabled: Boolean = true
 
@@ -60,7 +60,9 @@ class GestureBuiltin : BuiltinTool() {
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "gesture arguments must be a JSON object with start_x, start_y, end_x, end_y, and optional duration and method.",
                 hint = """Example: {"start_x":100,"start_y":500,"end_x":300,"end_y":500,"duration":300}""",
-                fieldErrors = mapOf("argumentsJson" to (throwable.message ?: "Invalid JSON object.")),
+                fieldErrors = mapOf(
+                    "argumentsJson" to (throwable.message ?: "Invalid JSON object.")
+                ),
             )
         }
 
@@ -105,7 +107,8 @@ class GestureBuiltin : BuiltinTool() {
             endX = getFloat("end_x"),
             endY = getFloat("end_y"),
             duration = obj["duration"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 300L,
-            method = obj["method"]?.jsonPrimitive?.contentOrNull.orEmpty().trim().ifBlank { "accessibility" },
+            method = obj["method"]?.jsonPrimitive?.contentOrNull.orEmpty().trim()
+                .ifBlank { "accessibility" },
         )
     }
 

@@ -119,13 +119,15 @@ private fun TakeoverSettingsContentBody(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> {
-                    val index = takeoverRuleIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
+                    val index =
+                        takeoverRuleIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
                     val item = uiState.items.getOrNull(index) ?: return@SettingsSpecPageContent
                     onOpenRuleDetail(item.id, item.name, index, false)
                 }
 
                 is SettingsRowAction.ToggleChanged -> {
-                    val index = takeoverRuleIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
+                    val index =
+                        takeoverRuleIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
                     onItemEnabledChanged(index, action.checked)
                 }
 

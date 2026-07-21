@@ -87,13 +87,15 @@ fun CustomShellToolsSettingsContent(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> {
-                    val index = customToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
+                    val index =
+                        customToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
                     val item = items.getOrNull(index) ?: return@SettingsSpecPageContent
                     onOpenToolDetail(item.name, index, false)
                 }
 
                 is SettingsRowAction.ToggleChanged -> {
-                    val index = customToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
+                    val index =
+                        customToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
                     val item = items.getOrNull(index) ?: return@SettingsSpecPageContent
                     val updatedItems = items.toMutableList().also { mutableItems ->
                         mutableItems[index] = item.copy(enabled = action.checked)

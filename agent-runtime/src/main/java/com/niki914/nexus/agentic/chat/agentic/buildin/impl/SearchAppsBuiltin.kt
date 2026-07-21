@@ -49,7 +49,9 @@ class SearchAppsBuiltin : BuiltinTool() {
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "search_apps arguments must be a JSON object with a query field.",
                 hint = """Example: {"query":"微信","include_system":false,"limit":10}""",
-                fieldErrors = mapOf("argumentsJson" to (throwable.message ?: "Invalid JSON object.")),
+                fieldErrors = mapOf(
+                    "argumentsJson" to (throwable.message ?: "Invalid JSON object.")
+                ),
             )
         }
 

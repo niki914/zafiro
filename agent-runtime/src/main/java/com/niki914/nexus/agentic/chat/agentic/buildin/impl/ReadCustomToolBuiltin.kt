@@ -53,7 +53,9 @@ class ReadCustomToolBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "read_custom_tool arguments must be a JSON object with an optional name field.",
                 hint = """Example: {"name":"battery_status"} or {}""",
-                fieldErrors = mapOf("argumentsJson" to (throwable.message ?: "Invalid JSON object.")),
+                fieldErrors = mapOf(
+                    "argumentsJson" to (throwable.message ?: "Invalid JSON object.")
+                ),
             ).toJsonString()
         }
 
