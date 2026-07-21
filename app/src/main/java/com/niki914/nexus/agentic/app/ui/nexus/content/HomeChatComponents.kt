@@ -51,7 +51,7 @@ import com.niki914.nexus.agentic.app.ui.infra.shape.G2CapsuleShape
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 import com.niki914.nexus.agentic.chat.LlmErrorCode
-import com.niki914.nexus.cb.BaseTheme
+import com.niki914.nexus.base.BaseTheme
 
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.filled.CallSplit

@@ -32,7 +32,7 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.AboutSettingsItemUiState
 import com.niki914.nexus.agentic.app.ui.nexus.model.AboutSettingsUiState
 import com.niki914.nexus.agentic.app.ui.nexus.model.AboutSettingsViewModel
 import com.niki914.nexus.agentic.app.ui.nexus.model.buildIssueUri
-import com.niki914.nexus.cb.BaseTheme
+import com.niki914.nexus.base.BaseTheme
 
 private const val ABOUT_SETTINGS_ROW_ID_PREFIX = "about.item."
 

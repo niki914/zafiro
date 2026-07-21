@@ -1,4 +1,4 @@
-package com.niki914.nexus.cb
+package com.niki914.nexus.base
 
 import android.util.Log
 import androidx.lifecycle.ViewModel

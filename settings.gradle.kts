@@ -33,6 +33,6 @@ rootProject.name = "Nexus"
 include(":app")
 include(":xposed-api")
 include(":xposed-runtime")
-include(":composebase")
+include(":ui-kit")
 include(":store")
 include(":agent-runtime")

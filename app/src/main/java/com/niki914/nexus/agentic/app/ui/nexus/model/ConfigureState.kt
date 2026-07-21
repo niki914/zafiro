@@ -3,7 +3,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 import androidx.annotation.StringRes
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.cb.ComposeMVIViewModel
+import com.niki914.nexus.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
 import java.net.URI
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig

@@ -70,7 +70,7 @@ import com.niki914.nexus.agentic.repo.UpdateCheckHolder
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 import com.niki914.nexus.agentic.app.ui.nexus.nav.TextTitle
 import com.niki914.nexus.agentic.app.ui.nexus.nav.TopBarActionSpec
-import com.niki914.nexus.cb.BaseTheme
+import com.niki914.nexus.base.BaseTheme
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable

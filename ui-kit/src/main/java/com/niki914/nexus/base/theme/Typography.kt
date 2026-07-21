@@ -1,5 +1,5 @@
 // ui.theme/Type.kt
-package com.niki914.nexus.cb.theme
+package com.niki914.nexus.base.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

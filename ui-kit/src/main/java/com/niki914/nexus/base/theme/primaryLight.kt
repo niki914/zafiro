@@ -1,5 +1,5 @@
 // ui.theme/Color.kt
-package com.niki914.nexus.cb.theme
+package com.niki914.nexus.base.theme
 
 import androidx.compose.ui.graphics.Color
 

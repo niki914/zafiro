@@ -1,4 +1,4 @@
-package com.niki914.nexus.cb
+package com.niki914.nexus.base
 
 import android.app.Activity
 import android.os.Build
@@ -11,9 +11,9 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import com.niki914.nexus.cb.theme.DarkColorScheme
-import com.niki914.nexus.cb.theme.LightColorScheme
-import com.niki914.nexus.cb.theme.Typography
+import com.niki914.nexus.base.theme.DarkColorScheme
+import com.niki914.nexus.base.theme.LightColorScheme
+import com.niki914.nexus.base.theme.Typography
 
 @Composable
 fun BaseTheme(

@@ -13,7 +13,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.niki914.nexus.agentic.app.ui.infra.ConfirmationLiquidDialog
 import com.niki914.nexus.agentic.app.ui.infra.LiquidScreen
 import com.niki914.nexus.agentic.app.ui.infra.rememberLiquidScreenState
-import com.niki914.nexus.cb.BaseTheme
+import com.niki914.nexus.base.BaseTheme
 
 @Composable
 private fun ConfirmationLiquidDialogPreviewContent() {

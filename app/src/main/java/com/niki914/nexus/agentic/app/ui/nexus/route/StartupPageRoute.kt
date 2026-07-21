@@ -26,7 +26,7 @@ import com.niki914.nexus.agentic.repo.WebSettingsFailureReason
 import com.niki914.nexus.agentic.repo.WebSettingsResult
 import com.niki914.nexus.agentic.repo.WebSettingsSource
 import com.niki914.nexus.agentic.repo.XRepo
-import com.niki914.nexus.cb.BaseTheme
+import com.niki914.nexus.base.BaseTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject

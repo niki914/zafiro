@@ -19,7 +19,7 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.SettingsUiState
 import com.niki914.nexus.agentic.app.ui.nexus.model.SettingsViewModel
 import com.niki914.nexus.agentic.app.ui.nexus.model.buildSettingsUiState
 import com.niki914.nexus.agentic.app.ui.nexus.nav.NexusSettingsGroup
-import com.niki914.nexus.cb.BaseTheme
+import com.niki914.nexus.base.BaseTheme
 
 @Composable
 fun SettingsHomePageContent(

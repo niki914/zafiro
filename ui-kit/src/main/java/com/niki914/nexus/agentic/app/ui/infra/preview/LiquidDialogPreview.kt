@@ -20,7 +20,7 @@ import com.niki914.nexus.agentic.app.ui.infra.LiquidDialog
 import com.niki914.nexus.agentic.app.ui.infra.LiquidScreen
 import com.niki914.nexus.agentic.app.ui.infra.component.MaterialTintLiquidButton
 import com.niki914.nexus.agentic.app.ui.infra.rememberLiquidScreenState
-import com.niki914.nexus.cb.BaseTheme
+import com.niki914.nexus.base.BaseTheme
 import kotlinx.coroutines.delay
 
 @Composable
