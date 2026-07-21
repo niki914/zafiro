@@ -19,8 +19,8 @@ android {
         applicationId = "com.niki914.nexus.agentic"
         minSdk = 26
         targetSdk = 34
-        versionName = "0.0.4"
-        versionCode = 4
+        versionName = "1.0.0"
+        versionCode = 5
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {

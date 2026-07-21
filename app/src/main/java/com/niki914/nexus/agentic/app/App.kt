@@ -33,5 +33,8 @@ class App : Application() {
         applicationScope.launch {
             XRepo.tryPutDefaultSettings()
         }
+        applicationScope.launch {
+            XRepo.skills.seedDefaults()
+        }
     }
 }
