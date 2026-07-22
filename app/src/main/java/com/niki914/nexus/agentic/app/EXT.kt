@@ -38,16 +38,30 @@ fun Context.getInstalledPackageVersion(packageName: String): InstalledPackageVer
     }
 }
 
-fun Activity.requestNotificationPermissionIfNeeded(launcher: ActivityResultLauncher<String>) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-        return
+object NotificationPermissionGate {
+    private var launcher: ActivityResultLauncher<String>? = null
+
+    fun init(launcher: ActivityResultLauncher<String>) {
+        this.launcher = launcher
     }
-    fun checkPermission() = ContextCompat.checkSelfPermission(
-        this,
-        Manifest.permission.POST_NOTIFICATIONS
-    ) == PackageManager.PERMISSION_GRANTED
-    if (checkPermission()) return
-    launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+
+    fun isGranted(context: Context): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /** Request the permission dialog. No-op if already granted or launcher not ready. */
+    fun requestIfNeeded(context: Context) {
+        if (isGranted(context)) return
+        try {
+            launcher?.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } catch (_: Exception) {
+            // Activity not in resumed state — skip, caller will retry next time
+        }
+    }
 }
 
 fun preferredHostAppFor(osFamily: OsFamily): HostApp? {

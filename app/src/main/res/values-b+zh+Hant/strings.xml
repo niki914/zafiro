@@ -5,12 +5,7 @@
     <string name="xposed_desc">讓語音助理接入你自己的模型能力\n\n現已支援：\n\n- ColorOS 小布助手\n- HyperOS 小愛同學</string>
 
     <!-- Onboarding -->
-    <string name="ui_onboard_startup_headline">讓語音助理用上你自己的模型能力</string>
-    <string name="ui_onboard_startup_status_breeno">Nexus 現已支援小布助手</string>
-    <string name="ui_onboard_startup_status_xiaoai">Nexus 現已支援小愛同學</string>
-    <string name="ui_onboard_startup_status_chat_only">Nexus 暫未支援此裝置，但你仍可使用對話功能</string>
-    <string name="ui_onboard_startup_continue">開始連接</string>
-    <string name="ui_onboard_startup_continue_chat_only">繼續</string>
+    <string name="ui_onboard_startup_demo_button">開始使用</string>
     <string name="ui_onboard_web_beta_title">目前仍處於 Beta 測試階段</string>
     <string name="ui_onboard_web_beta_body">此助理的適配仍在驗證中，部分場景可能不太穩定。你可以繼續設定，若遇到異常，再回到設定調整或回報問題。</string>
     <string name="ui_onboard_web_fetch_failed_title">暫時無法取得設定</string>

@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.runtime
 
+import com.niki914.nexus.agentic.app.NotificationPermissionGate
 import com.niki914.nexus.agentic.runtime.settings.RuntimeHostGateway
 import com.niki914.nexus.store.IpcWriteResult
 import com.niki914.nexus.store.XIpcBridge
@@ -11,8 +12,13 @@ class IpcRuntimeHostGateway : RuntimeHostGateway {
         content: String,
         uri: String?,
     ): Boolean {
+        val context = ContextProvider.await()
+        if (!NotificationPermissionGate.isGranted(context)) {
+            NotificationPermissionGate.requestIfNeeded(context)
+            return false
+        }
         return XIpcBridge.postNotification(
-            context = ContextProvider.await(),
+            context = context,
             title = title,
             content = content,
             uri = uri,

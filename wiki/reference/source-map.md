@@ -231,7 +231,6 @@
 - `app/ui/nexus/content/SkillDetailContent.kt`: 技能详情页
 - `app/ui/nexus/content/SkillsSettingsContent.kt`: 技能设置页
 - `app/ui/nexus/content/StartupPageContent.kt`: 启动页内容
-- `app/ui/nexus/content/StartupPosterBackground.kt`: 启动页背景
 - `app/ui/nexus/content/TODOPageContent.kt`: TODO 页面内容
 - `app/ui/nexus/content/TakeoverRuleDetailContent.kt`: takeover 规则详情编辑页
 - `app/ui/nexus/content/TakeoverSettingsContent.kt`: takeover 设置页

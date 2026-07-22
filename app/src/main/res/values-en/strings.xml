@@ -5,12 +5,7 @@
     <string name="xposed_desc">Empower your voice assistant with your own models\n\nCurrently supported:\n\n- ColorOS Breeno\n- HyperOS XiaoAi</string>
 
     <!-- Onboarding -->
-    <string name="ui_onboard_startup_headline">Bring your own model to your voice assistant</string>
-    <string name="ui_onboard_startup_status_breeno">Nexus now supports Breeno Assistant</string>
-    <string name="ui_onboard_startup_status_xiaoai">Nexus now supports XiaoAi</string>
-    <string name="ui_onboard_startup_status_chat_only">This device is not supported yet, but chat is still available</string>
-    <string name="ui_onboard_startup_continue">Get Started</string>
-    <string name="ui_onboard_startup_continue_chat_only">Continue</string>
+    <string name="ui_onboard_startup_demo_button">Get Started</string>
     <string name="ui_onboard_web_beta_title">Support Is Still in Beta</string>
     <string name="ui_onboard_web_beta_body">Support for this assistant is still being validated, so some scenarios may be unstable. You can continue setup and return to Settings later to adjust things or send feedback if anything goes wrong.</string>
     <string name="ui_onboard_web_fetch_failed_title">Unable to Load Configuration</string>

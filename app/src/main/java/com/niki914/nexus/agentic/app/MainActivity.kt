@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
         ContextProvider.provide(applicationContext)
         XRepo.init(applicationContext)
 
-        requestNotificationPermissionIfNeeded(notificationPermissionLauncher)
+        NotificationPermissionGate.init(notificationPermissionLauncher)
         val startupAssistantUi = resolveStartupAssistantUi()
         val launchDecision = runBlocking {
             AppLaunchDecision.resolve(startupAssistantUi)
