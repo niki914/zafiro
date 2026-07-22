@@ -1,8 +1,8 @@
 package com.niki914.nexus.agentic.app.ui.nexus.content
 
 import android.graphics.Path
-import android.graphics.PathMeasure
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -58,7 +58,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 private const val LETTERS = "NEXUS"
 private val LetterFontSize = 96.sp
@@ -113,16 +112,15 @@ fun StartupPageContent(
                 val path = PointerCurveMath.buildCurve(
                     cursorPosX, cursorPosY, cursorHeading, toX, toY,
                 )
-                val durMs = PointerCurveMath.curveDurationMs(
-                    PathMeasure(path, false).length,
-                )
+                val sampler = PointerCurveMath.CurveSampler(path)
+                val durMs = PointerCurveMath.curveDurationMs(sampler.length)
                 val durationNs = durMs * 1_000_000L
                 val startTime = withFrameNanos { it }
                 while (true) {
                     val elapsed = withFrameNanos { it } - startTime
                     val timeFrac = (elapsed.toFloat() / durationNs).coerceIn(0f, 1f)
                     val distFrac = PointerCurveMath.timeToDistance(timeFrac, speedLut)
-                    val sample = PointerCurveMath.sampleCurve(path, distFrac)
+                    val sample = sampler.sample(distFrac)
                     cursorPosX = sample.x
                     cursorPosY = sample.y
                     cursorHeading = sample.headingRad
@@ -138,10 +136,10 @@ fun StartupPageContent(
                     moveTo(fromX, fromY)
                     lineTo(toX, toY)
                 }
+                val sampler = PointerCurveMath.CurveSampler(path)
                 val dx = toX - fromX
                 val dy = toY - fromY
-                val dist = sqrt(dx * dx + dy * dy)
-                val durMs = PointerCurveMath.curveDurationMs(dist)
+                val durMs = PointerCurveMath.DEMO_SWIPE_DURATION_MS
                 val durationNs = durMs * 1_000_000L
                 val startTime = withFrameNanos { it }
                 cursorHeading = atan2(dy, dx)
@@ -149,7 +147,7 @@ fun StartupPageContent(
                     val elapsed = withFrameNanos { it } - startTime
                     val timeFrac = (elapsed.toFloat() / durationNs).coerceIn(0f, 1f)
                     val distFrac = PointerCurveMath.timeToDistance(timeFrac, speedLut)
-                    val sample = PointerCurveMath.sampleCurve(path, distFrac)
+                    val sample = sampler.sample(distFrac)
                     cursorPosX = sample.x
                     cursorPosY = sample.y
                     if (timeFrac >= 1f) break
@@ -167,7 +165,7 @@ fun StartupPageContent(
 
             // Phase 2: cursor moves down to lower area (bezier curve)
             animateAlongCurve(centerX, lowerY)
-            delay(200)
+            delay(PointerCurveMath.SWIPE_GAP_MS)
 
             // Phase 3: swipe up (straight line, fixed heading), then list scrolls
             snapshotFlow { scrollState.maxValue }.first { it > 0 }
@@ -210,6 +208,16 @@ fun StartupPageContent(
     }
 
     val bgColor = MaterialTheme.colorScheme.background
+    val isDarkTheme = isSystemInDarkTheme()
+
+    val letterGradientColors = if (isDarkTheme) {
+        listOf(Color(0xFFE8ECF2), Color(0xFFB8BFC8), Color(0xFF6E747C))
+    } else {
+        listOf(Color(0xFF1D2939), Color(0xFF344054), Color(0xFF667085))
+    }
+
+    val topGlowColor = if (isDarkTheme) Color(0x0F8C96B4) else Color(0x1A475569)
+    val bottomGlowColor = if (isDarkTheme) Color(0x087882A0) else Color(0x12344963)
 
     Box(
         modifier = Modifier
@@ -217,12 +225,12 @@ fun StartupPageContent(
             .background(bgColor)
             .drawWithCache {
                 val topGlow = Brush.radialGradient(
-                    colors = listOf(Color(0x0F8C96B4), Color.Transparent),
+                    colors = listOf(topGlowColor, Color.Transparent),
                     center = Offset(size.width * 0.2f, size.height * 0.15f),
                     radius = size.minDimension * 0.45f,
                 )
                 val bottomGlow = Brush.radialGradient(
-                    colors = listOf(Color(0x087882A0), Color.Transparent),
+                    colors = listOf(bottomGlowColor, Color.Transparent),
                     center = Offset(size.width * 0.8f, size.height * 0.85f),
                     radius = size.minDimension * 0.45f,
                 )
@@ -260,11 +268,7 @@ fun StartupPageContent(
                         letterSpacing = (-0.04).sp,
                         lineHeight = LetterFontSize * 0.8f,
                         brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFFE8ECF2),
-                                Color(0xFFB8BFC8),
-                                Color(0xFF6E747C),
-                            )
+                            colors = letterGradientColors,
                         ),
                         textAlign = TextAlign.Center,
                     ),

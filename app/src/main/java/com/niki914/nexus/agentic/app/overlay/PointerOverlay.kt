@@ -1,10 +1,10 @@
 package com.niki914.nexus.agentic.app.overlay
 
+import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Path
-import android.graphics.PathMeasure
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
@@ -23,7 +23,6 @@ class PointerOverlay : IPointerOverlay {
 
     companion object {
         private const val FADE_DURATION_MS = 300L
-        private const val SWIPE_GAP_MS = 80L
         private const val POINTER_SIZE_DP = 80
     }
 
@@ -136,7 +135,7 @@ class PointerOverlay : IPointerOverlay {
         animatePath(path1, sx, sy)
 
         // Brief pause so the pointer "lands" before the stroke
-        delayOnMain(SWIPE_GAP_MS)
+        delayOnMain(PointerCurveMath.SWIPE_GAP_MS)
 
         // Phase 2: straight-line swipe trajectory
         val path2 = Path().apply {
@@ -163,8 +162,8 @@ class PointerOverlay : IPointerOverlay {
         path: Path, toX: Float, toY: Float, fixedHeading: Boolean,
         durationMs: Long? = null,
     ) {
-        val pm = PathMeasure(path, false)
-        val arcLen = pm.length
+        val sampler = PointerCurveMath.CurveSampler(path)
+        val arcLen = sampler.length
         if (arcLen <= 0f) return
 
         val duration = durationMs ?: PointerCurveMath.curveDurationMs(arcLen)
@@ -177,7 +176,7 @@ class PointerOverlay : IPointerOverlay {
                 addUpdateListener {
                     val timeFrac = it.animatedValue as Float
                     val distFrac = PointerCurveMath.timeToDistance(timeFrac, speedLut)
-                    val sample = PointerCurveMath.sampleCurve(path, distFrac)
+                    val sample = sampler.sample(distFrac)
                     val h = if (fixedHeading) startHeading else sample.headingRad
                     handler.post {
                         curX = sample.x
@@ -187,7 +186,7 @@ class PointerOverlay : IPointerOverlay {
                     }
                 }
                 addListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(a: android.animation.Animator) {
+                    override fun onAnimationEnd(a: Animator) {
                         runningAnim = null
                         val h = if (fixedHeading) startHeading else PointerCurveMath.IDLE_HEADING_RAD
                         curX = toX
@@ -197,7 +196,7 @@ class PointerOverlay : IPointerOverlay {
                         if (cont.isActive) cont.resume(Unit)
                     }
 
-                    override fun onAnimationCancel(a: android.animation.Animator) {
+                    override fun onAnimationCancel(a: Animator) {
                         runningAnim = null
                         if (cont.isActive) cont.resume(Unit)
                     }

@@ -104,7 +104,7 @@ object PointerCurveMath {
         return lut
     }
 
-    fun speedAtT(t: Float): Float = when {
+    private fun speedAtT(t: Float): Float = when {
         t < ACCEL_FRAC -> {
             val p = t / ACCEL_FRAC
             MIN_SPEED_PX_PER_S + (MAX_SPEED_PX_PER_S - MIN_SPEED_PX_PER_S) * p * p
@@ -127,18 +127,35 @@ object PointerCurveMath {
     }
 
     // ============================================================
+    // Shared timing constants
+    // ============================================================
+
+    /** Pause between the fly-to-start and swipe phases (ms). */
+    const val SWIPE_GAP_MS = 80L
+
+    /** Duration for the swipe phase in the onboard demo (ms). */
+    const val DEMO_SWIPE_DURATION_MS = 400L
+
+    // ============================================================
     // Shared sampling
     // ============================================================
 
     data class CurveSample(val x: Float, val y: Float, val headingRad: Float)
 
-    /** Sample position and tangent heading at [distFraction] (0..1) along [path]. */
-    fun sampleCurve(path: Path, distFraction: Float): CurveSample {
-        val pm = PathMeasure(path, false)
-        val pos = FloatArray(2)
-        val tan = FloatArray(2)
-        pm.getPosTan(distFraction * pm.length, pos, tan)
-        return CurveSample(pos[0], pos[1], atan2(tan[1], tan[0]))
+    /**
+     * Reusable per-segment sampler that holds [PathMeasure] and working
+     * arrays so per-frame calls avoid allocating new objects.
+     */
+    class CurveSampler(path: Path) {
+        private val pm = PathMeasure(path, false)
+        private val pos = FloatArray(2)
+        private val tan = FloatArray(2)
+        val length get() = pm.length
+
+        fun sample(distFraction: Float): CurveSample {
+            pm.getPosTan(distFraction * pm.length, pos, tan)
+            return CurveSample(pos[0], pos[1], atan2(tan[1], tan[0]))
+        }
     }
 
     /** Duration for travelling [arcLen] pixels using the shared speed profile. */
