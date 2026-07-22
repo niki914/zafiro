@@ -1,29 +1,32 @@
 package com.niki914.nexus.agentic.animation
 
 import android.graphics.Path
+import android.graphics.PathMeasure
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Shared pointer animation math extracted from [PointerOverlay].
+ * Shared pointer animation math.
  *
- * Both the floating-window overlay and the in-process Compose onboard demo
- * use these functions so the cursor moves with the same feel everywhere.
+ * Both the floating-window pointer overlay and the in-process Compose onboard
+ * demo use these functions so the cursor moves with the same feel everywhere.
  */
 object PointerCurveMath {
 
     // --- Curve shape ---
-    const val CTRL_DIST_MIN_FRAC = 0.15f
-    const val CTRL_DIST_MAX_FRAC = 0.55f
-    const val CTRL_PERP_FRAC = 0.25f
+    private const val CTRL_DIST_MIN_FRAC = 0.15f
+    private const val CTRL_DIST_MAX_FRAC = 0.55f
+    private const val CTRL_PERP_FRAC = 0.25f
 
     // --- Speed profile ---
-    const val MAX_SPEED_PX_PER_S = 4500f
-    const val MIN_SPEED_PX_PER_S = 200f
-    const val ACCEL_FRAC = 0.20f
-    const val DECEL_FRAC = 0.30f
-    const val SPEED_LUT_SIZE = 100
+    private const val MAX_SPEED_PX_PER_S = 4500f
+    private const val MIN_SPEED_PX_PER_S = 200f
+    private const val ACCEL_FRAC = 0.20f
+    private const val DECEL_FRAC = 0.30f
+    private const val SPEED_LUT_SIZE = 100
+    private const val AVG_SPEED_FRAC = 0.55f
 
     /** Idle heading: pointer tip faces top-left (-135°, rad) */
     const val IDLE_HEADING_RAD = (-Math.PI * 3.0 / 4.0).toFloat()
@@ -48,7 +51,10 @@ object PointerCurveMath {
         val dx = x2 - x1
         val dy = y2 - y1
         val dist = sqrt(dx * dx + dy * dy)
-        if (dist < 2f) return Path().apply { moveTo(x1, y1); lineTo(x2, y2) }
+        if (dist < 2f) return Path().apply {
+            moveTo(x1, y1)
+            lineTo(x2, y2)
+        }
 
         val hx = cos(headingRad)
         val hy = sin(headingRad)
@@ -118,5 +124,26 @@ object PointerCurveMath {
         val i = idx.toInt()
         val frac = idx - i
         return lut[i] + (lut[i + 1] - lut[i]) * frac
+    }
+
+    // ============================================================
+    // Shared sampling
+    // ============================================================
+
+    data class CurveSample(val x: Float, val y: Float, val headingRad: Float)
+
+    /** Sample position and tangent heading at [distFraction] (0..1) along [path]. */
+    fun sampleCurve(path: Path, distFraction: Float): CurveSample {
+        val pm = PathMeasure(path, false)
+        val pos = FloatArray(2)
+        val tan = FloatArray(2)
+        pm.getPosTan(distFraction * pm.length, pos, tan)
+        return CurveSample(pos[0], pos[1], atan2(tan[1], tan[0]))
+    }
+
+    /** Duration for travelling [arcLen] pixels using the shared speed profile. */
+    fun curveDurationMs(arcLen: Float): Long {
+        return (arcLen / (MAX_SPEED_PX_PER_S * AVG_SPEED_FRAC) * 1000f)
+            .toLong().coerceAtLeast(50L)
     }
 }

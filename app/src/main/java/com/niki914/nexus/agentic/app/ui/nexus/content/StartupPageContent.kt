@@ -1,5 +1,7 @@
 package com.niki914.nexus.agentic.app.ui.nexus.content
 
+import android.graphics.Path
+import android.graphics.PathMeasure
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
@@ -16,14 +18,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -36,6 +41,7 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,53 +52,45 @@ import androidx.compose.ui.zIndex
 import com.niki914.nexus.agentic.animation.PointerCurveMath
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.app.ui.infra.component.MaterialTintLiquidButton
-import com.niki914.nexus.agentic.app.ui.nexus.model.StartupAssistantUi
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.math.atan2
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 private const val LETTERS = "NEXUS"
 private val LetterFontSize = 96.sp
 private val LetterSpacing = 28.dp
-
-private val PointerEasing: Easing by lazy {
-    val lut = PointerCurveMath.buildSpeedLut()
-    Easing { t -> PointerCurveMath.timeToDistance(t, lut) }
-}
 
 /** Persists across back-navigation so the demo only plays once per process lifetime. */
 private var demoHasPlayed = false
 
 @Composable
 fun StartupPageContent(
-    assistantUi: StartupAssistantUi,
     onDemoComplete: () -> Unit,
 ) {
     val density = LocalDensity.current
     val interactive = demoHasPlayed
     val scrollState = rememberScrollState()
+    val speedLut = remember { PointerCurveMath.buildSpeedLut() }
 
     var containerWidthPx by remember { mutableFloatStateOf(0f) }
     var containerHeightPx by remember { mutableFloatStateOf(0f) }
     var buttonCenterX by remember { mutableFloatStateOf(0f) }
     var buttonCenterY by remember { mutableFloatStateOf(0f) }
 
-    // Button fades in over the last 15% of scroll travel
+    // Scroll progress: used for demo timing and button show/hide trigger
     val scrollProgress = if (scrollState.maxValue > 0)
         scrollState.value.toFloat() / scrollState.maxValue else 0f
-    val buttonAlpha = if (scrollProgress >= 0.85f) {
-        ((scrollProgress - 0.85f) / 0.15f).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
 
-    // Cursor state — used only during auto-demo
+    // Cursor state
     val cursorAlpha = remember { Animatable(0f) }
     val cursorScale = remember { Animatable(1f) }
-    val cursorX = remember { Animatable(0f) }
-    val cursorY = remember { Animatable(0f) }
+    var cursorPosX by remember { mutableFloatStateOf(0f) }
+    var cursorPosY by remember { mutableFloatStateOf(0f) }
+    var cursorHeading by remember { mutableFloatStateOf(PointerCurveMath.IDLE_HEADING_RAD) }
     val buttonScale = remember { Animatable(1f) }
 
     // ---- Auto-demo animation (first visit only) ----
@@ -104,47 +102,89 @@ fun StartupPageContent(
 
             val h = containerHeightPx
             val w = containerWidthPx
-
-            // Cursor positions:
-            //   1. Start at screen center
-            //   2. Move down to lower area (~72% height)
-            //   3. Swipe UP to upper area (~28% height)
-            //   4. Fly to button (bottom)
+            val centerX = w * 0.5f
             val centerY = h * 0.5f
             val lowerY = h * 0.72f
             val upperY = h * 0.28f
+            val pointerEasing = Easing { t -> PointerCurveMath.timeToDistance(t, speedLut) }
 
-            cursorX.snapTo(w * 0.5f)
-            cursorY.snapTo(centerY)
+            // Helper: bezier curve movement with heading rotation
+            suspend fun animateAlongCurve(toX: Float, toY: Float) {
+                val path = PointerCurveMath.buildCurve(
+                    cursorPosX, cursorPosY, cursorHeading, toX, toY,
+                )
+                val durMs = PointerCurveMath.curveDurationMs(
+                    PathMeasure(path, false).length,
+                )
+                val durationNs = durMs * 1_000_000L
+                val startTime = withFrameNanos { it }
+                while (true) {
+                    val elapsed = withFrameNanos { it } - startTime
+                    val timeFrac = (elapsed.toFloat() / durationNs).coerceIn(0f, 1f)
+                    val distFrac = PointerCurveMath.timeToDistance(timeFrac, speedLut)
+                    val sample = PointerCurveMath.sampleCurve(path, distFrac)
+                    cursorPosX = sample.x
+                    cursorPosY = sample.y
+                    cursorHeading = sample.headingRad
+                    if (timeFrac >= 1f) break
+                }
+            }
 
-            // Phase 1: cursor fades in
+            // Helper: straight-line swipe movement with fixed heading
+            suspend fun animateSwipe(toX: Float, toY: Float) {
+                val fromX = cursorPosX
+                val fromY = cursorPosY
+                val path = Path().apply {
+                    moveTo(fromX, fromY)
+                    lineTo(toX, toY)
+                }
+                val dx = toX - fromX
+                val dy = toY - fromY
+                val dist = sqrt(dx * dx + dy * dy)
+                val durMs = PointerCurveMath.curveDurationMs(dist)
+                val durationNs = durMs * 1_000_000L
+                val startTime = withFrameNanos { it }
+                cursorHeading = atan2(dy, dx)
+                while (true) {
+                    val elapsed = withFrameNanos { it } - startTime
+                    val timeFrac = (elapsed.toFloat() / durationNs).coerceIn(0f, 1f)
+                    val distFrac = PointerCurveMath.timeToDistance(timeFrac, speedLut)
+                    val sample = PointerCurveMath.sampleCurve(path, distFrac)
+                    cursorPosX = sample.x
+                    cursorPosY = sample.y
+                    if (timeFrac >= 1f) break
+                }
+            }
+
+            // Initial position
+            cursorPosX = centerX
+            cursorPosY = centerY
+
+            // Phase 1: cursor fades in (matches PointerOverlay FADE_DURATION_MS = 300ms)
             delay(500)
-            cursorAlpha.animateTo(1f, tween(400))
+            cursorAlpha.animateTo(1f, tween(300))
             delay(300)
 
-            // Phase 2: cursor moves down to lower area
-            cursorY.animateTo(lowerY, tween(400, easing = PointerEasing))
+            // Phase 2: cursor moves down to lower area (bezier curve)
+            animateAlongCurve(centerX, lowerY)
             delay(200)
 
-            // Phase 3: cursor swipes UP first, then list scrolls
+            // Phase 3: swipe up (straight line, fixed heading), then list scrolls
             snapshotFlow { scrollState.maxValue }.first { it > 0 }
-            cursorY.animateTo(upperY, tween(600, easing = PointerEasing))
+            animateSwipe(centerX, upperY)
             scrollState.animateScrollTo(
                 scrollState.maxValue,
-                tween(1100, easing = PointerEasing),
+                tween(1100, easing = pointerEasing),
             )
             delay(200)
 
             // Ensure button layout coordinates are ready
             snapshotFlow { buttonCenterX }.first { it > 0f }
 
-            // Phase 4: cursor flies to button
-            coroutineScope {
-                launch { cursorX.animateTo(buttonCenterX, tween(550, easing = PointerEasing)) }
-                launch { cursorY.animateTo(buttonCenterY, tween(550, easing = PointerEasing)) }
-            }
+            // Phase 4: cursor flies to button (bezier curve)
+            animateAlongCurve(buttonCenterX, buttonCenterY)
 
-            // Phase 5: press — navigate immediately (no release animation, no extra delay)
+            // Phase 5: press — scale down immediately
             coroutineScope {
                 launch { cursorScale.animateTo(0.55f, tween(80)) }
                 launch { buttonScale.animateTo(0.94f, tween(80)) }
@@ -154,7 +194,22 @@ fun StartupPageContent(
         }
     }
 
-    val bgColor = Color(0xFF0A0B0F)
+    // ---- Button show/hide animation ----
+    val atBottom = scrollProgress >= 0.85f
+    var buttonComposed by remember { mutableStateOf(false) }
+    val buttonAlphaAnim = remember { Animatable(0f) }
+
+    LaunchedEffect(atBottom) {
+        if (atBottom) {
+            buttonComposed = true
+            buttonAlphaAnim.animateTo(1f, tween(300))
+        } else if (buttonComposed) {
+            buttonAlphaAnim.animateTo(0f, tween(200))
+            buttonComposed = false
+        }
+    }
+
+    val bgColor = MaterialTheme.colorScheme.background
 
     Box(
         modifier = Modifier
@@ -253,29 +308,32 @@ fun StartupPageContent(
 
         // Cursor — only visible during auto-demo
         if (!interactive) {
-            val cursorHalfSizePx = with(density) { 30.dp.toPx() }.roundToInt()
+            val cursorHalfSizePx = with(density) { 40.dp.toPx() }.roundToInt()
             Image(
                 painter = painterResource(id = R.drawable.cursor),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(80.dp)
                     .zIndex(2f)
                     .offset {
                         IntOffset(
-                            cursorX.value.roundToInt() - cursorHalfSizePx,
-                            cursorY.value.roundToInt() - cursorHalfSizePx,
+                            cursorPosX.roundToInt() - cursorHalfSizePx,
+                            cursorPosY.roundToInt() - cursorHalfSizePx,
                         )
                     }
                     .graphicsLayer {
                         alpha = cursorAlpha.value
                         scaleX = cursorScale.value
                         scaleY = cursorScale.value
+                        rotationZ = Math.toDegrees(
+                            (cursorHeading - PointerCurveMath.IDLE_HEADING_RAD).toDouble()
+                        ).toFloat()
                     }
             )
         }
 
-        // Button — only composed when visible, pinned at bottom
-        if (buttonAlpha > 0f) {
+        // Button — animated show/hide, removed from composition when hidden
+        if (buttonComposed) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -283,7 +341,7 @@ fun StartupPageContent(
                     .fillMaxWidth()
                     .zIndex(1f)
                     .graphicsLayer {
-                        alpha = buttonAlpha
+                        alpha = buttonAlphaAnim.value
                         scaleX = buttonScale.value
                         scaleY = buttonScale.value
                     }
@@ -295,7 +353,7 @@ fun StartupPageContent(
                 contentAlignment = Alignment.Center,
             ) {
                 MaterialTintLiquidButton(
-                    text = "开始使用",
+                    text = stringResource(R.string.ui_onboard_startup_demo_button),
                     onClick = { onDemoComplete() },
                 )
             }

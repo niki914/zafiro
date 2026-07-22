@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.app.overlay
 
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Path
@@ -17,16 +18,14 @@ import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.chat.agentic.accessibility.IPointerOverlay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
-import kotlin.math.atan2
 
 class PointerOverlay : IPointerOverlay {
 
-    // --- Timing ---
-    private val FADE_DURATION_MS = 300L
-    private val SWIPE_GAP_MS = 80L
-
-    // --- Visual ---
-    private val POINTER_SIZE_DP = 80
+    companion object {
+        private const val FADE_DURATION_MS = 300L
+        private const val SWIPE_GAP_MS = 80L
+        private const val POINTER_SIZE_DP = 80
+    }
 
     // Android overlay infrastructure
     private var wm: WindowManager? = null
@@ -103,7 +102,9 @@ class PointerOverlay : IPointerOverlay {
     override fun show(x: Float, y: Float) {
         handler.post {
             attachIfNeeded()
-            curX = x; curY = y; curHeading = PointerCurveMath.IDLE_HEADING_RAD
+            curX = x
+            curY = y
+            curHeading = PointerCurveMath.IDLE_HEADING_RAD
             applyTransform(x, y, PointerCurveMath.IDLE_HEADING_RAD)
             view?.animate()?.alpha(1f)?.setDuration(FADE_DURATION_MS)?.start()
         }
@@ -166,35 +167,32 @@ class PointerOverlay : IPointerOverlay {
         val arcLen = pm.length
         if (arcLen <= 0f) return
 
-        val pos = FloatArray(2);
-        val tan = FloatArray(2)
-
-        // Duration from speed profile: average ~55% of max
-        val durationMs = durationMs
-            ?: (arcLen / (PointerCurveMath.MAX_SPEED_PX_PER_S * 0.55f) * 1000f).toLong().coerceAtLeast(50L)
-
+        val duration = durationMs ?: PointerCurveMath.curveDurationMs(arcLen)
         val startHeading = curHeading
 
         suspendCancellableCoroutine<Unit> { cont ->
             val anim = ValueAnimator.ofFloat(0f, 1f).apply {
-                interpolator = LinearInterpolator() // speed handled in update
-                this.duration = durationMs
+                interpolator = LinearInterpolator()
+                this.duration = duration
                 addUpdateListener {
                     val timeFrac = it.animatedValue as Float
                     val distFrac = PointerCurveMath.timeToDistance(timeFrac, speedLut)
-                    pm.getPosTan(distFrac * arcLen, pos, tan)
-                    val h = if (fixedHeading) startHeading else atan2(tan[1], tan[0])
+                    val sample = PointerCurveMath.sampleCurve(path, distFrac)
+                    val h = if (fixedHeading) startHeading else sample.headingRad
                     handler.post {
-                        curX = pos[0]; curY = pos[1]; curHeading = h
-                        applyTransform(pos[0], pos[1], h)
+                        curX = sample.x
+                        curY = sample.y
+                        curHeading = h
+                        applyTransform(sample.x, sample.y, h)
                     }
                 }
-                addListener(object : android.animation.Animator.AnimatorListener {
-                    override fun onAnimationStart(a: android.animation.Animator) {}
+                addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(a: android.animation.Animator) {
                         runningAnim = null
                         val h = if (fixedHeading) startHeading else PointerCurveMath.IDLE_HEADING_RAD
-                        curX = toX; curY = toY; curHeading = h
+                        curX = toX
+                        curY = toY
+                        curHeading = h
                         handler.post { applyTransform(toX, toY, h) }
                         if (cont.isActive) cont.resume(Unit)
                     }
@@ -203,8 +201,6 @@ class PointerOverlay : IPointerOverlay {
                         runningAnim = null
                         if (cont.isActive) cont.resume(Unit)
                     }
-
-                    override fun onAnimationRepeat(a: android.animation.Animator) {}
                 })
             }
             cont.invokeOnCancellation {
@@ -239,7 +235,8 @@ class PointerOverlay : IPointerOverlay {
     private fun attachIfNeeded() {
         if (attached || wm == null || view == null || lp == null) return
         try {
-            wm!!.addView(view, lp); attached = true
+            wm!!.addView(view, lp)
+            attached = true
         } catch (_: Exception) {
         }
     }

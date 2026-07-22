@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -117,7 +116,6 @@ internal fun StartupPageRoute(
     }
 
     StartupPageContent(
-        assistantUi = startupAssistantUi,
         onDemoComplete = {
             if (startupAssistantUi == StartupAssistantUi.ChatOnly) {
                 enterNextPage()
@@ -319,7 +317,6 @@ private fun StartupPageRouteNormalPreview() {
         Surface {
             ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
                 StartupPageContent(
-                    assistantUi = StartupAssistantUi.XiaoAi,
                     onDemoComplete = {},
                 )
             }
