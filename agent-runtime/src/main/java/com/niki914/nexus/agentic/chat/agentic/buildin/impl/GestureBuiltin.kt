@@ -17,9 +17,9 @@ class GestureBuiltin : BuiltinTool() {
     override val name: String = "gesture"
 
     override val description: String =
-        "Perform a swipe/drag gesture from (start_x, start_y) to (end_x, end_y). " +
-                "Use accessibility method for reliable in-app gestures. " +
-                "Use shell method when accessibility service is not connected or as fallback."
+        "Perform a coordinate-controlled swipe or drag gesture. " +
+                "Use it for list scrolling and gestures that do not target a single indexed node. " +
+                "Use accessibility method by default; use shell method as fallback."
 
     override val defaultEnabled: Boolean = true
 
