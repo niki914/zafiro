@@ -118,8 +118,7 @@ internal fun StartupPageRoute(
 
     StartupPageContent(
         assistantUi = startupAssistantUi,
-        isLoading = isCheckingWebSettings,
-        onContinue = {
+        onDemoComplete = {
             if (startupAssistantUi == StartupAssistantUi.ChatOnly) {
                 enterNextPage()
             } else {
@@ -313,113 +312,18 @@ private fun mockWebSettingsSuccess(
     )
 }
 
-@Preview(name = "Startup Normal", showBackground = true, widthDp = 420, heightDp = 900)
+@Preview(name = "Startup Demo", showBackground = true, widthDp = 420, heightDp = 900)
 @Composable
 private fun StartupPageRouteNormalPreview() {
-    StartupPageRoutePreview()
-}
-
-@Preview(name = "Startup Loading", showBackground = true, widthDp = 420, heightDp = 900)
-@Composable
-private fun StartupPageRouteLoadingPreview() {
-    StartupPageRoutePreview(initialLoading = true)
-}
-
-@Preview(name = "Startup Dialog Cycle", showBackground = true, widthDp = 420, heightDp = 900)
-@Composable
-private fun StartupPageRouteDialogCyclePreview() {
-    StartupPageRouteDialogCyclePreviewContent()
-}
-
-@Composable
-private fun StartupPageRoutePreview(
-    darkTheme: Boolean = false,
-    initialLoading: Boolean = false,
-    initialDialog: StartupWebSettingsDialog? = null,
-) {
-    BaseTheme(darkTheme = darkTheme, dynamicColor = false) {
-        Surface {
-            ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
-                StartupPageRoute(
-                    startupAssistantUi = StartupAssistantUi.XiaoAi,
-                    onPush = {},
-                    loadWebSettings = previewLoadingWebSettingsLoader(),
-                    initialLoading = initialLoading,
-                    initialDialog = initialDialog,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun StartupPageRouteDialogCyclePreviewContent() {
-    val dialogCases = remember {
-        listOf(
-            StartupWebSettingsDialog.Beta,
-            StartupWebSettingsDialog.UnsupportedVersion,
-            StartupWebSettingsDialog.FetchFailed,
-            StartupWebSettingsDialog.NetworkError,
-        )
-    }
-    var nextCaseIndex by rememberSaveable {
-        mutableStateOf(0)
-    }
-    var currentDialog by rememberSaveable {
-        mutableStateOf<StartupWebSettingsDialog?>(null)
-    }
-    var retainedDialog by rememberSaveable {
-        mutableStateOf<StartupWebSettingsDialog?>(null)
-    }
-    var isDialogVisible by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    LaunchedEffect(currentDialog) {
-        val dialog = currentDialog
-        if (dialog == null) {
-            isDialogVisible = false
-        } else {
-            retainedDialog = dialog
-            isDialogVisible = false
-            withFrameNanos { }
-            isDialogVisible = true
-        }
-    }
-
     BaseTheme(darkTheme = false, dynamicColor = false) {
         Surface {
             ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
                 StartupPageContent(
                     assistantUi = StartupAssistantUi.XiaoAi,
-                    isLoading = false,
-                    onContinue = {
-                        currentDialog = dialogCases[nextCaseIndex]
-                        nextCaseIndex = (nextCaseIndex + 1) % dialogCases.size
-                    },
+                    onDemoComplete = {},
                 )
-
-                retainedDialog?.let { dialog ->
-                    StartupWebSettingsDialogContent(
-                        dialog = dialog,
-                        visible = isDialogVisible,
-                        onEnterNextPage = {
-                            currentDialog = null
-                        },
-                        onRetry = {
-                            currentDialog = null
-                        },
-                        onDismiss = {
-                            currentDialog = null
-                        },
-                    )
-                }
             }
         }
     }
 }
 
-private fun previewLoadingWebSettingsLoader(): WebSettingsLoader = {
-    delay(60_000L)
-    WebSettingsResult.RequestFailed(WebSettingsFailureReason.NetworkUnavailable)
-}

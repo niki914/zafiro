@@ -12,48 +12,21 @@ import android.view.Gravity
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import android.widget.ImageView
+import com.niki914.nexus.agentic.animation.PointerCurveMath
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.chat.agentic.accessibility.IPointerOverlay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 class PointerOverlay : IPointerOverlay {
 
-    // ============================================================
-    // Tunable constants — tweak these to adjust feel
-    // ============================================================
-    companion object {
-        // --- Curve shape ---
-        /** Min control-point distance as fraction of path length (with-tip shots) */
-        private const val CTRL_DIST_MIN_FRAC = 0.15f
+    // --- Timing ---
+    private val FADE_DURATION_MS = 300L
+    private val SWIPE_GAP_MS = 80L
 
-        /** Max control-point distance as fraction of path length (against-tip arcs) */
-        private const val CTRL_DIST_MAX_FRAC = 0.55f
-
-        /** Max perpendicular offset fraction for figure-8 side-sweep */
-        private const val CTRL_PERP_FRAC = 0.25f
-
-        // --- Speed profile (slow -> fast -> slow) ---
-        private const val MAX_SPEED_PX_PER_S = 4500f
-        private const val MIN_SPEED_PX_PER_S = 200f
-        private const val ACCEL_FRAC = 0.20f
-        private const val DECEL_FRAC = 0.30f
-        private const val SPEED_LUT_SIZE = 100
-
-        // --- Timing ---
-        private const val FADE_DURATION_MS = 300L
-        private const val SWIPE_GAP_MS = 80L
-
-        // --- Visual ---
-        private const val POINTER_SIZE_DP = 80
-    }
-
-    /** Idle heading: pointer tip faces top-left (-135°, rad) */
-    private val IDLE_HEADING = (-Math.PI * 3.0 / 4.0).toFloat()
+    // --- Visual ---
+    private val POINTER_SIZE_DP = 80
 
     // Android overlay infrastructure
     private var wm: WindowManager? = null
@@ -65,7 +38,7 @@ class PointerOverlay : IPointerOverlay {
     // Mutable state
     private var curX = 0f
     private var curY = 0f
-    private var curHeading = IDLE_HEADING
+    private var curHeading = PointerCurveMath.IDLE_HEADING_RAD
     private var screenW = 0
     private var screenH = 0
     private var runningAnim: ValueAnimator? = null
@@ -73,7 +46,7 @@ class PointerOverlay : IPointerOverlay {
     private val handler = Handler(Looper.getMainLooper())
 
     // Pre-computed speed lookup: time fraction (0..1) -> distance fraction (0..1)
-    private val speedLut: FloatArray by lazy { buildSpeedLut() }
+    private val speedLut: FloatArray by lazy { PointerCurveMath.buildSpeedLut() }
 
     // ============================================================
     // Initialization
@@ -130,8 +103,8 @@ class PointerOverlay : IPointerOverlay {
     override fun show(x: Float, y: Float) {
         handler.post {
             attachIfNeeded()
-            curX = x; curY = y; curHeading = IDLE_HEADING
-            applyTransform(x, y, IDLE_HEADING)
+            curX = x; curY = y; curHeading = PointerCurveMath.IDLE_HEADING_RAD
+            applyTransform(x, y, PointerCurveMath.IDLE_HEADING_RAD)
             view?.animate()?.alpha(1f)?.setDuration(FADE_DURATION_MS)?.start()
         }
     }
@@ -147,7 +120,7 @@ class PointerOverlay : IPointerOverlay {
     override suspend fun animateTo(x: Float, y: Float) {
         if (!attached) return
         cancelAnim()
-        val path = buildCurve(curX, curY, curHeading, x, y)
+        val path = PointerCurveMath.buildCurve(curX, curY, curHeading, x, y)
         animatePath(path, x, y)
     }
 
@@ -158,7 +131,7 @@ class PointerOverlay : IPointerOverlay {
         cancelAnim()
 
         // Phase 1: fly to swipe start
-        val path1 = buildCurve(curX, curY, curHeading, sx, sy)
+        val path1 = PointerCurveMath.buildCurve(curX, curY, curHeading, sx, sy)
         animatePath(path1, sx, sy)
 
         // Brief pause so the pointer "lands" before the stroke
@@ -170,63 +143,6 @@ class PointerOverlay : IPointerOverlay {
             lineTo(ex, ey)
         }
         animatePathRaw(path2, ex, ey, fixedHeading = true, durationMs = duration)
-    }
-
-    // ============================================================
-    // Curve construction
-    // ============================================================
-
-    /**
-     * Builds a cubic bezier from (x1,y1) to (x2,y2) with direction-aware
-     * control points.
-     *
-     * - When the pointer flies with its tip (heading aligns with target
-     *   direction), the curve is nearly straight.
-     * - When flying against the tip, control points push far out and a
-     *   perpendicular offset adds a figure-8 side-sweep, creating a big
-     *   banking arc.
-     *
-     * The bezier is constructed so both boundary tangents point in the
-     * [heading] direction, which is the pointer's idle tip direction
-     * (top-left). This means the pointer arrives and departs pointing
-     * top-left.
-     */
-    private fun buildCurve(
-        x1: Float, y1: Float, heading: Float,
-        x2: Float, y2: Float,
-    ): Path {
-        val dx = x2 - x1
-        val dy = y2 - y1
-        val dist = sqrt(dx * dx + dy * dy)
-        if (dist < 2f) return Path().apply { moveTo(x1, y1); lineTo(x2, y2) }
-
-        val hx = cos(heading)
-        val hy = sin(heading)
-
-        // Unit vector toward target
-        val tx = dx / dist
-        val ty = dy / dist
-
-        // dot = 1 when flying with the tip, -1 when against
-        val dot = hx * tx + hy * ty
-        val arcFactor = ((1f - dot) / 2f).coerceIn(0f, 1f)
-
-        // Perpendicular to heading (clockwise 90°), for figure-8 swoop
-        val px = -hy
-        val py = hx
-
-        val ctrlDist =
-            (CTRL_DIST_MIN_FRAC + arcFactor * (CTRL_DIST_MAX_FRAC - CTRL_DIST_MIN_FRAC)) * dist
-        val perpDist = arcFactor * CTRL_PERP_FRAC * dist
-
-        return Path().apply {
-            moveTo(x1, y1)
-            cubicTo(
-                x1 + hx * ctrlDist + px * perpDist, y1 + hy * ctrlDist + py * perpDist,
-                x2 - hx * ctrlDist - px * perpDist, y2 - hy * ctrlDist - py * perpDist,
-                x2, y2,
-            )
-        }
     }
 
     // ============================================================
@@ -255,7 +171,7 @@ class PointerOverlay : IPointerOverlay {
 
         // Duration from speed profile: average ~55% of max
         val durationMs = durationMs
-            ?: (arcLen / (MAX_SPEED_PX_PER_S * 0.55f) * 1000f).toLong().coerceAtLeast(50L)
+            ?: (arcLen / (PointerCurveMath.MAX_SPEED_PX_PER_S * 0.55f) * 1000f).toLong().coerceAtLeast(50L)
 
         val startHeading = curHeading
 
@@ -265,7 +181,7 @@ class PointerOverlay : IPointerOverlay {
                 this.duration = durationMs
                 addUpdateListener {
                     val timeFrac = it.animatedValue as Float
-                    val distFrac = timeToDistance(timeFrac)
+                    val distFrac = PointerCurveMath.timeToDistance(timeFrac, speedLut)
                     pm.getPosTan(distFrac * arcLen, pos, tan)
                     val h = if (fixedHeading) startHeading else atan2(tan[1], tan[0])
                     handler.post {
@@ -277,7 +193,7 @@ class PointerOverlay : IPointerOverlay {
                     override fun onAnimationStart(a: android.animation.Animator) {}
                     override fun onAnimationEnd(a: android.animation.Animator) {
                         runningAnim = null
-                        val h = if (fixedHeading) startHeading else IDLE_HEADING
+                        val h = if (fixedHeading) startHeading else PointerCurveMath.IDLE_HEADING_RAD
                         curX = toX; curY = toY; curHeading = h
                         handler.post { applyTransform(toX, toY, h) }
                         if (cont.isActive) cont.resume(Unit)
@@ -317,48 +233,6 @@ class PointerOverlay : IPointerOverlay {
     }
 
     // ============================================================
-    // Speed profile
-    // ============================================================
-
-    /** Pre-compute the time→distance LUT by integrating the speed profile. */
-    private fun buildSpeedLut(): FloatArray {
-        val dt = 1f / SPEED_LUT_SIZE
-        val speeds = FloatArray(SPEED_LUT_SIZE + 1) { speedAtT(it.toFloat() / SPEED_LUT_SIZE) }
-        var total = 0f
-        for (i in 1..SPEED_LUT_SIZE) total += (speeds[i - 1] + speeds[i]) / 2f * dt
-        val lut = FloatArray(SPEED_LUT_SIZE + 1)
-        var cum = 0f
-        for (i in 1..SPEED_LUT_SIZE) {
-            cum += (speeds[i - 1] + speeds[i]) / 2f * dt
-            lut[i] = cum / total
-        }
-        return lut
-    }
-
-    private fun speedAtT(t: Float): Float = when {
-        t < ACCEL_FRAC -> {
-            val p = t / ACCEL_FRAC
-            MIN_SPEED_PX_PER_S + (MAX_SPEED_PX_PER_S - MIN_SPEED_PX_PER_S) * p * p
-        }
-
-        t < 1f - DECEL_FRAC -> MAX_SPEED_PX_PER_S
-        else -> {
-            val p = (t - (1f - DECEL_FRAC)) / DECEL_FRAC
-            MIN_SPEED_PX_PER_S + (MAX_SPEED_PX_PER_S - MIN_SPEED_PX_PER_S) * (1f - p) * (1f - p)
-        }
-    }
-
-    /** Map linear time fraction → distance fraction via pre-computed LUT. */
-    private fun timeToDistance(t: Float): Float {
-        if (t <= 0f) return 0f
-        if (t >= 1f) return 1f
-        val idx = t * SPEED_LUT_SIZE
-        val i = idx.toInt()
-        val frac = idx - i
-        return speedLut[i] + (speedLut[i + 1] - speedLut[i]) * frac
-    }
-
-    // ============================================================
     // Window management
     // ============================================================
 
@@ -384,9 +258,9 @@ class PointerOverlay : IPointerOverlay {
         val half = (POINTER_SIZE_DP * density / 2f).toInt()
         p.x = x.toInt() - half
         p.y = y.toInt() - half
-        // Drawable tip naturally points top-left; subtract IDLE_HEADING to
+        // Drawable tip naturally points top-left; subtract IDLE_HEADING_RAD to
         // convert absolute screen heading to a rotation relative to default.
-        view?.rotation = Math.toDegrees((headingRad - IDLE_HEADING).toDouble()).toFloat()
+        view?.rotation = Math.toDegrees((headingRad - PointerCurveMath.IDLE_HEADING_RAD).toDouble()).toFloat()
         try {
             if (attached) wm?.updateViewLayout(view, p)
         } catch (_: Exception) {
