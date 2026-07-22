@@ -17,9 +17,10 @@ class GestureBuiltin : BuiltinTool() {
     override val name: String = "gesture"
 
     override val description: String =
-        "Perform a swipe/drag gesture from (start_x, start_y) to (end_x, end_y). " +
-                "Use accessibility method for reliable in-app gestures. " +
-                "Use shell method when accessibility service is not connected or as fallback."
+        "Perform a swipe/drag gesture with pixel-precise control. " +
+                "This is the preferred method for scrolling lists — calculate coordinates from screen dimensions " +
+                "in screen_content header: swipe 60-70% of screen dimension, keeping ~30% overlap for orientation. " +
+                "Use accessibility method by default; use shell method as fallback."
 
     override val defaultEnabled: Boolean = true
 

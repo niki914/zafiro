@@ -101,7 +101,7 @@ node_action(action: string, index: integer, text?: string, method?: string)
 - `accessibility` tries the accessibility action first; non-set_text actions auto-fall-back to shell on failure.
 - `shell` uses `su -c input tap/swipe` directly, bypassing the accessibility service. Use it when the service is unavailable or as an explicit escape hatch.
 
-**Scroll limitation:** `scroll_forward` and `scroll_backward` move **1 step** per call. For multi-step scrolling, call them repeatedly — you do NOT need to re-read `screen_content` between each scroll. Verify after the batch.
+**Scroll limitation:** `scroll_forward` and `scroll_backward` move **1 step** per call, but the step size depends on the app's accessibility implementation and varies unpredictably — sometimes half a screen, sometimes the entire list. Prefer `gesture` with calculated coordinates for list scrolling (see Workflow §4). Use `scroll_forward`/`scroll_backward` only for single-step increments in pickers or small scrollable widgets.
 
 ### gesture
 
@@ -225,8 +225,9 @@ Use `node_action` with the node's index:
 ```
 node_action(action: "click", index: 42)
 node_action(action: "set_text", index: 7, text: "hello")
-node_action(action: "scroll_forward", index: 15)
 ```
+
+For scrollable lists, prefer `gesture` with calculated coordinates — see §4 for the formula. `scroll_forward`/`scroll_backward` step sizes are unreliable across apps.
 
 For actions that don't target a single labeled node (e.g., swipe-to-refresh, drag items), use `gesture` with coordinates.
 
@@ -234,7 +235,13 @@ For actions that don't target a single labeled node (e.g., swipe-to-refresh, dra
 
 **Re-read `screen_content` after actions that change screen state:** clicks, `launch_app`, `set_text`, `key_event` navigation. Indices are freshly assigned on every `screen_content` call and stale immediately. Never reuse an index from a previous screen read.
 
-**Exception — batch scrolling:** `scroll_forward`/`scroll_backward` move only 1 step. For multi-step scrolling, call them repeatedly without re-reading between each call. Verify with `screen_content` after the batch.
+**Scrolling lists — use `gesture`, not `scroll_forward`/`scroll_backward`.** The accessibility scroll step size depends on the app's container implementation and is unreliable — sometimes half a screen, sometimes the entire list. `gesture` gives pixel-precise control.
+
+Calculate coordinates from the screen dimensions in the `screen_content` header:
+- **Vertical scroll:** `gesture(start_x: w/2, start_y: h*0.7, end_x: w/2, end_y: h*0.1)` — swipes ~60% of screen height
+- **Horizontal scroll:** `gesture(start_x: w*0.7, start_y: h/2, end_x: w*0.1, end_y: h/2)` — swipes ~60% of screen width
+
+The 30-40% overlap keeps enough of the previous view as an anchor so you can track where you are. Batch 2-3 swipes before re-reading `screen_content`.
 
 ### 5. Navigate between apps
 
@@ -272,7 +279,8 @@ Boolean attributes (`tap`, `hold`, `edit`, `scroll`, `checked`) are only emitted
 |:------------------|:----|
 | Type text into a field | `accessibility` (only option) |
 | Tap a labeled UI element | `accessibility` (default, auto-fallbacks) |
-| Scroll a list or picker | `node_action` `scroll_forward`/`scroll_backward`. Batch multiple calls without re-reading between them. |
+| Scroll a list | `gesture` with calculated coordinates. Swipe 60-70% of screen dimension, keeping ~30% overlap for orientation. See Workflow §4 for the formula. |
+| Scroll a picker or small widget (single step) | `node_action` `scroll_forward`/`scroll_backward` |
 | Tap/swipe by coordinates | `shell` if no node index exists |
 | Work when accessibility is unavailable | `shell` |
 | Interact with a non-native app | neither works — report and stop |
@@ -287,4 +295,4 @@ Boolean attributes (`tap`, `hold`, `edit`, `scroll`, `checked`) are only emitted
 - **Search before scanning.** When you have a specific target label or text, use `search_nodes` to get candidate indices instead of visually scanning the full `screen_content` YAML tree. It's faster and less error-prone.
 - **Coordinates are screen pixels.** Not normalized. Screen dimensions are in the `screen_content` header.
 - **No screenshots.** You see only the accessibility tree, not a visual image. If the tree lacks enough context, describe what you can see and ask the user.
-- **Scroll actions use the node's center.** `scroll_forward` and `scroll_backward` target the node at the given index, not arbitrary coordinates. Each call moves 1 step. For multi-step scrolling, call repeatedly without re-reading `screen_content` between each call — verify after the batch.
+- **Prefer gesture for scrolling.** `scroll_forward`/`scroll_backward` step sizes vary per app and container. Use `gesture` with pixel-precise swipes (60-70% of screen dimension) for reliable, consistent list scrolling. Keep ~30% overlap between screens so you can track position. `scroll_forward`/`scroll_backward` are only for single-step increments in pickers or small widgets.

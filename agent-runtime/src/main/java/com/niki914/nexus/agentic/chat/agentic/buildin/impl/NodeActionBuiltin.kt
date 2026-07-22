@@ -22,8 +22,8 @@ class NodeActionBuiltin : BuiltinTool() {
                 "Supports methods: accessibility (default) for set_text (only method that can type into text fields) " +
                 "and shell for tap/long_click/scroll via root input commands. " +
                 "Actions: click, long_click, set_text, scroll_forward, scroll_backward.\n\n" +
-                "scroll_forward/scroll_backward move 1 step per call. " +
-                "For multi-step scrolling: call them repeatedly — you do NOT need to re-read screen_content between each scroll. Verify after the batch."
+                "scroll_forward/scroll_backward move 1 step per call, but step size varies unpredictably per app. " +
+                "Prefer gesture() for list scrolling. Use scroll_forward/scroll_backward only for single-step increments in pickers or small widgets."
 
     override val defaultEnabled: Boolean = true
 
