@@ -4,7 +4,6 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.Path
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
@@ -14,6 +13,7 @@ import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import android.widget.ImageView
 import com.niki914.nexus.agentic.animation.PointerCurveMath
+import com.niki914.nexus.agentic.animation.PointerCurveMath.MovementMode
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.chat.agentic.accessibility.IPointerOverlay
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -43,8 +43,9 @@ class PointerOverlay : IPointerOverlay {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    // Pre-computed speed lookup: time fraction (0..1) -> distance fraction (0..1)
-    private val speedLut: FloatArray by lazy { PointerCurveMath.buildSpeedLut() }
+    // Tracks the unwrapped heading across frames to prevent ±180° jumps
+    private var prevAngleDeg =
+        Math.toDegrees(PointerCurveMath.IDLE_HEADING_RAD.toDouble()).toFloat()
 
     // ============================================================
     // Initialization
@@ -104,7 +105,8 @@ class PointerOverlay : IPointerOverlay {
             curX = x
             curY = y
             curHeading = PointerCurveMath.IDLE_HEADING_RAD
-            applyTransform(x, y, PointerCurveMath.IDLE_HEADING_RAD)
+            prevAngleDeg = Math.toDegrees(curHeading.toDouble()).toFloat()
+            applyTransform(x, y, curHeading)
             view?.animate()?.alpha(1f)?.setDuration(FADE_DURATION_MS)?.start()
         }
     }
@@ -117,11 +119,15 @@ class PointerOverlay : IPointerOverlay {
         }
     }
 
-    override suspend fun animateTo(x: Float, y: Float) {
+    override suspend fun animateTo(
+        x: Float, y: Float, mode: MovementMode,
+    ) {
         if (!attached) return
         cancelAnim()
-        val path = PointerCurveMath.buildCurve(curX, curY, curHeading, x, y)
-        animatePath(path, x, y)
+        val t = PointerCurveMath.buildTrajectory(
+            curX, curY, curHeading, x, y, mode, screenW, screenH,
+        )
+        animateAlong(t)
     }
 
     override suspend fun showSwipe(
@@ -130,69 +136,84 @@ class PointerOverlay : IPointerOverlay {
         if (!attached) return
         cancelAnim()
 
-        // Phase 1: fly to swipe start
-        val path1 = PointerCurveMath.buildCurve(curX, curY, curHeading, sx, sy)
-        animatePath(path1, sx, sy)
+        // Phase 1: fly to swipe start (organic curve, tangent-following)
+        val fly = PointerCurveMath.buildTrajectory(
+            curX, curY, curHeading, sx, sy, MovementMode.FLY, screenW, screenH,
+        )
+        animateAlong(fly)
 
         // Brief pause so the pointer "lands" before the stroke
         delayOnMain(PointerCurveMath.SWIPE_GAP_MS)
 
-        // Phase 2: straight-line swipe trajectory
-        val path2 = Path().apply {
-            moveTo(sx, sy)
-            lineTo(ex, ey)
-        }
-        animatePathRaw(path2, ex, ey, fixedHeading = true, durationMs = duration)
+        // Phase 2: translate along swipe path (straight line, NW heading)
+        val swipe = PointerCurveMath.buildTrajectory(
+            sx, sy, curHeading, ex, ey, MovementMode.TRANSLATE, screenW, screenH,
+        )
+        // Override duration to match the requested swipe duration
+        animateAlongRaw(swipe, duration)
     }
 
     // ============================================================
     // Animation
     // ============================================================
 
-    private suspend fun animatePath(path: Path, toX: Float, toY: Float) {
-        animatePathRaw(path, toX, toY, fixedHeading = false)
+    /** Animate along [trajectory] using easeInOutSine (FLY) or linear (TRANSLATE). */
+    private suspend fun animateAlong(
+        trajectory: PointerCurveMath.Trajectory,
+    ) {
+        animateAlongRaw(trajectory, trajectory.totalDurationMs)
     }
 
     /**
-     * Drive a [ValueAnimator] along [path], ending at (toX,toY).
-     * When [fixedHeading] is true the pointer keeps its current angle (mouse-like);
-     * when false it rotates to follow the path tangent (fish-like).
+     * Drive a [ValueAnimator] along [trajectory] with an explicit [durationMs].
+     * Per-frame: ease → sample → unwrap heading → apply transform.
+     *
+     * The heading unwinding is continuous across consecutive animations
+     * (both within a showSwipe call and across separate animateTo calls)
+     * because [prevAngleDeg] persists across animation boundaries.
      */
-    private suspend fun animatePathRaw(
-        path: Path, toX: Float, toY: Float, fixedHeading: Boolean,
-        durationMs: Long? = null,
+    private suspend fun animateAlongRaw(
+        trajectory: PointerCurveMath.Trajectory,
+        durationMs: Long,
     ) {
-        val sampler = PointerCurveMath.CurveSampler(path)
-        val arcLen = sampler.length
-        if (arcLen <= 0f) return
+        if (trajectory.totalLen <= 0f) return
 
-        val duration = durationMs ?: PointerCurveMath.curveDurationMs(arcLen)
-        val startHeading = curHeading
+        val isFly = trajectory.mode == MovementMode.FLY
 
         suspendCancellableCoroutine<Unit> { cont ->
             val anim = ValueAnimator.ofFloat(0f, 1f).apply {
                 interpolator = LinearInterpolator()
-                this.duration = duration
+                duration = durationMs
                 addUpdateListener {
                     val timeFrac = it.animatedValue as Float
-                    val distFrac = PointerCurveMath.timeToDistance(timeFrac, speedLut)
-                    val sample = sampler.sample(distFrac)
-                    val h = if (fixedHeading) startHeading else sample.headingRad
+                    val distFrac = if (isFly) {
+                        PointerCurveMath.easeInOutSine(timeFrac)
+                    } else {
+                        timeFrac // linear for TRANSLATE
+                    }
+                    val frame = trajectory.sampleAtDistance(distFrac)
+                    val rawDeg = Math.toDegrees(frame.headingRad.toDouble()).toFloat()
+                    val unwrapped = PointerCurveMath.unwrapAngle(rawDeg, prevAngleDeg)
+                    prevAngleDeg = unwrapped
+                    val headingRad =
+                        Math.toRadians(unwrapped.toDouble()).toFloat()
                     handler.post {
-                        curX = sample.x
-                        curY = sample.y
-                        curHeading = h
-                        applyTransform(sample.x, sample.y, h)
+                        curX = frame.x
+                        curY = frame.y
+                        curHeading = headingRad
+                        applyTransform(frame.x, frame.y, headingRad)
                     }
                 }
                 addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(a: Animator) {
                         runningAnim = null
-                        val h = if (fixedHeading) startHeading else PointerCurveMath.IDLE_HEADING_RAD
-                        curX = toX
-                        curY = toY
-                        curHeading = h
-                        handler.post { applyTransform(toX, toY, h) }
+                        // Trajectory already ended at correct
+                        // position/heading on the last update frame
+                        curX = trajectory.endX
+                        curY = trajectory.endY
+                        handler.post {
+                            applyTransform(trajectory.endX, trajectory.endY, curHeading)
+                        }
                         if (cont.isActive) cont.resume(Unit)
                     }
 
