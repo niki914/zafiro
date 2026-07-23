@@ -270,28 +270,47 @@ object PointerCurveMath {
         val chordNy = if (chordLen > 0f) dx / chordLen else 0f
         val baseBend = minOf(BEND_FRAC * dist, 0.19f * d).coerceAtLeast(0.04f * d)
 
+        val minSpeedThreshold = MIN_SPEED_FRAC * d
+
+        // Try multiple bend scales × both directions. Pick the candidate with
+        // the lowest maxAngleStep (tightest curve), breaking ties by overflow.
         var best: Pair<FlyCoeffs, CandidateScore>? = null
 
-        for (dirSign in intArrayOf(1, -1)) {
-            val nx = chordNx * dirSign
-            val ny = chordNy * dirSign
-            val coeffs = FlyCoeffs(sx, sy, v0x, v0y, ax, ay, bx, by, cx, cy, nx, ny, baseBend)
-            val score = scoreCandidate(coeffs, canvasW, canvasH, d)
-            if (score.minSpeed <= MIN_SPEED_FRAC * d) continue // cusp risk
-            if (best == null ||
-                score.overflow < best.second.overflow - 1f ||
-                (abs(score.overflow - best.second.overflow) < 1f &&
-                        score.maxAngleStep < best.second.maxAngleStep)
-            ) {
-                best = coeffs to score
+        for (bendScale in floatArrayOf(1f, 0.6f, 0.3f, 0.15f)) {
+            for (dirSign in intArrayOf(1, -1)) {
+                val nx = chordNx * dirSign
+                val ny = chordNy * dirSign
+                val coeffs = FlyCoeffs(
+                    sx, sy, v0x, v0y, ax, ay, bx, by, cx, cy,
+                    nx, ny, baseBend * bendScale,
+                )
+                val score = scoreCandidate(coeffs, canvasW, canvasH, d)
+                // Hard reject: both cusp risk AND sharp turns
+                if (score.minSpeed <= minSpeedThreshold) continue
+                if (score.maxAngleStep > MAX_ANGLE_STEP_DEG) continue
+                if (best == null ||
+                    score.maxAngleStep < best.second.maxAngleStep - 0.1f ||
+                    (abs(score.maxAngleStep - best.second.maxAngleStep) < 0.1f &&
+                            score.overflow < best.second.overflow)
+                ) {
+                    best = coeffs to score
+                }
             }
         }
 
-        val chosen = best?.first ?: FlyCoeffs(
-            sx, sy, v0x, v0y, ax, ay, bx, by, cx, cy,
-            chordNx, chordNy, baseBend * 0.5f,
-        )
+        // No valid curve found — fall back to a short straight line so the
+        // pointer doesn't execute an unvalidated trajectory with sharp turns.
+        if (best == null) {
+            return Trajectory(
+                mode = MovementMode.FLY,
+                startX = sx, startY = sy,
+                endX = ex, endY = ey,
+                totalLen = dist, totalDurationMs = MIN_DURATION_MS,
+                coeffs = null, cumLen = null, arcSamples = 0,
+            )
+        }
 
+        val (chosen, _) = best
         val cumLen = buildArcLengthTable(chosen)
         val totalLen = cumLen[ARC_SAMPLES]
         val dur = (totalLen / NOMINAL_SPEED_PX_S * 1000f).toLong()

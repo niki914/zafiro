@@ -84,14 +84,7 @@ class PointerOverlay : IPointerOverlay {
 
         view?.alpha = 0f
 
-        // Attach once and keep in the window for the overlay's lifetime.
-        // Visibility is controlled exclusively via view alpha, so there is
-        // no addView/removeView race with the fade animation.
-        try {
-            wm!!.addView(view, lp)
-            attached = true
-        } catch (_: Exception) {
-        }
+        tryAttach()
 
         grantOverlayPermission(ctx.packageName)
     }
@@ -115,6 +108,7 @@ class PointerOverlay : IPointerOverlay {
     override fun show(x: Float, y: Float) {
         handler.post {
             view?.animate()?.cancel()
+            tryAttach()
             curX = x
             curY = y
             curHeading = PointerCurveMath.IDLE_HEADING_RAD
@@ -129,6 +123,20 @@ class PointerOverlay : IPointerOverlay {
             view?.animate()?.cancel()
             cancelAnim()
             view?.animate()?.alpha(0f)?.setDuration(FADE_DURATION_MS)?.start()
+        }
+    }
+
+    override fun dispose() {
+        handler.post {
+            view?.animate()?.cancel()
+            cancelAnim()
+            if (attached) {
+                try {
+                    wm?.removeViewImmediate(view)
+                } catch (_: Exception) {
+                }
+                attached = false
+            }
         }
     }
 
@@ -264,6 +272,23 @@ class PointerOverlay : IPointerOverlay {
     // ============================================================
     // Window management
     // ============================================================
+
+    /**
+     * Idempotent attach — no-op if already in the window.
+     * Called from both [init] and [show] so that a late overlay-permission
+     * grant is picked up on the next show attempt.
+     *
+     * Callers must ensure [view.alpha] is 0 before the first successful
+     * attach so the pointer doesn't flash at default alpha=1.
+     */
+    private fun tryAttach() {
+        if (attached || wm == null || view == null || lp == null) return
+        try {
+            wm!!.addView(view, lp)
+            attached = true
+        } catch (_: Exception) {
+        }
+    }
 
     private fun applyTransform(x: Float, y: Float, headingRad: Float) {
         val p = lp ?: return

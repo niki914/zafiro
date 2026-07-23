@@ -14,4 +14,7 @@ interface IPointerOverlay {
 
     /** Fade out and remove from window. Non-blocking. */
     fun hide()
+
+    /** Cancel all animations and remove the view from the window immediately. */
+    fun dispose()
 }
