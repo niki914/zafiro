@@ -47,6 +47,10 @@ class PointerOverlay : IPointerOverlay {
     private var prevAngleDeg =
         Math.toDegrees(PointerCurveMath.IDLE_HEADING_RAD.toDouble()).toFloat()
 
+    // Guards against hide's withEndAction detaching the view after a
+    // subsequent show() has already re-enabled it.
+    private var hiding = false
+
     // ============================================================
     // Initialization
     // ============================================================
@@ -101,6 +105,10 @@ class PointerOverlay : IPointerOverlay {
 
     override fun show(x: Float, y: Float) {
         handler.post {
+            hiding = false
+            // Cancel any running fade-out so the subsequent fade-in picks
+            // up from the current alpha (no flash).
+            view?.animate()?.cancel()
             attachIfNeeded()
             curX = x
             curY = y
@@ -113,8 +121,10 @@ class PointerOverlay : IPointerOverlay {
 
     override fun hide() {
         handler.post {
+            hiding = true
+            view?.animate()?.cancel()
             view?.animate()?.alpha(0f)?.setDuration(FADE_DURATION_MS)?.withEndAction {
-                detach()
+                if (hiding) detach()
             }?.start()
         }
     }
@@ -122,7 +132,7 @@ class PointerOverlay : IPointerOverlay {
     override suspend fun animateTo(
         x: Float, y: Float, mode: MovementMode,
     ) {
-        if (!attached) return
+        if (!attached || hiding) return
         cancelAnim()
         val t = PointerCurveMath.buildTrajectory(
             curX, curY, curHeading, x, y, mode, screenW, screenH,
@@ -133,7 +143,7 @@ class PointerOverlay : IPointerOverlay {
     override suspend fun showSwipe(
         sx: Float, sy: Float, ex: Float, ey: Float, duration: Long,
     ) {
-        if (!attached) return
+        if (!attached || hiding) return
         cancelAnim()
 
         // Phase 1: fly to swipe start (organic curve, tangent-following)
