@@ -26,7 +26,11 @@ class PointerOverlay : IPointerOverlay {
         private const val POINTER_SIZE_DP = 80
     }
 
-    // Android overlay infrastructure
+    // Android overlay infrastructure.
+    // The view is attached once in init() and stays in the window for its
+    // entire lifetime — we toggle visibility via alpha only. This avoids
+    // addView/removeView races where a re-attached view briefly renders at
+    // default alpha=1 before we can set it to 0.
     private var wm: WindowManager? = null
     private var view: ImageView? = null
     private var lp: WindowManager.LayoutParams? = null
@@ -46,10 +50,6 @@ class PointerOverlay : IPointerOverlay {
     // Tracks the unwrapped heading across frames to prevent ±180° jumps
     private var prevAngleDeg =
         Math.toDegrees(PointerCurveMath.IDLE_HEADING_RAD.toDouble()).toFloat()
-
-    // Guards against hide's withEndAction detaching the view after a
-    // subsequent show() has already re-enabled it.
-    private var hiding = false
 
     // ============================================================
     // Initialization
@@ -82,7 +82,16 @@ class PointerOverlay : IPointerOverlay {
             gravity = Gravity.TOP or Gravity.START
         }
 
-        view?.alpha = 0f  // start invisible, animate view alpha for fade
+        view?.alpha = 0f
+
+        // Attach once and keep in the window for the overlay's lifetime.
+        // Visibility is controlled exclusively via view alpha, so there is
+        // no addView/removeView race with the fade animation.
+        try {
+            wm!!.addView(view, lp)
+            attached = true
+        } catch (_: Exception) {
+        }
 
         grantOverlayPermission(ctx.packageName)
     }
@@ -105,11 +114,7 @@ class PointerOverlay : IPointerOverlay {
 
     override fun show(x: Float, y: Float) {
         handler.post {
-            hiding = false
-            // Cancel any running fade-out so the subsequent fade-in picks
-            // up from the current alpha (no flash).
             view?.animate()?.cancel()
-            attachIfNeeded()
             curX = x
             curY = y
             curHeading = PointerCurveMath.IDLE_HEADING_RAD
@@ -121,18 +126,16 @@ class PointerOverlay : IPointerOverlay {
 
     override fun hide() {
         handler.post {
-            hiding = true
             view?.animate()?.cancel()
-            view?.animate()?.alpha(0f)?.setDuration(FADE_DURATION_MS)?.withEndAction {
-                if (hiding) detach()
-            }?.start()
+            cancelAnim()
+            view?.animate()?.alpha(0f)?.setDuration(FADE_DURATION_MS)?.start()
         }
     }
 
     override suspend fun animateTo(
         x: Float, y: Float, mode: MovementMode,
     ) {
-        if (!attached || hiding) return
+        if (!attached) return
         cancelAnim()
         val t = PointerCurveMath.buildTrajectory(
             curX, curY, curHeading, x, y, mode, screenW, screenH,
@@ -143,7 +146,7 @@ class PointerOverlay : IPointerOverlay {
     override suspend fun showSwipe(
         sx: Float, sy: Float, ex: Float, ey: Float, duration: Long,
     ) {
-        if (!attached || hiding) return
+        if (!attached) return
         cancelAnim()
 
         // Phase 1: fly to swipe start (organic curve, tangent-following)
@@ -261,24 +264,6 @@ class PointerOverlay : IPointerOverlay {
     // ============================================================
     // Window management
     // ============================================================
-
-    private fun attachIfNeeded() {
-        if (attached || wm == null || view == null || lp == null) return
-        try {
-            wm!!.addView(view, lp)
-            attached = true
-        } catch (_: Exception) {
-        }
-    }
-
-    private fun detach() {
-        if (!attached) return
-        try {
-            wm?.removeView(view)
-        } catch (_: Exception) {
-        }
-        attached = false
-    }
 
     private fun applyTransform(x: Float, y: Float, headingRad: Float) {
         val p = lp ?: return
