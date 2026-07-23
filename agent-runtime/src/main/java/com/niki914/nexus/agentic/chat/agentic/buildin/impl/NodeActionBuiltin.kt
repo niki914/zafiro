@@ -19,11 +19,9 @@ class NodeActionBuiltin : BuiltinTool() {
 
     override val description: String =
         "Perform an action on a UI node identified by its index from screen_content. " +
-                "Supports methods: accessibility (default) for set_text (only method that can type into text fields) " +
-                "and shell for tap/long_click/scroll via root input commands. " +
-                "Actions: click, long_click, set_text, scroll_forward, scroll_backward.\n\n" +
-                "scroll_forward/scroll_backward issue one scroll action per call, but the resulting distance is app-defined. " +
-                "Use them for single-step increments in pickers or small widgets; use gesture() for list scrolling."
+                "Actions: click, long_click, set_text, scroll_forward, scroll_backward. " +
+                "Methods: accessibility (default, all actions including set_text) " +
+                "or shell (tap/long_click/scroll via input commands; cannot type)."
 
     override val defaultEnabled: Boolean = true
 
