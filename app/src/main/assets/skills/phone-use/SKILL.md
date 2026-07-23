@@ -239,15 +239,17 @@ For actions that don't target a single labeled node (e.g., swipe-to-refresh, dra
 
 Prefer coordinates derived from the intended scrollable container's bounds (`b`) rather than the entire screen. If multiple nodes have `scroll: true`, choose the container that contains the repeated list items or the target content.
 
+**Occlusion-aware start point.** Touch events are consumed by the topmost component whose bounds contain the finger-down point — they do not pass through to the layer underneath. A bottom-docked mini-player, navigation bar, or persistent footer whose bounds cover the swipe start point will steal the gesture, and the scrollable list never receives it. Before committing to a start coordinate, check the `screen_content` tree: if any non-scrollable node's bounds contain the intended start point, shift the start point vertically above that node's top edge by 10px. The end point is unaffected — only the finger-down position determines which component consumes the event.
+
 For container bounds `[l, t, r, b]`, let `cw = r - l` and `ch = b - t`:
-- **Vertical forward/down the list:** `gesture(start_x: (l+r)/2, start_y: t+ch*0.8, end_x: (l+r)/2, end_y: t+ch*0.2)`
-- **Vertical backward/up the list:** reverse the vertical start and end coordinates
-- **Horizontal forward:** `gesture(start_x: l+cw*0.8, start_y: (t+b)/2, end_x: l+cw*0.2, end_y: (t+b)/2)`
-- **Horizontal backward:** reverse the horizontal start and end coordinates
+- **Vertical forward/down the list:** start_x = (l+r)/2, default start_y = t + ch * 0.85. If any non-scrollable node's bounds contain (start_x, start_y), reduce start_y to that node's top - 10. Then `gesture(start_x: start_x, start_y: start_y, end_x: start_x, end_y: t + ch * 0.15)`.
+- **Vertical backward/up the list:** reverse start and end, applying the same point containment check to the new start coordinate.
+- **Horizontal forward:** `gesture(start_x: l + cw * 0.85, start_y: (t+b)/2, end_x: l + cw * 0.15, end_y: (t+b)/2)`. Use the same point containment check for side-docked overlays at the start X.
+- **Horizontal backward:** reverse horizontal start and end, applying the same side check.
 
 If no reliable scrollable-container bounds are available, use the screen dimensions from the `screen_content` header as a fallback while avoiding system bars and screen edges.
 
-Swipe roughly 50-60% of the usable container dimension. The remaining overlap keeps part of the previous view visible so you can track position.
+Swipe roughly 65-75% of the usable container dimension. The remaining overlap keeps part of the previous view visible so you can track position.
 
 **Read cadence:**
 - When searching for a specific item, approaching a list boundary, or waiting for a terminal signal, perform one swipe and then re-read `screen_content`.
