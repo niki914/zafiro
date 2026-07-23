@@ -99,7 +99,7 @@ object AccessibilityController {
     }
 
     fun clearPointerOverlay() {
-        pointerOverlay?.hide()
+        pointerOverlay?.dispose()
         pointerOverlay = null
         pointerShown = false
     }

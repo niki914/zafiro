@@ -1,9 +1,7 @@
 package com.niki914.nexus.agentic.app.ui.nexus.content
 
-import android.graphics.Path
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -56,7 +54,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlin.math.atan2
 import kotlin.math.roundToInt
 
 private const val LETTERS = "NEXUS"
@@ -73,7 +70,6 @@ fun StartupPageContent(
     val density = LocalDensity.current
     val interactive = demoHasPlayed
     val scrollState = rememberScrollState()
-    val speedLut = remember { PointerCurveMath.buildSpeedLut() }
 
     var containerWidthPx by remember { mutableFloatStateOf(0f) }
     var containerHeightPx by remember { mutableFloatStateOf(0f) }
@@ -90,6 +86,11 @@ fun StartupPageContent(
     var cursorPosX by remember { mutableFloatStateOf(0f) }
     var cursorPosY by remember { mutableFloatStateOf(0f) }
     var cursorHeading by remember { mutableFloatStateOf(PointerCurveMath.IDLE_HEADING_RAD) }
+    var cursorPrevAngleDeg by remember {
+        mutableFloatStateOf(
+            Math.toDegrees(PointerCurveMath.IDLE_HEADING_RAD.toDouble()).toFloat()
+        )
+    }
     val buttonScale = remember { Animatable(1f) }
 
     // ---- Auto-demo animation (first visit only) ----
@@ -105,51 +106,33 @@ fun StartupPageContent(
             val centerY = h * 0.5f
             val lowerY = h * 0.72f
             val upperY = h * 0.28f
-            val pointerEasing = Easing { t -> PointerCurveMath.timeToDistance(t, speedLut) }
 
-            // Helper: bezier curve movement with heading rotation
-            suspend fun animateAlongCurve(toX: Float, toY: Float) {
-                val path = PointerCurveMath.buildCurve(
-                    cursorPosX, cursorPosY, cursorHeading, toX, toY,
-                )
-                val sampler = PointerCurveMath.CurveSampler(path)
-                val durMs = PointerCurveMath.curveDurationMs(sampler.length)
-                val durationNs = durMs * 1_000_000L
+            // Drives a pre-built trajectory frame by frame.
+            // Uses easeInOutSine for FLY, linear for TRANSLATE.
+            suspend fun animateAlong(
+                trajectory: PointerCurveMath.Trajectory,
+                durationMs: Long = trajectory.totalDurationMs,
+            ) {
+                val isFly = trajectory.mode == PointerCurveMath.MovementMode.FLY
+                val durNs = durationMs * 1_000_000L
                 val startTime = withFrameNanos { it }
                 while (true) {
                     val elapsed = withFrameNanos { it } - startTime
-                    val timeFrac = (elapsed.toFloat() / durationNs).coerceIn(0f, 1f)
-                    val distFrac = PointerCurveMath.timeToDistance(timeFrac, speedLut)
-                    val sample = sampler.sample(distFrac)
-                    cursorPosX = sample.x
-                    cursorPosY = sample.y
-                    cursorHeading = sample.headingRad
-                    if (timeFrac >= 1f) break
-                }
-            }
-
-            // Helper: straight-line swipe movement with fixed heading
-            suspend fun animateSwipe(toX: Float, toY: Float) {
-                val fromX = cursorPosX
-                val fromY = cursorPosY
-                val path = Path().apply {
-                    moveTo(fromX, fromY)
-                    lineTo(toX, toY)
-                }
-                val sampler = PointerCurveMath.CurveSampler(path)
-                val dx = toX - fromX
-                val dy = toY - fromY
-                val durMs = PointerCurveMath.DEMO_SWIPE_DURATION_MS
-                val durationNs = durMs * 1_000_000L
-                val startTime = withFrameNanos { it }
-                cursorHeading = atan2(dy, dx)
-                while (true) {
-                    val elapsed = withFrameNanos { it } - startTime
-                    val timeFrac = (elapsed.toFloat() / durationNs).coerceIn(0f, 1f)
-                    val distFrac = PointerCurveMath.timeToDistance(timeFrac, speedLut)
-                    val sample = sampler.sample(distFrac)
-                    cursorPosX = sample.x
-                    cursorPosY = sample.y
+                    val timeFrac = (elapsed.toFloat() / durNs).coerceIn(0f, 1f)
+                    val distFrac = if (isFly) {
+                        PointerCurveMath.easeInOutSine(timeFrac)
+                    } else {
+                        timeFrac
+                    }
+                    val frame = trajectory.sampleAtDistance(distFrac)
+                    val rawDeg = Math.toDegrees(frame.headingRad.toDouble()).toFloat()
+                    val unwrapped = PointerCurveMath.unwrapAngle(rawDeg, cursorPrevAngleDeg)
+                    cursorPrevAngleDeg = unwrapped
+                    val headingRad =
+                        Math.toRadians(unwrapped.toDouble()).toFloat()
+                    cursorPosX = frame.x
+                    cursorPosY = frame.y
+                    cursorHeading = headingRad
                     if (timeFrac >= 1f) break
                 }
             }
@@ -163,24 +146,46 @@ fun StartupPageContent(
             cursorAlpha.animateTo(1f, tween(300))
             delay(300)
 
-            // Phase 2: cursor moves down to lower area (bezier curve)
-            animateAlongCurve(centerX, lowerY)
+            // Phase 2: cursor flies down to lower area (organic curve)
+            val cw = containerWidthPx.toInt(); val ch = containerHeightPx.toInt()
+            animateAlong(
+                PointerCurveMath.buildTrajectory(
+                    cursorPosX, cursorPosY, cursorHeading,
+                    centerX, lowerY,
+                    PointerCurveMath.MovementMode.FLY, cw, ch,
+                )
+            )
             delay(PointerCurveMath.SWIPE_GAP_MS)
 
-            // Phase 3: swipe up (straight line, fixed heading), then list scrolls
+            // Phase 3: swipe up (straight line, NW heading), then list scrolls
             snapshotFlow { scrollState.maxValue }.first { it > 0 }
-            animateSwipe(centerX, upperY)
+            animateAlong(
+                PointerCurveMath.buildTrajectory(
+                    cursorPosX, cursorPosY, cursorHeading,
+                    centerX, upperY,
+                    PointerCurveMath.MovementMode.TRANSLATE, cw, ch,
+                ),
+                durationMs = PointerCurveMath.DEMO_SWIPE_DURATION_MS,
+            )
             scrollState.animateScrollTo(
                 scrollState.maxValue,
-                tween(1100, easing = pointerEasing),
+                tween(1100, easing = androidx.compose.animation.core.Easing {
+                    PointerCurveMath.easeInOutSine(it)
+                }),
             )
             delay(200)
 
             // Ensure button layout coordinates are ready
             snapshotFlow { buttonCenterX }.first { it > 0f }
 
-            // Phase 4: cursor flies to button (bezier curve)
-            animateAlongCurve(buttonCenterX, buttonCenterY)
+            // Phase 4: cursor flies to button (organic curve)
+            animateAlong(
+                PointerCurveMath.buildTrajectory(
+                    cursorPosX, cursorPosY, cursorHeading,
+                    buttonCenterX, buttonCenterY,
+                    PointerCurveMath.MovementMode.FLY, cw, ch,
+                )
+            )
 
             // Phase 5: press — scale down immediately
             coroutineScope {
