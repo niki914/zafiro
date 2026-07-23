@@ -81,6 +81,7 @@ class BuiltinToolTest {
                 "read_custom_tool",
                 "screen_content",
                 "search_apps",
+                "search_nodes",
                 "ssh_terminal",
                 "terminal",
             ),
@@ -98,6 +99,7 @@ class BuiltinToolTest {
         assertEquals("read_custom_tool", registry.find("read_custom_tool")?.name)
         assertEquals("screen_content", registry.find("screen_content")?.name)
         assertEquals("search_apps", registry.find("search_apps")?.name)
+        assertEquals("search_nodes", registry.find("search_nodes")?.name)
         assertEquals("ssh_terminal", registry.find("ssh_terminal")?.name)
         assertEquals("terminal", registry.find("terminal")?.name)
         assertNull(registry.find("run_command"))
