@@ -143,51 +143,66 @@ object AccessibilityController {
         val serviceName = "${ctx.packageName}/.mod.feat.NexusAccessibilityService"
 
         // Try root, then shizuku to enable the accessibility service.
-        // Each attempt actually runs a command to verify the identity works
-        // (not just that the session opened — a denied root prompt may still
-        // produce a non-root shell that can't write settings).
+        // Each attempt runs a real command and checks exit codes — a
+        // TerminalCommandOutcome.Success only means the terminal returned,
+        // not that the command succeeded. A denied root prompt may produce
+        // a non-root shell whose settings commands return non-zero.
         var canWriteSettings = false
         for (identity in listOf("root", "shizuku")) {
-            when (val outcome = TerminalSessionPool.openAndExecute(
+            val openOutcome = TerminalSessionPool.openAndExecute(
                 identity = identity,
                 cwd = null,
                 command = "settings get secure enabled_accessibility_services",
                 timeoutMs = 15_000L,
-            )) {
-                is TerminalCommandOutcome.Success -> {
-                    val stdout = outcome.result.stdout.toByteArray().decodeToString().trim()
-                    val existing = stdout
-                        .takeUnless { it.isBlank() || it == "null" }
-                        ?.split(":")
-                        .orEmpty()
-                        .filter { it.isNotBlank() }
-                        .toMutableSet()
-                    existing += serviceName
-                    val newValue = existing.joinToString(":")
-                    TerminalSessionPool.executeBlocking(
-                        outcome.session,
-                        "settings put secure enabled_accessibility_services $newValue",
-                        10_000L,
-                    )
-                    TerminalSessionPool.executeBlocking(
-                        outcome.session,
-                        "settings put secure accessibility_enabled 1",
-                        10_000L,
-                    )
-                    shellSessionHandle = outcome.session
-                    shellIdentity = if (identity == "root") ShellIdentity.ROOT else ShellIdentity.SHIZUKU
-                    canWriteSettings = true
-
-                    // Grant overlay permission for pointer indicator
-                    TerminalSessionPool.executeBlocking(
-                        outcome.session,
-                        "appops set ${ctx.packageName} SYSTEM_ALERT_WINDOW allow",
-                        10_000L,
-                    )
-                    break
-                }
-                else -> continue
+            )
+            if (openOutcome !is TerminalCommandOutcome.Success) continue
+            val getExitCode = openOutcome.result.exitCode ?: -1
+            if (getExitCode != 0) {
+                TerminalSessionPool.close(openOutcome.session)
+                continue
             }
+
+            val stdout = openOutcome.result.stdout.toByteArray().decodeToString().trim()
+            val existing = stdout
+                .takeUnless { it.isBlank() || it == "null" }
+                ?.split(":")
+                .orEmpty()
+                .filter { it.isNotBlank() }
+                .toMutableSet()
+            existing += serviceName
+            val newValue = existing.joinToString(":")
+
+            val putServices = TerminalSessionPool.executeBlocking(
+                openOutcome.session,
+                "settings put secure enabled_accessibility_services $newValue",
+                10_000L,
+            )
+            if (putServices !is TerminalCommandOutcome.Success || (putServices.result.exitCode ?: -1) != 0) {
+                TerminalSessionPool.close(openOutcome.session)
+                continue
+            }
+
+            val putEnabled = TerminalSessionPool.executeBlocking(
+                openOutcome.session,
+                "settings put secure accessibility_enabled 1",
+                10_000L,
+            )
+            if (putEnabled !is TerminalCommandOutcome.Success || (putEnabled.result.exitCode ?: -1) != 0) {
+                TerminalSessionPool.close(openOutcome.session)
+                continue
+            }
+
+            shellSessionHandle = openOutcome.session
+            shellIdentity = if (identity == "root") ShellIdentity.ROOT else ShellIdentity.SHIZUKU
+            canWriteSettings = true
+
+            // Grant overlay permission for pointer indicator (best-effort)
+            TerminalSessionPool.executeBlocking(
+                openOutcome.session,
+                "appops set ${ctx.packageName} SYSTEM_ALERT_WINDOW allow",
+                10_000L,
+            )
+            break
         }
 
         if (!canWriteSettings) {
@@ -223,16 +238,16 @@ object AccessibilityController {
         }
 
         // Give the system a moment to bind the service
-        delay(200L)
-        repeat(5) {
+        delay(300L)
+        repeat(9) {
             if (serviceInstance != null) return Result.success(Unit)
-            delay(200L)
+            delay(300L)
         }
 
         return if (serviceInstance != null) {
             Result.success(Unit)
         } else {
-            Result.failure(RuntimeException("AccessibilityService did not start within 1s"))
+            Result.failure(RuntimeException("AccessibilityService did not start within 3s"))
         }
     }
 

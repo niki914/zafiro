@@ -58,8 +58,8 @@ class ToolManagerTest {
 
         val customTool = resolved.customTools.filterIsInstance<LocalTool.Custom>().single()
         assertEquals("current_time", customTool.name)
-        assertTrue(customTool.description.contains("Runs in a normal Android shell."))
-        assertTrue(customTool.description.contains("su -c"))
+        assertTrue(customTool.description.contains("Runs in an unprivileged Android shell"))
+        assertTrue(customTool.description.contains("terminal builtin tool"))
         assertTrue(customTool.description.contains("cd /path && cmd"))
         assertEquals("date +%s", customTool.command)
         assertEquals(listOf("aslocate"), resolved.mcpServers.map { it.name })
