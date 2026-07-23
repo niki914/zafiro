@@ -6,6 +6,8 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
+import android.content.Intent
+import android.provider.Settings
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
@@ -17,6 +19,9 @@ import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityControl
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController.refreshNodeCache
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController.serviceInstance
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCommandOutcome
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalOpenOutcome
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.xposed.api.util.ContextProvider
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
@@ -27,8 +32,8 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * Manages the lifecycle of an [IAccessibility] service connection, provides
  * screen capture, node action execution, gesture dispatch, and key event
- * injection. Shell (su-based) fallback is used when the accessibility
- * method fails or is unavailable.
+ * injection. Shell fallback (libterm: root > shizuku > user) is used when
+ * the accessibility method fails or is unavailable.
  */
 interface IAccessibility {
     val windowRoot: AccessibilityNodeInfo?
@@ -56,6 +61,12 @@ object AccessibilityController {
     var pointerOverlay: IPointerOverlay? = null
 
     private var pointerShown = false
+
+    private var shellSessionHandle: String? = null
+    private var shellIdentity: ShellIdentity = ShellIdentity.NONE
+    private var accessibilitySettingsOpened: Boolean = false
+
+    private enum class ShellIdentity { ROOT, SHIZUKU, USER, NONE }
 
     /** Reset pointer state and hide overlay at end of an agent turn. */
     fun onTurnEnd() {
@@ -93,74 +104,135 @@ object AccessibilityController {
         pointerShown = false
     }
 
+    private suspend fun ensureShellSession(): ShellIdentity {
+        if (shellIdentity != ShellIdentity.NONE) return shellIdentity
+
+        for (identity in listOf("root", "shizuku", "user")) {
+            when (val outcome = TerminalSessionPool.open(identity)) {
+                is TerminalOpenOutcome.Success -> {
+                    shellSessionHandle = outcome.session
+                    shellIdentity = when (identity) {
+                        "root" -> ShellIdentity.ROOT
+                        "shizuku" -> ShellIdentity.SHIZUKU
+                        else -> ShellIdentity.USER
+                    }
+                    return shellIdentity
+                }
+                else -> continue
+            }
+        }
+        return ShellIdentity.NONE
+    }
+
+    private fun resetShellSession() {
+        shellSessionHandle = null
+        shellIdentity = ShellIdentity.NONE
+    }
+
     /**
      * Ensures the accessibility service is connected.
      *
-     * Steps:
-     * 1. If [serviceInstance] is already set -> success.
-     * 2. Check root shell access via `su -c 'echo test'`.
-     * 3. Obtain [Context] via [ContextProvider.await].
-     * 4. Build service component name from package name.
-     * 5. Write the service into secure settings (append if already present).
-     * 6. Wait up to 5 s for the service to connect (poll every 200 ms).
-     * 7. Return success or failure.
+     * Tries root first, then shizuku, to enable the service via settings put secure.
+     * If neither can write secure settings, opens the accessibility settings page
+     * for manual setup (once per process lifetime).
      */
     suspend fun ensureService(): Result<Unit> {
         if (serviceInstance != null) return Result.success(Unit)
 
-        // 1. Verify root access
-        val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", "echo test"))
-        val exitCode = proc.waitFor()
-        if (exitCode != 0) {
-            return Result.failure(
-                RuntimeException("Root access required for accessibility service setup")
-            )
-        }
-
-        // 2. Obtain context & build service name
         val ctx = ContextProvider.await()
         val serviceName = "${ctx.packageName}/.mod.feat.NexusAccessibilityService"
 
-        // 3. Enable the service in system settings
-        val currentResult = runShellCommand(
-            "settings get secure enabled_accessibility_services"
-        )
-        if (!currentResult.success) {
-            return Result.failure(
-                RuntimeException("Failed to read enabled accessibility services: ${currentResult.stderr}")
-            )
+        // Try root, then shizuku to enable the accessibility service.
+        // Each attempt actually runs a command to verify the identity works
+        // (not just that the session opened — a denied root prompt may still
+        // produce a non-root shell that can't write settings).
+        var canWriteSettings = false
+        for (identity in listOf("root", "shizuku")) {
+            when (val outcome = TerminalSessionPool.openAndExecute(
+                identity = identity,
+                cwd = null,
+                command = "settings get secure enabled_accessibility_services",
+                timeoutMs = 15_000L,
+            )) {
+                is TerminalCommandOutcome.Success -> {
+                    val stdout = outcome.result.stdout.toByteArray().decodeToString().trim()
+                    val existing = stdout
+                        .takeUnless { it.isBlank() || it == "null" }
+                        ?.split(":")
+                        .orEmpty()
+                        .filter { it.isNotBlank() }
+                        .toMutableSet()
+                    existing += serviceName
+                    val newValue = existing.joinToString(":")
+                    TerminalSessionPool.executeBlocking(
+                        outcome.session,
+                        "settings put secure enabled_accessibility_services $newValue",
+                        10_000L,
+                    )
+                    TerminalSessionPool.executeBlocking(
+                        outcome.session,
+                        "settings put secure accessibility_enabled 1",
+                        10_000L,
+                    )
+                    shellSessionHandle = outcome.session
+                    shellIdentity = if (identity == "root") ShellIdentity.ROOT else ShellIdentity.SHIZUKU
+                    canWriteSettings = true
+
+                    // Grant overlay permission for pointer indicator
+                    TerminalSessionPool.executeBlocking(
+                        outcome.session,
+                        "appops set ${ctx.packageName} SYSTEM_ALERT_WINDOW allow",
+                        10_000L,
+                    )
+                    break
+                }
+                else -> continue
+            }
         }
 
-        val existing = currentResult.stdout
-            .takeUnless { it.isBlank() || it == "null" }
-            ?.split(":")
-            .orEmpty()
-            .filter { it.isNotBlank() }
-            .toMutableSet()
-        existing += serviceName
-        val newValue = existing.joinToString(":")
+        if (!canWriteSettings) {
+            ensureShellSession() // fall back to user shell for basic commands
 
-        val putResult =
-            runShellCommand("settings put secure enabled_accessibility_services $newValue")
-        if (!putResult.success) {
-            return Result.failure(
-                RuntimeException("Failed to enable accessibility service: ${putResult.stderr}")
-            )
+            if (serviceInstance != null) {
+                return Result.success(Unit) // user enabled it manually in a previous attempt
+            }
+
+            // Cannot enable automatically — open both settings pages and fail
+            if (!accessibilitySettingsOpened) {
+                accessibilitySettingsOpened = true
+                try {
+                    ctx.startActivity(
+                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                    ctx.startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:${ctx.packageName}")
+                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                } catch (_: Exception) {}
+            }
+
+            return Result.failure(RuntimeException(
+                "Nexus cannot control this device because the Accessibility Service is not enabled, " +
+                        "and neither root nor Shizuku is available to enable it automatically. " +
+                        "Tell the user to open Settings > Accessibility and turn on 'Nexus' manually, " +
+                        "then grant 'Display over other apps' permission."
+            ))
         }
-        runShellCommand("settings put secure accessibility_enabled 1")
 
-        // 4. Poll for connection (max 5 s)
-        val deadline = System.currentTimeMillis() + 5000L
-        while (serviceInstance == null && System.currentTimeMillis() < deadline) {
+        // Give the system a moment to bind the service
+        delay(200L)
+        repeat(5) {
+            if (serviceInstance != null) return Result.success(Unit)
             delay(200L)
         }
 
         return if (serviceInstance != null) {
             Result.success(Unit)
         } else {
-            Result.failure(
-                RuntimeException("AccessibilityService did not start within 5s")
-            )
+            Result.failure(RuntimeException("AccessibilityService did not start within 1s"))
         }
     }
 
@@ -366,7 +438,7 @@ object AccessibilityController {
      *
      * When [method] is [InteractionMethod.SHELL]:
      * - SET_TEXT is rejected (shell cannot type into views).
-     * - All other actions use `su -c input ...`.
+     * - All other actions use libterm shell commands.
      *
      * When [method] is [InteractionMethod.ACCESSIBILITY]:
      * - Delegates to [IAccessibility.performAction].
@@ -407,7 +479,7 @@ object AccessibilityController {
         }
     }
 
-    private fun executeShellAction(
+    private suspend fun executeShellAction(
         node: AccessibilityNodeInfo,
         index: Int,
         action: NodeAction,
@@ -499,7 +571,7 @@ object AccessibilityController {
         }
     }
 
-    private fun executeAccessibilityAction(
+    private suspend fun executeAccessibilityAction(
         node: AccessibilityNodeInfo,
         index: Int,
         action: NodeAction,
@@ -538,7 +610,7 @@ object AccessibilityController {
      * Executes a swipe gesture.
      *
      * - [InteractionMethod.ACCESSIBILITY]: dispatches via [IAccessibility.dispatchGesture].
-     * - [InteractionMethod.SHELL]: uses `su -c input swipe ...`.
+     * - [InteractionMethod.SHELL]: uses libterm shell `input swipe ...`.
      */
     suspend fun executeGesture(
         startX: Float,
@@ -590,7 +662,7 @@ object AccessibilityController {
      * - 83 (KEYCODE_NOTIFICATION) -> GLOBAL_ACTION_NOTIFICATIONS
      * - 84 (KEYCODE_QUICK_SETTINGS) -> GLOBAL_ACTION_QUICK_SETTINGS
      *
-     * Any other key code falls back to `su -c input keyevent <code>`.
+     * Any other key code falls back to libterm shell `input keyevent <code>`.
      */
     suspend fun executeKeyEvent(keyCode: Int): BuiltinToolResult {
         ensureService().getOrElse { e ->
@@ -636,15 +708,42 @@ object AccessibilityController {
         return BuiltinToolResult.success("shell keyevent $keyCode performed")
     }
 
-    private fun runShellCommand(command: String): ShellResult {
-        return try {
-            val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
-            val stdout = proc.inputStream.bufferedReader().readText().trim()
-            val stderr = proc.errorStream.bufferedReader().readText().trim()
-            val exitCode = proc.waitFor()
-            ShellResult(exitCode, stdout, stderr)
-        } catch (e: Exception) {
-            ShellResult(-1, "", e.message ?: "unknown error")
+    private suspend fun runShellCommand(command: String): ShellResult {
+        val identity = ensureShellSession()
+        val handle = shellSessionHandle
+        if (identity == ShellIdentity.NONE || handle == null) {
+            return ShellResult(-1, "", "No shell available (root, shizuku, and user all failed)")
+        }
+
+        return when (val outcome = TerminalSessionPool.executeBlocking(handle, command, 15_000L)) {
+            is TerminalCommandOutcome.Success -> {
+                ShellResult(
+                    outcome.result.exitCode ?: -1,
+                    outcome.result.stdout.toByteArray().decodeToString().trim(),
+                    outcome.result.stderr.toByteArray().decodeToString().trim(),
+                )
+            }
+            is TerminalCommandOutcome.Timeout -> {
+                ShellResult(
+                    -1,
+                    outcome.result.stdout.toByteArray().decodeToString().trim(),
+                    "Command timed out",
+                )
+            }
+            is TerminalCommandOutcome.Failure -> {
+                resetShellSession()
+                ShellResult(-1, "", outcome.failure.message ?: "Shell command failed")
+            }
+            is TerminalCommandOutcome.SessionNotFound -> {
+                resetShellSession()
+                ShellResult(-1, "", "Shell session lost")
+            }
+            is TerminalCommandOutcome.Busy -> {
+                ShellResult(-1, "", "Shell session busy")
+            }
+            is TerminalCommandOutcome.UnexpectedError -> {
+                ShellResult(-1, "", outcome.throwable.message ?: "Unexpected shell error")
+            }
         }
     }
 }

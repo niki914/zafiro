@@ -5,6 +5,8 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.RawBuiltinTool
 import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 class ScreenContentBuiltin : RawBuiltinTool() {
     override val name: String = "screen_content"
@@ -32,11 +34,23 @@ class ScreenContentBuiltin : RawBuiltinTool() {
             val result = AccessibilityController.captureScreen()
             result.fold(
                 onSuccess = { it.yaml },
-                onFailure = { "error: ${it.message}" },
+                onFailure = { error ->
+                    JsonObject(mapOf(
+                        "error" to JsonObject(mapOf(
+                            "code" to JsonPrimitive("SERVICE_UNAVAILABLE"),
+                            "message" to JsonPrimitive(error.message ?: "Unknown error"),
+                        )),
+                    )).toString()
+                },
             )
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
-            "error: ${throwable.message}"
+            JsonObject(mapOf(
+                "error" to JsonObject(mapOf(
+                    "code" to JsonPrimitive("INTERNAL_ERROR"),
+                    "message" to JsonPrimitive(throwable.message ?: "Unknown error"),
+                )),
+            )).toString()
         }
     }
 }

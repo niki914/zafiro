@@ -110,7 +110,8 @@ class ToolManager(
     }
 
     private fun String.withCustomShellGuidance(): String {
-        return "$this\nRuns in a normal Android shell. Use `su -c 'cmd'` when root is required. " +
+        return "$this\nRuns in an Android shell via the terminal tool. Use identity=root for root shell, " +
+                "identity=shizuku for Shizuku, or identity=user for unprivileged shell. " +
                 "If the command depends on a working directory, create it as `cd /path && cmd`."
     }
 
