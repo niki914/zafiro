@@ -301,11 +301,14 @@ object PointerCurveMath {
         // No valid curve found — fall back to a short straight line so the
         // pointer doesn't execute an unvalidated trajectory with sharp turns.
         if (best == null) {
+            val fallbackDurationMs =
+                (dist / NOMINAL_SPEED_PX_S * 1000f).toLong()
+                    .coerceIn(MIN_DURATION_MS, MAX_DURATION_MS)
             return Trajectory(
                 mode = MovementMode.FLY,
                 startX = sx, startY = sy,
                 endX = ex, endY = ey,
-                totalLen = dist, totalDurationMs = MIN_DURATION_MS,
+                totalLen = dist, totalDurationMs = fallbackDurationMs,
                 coeffs = null, cumLen = null, arcSamples = 0,
             )
         }

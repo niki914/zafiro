@@ -278,12 +278,13 @@ class PointerOverlay : IPointerOverlay {
      * Called from both [init] and [show] so that a late overlay-permission
      * grant is picked up on the next show attempt.
      *
-     * Callers must ensure [view.alpha] is 0 before the first successful
-     * attach so the pointer doesn't flash at default alpha=1.
+     * Alpha is reset before every attach attempt so a view modified while
+     * detached can never flash at alpha=1 when permission becomes available.
      */
     private fun tryAttach() {
         if (attached || wm == null || view == null || lp == null) return
         try {
+            view!!.alpha = 0f
             wm!!.addView(view, lp)
             attached = true
         } catch (_: Exception) {
