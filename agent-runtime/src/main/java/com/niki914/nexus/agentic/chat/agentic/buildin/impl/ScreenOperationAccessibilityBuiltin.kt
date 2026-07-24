@@ -34,11 +34,40 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 "Returns matched nodes with tokens + version header.\n\n" +
                 "If read returns root-only or empty tree: app likely uses non-native UI " +
                 "(Flutter/Unity/WebView) — stop, do not retry.\n\n" +
-                "delay_ms (default 1000): post-action wait before capture. Tokens are ephemeral — " +
-                "every read produces a fresh version."
+                "delay_ms (default 1000): post-action wait before capture. Tokens belong to exactly " +
+                "one snapshot — every read, search, and write operation produces a fresh version. " +
+                "Use only tokens from the most recently returned result."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
+        config.string("operation") {
+            description = "Which operation: read, tap, long_click, scroll_forward, scroll_backward, set_text, search."
+            required = true
+        }
+        config.string("token") {
+            description = "Node token from the latest snapshot result (format: version_index). Required for tap, long_click, scroll_forward, scroll_backward, set_text."
+            required = false
+        }
+        config.string("text") {
+            description = "Text to type into the field. Required for set_text."
+            required = false
+        }
+        config.string("keywords") {
+            description = "JSON array of keywords for case-insensitive search on node text and content description. Required for search."
+            required = false
+        }
+        config.string("match_mode") {
+            description = "Search match mode: \"any\" (default) to match any keyword, \"all\" to require all keywords."
+            required = false
+        }
+        config.number("limit") {
+            description = "Max search results to return, default 10."
+            required = false
+        }
+        config.number("delay_ms") {
+            description = "Post-write-operation wait in ms before capturing the updated screen tree, default 1000."
+            required = false
+        }
     }
 
     override suspend fun invokeRaw(request: BuiltinToolRequest): String {

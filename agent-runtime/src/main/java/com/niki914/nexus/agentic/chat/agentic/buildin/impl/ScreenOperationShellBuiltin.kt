@@ -30,6 +30,46 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
+        config.string("operation") {
+            description = "Which operation: tap, long_click, swipe, key."
+            required = true
+        }
+        config.number("x") {
+            description = "X coordinate in screen pixels. Required for tap, long_click."
+            required = false
+        }
+        config.number("y") {
+            description = "Y coordinate in screen pixels. Required for tap, long_click."
+            required = false
+        }
+        config.number("start_x") {
+            description = "Swipe start X coordinate. Required for swipe."
+            required = false
+        }
+        config.number("start_y") {
+            description = "Swipe start Y coordinate. Required for swipe."
+            required = false
+        }
+        config.number("end_x") {
+            description = "Swipe end X coordinate. Required for swipe."
+            required = false
+        }
+        config.number("end_y") {
+            description = "Swipe end Y coordinate. Required for swipe."
+            required = false
+        }
+        config.number("duration") {
+            description = "Swipe duration in ms, default 300."
+            required = false
+        }
+        config.number("code") {
+            description = "Android key code: BACK=4, HOME=3, RECENTS=187, NOTIFICATIONS=83, QUICK_SETTINGS=84."
+            required = false
+        }
+        config.number("delay_ms") {
+            description = "Post-write-operation wait in ms before capturing the updated screen tree, default 1000."
+            required = false
+        }
     }
 
     override suspend fun invokeRaw(request: BuiltinToolRequest): String {

@@ -93,9 +93,13 @@ object AccessibilityController {
         }
     }
 
-    /** Generates a random 4-character hex version string for screen snapshot tracking. */
+    private val versionRng = java.security.SecureRandom()
+
+    /** Generates a random 12-character hex version string for screen snapshot tracking. */
     private fun nextVersion(): String {
-        return (1..4).map { "0123456789abcdef".random() }.joinToString("")
+        val bytes = ByteArray(6)
+        versionRng.nextBytes(bytes)
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 
     private data class ScreenContext(
@@ -512,7 +516,8 @@ object AccessibilityController {
             return BuiltinToolResult.failure(
                 "VERSION_MISMATCH",
                 "Token version '${st.version}' does not match current version '$currentVersion'. " +
-                        "The screen has changed — re-read the screen and try again."
+                        "The snapshot has been refreshed — use screen_operation_accessibility " +
+                        "with read or search to get fresh tokens, then retry."
             )
         }
 

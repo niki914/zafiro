@@ -81,6 +81,8 @@ screen_operation_accessibility(operation: "search", keywords: ["目标文本"])
 
 Use the returned `token` directly with `screen_operation_accessibility`.
 
+Search creates a new snapshot — tokens from a previous read or search become invalid. Use only tokens from this search result.
+
 ### 3. Act on the tree
 
 ```
@@ -96,7 +98,7 @@ For actions that don't target a single labeled node (e.g., swipe-to-refresh, dra
 
 All write operations (tap, scroll, swipe, key) now return the updated screen tree automatically. Use this returned YAML for the next action — no explicit `read` needed.
 
-However, **re-read explicitly** after `launch_app`, after an operation's result is an error, or whenever you need a fresh view after external state changes. Tokens are versioned — every screen read produces a fresh version. Never reuse tokens from an older version.
+However, **re-read explicitly** after `launch_app`, after an operation's result is an error, or whenever you need a fresh view after external state changes. Tokens are versioned — every read, search, and write operation produces a fresh version. Never reuse tokens from an older snapshot.
 
 **Scrolling lists — use `screen_operation_shell(operation: "swipe", ...)`**, not `scroll_forward`/`scroll_backward`. Accessibility scroll actions have app-defined step sizes. Shell swipe gives direct control over the swipe coordinates.
 
@@ -115,7 +117,7 @@ If no reliable scrollable-container bounds are available, use the screen dimensi
 Swipe roughly 65-75% of the usable container dimension. The remaining overlap keeps part of the previous view visible so you can track position.
 
 **Read cadence:**
-- When searching for a specific item, approaching a list boundary, or waiting for a terminal signal, perform one swipe and then re-read the screen.
+- When searching for a specific item, approaching a list boundary, or waiting for a terminal signal, perform one swipe and inspect its auto-returned tree before deciding the next action.
 - Batch 2-3 swipes only during coarse traversal when skipping intermediate states cannot miss the target or trigger an incorrect action.
 
 ### 5. Navigate between apps
@@ -138,7 +140,7 @@ Prefer explicit UI state — such as result counts, empty states, summary rows, 
 
 **Pattern A — summary followed by a section break.** Within the same scrollable container, a summary row (aggregate count, total-duration line, result-count footer) immediately followed by content of a clearly different category signals the preceding list has ended. Trust the boundary: if the target is present at that point, act on it; if it has passed, make only the minimum reverse swipe to re-expose it. Do not restart or manually count the list.
 
-**Pattern B — unchanged content after verified swipes.** If two separately issued swipes, each followed by a screen read, produce the same visible leaf nodes in the same order, the list has probably reached its boundary. Confirm that no loading indicator is present and that the gestures targeted the intended scrollable container. If a gesture may have missed the container, retarget it once before concluding that the list has ended.
+**Pattern B — unchanged content after verified swipes.** If two separately issued swipes, each followed by inspecting its returned tree, produce the same visible leaf nodes in the same order, the list has probably reached its boundary. Confirm that no loading indicator is present and that the gestures targeted the intended scrollable container. If a gesture may have missed the container, retarget it once before concluding that the list has ended.
 
 ### Memorize app-specific traps
 
