@@ -69,11 +69,11 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
             required = false
         }
         config.string("wait_mode") {
-            description = "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh."
+            description = "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh. Must be \"stable\" or \"delay\"."
             required = false
         }
         config.number("wait_ms") {
-            description = "Wait duration in ms, default 5000. For stable mode: max deadline. For delay mode: fixed sleep."
+            description = "Wait duration in ms, default 2000, max 60000. For stable mode: max deadline. For delay mode: fixed sleep."
             required = false
         }
     }

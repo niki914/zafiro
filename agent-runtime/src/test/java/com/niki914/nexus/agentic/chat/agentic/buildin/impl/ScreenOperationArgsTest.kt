@@ -13,7 +13,7 @@ class ScreenOperationArgsTest {
         val args = result.getOrThrow()
         assertTrue(args.operation is ScreenOp.Read)
         assertEquals("stable", args.waitMode)
-        assertEquals(5000L, args.waitMs)
+        assertEquals(2000L, args.waitMs)
     }
 
     @Test
@@ -68,7 +68,7 @@ class ScreenOperationArgsTest {
         assertTrue(args.operation is ScreenOp.Tap)
         assertEquals("a3f2_42", (args.operation as ScreenOp.Tap).token)
         assertEquals("stable", args.waitMode)
-        assertEquals(5000L, args.waitMs)
+        assertEquals(2000L, args.waitMs)
     }
 
     @Test

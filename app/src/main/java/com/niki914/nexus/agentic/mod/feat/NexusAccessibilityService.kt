@@ -22,8 +22,14 @@ class NexusAccessibilityService : AccessibilityService(), IAccessibility {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-            AccessibilityController.recordContentChanged()
+        val type = event?.eventType ?: return
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+            || type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            || type == AccessibilityEvent.TYPE_WINDOWS_CHANGED
+            || type == AccessibilityEvent.TYPE_VIEW_SCROLLED
+            || type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
+        ) {
+            AccessibilityController.recordUiEvent()
         }
     }
 

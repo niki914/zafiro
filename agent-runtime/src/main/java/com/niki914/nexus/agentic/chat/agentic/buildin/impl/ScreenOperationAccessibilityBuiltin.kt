@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.chat.agentic.buildin.impl
 
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
 import com.niki914.nexus.agentic.chat.agentic.accessibility.NodeAction
+import com.niki914.nexus.agentic.chat.agentic.accessibility.ScreenSnapshot
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.RawBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
@@ -40,9 +41,10 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 "wait_mode (default \"stable\"): \"stable\" detects when the UI actually settles " +
                 "(event idle + tree hash) and returns early — use for taps, scrolls, text input. " +
                 "\"delay\" does a blind fixed wait — use for search/refresh where data arrives " +
-                "asynchronously and the UI may appear stable before results load.\n" +
-                "wait_ms (default 5000): for \"stable\" this is the max deadline; for \"delay\" " +
-                "this is the fixed blind-wait duration.\n\n" +
+                "asynchronously and the UI may appear stable before results load. " +
+                "Must be \"stable\" or \"delay\".\n" +
+                "wait_ms (default 2000, max 60000): for \"stable\" this is the max deadline; " +
+                "for \"delay\" this is the fixed blind-wait duration.\n\n" +
                 "Tokens belong to exactly one snapshot — every read, search, and successful " +
                 "write operation produces a fresh version. Use only tokens from the most " +
                 "recently returned result."
@@ -70,11 +72,11 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
             required = false
         }
         config.string("wait_mode") {
-            description = "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh."
+            description = "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh. Must be \"stable\" or \"delay\"."
             required = false
         }
         config.number("wait_ms") {
-            description = "Wait duration in ms, default 5000. For stable mode: max deadline. For delay mode: fixed sleep."
+            description = "Wait duration in ms, default 2000, max 60000. For stable mode: max deadline. For delay mode: fixed sleep."
             required = false
         }
     }
@@ -91,7 +93,8 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
         return try {
             when (val op = args.operation) {
                 is ScreenOp.Read -> {
-                    AccessibilityController.captureScreen()
+                    val capture = captureAfterOptionalWait(args)
+                    capture
                         .fold(
                             onSuccess = { it.yaml },
                             onFailure = { e ->
@@ -121,6 +124,7 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 )
 
                 is ScreenOp.Search -> {
+                    waitBeforeSearch(args)
                     AccessibilityController.searchNodes(op.keywords, op.matchMode, op.limit)
                         .fold(
                             onSuccess = { it },
@@ -170,6 +174,29 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 errorJson("SERVICE_UNAVAILABLE", e.message ?: "Service unavailable")
             },
         )
+    }
+
+    /**
+     * Captures the screen, optionally waiting first when [ScreenOpArgs.hasExplicitWaitMode]
+     * is true. Without an explicit wait request, captures immediately (legacy read behavior).
+     */
+    private suspend fun captureAfterOptionalWait(args: ScreenOpArgs): Result<ScreenSnapshot> {
+        if (!args.hasExplicitWaitMode) return AccessibilityController.captureScreen()
+        return if (args.waitMode == "delay") {
+            AccessibilityController.captureScreenAfterDelay(args.waitMs)
+        } else {
+            AccessibilityController.waitForStable(args.waitMs)
+        }
+    }
+
+    /** Waits before a search when the agent explicitly requested it. */
+    private suspend fun waitBeforeSearch(args: ScreenOpArgs) {
+        if (!args.hasExplicitWaitMode) return
+        if (args.waitMode == "delay") {
+            AccessibilityController.captureScreenAfterDelay(args.waitMs)
+        } else {
+            AccessibilityController.waitForStable(args.waitMs)
+        }
     }
 
     private fun errorJson(code: String, message: String): String {

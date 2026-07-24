@@ -23,6 +23,7 @@ import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.xposed.api.util.ContextProvider
+import android.os.SystemClock
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -60,9 +61,9 @@ object AccessibilityController {
     var currentVersion: String = ""
         private set
 
-    /** Timestamp of the last TYPE_WINDOW_CONTENT_CHANGED event (ms, [System.currentTimeMillis]). */
+    /** Timestamp of the last UI-significant accessibility event (ms, [SystemClock.elapsedRealtime]). */
     @Volatile
-    var lastContentChangedTime: Long = 0L
+    var lastUiEventTime: Long = 0L
         private set
 
     /** Set by the app module before any screen-interaction calls. */
@@ -132,9 +133,9 @@ object AccessibilityController {
         nodeCache.clear()
     }
 
-    /** Called from [NexusAccessibilityService.onAccessibilityEvent] on TYPE_WINDOW_CONTENT_CHANGED. */
-    fun recordContentChanged() {
-        lastContentChangedTime = System.currentTimeMillis()
+    /** Called from [NexusAccessibilityService.onAccessibilityEvent] on UI-significant events. */
+    fun recordUiEvent() {
+        lastUiEventTime = SystemClock.elapsedRealtime()
     }
 
     fun clearPointerOverlay() {
@@ -339,29 +340,30 @@ object AccessibilityController {
     }
 
     /**
-     * Waits for the UI to settle after a write operation using two-phase detection:
+     * Waits for the UI to settle after a write operation using a unified
+     * event-idle + tree-hash detection loop:
      *
-     * **Phase 1 — event stream idle:** polls [lastContentChangedTime] until no
-     * TYPE_WINDOW_CONTENT_CHANGED event has been received for 300ms, with a minimum
-     * 200ms dwell to let post-action events arrive.
-     *
-     * **Phase 2 — tree hash stability:** captures the node cache twice, 50ms apart,
-     * and compares structural hashes. Both hashes must match for the tree to be
-     * considered stable.
+     * 1. Dwell at least 200ms to let post-action events arrive.
+     * 2. Sample the tree every 50ms and compare consecutive structural hashes.
+     * 3. Return when two consecutive hashes match, no accessibility event arrived
+     *    between the two samples, and the event stream has been idle for >= 300ms.
      *
      * Falls back to a forced capture (with a warning header) if [settleTimeoutMs]
-     * is exceeded in either phase.
+     * is exceeded.
      */
     suspend fun waitForStable(settleTimeoutMs: Long): Result<ScreenSnapshot> {
-        val startTime = System.currentTimeMillis()
+        val startTime = SystemClock.elapsedRealtime()
 
-        // Phase 1: wait for accessibility event stream to quiet down.
-        // Always dwell at least 200ms to let post-action events arrive.
-        val minPhase1End = startTime + 200
+        // Minimum 200ms dwell to let post-action events arrive.
+        delay(200L)
+
+        refreshNodeCache()
+        var previousHash = computeStructuralHash()
+        var previousSampleTime = SystemClock.elapsedRealtime()
+
         while (true) {
-            val now = System.currentTimeMillis()
-            val elapsed = now - startTime
-            if (elapsed >= settleTimeoutMs) {
+            val now = SystemClock.elapsedRealtime()
+            if (now - startTime >= settleTimeoutMs) {
                 return captureScreen().map { snapshot ->
                     snapshot.copy(yaml = buildString {
                         appendLine("# Note: settle timed out after ${settleTimeoutMs}ms")
@@ -369,36 +371,21 @@ object AccessibilityController {
                     })
                 }
             }
-            if (now >= minPhase1End) {
-                val idleDuration = now - lastContentChangedTime
-                if (idleDuration >= 300L) break
-            }
-            delay(50)
-        }
-
-        // Phase 2: tree structure must be identical across two samples.
-        refreshNodeCache()
-        var previousHash = computeStructuralHash()
-
-        while (true) {
-            val now = System.currentTimeMillis()
-            val elapsed = now - startTime
-            if (elapsed >= settleTimeoutMs) {
-                return captureScreen().map { snapshot ->
-                    snapshot.copy(yaml = buildString {
-                        appendLine("# Note: settle timed out after ${settleTimeoutMs}ms, tree may still be changing")
-                        append(snapshot.yaml)
-                    })
-                }
-            }
             delay(50)
             refreshNodeCache()
             val currentHash = computeStructuralHash()
-            if (currentHash == previousHash) break
-            previousHash = currentHash
-        }
+            val sampleTime = SystemClock.elapsedRealtime()
 
-        return captureScreen()
+            if (currentHash == previousHash
+                && lastUiEventTime <= previousSampleTime
+                && sampleTime - lastUiEventTime >= 300L
+            ) {
+                return captureScreen()
+            }
+
+            previousHash = currentHash
+            previousSampleTime = sampleTime
+        }
     }
 
     /**
