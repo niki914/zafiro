@@ -61,7 +61,7 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
             IllegalArgumentException("Missing required field: operation.")
         )
 
-    val delayMs = obj["delay_ms"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 1000L
+    val delayMs = obj["delay_ms"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toLong() ?: 1000L
 
     val operation = when (operationName) {
         "read" -> ScreenOp.Read
@@ -70,11 +70,11 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
             if (token != null) {
                 ScreenOp.Tap(token)
             } else {
-                val x = obj["x"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+                val x = obj["x"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                     ?: return Result.failure(
                         IllegalArgumentException("Missing required field: x for operation 'tap'.")
                     )
-                val y = obj["y"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+                val y = obj["y"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                     ?: return Result.failure(
                         IllegalArgumentException("Missing required field: y for operation 'tap'.")
                     )
@@ -86,11 +86,11 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
             if (token != null) {
                 ScreenOp.LongClick(token)
             } else {
-                val x = obj["x"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+                val x = obj["x"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                     ?: return Result.failure(
                         IllegalArgumentException("Missing required field: x for operation 'long_click'.")
                     )
-                val y = obj["y"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+                val y = obj["y"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                     ?: return Result.failure(
                         IllegalArgumentException("Missing required field: y for operation 'long_click'.")
                     )
@@ -140,31 +140,31 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
                 )
             }
             val matchMode = obj["match_mode"]?.jsonPrimitive?.contentOrNull ?: "any"
-            val limit = obj["limit"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 10
+            val limit = obj["limit"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt() ?: 10
             ScreenOp.Search(keywords, matchMode, limit)
         }
         "swipe" -> {
-            val startX = obj["start_x"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+            val startX = obj["start_x"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                 ?: return Result.failure(
                     IllegalArgumentException("Missing or invalid required field: start_x for operation 'swipe'.")
                 )
-            val startY = obj["start_y"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+            val startY = obj["start_y"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                 ?: return Result.failure(
                     IllegalArgumentException("Missing or invalid required field: start_y for operation 'swipe'.")
                 )
-            val endX = obj["end_x"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+            val endX = obj["end_x"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                 ?: return Result.failure(
                     IllegalArgumentException("Missing or invalid required field: end_x for operation 'swipe'.")
                 )
-            val endY = obj["end_y"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+            val endY = obj["end_y"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                 ?: return Result.failure(
                     IllegalArgumentException("Missing or invalid required field: end_y for operation 'swipe'.")
                 )
-            val duration = obj["duration"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 300L
+            val duration = obj["duration"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toLong() ?: 300L
             ScreenOp.ShellSwipe(startX, startY, endX, endY, duration)
         }
         "key" -> {
-            val code = obj["code"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+            val code = obj["code"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                 ?: return Result.failure(
                     IllegalArgumentException("Missing or invalid required field: code for operation 'key'.")
                 )

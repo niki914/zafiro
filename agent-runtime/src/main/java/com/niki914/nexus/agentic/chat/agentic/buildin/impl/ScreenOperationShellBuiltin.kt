@@ -13,7 +13,7 @@ import kotlinx.coroutines.CancellationException
  *
  * FALLBACK method — prefer [ScreenOperationAccessibilityBuiltin] when possible.
  * Supports tap, long_click, swipe, key (all coordinate-based). Coordinates MUST
- * come from a prior screen read. Every write operation auto-captures the updated
+ * come from the most recently returned screen tree. Every successful write operation auto-captures the updated
  * screen tree via accessibility after execution.
  */
 class ScreenOperationShellBuiltin : RawBuiltinTool() {
@@ -23,8 +23,8 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
         "Screen interaction via shell (input tap/swipe/keyevent). FALLBACK — prefer " +
                 "screen_operation_accessibility. Operations: tap(x,y), long_click(x,y), " +
                 "swipe(start_x,start_y,end_x,end_y,duration), key(code). All coordinate-based. " +
-                "Coordinates MUST come from a prior screen read — never hallucinate. " +
-                "Every write op auto-captures the updated tree.\n\n" +
+                "Coordinates MUST come from the most recently returned screen tree — never " +
+                "hallucinate. Every successful write op auto-captures the updated tree.\n\n" +
                 "Key codes: BACK=4, HOME=3, RECENTS=187, NOTIFICATIONS=83, QUICK_SETTINGS=84.\n\n" +
                 "delay_ms (default 1000): post-action wait before capture."
 

@@ -19,7 +19,7 @@ This is the ONLY way to control the device — do NOT attempt to use non-existen
 | Tool | Purpose |
 |:-----|:--------|
 | `screen_operation_accessibility` | Read screen tree, tap/long-click/scroll/set_text on nodes by token, search nodes — all via accessibility service |
-| `screen_operation_shell` | Tap/long-click/swipe/key by screen coordinates via shell. FALLBACK only — coordinates MUST come from a prior screen read |
+| `screen_operation_shell` | Tap/long-click/swipe/key by screen coordinates via shell. FALLBACK only — coordinates MUST come from the most recently returned screen tree |
 
 Two auxiliary tools for app discovery and launching:
 
@@ -34,13 +34,13 @@ See each tool's own description for full parameter docs, operation lists, YAML f
 
 ### screen_operation_accessibility
 
-Primary tool for reading the screen and interacting with labeled UI nodes. All node-based operations target a node by its `token` (format: `"$version_$index"`, e.g. `"a3f2_42"`) from the latest screen read. Every write operation (tap, long_click, scroll_forward, scroll_backward, set_text) auto-returns the updated YAML tree — no separate read needed.
+Primary tool for reading the screen and interacting with labeled UI nodes. All node-based operations target a node by its `token` (format: `"$version_$index"`, e.g. `"a3f2c91e7b40_42"`) from the most recently returned snapshot. Every successful write operation (tap, long_click, scroll_forward, scroll_backward, set_text) auto-returns the updated YAML tree — no separate read needed.
 
 **Non-native app detection:** If `read` returns an empty or root-only tree, the current app likely uses a non-native UI framework (Flutter, Unity, WebView, game engine). **Stop immediately and report to the user.** Do not retry.
 
 ### screen_operation_shell
 
-**FALLBACK** — prefer `screen_operation_accessibility` when possible. All operations use screen-pixel coordinates via shell (`input tap/swipe/keyevent`). Coordinates MUST come from a prior screen read — never hallucinate coordinates. Every write operation auto-returns the updated YAML tree.
+**FALLBACK** — prefer `screen_operation_accessibility` when possible. All operations use screen-pixel coordinates via shell (`input tap/swipe/keyevent`). Coordinates MUST come from the most recently returned screen tree — never hallucinate coordinates. Every successful write operation auto-returns the updated YAML tree.
 
 ### launch_app / search_apps
 
@@ -98,7 +98,7 @@ For actions that don't target a single labeled node (e.g., swipe-to-refresh, dra
 
 All write operations (tap, scroll, swipe, key) now return the updated screen tree automatically. Use this returned YAML for the next action — no explicit `read` needed.
 
-However, **re-read explicitly** after `launch_app`, after an operation's result is an error, or whenever you need a fresh view after external state changes. Tokens are versioned — every read, search, and write operation produces a fresh version. Never reuse tokens from an older snapshot.
+However, **re-read explicitly** after `launch_app`, after an operation's result is an error, or whenever you need a fresh view after external state changes. Tokens are versioned — every read, search, and successful write operation produces a fresh version. Never reuse tokens from an older snapshot.
 
 **Scrolling lists — use `screen_operation_shell(operation: "swipe", ...)`**, not `scroll_forward`/`scroll_backward`. Accessibility scroll actions have app-defined step sizes. Shell swipe gives direct control over the swipe coordinates.
 

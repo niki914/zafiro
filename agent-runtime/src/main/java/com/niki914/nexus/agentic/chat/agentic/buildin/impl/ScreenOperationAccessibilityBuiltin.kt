@@ -12,7 +12,7 @@ import kotlinx.coroutines.CancellationException
  * RawBuiltinTool for accessibility-service-based screen interaction.
  *
  * Supports read, tap, long_click, scroll_forward, scroll_backward, set_text
- * (all node-based via token), and search. Every write operation auto-captures
+ * (all node-based via token), and search. Every successful write operation auto-captures
  * the updated screen tree after execution.
  */
 class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
@@ -22,7 +22,8 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
         "Screen interaction via accessibility service. " +
                 "Operations: read (capture YAML tree), tap, long_click, scroll_forward, " +
                 "scroll_backward, set_text, search. Target nodes by token (format: " +
-                "version_index, e.g. \"a3f2_42\") from the latest screen read. Every write " +
+                "version_index, e.g. \"a3f2c91e7b40_42\") from the most recently returned " +
+                "snapshot. Every successful write " +
                 "op auto-captures the updated tree — no separate read needed.\n\n" +
                 "YAML fields: token=node_identifier, " +
                 "t=semantic_type(button/input/text/image/list/list_item/switch/checkbox/tab/chip/toolbar/dialog/container), " +
@@ -35,7 +36,7 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 "If read returns root-only or empty tree: app likely uses non-native UI " +
                 "(Flutter/Unity/WebView) — stop, do not retry.\n\n" +
                 "delay_ms (default 1000): post-action wait before capture. Tokens belong to exactly " +
-                "one snapshot — every read, search, and write operation produces a fresh version. " +
+                "one snapshot — every read, search, and successful write operation produces a fresh version. " +
                 "Use only tokens from the most recently returned result."
 
     override fun configure(config: LocalToolConfig) {
@@ -50,10 +51,6 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
         }
         config.string("text") {
             description = "Text to type into the field. Required for set_text."
-            required = false
-        }
-        config.string("keywords") {
-            description = "JSON array of keywords for case-insensitive search on node text and content description. Required for search."
             required = false
         }
         config.string("match_mode") {
