@@ -30,8 +30,10 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 "b=bounds[left,top,right,bottom], pos=3x3_grid_position, txt=display_text, h=content_description, " +
                 "tap=clickable, hold=long_clickable, edit=editable, scroll=scrollable, " +
                 "checked=checked_state, ch=children, more=off_screen_children_summaries.\n\n" +
-                "search: case-insensitive keyword match on txt/h. Parameters: keywords (required, " +
-                "string array), match_mode (\"any\"/\"all\", default \"any\"), limit (default 10). " +
+                "search: case-insensitive keyword match on txt/h. " +
+                "keywords: [\"term1\", \"term2\"] (required, JSON string array). " +
+                "match_mode: \"any\" (default) | \"all\". " +
+                "limit: max results (default 10). " +
                 "Returns matched nodes with tokens + version header.\n\n" +
                 "If read returns root-only or empty tree: app likely uses non-native UI " +
                 "(Flutter/Unity/WebView) — stop, do not retry.\n\n" +
