@@ -1,18 +1,15 @@
 package com.niki914.nexus.agentic.chat.agentic.buildin
 
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.CreateCustomToolBuiltin
-import com.niki914.nexus.agentic.chat.agentic.buildin.impl.GestureBuiltin
-import com.niki914.nexus.agentic.chat.agentic.buildin.impl.KeyEventBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.MemorizeBuiltin
-import com.niki914.nexus.agentic.chat.agentic.buildin.impl.NodeActionBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.NotifyBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.OpenUriBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ReadCustomToolBuiltin
-import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ScreenContentBuiltin
+import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ScreenOperationAccessibilityBuiltin
+import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ScreenOperationShellBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SearchAppsBuiltin
-import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SearchNodesBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SshTerminalBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.TerminalBuiltin
 
@@ -38,11 +35,8 @@ class BuiltinToolRegistry(
                 TerminalBuiltin(),
                 SshTerminalBuiltin(),
                 SearchAppsBuiltin(),
-                ScreenContentBuiltin(),
-                SearchNodesBuiltin(),
-                NodeActionBuiltin(),
-                GestureBuiltin(),
-                KeyEventBuiltin(),
+                ScreenOperationAccessibilityBuiltin(),
+                ScreenOperationShellBuiltin(),
             )
         )
     }

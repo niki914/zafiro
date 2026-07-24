@@ -12,6 +12,7 @@ object TreeFormatter {
         screenWidth: Int,
         screenHeight: Int,
         appPackage: String,
+        version: String,
     ): String {
         val indexCounter = AtomicInteger(0)
         val nodeCounter = AtomicInteger(0)
@@ -40,7 +41,7 @@ object TreeFormatter {
             children = nodes,
             moreSummary = emptyList(),
         )
-        return toYaml(rootNode, screenWidth, screenHeight, appPackage, nodeCounter, depthExceeded)
+        return toYaml(rootNode, screenWidth, screenHeight, appPackage, version, nodeCounter, depthExceeded)
     }
 
     private fun buildTree(
@@ -139,15 +140,17 @@ object TreeFormatter {
         screenWidth: Int,
         screenHeight: Int,
         appPackage: String,
+        version: String,
         nodeCounter: AtomicInteger,
         depthExceeded: AtomicBoolean,
     ): String {
         val sb = StringBuilder()
         sb.append("screen: [$screenWidth, $screenHeight]\n")
         sb.append("app: $appPackage\n")
+        sb.append("version: \"$version\"\n")
         sb.append("tree:\n")
         for (child in node.children) {
-            sb.append("  - ${nodeToYamlLine(child, indent = 2, screenWidth, screenHeight)}\n")
+            sb.append("  - ${nodeToYamlLine(child, indent = 2, screenWidth, screenHeight, version)}\n")
         }
         if (nodeCounter.get() >= 200) {
             sb.append("# truncated: max_nodes(200)\n")
@@ -162,11 +165,12 @@ object TreeFormatter {
         node: NodeInfo,
         indent: Int,
         screenWidth: Int,
-        screenHeight: Int
+        screenHeight: Int,
+        version: String,
     ): String {
         val sb = StringBuilder()
         sb.append(
-            "{i: ${node.index}, t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${
+            "{token: \"${version}_${node.index}\", t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${
                 PruningRules.posOf(
                     node.bounds,
                     screenWidth,
@@ -194,7 +198,7 @@ object TreeFormatter {
             sb.append(", ch: [\n")
             for ((index, child) in children.withIndex()) {
                 sb.append(" ".repeat(indent + 2))
-                sb.append("- ${nodeToYamlLine(child, indent + 2, screenWidth, screenHeight)}")
+                sb.append("- ${nodeToYamlLine(child, indent + 2, screenWidth, screenHeight, version)}")
                 if (index == children.lastIndex) {
                     sb.append("]")
                 } else {

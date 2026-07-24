@@ -48,13 +48,17 @@ interface IAccessibility {
 }
 
 enum class NodeAction { CLICK, LONG_CLICK, SET_TEXT, SCROLL_FORWARD, SCROLL_BACKWARD }
-enum class InteractionMethod { ACCESSIBILITY, SHELL }
-data class ScreenSnapshot(val yaml: String, val nodeCount: Int)
+data class ScreenSnapshot(val yaml: String, val version: String, val nodeCount: Int)
 
 object AccessibilityController {
 
     private var serviceInstance: IAccessibility? = null
     private val nodeCache = ConcurrentHashMap<Int, AccessibilityNodeInfo>()
+
+    /** Current version string for screen snapshot staleness tracking. */
+    @Volatile
+    var currentVersion: String = ""
+        private set
 
     /** Set by the app module before any screen-interaction calls. */
     @Volatile
@@ -74,6 +78,11 @@ object AccessibilityController {
         pointerOverlay?.hide()
     }
 
+    /** Generates a random 4-character hex version string for screen snapshot tracking. */
+    private fun nextVersion(): String {
+        return (1..4).map { "0123456789abcdef".random() }.joinToString("")
+    }
+
     private data class ScreenContext(
         val root: AccessibilityNodeInfo,
         val widthPixels: Int,
@@ -85,6 +94,7 @@ object AccessibilityController {
         val exitCode: Int,
         val stdout: String,
         val stderr: String,
+        val shellAvailable: Boolean = true,
     ) {
         val success: Boolean get() = exitCode == 0
     }
@@ -266,6 +276,7 @@ object AccessibilityController {
         val ctx = try {
             refreshNodeCache()
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             return Result.failure(e)
         }
 
@@ -279,7 +290,7 @@ object AccessibilityController {
             }
         }
 
-        val yaml = TreeFormatter.format(ctx.root, ctx.widthPixels, ctx.heightPixels, ctx.appPackage)
+        val yaml = TreeFormatter.format(ctx.root, ctx.widthPixels, ctx.heightPixels, ctx.appPackage, currentVersion)
 
         if (nodeCache.size <= 1) {
             return Result.failure(
@@ -287,12 +298,23 @@ object AccessibilityController {
                     "No accessibility nodes found in the current window. " +
                             "This app likely uses a non-native UI framework (Flutter, Unity, WebView, game engine) " +
                             "that does not expose standard Android accessibility node trees. " +
-                            "screen_content, node_action, and gesture tools will not work with this app."
+                            "screen_operation_accessibility tool will not work with this app."
                 )
             )
         }
 
-        return Result.success(ScreenSnapshot(yaml, nodeCache.size))
+        return Result.success(ScreenSnapshot(yaml, currentVersion, nodeCache.size))
+    }
+
+    /**
+     * Captures the current screen's accessibility tree after an optional delay.
+     *
+     * If [delayMs] is greater than 0, waits for that many milliseconds before capturing,
+     * allowing UI transitions to settle after a write operation.
+     */
+    suspend fun captureScreenAfterDelay(delayMs: Long): Result<ScreenSnapshot> {
+        if (delayMs > 0) delay(delayMs)
+        return captureScreen()
     }
 
     /**
@@ -318,6 +340,7 @@ object AccessibilityController {
 
         rebuildCache(root)
 
+        currentVersion = nextVersion()
         return ScreenContext(root, dm.widthPixels, dm.heightPixels, appPkg)
     }
 
@@ -360,6 +383,7 @@ object AccessibilityController {
         try {
             ensureService().getOrElse { return Result.failure(it) }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             return Result.failure(e)
         }
 
@@ -368,6 +392,7 @@ object AccessibilityController {
         try {
             refreshNodeCache()
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             return Result.failure(e)
         }
 
@@ -397,11 +422,12 @@ object AccessibilityController {
         if (matches.size > limit) {
             sb.append(" # truncated: max_results($limit), total_hits: ${matches.size}")
         }
+        sb.append("\nversion: \"$currentVersion\"")
         sb.append("\nnodes:\n")
 
         for ((index, node) in results) {
             sb.append("  - ")
-            sb.append(formatSearchResultNode(index, node, screenW, screenH))
+            sb.append(formatSearchResultNode(index, node, screenW, screenH, currentVersion))
             sb.append("\n")
         }
 
@@ -413,6 +439,7 @@ object AccessibilityController {
         node: AccessibilityNodeInfo,
         screenW: Int,
         screenH: Int,
+        version: String,
     ): String {
         val className = node.className?.toString() ?: ""
         val type = PruningRules.mapSemanticType(className, null)
@@ -425,7 +452,7 @@ object AccessibilityController {
         val pos = PruningRules.posOf(bounds, screenW, screenH)
 
         val sb = StringBuilder()
-        sb.append("{i: $index, t: ${type.name.lowercase()}, b: [${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}], pos: $pos")
+        sb.append("{token: \"${version}_$index\", t: ${type.name.lowercase()}, b: [${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}], pos: $pos")
 
         if (text.isNotEmpty()) {
             val quoted =
@@ -451,20 +478,14 @@ object AccessibilityController {
     /**
      * Executes a node-level action (click, long-click, scroll, set-text).
      *
-     * When [method] is [InteractionMethod.SHELL]:
-     * - SET_TEXT is rejected (shell cannot type into views).
-     * - All other actions use libterm shell commands.
-     *
-     * When [method] is [InteractionMethod.ACCESSIBILITY]:
-     * - Delegates to [IAccessibility.performAction].
-     * - On failure, non-SET_TEXT actions fall back to shell.
-     * - SET_TEXT failure returns an error (no shell fallback).
+     * Parses the [token] to extract version and index, validates the version
+     * against [currentVersion], and performs the action via accessibility
+     * with automatic shell fallback for non-SET_TEXT actions.
      */
     suspend fun executeNodeAction(
-        index: Int,
+        token: String,
         action: NodeAction,
         text: String?,
-        method: InteractionMethod,
     ): BuiltinToolResult {
         ensureService().getOrElse { e ->
             return BuiltinToolResult.failure(
@@ -472,15 +493,23 @@ object AccessibilityController {
             )
         }
 
-        if (method == InteractionMethod.SHELL && action == NodeAction.SET_TEXT) {
+        val st = SemanticToken.parse(token).getOrElse {
             return BuiltinToolResult.failure(
-                "METHOD_NOT_SUPPORTED", "set_text requires accessibility method"
+                "INVALID_ARGUMENTS", "Invalid token format: $token"
             )
         }
 
-        val node = nodeCache[index]
+        if (st.version != currentVersion) {
+            return BuiltinToolResult.failure(
+                "VERSION_MISMATCH",
+                "Token version '${st.version}' does not match current version '$currentVersion'. " +
+                        "The screen has changed — re-read the screen and try again."
+            )
+        }
+
+        val node = nodeCache[st.index]
             ?: return BuiltinToolResult.failure(
-                "NODE_NOT_FOUND", "Node $index not found in cache"
+                "NODE_NOT_FOUND", "Node ${st.index} not found in cache"
             )
 
         // Fly pointer to node centre before acting
@@ -488,10 +517,7 @@ object AccessibilityController {
         node.getBoundsInScreen(nodeRect)
         pointerOverlay?.animateTo(nodeRect.centerX().toFloat(), nodeRect.centerY().toFloat())
 
-        return when (method) {
-            InteractionMethod.SHELL -> executeShellAction(node, index, action)
-            InteractionMethod.ACCESSIBILITY -> executeAccessibilityAction(node, index, action, text)
-        }
+        return executeAccessibilityAction(node, st.index, action, text)
     }
 
     private suspend fun executeShellAction(
@@ -580,7 +606,7 @@ object AccessibilityController {
 
             NodeAction.SET_TEXT -> {
                 BuiltinToolResult.failure(
-                    "METHOD_NOT_SUPPORTED", "set_text requires accessibility method"
+                    "SET_TEXT_FAILED", "set_text requires accessibility method"
                 )
             }
         }
@@ -622,10 +648,7 @@ object AccessibilityController {
     }
 
     /**
-     * Executes a swipe gesture.
-     *
-     * - [InteractionMethod.ACCESSIBILITY]: dispatches via [IAccessibility.dispatchGesture].
-     * - [InteractionMethod.SHELL]: uses libterm shell `input swipe ...`.
+     * Executes a swipe gesture via accessibility dispatch.
      */
     suspend fun executeGesture(
         startX: Float,
@@ -633,7 +656,6 @@ object AccessibilityController {
         endX: Float,
         endY: Float,
         duration: Long,
-        method: InteractionMethod,
     ): BuiltinToolResult {
         ensureService().getOrElse { e ->
             return BuiltinToolResult.failure(
@@ -644,27 +666,88 @@ object AccessibilityController {
         // Fly pointer along the swipe path before executing
         pointerOverlay?.showSwipe(startX, startY, endX, endY, duration)
 
-        return when (method) {
-            InteractionMethod.ACCESSIBILITY -> {
-                val success =
-                    serviceInstance?.dispatchGesture(startX, startY, endX, endY, duration) ?: false
-                if (success) {
-                    BuiltinToolResult.success("gesture performed via accessibility")
-                } else {
-                    BuiltinToolResult.failure("GESTURE_FAILED", "gesture failed via accessibility")
-                }
-            }
-
-            InteractionMethod.SHELL -> {
-                val result = runShellCommand("input swipe $startX $startY $endX $endY $duration")
-                if (!result.success) {
-                    return BuiltinToolResult.failure(
-                        "SHELL_FAILED", "Shell gesture failed: ${result.stderr}"
-                    )
-                }
-                BuiltinToolResult.success("gesture performed via shell")
-            }
+        val success =
+            serviceInstance?.dispatchGesture(startX, startY, endX, endY, duration) ?: false
+        return if (success) {
+            BuiltinToolResult.success("gesture performed via accessibility")
+        } else {
+            BuiltinToolResult.failure("GESTURE_FAILED", "gesture failed via accessibility")
         }
+    }
+
+    /**
+     * Executes a tap at the given screen coordinates via shell command.
+     */
+    suspend fun executeShellTap(x: Int, y: Int): BuiltinToolResult {
+        ensureService().getOrElse { e ->
+            return BuiltinToolResult.failure(
+                "SERVICE_UNAVAILABLE", e.message ?: "Service unavailable"
+            )
+        }
+        val result = runShellCommand("input tap $x $y")
+        if (!result.shellAvailable) {
+            return BuiltinToolResult.failure(
+                "SHELL_NOT_AVAILABLE", "Shell not available (root, shizuku, user all failed)"
+            )
+        }
+        if (!result.success) {
+            return BuiltinToolResult.failure(
+                "SHELL_FAILED", "Shell tap at ($x, $y) failed: ${result.stderr}"
+            )
+        }
+        return BuiltinToolResult.success("shell tap at ($x, $y)")
+    }
+
+    /**
+     * Executes a long click at the given screen coordinates via shell command.
+     */
+    suspend fun executeShellLongClick(x: Int, y: Int): BuiltinToolResult {
+        ensureService().getOrElse { e ->
+            return BuiltinToolResult.failure(
+                "SERVICE_UNAVAILABLE", e.message ?: "Service unavailable"
+            )
+        }
+        val result = runShellCommand("input swipe $x $y $x $y 1500")
+        if (!result.shellAvailable) {
+            return BuiltinToolResult.failure(
+                "SHELL_NOT_AVAILABLE", "Shell not available (root, shizuku, user all failed)"
+            )
+        }
+        if (!result.success) {
+            return BuiltinToolResult.failure(
+                "SHELL_FAILED", "Shell long click at ($x, $y) failed: ${result.stderr}"
+            )
+        }
+        return BuiltinToolResult.success("shell long click at ($x, $y)")
+    }
+
+    /**
+     * Executes a swipe gesture via shell command.
+     */
+    suspend fun executeShellSwipe(
+        startX: Int,
+        startY: Int,
+        endX: Int,
+        endY: Int,
+        duration: Long,
+    ): BuiltinToolResult {
+        ensureService().getOrElse { e ->
+            return BuiltinToolResult.failure(
+                "SERVICE_UNAVAILABLE", e.message ?: "Service unavailable"
+            )
+        }
+        val result = runShellCommand("input swipe $startX $startY $endX $endY $duration")
+        if (!result.shellAvailable) {
+            return BuiltinToolResult.failure(
+                "SHELL_NOT_AVAILABLE", "Shell not available (root, shizuku, user all failed)"
+            )
+        }
+        if (!result.success) {
+            return BuiltinToolResult.failure(
+                "SHELL_FAILED", "Shell swipe from ($startX,$startY) to ($endX,$endY) failed: ${result.stderr}"
+            )
+        }
+        return BuiltinToolResult.success("shell swipe from ($startX,$startY) to ($endX,$endY)")
     }
 
     /**
@@ -715,6 +798,11 @@ object AccessibilityController {
         }
 
         val result = runShellCommand("input keyevent $keyCode")
+        if (!result.shellAvailable) {
+            return BuiltinToolResult.failure(
+                "SHELL_NOT_AVAILABLE", "Shell not available (root, shizuku, user all failed)"
+            )
+        }
         if (!result.success) {
             return BuiltinToolResult.failure(
                 "SHELL_FAILED", "Shell keyevent $keyCode failed: ${result.stderr}"
@@ -727,7 +815,7 @@ object AccessibilityController {
         val identity = ensureShellSession()
         val handle = shellSessionHandle
         if (identity == ShellIdentity.NONE || handle == null) {
-            return ShellResult(-1, "", "No shell available (root, shizuku, and user all failed)")
+            return ShellResult(-1, "", "No shell available (root, shizuku, and user all failed)", shellAvailable = false)
         }
 
         return when (val outcome = TerminalSessionPool.executeBlocking(handle, command, 15_000L)) {
