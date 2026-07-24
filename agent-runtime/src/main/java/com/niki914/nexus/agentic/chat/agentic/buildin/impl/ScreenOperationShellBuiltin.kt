@@ -28,7 +28,7 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
                 "Key codes: BACK=4, HOME=3, RECENTS=187, NOTIFICATIONS=83, QUICK_SETTINGS=84.\n\n" +
                 "wait_mode (default \"stable\"): \"stable\" auto-detects UI stability before capture. " +
                 "\"delay\" does a blind fixed wait — use for search/refresh. " +
-                "wait_ms (default 5000): deadline for stable, fixed sleep for delay."
+                "wait_ms (default 2000): deadline for stable, required for delay."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
@@ -73,7 +73,7 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
             required = false
         }
         config.number("wait_ms") {
-            description = "Wait duration in ms, default 2000, max 60000. For stable mode: max deadline. For delay mode: fixed sleep."
+            description = "Wait duration in ms. Stable mode: max deadline (default 2000, max 60000). Delay mode: required, fixed sleep (0-60000)."
             required = false
         }
     }

@@ -183,6 +183,60 @@ class ScreenOperationArgsTest {
     }
 
     @Test
+    fun parse_invalidWaitMode_fails() {
+        val result = parseArguments("""{"operation": "read", "wait_mode": "instant"}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("wait_mode must be 'stable' or 'delay'") == true
+        )
+    }
+
+    @Test
+    fun parse_delayWithoutWaitMs_fails() {
+        val result = parseArguments("""{"operation": "read", "wait_mode": "delay"}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("wait_ms is required when wait_mode is 'delay'") == true
+        )
+    }
+
+    @Test
+    fun parse_nonNumericWaitMs_fails() {
+        val result = parseArguments("""{"operation": "read", "wait_ms": "abc"}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("wait_ms must be a number") == true
+        )
+    }
+
+    @Test
+    fun parse_nonNumericDelayMs_fails() {
+        val result = parseArguments("""{"operation": "read", "delay_ms": "abc"}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("delay_ms must be a number") == true
+        )
+    }
+
+    @Test
+    fun parse_waitMsExceedsMax_fails() {
+        val result = parseArguments("""{"operation": "read", "wait_ms": 99999}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("wait_ms must be in range 0..60000") == true
+        )
+    }
+
+    @Test
+    fun parse_waitMsNegative_fails() {
+        val result = parseArguments("""{"operation": "read", "wait_ms": -1}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("wait_ms must be in range 0..60000") == true
+        )
+    }
+
+    @Test
     fun parse_shellTapMissingX_fails() {
         val result = parseArguments("""{"operation": "tap", "y": 200}""")
         assertTrue(result.isFailure)

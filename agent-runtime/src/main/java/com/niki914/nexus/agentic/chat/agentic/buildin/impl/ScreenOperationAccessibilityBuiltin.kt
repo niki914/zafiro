@@ -8,6 +8,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.RawBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
 import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 
 /**
  * RawBuiltinTool for accessibility-service-based screen interaction.
@@ -43,8 +44,8 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 "\"delay\" does a blind fixed wait — use for search/refresh where data arrives " +
                 "asynchronously and the UI may appear stable before results load. " +
                 "Must be \"stable\" or \"delay\".\n" +
-                "wait_ms (default 2000, max 60000): for \"stable\" this is the max deadline; " +
-                "for \"delay\" this is the fixed blind-wait duration.\n\n" +
+                "wait_ms: for \"stable\" the max deadline (default 2000, max 60000); " +
+                "for \"delay\" required (no default), the fixed blind-wait duration.\n\n" +
                 "Tokens belong to exactly one snapshot — every read, search, and successful " +
                 "write operation produces a fresh version. Use only tokens from the most " +
                 "recently returned result."
@@ -76,7 +77,7 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
             required = false
         }
         config.number("wait_ms") {
-            description = "Wait duration in ms, default 2000, max 60000. For stable mode: max deadline. For delay mode: fixed sleep."
+            description = "Wait duration in ms. Stable mode: max deadline (default 2000, max 60000). Delay mode: required, fixed sleep (0-60000)."
             required = false
         }
     }
@@ -193,7 +194,7 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
     private suspend fun waitBeforeSearch(args: ScreenOpArgs) {
         if (!args.hasExplicitWaitMode) return
         if (args.waitMode == "delay") {
-            AccessibilityController.captureScreenAfterDelay(args.waitMs)
+            delay(args.waitMs)
         } else {
             AccessibilityController.waitForStable(args.waitMs)
         }

@@ -65,11 +65,28 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
 
     // Backward compat: old delay_ms field maps to wait_mode "delay"
     val hasExplicitWaitMode = obj.contains("wait_mode") || obj.contains("delay_ms")
-    val hasExplicitWaitMs = obj.contains("wait_ms") || obj.contains("delay_ms")
+    val waitMsField = obj["wait_ms"]?.jsonPrimitive?.contentOrNull
+    val delayMsField = obj["delay_ms"]?.jsonPrimitive?.contentOrNull
+    val hasExplicitWaitMs = waitMsField != null || delayMsField != null
     val waitMode = obj["wait_mode"]?.jsonPrimitive?.contentOrNull
-        ?: if (obj.contains("delay_ms")) "delay" else "stable"
-    val waitMs = obj["wait_ms"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toLong()
-        ?: obj["delay_ms"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toLong()
+        ?: if (delayMsField != null) "delay" else "stable"
+    val waitMs: Long? = when {
+        waitMsField != null -> {
+            val parsed = waitMsField.toDoubleOrNull()?.toLong()
+            if (parsed == null) return Result.failure(
+                IllegalArgumentException("wait_ms must be a number, got '$waitMsField'")
+            )
+            parsed
+        }
+        delayMsField != null -> {
+            val parsed = delayMsField.toDoubleOrNull()?.toLong()
+            if (parsed == null) return Result.failure(
+                IllegalArgumentException("delay_ms must be a number, got '$delayMsField'")
+            )
+            parsed
+        }
+        else -> null
+    }
 
     if (waitMode != "stable" && waitMode != "delay") {
         return Result.failure(

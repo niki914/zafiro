@@ -354,8 +354,11 @@ object AccessibilityController {
     suspend fun waitForStable(settleTimeoutMs: Long): Result<ScreenSnapshot> {
         val startTime = SystemClock.elapsedRealtime()
 
-        // Minimum 200ms dwell to let post-action events arrive.
-        delay(200L)
+        // Minimum 200ms dwell to let post-action events arrive, capped at remaining deadline.
+        val remaining = settleTimeoutMs - (SystemClock.elapsedRealtime() - startTime)
+        if (remaining > 0) {
+            delay(minOf(200L, remaining))
+        }
 
         refreshNodeCache()
         var previousHash = computeStructuralHash()
