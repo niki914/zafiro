@@ -20,12 +20,13 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
     override val name = "screen_operation_shell"
     override val defaultEnabled = true
     override val description: String =
-        "Screen interaction via shell (input tap/swipe/keyevent). FALLBACK method — prefer " +
-                "screen_operation_accessibility when possible. Operations: tap, long_click, swipe, " +
-                "key (all coordinate-based). Coordinates MUST come from a prior screen read " +
-                "(never hallucinate). Every write operation auto-captures the updated screen tree " +
-                "via accessibility after execution. Pass delay_ms (default 1000) to control " +
-                "post-action wait before capture."
+        "Screen interaction via shell (input tap/swipe/keyevent). FALLBACK — prefer " +
+                "screen_operation_accessibility. Operations: tap(x,y), long_click(x,y), " +
+                "swipe(start_x,start_y,end_x,end_y,duration), key(code). All coordinate-based. " +
+                "Coordinates MUST come from a prior screen read — never hallucinate. " +
+                "Every write op auto-captures the updated tree.\n\n" +
+                "Key codes: BACK=4, HOME=3, RECENTS=187, NOTIFICATIONS=83, QUICK_SETTINGS=84.\n\n" +
+                "delay_ms (default 1000): post-action wait before capture."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description

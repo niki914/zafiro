@@ -19,7 +19,7 @@ This is the ONLY way to control the device — do NOT attempt to use non-existen
 | Tool | Purpose |
 |:-----|:--------|
 | `screen_operation_accessibility` | Read screen tree, tap/long-click/scroll/set_text on nodes by token, search nodes — all via accessibility service |
-| `screen_operation_shell` | Tap/long-click/swipe/key by screen coordinates via shell (input tap/swipe/keyevent). FALLBACK only — coordinates MUST come from a prior screen read |
+| `screen_operation_shell` | Tap/long-click/swipe/key by screen coordinates via shell. FALLBACK only — coordinates MUST come from a prior screen read |
 
 Two auxiliary tools for app discovery and launching:
 
@@ -30,51 +30,25 @@ Two auxiliary tools for app discovery and launching:
 
 ## Tool Reference
 
+See each tool's own description for full parameter docs, operation lists, YAML field glossary, and key codes. This section covers cross-tool usage rules and constraints.
+
 ### screen_operation_accessibility
 
-Operations: `read`, `tap`, `long_click`, `scroll_forward`, `scroll_backward`, `set_text`, `search`. Target nodes by their `token` (e.g. `"a3f2_42"`) from the latest screen read.
+Primary tool for reading the screen and interacting with labeled UI nodes. All node-based operations target a node by its `token` (format: `"$version_$index"`, e.g. `"a3f2_42"`) from the latest screen read. Every write operation (tap, long_click, scroll_forward, scroll_backward, set_text) auto-returns the updated YAML tree — no separate read needed.
 
-- `read` — Captures the current screen's accessibility tree as YAML.
-- `tap`, `long_click`, `scroll_forward`, `scroll_backward`, `set_text` — Operate on a node identified by `token`. Token format: `$version_$index` (e.g. `"a3f2_42"`). The version is a 4-char hex identifier that changes on every screen capture.
-- `search` — Case-insensitive keyword search on node text and content description. Returns a YAML list of matching nodes with their tokens and the current `version`. Parameters: `keywords` (array of strings, required), `match_mode` (`"any"`/`"all"`, default `"any"`), `limit` (max results, default 10).
-
-**Every write operation** (`tap`, `long_click`, `scroll_forward`, `scroll_backward`, `set_text`) automatically returns the updated YAML tree after a configurable delay. Use `delay_ms` (default 1000) to control post-action wait before capture. No separate screen read is needed after a write.
-
-**Non-native app detection:** If `read` returns an empty or root-only tree, the current app likely uses a non-native UI framework (Flutter, Unity, WebView, game engine). **Stop immediately and report to the user.**
+**Non-native app detection:** If `read` returns an empty or root-only tree, the current app likely uses a non-native UI framework (Flutter, Unity, WebView, game engine). **Stop immediately and report to the user.** Do not retry.
 
 ### screen_operation_shell
 
-**FALLBACK** — prefer `screen_operation_accessibility` when possible.
+**FALLBACK** — prefer `screen_operation_accessibility` when possible. All operations use screen-pixel coordinates via shell (`input tap/swipe/keyevent`). Coordinates MUST come from a prior screen read — never hallucinate coordinates. Every write operation auto-returns the updated YAML tree.
 
-Operations: `tap`, `long_click`, `swipe`, `key`. All operations use screen-pixel coordinates via shell (`input tap/swipe/keyevent`). Coordinates MUST come from a prior screen read — never hallucinate coordinates.
+### launch_app / search_apps
 
-- `tap` — Tap at coordinates `(x, y)`.
-- `long_click` — Long-click at coordinates `(x, y)`.
-- `swipe` — Swipe from `(start_x, start_y)` to `(end_x, end_y)`. Optional `duration` (ms, default 300).
-- `key` — Inject system key event by Android `code`:
-  | Code | Key |
-  |:-----|:----|
-  | 3 | HOME |
-  | 4 | BACK |
-  | 83 | NOTIFICATIONS |
-  | 84 | QUICK_SETTINGS |
-  | 187 | RECENTS / APP_SWITCH |
-
-Every write operation automatically returns the updated YAML tree (captured via accessibility service after `delay_ms`). This is the same format as a screen read.
-
-### launch_app
-
-Launch by exact `package_name` or fuzzy `app_name`. If `app_name` matches multiple apps, the tool returns a candidate list — pick one `package_name` and call again.
-
-### search_apps
-
-Search installed apps by name or package name fragment. Use before `launch_app` when the target app name is ambiguous.
+Launch by exact `package_name` or fuzzy `app_name`. If `app_name` matches multiple apps, the tool returns a candidate list — pick one `package_name` and call again. Use `search_apps` first when the target app name is ambiguous.
 
 ## Workflow
 
 ### 1. Open the target app
-
-If the task names a specific app, launch it:
 
 ```
 launch_app(app_name: "Settings")
@@ -89,39 +63,25 @@ launch_app(package_name: "com.android.settings")
 
 ### 2. Read the screen
 
-After the app is open, call `screen_operation_accessibility(operation: "read")`. After subsequent actions, see §4 to decide whether another screen read is needed.
+After the app is open, call `screen_operation_accessibility(operation: "read")`. After subsequent write operations, use the auto-returned YAML (see §4).
 
 ```
 screen_operation_accessibility(operation: "read")
 ```
 
-This returns a YAML accessibility tree. Each node has a `token` (e.g. `"a3f2_42"`) you use with `screen_operation_accessibility`.
+Each node has a `token` you use with `screen_operation_accessibility`.
 
 ### 2b. Search for specific elements (optional)
 
-When the screen has many nodes (e.g., a long list or a complex layout) and you know what text or label you're looking for, use `screen_operation_accessibility(operation: "search")` to narrow down candidate tokens:
+When the screen has many nodes and you know what text or label you're looking for, use `search` to narrow down candidate tokens:
 
 ```
 screen_operation_accessibility(operation: "search", keywords: ["目标文本"])
 ```
 
-This returns a short list of matching nodes with their tokens. Use the returned `token` directly with `screen_operation_accessibility` operations. This avoids scanning the full tree.
-
-The search result format includes the current `version`:
-
-```yaml
-matched: 3
-version: "a3f2"
-nodes:
-  - {token: "a3f2_12", t: tab, b: [0,2160,360,2400], pos: bottom-left, txt: 收藏, tap: true}
-  - {token: "a3f2_15", t: tab, b: [360,2160,720,2400], pos: bottom, txt: 我的, tap: true}
-```
-
-After acting on a search result, note that the returned YAML already has fresh tokens. However, if the screen changed since the search (e.g., a navigation occurred), re-read the screen to get updated tokens.
+Use the returned `token` directly with `screen_operation_accessibility`.
 
 ### 3. Act on the tree
-
-Use `screen_operation_accessibility` with the node's token:
 
 ```
 screen_operation_accessibility(operation: "tap", token: "a3f2_42")
@@ -134,9 +94,9 @@ For actions that don't target a single labeled node (e.g., swipe-to-refresh, dra
 
 ### 4. Re-read after state-changing actions
 
-All write operations (tap, scroll, swipe, key) now return the updated screen tree automatically. You can use this returned YAML for the next action without an explicit `screen_operation_accessibility(operation: "read")` call.
+All write operations (tap, scroll, swipe, key) now return the updated screen tree automatically. Use this returned YAML for the next action — no explicit `read` needed.
 
-**However, re-read explicitly** whenever a write operation's result is an error, or when you need a fresh view after external state changes (e.g., after `launch_app`, after navigation that you learned about indirectly). Tokens are versioned — every screen read produces a fresh version. Never reuse tokens from an older version.
+However, **re-read explicitly** after `launch_app`, after an operation's result is an error, or whenever you need a fresh view after external state changes. Tokens are versioned — every screen read produces a fresh version. Never reuse tokens from an older version.
 
 **Scrolling lists — use `screen_operation_shell(operation: "swipe", ...)`**, not `scroll_forward`/`scroll_backward`. Accessibility scroll actions have app-defined step sizes. Shell swipe gives direct control over the swipe coordinates.
 
@@ -188,28 +148,6 @@ Do not memorize temporary content, account-specific state, the currently selecte
 
 Format the memory as one natural-language sentence with no bullet points or line breaks. Name the app, describe the misleading element, and state the correct action.
 
-## Accessibility Tree YAML Format
-
-The screen read output header includes the foreground app package, screen dimensions, and a version identifier. Each node uses these fields:
-
-| Field | Meaning |
-|:------|:--------|
-| `token` | Node token `"$version_$index"` (e.g. `"a3f2_42"`) — use with `screen_operation_accessibility` operations. The version changes on every screen capture |
-| `t` | Semantic type: `button`, `input`, `text`, `image`, `list`, `list_item`, `switch`, `checkbox`, `tab`, `chip`, `toolbar`, `dialog`, `container` |
-| `b` | Bounds `[left, top, right, bottom]` in pixels |
-| `pos` | 3×3 grid position: `top-left`, `top`, `top-right`, `left`, `center`, `right`, `bottom-left`, `bottom`, `bottom-right` |
-| `txt` | Display text (quoted if it contains special characters) |
-| `h` | Content description / accessibility identifier |
-| `tap` | Node is clickable (only shown when true) |
-| `hold` | Node is long-clickable (only shown when true) |
-| `edit` | Node is editable text input (only shown when true) |
-| `scroll` | Node is scrollable (only shown when true) |
-| `checked` | Node has checked state — switches, checkboxes (only shown when true) |
-| `ch` | Child nodes |
-| `more` | Summaries of off-screen children (text or `(empty)`), each truncated to 20 characters |
-
-Boolean attributes (`tap`, `hold`, `edit`, `scroll`, `checked`) are only emitted when true. If absent, the attribute is false.
-
 ## Method Selection
 
 | If you need to... | Use |
@@ -217,7 +155,7 @@ Boolean attributes (`tap`, `hold`, `edit`, `scroll`, `checked`) are only emitted
 | Read the screen tree | `screen_operation_accessibility(operation: "read")` |
 | Tap a labeled UI node by its token | `screen_operation_accessibility(operation: "tap", token: ...)` |
 | Type text into a field by its token | `screen_operation_accessibility(operation: "set_text", token: ..., text: ...)` |
-| Scroll a list by swipe coordinates | `screen_operation_shell(operation: "swipe", ...)` with §4 guidance |
+| Scroll a list by swipe coordinates | `screen_operation_shell(operation: "swipe", ...)` with Workflow §4 guidance |
 | Scroll a picker or small widget (single step) | `screen_operation_accessibility(operation: "scroll_forward"/"scroll_backward", token: ...)` |
 | Tap/swipe by coordinates (fallback) | `screen_operation_shell(operation: "tap"/"swipe", ...)` |
 | Navigate (Back/Home/Recents) | `screen_operation_shell(operation: "key", code: ...)` |
@@ -227,9 +165,6 @@ Boolean attributes (`tap`, `hold`, `edit`, `scroll`, `checked`) are only emitted
 
 ## Important Notes
 
-- **Non-native apps are a dead end.** If `screen_operation_accessibility(operation: "read")` returns an error about no accessibility nodes, the app uses Flutter/Unity/WebView/game engine. Do not retry — report to the user.
-- **Tokens are ephemeral (versioned).** Every screen read produces a fresh version with new tokens. Never reuse tokens from an older version.
 - **Service auto-setup.** The first tool call automatically enables the accessibility service via root. This takes up to 5 seconds. If root is unavailable, the tool returns an error.
 - **Coordinates are screen pixels.** Not normalized. Screen dimensions are in the screen read header.
 - **No screenshots.** You see only the accessibility tree, not a visual image. If the tree lacks enough context, describe what you can see and ask the user.
-
