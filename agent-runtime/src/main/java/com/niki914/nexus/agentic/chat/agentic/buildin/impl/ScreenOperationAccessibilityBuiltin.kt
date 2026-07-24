@@ -37,9 +37,15 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 "Returns matched nodes with tokens + version header.\n\n" +
                 "If read returns root-only or empty tree: app likely uses non-native UI " +
                 "(Flutter/Unity/WebView) — stop, do not retry.\n\n" +
-                "delay_ms (default 1000): post-action wait before capture. Tokens belong to exactly " +
-                "one snapshot — every read, search, and successful write operation produces a fresh version. " +
-                "Use only tokens from the most recently returned result."
+                "wait_mode (default \"stable\"): \"stable\" detects when the UI actually settles " +
+                "(event idle + tree hash) and returns early — use for taps, scrolls, text input. " +
+                "\"delay\" does a blind fixed wait — use for search/refresh where data arrives " +
+                "asynchronously and the UI may appear stable before results load.\n" +
+                "wait_ms (default 5000): for \"stable\" this is the max deadline; for \"delay\" " +
+                "this is the fixed blind-wait duration.\n\n" +
+                "Tokens belong to exactly one snapshot — every read, search, and successful " +
+                "write operation produces a fresh version. Use only tokens from the most " +
+                "recently returned result."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
@@ -63,8 +69,12 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
             description = "Max search results to return, default 10."
             required = false
         }
-        config.number("delay_ms") {
-            description = "Post-write-operation wait in ms before capturing the updated screen tree, default 1000."
+        config.string("wait_mode") {
+            description = "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh."
+            required = false
+        }
+        config.number("wait_ms") {
+            description = "Wait duration in ms, default 5000. For stable mode: max deadline. For delay mode: fixed sleep."
             required = false
         }
     }
@@ -91,23 +101,23 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 }
 
                 is ScreenOp.Tap -> executeNodeActionAndCapture(
-                    op.token, NodeAction.CLICK, null, args.delayMs
+                    op.token, NodeAction.CLICK, null, args.waitMode, args.waitMs
                 )
 
                 is ScreenOp.LongClick -> executeNodeActionAndCapture(
-                    op.token, NodeAction.LONG_CLICK, null, args.delayMs
+                    op.token, NodeAction.LONG_CLICK, null, args.waitMode, args.waitMs
                 )
 
                 is ScreenOp.ScrollForward -> executeNodeActionAndCapture(
-                    op.token, NodeAction.SCROLL_FORWARD, null, args.delayMs
+                    op.token, NodeAction.SCROLL_FORWARD, null, args.waitMode, args.waitMs
                 )
 
                 is ScreenOp.ScrollBackward -> executeNodeActionAndCapture(
-                    op.token, NodeAction.SCROLL_BACKWARD, null, args.delayMs
+                    op.token, NodeAction.SCROLL_BACKWARD, null, args.waitMode, args.waitMs
                 )
 
                 is ScreenOp.SetText -> executeNodeActionAndCapture(
-                    op.token, NodeAction.SET_TEXT, op.text, args.delayMs
+                    op.token, NodeAction.SET_TEXT, op.text, args.waitMode, args.waitMs
                 )
 
                 is ScreenOp.Search -> {
@@ -134,7 +144,7 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
     }
 
     /**
-     * Executes a node action, then captures the updated screen after a delay.
+     * Executes a node action, then captures the updated screen according to [waitMode].
      *
      * Returns the YAML representation on success, or an error JSON string on failure.
      */
@@ -142,19 +152,24 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
         token: String,
         action: NodeAction,
         text: String?,
-        delayMs: Long,
+        waitMode: String,
+        waitMs: Long,
     ): String {
         val actionResult = AccessibilityController.executeNodeAction(token, action, text)
         if (!actionResult.ok) {
             return errorJson(actionResult.code, actionResult.message)
         }
-        return AccessibilityController.captureScreenAfterDelay(delayMs)
-            .fold(
-                onSuccess = { it.yaml },
-                onFailure = { e ->
-                    errorJson("SERVICE_UNAVAILABLE", e.message ?: "Service unavailable")
-                },
-            )
+        val capture = if (waitMode == "delay") {
+            AccessibilityController.captureScreenAfterDelay(waitMs)
+        } else {
+            AccessibilityController.waitForStable(waitMs)
+        }
+        return capture.fold(
+            onSuccess = { it.yaml },
+            onFailure = { e ->
+                errorJson("SERVICE_UNAVAILABLE", e.message ?: "Service unavailable")
+            },
+        )
     }
 
     private fun errorJson(code: String, message: String): String {

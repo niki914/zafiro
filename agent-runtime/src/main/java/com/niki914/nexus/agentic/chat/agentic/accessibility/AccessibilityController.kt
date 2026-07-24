@@ -60,6 +60,11 @@ object AccessibilityController {
     var currentVersion: String = ""
         private set
 
+    /** Timestamp of the last TYPE_WINDOW_CONTENT_CHANGED event (ms, [System.currentTimeMillis]). */
+    @Volatile
+    var lastContentChangedTime: Long = 0L
+        private set
+
     /** Set by the app module before any screen-interaction calls. */
     @Volatile
     var pointerOverlay: IPointerOverlay? = null
@@ -125,6 +130,11 @@ object AccessibilityController {
     fun clearService() {
         serviceInstance = null
         nodeCache.clear()
+    }
+
+    /** Called from [NexusAccessibilityService.onAccessibilityEvent] on TYPE_WINDOW_CONTENT_CHANGED. */
+    fun recordContentChanged() {
+        lastContentChangedTime = System.currentTimeMillis()
     }
 
     fun clearPointerOverlay() {
@@ -326,6 +336,98 @@ object AccessibilityController {
     suspend fun captureScreenAfterDelay(delayMs: Long): Result<ScreenSnapshot> {
         if (delayMs > 0) delay(delayMs)
         return captureScreen()
+    }
+
+    /**
+     * Waits for the UI to settle after a write operation using two-phase detection:
+     *
+     * **Phase 1 — event stream idle:** polls [lastContentChangedTime] until no
+     * TYPE_WINDOW_CONTENT_CHANGED event has been received for 300ms, with a minimum
+     * 200ms dwell to let post-action events arrive.
+     *
+     * **Phase 2 — tree hash stability:** captures the node cache twice, 50ms apart,
+     * and compares structural hashes. Both hashes must match for the tree to be
+     * considered stable.
+     *
+     * Falls back to a forced capture (with a warning header) if [settleTimeoutMs]
+     * is exceeded in either phase.
+     */
+    suspend fun waitForStable(settleTimeoutMs: Long): Result<ScreenSnapshot> {
+        val startTime = System.currentTimeMillis()
+
+        // Phase 1: wait for accessibility event stream to quiet down.
+        // Always dwell at least 200ms to let post-action events arrive.
+        val minPhase1End = startTime + 200
+        while (true) {
+            val now = System.currentTimeMillis()
+            val elapsed = now - startTime
+            if (elapsed >= settleTimeoutMs) {
+                return captureScreen().map { snapshot ->
+                    snapshot.copy(yaml = buildString {
+                        appendLine("# Note: settle timed out after ${settleTimeoutMs}ms")
+                        append(snapshot.yaml)
+                    })
+                }
+            }
+            if (now >= minPhase1End) {
+                val idleDuration = now - lastContentChangedTime
+                if (idleDuration >= 300L) break
+            }
+            delay(50)
+        }
+
+        // Phase 2: tree structure must be identical across two samples.
+        refreshNodeCache()
+        var previousHash = computeStructuralHash()
+
+        while (true) {
+            val now = System.currentTimeMillis()
+            val elapsed = now - startTime
+            if (elapsed >= settleTimeoutMs) {
+                return captureScreen().map { snapshot ->
+                    snapshot.copy(yaml = buildString {
+                        appendLine("# Note: settle timed out after ${settleTimeoutMs}ms, tree may still be changing")
+                        append(snapshot.yaml)
+                    })
+                }
+            }
+            delay(50)
+            refreshNodeCache()
+            val currentHash = computeStructuralHash()
+            if (currentHash == previousHash) break
+            previousHash = currentHash
+        }
+
+        return captureScreen()
+    }
+
+    /**
+     * Computes a version-independent structural hash of the current [nodeCache].
+     *
+     * The hash covers node count, per-node class name, bounds, text, content
+     * description, and key boolean flags — enough to detect meaningful tree
+     * changes without paying YAML serialization cost.
+     */
+    private fun computeStructuralHash(): Int {
+        var hash = nodeCache.size
+        nodeCache.entries.sortedBy { it.key }.forEach { (index, node) ->
+            hash = 31 * hash + index
+            hash = 31 * hash + (node.className?.toString().orEmpty().hashCode())
+            hash = 31 * hash + (node.text?.toString().orEmpty().hashCode())
+            hash = 31 * hash + (node.contentDescription?.toString().orEmpty().hashCode())
+            hash = 31 * hash + node.isClickable.hashCode()
+            hash = 31 * hash + node.isLongClickable.hashCode()
+            hash = 31 * hash + node.isEditable.hashCode()
+            hash = 31 * hash + node.isScrollable.hashCode()
+            hash = 31 * hash + node.isVisibleToUser.hashCode()
+            val rect = android.graphics.Rect()
+            node.getBoundsInScreen(rect)
+            hash = 31 * hash + rect.left
+            hash = 31 * hash + rect.top
+            hash = 31 * hash + rect.right
+            hash = 31 * hash + rect.bottom
+        }
+        return hash
     }
 
     /**

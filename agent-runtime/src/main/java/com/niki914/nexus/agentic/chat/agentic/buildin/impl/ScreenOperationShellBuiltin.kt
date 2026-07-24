@@ -26,7 +26,9 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
                 "Coordinates MUST come from the most recently returned screen tree — never " +
                 "hallucinate. Every successful write op auto-captures the updated tree.\n\n" +
                 "Key codes: BACK=4, HOME=3, RECENTS=187, NOTIFICATIONS=83, QUICK_SETTINGS=84.\n\n" +
-                "delay_ms (default 1000): post-action wait before capture."
+                "wait_mode (default \"stable\"): \"stable\" auto-detects UI stability before capture. " +
+                "\"delay\" does a blind fixed wait — use for search/refresh. " +
+                "wait_ms (default 5000): deadline for stable, fixed sleep for delay."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
@@ -66,8 +68,12 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
             description = "Android key code: BACK=4, HOME=3, RECENTS=187, NOTIFICATIONS=83, QUICK_SETTINGS=84."
             required = false
         }
-        config.number("delay_ms") {
-            description = "Post-write-operation wait in ms before capturing the updated screen tree, default 1000."
+        config.string("wait_mode") {
+            description = "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh."
+            required = false
+        }
+        config.number("wait_ms") {
+            description = "Wait duration in ms, default 5000. For stable mode: max deadline. For delay mode: fixed sleep."
             required = false
         }
     }
@@ -83,21 +89,21 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
 
         return try {
             when (val op = args.operation) {
-                is ScreenOp.ShellTap -> executeShellAndCapture(args.delayMs) {
+                is ScreenOp.ShellTap -> executeShellAndCapture(args.waitMode, args.waitMs) {
                     AccessibilityController.executeShellTap(op.x, op.y)
                 }
 
-                is ScreenOp.ShellLongClick -> executeShellAndCapture(args.delayMs) {
+                is ScreenOp.ShellLongClick -> executeShellAndCapture(args.waitMode, args.waitMs) {
                     AccessibilityController.executeShellLongClick(op.x, op.y)
                 }
 
-                is ScreenOp.ShellSwipe -> executeShellAndCapture(args.delayMs) {
+                is ScreenOp.ShellSwipe -> executeShellAndCapture(args.waitMode, args.waitMs) {
                     AccessibilityController.executeShellSwipe(
                         op.startX, op.startY, op.endX, op.endY, op.duration
                     )
                 }
 
-                is ScreenOp.ShellKey -> executeShellAndCapture(args.delayMs) {
+                is ScreenOp.ShellKey -> executeShellAndCapture(args.waitMode, args.waitMs) {
                     AccessibilityController.executeKeyEvent(op.code)
                 }
 
@@ -115,25 +121,30 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
     }
 
     /**
-     * Executes a shell operation, then captures the updated screen after a delay.
+     * Executes a shell operation, then captures the updated screen according to [waitMode].
      *
      * Returns the YAML representation on success, or an error JSON string on failure.
      */
     private suspend fun executeShellAndCapture(
-        delayMs: Long,
+        waitMode: String,
+        waitMs: Long,
         executor: suspend () -> BuiltinToolResult,
     ): String {
         val result = executor()
         if (!result.ok) {
             return errorJson(result.code, result.message)
         }
-        return AccessibilityController.captureScreenAfterDelay(delayMs)
-            .fold(
-                onSuccess = { it.yaml },
-                onFailure = { e ->
-                    errorJson("SERVICE_UNAVAILABLE", e.message ?: "Service unavailable")
-                },
-            )
+        val capture = if (waitMode == "delay") {
+            AccessibilityController.captureScreenAfterDelay(waitMs)
+        } else {
+            AccessibilityController.waitForStable(waitMs)
+        }
+        return capture.fold(
+            onSuccess = { it.yaml },
+            onFailure = { e ->
+                errorJson("SERVICE_UNAVAILABLE", e.message ?: "Service unavailable")
+            },
+        )
     }
 
     private fun errorJson(code: String, message: String): String {

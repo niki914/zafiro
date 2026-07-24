@@ -22,7 +22,9 @@ class NexusAccessibilityService : AccessibilityService(), IAccessibility {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // no-op
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            AccessibilityController.recordContentChanged()
+        }
     }
 
     override fun onInterrupt() {

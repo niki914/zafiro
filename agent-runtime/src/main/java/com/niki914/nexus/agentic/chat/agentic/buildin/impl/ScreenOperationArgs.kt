@@ -35,7 +35,8 @@ sealed class ScreenOp {
 
 data class ScreenOpArgs(
     val operation: ScreenOp,
-    val delayMs: Long = 1000,
+    val waitMode: String = "stable",
+    val waitMs: Long = 5000,
 )
 
 fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
@@ -61,7 +62,12 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
             IllegalArgumentException("Missing required field: operation.")
         )
 
-    val delayMs = obj["delay_ms"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toLong() ?: 1000L
+    // Backward compat: old delay_ms field maps to wait_mode "delay"
+    val waitMode = obj["wait_mode"]?.jsonPrimitive?.contentOrNull
+        ?: if (obj.contains("delay_ms")) "delay" else "stable"
+    val waitMs = obj["wait_ms"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toLong()
+        ?: obj["delay_ms"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toLong()
+        ?: 5000L
 
     val operation = when (operationName) {
         "read" -> ScreenOp.Read
@@ -175,5 +181,5 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
         )
     }
 
-    return Result.success(ScreenOpArgs(operation, delayMs))
+    return Result.success(ScreenOpArgs(operation, waitMode, waitMs))
 }
