@@ -75,7 +75,7 @@ class ScreenOperationArgsTest {
 
     @Test
     fun parse_shellTap() {
-        val result = parseArguments("""{"operation": "shell_tap", "x": 100, "y": 200}""")
+        val result = parseArguments("""{"operation": "tap", "x": 100, "y": 200}""")
         assertTrue(result.isSuccess)
         val args = result.getOrThrow()
         assertTrue(args.operation is ScreenOp.ShellTap)
@@ -87,7 +87,7 @@ class ScreenOperationArgsTest {
     @Test
     fun parse_shellSwipe() {
         val result = parseArguments(
-            """{"operation": "shell_swipe", "start_x": 0, "start_y": 1000, "end_x": 0, "end_y": 200}"""
+            """{"operation": "swipe", "start_x": 0, "start_y": 1000, "end_x": 0, "end_y": 200}"""
         )
         assertTrue(result.isSuccess)
         val args = result.getOrThrow()
@@ -102,7 +102,7 @@ class ScreenOperationArgsTest {
 
     @Test
     fun parse_shellKey() {
-        val result = parseArguments("""{"operation": "shell_key", "code": 4}""")
+        val result = parseArguments("""{"operation": "key", "code": 4}""")
         assertTrue(result.isSuccess)
         val args = result.getOrThrow()
         assertTrue(args.operation is ScreenOp.ShellKey)
@@ -128,11 +128,11 @@ class ScreenOperationArgsTest {
     }
 
     @Test
-    fun parse_tapWithoutToken_fails() {
+    fun parse_tapWithoutTokenOrXY_fails() {
         val result = parseArguments("""{"operation": "tap"}""")
         assertTrue(result.isFailure)
         assertTrue(
-            result.exceptionOrNull()?.message?.contains("Missing required field: token") == true
+            result.exceptionOrNull()?.message?.contains("Missing required field: x for operation 'tap'") == true
         )
     }
 
@@ -147,10 +147,10 @@ class ScreenOperationArgsTest {
 
     @Test
     fun parse_shellTapMissingX_fails() {
-        val result = parseArguments("""{"operation": "shell_tap", "y": 200}""")
+        val result = parseArguments("""{"operation": "tap", "y": 200}""")
         assertTrue(result.isFailure)
         assertTrue(
-            result.exceptionOrNull()?.message?.contains("x for operation 'shell_tap'") == true
+            result.exceptionOrNull()?.message?.contains("x for operation 'tap'") == true
         )
     }
 }

@@ -32,8 +32,12 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
     }
 
     override suspend fun invokeRaw(request: BuiltinToolRequest): String {
+        AccessibilityController.ensurePointerShown()
+
         val args = parseArguments(request.argumentsJson).getOrElse { error ->
-            return errorJson("INVALID_ARGUMENTS_JSON", error.message ?: "Invalid arguments JSON")
+            val msg = error.message ?: "Invalid arguments JSON"
+            val code = if (msg.startsWith("Unknown operation")) "INVALID_OPERATION" else "INVALID_ARGUMENTS_JSON"
+            return errorJson(code, msg)
         }
 
         return try {

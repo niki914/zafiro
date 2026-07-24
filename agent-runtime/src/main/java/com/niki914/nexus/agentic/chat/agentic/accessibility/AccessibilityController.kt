@@ -65,6 +65,8 @@ object AccessibilityController {
     var pointerOverlay: IPointerOverlay? = null
 
     private var pointerShown = false
+    private var cachedScreenWidth: Int = 0
+    private var cachedScreenHeight: Int = 0
 
     private var shellSessionHandle: String? = null
     private var shellIdentity: ShellIdentity = ShellIdentity.NONE
@@ -76,6 +78,19 @@ object AccessibilityController {
     fun onTurnEnd() {
         pointerShown = false
         pointerOverlay?.hide()
+    }
+
+    /** Reveal pointer overlay at a random centre-area position, once per agent turn. */
+    fun ensurePointerShown() {
+        if (pointerShown) return
+        pointerShown = true
+        pointerOverlay?.let { overlay ->
+            val w = if (cachedScreenWidth > 0) cachedScreenWidth else 1080
+            val h = if (cachedScreenHeight > 0) cachedScreenHeight else 2400
+            val rx = w / 3f + Math.random().toFloat() * (w / 3f)
+            val ry = h / 3f + Math.random().toFloat() * (h / 3f)
+            overlay.show(rx, ry)
+        }
     }
 
     /** Generates a random 4-character hex version string for screen snapshot tracking. */
@@ -280,15 +295,7 @@ object AccessibilityController {
             return Result.failure(e)
         }
 
-        // First captureScreen of the session: reveal pointer at random centre-area position
-        if (!pointerShown) {
-            pointerShown = true
-            pointerOverlay?.let { overlay ->
-                val rx = ctx.widthPixels / 3f + Math.random().toFloat() * (ctx.widthPixels / 3f)
-                val ry = ctx.heightPixels / 3f + Math.random().toFloat() * (ctx.heightPixels / 3f)
-                overlay.show(rx, ry)
-            }
-        }
+        ensurePointerShown()
 
         val yaml = TreeFormatter.format(ctx.root, ctx.widthPixels, ctx.heightPixels, ctx.appPackage, currentVersion)
 
@@ -336,6 +343,8 @@ object AccessibilityController {
 
         val ctx = ContextProvider.await()
         val dm = ctx.resources.displayMetrics
+        cachedScreenWidth = dm.widthPixels
+        cachedScreenHeight = dm.heightPixels
         val appPkg = root.packageName?.toString() ?: "unknown"
 
         rebuildCache(root)
