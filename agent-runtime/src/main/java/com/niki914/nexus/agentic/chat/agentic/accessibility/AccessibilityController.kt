@@ -23,6 +23,7 @@ import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.xposed.api.util.ContextProvider
+import android.os.SystemClock
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -58,6 +59,11 @@ object AccessibilityController {
     /** Current version string for screen snapshot staleness tracking. */
     @Volatile
     var currentVersion: String = ""
+        private set
+
+    /** Timestamp of the last UI-significant accessibility event (ms, [SystemClock.elapsedRealtime]). */
+    @Volatile
+    var lastUiEventTime: Long = 0L
         private set
 
     /** Set by the app module before any screen-interaction calls. */
@@ -125,6 +131,11 @@ object AccessibilityController {
     fun clearService() {
         serviceInstance = null
         nodeCache.clear()
+    }
+
+    /** Called from [NexusAccessibilityService.onAccessibilityEvent] on UI-significant events. */
+    fun recordUiEvent() {
+        lastUiEventTime = SystemClock.elapsedRealtime()
     }
 
     fun clearPointerOverlay() {
@@ -326,6 +337,87 @@ object AccessibilityController {
     suspend fun captureScreenAfterDelay(delayMs: Long): Result<ScreenSnapshot> {
         if (delayMs > 0) delay(delayMs)
         return captureScreen()
+    }
+
+    /**
+     * Waits for the UI to settle after a write operation using a unified
+     * event-idle + tree-hash detection loop:
+     *
+     * 1. Dwell at least 200ms to let post-action events arrive.
+     * 2. Sample the tree every 50ms and compare consecutive structural hashes.
+     * 3. Return when two consecutive hashes match, no accessibility event arrived
+     *    between the two samples, and the event stream has been idle for >= 300ms.
+     *
+     * Falls back to a forced capture (with a warning header) if [settleTimeoutMs]
+     * is exceeded.
+     */
+    suspend fun waitForStable(settleTimeoutMs: Long): Result<ScreenSnapshot> {
+        val startTime = SystemClock.elapsedRealtime()
+
+        // Minimum 200ms dwell to let post-action events arrive, capped at remaining deadline.
+        val remaining = settleTimeoutMs - (SystemClock.elapsedRealtime() - startTime)
+        if (remaining > 0) {
+            delay(minOf(200L, remaining))
+        }
+
+        refreshNodeCache()
+        var previousHash = computeStructuralHash()
+        var previousSampleTime = SystemClock.elapsedRealtime()
+
+        while (true) {
+            val now = SystemClock.elapsedRealtime()
+            if (now - startTime >= settleTimeoutMs) {
+                return captureScreen().map { snapshot ->
+                    snapshot.copy(yaml = buildString {
+                        appendLine("# Note: settle timed out after ${settleTimeoutMs}ms")
+                        append(snapshot.yaml)
+                    })
+                }
+            }
+            delay(50)
+            refreshNodeCache()
+            val currentHash = computeStructuralHash()
+            val sampleTime = SystemClock.elapsedRealtime()
+
+            if (currentHash == previousHash
+                && lastUiEventTime <= previousSampleTime
+                && sampleTime - lastUiEventTime >= 300L
+            ) {
+                return captureScreen()
+            }
+
+            previousHash = currentHash
+            previousSampleTime = sampleTime
+        }
+    }
+
+    /**
+     * Computes a version-independent structural hash of the current [nodeCache].
+     *
+     * The hash covers node count, per-node class name, bounds, text, content
+     * description, and key boolean flags — enough to detect meaningful tree
+     * changes without paying YAML serialization cost.
+     */
+    private fun computeStructuralHash(): Int {
+        var hash = nodeCache.size
+        nodeCache.entries.sortedBy { it.key }.forEach { (index, node) ->
+            hash = 31 * hash + index
+            hash = 31 * hash + (node.className?.toString().orEmpty().hashCode())
+            hash = 31 * hash + (node.text?.toString().orEmpty().hashCode())
+            hash = 31 * hash + (node.contentDescription?.toString().orEmpty().hashCode())
+            hash = 31 * hash + node.isClickable.hashCode()
+            hash = 31 * hash + node.isLongClickable.hashCode()
+            hash = 31 * hash + node.isEditable.hashCode()
+            hash = 31 * hash + node.isScrollable.hashCode()
+            hash = 31 * hash + node.isVisibleToUser.hashCode()
+            val rect = android.graphics.Rect()
+            node.getBoundsInScreen(rect)
+            hash = 31 * hash + rect.left
+            hash = 31 * hash + rect.top
+            hash = 31 * hash + rect.right
+            hash = 31 * hash + rect.bottom
+        }
+        return hash
     }
 
     /**

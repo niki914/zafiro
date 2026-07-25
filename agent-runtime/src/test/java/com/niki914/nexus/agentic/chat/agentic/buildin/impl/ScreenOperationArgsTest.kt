@@ -7,21 +7,57 @@ import org.junit.Test
 class ScreenOperationArgsTest {
 
     @Test
-    fun parse_read_defaultDelay() {
+    fun parse_read_defaultWaitMode() {
         val result = parseArguments("""{"operation": "read"}""")
         assertTrue(result.isSuccess)
         val args = result.getOrThrow()
         assertTrue(args.operation is ScreenOp.Read)
-        assertEquals(1000L, args.delayMs)
+        assertEquals("stable", args.waitMode)
+        assertEquals(2000L, args.waitMs)
     }
 
     @Test
-    fun parse_read_customDelay() {
+    fun parse_read_explicitStable() {
+        val result = parseArguments(
+            """{"operation": "read", "wait_mode": "stable", "wait_ms": 3000}"""
+        )
+        assertTrue(result.isSuccess)
+        val args = result.getOrThrow()
+        assertEquals("stable", args.waitMode)
+        assertEquals(3000L, args.waitMs)
+    }
+
+    @Test
+    fun parse_read_delayMode() {
+        val result = parseArguments(
+            """{"operation": "read", "wait_mode": "delay", "wait_ms": 3000}"""
+        )
+        assertTrue(result.isSuccess)
+        val args = result.getOrThrow()
+        assertEquals("delay", args.waitMode)
+        assertEquals(3000L, args.waitMs)
+    }
+
+    @Test
+    fun parse_backwardCompat_delayMs() {
         val result = parseArguments("""{"operation": "read", "delay_ms": 1000}""")
         assertTrue(result.isSuccess)
         val args = result.getOrThrow()
-        assertTrue(args.operation is ScreenOp.Read)
-        assertEquals(1000L, args.delayMs)
+        // Old delay_ms field maps to wait_mode "delay"
+        assertEquals("delay", args.waitMode)
+        assertEquals(1000L, args.waitMs)
+    }
+
+    @Test
+    fun parse_backwardCompat_delayMsWithWaitMode() {
+        // When both old and new params are present, wait_mode wins
+        val result = parseArguments(
+            """{"operation": "tap", "token": "x_1", "delay_ms": 2000, "wait_mode": "stable"}"""
+        )
+        assertTrue(result.isSuccess)
+        val args = result.getOrThrow()
+        assertEquals("stable", args.waitMode)
+        assertEquals(2000L, args.waitMs)
     }
 
     @Test
@@ -31,7 +67,8 @@ class ScreenOperationArgsTest {
         val args = result.getOrThrow()
         assertTrue(args.operation is ScreenOp.Tap)
         assertEquals("a3f2_42", (args.operation as ScreenOp.Tap).token)
-        assertEquals(1000L, args.delayMs)
+        assertEquals("stable", args.waitMode)
+        assertEquals(2000L, args.waitMs)
     }
 
     @Test
@@ -142,6 +179,60 @@ class ScreenOperationArgsTest {
         assertTrue(result.isFailure)
         assertTrue(
             result.exceptionOrNull()?.message?.contains("Invalid JSON") == true
+        )
+    }
+
+    @Test
+    fun parse_invalidWaitMode_fails() {
+        val result = parseArguments("""{"operation": "read", "wait_mode": "instant"}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("wait_mode must be 'stable' or 'delay'") == true
+        )
+    }
+
+    @Test
+    fun parse_delayWithoutWaitMs_fails() {
+        val result = parseArguments("""{"operation": "read", "wait_mode": "delay"}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("wait_ms is required when wait_mode is 'delay'") == true
+        )
+    }
+
+    @Test
+    fun parse_nonNumericWaitMs_fails() {
+        val result = parseArguments("""{"operation": "read", "wait_ms": "abc"}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("wait_ms must be a number") == true
+        )
+    }
+
+    @Test
+    fun parse_nonNumericDelayMs_fails() {
+        val result = parseArguments("""{"operation": "read", "delay_ms": "abc"}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("delay_ms must be a number") == true
+        )
+    }
+
+    @Test
+    fun parse_waitMsExceedsMax_fails() {
+        val result = parseArguments("""{"operation": "read", "wait_ms": 99999}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("wait_ms must be in range 0..60000") == true
+        )
+    }
+
+    @Test
+    fun parse_waitMsNegative_fails() {
+        val result = parseArguments("""{"operation": "read", "wait_ms": -1}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("wait_ms must be in range 0..60000") == true
         )
     }
 

@@ -35,7 +35,9 @@ sealed class ScreenOp {
 
 data class ScreenOpArgs(
     val operation: ScreenOp,
-    val delayMs: Long = 1000,
+    val waitMode: String = "stable",
+    val waitMs: Long = 2000,
+    val hasExplicitWaitMode: Boolean = false,
 )
 
 fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
@@ -61,7 +63,47 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
             IllegalArgumentException("Missing required field: operation.")
         )
 
-    val delayMs = obj["delay_ms"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toLong() ?: 1000L
+    // Backward compat: old delay_ms field maps to wait_mode "delay"
+    val hasExplicitWaitMode = obj.contains("wait_mode") || obj.contains("delay_ms")
+    val waitMsField = obj["wait_ms"]?.jsonPrimitive?.contentOrNull
+    val delayMsField = obj["delay_ms"]?.jsonPrimitive?.contentOrNull
+    val hasExplicitWaitMs = waitMsField != null || delayMsField != null
+    val waitMode = obj["wait_mode"]?.jsonPrimitive?.contentOrNull
+        ?: if (delayMsField != null) "delay" else "stable"
+    val waitMs: Long? = when {
+        waitMsField != null -> {
+            val parsed = waitMsField.toDoubleOrNull()?.toLong()
+            if (parsed == null) return Result.failure(
+                IllegalArgumentException("wait_ms must be a number, got '$waitMsField'")
+            )
+            parsed
+        }
+        delayMsField != null -> {
+            val parsed = delayMsField.toDoubleOrNull()?.toLong()
+            if (parsed == null) return Result.failure(
+                IllegalArgumentException("delay_ms must be a number, got '$delayMsField'")
+            )
+            parsed
+        }
+        else -> null
+    }
+
+    if (waitMode != "stable" && waitMode != "delay") {
+        return Result.failure(
+            IllegalArgumentException("wait_mode must be 'stable' or 'delay', got '$waitMode'")
+        )
+    }
+    if (waitMs != null && (waitMs < 0 || waitMs > 60_000)) {
+        return Result.failure(
+            IllegalArgumentException("wait_ms must be in range 0..60000, got $waitMs")
+        )
+    }
+    if (waitMode == "delay" && !hasExplicitWaitMs) {
+        return Result.failure(
+            IllegalArgumentException("wait_ms is required when wait_mode is 'delay'")
+        )
+    }
+    val finalWaitMs = waitMs ?: 2000L
 
     val operation = when (operationName) {
         "read" -> ScreenOp.Read
@@ -175,5 +217,5 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
         )
     }
 
-    return Result.success(ScreenOpArgs(operation, delayMs))
+    return Result.success(ScreenOpArgs(operation, waitMode, finalWaitMs, hasExplicitWaitMode))
 }

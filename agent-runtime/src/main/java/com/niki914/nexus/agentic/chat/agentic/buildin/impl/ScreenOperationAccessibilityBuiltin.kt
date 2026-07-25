@@ -2,11 +2,13 @@ package com.niki914.nexus.agentic.chat.agentic.buildin.impl
 
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
 import com.niki914.nexus.agentic.chat.agentic.accessibility.NodeAction
+import com.niki914.nexus.agentic.chat.agentic.accessibility.ScreenSnapshot
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.RawBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
 import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 
 /**
  * RawBuiltinTool for accessibility-service-based screen interaction.
@@ -37,9 +39,16 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 "Returns matched nodes with tokens + version header.\n\n" +
                 "If read returns root-only or empty tree: app likely uses non-native UI " +
                 "(Flutter/Unity/WebView) — stop, do not retry.\n\n" +
-                "delay_ms (default 1000): post-action wait before capture. Tokens belong to exactly " +
-                "one snapshot — every read, search, and successful write operation produces a fresh version. " +
-                "Use only tokens from the most recently returned result."
+                "wait_mode (default \"stable\"): \"stable\" detects when the UI actually settles " +
+                "(event idle + tree hash) and returns early — use for taps, scrolls, text input. " +
+                "\"delay\" does a blind fixed wait — use for search/refresh where data arrives " +
+                "asynchronously and the UI may appear stable before results load. " +
+                "Must be \"stable\" or \"delay\".\n" +
+                "wait_ms: for \"stable\" the max deadline (default 2000, max 60000); " +
+                "for \"delay\" required (no default), the fixed blind-wait duration.\n\n" +
+                "Tokens belong to exactly one snapshot — every read, search, and successful " +
+                "write operation produces a fresh version. Use only tokens from the most " +
+                "recently returned result."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
@@ -63,8 +72,12 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
             description = "Max search results to return, default 10."
             required = false
         }
-        config.number("delay_ms") {
-            description = "Post-write-operation wait in ms before capturing the updated screen tree, default 1000."
+        config.string("wait_mode") {
+            description = "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh. Must be \"stable\" or \"delay\"."
+            required = false
+        }
+        config.number("wait_ms") {
+            description = "Wait duration in ms. Stable mode: max deadline (default 2000, max 60000). Delay mode: required, fixed sleep (0-60000)."
             required = false
         }
     }
@@ -81,7 +94,8 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
         return try {
             when (val op = args.operation) {
                 is ScreenOp.Read -> {
-                    AccessibilityController.captureScreen()
+                    val capture = captureAfterOptionalWait(args)
+                    capture
                         .fold(
                             onSuccess = { it.yaml },
                             onFailure = { e ->
@@ -91,26 +105,27 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 }
 
                 is ScreenOp.Tap -> executeNodeActionAndCapture(
-                    op.token, NodeAction.CLICK, null, args.delayMs
+                    op.token, NodeAction.CLICK, null, args.waitMode, args.waitMs
                 )
 
                 is ScreenOp.LongClick -> executeNodeActionAndCapture(
-                    op.token, NodeAction.LONG_CLICK, null, args.delayMs
+                    op.token, NodeAction.LONG_CLICK, null, args.waitMode, args.waitMs
                 )
 
                 is ScreenOp.ScrollForward -> executeNodeActionAndCapture(
-                    op.token, NodeAction.SCROLL_FORWARD, null, args.delayMs
+                    op.token, NodeAction.SCROLL_FORWARD, null, args.waitMode, args.waitMs
                 )
 
                 is ScreenOp.ScrollBackward -> executeNodeActionAndCapture(
-                    op.token, NodeAction.SCROLL_BACKWARD, null, args.delayMs
+                    op.token, NodeAction.SCROLL_BACKWARD, null, args.waitMode, args.waitMs
                 )
 
                 is ScreenOp.SetText -> executeNodeActionAndCapture(
-                    op.token, NodeAction.SET_TEXT, op.text, args.delayMs
+                    op.token, NodeAction.SET_TEXT, op.text, args.waitMode, args.waitMs
                 )
 
                 is ScreenOp.Search -> {
+                    waitBeforeSearch(args)
                     AccessibilityController.searchNodes(op.keywords, op.matchMode, op.limit)
                         .fold(
                             onSuccess = { it },
@@ -134,7 +149,7 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
     }
 
     /**
-     * Executes a node action, then captures the updated screen after a delay.
+     * Executes a node action, then captures the updated screen according to [waitMode].
      *
      * Returns the YAML representation on success, or an error JSON string on failure.
      */
@@ -142,19 +157,47 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
         token: String,
         action: NodeAction,
         text: String?,
-        delayMs: Long,
+        waitMode: String,
+        waitMs: Long,
     ): String {
         val actionResult = AccessibilityController.executeNodeAction(token, action, text)
         if (!actionResult.ok) {
             return errorJson(actionResult.code, actionResult.message)
         }
-        return AccessibilityController.captureScreenAfterDelay(delayMs)
-            .fold(
-                onSuccess = { it.yaml },
-                onFailure = { e ->
-                    errorJson("SERVICE_UNAVAILABLE", e.message ?: "Service unavailable")
-                },
-            )
+        val capture = if (waitMode == "delay") {
+            AccessibilityController.captureScreenAfterDelay(waitMs)
+        } else {
+            AccessibilityController.waitForStable(waitMs)
+        }
+        return capture.fold(
+            onSuccess = { it.yaml },
+            onFailure = { e ->
+                errorJson("SERVICE_UNAVAILABLE", e.message ?: "Service unavailable")
+            },
+        )
+    }
+
+    /**
+     * Captures the screen, optionally waiting first when [ScreenOpArgs.hasExplicitWaitMode]
+     * is true. Without an explicit wait request, captures immediately (legacy read behavior).
+     */
+    private suspend fun captureAfterOptionalWait(args: ScreenOpArgs): Result<ScreenSnapshot> {
+        if (!args.hasExplicitWaitMode) return AccessibilityController.captureScreen()
+        return if (args.waitMode == "delay") {
+            AccessibilityController.captureScreenAfterDelay(args.waitMs)
+        } else {
+            AccessibilityController.waitForStable(args.waitMs)
+        }
+    }
+
+    /** Waits before a search when the agent explicitly requested it. */
+    private suspend fun waitBeforeSearch(args: ScreenOpArgs) {
+        if (!args.hasExplicitWaitMode) return
+        if (args.waitMode == "delay") {
+            delay(args.waitMs)
+        } else {
+            AccessibilityController.waitForStable(args.waitMs)
+        }
     }
 
     private fun errorJson(code: String, message: String): String {
