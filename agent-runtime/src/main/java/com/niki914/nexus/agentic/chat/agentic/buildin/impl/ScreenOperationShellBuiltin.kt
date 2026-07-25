@@ -3,20 +3,24 @@ package com.niki914.nexus.agentic.chat.agentic.buildin.impl
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.nexus.agentic.chat.agentic.buildin.RawBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
+import com.niki914.nexus.agentic.chat.agentic.buildin.TextResultBuiltinTool
+import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.s3ss10n.LocalToolConfig
-import kotlinx.coroutines.CancellationException
 
 /**
- * RawBuiltinTool for shell-based screen interaction.
+ * TextResultBuiltinTool for shell-based screen interaction.
  *
  * FALLBACK method — prefer [ScreenOperationAccessibilityBuiltin] when possible.
  * Supports tap, long_click, swipe, key (all coordinate-based). Coordinates MUST
- * come from the most recently returned screen tree. Every successful write operation auto-captures the updated
- * screen tree via accessibility after execution.
+ * come from the most recently returned screen tree. Every successful write operation
+ * auto-captures the updated screen tree via accessibility after execution.
+ *
+ * Every result uses the #!tool-result protocol. Check #!status first.
+ * If #!status: failure and the payload contains a fresh YAML tree, use the new tokens
+ * directly to retry. Only call read if the failure result has no payload.
  */
-class ScreenOperationShellBuiltin : RawBuiltinTool() {
+class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
     override val name = "screen_operation_shell"
     override val defaultEnabled = true
     override val description: String =
@@ -28,7 +32,11 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
                 "Key codes: BACK=4, HOME=3, RECENTS=187, NOTIFICATIONS=83, QUICK_SETTINGS=84.\n\n" +
                 "wait_mode (default \"stable\"): \"stable\" auto-detects UI stability before capture. " +
                 "\"delay\" does a blind fixed wait — use for search/refresh. " +
-                "wait_ms (default 2000): deadline for stable, required for delay."
+                "wait_ms (default 2000): deadline for stable, required for delay.\n\n" +
+                "Every result uses the #!tool-result protocol. Check #!status first. " +
+                "If #!status: failure and the payload contains a fresh YAML tree, " +
+                "use the new tokens directly to retry. Only call read if the failure " +
+                "result has no payload."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
@@ -78,61 +86,73 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
         }
     }
 
-    override suspend fun invokeRaw(request: BuiltinToolRequest): String {
+    override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult {
         AccessibilityController.ensurePointerShown()
 
         val args = parseArguments(request.argumentsJson).getOrElse { error ->
             val msg = error.message ?: "Invalid arguments JSON"
-            val code = if (msg.startsWith("Unknown operation")) "INVALID_OPERATION" else "INVALID_ARGUMENTS_JSON"
-            return errorJson(code, msg)
+            val code = if (msg.startsWith("Unknown operation")) ScreenOperationError.INVALID_OPERATION.code else ScreenOperationError.INVALID_ARGUMENTS_JSON.code
+            return TextToolResult.failure(code, msg)
         }
 
-        return try {
-            when (val op = args.operation) {
-                is ScreenOp.ShellTap -> executeShellAndCapture(args.waitMode, args.waitMs) {
-                    AccessibilityController.executeShellTap(op.x, op.y)
-                }
+        return when (val op = args.operation) {
+            is ScreenOp.ShellTap -> executeShellAndCapture(args.waitMode, args.waitMs) {
+                AccessibilityController.executeShellTap(op.x, op.y)
+            }
 
-                is ScreenOp.ShellLongClick -> executeShellAndCapture(args.waitMode, args.waitMs) {
-                    AccessibilityController.executeShellLongClick(op.x, op.y)
-                }
+            is ScreenOp.ShellLongClick -> executeShellAndCapture(args.waitMode, args.waitMs) {
+                AccessibilityController.executeShellLongClick(op.x, op.y)
+            }
 
-                is ScreenOp.ShellSwipe -> executeShellAndCapture(args.waitMode, args.waitMs) {
-                    AccessibilityController.executeShellSwipe(
-                        op.startX, op.startY, op.endX, op.endY, op.duration
-                    )
-                }
-
-                is ScreenOp.ShellKey -> executeShellAndCapture(args.waitMode, args.waitMs) {
-                    AccessibilityController.executeKeyEvent(op.code)
-                }
-
-                else -> errorJson(
-                    "INVALID_OPERATION",
-                    "Operation '${op::class.simpleName}' not supported by " +
-                            "screen_operation_shell. Use screen_operation_accessibility for " +
-                            "node-based operations."
+            is ScreenOp.ShellSwipe -> executeShellAndCapture(args.waitMode, args.waitMs) {
+                AccessibilityController.executeShellSwipe(
+                    op.startX, op.startY, op.endX, op.endY, op.duration,
                 )
             }
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
-            errorJson("INTERNAL_ERROR", throwable.message ?: "Unknown internal error")
+
+            is ScreenOp.ShellKey -> executeShellAndCapture(args.waitMode, args.waitMs) {
+                AccessibilityController.executeKeyEvent(op.code)
+            }
+
+            else -> TextToolResult.failure(
+                code = ScreenOperationError.INVALID_OPERATION.code,
+                message = "Operation '${op::class.simpleName}' not supported by " +
+                    "screen_operation_shell. Use screen_operation_accessibility for " +
+                    "node-based operations.",
+            )
         }
     }
 
     /**
      * Executes a shell operation, then captures the updated screen according to [waitMode].
      *
-     * Returns the YAML representation on success, or an error JSON string on failure.
+     * When the shell operation itself fails, the screen is captured to provide a fresh
+     * tree for the LLM to retry with. For [SHELL_TIMEOUT] and [SHELL_SESSION_LOST] codes
+     * the action may have partially executed, so the message notes this uncertainty.
+     *
+     * Returns a [TextToolResult] — success with the YAML tree, or failure with
+     * an optional payload.
      */
     private suspend fun executeShellAndCapture(
         waitMode: String,
         waitMs: Long,
         executor: suspend () -> BuiltinToolResult,
-    ): String {
+    ): TextToolResult {
         val result = executor()
         if (!result.ok) {
-            return errorJson(result.code, result.message)
+            val captureResult = AccessibilityController.captureScreen()
+            val enhanced = when (result.code) {
+                ScreenOperationError.SHELL_TIMEOUT.code,
+                ScreenOperationError.SHELL_SESSION_LOST.code -> {
+                    result.copy(
+                        message = "The shell command may have partially executed before the " +
+                            "timeout/session loss. Read the screen to determine the actual " +
+                            "state before deciding whether to retry.",
+                    )
+                }
+                else -> result
+            }
+            return assembleActionResult(enhanced, captureResult)
         }
         val capture = if (waitMode == "delay") {
             AccessibilityController.captureScreenAfterDelay(waitMs)
@@ -140,14 +160,15 @@ class ScreenOperationShellBuiltin : RawBuiltinTool() {
             AccessibilityController.waitForStable(waitMs)
         }
         return capture.fold(
-            onSuccess = { it.yaml },
+            onSuccess = { snapshot -> TextToolResult.success(snapshot.yaml) },
             onFailure = { e ->
-                errorJson("SERVICE_UNAVAILABLE", e.message ?: "Service unavailable")
+                TextToolResult.failure(
+                    code = ScreenOperationError.CAPTURE_FAILED_AFTER_ACTION.code,
+                    message = "The shell action may have succeeded, but the updated screen " +
+                        "tree could not be captured. Read the screen before deciding whether " +
+                        "to retry the action.",
+                )
             },
         )
-    }
-
-    private fun errorJson(code: String, message: String): String {
-        return ScreenOperationError.errorJson(code, message)
     }
 }

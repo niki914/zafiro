@@ -4,7 +4,8 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatBlock
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatTurn
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
-import com.niki914.nexus.agentic.chat.agentic.stream.LocalToolResultClassifier
+import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
+import com.niki914.nexus.agentic.chat.agentic.stream.ParsedToolResult
 import com.niki914.s3ss10n.ChatTurn
 
 object ConversationFormatter {
@@ -61,7 +62,10 @@ object ConversationFormatter {
                     val updated = target.updateToolState(
                         callId = turn.callId,
                         toolName = turn.toolName,
-                        state = if (LocalToolResultClassifier.failureMessage(turn.resultJson) == null) {
+                        state = if (ParsedToolResult.decode(
+                            raw = turn.resultJson,
+                            toolName = turn.toolName,
+                        ).status == TextToolResult.Status.Success) {
                             HomeToolState.Succeeded
                         } else {
                             HomeToolState.Failed

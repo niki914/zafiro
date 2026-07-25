@@ -9,6 +9,52 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ConversationFormatterTest {
+
+    @Test
+    fun toHomeTurns_restoresFailureFromTextProtocolResult() {
+        val turns = ConversationFormatter.toHomeTurns(
+            listOf(
+                ChatTurn.User("question"),
+                ChatTurn.Assistant(
+                    content = "let me tap",
+                    toolCalls = listOf(
+                        ToolCallSpec("c1", "screen_operation_accessibility", "{}"),
+                    ),
+                ),
+                ChatTurn.ToolResult(
+                    callId = "c1",
+                    toolName = "screen_operation_accessibility",
+                    resultJson = "#!tool-result\n#!status: failure\n#!code: VERSION_MISMATCH\n#!message: Token expired\n\nsome yaml",
+                ),
+            ),
+        )
+
+        val toolBlock = turns.single().blocks.last() as HomeChatBlock.Tool
+        assertEquals(HomeToolState.Failed, toolBlock.status.state)
+    }
+
+    @Test
+    fun toHomeTurns_restoresSuccessFromTextProtocolResult() {
+        val turns = ConversationFormatter.toHomeTurns(
+            listOf(
+                ChatTurn.User("question"),
+                ChatTurn.Assistant(
+                    content = "result",
+                    toolCalls = listOf(
+                        ToolCallSpec("c2", "screen_operation_accessibility", "{}"),
+                    ),
+                ),
+                ChatTurn.ToolResult(
+                    callId = "c2",
+                    toolName = "screen_operation_accessibility",
+                    resultJson = "#!tool-result\n#!status: success\n\ntree yaml",
+                ),
+            ),
+        )
+
+        val toolBlock = turns.single().blocks.last() as HomeChatBlock.Tool
+        assertEquals(HomeToolState.Succeeded, toolBlock.status.state)
+    }
     @Test
     fun previewFromText_trimsAndKeepsEmptyOrShortText() {
         assertEquals("", ConversationFormatter.previewFromText("   "))

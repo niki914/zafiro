@@ -3,6 +3,7 @@ package com.niki914.nexus.agentic.chat.agentic.stream
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.chat.ToolCallKind
 import com.niki914.nexus.agentic.chat.ToolCallStatus
+import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.s3ss10n.SessionEvent
 import com.niki914.s3ss10n.ToolCallKind as SessionToolCallKind
 
@@ -28,9 +29,15 @@ object LlmStreamEventMapper {
             is SessionEvent.ToolRunning -> LlmStreamEvent.ToolRunning(event.toToolCallStatus())
             is SessionEvent.ToolSucceeded -> {
                 val call = event.toToolCallStatus()
-                val failureMessage = LocalToolResultClassifier.failureMessage(event.resultJson)
-                if (failureMessage != null) {
-                    LlmStreamEvent.ToolFailed(call = call, message = failureMessage)
+                val parsed = ParsedToolResult.decode(
+                    raw = event.resultJson,
+                    toolName = event.toolName,
+                )
+                if (parsed.status == TextToolResult.Status.Failure) {
+                    LlmStreamEvent.ToolFailed(
+                        call = call,
+                        message = parsed.message ?: parsed.code ?: "Tool failed.",
+                    )
                 } else {
                     LlmStreamEvent.ToolSucceeded(
                         call = call,

@@ -4,20 +4,25 @@ import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityControl
 import com.niki914.nexus.agentic.chat.agentic.accessibility.NodeAction
 import com.niki914.nexus.agentic.chat.agentic.accessibility.ScreenSnapshot
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
-import com.niki914.nexus.agentic.chat.agentic.buildin.RawBuiltinTool
+import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
+import com.niki914.nexus.agentic.chat.agentic.buildin.TextResultBuiltinTool
+import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.s3ss10n.LocalToolConfig
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
 /**
- * RawBuiltinTool for accessibility-service-based screen interaction.
+ * TextResultBuiltinTool for accessibility-service-based screen interaction.
  *
  * Supports read, tap, long_click, scroll_forward, scroll_backward, set_text
  * (all node-based via token), and search. Every successful write operation auto-captures
  * the updated screen tree after execution.
+ *
+ * Every result uses the #!tool-result protocol. Check #!status first.
+ * If #!status: failure and the payload contains a fresh YAML tree, use the new tokens
+ * directly to retry. Only call read if the failure result has no payload.
  */
-class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
+class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
     override val name = "screen_operation_accessibility"
     override val defaultEnabled = true
     override val description: String =
@@ -48,7 +53,11 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
                 "for \"delay\" required (no default), the fixed blind-wait duration.\n\n" +
                 "Tokens belong to exactly one snapshot — every read, search, and successful " +
                 "write operation produces a fresh version. Use only tokens from the most " +
-                "recently returned result."
+                "recently returned result.\n\n" +
+                "Every result uses the #!tool-result protocol. Check #!status first. " +
+                "If #!status: failure and the payload contains a fresh YAML tree, " +
+                "use the new tokens directly to retry. Only call read if the failure " +
+                "result has no payload."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
@@ -82,76 +91,80 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
         }
     }
 
-    override suspend fun invokeRaw(request: BuiltinToolRequest): String {
+    override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult {
         AccessibilityController.ensurePointerShown()
 
         val args = parseArguments(request.argumentsJson).getOrElse { error ->
             val msg = error.message ?: "Invalid arguments JSON"
-            val code = if (msg.startsWith("Unknown operation")) "INVALID_OPERATION" else "INVALID_ARGUMENTS_JSON"
-            return errorJson(code, msg)
+            val code = if (msg.startsWith("Unknown operation")) ScreenOperationError.INVALID_OPERATION.code else ScreenOperationError.INVALID_ARGUMENTS_JSON.code
+            return TextToolResult.failure(code, msg)
         }
 
-        return try {
-            when (val op = args.operation) {
-                is ScreenOp.Read -> {
-                    val capture = captureAfterOptionalWait(args)
-                    capture
-                        .fold(
-                            onSuccess = { it.yaml },
-                            onFailure = { e ->
-                                errorJson("SERVICE_UNAVAILABLE", e.message ?: "Service unavailable")
-                            },
+        return when (val op = args.operation) {
+            is ScreenOp.Read -> {
+                val capture = captureAfterOptionalWait(args)
+                capture.fold(
+                    onSuccess = { TextToolResult.success(it.yaml) },
+                    onFailure = { e ->
+                        TextToolResult.failure(
+                            ScreenOperationError.SERVICE_UNAVAILABLE.code,
+                            e.message ?: "Service unavailable",
                         )
-                }
-
-                is ScreenOp.Tap -> executeNodeActionAndCapture(
-                    op.token, NodeAction.CLICK, null, args.waitMode, args.waitMs
-                )
-
-                is ScreenOp.LongClick -> executeNodeActionAndCapture(
-                    op.token, NodeAction.LONG_CLICK, null, args.waitMode, args.waitMs
-                )
-
-                is ScreenOp.ScrollForward -> executeNodeActionAndCapture(
-                    op.token, NodeAction.SCROLL_FORWARD, null, args.waitMode, args.waitMs
-                )
-
-                is ScreenOp.ScrollBackward -> executeNodeActionAndCapture(
-                    op.token, NodeAction.SCROLL_BACKWARD, null, args.waitMode, args.waitMs
-                )
-
-                is ScreenOp.SetText -> executeNodeActionAndCapture(
-                    op.token, NodeAction.SET_TEXT, op.text, args.waitMode, args.waitMs
-                )
-
-                is ScreenOp.Search -> {
-                    waitBeforeSearch(args)
-                    AccessibilityController.searchNodes(op.keywords, op.matchMode, op.limit)
-                        .fold(
-                            onSuccess = { it },
-                            onFailure = { e ->
-                                errorJson("SEARCH_FAILED", e.message ?: "Search failed")
-                            },
-                        )
-                }
-
-                else -> errorJson(
-                    "INVALID_OPERATION",
-                    "Operation '${op::class.simpleName}' not supported by " +
-                            "screen_operation_accessibility. Use screen_operation_shell for " +
-                            "shell-based operations."
+                    },
                 )
             }
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
-            errorJson("INTERNAL_ERROR", throwable.message ?: "Unknown internal error")
+
+            is ScreenOp.Tap -> executeNodeActionAndCapture(
+                op.token, NodeAction.CLICK, null, args.waitMode, args.waitMs,
+            )
+
+            is ScreenOp.LongClick -> executeNodeActionAndCapture(
+                op.token, NodeAction.LONG_CLICK, null, args.waitMode, args.waitMs,
+            )
+
+            is ScreenOp.ScrollForward -> executeNodeActionAndCapture(
+                op.token, NodeAction.SCROLL_FORWARD, null, args.waitMode, args.waitMs,
+            )
+
+            is ScreenOp.ScrollBackward -> executeNodeActionAndCapture(
+                op.token, NodeAction.SCROLL_BACKWARD, null, args.waitMode, args.waitMs,
+            )
+
+            is ScreenOp.SetText -> executeNodeActionAndCapture(
+                op.token, NodeAction.SET_TEXT, op.text, args.waitMode, args.waitMs,
+            )
+
+            is ScreenOp.Search -> {
+                waitBeforeSearch(args)
+                AccessibilityController.searchNodes(op.keywords, op.matchMode, op.limit)
+                    .fold(
+                        onSuccess = { TextToolResult.success(it) },
+                        onFailure = { e ->
+                            TextToolResult.failure(
+                                ScreenOperationError.SEARCH_FAILED.code,
+                                e.message ?: "Search failed",
+                            )
+                        },
+                    )
+            }
+
+            else -> TextToolResult.failure(
+                code = ScreenOperationError.INVALID_OPERATION.code,
+                message = "Operation '${op::class.simpleName}' not supported by " +
+                    "screen_operation_accessibility. Use screen_operation_shell for " +
+                    "shell-based operations.",
+            )
         }
     }
 
     /**
      * Executes a node action, then captures the updated screen according to [waitMode].
      *
-     * Returns the YAML representation on success, or an error JSON string on failure.
+     * When the action itself fails, the screen is captured to provide a fresh tree
+     * for the LLM to retry with, instead of returning a bare error.
+     *
+     * Returns a [TextToolResult] — success with the YAML tree, or failure with
+     * an optional payload.
      */
     private suspend fun executeNodeActionAndCapture(
         token: String,
@@ -159,10 +172,11 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
         text: String?,
         waitMode: String,
         waitMs: Long,
-    ): String {
+    ): TextToolResult {
         val actionResult = AccessibilityController.executeNodeAction(token, action, text)
         if (!actionResult.ok) {
-            return errorJson(actionResult.code, actionResult.message)
+            val captureResult = AccessibilityController.captureScreen()
+            return assembleActionResult(actionResult, captureResult)
         }
         val capture = if (waitMode == "delay") {
             AccessibilityController.captureScreenAfterDelay(waitMs)
@@ -170,9 +184,14 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
             AccessibilityController.waitForStable(waitMs)
         }
         return capture.fold(
-            onSuccess = { it.yaml },
+            onSuccess = { snapshot -> TextToolResult.success(snapshot.yaml) },
             onFailure = { e ->
-                errorJson("SERVICE_UNAVAILABLE", e.message ?: "Service unavailable")
+                TextToolResult.failure(
+                    code = ScreenOperationError.CAPTURE_FAILED_AFTER_ACTION.code,
+                    message = "The action may have succeeded, but the updated screen tree " +
+                        "could not be captured. Read the screen before deciding whether to " +
+                        "retry the action.",
+                )
             },
         )
     }
@@ -198,9 +217,5 @@ class ScreenOperationAccessibilityBuiltin : RawBuiltinTool() {
         } else {
             AccessibilityController.waitForStable(args.waitMs)
         }
-    }
-
-    private fun errorJson(code: String, message: String): String {
-        return ScreenOperationError.errorJson(code, message)
     }
 }

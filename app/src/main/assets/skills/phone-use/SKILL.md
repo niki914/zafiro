@@ -98,7 +98,9 @@ For actions that don't target a single labeled node (e.g., swipe-to-refresh, dra
 
 All write operations (tap, scroll, swipe, key) now return the updated screen tree automatically. Use this returned YAML for the next action — no explicit `read` needed.
 
-However, **re-read explicitly** after `launch_app`, after an operation's result is an error, or whenever you need a fresh view after external state changes. Tokens are versioned — every read, search, and successful write operation produces a fresh version. Never reuse tokens from an older snapshot.
+However, **re-read explicitly** after `launch_app` or whenever you need a fresh view after external state changes. Tokens are versioned — every read, search, and successful write operation produces a fresh version. Never reuse tokens from an older snapshot.
+
+All write operations now use the `#!tool-result` protocol. Check `#!status` first — if it says `failure` but the payload contains a fresh YAML tree, retry using the new tokens directly without calling `read`. Only call `read` when a failure result has no YAML payload (the tree could not be captured). If the error code is `CAPTURE_FAILED_AFTER_ACTION`, do NOT blindly retry the same action — the action may have already taken effect; read the screen first to determine the current state.
 
 **Scrolling lists — use `screen_operation_shell(operation: "swipe", ...)`**, not `scroll_forward`/`scroll_backward`. Accessibility scroll actions have app-defined step sizes. Shell swipe gives direct control over the swipe coordinates.
 
