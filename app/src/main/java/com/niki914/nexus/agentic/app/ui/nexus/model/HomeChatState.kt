@@ -73,6 +73,7 @@ data class HomeToolStatus(
     val callId: String? = null,
     val name: String,
     val state: HomeToolState,
+    val resultText: String? = null,
     val failedReason: String? = null,
 )
 
@@ -96,7 +97,8 @@ data class HomeChatUiState(
     val streamEventCount: Int = 0,
     val currentConversationId: String? = null,
     val currentConversationTitle: String? = null,
-    val expandedToolRunKeys: Set<String> = emptySet(),
+    val expandedToolRuns: Set<String> = emptySet(),
+    val expandedToolResults: Set<String> = emptySet(),
     val expandedActionTurnId: Long? = null,
     val expandedActionSource: ActionSource? = null,
 )
@@ -108,7 +110,8 @@ sealed interface HomeChatIntent {
     data object NewConversation : HomeChatIntent
     data class LoadConversation(val id: String) : HomeChatIntent
     data class DeleteConversation(val id: String) : HomeChatIntent
-    data class ToggleToolRunExpanded(val turnId: Long, val runStartIndex: Int) : HomeChatIntent
+    data class ToggleToolRun(val turnId: Long, val runStartIndex: Int) : HomeChatIntent
+    data class ToggleToolResult(val turnId: Long, val runStartIndex: Int, val toolIndex: Int) : HomeChatIntent
     data class ToggleActionRow(val turnId: Long, val source: ActionSource) : HomeChatIntent
     data class ReGenerateAt(val turnId: Long) : HomeChatIntent
     data class ForkAt(val turnId: Long) : HomeChatIntent
@@ -161,8 +164,11 @@ class HomeChatViewModel internal constructor(
             HomeChatIntent.NewConversation -> startNewConversation()
             is HomeChatIntent.LoadConversation -> loadConversation(intent.id)
             is HomeChatIntent.DeleteConversation -> deleteConversationNow(intent.id)
-            is HomeChatIntent.ToggleToolRunExpanded -> toggleToolRunExpanded(
+            is HomeChatIntent.ToggleToolRun -> toggleToolRun(
                 intent.turnId, intent.runStartIndex,
+            )
+            is HomeChatIntent.ToggleToolResult -> toggleToolResult(
+                intent.turnId, intent.runStartIndex, intent.toolIndex,
             )
 
             is HomeChatIntent.ToggleActionRow -> toggleActionRow(
@@ -174,14 +180,27 @@ class HomeChatViewModel internal constructor(
         }
     }
 
-    private fun toggleToolRunExpanded(turnId: Long, runStartIndex: Int) {
+    private fun toggleToolRun(turnId: Long, runStartIndex: Int) {
         val key = "${turnId}_${runStartIndex}"
         updateState {
             copy(
-                expandedToolRunKeys = if (key in expandedToolRunKeys) {
-                    expandedToolRunKeys - key
+                expandedToolRuns = if (key in expandedToolRuns) {
+                    expandedToolRuns - key
                 } else {
-                    expandedToolRunKeys + key
+                    expandedToolRuns + key
+                },
+            )
+        }
+    }
+
+    private fun toggleToolResult(turnId: Long, runStartIndex: Int, toolIndex: Int) {
+        val key = "${turnId}_${runStartIndex}_${toolIndex}"
+        updateState {
+            copy(
+                expandedToolResults = if (key in expandedToolResults) {
+                    expandedToolResults - key
+                } else {
+                    expandedToolResults + key
                 },
             )
         }
@@ -295,11 +314,17 @@ class HomeChatViewModel internal constructor(
             }
 
             is LlmStreamEvent.ToolSucceeded -> updateTurn(turnId) {
-                it.updateTool(event.call.callId, event.call.label, HomeToolState.Succeeded)
+                it.updateTool(
+                    event.call.callId, event.call.label,
+                    HomeToolState.Succeeded, event.outputText,
+                )
             }
 
             is LlmStreamEvent.ToolFailed -> updateTurn(turnId) {
-                it.updateTool(event.call.callId, event.call.label, HomeToolState.Failed)
+                it.updateTool(
+                    event.call.callId, event.call.label,
+                    HomeToolState.Failed, event.message,
+                )
             }
 
             is LlmStreamEvent.Error -> {
@@ -340,7 +365,8 @@ class HomeChatViewModel internal constructor(
                         streamEventCount = 0,
                         currentConversationId = conversationId,
                         currentConversationTitle = restoredTitle,
-                        expandedToolRunKeys = emptySet(),
+                        expandedToolRuns = emptySet(),
+                        expandedToolResults = emptySet(),
                         expandedActionTurnId = null,
                         expandedActionSource = null,
                     )
@@ -417,7 +443,8 @@ class HomeChatViewModel internal constructor(
                 streamEventCount = 0,
                 currentConversationId = id,
                 currentConversationTitle = restoredTitle,
-                expandedToolRunKeys = emptySet(),
+                expandedToolRuns = emptySet(),
+                expandedToolResults = emptySet(),
                 expandedActionTurnId = null,
                 expandedActionSource = null,
             )
@@ -570,12 +597,14 @@ class HomeChatViewModel internal constructor(
         callId: String?,
         label: String,
         state: HomeToolState,
+        resultText: String? = null,
     ): HomeChatTurn = copy(
         blocks = blocks + HomeChatBlock.Tool(
             HomeToolStatus(
                 callId = callId,
                 name = label,
                 state = state,
+                resultText = resultText,
             ),
         ),
     )
@@ -584,12 +613,13 @@ class HomeChatViewModel internal constructor(
         callId: String?,
         label: String,
         state: HomeToolState,
+        resultText: String? = null,
     ): HomeChatTurn {
         val index = blocks.indexOfLast { block ->
             block is HomeChatBlock.Tool && block.status.matchesTool(callId, label)
         }
         if (index == -1) {
-            return appendTool(callId, label, state)
+            return appendTool(callId, label, state, resultText)
         }
         return copy(
             blocks = blocks.toMutableList().also { mutableBlocks ->
@@ -598,6 +628,7 @@ class HomeChatViewModel internal constructor(
                         callId = callId,
                         name = label,
                         state = state,
+                        resultText = resultText,
                     ),
                 )
             },

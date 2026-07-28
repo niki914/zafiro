@@ -59,17 +59,25 @@ object ConversationFormatter {
 
                 is ChatTurn.ToolResult -> {
                     val target = turns.lastOrNull() ?: return@forEach
+                    val parsed = ParsedToolResult.decode(
+                        raw = turn.resultJson,
+                        toolName = turn.toolName,
+                    )
+                    val state = if (parsed.status == TextToolResult.Status.Success) {
+                        HomeToolState.Succeeded
+                    } else {
+                        HomeToolState.Failed
+                    }
+                    val resultText = when (parsed.status) {
+                        TextToolResult.Status.Success -> parsed.payload.takeIf { it.isNotBlank() }
+                        TextToolResult.Status.Failure -> parsed.message?.takeIf { it.isNotBlank() }
+                            ?: parsed.payload.takeIf { it.isNotBlank() }
+                    }
                     val updated = target.updateToolState(
                         callId = turn.callId,
                         toolName = turn.toolName,
-                        state = if (ParsedToolResult.decode(
-                            raw = turn.resultJson,
-                            toolName = turn.toolName,
-                        ).status == TextToolResult.Status.Success) {
-                            HomeToolState.Succeeded
-                        } else {
-                            HomeToolState.Failed
-                        },
+                        state = state,
+                        resultText = resultText,
                     )
                     turns.replaceLastOrAdd(updated)
                 }
@@ -104,6 +112,7 @@ object ConversationFormatter {
         callId: String,
         toolName: String,
         state: HomeToolState,
+        resultText: String? = null,
     ): HomeChatTurn {
         val index = blocks.indexOfLast { block ->
             block is HomeChatBlock.Tool && block.status.matchesTool(callId, toolName)
@@ -112,7 +121,9 @@ object ConversationFormatter {
         return copy(
             blocks = blocks.toMutableList().also { mutableBlocks ->
                 val block = mutableBlocks[index] as HomeChatBlock.Tool
-                mutableBlocks[index] = block.copy(status = block.status.copy(state = state))
+                mutableBlocks[index] = block.copy(
+                    status = block.status.copy(state = state, resultText = resultText),
+                )
             },
         )
     }
