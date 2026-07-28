@@ -684,7 +684,7 @@ object AccessibilityController {
                 }
                 if (!result.success) {
                     return BuiltinToolResult.failure(
-                        "SHELL_FAILED",
+                        result.errorCode ?: ScreenOperationError.SHELL_FAILED.code,
                         "Shell ${if (action == NodeAction.LONG_CLICK) "long tap" else "tap"} failed: ${result.stderr}",
                     )
                 }
@@ -696,7 +696,8 @@ object AccessibilityController {
                 val result = runShellCommand("input swipe $cx $cy $cx ${cy - 200} 300")
                 if (!result.success) {
                     return BuiltinToolResult.failure(
-                        "SHELL_FAILED", "Shell scroll forward failed: ${result.stderr}"
+                        result.errorCode ?: ScreenOperationError.SHELL_FAILED.code,
+                        "Shell scroll forward failed: ${result.stderr}",
                     )
                 }
                 BuiltinToolResult.success("shell scroll forward at ($cx, $cy)")
@@ -706,7 +707,8 @@ object AccessibilityController {
                 val result = runShellCommand("input swipe $cx $cy $cx ${cy + 200} 300")
                 if (!result.success) {
                     return BuiltinToolResult.failure(
-                        "SHELL_FAILED", "Shell scroll backward failed: ${result.stderr}"
+                        result.errorCode ?: ScreenOperationError.SHELL_FAILED.code,
+                        "Shell scroll backward failed: ${result.stderr}",
                     )
                 }
                 BuiltinToolResult.success("shell scroll backward at ($cx, $cy)")
