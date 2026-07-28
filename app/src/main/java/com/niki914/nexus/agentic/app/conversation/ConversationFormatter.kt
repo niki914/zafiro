@@ -93,7 +93,7 @@ object ConversationFormatter {
                 HomeToolStatus(
                     callId = toolCall.callId,
                     name = toolCall.toolName,
-                    state = HomeToolState.Succeeded,
+                    state = HomeToolState.Failed,
                 ),
             )
         }
@@ -118,7 +118,8 @@ object ConversationFormatter {
     }
 
     private fun HomeToolStatus.matchesTool(callId: String, toolName: String): Boolean {
-        return this.callId == callId || (this.callId.isNullOrBlank() && name == toolName)
+        if (this.callId != null) return this.callId == callId
+        return name == toolName
     }
 
     private fun MutableList<HomeChatTurn>.replaceLastOrAdd(turn: HomeChatTurn) {

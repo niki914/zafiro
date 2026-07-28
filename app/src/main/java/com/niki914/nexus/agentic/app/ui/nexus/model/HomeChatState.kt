@@ -73,6 +73,7 @@ data class HomeToolStatus(
     val callId: String? = null,
     val name: String,
     val state: HomeToolState,
+    val failedReason: String? = null,
 )
 
 sealed interface HomeChatBlock {
@@ -245,6 +246,8 @@ class HomeChatViewModel internal constructor(
         runtime.stopCurrentRound(keepCurrentTurn = true)
         streamJob?.cancel()
         streamJob = null
+        finalizeRunningTools()
+        persistCurrentHistoryIfAny()
         updateState { copy(isGenerating = false) }
     }
 
@@ -307,15 +310,7 @@ class HomeChatViewModel internal constructor(
                 updateTurn(turnId) {
                     it.appendFinalText(event.fullText)
                 }
-                val completedConversationId = currentConversationId
-                val completedHistory = if (completedConversationId != null) {
-                    runtime.getHistory()
-                } else {
-                    emptyList()
-                }
-                if (completedConversationId != null) {
-                    persistCompletedHistory(completedConversationId, completedHistory)
-                }
+                persistCurrentHistoryIfAny()
                 updateState { copy(isGenerating = false) }
             }
         }
@@ -363,6 +358,39 @@ class HomeChatViewModel internal constructor(
         conversations.saveHistory(conversationId = conversationId, history = history)
         if (currentConversationId == conversationId) {
             conversations.setLastOpenedConversationId(conversationId)
+        }
+    }
+
+    private suspend fun persistCurrentHistoryIfAny() {
+        val conversationId = currentConversationId ?: return
+        val history = runtime.getHistory()
+        if (history.isEmpty()) return
+        persistCompletedHistory(conversationId, history)
+    }
+
+    private fun finalizeRunningTools() {
+        val currentTurns = currentState.turns
+        if (currentTurns.isEmpty()) return
+        val lastTurn = currentTurns.last()
+        val hasRunning = lastTurn.blocks.any { block ->
+            block is HomeChatBlock.Tool && block.status.state == HomeToolState.Running
+        }
+        if (!hasRunning) return
+        updateTurn(lastTurn.id) { turn ->
+            turn.copy(
+                blocks = turn.blocks.map { block ->
+                    if (block is HomeChatBlock.Tool && block.status.state == HomeToolState.Running) {
+                        HomeChatBlock.Tool(
+                            block.status.copy(
+                                state = HomeToolState.Failed,
+                                failedReason = FAILED_REASON_INTERRUPTED,
+                            ),
+                        )
+                    } else {
+                        block
+                    }
+                },
+            )
         }
     }
 
@@ -577,11 +605,10 @@ class HomeChatViewModel internal constructor(
     }
 
     private fun HomeToolStatus.matchesTool(callId: String?, label: String): Boolean {
-        return if (callId != null || this.callId != null) {
-            this.callId == callId
-        } else {
-            name == label
+        if (callId != null && this.callId != null) {
+            return this.callId == callId
         }
+        return name == label
     }
 
     private fun List<HomeChatTurn>.nextTurnId(): Long {
@@ -604,5 +631,9 @@ class HomeChatViewModel internal constructor(
         is LlmStreamEvent.ToolFailed -> "ToolFailed"
         is LlmStreamEvent.Error -> "Error"
         is LlmStreamEvent.Completed -> "Completed"
+    }
+
+    companion object {
+        internal const val FAILED_REASON_INTERRUPTED = "Interrupted by user"
     }
 }

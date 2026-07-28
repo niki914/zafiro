@@ -287,6 +287,80 @@ class HomeChatViewModelTest {
     }
 
     @Test
+    fun stopGenerating_finalizesRunningToolsToFailedWithInterruptedReason() = runTest {
+        val conversations = FakeHomeConversationStore()
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(stream = {
+                flow {
+                    emit(LlmStreamEvent.RoundStarted)
+                    emit(LlmStreamEvent.ToolRunning(ToolCallStatus(name = "search", label = "Search")))
+                    emit(LlmStreamEvent.ToolRunning(ToolCallStatus(callId = "c1", name = "calc", label = "Calc")))
+                    awaitCancellation()
+                }
+            }),
+        )
+
+        viewModel.sendIntent(HomeChatIntent.InputChanged("hello"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.StopGenerating)
+        runCurrent()
+
+        val state = viewModel.uiStateFlow.value
+        assertFalse(state.isGenerating)
+        val toolBlocks = state.turns.single().blocks.filterIsInstance<HomeChatBlock.Tool>()
+        assertEquals(2, toolBlocks.size)
+        toolBlocks.forEach { tool ->
+            assertEquals(HomeToolState.Failed, tool.status.state)
+            assertEquals(
+                HomeChatViewModel.FAILED_REASON_INTERRUPTED,
+                tool.status.failedReason,
+            )
+        }
+
+        viewModel.sendIntent(HomeChatIntent.NewConversation)
+        advanceUntilIdle()
+    }
+
+    @Test
+    fun stopGenerating_persistsCurrentHistory() = runTest {
+        val conversations = FakeHomeConversationStore()
+        var stopCalled = false
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(
+                stream = {
+                    flow {
+                        emit(LlmStreamEvent.RoundStarted)
+                        emit(LlmStreamEvent.TextDelta(delta = "partial", fullText = "partial"))
+                        awaitCancellation()
+                    }
+                },
+                getHistory = { listOf(ChatTurn.User("hello"), ChatTurn.Assistant("partial")) },
+                stopCurrentRound = { stopCalled = true },
+            ),
+        )
+
+        viewModel.sendIntent(HomeChatIntent.InputChanged("hello"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.StopGenerating)
+        advanceUntilIdle()
+
+        assertTrue(stopCalled)
+        val conversationId = conversations.lastOpenedConversationId()
+        assertTrue(conversationId.isNotBlank())
+        val record = conversations.getConversation(conversationId)!!
+        assertEquals(2, record.history.size)
+
+        viewModel.sendIntent(HomeChatIntent.NewConversation)
+        advanceUntilIdle()
+    }
+
+    @Test
     fun completed_persistsRuntimeHistoryAndLastOpenedConversationId() = runTest {
         val history = listOf(
             ChatTurn.User("hello"),
