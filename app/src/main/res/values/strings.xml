@@ -49,13 +49,9 @@
     <string name="ui_tool_status_success">成功</string>
     <string name="ui_tool_status_failed">失败</string>
     <string name="ui_tool_status_failed_reason_interrupted">用户中断</string>
-    <plurals name="ui_home_used_tools">
-        <item quantity="other">已使用 %1$d 个工具</item>
-    </plurals>
     <plurals name="ui_tool_chain_count">
         <item quantity="other">%d 个工具</item>
     </plurals>
-    <string name="ui_tool_chain_collapse">收起</string>
     <string name="ui_home_send_content_description">发送消息</string>
     <string name="ui_home_stop_content_description">停止生成</string>
     <string name="ui_home_action_copy_content_description">复制</string>

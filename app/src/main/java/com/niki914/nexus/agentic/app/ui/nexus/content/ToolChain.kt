@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -59,11 +60,9 @@ private val FailedColor = Color(0xFFB85C5C)
 // ── ToolChain — stateless, state driven by ViewModel ──────────────────────
 
 /**
- * Stateless, centered tool call list.
- *
- * [isExpanded] and [expandedResults] come from [com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatUiState],
- * toggled via [com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatIntent.ToggleToolRun] and
- * [ToggleToolResult][com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatIntent.ToggleToolResult].
+ * Stateless tool call list. For a single tool the header is skipped and the
+ * tool row is rendered directly; for two or more tools a header row controls
+ * expand/collapse of the tool list.
  */
 @Composable
 fun ToolChain(
@@ -75,16 +74,10 @@ fun ToolChain(
     modifier: Modifier = Modifier,
 ) {
     val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val showCollapsedNames = !isExpanded && tools.size >= 2
-
-    val chevron by animateFloatAsState(
-        targetValue = if (isExpanded) 90f else 0f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-        label = "chevron",
-    )
 
     Column(
         modifier = modifier
+            .fillMaxWidth()
             .animateContentSize(
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
@@ -93,91 +86,103 @@ fun ToolChain(
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // ── header ──
-        Row(
-            modifier = Modifier
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onToggleRun,
-                )
-                .padding(vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val headerText = if (tools.size == 1) {
-                tools[0].name
-            } else {
-                pluralStringResource(R.plurals.ui_tool_chain_count, tools.size, tools.size)
-            }
-            Text(
-                text = headerText,
-                style = MaterialTheme.typography.labelLarge,
-                color = contentColor.copy(alpha = 0.72f),
+        if (tools.size == 1) {
+            val status = tools[0]
+            val hasResult = status.resultText != null
+            val isPressable = status.state != HomeToolState.Running
+            ToolRow(
+                status = status,
+                isExpanded = 0 in expandedResults,
+                isPressable = isPressable,
+                hasResult = hasResult,
+                onToggle = { onToggleResult(0) },
             )
-            if (showCollapsedNames) {
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = tools.joinToString(" · ") { it.name },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = contentColor.copy(alpha = 0.38f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 220.dp),
-                )
-            }
-            Spacer(modifier = Modifier.width(6.dp))
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowRight,
-                contentDescription = null,
-                tint = contentColor.copy(alpha = 0.38f),
-                modifier = Modifier
-                    .size(18.dp)
-                    .graphicsLayer { rotationZ = chevron },
+        } else {
+            MultiToolHeader(
+                tools = tools,
+                isExpanded = isExpanded,
+                contentColor = contentColor,
+                onToggle = onToggleRun,
             )
-        }
 
-        // ── expanded rows ──
-        if (isExpanded) {
-            Spacer(modifier = Modifier.height(2.dp))
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(2.dp))
 
-            tools.forEachIndexed { index, status ->
-                val isOpen = index in expandedResults
-                val hasResult = status.resultText != null
-                val isPressable = status.state != HomeToolState.Running
+                tools.forEachIndexed { index, status ->
+                    val isOpen = index in expandedResults
+                    val hasResult = status.resultText != null
+                    val isPressable = status.state != HomeToolState.Running
 
-                StaggeredEntry(
-                    index = index,
-                    staggerMs = index * 40L,
-                ) {
-                    ToolRow(
-                        status = status,
-                        isExpanded = isOpen,
-                        isPressable = isPressable,
-                        hasResult = hasResult,
-                        onToggle = { onToggleResult(index) },
-                    )
+                    StaggeredEntry(
+                        index = index,
+                        staggerMs = index * 40L,
+                    ) {
+                        ToolRow(
+                            status = status,
+                            isExpanded = isOpen,
+                            isPressable = isPressable,
+                            hasResult = hasResult,
+                            onToggle = { onToggleResult(index) },
+                        )
+                    }
                 }
-            }
 
-            // Collapse
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(
-                modifier = Modifier
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onToggleRun,
-                    )
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.ui_tool_chain_collapse),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = contentColor.copy(alpha = 0.38f),
-                )
+                Spacer(modifier = Modifier.height(6.dp))
             }
         }
+    }
+}
+
+// ── multi-tool header ─────────────────────────────────────────────────────
+
+@Composable
+private fun MultiToolHeader(
+    tools: List<HomeToolStatus>,
+    isExpanded: Boolean,
+    contentColor: Color,
+    onToggle: () -> Unit,
+) {
+    val chevron by animateFloatAsState(
+        targetValue = if (isExpanded) 90f else 0f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+        label = "chevron",
+    )
+
+    Row(
+        modifier = Modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onToggle,
+            )
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = pluralStringResource(R.plurals.ui_tool_chain_count, tools.size, tools.size),
+            style = MaterialTheme.typography.bodyLarge,
+            color = contentColor.copy(alpha = 0.72f),
+        )
+        if (!isExpanded) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = tools.joinToString(" · ") { it.name },
+                style = MaterialTheme.typography.bodySmall,
+                color = contentColor.copy(alpha = 0.38f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 220.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowRight,
+            contentDescription = null,
+            tint = contentColor.copy(alpha = 0.38f),
+            modifier = Modifier
+                .size(18.dp)
+                .graphicsLayer { rotationZ = chevron },
+        )
     }
 }
 
@@ -212,13 +217,16 @@ private fun ToolRow(
     onToggle: () -> Unit,
 ) {
     val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val statusColor = when (status.state) {
+    val statusDotColor = when (status.state) {
         HomeToolState.Succeeded -> SucceededColor
         HomeToolState.Failed -> FailedColor
         HomeToolState.Running -> contentColor
     }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Row(
             modifier = Modifier
                 .clickable(
@@ -229,12 +237,12 @@ private fun ToolRow(
                 .padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            StatusDot(state = status.state, color = statusColor)
+            StatusDot(state = status.state, color = statusDotColor)
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
                 text = status.name,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = contentColor.copy(alpha = 0.78f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -243,23 +251,23 @@ private fun ToolRow(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            if (!isExpanded || !hasResult) {
-                Text(
-                    text = statusLabel(status),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = statusColor.copy(alpha = 0.55f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Text(
+                text = statusLabel(status),
+                style = MaterialTheme.typography.bodySmall,
+                color = contentColor.copy(alpha = 0.48f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
 
-            Spacer(modifier = Modifier.width(6.dp))
+            if (hasResult || status.state == HomeToolState.Running) {
+                Spacer(modifier = Modifier.width(6.dp))
+            }
 
             when {
                 status.state == HomeToolState.Running -> CircularProgressIndicator(
                     modifier = Modifier.size(14.dp),
                     strokeWidth = 1.5.dp,
-                    color = statusColor,
+                    color = contentColor,
                 )
                 hasResult -> Icon(
                     imageVector = Icons.Default.KeyboardArrowRight,
@@ -280,14 +288,9 @@ private fun ToolRow(
             exit = fadeOut(tween(80)),
         ) {
             status.resultText?.let { text ->
-                val resultColor = if (status.state == HomeToolState.Failed) {
-                    MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.75f)
-                } else {
-                    contentColor.copy(alpha = 0.6f)
-                }
                 Box(
                     modifier = Modifier
-                        .padding(top = 0.dp, bottom = 6.dp)
+                        .fillMaxWidth()
                         .heightIn(max = 102.dp)
                         .verticalScroll(rememberScrollState()),
                 ) {
@@ -296,10 +299,10 @@ private fun ToolRow(
                             text = text,
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 12.sp,
-                                lineHeight = 17.sp,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
                             ),
-                            color = resultColor,
+                            color = contentColor.copy(alpha = 0.58f),
                         )
                     }
                 }
