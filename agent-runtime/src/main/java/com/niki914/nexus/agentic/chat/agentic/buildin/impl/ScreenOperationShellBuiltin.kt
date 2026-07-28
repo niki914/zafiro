@@ -16,9 +16,8 @@ import com.niki914.s3ss10n.LocalToolConfig
  * come from the most recently returned screen tree. Every successful write operation
  * auto-captures the updated screen tree via accessibility after execution.
  *
- * Every result uses the #!tool-result protocol. Check #!status first.
- * If #!status: failure and the payload contains a fresh YAML tree, use the new tokens
- * directly to retry. Only call read if the failure result has no payload.
+ * Every result uses the #!tool-result protocol.
+ * See the Phone Use skill for failure recovery rules.
  */
 class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
     override val name = "screen_operation_shell"
@@ -35,7 +34,7 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
                 "wait_ms (default 2000): deadline for stable, required for delay.\n\n" +
                 "Every result uses the #!tool-result protocol " +
                 "(#!status, #!code, #!message, then payload). " +
-                "See SKILL.md for failure recovery rules."
+                "See the Phone Use skill for failure recovery rules."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
@@ -145,8 +144,8 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
                 ScreenOperationError.SHELL_SESSION_LOST.code -> {
                     result.copy(
                         message = "The shell command may have partially executed before the " +
-                            "timeout/session loss. Read the screen to determine the actual " +
-                            "state before deciding whether to retry.",
+                            "timeout/session loss. Inspect the included tree to determine the " +
+                            "actual state before deciding whether to retry.",
                     )
                 }
                 else -> result

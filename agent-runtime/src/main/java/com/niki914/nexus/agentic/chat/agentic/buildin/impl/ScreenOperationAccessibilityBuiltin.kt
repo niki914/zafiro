@@ -18,9 +18,8 @@ import kotlinx.coroutines.delay
  * (all node-based via token), and search. Every successful write operation auto-captures
  * the updated screen tree after execution.
  *
- * Every result uses the #!tool-result protocol. Check #!status first.
- * If #!status: failure and the payload contains a fresh YAML tree, use the new tokens
- * directly to retry. Only call read if the failure result has no payload.
+ * Every result uses the #!tool-result protocol.
+ * See the Phone Use skill for failure recovery rules.
  */
 class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
     override val name = "screen_operation_accessibility"
@@ -56,7 +55,7 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
                 "recently returned result.\n\n" +
                 "Every result uses the #!tool-result protocol " +
                 "(#!status, #!code, #!message, then payload). " +
-                "See SKILL.md for failure recovery rules."
+                "See the Phone Use skill for failure recovery rules."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description

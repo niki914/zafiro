@@ -19,6 +19,7 @@ import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityControl
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController.refreshNodeCache
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController.serviceInstance
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
+import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
@@ -120,6 +121,7 @@ object AccessibilityController {
         val stdout: String,
         val stderr: String,
         val shellAvailable: Boolean = true,
+        val errorCode: String? = null,
     ) {
         val success: Boolean get() = exitCode == 0
     }
@@ -798,7 +800,8 @@ object AccessibilityController {
         }
         if (!result.success) {
             return BuiltinToolResult.failure(
-                "SHELL_FAILED", "Shell tap at ($x, $y) failed: ${result.stderr}"
+                result.errorCode ?: ScreenOperationError.SHELL_FAILED.code,
+                "Shell tap at ($x, $y) failed: ${result.stderr}",
             )
         }
         return BuiltinToolResult.success("shell tap at ($x, $y)")
@@ -821,7 +824,8 @@ object AccessibilityController {
         }
         if (!result.success) {
             return BuiltinToolResult.failure(
-                "SHELL_FAILED", "Shell long click at ($x, $y) failed: ${result.stderr}"
+                result.errorCode ?: ScreenOperationError.SHELL_FAILED.code,
+                "Shell long click at ($x, $y) failed: ${result.stderr}",
             )
         }
         return BuiltinToolResult.success("shell long click at ($x, $y)")
@@ -850,7 +854,8 @@ object AccessibilityController {
         }
         if (!result.success) {
             return BuiltinToolResult.failure(
-                "SHELL_FAILED", "Shell swipe from ($startX,$startY) to ($endX,$endY) failed: ${result.stderr}"
+                result.errorCode ?: ScreenOperationError.SHELL_FAILED.code,
+                "Shell swipe from ($startX,$startY) to ($endX,$endY) failed: ${result.stderr}",
             )
         }
         return BuiltinToolResult.success("shell swipe from ($startX,$startY) to ($endX,$endY)")
@@ -911,7 +916,8 @@ object AccessibilityController {
         }
         if (!result.success) {
             return BuiltinToolResult.failure(
-                "SHELL_FAILED", "Shell keyevent $keyCode failed: ${result.stderr}"
+                result.errorCode ?: ScreenOperationError.SHELL_FAILED.code,
+                "Shell keyevent $keyCode failed: ${result.stderr}",
             )
         }
         return BuiltinToolResult.success("shell keyevent $keyCode performed")
@@ -937,6 +943,7 @@ object AccessibilityController {
                     -1,
                     outcome.result.stdout.toByteArray().decodeToString().trim(),
                     "Command timed out",
+                    errorCode = ScreenOperationError.SHELL_TIMEOUT.code,
                 )
             }
             is TerminalCommandOutcome.Failure -> {
@@ -945,7 +952,10 @@ object AccessibilityController {
             }
             is TerminalCommandOutcome.SessionNotFound -> {
                 resetShellSession()
-                ShellResult(-1, "", "Shell session lost")
+                ShellResult(
+                    -1, "", "Shell session lost",
+                    errorCode = ScreenOperationError.SHELL_SESSION_LOST.code,
+                )
             }
             is TerminalCommandOutcome.Busy -> {
                 ShellResult(-1, "", "Shell session busy")

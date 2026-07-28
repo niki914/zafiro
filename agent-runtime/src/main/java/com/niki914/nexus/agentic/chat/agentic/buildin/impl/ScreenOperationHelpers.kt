@@ -15,7 +15,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
  *   the action may have partially executed; the hint warns the LLM to inspect the
  *   tree and NOT blindly retry.
  * - All other codes: the action was definitely not executed; the hint tells the LLM
- *   to retry using the fresh tree's tokens.
+ *   to inspect the included tree and retry.
  *
  * If the capture also fails, [failureWithCaptureError] combines both error messages.
  */
@@ -32,7 +32,7 @@ internal fun assembleActionResult(
                         "Do NOT retry the same action unless the screen confirms " +
                         "it did not execute."
                 else ->
-                    "retry using its tokens without calling read."
+                    "inspect the included tree and retry without calling read."
             }
             TextToolResult.failure(
                 code = actionResult.code,

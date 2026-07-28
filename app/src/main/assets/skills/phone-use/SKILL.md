@@ -103,7 +103,7 @@ However, **re-read explicitly** after `launch_app` or whenever you need a fresh 
 Every result uses the `#!tool-result` protocol. Check `#!status` first:
 - **Success:** the payload is the updated tree — use its tokens/coordinates directly.
 - **Failure with payload:** the action was not executed or its outcome is uncertain. Inspect the tree, derive fresh tokens/coordinates. Retry only when the error indicates the action was definitely not executed. `SHELL_TIMEOUT` and `SHELL_SESSION_LOST` mean the action may have partially executed — verify via the tree, do NOT blindly retry.
-- **Failure without payload:** for validation errors (`INVALID_ARGUMENTS_JSON`, `INVALID_OPERATION`, `INVALID_ARGUMENTS`, `SEARCH_FAILED`), correct the arguments directly. For `CAPTURE_FAILED_AFTER_ACTION`, the action may have succeeded — `read` before deciding.
+- **Failure without payload:** for validation errors (`INVALID_ARGUMENTS_JSON`, `INVALID_OPERATION`, `INVALID_ARGUMENTS`), correct the arguments directly. For `SEARCH_FAILED`, the accessibility tree could not be searched — check the message; retry after `read` if the service is available. For `CAPTURE_FAILED_AFTER_ACTION`, the action may have succeeded — `read` before deciding.
 
 **Scrolling lists — use `screen_operation_shell(operation: "swipe", ...)`**, not `scroll_forward`/`scroll_backward`. Accessibility scroll actions have app-defined step sizes. Shell swipe gives direct control over the swipe coordinates.
 
