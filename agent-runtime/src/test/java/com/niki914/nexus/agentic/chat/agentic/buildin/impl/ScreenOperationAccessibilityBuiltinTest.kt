@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.chat.agentic.buildin.impl
 
 import com.niki914.nexus.agentic.chat.agentic.accessibility.ScreenSnapshot
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
+import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
@@ -40,6 +41,58 @@ class ScreenOperationAccessibilityBuiltinTest {
         assertTrue(
             "message should NOT contain 'read or search' but was: $msg",
             !msg.contains("read or search"),
+        )
+        assertEquals("some yaml tree", result.payload)
+    }
+
+    @Test
+    fun `assembleActionResult with SHELL_TIMEOUT warns not to blindly retry`() {
+        val actionResult = BuiltinToolResult(
+            ok = false,
+            code = ScreenOperationError.SHELL_TIMEOUT.code,
+            message = "Shell command timed out after 5000ms",
+            hint = "",
+            fieldErrors = emptyMap(),
+            data = JsonObject(emptyMap()),
+        )
+        val captureResult = Result.success(ScreenSnapshot("some yaml tree", "v2", 5))
+
+        val result = assembleActionResult(actionResult, captureResult)
+
+        assertEquals(TextToolResult.Status.Failure, result.status)
+        assertEquals(ScreenOperationError.SHELL_TIMEOUT.code, result.code)
+        val msg = result.message!!
+        assertTrue(
+            "message should warn against blind retry but was: $msg",
+            msg.contains("Do NOT retry") || msg.contains("do not blindly retry"),
+        )
+        assertTrue(
+            "message should mention inspecting the tree but was: $msg",
+            msg.contains("inspect the tree"),
+        )
+        assertEquals("some yaml tree", result.payload)
+    }
+
+    @Test
+    fun `assembleActionResult with SHELL_SESSION_LOST warns not to blindly retry`() {
+        val actionResult = BuiltinToolResult(
+            ok = false,
+            code = ScreenOperationError.SHELL_SESSION_LOST.code,
+            message = "Shell session lost",
+            hint = "",
+            fieldErrors = emptyMap(),
+            data = JsonObject(emptyMap()),
+        )
+        val captureResult = Result.success(ScreenSnapshot("some yaml tree", "v2", 5))
+
+        val result = assembleActionResult(actionResult, captureResult)
+
+        assertEquals(TextToolResult.Status.Failure, result.status)
+        assertEquals(ScreenOperationError.SHELL_SESSION_LOST.code, result.code)
+        val msg = result.message!!
+        assertTrue(
+            "message should warn against blind retry but was: $msg",
+            msg.contains("Do NOT retry") || msg.contains("do not blindly retry"),
         )
         assertEquals("some yaml tree", result.payload)
     }

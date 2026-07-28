@@ -179,6 +179,6 @@ object TextToolResultCodec {
     }
 
     private fun malformed(raw: String, reason: String): TextToolResult {
-        return TextToolResult(Status.Failure, raw, CODE_MALFORMED)
+        return TextToolResult(Status.Failure, raw, CODE_MALFORMED, reason)
     }
 }

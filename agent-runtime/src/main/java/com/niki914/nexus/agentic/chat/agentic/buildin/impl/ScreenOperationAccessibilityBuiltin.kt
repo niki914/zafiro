@@ -54,10 +54,9 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
                 "Tokens belong to exactly one snapshot — every read, search, and successful " +
                 "write operation produces a fresh version. Use only tokens from the most " +
                 "recently returned result.\n\n" +
-                "Every result uses the #!tool-result protocol. Check #!status first. " +
-                "If #!status: failure and the payload contains a fresh YAML tree, " +
-                "use the new tokens directly to retry. Only call read if the failure " +
-                "result has no payload."
+                "Every result uses the #!tool-result protocol " +
+                "(#!status, #!code, #!message, then payload). " +
+                "See SKILL.md for failure recovery rules."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description

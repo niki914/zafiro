@@ -107,6 +107,8 @@ class TextToolResultCodecTest {
         assertNotNull(decoded)
         assertEquals(TextToolResult.Status.Failure, decoded!!.status)
         assertEquals(TextToolResultCodec.CODE_MALFORMED, decoded.code)
+        assertNotNull(decoded.message)
+        assertTrue(decoded.message!!.contains("blank line"))
     }
 
     @Test

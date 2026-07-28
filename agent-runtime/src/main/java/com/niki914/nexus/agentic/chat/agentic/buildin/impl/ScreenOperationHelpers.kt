@@ -2,18 +2,22 @@ package com.niki914.nexus.agentic.chat.agentic.buildin.impl
 
 import com.niki914.nexus.agentic.chat.agentic.accessibility.ScreenSnapshot
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
+import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 
 /**
  * Assembles a [TextToolResult] after a node/shell action fails and a screen capture
  * is attempted.
  *
- * - If the capture succeeds, the original error message is **overridden** with a
- *   unified hint telling the LLM to retry using the fresh tree's tokens instead
- *   of calling read. The original error [code] is preserved.
- * - If the capture also fails, [failureWithCaptureError] combines both error messages.
+ * If the capture succeeds, the result includes the fresh tree as payload and a
+ * retry hint that varies by error code:
+ * - [ScreenOperationError.SHELL_TIMEOUT], [ScreenOperationError.SHELL_SESSION_LOST]:
+ *   the action may have partially executed; the hint warns the LLM to inspect the
+ *   tree and NOT blindly retry.
+ * - All other codes: the action was definitely not executed; the hint tells the LLM
+ *   to retry using the fresh tree's tokens.
  *
- * This is a pure function (no Android dependencies), making it directly testable.
+ * If the capture also fails, [failureWithCaptureError] combines both error messages.
  */
 internal fun assembleActionResult(
     actionResult: BuiltinToolResult,
@@ -21,11 +25,19 @@ internal fun assembleActionResult(
 ): TextToolResult {
     return captureResult.fold(
         onSuccess = { snapshot ->
+            val retryHint = when (actionResult.code) {
+                ScreenOperationError.SHELL_TIMEOUT.code,
+                ScreenOperationError.SHELL_SESSION_LOST.code ->
+                    "inspect the tree to determine whether the action took effect. " +
+                        "Do NOT retry the same action unless the screen confirms " +
+                        "it did not execute."
+                else ->
+                    "retry using its tokens without calling read."
+            }
             TextToolResult.failure(
                 code = actionResult.code,
                 message = "The action failed: ${actionResult.message}. " +
-                    "A fresh screen tree is included below — " +
-                    "retry using its tokens without calling read.",
+                    "A fresh screen tree is included below — $retryHint",
                 payload = snapshot.yaml,
             )
         },

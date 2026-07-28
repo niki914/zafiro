@@ -33,10 +33,9 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
                 "wait_mode (default \"stable\"): \"stable\" auto-detects UI stability before capture. " +
                 "\"delay\" does a blind fixed wait — use for search/refresh. " +
                 "wait_ms (default 2000): deadline for stable, required for delay.\n\n" +
-                "Every result uses the #!tool-result protocol. Check #!status first. " +
-                "If #!status: failure and the payload contains a fresh YAML tree, " +
-                "use the new tokens directly to retry. Only call read if the failure " +
-                "result has no payload."
+                "Every result uses the #!tool-result protocol " +
+                "(#!status, #!code, #!message, then payload). " +
+                "See SKILL.md for failure recovery rules."
 
     override fun configure(config: LocalToolConfig) {
         config.description = description

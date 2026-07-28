@@ -160,36 +160,4 @@ object LocalToolResultClassifier {
             parsed.message ?: parsed.code ?: "Tool failed."
         } else null
     }
-
-    // Private helpers retained for backward compatibility.
-    // They are no longer called by failureMessage() but remain in place.
-
-    private fun parseJsonObject(value: String): JsonObject? {
-        return runCatching { Json.parseToJsonElement(value) as? JsonObject }.getOrNull()
-    }
-
-    private fun JsonObject.structuredErrorMessage(): String? {
-        val error = this["error"] as? JsonObject ?: return null
-        val code = error["code"]
-            ?.jsonPrimitive
-            ?.contentOrNull
-            ?.takeIf { it.isNotBlank() }
-            ?: return null
-        return error["message"]
-            ?.jsonPrimitive
-            ?.contentOrNull
-            ?.takeIf { it.isNotBlank() }
-            ?: code
-    }
-
-    private fun JsonObject.nonZeroExitMessage(exitCode: Int): String {
-        return statusMessage() ?: "Command completed with non-zero exit code $exitCode."
-    }
-
-    private fun JsonObject.statusMessage(): String? {
-        return listOf("stderr", "message", "code")
-            .firstNotNullOfOrNull { key ->
-                this[key]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-            }
-    }
 }
