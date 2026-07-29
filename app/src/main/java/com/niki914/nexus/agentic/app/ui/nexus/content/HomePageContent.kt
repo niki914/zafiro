@@ -295,15 +295,6 @@ private fun HomePageContentBody(
             .fillMaxSize()
             .liquidScreenHazeSource(),
     ) {
-        if (uiState.isLoadingConversation) {
-            LoadingIndicator(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(48.dp),
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -370,6 +361,24 @@ private fun HomePageContentBody(
                         bottom = composerBottomPadding,
                     ),
             )
+        }
+
+        if (uiState.isLoadingConversation) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                LoadingIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

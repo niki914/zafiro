@@ -51,6 +51,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.nexus.agentic.app.R
@@ -67,6 +68,9 @@ private val NoNestedScrollPropagation = object : NestedScrollConnection {
         available: Offset,
         source: NestedScrollSource,
     ): Offset = if (available.y != 0f) available.copy(x = 0f) else Offset.Zero
+
+    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
+        Velocity(x = 0f, y = available.y)
 }
 
 // ── ToolChain — stateless, state driven by ViewModel ──────────────────────
