@@ -36,5 +36,8 @@ class App : Application() {
         applicationScope.launch {
             XRepo.skills.seedDefaults()
         }
+        applicationScope.launch {
+            ConversationRepo.listConversations()
+        }
     }
 }
