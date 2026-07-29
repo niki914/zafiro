@@ -323,7 +323,7 @@ class HomeChatViewModel internal constructor(
             is LlmStreamEvent.ToolFailed -> updateTurn(turnId) {
                 it.updateTool(
                     event.call.callId, event.call.label,
-                    HomeToolState.Failed, event.message,
+                    HomeToolState.Failed, event.resultText ?: event.message,
                 )
             }
 

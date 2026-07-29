@@ -317,7 +317,7 @@ private fun ToolResultText(
                 maxLines = if (overflow) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
                 softWrap = overflow,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = if (overflow) Modifier.fillMaxWidth() else Modifier,
                 onTextLayout = { layoutResult ->
                     if (!overflow && layoutResult.hasVisualOverflow) {
                         overflow = true

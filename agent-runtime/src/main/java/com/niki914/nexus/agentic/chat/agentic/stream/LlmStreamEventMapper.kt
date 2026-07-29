@@ -37,19 +37,27 @@ object LlmStreamEventMapper {
                     LlmStreamEvent.ToolFailed(
                         call = call,
                         message = parsed.message ?: parsed.code ?: "Tool failed.",
+                        resultText = parsed.payload.takeIf { it.isNotBlank() },
                     )
                 } else {
                     LlmStreamEvent.ToolSucceeded(
                         call = call,
-                        outputText = event.resultJson,
+                        outputText = parsed.payload,
                     )
                 }
             }
 
-            is SessionEvent.ToolFailed -> LlmStreamEvent.ToolFailed(
-                call = event.toToolCallStatus(),
-                message = event.message,
-            )
+            is SessionEvent.ToolFailed -> {
+                val parsedPayload = event.resultJson?.let {
+                    ParsedToolResult.decode(raw = it, toolName = event.toolName).payload
+                        .takeIf { p -> p.isNotBlank() }
+                }
+                LlmStreamEvent.ToolFailed(
+                    call = event.toToolCallStatus(),
+                    message = event.message,
+                    resultText = parsedPayload,
+                )
+            }
 
             is SessionEvent.Error -> LlmStreamEvent.Error(
                 message = event.message.trim().ifEmpty { defaultErrorMessage },

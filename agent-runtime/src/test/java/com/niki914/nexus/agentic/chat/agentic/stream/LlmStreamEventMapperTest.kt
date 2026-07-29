@@ -39,6 +39,6 @@ class LlmStreamEventMapperTest {
 
         val result = LlmStreamEventMapper.map(event, StringBuilder(), 0L, "default error")
         assertTrue(result is LlmStreamEvent.ToolSucceeded)
-        assertEquals(successResult, (result as LlmStreamEvent.ToolSucceeded).outputText)
+        assertEquals("tree yaml content", (result as LlmStreamEvent.ToolSucceeded).outputText)
     }
 }

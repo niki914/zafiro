@@ -22,6 +22,7 @@ sealed interface LlmStreamEvent {
     data class ToolFailed(
         val call: ToolCallStatus,
         val message: String,
+        val resultText: String? = null,
     ) : LlmStreamEvent
 
     data class Error(
