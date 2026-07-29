@@ -88,7 +88,7 @@ fun ToolChain(
     ) {
         if (tools.size == 1) {
             val status = tools[0]
-            val hasResult = status.resultText != null
+            val hasResult = status.resultText != null || status.failedReason != null
             val isPressable = status.state != HomeToolState.Running
             ToolRow(
                 status = status,
@@ -110,7 +110,7 @@ fun ToolChain(
 
                 tools.forEachIndexed { index, status ->
                     val isOpen = index in expandedResults
-                    val hasResult = status.resultText != null
+                    val hasResult = status.resultText != null || status.failedReason != null
                     val isPressable = status.state != HomeToolState.Running
 
                     StaggeredEntry(
@@ -271,16 +271,31 @@ private fun ToolRow(
 
         // Result detail
         AnimatedVisibility(
-            visible = isExpanded && hasResult,
+            visible = isExpanded && (status.resultText != null || status.failedReason != null),
             enter = fadeIn(tween(150)) +
                     slideInVertically(tween(150)) { it / 6 },
             exit = fadeOut(tween(80)),
         ) {
-            status.resultText?.let { text ->
-                ToolResultText(
-                    text = text,
-                    contentColor = contentColor,
-                )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                status.failedReason?.let { reason ->
+                    Text(
+                        text = reason,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FailedColor.copy(alpha = 0.72f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = if (status.resultText != null) 2.dp else 0.dp),
+                    )
+                }
+                status.resultText?.let { text ->
+                    ToolResultText(
+                        text = text,
+                        contentColor = contentColor,
+                    )
+                }
             }
         }
     }

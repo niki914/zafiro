@@ -68,16 +68,18 @@ object ConversationFormatter {
                     } else {
                         HomeToolState.Failed
                     }
-                    val resultText = when (parsed.status) {
-                        TextToolResult.Status.Success -> parsed.payload.takeIf { it.isNotBlank() }
-                        TextToolResult.Status.Failure -> parsed.message?.takeIf { it.isNotBlank() }
-                            ?: parsed.payload.takeIf { it.isNotBlank() }
+                    val resultText = parsed.payload.takeIf { it.isNotBlank() }
+                    val failedReason = if (parsed.status == TextToolResult.Status.Failure) {
+                        parsed.message?.takeIf { it.isNotBlank() }
+                    } else {
+                        null
                     }
                     val updated = target.updateToolState(
                         callId = turn.callId,
                         toolName = turn.toolName,
                         state = state,
                         resultText = resultText,
+                        failedReason = failedReason,
                     )
                     turns.replaceLastOrAdd(updated)
                 }
@@ -113,6 +115,7 @@ object ConversationFormatter {
         toolName: String,
         state: HomeToolState,
         resultText: String? = null,
+        failedReason: String? = null,
     ): HomeChatTurn {
         val index = blocks.indexOfLast { block ->
             block is HomeChatBlock.Tool && block.status.matchesTool(callId, toolName)
@@ -122,7 +125,11 @@ object ConversationFormatter {
             blocks = blocks.toMutableList().also { mutableBlocks ->
                 val block = mutableBlocks[index] as HomeChatBlock.Tool
                 mutableBlocks[index] = block.copy(
-                    status = block.status.copy(state = state, resultText = resultText),
+                    status = block.status.copy(
+                        state = state,
+                        resultText = resultText,
+                        failedReason = failedReason,
+                    ),
                 )
             },
         )

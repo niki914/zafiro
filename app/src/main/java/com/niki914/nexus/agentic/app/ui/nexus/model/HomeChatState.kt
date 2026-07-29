@@ -323,7 +323,7 @@ class HomeChatViewModel internal constructor(
             is LlmStreamEvent.ToolFailed -> updateTurn(turnId) {
                 it.updateTool(
                     event.call.callId, event.call.label,
-                    HomeToolState.Failed, event.resultText ?: event.message,
+                    HomeToolState.Failed, event.resultText, event.message,
                 )
             }
 
@@ -598,6 +598,7 @@ class HomeChatViewModel internal constructor(
         label: String,
         state: HomeToolState,
         resultText: String? = null,
+        failedReason: String? = null,
     ): HomeChatTurn = copy(
         blocks = blocks + HomeChatBlock.Tool(
             HomeToolStatus(
@@ -605,6 +606,7 @@ class HomeChatViewModel internal constructor(
                 name = label,
                 state = state,
                 resultText = resultText,
+                failedReason = failedReason,
             ),
         ),
     )
@@ -614,12 +616,13 @@ class HomeChatViewModel internal constructor(
         label: String,
         state: HomeToolState,
         resultText: String? = null,
+        failedReason: String? = null,
     ): HomeChatTurn {
         val index = blocks.indexOfLast { block ->
             block is HomeChatBlock.Tool && block.status.matchesTool(callId, label)
         }
         if (index == -1) {
-            return appendTool(callId, label, state, resultText)
+            return appendTool(callId, label, state, resultText, failedReason)
         }
         return copy(
             blocks = blocks.toMutableList().also { mutableBlocks ->
@@ -629,6 +632,7 @@ class HomeChatViewModel internal constructor(
                         name = label,
                         state = state,
                         resultText = resultText,
+                        failedReason = failedReason,
                     ),
                 )
             },

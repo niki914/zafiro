@@ -157,7 +157,8 @@ class ConversationFormatterTest {
                         "failed-ok-call",
                         "memory",
                         HomeToolState.Failed,
-                        resultText = "denied",
+                        resultText = """{"ok":false,"message":"denied"}""",
+                        failedReason = "denied",
                     )
                 ),
                 HomeChatBlock.Tool(
@@ -165,7 +166,8 @@ class ConversationFormatterTest {
                         "failed-exit-call",
                         "command",
                         HomeToolState.Failed,
-                        resultText = "boom",
+                        resultText = """{"exit_code":"2","stderr":"boom"}""",
+                        failedReason = "boom",
                     )
                 ),
             ),

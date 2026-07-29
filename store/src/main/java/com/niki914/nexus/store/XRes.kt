@@ -28,7 +28,7 @@ object XValues {
 
     fun getAppTypeOf(context: Context): AppType {
         if (context.packageName in appList) return AppType.Host
-        if (context.packageName.contains(myPackageName)) return AppType.Me
+        if (context.packageName == myPackageName) return AppType.Me
         return AppType.Unknown
     }
 }
