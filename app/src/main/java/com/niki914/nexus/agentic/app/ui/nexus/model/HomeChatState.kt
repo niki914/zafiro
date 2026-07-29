@@ -247,8 +247,11 @@ class HomeChatViewModel internal constructor(
         streamJob?.cancel()
         streamJob = null
         finalizeRunningTools()
-        persistCurrentHistoryIfAny()
-        updateState { copy(isGenerating = false) }
+        try {
+            persistCurrentHistoryIfAny()
+        } finally {
+            updateState { copy(isGenerating = false) }
+        }
     }
 
     private fun startNewConversation() {
@@ -585,9 +588,7 @@ class HomeChatViewModel internal constructor(
         label: String,
         state: HomeToolState,
     ): HomeChatTurn {
-        val index = blocks.indexOfLast { block ->
-            block is HomeChatBlock.Tool && block.status.matchesTool(callId, label)
-        }
+        val index = findToolBlockIndex(callId, label)
         if (index == -1) {
             return appendTool(callId, label, state)
         }
@@ -604,11 +605,16 @@ class HomeChatViewModel internal constructor(
         )
     }
 
-    private fun HomeToolStatus.matchesTool(callId: String?, label: String): Boolean {
-        if (callId != null && this.callId != null) {
-            return this.callId == callId
+    private fun HomeChatTurn.findToolBlockIndex(callId: String?, label: String): Int {
+        if (callId != null) {
+            val exactMatch = blocks.indexOfLast { block ->
+                block is HomeChatBlock.Tool && block.status.callId == callId
+            }
+            if (exactMatch != -1) return exactMatch
         }
-        return name == label
+        return blocks.indexOfLast { block ->
+            block is HomeChatBlock.Tool && block.status.callId == null && block.status.name == label
+        }
     }
 
     private fun List<HomeChatTurn>.nextTurnId(): Long {
