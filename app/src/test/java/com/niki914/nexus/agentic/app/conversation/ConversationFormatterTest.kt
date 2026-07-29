@@ -109,7 +109,7 @@ class ConversationFormatterTest {
         assertEquals(
             listOf(
                 HomeChatBlock.Text("answer"),
-                HomeChatBlock.Tool(HomeToolStatus("call-1", "search", HomeToolState.Succeeded)),
+                HomeChatBlock.Tool(HomeToolStatus("call-1", "search", HomeToolState.Succeeded, resultText = "{}")),
             ),
             turns[0].blocks,
         )
@@ -151,19 +151,23 @@ class ConversationFormatterTest {
         assertEquals(
             listOf(
                 HomeChatBlock.Text("answer"),
-                HomeChatBlock.Tool(HomeToolStatus("ok-call", "search", HomeToolState.Succeeded)),
+                HomeChatBlock.Tool(HomeToolStatus("ok-call", "search", HomeToolState.Succeeded, resultText = """{"ok":true}""")),
                 HomeChatBlock.Tool(
                     HomeToolStatus(
                         "failed-ok-call",
                         "memory",
-                        HomeToolState.Failed
+                        HomeToolState.Failed,
+                        resultText = """{"ok":false,"message":"denied"}""",
+                        failedReason = "denied",
                     )
                 ),
                 HomeChatBlock.Tool(
                     HomeToolStatus(
                         "failed-exit-call",
                         "command",
-                        HomeToolState.Failed
+                        HomeToolState.Failed,
+                        resultText = """{"exit_code":"2","stderr":"boom"}""",
+                        failedReason = "boom",
                     )
                 ),
             ),

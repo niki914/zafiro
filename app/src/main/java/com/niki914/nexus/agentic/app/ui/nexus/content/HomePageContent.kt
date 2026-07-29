@@ -220,16 +220,19 @@ fun HomePageContent(
         onComposerFocusChanged = { focused ->
             isComposerFocused = focused
         },
-        onToggleToolRun = { turnId, runStartIndex ->
-            viewModel.sendIntent(
-                HomeChatIntent.ToggleToolRunExpanded(turnId, runStartIndex)
-            )
-        },
         onReGenerate = { id ->
             viewModel.sendIntent(HomeChatIntent.ReGenerateAt(id))
         },
         onFork = { id ->
             viewModel.sendIntent(HomeChatIntent.ForkAt(id))
+        },
+        expandedToolRuns = uiState.expandedToolRuns,
+        expandedToolResults = uiState.expandedToolResults,
+        onToggleToolRun = { turnId, runStartIndex ->
+            viewModel.sendIntent(HomeChatIntent.ToggleToolRun(turnId, runStartIndex))
+        },
+        onToggleToolResult = { turnId, runStartIndex, toolIndex ->
+            viewModel.sendIntent(HomeChatIntent.ToggleToolResult(turnId, runStartIndex, toolIndex))
         },
         expandedActionTurnId = uiState.expandedActionTurnId,
         expandedActionSource = uiState.expandedActionSource,
@@ -272,9 +275,12 @@ private fun HomePageContentBody(
     onSendClick: () -> Unit,
     onStopClick: () -> Unit,
     onComposerFocusChanged: (Boolean) -> Unit,
-    onToggleToolRun: (Long, Int) -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
+    expandedToolRuns: Set<String>,
+    expandedToolResults: Set<String>,
+    onToggleToolRun: (Long, Int) -> Unit,
+    onToggleToolResult: (Long, Int, Int) -> Unit,
     expandedActionTurnId: Long?,
     expandedActionSource: ActionSource?,
     onToggleActionRow: (Long, ActionSource) -> Unit,
@@ -307,10 +313,12 @@ private fun HomePageContentBody(
                 HomeChatTurnItem(
                     turn = turn,
                     onContentTap = onContentTap,
-                    expandedToolRunKeys = uiState.expandedToolRunKeys,
-                    onToggleToolRun = onToggleToolRun,
                     onReGenerate = onReGenerate,
                     onFork = onFork,
+                    expandedToolRuns = expandedToolRuns,
+                    expandedToolResults = expandedToolResults,
+                    onToggleToolRun = onToggleToolRun,
+                    onToggleToolResult = onToggleToolResult,
                     expandedActionTurnId = expandedActionTurnId,
                     expandedActionSource = expandedActionSource,
                     onToggleActionRow = onToggleActionRow,
@@ -352,41 +360,16 @@ private fun HomePageContentBody(
     }
 }
 
-private data class ToolRun(
-    val startIndex: Int,
-    val endIndex: Int, // exclusive
-) {
-    val count: Int get() = endIndex - startIndex
-}
-
-private fun List<HomeChatBlock>.findConsecutiveToolRuns(): List<ToolRun> {
-    val runs = mutableListOf<ToolRun>()
-    var i = 0
-    while (i < size) {
-        if (this[i] is HomeChatBlock.Tool) {
-            val start = i
-            while (i < size && this[i] is HomeChatBlock.Tool) {
-                i++
-            }
-            val count = i - start
-            if (count >= 2) {
-                runs.add(ToolRun(start, i))
-            }
-        } else {
-            i++
-        }
-    }
-    return runs
-}
-
 @Composable
 private fun HomeChatTurnItem(
     turn: HomeChatTurn,
     onContentTap: () -> Unit,
-    expandedToolRunKeys: Set<String>,
-    onToggleToolRun: (Long, Int) -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
+    expandedToolRuns: Set<String>,
+    expandedToolResults: Set<String>,
+    onToggleToolRun: (Long, Int) -> Unit,
+    onToggleToolResult: (Long, Int, Int) -> Unit,
     expandedActionTurnId: Long?,
     expandedActionSource: ActionSource?,
     onToggleActionRow: (Long, ActionSource) -> Unit,
@@ -442,22 +425,34 @@ private fun HomeChatTurnItem(
             )
         }
 
-        val toolRuns = remember(turn.blocks) {
-            turn.blocks.findConsecutiveToolRuns()
-        }
         var blockIndex = 0
         while (blockIndex < turn.blocks.size) {
-            val run = toolRuns.find { it.startIndex == blockIndex }
-            if (run != null) {
-                val tools = turn.blocks.subList(run.startIndex, run.endIndex)
-                    .map { it as HomeChatBlock.Tool }
-                ToolRunItem(
-                    tools = tools,
-                    expanded = "${turn.id}_${run.startIndex}" in expandedToolRunKeys,
-                    onToggle = { onToggleToolRun(turn.id, run.startIndex) },
+            // Collect consecutive Tool blocks into a run
+            val runStart = blockIndex
+            var runEnd = runStart
+            while (runEnd < turn.blocks.size && turn.blocks[runEnd] is HomeChatBlock.Tool) {
+                runEnd++
+            }
+            val runSize = runEnd - runStart
+            if (runSize >= 1) {
+                val statuses = turn.blocks.subList(runStart, runEnd)
+                    .map { (it as HomeChatBlock.Tool).status }
+                val runKey = "${turn.id}_${runStart}"
+                val runResults = expandedToolResults
+                    .filter { it.startsWith("${runKey}_") }
+                    .mapNotNull { it.removePrefix("${runKey}_").toIntOrNull() }
+                    .toSet()
+                ToolChain(
+                    tools = statuses,
+                    isExpanded = runKey in expandedToolRuns,
+                    expandedResults = runResults,
+                    onToggleRun = { onToggleToolRun(turn.id, runStart) },
+                    onToggleResult = { ti ->
+                        onToggleToolResult(turn.id, runStart, ti)
+                    },
                     modifier = Modifier.padding(top = 12.dp),
                 )
-                blockIndex = run.endIndex
+                blockIndex = runEnd
             } else {
                 when (val block = turn.blocks[blockIndex]) {
                     is HomeChatBlock.Text -> {
@@ -483,14 +478,6 @@ private fun HomeChatTurnItem(
                             }
                         }
                     }
-
-                    is HomeChatBlock.Tool -> {
-                        ToolStatusPill(
-                            status = block.status,
-                            modifier = Modifier.padding(top = 12.dp),
-                        )
-                    }
-
                     is HomeChatBlock.Error -> {
                         AssistantErrorBlock(
                             message = block.message,
@@ -498,6 +485,7 @@ private fun HomeChatTurnItem(
                             modifier = Modifier.padding(top = 12.dp),
                         )
                     }
+                    is HomeChatBlock.Tool -> {} // handled above
                 }
                 blockIndex++
             }
@@ -520,41 +508,6 @@ private fun HomeChatTurnItem(
                 onFork = { onFork(turn.id) },
                 modifier = Modifier.padding(top = 10.dp),
             )
-        }
-    }
-}
-
-@Composable
-private fun ToolRunItem(
-    tools: List<HomeChatBlock.Tool>,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    if (!expanded) {
-        UsedNToolsPill(
-            count = tools.size,
-            onClick = onToggle,
-            modifier = modifier,
-        )
-    } else {
-        Column(modifier = modifier) {
-            ToolStatusPill(status = tools[0].status)
-            var showRemaining by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) { showRemaining = true }
-            AnimatedVisibility(
-                visible = showRemaining,
-                enter = expandVertically() + fadeIn(),
-            ) {
-                Column {
-                    tools.drop(1).forEach { tool ->
-                        ToolStatusPill(
-                            status = tool.status,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -612,9 +565,12 @@ private fun HomePageContentPreview() {
                 onSendClick = {},
                 onStopClick = {},
                 onComposerFocusChanged = {},
-                onToggleToolRun = { _, _ -> },
                 onReGenerate = { },
                 onFork = { },
+                expandedToolRuns = emptySet(),
+                expandedToolResults = emptySet(),
+                onToggleToolRun = { _, _ -> },
+                onToggleToolResult = { _, _, _ -> },
                 expandedActionTurnId = null,
                 expandedActionSource = null,
                 onToggleActionRow = { _, _ -> },

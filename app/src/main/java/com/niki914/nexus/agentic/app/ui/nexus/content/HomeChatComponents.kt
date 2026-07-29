@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -59,9 +58,6 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 import com.niki914.nexus.agentic.chat.LlmErrorCode
 import com.niki914.nexus.base.BaseTheme
-
-private val ToolSucceededIndicatorColor = Color(0xFF4F8F6B)
-private val ToolFailedIndicatorColor = Color(0xFFB85C5C)
 
 internal data class AssistantErrorUi(
     val titleRes: Int,
@@ -259,61 +255,6 @@ fun UserMessageBubble(
 }
 
 @Composable
-fun ToolStatusPill(
-    status: HomeToolStatus,
-    modifier: Modifier = Modifier,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val containerColor = colorScheme.surfaceVariant.copy(alpha = 0.72f)
-    val contentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
-    val shape = G2CapsuleShape()
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center,
-        ) {
-            val maxNameWidth = maxWidth * 0.56f
-
-            Row(
-                modifier = Modifier
-                    .clip(shape)
-                    .background(containerColor, shape)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                ToolStatusIndicator(
-                    state = status.state,
-                    color = contentColor,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = status.name,
-                    modifier = Modifier.widthIn(max = maxNameWidth),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = contentColor,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = status.label(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = contentColor,
-                    maxLines = 1,
-                    softWrap = false,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun AssistantErrorBlock(
     message: String,
     code: LlmErrorCode? = null,
@@ -409,89 +350,6 @@ fun LiquidChatComposer(
             }
         },
     )
-}
-
-@Composable
-private fun ToolStatusIndicator(
-    state: HomeToolState,
-    color: Color,
-) {
-    when (state) {
-        HomeToolState.Running -> CircularProgressIndicator(
-            modifier = Modifier.size(14.dp),
-            color = color,
-            strokeWidth = 2.dp,
-        )
-
-        HomeToolState.Succeeded,
-        HomeToolState.Failed,
-            -> {
-            val indicatorColor = when (state) {
-                HomeToolState.Succeeded -> ToolSucceededIndicatorColor
-                HomeToolState.Failed -> ToolFailedIndicatorColor
-                HomeToolState.Running -> color
-            }
-            val indicatorShape = G2CapsuleShape()
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .clip(indicatorShape)
-                    .background(indicatorColor.copy(alpha = 0.82f), indicatorShape),
-            )
-        }
-    }
-}
-
-@Composable
-private fun HomeToolStatus.label(): String = when (state) {
-    HomeToolState.Running -> stringResource(R.string.ui_tool_status_running)
-    HomeToolState.Succeeded -> stringResource(R.string.ui_tool_status_success)
-    HomeToolState.Failed -> when (failedReason) {
-        "Interrupted by user" -> stringResource(R.string.ui_tool_status_failed_reason_interrupted)
-        else -> stringResource(R.string.ui_tool_status_failed)
-    }
-}
-
-@Composable
-internal fun UsedNToolsPill(
-    count: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val containerColor = colorScheme.surfaceVariant.copy(alpha = 0.72f)
-    val contentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
-    val shape = G2CapsuleShape()
-    val label = pluralStringResource(R.plurals.ui_home_used_tools, count, count)
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(
-                modifier = Modifier
-                    .clip(shape)
-                    .background(containerColor, shape)
-                    .clickable(onClick = onClick)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = contentColor,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
 }
 
 @Composable
