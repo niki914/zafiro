@@ -48,6 +48,7 @@
     <string name="ui_tool_status_running">執行中</string>
     <string name="ui_tool_status_success">成功</string>
     <string name="ui_tool_status_failed">失敗</string>
+    <string name="ui_tool_status_failed_reason_interrupted">用戶中斷</string>
     <plurals name="ui_home_used_tools">
         <item quantity="other">已使用 %1$d 個工具</item>
     </plurals>

@@ -302,7 +302,7 @@ fun ToolStatusPill(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = status.state.label(),
+                    text = status.label(),
                     style = MaterialTheme.typography.labelMedium,
                     color = contentColor,
                     maxLines = 1,
@@ -443,10 +443,13 @@ private fun ToolStatusIndicator(
 }
 
 @Composable
-private fun HomeToolState.label(): String = when (this) {
+private fun HomeToolStatus.label(): String = when (state) {
     HomeToolState.Running -> stringResource(R.string.ui_tool_status_running)
     HomeToolState.Succeeded -> stringResource(R.string.ui_tool_status_success)
-    HomeToolState.Failed -> stringResource(R.string.ui_tool_status_failed)
+    HomeToolState.Failed -> when (failedReason) {
+        "Interrupted by user" -> stringResource(R.string.ui_tool_status_failed_reason_interrupted)
+        else -> stringResource(R.string.ui_tool_status_failed)
+    }
 }
 
 @Composable

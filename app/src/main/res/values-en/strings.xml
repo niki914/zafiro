@@ -48,6 +48,7 @@
     <string name="ui_tool_status_running">Running</string>
     <string name="ui_tool_status_success">Success</string>
     <string name="ui_tool_status_failed">Failed</string>
+    <string name="ui_tool_status_failed_reason_interrupted">Interrupted</string>
     <plurals name="ui_home_used_tools">
         <item quantity="one">Used %1$d Tool</item>
         <item quantity="other">Used %1$d Tools</item>
