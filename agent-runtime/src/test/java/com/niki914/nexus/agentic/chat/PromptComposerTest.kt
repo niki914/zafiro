@@ -20,7 +20,7 @@ import org.junit.Test
 
 class PromptComposerTest {
 
-    // --- Tier structure ---
+    // --- Identity slot (stable tier) ---
 
     @Test
     fun compose_stableTierAlwaysContainsIdentity() {
@@ -32,22 +32,24 @@ class PromptComposerTest {
     }
 
     @Test
-    fun compose_contextTierRendersWhenInstructionsPresent() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(additionalInstructions = "Custom context instructions.")
-        )
-
-        assertTrue(result.finalSystemPrompt.contains("## Additional instructions"))
-        assertTrue(result.finalSystemPrompt.contains("Custom context instructions."))
-    }
-
-    @Test
-    fun compose_contextTierOmittedWhenInstructionsBlank() {
+    fun compose_emptyAdditionalInstructionsUsesDefaultIdentity() {
         val result = PromptComposer().compose(
             PromptComposerInput(additionalInstructions = " ")
         )
 
-        assertFalse(result.finalSystemPrompt.contains("## Additional instructions"))
+        assertTrue(result.finalSystemPrompt.contains(PromptComposer.DEFAULT_AGENT_IDENTITY))
+        assertTrue(result.finalSystemPrompt.startsWith(PromptComposer.DEFAULT_AGENT_IDENTITY))
+    }
+
+    @Test
+    fun compose_additionalInstructionsReplacesDefaultIdentity() {
+        val customIdentity = "You are a custom test assistant."
+        val result = PromptComposer().compose(
+            PromptComposerInput(additionalInstructions = customIdentity)
+        )
+
+        assertFalse(result.finalSystemPrompt.contains(PromptComposer.DEFAULT_AGENT_IDENTITY))
+        assertTrue(result.finalSystemPrompt.startsWith(customIdentity))
     }
 
     @Test
@@ -59,12 +61,10 @@ class PromptComposerTest {
             )
         )
 
-        val stableIdx = result.finalSystemPrompt.indexOf(PromptComposer.DEFAULT_AGENT_IDENTITY)
-        val contextIdx = result.finalSystemPrompt.indexOf("## Additional instructions")
+        val stableIdx = result.finalSystemPrompt.indexOf("ctx")
         val volatileIdx = result.finalSystemPrompt.indexOf("## Agent Memory")
 
-        assertTrue(stableIdx < contextIdx)
-        assertTrue(contextIdx < volatileIdx)
+        assertTrue(stableIdx < volatileIdx)
     }
 
     // --- Memory section (volatile tier) ---

@@ -52,6 +52,14 @@ class XRepoRuntimeGateway(
         repo.memory.add(value)
     }
 
+    override suspend fun listMemories(): List<String> {
+        return repo.memory.list()
+    }
+
+    override suspend fun deleteMemory(index: Int) {
+        repo.memory.delete(index)
+    }
+
     override suspend fun listCustomTools(): List<RuntimeCustomTool> = repo.customTools.list()
 
     override suspend fun saveCustomTool(

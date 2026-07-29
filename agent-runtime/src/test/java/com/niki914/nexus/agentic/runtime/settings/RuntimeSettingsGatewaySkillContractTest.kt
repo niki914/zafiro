@@ -43,6 +43,8 @@ private class MinimalRuntimeSettingsGateway : RuntimeSettingsGateway {
 
     override suspend fun addMemory(value: String) = Unit
 
+    override suspend fun deleteMemory(index: Int) = Unit
+
     override suspend fun listCustomTools(): List<RuntimeCustomTool> = emptyList()
 
     override suspend fun saveCustomTool(

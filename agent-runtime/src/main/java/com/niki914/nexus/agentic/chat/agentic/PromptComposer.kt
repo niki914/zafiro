@@ -25,7 +25,6 @@ class PromptComposer {
     fun compose(input: PromptComposerInput): PromptComposeResult {
         val finalSystemPrompt = listOfNotNull(
             buildStableTier(input),
-            buildContextTier(input),
             buildVolatileTier(input),
         ).joinToString(separator = "\n\n")
 
@@ -35,8 +34,9 @@ class PromptComposer {
     // --- Stable tier: identity, tools, skills, guidance (cacheable across turns) ---
 
     private fun buildStableTier(input: PromptComposerInput): String {
+        val identity = input.additionalInstructions.trim().ifBlank { DEFAULT_AGENT_IDENTITY }
         return listOfNotNull(
-            DEFAULT_AGENT_IDENTITY,
+            identity,
             renderToolContext(input.tools, input.mcpDiscoverySnapshot),
             renderSkillContext(input.enabledSkills)
                 .takeIf { hasBuiltinTool(input, "load_skill") },
@@ -45,14 +45,6 @@ class PromptComposer {
             MEMORY_GUIDANCE.takeIf { hasBuiltinTool(input, "memorize") },
             SKILLS_GUIDANCE.takeIf { hasBuiltinTool(input, "load_skill") },
         ).joinToString(separator = "\n\n")
-    }
-
-    // --- Context tier: user-supplied instructions ---
-
-    private fun buildContextTier(input: PromptComposerInput): String? {
-        val text = input.additionalInstructions.trim()
-        if (text.isEmpty()) return null
-        return "## Additional instructions\n\n$text"
     }
 
     // --- Volatile tier: memory snapshot (per-session) ---

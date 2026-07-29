@@ -101,6 +101,15 @@ internal class FakeRuntimeSettingsGateway(
         memories.add(normalized)
     }
 
+    override suspend fun listMemories(): List<String> = memories.toList()
+
+    override suspend fun deleteMemory(index: Int) {
+        if (index in memories.indices) {
+            recordWrite()
+            memories.removeAt(index)
+        }
+    }
+
     override suspend fun listCustomTools(): List<RuntimeCustomTool> = customTools.toList()
 
     override suspend fun saveCustomTool(

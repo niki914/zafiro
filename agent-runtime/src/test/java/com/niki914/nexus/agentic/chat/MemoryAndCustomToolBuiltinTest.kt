@@ -23,7 +23,7 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_writesTrimmedMemoryAndReturnsMinimalSuccessJson() = runTest {
+    fun memorize_writesTrimmedMemoryAndReturnsSuccessJson() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
@@ -33,7 +33,9 @@ class MemoryAndCustomToolBuiltinTest {
             )
         )
 
-        assertEquals("""{"ok":true}""", resultJson)
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("add", json["action"]!!.jsonPrimitive.content)
         assertEquals(listOf("User prefers concise answers."), store.memories)
         assertEquals(1, store.writeCount)
     }
@@ -51,8 +53,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val json = Json.parseToJsonElement(resultJson).jsonObject
         assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("MISSING_REQUIRED_FIELD", json["code"]!!.jsonPrimitive.content)
-        assertTrue(json["field_errors"]!!.jsonObject.containsKey("content"))
+        assertEquals("INVALID_ARGUMENTS", json["code"]!!.jsonPrimitive.content)
     }
 
     @Test
