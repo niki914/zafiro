@@ -45,7 +45,7 @@ class LLMControllerRefreshSkillTest {
         val snapshot = LLMController.refresh()
 
         assertEquals(1, gateway.listEnabledSkillsCallCount)
-        assertFalse(snapshot.prompt.finalSystemPrompt.contains("## Skill Context"))
+        assertFalse(snapshot.prompt.finalSystemPrompt.contains("## Skills (mandatory)"))
         assertFalse(snapshot.prompt.finalSystemPrompt.contains("<available_skills>"))
     }
 

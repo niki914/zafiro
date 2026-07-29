@@ -23,14 +23,12 @@ class PromptComposerTest {
     // --- Tier structure ---
 
     @Test
-    fun compose_stableTierAlwaysPresent() {
+    fun compose_stableTierAlwaysContainsIdentity() {
         val result = PromptComposer().compose(
             PromptComposerInput(additionalInstructions = "")
         )
 
         assertTrue(result.finalSystemPrompt.contains(PromptComposer.DEFAULT_AGENT_IDENTITY))
-        assertTrue(result.finalSystemPrompt.contains(PromptComposer.TASK_COMPLETION_GUIDANCE))
-        assertTrue(result.finalSystemPrompt.contains(PromptComposer.TOOL_USE_ENFORCEMENT_GUIDANCE))
     }
 
     @Test
@@ -220,12 +218,31 @@ class PromptComposerTest {
     }
 
     @Test
+    fun compose_omitsSkillContextWhenLoadSkillToolAbsent() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                enabledSkills = listOf(
+                    skill(id = "skill-a", name = "Skill A", description = "Description A")
+                ),
+                tools = ResolvedTools(),
+            )
+        )
+
+        assertFalse(result.finalSystemPrompt.contains("## Skills (mandatory)"))
+        assertFalse(result.finalSystemPrompt.contains("<available_skills>"))
+    }
+
+    @Test
     fun compose_rendersOneEnabledSkill() {
         val result = PromptComposer().compose(
             PromptComposerInput(
                 additionalInstructions = "",
                 enabledSkills = listOf(
                     skill(id = "skill-a", name = "Skill A", description = "Description A")
+                ),
+                tools = ResolvedTools(
+                    builtinTools = listOf(loadSkillBuiltin()),
                 ),
             )
         )
@@ -244,6 +261,9 @@ class PromptComposerTest {
             PromptComposerInput(
                 additionalInstructions = "",
                 enabledSkills = listOf(skill(id = "s1", name = "S1", description = "D1")),
+                tools = ResolvedTools(
+                    builtinTools = listOf(loadSkillBuiltin()),
+                ),
             )
         )
 
@@ -260,6 +280,9 @@ class PromptComposerTest {
                     skill(id = "skill-b", name = "Skill B", description = "Description B"),
                     skill(id = "group-a/skill-a", name = "Group Skill", description = "Group description"),
                 ),
+                tools = ResolvedTools(
+                    builtinTools = listOf(loadSkillBuiltin()),
+                ),
             )
         )
 
@@ -274,6 +297,9 @@ class PromptComposerTest {
                 additionalInstructions = "",
                 enabledSkills = listOf(
                     skill(id = "skill-a", name = "Skill A", description = "Description A")
+                ),
+                tools = ResolvedTools(
+                    builtinTools = listOf(loadSkillBuiltin()),
                 ),
             )
         )
@@ -322,13 +348,7 @@ class PromptComposerTest {
             PromptComposerInput(
                 additionalInstructions = "",
                 tools = ResolvedTools(
-                    builtinTools = listOf(
-                        LocalTool.Builtin(
-                            name = "load_skill",
-                            description = "Load a skill",
-                            tool = FakeBuiltinTool(name = "load_skill"),
-                        )
-                    )
+                    builtinTools = listOf(loadSkillBuiltin()),
                 ),
             )
         )
@@ -346,6 +366,44 @@ class PromptComposerTest {
         )
 
         assertFalse(result.finalSystemPrompt.contains(PromptComposer.SKILLS_GUIDANCE))
+    }
+
+    @Test
+    fun compose_omitsTaskCompletionGuidanceWhenNoTools() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                tools = ResolvedTools(),
+            )
+        )
+
+        assertFalse(result.finalSystemPrompt.contains(PromptComposer.TASK_COMPLETION_GUIDANCE))
+    }
+
+    @Test
+    fun compose_injectsTaskCompletionGuidanceWhenToolsPresent() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                tools = ResolvedTools(
+                    builtinTools = listOf(loadSkillBuiltin()),
+                ),
+            )
+        )
+
+        assertTrue(result.finalSystemPrompt.contains(PromptComposer.TASK_COMPLETION_GUIDANCE))
+    }
+
+    @Test
+    fun compose_omitsToolUseEnforcementGuidanceWhenNoTools() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                tools = ResolvedTools(),
+            )
+        )
+
+        assertFalse(result.finalSystemPrompt.contains(PromptComposer.TOOL_USE_ENFORCEMENT_GUIDANCE))
     }
 
     // --- LLMController.buildMemoryItems ---
@@ -388,6 +446,14 @@ class PromptComposerTest {
             absolutePath = "/skills/$id/SKILL.md",
             absoluteDir = "/skills/$id",
             enabled = true,
+        )
+    }
+
+    private fun loadSkillBuiltin(): LocalTool.Builtin {
+        return LocalTool.Builtin(
+            name = "load_skill",
+            description = "Load a skill",
+            tool = FakeBuiltinTool(name = "load_skill"),
         )
     }
 

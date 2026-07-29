@@ -38,9 +38,10 @@ class PromptComposer {
         return listOfNotNull(
             DEFAULT_AGENT_IDENTITY,
             renderToolContext(input.tools, input.mcpDiscoverySnapshot),
-            renderSkillContext(input.enabledSkills),
-            TASK_COMPLETION_GUIDANCE,
-            TOOL_USE_ENFORCEMENT_GUIDANCE,
+            renderSkillContext(input.enabledSkills)
+                .takeIf { hasBuiltinTool(input, "load_skill") },
+            TASK_COMPLETION_GUIDANCE.takeIf { hasAnyTool(input) },
+            TOOL_USE_ENFORCEMENT_GUIDANCE.takeIf { hasAnyTool(input) },
             MEMORY_GUIDANCE.takeIf { hasBuiltinTool(input, "memorize") },
             SKILLS_GUIDANCE.takeIf { hasBuiltinTool(input, "load_skill") },
         ).joinToString(separator = "\n\n")
@@ -170,6 +171,12 @@ class PromptComposer {
         return input.tools.builtinTools.any { it.name == name }
     }
 
+    private fun hasAnyTool(input: PromptComposerInput): Boolean {
+        return input.tools.builtinTools.isNotEmpty() ||
+            input.tools.customTools.isNotEmpty() ||
+            input.tools.mcpServers.any { it.enabled }
+    }
+
     // --- Guidance constants ---
 
     companion object {
@@ -183,14 +190,17 @@ class PromptComposer {
 
         internal const val TASK_COMPLETION_GUIDANCE =
             "# Finishing the job\n" +
-                "When the user asks you to do something, the deliverable is a working result " +
-                "backed by real tool output — not a description of one. Do not stop after " +
-                "writing a plan or describing what you would do. Keep working until you have " +
-                "actually produced the requested result.\n" +
-                "If a tool fails and blocks progress, say so directly and try an alternative " +
-                "approach. Never substitute plausible-looking fabricated output for results " +
-                "you couldn't actually produce. Reporting a blocker honestly is always better " +
-                "than inventing a result."
+                "When the user asks you to build, run, or verify something, the deliverable is " +
+                "a working result backed by real tool output — not a description of one. " +
+                "Do not stop after writing a stub, a plan, or a single command. Keep working " +
+                "until you have actually exercised the code or produced the requested result, " +
+                "then report what real execution returned.\n" +
+                "If a tool, install, or network call fails and blocks the real path, say so " +
+                "directly and try an alternative (different package manager, different " +
+                "approach, ask the user). NEVER substitute plausible-looking fabricated " +
+                "output (made-up data, invented file contents, synthesised API responses) " +
+                "for results you couldn't actually produce. Reporting a blocker honestly " +
+                "is always better than inventing a result."
 
         internal const val TOOL_USE_ENFORCEMENT_GUIDANCE =
             "# Tool use\n" +
@@ -215,11 +225,12 @@ class PromptComposer {
                 "belong in skills, not memory."
 
         internal const val SKILLS_GUIDANCE =
-            "# Maintaining skills\n" +
-                "After completing a complex task or discovering a non-trivial workflow, " +
-                "consider whether the approach should be saved as a skill for reuse. " +
-                "When using a skill and finding it outdated, incomplete, or wrong, " +
-                "update it immediately — don't wait to be asked. " +
-                "Skills that aren't maintained become liabilities."
+            "# Skills\n" +
+                "Skills contain specialized knowledge — API endpoints, tool-specific " +
+                "commands, and proven workflows that outperform general-purpose approaches. " +
+                "Load the skill even if you think you could handle the task with basic " +
+                "tools. Skills also encode the user's preferred approach, conventions, " +
+                "and quality standards — load them even for tasks you already know how " +
+                "to do, because the skill defines how it should be done here."
     }
 }
