@@ -163,17 +163,6 @@ private fun MultiToolHeader(
             style = MaterialTheme.typography.bodyLarge,
             color = contentColor.copy(alpha = 0.72f),
         )
-        if (!isExpanded) {
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = tools.joinToString(" · ") { it.name },
-                style = MaterialTheme.typography.bodySmall,
-                color = contentColor.copy(alpha = 0.38f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 220.dp),
-            )
-        }
         Spacer(modifier = Modifier.width(6.dp))
         Icon(
             imageVector = Icons.Default.KeyboardArrowRight,
@@ -288,25 +277,53 @@ private fun ToolRow(
             exit = fadeOut(tween(80)),
         ) {
             status.resultText?.let { text ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 102.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    SelectionContainer {
-                        Text(
-                            text = text,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp,
-                                lineHeight = 18.sp,
-                            ),
-                            color = contentColor.copy(alpha = 0.58f),
-                        )
-                    }
-                }
+                ToolResultText(
+                    text = text,
+                    contentColor = contentColor,
+                )
             }
+        }
+    }
+}
+
+// ── result text — single-line centered, multi-line fill-width ──────────────
+
+@Composable
+private fun ToolResultText(
+    text: String,
+    contentColor: Color,
+) {
+    var overflow by remember { mutableStateOf(false) }
+
+    val resultStyle = MaterialTheme.typography.bodySmall.copy(
+        fontFamily = FontFamily.Monospace,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+    )
+    val resultColor = contentColor.copy(alpha = 0.58f)
+
+    Box(
+        modifier = Modifier
+            .let { if (overflow) it.fillMaxWidth() else it }
+            .heightIn(max = 102.dp)
+            .let { if (overflow) it.verticalScroll(rememberScrollState()) else it },
+        contentAlignment = if (overflow) Alignment.TopStart else Alignment.Center,
+    ) {
+        SelectionContainer {
+            Text(
+                text = text,
+                style = resultStyle,
+                color = resultColor,
+                maxLines = if (overflow) Int.MAX_VALUE else 1,
+                overflow = TextOverflow.Ellipsis,
+                softWrap = overflow,
+                modifier = Modifier.fillMaxWidth(),
+                onTextLayout = { layoutResult ->
+                    if (!overflow && layoutResult.hasVisualOverflow) {
+                        overflow = true
+                    }
+                },
+            )
         }
     }
 }
