@@ -44,9 +44,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.nexus.agentic.app.R
@@ -56,6 +61,17 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 
 private val SucceededColor = Color(0xFF4F8F6B)
 private val FailedColor = Color(0xFFB85C5C)
+
+private val NoNestedScrollPropagation = object : NestedScrollConnection {
+    override fun onPostScroll(
+        consumed: Offset,
+        available: Offset,
+        source: NestedScrollSource,
+    ): Offset = if (available.y != 0f) available.copy(x = 0f) else Offset.Zero
+
+    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
+        Velocity(x = 0f, y = available.y)
+}
 
 // ── ToolChain — stateless, state driven by ViewModel ──────────────────────
 
@@ -321,7 +337,7 @@ private fun ToolResultText(
         modifier = Modifier
             .let { if (overflow) it.fillMaxWidth() else it }
             .heightIn(max = 102.dp)
-            .let { if (overflow) it.verticalScroll(rememberScrollState()) else it },
+            .let { if (overflow) it.nestedScroll(NoNestedScrollPropagation).verticalScroll(rememberScrollState()) else it },
         contentAlignment = if (overflow) Alignment.TopStart else Alignment.Center,
     ) {
         SelectionContainer {

@@ -93,6 +93,7 @@ data class HomeChatUiState(
     val input: String = "",
     val turns: List<HomeChatTurn> = emptyList(),
     val isGenerating: Boolean = false,
+    val isLoadingConversation: Boolean = false,
     val lastEventName: String? = null,
     val streamEventCount: Int = 0,
     val currentConversationId: String? = null,
@@ -347,6 +348,7 @@ class HomeChatViewModel internal constructor(
     private fun restoreLastConversationOnStartup() {
         if (startupRestoreAttempted) return
         startupRestoreAttempted = true
+        updateState { copy(isLoadingConversation = true) }
         viewModelScope.launch {
             try {
                 val conversationId = conversations.lastOpenedConversationId()
@@ -363,6 +365,7 @@ class HomeChatViewModel internal constructor(
                     copy(
                         input = record.draftText,
                         turns = restoredTurns,
+                        isLoadingConversation = false,
                         isGenerating = false,
                         lastEventName = null,
                         streamEventCount = 0,
@@ -376,6 +379,8 @@ class HomeChatViewModel internal constructor(
                 }
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
+            } finally {
+                updateState { copy(isLoadingConversation = false) }
             }
         }
     }
@@ -428,29 +433,35 @@ class HomeChatViewModel internal constructor(
         streamJob = null
         draftSaveJob?.cancel()
         draftSaveJob = null
-        val record = conversations.getConversation(id) ?: return
-        runtime.replaceHistory(record.history)
-        currentConversationId = id
-        conversations.setLastOpenedConversationId(id)
-        val restoredTurns = ConversationFormatter.toHomeTurns(record.history)
-        val restoredTitle = record.summary.title.takeIf {
-            restoredTurns.isNotEmpty() && it.isNotBlank()
-        }
-        nextTurnId = restoredTurns.nextTurnId()
-        updateState {
-            copy(
-                input = "",
-                turns = restoredTurns,
-                isGenerating = false,
-                lastEventName = null,
-                streamEventCount = 0,
-                currentConversationId = id,
-                currentConversationTitle = restoredTitle,
-                expandedToolRuns = emptySet(),
-                expandedToolResults = emptySet(),
-                expandedActionTurnId = null,
-                expandedActionSource = null,
-            )
+        updateState { copy(isLoadingConversation = true) }
+        try {
+            val record = conversations.getConversation(id) ?: return
+            runtime.replaceHistory(record.history)
+            currentConversationId = id
+            conversations.setLastOpenedConversationId(id)
+            val restoredTurns = ConversationFormatter.toHomeTurns(record.history)
+            val restoredTitle = record.summary.title.takeIf {
+                restoredTurns.isNotEmpty() && it.isNotBlank()
+            }
+            nextTurnId = restoredTurns.nextTurnId()
+            updateState {
+                copy(
+                    input = "",
+                    turns = restoredTurns,
+                    isLoadingConversation = false,
+                    isGenerating = false,
+                    lastEventName = null,
+                    streamEventCount = 0,
+                    currentConversationId = id,
+                    currentConversationTitle = restoredTitle,
+                    expandedToolRuns = emptySet(),
+                    expandedToolResults = emptySet(),
+                    expandedActionTurnId = null,
+                    expandedActionSource = null,
+                )
+            }
+        } finally {
+            updateState { copy(isLoadingConversation = false) }
         }
     }
 
