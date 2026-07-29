@@ -79,6 +79,11 @@ class XRepoTest {
     }
 
     @Test
+    fun defaultSystemPromptIsEmpty() {
+        assertEquals("", LocalSettingsDefaults.DEFAULT_SYSTEM_PROMPT)
+    }
+
+    @Test
     fun tryPutDefaultSettings_skipsWhenOnboardingIsCompleted() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(

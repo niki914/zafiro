@@ -187,6 +187,7 @@ private object FakeRuntimeHostGateway : RuntimeHostGateway {
 private fun defaultBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> {
     return listOf(
         RuntimeBuiltinToolSetting("create_custom_tool", "Create custom tools.", enabled = true),
+        RuntimeBuiltinToolSetting("load_skill", "Load a skill by id.", enabled = true),
         RuntimeBuiltinToolSetting("memorize", "Add a memory item.", enabled = true),
         RuntimeBuiltinToolSetting("notify", "Post host notifications.", enabled = true),
         RuntimeBuiltinToolSetting(

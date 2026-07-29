@@ -27,7 +27,7 @@ class BuiltinToolSettingsManagerTest {
         val items = manager.load()
 
         assertEquals(
-            listOf("create_custom_tool", "memorize", "notify", "read_custom_tool", "terminal"),
+            listOf("create_custom_tool", "load_skill", "memorize", "notify", "read_custom_tool", "terminal"),
             items.map { it.name }.sorted()
         )
         assertTrue(items.all { it.enabled })
