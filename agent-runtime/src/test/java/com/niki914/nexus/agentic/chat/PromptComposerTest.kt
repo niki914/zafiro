@@ -20,6 +20,57 @@ import org.junit.Test
 
 class PromptComposerTest {
 
+    // --- Tier structure ---
+
+    @Test
+    fun compose_stableTierAlwaysPresent() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(additionalInstructions = "")
+        )
+
+        assertTrue(result.finalSystemPrompt.contains(PromptComposer.DEFAULT_AGENT_IDENTITY))
+        assertTrue(result.finalSystemPrompt.contains(PromptComposer.TASK_COMPLETION_GUIDANCE))
+        assertTrue(result.finalSystemPrompt.contains(PromptComposer.TOOL_USE_ENFORCEMENT_GUIDANCE))
+    }
+
+    @Test
+    fun compose_contextTierRendersWhenInstructionsPresent() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(additionalInstructions = "Custom context instructions.")
+        )
+
+        assertTrue(result.finalSystemPrompt.contains("## Additional instructions"))
+        assertTrue(result.finalSystemPrompt.contains("Custom context instructions."))
+    }
+
+    @Test
+    fun compose_contextTierOmittedWhenInstructionsBlank() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(additionalInstructions = " ")
+        )
+
+        assertFalse(result.finalSystemPrompt.contains("## Additional instructions"))
+    }
+
+    @Test
+    fun compose_tiersOrderedStableBeforeVolatile() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "ctx",
+                memoryItems = listOf("mem"),
+            )
+        )
+
+        val stableIdx = result.finalSystemPrompt.indexOf(PromptComposer.DEFAULT_AGENT_IDENTITY)
+        val contextIdx = result.finalSystemPrompt.indexOf("## Additional instructions")
+        val volatileIdx = result.finalSystemPrompt.indexOf("## Agent Memory")
+
+        assertTrue(stableIdx < contextIdx)
+        assertTrue(contextIdx < volatileIdx)
+    }
+
+    // --- Memory section (volatile tier) ---
+
     @Test
     fun compose_omitsMemorySectionWhenNoMemoryItems() {
         val result = PromptComposer().compose(
@@ -34,6 +85,21 @@ class PromptComposerTest {
     }
 
     @Test
+    fun compose_wrapsMemoryItemsInSingleXmlBlock() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "base",
+                memoryItems = listOf(" A ", "B", " "),
+            )
+        )
+
+        assertTrue(result.finalSystemPrompt.contains("## Agent Memory"))
+        assertTrue(result.finalSystemPrompt.contains("<memory>\n- A\n- B\n</memory>"))
+    }
+
+    // --- Tool context (stable tier) ---
+
+    @Test
     fun compose_omitsToolContextWhenNoToolsOrMcpServers() {
         val result = PromptComposer().compose(
             PromptComposerInput(
@@ -43,85 +109,6 @@ class PromptComposerTest {
         )
 
         assertFalse(result.finalSystemPrompt.contains("## Tool Context"))
-    }
-
-    @Test
-    fun compose_omitsSkillContextWhenNoEnabledSkills() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "base",
-                enabledSkills = emptyList(),
-            )
-        )
-
-        assertFalse(result.finalSystemPrompt.contains("## Skill Context"))
-        assertFalse(result.finalSystemPrompt.contains("<available_skills>"))
-    }
-
-    @Test
-    fun compose_rendersOneEnabledSkill() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "",
-                enabledSkills = listOf(
-                    skill(id = "skill-a", name = "Skill A", description = "Description A")
-                ),
-            )
-        )
-
-        assertTrue(
-            result.finalSystemPrompt.contains("## Skill Context")
-        )
-        assertTrue(
-            result.finalSystemPrompt.contains(
-                "  <skill>\n    <id>skill-a</id>\n    <name>Skill A</name>\n    <description>Description A</description>\n    <dir>/skills/skill-a</dir>\n  </skill>"
-            )
-        )
-        assertTrue(
-            result.finalSystemPrompt.contains(
-                "- Scan <available_skills>."
-            )
-        )
-    }
-
-    @Test
-    fun compose_rendersEnabledSkillsSortedById() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "",
-                enabledSkills = listOf(
-                    skill(id = "skill-b", name = "Skill B", description = "Description B"),
-                    skill(
-                        id = "group-a/skill-a",
-                        name = "Group Skill",
-                        description = "Group description"
-                    ),
-                ),
-            )
-        )
-
-        val prompt = result.finalSystemPrompt
-        assertTrue(prompt.indexOf("<id>group-a/skill-a</id>") < prompt.indexOf("<id>skill-b</id>"))
-    }
-
-    @Test
-    fun compose_doesNotRenderSkillContent() {
-        val loadedSkillContent = "DO_NOT_RENDER_SKILL_CONTENT"
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "",
-                enabledSkills = listOf(
-                    skill(
-                        id = "skill-a",
-                        name = "Skill A",
-                        description = "Description A",
-                    )
-                ),
-            )
-        )
-
-        assertTrue(result.finalSystemPrompt.contains("<id>skill-a</id>"))
-        assertFalse(result.finalSystemPrompt.contains(loadedSkillContent))
     }
 
     @Test
@@ -184,11 +171,7 @@ class PromptComposerTest {
                         mcpSnapshot("docs", McpDiscoveryState.Available, discoveredToolCount = 20),
                         mcpSnapshot("loading", McpDiscoveryState.Discovering),
                         mcpSnapshot("broken", McpDiscoveryState.Failed, errorMessage = "boom"),
-                        mcpSnapshot(
-                            "cached",
-                            McpDiscoveryState.UsingStaleCache,
-                            discoveredToolCount = 3
-                        ),
+                        mcpSnapshot("cached", McpDiscoveryState.UsingStaleCache, discoveredToolCount = 3),
                     ).associateBy { it.serverName },
                     finalToolRegistry = ToolRegistrySnapshot.Empty,
                 ),
@@ -221,15 +204,151 @@ class PromptComposerTest {
         assertFalse(result.finalSystemPrompt.contains("secret_tool"))
     }
 
+    // --- Skill context (stable tier) ---
+
     @Test
-    fun compose_omitsAdditionalInstructionsWhenBlank() {
+    fun compose_omitsSkillContextWhenNoEnabledSkills() {
         val result = PromptComposer().compose(
-            PromptComposerInput(additionalInstructions = " ")
+            PromptComposerInput(
+                additionalInstructions = "base",
+                enabledSkills = emptyList(),
+            )
         )
 
-        assertEquals("# System Prompt", result.finalSystemPrompt)
-        assertFalse(result.finalSystemPrompt.contains("## Additional instructions"))
+        assertFalse(result.finalSystemPrompt.contains("## Skills (mandatory)"))
+        assertFalse(result.finalSystemPrompt.contains("<available_skills>"))
     }
+
+    @Test
+    fun compose_rendersOneEnabledSkill() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                enabledSkills = listOf(
+                    skill(id = "skill-a", name = "Skill A", description = "Description A")
+                ),
+            )
+        )
+
+        assertTrue(result.finalSystemPrompt.contains("## Skills (mandatory)"))
+        assertTrue(
+            result.finalSystemPrompt.contains(
+                "  <skill>\n    <id>skill-a</id>\n    <name>Skill A</name>\n    <description>Description A</description>\n    <dir>/skills/skill-a</dir>\n  </skill>"
+            )
+        )
+    }
+
+    @Test
+    fun compose_skillsPromptUsesMandatoryLanguage() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                enabledSkills = listOf(skill(id = "s1", name = "S1", description = "D1")),
+            )
+        )
+
+        assertTrue(result.finalSystemPrompt.contains("you MUST load it"))
+        assertTrue(result.finalSystemPrompt.contains("Err on the side of loading"))
+    }
+
+    @Test
+    fun compose_rendersEnabledSkillsSortedById() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                enabledSkills = listOf(
+                    skill(id = "skill-b", name = "Skill B", description = "Description B"),
+                    skill(id = "group-a/skill-a", name = "Group Skill", description = "Group description"),
+                ),
+            )
+        )
+
+        val prompt = result.finalSystemPrompt
+        assertTrue(prompt.indexOf("<id>group-a/skill-a</id>") < prompt.indexOf("<id>skill-b</id>"))
+    }
+
+    @Test
+    fun compose_doesNotRenderSkillContent() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                enabledSkills = listOf(
+                    skill(id = "skill-a", name = "Skill A", description = "Description A")
+                ),
+            )
+        )
+
+        assertTrue(result.finalSystemPrompt.contains("<id>skill-a</id>"))
+        assertFalse(result.finalSystemPrompt.contains("DO_NOT_RENDER_SKILL_CONTENT"))
+    }
+
+    // --- Conditional guidance injection ---
+
+    @Test
+    fun compose_injectsMemoryGuidanceWhenMemorizeToolEnabled() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                tools = ResolvedTools(
+                    builtinTools = listOf(
+                        LocalTool.Builtin(
+                            name = "memorize",
+                            description = "Add to persistent memory",
+                            tool = FakeBuiltinTool(name = "memorize"),
+                        )
+                    )
+                ),
+            )
+        )
+
+        assertTrue(result.finalSystemPrompt.contains(PromptComposer.MEMORY_GUIDANCE))
+    }
+
+    @Test
+    fun compose_omitsMemoryGuidanceWhenMemorizeToolAbsent() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                tools = ResolvedTools(),
+            )
+        )
+
+        assertFalse(result.finalSystemPrompt.contains(PromptComposer.MEMORY_GUIDANCE))
+    }
+
+    @Test
+    fun compose_injectsSkillsGuidanceWhenLoadSkillToolEnabled() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                tools = ResolvedTools(
+                    builtinTools = listOf(
+                        LocalTool.Builtin(
+                            name = "load_skill",
+                            description = "Load a skill",
+                            tool = FakeBuiltinTool(name = "load_skill"),
+                        )
+                    )
+                ),
+            )
+        )
+
+        assertTrue(result.finalSystemPrompt.contains(PromptComposer.SKILLS_GUIDANCE))
+    }
+
+    @Test
+    fun compose_omitsSkillsGuidanceWhenLoadSkillToolAbsent() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                tools = ResolvedTools(),
+            )
+        )
+
+        assertFalse(result.finalSystemPrompt.contains(PromptComposer.SKILLS_GUIDANCE))
+    }
+
+    // --- LLMController.buildMemoryItems ---
 
     @Test
     fun llmController_prefersMemoriesOverMemoryPrompt() {
@@ -244,24 +363,7 @@ class PromptComposerTest {
         assertFalse(items.contains("legacy"))
     }
 
-    @Test
-    fun compose_wrapsMemoryItemsInSingleXmlBlock() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "base",
-                memoryItems = listOf(" A ", "B", " "),
-            )
-        )
-
-        assertEquals(
-            "## Agent Memory\n\n<memory>\n- A\n- B\n</memory>",
-            result.sections.single { it.title == "Agent Memory" }.content,
-        )
-        assertEquals(
-            "# System Prompt\n\n## Agent Memory\n\n<memory>\n- A\n- B\n</memory>\n\n## Additional instructions\n\nbase",
-            result.finalSystemPrompt,
-        )
-    }
+    // --- Helpers ---
 
     private fun buildMemoryItems(config: RuntimeLlmConfig): List<String> {
         val method = LLMController::class.java.getDeclaredMethod(
