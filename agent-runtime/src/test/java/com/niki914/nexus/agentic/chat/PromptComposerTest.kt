@@ -62,7 +62,7 @@ class PromptComposerTest {
         )
 
         val stableIdx = result.finalSystemPrompt.indexOf("ctx")
-        val volatileIdx = result.finalSystemPrompt.indexOf("## Agent Memory")
+        val volatileIdx = result.finalSystemPrompt.indexOf("═══")
 
         assertTrue(stableIdx < volatileIdx)
     }
@@ -78,12 +78,12 @@ class PromptComposerTest {
             )
         )
 
-        assertFalse(result.finalSystemPrompt.contains("## Agent Memory"))
-        assertFalse(result.finalSystemPrompt.contains("<memory>"))
+        assertFalse(result.finalSystemPrompt.contains("═══"))
     }
 
     @Test
-    fun compose_wrapsMemoryItemsInSingleXmlBlock() {
+    fun compose_rendersMemoryItemsInHermesBlockFormat() {
+        val sep = "═".repeat(46)
         val result = PromptComposer().compose(
             PromptComposerInput(
                 additionalInstructions = "base",
@@ -91,8 +91,8 @@ class PromptComposerTest {
             )
         )
 
-        assertTrue(result.finalSystemPrompt.contains("## Agent Memory"))
-        assertTrue(result.finalSystemPrompt.contains("<memory>\n- A\n- B\n</memory>"))
+        assertTrue(result.finalSystemPrompt.contains("$sep\nMEMORY\n$sep"))
+        assertTrue(result.finalSystemPrompt.contains("A\n§\nB"))
     }
 
     // --- Tool context (stable tier) ---

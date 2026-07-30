@@ -23,7 +23,7 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_writesTrimmedMemoryAndReturnsSuccessJson() = runTest {
+    fun memorize_addWritesTrimmedMemoryAndReturnsSuccessJson() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
@@ -41,7 +41,7 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_returnsStructuredErrorForBlankContent() = runTest {
+    fun memorize_addReturnsStructuredErrorForBlankContent() = runTest {
         installRuntimeSettingsGatewayForTest()
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
@@ -70,66 +70,6 @@ class MemoryAndCustomToolBuiltinTest {
         val json = Json.parseToJsonElement(resultJson).jsonObject
         assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
         assertEquals("INVALID_ARGUMENTS", json["code"]!!.jsonPrimitive.content)
-    }
-
-    @Test
-    fun memorize_listReturnsItemsAsJsonArray() = runTest {
-        val store = installRuntimeSettingsGatewayForTest()
-        store.memories.addAll(listOf("first", "second"))
-
-        val resultJson = MemorizeBuiltin().invokeRawJson(
-            BuiltinToolRequest(
-                name = "memorize",
-                argumentsJson = """{"action":"list"}""",
-            )
-        )
-
-        val json = Json.parseToJsonElement(resultJson).jsonObject
-        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("list", json["action"]!!.jsonPrimitive.content)
-        val items = json["items"]!!.jsonArray
-        assertEquals(2, items.size)
-        assertEquals(0, items[0].jsonObject["index"]!!.jsonPrimitive.content.toInt())
-        assertEquals("first", items[0].jsonObject["content"]!!.jsonPrimitive.content)
-        assertEquals(1, items[1].jsonObject["index"]!!.jsonPrimitive.content.toInt())
-        assertEquals("second", items[1].jsonObject["content"]!!.jsonPrimitive.content)
-    }
-
-    @Test
-    fun memorize_removeDeletesByIndex() = runTest {
-        val store = installRuntimeSettingsGatewayForTest()
-        store.memories.addAll(listOf("keep", "delete-me", "also-keep"))
-
-        val resultJson = MemorizeBuiltin().invokeRawJson(
-            BuiltinToolRequest(
-                name = "memorize",
-                argumentsJson = """{"action":"remove","index":1}""",
-            )
-        )
-
-        val json = Json.parseToJsonElement(resultJson).jsonObject
-        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("remove", json["action"]!!.jsonPrimitive.content)
-        assertEquals(1, json["index"]!!.jsonPrimitive.content.toInt())
-        assertEquals(listOf("keep", "also-keep"), store.memories)
-    }
-
-    @Test
-    fun memorize_removeReturnsErrorForOutOfRangeIndex() = runTest {
-        val store = installRuntimeSettingsGatewayForTest()
-        store.memories.add("only")
-
-        val resultJson = MemorizeBuiltin().invokeRawJson(
-            BuiltinToolRequest(
-                name = "memorize",
-                argumentsJson = """{"action":"remove","index":5}""",
-            )
-        )
-
-        val json = Json.parseToJsonElement(resultJson).jsonObject
-        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("INDEX_OUT_OF_RANGE", json["code"]!!.jsonPrimitive.content)
-        assertEquals(listOf("only"), store.memories)
     }
 
     @Test
@@ -163,6 +103,132 @@ class MemoryAndCustomToolBuiltinTest {
         assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
         assertEquals("add", json["action"]!!.jsonPrimitive.content)
         assertEquals(listOf("explicit add"), store.memories)
+    }
+
+    @Test
+    fun memorize_removeDeletesByOldText() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+        store.memories.addAll(listOf("keep", "delete-me-please", "also-keep"))
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"remove","old_text":"delete-me"}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("remove", json["action"]!!.jsonPrimitive.content)
+        assertEquals(listOf("keep", "also-keep"), store.memories)
+    }
+
+    @Test
+    fun memorize_removeReturnsErrorForNotFound() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+        store.memories.add("only")
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"remove","old_text":"nonexistent"}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("NOT_FOUND", json["code"]!!.jsonPrimitive.content)
+        assertEquals(listOf("only"), store.memories)
+    }
+
+    @Test
+    fun memorize_removeReturnsErrorForAmbiguousMatch() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+        store.memories.addAll(listOf("User prefers dark mode", "User prefers concise answers"))
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"remove","old_text":"User prefers"}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("AMBIGUOUS_MATCH", json["code"]!!.jsonPrimitive.content)
+        assertEquals(2, store.memories.size)
+    }
+
+    @Test
+    fun memorize_replaceUpdatesEntry() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+        store.memories.addAll(listOf("keep", "User prefers dark mode", "also-keep"))
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"replace","old_text":"dark mode","content":"User prefers light mode"}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("replace", json["action"]!!.jsonPrimitive.content)
+        assertEquals(listOf("keep", "also-keep", "User prefers light mode"), store.memories)
+    }
+
+    @Test
+    fun memorize_replaceReturnsErrorForNotFound() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+        store.memories.add("only")
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"replace","old_text":"nonexistent","content":"new"}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("NOT_FOUND", json["code"]!!.jsonPrimitive.content)
+        assertEquals(listOf("only"), store.memories)
+    }
+
+    @Test
+    fun memorize_replaceReturnsErrorForAmbiguousMatch() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+        store.memories.addAll(listOf("User prefers dark mode", "User prefers concise answers"))
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"replace","old_text":"User prefers","content":"new pref"}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("AMBIGUOUS_MATCH", json["code"]!!.jsonPrimitive.content)
+        assertEquals(2, store.memories.size)
+    }
+
+    @Test
+    fun memorize_replaceAllowsDuplicateMatchWhenIdenticalContent() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+        store.memories.addAll(listOf("same entry", "same entry"))
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"replace","old_text":"same entry","content":"updated entry"}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("replace", json["action"]!!.jsonPrimitive.content)
+        assertEquals(listOf("same entry", "updated entry"), store.memories)
     }
 
     @Test

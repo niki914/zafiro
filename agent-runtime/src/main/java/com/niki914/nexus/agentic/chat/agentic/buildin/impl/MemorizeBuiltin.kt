@@ -9,11 +9,9 @@ import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -21,11 +19,18 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     override val name: String = "memorize"
 
     override val description: String =
-        "Manage persistent memory across sessions. Use to save durable facts " +
-            "(user preferences, environment details, conventions). " +
-            "Memory items are shown in every turn's system prompt — " +
-            "this is a write tool, NOT a query tool. " +
-            "Use list to see saved items, add to save a new one, remove to delete by index."
+        "Save durable facts to persistent memory that survive across sessions. Memory is " +
+            "injected into every future turn, so keep entries compact and high-signal.\n\n" +
+            "WHEN: save proactively when the user states a preference, correction, or personal " +
+            "detail, or you learn a stable fact about their environment, conventions, or workflow. " +
+            "Priority: user preferences & corrections > environment facts > procedures. The best " +
+            "memory stops the user repeating themselves.\n\n" +
+            "ACTIONS: add (save a new fact), replace (update an existing entry), remove (delete " +
+            "an entry). Use old_text — a short unique substring of the target entry — to identify " +
+            "it for replace and remove.\n\n" +
+            "SKIP: trivial/obvious info, easily re-discovered facts, raw data dumps, task progress, " +
+            "completed-work logs, temporary TODO state. Reusable procedures belong in a skill, " +
+            "not memory."
 
     override val defaultEnabled: Boolean = true
 
@@ -68,25 +73,53 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                     """{"ok":true,"action":"add"}"""
                 }
                 Action.REMOVE -> {
-                    val index = args.index!!
+                    val oldText = args.oldText!!
                     val before = gateway.listMemories()
-                    if (index !in before.indices) {
-                        BuiltinToolResult.failure(
-                            code = "INDEX_OUT_OF_RANGE",
-                            message = "Memory index $index is out of range (0..${before.size - 1}).",
-                            hint = "Use list to see current items and their indices.",
+                    val matches = before.mapIndexedNotNull { i, entry ->
+                        if (oldText in entry) i to entry else null
+                    }
+                    when {
+                        matches.isEmpty() -> BuiltinToolResult.failure(
+                            code = "NOT_FOUND",
+                            message = "No entry matched '$oldText'.",
+                            hint = "Check the exact text of the entry you want to remove.",
                         ).toJsonString()
-                    } else {
-                        gateway.deleteMemory(index)
-                        """{"ok":true,"action":"remove","index":$index}"""
+                        matches.size > 1 && matches.map { it.second }.distinct().size > 1 ->
+                            BuiltinToolResult.failure(
+                                code = "AMBIGUOUS_MATCH",
+                                message = "Multiple entries matched '$oldText'. Be more specific.",
+                            ).toJsonString()
+                        else -> {
+                            gateway.deleteMemory(matches.first().first)
+                            """{"ok":true,"action":"remove"}"""
+                        }
                     }
                 }
-                Action.LIST -> {
-                    val items = gateway.listMemories()
-                    val jsonItems = items.mapIndexed { i, text ->
-                        JsonObject(mapOf("index" to JsonPrimitive(i), "content" to JsonPrimitive(text)))
+                Action.REPLACE -> {
+                    val oldText = args.oldText!!
+                    val newContent = args.content!!
+                    val before = gateway.listMemories()
+                    val matches = before.mapIndexedNotNull { i, entry ->
+                        if (oldText in entry) i to entry else null
                     }
-                    JsonObject(mapOf("ok" to JsonPrimitive(true), "action" to JsonPrimitive("list"), "items" to JsonArray(jsonItems))).toString()
+                    when {
+                        matches.isEmpty() -> BuiltinToolResult.failure(
+                            code = "NOT_FOUND",
+                            message = "No entry matched '$oldText'.",
+                            hint = "Check the exact text of the entry you want to replace.",
+                        ).toJsonString()
+                        matches.size > 1 && matches.map { it.second }.distinct().size > 1 ->
+                            BuiltinToolResult.failure(
+                                code = "AMBIGUOUS_MATCH",
+                                message = "Multiple entries matched '$oldText'. Be more specific.",
+                            ).toJsonString()
+                        else -> {
+                            val idx = matches.first().first
+                            gateway.deleteMemory(idx)
+                            gateway.addMemory(newContent)
+                            """{"ok":true,"action":"replace"}"""
+                        }
+                    }
                 }
             }
         } catch (error: CancellationException) {
@@ -113,9 +146,9 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
 
         val action = Action.from(obj["action"]?.jsonPrimitive?.contentOrNull)
         val content = obj["content"]?.jsonPrimitive?.contentOrNull?.trim()
-        val index = obj["index"]?.jsonPrimitive?.intOrNull
+        val oldText = obj["old_text"]?.jsonPrimitive?.contentOrNull?.trim()
 
-        return Args(action, content, index)
+        return Args(action, content, oldText)
     }
 
     private fun validateArgs(args: Args): BuiltinToolResult? {
@@ -127,36 +160,46 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                         message = "Field 'content' is required for add action.",
                         hint = """Example: {"action":"add","content":"User prefers concise answers."}""",
                     )
-                } else {
-                    null
-                }
+                } else null
             }
             Action.REMOVE -> {
-                if (args.index == null) {
+                if (args.oldText.isNullOrBlank()) {
                     BuiltinToolResult.failure(
                         code = "INVALID_ARGUMENTS",
-                        message = "Field 'index' is required for remove action.",
-                        hint = """Example: {"action":"remove","index":0}""",
+                        message = "Field 'old_text' is required for remove action.",
+                        hint = """Example: {"action":"remove","old_text":"User prefers"}""",
                     )
-                } else {
-                    null
+                } else null
+            }
+            Action.REPLACE -> {
+                when {
+                    args.oldText.isNullOrBlank() -> BuiltinToolResult.failure(
+                        code = "INVALID_ARGUMENTS",
+                        message = "Field 'old_text' is required for replace action.",
+                        hint = """Example: {"action":"replace","old_text":"User prefers","content":"User prefers short answers."}""",
+                    )
+                    args.content.isNullOrBlank() -> BuiltinToolResult.failure(
+                        code = "INVALID_ARGUMENTS",
+                        message = "Field 'content' is required for replace action.",
+                        hint = """Example: {"action":"replace","old_text":"User prefers","content":"User prefers short answers."}""",
+                    )
+                    else -> null
                 }
             }
-            Action.LIST -> null
         }
     }
 
     private enum class Action {
-        ADD, REMOVE, LIST;
+        ADD, REMOVE, REPLACE;
 
         companion object {
             fun from(wire: String?): Action {
                 return when (wire?.trim()?.lowercase()) {
                     "add" -> ADD
                     "remove" -> REMOVE
-                    "list" -> LIST
+                    "replace" -> REPLACE
                     else -> throw IllegalArgumentException(
-                        "Unknown action '${wire?.trim().orEmpty()}'. Expected add, remove, or list."
+                        "Unknown action '${wire?.trim().orEmpty()}'. Expected add, replace, or remove."
                     )
                 }
             }
@@ -166,7 +209,7 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     private data class Args(
         val action: Action,
         val content: String?,
-        val index: Int?,
+        val oldText: String?,
     )
 
     companion object {
@@ -176,18 +219,19 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
               "properties": {
                 "action": {
                   "type": "string",
-                  "enum": ["add", "remove", "list"],
-                  "description": "add (save a fact), remove (delete by index), list (show all items with indices). Default: add."
+                  "enum": ["add", "replace", "remove"],
+                  "description": "The action to perform."
                 },
                 "content": {
                   "type": "string",
-                  "description": "The memory item text. Required for add."
+                  "description": "The entry content. Required for 'add' and 'replace'."
                 },
-                "index": {
-                  "type": "integer",
-                  "description": "Zero-based index of the memory to remove. Required for remove. Use list to see indices."
+                "old_text": {
+                  "type": "string",
+                  "description": "REQUIRED for 'replace' and 'remove': a short unique substring identifying the existing entry to modify. Omit only for 'add'."
                 }
-              }
+              },
+              "required": ["action"]
             }
         """
     }

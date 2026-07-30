@@ -52,13 +52,9 @@ class PromptComposer {
     private fun buildVolatileTier(input: PromptComposerInput): String? {
         val items = input.memoryItems.map(String::trim).filter(String::isNotBlank)
         if (items.isEmpty()) return null
-        return buildString {
-            appendLine("## Agent Memory")
-            appendLine()
-            appendLine("<memory>")
-            items.forEach { appendLine("- $it") }
-            append("</memory>")
-        }
+        val separator = "═".repeat(46)
+        val content = items.joinToString("\n§\n")
+        return "$separator\nMEMORY\n$separator\n$content"
     }
 
     // --- Tool context ---
@@ -204,17 +200,26 @@ class PromptComposer {
                 "(b) deliver a final result to the user."
 
         internal const val MEMORY_GUIDANCE =
-            "# Memory\n" +
-                "You have persistent memory across sessions. Use the memorize tool to save " +
-                "durable facts: user preferences, environment details, and stable conventions. " +
-                "Memory is injected into every turn, so keep it compact and focused on facts " +
-                "that will still matter later.\n" +
+            "You have persistent memory across sessions. Save durable facts using the memorize " +
+                "tool: user preferences, environment details, tool quirks, and stable conventions. " +
+                "Memory is injected into every turn, so keep it compact and focused on facts that " +
+                "will still matter later.\n" +
+                "Prioritize what reduces future user steering — the most valuable memory is one " +
+                "that prevents the user from having to correct or remind you again. " +
+                "User preferences and recurring corrections matter more than procedural task details.\n" +
+                "Do NOT save task progress, session outcomes, completed-work logs, or temporary TODO " +
+                "state to memory; use conversation history to recall those from past interactions. " +
+                "Specifically: do not record PR numbers, issue numbers, commit SHAs, 'fixed bug X', " +
+                "'submitted PR Y', 'Phase N done', file counts, or any artifact that will be stale " +
+                "in 7 days. If a fact will be stale in a week, it does not belong in memory. " +
+                "If you've discovered a new way to do something, solved a problem that could be " +
+                "necessary later, save it as a skill with the skill tool.\n" +
                 "Write memories as declarative facts, not instructions to yourself. " +
-                "\"User prefers concise responses\" ✓ — \"Always respond concisely\" ✗. " +
-                "\"Project uses Kotlin with coroutines\" ✓ — \"Use coroutines for async\" ✗.\n" +
-                "Do NOT save task progress, session outcomes, PR numbers, commit SHAs, " +
-                "or anything that will be stale within a week. Procedures and workflows " +
-                "belong in skills, not memory."
+                "'User prefers concise responses' ✓ — 'Always respond concisely' ✗. " +
+                "'Project uses pytest with xdist' ✓ — 'Run tests with pytest -n 4' ✗. " +
+                "Imperative phrasing gets re-read as a directive in later sessions and can " +
+                "cause repeated work or override the user's current request. Procedures and " +
+                "workflows belong in skills, not memory."
 
         internal const val SKILLS_GUIDANCE =
             "# Skills\n" +
