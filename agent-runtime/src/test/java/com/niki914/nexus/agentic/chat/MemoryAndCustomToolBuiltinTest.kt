@@ -57,6 +57,99 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
+    fun memorize_listReturnsItemsAsJsonArray() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+        store.memories.addAll(listOf("first", "second"))
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"list"}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("list", json["action"]!!.jsonPrimitive.content)
+        val items = json["items"]!!.jsonArray
+        assertEquals(2, items.size)
+        assertEquals(0, items[0].jsonObject["index"]!!.jsonPrimitive.content.toInt())
+        assertEquals("first", items[0].jsonObject["content"]!!.jsonPrimitive.content)
+        assertEquals(1, items[1].jsonObject["index"]!!.jsonPrimitive.content.toInt())
+        assertEquals("second", items[1].jsonObject["content"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun memorize_removeDeletesByIndex() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+        store.memories.addAll(listOf("keep", "delete-me", "also-keep"))
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"remove","index":1}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("remove", json["action"]!!.jsonPrimitive.content)
+        assertEquals(1, json["index"]!!.jsonPrimitive.content.toInt())
+        assertEquals(listOf("keep", "also-keep"), store.memories)
+    }
+
+    @Test
+    fun memorize_removeReturnsErrorForOutOfRangeIndex() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+        store.memories.add("only")
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"remove","index":5}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("INDEX_OUT_OF_RANGE", json["code"]!!.jsonPrimitive.content)
+        assertEquals(listOf("only"), store.memories)
+    }
+
+    @Test
+    fun memorize_unknownActionReturnsError() = runTest {
+        installRuntimeSettingsGatewayForTest()
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"remvoe","content":"typo"}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("INVALID_ARGUMENTS", json["code"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun memorize_explicitAddActionWorks() = runTest {
+        val store = installRuntimeSettingsGatewayForTest()
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"action":"add","content":"explicit add"}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("add", json["action"]!!.jsonPrimitive.content)
+        assertEquals(listOf("explicit add"), store.memories)
+    }
+
+    @Test
     fun readCustomTool_returnsAllCustomToolImplementationsWhenNameIsOmitted() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(

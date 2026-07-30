@@ -9,6 +9,7 @@ import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -85,7 +86,7 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                     val jsonItems = items.mapIndexed { i, text ->
                         JsonObject(mapOf("index" to JsonPrimitive(i), "content" to JsonPrimitive(text)))
                     }
-                    JsonObject(mapOf("ok" to JsonPrimitive(true), "action" to JsonPrimitive("list"), "items" to JsonPrimitive(jsonItems.toString()))).toString()
+                    JsonObject(mapOf("ok" to JsonPrimitive(true), "action" to JsonPrimitive("list"), "items" to JsonArray(jsonItems))).toString()
                 }
             }
         } catch (error: CancellationException) {
@@ -151,9 +152,12 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         companion object {
             fun from(wire: String?): Action {
                 return when (wire?.trim()?.lowercase()) {
+                    null, "", "add" -> ADD
                     "remove" -> REMOVE
                     "list" -> LIST
-                    else -> ADD
+                    else -> throw IllegalArgumentException(
+                        "Unknown action '${wire!!.trim()}'. Expected add, remove, or list."
+                    )
                 }
             }
         }
