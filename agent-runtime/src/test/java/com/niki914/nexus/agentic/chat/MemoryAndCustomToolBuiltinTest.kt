@@ -29,7 +29,7 @@ class MemoryAndCustomToolBuiltinTest {
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memorize",
-                argumentsJson = """{"content":"  User prefers concise answers.  "}""",
+                argumentsJson = """{"action":"add","content":"  User prefers concise answers.  "}""",
             )
         )
 
@@ -47,7 +47,23 @@ class MemoryAndCustomToolBuiltinTest {
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memorize",
-                argumentsJson = """{"content":"   "}""",
+                argumentsJson = """{"action":"add","content":"   "}""",
+            )
+        )
+
+        val json = Json.parseToJsonElement(resultJson).jsonObject
+        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
+        assertEquals("INVALID_ARGUMENTS", json["code"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun memorize_missingActionReturnsError() = runTest {
+        installRuntimeSettingsGatewayForTest()
+
+        val resultJson = MemorizeBuiltin().invokeRawJson(
+            BuiltinToolRequest(
+                name = "memorize",
+                argumentsJson = """{"content":"some fact"}""",
             )
         )
 

@@ -152,11 +152,11 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         companion object {
             fun from(wire: String?): Action {
                 return when (wire?.trim()?.lowercase()) {
-                    null, "", "add" -> ADD
+                    "add" -> ADD
                     "remove" -> REMOVE
                     "list" -> LIST
                     else -> throw IllegalArgumentException(
-                        "Unknown action '${wire!!.trim()}'. Expected add, remove, or list."
+                        "Unknown action '${wire?.trim().orEmpty()}'. Expected add, remove, or list."
                     )
                 }
             }
