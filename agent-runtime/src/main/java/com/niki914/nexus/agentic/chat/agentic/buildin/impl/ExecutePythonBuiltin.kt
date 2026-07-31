@@ -75,8 +75,10 @@ can access them via file:// URIs.
     import requests
 
     # Extract only what you need -- don't print raw HTML or full JSON
-    resp = requests.get("https://example.com/api/data").json()
-    for item in resp["results"][:10]:
+    resp = requests.get("https://example.com/api/data", timeout=15)
+    resp.raise_for_status()
+    data = resp.json()
+    for item in data["results"][:10]:
         print(item["id"], item["title"])
 
     # Scrape and extract with BeautifulSoup

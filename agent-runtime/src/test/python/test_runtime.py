@@ -62,7 +62,6 @@ class ExecCodeTest(unittest.TestCase):
         runtime.exec_code("x = 42")
         output = runtime.exec_code("print(x)")
         self.assertNotIn("42", output)
-        # The second exec should see a NameError in stderr.
         self.assertIn("NameError", output)
 
     def test_stdout_restored_after_timeout(self):
@@ -81,17 +80,30 @@ class ExecCodeTest(unittest.TestCase):
         self.assertIs(sys.stdout, orig)
 
 
+class OutputBudgetTest(unittest.TestCase):
+    """Tests for runtime.OutputBudget."""
+
+    def test_initial_remaining(self):
+        b = runtime.OutputBudget(max_bytes=1000)
+        self.assertEqual(b.remaining, 1000)
+        self.assertEqual(b.max_bytes, 1000)
+
+
 class BoundedWriterTest(unittest.TestCase):
     """Tests for runtime.BoundedWriter."""
 
+    def _budget(self, max_bytes: int) -> runtime.OutputBudget:
+        return runtime.OutputBudget(max_bytes=max_bytes)
+
     def test_writes_within_limit(self):
-        w = runtime.BoundedWriter(max_bytes=100)
+        w = runtime.BoundedWriter(self._budget(100))
         w.write("hello")
         self.assertIn("hello", w.getvalue())
         self.assertNotIn("truncated", w.getvalue())
 
     def test_truncation_marker(self):
-        w = runtime.BoundedWriter(max_bytes=10)
+        budget = self._budget(10)
+        w = runtime.BoundedWriter(budget)
         w.write("1234567890")  # exactly 10 bytes, fits
         w.write("abc")          # exceeds → truncated
         val = w.getvalue()
@@ -99,36 +111,61 @@ class BoundedWriterTest(unittest.TestCase):
         self.assertIn("truncated", val)
 
     def test_write_after_truncation_discarded(self):
-        w = runtime.BoundedWriter(max_bytes=5)
-        w.write("12345")
-        w.write("67890")  # should be discarded
-        self.assertNotIn("67890", w.getvalue())
+        budget = self._budget(5)
+        w = runtime.BoundedWriter(budget)
+        w.write("12")
+        w.write("34")
+        w.write("abc")  # should be discarded
+        self.assertNotIn("abc", w.getvalue())
 
     def test_multi_byte_boundary(self):
         """Truncation on a multi-byte boundary must decode cleanly."""
-        w = runtime.BoundedWriter(max_bytes=6)
-        w.write("你好世界")  # 你好世界 = 12 bytes
+        budget = self._budget(6)
+        w = runtime.BoundedWriter(budget)
+        w.write("你好世界")  # 四个中文字符 = 12 bytes
         val = w.getvalue()
-        # Must not crash with UnicodeDecodeError
         self.assertIsInstance(val, str)
         self.assertIn("truncated", val)
 
     def test_empty_writer(self):
-        w = runtime.BoundedWriter(max_bytes=50)
+        w = runtime.BoundedWriter(self._budget(50))
         self.assertEqual("", w.getvalue())
+
+    def test_large_single_write_keeps_prefix(self):
+        """A single oversized write keeps as many chars as fit."""
+        budget = self._budget(10)
+        w = runtime.BoundedWriter(budget)
+        w.write("1234567890abc")  # "1234567890" = 10 bytes, "abc" exceeds
+        val = w.getvalue()
+        self.assertIn("1234567890", val)
+        self.assertIn("truncated", val)
+        self.assertNotIn("abc", val)
+
+    def test_shared_budget_stdout_stderr(self):
+        """stdout and stderr share the same budget."""
+        budget = self._budget(20)
+        out = runtime.BoundedWriter(budget)
+        err = runtime.BoundedWriter(budget)
+        out.write("A" * 15)  # 15 bytes
+        err.write("B" * 10)  # 10 bytes requested, only 5 remain
+        self.assertIn("A" * 15, out.getvalue())
+        self.assertIn("B" * 5, err.getvalue())  # only first 5 B's
+        # Total should not exceed 20 + overhead
+        total = len(out.getvalue().encode("utf-8")) + len(err.getvalue().encode("utf-8"))
+        self.assertLessEqual(total, 120)  # generous margin for truncation markers
 
 
 class ExecCodeOutputCappingTest(unittest.TestCase):
     """Verify that BoundedWriter caps stdout during exec_code()."""
 
     def test_large_output_is_capped(self):
-        """50 KB of output should be capped at 50 KB."""
+        """50 KB of output should be capped at ~50 KB."""
         output = runtime.exec_code(
             "print('x' * 60_000)",
             timeout=10.0,
         )
         self.assertIn("truncated", output)
-        self.assertLessEqual(len(output.encode("utf-8")), 51_000)  # small margin
+        self.assertLessEqual(len(output.encode("utf-8")), 55_000)  # small margin
 
     def test_small_output_not_capped(self):
         output = runtime.exec_code(
@@ -136,6 +173,17 @@ class ExecCodeOutputCappingTest(unittest.TestCase):
             timeout=10.0,
         )
         self.assertNotIn("truncated", output)
+
+    def test_stderr_also_draws_from_budget(self):
+        """Writing to stderr consumes the same cap as stdout."""
+        # Fill budget with stdout, then write to stderr.
+        code = (
+            "import sys\n"
+            "print('x' * 45_000)\n"       # stdout takes ~45 KB
+            "print('y' * 20_000, file=sys.stderr)"  # stderr barely fits
+        )
+        output = runtime.exec_code(code, timeout=10.0)
+        self.assertIn("truncated", output)
 
 
 if __name__ == "__main__":

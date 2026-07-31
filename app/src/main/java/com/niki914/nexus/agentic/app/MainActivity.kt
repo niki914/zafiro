@@ -7,9 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import com.niki914.nexus.agentic.app.ui.nexus.NexusApp
 import com.niki914.nexus.agentic.app.ui.nexus.model.AppLaunchDecision
-import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.base.BaseTheme
-import com.niki914.nexus.xposed.api.util.ContextProvider
 import kotlinx.coroutines.runBlocking
 
 // tag:niki914 | tag:nexus-x-log | message:niki914 | message:nexus-x-log
@@ -22,8 +20,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        ContextProvider.provide(applicationContext)
-        XRepo.init(applicationContext)
 
         NotificationPermissionGate.init(notificationPermissionLauncher)
         val startupAssistantUi = resolveStartupAssistantUi()

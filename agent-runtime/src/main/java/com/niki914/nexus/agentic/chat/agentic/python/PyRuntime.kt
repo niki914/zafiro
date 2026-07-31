@@ -1,51 +1,47 @@
 package com.niki914.nexus.agentic.chat.agentic.python
 
-import android.content.Context
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
-import kotlinx.coroutines.CoroutineScope
+import com.niki914.nexus.xposed.api.util.ContextProvider
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 /**
  * Singleton that wraps Chaquopy's embedded Python runtime.
  *
- * Call [warmUp] during [Application.onCreate] to save the application
- * context and start the Python interpreter on a background thread.
+ * Call [warmUp] during [Application.onCreate] (inside a coroutine) to
+ * start the Python interpreter on a background thread before the first
+ * tool invocation.  [warmUp] is idempotent — subsequent calls are no-ops
+ * once the interpreter is running.
  *
- * Call [exec] from a coroutine context to run Python code and
- * collect its stdout as a plain string.
+ * Call [exec] from a coroutine context to run Python code and collect
+ * its stdout as a plain string.
  */
 object PyRuntime {
 
     @Volatile
-    private var appContext: Context? = null
-    @Volatile
     private var started = false
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     /**
-     * Save the application context and start the Chaquopy Python
-     * interpreter on a background thread.
+     * Start the Chaquopy Python interpreter.
      *
-     * The context is saved synchronously so that [exec] can initialize
-     * the runtime inline if the background warm-up has not completed yet.
-     *
-     * Safe to call multiple times — subsequent calls are no-ops once
-     * the interpreter is running.
+     * Waits for [ContextProvider] to be available (synchronous in practice —
+     * [ContextProvider.provide] is called during [Application.onCreate]).
+     * Safe to call multiple times; only the first call has any effect.
      */
-    fun warmUp(context: Context) {
-        appContext = context.applicationContext
-        scope.launch {
-            startIfNeeded()
-        }
+    suspend fun warmUp() {
+        if (started) return
+        val ctx = ContextProvider.await().applicationContext
+        Python.start(AndroidPlatform(ctx))
+        started = true
     }
 
     /**
      * Execute Python code and return the captured stdout.
+     *
+     * If the interpreter has not been started yet (e.g. the warm-up
+     * coroutine has not run), [warmUp] is called inline.
      *
      * @param code      Python 3.11 source code. Print the final result
      *                  to stdout; stderr is appended after stdout.
@@ -57,23 +53,10 @@ object PyRuntime {
     suspend fun exec(code: String, timeoutMs: Long = 30_000): String =
         withTimeout(timeoutMs + 2_000L) {
             withContext(Dispatchers.Default) {
-                startIfNeeded()
+                if (!started) warmUp()
                 val py = Python.getInstance()
                 val runtime = py.getModule("runtime")
                 runtime.callAttr("exec_code", code, timeoutMs / 1000.0).toString()
             }
         }
-
-    // ---- internals ----
-
-    @Synchronized
-    private fun startIfNeeded() {
-        if (started) return
-        val ctx = appContext ?: throw IllegalStateException(
-            "Python runtime not started and no context available. " +
-                "Call PyRuntime.warmUp(context) first."
-        )
-        Python.start(AndroidPlatform(ctx))
-        started = true
-    }
 }

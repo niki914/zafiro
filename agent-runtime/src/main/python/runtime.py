@@ -2,42 +2,62 @@ import sys
 import threading
 from io import StringIO
 
+_CHUNK = 4096
 
-class BoundedWriter:
-    """Write-only buffer capped at *max_bytes* (UTF-8).
 
-    Once the cap is reached every subsequent write is silently discarded
-    and a truncation marker is appended by :meth:`getvalue`.
-    """
+class OutputBudget:
+    """Shared byte budget consumed by one or more :class:`BoundedWriter`."""
 
     def __init__(self, max_bytes: int = 50000):
+        self.max_bytes = max_bytes
+        self.remaining = max_bytes
+
+
+class BoundedWriter:
+    """Write-only buffer that draws from a shared :class:`OutputBudget`.
+
+    Once the budget is exhausted every subsequent write is silently
+    discarded.  A truncation marker is appended by :meth:`getvalue`.
+    """
+
+    def __init__(self, budget: OutputBudget):
+        self._budget = budget
         self._buf = StringIO()
-        self._max = max_bytes
-        self._n = 0
         self._truncated = False
 
     def write(self, s: str) -> int:
-        if self._truncated:
-            return 0
-        b = s.encode("utf-8")
-        if self._n + len(b) > self._max:
-            self._truncated = True
-            return 0
-        self._buf.write(s)
-        self._n += len(b)
+        if self._budget.remaining <= 0:
+            if s:
+                self._truncated = True
+            return len(s)
+        for i in range(0, len(s), _CHUNK):
+            if self._budget.remaining <= 0:
+                break
+            chunk = s[i:i + _CHUNK]
+            b = chunk.encode("utf-8")
+            if len(b) <= self._budget.remaining:
+                self._buf.write(chunk)
+                self._budget.remaining -= len(b)
+            else:
+                # Take as many complete UTF-8 bytes as fit.
+                keep = b[:self._budget.remaining].decode("utf-8", errors="ignore")
+                self._buf.write(keep)
+                self._budget.remaining = 0
+                self._truncated = True
+                break
         return len(s)
 
     def getvalue(self) -> str:
         val = self._buf.getvalue()
         if self._truncated:
-            val += f"\n\n[output truncated at {self._max} bytes]"
+            val += f"\n\n[output truncated at {self._budget.max_bytes} bytes]"
         return val
 
 
 def exec_code(code: str, timeout: float = 30.0) -> str:
     """Execute Python code in a daemon thread with a timeout.
 
-    Captures stdout (capped at 50 KB) and stderr separately.
+    Captures stdout and stderr with a shared 50 KB budget.
     Raises *TimeoutError* if the thread is still alive after *timeout*
     seconds.
 
@@ -48,8 +68,9 @@ def exec_code(code: str, timeout: float = 30.0) -> str:
     Returns:
         Captured stdout + optional stderr.
     """
-    out_buf = BoundedWriter()
-    err_buf = StringIO()
+    budget = OutputBudget()
+    out_buf = BoundedWriter(budget)
+    err_buf = BoundedWriter(budget)
     old_out = sys.stdout
     old_err = sys.stderr
     sys.stdout = out_buf
