@@ -505,7 +505,7 @@ class XRepoTest {
     }
 
     @Test
-    fun builtinTerminalInheritsLegacyRunCommandDisabledFlag() = runTest {
+    fun builtinTerminalIgnoresLegacyRunCommandFlag() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(
                 StoreDescriptorRegistry.TOOLS_BUILTIN_ID to ToolSettingsCodec.encodeBuiltinEnabledForAgents(
@@ -516,7 +516,7 @@ class XRepoTest {
 
         val terminal = XRepo.builtinTools.list().single { it.name == "terminal" }
 
-        assertFalse(terminal.enabled)
+        assertTrue(terminal.enabled)
         assertEquals(0, store.writeCount)
     }
 

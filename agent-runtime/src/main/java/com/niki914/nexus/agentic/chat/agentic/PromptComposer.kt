@@ -42,7 +42,7 @@ class PromptComposer {
                 .takeIf { hasBuiltinTool(input, "load_skill") },
             TASK_COMPLETION_GUIDANCE.takeIf { hasAnyTool(input) },
             TOOL_USE_ENFORCEMENT_GUIDANCE.takeIf { hasAnyTool(input) },
-            MEMORY_GUIDANCE.takeIf { hasBuiltinTool(input, "memorize") },
+            MEMORY_GUIDANCE.takeIf { hasBuiltinTool(input, "memory") },
             SKILLS_GUIDANCE.takeIf { hasBuiltinTool(input, "load_skill") },
         ).joinToString(separator = "\n\n")
     }
@@ -200,7 +200,7 @@ class PromptComposer {
                 "(b) deliver a final result to the user."
 
         internal const val MEMORY_GUIDANCE =
-            "You have persistent memory across sessions. Save durable facts using the memorize " +
+            "You have persistent memory across sessions. Save durable facts using the memory " +
                 "tool: user preferences, environment details, tool quirks, and stable conventions. " +
                 "Memory is injected into every turn, so keep it compact and focused on facts that " +
                 "will still matter later.\n" +

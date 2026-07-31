@@ -318,9 +318,9 @@ class PromptComposerTest {
                 tools = ResolvedTools(
                     builtinTools = listOf(
                         LocalTool.Builtin(
-                            name = "memorize",
+                            name = "memory",
                             description = "Add to persistent memory",
-                            tool = FakeBuiltinTool(name = "memorize"),
+                            tool = FakeBuiltinTool(name = "memory"),
                         )
                     )
                 ),

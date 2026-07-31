@@ -28,7 +28,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"add","content":"  User prefers concise answers.  "}""",
             )
         )
@@ -46,7 +46,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"add","content":"   "}""",
             )
         )
@@ -62,7 +62,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"content":"some fact"}""",
             )
         )
@@ -78,7 +78,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"remvoe","content":"typo"}""",
             )
         )
@@ -94,7 +94,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"add","content":"explicit add"}""",
             )
         )
@@ -112,7 +112,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"remove","old_text":"delete-me"}""",
             )
         )
@@ -130,7 +130,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"remove","old_text":"nonexistent"}""",
             )
         )
@@ -148,7 +148,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"remove","old_text":"User prefers"}""",
             )
         )
@@ -166,7 +166,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"replace","old_text":"dark mode","content":"User prefers light mode"}""",
             )
         )
@@ -184,7 +184,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"replace","old_text":"nonexistent","content":"new"}""",
             )
         )
@@ -202,7 +202,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"replace","old_text":"User prefers","content":"new pref"}""",
             )
         )
@@ -220,7 +220,7 @@ class MemoryAndCustomToolBuiltinTest {
 
         val resultJson = MemorizeBuiltin().invokeRawJson(
             BuiltinToolRequest(
-                name = "memorize",
+                name = "memory",
                 argumentsJson = """{"action":"replace","old_text":"same entry","content":"updated entry"}""",
             )
         )

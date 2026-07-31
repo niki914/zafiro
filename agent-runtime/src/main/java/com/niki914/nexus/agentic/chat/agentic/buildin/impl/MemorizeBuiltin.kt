@@ -17,7 +17,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
-    override val name: String = "memorize"
+    override val name: String = "memory"
 
     override val description: String =
         "Save durable facts to persistent memory that survive across sessions. Memory is " +
@@ -43,7 +43,7 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         return BuiltinToolResult.failure(
             code = "RAW_JSON_ONLY",
-            message = "memorize must be executed through invokeRawJson().",
+            message = "$name must be executed through invokeRawJson().",
             hint = """Example: {"action":"add","content":"User prefers concise answers."}""",
         )
     }

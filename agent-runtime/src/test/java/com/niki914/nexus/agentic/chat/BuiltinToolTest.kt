@@ -72,7 +72,7 @@ class BuiltinToolTest {
                 "create_custom_tool",
                 "launch_app",
                 "load_skill",
-                "memorize",
+                "memory",
                 "notify",
                 "open_uri",
                 "read_custom_tool",
@@ -87,7 +87,7 @@ class BuiltinToolTest {
         assertEquals("create_custom_tool", registry.find("create_custom_tool")?.name)
         assertEquals("launch_app", registry.find("launch_app")?.name)
         assertEquals("load_skill", registry.find("load_skill")?.name)
-        assertEquals("memorize", registry.find("memorize")?.name)
+        assertEquals("memory", registry.find("memory")?.name)
         assertEquals("notify", registry.find("notify")?.name)
         assertEquals("open_uri", registry.find("open_uri")?.name)
         assertEquals("read_custom_tool", registry.find("read_custom_tool")?.name)

@@ -942,16 +942,10 @@ class BuiltinToolApi internal constructor(
         toolName: String,
         defaultEnabled: Boolean
     ): Boolean {
-        return if (toolName == TERMINAL_TOOL_NAME) {
-            // 只读兼容旧 run_command 开关；写入仍使用当前 terminal key。
-            this[TERMINAL_TOOL_NAME] ?: this[LEGACY_RUN_COMMAND_TOOL_NAME] ?: defaultEnabled
-        } else {
-            this[toolName] ?: defaultEnabled
-        }
+        return this[toolName] ?: defaultEnabled
     }
 
     private companion object {
         private const val TERMINAL_TOOL_NAME = "terminal"
-        private const val LEGACY_RUN_COMMAND_TOOL_NAME = "run_command"
     }
 }
