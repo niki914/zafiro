@@ -2,6 +2,8 @@ package com.niki914.nexus.agentic.chat
 
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ExecutePythonBuiltin
+import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandPolicyDecision
+import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -9,11 +11,18 @@ import org.junit.Test
 
 class ExecutePythonBuiltinTest {
 
+    private fun allowAllPolicy(): ShellCommandSafetyPolicy =
+        ShellCommandSafetyPolicy(
+            listExecutionRules = { emptyList() },
+            isUnlocked = { true },
+        )
+
     private suspend fun invoke(
         argumentsJson: String,
         executor: suspend (String, Long) -> String = { _, _ -> "" },
+        safetyPolicy: ShellCommandSafetyPolicy = allowAllPolicy(),
     ): String {
-        val tool = ExecutePythonBuiltin(executor = executor)
+        val tool = ExecutePythonBuiltin(executor = executor, safetyPolicy = safetyPolicy)
         return tool.invokeRaw(BuiltinToolRequest("execute_python", argumentsJson))
     }
 
@@ -89,6 +98,42 @@ class ExecutePythonBuiltinTest {
         assertTrue(result.contains("#!status: failure"))
         assertTrue(result.contains("#!code: PYTHON_ERROR"))
         assertTrue(result.contains("something broke"))
+    }
+
+    // ---- safety policy ----
+
+    @Test
+    fun invoke_policyBlocks_returnsFailure() = runTest {
+        val blockingPolicy = ShellCommandSafetyPolicy(
+            listExecutionRules = {
+                listOf(
+                    com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule(
+                        id = "rule-1",
+                        name = "Block su",
+                        enabledMode = com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode.ALWAYS,
+                        patterns = listOf("""os\.system"""),
+                    )
+                )
+            },
+            isUnlocked = { true },
+        )
+        val result = invoke(
+            """{"code":"import os\nos.system('su')"}""",
+            safetyPolicy = blockingPolicy,
+        )
+        assertTrue(result.contains("#!status: failure"))
+        assertTrue(result.contains("#!code: COMMAND_BLOCKED"))
+        assertTrue(result.contains("Block su"))
+    }
+
+    @Test
+    fun invoke_policyAllows_continuesToExecute() = runTest {
+        val result = invoke(
+            """{"code":"print('safe')"}""",
+            executor = { _, _ -> "safe output" },
+        )
+        assertTrue(result.contains("#!status: success"))
+        assertTrue(result.contains("safe output"))
     }
 
     // ---- timeout clamping ----

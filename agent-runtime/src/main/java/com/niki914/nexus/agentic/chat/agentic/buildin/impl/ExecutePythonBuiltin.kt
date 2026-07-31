@@ -4,6 +4,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.nexus.agentic.chat.agentic.python.PyRuntime
+import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
@@ -18,6 +19,7 @@ class ExecutePythonBuiltin(
      * replaced with a test double in unit tests.
      */
     var executor: suspend (code: String, timeoutSec: Long) -> String = PyRuntime::exec,
+    private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(),
 ) : TextResultBuiltinTool() {
 
     override val name: String = "execute_python"
@@ -71,6 +73,18 @@ Output is capped at 50 KB; print only the relevant result.
     }
 
     private suspend fun execute(code: String, timeoutSec: Long): TextToolResult {
+        val decision = safetyPolicy.evaluate(code)
+        if (!decision.allowed) {
+            return TextToolResult.failure(
+                code = "COMMAND_BLOCKED",
+                message = buildString {
+                    append(decision.reason.ifBlank { "Code blocked by safety policy." })
+                    decision.matchedRuleId?.let { append("\nmatched_rule_id: $it") }
+                    decision.matchedRuleName?.let { append("\nmatched_rule_name: $it") }
+                    decision.matchedPattern?.let { append("\nmatched_pattern: $it") }
+                },
+            )
+        }
         return try {
             val output = executor(code, timeoutSec)
             val capped = capOutput(output)
