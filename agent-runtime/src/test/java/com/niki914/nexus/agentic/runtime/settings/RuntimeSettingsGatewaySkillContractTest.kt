@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.runtime.settings
 
+import com.niki914.nexus.agentic.runtime.settings.MemoryMutationResult
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeBuiltinToolSetting
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomToolValidation
@@ -43,7 +44,11 @@ private class MinimalRuntimeSettingsGateway : RuntimeSettingsGateway {
 
     override suspend fun addMemory(value: String) = Unit
 
-    override suspend fun deleteMemory(index: Int) = Unit
+    override suspend fun removeMemory(oldText: String): MemoryMutationResult =
+        MemoryMutationResult.Ok
+
+    override suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult =
+        MemoryMutationResult.Ok
 
     override suspend fun listCustomTools(): List<RuntimeCustomTool> = emptyList()
 

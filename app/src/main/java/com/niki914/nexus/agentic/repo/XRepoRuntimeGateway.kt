@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.repo
 
+import com.niki914.nexus.agentic.runtime.settings.MemoryMutationResult
 import com.niki914.nexus.agentic.runtime.settings.RuntimeSettingsGateway
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeBuiltinToolSetting
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomTool
@@ -52,12 +53,12 @@ class XRepoRuntimeGateway(
         repo.memory.add(value)
     }
 
-    override suspend fun listMemories(): List<String> {
-        return repo.memory.list()
+    override suspend fun removeMemory(oldText: String): MemoryMutationResult {
+        return repo.memory.removeByText(oldText)
     }
 
-    override suspend fun deleteMemory(index: Int) {
-        repo.memory.delete(index)
+    override suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult {
+        return repo.memory.replaceByText(oldText, content)
     }
 
     override suspend fun listCustomTools(): List<RuntimeCustomTool> = repo.customTools.list()

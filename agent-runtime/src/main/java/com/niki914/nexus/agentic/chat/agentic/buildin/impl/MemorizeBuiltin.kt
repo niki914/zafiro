@@ -4,6 +4,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.RawJsonBuiltinTool
+import com.niki914.nexus.agentic.runtime.settings.MemoryMutationResult
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.CancellationException
@@ -73,52 +74,31 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                     """{"ok":true,"action":"add"}"""
                 }
                 Action.REMOVE -> {
-                    val oldText = args.oldText!!
-                    val before = gateway.listMemories()
-                    val matches = before.mapIndexedNotNull { i, entry ->
-                        if (oldText in entry) i to entry else null
-                    }
-                    when {
-                        matches.isEmpty() -> BuiltinToolResult.failure(
+                    when (gateway.removeMemory(args.oldText!!)) {
+                        MemoryMutationResult.Ok -> """{"ok":true,"action":"remove"}"""
+                        MemoryMutationResult.NotFound -> BuiltinToolResult.failure(
                             code = "NOT_FOUND",
-                            message = "No entry matched '$oldText'.",
+                            message = "No entry matched '${args.oldText}'.",
                             hint = "Check the exact text of the entry you want to remove.",
                         ).toJsonString()
-                        matches.size > 1 && matches.map { it.second }.distinct().size > 1 ->
-                            BuiltinToolResult.failure(
-                                code = "AMBIGUOUS_MATCH",
-                                message = "Multiple entries matched '$oldText'. Be more specific.",
-                            ).toJsonString()
-                        else -> {
-                            gateway.deleteMemory(matches.first().first)
-                            """{"ok":true,"action":"remove"}"""
-                        }
+                        MemoryMutationResult.Ambiguous -> BuiltinToolResult.failure(
+                            code = "AMBIGUOUS_MATCH",
+                            message = "Multiple entries matched '${args.oldText}'. Be more specific.",
+                        ).toJsonString()
                     }
                 }
                 Action.REPLACE -> {
-                    val oldText = args.oldText!!
-                    val newContent = args.content!!
-                    val before = gateway.listMemories()
-                    val matches = before.mapIndexedNotNull { i, entry ->
-                        if (oldText in entry) i to entry else null
-                    }
-                    when {
-                        matches.isEmpty() -> BuiltinToolResult.failure(
+                    when (gateway.replaceMemory(args.oldText!!, args.content!!)) {
+                        MemoryMutationResult.Ok -> """{"ok":true,"action":"replace"}"""
+                        MemoryMutationResult.NotFound -> BuiltinToolResult.failure(
                             code = "NOT_FOUND",
-                            message = "No entry matched '$oldText'.",
+                            message = "No entry matched '${args.oldText}'.",
                             hint = "Check the exact text of the entry you want to replace.",
                         ).toJsonString()
-                        matches.size > 1 && matches.map { it.second }.distinct().size > 1 ->
-                            BuiltinToolResult.failure(
-                                code = "AMBIGUOUS_MATCH",
-                                message = "Multiple entries matched '$oldText'. Be more specific.",
-                            ).toJsonString()
-                        else -> {
-                            val idx = matches.first().first
-                            gateway.deleteMemory(idx)
-                            gateway.addMemory(newContent)
-                            """{"ok":true,"action":"replace"}"""
-                        }
+                        MemoryMutationResult.Ambiguous -> BuiltinToolResult.failure(
+                            code = "AMBIGUOUS_MATCH",
+                            message = "Multiple entries matched '${args.oldText}'. Be more specific.",
+                        ).toJsonString()
                     }
                 }
             }

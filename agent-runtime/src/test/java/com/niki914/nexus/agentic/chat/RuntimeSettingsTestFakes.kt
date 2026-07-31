@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.chat
 
+import com.niki914.nexus.agentic.runtime.settings.MemoryMutationResult
 import com.niki914.nexus.agentic.runtime.settings.RuntimeBridge
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.RuntimeHostGateway
@@ -101,12 +102,35 @@ internal class FakeRuntimeSettingsGateway(
         memories.add(normalized)
     }
 
-    override suspend fun listMemories(): List<String> = memories.toList()
+    override suspend fun removeMemory(oldText: String): MemoryMutationResult {
+        val matches = memories.mapIndexedNotNull { i, entry ->
+            if (oldText in entry) i to entry else null
+        }
+        return when {
+            matches.isEmpty() -> MemoryMutationResult.NotFound
+            matches.size > 1 && matches.map { it.second }.distinct().size > 1 ->
+                MemoryMutationResult.Ambiguous
+            else -> {
+                recordWrite()
+                memories.removeAt(matches.first().first)
+                MemoryMutationResult.Ok
+            }
+        }
+    }
 
-    override suspend fun deleteMemory(index: Int) {
-        if (index in memories.indices) {
-            recordWrite()
-            memories.removeAt(index)
+    override suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult {
+        val matches = memories.mapIndexedNotNull { i, entry ->
+            if (oldText in entry) i to entry else null
+        }
+        return when {
+            matches.isEmpty() -> MemoryMutationResult.NotFound
+            matches.size > 1 && matches.map { it.second }.distinct().size > 1 ->
+                MemoryMutationResult.Ambiguous
+            else -> {
+                recordWrite()
+                memories[matches.first().first] = content
+                MemoryMutationResult.Ok
+            }
         }
     }
 

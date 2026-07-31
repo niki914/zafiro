@@ -10,6 +10,7 @@ import com.niki914.nexus.store.StoreDescriptorRegistry
 import com.niki914.nexus.xposed.api.util.ContextProvider
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import com.niki914.nexus.agentic.runtime.settings.MemoryMutationResult
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentValidation as AgentValidation
@@ -363,25 +364,23 @@ class MemoryApi internal constructor(
 
     suspend fun add(value: String) {
         val normalizedValue = value.trim()
-        if (normalizedValue.isBlank()) {
-            return
+        if (normalizedValue.isBlank()) return
+        repo.updateJsonOrFalse(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID) { json ->
+            val current = MemorySettingsCodec.parseMemories(json)
+            if (normalizedValue in current) return@updateJsonOrFalse null
+            MemorySettingsCodec.encodeMemories(current + normalizedValue, System.currentTimeMillis())
         }
-        writeMemories(list() + normalizedValue)
     }
 
     suspend fun update(index: Int, value: String) {
         val normalizedValue = value.trim()
         repo.updateJsonOrFalse(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID) { json ->
-            val currentMemories = MemorySettingsCodec.parseMemories(json)
-            if (index !in currentMemories.indices) {
-                return@updateJsonOrFalse null
-            }
+            val current = MemorySettingsCodec.parseMemories(json)
+            if (index !in current.indices) return@updateJsonOrFalse null
             val updated = if (normalizedValue.isBlank()) {
-                currentMemories.filterIndexed { itemIndex, _ -> itemIndex != index }
+                current.filterIndexed { i, _ -> i != index }
             } else {
-                currentMemories.mapIndexed { itemIndex, item ->
-                    if (itemIndex == index) normalizedValue else item
-                }
+                current.mapIndexed { i, item -> if (i == index) normalizedValue else item }
             }
             MemorySettingsCodec.encodeMemories(updated, System.currentTimeMillis())
         }
@@ -389,16 +388,86 @@ class MemoryApi internal constructor(
 
     suspend fun delete(index: Int) {
         repo.updateJsonOrFalse(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID) { json ->
-            val currentMemories = MemorySettingsCodec.parseMemories(json)
-            if (index !in currentMemories.indices) {
-                return@updateJsonOrFalse null
-            }
+            val current = MemorySettingsCodec.parseMemories(json)
+            if (index !in current.indices) return@updateJsonOrFalse null
             MemorySettingsCodec.encodeMemories(
-                currentMemories.filterIndexed { itemIndex, _ -> itemIndex != index },
+                current.filterIndexed { i, _ -> i != index },
                 System.currentTimeMillis(),
             )
         }
     }
+
+    suspend fun removeByText(oldText: String): MemoryMutationResult {
+        var result: MemoryMutationResult = MemoryMutationResult.NotFound
+        repo.updateJsonOrFalse(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID) { json ->
+            val current = MemorySettingsCodec.parseMemories(json)
+            val matches = findMatches(current, oldText)
+            when {
+                matches.isEmpty() -> {
+                    result = MemoryMutationResult.NotFound
+                    null
+                }
+                hasMultipleDistinct(matches) -> {
+                    result = MemoryMutationResult.Ambiguous
+                    null
+                }
+                else -> {
+                    result = MemoryMutationResult.Ok
+                    MemorySettingsCodec.encodeMemories(
+                        current.filterIndexed { index, _ -> index != matches.first().index },
+                        System.currentTimeMillis(),
+                    )
+                }
+            }
+        }
+        return result
+    }
+
+    suspend fun replaceByText(oldText: String, newContent: String): MemoryMutationResult {
+        val normalizedContent = newContent.trim()
+        if (normalizedContent.isBlank()) return MemoryMutationResult.NotFound
+        var result: MemoryMutationResult = MemoryMutationResult.NotFound
+        repo.updateJsonOrFalse(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID) { json ->
+            val current = MemorySettingsCodec.parseMemories(json)
+            val matches = findMatches(current, oldText)
+            when {
+                matches.isEmpty() -> {
+                    result = MemoryMutationResult.NotFound
+                    null
+                }
+                hasMultipleDistinct(matches) -> {
+                    result = MemoryMutationResult.Ambiguous
+                    null
+                }
+                else -> {
+                    result = MemoryMutationResult.Ok
+                    val matchedIndex = matches.first().index
+                    MemorySettingsCodec.encodeMemories(
+                        current.mapIndexed { index, item ->
+                            if (index == matchedIndex) normalizedContent else item
+                        },
+                        System.currentTimeMillis(),
+                    )
+                }
+            }
+        }
+        return result
+    }
+
+    private fun findMatches(
+        entries: List<String>,
+        oldText: String,
+    ): List<IndexedEntry> {
+        return entries.mapIndexedNotNull { index, entry ->
+            if (oldText in entry) IndexedEntry(index, entry) else null
+        }
+    }
+
+    private fun hasMultipleDistinct(matches: List<IndexedEntry>): Boolean {
+        return matches.size > 1 && matches.map { it.content }.distinct().size > 1
+    }
+
+    private data class IndexedEntry(val index: Int, val content: String)
 
     private suspend fun writeMemories(memories: List<String>) {
         repo.writeJson(

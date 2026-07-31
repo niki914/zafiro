@@ -174,7 +174,7 @@ class MemoryAndCustomToolBuiltinTest {
         val json = Json.parseToJsonElement(resultJson).jsonObject
         assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
         assertEquals("replace", json["action"]!!.jsonPrimitive.content)
-        assertEquals(listOf("keep", "also-keep", "User prefers light mode"), store.memories)
+        assertEquals(listOf("keep", "User prefers light mode", "also-keep"), store.memories)
     }
 
     @Test
@@ -228,7 +228,7 @@ class MemoryAndCustomToolBuiltinTest {
         val json = Json.parseToJsonElement(resultJson).jsonObject
         assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
         assertEquals("replace", json["action"]!!.jsonPrimitive.content)
-        assertEquals(listOf("same entry", "updated entry"), store.memories)
+        assertEquals(listOf("updated entry", "same entry"), store.memories)
     }
 
     @Test
