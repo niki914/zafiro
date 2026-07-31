@@ -19,7 +19,7 @@ class BuiltinToolRegistryTest {
         assertTrue(names.contains("screen_operation_accessibility"))
         assertTrue(names.contains("screen_operation_shell"))
         assertTrue(names.contains("launch_app"))
-        assertTrue(names.contains("memorize"))
+        assertTrue(names.contains("memory"))
         assertTrue(names.contains("notify"))
         assertTrue(names.contains("open_uri"))
         assertTrue(names.contains("read_custom_tool"))

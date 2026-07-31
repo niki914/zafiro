@@ -11,6 +11,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.niki914.nexus.agentic.runtime.settings.MemoryMutationResult
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomTool as CustomTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
@@ -172,6 +173,130 @@ class XRepoTest {
             listOf("B2", "C"),
             MemorySettingsCodec.parseMemories(store.jsonFor(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)),
         )
+    }
+
+    @Test
+    fun memoryApi_addDedupesIdenticalContent() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+
+        XRepo.memory.add("unique")
+        val writeCountAfterFirst = store.writeCount
+        XRepo.memory.add("unique")
+
+        assertEquals(writeCountAfterFirst, store.writeCount)
+        assertEquals(listOf("unique"), XRepo.memory.list())
+    }
+
+    @Test
+    fun memoryApi_removeByTextReturnsNotFoundForZeroMatches() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+        XRepo.memory.add("only")
+
+        val writeCountBefore = store.writeCount
+        val result = XRepo.memory.removeByText("nonexistent")
+
+        assertEquals(MemoryMutationResult.NotFound, result)
+        assertEquals(writeCountBefore, store.writeCount)
+        assertEquals(listOf("only"), XRepo.memory.list())
+    }
+
+    @Test
+    fun memoryApi_removeByTextReturnsAmbiguousForMultipleDistinctMatches() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+        XRepo.memory.replaceAll(listOf("User prefers dark mode", "User prefers concise answers"))
+
+        val writeCountBefore = store.writeCount
+        val result = XRepo.memory.removeByText("User prefers")
+
+        assertEquals(MemoryMutationResult.Ambiguous, result)
+        assertEquals(writeCountBefore, store.writeCount)
+        assertEquals(2, XRepo.memory.list().size)
+    }
+
+    @Test
+    fun memoryApi_removeByTextAllowsIdenticalDuplicates() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+        XRepo.memory.replaceAll(listOf("dup", "dup", "unique"))
+
+        val result = XRepo.memory.removeByText("dup")
+
+        assertEquals(MemoryMutationResult.Ok, result)
+        assertEquals(2, XRepo.memory.list().size)
+        assertEquals(listOf("dup", "unique"), XRepo.memory.list())
+    }
+
+    @Test
+    fun memoryApi_replaceByTextUpdatesInPlace() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+        XRepo.memory.replaceAll(listOf("keep", "old", "also-keep"))
+
+        val writeCountBefore = store.writeCount
+        val result = XRepo.memory.replaceByText("old", "new")
+
+        assertEquals(MemoryMutationResult.Ok, result)
+        assertEquals(writeCountBefore + 1, store.writeCount)
+        assertEquals(listOf("keep", "new", "also-keep"), XRepo.memory.list())
+    }
+
+    @Test
+    fun memoryApi_replaceByTextReturnsNotFoundForZeroMatches() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+        XRepo.memory.add("only")
+
+        val writeCountBefore = store.writeCount
+        val result = XRepo.memory.replaceByText("nonexistent", "new")
+
+        assertEquals(MemoryMutationResult.NotFound, result)
+        assertEquals(writeCountBefore, store.writeCount)
+        assertEquals(listOf("only"), XRepo.memory.list())
+    }
+
+    @Test
+    fun memoryApi_replaceByTextReturnsAmbiguousForMultipleDistinctMatches() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+        XRepo.memory.replaceAll(listOf("User prefers dark mode", "User prefers concise answers"))
+
+        val writeCountBefore = store.writeCount
+        val result = XRepo.memory.replaceByText("User prefers", "new")
+
+        assertEquals(MemoryMutationResult.Ambiguous, result)
+        assertEquals(writeCountBefore, store.writeCount)
+    }
+
+    @Test
+    fun memoryApi_writeFailureThrowsNotReturnsOk() = runTest {
+        installStore(FakeDomainSettingsStore(ownerWriteSucceeds = false))
+
+        var threw = false
+        try {
+            XRepo.memory.add("value")
+        } catch (_: IllegalStateException) {
+            threw = true
+        }
+
+        assertTrue(threw)
+        assertEquals(emptyList<String>(), XRepo.memory.list())
+    }
+
+    @Test
+    fun memoryApi_replaceWriteFailureThrowsAndPreservesOldEntry() = runTest {
+        val store = installStore(
+            FakeDomainSettingsStore(
+                StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID to
+                    MemorySettingsCodec.encodeMemories(listOf("old"), 0L),
+                ownerWriteSucceeds = false,
+            )
+        )
+
+        var threw = false
+        try {
+            XRepo.memory.replaceByText("old", "new")
+        } catch (_: IllegalStateException) {
+            threw = true
+        }
+
+        assertTrue(threw)
+        assertEquals(listOf("old"), XRepo.memory.list())
     }
 
     @Test
@@ -403,7 +528,7 @@ class XRepoTest {
     }
 
     @Test
-    fun builtinTerminalInheritsLegacyRunCommandDisabledFlag() = runTest {
+    fun builtinTerminalIgnoresLegacyRunCommandFlag() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(
                 StoreDescriptorRegistry.TOOLS_BUILTIN_ID to ToolSettingsCodec.encodeBuiltinEnabledForAgents(
@@ -414,7 +539,7 @@ class XRepoTest {
 
         val terminal = XRepo.builtinTools.list().single { it.name == "terminal" }
 
-        assertFalse(terminal.enabled)
+        assertTrue(terminal.enabled)
         assertEquals(0, store.writeCount)
     }
 

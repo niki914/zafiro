@@ -198,7 +198,7 @@ class XRepoDomainSettingsTest {
 
         val terminal = XRepo.builtinTools.list().first { it.name == "terminal" }
 
-        assertFalse(terminal.enabled)
+        assertTrue(terminal.enabled)
         assertTrue(store.writeIds.isEmpty())
     }
 

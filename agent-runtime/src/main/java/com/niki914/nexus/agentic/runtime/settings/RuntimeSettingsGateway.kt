@@ -33,6 +33,10 @@ interface RuntimeSettingsGateway {
 
     suspend fun addMemory(value: String)
 
+    suspend fun removeMemory(oldText: String): MemoryMutationResult
+
+    suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult
+
     suspend fun listCustomTools(): List<RuntimeCustomTool>
 
     suspend fun saveCustomTool(

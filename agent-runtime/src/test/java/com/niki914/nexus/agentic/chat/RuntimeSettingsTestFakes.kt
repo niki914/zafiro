@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.chat
 
+import com.niki914.nexus.agentic.runtime.settings.MemoryMutationResult
 import com.niki914.nexus.agentic.runtime.settings.RuntimeBridge
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.RuntimeHostGateway
@@ -101,6 +102,38 @@ internal class FakeRuntimeSettingsGateway(
         memories.add(normalized)
     }
 
+    override suspend fun removeMemory(oldText: String): MemoryMutationResult {
+        val matches = memories.mapIndexedNotNull { i, entry ->
+            if (oldText in entry) i to entry else null
+        }
+        return when {
+            matches.isEmpty() -> MemoryMutationResult.NotFound
+            matches.size > 1 && matches.map { it.second }.distinct().size > 1 ->
+                MemoryMutationResult.Ambiguous
+            else -> {
+                recordWrite()
+                memories.removeAt(matches.first().first)
+                MemoryMutationResult.Ok
+            }
+        }
+    }
+
+    override suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult {
+        val matches = memories.mapIndexedNotNull { i, entry ->
+            if (oldText in entry) i to entry else null
+        }
+        return when {
+            matches.isEmpty() -> MemoryMutationResult.NotFound
+            matches.size > 1 && matches.map { it.second }.distinct().size > 1 ->
+                MemoryMutationResult.Ambiguous
+            else -> {
+                recordWrite()
+                memories[matches.first().first] = content
+                MemoryMutationResult.Ok
+            }
+        }
+    }
+
     override suspend fun listCustomTools(): List<RuntimeCustomTool> = customTools.toList()
 
     override suspend fun saveCustomTool(
@@ -188,7 +221,7 @@ private fun defaultBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> {
     return listOf(
         RuntimeBuiltinToolSetting("create_custom_tool", "Create custom tools.", enabled = true),
         RuntimeBuiltinToolSetting("load_skill", "Load a skill by id.", enabled = true),
-        RuntimeBuiltinToolSetting("memorize", "Add a memory item.", enabled = true),
+        RuntimeBuiltinToolSetting("memory", "Add a memory item.", enabled = true),
         RuntimeBuiltinToolSetting("notify", "Post host notifications.", enabled = true),
         RuntimeBuiltinToolSetting(
             "read_custom_tool",

@@ -20,7 +20,7 @@ import org.junit.Test
 
 class PromptComposerTest {
 
-    // --- Tier structure ---
+    // --- Identity slot (stable tier) ---
 
     @Test
     fun compose_stableTierAlwaysContainsIdentity() {
@@ -32,22 +32,24 @@ class PromptComposerTest {
     }
 
     @Test
-    fun compose_contextTierRendersWhenInstructionsPresent() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(additionalInstructions = "Custom context instructions.")
-        )
-
-        assertTrue(result.finalSystemPrompt.contains("## Additional instructions"))
-        assertTrue(result.finalSystemPrompt.contains("Custom context instructions."))
-    }
-
-    @Test
-    fun compose_contextTierOmittedWhenInstructionsBlank() {
+    fun compose_emptyAdditionalInstructionsUsesDefaultIdentity() {
         val result = PromptComposer().compose(
             PromptComposerInput(additionalInstructions = " ")
         )
 
-        assertFalse(result.finalSystemPrompt.contains("## Additional instructions"))
+        assertTrue(result.finalSystemPrompt.contains(PromptComposer.DEFAULT_AGENT_IDENTITY))
+        assertTrue(result.finalSystemPrompt.startsWith(PromptComposer.DEFAULT_AGENT_IDENTITY))
+    }
+
+    @Test
+    fun compose_additionalInstructionsReplacesDefaultIdentity() {
+        val customIdentity = "You are a custom test assistant."
+        val result = PromptComposer().compose(
+            PromptComposerInput(additionalInstructions = customIdentity)
+        )
+
+        assertFalse(result.finalSystemPrompt.contains(PromptComposer.DEFAULT_AGENT_IDENTITY))
+        assertTrue(result.finalSystemPrompt.startsWith(customIdentity))
     }
 
     @Test
@@ -59,12 +61,10 @@ class PromptComposerTest {
             )
         )
 
-        val stableIdx = result.finalSystemPrompt.indexOf(PromptComposer.DEFAULT_AGENT_IDENTITY)
-        val contextIdx = result.finalSystemPrompt.indexOf("## Additional instructions")
-        val volatileIdx = result.finalSystemPrompt.indexOf("## Agent Memory")
+        val stableIdx = result.finalSystemPrompt.indexOf("ctx")
+        val volatileIdx = result.finalSystemPrompt.indexOf("═══")
 
-        assertTrue(stableIdx < contextIdx)
-        assertTrue(contextIdx < volatileIdx)
+        assertTrue(stableIdx < volatileIdx)
     }
 
     // --- Memory section (volatile tier) ---
@@ -78,12 +78,12 @@ class PromptComposerTest {
             )
         )
 
-        assertFalse(result.finalSystemPrompt.contains("## Agent Memory"))
-        assertFalse(result.finalSystemPrompt.contains("<memory>"))
+        assertFalse(result.finalSystemPrompt.contains("═══"))
     }
 
     @Test
-    fun compose_wrapsMemoryItemsInSingleXmlBlock() {
+    fun compose_rendersMemoryItemsInHermesBlockFormat() {
+        val sep = "═".repeat(46)
         val result = PromptComposer().compose(
             PromptComposerInput(
                 additionalInstructions = "base",
@@ -91,8 +91,8 @@ class PromptComposerTest {
             )
         )
 
-        assertTrue(result.finalSystemPrompt.contains("## Agent Memory"))
-        assertTrue(result.finalSystemPrompt.contains("<memory>\n- A\n- B\n</memory>"))
+        assertTrue(result.finalSystemPrompt.contains("$sep\nMEMORY\n$sep"))
+        assertTrue(result.finalSystemPrompt.contains("A\n§\nB"))
     }
 
     // --- Tool context (stable tier) ---
@@ -318,9 +318,9 @@ class PromptComposerTest {
                 tools = ResolvedTools(
                     builtinTools = listOf(
                         LocalTool.Builtin(
-                            name = "memorize",
+                            name = "memory",
                             description = "Add to persistent memory",
-                            tool = FakeBuiltinTool(name = "memorize"),
+                            tool = FakeBuiltinTool(name = "memory"),
                         )
                     )
                 ),
