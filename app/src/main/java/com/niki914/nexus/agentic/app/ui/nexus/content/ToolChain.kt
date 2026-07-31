@@ -76,14 +76,17 @@ private val ChevronSpring = spring<Float>(dampingRatio = 0.8f, stiffness = Sprin
 private val StaggerFadeSpring = spring<Float>(dampingRatio = 1f, stiffness = 300f)
 private val StaggerSlideSpring = spring<IntOffset>(dampingRatio = 0.8f, stiffness = 300f)
 
-// ── nested scroll: prevent tool-result scroll/fling from leaking to parent ──
+// ── nested scroll: pass through user drag, block fling inertia ─────────────
 
-private val NoNestedScrollPropagation: NestedScrollConnection = object : NestedScrollConnection {
+private val BlockFlingScrollPropagation: NestedScrollConnection = object : NestedScrollConnection {
     override fun onPostScroll(
         consumed: Offset,
         available: Offset,
         source: NestedScrollSource,
-    ): Offset = if (available.y != 0f) available.copy(x = 0f) else Offset.Zero
+    ): Offset = when {
+        source == NestedScrollSource.Fling -> available.copy(x = 0f)
+        else -> Offset.Zero
+    }
 
     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
         Velocity(x = 0f, y = available.y)
@@ -345,7 +348,7 @@ private fun ToolResultText(
         modifier = Modifier
             .let { if (overflow) it.fillMaxWidth() else it }
             .heightIn(max = 102.dp)
-            .let { if (overflow) it.nestedScroll(NoNestedScrollPropagation).verticalScroll(rememberScrollState()) else it },
+            .let { if (overflow) it.nestedScroll(BlockFlingScrollPropagation).verticalScroll(rememberScrollState()) else it },
         contentAlignment = if (overflow) Alignment.TopStart else Alignment.Center,
     ) {
         SelectionContainer {
