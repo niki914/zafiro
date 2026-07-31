@@ -170,7 +170,7 @@ object TreeFormatter {
     ): String {
         val sb = StringBuilder()
         sb.append(
-            "{token: \"${version}_${node.index}\", t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${
+            "{i: ${node.index}, t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${
                 PruningRules.posOf(
                     node.bounds,
                     screenWidth,

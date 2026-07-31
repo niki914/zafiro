@@ -27,11 +27,14 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
     override val description: String =
         "Screen interaction via accessibility service. " +
                 "Operations: read (capture YAML tree), tap, long_click, scroll_forward, " +
-                "scroll_backward, set_text, search. Target nodes by token (format: " +
-                "version_index, e.g. \"a3f2c91e7b40_42\") from the most recently returned " +
-                "snapshot. Every successful write " +
-                "op auto-captures the updated tree — no separate read needed.\n\n" +
-                "YAML fields: token=node_identifier, " +
+                "scroll_backward, set_text, search. Target nodes by constructing a token " +
+                "from the snapshot version (YAML header) and the node's index (i field), " +
+                "joined with underscore: \"{version}_{i}\" (e.g. version \"a3f2c91e7b40\" + " +
+                "node {i: 42, ...} → token \"a3f2c91e7b40_42\"). " +
+                "Every successful write op auto-captures the updated tree — " +
+                "no separate read needed.\n\n" +
+                "YAML fields: version=snapshot_version (header), " +
+                "i=node_index (assemble token as {version}_{i} when calling back), " +
                 "t=semantic_type(button/input/text/image/list/list_item/switch/checkbox/tab/chip/toolbar/dialog/container), " +
                 "b=bounds[left,top,right,bottom], pos=3x3_grid_position, txt=display_text, h=content_description, " +
                 "tap=clickable, hold=long_clickable, edit=editable, scroll=scrollable, " +
@@ -40,7 +43,7 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
                 "keywords: [\"term1\", \"term2\"] (required, JSON string array). " +
                 "match_mode: \"any\" (default) | \"all\". " +
                 "limit: max results (default 10). " +
-                "Returns matched nodes with tokens + version header.\n\n" +
+                "Returns matched nodes with index + version header.\n\n" +
                 "If read returns root-only or empty tree: app likely uses non-native UI " +
                 "(Flutter/Unity/WebView) — stop, do not retry.\n\n" +
                 "wait_mode (default \"stable\"): \"stable\" detects when the UI actually settles " +
@@ -50,9 +53,8 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
                 "Must be \"stable\" or \"delay\".\n" +
                 "wait_ms: for \"stable\" the max deadline (default 2000, max 60000); " +
                 "for \"delay\" required (no default), the fixed blind-wait duration.\n\n" +
-                "Tokens belong to exactly one snapshot — every read, search, and successful " +
-                "write operation produces a fresh version. Use only tokens from the most " +
-                "recently returned result.\n\n" +
+                "Every read, search, and successful write operation produces a fresh version. " +
+                "Assemble tokens from the most recently returned result only.\n\n" +
                 "Every result uses the #!tool-result protocol " +
                 "(#!status, #!code, #!message, then payload). " +
                 "See the Phone Use skill for failure recovery rules."
@@ -64,7 +66,7 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
             required = true
         }
         config.string("token") {
-            description = "Node token from the latest snapshot result (format: version_index). Required for tap, long_click, scroll_forward, scroll_backward, set_text."
+            description = "Target node token, assembled as {version}_{i} — snapshot version from YAML header + underscore + node index from the i field. Required for tap, long_click, scroll_forward, scroll_backward, set_text."
             required = false
         }
         config.string("text") {
