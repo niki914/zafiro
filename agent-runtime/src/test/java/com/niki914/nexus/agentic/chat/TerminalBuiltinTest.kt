@@ -3,6 +3,7 @@ package com.niki914.nexus.agentic.chat
 import com.niki914.libterm.OpenResult
 import com.niki914.libterm.SshOpenOptions
 import com.niki914.libterm.TerminalBytes
+import com.niki914.libterm.TerminalFailure
 import com.niki914.libterm.TerminalIdentity
 import com.niki914.libterm.runtime.CommandResult
 import com.niki914.libterm.runtime.TermResult
@@ -13,17 +14,20 @@ import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPort
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.s3ss10n.LocalToolConfig
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
-import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as ExecutionRule
@@ -81,7 +85,10 @@ class TerminalBuiltinTest {
         val json = invoke("""{"action":"unknown"}""")
 
         assertErrorCode("INVALID_REQUEST", json)
-        assertTrue(json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content.contains("pty_write"))
+        assertTrue(
+            json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+                .contains("read, write, submit, close")
+        )
     }
 
     @Test
@@ -176,22 +183,6 @@ class TerminalBuiltinTest {
     }
 
     @Test
-    fun invokeRawJson_commandFirstWithCwdBackwardCompat() = runTest {
-        installRuntimeSettingsGatewayForTest()
-        val fakeRuntime = FakeTerminalRuntime(
-            nextResult = commandResult(stdout = "/tmp\n"),
-        )
-        installFakeRuntime(fakeRuntime).use {
-            installHandles("e001").use {
-                val json = invoke("""{"command":"pwd","cwd":"/tmp"}""")
-
-                assertEquals("0", json["exit_code"]!!.jsonPrimitive.content)
-                assertEquals("/tmp", fakeRuntime.openedSessions.single().openedCwd)
-            }
-        }
-    }
-
-    @Test
     fun invokeRawJson_commandFirstWithTimeout_usesSeconds() = runTest {
         installRuntimeSettingsGatewayForTest()
         val fakeRuntime = FakeTerminalRuntime(
@@ -247,10 +238,46 @@ class TerminalBuiltinTest {
         )
     }
 
+    @Test
+    fun invokeRawJson_sshForegroundRejected_returnsInvalidRequest() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(nextResult = commandResult())
+        installFakeRuntime(fakeRuntime).use {
+            val json = invoke(
+                """{"command":"ls","backend":"ssh","host":"1.2.3.4","username":"root","password":"x"}"""
+            )
+
+            assertErrorCode("INVALID_REQUEST", json)
+            assertTrue(
+                json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+                    .contains("background=true")
+            )
+            // Rejection happens before any SSH session is opened.
+            assertTrue(fakeRuntime.openedSessions.isEmpty())
+        }
+    }
+
+    @Test
+    fun invokeRawJson_commandFirstExecFailure_closesSessionInFinally() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(failOnExec = true)
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("f0f1").use {
+                val json = invoke("""{"command":"pwd"}""")
+
+                assertErrorCode("STARTUP_FAILED", json)
+                assertEquals("-1", json["exit_code"]!!.jsonPrimitive.content)
+                // The one-shot foreground session must be closed on the failure branch.
+                assertEquals(1, fakeRuntime.openedSessions.single().closeCount)
+                assertNull(TerminalSessionPool.get("f0f1"))
+            }
+        }
+    }
+
     // ── Background (Hermes-aligned) ─────────────────────────────────────────
 
     @Test
-    fun invokeRawJson_commandFirstBackground_returnsBackgroundAccepted() = runTest {
+    fun invokeRawJson_commandFirstBackground_returnsSessionId() = runTest {
         installRuntimeSettingsGatewayForTest()
         val fakeRuntime = FakeTerminalRuntime(
             nextResult = commandResult(stdout = "starting...\n"),
@@ -261,92 +288,82 @@ class TerminalBuiltinTest {
                     """{"command":"npm run build","background":true,"timeout":300}"""
                 )
 
+                assertEquals("b0b1", json["session_id"]!!.jsonPrimitive.content)
                 assertEquals("true", json["background"]!!.jsonPrimitive.content)
-                assertTrue(json.containsKey("async_id"))
-                assertTrue(json["async_id"]!!.jsonPrimitive.content.isNotBlank())
+                assertEquals(
+                    "Background process started.",
+                    json["output"]!!.jsonPrimitive.content,
+                )
+                assertFalse(json.containsKey("async_id"))
             }
         }
     }
 
+    // ── Action mode (read/write/submit/close) ───────────────────────────────
+
     @Test
-    fun invokeRawJson_backgroundBackwardCompat_isAsync() = runTest {
+    fun invokeRawJson_readBackgroundSession_returnsRunningThenExited() = runTest {
         installRuntimeSettingsGatewayForTest()
+        val gate = CompletableDeferred<Unit>()
         val fakeRuntime = FakeTerminalRuntime(
-            nextResult = commandResult(stdout = "bg\n"),
+            nextResult = commandResult(stdout = "42 tests passed\n", exitCode = 0),
+            execGate = gate,
         )
         installFakeRuntime(fakeRuntime).use {
-            installHandles("c0c1").use {
-                val json = invoke("""{"command":"long-task","is_async":true}""")
+            installHandles("a1b2").use {
+                val started = invoke("""{"command":"npm test","background":true}""")
+                assertEquals("a1b2", started["session_id"]!!.jsonPrimitive.content)
 
-                assertEquals("true", json["background"]!!.jsonPrimitive.content)
+                // While the background job is still running, read reports "running"
+                // with no exit_code. Both delta (default) and snapshot modes work.
+                val running = invoke("""{"action":"read","session_id":"a1b2"}""")
+                assertEquals("a1b2", running["session_id"]!!.jsonPrimitive.content)
+                assertEquals("running", running["status"]!!.jsonPrimitive.content)
+                assertFalse(running.containsKey("exit_code"))
+
+                val snapshot = invoke("""{"action":"read","session_id":"a1b2","mode":"snapshot"}""")
+                assertEquals("running", snapshot["status"]!!.jsonPrimitive.content)
+
+                // Let the job finish: read then reports "exited" with the output
+                // and exit_code stored when the background job completed.
+                gate.complete(Unit)
+                val exited = awaitBackgroundStatus("a1b2", "exited")
+                assertEquals("a1b2", exited["session_id"]!!.jsonPrimitive.content)
+                assertEquals("42 tests passed\n", exited["output"]!!.jsonPrimitive.content)
+                assertEquals("0", exited["exit_code"]!!.jsonPrimitive.content)
             }
         }
     }
 
-    // ── Action mode: backward compat (open_and_exec, exec, read_async_result) ─
-
     @Test
-    fun invokeRawJson_openAndExecReturnsGeneratedHandle() = runTest {
+    fun invokeRawJson_writeAndSubmitToNonInteractiveSession_returnsInvalidRequest() = runTest {
         installRuntimeSettingsGatewayForTest()
-        val fakeRuntime = FakeTerminalRuntime(
-            nextResult = commandResult(stdout = "ok\n"),
-        )
+        val fakeRuntime = FakeTerminalRuntime(nextResult = commandResult())
         installFakeRuntime(fakeRuntime).use {
-            installHandles("a3f9").use {
-                val json =
-                    invoke("""{"action":"open_and_exec","identity":"shizuku","command":"pwd"}""")
+            installHandles("c3d4").use {
+                val started = invoke("""{"command":"sleep 999","background":true}""")
+                assertEquals("c3d4", started["session_id"]!!.jsonPrimitive.content)
 
-                assertEquals("a3f9", json["session"]!!.jsonPrimitive.content)
-                assertEquals("shizuku", json["identity"]!!.jsonPrimitive.content)
-                assertEquals("0", json["exit_code"]!!.jsonPrimitive.content)
-                assertEquals("ok\n", json["stdout"]!!.jsonPrimitive.content)
-                assertEquals(listOf(TerminalIdentity.Shizuku), fakeRuntime.openedIdentities)
-                assertEquals(listOf("pwd"), fakeRuntime.openedSessions.single().commands)
+                val write = invoke("""{"action":"write","session_id":"c3d4","text":"hello"}""")
+                assertErrorCode("INVALID_REQUEST", write)
+                assertTrue(
+                    write["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+                        .contains("not an interactive SSH terminal")
+                )
+
+                val submit = invoke("""{"action":"submit","session_id":"c3d4","text":"ls"}""")
+                assertErrorCode("INVALID_REQUEST", submit)
+                assertTrue(
+                    submit["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+                        .contains("not an interactive SSH terminal")
+                )
             }
         }
-    }
-
-    @Test
-    fun invokeRawJson_execReturnsSessionNotFoundWithoutOpening() = runTest {
-        installRuntimeSettingsGatewayForTest()
-
-        val json = invoke("""{"action":"exec","session":"user","command":"pwd"}""")
-
-        assertErrorCode("SESSION_NOT_FOUND", json)
-    }
-
-    @Test
-    fun invokeRawJson_execWithIdentityNameReturnsSessionNotFound() = runTest {
-        installRuntimeSettingsGatewayForTest()
-
-        val json = invoke("""{"action":"exec","session":"root","command":"pwd"}""")
-
-        assertErrorCode("SESSION_NOT_FOUND", json)
-        val message = json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
-        assertTrue(message.contains("handle returned by open or open_and_exec"))
-        assertTrue(message.contains("Do not pass identity names"))
-    }
-
-    @Test
-    fun invokeRawJson_asyncExecReturnsSessionNotFoundWithoutOpening() = runTest {
-        installRuntimeSettingsGatewayForTest()
-
-        val json =
-            invoke("""{"action":"exec","session":"user","command":"sleep 10","is_async":true}""")
-
-        assertErrorCode("SESSION_NOT_FOUND", json)
-    }
-
-    @Test
-    fun invokeRawJson_readAsyncResultReturnsSessionNotFoundWithoutOpening() = runTest {
-        val json = invoke("""{"action":"read_async_result","session":"user","async_id":"a1"}""")
-
-        assertErrorCode("SESSION_NOT_FOUND", json)
     }
 
     @Test
     fun invokeRawJson_closeIsIdempotentForMissingSession() = runTest {
-        val json = invoke("""{"action":"close","session":"user"}""")
+        val json = invoke("""{"action":"close","session_id":"user"}""")
 
         assertTrue(json["closed"]!!.jsonPrimitive.content.toBoolean())
         assertFalse(json.containsKey("error"))
@@ -368,7 +385,6 @@ class TerminalBuiltinTest {
         assertTrue(properties.containsKey("background"))
         assertTrue(properties.containsKey("timeout"))
         assertTrue(properties.containsKey("workdir"))
-        assertTrue(properties.containsKey("pty"))
         assertTrue(properties.containsKey("notify_on_complete"))
         assertTrue(
             properties["command"]!!.jsonObject["description"]!!.jsonPrimitive.content
@@ -392,13 +408,14 @@ class TerminalBuiltinTest {
                 .containsAll(listOf("user", "root", "shizuku"))
         )
 
-        // Action fields
+        // Action fields: only the four Hermes-aligned session actions remain.
         assertTrue(properties.containsKey("action"))
-        assertTrue(
+        assertEquals(
+            listOf("read", "write", "submit", "close"),
             properties["action"]!!.jsonObject["enum"]!!.jsonArray
-                .map { it.jsonPrimitive.content }
-                .containsAll(listOf("pty_write", "pty_read", "close"))
+                .map { it.jsonPrimitive.content },
         )
+        assertTrue(properties.containsKey("session_id"))
     }
 
     @Test
@@ -425,17 +442,6 @@ class TerminalBuiltinTest {
         )
     }
 
-    @Test
-    fun invokeRawJson_rejectsInvalidTimeoutMsBackwardCompat() = runTest {
-        val json = invoke("""{"action":"exec","session":"user","command":"pwd","timeout_ms":0}""")
-
-        assertErrorCode("INVALID_REQUEST", json)
-        assertEquals(
-            "Field 'timeout_ms' must be greater than 0.",
-            json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content,
-        )
-    }
-
     // ── Test infrastructure ─────────────────────────────────────────────────
 
     private suspend fun invoke(argumentsJson: String) = Json.parseToJsonElement(
@@ -447,8 +453,22 @@ class TerminalBuiltinTest {
         )
     ).jsonObject
 
-    private fun assertErrorCode(expected: String, json: kotlinx.serialization.json.JsonObject) {
+    private fun assertErrorCode(expected: String, json: JsonObject) {
         assertEquals(expected, json["error"]!!.jsonObject["code"]!!.jsonPrimitive.content)
+    }
+
+    /**
+     * Polls action=read until the background session reaches [expected] status.
+     * The background exec job runs on the pool's IO dispatcher, so its completion
+     * is observed asynchronously after the exec gate is released.
+     */
+    private suspend fun awaitBackgroundStatus(sessionId: String, expected: String): JsonObject {
+        repeat(200) {
+            val json = invoke("""{"action":"read","session_id":"$sessionId"}""")
+            if (json["status"]?.jsonPrimitive?.content == expected) return json
+            delay(5)
+        }
+        throw AssertionError("Background session '$sessionId' never reached status '$expected'")
     }
 
     private fun installFakeRuntime(fakeRuntime: FakeTerminalRuntime): AutoCloseable {
@@ -465,6 +485,8 @@ class TerminalBuiltinTest {
 
     private class FakeTerminalRuntime(
         private val nextResult: CommandResult = commandResult(),
+        private val failOnExec: Boolean = false,
+        private val execGate: CompletableDeferred<Unit>? = null,
     ) : TerminalRuntimePort {
         val openedSessions = mutableListOf<FakeTerminalSession>()
         val openedIdentities = mutableListOf<TerminalIdentity>()
@@ -479,6 +501,8 @@ class TerminalBuiltinTest {
                 id = "runtime-${openedSessions.size + 1}",
                 nextResult = nextResult,
                 openedCwd = cwd,
+                failOnExec = failOnExec,
+                execGate = execGate,
             )
             openedSessions.add(session)
             return OpenResult.Success(session)
@@ -493,20 +517,38 @@ class TerminalBuiltinTest {
         override val id: String,
         private val nextResult: CommandResult,
         val openedCwd: String? = null,
+        private val failOnExec: Boolean = false,
+        private val execGate: CompletableDeferred<Unit>? = null,
     ) : TerminalSessionPort {
         override val stream = emptyFlow<com.niki914.libterm.runtime.TerminalTextChunk>()
         val commands = mutableListOf<String>()
         var lastTimeoutMs: Long = 0L
+        var closeCount: Int = 0
+            private set
 
         override suspend fun exec(command: String, timeoutMillis: Long): TermResult<CommandResult> {
             commands.add(command)
             lastTimeoutMs = timeoutMillis
-            return TermResult.Success(nextResult)
+            // When set, keep the exec suspended until the test releases it so the
+            // background job's running/exited transitions can be observed.
+            execGate?.await()
+            return if (failOnExec) {
+                TermResult.Failure(
+                    TerminalFailure.StartupFailed(
+                        identity = TerminalIdentity.User,
+                        message = "fake exec failure",
+                    )
+                )
+            } else {
+                TermResult.Success(nextResult)
+            }
         }
 
         override suspend fun write(text: String) = Unit
 
-        override suspend fun close() = Unit
+        override suspend fun close() {
+            closeCount++
+        }
     }
 
     private companion object {

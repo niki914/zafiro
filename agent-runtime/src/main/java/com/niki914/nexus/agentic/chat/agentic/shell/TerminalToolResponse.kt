@@ -9,34 +9,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 object TerminalToolResponse {
-    fun openSuccess(session: String, identity: String): String {
-        return JsonObject(
-            mapOf(
-                "session" to JsonPrimitive(session),
-                "identity" to JsonPrimitive(identity),
-            )
-        ).toString()
-    }
-
-    fun commandSuccess(
-        result: CommandResult,
-        elapsedSeconds: Long,
-        session: String? = null,
-        identity: String? = null,
-        mergeStderr: Boolean = false,
-    ): String {
-        val stdout = result.stdoutText()
-        val stderr = result.stderrText()
-        val payload = linkedMapOf<String, JsonElement>()
-        session?.let { payload["session"] = JsonPrimitive(it) }
-        identity?.let { payload["identity"] = JsonPrimitive(it) }
-        payload["exit_code"] = JsonPrimitive(result.exitCode ?: UNKNOWN_EXIT_CODE)
-        payload["stdout"] = JsonPrimitive(if (mergeStderr) stdout + stderr else stdout)
-        payload["stderr"] = JsonPrimitive(if (mergeStderr) "" else stderr)
-        payload["elapsed_seconds"] = JsonPrimitive(elapsedSeconds)
-        return JsonObject(payload).toString()
-    }
-
     /** Hermes-aligned flat success: {"stdout":"...","stderr":"","exit_code":0} */
     fun commandSuccessFlat(
         stdout: String,
@@ -50,29 +22,6 @@ object TerminalToolResponse {
                 "exit_code" to JsonPrimitive(exitCode),
             )
         ).toString()
-    }
-
-    fun commandTimeout(
-        result: CommandResult,
-        elapsedSeconds: Long,
-        timeoutMs: Long,
-        session: String? = null,
-        identity: String? = null,
-        mergeStderr: Boolean = false,
-    ): String {
-        val stdout = result.stdoutText()
-        val stderr = result.stderrText()
-        val payload = linkedMapOf<String, JsonElement>()
-        session?.let { payload["session"] = JsonPrimitive(it) }
-        identity?.let { payload["identity"] = JsonPrimitive(it) }
-        payload["stdout"] = JsonPrimitive(if (mergeStderr) stdout + stderr else stdout)
-        payload["stderr"] = JsonPrimitive(if (mergeStderr) "" else stderr)
-        payload["elapsed_seconds"] = JsonPrimitive(elapsedSeconds)
-        payload["error"] = errorObject(
-            code = "TIMEOUT",
-            message = "Command timed out after ${timeoutMs}ms. Increase timeout_ms, run a smaller command, or use exec with is_async=true and poll read_async_result.",
-        )
-        return JsonObject(payload).toString()
     }
 
     /** Hermes-aligned flat timeout: {"stdout":"...(partial)...","stderr":"","error":{"code":"TIMEOUT","message":"..."}} */
@@ -93,22 +42,41 @@ object TerminalToolResponse {
         ).toString()
     }
 
-    fun asyncAccepted(asyncId: String, elapsedSeconds: Long): String {
+    /** Hermes-aligned background acceptance: {"session_id":"a3f9","background":true,"output":"Background process started."} */
+    fun backgroundAccepted(sessionId: String): String {
         return JsonObject(
             mapOf(
-                "async_id" to JsonPrimitive(asyncId),
-                "accepted" to JsonPrimitive(true),
-                "elapsed_seconds" to JsonPrimitive(elapsedSeconds),
+                "session_id" to JsonPrimitive(sessionId),
+                "background" to JsonPrimitive(true),
+                "output" to JsonPrimitive("Background process started."),
             )
         ).toString()
     }
 
-    /** Hermes-aligned background acceptance: {"background":true,"async_id":"abc123"} */
-    fun backgroundAccepted(asyncId: String): String {
+    /** Hermes-aligned session read result: {"session_id":"...","status":"running|exited","output":"...","exit_code":0,"elapsed_seconds":30} */
+    fun readResult(
+        sessionId: String,
+        status: String,
+        output: String,
+        exitCode: Int?,
+        elapsedSeconds: Long,
+    ): String {
+        val payload = linkedMapOf<String, JsonElement>(
+            "session_id" to JsonPrimitive(sessionId),
+            "status" to JsonPrimitive(status),
+            "output" to JsonPrimitive(output),
+            "elapsed_seconds" to JsonPrimitive(elapsedSeconds),
+        )
+        exitCode?.let { payload["exit_code"] = JsonPrimitive(it) }
+        return JsonObject(payload).toString()
+    }
+
+    /** Hermes-aligned write/submit confirmation: {"session_id":"...","bytes_written":5} */
+    fun writeResult(sessionId: String, bytesWritten: Int): String {
         return JsonObject(
             mapOf(
-                "background" to JsonPrimitive(true),
-                "async_id" to JsonPrimitive(asyncId),
+                "session_id" to JsonPrimitive(sessionId),
+                "bytes_written" to JsonPrimitive(bytesWritten),
             )
         ).toString()
     }
@@ -121,16 +89,6 @@ object TerminalToolResponse {
                 "stderr" to JsonPrimitive(""),
                 "exit_code" to JsonPrimitive(UNKNOWN_EXIT_CODE),
                 "error" to errorObject(code = code, message = message),
-            )
-        ).toString()
-    }
-
-    fun asyncRunning(stdoutPartial: String, stderrPartial: String, elapsedSeconds: Long): String {
-        return JsonObject(
-            mapOf(
-                "stdout_partial" to JsonPrimitive(stdoutPartial),
-                "stderr_partial" to JsonPrimitive(stderrPartial),
-                "elapsed_seconds" to JsonPrimitive(elapsedSeconds),
             )
         ).toString()
     }
@@ -156,22 +114,15 @@ object TerminalToolResponse {
     fun sessionNotFound(session: String): String {
         return error(
             code = "SESSION_NOT_FOUND",
-            message = "Session '$session' not found. Use the session handle returned by open or open_and_exec. Do not pass identity names such as user or root.",
-        )
-    }
-
-    fun asyncNotFound(session: String, asyncId: String): String {
-        return error(
-            code = "ASYNC_NOT_FOUND",
-            message = "Async '$asyncId' not found on session '$session'. The result may have already been read or the session was closed.",
+            message = "Session '$session' not found. Use the session_id returned by a background command. Do not pass identity names such as user or root.",
         )
     }
 
     fun sessionBusy(session: String, asyncId: String?): String {
         val message = if (asyncId.isNullOrBlank()) {
-            "Session '$session' is already running a command. Wait for the current command to finish before retrying."
+            "Session '$session' is busy. Wait for the current command to complete."
         } else {
-            "Session '$session' is already running async command '$asyncId'. Use read_async_result to check its status before running another command."
+            "Session '$session' is busy. Use action=\"read\" to check status."
         }
         return error(
             code = "SESSION_BUSY",

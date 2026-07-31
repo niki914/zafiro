@@ -136,8 +136,10 @@ class BuiltinToolTest {
         assertTrue(tool.description.contains("\"local\""))
         assertTrue(tool.description.contains("\"ssh\""))
         assertTrue(tool.description.contains("shizuku"))
-        assertTrue(tool.description.contains("pty_write"))
-        assertTrue(tool.description.contains("pty_read"))
+        // Hermes-aligned session protocol in the description
+        assertTrue(tool.description.contains("session_id"))
+        assertTrue(tool.description.contains("action=\"read\""))
+        assertTrue(tool.description.contains("action=\"close\""))
     }
 
     private class FakeBuiltinTool(

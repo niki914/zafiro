@@ -8,16 +8,14 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.RawJsonBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
-import com.niki914.nexus.agentic.chat.agentic.shell.TerminalAsyncReadOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalAsyncStartOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCloseOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCommandOutcome
-import com.niki914.nexus.agentic.chat.agentic.shell.TerminalInteractiveReadMode
-import com.niki914.nexus.agentic.chat.agentic.shell.TerminalInteractiveReadOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalInteractiveWriteOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalOpenOutcome
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalReadMode
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalReadOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
-import com.niki914.libterm.TerminalBytes
 import com.niki914.libterm.runtime.CommandResult
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stdoutText
@@ -50,7 +48,7 @@ class TerminalBuiltin(
                 "\n" +
                 "Foreground (default): Commands return INSTANTLY when done, even if the timeout is high. " +
                 "Set timeout=300 for long builds/scripts — you'll still get the result in seconds if it's fast. " +
-                "Prefer foreground for short commands.\n" +
+                "Prefer foreground for short commands. Foreground mode is available for the local backend only.\n" +
                 "\n" +
                 "Background: Set background=true to run a command asynchronously. " +
                 "Almost always pair with notify_on_complete=true — background without notify runs silently. " +
@@ -64,8 +62,7 @@ class TerminalBuiltin(
                 "After starting a server, verify readiness with a health check or log signal, " +
                 "then run tests in a separate terminal() call. Avoid blind sleep loops.\n" +
                 "\n" +
-                "Working directory: Use 'workdir' for per-command cwd. " +
-                "The session remembers the last used workdir as default.\n" +
+                "Working directory: Use 'workdir' for per-command cwd.\n" +
                 "\n" +
                 "PTY mode: Set pty=true for interactive CLI tools. " +
                 "On Android this primarily works with SSH backend; local PTY support is limited.\n" +
@@ -74,7 +71,8 @@ class TerminalBuiltin(
                 "Pipe git output to cat if it might page.\n" +
                 "\n" +
                 "Backend: Set backend to \"local\" (default) for the Android device shell, " +
-                "or \"ssh\" for a remote host.\n" +
+                "or \"ssh\" for a remote host. SSH backend requires background=true; " +
+                "it cannot reliably detect command completion in foreground mode.\n" +
                 "- backend=\"local\": Use identity to pick the execution user — \"user\" (default, unprivileged), " +
                 "\"root\" (via su), or \"shizuku\". Shizuku requires device support, a running service, " +
                 "and granted authorization.\n" +
@@ -82,16 +80,13 @@ class TerminalBuiltin(
                 "host_key_policy defaults to \"accept_any\"; use \"known_hosts_file\" with known_hosts_path " +
                 "for host verification.\n" +
                 "\n" +
-                "For interactive SSH sessions, use action=\"pty_write\" to send input " +
-                "(text field, newline is NOT appended automatically — add \\n when needed) " +
-                "and action=\"pty_read\" to read output. Use action=\"close\" to close a session. " +
+                "Background tasks return a session_id. Use action=\"read\" to poll output and status " +
+                "(status is \"running\" while the process is active, \"exited\" once it finishes — with exit_code), " +
+                "action=\"write\" to send stdin input (newline is NOT appended automatically — add \\n when needed), " +
+                "action=\"submit\" to send stdin input plus a newline, and action=\"close\" to release the session. " +
                 "Sessions opened for foreground commands are automatically closed after the command completes."
 
     override val defaultEnabled: Boolean = true
-
-    // Tracks the last workdir used in command-first mode so subsequent calls without
-    // an explicit workdir default to it.
-    private var lastWorkdir: String? = null
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
@@ -136,14 +131,19 @@ class TerminalBuiltin(
         if (!decision.allowed) {
             return TerminalToolResponse.policyBlocked(decision)
         }
-        // Remember this workdir for subsequent calls
-        if (args.workdir != null) {
-            lastWorkdir = args.workdir
-        }
 
         return when (args.backend) {
             Backend.LOCAL -> handleLocalCommand(args, command, timeoutSec)
-            Backend.SSH -> handleSshCommand(args, command, timeoutSec)
+            Backend.SSH -> {
+                if (!args.background) {
+                    return TerminalToolResponse.invalidRequest(
+                        "SSH backend requires background=true. SSH sessions cannot " +
+                            "reliably detect command completion in foreground mode. " +
+                            "Use background=true and action=\"read\" to check results."
+                    )
+                }
+                handleSshCommand(args, command, timeoutSec)
+            }
         }
     }
 
@@ -153,11 +153,11 @@ class TerminalBuiltin(
         timeoutSec: Long,
     ): String {
         val identity = args.identity ?: DEFAULT_LOCAL_IDENTITY
-        val workdir = args.workdir ?: lastWorkdir
+        val workdir = args.workdir
         val timeoutMs = timeoutSec * 1000L
 
         return if (args.background) {
-            startBackgroundLocal(identity, workdir, command, timeoutMs)
+            startBackgroundLocal(identity, workdir, command, timeoutMs, args.notifyOnComplete)
         } else {
             executeForegroundLocal(identity, workdir, command, timeoutMs, args.mergeStderr)
         }
@@ -170,50 +170,55 @@ class TerminalBuiltin(
         timeoutMs: Long,
         mergeStderr: Boolean,
     ): String {
-        return when (val outcome = TerminalSessionPool.openAndExecute(
+        val outcome = TerminalSessionPool.openAndExecute(
             identity = identity,
             cwd = workdir,
             command = command,
             timeoutMs = timeoutMs,
-        )) {
-            is TerminalCommandOutcome.Success -> {
-                TerminalSessionPool.close(outcome.session)
-                val result = outcome.result
-                TerminalToolResponse.commandSuccessFlat(
-                    stdout = mergedStdout(result, mergeStderr),
-                    stderr = if (mergeStderr) "" else result.stderrText(),
-                    exitCode = result.exitCode ?: UNKNOWN_EXIT_CODE,
+        )
+        return try {
+            when (outcome) {
+                is TerminalCommandOutcome.Success -> {
+                    val result = outcome.result
+                    TerminalToolResponse.commandSuccessFlat(
+                        stdout = mergedStdout(result, mergeStderr),
+                        stderr = if (mergeStderr) "" else result.stderrText(),
+                        exitCode = result.exitCode ?: UNKNOWN_EXIT_CODE,
+                    )
+                }
+
+                is TerminalCommandOutcome.Timeout -> {
+                    val result = outcome.result
+                    TerminalToolResponse.commandTimeoutFlat(
+                        stdout = mergedStdout(result, mergeStderr),
+                        stderr = if (mergeStderr) "" else result.stderrText(),
+                        timeoutSec = timeoutMs / 1000L,
+                    )
+                }
+
+                is TerminalCommandOutcome.Failure -> TerminalToolResponse.commandError(
+                    code = TerminalToolResponse.failureCode(outcome.failure),
+                    message = outcome.failure.message ?: "Command execution failed.",
+                )
+
+                is TerminalCommandOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                    outcome.session
+                )
+
+                is TerminalCommandOutcome.Busy -> TerminalToolResponse.sessionBusy(
+                    outcome.session,
+                    outcome.asyncId
+                )
+
+                is TerminalCommandOutcome.UnexpectedError -> TerminalToolResponse.internalError(
+                    outcome.throwable,
+                    outcome.elapsedSeconds,
                 )
             }
-
-            is TerminalCommandOutcome.Timeout -> {
-                TerminalSessionPool.close(outcome.session)
-                val result = outcome.result
-                TerminalToolResponse.commandTimeoutFlat(
-                    stdout = mergedStdout(result, mergeStderr),
-                    stderr = if (mergeStderr) "" else result.stderrText(),
-                    timeoutSec = timeoutMs / 1000L,
-                )
-            }
-
-            is TerminalCommandOutcome.Failure -> TerminalToolResponse.commandError(
-                code = TerminalToolResponse.failureCode(outcome.failure),
-                message = outcome.failure.message ?: "Command execution failed.",
-            )
-
-            is TerminalCommandOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
-                outcome.session
-            )
-
-            is TerminalCommandOutcome.Busy -> TerminalToolResponse.sessionBusy(
-                outcome.session,
-                outcome.asyncId
-            )
-
-            is TerminalCommandOutcome.UnexpectedError -> TerminalToolResponse.internalError(
-                outcome.throwable,
-                outcome.elapsedSeconds,
-            )
+        } finally {
+            // Critical: the session opened for this one-shot command must be
+            // closed on every outcome branch, including Failure.
+            closeForegroundSession(outcome)
         }
     }
 
@@ -222,6 +227,7 @@ class TerminalBuiltin(
         workdir: String?,
         command: String,
         timeoutMs: Long,
+        notifyOnComplete: Boolean,
     ): String {
         // Open a session first, then start async
         return when (val openOutcome = TerminalSessionPool.open(identity = identity, cwd = workdir)) {
@@ -230,9 +236,10 @@ class TerminalBuiltin(
                     session = openOutcome.session,
                     command = command,
                     timeoutMs = timeoutMs,
+                    notifyOnComplete = notifyOnComplete,
                 )) {
                     is TerminalAsyncStartOutcome.Accepted -> TerminalToolResponse.backgroundAccepted(
-                        asyncOutcome.asyncId
+                        openOutcome.session
                     )
 
                     is TerminalAsyncStartOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
@@ -266,17 +273,20 @@ class TerminalBuiltin(
         command: String,
         timeoutSec: Long,
     ): String {
+        // Foreground SSH is rejected in handleCommand(); only background reaches
+        // this point, so the foreground wrapper below is unreachable defense only.
         val sshOptions = args.requireSshOpenOptions()
-        val workdir = args.workdir ?: lastWorkdir
+        val workdir = args.workdir
         val timeoutMs = timeoutSec * 1000L
-
-        return if (args.background) {
-            startBackgroundSsh(sshOptions, workdir, command, timeoutMs)
-        } else {
-            executeForegroundSsh(sshOptions, workdir, command, timeoutMs, args.mergeStderr)
-        }
+        return startBackgroundSsh(sshOptions, workdir, command, timeoutMs, args.notifyOnComplete)
     }
 
+    /**
+     * Foreground SSH wrapper. No longer reachable from the main path
+     * (handleCommand() rejects backend=ssh without background=true), but kept
+     * as a defensive layer: if it is ever invoked, the try-finally still
+     * guarantees the opened session is closed on every outcome branch.
+     */
     private suspend fun executeForegroundSsh(
         sshOptions: SshOpenOptions,
         workdir: String?,
@@ -284,50 +294,53 @@ class TerminalBuiltin(
         timeoutMs: Long,
         mergeStderr: Boolean,
     ): String {
-        return when (val outcome = TerminalSessionPool.openAndExecuteSsh(
+        val outcome = TerminalSessionPool.openAndExecuteSsh(
             options = sshOptions,
             cwd = workdir,
             command = command,
             timeoutMs = timeoutMs,
-        )) {
-            is TerminalCommandOutcome.Success -> {
-                TerminalSessionPool.close(outcome.session)
-                val result = outcome.result
-                TerminalToolResponse.commandSuccessFlat(
-                    stdout = mergedStdout(result, mergeStderr),
-                    stderr = if (mergeStderr) "" else result.stderrText(),
-                    exitCode = result.exitCode ?: UNKNOWN_EXIT_CODE,
+        )
+        return try {
+            when (outcome) {
+                is TerminalCommandOutcome.Success -> {
+                    val result = outcome.result
+                    TerminalToolResponse.commandSuccessFlat(
+                        stdout = mergedStdout(result, mergeStderr),
+                        stderr = if (mergeStderr) "" else result.stderrText(),
+                        exitCode = result.exitCode ?: UNKNOWN_EXIT_CODE,
+                    )
+                }
+
+                is TerminalCommandOutcome.Timeout -> {
+                    val result = outcome.result
+                    TerminalToolResponse.commandTimeoutFlat(
+                        stdout = mergedStdout(result, mergeStderr),
+                        stderr = if (mergeStderr) "" else result.stderrText(),
+                        timeoutSec = timeoutMs / 1000L,
+                    )
+                }
+
+                is TerminalCommandOutcome.Failure -> TerminalToolResponse.commandError(
+                    code = TerminalToolResponse.failureCode(outcome.failure),
+                    message = outcome.failure.message ?: "SSH command execution failed.",
+                )
+
+                is TerminalCommandOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                    outcome.session
+                )
+
+                is TerminalCommandOutcome.Busy -> TerminalToolResponse.sessionBusy(
+                    outcome.session,
+                    outcome.asyncId
+                )
+
+                is TerminalCommandOutcome.UnexpectedError -> TerminalToolResponse.internalError(
+                    outcome.throwable,
+                    outcome.elapsedSeconds,
                 )
             }
-
-            is TerminalCommandOutcome.Timeout -> {
-                TerminalSessionPool.close(outcome.session)
-                val result = outcome.result
-                TerminalToolResponse.commandTimeoutFlat(
-                    stdout = mergedStdout(result, mergeStderr),
-                    stderr = if (mergeStderr) "" else result.stderrText(),
-                    timeoutSec = timeoutMs / 1000L,
-                )
-            }
-
-            is TerminalCommandOutcome.Failure -> TerminalToolResponse.commandError(
-                code = TerminalToolResponse.failureCode(outcome.failure),
-                message = outcome.failure.message ?: "SSH command execution failed.",
-            )
-
-            is TerminalCommandOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
-                outcome.session
-            )
-
-            is TerminalCommandOutcome.Busy -> TerminalToolResponse.sessionBusy(
-                outcome.session,
-                outcome.asyncId
-            )
-
-            is TerminalCommandOutcome.UnexpectedError -> TerminalToolResponse.internalError(
-                outcome.throwable,
-                outcome.elapsedSeconds,
-            )
+        } finally {
+            closeForegroundSession(outcome)
         }
     }
 
@@ -336,6 +349,7 @@ class TerminalBuiltin(
         workdir: String?,
         command: String,
         timeoutMs: Long,
+        notifyOnComplete: Boolean,
     ): String {
         return when (val openOutcome = TerminalSessionPool.openSsh(
             options = sshOptions,
@@ -346,9 +360,10 @@ class TerminalBuiltin(
                     session = openOutcome.session,
                     command = command,
                     timeoutMs = timeoutMs,
+                    notifyOnComplete = notifyOnComplete,
                 )) {
                     is TerminalAsyncStartOutcome.Accepted -> TerminalToolResponse.backgroundAccepted(
-                        asyncOutcome.asyncId
+                        openOutcome.session
                     )
 
                     is TerminalAsyncStartOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
@@ -377,261 +392,64 @@ class TerminalBuiltin(
         }
     }
 
-    // ── Action mode (interactive SSH + backward compat) ─────────────────────
+    /**
+     * Best-effort close of the session opened for a one-shot foreground command.
+     * Guarantees the session is released on every outcome branch, including
+     * Failure (whose session is nullable).
+     */
+    private suspend fun closeForegroundSession(outcome: TerminalCommandOutcome) {
+        when (outcome) {
+            is TerminalCommandOutcome.Success -> TerminalSessionPool.close(outcome.session)
+            is TerminalCommandOutcome.Timeout -> TerminalSessionPool.close(outcome.session)
+
+            is TerminalCommandOutcome.Failure -> {
+                outcome.session?.let { TerminalSessionPool.close(it) }
+            }
+
+            is TerminalCommandOutcome.SessionNotFound,
+            is TerminalCommandOutcome.Busy,
+            is TerminalCommandOutcome.UnexpectedError -> Unit
+        }
+    }
+
+    // ── Action mode ─────────────────────────────────────────────────────────
 
     private suspend fun handleAction(args: TerminalArgs): String {
         return when (args.action) {
-            Action.PTY_WRITE -> handlePtyWrite(args)
-            Action.PTY_READ -> handlePtyRead(args)
+            Action.READ -> handleRead(args)
+            Action.WRITE -> handleWrite(args)
+            Action.SUBMIT -> handleSubmit(args)
             Action.CLOSE -> handleClose(args)
-            // Backward compat: old action names
-            Action.OPEN -> handleLegacyOpen(args)
-            Action.OPEN_AND_EXEC -> handleLegacyOpenAndExec(args)
-            Action.EXEC -> handleLegacyExec(args)
-            Action.READ_ASYNC_RESULT -> handleLegacyReadAsyncResult(args)
             null -> TerminalToolResponse.invalidRequest("Field 'action' is required.")
         }
     }
 
-    private suspend fun handleLegacyOpen(args: TerminalArgs): String {
-        val identity = args.requireIdentity()
-        return when (val outcome = TerminalSessionPool.open(
-            identity = identity,
-            cwd = args.workdir
-        )) {
-            is TerminalOpenOutcome.Success -> TerminalToolResponse.openSuccess(
-                session = outcome.session,
-                identity = outcome.identity,
-            )
-
-            is TerminalOpenOutcome.Failure -> TerminalToolResponse.failure(
-                failure = outcome.failure,
-                elapsedSeconds = outcome.elapsedSeconds,
-                identity = identity,
-            )
-
-            is TerminalOpenOutcome.InvalidRequest -> TerminalToolResponse.invalidRequest(outcome.message)
-        }
-    }
-
-    private suspend fun handleLegacyOpenAndExec(args: TerminalArgs): String {
-        val identity = args.requireIdentity()
-        val command = args.requireCommand()
-        val timeoutMs = args.resolveLegacyTimeoutMs()
-        val decision = safetyPolicy.evaluate(command)
-        if (!decision.allowed) {
-            return TerminalToolResponse.policyBlocked(decision)
-        }
-
-        return when (val outcome = TerminalSessionPool.openAndExecute(
-            identity = identity,
-            cwd = args.workdir,
-            command = command,
-            timeoutMs = timeoutMs,
-        )) {
-            is TerminalCommandOutcome.Success -> TerminalToolResponse.commandSuccess(
-                result = outcome.result,
-                elapsedSeconds = outcome.elapsedSeconds,
-                session = outcome.session,
-                identity = outcome.identity,
-                mergeStderr = args.mergeStderr,
-            )
-
-            is TerminalCommandOutcome.Timeout -> TerminalToolResponse.commandTimeout(
-                result = outcome.result,
-                elapsedSeconds = outcome.elapsedSeconds,
-                timeoutMs = timeoutMs,
-                session = outcome.session,
-                identity = outcome.identity,
-                mergeStderr = args.mergeStderr,
-            )
-
-            is TerminalCommandOutcome.Failure -> TerminalToolResponse.failure(
-                failure = outcome.failure,
-                elapsedSeconds = outcome.elapsedSeconds,
-                session = outcome.session,
-                identity = outcome.identity,
-            )
-
-            is TerminalCommandOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
-                outcome.session
-            )
-
-            is TerminalCommandOutcome.Busy -> TerminalToolResponse.sessionBusy(
-                outcome.session,
-                outcome.asyncId
-            )
-
-            is TerminalCommandOutcome.UnexpectedError -> TerminalToolResponse.internalError(
-                throwable = outcome.throwable,
-                elapsedSeconds = outcome.elapsedSeconds,
-            )
-        }
-    }
-
-    private suspend fun handleLegacyExec(args: TerminalArgs): String {
-        val session = args.requireSession()
-        val command = args.requireCommand()
-        val timeoutMs = args.resolveLegacyTimeoutMs()
-        val decision = safetyPolicy.evaluate(command)
-        if (!decision.allowed) {
-            return TerminalToolResponse.policyBlocked(decision)
-        }
-
-        return if (args.legacyIsAsync) {
-            when (val outcome = TerminalSessionPool.startAsync(
-                session = session,
-                command = command,
-                timeoutMs = timeoutMs,
-            )) {
-                is TerminalAsyncStartOutcome.Accepted -> TerminalToolResponse.asyncAccepted(
-                    asyncId = outcome.asyncId,
-                    elapsedSeconds = outcome.elapsedSeconds,
-                )
-
-                is TerminalAsyncStartOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
-                    outcome.session
-                )
-
-                is TerminalAsyncStartOutcome.Busy -> TerminalToolResponse.sessionBusy(
-                    outcome.session,
-                    outcome.asyncId
-                )
-
-                is TerminalAsyncStartOutcome.InvalidRequest -> TerminalToolResponse.invalidRequest(
-                    outcome.message
-                )
-            }
-        } else {
-            when (val outcome = TerminalSessionPool.executeBlocking(
-                session = session,
-                command = command,
-                timeoutMs = timeoutMs,
-            )) {
-                is TerminalCommandOutcome.Success -> TerminalToolResponse.commandSuccess(
-                    result = outcome.result,
-                    elapsedSeconds = outcome.elapsedSeconds,
-                    session = outcome.session,
-                    identity = outcome.identity,
-                    mergeStderr = args.mergeStderr,
-                )
-
-                is TerminalCommandOutcome.Timeout -> TerminalToolResponse.commandTimeout(
-                    result = outcome.result,
-                    elapsedSeconds = outcome.elapsedSeconds,
-                    timeoutMs = timeoutMs,
-                    session = outcome.session,
-                    identity = outcome.identity,
-                    mergeStderr = args.mergeStderr,
-                )
-
-                is TerminalCommandOutcome.Failure -> TerminalToolResponse.failure(
-                    failure = outcome.failure,
-                    elapsedSeconds = outcome.elapsedSeconds,
-                    session = outcome.session,
-                    identity = outcome.identity,
-                )
-
-                is TerminalCommandOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
-                    outcome.session
-                )
-
-                is TerminalCommandOutcome.Busy -> TerminalToolResponse.sessionBusy(
-                    outcome.session,
-                    outcome.asyncId
-                )
-
-                is TerminalCommandOutcome.UnexpectedError -> TerminalToolResponse.internalError(
-                    throwable = outcome.throwable,
-                    elapsedSeconds = outcome.elapsedSeconds,
-                )
-            }
-        }
-    }
-
-    private suspend fun handleLegacyReadAsyncResult(args: TerminalArgs): String {
-        val session = args.requireSession()
-        val asyncId = args.requireAsyncId()
-        return when (val outcome =
-            TerminalSessionPool.readAsyncResult(session = session, asyncId = asyncId)) {
-            is TerminalAsyncReadOutcome.Running -> TerminalToolResponse.asyncRunning(
-                stdoutPartial = outcome.stdoutPartial,
-                stderrPartial = outcome.stderrPartial,
-                elapsedSeconds = outcome.elapsedSeconds,
-            )
-
-            is TerminalAsyncReadOutcome.Completed -> TerminalToolResponse.commandSuccess(
-                result = outcome.result,
-                elapsedSeconds = outcome.elapsedSeconds,
-                mergeStderr = args.mergeStderr,
-            )
-
-            is TerminalAsyncReadOutcome.TimedOut -> TerminalToolResponse.commandTimeout(
-                result = outcome.result,
-                elapsedSeconds = outcome.elapsedSeconds,
-                timeoutMs = args.resolveLegacyTimeoutMs(),
-                mergeStderr = args.mergeStderr,
-            )
-
-            is TerminalAsyncReadOutcome.Failure -> TerminalToolResponse.failure(
-                failure = outcome.failure,
-                elapsedSeconds = outcome.elapsedSeconds,
-                session = session,
-            )
-
-            is TerminalAsyncReadOutcome.AsyncNotFound -> TerminalToolResponse.asyncNotFound(
-                session = outcome.session,
-                asyncId = outcome.asyncId,
-            )
-
-            is TerminalAsyncReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
-                outcome.session
-            )
-
-            is TerminalAsyncReadOutcome.UnexpectedError -> TerminalToolResponse.internalError(
-                throwable = outcome.throwable,
-                elapsedSeconds = outcome.elapsedSeconds,
-            )
-        }
-    }
-
-    // ── New interactive SSH actions ──────────────────────────────────────────
-
-    private suspend fun handlePtyWrite(args: TerminalArgs): String {
-        val session = args.requireSession()
+    private suspend fun handleWrite(args: TerminalArgs): String {
+        val sessionId = args.requireSessionId()
         val text = args.requireText()
+        return writeInteractivePayload(sessionId, text, args.requestId)
+    }
 
-        // Determine whether to append newline based on the sub-action hint
-        val appendNewline = when (args.legacySubAction) {
-            LegacySubAction.SEND_LINE -> true
-            LegacySubAction.INTERRUPT -> {
-                return writeInteractivePayload(session, CTRL_C, args.requestId)
-            }
-
-            else -> false
-        }
-        val payload = if (appendNewline) "$text\n" else text
-        return writeInteractivePayload(session, payload, args.requestId)
+    private suspend fun handleSubmit(args: TerminalArgs): String {
+        val sessionId = args.requireSessionId()
+        val text = args.requireText()
+        return writeInteractivePayload(sessionId, "$text\n", args.requestId)
     }
 
     private suspend fun writeInteractivePayload(
-        session: String,
+        sessionId: String,
         payload: String,
         requestId: String?,
     ): String {
         return when (val outcome = TerminalSessionPool.writeInteractive(
-            session = session,
+            session = sessionId,
             text = payload,
             requestId = requestId,
         )) {
-            is TerminalInteractiveWriteOutcome.Accepted -> JsonObject(
-                mapOf(
-                    "accepted" to JsonPrimitive(true),
-                    "bytes_written" to JsonPrimitive(outcome.bytesWritten),
-                    "sequence" to JsonPrimitive(outcome.sequence),
-                    "replayed" to JsonPrimitive(outcome.replayed),
-                )
-            ).toString()
+            is TerminalInteractiveWriteOutcome.Accepted -> TerminalToolResponse.writeResult(
+                sessionId = sessionId,
+                bytesWritten = outcome.bytesWritten,
+            )
 
             is TerminalInteractiveWriteOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
                 outcome.session
@@ -652,38 +470,36 @@ class TerminalBuiltin(
         }
     }
 
-    private fun handlePtyRead(args: TerminalArgs): String {
-        val session = args.requireSession()
-        val mode = args.mode ?: TerminalInteractiveReadMode.DELTA
+    private suspend fun handleRead(args: TerminalArgs): String {
+        val sessionId = args.requireSessionId()
+        val mode = args.mode ?: TerminalReadMode.DELTA
         val maxBytes = args.maxBytes ?: DEFAULT_MAX_BYTES
-        return when (val outcome = TerminalSessionPool.readInteractive(
-            session = session,
+        return when (val outcome = TerminalSessionPool.readSession(
+            session = sessionId,
             mode = mode,
             maxBytes = maxBytes,
         )) {
-            is TerminalInteractiveReadOutcome.Success -> JsonObject(
-                mapOf(
-                    "stdout" to JsonPrimitive(outcome.stdout),
-                    "stderr" to JsonPrimitive(outcome.stderr),
-                    "mode" to JsonPrimitive(outcome.mode.wireName),
-                    "sequence" to JsonPrimitive(outcome.sequence),
-                    "truncated" to JsonPrimitive(outcome.truncated),
-                )
-            ).toString()
+            is TerminalReadOutcome.Running -> TerminalToolResponse.readResult(
+                sessionId, "running", outcome.output, null, outcome.elapsedSeconds
+            )
 
-            is TerminalInteractiveReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+            is TerminalReadOutcome.Exited -> TerminalToolResponse.readResult(
+                sessionId, "exited", outcome.output, outcome.exitCode, outcome.elapsedSeconds
+            )
+
+            is TerminalReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
                 outcome.session
             )
 
-            is TerminalInteractiveReadOutcome.NotInteractive -> TerminalToolResponse.invalidRequest(
-                "Session '${outcome.session}' is not an interactive SSH terminal."
+            is TerminalReadOutcome.NotBackground -> TerminalToolResponse.invalidRequest(
+                "Session '$sessionId' is not a background task."
             )
         }
     }
 
     private suspend fun handleClose(args: TerminalArgs): String {
-        val session = args.requireSession()
-        return when (val outcome = TerminalSessionPool.close(session = session)) {
+        val sessionId = args.requireSessionId()
+        return when (val outcome = TerminalSessionPool.close(session = sessionId)) {
             TerminalCloseOutcome.Closed -> TerminalToolResponse.closeSuccess()
             is TerminalCloseOutcome.UnexpectedError -> TerminalToolResponse.internalError(outcome.throwable)
         }
@@ -703,17 +519,17 @@ class TerminalBuiltin(
             ?: throw IllegalArgumentException("argumentsJson must be a JSON object.")
         obj.requireKnownKeys()
 
-        // Parse action first to determine backward compat mode
-        val actionRaw = obj.optionalString("action")
-        val action = actionRaw?.let { resolveAction(it) }
+        // Parse action first: its presence selects action mode over command mode
+        val action = obj.optionalString("action")?.let { resolveAction(it) }
 
         return TerminalArgs(
             // Hermes-aligned fields
             command = obj.optionalString("command"),
-            background = obj.optionalBoolean("background")
-                ?: obj.optionalBoolean("is_async") ?: false,
+            background = obj.optionalBoolean("background") ?: false,
             timeout = obj.optionalLong("timeout"),
-            workdir = obj.optionalString("workdir") ?: obj.optionalString("cwd"),
+            workdir = obj.optionalString("workdir"),
+            // Parsed but intentionally ignored — kept so it does not trip the
+            // unknown-key check.
             pty = obj.optionalBoolean("pty") ?: false,
             notifyOnComplete = obj.optionalBoolean("notify_on_complete") ?: false,
             // Nexus extensions
@@ -730,48 +546,24 @@ class TerminalBuiltin(
             serverAliveInterval = obj.optionalLong("server_alive_interval")?.toInt(),
             // Action mode
             action = action,
-            session = obj.optionalString("session")?.trim(),
+            sessionId = obj.optionalString("session_id")?.trim(),
             text = obj.optionalString("text"),
             requestId = obj.optionalString("request_id")?.trim(),
             mode = obj.optionalString("mode")?.let { parseReadMode(it) },
             maxBytes = obj.optionalLong("max_bytes")?.toInt(),
-            // Backward compat
-            legacyIsAsync = obj.optionalBoolean("is_async") ?: false,
-            legacyTimeoutMs = obj.optionalLong("timeout_ms"),
-            legacyAsyncId = obj.optionalString("async_id")?.trim(),
             mergeStderr = obj.optionalBoolean("merge_stderr") ?: false,
-            legacySubAction = actionRaw?.let { resolveLegacySubAction(it) },
         )
     }
 
     private fun resolveAction(raw: String): Action {
         return when (raw.trim().lowercase()) {
-            // New actions
-            "pty_write" -> Action.PTY_WRITE
-            "pty_read" -> Action.PTY_READ
+            "read" -> Action.READ
+            "write" -> Action.WRITE
+            "submit" -> Action.SUBMIT
             "close" -> Action.CLOSE
-            // Backward compat old actions
-            "open" -> Action.OPEN
-            "open_and_exec" -> Action.OPEN_AND_EXEC
-            "exec" -> Action.EXEC
-            "read_async_result" -> Action.READ_ASYNC_RESULT
-            // SSH old actions mapped to new
-            "send_line" -> Action.PTY_WRITE
-            "write" -> Action.PTY_WRITE
-            "interrupt" -> Action.PTY_WRITE
-            "read" -> Action.PTY_READ
             else -> throw IllegalArgumentException(
-                "Field 'action' must be one of pty_write, pty_read, close."
+                "Field 'action' must be one of read, write, submit, close."
             )
-        }
-    }
-
-    private fun resolveLegacySubAction(raw: String): LegacySubAction {
-        return when (raw.trim().lowercase()) {
-            "send_line" -> LegacySubAction.SEND_LINE
-            "write" -> LegacySubAction.WRITE
-            "interrupt" -> LegacySubAction.INTERRUPT
-            else -> LegacySubAction.NONE
         }
     }
 
@@ -783,10 +575,10 @@ class TerminalBuiltin(
         }
     }
 
-    private fun parseReadMode(raw: String): TerminalInteractiveReadMode {
+    private fun parseReadMode(raw: String): TerminalReadMode {
         return when (raw.trim().lowercase()) {
-            TerminalInteractiveReadMode.DELTA.wireName -> TerminalInteractiveReadMode.DELTA
-            TerminalInteractiveReadMode.SNAPSHOT.wireName -> TerminalInteractiveReadMode.SNAPSHOT
+            TerminalReadMode.DELTA.wireName -> TerminalReadMode.DELTA
+            TerminalReadMode.SNAPSHOT.wireName -> TerminalReadMode.SNAPSHOT
             else -> throw IllegalArgumentException("Field 'mode' must be one of delta, snapshot.")
         }
     }
@@ -798,29 +590,15 @@ class TerminalBuiltin(
             ?: throw IllegalArgumentException("Field 'command' must not be blank.")
     }
 
-    private fun TerminalArgs.requireIdentity(): String {
-        val value = identity?.takeIf(String::isNotBlank)
-            ?: throw IllegalArgumentException("Field 'identity' must be one of user, root, shizuku.")
-        if (value !in PUBLIC_IDENTITIES) {
-            throw IllegalArgumentException("Field 'identity' must be one of user, root, shizuku.")
-        }
-        return value
-    }
-
-    private fun TerminalArgs.requireSession(): String {
-        val value = session?.takeIf(String::isNotBlank)
-            ?: throw IllegalArgumentException("Field 'session' is required.")
+    private fun TerminalArgs.requireSessionId(): String {
+        val value = sessionId?.takeIf(String::isNotBlank)
+            ?: throw IllegalArgumentException("Field 'session_id' is required.")
         return value
     }
 
     private fun TerminalArgs.requireText(): String {
         return text
-            ?: throw IllegalArgumentException("Field 'text' is required for pty_write.")
-    }
-
-    private fun TerminalArgs.requireAsyncId(): String {
-        return legacyAsyncId?.takeIf(String::isNotBlank)
-            ?: throw IllegalArgumentException("Field 'async_id' is required for read_async_result.")
+            ?: throw IllegalArgumentException("Field 'text' is required for write/submit.")
     }
 
     private fun TerminalArgs.requireSshOpenOptions(): SshOpenOptions {
@@ -861,31 +639,13 @@ class TerminalBuiltin(
         }
     }
 
-    /** Resolve timeout: prefer `timeout` (seconds). Falls back to `timeout_ms` (ms → s). Defaults to 180s. */
+    /** Resolve timeout in seconds. Defaults to 180s. */
     private fun TerminalArgs.resolveTimeout(): Long {
         timeout?.let { timeoutSec ->
             require(timeoutSec > 0) { "Field 'timeout' must be greater than 0." }
             return timeoutSec
         }
-        // Backward compat: timeout_ms
-        legacyTimeoutMs?.let { timeoutMs ->
-            require(timeoutMs > 0) { "Field 'timeout_ms' must be greater than 0." }
-            return timeoutMs / 1000L
-        }
         return DEFAULT_TIMEOUT_SEC
-    }
-
-    /** Resolve timeout for legacy action mode (returns milliseconds). */
-    private fun TerminalArgs.resolveLegacyTimeoutMs(): Long {
-        timeout?.let { timeoutSec ->
-            require(timeoutSec > 0) { "Field 'timeout' must be greater than 0." }
-            return timeoutSec * 1000L
-        }
-        legacyTimeoutMs?.let { timeoutMs ->
-            require(timeoutMs > 0) { "Field 'timeout_ms' must be greater than 0." }
-            return timeoutMs
-        }
-        return DEFAULT_TIMEOUT_MS
     }
 
     private fun JsonObject.requireKnownKeys() {
@@ -951,6 +711,8 @@ class TerminalBuiltin(
         val background: Boolean,
         val timeout: Long?,
         val workdir: String?,
+        // Parsed but intentionally not exposed to the agent; kept so it does not
+        // trip the unknown-key check.
         val pty: Boolean,
         val notifyOnComplete: Boolean,
         // Nexus extensions
@@ -967,37 +729,27 @@ class TerminalBuiltin(
         val serverAliveInterval: Int?,
         // Action mode
         val action: Action?,
-        val session: String?,
+        val sessionId: String?,
         val text: String?,
         val requestId: String?,
-        val mode: TerminalInteractiveReadMode?,
+        val mode: TerminalReadMode?,
         val maxBytes: Int?,
-        // Backward compat
-        val legacyIsAsync: Boolean,
-        val legacyTimeoutMs: Long?,
-        val legacyAsyncId: String?,
         val mergeStderr: Boolean,
-        val legacySubAction: LegacySubAction?,
     )
 
-    private enum class Action { PTY_WRITE, PTY_READ, CLOSE, OPEN, OPEN_AND_EXEC, EXEC, READ_ASYNC_RESULT }
+    private enum class Action { READ, WRITE, SUBMIT, CLOSE }
 
     private enum class Backend { LOCAL, SSH }
-
-    private enum class LegacySubAction { NONE, SEND_LINE, WRITE, INTERRUPT }
 
     // ── Companion ────────────────────────────────────────────────────────────
 
     companion object {
         private const val DEFAULT_TIMEOUT_SEC = 180L
-        private const val DEFAULT_TIMEOUT_MS = 30_000L
         private const val DEFAULT_LOCAL_IDENTITY = "user"
         private const val DEFAULT_MAX_BYTES = 8192
-        private const val CTRL_C = ""
         private const val UNKNOWN_EXIT_CODE = -1
         private const val HOST_KEY_POLICY_ACCEPT_ANY = "accept_any"
         private const val HOST_KEY_POLICY_KNOWN_HOSTS_FILE = "known_hosts_file"
-        private val PUBLIC_IDENTITIES = setOf("user", "root", "shizuku")
 
         private val KNOWN_KEYS = setOf(
             // Hermes-aligned
@@ -1008,9 +760,9 @@ class TerminalBuiltin(
             "host_key_policy", "known_hosts_path", "strict_host_key_checking",
             "connect_timeout", "server_alive_interval",
             // Action mode
-            "action", "session", "text", "request_id", "mode", "max_bytes",
-            // Backward compat
-            "cwd", "is_async", "async_id", "merge_stderr", "timeout_ms",
+            "action", "session_id", "text", "request_id", "mode", "max_bytes",
+            // Internal
+            "merge_stderr",
         )
 
         private val TERMINAL_SCHEMA = """
@@ -1033,12 +785,7 @@ class TerminalBuiltin(
                 },
                 "workdir": {
                   "type": "string",
-                  "description": "Working directory for this command (absolute path). Defaults to the session's last used working directory."
-                },
-                "pty": {
-                  "type": "boolean",
-                  "description": "Run in pseudo-terminal (PTY) mode for interactive CLI tools. Primarily works with SSH backend on Android. Default: false.",
-                  "default": false
+                  "description": "Working directory for this command (absolute path)."
                 },
                 "notify_on_complete": {
                   "type": "boolean",
@@ -1048,7 +795,7 @@ class TerminalBuiltin(
                 "backend": {
                   "type": "string",
                   "enum": ["local", "ssh"],
-                  "description": "Terminal backend. 'local' (default) uses the Android device shell. 'ssh' connects to a remote host.",
+                  "description": "Terminal backend. 'local' (default) uses the Android device shell. 'ssh' connects to a remote host and requires background=true.",
                   "default": "local"
                 },
                 "identity": {
@@ -1099,26 +846,26 @@ class TerminalBuiltin(
                 },
                 "action": {
                   "type": "string",
-                  "enum": ["pty_write", "pty_read", "close"],
-                  "description": "Explicit session management for interactive SSH. pty_write sends input, pty_read reads output, close closes the session. Use these instead of command when you need interactive control over an SSH terminal."
+                  "enum": ["read", "write", "submit", "close"],
+                  "description": "Session management actions for background tasks: read (poll output and status), write (send stdin input without appending a newline), submit (send stdin input plus a newline), close (release the session)."
                 },
-                "session": {
+                "session_id": {
                   "type": "string",
-                  "description": "Opaque session handle. Required for action=pty_write, pty_read, and close."
+                  "description": "Session handle returned when a background command is started. Required for action-based operations."
                 },
                 "text": {
                   "type": "string",
-                  "description": "Input text for action=pty_write. A newline is NOT appended automatically — add \\n when you want to submit a line."
+                  "description": "Input text for the write/submit actions. write does NOT append a newline — add \\n when you want to submit a line."
                 },
                 "mode": {
                   "type": "string",
                   "enum": ["delta", "snapshot"],
-                  "description": "Read mode for action=pty_read. 'delta' (default) returns only new output since the last read. 'snapshot' returns all accumulated output."
+                  "description": "Read mode for action=read. 'delta' (default) returns only new output since the last read. 'snapshot' returns all accumulated output."
                 },
                 "max_bytes": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "Maximum bytes to return for action=pty_read. Defaults to 8192."
+                  "description": "Maximum bytes to return for action=read. Defaults to 8192."
                 }
               }
             }
