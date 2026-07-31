@@ -3,21 +3,52 @@ import threading
 from io import StringIO
 
 
-def exec_code(code: str, timeout: int = 30) -> str:
-    """Execute a Python code string in a daemon thread with a timeout.
+class BoundedWriter:
+    """Write-only buffer capped at *max_bytes* (UTF-8).
 
-    Captures stdout and stderr separately, appends stderr after stdout,
-    and appends a timeout marker if the thread is still alive after *timeout*
+    Once the cap is reached every subsequent write is silently discarded
+    and a truncation marker is appended by :meth:`getvalue`.
+    """
+
+    def __init__(self, max_bytes: int = 50000):
+        self._buf = StringIO()
+        self._max = max_bytes
+        self._n = 0
+        self._truncated = False
+
+    def write(self, s: str) -> int:
+        if self._truncated:
+            return 0
+        b = s.encode("utf-8")
+        if self._n + len(b) > self._max:
+            self._truncated = True
+            return 0
+        self._buf.write(s)
+        self._n += len(b)
+        return len(s)
+
+    def getvalue(self) -> str:
+        val = self._buf.getvalue()
+        if self._truncated:
+            val += f"\n\n[output truncated at {self._max} bytes]"
+        return val
+
+
+def exec_code(code: str, timeout: float = 30.0) -> str:
+    """Execute Python code in a daemon thread with a timeout.
+
+    Captures stdout (capped at 50 KB) and stderr separately.
+    Raises *TimeoutError* if the thread is still alive after *timeout*
     seconds.
 
     Args:
         code: Python source code to execute.
-        timeout: Maximum seconds to wait (default 30).
+        timeout: Maximum seconds to wait (float, default 30.0).
 
     Returns:
-        Captured stdout + optional stderr + optional timeout marker.
+        Captured stdout + optional stderr.
     """
-    out_buf = StringIO()
+    out_buf = BoundedWriter()
     err_buf = StringIO()
     old_out = sys.stdout
     old_err = sys.stderr

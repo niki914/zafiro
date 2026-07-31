@@ -17,8 +17,11 @@ class ExecutePythonBuiltin(
     /**
      * Pluggable executor: [PyRuntime.exec] in production,
      * replaced with a test double in unit tests.
+     *
+     * @param code     Python source code to execute.
+     * @param timeoutMs Max wait in milliseconds.
      */
-    var executor: suspend (code: String, timeoutSec: Long) -> String = PyRuntime::exec,
+    var executor: suspend (code: String, timeoutMs: Long) -> String = PyRuntime::exec,
     private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(),
 ) : TextResultBuiltinTool() {
 
@@ -33,8 +36,9 @@ the full standard library.
 Use execute_python instead of terminal when:
 - You need HTTP requests (Android shell has no curl/wget)
 - You need to filter, parse, or transform output with regex, slicing, or JSON
-- Multi-step logic with conditions, loops, or retries — only print() output
-  is returned to you; intermediate steps cost nothing
+- Multi-step logic with conditions, loops, or retries — only stdout and
+  stderr enter the model context. Keep printed output concise and print
+  only the final relevant result.
 - You need to drive Android system actions from processed data (am, pm,
   input commands via os.popen or subprocess)
 - A shell command may produce verbose output — use Python to extract just
@@ -44,7 +48,7 @@ Use terminal instead when:
 - Single shell command with no processing needed
 - You need session state — terminal holds a handle and preserves working
   directory and environment across calls. execute_python is stateless:
-  each run starts fresh, no variables or state carry over.
+  each run starts fresh.
 
 ## Calling Android system commands
 
@@ -68,30 +72,42 @@ can access them via file:// URIs.
 
 ## Network requests and output control
 
-    import requests, re
+    import requests
 
     # Extract only what you need -- don't print raw HTML or full JSON
     resp = requests.get("https://example.com/api/data").json()
     for item in resp["results"][:10]:
         print(item["id"], item["title"])
 
-    # Scrape and extract with regex
-    html = requests.get("https://example.com/search", params={"q": "topic"}).text
-    for h in re.findall(r'<h3[^>]*>.*?<a[^>]*href="([^"]*)"[^>]*>(.*?)</a>', html):
-        print(f"{h[1]}\n  {h[0]}\n")
+    # Scrape and extract with BeautifulSoup
+    from bs4 import BeautifulSoup
+    from urllib.parse import urljoin
 
-    # Strip tags for plain text
-    body = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.S)
-    body = re.sub(r'<style[^>]*>.*?</style>', '', body, flags=re.S)
-    body = re.sub(r'<[^>]+>', '\n', body)
-    print(body[:2000])
+    resp = requests.get(
+        "https://example.com/search",
+        params={"q": "topic"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+    for link in soup.select("h3 a")[:10]:
+        title = link.get_text(" ", strip=True)
+        url = urljoin(resp.url, link.get("href", ""))
+        print(f"{title}\n  {url}")
+
+    # Or extract readable plain text
+    for tag in soup(["script", "style", "noscript"]):
+        tag.decompose()
+    text = "\n".join(soup.stripped_strings)
+    print(text[:2000])
 
 ## Limits
 
 - Timeout: 30 s default, 120 s max
 - Output capped at 50 KB
-- Each run is stateless — no variables, file descriptors, or working
-  directory carry over between calls
+- Treat every call as stateless — do not rely on variables, working
+  directory, environment changes, open handles, or background tasks
+  from earlier calls. Persist intentionally through files when needed.
     """.trimIndent()
 
     override val defaultEnabled: Boolean = true
@@ -112,7 +128,7 @@ can access them via file:// URIs.
     override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult {
         val args = parseArgs(request.argumentsJson)
         return when (args) {
-            is ParseResult.Success -> execute(args.code, args.timeoutSec)
+            is ParseResult.Success -> execute(args.code, args.timeoutMs)
             is ParseResult.InvalidJson -> TextToolResult.failure(
                 code = "INVALID_ARGUMENTS_JSON",
                 message = args.message,
@@ -124,7 +140,7 @@ can access them via file:// URIs.
         }
     }
 
-    private suspend fun execute(code: String, timeoutSec: Long): TextToolResult {
+    private suspend fun execute(code: String, timeoutMs: Long): TextToolResult {
         val decision = safetyPolicy.evaluate(code)
         if (!decision.allowed) {
             return TextToolResult.failure(
@@ -138,13 +154,13 @@ can access them via file:// URIs.
             )
         }
         return try {
-            val output = executor(code, timeoutSec)
+            val output = executor(code, timeoutMs)
             val capped = capOutput(output)
             TextToolResult.success(capped)
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
             TextToolResult.failure(
                 code = "TIMEOUT",
-                message = "Python execution timed out after ${timeoutSec}s.",
+                message = "Python execution timed out after ${timeoutMs / 1000}s.",
             )
         } catch (e: CancellationException) {
             throw e
@@ -182,12 +198,11 @@ can access them via file:// URIs.
             ?: return ParseResult.MissingCode
         val timeoutMs = (obj["timeout_ms"] as? JsonPrimitive)?.longOrNull
             ?.coerceIn(1000, 120_000) ?: 30_000L
-        val timeoutSec = timeoutMs / 1000
-        return ParseResult.Success(code, timeoutSec)
+        return ParseResult.Success(code, timeoutMs)
     }
 
     private sealed interface ParseResult {
-        data class Success(val code: String, val timeoutSec: Long) : ParseResult
+        data class Success(val code: String, val timeoutMs: Long) : ParseResult
         data class InvalidJson(val message: String) : ParseResult
         data object MissingCode : ParseResult
     }

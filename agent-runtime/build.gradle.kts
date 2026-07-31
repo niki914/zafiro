@@ -28,8 +28,8 @@ chaquopy {
     defaultConfig {
         version = "3.11"
         pip {
-            install("requests>=2.31.0")
-            install("beautifulsoup4>=4.12.0")
+            install("requests==2.34.2")
+            install("beautifulsoup4==4.15.0")
         }
     }
 }
@@ -44,4 +44,22 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("org.mockito:mockito-core:5.10.0")
+}
+
+// ---- Python host-side tests ----
+
+val testPythonRuntime by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Run runtime.py unit tests with python3"
+    workingDir = file("${project.rootDir}")
+    environment("PYTHONPATH", "agent-runtime/src/main/python")
+    commandLine(
+        "python3", "-m", "unittest", "discover",
+        "-s", "agent-runtime/src/test/python",
+        "-v",
+    )
+}
+
+tasks.named("check") {
+    dependsOn(testPythonRuntime)
 }
