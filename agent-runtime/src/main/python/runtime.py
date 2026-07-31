@@ -43,5 +43,8 @@ def exec_code(code: str, timeout: int = 30) -> str:
     if err_text:
         output += "\n--- stderr ---\n" + err_text
     if t.is_alive():
-        output += "\n[execution timed out after {}s]".format(timeout)
+        raise TimeoutError(
+            f"Execution timed out after {timeout}s\n\n"
+            f"Partial output:\n{output}"
+        )
     return output

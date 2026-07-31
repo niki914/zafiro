@@ -46,7 +46,7 @@ class ExecutePythonBuiltinTest {
     @Test
     fun invoke_validCodeAndExplicitTimeout_passesTimeoutToExecutor() = runTest {
         val result = invoke(
-            """{"code":"x=1","timeout":60}""",
+            """{"code":"x=1","timeout_ms":60000}""",
             executor = { _, timeout ->
                 assertEquals(60L, timeout)
                 "ok"
@@ -100,6 +100,19 @@ class ExecutePythonBuiltinTest {
         assertTrue(result.contains("something broke"))
     }
 
+    @Test
+    fun invoke_executorThrowsTimeoutMessage_returnsTimeoutCode() = runTest {
+        val result = invoke(
+            """{"code":"while True: pass"}""",
+            executor = { _, _ ->
+                throw RuntimeException("Execution timed out after 30s\n\nPartial output:\nsome output")
+            },
+        )
+        assertTrue(result.contains("#!status: failure"))
+        assertTrue(result.contains("#!code: TIMEOUT"))
+        assertTrue(result.contains("timed out after"))
+    }
+
     // ---- safety policy ----
 
     @Test
@@ -141,7 +154,7 @@ class ExecutePythonBuiltinTest {
     @Test
     fun invoke_timeoutBelowMin_clampsToOne() = runTest {
         invoke(
-            """{"code":"x","timeout":-5}""",
+            """{"code":"x","timeout_ms":-5}""",
             executor = { _, timeout ->
                 assertEquals(1L, timeout)
                 ""
@@ -152,7 +165,7 @@ class ExecutePythonBuiltinTest {
     @Test
     fun invoke_timeoutAboveMax_clampsTo120() = runTest {
         invoke(
-            """{"code":"x","timeout":999}""",
+            """{"code":"x","timeout_ms":999999}""",
             executor = { _, timeout ->
                 assertEquals(120L, timeout)
                 ""

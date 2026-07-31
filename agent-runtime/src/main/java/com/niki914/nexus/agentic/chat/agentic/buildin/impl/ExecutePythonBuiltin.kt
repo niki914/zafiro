@@ -25,21 +25,73 @@ class ExecutePythonBuiltin(
     override val name: String = "execute_python"
 
     override val description: String = """
-Execute Python code in a sandboxed Python 3.11 runtime.
-The environment includes requests, beautifulsoup4, and the full standard library.
+Execute Python 3.11 code in an embedded runtime with requests, bs4, and
+the full standard library.
 
-Use this for:
-- HTTP / REST API calls (GET, POST, PUT, DELETE via requests)
-- Web scraping and HTML parsing (BeautifulSoup)
-- Data processing (json, csv, re, math, datetime, collections)
-- File I/O and path manipulation (open, os.path)
-- Any computation or automation that needs Python libraries
+## When to use
 
-How it works: Write a Python script and print your final result to stdout.
-Standard library and pip packages are imported as usual (import requests, import json, etc.).
+Use execute_python instead of terminal when:
+- You need HTTP requests (Android shell has no curl/wget)
+- You need to filter, parse, or transform output with regex, slicing, or JSON
+- Multi-step logic with conditions, loops, or retries — only print() output
+  is returned to you; intermediate steps cost nothing
+- You need to drive Android system actions from processed data (am, pm,
+  input commands via os.popen or subprocess)
+- A shell command may produce verbose output — use Python to extract just
+  the relevant parts before they enter your context
 
-Limits: 30-second timeout, stdout/stderr returned as plain text.
-Output is capped at 50 KB; print only the relevant result.
+Use terminal instead when:
+- Single shell command with no processing needed
+- You need session state — terminal holds a handle and preserves working
+  directory and environment across calls. execute_python is stateless:
+  each run starts fresh, no variables or state carry over.
+
+## Calling Android system commands
+
+Use os.popen or subprocess to execute am, pm, input and other Android
+commands. Prefix with su -c when root privileges are needed:
+
+    # Regular commands (no root needed)
+    os.popen("input tap 500 800").read()
+    os.popen("am start -a android.settings.WIFI_SETTINGS").read()
+
+    # su -c: install / uninstall
+    os.popen('su -c "pm install -r /sdcard/app.apk"').read()
+    os.popen('su -c "pm uninstall com.example.app"').read()
+
+    # su -c: open a file with a specific app
+    # -p target package, -d file URI, -t MIME type
+    os.popen('su -c "am start -p com.example.viewer -d file:///sdcard/Download/result.txt -t text/plain"').read()
+
+Write files to public directories like /sdcard/Download so other apps
+can access them via file:// URIs.
+
+## Network requests and output control
+
+    import requests, re
+
+    # Extract only what you need -- don't print raw HTML or full JSON
+    resp = requests.get("https://example.com/api/data").json()
+    for item in resp["results"][:10]:
+        print(item["id"], item["title"])
+
+    # Scrape and extract with regex
+    html = requests.get("https://example.com/search", params={"q": "topic"}).text
+    for h in re.findall(r'<h3[^>]*>.*?<a[^>]*href="([^"]*)"[^>]*>(.*?)</a>', html):
+        print(f"{h[1]}\n  {h[0]}\n")
+
+    # Strip tags for plain text
+    body = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.S)
+    body = re.sub(r'<style[^>]*>.*?</style>', '', body, flags=re.S)
+    body = re.sub(r'<[^>]+>', '\n', body)
+    print(body[:2000])
+
+## Limits
+
+- Timeout: 30 s default, 120 s max
+- Output capped at 50 KB
+- Each run is stateless — no variables, file descriptors, or working
+  directory carry over between calls
     """.trimIndent()
 
     override val defaultEnabled: Boolean = true
@@ -50,8 +102,8 @@ Output is capped at 50 KB; print only the relevant result.
             description = "Python 3.11 source code to execute. Print final result to stdout."
             required = true
         }
-        config.integer("timeout") {
-            description = "Max seconds to wait (default 30, max 120)."
+        config.integer("timeout_ms") {
+            description = "Max wait in milliseconds (default 30000, max 120000)."
             required = false
         }
         config.rawJsonSchema(SCHEMA)
@@ -97,9 +149,11 @@ Output is capped at 50 KB; print only the relevant result.
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
+            val msg = t.message ?: "Python execution failed."
+            val isTimeout = msg.contains("timed out after")
             TextToolResult.failure(
-                code = "PYTHON_ERROR",
-                message = t.message ?: "Python execution failed.",
+                code = if (isTimeout) "TIMEOUT" else "PYTHON_ERROR",
+                message = msg,
             )
         }
     }
@@ -126,8 +180,9 @@ Output is capped at 50 KB; print only the relevant result.
         }
         val code = (obj["code"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
             ?: return ParseResult.MissingCode
-        val timeoutSec = (obj["timeout"] as? JsonPrimitive)?.longOrNull
-            ?.coerceIn(1, 120) ?: 30L
+        val timeoutMs = (obj["timeout_ms"] as? JsonPrimitive)?.longOrNull
+            ?.coerceIn(1000, 120_000) ?: 30_000L
+        val timeoutSec = timeoutMs / 1000
         return ParseResult.Success(code, timeoutSec)
     }
 
@@ -146,11 +201,11 @@ Output is capped at 50 KB; print only the relevant result.
       "type": "string",
       "description": "Python 3.11 source code to execute. Print final result to stdout."
     },
-    "timeout": {
+    "timeout_ms": {
       "type": "integer",
-      "minimum": 1,
-      "maximum": 120,
-      "description": "Max seconds to wait (default 30)."
+      "minimum": 1000,
+      "maximum": 120000,
+      "description": "Max wait in milliseconds (default 30000)."
     }
   },
   "required": ["code"]
