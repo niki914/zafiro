@@ -70,6 +70,7 @@ class BuiltinToolTest {
         assertEquals(
             listOf(
                 "create_custom_tool",
+                "execute_python",
                 "launch_app",
                 "load_skill",
                 "memory",

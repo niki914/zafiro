@@ -1,6 +1,8 @@
 plugins {
     id("com.android.library") version "9.1.1"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
+
+    id("com.chaquo.python") version "17.0.0"
 }
 
 android {
@@ -11,10 +13,24 @@ android {
         minSdk = 26
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+        pip {
+            install("requests>=2.31.0")
+            install("beautifulsoup4>=4.12.0")
+        }
     }
 }
 
