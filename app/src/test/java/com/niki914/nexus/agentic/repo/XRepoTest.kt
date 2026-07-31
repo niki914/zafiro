@@ -265,15 +265,38 @@ class XRepoTest {
 
     @Test
     fun memoryApi_writeFailureThrowsNotReturnsOk() = runTest {
-        val store = installStore(FakeDomainSettingsStore(ownerWriteSucceeds = false))
+        installStore(FakeDomainSettingsStore(ownerWriteSucceeds = false))
 
+        var threw = false
         try {
             XRepo.memory.add("value")
-            // If add() doesn't throw with a failing store (updateJsonOrFalse might handle it differently), skip
-        } catch (_: Exception) {
-            // Expected — write failure should throw
+        } catch (_: IllegalStateException) {
+            threw = true
         }
+
+        assertTrue(threw)
         assertEquals(emptyList<String>(), XRepo.memory.list())
+    }
+
+    @Test
+    fun memoryApi_replaceWriteFailureThrowsAndPreservesOldEntry() = runTest {
+        val store = installStore(
+            FakeDomainSettingsStore(
+                StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID to
+                    MemorySettingsCodec.encodeMemories(listOf("old"), 0L),
+                ownerWriteSucceeds = false,
+            )
+        )
+
+        var threw = false
+        try {
+            XRepo.memory.replaceByText("old", "new")
+        } catch (_: IllegalStateException) {
+            threw = true
+        }
+
+        assertTrue(threw)
+        assertEquals(listOf("old"), XRepo.memory.list())
     }
 
     @Test
