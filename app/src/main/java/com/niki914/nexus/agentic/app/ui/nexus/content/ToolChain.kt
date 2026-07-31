@@ -65,6 +65,11 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 private val SucceededColor = Color(0xFF4F8F6B)
 private val FailedColor = Color(0xFFB85C5C)
 
+private sealed interface DotVisibility {
+    data object Gone : DotVisibility
+    data class Visible(val color: Color) : DotVisibility
+}
+
 // ── shared animation specs ─────────────────────────────────────────────────
 
 private val ChevronSpring = spring<Float>(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium)
@@ -88,7 +93,7 @@ private val NoNestedScrollPropagation: NestedScrollConnection = object : NestedS
 
 /**
  * Stateless tool call list. Single-tool: renders one [ToolRowBase] directly.
- * Multi-tool: renders a header [ToolRowBase] (dot invisible, name = count)
+ * Multi-tool: renders a header [ToolRowBase] (dot gone, name = count)
  * whose expansion reveals a staggered list of per-tool [ToolRowBase] rows.
  */
 @Composable
@@ -121,8 +126,7 @@ fun ToolChain(
             ToolRowBase(
                 name = status.name,
                 nameAlpha = 0.78f,
-                dotAlpha = 0.78f,
-                dotColor = statusDotColor(status.state, contentColor),
+                dot = DotVisibility.Visible(statusDotColor(status.state, contentColor)),
                 isExpanded = isOpen,
                 isPressable = !isRunning,
                 hasResult = hasResult,
@@ -137,8 +141,7 @@ fun ToolChain(
             ToolRowBase(
                 name = pluralStringResource(R.plurals.ui_tool_chain_count, tools.size, tools.size),
                 nameAlpha = 0.72f,
-                dotAlpha = 0f,
-                dotColor = contentColor,
+                dot = DotVisibility.Gone,
                 isExpanded = isExpanded,
                 isPressable = true,
                 hasResult = true,
@@ -158,8 +161,7 @@ fun ToolChain(
                             ToolRowBase(
                                 name = status.name,
                                 nameAlpha = 0.78f,
-                                dotAlpha = 0.78f,
-                                dotColor = statusDotColor(status.state, contentColor),
+                                dot = DotVisibility.Visible(statusDotColor(status.state, contentColor)),
                                 isExpanded = isOpen,
                                 isPressable = !isRunning,
                                 hasResult = hasResult,
@@ -184,16 +186,15 @@ fun ToolChain(
 /**
  * Base row for both multi-tool header and individual tool rows.
  *
- * [nameAlpha] / [dotAlpha] let callers tune per-row opacity independently.
- * Multi-tool header passes dotAlpha = 0f for invisible dot alignment.
+ * [dot] controls visibility: [DotVisibility.Gone] omits the dot entirely
+ * (header), [DotVisibility.Visible] renders a colored dot (individual tools).
  * [showSpinner] replaces the chevron with a [CircularProgressIndicator].
  */
 @Composable
 private fun ToolRowBase(
     name: String,
     nameAlpha: Float,
-    dotAlpha: Float,
-    dotColor: Color,
+    dot: DotVisibility,
     isExpanded: Boolean,
     isPressable: Boolean,
     hasResult: Boolean,
@@ -224,8 +225,13 @@ private fun ToolRowBase(
                 .padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            StatusDot(color = dotColor.copy(alpha = dotAlpha))
-            Spacer(modifier = Modifier.width(8.dp))
+            when (dot) {
+                is DotVisibility.Visible -> {
+                    StatusDot(color = dot.color)
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                DotVisibility.Gone -> {}
+            }
             Text(
                 text = name,
                 style = MaterialTheme.typography.bodyLarge,
@@ -235,10 +241,10 @@ private fun ToolRowBase(
                 modifier = Modifier.widthIn(max = 180.dp),
             )
             if (showChevron) {
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 if (showSpinner) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(12.dp),
                         strokeWidth = 1.5.dp,
                         color = contentColor,
                     )
