@@ -6,7 +6,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.CreateCustomToolBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LaunchAppBuiltin
-import com.niki914.nexus.agentic.chat.agentic.buildin.impl.MemorizeBuiltin
+import com.niki914.nexus.agentic.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.OpenUriBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ReadCustomToolBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SearchAppsBuiltin
@@ -100,10 +100,10 @@ class BuiltinToolTest {
     }
 
     @Test
-    fun memorizeAndReadCustomToolDescription_matchesConfigureDescription() {
+    fun memoryAndReadCustomToolDescription_matchesConfigureDescription() {
         listOf(
             LaunchAppBuiltin(),
-            MemorizeBuiltin(),
+            MemoryBuiltin(),
             OpenUriBuiltin(),
             ReadCustomToolBuiltin(),
             SearchAppsBuiltin(),

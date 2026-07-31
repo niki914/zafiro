@@ -11,12 +11,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
+class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     override val name: String = "memory"
 
     override val description: String =
@@ -37,7 +35,7 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
 
     override fun configure(config: LocalToolConfig) {
         config.description = description
-        config.rawJsonSchema(MEMORIZE_SCHEMA)
+        config.rawJsonSchema(MEMORY_SCHEMA)
     }
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
@@ -193,7 +191,7 @@ class MemorizeBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     )
 
     companion object {
-        private const val MEMORIZE_SCHEMA = """
+        private const val MEMORY_SCHEMA = """
             {
               "type": "object",
               "properties": {

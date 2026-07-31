@@ -3,7 +3,7 @@ package com.niki914.nexus.agentic.chat.agentic.buildin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.CreateCustomToolBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LoadSkillBuiltin
-import com.niki914.nexus.agentic.chat.agentic.buildin.impl.MemorizeBuiltin
+import com.niki914.nexus.agentic.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.NotifyBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.OpenUriBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ReadCustomToolBuiltin
@@ -27,7 +27,7 @@ class BuiltinToolRegistry(
             listOf(
                 CreateCustomToolBuiltin(),
                 LaunchAppBuiltin(),
-                MemorizeBuiltin(),
+                MemoryBuiltin(),
                 NotifyBuiltin(),
                 OpenUriBuiltin(),
                 ReadCustomToolBuiltin(),

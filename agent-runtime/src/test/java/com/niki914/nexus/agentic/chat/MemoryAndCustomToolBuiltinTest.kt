@@ -1,7 +1,7 @@
 package com.niki914.nexus.agentic.chat
 
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
-import com.niki914.nexus.agentic.chat.agentic.buildin.impl.MemorizeBuiltin
+import com.niki914.nexus.agentic.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ReadCustomToolBuiltin
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import kotlinx.coroutines.test.runTest
@@ -23,10 +23,10 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_addWritesTrimmedMemoryAndReturnsSuccessJson() = runTest {
+    fun memory_addWritesTrimmedMemoryAndReturnsSuccessJson() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"add","content":"  User prefers concise answers.  "}""",
@@ -41,10 +41,10 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_addReturnsStructuredErrorForBlankContent() = runTest {
+    fun memory_addReturnsStructuredErrorForBlankContent() = runTest {
         installRuntimeSettingsGatewayForTest()
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"add","content":"   "}""",
@@ -57,10 +57,10 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_missingActionReturnsError() = runTest {
+    fun memory_missingActionReturnsError() = runTest {
         installRuntimeSettingsGatewayForTest()
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"content":"some fact"}""",
@@ -73,10 +73,10 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_unknownActionReturnsError() = runTest {
+    fun memory_unknownActionReturnsError() = runTest {
         installRuntimeSettingsGatewayForTest()
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"remvoe","content":"typo"}""",
@@ -89,10 +89,10 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_explicitAddActionWorks() = runTest {
+    fun memory_explicitAddActionWorks() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"add","content":"explicit add"}""",
@@ -106,11 +106,11 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_removeDeletesByOldText() = runTest {
+    fun memory_removeDeletesByOldText() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
         store.memories.addAll(listOf("keep", "delete-me-please", "also-keep"))
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"remove","old_text":"delete-me"}""",
@@ -124,11 +124,11 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_removeReturnsErrorForNotFound() = runTest {
+    fun memory_removeReturnsErrorForNotFound() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
         store.memories.add("only")
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"remove","old_text":"nonexistent"}""",
@@ -142,11 +142,11 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_removeReturnsErrorForAmbiguousMatch() = runTest {
+    fun memory_removeReturnsErrorForAmbiguousMatch() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
         store.memories.addAll(listOf("User prefers dark mode", "User prefers concise answers"))
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"remove","old_text":"User prefers"}""",
@@ -160,11 +160,11 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_replaceUpdatesEntry() = runTest {
+    fun memory_replaceUpdatesEntry() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
         store.memories.addAll(listOf("keep", "User prefers dark mode", "also-keep"))
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"replace","old_text":"dark mode","content":"User prefers light mode"}""",
@@ -178,11 +178,11 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_replaceReturnsErrorForNotFound() = runTest {
+    fun memory_replaceReturnsErrorForNotFound() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
         store.memories.add("only")
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"replace","old_text":"nonexistent","content":"new"}""",
@@ -196,11 +196,11 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_replaceReturnsErrorForAmbiguousMatch() = runTest {
+    fun memory_replaceReturnsErrorForAmbiguousMatch() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
         store.memories.addAll(listOf("User prefers dark mode", "User prefers concise answers"))
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"replace","old_text":"User prefers","content":"new pref"}""",
@@ -214,11 +214,11 @@ class MemoryAndCustomToolBuiltinTest {
     }
 
     @Test
-    fun memorize_replaceAllowsDuplicateMatchWhenIdenticalContent() = runTest {
+    fun memory_replaceAllowsDuplicateMatchWhenIdenticalContent() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
         store.memories.addAll(listOf("same entry", "same entry"))
 
-        val resultJson = MemorizeBuiltin().invokeRawJson(
+        val resultJson = MemoryBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "memory",
                 argumentsJson = """{"action":"replace","old_text":"same entry","content":"updated entry"}""",
