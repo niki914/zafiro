@@ -31,6 +31,7 @@ data class ParsedToolResult(
 
     companion object {
         private val TEXT_RESULT_TOOL_NAMES = setOf(
+            "load_skill",
             "screen_operation_accessibility",
             "screen_operation_shell",
         )

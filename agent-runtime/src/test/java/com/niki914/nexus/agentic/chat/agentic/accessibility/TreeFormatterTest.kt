@@ -71,7 +71,7 @@ class TreeFormatterTest {
     ): String {
         val sb = StringBuilder()
         sb.append(
-            "{token: \"${version}_${node.index}\", t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${
+            "{i: ${node.index}, t: ${node.semanticType.name.lowercase()}, b: [${node.bounds.left},${node.bounds.top},${node.bounds.right},${node.bounds.bottom}], pos: ${
                 PruningRules.posOf(
                     node.bounds,
                     screenWidth,
@@ -180,8 +180,8 @@ class TreeFormatterTest {
         assertTrue("must contain app package", yaml.contains("app: test.package"))
         assertTrue("must contain version header", yaml.contains("""version: "0000""""))
         assertTrue("must contain tree root", yaml.contains("tree:"))
-        assertTrue("must contain container node", yaml.contains("""{token: "0000_0", t: container"""))
-        assertTrue("must contain button node", yaml.contains("""{token: "0000_1", t: button"""))
+        assertTrue("must contain container node", yaml.contains("""{i: 0, t: container"""))
+        assertTrue("must contain button node", yaml.contains("""{i: 1, t: button"""))
         assertTrue("must mark clickable", yaml.contains("tap: true"))
         assertTrue("must include text", yaml.contains("txt: OK"))
     }
@@ -231,10 +231,10 @@ class TreeFormatterTest {
         )
 
         // Button should be a direct child of root (no empty shell in between).
-        assertTrue("button must appear in tree", yaml.contains("""{token: "0000_1", t: button"""))
-        assertTrue("button token must reference index 1", yaml.contains("""token: "0000_1""""))
+        assertTrue("button must appear in tree", yaml.contains("""{i: 1, t: button"""))
+        assertTrue("button token must reference index 1", yaml.contains("""i: 1"""))
         // The container at index 0 is the parent
-        assertTrue("parent must be container at index 0", yaml.contains("""{token: "0000_0", t: container"""))
+        assertTrue("parent must be container at index 0", yaml.contains("""{i: 0, t: container"""))
         // Verify button text is present
         assertTrue("button text must appear", yaml.contains("txt: \"click me\""))
     }
@@ -383,7 +383,7 @@ class TreeFormatterTest {
             ),
         )
 
-        assertTrue("root node must appear in output", yaml.contains("""{token: "0000_0", t: container"""))
+        assertTrue("root node must appear in output", yaml.contains("""{i: 0, t: container"""))
         assertTrue("tree section must be present", yaml.contains("tree:"))
     }
 
@@ -554,7 +554,7 @@ class TreeFormatterTest {
 
         assertTrue(
             "leaf must appear in output directly under root",
-            yaml.contains("""{token: "0000_1", t: button""")
+            yaml.contains("""{i: 1, t: button""")
         )
         assertTrue(
             "leaf text must be present",
@@ -562,7 +562,7 @@ class TreeFormatterTest {
         )
         assertFalse(
             "must not contain intermediate container at index 0",
-            yaml.contains("""{token: "0000_0", t: container""")
+            yaml.contains("""{i: 0, t: container""")
         )
     }
 }

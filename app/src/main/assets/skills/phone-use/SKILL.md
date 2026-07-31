@@ -34,7 +34,7 @@ See each tool's own description for full parameter docs, operation lists, YAML f
 
 ### screen_operation_accessibility
 
-Primary tool for reading the screen and interacting with labeled UI nodes. All node-based operations target a node by its `token` (format: `"$version_$index"`, e.g. `"a3f2c91e7b40_42"`) from the most recently returned snapshot. Every successful write operation (tap, long_click, scroll_forward, scroll_backward, set_text) auto-returns the updated YAML tree — no separate read needed.
+Primary tool for reading the screen and interacting with labeled UI nodes. The YAML header contains the snapshot `version`. Each node has an `i` (index) field. To target a node, construct the token by joining the snapshot `version` with the node's `i`, separated by `_`: e.g. header `version: "a3f2c91e7b40"` + node `{i: 42, ...}` → token `"a3f2c91e7b40_42"`. Every successful write operation (tap, long_click, scroll_forward, scroll_backward, set_text) auto-returns the updated YAML tree — no separate read needed.
 
 **Non-native app detection:** If `read` returns an empty or root-only tree, the current app likely uses a non-native UI framework (Flutter, Unity, WebView, game engine). **Stop immediately and report to the user.** Do not retry.
 
@@ -69,7 +69,7 @@ After the app is open, call `screen_operation_accessibility(operation: "read")`.
 screen_operation_accessibility(operation: "read")
 ```
 
-Each node has a `token` you use with `screen_operation_accessibility`.
+Each node has an `i` (index). Assemble the token as `{version}_{i}` when calling `screen_operation_accessibility`.
 
 ### 2b. Search for specific elements (optional)
 
@@ -79,9 +79,9 @@ When the screen has many nodes and you know what text or label you're looking fo
 screen_operation_accessibility(operation: "search", keywords: ["目标文本"])
 ```
 
-Use the returned `token` directly with `screen_operation_accessibility`.
+Use the returned `i` with the snapshot `version` to construct a token for `screen_operation_accessibility`.
 
-Search creates a new snapshot — tokens from a previous read or search become invalid. Use only tokens from this search result.
+Search creates a new snapshot — indices from a previous read or search must be paired with the new version. Use only the freshest result.
 
 ### 3. Act on the tree
 
@@ -101,7 +101,7 @@ All write operations (tap, scroll, swipe, key) now return the updated screen tre
 However, **re-read explicitly** after `launch_app` or whenever you need a fresh view after external state changes. Tokens are versioned — every read, search, and successful write operation produces a fresh version. Never reuse tokens from an older snapshot.
 
 Every result uses the `#!tool-result` protocol. Check `#!status` first:
-- **Success:** the payload is the updated tree — use its tokens/coordinates directly.
+- **Success:** the payload is the updated tree — assemble tokens from its version + indices and use coordinates directly.
 - **Failure with payload:** the action was not executed or its outcome is uncertain. Inspect the tree, derive fresh tokens/coordinates. Retry only when the error indicates the action was definitely not executed. `SHELL_TIMEOUT` and `SHELL_SESSION_LOST` mean the action may have partially executed — verify via the tree, do NOT blindly retry.
 - **Failure without payload:** for validation errors (`INVALID_ARGUMENTS_JSON`, `INVALID_OPERATION`, `INVALID_ARGUMENTS`), correct the arguments directly. For `SEARCH_FAILED`, the accessibility tree could not be searched — check the message; retry after `read` if the service is available. For `CAPTURE_FAILED_AFTER_ACTION`, the action may have succeeded — `read` before deciding.
 
