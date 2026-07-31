@@ -6,7 +6,7 @@
 
 ### Builtin tools
 
-- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt` 的默认注册表当前包含 15 个 builtin 实现：`CreateCustomToolBuiltin`、`LaunchAppBuiltin`、`MemorizeBuiltin`、`NotifyBuiltin`、`OpenUriBuiltin`、`ReadCustomToolBuiltin`、`LoadSkillBuiltin`、`TerminalBuiltin`、`SshTerminalBuiltin`、`SearchAppsBuiltin`、`ScreenContentBuiltin`、`SearchNodesBuiltin`、`NodeActionBuiltin`、`GestureBuiltin`、`KeyEventBuiltin`。
+- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt` 的默认注册表当前包含 11 个 builtin 实现：`CreateCustomToolBuiltin`、`LaunchAppBuiltin`、`LoadSkillBuiltin`、`MemoryBuiltin`、`NotifyBuiltin`、`OpenUriBuiltin`、`ReadCustomToolBuiltin`、`ScreenOperationAccessibilityBuiltin`、`ScreenOperationShellBuiltin`、`SearchAppsBuiltin`、`TerminalBuiltin`（统一了本地终端与 SSH 终端，对齐 Hermes schema）。
 - `app/src/main/java/com/niki914/nexus/agentic/repo/XRepo.kt` 的 `BuiltinToolApi` 仍兼容旧 `run_command` 开关读取，但实际注册表并不是”2 个 builtin tools”，而是上面的 15 个默认实现。
 
 ### Accessibility / phone-control system

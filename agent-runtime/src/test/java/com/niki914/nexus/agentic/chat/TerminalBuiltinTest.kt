@@ -14,12 +14,14 @@ import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPort
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
+import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -30,14 +32,16 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnab
 class TerminalBuiltinTest {
     @After
     fun tearDown() {
-        runTest {
+        runBlocking {
             TerminalSessionPool.closeAll()
             RuntimeEnvironment.clearForTest()
         }
     }
 
+    // ── Basic invoke ────────────────────────────────────────────────────────
+
     @Test
-    fun invoke_returnsRawJsonOnlyHintWithOpenAndExecExample() = runTest {
+    fun invoke_returnsRawJsonOnlyHintWithCommandExample() = runTest {
         val result = TerminalBuiltin().invoke(
             BuiltinToolRequest(
                 name = "terminal",
@@ -47,14 +51,12 @@ class TerminalBuiltinTest {
 
         assertFalse(result.ok)
         assertEquals("RAW_JSON_ONLY", result.code)
-        assertTrue(result.hint.contains("open_and_exec"))
-        assertTrue(result.hint.contains("identity"))
         assertTrue(result.hint.contains("command"))
     }
 
     @Test
     fun invokeRawJson_rejectsInvalidJson() = runTest {
-        val json = invoke("""{"action":""")
+        val json = invoke("""{"command":""")
 
         assertErrorCode("INVALID_REQUEST", json)
         assertEquals(
@@ -64,16 +66,27 @@ class TerminalBuiltinTest {
     }
 
     @Test
+    fun invokeRawJson_rejectsNeitherCommandNorAction() = runTest {
+        val json = invoke("""{}""")
+
+        assertErrorCode("INVALID_REQUEST", json)
+        assertTrue(
+            json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+                .contains("command")
+        )
+    }
+
+    @Test
     fun invokeRawJson_rejectsUnknownAction() = runTest {
         val json = invoke("""{"action":"unknown"}""")
 
         assertErrorCode("INVALID_REQUEST", json)
-        assertTrue(json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content.contains("open_and_exec"))
+        assertTrue(json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content.contains("pty_write"))
     }
 
     @Test
     fun invokeRawJson_rejectsBlankCommand() = runTest {
-        val json = invoke("""{"action":"exec","session":"user","command":"   "}""")
+        val json = invoke("""{"command":"   "}""")
 
         assertErrorCode("INVALID_REQUEST", json)
         assertEquals(
@@ -83,43 +96,194 @@ class TerminalBuiltinTest {
     }
 
     @Test
-    fun invokeRawJson_rejectsBlockedOpenAndExecBeforeOpeningSession() = runTest {
+    fun invokeRawJson_rejectsUnknownField() = runTest {
+        val json = invoke("""{"command":"ls","unknown_key":"value"}""")
+
+        assertErrorCode("INVALID_REQUEST", json)
+        assertTrue(
+            json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+                .contains("Unknown terminal request field")
+        )
+    }
+
+    // ── Command-first (Hermes-aligned) ──────────────────────────────────────
+
+    @Test
+    fun invokeRawJson_commandFirst_executesAndReturnsFlatResult() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(
+            nextResult = commandResult(stdout = "ok\n"),
+        )
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a3f9").use {
+                val json = invoke("""{"command":"pwd"}""")
+
+                assertEquals("0", json["exit_code"]!!.jsonPrimitive.content)
+                assertEquals("ok\n", json["stdout"]!!.jsonPrimitive.content)
+                assertEquals("", json["stderr"]!!.jsonPrimitive.content)
+                assertFalse(json.containsKey("session"))
+            }
+        }
+    }
+
+    @Test
+    fun invokeRawJson_commandFirstWithLocalBackend_usesDefaultIdentity() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(
+            nextResult = commandResult(stdout = "done\n"),
+        )
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("b001").use {
+                val json = invoke("""{"command":"whoami","backend":"local"}""")
+
+                assertEquals("0", json["exit_code"]!!.jsonPrimitive.content)
+                assertEquals("done\n", json["stdout"]!!.jsonPrimitive.content)
+                assertEquals(listOf(TerminalIdentity.User), fakeRuntime.openedIdentities)
+            }
+        }
+    }
+
+    @Test
+    fun invokeRawJson_commandFirstWithExplicitIdentity_usesGivenIdentity() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(
+            nextResult = commandResult(stdout = "root\n"),
+        )
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("c001").use {
+                val json = invoke("""{"command":"whoami","identity":"root"}""")
+
+                assertEquals("0", json["exit_code"]!!.jsonPrimitive.content)
+                assertEquals(listOf(TerminalIdentity.Su), fakeRuntime.openedIdentities)
+            }
+        }
+    }
+
+    @Test
+    fun invokeRawJson_commandFirstWithWorkdir_opensSessionWithCwd() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(
+            nextResult = commandResult(stdout = "/sdcard\n"),
+        )
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("d001").use {
+                val json = invoke("""{"command":"pwd","workdir":"/sdcard"}""")
+
+                assertEquals("0", json["exit_code"]!!.jsonPrimitive.content)
+                assertEquals("/sdcard", fakeRuntime.openedSessions.single().openedCwd)
+            }
+        }
+    }
+
+    @Test
+    fun invokeRawJson_commandFirstWithCwdBackwardCompat() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(
+            nextResult = commandResult(stdout = "/tmp\n"),
+        )
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("e001").use {
+                val json = invoke("""{"command":"pwd","cwd":"/tmp"}""")
+
+                assertEquals("0", json["exit_code"]!!.jsonPrimitive.content)
+                assertEquals("/tmp", fakeRuntime.openedSessions.single().openedCwd)
+            }
+        }
+    }
+
+    @Test
+    fun invokeRawJson_commandFirstWithTimeout_usesSeconds() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(
+            nextResult = commandResult(stdout = "done\n"),
+        )
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("f001").use {
+                val json = invoke("""{"command":"sleep 1","timeout":60}""")
+
+                assertEquals("0", json["exit_code"]!!.jsonPrimitive.content)
+                assertEquals(60000L, fakeRuntime.openedSessions.single().lastTimeoutMs)
+            }
+        }
+    }
+
+    @Test
+    fun invokeRawJson_commandFirstTimesOut_returnsFlatTimeoutError() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(
+            nextResult = commandResult(stdout = "partial", timedOut = true),
+        )
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a0a1").use {
+                val rawResponse = TerminalBuiltin().invokeRawJson(
+                    BuiltinToolRequest(name = "terminal", argumentsJson = """{"command":"sleep 999","timeout":1}""")
+                )
+                val json = Json.parseToJsonElement(rawResponse).jsonObject
+
+                assertEquals("partial", json["stdout"]!!.jsonPrimitive.content)
+                assertEquals("TIMEOUT", json["error"]!!.jsonObject["code"]!!.jsonPrimitive.content)
+                assertTrue(
+                    json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+                        .contains("1s")
+                )
+            }
+        }
+    }
+
+    @Test
+    fun invokeRawJson_commandFirstRejectsBlockedCommand() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(executionRules = dangerousRules())
         )
 
         val json = invoke(
-            """{"action":"open_and_exec","identity":"user","command":"rm -rf /data/local/tmp/cache"}"""
+            """{"command":"rm -rf /data/local/tmp/cache"}"""
         )
 
         assertErrorCode("COMMAND_BLOCKED", json)
-        assertEquals("0", json["elapsed_seconds"]!!.jsonPrimitive.content)
         assertEquals(
             "dangerous-command",
             json["error"]!!.jsonObject["matched_rule_id"]!!.jsonPrimitive.content,
         )
     }
 
+    // ── Background (Hermes-aligned) ─────────────────────────────────────────
+
     @Test
-    fun invokeRawJson_execReturnsSessionNotFoundWithoutOpening() = runTest {
+    fun invokeRawJson_commandFirstBackground_returnsBackgroundAccepted() = runTest {
         installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(
+            nextResult = commandResult(stdout = "starting...\n"),
+        )
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("b0b1").use {
+                val json = invoke(
+                    """{"command":"npm run build","background":true,"timeout":300}"""
+                )
 
-        val json = invoke("""{"action":"exec","session":"user","command":"pwd"}""")
-
-        assertErrorCode("SESSION_NOT_FOUND", json)
+                assertEquals("true", json["background"]!!.jsonPrimitive.content)
+                assertTrue(json.containsKey("async_id"))
+                assertTrue(json["async_id"]!!.jsonPrimitive.content.isNotBlank())
+            }
+        }
     }
 
     @Test
-    fun invokeRawJson_execWithIdentityNameReturnsSessionNotFound() = runTest {
+    fun invokeRawJson_backgroundBackwardCompat_isAsync() = runTest {
         installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(
+            nextResult = commandResult(stdout = "bg\n"),
+        )
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("c0c1").use {
+                val json = invoke("""{"command":"long-task","is_async":true}""")
 
-        val json = invoke("""{"action":"exec","session":"root","command":"pwd"}""")
-
-        assertErrorCode("SESSION_NOT_FOUND", json)
-        val message = json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
-        assertTrue(message.contains("handle returned by open or open_and_exec"))
-        assertTrue(message.contains("Do not pass identity names"))
+                assertEquals("true", json["background"]!!.jsonPrimitive.content)
+            }
+        }
     }
+
+    // ── Action mode: backward compat (open_and_exec, exec, read_async_result) ─
 
     @Test
     fun invokeRawJson_openAndExecReturnsGeneratedHandle() = runTest {
@@ -143,23 +307,24 @@ class TerminalBuiltinTest {
     }
 
     @Test
-    fun configure_sessionSchemaEnumeratesPublicIdentitiesIncludingShizuku() {
-        val config = LocalToolConfig()
+    fun invokeRawJson_execReturnsSessionNotFoundWithoutOpening() = runTest {
+        installRuntimeSettingsGatewayForTest()
 
-        TerminalBuiltin().configure(config)
+        val json = invoke("""{"action":"exec","session":"user","command":"pwd"}""")
 
-        val schema = Json.parseToJsonElement(config.rawInputSchemaJson!!).jsonObject
-        val properties = schema["properties"]!!.jsonObject
-        val sessionSchema = properties["session"]!!.jsonObject
-        val identitySchema = properties["identity"]!!.jsonObject
-        assertFalse(sessionSchema.containsKey("enum"))
-        assertEquals(
-            listOf("user", "root", "shizuku"),
-            identitySchema["enum"]!!.jsonArray.map { it.jsonPrimitive.content },
-        )
-        assertTrue(
-            sessionSchema["description"]!!.jsonPrimitive.content.contains("returned by open or open_and_exec")
-        )
+        assertErrorCode("SESSION_NOT_FOUND", json)
+    }
+
+    @Test
+    fun invokeRawJson_execWithIdentityNameReturnsSessionNotFound() = runTest {
+        installRuntimeSettingsGatewayForTest()
+
+        val json = invoke("""{"action":"exec","session":"root","command":"pwd"}""")
+
+        assertErrorCode("SESSION_NOT_FOUND", json)
+        val message = json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+        assertTrue(message.contains("handle returned by open or open_and_exec"))
+        assertTrue(message.contains("Do not pass identity names"))
     }
 
     @Test
@@ -187,8 +352,81 @@ class TerminalBuiltinTest {
         assertFalse(json.containsKey("error"))
     }
 
+    // ── Schema ───────────────────────────────────────────────────────────────
+
     @Test
-    fun invokeRawJson_rejectsInvalidTimeoutOverride() = runTest {
+    fun configure_schemaContainsHermesAlignedFields() {
+        val config = LocalToolConfig()
+
+        TerminalBuiltin().configure(config)
+
+        val schema = Json.parseToJsonElement(config.rawInputSchemaJson!!).jsonObject
+        val properties = schema["properties"]!!.jsonObject
+
+        // Hermes-aligned fields
+        assertTrue(properties.containsKey("command"))
+        assertTrue(properties.containsKey("background"))
+        assertTrue(properties.containsKey("timeout"))
+        assertTrue(properties.containsKey("workdir"))
+        assertTrue(properties.containsKey("pty"))
+        assertTrue(properties.containsKey("notify_on_complete"))
+        assertTrue(
+            properties["command"]!!.jsonObject["description"]!!.jsonPrimitive.content
+                .contains("automatically")
+        )
+
+        // Nexus extension fields
+        assertTrue(properties.containsKey("backend"))
+        assertTrue(properties.containsKey("identity"))
+        assertTrue(properties.containsKey("host"))
+        assertTrue(properties.containsKey("username"))
+        assertTrue(properties.containsKey("password"))
+        assertTrue(
+            properties["backend"]!!.jsonObject["enum"]!!.jsonArray
+                .map { it.jsonPrimitive.content }
+                .containsAll(listOf("local", "ssh"))
+        )
+        assertTrue(
+            properties["identity"]!!.jsonObject["enum"]!!.jsonArray
+                .map { it.jsonPrimitive.content }
+                .containsAll(listOf("user", "root", "shizuku"))
+        )
+
+        // Action fields
+        assertTrue(properties.containsKey("action"))
+        assertTrue(
+            properties["action"]!!.jsonObject["enum"]!!.jsonArray
+                .map { it.jsonPrimitive.content }
+                .containsAll(listOf("pty_write", "pty_read", "close"))
+        )
+    }
+
+    @Test
+    fun configure_schemaDoesNotRequireCommand() {
+        val config = LocalToolConfig()
+        TerminalBuiltin().configure(config)
+        val schema = Json.parseToJsonElement(config.rawInputSchemaJson!!).jsonObject
+
+        // Schema has no required fields (command or action is checked at runtime)
+        val required = schema["required"]
+        assertTrue(required == null || required.jsonArray.isEmpty())
+    }
+
+    // ── Timeout validation ──────────────────────────────────────────────────
+
+    @Test
+    fun invokeRawJson_rejectsInvalidTimeout() = runTest {
+        val json = invoke("""{"command":"pwd","timeout":0}""")
+
+        assertErrorCode("INVALID_REQUEST", json)
+        assertEquals(
+            "Field 'timeout' must be greater than 0.",
+            json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content,
+        )
+    }
+
+    @Test
+    fun invokeRawJson_rejectsInvalidTimeoutMsBackwardCompat() = runTest {
         val json = invoke("""{"action":"exec","session":"user","command":"pwd","timeout_ms":0}""")
 
         assertErrorCode("INVALID_REQUEST", json)
@@ -197,6 +435,8 @@ class TerminalBuiltinTest {
             json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content,
         )
     }
+
+    // ── Test infrastructure ─────────────────────────────────────────────────
 
     private suspend fun invoke(argumentsJson: String) = Json.parseToJsonElement(
         TerminalBuiltin().invokeRawJson(
@@ -238,6 +478,7 @@ class TerminalBuiltinTest {
             val session = FakeTerminalSession(
                 id = "runtime-${openedSessions.size + 1}",
                 nextResult = nextResult,
+                openedCwd = cwd,
             )
             openedSessions.add(session)
             return OpenResult.Success(session)
@@ -251,12 +492,15 @@ class TerminalBuiltinTest {
     private class FakeTerminalSession(
         override val id: String,
         private val nextResult: CommandResult,
+        val openedCwd: String? = null,
     ) : TerminalSessionPort {
         override val stream = emptyFlow<com.niki914.libterm.runtime.TerminalTextChunk>()
         val commands = mutableListOf<String>()
+        var lastTimeoutMs: Long = 0L
 
         override suspend fun exec(command: String, timeoutMillis: Long): TermResult<CommandResult> {
             commands.add(command)
+            lastTimeoutMs = timeoutMillis
             return TermResult.Success(nextResult)
         }
 

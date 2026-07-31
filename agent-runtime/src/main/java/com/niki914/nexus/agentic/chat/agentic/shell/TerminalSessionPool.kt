@@ -223,6 +223,7 @@ object TerminalSessionPool {
                     identity = publicIdentity,
                     session = result.value,
                     libTermSessionId = result.value.id,
+                    cwd = cwd,
                 )
                 val existing = synchronized(lock) {
                     val current = sessions[handle]
@@ -787,6 +788,7 @@ internal data class TerminalSessionEntry(
     val identity: String,
     val session: TerminalSessionPort,
     val libTermSessionId: String,
+    var cwd: String? = null,
 )
 
 internal interface TerminalRuntimePort {

@@ -216,6 +216,73 @@ class TerminalToolResponseTest {
         assertEquals("ssh", json["error"]!!.jsonObject["identity"]!!.jsonPrimitive.content)
     }
 
+    // ── Hermes-aligned flat responses ──────────────────────────────────────
+
+    @Test
+    fun commandSuccessFlat_onlyContainsStdoutStderrExitCode() {
+        val json = parse(
+            TerminalToolResponse.commandSuccessFlat(
+                stdout = "hello\n",
+                stderr = "",
+                exitCode = 0,
+            )
+        )
+
+        assertEquals("hello\n", json["stdout"]!!.jsonPrimitive.content)
+        assertEquals("", json["stderr"]!!.jsonPrimitive.content)
+        assertEquals("0", json["exit_code"]!!.jsonPrimitive.content)
+        assertFalse(json.containsKey("session"))
+        assertFalse(json.containsKey("identity"))
+        assertFalse(json.containsKey("elapsed_seconds"))
+        assertFalse(json.containsKey("error"))
+    }
+
+    @Test
+    fun commandTimeoutFlat_includesPartialStdoutAndTimeoutError() {
+        val json = parse(
+            TerminalToolResponse.commandTimeoutFlat(
+                stdout = "partial",
+                stderr = "warn",
+                timeoutSec = 5L,
+            )
+        )
+
+        assertEquals("partial", json["stdout"]!!.jsonPrimitive.content)
+        assertEquals("warn", json["stderr"]!!.jsonPrimitive.content)
+        assertFalse(json.containsKey("exit_code"))
+        assertErrorCode("TIMEOUT", json)
+        val message = json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+        assertTrue(message.contains("5s"))
+    }
+
+    @Test
+    fun backgroundAccepted_includesBackgroundAndAsyncId() {
+        val json = parse(TerminalToolResponse.backgroundAccepted("abc123"))
+
+        assertEquals("true", json["background"]!!.jsonPrimitive.content)
+        assertEquals("abc123", json["async_id"]!!.jsonPrimitive.content)
+        assertFalse(json.containsKey("error"))
+    }
+
+    @Test
+    fun commandError_includesEmptyStreamsAndErrorObject() {
+        val json = parse(
+            TerminalToolResponse.commandError(
+                code = "SESSION_NOT_FOUND",
+                message = "Session 's1' not found.",
+            )
+        )
+
+        assertEquals("", json["stdout"]!!.jsonPrimitive.content)
+        assertEquals("", json["stderr"]!!.jsonPrimitive.content)
+        assertEquals("-1", json["exit_code"]!!.jsonPrimitive.content)
+        assertErrorCode("SESSION_NOT_FOUND", json)
+        assertEquals(
+            "Session 's1' not found.",
+            json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content,
+        )
+    }
+
     @Test
     fun internalErrorUsesStructuredError() {
         val json = parse(

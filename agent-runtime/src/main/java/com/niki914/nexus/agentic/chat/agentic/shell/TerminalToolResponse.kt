@@ -37,6 +37,21 @@ object TerminalToolResponse {
         return JsonObject(payload).toString()
     }
 
+    /** Hermes-aligned flat success: {"stdout":"...","stderr":"","exit_code":0} */
+    fun commandSuccessFlat(
+        stdout: String,
+        stderr: String,
+        exitCode: Int,
+    ): String {
+        return JsonObject(
+            mapOf(
+                "stdout" to JsonPrimitive(stdout),
+                "stderr" to JsonPrimitive(stderr),
+                "exit_code" to JsonPrimitive(exitCode),
+            )
+        ).toString()
+    }
+
     fun commandTimeout(
         result: CommandResult,
         elapsedSeconds: Long,
@@ -60,12 +75,52 @@ object TerminalToolResponse {
         return JsonObject(payload).toString()
     }
 
+    /** Hermes-aligned flat timeout: {"stdout":"...(partial)...","stderr":"","error":{"code":"TIMEOUT","message":"..."}} */
+    fun commandTimeoutFlat(
+        stdout: String,
+        stderr: String,
+        timeoutSec: Long,
+    ): String {
+        return JsonObject(
+            mapOf(
+                "stdout" to JsonPrimitive(stdout),
+                "stderr" to JsonPrimitive(stderr),
+                "error" to errorObject(
+                    code = "TIMEOUT",
+                    message = "Command timed out after ${timeoutSec}s. Increase timeout, run a smaller command, or use background=true.",
+                ),
+            )
+        ).toString()
+    }
+
     fun asyncAccepted(asyncId: String, elapsedSeconds: Long): String {
         return JsonObject(
             mapOf(
                 "async_id" to JsonPrimitive(asyncId),
                 "accepted" to JsonPrimitive(true),
                 "elapsed_seconds" to JsonPrimitive(elapsedSeconds),
+            )
+        ).toString()
+    }
+
+    /** Hermes-aligned background acceptance: {"background":true,"async_id":"abc123"} */
+    fun backgroundAccepted(asyncId: String): String {
+        return JsonObject(
+            mapOf(
+                "background" to JsonPrimitive(true),
+                "async_id" to JsonPrimitive(asyncId),
+            )
+        ).toString()
+    }
+
+    /** Flat error for command-first failures: {"stdout":"","stderr":"","exit_code":-1,"error":{...}} */
+    fun commandError(code: String, message: String): String {
+        return JsonObject(
+            mapOf(
+                "stdout" to JsonPrimitive(""),
+                "stderr" to JsonPrimitive(""),
+                "exit_code" to JsonPrimitive(UNKNOWN_EXIT_CODE),
+                "error" to errorObject(code = code, message = message),
             )
         ).toString()
     }
@@ -204,7 +259,7 @@ object TerminalToolResponse {
         return JsonObject(error)
     }
 
-    private fun failureCode(failure: TerminalFailure): String {
+    internal fun failureCode(failure: TerminalFailure): String {
         return when (failure) {
             is TerminalFailure.BackendUnavailable -> "BACKEND_UNAVAILABLE"
             is TerminalFailure.AuthorizationDenied -> "AUTHORIZATION_DENIED"
@@ -252,11 +307,9 @@ object TerminalToolResponse {
         }
     }
 
-    private fun CommandResult.stdoutText(): String = stdout.toText()
+    internal fun CommandResult.stdoutText(): String = stdout.toByteArray().decodeToString()
 
-    private fun CommandResult.stderrText(): String = stderr.toText()
-
-    private fun TerminalBytes.toText(): String = toByteArray().decodeToString()
+    internal fun CommandResult.stderrText(): String = stderr.toByteArray().decodeToString()
 
     private fun TerminalIdentity?.publicName(): String? {
         return when (this) {

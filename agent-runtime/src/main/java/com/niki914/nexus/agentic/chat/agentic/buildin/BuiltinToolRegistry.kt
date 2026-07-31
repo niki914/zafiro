@@ -10,7 +10,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ReadCustomToolBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ScreenOperationAccessibilityBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ScreenOperationShellBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SearchAppsBuiltin
-import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SshTerminalBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.TerminalBuiltin
 
 class BuiltinToolRegistry(
@@ -33,7 +32,6 @@ class BuiltinToolRegistry(
                 ReadCustomToolBuiltin(),
                 LoadSkillBuiltin(),
                 TerminalBuiltin(),
-                SshTerminalBuiltin(),
                 SearchAppsBuiltin(),
                 ScreenOperationAccessibilityBuiltin(),
                 ScreenOperationShellBuiltin(),
