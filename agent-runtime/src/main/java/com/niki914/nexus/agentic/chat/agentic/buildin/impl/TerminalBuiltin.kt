@@ -368,22 +368,30 @@ class TerminalBuiltin(
                         openOutcome.session
                     )
 
-                    is TerminalInteractiveWriteOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
-                        writeOutcome.session
-                    )
+                    is TerminalInteractiveWriteOutcome.SessionNotFound -> {
+                        TerminalSessionPool.close(openOutcome.session)
+                        TerminalToolResponse.sessionNotFound(writeOutcome.session)
+                    }
 
-                    is TerminalInteractiveWriteOutcome.Busy -> TerminalToolResponse.sessionBusy(
-                        writeOutcome.session,
-                        asyncId = null
-                    )
+                    is TerminalInteractiveWriteOutcome.Busy -> {
+                        TerminalSessionPool.close(openOutcome.session)
+                        TerminalToolResponse.sessionBusy(
+                            writeOutcome.session,
+                            asyncId = null,
+                        )
+                    }
 
-                    is TerminalInteractiveWriteOutcome.NotInteractive -> TerminalToolResponse.invalidRequest(
-                        "SSH session is not interactive."
-                    )
+                    is TerminalInteractiveWriteOutcome.NotInteractive -> {
+                        TerminalSessionPool.close(openOutcome.session)
+                        TerminalToolResponse.invalidRequest(
+                            "SSH session is not interactive."
+                        )
+                    }
 
-                    is TerminalInteractiveWriteOutcome.UnexpectedError -> TerminalToolResponse.internalError(
-                        writeOutcome.throwable
-                    )
+                    is TerminalInteractiveWriteOutcome.UnexpectedError -> {
+                        TerminalSessionPool.close(openOutcome.session)
+                        TerminalToolResponse.internalError(writeOutcome.throwable)
+                    }
                 }
             }
 
@@ -520,6 +528,10 @@ class TerminalBuiltin(
 
                     is TerminalReadOutcome.TimedOut -> TerminalToolResponse.readResult(
                         sessionId, "timed_out", outcome.output, null, outcome.elapsedSeconds
+                    )
+
+                    is TerminalReadOutcome.Crashed -> TerminalToolResponse.readResult(
+                        sessionId, "failed", outcome.errorMessage, null, outcome.elapsedSeconds
                     )
 
                     is TerminalReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(

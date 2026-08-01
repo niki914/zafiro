@@ -258,6 +258,30 @@ class TerminalBuiltinTest {
     }
 
     @Test
+    fun invokeRawJson_sshBackgroundWriteFailure_closesSession() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(
+            nextResult = commandResult(),
+            failOnWrite = true,
+        )
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("b0b1").use {
+                val json = invoke(
+                    """{"command":"ls","backend":"ssh","background":true,"host":"1.2.3.4","username":"root","password":"x"}"""
+                )
+
+                // The write failed, so the response should be an internal error,
+                // not a background-accepted response.
+                assertErrorCode("INTERNAL_ERROR", json)
+                // The session must have been closed (best-effort cleanup).
+                assertEquals(1, fakeRuntime.openedSessions.single().closeCount)
+                // The session must also have been removed from the pool.
+                assertNull(TerminalSessionPool.get("b0b1"))
+            }
+        }
+    }
+
+    @Test
     fun invokeRawJson_commandFirstExecFailure_closesSessionInFinally() = runTest {
         installRuntimeSettingsGatewayForTest()
         val fakeRuntime = FakeTerminalRuntime(failOnExec = true)
@@ -507,6 +531,7 @@ class TerminalBuiltinTest {
         private val nextResult: CommandResult = commandResult(),
         private val failOnExec: Boolean = false,
         private val execGate: CompletableDeferred<Unit>? = null,
+        private val failOnWrite: Boolean = false,
     ) : TerminalRuntimePort {
         val openedSessions = mutableListOf<FakeTerminalSession>()
         val openedIdentities = mutableListOf<TerminalIdentity>()
@@ -523,6 +548,7 @@ class TerminalBuiltinTest {
                 openedCwd = cwd,
                 failOnExec = failOnExec,
                 execGate = execGate,
+                failOnWrite = failOnWrite,
             )
             openedSessions.add(session)
             return OpenResult.Success(session)
@@ -539,6 +565,7 @@ class TerminalBuiltinTest {
         val openedCwd: String? = null,
         private val failOnExec: Boolean = false,
         private val execGate: CompletableDeferred<Unit>? = null,
+        private val failOnWrite: Boolean = false,
     ) : TerminalSessionPort {
         override val stream = emptyFlow<com.niki914.libterm.runtime.TerminalTextChunk>()
         val commands = mutableListOf<String>()
@@ -564,7 +591,9 @@ class TerminalBuiltinTest {
             }
         }
 
-        override suspend fun write(text: String) = Unit
+        override suspend fun write(text: String) {
+            if (failOnWrite) throw RuntimeException("fake write failure")
+        }
 
         override suspend fun close() {
             closeCount++

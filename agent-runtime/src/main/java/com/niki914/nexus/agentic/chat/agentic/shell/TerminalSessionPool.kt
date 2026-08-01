@@ -540,6 +540,7 @@ object TerminalSessionPool {
         val (completedResult, completedFailure, completedElapsed) = synchronized(lock) {
             Triple(entry.completedResult, entry.completedFailure, entry.completedElapsedSeconds)
         }
+        val completedUnexpectedError = synchronized(lock) { entry.completedUnexpectedError }
         // 2. Completed with a result.
         if (completedResult != null) {
             val output = truncateOutput(mergedOutput(completedResult), maxBytes)
@@ -564,6 +565,14 @@ object TerminalSessionPool {
                 session = session,
                 output = completedFailure.message ?: "Command failed.",
                 exitCode = -1,
+                elapsedSeconds = completedElapsed,
+            )
+        }
+        // 3b. Completed with an unexpected error (exception thrown inside exec).
+        if (completedUnexpectedError != null) {
+            return TerminalReadOutcome.Crashed(
+                session = session,
+                errorMessage = completedUnexpectedError.message ?: "Command crashed.",
                 elapsedSeconds = completedElapsed,
             )
         }
@@ -806,6 +815,10 @@ object TerminalSessionPool {
                 entry.completedFailure = failure
                 entry.completedElapsedSeconds = elapsed
             }
+            state.unexpectedError?.let { error ->
+                entry.completedUnexpectedError = error
+                entry.completedElapsedSeconds = elapsed
+            }
         }
         // Release Mutex + cancel collector + remove asyncState (never blocked on Agent poll).
         completeAsync(session, state)
@@ -835,6 +848,9 @@ object TerminalSessionPool {
             }
             failure != null -> {
                 "$prefix failed. Error: ${failure.message}]"
+            }
+            entry.completedUnexpectedError != null -> {
+                "$prefix failed. Error: ${entry.completedUnexpectedError?.message}]"
             }
             else -> "$prefix exited with unknown status.]"
         }
@@ -884,6 +900,7 @@ internal data class TerminalSessionEntry(
     var cwd: String? = null,
     var completedResult: CommandResult? = null,
     var completedFailure: TerminalFailure? = null,
+    var completedUnexpectedError: Throwable? = null,
     var completedElapsedSeconds: Long = 0,
 )
 
@@ -1108,6 +1125,12 @@ sealed interface TerminalReadOutcome {
     data class TimedOut(
         val session: String,
         val output: String,
+        val elapsedSeconds: Long,
+    ) : TerminalReadOutcome
+
+    data class Crashed(
+        val session: String,
+        val errorMessage: String,
         val elapsedSeconds: Long,
     ) : TerminalReadOutcome
 

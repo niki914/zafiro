@@ -443,6 +443,57 @@ class TerminalSessionPoolTest {
     }
 
     /**
+     * readSession returns Crashed when the background job throws an unexpected
+     * exception inside exec(). The error message and elapsed_seconds are preserved.
+     */
+    @Test
+    fun readSession_unexpectedErrorInExec_returnsCrashed() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001").use {
+                TerminalSessionPool.open(identity = "user")
+                fakeRuntime.openedSessions.single().throwOnExec = RuntimeException("boom")
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "echo test", timeoutMs = 1_000L,
+                )
+                waitForAsyncCompletion("a001")
+
+                val outcome = TerminalSessionPool.readSession("a001")
+                assertTrue(outcome is TerminalReadOutcome.Crashed)
+                val crashed = outcome as TerminalReadOutcome.Crashed
+                assertEquals("a001", crashed.session)
+                assertTrue(crashed.errorMessage.contains("boom"))
+                assertTrue(crashed.elapsedSeconds >= 0L)
+            }
+        }
+    }
+
+    /**
+     * When notify_on_complete is set and the background job throws, the
+     * completion notification includes the exception message.
+     */
+    @Test
+    fun startAsync_unexpectedErrorWithNotifyOnComplete_enqueuesErrorNotification() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001").use {
+                TerminalSessionPool.open(identity = "user")
+                fakeRuntime.openedSessions.single().throwOnExec = RuntimeException("crash-boom")
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "echo test", timeoutMs = 1_000L,
+                    notifyOnComplete = true,
+                )
+                waitForAsyncCompletion("a001")
+                Thread.sleep(20)
+
+                val notifications = TerminalSessionPool.drainPendingNotifications()
+                assertTrue("Notification enqueued", notifications.isNotEmpty())
+                assertTrue(notifications.single().contains("crash-boom"))
+            }
+        }
+    }
+
+    /**
      * Polls [TerminalSessionPool.readSession] until the async task exits, then
      * asserts the final outcome. The execJob runs on the pool's IO dispatcher so
      * [runTest] does not automatically advance it; polling bridges the gap.
@@ -452,6 +503,7 @@ class TerminalSessionPoolTest {
             when (val outcome = TerminalSessionPool.readSession(session)) {
                 is TerminalReadOutcome.Exited -> return
                 is TerminalReadOutcome.TimedOut -> return
+                is TerminalReadOutcome.Crashed -> return
                 is TerminalReadOutcome.Running -> { /* IO thread still working, retry */ }
                 else -> throw AssertionError("Unexpected read outcome: $outcome")
             }
@@ -507,9 +559,11 @@ class TerminalSessionPoolTest {
         val commands = mutableListOf<String>()
         var nextResult: CommandResult = commandResult()
         var closed = false
+        var throwOnExec: Throwable? = null
 
         override suspend fun exec(command: String, timeoutMillis: Long): TermResult<CommandResult> {
             commands.add(command)
+            throwOnExec?.let { throw it }
             return TermResult.Success(nextResult)
         }
 
