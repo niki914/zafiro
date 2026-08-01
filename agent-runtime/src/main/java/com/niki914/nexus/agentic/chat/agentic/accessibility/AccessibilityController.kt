@@ -559,7 +559,7 @@ object AccessibilityController {
         val pos = PruningRules.posOf(bounds, screenW, screenH)
 
         val sb = StringBuilder()
-        sb.append("{token: \"${version}_$index\", t: ${type.name.lowercase()}, b: [${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}], pos: $pos")
+        sb.append("{i: $index, t: ${type.name.lowercase()}, b: [${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}], pos: $pos")
 
         if (text.isNotEmpty()) {
             val quoted =
@@ -602,7 +602,11 @@ object AccessibilityController {
 
         val st = SemanticToken.parse(token).getOrElse {
             return BuiltinToolResult.failure(
-                "INVALID_ARGUMENTS", "Invalid token format: $token"
+                "INVALID_ARGUMENTS",
+                "Invalid token format: '$token'. " +
+                    "Token must be assembled as {version}_{i} — join the snapshot version " +
+                    "(from the YAML header) with the node's index (i field), separated by underscore. " +
+                    "Example: version \"a3f2c91e7b40\" + node {i: 42, ...} → token \"a3f2c91e7b40_42\"."
             )
         }
 
@@ -611,7 +615,8 @@ object AccessibilityController {
                 "VERSION_MISMATCH",
                 "Token version '${st.version}' does not match current version '$currentVersion'. " +
                         "The snapshot has been refreshed — use screen_operation_accessibility " +
-                        "with read or search to get fresh tokens, then retry."
+                        "with read or search to get a fresh version and indices, " +
+                        "then assemble new tokens as {version}_{i}."
             )
         }
 

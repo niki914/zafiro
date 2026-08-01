@@ -8,6 +8,8 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.RawJsonBuiltinTool
+import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
+import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResultCodec
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLoadedSkill
 import com.niki914.s3ss10n.LocalToolConfig
@@ -17,6 +19,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Test
 
 class BuiltinToolExecutorTest {
@@ -105,14 +108,12 @@ class BuiltinToolExecutorTest {
         )
         val executor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(LoadSkillBuiltin())))
 
-        val resultJson = executor.execute("load_skill", """{"id":"skill-a"}""")
+        val resultRaw = executor.execute("load_skill", """{"id":"skill-a"}""")
 
-        val json = Json.parseToJsonElement(resultJson).jsonObject
-        assertEquals("OK", json["code"]!!.jsonPrimitive.content)
-        val data = json["data"]!!.jsonObject
-        assertEquals("Skill A", data["skill_name"]!!.jsonPrimitive.content)
-        assertEquals("skills/skill-a/SKILL.md", data["skill_path"]!!.jsonPrimitive.content)
-        assertEquals("# Skill A", data["skill_content"]!!.jsonPrimitive.content)
+        val result = TextToolResultCodec.decode(resultRaw)
+        assertNotNull("Expected #!tool-result protocol output", result)
+        assertEquals(TextToolResult.Status.Success, result!!.status)
+        assertEquals("# Skill A", result.payload)
     }
 
     @Test(expected = CancellationException::class)

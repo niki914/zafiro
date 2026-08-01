@@ -1,6 +1,8 @@
 package com.niki914.nexus.agentic.chat
 
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
+import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
+import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResultCodec
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.nexus.agentic.runtime.settings.RuntimeBridge
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
@@ -8,12 +10,9 @@ import com.niki914.nexus.agentic.runtime.settings.RuntimeHostGateway
 import com.niki914.nexus.agentic.runtime.settings.RuntimeSettingsGateway
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLoadedSkill
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,14 +30,10 @@ class LoadSkillBuiltinTest {
             )
         )
 
-        val json = invoke("""{"id":"skill-a"}""")
+        val result = invokeAndDecode("""{"id":"skill-a"}""")
 
-        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("OK", json["code"]!!.jsonPrimitive.content)
-        val data = json["data"]!!.jsonObject
-        assertEquals("Skill A", data["skill_name"]!!.jsonPrimitive.content)
-        assertEquals("skill-a/SKILL.md", data["skill_path"]!!.jsonPrimitive.content)
-        assertEquals("Skill content A", data["skill_content"]!!.jsonPrimitive.content)
+        assertEquals(TextToolResult.Status.Success, result.status)
+        assertEquals("Skill content A", result.payload)
     }
 
     @Test
@@ -49,46 +44,46 @@ class LoadSkillBuiltinTest {
             )
         )
 
-        val json = invoke("""{"skill_id":"skill-a"}""")
+        val result = invokeAndDecode("""{"skill_id":"skill-a"}""")
 
-        assertEquals("OK", json["code"]!!.jsonPrimitive.content)
-        assertEquals(
-            "Skill content A",
-            json["data"]!!.jsonObject["skill_content"]!!.jsonPrimitive.content
-        )
+        assertEquals(TextToolResult.Status.Success, result.status)
+        assertEquals("Skill content A", result.payload)
     }
 
     @Test
     fun invoke_missingId_returnsFailure() = runTest {
         installRuntimeSettingsGatewayForTest()
 
-        val json = invoke("{}")
+        val result = invokeAndDecode("{}")
 
-        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("MISSING_SKILL_ID", json["code"]!!.jsonPrimitive.content)
-        assertTrue(json["field_errors"]!!.jsonObject.containsKey("id"))
+        assertEquals(TextToolResult.Status.Failure, result.status)
+        assertEquals("MISSING_SKILL_ID", result.code)
+        assertNotNull(result.message)
+        assertTrue(result.message!!.contains("available_skills"))
     }
 
     @Test
     fun invoke_invalidJson_returnsFailure() = runTest {
         installRuntimeSettingsGatewayForTest()
 
-        val json = invoke("not-json")
+        val result = invokeAndDecode("not-json")
 
-        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("INVALID_ARGUMENTS_JSON", json["code"]!!.jsonPrimitive.content)
-        assertTrue(json["field_errors"]!!.jsonObject.containsKey("argumentsJson"))
+        assertEquals(TextToolResult.Status.Failure, result.status)
+        assertEquals("INVALID_ARGUMENTS_JSON", result.code)
+        assertNotNull(result.message)
+        assertTrue(result.message!!.contains("JSON"))
     }
 
     @Test
     fun invoke_missingSkill_returnsFailure() = runTest {
         installRuntimeSettingsGatewayForTest()
 
-        val json = invoke("""{"id":"missing"}""")
+        val result = invokeAndDecode("""{"id":"missing"}""")
 
-        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("SKILL_NOT_FOUND", json["code"]!!.jsonPrimitive.content)
-        assertTrue(json["field_errors"]!!.jsonObject.containsKey("id"))
+        assertEquals(TextToolResult.Status.Failure, result.status)
+        assertEquals("SKILL_NOT_FOUND", result.code)
+        assertNotNull(result.message)
+        assertTrue(result.message!!.contains("missing"))
     }
 
     @Test
@@ -99,11 +94,12 @@ class LoadSkillBuiltinTest {
             )
         )
 
-        val json = invoke("""{"id":"skill-a"}""")
+        val result = invokeAndDecode("""{"id":"skill-a"}""")
 
-        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("SKILL_DISABLED", json["code"]!!.jsonPrimitive.content)
-        assertTrue(json["field_errors"]!!.jsonObject.containsKey("id"))
+        assertEquals(TextToolResult.Status.Failure, result.status)
+        assertEquals("SKILL_DISABLED", result.code)
+        assertNotNull(result.message)
+        assertTrue(result.message!!.contains("disabled"))
     }
 
     @Test
@@ -115,20 +111,25 @@ class LoadSkillBuiltinTest {
             )
         )
 
-        val json = invoke("""{"id":"skill-a"}""")
+        val result = invokeAndDecode("""{"id":"skill-a"}""")
 
-        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("SETTINGS_READ_FAILED", json["code"]!!.jsonPrimitive.content)
+        assertEquals(TextToolResult.Status.Failure, result.status)
+        assertEquals("SETTINGS_READ_FAILED", result.code)
+        assertNotNull(result.message)
+        assertTrue(result.message!!.contains("settings"))
     }
 
-    private suspend fun invoke(argumentsJson: String) = Json.parseToJsonElement(
-        LoadSkillBuiltin().invoke(
+    private suspend fun invokeAndDecode(argumentsJson: String): TextToolResult {
+        val raw = LoadSkillBuiltin().invokeRawJson(
             BuiltinToolRequest(
                 name = "load_skill",
                 argumentsJson = argumentsJson,
             )
-        ).toJsonString()
-    ).jsonObject
+        )
+        val decoded = TextToolResultCodec.decode(raw)
+        assertNotNull("Expected #!tool-result protocol output, got: $raw", decoded)
+        return decoded!!
+    }
 
     private fun loadedSkill(
         id: String,
