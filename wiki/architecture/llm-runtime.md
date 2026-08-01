@@ -82,11 +82,10 @@ Prompt 中的 `Agent Memory` 来源于 `agent.main.memory` Store，其写入与�
 
 ### `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/`
 
-- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt`：当前默认注册 `create_custom_tool`、`launch_app`、`memorize`、`notify`、`open_uri`、`read_custom_tool`、`load_skill`、`terminal`、`ssh_terminal`、`search_apps`、`screen_content`、`search_nodes`、`node_action`、`gesture`、`key_event`。
+- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt`：当前默认注册 `create_custom_tool`、`launch_app`、`memory`、`notify`、`open_uri`、`read_custom_tool`、`load_skill`、`terminal`、`search_apps`、`screen_operation_accessibility`、`screen_operation_shell`。
 - `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolExecutor.kt`：builtin 执行入口。
 - `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolSettingsManager.kt`：通过 `RuntimeEnvironment.awaitSettingsGateway()` 读写 builtin 开关。
-- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/impl/TerminalBuiltin.kt`：Android 终端 builtin；raw JSON 协议，支持 `open`、`open_and_exec`、`exec`、`read_async_result`、`close`。
-- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/impl/SshTerminalBuiltin.kt`：交互式 SSH 终端 builtin；支持 `open`、`send_line`、`write`、`interrupt`、`read`、`close`。
+- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/impl/TerminalBuiltin.kt`：统一终端 builtin（Hermes 对齐）；支持命令优先模式（command 字段直接执行）、后台模式（background）、action 模式（pty_write/pty_read/close 用于交互式 SSH），以及旧 action 名向后兼容。
 
 ### `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/custom/`
 
@@ -106,7 +105,7 @@ Prompt 中的 `Agent Memory` 来源于 `agent.main.memory` Store，其写入与�
 
 - `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/shell/ShellCommandSafetyPolicy.kt`：命令安全策略。
 - `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/shell/TerminalSessionPool.kt`：当前终端入口；负责 Android shell session、SSH session、异步执行、交互输出缓存和 session 关闭。
-- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/shell/TerminalToolResponse.kt`：terminal/ssh_terminal 的 JSON 响应格式。
+- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/shell/TerminalToolResponse.kt`：terminal 的 JSON 响应格式。
 
 ### `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/stream/`
 
@@ -118,10 +117,10 @@ Prompt 中的 `Agent Memory` 来源于 `agent.main.memory` Store，其写入与�
 
 ### Builtin
 
-- 源码依据：`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt`、`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolExecutor.kt`、`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolSettingsManager.kt`、`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/impl/TerminalBuiltin.kt`、`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/impl/SshTerminalBuiltin.kt`。
+- 源码依据：`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolRegistry.kt`、`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolExecutor.kt`、`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolSettingsManager.kt`、`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/impl/TerminalBuiltin.kt`。
 - 已实现：注册表、运行期开关读取、builtin 执行分发。
-- 当前默认 builtin（15 个）：`create_custom_tool`、`launch_app`、`memorize`、`notify`、`open_uri`、`read_custom_tool`、`load_skill`、`terminal`、`ssh_terminal`、`search_apps`、`screen_content`、`search_nodes`、`node_action`、`gesture`、`key_event`。
-- 边界：`terminal` 运行在 Android terminal session，不是桌面 shell；`ssh_terminal` 是交互式 SSH 终端，不支持 `exec` 或 `open_and_exec`。
+- 当前默认 builtin（11 个）：`create_custom_tool`、`launch_app`、`load_skill`、`memory`、`notify`、`open_uri`、`read_custom_tool`、`screen_operation_accessibility`、`screen_operation_shell`、`search_apps`、`terminal`。
+- 边界：`terminal` 统一了本地终端和交互式 SSH；通过 backend 字段选择（local/ssh），命令优先模式自动管理 session 生命周期，action 模式用于交互式 SSH。
 - 兼容性：`app/src/main/java/com/niki914/nexus/agentic/repo/XRepo.kt` 在解析 builtin 开关时仍兼容旧 `run_command` key，但当前真实 builtin 名称已经是 `terminal`。
 
 ### Custom
@@ -173,7 +172,6 @@ Prompt 中的 `Agent Memory` 来源于 `agent.main.memory` Store，其写入与�
 - `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolExecutor.kt`
 - `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/BuiltinToolSettingsManager.kt`
 - `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/impl/TerminalBuiltin.kt`
-- `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/buildin/impl/SshTerminalBuiltin.kt`
 
 ### `agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/agentic/custom/`
 

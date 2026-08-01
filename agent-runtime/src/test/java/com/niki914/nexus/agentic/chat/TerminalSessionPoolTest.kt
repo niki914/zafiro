@@ -8,11 +8,11 @@ import com.niki914.libterm.TerminalBytes
 import com.niki914.libterm.TerminalIdentity
 import com.niki914.libterm.runtime.CommandResult
 import com.niki914.libterm.runtime.TermResult
-import com.niki914.nexus.agentic.chat.agentic.shell.TerminalAsyncReadOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalAsyncStartOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCloseOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalOpenOutcome
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalReadOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalRuntimePort
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPort
@@ -67,10 +67,10 @@ class TerminalSessionPoolTest {
     }
 
     @Test
-    fun readAsyncResultReturnsSessionNotFoundWithoutOpeningRuntime() = runTest {
-        val outcome = TerminalSessionPool.readAsyncResult(session = "user", asyncId = "a1")
+    fun readSessionReturnsSessionNotFoundWithoutOpeningRuntime() = runTest {
+        val outcome = TerminalSessionPool.readSession(session = "user")
 
-        assertEquals(TerminalAsyncReadOutcome.SessionNotFound("user"), outcome)
+        assertEquals(TerminalReadOutcome.SessionNotFound("user"), outcome)
     }
 
     @Test
@@ -88,6 +88,35 @@ class TerminalSessionPoolTest {
         assertEquals(0, first.closedCount)
         assertEquals(0, second.closedCount)
         assertNull(TerminalSessionPool.get("user"))
+    }
+
+    @Test
+    fun closeAllClearsPendingNotifications() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001", "b002").use {
+                TerminalSessionPool.open(identity = "user")
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "echo done", timeoutMs = 1_000L,
+                    notifyOnComplete = true,
+                )
+                waitForAsyncCompletion("a001")
+                Thread.sleep(20)
+                assertTrue(TerminalSessionPool.drainPendingNotifications().isNotEmpty())
+
+                // Start a second task and enqueue another notification
+                TerminalSessionPool.open(identity = "user")
+                TerminalSessionPool.startAsync(
+                    session = "b002", command = "echo done", timeoutMs = 1_000L,
+                    notifyOnComplete = true,
+                )
+                waitForAsyncCompletion("b002")
+                Thread.sleep(20)
+
+                TerminalSessionPool.closeAll()
+                assertTrue("Notifications cleared by closeAll", TerminalSessionPool.drainPendingNotifications().isEmpty())
+            }
+        }
     }
 
     @Test
@@ -285,6 +314,203 @@ class TerminalSessionPoolTest {
         }
     }
 
+    // AC-12: After background command completes via invokeOnCompletion, the execution
+    // Mutex is auto-released. Verified by starting a blocking command right after.
+    @Test
+    fun startAsync_invokeOnCompletionReleasesMutex_allowsExecuteBlocking() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001").use {
+                TerminalSessionPool.open(identity = "user")
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "echo done", timeoutMs = 1_000L,
+                )
+                waitForAsyncCompletion("a001")
+
+                var result: Any? = null
+                repeat(100) {
+                    result = TerminalSessionPool.executeBlocking(
+                        session = "a001", command = "echo next", timeoutMs = 1_000L,
+                    )
+                    if (result is TerminalCommandOutcome.Success) return@repeat
+                }
+                assertTrue("Mutex released for blocking: $result", result is TerminalCommandOutcome.Success)
+            }
+        }
+    }
+
+    /**
+     * F-08: notify_on_complete=true enqueues a notification that survives drain.
+     * After the async job completes, drainPendingNotifications returns the
+     * notification and a second drain is empty.
+     */
+    @Test
+    fun startAsync_notifyOnComplete_enqueuesAndDrainsNotification() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001").use {
+                TerminalSessionPool.open(identity = "user")
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "echo done", timeoutMs = 1_000L,
+                    notifyOnComplete = true,
+                )
+                waitForAsyncCompletion("a001")
+                // The invokeOnCompletion callback runs on the IO dispatcher;
+                // give it a chance to finish enqueuing the notification.
+                Thread.sleep(20)
+
+                val firstDrain = TerminalSessionPool.drainPendingNotifications()
+                assertTrue("Notification enqueued", firstDrain.isNotEmpty())
+                assertTrue(firstDrain.single().contains("[IMPORTANT: Background process a001"))
+
+                val secondDrain = TerminalSessionPool.drainPendingNotifications()
+                assertTrue("Second drain empty", secondDrain.isEmpty())
+            }
+        }
+    }
+
+    /**
+     * readSession returns TimedOut (not Exited) when the background command
+     * timed out.
+     */
+    @Test
+    fun readSession_asyncCompletedWithTimeout_returnsTimedOut() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001").use {
+                TerminalSessionPool.open(identity = "user")
+                fakeRuntime.openedSessions.single().nextResult = commandResult(
+                    stdout = "partial", timedOut = true,
+                )
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "sleep 999", timeoutMs = 1_000L,
+                )
+                waitForAsyncCompletion("a001")
+
+                val outcome = TerminalSessionPool.readSession("a001")
+                assertTrue(outcome is TerminalReadOutcome.TimedOut)
+                assertEquals("partial", (outcome as TerminalReadOutcome.TimedOut).output)
+            }
+        }
+    }
+
+    /**
+     * readSession merges stdout + stderr into the output field for both
+     * running and completed states.
+     */
+    @Test
+    fun readSession_mergesStdoutAndStderr() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001").use {
+                TerminalSessionPool.open(identity = "user")
+                fakeRuntime.openedSessions.single().nextResult = commandResult(
+                    stdout = "hello", stderr = "world",
+                )
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "echo test", timeoutMs = 1_000L,
+                )
+                waitForAsyncCompletion("a001")
+
+                val outcome = TerminalSessionPool.readSession("a001")
+                assertTrue(outcome is TerminalReadOutcome.Exited)
+                assertTrue((outcome as TerminalReadOutcome.Exited).output.contains("hello"))
+                assertTrue(outcome.output.contains("world"))
+            }
+        }
+    }
+
+    /**
+     * readSession returns a fixed elapsed_seconds after completion,
+     * not a value that grows with wall-clock time after the task ends.
+     */
+    @Test
+    fun readSession_elapsedSecondsStableAfterCompletion() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001").use {
+                TerminalSessionPool.open(identity = "user")
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "echo done", timeoutMs = 1_000L,
+                )
+                waitForAsyncCompletion("a001")
+
+                val first = TerminalSessionPool.readSession("a001") as TerminalReadOutcome.Exited
+                val second = TerminalSessionPool.readSession("a001") as TerminalReadOutcome.Exited
+                assertEquals(first.elapsedSeconds, second.elapsedSeconds)
+            }
+        }
+    }
+
+    /**
+     * readSession returns Crashed when the background job throws an unexpected
+     * exception inside exec(). The error message and elapsed_seconds are preserved.
+     */
+    @Test
+    fun readSession_unexpectedErrorInExec_returnsCrashed() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001").use {
+                TerminalSessionPool.open(identity = "user")
+                fakeRuntime.openedSessions.single().throwOnExec = RuntimeException("boom")
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "echo test", timeoutMs = 1_000L,
+                )
+                waitForAsyncCompletion("a001")
+
+                val outcome = TerminalSessionPool.readSession("a001")
+                assertTrue(outcome is TerminalReadOutcome.Crashed)
+                val crashed = outcome as TerminalReadOutcome.Crashed
+                assertEquals("a001", crashed.session)
+                assertTrue(crashed.errorMessage.contains("boom"))
+                assertTrue(crashed.elapsedSeconds >= 0L)
+            }
+        }
+    }
+
+    /**
+     * When notify_on_complete is set and the background job throws, the
+     * completion notification includes the exception message.
+     */
+    @Test
+    fun startAsync_unexpectedErrorWithNotifyOnComplete_enqueuesErrorNotification() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001").use {
+                TerminalSessionPool.open(identity = "user")
+                fakeRuntime.openedSessions.single().throwOnExec = RuntimeException("crash-boom")
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "echo test", timeoutMs = 1_000L,
+                    notifyOnComplete = true,
+                )
+                waitForAsyncCompletion("a001")
+                Thread.sleep(20)
+
+                val notifications = TerminalSessionPool.drainPendingNotifications()
+                assertTrue("Notification enqueued", notifications.isNotEmpty())
+                assertTrue(notifications.single().contains("crash-boom"))
+            }
+        }
+    }
+
+    /**
+     * Polls [TerminalSessionPool.readSession] until the async task exits, then
+     * asserts the final outcome. The execJob runs on the pool's IO dispatcher so
+     * [runTest] does not automatically advance it; polling bridges the gap.
+     */
+    private suspend fun waitForAsyncCompletion(session: String) {
+        repeat(500) {
+            when (val outcome = TerminalSessionPool.readSession(session)) {
+                is TerminalReadOutcome.Exited -> return
+                is TerminalReadOutcome.TimedOut -> return
+                is TerminalReadOutcome.Crashed -> return
+                is TerminalReadOutcome.Running -> { /* IO thread still working, retry */ }
+                else -> throw AssertionError("Unexpected read outcome: $outcome")
+            }
+        }
+        throw AssertionError("Async task on $session did not complete within 500 polls")
+    }
+
     private fun installFakeRuntime(fakeRuntime: FakeTerminalRuntime): AutoCloseable {
         return TerminalSessionPool.installRuntimePortFactoryForTest { fakeRuntime }
     }
@@ -333,9 +559,11 @@ class TerminalSessionPoolTest {
         val commands = mutableListOf<String>()
         var nextResult: CommandResult = commandResult()
         var closed = false
+        var throwOnExec: Throwable? = null
 
         override suspend fun exec(command: String, timeoutMillis: Long): TermResult<CommandResult> {
             commands.add(command)
+            throwOnExec?.let { throw it }
             return TermResult.Success(nextResult)
         }
 

@@ -12,6 +12,8 @@ import com.niki914.libterm.runtime.LibTermRuntime
 import com.niki914.libterm.runtime.LibTermSession
 import com.niki914.libterm.runtime.TermResult
 import com.niki914.libterm.runtime.TerminalTextChunk
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stdoutText
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stderrText
 import com.niki914.nexus.xposed.api.util.ContextProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +33,7 @@ object TerminalSessionPool {
     private const val PUBLIC_HANDLE_LENGTH = 4
     private const val MAX_HANDLE_GENERATION_ATTEMPTS = 64
     private const val DEFAULT_INTERACTIVE_READ_MAX_BYTES = 8192
+    private const val DEFAULT_READ_MAX_BYTES = 8192
     private const val GENERATED_HANDLE_COLLISION_MESSAGE = "Generated session handle collision."
     private val PUBLIC_HANDLE_REGEX: Regex = Regex("^[0-9a-f]{4}$")
     private val lock = Any()
@@ -39,6 +42,7 @@ object TerminalSessionPool {
     private val asyncStates: MutableMap<String, AsyncState> = linkedMapOf()
     private val interactiveStates: MutableMap<String, InteractiveState> = linkedMapOf()
     private val executionLocks: MutableMap<String, Mutex> = linkedMapOf()
+    private val pendingNotifications = mutableListOf<String>()
     private var handleGenerator: () -> String = ::randomPublicHandle
     private var runtimePortFactory: suspend (CoroutineScope) -> TerminalRuntimePort =
         ::createLibTermRuntimePort
@@ -89,6 +93,7 @@ object TerminalSessionPool {
             )
 
             is TerminalOpenOutcome.InvalidRequest -> TerminalCommandOutcome.UnexpectedError(
+                session = null,
                 throwable = IllegalArgumentException(openOutcome.message),
                 elapsedSeconds = 0L,
             )
@@ -116,6 +121,7 @@ object TerminalSessionPool {
             )
 
             is TerminalOpenOutcome.InvalidRequest -> TerminalCommandOutcome.UnexpectedError(
+                session = null,
                 throwable = IllegalArgumentException(openOutcome.message),
                 elapsedSeconds = 0L,
             )
@@ -146,6 +152,7 @@ object TerminalSessionPool {
             )
 
             is TerminalOpenOutcome.InvalidRequest -> TerminalCommandOutcome.UnexpectedError(
+                session = null,
                 throwable = IllegalArgumentException(openOutcome.message),
                 elapsedSeconds = 0L,
             )
@@ -223,6 +230,7 @@ object TerminalSessionPool {
                     identity = publicIdentity,
                     session = result.value,
                     libTermSessionId = result.value.id,
+                    cwd = cwd,
                 )
                 val existing = synchronized(lock) {
                     val current = sessions[handle]
@@ -323,7 +331,7 @@ object TerminalSessionPool {
 
     fun readInteractive(
         session: String,
-        mode: TerminalInteractiveReadMode = TerminalInteractiveReadMode.DELTA,
+        mode: TerminalReadMode = TerminalReadMode.DELTA,
         maxBytes: Int = DEFAULT_INTERACTIVE_READ_MAX_BYTES,
     ): TerminalInteractiveReadOutcome {
         val state = synchronized(lock) {
@@ -337,14 +345,14 @@ object TerminalSessionPool {
         val maxChars = maxBytes.coerceAtLeast(1)
         val snapshot = synchronized(state.lock) {
             val rawStdout = when (mode) {
-                TerminalInteractiveReadMode.DELTA -> state.stdout.substring(state.stdoutDeltaOffset)
-                TerminalInteractiveReadMode.SNAPSHOT -> state.stdout.toString()
+                TerminalReadMode.DELTA -> state.stdout.substring(state.stdoutDeltaOffset)
+                TerminalReadMode.SNAPSHOT -> state.stdout.toString()
             }
             val rawStderr = when (mode) {
-                TerminalInteractiveReadMode.DELTA -> state.stderr.substring(state.stderrDeltaOffset)
-                TerminalInteractiveReadMode.SNAPSHOT -> state.stderr.toString()
+                TerminalReadMode.DELTA -> state.stderr.substring(state.stderrDeltaOffset)
+                TerminalReadMode.SNAPSHOT -> state.stderr.toString()
             }
-            if (mode == TerminalInteractiveReadMode.DELTA) {
+            if (mode == TerminalReadMode.DELTA) {
                 state.stdoutDeltaOffset = state.stdout.length
                 state.stderrDeltaOffset = state.stderr.length
             }
@@ -419,6 +427,7 @@ object TerminalSessionPool {
             throw error
         } catch (error: Throwable) {
             TerminalCommandOutcome.UnexpectedError(
+                session = entry.handle,
                 throwable = error,
                 elapsedSeconds = elapsedSeconds(startTimeMs),
             )
@@ -431,6 +440,7 @@ object TerminalSessionPool {
         session: String,
         command: String,
         timeoutMs: Long,
+        notifyOnComplete: Boolean = false,
     ): TerminalAsyncStartOutcome {
         val startTimeMs = System.currentTimeMillis()
         val (entry, executeLock, holder) = synchronized(lock) {
@@ -492,9 +502,21 @@ object TerminalSessionPool {
             stdoutPartial = stdoutPartial,
             stderrPartial = stderrPartial,
             lock = stateLock,
+            notifyOnComplete = notifyOnComplete,
         )
         synchronized(lock) {
             asyncStates[session] = state
+        }
+        // Register the completion callback BEFORE start() so the Lazy coroutine
+        // cannot complete before the callback is attached.
+        execJob.invokeOnCompletion { cause ->
+            if (cause == null) {
+                // Normal completion (not cancelled): store result, release Mutex, enqueue notification.
+                onAsyncCompleted(session, state)
+            } else {
+                // Cancelled: still release resources.
+                completeAsync(session, state)
+            }
         }
         execJob.start()
 
@@ -504,73 +526,92 @@ object TerminalSessionPool {
         )
     }
 
-    suspend fun readAsyncResult(session: String, asyncId: String): TerminalAsyncReadOutcome {
-        val state = synchronized(lock) {
-            if (!sessions.containsKey(session)) {
-                return TerminalAsyncReadOutcome.SessionNotFound(session)
-            }
-            val state = asyncStates[session]
-                ?: return TerminalAsyncReadOutcome.AsyncNotFound(
+    suspend fun readSession(
+        session: String,
+        mode: TerminalReadMode = TerminalReadMode.DELTA,
+        maxBytes: Int = DEFAULT_READ_MAX_BYTES,
+    ): TerminalReadOutcome {
+        // 1. Check the session exists.
+        val entry = synchronized(lock) {
+            sessions[session]
+        } ?: return TerminalReadOutcome.SessionNotFound(session)
+        // Read completion fields under the same monitor that guards their writes
+        // in onAsyncCompleted so the writes are visible here.
+        val (completedResult, completedFailure, completedElapsed) = synchronized(lock) {
+            Triple(entry.completedResult, entry.completedFailure, entry.completedElapsedSeconds)
+        }
+        val completedUnexpectedError = synchronized(lock) { entry.completedUnexpectedError }
+        // 2. Completed with a result.
+        if (completedResult != null) {
+            val output = truncateOutput(mergedOutput(completedResult), maxBytes)
+            return if (completedResult.timedOut) {
+                TerminalReadOutcome.TimedOut(
                     session = session,
-                    asyncId = asyncId
-                )
-            if (state.asyncId != asyncId) {
-                return TerminalAsyncReadOutcome.AsyncNotFound(session = session, asyncId = asyncId)
-            }
-            state
-        }
-
-        val snapshot = synchronized(state.lock) {
-            AsyncSnapshot(
-                stdoutPartial = state.stdoutPartial.toString(),
-                stderrPartial = state.stderrPartial.toString(),
-                result = state.result,
-                failure = state.failure,
-                unexpectedError = state.unexpectedError,
-                execCompleted = state.execJob.isCompleted,
-            )
-        }
-        val elapsedSeconds = elapsedSeconds(state.startTimeMs)
-        snapshot.result?.let { result ->
-            completeAsync(session = session, state = state)
-            return if (result.timedOut) {
-                TerminalAsyncReadOutcome.TimedOut(
-                    result = result,
-                    elapsedSeconds = elapsedSeconds,
+                    output = output,
+                    elapsedSeconds = completedElapsed,
                 )
             } else {
-                TerminalAsyncReadOutcome.Completed(
-                    result = result,
-                    elapsedSeconds = elapsedSeconds,
+                TerminalReadOutcome.Exited(
+                    session = session,
+                    output = output,
+                    exitCode = completedResult.exitCode ?: -1,
+                    elapsedSeconds = completedElapsed,
                 )
             }
         }
-        snapshot.failure?.let { failure ->
-            completeAsync(session = session, state = state)
-            return TerminalAsyncReadOutcome.Failure(
-                failure = failure,
-                elapsedSeconds = elapsedSeconds,
+        // 3. Completed with a failure.
+        if (completedFailure != null) {
+            return TerminalReadOutcome.Exited(
+                session = session,
+                output = completedFailure.message ?: "Command failed.",
+                exitCode = -1,
+                elapsedSeconds = completedElapsed,
             )
         }
-        snapshot.unexpectedError?.let { error ->
-            completeAsync(session = session, state = state)
-            return TerminalAsyncReadOutcome.UnexpectedError(
-                throwable = error,
-                elapsedSeconds = elapsedSeconds,
+        // 3b. Completed with an unexpected error (exception thrown inside exec).
+        if (completedUnexpectedError != null) {
+            return TerminalReadOutcome.Crashed(
+                session = session,
+                errorMessage = completedUnexpectedError.message ?: "Command crashed.",
+                elapsedSeconds = completedElapsed,
             )
         }
-        if (snapshot.execCompleted) {
-            completeAsync(session = session, state = state)
-            return TerminalAsyncReadOutcome.UnexpectedError(
-                throwable = IllegalStateException("Async command completed without result."),
-                elapsedSeconds = elapsedSeconds,
+        // 4. Still running: partial output (delta or snapshot).
+        val asyncState = synchronized(lock) { asyncStates[session] }
+        if (asyncState != null) {
+            val output = synchronized(asyncState.lock) {
+                when (mode) {
+                    TerminalReadMode.DELTA -> {
+                        val stdoutDelta = asyncState.stdoutPartial.substring(asyncState.stdoutDeltaOffset)
+                        val stderrDelta = asyncState.stderrPartial.substring(asyncState.stderrDeltaOffset)
+                        asyncState.stdoutDeltaOffset = asyncState.stdoutPartial.length
+                        asyncState.stderrDeltaOffset = asyncState.stderrPartial.length
+                        stdoutDelta + stderrDelta
+                    }
+                    TerminalReadMode.SNAPSHOT -> asyncState.stdoutPartial.toString() + asyncState.stderrPartial.toString()
+                }
+            }
+            return TerminalReadOutcome.Running(
+                session = session,
+                output = truncateOutput(output, maxBytes),
+                elapsedSeconds = elapsedSeconds(asyncState.startTimeMs),
             )
         }
-        return TerminalAsyncReadOutcome.Running(
-            stdoutPartial = snapshot.stdoutPartial,
-            stderrPartial = snapshot.stderrPartial,
-            elapsedSeconds = elapsedSeconds,
-        )
+        // 5. Exists but neither running nor completed: not a background task.
+        return TerminalReadOutcome.NotBackground(session)
+    }
+
+    /**
+     * Drains and clears the queued background-completion notifications
+     * (enqueued when notify_on_complete is set), for injection into the next
+     * user message by the upper layer.
+     */
+    fun drainPendingNotifications(): List<String> {
+        return synchronized(lock) {
+            val list = pendingNotifications.toList()
+            pendingNotifications.clear()
+            list
+        }
     }
 
     suspend fun close(session: String): TerminalCloseOutcome {
@@ -613,6 +654,7 @@ object TerminalSessionPool {
             asyncStates.clear()
             interactiveStates.clear()
             executionLocks.clear()
+            pendingNotifications.clear()
             removed
         }
         removed.asyncStates.forEach { (session, state) ->
@@ -754,6 +796,74 @@ object TerminalSessionPool {
         }
     }
 
+    /**
+     * Invoked by [execJob]'s invokeOnCompletion callback on normal (non-cancelled)
+     * completion. Stores the finished result/failure into the session entry so that
+     * [readSession] can serve it later, releases the execution Mutex via
+     * [completeAsync], and enqueues a notification when notify_on_complete is set.
+     */
+    private fun onAsyncCompleted(session: String, state: AsyncState) {
+        val completionTime = System.currentTimeMillis()
+        synchronized(state.lock) {
+            val entry = synchronized(lock) { sessions[session] } ?: return
+            val elapsed = elapsedSeconds(state.startTimeMs, completionTime)
+            state.result?.let { result ->
+                entry.completedResult = result
+                entry.completedElapsedSeconds = elapsed
+            }
+            state.failure?.let { failure ->
+                entry.completedFailure = failure
+                entry.completedElapsedSeconds = elapsed
+            }
+            state.unexpectedError?.let { error ->
+                entry.completedUnexpectedError = error
+                entry.completedElapsedSeconds = elapsed
+            }
+        }
+        // Release Mutex + cancel collector + remove asyncState (never blocked on Agent poll).
+        completeAsync(session, state)
+        // If notify_on_complete, enqueue the notification for the next user message.
+        if (state.notifyOnComplete) {
+            val entry = synchronized(lock) { sessions[session] } ?: return
+            val result = entry.completedResult
+            val failure = entry.completedFailure
+            val notification = formatCompletionNotification(session, entry, result, failure)
+            synchronized(lock) { pendingNotifications.add(notification) }
+        }
+    }
+
+    private fun formatCompletionNotification(
+        sessionId: String,
+        entry: TerminalSessionEntry,
+        result: CommandResult?,
+        failure: TerminalFailure?,
+    ): String {
+        val prefix = "[IMPORTANT: Background process $sessionId"
+        return when {
+            result != null -> {
+                val exitCode = result.exitCode ?: -1
+                val timedOutNote = if (result.timedOut) " (timed out)" else ""
+                val output = mergedOutput(result).takeLast(2000)
+                "$prefix completed$timedOutNote. Exit code: $exitCode.\nCommand: <background task>\nOutput (last 2000 chars):\n$output]"
+            }
+            failure != null -> {
+                "$prefix failed. Error: ${failure.message}]"
+            }
+            entry.completedUnexpectedError != null -> {
+                "$prefix failed. Error: ${entry.completedUnexpectedError?.message}]"
+            }
+            else -> "$prefix exited with unknown status.]"
+        }
+    }
+
+    private fun truncateOutput(text: String, maxBytes: Int): String {
+        return text.takeLast(maxBytes.coerceAtLeast(1))
+    }
+
+    private fun mergedOutput(result: CommandResult): String {
+        return result.stdoutText() + result.stderrText()
+    }
+
     private fun completeAsync(session: String, state: AsyncState) {
         val executeLock = synchronized(lock) {
             if (asyncStates[session] === state) {
@@ -787,6 +897,11 @@ internal data class TerminalSessionEntry(
     val identity: String,
     val session: TerminalSessionPort,
     val libTermSessionId: String,
+    var cwd: String? = null,
+    var completedResult: CommandResult? = null,
+    var completedFailure: TerminalFailure? = null,
+    var completedUnexpectedError: Throwable? = null,
+    var completedElapsedSeconds: Long = 0,
 )
 
 internal interface TerminalRuntimePort {
@@ -880,9 +995,12 @@ private data class AsyncState(
     val stdoutPartial: StringBuilder,
     val stderrPartial: StringBuilder,
     val lock: Any,
+    val notifyOnComplete: Boolean = false,
     var result: CommandResult? = null,
     var failure: TerminalFailure? = null,
     var unexpectedError: Throwable? = null,
+    var stdoutDeltaOffset: Int = 0,
+    var stderrDeltaOffset: Int = 0,
 )
 
 private data class InteractiveState(
@@ -940,8 +1058,11 @@ sealed interface TerminalCommandOutcome {
 
     data class SessionNotFound(val session: String) : TerminalCommandOutcome
     data class Busy(val session: String, val asyncId: String?) : TerminalCommandOutcome
-    data class UnexpectedError(val throwable: Throwable, val elapsedSeconds: Long) :
-        TerminalCommandOutcome
+    data class UnexpectedError(
+        val session: String?,
+        val throwable: Throwable,
+        val elapsedSeconds: Long,
+    ) : TerminalCommandOutcome
 }
 
 sealed interface TerminalAsyncStartOutcome {
@@ -951,34 +1072,12 @@ sealed interface TerminalAsyncStartOutcome {
     data class InvalidRequest(val message: String) : TerminalAsyncStartOutcome
 }
 
-sealed interface TerminalAsyncReadOutcome {
-    data class Running(
-        val stdoutPartial: String,
-        val stderrPartial: String,
-        val elapsedSeconds: Long,
-    ) : TerminalAsyncReadOutcome
-
-    data class Completed(val result: CommandResult, val elapsedSeconds: Long) :
-        TerminalAsyncReadOutcome
-
-    data class TimedOut(val result: CommandResult, val elapsedSeconds: Long) :
-        TerminalAsyncReadOutcome
-
-    data class Failure(val failure: TerminalFailure, val elapsedSeconds: Long) :
-        TerminalAsyncReadOutcome
-
-    data class AsyncNotFound(val session: String, val asyncId: String) : TerminalAsyncReadOutcome
-    data class SessionNotFound(val session: String) : TerminalAsyncReadOutcome
-    data class UnexpectedError(val throwable: Throwable, val elapsedSeconds: Long) :
-        TerminalAsyncReadOutcome
-}
-
 sealed interface TerminalCloseOutcome {
     data object Closed : TerminalCloseOutcome
     data class UnexpectedError(val throwable: Throwable) : TerminalCloseOutcome
 }
 
-enum class TerminalInteractiveReadMode(val wireName: String) {
+enum class TerminalReadMode(val wireName: String) {
     DELTA("delta"),
     SNAPSHOT("snapshot"),
 }
@@ -1000,7 +1099,7 @@ sealed interface TerminalInteractiveReadOutcome {
     data class Success(
         val stdout: String,
         val stderr: String,
-        val mode: TerminalInteractiveReadMode,
+        val mode: TerminalReadMode,
         val sequence: Long,
         val truncated: Boolean,
     ) : TerminalInteractiveReadOutcome
@@ -1009,17 +1108,38 @@ sealed interface TerminalInteractiveReadOutcome {
     data class NotInteractive(val session: String) : TerminalInteractiveReadOutcome
 }
 
+sealed interface TerminalReadOutcome {
+    data class Running(
+        val session: String,
+        val output: String,
+        val elapsedSeconds: Long,
+    ) : TerminalReadOutcome
+
+    data class Exited(
+        val session: String,
+        val output: String,
+        val exitCode: Int,
+        val elapsedSeconds: Long,
+    ) : TerminalReadOutcome
+
+    data class TimedOut(
+        val session: String,
+        val output: String,
+        val elapsedSeconds: Long,
+    ) : TerminalReadOutcome
+
+    data class Crashed(
+        val session: String,
+        val errorMessage: String,
+        val elapsedSeconds: Long,
+    ) : TerminalReadOutcome
+
+    data class SessionNotFound(val session: String) : TerminalReadOutcome
+    data class NotBackground(val session: String) : TerminalReadOutcome
+}
+
 data class TerminalCloseAllOutcome(
     val closedCount: Int,
-)
-
-private data class AsyncSnapshot(
-    val stdoutPartial: String,
-    val stderrPartial: String,
-    val result: CommandResult?,
-    val failure: TerminalFailure?,
-    val unexpectedError: Throwable?,
-    val execCompleted: Boolean,
 )
 
 private data class RemovedSession(

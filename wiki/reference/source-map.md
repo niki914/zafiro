@@ -123,9 +123,7 @@
 - `chat/agentic/buildin/impl/ScreenContentBuiltin.kt`: 屏幕内容读取工具
 - `chat/agentic/buildin/impl/SearchAppsBuiltin.kt`: 搜索已安装应用
 - `chat/agentic/buildin/impl/SearchNodesBuiltin.kt`: 无障碍节点搜索工具
-- `chat/agentic/buildin/impl/SshTerminalBuiltin.kt`: SSH 终端工具
-- `chat/agentic/buildin/impl/TerminalAction.kt`: terminal 动作与参数约束
-- `chat/agentic/buildin/impl/TerminalBuiltin.kt`: 本地终端工具
+- `chat/agentic/buildin/impl/TerminalBuiltin.kt`: 统一终端工具（本地 + SSH，对齐 Hermes schema）
 - `chat/agentic/custom/CustomToolExecutor.kt`: custom tool 执行器
 - `chat/agentic/custom/CustomToolManager.kt`: custom tool 配置与校验
 - `chat/agentic/device/AppInfoCache.kt`: 应用信息缓存

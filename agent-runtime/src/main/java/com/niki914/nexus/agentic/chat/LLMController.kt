@@ -191,7 +191,15 @@ object LLMController {
                         "isUnlocked" to LockState.isUnlocked()
                     )
                 )
-                state.session.send(query).collect { event ->
+                // Inject pending background-task completion notifications
+                // into this turn's effective user message.
+                val notifications = TerminalSessionPool.drainPendingNotifications()
+                val effectiveQuery = if (notifications.isNotEmpty()) {
+                    notifications.joinToString("\n\n") + "\n\n" + query
+                } else {
+                    query
+                }
+                state.session.send(effectiveQuery).collect { event ->
                     val mapped = LlmStreamEventMapper.map(
                         event,
                         accumulator,

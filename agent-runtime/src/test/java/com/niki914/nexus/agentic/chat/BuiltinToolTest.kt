@@ -10,7 +10,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.OpenUriBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ReadCustomToolBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SearchAppsBuiltin
-import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SshTerminalBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.TerminalBuiltin
 import com.niki914.s3ss10n.LocalToolConfig
 import kotlinx.serialization.json.Json
@@ -80,7 +79,6 @@ class BuiltinToolTest {
                 "screen_operation_accessibility",
                 "screen_operation_shell",
                 "search_apps",
-                "ssh_terminal",
                 "terminal",
             ),
             registry.all().map { it.name }.sorted()
@@ -95,8 +93,8 @@ class BuiltinToolTest {
         assertEquals("screen_operation_accessibility", registry.find("screen_operation_accessibility")?.name)
         assertEquals("screen_operation_shell", registry.find("screen_operation_shell")?.name)
         assertEquals("search_apps", registry.find("search_apps")?.name)
-        assertEquals("ssh_terminal", registry.find("ssh_terminal")?.name)
         assertEquals("terminal", registry.find("terminal")?.name)
+        assertNull(registry.find("ssh_terminal"))
         assertNull(registry.find("run_command"))
     }
 
@@ -127,29 +125,20 @@ class BuiltinToolTest {
         assertEquals(tool.description, config.description)
         assertEquals("terminal", tool.name)
         assertTrue(tool.defaultEnabled)
-        assertTrue(tool.description.contains("open_and_exec"))
-        assertTrue(tool.description.contains("one-shot"))
-        assertTrue(tool.description.contains("opaque session handle returned"))
-        assertTrue(tool.description.contains("read_async_result"))
-        assertTrue(tool.description.contains("SESSION_NOT_FOUND"))
-        assertTrue(tool.description.contains("SESSION_BUSY"))
-    }
-
-    @Test
-    fun sshTerminalBuiltinDescription_matchesConfigureDescription() {
-        val tool = SshTerminalBuiltin()
-        val config = LocalToolConfig()
-
-        tool.configure(config)
-
-        assertEquals(tool.description, config.description)
-        assertEquals("ssh_terminal", tool.name)
-        assertTrue(tool.defaultEnabled)
-        assertTrue(tool.description.contains("send_line"))
-        assertTrue(tool.description.contains("exec/open_and_exec"))
-        assertTrue(tool.description.contains("password"))
-        assertTrue(tool.description.contains("should not be echoed"))
-        assertTrue(tool.description.contains("should not be stored"))
+        // Hermes-aligned description assertions
+        assertTrue(tool.description.contains("Foreground (default)"))
+        assertTrue(tool.description.contains("Background:"))
+        assertTrue(tool.description.contains("notify_on_complete"))
+        assertTrue(tool.description.contains("working directory"))
+        // Nexus-specific assertions
+        assertTrue(tool.description.contains("backend"))
+        assertTrue(tool.description.contains("\"local\""))
+        assertTrue(tool.description.contains("\"ssh\""))
+        assertTrue(tool.description.contains("shizuku"))
+        // Hermes-aligned session protocol in the description
+        assertTrue(tool.description.contains("session_id"))
+        assertTrue(tool.description.contains("action=\"read\""))
+        assertTrue(tool.description.contains("action=\"close\""))
     }
 
     private class FakeBuiltinTool(

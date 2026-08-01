@@ -24,7 +24,6 @@ class BuiltinToolRegistryTest {
         assertTrue(names.contains("open_uri"))
         assertTrue(names.contains("read_custom_tool"))
         assertTrue(names.contains("terminal"))
-        assertTrue(names.contains("ssh_terminal"))
         assertTrue(names.contains("search_apps"))
         assertTrue(names.contains("load_skill"))
     }
