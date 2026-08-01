@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.chat.agentic.buildin
 
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.CreateCustomToolBuiltin
+import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ExecutePythonBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.MemoryBuiltin
@@ -26,6 +27,7 @@ class BuiltinToolRegistry(
         fun default(): BuiltinToolRegistry = BuiltinToolRegistry(
             listOf(
                 CreateCustomToolBuiltin(),
+                ExecutePythonBuiltin(),
                 LaunchAppBuiltin(),
                 MemoryBuiltin(),
                 NotifyBuiltin(),

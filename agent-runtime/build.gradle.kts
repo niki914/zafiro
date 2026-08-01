@@ -1,6 +1,8 @@
 plugins {
     id("com.android.library") version "9.1.1"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
+
+    id("com.chaquo.python") version "17.0.0"
 }
 
 android {
@@ -11,10 +13,24 @@ android {
         minSdk = 26
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+        pip {
+            install("requests==2.34.2")
+            install("beautifulsoup4==4.15.0")
+        }
     }
 }
 
@@ -28,4 +44,22 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("org.mockito:mockito-core:5.10.0")
+}
+
+// ---- Python host-side tests ----
+
+val testPythonRuntime by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Run runtime.py unit tests with python3"
+    workingDir = file("${project.rootDir}")
+    environment("PYTHONPATH", "agent-runtime/src/main/python")
+    commandLine(
+        "python3", "-m", "unittest", "discover",
+        "-s", "agent-runtime/src/test/python",
+        "-v",
+    )
+}
+
+tasks.named("check") {
+    dependsOn(testPythonRuntime)
 }

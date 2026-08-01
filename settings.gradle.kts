@@ -10,6 +10,8 @@ pluginManagement {
         maven { url = uri("https://maven.aliyun.com/repository/jcenter") }
         maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
         maven { url = uri("https://jitpack.io") }
+
+        maven { url = uri("https://chaquo.com/maven") }
     }
 }
 dependencyResolutionManagement {
@@ -24,6 +26,8 @@ dependencyResolutionManagement {
         maven { url = uri("https://maven.aliyun.com/repository/jcenter") }
         maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
         maven { url = uri("https://jitpack.io") }
+
+        maven { url = uri("https://chaquo.com/maven") }
     }
 }
 rootProject.name = "Nexus"
