@@ -369,6 +369,23 @@ class TerminalBuiltinTest {
         assertFalse(json.containsKey("error"))
     }
 
+    @Test
+    fun invokeRawJson_ptyFieldReturnsInvalidRequest() = runTest {
+        installRuntimeSettingsGatewayForTest()
+        val fakeRuntime = FakeTerminalRuntime(nextResult = commandResult())
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a3f9").use {
+                val json = invoke("""{"command":"ls","pty":true}""")
+
+                assertErrorCode("INVALID_REQUEST", json)
+                assertTrue(
+                    json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+                        .contains("Unknown terminal request field")
+                )
+            }
+        }
+    }
+
     // ── Schema ───────────────────────────────────────────────────────────────
 
     @Test
@@ -416,6 +433,9 @@ class TerminalBuiltinTest {
                 .map { it.jsonPrimitive.content },
         )
         assertTrue(properties.containsKey("session_id"))
+
+        // pty must NOT be in the schema (not a Nexus protocol field)
+        assertFalse(properties.containsKey("pty"))
     }
 
     @Test

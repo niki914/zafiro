@@ -64,12 +64,6 @@ class TerminalBuiltin(
                 "\n" +
                 "Working directory: Use 'workdir' for per-command cwd.\n" +
                 "\n" +
-                "PTY mode: Set pty=true for interactive CLI tools. " +
-                "On Android this primarily works with SSH backend; local PTY support is limited.\n" +
-                "\n" +
-                "Do NOT use vim/nano/interactive tools without pty=true — they hang without a pseudo-terminal. " +
-                "Pipe git output to cat if it might page.\n" +
-                "\n" +
                 "Backend: Set backend to \"local\" (default) for the Android device shell, " +
                 "or \"ssh\" for a remote host. SSH backend requires background=true; " +
                 "it cannot reliably detect command completion in foreground mode.\n" +
@@ -97,7 +91,7 @@ class TerminalBuiltin(
         return BuiltinToolResult.failure(
             code = "RAW_JSON_ONLY",
             message = "terminal accepts raw JSON requests only.",
-            hint = """Example: {"command":"ls -la"} or {"command":"ls","backend":"ssh","host":"1.2.3.4","username":"root","password":"..."}""",
+            hint = """Example: {"command":"ls -la"} or {"command":"ls","backend":"ssh","background":true,"host":"1.2.3.4","username":"root","password":"..."}""",
         )
     }
 
@@ -407,8 +401,11 @@ class TerminalBuiltin(
             }
 
             is TerminalCommandOutcome.SessionNotFound,
-            is TerminalCommandOutcome.Busy,
-            is TerminalCommandOutcome.UnexpectedError -> Unit
+            is TerminalCommandOutcome.Busy -> Unit
+
+            is TerminalCommandOutcome.UnexpectedError -> {
+                outcome.session?.let { TerminalSessionPool.close(it) }
+            }
         }
     }
 
@@ -487,6 +484,10 @@ class TerminalBuiltin(
                 sessionId, "exited", outcome.output, outcome.exitCode, outcome.elapsedSeconds
             )
 
+            is TerminalReadOutcome.TimedOut -> TerminalToolResponse.readResult(
+                sessionId, "timed_out", outcome.output, null, outcome.elapsedSeconds
+            )
+
             is TerminalReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
                 outcome.session
             )
@@ -528,9 +529,6 @@ class TerminalBuiltin(
             background = obj.optionalBoolean("background") ?: false,
             timeout = obj.optionalLong("timeout"),
             workdir = obj.optionalString("workdir"),
-            // Parsed but intentionally ignored — kept so it does not trip the
-            // unknown-key check.
-            pty = obj.optionalBoolean("pty") ?: false,
             notifyOnComplete = obj.optionalBoolean("notify_on_complete") ?: false,
             // Nexus extensions
             backend = obj.optionalString("backend")?.let { resolveBackend(it) } ?: Backend.LOCAL,
@@ -711,9 +709,6 @@ class TerminalBuiltin(
         val background: Boolean,
         val timeout: Long?,
         val workdir: String?,
-        // Parsed but intentionally not exposed to the agent; kept so it does not
-        // trip the unknown-key check.
-        val pty: Boolean,
         val notifyOnComplete: Boolean,
         // Nexus extensions
         val backend: Backend,
@@ -753,7 +748,7 @@ class TerminalBuiltin(
 
         private val KNOWN_KEYS = setOf(
             // Hermes-aligned
-            "command", "background", "timeout", "workdir", "pty", "notify_on_complete",
+            "command", "background", "timeout", "workdir", "notify_on_complete",
             // Nexus extensions
             "backend", "identity",
             "host", "port", "username", "password",

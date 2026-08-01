@@ -13,6 +13,7 @@ import com.niki914.libterm.runtime.LibTermSession
 import com.niki914.libterm.runtime.TermResult
 import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stdoutText
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stderrText
 import com.niki914.nexus.xposed.api.util.ContextProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -92,6 +93,7 @@ object TerminalSessionPool {
             )
 
             is TerminalOpenOutcome.InvalidRequest -> TerminalCommandOutcome.UnexpectedError(
+                session = null,
                 throwable = IllegalArgumentException(openOutcome.message),
                 elapsedSeconds = 0L,
             )
@@ -119,6 +121,7 @@ object TerminalSessionPool {
             )
 
             is TerminalOpenOutcome.InvalidRequest -> TerminalCommandOutcome.UnexpectedError(
+                session = null,
                 throwable = IllegalArgumentException(openOutcome.message),
                 elapsedSeconds = 0L,
             )
@@ -149,6 +152,7 @@ object TerminalSessionPool {
             )
 
             is TerminalOpenOutcome.InvalidRequest -> TerminalCommandOutcome.UnexpectedError(
+                session = null,
                 throwable = IllegalArgumentException(openOutcome.message),
                 elapsedSeconds = 0L,
             )
@@ -423,6 +427,7 @@ object TerminalSessionPool {
             throw error
         } catch (error: Throwable) {
             TerminalCommandOutcome.UnexpectedError(
+                session = entry.handle,
                 throwable = error,
                 elapsedSeconds = elapsedSeconds(startTimeMs),
             )
@@ -532,17 +537,26 @@ object TerminalSessionPool {
         } ?: return TerminalReadOutcome.SessionNotFound(session)
         // Read completion fields under the same monitor that guards their writes
         // in onAsyncCompleted so the writes are visible here.
-        val (completedResult, completedFailure, completedAt) = synchronized(lock) {
-            Triple(entry.completedResult, entry.completedFailure, entry.completedAt)
+        val (completedResult, completedFailure, completedElapsed) = synchronized(lock) {
+            Triple(entry.completedResult, entry.completedFailure, entry.completedElapsedSeconds)
         }
         // 2. Completed with a result.
         if (completedResult != null) {
-            return TerminalReadOutcome.Exited(
-                session = session,
-                output = truncateOutput(completedResult.stdoutText(), maxBytes),
-                exitCode = completedResult.exitCode ?: -1,
-                elapsedSeconds = elapsedSeconds(completedAt),
-            )
+            val output = truncateOutput(mergedOutput(completedResult), maxBytes)
+            return if (completedResult.timedOut) {
+                TerminalReadOutcome.TimedOut(
+                    session = session,
+                    output = output,
+                    elapsedSeconds = completedElapsed,
+                )
+            } else {
+                TerminalReadOutcome.Exited(
+                    session = session,
+                    output = output,
+                    exitCode = completedResult.exitCode ?: -1,
+                    elapsedSeconds = completedElapsed,
+                )
+            }
         }
         // 3. Completed with a failure.
         if (completedFailure != null) {
@@ -550,7 +564,7 @@ object TerminalSessionPool {
                 session = session,
                 output = completedFailure.message ?: "Command failed.",
                 exitCode = -1,
-                elapsedSeconds = elapsedSeconds(completedAt),
+                elapsedSeconds = completedElapsed,
             )
         }
         // 4. Still running: partial output (delta or snapshot).
@@ -559,11 +573,13 @@ object TerminalSessionPool {
             val output = synchronized(asyncState.lock) {
                 when (mode) {
                     TerminalReadMode.DELTA -> {
-                        val delta = asyncState.stdoutPartial.substring(asyncState.stdoutDeltaOffset)
+                        val stdoutDelta = asyncState.stdoutPartial.substring(asyncState.stdoutDeltaOffset)
+                        val stderrDelta = asyncState.stderrPartial.substring(asyncState.stderrDeltaOffset)
                         asyncState.stdoutDeltaOffset = asyncState.stdoutPartial.length
-                        delta
+                        asyncState.stderrDeltaOffset = asyncState.stderrPartial.length
+                        stdoutDelta + stderrDelta
                     }
-                    TerminalReadMode.SNAPSHOT -> asyncState.stdoutPartial.toString()
+                    TerminalReadMode.SNAPSHOT -> asyncState.stdoutPartial.toString() + asyncState.stderrPartial.toString()
                 }
             }
             return TerminalReadOutcome.Running(
@@ -777,15 +793,17 @@ object TerminalSessionPool {
      * [completeAsync], and enqueues a notification when notify_on_complete is set.
      */
     private fun onAsyncCompleted(session: String, state: AsyncState) {
+        val completionTime = System.currentTimeMillis()
         synchronized(state.lock) {
             val entry = synchronized(lock) { sessions[session] } ?: return
+            val elapsed = elapsedSeconds(state.startTimeMs, completionTime)
             state.result?.let { result ->
                 entry.completedResult = result
-                entry.completedAt = System.currentTimeMillis()
+                entry.completedElapsedSeconds = elapsed
             }
             state.failure?.let { failure ->
                 entry.completedFailure = failure
-                entry.completedAt = System.currentTimeMillis()
+                entry.completedElapsedSeconds = elapsed
             }
         }
         // Release Mutex + cancel collector + remove asyncState (never blocked on Agent poll).
@@ -810,8 +828,9 @@ object TerminalSessionPool {
         return when {
             result != null -> {
                 val exitCode = result.exitCode ?: -1
-                val output = result.stdoutText().takeLast(2000)
-                "$prefix completed. Exit code: $exitCode.\nCommand: <background task>\nOutput (last 2000 chars):\n$output]"
+                val timedOutNote = if (result.timedOut) " (timed out)" else ""
+                val output = mergedOutput(result).takeLast(2000)
+                "$prefix completed$timedOutNote. Exit code: $exitCode.\nCommand: <background task>\nOutput (last 2000 chars):\n$output]"
             }
             failure != null -> {
                 "$prefix failed. Error: ${failure.message}]"
@@ -822,6 +841,10 @@ object TerminalSessionPool {
 
     private fun truncateOutput(text: String, maxBytes: Int): String {
         return text.takeLast(maxBytes.coerceAtLeast(1))
+    }
+
+    private fun mergedOutput(result: CommandResult): String {
+        return result.stdoutText() + result.stderrText()
     }
 
     private fun completeAsync(session: String, state: AsyncState) {
@@ -860,7 +883,7 @@ internal data class TerminalSessionEntry(
     var cwd: String? = null,
     var completedResult: CommandResult? = null,
     var completedFailure: TerminalFailure? = null,
-    var completedAt: Long = 0,
+    var completedElapsedSeconds: Long = 0,
 )
 
 internal interface TerminalRuntimePort {
@@ -959,6 +982,7 @@ private data class AsyncState(
     var failure: TerminalFailure? = null,
     var unexpectedError: Throwable? = null,
     var stdoutDeltaOffset: Int = 0,
+    var stderrDeltaOffset: Int = 0,
 )
 
 private data class InteractiveState(
@@ -1016,8 +1040,11 @@ sealed interface TerminalCommandOutcome {
 
     data class SessionNotFound(val session: String) : TerminalCommandOutcome
     data class Busy(val session: String, val asyncId: String?) : TerminalCommandOutcome
-    data class UnexpectedError(val throwable: Throwable, val elapsedSeconds: Long) :
-        TerminalCommandOutcome
+    data class UnexpectedError(
+        val session: String?,
+        val throwable: Throwable,
+        val elapsedSeconds: Long,
+    ) : TerminalCommandOutcome
 }
 
 sealed interface TerminalAsyncStartOutcome {
@@ -1074,6 +1101,12 @@ sealed interface TerminalReadOutcome {
         val session: String,
         val output: String,
         val exitCode: Int,
+        val elapsedSeconds: Long,
+    ) : TerminalReadOutcome
+
+    data class TimedOut(
+        val session: String,
+        val output: String,
         val elapsedSeconds: Long,
     ) : TerminalReadOutcome
 

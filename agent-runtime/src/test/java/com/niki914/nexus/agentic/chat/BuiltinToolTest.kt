@@ -129,8 +129,6 @@ class BuiltinToolTest {
         assertTrue(tool.description.contains("Background:"))
         assertTrue(tool.description.contains("notify_on_complete"))
         assertTrue(tool.description.contains("working directory"))
-        assertTrue(tool.description.contains("PTY mode"))
-        assertTrue(tool.description.contains("without pty=true"))
         // Nexus-specific assertions
         assertTrue(tool.description.contains("backend"))
         assertTrue(tool.description.contains("\"local\""))
