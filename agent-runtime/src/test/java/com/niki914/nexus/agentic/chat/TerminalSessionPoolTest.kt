@@ -91,6 +91,35 @@ class TerminalSessionPoolTest {
     }
 
     @Test
+    fun closeAllClearsPendingNotifications() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001", "b002").use {
+                TerminalSessionPool.open(identity = "user")
+                TerminalSessionPool.startAsync(
+                    session = "a001", command = "echo done", timeoutMs = 1_000L,
+                    notifyOnComplete = true,
+                )
+                waitForAsyncCompletion("a001")
+                Thread.sleep(20)
+                assertTrue(TerminalSessionPool.drainPendingNotifications().isNotEmpty())
+
+                // Start a second task and enqueue another notification
+                TerminalSessionPool.open(identity = "user")
+                TerminalSessionPool.startAsync(
+                    session = "b002", command = "echo done", timeoutMs = 1_000L,
+                    notifyOnComplete = true,
+                )
+                waitForAsyncCompletion("b002")
+                Thread.sleep(20)
+
+                TerminalSessionPool.closeAll()
+                assertTrue("Notifications cleared by closeAll", TerminalSessionPool.drainPendingNotifications().isEmpty())
+            }
+        }
+    }
+
+    @Test
     fun openCreatesDistinctShortHandlesForSameIdentity() = runTest {
         val fakeRuntime = FakeTerminalRuntime()
         installFakeRuntime(fakeRuntime).use {

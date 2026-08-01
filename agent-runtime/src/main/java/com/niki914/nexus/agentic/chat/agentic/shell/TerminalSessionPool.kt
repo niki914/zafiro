@@ -645,6 +645,7 @@ object TerminalSessionPool {
             asyncStates.clear()
             interactiveStates.clear()
             executionLocks.clear()
+            pendingNotifications.clear()
             removed
         }
         removed.asyncStates.forEach { (session, state) ->

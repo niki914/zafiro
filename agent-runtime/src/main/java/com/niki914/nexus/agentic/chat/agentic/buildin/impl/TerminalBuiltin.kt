@@ -11,6 +11,7 @@ import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalAsyncStartOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCloseOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalCommandOutcome
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalInteractiveReadOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalInteractiveWriteOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalReadMode
@@ -338,39 +339,50 @@ class TerminalBuiltin(
         }
     }
 
+    /**
+     * SSH sessions are always interactive. Instead of running a one-shot exec
+     * (which would store a completedResult and block subsequent reads from the
+     * interactive collector), the initial command is sent as stdin input via
+     * writeInteractive. Subsequent read/write/submit/close operations all work
+     * against the same persistent interactive channel.
+     */
     private suspend fun startBackgroundSsh(
         sshOptions: SshOpenOptions,
         workdir: String?,
         command: String,
         timeoutMs: Long,
-        notifyOnComplete: Boolean,
+        @Suppress("UNUSED_PARAMETER") notifyOnComplete: Boolean,
     ): String {
         return when (val openOutcome = TerminalSessionPool.openSsh(
             options = sshOptions,
             cwd = workdir
         )) {
             is TerminalOpenOutcome.Success -> {
-                when (val asyncOutcome = TerminalSessionPool.startAsync(
+                // Send the initial command via the interactive channel.
+                // writeInteractive appends a newline; command is the raw input.
+                when (val writeOutcome = TerminalSessionPool.writeInteractive(
                     session = openOutcome.session,
-                    command = command,
-                    timeoutMs = timeoutMs,
-                    notifyOnComplete = notifyOnComplete,
+                    text = command + "\n",
                 )) {
-                    is TerminalAsyncStartOutcome.Accepted -> TerminalToolResponse.backgroundAccepted(
+                    is TerminalInteractiveWriteOutcome.Accepted -> TerminalToolResponse.backgroundAccepted(
                         openOutcome.session
                     )
 
-                    is TerminalAsyncStartOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
-                        asyncOutcome.session
+                    is TerminalInteractiveWriteOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                        writeOutcome.session
                     )
 
-                    is TerminalAsyncStartOutcome.Busy -> TerminalToolResponse.sessionBusy(
-                        asyncOutcome.session,
-                        asyncOutcome.asyncId
+                    is TerminalInteractiveWriteOutcome.Busy -> TerminalToolResponse.sessionBusy(
+                        writeOutcome.session,
+                        asyncId = null
                     )
 
-                    is TerminalAsyncStartOutcome.InvalidRequest -> TerminalToolResponse.invalidRequest(
-                        asyncOutcome.message
+                    is TerminalInteractiveWriteOutcome.NotInteractive -> TerminalToolResponse.invalidRequest(
+                        "SSH session is not interactive."
+                    )
+
+                    is TerminalInteractiveWriteOutcome.UnexpectedError -> TerminalToolResponse.internalError(
+                        writeOutcome.throwable
                     )
                 }
             }
@@ -471,30 +483,54 @@ class TerminalBuiltin(
         val sessionId = args.requireSessionId()
         val mode = args.mode ?: TerminalReadMode.DELTA
         val maxBytes = args.maxBytes ?: DEFAULT_MAX_BYTES
-        return when (val outcome = TerminalSessionPool.readSession(
-            session = sessionId,
-            mode = mode,
-            maxBytes = maxBytes,
-        )) {
-            is TerminalReadOutcome.Running -> TerminalToolResponse.readResult(
-                sessionId, "running", outcome.output, null, outcome.elapsedSeconds
+
+        // Interactive sessions (SSH): read from the persistent collector.
+        // The interactive collector is started by openSsh() and runs for the
+        // lifetime of the session, accumulating all output.  Unlike background
+        // local commands there is no "completion" boundary — status is always
+        // "running".
+        val interactiveOutcome = TerminalSessionPool.readInteractive(sessionId, mode, maxBytes)
+        return when (interactiveOutcome) {
+            is TerminalInteractiveReadOutcome.Success -> TerminalToolResponse.readResult(
+                sessionId, "running",
+                interactiveOutcome.stdout + interactiveOutcome.stderr,
+                null,
+                elapsedSeconds = 0L,
             )
 
-            is TerminalReadOutcome.Exited -> TerminalToolResponse.readResult(
-                sessionId, "exited", outcome.output, outcome.exitCode, outcome.elapsedSeconds
+            is TerminalInteractiveReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                interactiveOutcome.session
             )
 
-            is TerminalReadOutcome.TimedOut -> TerminalToolResponse.readResult(
-                sessionId, "timed_out", outcome.output, null, outcome.elapsedSeconds
-            )
+            is TerminalInteractiveReadOutcome.NotInteractive -> {
+                // Not an SSH session — fall through to readSession for local
+                // background tasks.
+                when (val outcome = TerminalSessionPool.readSession(
+                    session = sessionId,
+                    mode = mode,
+                    maxBytes = maxBytes,
+                )) {
+                    is TerminalReadOutcome.Running -> TerminalToolResponse.readResult(
+                        sessionId, "running", outcome.output, null, outcome.elapsedSeconds
+                    )
 
-            is TerminalReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
-                outcome.session
-            )
+                    is TerminalReadOutcome.Exited -> TerminalToolResponse.readResult(
+                        sessionId, "exited", outcome.output, outcome.exitCode, outcome.elapsedSeconds
+                    )
 
-            is TerminalReadOutcome.NotBackground -> TerminalToolResponse.invalidRequest(
-                "Session '$sessionId' is not a background task."
-            )
+                    is TerminalReadOutcome.TimedOut -> TerminalToolResponse.readResult(
+                        sessionId, "timed_out", outcome.output, null, outcome.elapsedSeconds
+                    )
+
+                    is TerminalReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
+                        outcome.session
+                    )
+
+                    is TerminalReadOutcome.NotBackground -> TerminalToolResponse.invalidRequest(
+                        "Session '$sessionId' is not a background task."
+                    )
+                }
+            }
         }
     }
 
