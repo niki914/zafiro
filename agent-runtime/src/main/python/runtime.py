@@ -47,6 +47,10 @@ class BoundedWriter:
                 break
         return len(s)
 
+    def flush(self):
+        """No-op — satisfies the TextIO flush() contract (e.g. print(..., flush=True))."""
+        pass
+
     def getvalue(self) -> str:
         val = self._buf.getvalue()
         if self._truncated:

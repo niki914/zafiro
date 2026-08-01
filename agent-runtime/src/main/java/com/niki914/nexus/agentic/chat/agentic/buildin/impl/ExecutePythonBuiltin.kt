@@ -56,10 +56,10 @@ Use os.popen or subprocess to execute am, pm, input and other Android
 commands. Prefix with su -c when root privileges are needed:
 
     # Regular commands (no root needed)
-    os.popen("input tap 500 800").read()
     os.popen("am start -a android.settings.WIFI_SETTINGS").read()
 
-    # su -c: install / uninstall
+    # su -c: input tap / install / uninstall
+    os.popen('su -c "input tap 500 800"').read()
     os.popen('su -c "pm install -r /sdcard/app.apk"').read()
     os.popen('su -c "pm uninstall com.example.app"').read()
 

@@ -79,6 +79,11 @@ class ExecCodeTest(unittest.TestCase):
         runtime.exec_code("raise ValueError('x')")
         self.assertIs(sys.stdout, orig)
 
+    def test_print_flush_true(self):
+        """print(..., flush=True) must not crash BoundedWriter."""
+        output = runtime.exec_code('print("hello", flush=True)')
+        self.assertIn("hello", output)
+
 
 class OutputBudgetTest(unittest.TestCase):
     """Tests for runtime.OutputBudget."""
@@ -153,6 +158,14 @@ class BoundedWriterTest(unittest.TestCase):
         # Total should not exceed 20 + overhead
         total = len(out.getvalue().encode("utf-8")) + len(err.getvalue().encode("utf-8"))
         self.assertLessEqual(total, 120)  # generous margin for truncation markers
+
+    def test_flush_is_noop(self):
+        """flush() must exist so print(..., flush=True) doesn't crash."""
+        w = runtime.BoundedWriter(self._budget(100))
+        w.flush()  # must not raise
+        w.write("hello")
+        w.flush()
+        self.assertIn("hello", w.getvalue())
 
 
 class ExecCodeOutputCappingTest(unittest.TestCase):
