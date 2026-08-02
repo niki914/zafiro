@@ -46,7 +46,9 @@ class PythonWorkerUnavailableException :
  */
 object PyRuntime {
 
-    private const val PING_TIMEOUT_MS = 2_000L
+    // 锁死检测的 ping 窗口：也覆盖 Chaquopy 冷启动（Python.start 首次可达数秒）。
+    // ping 只是预检优化——真正的锁死由 exec 的 timeout+2s 兜底，放宽窗口不损失正确性。
+    private const val PING_TIMEOUT_MS = 10_000L
     private const val EXEC_GRACE_MS = 2_000L
     private const val CONNECT_TIMEOUT_MS = 10_000L
     private const val PROCESS_DIE_SETTLE_MS = 200L
@@ -70,8 +72,13 @@ object PyRuntime {
     @Volatile
     internal var testService: IPythonWorkerService? = null
 
+    /** Test hook: shorten the ping window so stuck-interpreter tests run fast. */
+    @Volatile
+    internal var pingTimeoutMsOverride: Long? = null
+
     internal fun resetForTest() {
         testService = null
+        pingTimeoutMsOverride = null
         pythonUsed = false
         service = null
         bound = false
@@ -99,6 +106,13 @@ object PyRuntime {
 
     suspend fun warmUp() {
         ensureConnected()
+        // 等待解释器真正就绪（幂等）：Python.start 在 worker 的 HandlerThread
+        // 异步执行，首次调用若未就绪会让 ping 误判为卡死并触发杀进程重连。
+        val svc = testService ?: service ?: return
+        if (!isHealthy(svc)) {
+            // 启动窗口未完成——留给首次 exec 的重连逻辑处理，预热不杀进程
+            return
+        }
     }
 
     /**
@@ -110,18 +124,14 @@ object PyRuntime {
         pythonUsed = true
         ensureConnected()
         var svc = testService ?: service ?: throw PythonWorkerUnavailableException()
-        val healthy = withTimeoutOrNull(PING_TIMEOUT_MS) {
-            try {
-                withContext(Dispatchers.IO) { svc.ping() } != null
-            } catch (_: RemoteException) {
-                false
-            } catch (_: DeadObjectException) {
-                false
-            }
-        } ?: false
-        if (!healthy) {
+        if (!isHealthy(svc)) {
             killAndReconnect()
             svc = testService ?: service ?: throw PythonWorkerUnavailableException()
+            // 新进程冷启动中：等待就绪再执行，避免未就绪的 exec 被兜底超时
+            // 误判为卡死而再次杀进程（循环重连）
+            if (!isHealthy(svc)) {
+                throw PythonWorkerUnavailableException()
+            }
         }
         return execOn(svc, code, timeoutMs)
     }
@@ -138,6 +148,19 @@ object PyRuntime {
             // process dies mid-transact — expected
         }
     }
+
+    private fun pingTimeoutMs(): Long = pingTimeoutMsOverride ?: PING_TIMEOUT_MS
+
+    private suspend fun isHealthy(svc: IPythonWorkerService): Boolean =
+        withTimeoutOrNull(pingTimeoutMs()) {
+            try {
+                withContext(Dispatchers.IO) { svc.ping() } != null
+            } catch (_: RemoteException) {
+                false
+            } catch (_: DeadObjectException) {
+                false
+            }
+        } ?: false
 
     private suspend fun execOn(svc: IPythonWorkerService, code: String, timeoutMs: Long): String {
         try {
@@ -199,7 +222,8 @@ object PyRuntime {
     }
 
     private suspend fun killAndReconnect() {
-        pythonUsed = false
+        // 注意：不重置 pythonUsed。重连后的在途 exec 仍是本次周期内的 Python 工具，
+        // 终止键必须能杀掉它（P1：健康检查失败后的重连不能关闭终止保护）。
         val target = testService ?: service
         service = null
         if (target != null) {

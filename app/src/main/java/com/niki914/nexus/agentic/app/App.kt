@@ -2,8 +2,6 @@ package com.niki914.nexus.agentic.app
 
 import android.app.ActivityManager
 import android.app.Application
-import android.content.Context
-import android.os.Process
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.niki914.nexus.agentic.chat.agentic.python.PyRuntime
@@ -51,10 +49,10 @@ class App : Application() {
     }
 
     private fun isPythonWorkerProcess(): Boolean {
-        val manager = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-            ?: return false
-        return manager.runningAppProcesses?.any {
-            it.pid == Process.myPid() && it.processName == "$packageName:python"
-        } ?: false
+        // getMyMemoryState 是官方静态 API（API 23+，无权限），比 runningAppProcesses
+        // （官方标注仅用于调试/进程管理 UI）更适合作为核心分支判断。
+        val info = ActivityManager.RunningAppProcessInfo()
+        ActivityManager.getMyMemoryState(info)
+        return info.processName == "$packageName:python"
     }
 }

@@ -21,7 +21,9 @@ class PyRuntimeTest {
         var execResult: String? = "ok"
         var execBlockMs: Long = 0L
         var pingBlockMs: Long = 0L
+        var pingCalls = 0
         var killed = false
+        var killCount = 0
         var execCalls = 0
 
         override fun exec(code: String?, timeoutMs: Long): String? {
@@ -31,12 +33,15 @@ class PyRuntimeTest {
         }
 
         override fun ping(): String? {
-            if (pingBlockMs > 0) Thread.sleep(pingBlockMs)
+            // 只在第一次 ping 阻塞：重连后的第二次 ping 应恢复正常（模拟新进程）
+            val block = if (pingCalls++ == 0) pingBlockMs else 0L
+            if (block > 0) Thread.sleep(block)
             return "0"
         }
 
         override fun kill() {
             killed = true
+            killCount++
         }
     }
 
@@ -69,7 +74,10 @@ class PyRuntimeTest {
 
     @Test
     fun `exec hard-stuck interpreter kills worker and rethrows timeout`() = runBlocking {
-        val fake = FakeWorker().also { PyRuntime.testService = it }
+        val fake = FakeWorker().also {
+            PyRuntime.testService = it
+            PyRuntime.pingTimeoutMsOverride = 200
+        }
         fake.execBlockMs = 10_000L // blocks past the withTimeout wrapper (30ms + 2s grace)
 
         var caught: Throwable? = null
@@ -85,7 +93,10 @@ class PyRuntimeTest {
 
     @Test
     fun `stuck ping kills worker then retries exec`() = runBlocking {
-        val fake = FakeWorker().also { PyRuntime.testService = it }
+        val fake = FakeWorker().also {
+            PyRuntime.testService = it
+            PyRuntime.pingTimeoutMsOverride = 200
+        }
         fake.pingBlockMs = 10_000L // interpreter unresponsive
 
         val result = PyRuntime.exec("print('hi')", 30L)
@@ -94,6 +105,23 @@ class PyRuntimeTest {
         assertTrue(fake.killed)
         assertEquals(1, fake.execCalls)
         assertEquals("ok", result)
+    }
+
+    @Test
+    fun `kill after reconnect still hard-stops the in-flight exec`() = runBlocking {
+        // P1 回归：健康检查失败触发 killAndReconnect 后，重连的在途 exec
+        // 必须仍处于终止保护内——终止键不能因 pythonUsed 被重置而放行。
+        val fake = FakeWorker().also {
+            PyRuntime.testService = it
+            PyRuntime.pingTimeoutMsOverride = 200
+        }
+        fake.pingBlockMs = 10_000L // 首次 ping 卡死 → killAndReconnect（kill #1）
+
+        PyRuntime.exec("print('hi')", 30L) // 重连后 retry 成功
+
+        PyRuntime.kill() // 终止键
+
+        assertEquals(2, fake.killCount) // #1 来自 ping 卡死，#2 来自终止键
     }
 
     @Test
