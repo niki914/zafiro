@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.app
 
+import android.app.ActivityManager
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
@@ -21,6 +22,9 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // `:python` worker 进程只需 PythonWorkerService，跳过主进程全部初始化
+        //（否则 ContextProvider 从未 provide，PyRuntime.warmUp 会永远挂起）
+        if (isPythonWorkerProcess()) return
         ContextProvider.provide(applicationContext)
         XRepo.init(this.applicationContext)
         ConversationRepo.init(this.applicationContext)
@@ -42,5 +46,13 @@ class App : Application() {
         applicationScope.launch {
             PyRuntime.warmUp()
         }
+    }
+
+    private fun isPythonWorkerProcess(): Boolean {
+        // getMyMemoryState 是官方静态 API（API 23+，无权限），比 runningAppProcesses
+        // （官方标注仅用于调试/进程管理 UI）更适合作为核心分支判断。
+        val info = ActivityManager.RunningAppProcessInfo()
+        ActivityManager.getMyMemoryState(info)
+        return info.processName == "$packageName:python"
     }
 }

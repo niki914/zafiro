@@ -9,6 +9,7 @@ import com.niki914.nexus.agentic.chat.agentic.ToolManager
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
 import com.niki914.nexus.agentic.chat.agentic.mcp.McpDiscoveryCacheStore
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
+import com.niki914.nexus.agentic.chat.agentic.python.PyRuntime
 import com.niki914.nexus.agentic.chat.agentic.stream.LlmStreamEventMapper
 import com.niki914.nexus.agentic.runtime.R
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
@@ -255,11 +256,24 @@ object LLMController {
     }.flowOn(Dispatchers.IO)
 
     suspend fun resetConversation() {
-        session?.resetConversation()
+        // 先杀 python worker / 关 terminal 会话：Binder 调用与 exec 立即结束，
+        // 工具协程快速死亡，新会话不继承上一个回合的工具状态
+        PyRuntime.kill()
         TerminalSessionPool.closeAll()
+        session?.resetConversation()
     }
 
     suspend fun stopCurrentRound(keepCurrentTurn: Boolean = false) {
+        // 终止键语义 = 杀掉仍在运行的工具，必须先杀后 stop：
+        // - PyRuntime.kill()：python 工具在独立进程，杀进程使 Binder 调用断开
+        // - TerminalSessionPool.closeAll()：terminal 工具没有独立进程，
+        //   协程取消传播不可靠（命令进程不随取消终止，exec 的 coroutineScope
+        //   会等子协程，且 executeForegroundLocal 取消时会话泄漏）。
+        //   关会话 → session.state 变 Closed → 正在执行的 exec 走
+        //   SessionTerminated 正常路径返回 → 工具协程立即结束。
+        // 不先杀，s3ss10n 的 stop 会 join 等待工具协程直到命令自然结束。
+        PyRuntime.kill()
+        TerminalSessionPool.closeAll()
         session?.stop(keepCurrentTurn = keepCurrentTurn)
     }
 
