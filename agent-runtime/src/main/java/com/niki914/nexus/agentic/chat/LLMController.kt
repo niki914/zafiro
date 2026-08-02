@@ -9,6 +9,7 @@ import com.niki914.nexus.agentic.chat.agentic.ToolManager
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
 import com.niki914.nexus.agentic.chat.agentic.mcp.McpDiscoveryCacheStore
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
+import com.niki914.nexus.agentic.chat.agentic.python.PyRuntime
 import com.niki914.nexus.agentic.chat.agentic.stream.LlmStreamEventMapper
 import com.niki914.nexus.agentic.runtime.R
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
@@ -255,11 +256,19 @@ object LLMController {
     }.flowOn(Dispatchers.IO)
 
     suspend fun resetConversation() {
+        // 先杀 python worker：Binder 调用立即断开 → 工具协程快速死亡，
+        // 新会话也不继承上一个回合的 Python 状态（超时泄漏/卡死解释器）
+        PyRuntime.kill()
         session?.resetConversation()
         TerminalSessionPool.closeAll()
     }
 
     suspend fun stopCurrentRound(keepCurrentTurn: Boolean = false) {
+        // 先杀 python worker：终止键语义 = 杀掉仍在运行的 Python 工具（进程级硬杀）。
+        // 必须放在 session.stop() 之前——s3ss10n 的 stop 会 join 等待工具协程，
+        // 而工具协程卡在 Binder 调用上（worker 里 Python 还在跑），
+        // 不先杀进程，stop 会一直挂到 Python 自然结束。
+        PyRuntime.kill()
         session?.stop(keepCurrentTurn = keepCurrentTurn)
     }
 

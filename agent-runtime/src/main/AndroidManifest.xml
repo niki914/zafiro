@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+            Python 解释器运行在独立进程：execute_python 的硬超时/终止键杀工具
+            通过杀进程实现，Python 侧 segfault/内存膨胀不会带崩主进程。
+        -->
+        <service
+            android:name="com.niki914.nexus.agentic.chat.agentic.python.PythonWorkerService"
+            android:process=":python"
+            android:exported="false" />
+    </application>
 
 </manifest>
