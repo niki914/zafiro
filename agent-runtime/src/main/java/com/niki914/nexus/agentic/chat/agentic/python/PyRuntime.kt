@@ -8,6 +8,8 @@ import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.RemoteException
 import com.niki914.nexus.xposed.api.util.ContextProvider
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -46,9 +48,10 @@ class PythonWorkerUnavailableException :
  */
 object PyRuntime {
 
-    // 锁死检测的 ping 窗口：也覆盖 Chaquopy 冷启动（Python.start 首次可达数秒）。
-    // ping 只是预检优化——真正的锁死由 exec 的 timeout+2s 兜底，放宽窗口不损失正确性。
-    private const val PING_TIMEOUT_MS = 10_000L
+    // 锁死检测的 ping 窗口：与 worker 的 30s 初始化上限对齐，覆盖慢设备冷启动
+    // （Python.start 首次可达数十秒）。ping 只是预检优化——真正的锁死由 exec
+    // 的 timeout+2s 兜底，放宽窗口不损失正确性。
+    private const val PING_TIMEOUT_MS = 30_000L
     private const val EXEC_GRACE_MS = 2_000L
     private const val CONNECT_TIMEOUT_MS = 10_000L
     private const val PROCESS_DIE_SETTLE_MS = 200L
@@ -80,6 +83,8 @@ object PyRuntime {
         testService = null
         pingTimeoutMsOverride = null
         pythonUsed = false
+        terminatePending = false
+        activeExecCount.set(0)
         service = null
         bound = false
         appContext = null
@@ -88,6 +93,18 @@ object PyRuntime {
     /** True when the current worker process has executed python since warm-up. */
     @Volatile
     private var pythonUsed = false
+
+    /**
+     * P1 竞态收口：kill() 在 service 为 null（killAndReconnect 的重连窗口内）
+     * 时无法立即杀进程，把终止意图记在这里；killAndReconnect 完成 bind 后
+     * 检查并消费，杀掉刚重连的 worker，让在途 exec 终止。
+     * 仅在 exec 在途时记录（activeExecCount > 0），避免 idle 状态的终止键
+     * 污染下一次调用。
+     */
+    @Volatile
+    private var terminatePending = false
+
+    private val activeExecCount = AtomicInteger(0)
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -122,6 +139,15 @@ object PyRuntime {
      */
     suspend fun exec(code: String, timeoutMs: Long): String {
         pythonUsed = true
+        activeExecCount.incrementAndGet()
+        try {
+            return execInternal(code, timeoutMs)
+        } finally {
+            activeExecCount.decrementAndGet()
+        }
+    }
+
+    private suspend fun execInternal(code: String, timeoutMs: Long): String {
         ensureConnected()
         var svc = testService ?: service ?: throw PythonWorkerUnavailableException()
         if (!isHealthy(svc)) {
@@ -140,8 +166,17 @@ object PyRuntime {
     suspend fun kill() {
         if (!pythonUsed) return
         pythonUsed = false
-        val target = testService ?: service ?: return
+        val target = testService ?: service
         service = null
+        if (target == null) {
+            // 重连窗口内（service 尚未就绪）且有 exec 在途：记下终止意图，
+            // 由 killAndReconnect 在 bind 完成后收口——否则在途 exec 会继续
+            // 使用重连后的新 worker。idle 状态下不记录，避免污染下一次调用。
+            if (activeExecCount.get() > 0) {
+                terminatePending = true
+            }
+            return
+        }
         try {
             withContext(Dispatchers.IO) { target.kill() }
         } catch (_: Throwable) {
@@ -244,6 +279,20 @@ object PyRuntime {
                 bound = false
             }
             bindLocked(ctx)
+            if (terminatePending) {
+                // 重连期间终止键已按：杀掉刚重连的 worker，终止在途 exec。
+                // 消费掉 pending，避免误伤后续调用。
+                terminatePending = false
+                val fresh = service
+                service = null
+                fresh?.let {
+                    try {
+                        withContext(Dispatchers.IO) { it.kill() }
+                    } catch (_: Throwable) {
+                    }
+                }
+                throw CancellationException("Python worker terminated during reconnect")
+            }
         }
     }
 }
