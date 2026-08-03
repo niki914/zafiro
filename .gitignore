@@ -46,9 +46,9 @@ pnpm-debug.log*
 ### JADX
 *.kotlin_builtins
 
-### External
-libterm
-s3ss10n
+### External (root-level standalone checkouts only; vendored copies under libs/ are tracked)
+/libterm/
+/s3ss10n/
 
 ### Release signing (keystore stays local, never committed)
 packing/
