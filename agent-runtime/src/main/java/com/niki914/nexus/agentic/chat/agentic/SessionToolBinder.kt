@@ -4,7 +4,7 @@ import com.niki914.nexus.agentic.chat.LocalTool
 import com.niki914.nexus.agentic.chat.McpServerDefinition
 import com.niki914.nexus.agentic.chat.ResolvedTools
 import com.niki914.nexus.agentic.chat.allLocalToolNames
-import com.niki914.s3ss10n.SessionConfig
+import com.niki914.kai.SessionConfig
 
 object SessionToolBinder {
     fun SessionConfig.Builder.bindTools(

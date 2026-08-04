@@ -16,11 +16,11 @@ import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.model.LlmApiType
 import com.niki914.nexus.xposed.api.util.LockState
 import com.niki914.nexus.xposed.api.xevent.XEvent
-import com.niki914.s3ss10n.ChatTurn
-import com.niki914.s3ss10n.Session
-import com.niki914.s3ss10n.SessionConfig
-import com.niki914.s3ss10n.SessionProtocols
-import com.niki914.s3ss10n.ToolCallKind
+import com.niki914.kai.ChatTurn
+import com.niki914.kai.Session
+import com.niki914.kai.SessionConfig
+import com.niki914.kai.SessionProtocols
+import com.niki914.kai.ToolCallKind
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.SendChannel
@@ -271,7 +271,7 @@ object LLMController {
         //   会等子协程，且 executeForegroundLocal 取消时会话泄漏）。
         //   关会话 → session.state 变 Closed → 正在执行的 exec 走
         //   SessionTerminated 正常路径返回 → 工具协程立即结束。
-        // 不先杀，s3ss10n 的 stop 会 join 等待工具协程直到命令自然结束。
+        // 不先杀，kai 的 stop 会 join 等待工具协程直到命令自然结束。
         PyRuntime.kill()
         TerminalSessionPool.closeAll()
         session?.stop(keepCurrentTurn = keepCurrentTurn)

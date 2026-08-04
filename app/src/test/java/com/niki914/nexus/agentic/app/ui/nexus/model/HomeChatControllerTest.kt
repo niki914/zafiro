@@ -13,7 +13,7 @@ import com.niki914.nexus.agentic.repo.AppStateSettingsCodec
 import com.niki914.nexus.agentic.repo.DomainSettingsStore
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.store.StoreDescriptorRegistry
-import com.niki914.s3ss10n.ChatTurn
+import com.niki914.kai.ChatTurn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation

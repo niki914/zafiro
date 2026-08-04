@@ -50,7 +50,7 @@ pnpm-debug.log*
 ### External (root-level standalone checkouts only; vendored copies under libs/ are tracked)
 # no trailing slash: matches both the real dir and a symlink to a standalone checkout
 /libterm
-/s3ss10n
+/kai
 
 ### Release signing (keystore stays local, never committed)
 packing/

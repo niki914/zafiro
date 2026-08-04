@@ -1,7 +1,7 @@
 package com.niki914.nexus.agentic.app.conversation
 
-import com.niki914.s3ss10n.ChatTurn
-import com.niki914.s3ss10n.ToolCallSpec
+import com.niki914.kai.ChatTurn
+import com.niki914.kai.ToolCallSpec
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 

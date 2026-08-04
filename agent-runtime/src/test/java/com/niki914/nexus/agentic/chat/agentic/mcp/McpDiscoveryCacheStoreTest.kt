@@ -3,7 +3,7 @@ package com.niki914.nexus.agentic.chat.agentic.mcp
 import com.niki914.nexus.agentic.chat.FakeRuntimeSettingsGateway
 import com.niki914.nexus.agentic.chat.installRuntimeSettingsGatewayForTest
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
-import com.niki914.s3ss10n.McpDiscoveredTool
+import com.niki914.kai.McpDiscoveredTool
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals

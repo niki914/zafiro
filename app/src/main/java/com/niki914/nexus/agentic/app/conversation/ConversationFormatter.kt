@@ -6,7 +6,7 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.nexus.agentic.chat.agentic.stream.ParsedToolResult
-import com.niki914.s3ss10n.ChatTurn
+import com.niki914.kai.ChatTurn
 
 object ConversationFormatter {
     private const val DEFAULT_TITLE = "新对话"

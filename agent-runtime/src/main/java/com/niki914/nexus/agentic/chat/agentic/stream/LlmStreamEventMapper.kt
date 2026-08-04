@@ -4,8 +4,8 @@ import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.chat.ToolCallKind
 import com.niki914.nexus.agentic.chat.ToolCallStatus
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
-import com.niki914.s3ss10n.SessionEvent
-import com.niki914.s3ss10n.ToolCallKind as SessionToolCallKind
+import com.niki914.kai.SessionEvent
+import com.niki914.kai.ToolCallKind as SessionToolCallKind
 
 object LlmStreamEventMapper {
     fun map(

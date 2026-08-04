@@ -1,8 +1,8 @@
 package com.niki914.nexus.agentic.chat.agentic.stream
 
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
-import com.niki914.s3ss10n.SessionEvent
-import com.niki914.s3ss10n.ToolCallKind
+import com.niki914.kai.SessionEvent
+import com.niki914.kai.ToolCallKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

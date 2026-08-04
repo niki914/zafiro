@@ -39,7 +39,7 @@ include(":store")
 include(":agent-runtime")
 
 // Vendored libraries (see libs/README.md)
-include(":libs:s3ss10n")
+include(":libs:kai")
 include(":libs:libterm-core")
 project(":libs:libterm-core").projectDir = file("libs/libterm/libterm-core")
 include(":libs:libterm-runtime")

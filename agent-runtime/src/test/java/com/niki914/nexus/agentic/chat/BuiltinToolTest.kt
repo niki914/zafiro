@@ -11,7 +11,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.impl.OpenUriBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ReadCustomToolBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SearchAppsBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.TerminalBuiltin
-import com.niki914.s3ss10n.LocalToolConfig
+import com.niki914.kai.LocalToolConfig
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
