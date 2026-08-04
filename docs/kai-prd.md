@@ -97,11 +97,11 @@ sealed interface ContentBlock {
     data class Thinking(val text: String, val signature: String? = null) : ContentBlock
     data class Image(val data: String, val mimeType: String) : ContentBlock      // 多模态口子
     data class ToolCall(val id: String, val name: String, val argumentsJson: String) : ContentBlock
-    data class ToolResult(val id: String, val name: String, val contentJson: String) : ContentBlock
 }
 ```
 
-- Assistant/User/Tool 消息 = 角色 + `List<ContentBlock>`（支持同一消息内 text+thinking+image+toolCall 并存，Anthropic 风格）
+- 消息模型对齐 pi：`User` / `Assistant` / `ToolResult` 三种具体消息类型，无通用角色+内容基类；`ToolResult` 是消息类型，不是 content block，其 `content` 为任意文本（工具结果不强制 JSON，Nexus 现有工具即返回纯文本）
+- Assistant/User 消息 = `List<ContentBlock>`（支持同一消息内 text+thinking+image+toolCall 并存，Anthropic 风格）
 - 多模态口子：Image block 与 provider 序列化映射在 Provider 层完成；DeepSeek 阶段该 block 置空或报"不支持"
 
 ### 4.2 流式事件协议
@@ -174,7 +174,7 @@ LLM ToolCallReady
       ④ AuditInterceptor       （日志/遥测/用量统计）
       ⑤ CacheInterceptor       （可选结果缓存）
   → ToolExecutor（LocalExecutor / McpExecutor / host 扩展）
-  → 结果回传（ToolResult ContentBlock → 下一段 LLM 调用）
+  → 结果回传（ToolResult 消息 → 下一段 LLM 调用）
 ```
 
 ```kotlin
