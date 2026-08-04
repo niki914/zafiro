@@ -16,11 +16,11 @@ import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.model.LlmApiType
 import com.niki914.nexus.xposed.api.util.LockState
 import com.niki914.nexus.xposed.api.xevent.XEvent
-import com.niki914.s3ss10n.ChatTurn
-import com.niki914.s3ss10n.Session
-import com.niki914.s3ss10n.SessionConfig
-import com.niki914.s3ss10n.SessionProtocols
-import com.niki914.s3ss10n.ToolCallKind
+import com.niki914.kai.ChatTurn
+import com.niki914.kai.Kai
+import com.niki914.kai.KaiConfig
+import com.niki914.kai.KaiProviderProtocols
+import com.niki914.kai.ToolCallKind
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.SendChannel
@@ -44,7 +44,7 @@ object LLMController {
         ToolCallDispatcher { runtimeState?.snapshot?.tools }
 
     private var runtimeState: RuntimeState? = null
-    private var session: Session? = null
+    private var kai: Kai? = null
     private var sessionApiType: LlmApiType? = null
     private var lastMcpServersFingerprint: String? = null
 
@@ -74,7 +74,7 @@ object LLMController {
             finalSystemPrompt = llmConfig.prompt,
             proxy = llmConfig.proxy,
         )
-        val isNewSession = session == null || sessionApiType != apiType
+        val isNewSession = kai == null || sessionApiType != apiType
         val currentMcpServersFingerprint = gateway.fingerprintMcpServers()
         val activeSession = obtainSession(apiType)
         activeSession.update {
@@ -126,7 +126,7 @@ object LLMController {
         }
 
         return LlmRuntimeSnapshot(finalConfig, resolvedTools, prompt).also { snapshot ->
-            runtimeState = RuntimeState(snapshot = snapshot, session = activeSession)
+            runtimeState = RuntimeState(snapshot = snapshot, kai = activeSession)
         }
     }
 
@@ -135,12 +135,12 @@ object LLMController {
     suspend fun snapshot(): LlmRuntimeSnapshot? = runtimeState?.snapshot
 
     suspend fun getHistory(): List<ChatTurn> {
-        return session?.getHistory().orEmpty()
+        return kai?.getHistory().orEmpty()
     }
 
     suspend fun replaceHistory(history: List<ChatTurn>) {
         refresh()
-        runtimeState?.session?.replaceHistory(history)
+        runtimeState?.kai?.replaceHistory(history)
     }
 
     fun stream(query: String, context: Context): Flow<LlmStreamEvent> = channelFlow {
@@ -200,7 +200,7 @@ object LLMController {
                 } else {
                     query
                 }
-                state.session.send(effectiveQuery).collect { event ->
+                state.kai.send(effectiveQuery).collect { event ->
                     val mapped = LlmStreamEventMapper.map(
                         event,
                         accumulator,
@@ -214,7 +214,7 @@ object LLMController {
                                 fields = mapOf(
                                     "stage" to "session_event",
                                     "errorType" to (it.throwable?.eventTypeName()
-                                        ?: "SessionEvent"),
+                                        ?: "KaiEvent"),
                                     "message" to it.message
                                 )
                             )
@@ -260,7 +260,7 @@ object LLMController {
         // 工具协程快速死亡，新会话不继承上一个回合的工具状态
         PyRuntime.kill()
         TerminalSessionPool.closeAll()
-        session?.resetConversation()
+        kai?.resetConversation()
     }
 
     suspend fun stopCurrentRound(keepCurrentTurn: Boolean = false) {
@@ -271,24 +271,24 @@ object LLMController {
         //   会等子协程，且 executeForegroundLocal 取消时会话泄漏）。
         //   关会话 → session.state 变 Closed → 正在执行的 exec 走
         //   SessionTerminated 正常路径返回 → 工具协程立即结束。
-        // 不先杀，s3ss10n 的 stop 会 join 等待工具协程直到命令自然结束。
+        // 不先杀，kai 的 stop 会 join 等待工具协程直到命令自然结束。
         PyRuntime.kill()
         TerminalSessionPool.closeAll()
-        session?.stop(keepCurrentTurn = keepCurrentTurn)
+        kai?.stop(keepCurrentTurn = keepCurrentTurn)
     }
 
-    private suspend fun obtainSession(apiType: LlmApiType): Session {
-        session?.takeIf { sessionApiType == apiType }?.let { return it }
-        session?.close()
+    private suspend fun obtainSession(apiType: LlmApiType): Kai {
+        kai?.takeIf { sessionApiType == apiType }?.let { return it }
+        kai?.close()
         lastMcpServersFingerprint = null
         return openSession(apiType).also {
-            session = it
+            kai = it
             sessionApiType = apiType
         }
     }
 
-    private suspend fun openSession(apiType: LlmApiType): Session {
-        val configBlock: SessionConfig.Builder.() -> Unit = {
+    private suspend fun openSession(apiType: LlmApiType): Kai {
+        val configBlock: KaiConfig.Builder.() -> Unit = {
             mcpHooks {
                 onToolsDiscovered = mcpCacheStore::onToolsDiscovered
             }
@@ -309,9 +309,9 @@ object LLMController {
             llmIdleTimeoutSeconds = 50
         }
         return when (apiType) {
-            LlmApiType.Anthropic -> Session.open<SessionProtocols.Anthropic>(configBlock)
-            LlmApiType.DeepSeek -> Session.open<SessionProtocols.DeepSeek>(configBlock)
-            else -> Session.open<SessionProtocols.OpenAI>(configBlock)
+            LlmApiType.Anthropic -> Kai.open<KaiProviderProtocols.Anthropic>(configBlock)
+            LlmApiType.DeepSeek -> Kai.open<KaiProviderProtocols.DeepSeek>(configBlock)
+            else -> Kai.open<KaiProviderProtocols.OpenAI>(configBlock)
         }
     }
 
@@ -345,7 +345,7 @@ object LLMController {
 
     private fun Throwable.eventTypeName(): String = this::class.simpleName ?: "Throwable"
 
-    private fun SessionConfig.Builder.applyRuntimeConfig(
+    private fun KaiConfig.Builder.applyRuntimeConfig(
         config: ResolvedLlmConfig,
         tools: ResolvedTools,
         previousTools: ResolvedTools?,
@@ -358,7 +358,7 @@ object LLMController {
         SessionToolBinder.run { bindTools(tools = tools, previousTools = previousTools) }
     }
 
-    private data class RuntimeState(val snapshot: LlmRuntimeSnapshot, val session: Session)
+    private data class RuntimeState(val snapshot: LlmRuntimeSnapshot, val kai: Kai)
 
     private class LlmConfigRequiredException : IllegalStateException(CONFIG_REQUIRED_MESSAGE)
 }

@@ -5,7 +5,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLoadedSkill
-import com.niki914.s3ss10n.LocalToolConfig
+import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json

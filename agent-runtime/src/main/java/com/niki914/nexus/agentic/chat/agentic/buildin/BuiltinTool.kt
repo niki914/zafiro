@@ -1,6 +1,6 @@
 package com.niki914.nexus.agentic.chat.agentic.buildin
 
-import com.niki914.s3ss10n.LocalToolConfig
+import com.niki914.kai.LocalToolConfig
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 

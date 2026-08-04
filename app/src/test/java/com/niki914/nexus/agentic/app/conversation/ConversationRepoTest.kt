@@ -2,7 +2,7 @@ package com.niki914.nexus.agentic.app.conversation
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.niki914.s3ss10n.ChatTurn
+import com.niki914.kai.ChatTurn
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals

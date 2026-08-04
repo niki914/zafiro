@@ -4,18 +4,18 @@
 
 | 目录 | 来源 | 集成 commit | 模块名 |
 | --- | --- | --- | --- |
-| `s3ss10n/` | https://github.com/niki914/s3ss10n @ `e5803ca`（release 2.1.6） | — | `:libs:s3ss10n` |
+| `kai/` | vendored 自 https://github.com/niki914/s3ss10n @ `e5803ca`（release 2.1.6），本地重命名为 `kai` | — | `:libs:kai` |
 | `libterm/` | https://github.com/niki914/libterm @ `55d02c3` | — | `:libs:libterm-core` / `:libs:libterm-runtime` / `:libs:libterm-backend-{libsu,shizuku,ssh}` |
 
 ## 为什么集成
 
-- 消除发版节奏耦合：s3ss10n 的契约变更（如 sealed `SessionEvent` 追加）不再需要先发版本、Nexus 再适配，两处改动在同一仓库同一 PR 内落地
+- 消除发版节奏耦合：kai（原 s3ss10n）的契约变更（如 sealed `SessionEvent` 追加）不再需要先发版本、Nexus 再适配，两处改动在同一仓库同一 PR 内落地
 - 单一消费者、单一维护者，独立发布的隔离边界没有收益
 - 跨库边界调试与编译锁定
 
 ## 维护约定
 
-- **本仓库是开发真相源**：库侧改动直接在这里改（如 `libs/s3ss10n/` 内的 reasoning 事件、idle 计时语义）
+- **本仓库是开发真相源**：库侧改动直接在这里改（如 `libs/kai/` 内的 reasoning 事件、idle 计时语义）
 - 上游仓库（`~/repo/android/s3ss10n`、`~/repo/android/libterm`）在需要对外发布新版本时，把 `libs/` 下的源码同步回去再 tag；平时不维护
 - 同步方向：上游 → `libs/`（拉取）仅在"从上游拿新代码"时发生，需同时更新上方表格的 commit
 
@@ -27,4 +27,4 @@
   - `kotlinOptions { jvmTarget }` → `kotlin { compilerOptions { jvmTarget } }`（AGP 9 移除旧 DSL）
   - `libterm-runtime` 的 `project(":libterm-*")` → `project(":libs:libterm-*")`
   - android 模块不应用 `org.jetbrains.kotlin.android`（AGP 9 内置 Kotlin）；`kotlin("test")` 换 `org.jetbrains.kotlin:kotlin-test-junit:2.2.10`（内置 Kotlin 下默认变体不含 JUnit）
-- 单测随本仓库构建：`./gradlew :libs:s3ss10n:testDebugUnitTest :libs:libterm-core:test :libs:libterm-runtime:testDebugUnitTest`
+- 单测随本仓库构建：`./gradlew :libs:kai:testDebugUnitTest :libs:libterm-core:test :libs:libterm-runtime:testDebugUnitTest`

@@ -3,8 +3,8 @@ package com.niki914.nexus.agentic.app.conversation
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatBlock
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
-import com.niki914.s3ss10n.ChatTurn
-import com.niki914.s3ss10n.ToolCallSpec
+import com.niki914.kai.ChatTurn
+import com.niki914.kai.ToolCallSpec
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

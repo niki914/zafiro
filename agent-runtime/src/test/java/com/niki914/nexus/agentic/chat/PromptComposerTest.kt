@@ -7,11 +7,11 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
-import com.niki914.s3ss10n.LocalToolConfig
-import com.niki914.s3ss10n.McpDiscoverySnapshot
-import com.niki914.s3ss10n.McpDiscoveryState
-import com.niki914.s3ss10n.McpServerDiscoverySnapshot
-import com.niki914.s3ss10n.ToolRegistrySnapshot
+import com.niki914.kai.LocalToolConfig
+import com.niki914.kai.McpDiscoverySnapshot
+import com.niki914.kai.McpDiscoveryState
+import com.niki914.kai.McpServerDiscoverySnapshot
+import com.niki914.kai.ToolRegistrySnapshot
 import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

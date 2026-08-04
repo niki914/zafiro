@@ -5,7 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.niki914.s3ss10n.ChatTurn
+import com.niki914.kai.ChatTurn
 
 @Entity(tableName = "conversation")
 data class ConversationEntity(

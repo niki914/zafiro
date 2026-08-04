@@ -10,7 +10,7 @@ import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.base.ComposeMVIViewModel
 import com.niki914.nexus.xposed.api.util.ContextProvider
-import com.niki914.s3ss10n.ChatTurn
+import com.niki914.kai.ChatTurn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext

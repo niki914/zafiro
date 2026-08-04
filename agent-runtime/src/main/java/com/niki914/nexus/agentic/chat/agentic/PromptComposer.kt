@@ -4,9 +4,9 @@ import com.niki914.nexus.agentic.chat.LocalTool
 import com.niki914.nexus.agentic.chat.McpServerDefinition
 import com.niki914.nexus.agentic.chat.ResolvedTools
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
-import com.niki914.s3ss10n.McpDiscoverySnapshot
-import com.niki914.s3ss10n.McpDiscoveryState
-import com.niki914.s3ss10n.McpServerDiscoverySnapshot
+import com.niki914.kai.McpDiscoverySnapshot
+import com.niki914.kai.McpDiscoveryState
+import com.niki914.kai.McpServerDiscoverySnapshot
 
 data class PromptComposeResult(
     val finalSystemPrompt: String,

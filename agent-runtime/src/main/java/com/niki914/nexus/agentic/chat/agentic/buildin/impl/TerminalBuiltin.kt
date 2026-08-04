@@ -21,7 +21,7 @@ import com.niki914.libterm.runtime.CommandResult
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stdoutText
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stderrText
-import com.niki914.s3ss10n.LocalToolConfig
+import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json

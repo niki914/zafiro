@@ -6,7 +6,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
-import com.niki914.s3ss10n.LocalToolConfig
+import com.niki914.kai.LocalToolConfig
 
 /**
  * TextResultBuiltinTool for shell-based screen interaction.

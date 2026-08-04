@@ -1,7 +1,7 @@
 package com.niki914.nexus.agentic.app.conversation
 
 import android.content.Context
-import com.niki914.s3ss10n.ChatTurn
+import com.niki914.kai.ChatTurn
 import java.util.UUID
 
 object ConversationRepo {

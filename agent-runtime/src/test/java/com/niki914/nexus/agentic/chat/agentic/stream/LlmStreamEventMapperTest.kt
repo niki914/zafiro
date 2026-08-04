@@ -1,8 +1,8 @@
 package com.niki914.nexus.agentic.chat.agentic.stream
 
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
-import com.niki914.s3ss10n.SessionEvent
-import com.niki914.s3ss10n.ToolCallKind
+import com.niki914.kai.KaiEvent
+import com.niki914.kai.ToolCallKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -14,7 +14,7 @@ class LlmStreamEventMapperTest {
         val failureResult =
             "#!tool-result\n#!status: failure\n#!code: VERSION_MISMATCH\n#!message: Token expired\n\nsome payload"
 
-        val event = SessionEvent.ToolSucceeded(
+        val event = KaiEvent.ToolSucceeded(
             callId = "call1",
             toolName = "screen_operation_accessibility",
             kind = ToolCallKind.Local,
@@ -30,7 +30,7 @@ class LlmStreamEventMapperTest {
     fun `ToolSucceeded with success envelope and whitelisted toolName returns ToolSucceeded`() {
         val successResult = "#!tool-result\n#!status: success\n\ntree yaml content"
 
-        val event = SessionEvent.ToolSucceeded(
+        val event = KaiEvent.ToolSucceeded(
             callId = "call2",
             toolName = "screen_operation_accessibility",
             kind = ToolCallKind.Local,

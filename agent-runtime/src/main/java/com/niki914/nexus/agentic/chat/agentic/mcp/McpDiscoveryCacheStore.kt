@@ -1,7 +1,7 @@
 package com.niki914.nexus.agentic.chat.agentic.mcp
 
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
-import com.niki914.s3ss10n.McpDiscoveredTool
+import com.niki914.kai.McpDiscoveredTool
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
