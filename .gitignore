@@ -5,6 +5,7 @@
 *.ipr
 *.iws
 .worktrees/
+.claude/worktrees/
 nexus-res/
 .apk_decs/*
 !.apk_decs/README.txt
@@ -47,8 +48,9 @@ pnpm-debug.log*
 *.kotlin_builtins
 
 ### External (root-level standalone checkouts only; vendored copies under libs/ are tracked)
-/libterm/
-/s3ss10n/
+# no trailing slash: matches both the real dir and a symlink to a standalone checkout
+/libterm
+/s3ss10n
 
 ### Release signing (keystore stays local, never committed)
 packing/
