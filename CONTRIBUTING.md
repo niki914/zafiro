@@ -6,9 +6,9 @@ This document is written for AI coding agents (Claude Code, Codex, etc.) that co
 
 This is an Android Xposed module. It intercepts voice assistant queries on the device, sends them to an LLM, and injects the response back into the host app's UI.
 
-**Read order**: start with `wiki/index.md` — it's the architecture map. It routes you to the right wiki page for whatever you're working on. Then read the source files that wiki page points to.
+**Read order**: start from the source. Grep for the entry point of the area you're working on, then read the relevant files.
 
-Rule: **wiki is the map, source is the truth.** If they conflict, trust the source and flag it.
+Rule: **source is the truth.** Design documents (`docs/`) represent intent, not implementation.
 
 ## Terminology you'll see in the code
 
@@ -88,11 +88,11 @@ These scenarios need human judgment — don't proceed without asking:
 
 ## Testing
 
-No automated test suite exists yet. The primary verification method is building the APK and testing on a real device. When you finish a change, tell the human what to test and what to look for — especially if the change touches hooks, IPC, or the render pipeline.
+JVM unit tests live in `libs/kai/src/test` (the regression suite pins loop/stop/rollback behavior) and `app/src/test`. Run them with `./gradlew :libs:kai:testDebugUnitTest` and `:app:testDebugUnitTest`. The primary end-to-end verification is still building the APK and testing on a real device — when you finish a change, tell the human what to test, especially hooks, IPC, or the render pipeline.
 
 ## Documentation
 
-Architecture docs live in `wiki/`. If your change alters module boundaries, hook points, IPC contracts, or the config/store model, update the relevant wiki pages. Follow the existing format: state the fact, link to the source file that backs it.
+If a design decision is worth recording, put it in `docs/` as a design doc and mark its status (proposal / implemented). The Kai redesign requirements live in `docs/kai-prd.md`.
 
 ## License
 
