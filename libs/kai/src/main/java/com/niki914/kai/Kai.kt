@@ -6,14 +6,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlin.reflect.KClass
 
-interface Session {
+interface Kai {
     suspend fun send(
         text: String,
-        onEvent: suspend (SessionEvent) -> Unit
+        onEvent: suspend (KaiEvent) -> Unit
     )
 
-    fun send(text: String): Flow<SessionEvent> = channelFlow {
-        this@Session.send(text) { send(it) }
+    fun send(text: String): Flow<KaiEvent> = channelFlow {
+        this@Kai.send(text) { send(it) }
     }
 
     suspend fun stop(keepCurrentTurn: Boolean = false)
@@ -26,7 +26,7 @@ interface Session {
 
     suspend fun close()
 
-    suspend fun update(block: SessionConfig.Builder.() -> Unit)
+    suspend fun update(block: KaiConfig.Builder.() -> Unit)
 
     suspend fun refreshMcpTools(): McpRefreshResult
 
@@ -40,26 +40,26 @@ interface Session {
     companion object {
         suspend fun <P : ChatProtocol> open(
             protocolClass: KClass<P>,
-            builder: SessionConfig.Builder.() -> Unit
-        ): Session {
-            SessionProtocols.ensureInitialized()
-            val config = SessionConfig.Builder().apply(builder).build()
+            builder: KaiConfig.Builder.() -> Unit
+        ): Kai {
+            KaiProviderProtocols.ensureInitialized()
+            val config = KaiConfig.Builder().apply(builder).build()
 
             var protocol = ProtocolRegistry.resolve(protocolClass)
             if (config.jsonCodec != null) {
                 protocol = protocol.withCodec(config.jsonCodec!!)
             }
 
-            return ChatSession(initialConfig = config, protocol = protocol)
+            return OKai(initialConfig = config, protocol = protocol)
         }
 
         suspend inline fun <reified P : ChatProtocol> open(
-            noinline builder: SessionConfig.Builder.() -> Unit
-        ): Session = open(P::class, builder)
+            noinline builder: KaiConfig.Builder.() -> Unit
+        ): Kai = open(P::class, builder)
 
         @JvmName("openDefault")
         suspend fun open(
-            builder: SessionConfig.Builder.() -> Unit
-        ): Session = open(SessionProtocols.OpenAI::class, builder)
+            builder: KaiConfig.Builder.() -> Unit
+        ): Kai = open(KaiProviderProtocols.OpenAI::class, builder)
     }
 }

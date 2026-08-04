@@ -1,8 +1,8 @@
 package com.niki914.kai.ext.protocol.anthropic
 
 import com.niki914.kai.ChatTurn
-import com.niki914.kai.SessionEvent
-import com.niki914.kai.SessionSnapshot
+import com.niki914.kai.KaiEvent
+import com.niki914.kai.KaiSnapshot
 import com.niki914.kai.json.JsonCodec
 import com.niki914.kai.json.JsonCodecFactory
 import com.niki914.kai.net.HttpRequest
@@ -33,7 +33,7 @@ class AnthropicProtocol(
     }
 
     override fun buildRequest(
-        snapshot: SessionSnapshot,
+        snapshot: KaiSnapshot,
         history: List<ChatTurn>,
         pendingUserInput: String?
     ): HttpRequest {
@@ -158,7 +158,7 @@ class AnthropicProtocol(
                 emit(
                     ProtocolEvent.Error(
                         RuntimeException("Failed to decode SSE frame"),
-                        SessionEvent.Stage.Parse
+                        KaiEvent.Stage.Parse
                     )
                 )
                 return@collect
@@ -180,7 +180,7 @@ class AnthropicProtocol(
                         emit(
                             ProtocolEvent.Error(
                                 RuntimeException(message),
-                                SessionEvent.Stage.Transport
+                                KaiEvent.Stage.Transport
                             )
                         )
                     }

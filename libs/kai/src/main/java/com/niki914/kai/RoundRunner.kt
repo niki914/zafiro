@@ -13,7 +13,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
@@ -21,9 +20,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal data class RoundInput(
-    val snapshot: SessionSnapshot,
+    val snapshot: KaiSnapshot,
     val initialInput: String,
-    val onEvent: suspend (SessionEvent) -> Unit,
+    val onEvent: suspend (KaiEvent) -> Unit,
     val roundToken: Any = Any()
 )
 
@@ -62,7 +61,7 @@ internal class RoundRunner(
             activeContext = ctx
         }
         if (ctx.activeStopRequest != null) {
-            finishRound(ctx, SessionEvent.FinishReason.Stopped)
+            finishRound(ctx, KaiEvent.FinishReason.Stopped)
             return@coroutineScope
         }
         collector.start()
@@ -75,7 +74,7 @@ internal class RoundRunner(
                 throw ce
             }
         } finally {
-            if (ctx.activeStopRequest?.reason != SessionEvent.FinishReason.IdleTimeout) {
+            if (ctx.activeStopRequest?.reason != KaiEvent.FinishReason.IdleTimeout) {
                 ctx.idleWatcher?.cancel()
             }
             activeMutex.withLock {
@@ -89,7 +88,7 @@ internal class RoundRunner(
     internal suspend fun requestStop(roundToken: Any, keepCurrentTurn: Boolean) {
         val request = StopRequest(
             keepCurrentTurn = keepCurrentTurn,
-            reason = SessionEvent.FinishReason.Stopped
+            reason = KaiEvent.FinishReason.Stopped
         )
         val ctx = activeMutex.withLock {
             val active = activeContext
@@ -126,13 +125,13 @@ internal class RoundRunner(
             unwrapRoundEventCallbackException {
                 emitRoundError(
                     ctx,
-                    SessionEvent.Error(
+                    KaiEvent.Error(
                         stage = classifyStage(t),
                         message = t.message ?: "Round failed",
                         cause = t
                     )
                 )
-                finishRound(ctx, SessionEvent.FinishReason.Error)
+                finishRound(ctx, KaiEvent.FinishReason.Error)
             }
         }) {
             openSegment(ctx)
@@ -169,7 +168,7 @@ internal class RoundRunner(
                         ctx.openSegmentTextAccumulator.append(event.text)
                         emitRoundEvent(
                             ctx,
-                            SessionEvent.TextDelta(
+                            KaiEvent.TextDelta(
                                 delta = event.text,
                                 fullText = ctx.textAccumulator.toString()
                             )
@@ -198,7 +197,7 @@ internal class RoundRunner(
                     is ProtocolEvent.Error -> {
                         emitRoundError(
                             ctx,
-                            SessionEvent.Error(
+                            KaiEvent.Error(
                                 stage = event.stage,
                                 message = event.cause.message ?: "Protocol error",
                                 cause = event.cause
@@ -220,7 +219,7 @@ internal class RoundRunner(
                 reasoningSignature = reasoningSignature
             )
             if (!committed) {
-                finishRound(ctx, SessionEvent.FinishReason.Error)
+                finishRound(ctx, KaiEvent.FinishReason.Error)
                 return@xTrySuspend
             }
             throwIfStopRequested(ctx)
@@ -235,18 +234,18 @@ internal class RoundRunner(
 
     private suspend fun startRoundIfNeeded(ctx: RoundContext) {
         if (ctx.hasStarted) return
-        emitRoundEvent(ctx, SessionEvent.RoundStarted(input = ctx.initialInput))
+        emitRoundEvent(ctx, KaiEvent.RoundStarted(input = ctx.initialInput))
         ctx.hasStarted = true
     }
 
     private suspend fun finishRound(
         ctx: RoundContext,
-        reason: SessionEvent.FinishReason
+        reason: KaiEvent.FinishReason
     ) {
         val event = ctx.eventMutex.withLock {
             if (ctx.hasCompleted) return
             ctx.hasCompleted = true
-            SessionEvent.RoundCompleted(
+            KaiEvent.RoundCompleted(
                 fullText = ctx.textAccumulator.toString(),
                 finishReason = reason
             )
@@ -265,15 +264,15 @@ internal class RoundRunner(
     private suspend fun emitIdleTimeout(ctx: RoundContext, timeoutSeconds: Long) {
         val request = StopRequest(
             keepCurrentTurn = false,
-            reason = SessionEvent.FinishReason.IdleTimeout
+            reason = KaiEvent.FinishReason.IdleTimeout
         )
         ctx.activeStopRequest = request
         try {
             rollbackCurrentTurn(ctx)
             emitRoundError(
                 ctx,
-                SessionEvent.Error(
-                    stage = SessionEvent.Stage.Session,
+                KaiEvent.Error(
+                    stage = KaiEvent.Stage.Session,
                     message = "LLM idle timeout: no session event for $timeoutSeconds seconds"
                 ),
                 resetIdle = false
@@ -344,15 +343,15 @@ internal class RoundRunner(
 
     private suspend fun emitRoundError(
         ctx: RoundContext,
-        event: SessionEvent.Error,
+        event: KaiEvent.Error,
         resetIdle: Boolean = true
     ) {
         ctx.hasError = true
         emitRoundEvent(ctx, event, resetIdle)
     }
 
-    private suspend fun emitCoordinatorEvent(ctx: RoundContext, event: SessionEvent) {
-        if (event is SessionEvent.Error) {
+    private suspend fun emitCoordinatorEvent(ctx: RoundContext, event: KaiEvent) {
+        if (event is KaiEvent.Error) {
             emitRoundError(ctx, event)
         } else {
             emitRoundEvent(ctx, event)
@@ -361,7 +360,7 @@ internal class RoundRunner(
 
     private suspend fun emitRoundEvent(
         ctx: RoundContext,
-        event: SessionEvent,
+        event: KaiEvent,
         resetIdle: Boolean = true
     ) {
         val shouldEmit = ctx.eventMutex.withLock { !ctx.hasCompleted }
@@ -373,7 +372,7 @@ internal class RoundRunner(
         } catch (t: Throwable) {
             throw RoundEventCallbackException(t)
         }
-        if (resetIdle && event !is SessionEvent.RoundCompleted) {
+        if (resetIdle && event !is KaiEvent.RoundCompleted) {
             resetIdleWatcher(ctx)
         }
     }
@@ -399,8 +398,8 @@ internal class RoundRunner(
             if (!ctx.hasError) {
                 emitRoundError(
                     ctx,
-                    SessionEvent.Error(
-                        stage = SessionEvent.Stage.Parse,
+                    KaiEvent.Error(
+                        stage = KaiEvent.Stage.Parse,
                         message = "Empty assistant response"
                     )
                 )
@@ -454,15 +453,15 @@ internal class RoundRunner(
         doRound(ctx, null)
     }
 
-    private fun finalReasonFor(ctx: RoundContext): SessionEvent.FinishReason {
+    private fun finalReasonFor(ctx: RoundContext): KaiEvent.FinishReason {
         return if (ctx.hasError) {
-            SessionEvent.FinishReason.Error
+            KaiEvent.FinishReason.Error
         } else {
-            SessionEvent.FinishReason.Completed
+            KaiEvent.FinishReason.Completed
         }
     }
 
-    private fun ensureConfigValid(snapshot: SessionSnapshot) {
+    private fun ensureConfigValid(snapshot: KaiSnapshot) {
         if (!snapshot.endpoint.startsWith("http://") && !snapshot.endpoint.startsWith("https://")) {
             throw ConfigInvalidException()
         }
@@ -486,12 +485,12 @@ internal class RoundRunner(
         return result
     }
 
-    private fun classifyStage(t: Throwable): SessionEvent.Stage {
+    private fun classifyStage(t: Throwable): KaiEvent.Stage {
         return when (t) {
-            is ConfigInvalidException -> SessionEvent.Stage.Session
-            is IllegalArgumentException -> SessionEvent.Stage.Session
-            is IllegalStateException -> SessionEvent.Stage.Parse
-            else -> SessionEvent.Stage.Transport
+            is ConfigInvalidException -> KaiEvent.Stage.Session
+            is IllegalArgumentException -> KaiEvent.Stage.Session
+            is IllegalStateException -> KaiEvent.Stage.Parse
+            else -> KaiEvent.Stage.Transport
         }
     }
 
@@ -522,8 +521,8 @@ private fun HttpFrame.payloadOrNull(): String? = when (this) {
 }
 
 private class RoundContext(
-    val snapshot: SessionSnapshot,
-    val onEvent: suspend (SessionEvent) -> Unit,
+    val snapshot: KaiSnapshot,
+    val onEvent: suspend (KaiEvent) -> Unit,
     val initialInput: String,
     val roundToken: Any,
     val textAccumulator: StringBuilder = StringBuilder(),
@@ -547,7 +546,7 @@ private class RoundContext(
 
 private data class StopRequest(
     val keepCurrentTurn: Boolean,
-    val reason: SessionEvent.FinishReason
+    val reason: KaiEvent.FinishReason
 )
 
 private data class PendingStopRequest(

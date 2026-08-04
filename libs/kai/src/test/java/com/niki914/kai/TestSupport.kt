@@ -11,13 +11,12 @@ import com.niki914.kai.net.HttpTimeouts
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 internal class RecordingChatProtocol(
     private val parseHandler: (Flow<String>) -> Flow<ProtocolEvent>
 ) : ChatProtocol {
-    var lastSnapshot: SessionSnapshot? = null
+    var lastSnapshot: KaiSnapshot? = null
     var lastHistory: List<ChatTurn> = emptyList()
     var lastPendingUserInput: String? = null
     var lastRequest: HttpRequest? = null
@@ -26,7 +25,7 @@ internal class RecordingChatProtocol(
     override fun useApiKey(apiKey: String): Map<String, String> = apiKeyHeaders
 
     override fun buildRequest(
-        snapshot: SessionSnapshot,
+        snapshot: KaiSnapshot,
         history: List<ChatTurn>,
         pendingUserInput: String?
     ): HttpRequest {
@@ -215,16 +214,16 @@ internal class FakeMcpHttpEngine(
     }
 }
 
-internal fun newChatSession(
+internal fun newOKai(
     protocol: ChatProtocol,
     engine: HttpEngine,
-    configure: SessionConfig.() -> Unit = {}
-): ChatSession {
-    val config = SessionConfig().apply {
+    configure: KaiConfig.() -> Unit = {}
+): OKai {
+    val config = KaiConfig().apply {
         endpoint = "https://example.com/chat"
         model = "test-model"
         httpEngine = engine
         configure()
     }
-    return ChatSession(initialConfig = config, protocol = protocol)
+    return OKai(initialConfig = config, protocol = protocol)
 }

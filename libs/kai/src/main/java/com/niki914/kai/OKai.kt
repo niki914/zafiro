@@ -14,16 +14,16 @@ import kotlinx.coroutines.cancel
 class ConfigInvalidException :
     IllegalAccessException("Config is invalid. Set endpoint and model first!")
 
-class ChatSession internal constructor(
-    initialConfig: SessionConfig,
+class OKai internal constructor(
+    initialConfig: KaiConfig,
     private val protocol: ChatProtocol
-) : Session {
+) : Kai {
 
-    private val state: SessionState = SessionState(initialConfig)
+    private val state: KaiState = KaiState(initialConfig)
     private val engine: HttpEngine = initialConfig.httpEngine ?: OkHttpEngine()
     private val jsonCodec: JsonCodec = initialConfig.jsonCodec ?: JsonCodecFactory.create()
 
-    private suspend fun thisConfig(): SessionConfig = state.currentConfig()
+    private suspend fun thisConfig(): KaiConfig = state.currentConfig()
     private val mcpClient: McpClient = HttpMcpClient(engine = engine, codec = jsonCodec)
     private val toolCallCoordinator = ToolCallCoordinator(mcpClient = mcpClient, codec = jsonCodec)
     private val scope = CoroutineScope(SupervisorJob())
@@ -47,7 +47,7 @@ class ChatSession internal constructor(
         mcpDiscoveryCoordinator.scheduleDiscovery(initialConfig)
     }
 
-    override suspend fun send(text: String, onEvent: suspend (SessionEvent) -> Unit) {
+    override suspend fun send(text: String, onEvent: suspend (KaiEvent) -> Unit) {
         val config = state.currentConfig()
         mcpDiscoveryCoordinator.scheduleDiscovery(config)
         val input = RoundInput(
@@ -75,7 +75,7 @@ class ChatSession internal constructor(
         state.stopCurrentRound(keepCurrentTurn)
     }
 
-    override suspend fun update(block: SessionConfig.Builder.() -> Unit) {
+    override suspend fun update(block: KaiConfig.Builder.() -> Unit) {
         val updatedConfig = state.updateConfig(block)
         mcpDiscoveryCoordinator.scheduleDiscovery(updatedConfig, refreshCached = true)
     }

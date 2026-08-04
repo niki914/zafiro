@@ -4,19 +4,19 @@ import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.chat.ToolCallKind
 import com.niki914.nexus.agentic.chat.ToolCallStatus
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
-import com.niki914.kai.SessionEvent
+import com.niki914.kai.KaiEvent
 import com.niki914.kai.ToolCallKind as SessionToolCallKind
 
 object LlmStreamEventMapper {
     fun map(
-        event: SessionEvent,
+        event: KaiEvent,
         accumulator: StringBuilder,
         startedAtMs: Long,
         defaultErrorMessage: String,
     ): LlmStreamEvent? {
         return when (event) {
-            is SessionEvent.RoundStarted -> LlmStreamEvent.RoundStarted
-            is SessionEvent.TextDelta -> {
+            is KaiEvent.RoundStarted -> LlmStreamEvent.RoundStarted
+            is KaiEvent.TextDelta -> {
                 accumulator.clear()
                 accumulator.append(event.fullText)
                 LlmStreamEvent.TextDelta(
@@ -26,8 +26,8 @@ object LlmStreamEventMapper {
                 )
             }
 
-            is SessionEvent.ToolRunning -> LlmStreamEvent.ToolRunning(event.toToolCallStatus())
-            is SessionEvent.ToolSucceeded -> {
+            is KaiEvent.ToolRunning -> LlmStreamEvent.ToolRunning(event.toToolCallStatus())
+            is KaiEvent.ToolSucceeded -> {
                 val call = event.toToolCallStatus()
                 val parsed = ParsedToolResult.decode(
                     raw = event.resultJson,
@@ -47,7 +47,7 @@ object LlmStreamEventMapper {
                 }
             }
 
-            is SessionEvent.ToolFailed -> {
+            is KaiEvent.ToolFailed -> {
                 val parsedPayload = event.resultJson?.let {
                     ParsedToolResult.decode(raw = it, toolName = event.toolName).payload
                         .takeIf { p -> p.isNotBlank() }
@@ -59,12 +59,12 @@ object LlmStreamEventMapper {
                 )
             }
 
-            is SessionEvent.Error -> LlmStreamEvent.Error(
+            is KaiEvent.Error -> LlmStreamEvent.Error(
                 message = event.message.trim().ifEmpty { defaultErrorMessage },
                 throwable = event.cause,
             )
 
-            is SessionEvent.RoundCompleted -> {
+            is KaiEvent.RoundCompleted -> {
                 accumulator.clear()
                 accumulator.append(event.fullText)
                 LlmStreamEvent.Completed(event.fullText)
@@ -80,13 +80,13 @@ object LlmStreamEventMapper {
         return fullText.length * 1000f / elapsedMs
     }
 
-    private fun SessionEvent.ToolRunning.toToolCallStatus(): ToolCallStatus =
+    private fun KaiEvent.ToolRunning.toToolCallStatus(): ToolCallStatus =
         ToolCallStatus(callId = callId, name = toolName, label = toolName, kind = kind.toV2Kind())
 
-    private fun SessionEvent.ToolSucceeded.toToolCallStatus(): ToolCallStatus =
+    private fun KaiEvent.ToolSucceeded.toToolCallStatus(): ToolCallStatus =
         ToolCallStatus(callId = callId, name = toolName, label = toolName, kind = kind.toV2Kind())
 
-    private fun SessionEvent.ToolFailed.toToolCallStatus(): ToolCallStatus =
+    private fun KaiEvent.ToolFailed.toToolCallStatus(): ToolCallStatus =
         ToolCallStatus(callId = callId, name = toolName, label = toolName, kind = kind.toV2Kind())
 
     private fun SessionToolCallKind.toV2Kind(): ToolCallKind {

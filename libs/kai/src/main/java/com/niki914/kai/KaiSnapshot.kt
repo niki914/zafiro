@@ -3,7 +3,7 @@ package com.niki914.kai
 import com.niki914.kai.json.JsonCodec
 import com.niki914.kai.net.HttpTimeouts
 
-data class SessionSnapshot(
+data class KaiSnapshot(
     val endpoint: String,
     val apiKey: String,
     val model: String,

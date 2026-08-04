@@ -97,7 +97,7 @@ class ProtocolBoundaryTest {
         val events = collectOpenAIEvents("not-json")
         val error = events.filterIsInstance<ProtocolEvent.Error>().single()
 
-        assertEquals(SessionEvent.Stage.Parse, error.stage)
+        assertEquals(KaiEvent.Stage.Parse, error.stage)
         assertCompleted(events)
     }
 
@@ -161,7 +161,7 @@ class ProtocolBoundaryTest {
         )
         val error = events.filterIsInstance<ProtocolEvent.Error>().single()
 
-        assertEquals(SessionEvent.Stage.Transport, error.stage)
+        assertEquals(KaiEvent.Stage.Transport, error.stage)
         assertEquals("bad request", error.cause.message)
         assertCompleted(events)
     }
@@ -268,8 +268,8 @@ class ProtocolBoundaryTest {
         return AnthropicProtocol(GsonJsonCodec()).parseStream(flowOf(*frames)).toList()
     }
 
-    private fun testSnapshot(codec: JsonCodec): SessionSnapshot {
-        return SessionSnapshot(
+    private fun testSnapshot(codec: JsonCodec): KaiSnapshot {
+        return KaiSnapshot(
             endpoint = "https://example.com/chat",
             apiKey = "",
             model = "test-model",

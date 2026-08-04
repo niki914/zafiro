@@ -8,14 +8,14 @@ internal class ToolCallCoordinator(
 ) {
     internal suspend fun handle(
         toolCall: ToolCallSpec,
-        snapshot: SessionSnapshot,
-        emitEvent: suspend (SessionEvent) -> Unit
+        snapshot: KaiSnapshot,
+        emitEvent: suspend (KaiEvent) -> Unit
     ): Message.Tool {
         if (snapshot.tools.find(toolCall.toolName) == null) {
             val message = "Unknown tool '${toolCall.toolName}'"
             val resultJson = codec.encode(mapOf("error" to message))
             emitEvent(
-                SessionEvent.ToolFailed(
+                KaiEvent.ToolFailed(
                     callId = toolCall.callId,
                     toolName = toolCall.toolName,
                     kind = ToolCallKind.Local,
@@ -33,7 +33,7 @@ internal class ToolCallCoordinator(
 
         val request = buildToolCallRequest(toolCall, snapshot)
         emitEvent(
-            SessionEvent.ToolRunning(
+            KaiEvent.ToolRunning(
                 callId = request.id,
                 toolName = request.name,
                 kind = request.kind
@@ -43,7 +43,7 @@ internal class ToolCallCoordinator(
         val hooks = snapshot.hooksBlock
         if (hooks == null && request is LocalToolCallRequest) {
             emitEvent(
-                SessionEvent.ToolFailed(
+                KaiEvent.ToolFailed(
                     callId = request.id,
                     toolName = request.name,
                     kind = request.kind,
@@ -58,7 +58,7 @@ internal class ToolCallCoordinator(
         val toolMsg = xTrySuspend("ToolCallCoordinator.handle", onError = { t ->
             val message = t.message ?: "hooks threw exception"
             emitEvent(
-                SessionEvent.ToolFailed(
+                KaiEvent.ToolFailed(
                     callId = request.id,
                     toolName = request.name,
                     kind = request.kind,
@@ -79,7 +79,7 @@ internal class ToolCallCoordinator(
         when (val outcome = request.lastOutcome()) {
             is ToolCallOutcome.Success -> {
                 emitEvent(
-                    SessionEvent.ToolSucceeded(
+                    KaiEvent.ToolSucceeded(
                         callId = request.id,
                         toolName = request.name,
                         kind = request.kind,
@@ -90,7 +90,7 @@ internal class ToolCallCoordinator(
 
             is ToolCallOutcome.Failure -> {
                 emitEvent(
-                    SessionEvent.ToolFailed(
+                    KaiEvent.ToolFailed(
                         callId = request.id,
                         toolName = request.name,
                         kind = request.kind,
@@ -103,7 +103,7 @@ internal class ToolCallCoordinator(
 
             null -> {
                 emitEvent(
-                    SessionEvent.ToolFailed(
+                    KaiEvent.ToolFailed(
                         callId = request.id,
                         toolName = request.name,
                         kind = request.kind,
@@ -118,7 +118,7 @@ internal class ToolCallCoordinator(
 
     private fun buildToolCallRequest(
         toolCall: ToolCallSpec,
-        snapshot: SessionSnapshot
+        snapshot: KaiSnapshot
     ): ToolCallRequest {
         val descriptor = snapshot.tools.find(toolCall.toolName)
         return when (val kind = descriptor?.kind) {
@@ -142,13 +142,13 @@ internal class ToolCallCoordinator(
     }
 
     private suspend fun emitToolError(
-        emitEvent: suspend (SessionEvent) -> Unit,
+        emitEvent: suspend (KaiEvent) -> Unit,
         message: String,
         cause: Throwable? = null
     ) {
         emitEvent(
-            SessionEvent.Error(
-                stage = SessionEvent.Stage.Tool,
+            KaiEvent.Error(
+                stage = KaiEvent.Stage.Tool,
                 message = message,
                 cause = cause
             )

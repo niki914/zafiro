@@ -6,7 +6,7 @@ import com.niki914.kai.ext.protocol.ProtocolRegistry
 import com.niki914.kai.ext.protocol.anthropic.AnthropicProtocol
 import com.niki914.kai.ext.protocol.openai.OpenAIProtocol
 
-object SessionProtocols {
+object KaiProviderProtocols {
     object OpenAI : ChatProtocol by OpenAIProtocol()
 
     object Anthropic : ChatProtocol by AnthropicProtocol()

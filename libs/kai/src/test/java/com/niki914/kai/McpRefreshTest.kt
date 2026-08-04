@@ -77,7 +77,7 @@ class McpRefreshTest {
             )
         )
         val protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) }
-        val session = newChatSession(protocol = protocol, engine = engine) {
+        val session = newOKai(protocol = protocol, engine = engine) {
             mcp {
                 add("docs") {
                     http { url = "https://mcp.ok" }
@@ -120,7 +120,7 @@ class McpRefreshTest {
                 "https://mcp.bad" to IllegalStateException("boom")
             )
         )
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -162,7 +162,7 @@ class McpRefreshTest {
                 )
             )
         )
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -202,7 +202,7 @@ class McpRefreshTest {
             )
         )
         val protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) }
-        val session = newChatSession(protocol = protocol, engine = engine) {
+        val session = newOKai(protocol = protocol, engine = engine) {
             mcp {
                 add("docs") {
                     http { url = "https://mcp.ok" }
@@ -247,7 +247,7 @@ class McpRefreshTest {
                 "https://mcp.bad" to IllegalStateException("boom")
             )
         )
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -287,7 +287,7 @@ class McpRefreshTest {
         val engine = FakeMcpHttpEngine(
             toolsByUrl = mapOf("https://mcp.ok" to tools)
         )
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -328,7 +328,7 @@ class McpRefreshTest {
                 )
             )
         )
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -383,7 +383,7 @@ class McpRefreshTest {
                 releaseOldToolsList.await()
             }
         }
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -451,7 +451,7 @@ class McpRefreshTest {
                 )
             )
         )
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -506,7 +506,7 @@ class McpRefreshTest {
                 releaseToolsList.await()
             }
         }
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -543,7 +543,7 @@ class McpRefreshTest {
                 "https://mcp.bad" to IllegalStateException("boom")
             )
         )
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -589,7 +589,7 @@ class McpRefreshTest {
                 )
             )
         )
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -628,7 +628,7 @@ class McpRefreshTest {
                 "https://mcp.bad" to IllegalStateException("boom")
             )
         )
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {
@@ -666,7 +666,7 @@ class McpRefreshTest {
                 "https://mcp.bad" to IllegalStateException("boom")
             )
         )
-        val session = newChatSession(
+        val session = newOKai(
             protocol = RecordingChatProtocol { flowOf(ProtocolEvent.Completed) },
             engine = engine
         ) {

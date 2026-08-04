@@ -12,7 +12,7 @@ internal class McpDiscoveryCoordinator(
     private val mcpClient: McpClient,
     private val scope: CoroutineScope,
     private val codec: JsonCodec,
-    private val latestConfig: suspend () -> SessionConfig,
+    private val latestConfig: suspend () -> KaiConfig,
     private val cache: McpDiscoveryCache = McpDiscoveryCache()
 ) {
     private data class ServerDiscoveryOutcome(
@@ -23,7 +23,7 @@ internal class McpDiscoveryCoordinator(
         val cacheCommitted: Boolean
     )
 
-    suspend fun discoveredToolsSnapshot(config: SessionConfig): Map<String, List<McpDiscoveredTool>> {
+    suspend fun discoveredToolsSnapshot(config: KaiConfig): Map<String, List<McpDiscoveredTool>> {
         return config.mcpRegistry.servers.mapNotNull { (serverName, server) ->
             if (!server.enabled) return@mapNotNull null
             val fingerprint = server.discoveryFingerprint(serverName)
@@ -33,7 +33,7 @@ internal class McpDiscoveryCoordinator(
     }
 
     suspend fun refreshEnabledServers(
-        config: SessionConfig,
+        config: KaiConfig,
         refreshCached: Boolean
     ): McpRefreshResult {
         val enabledServers = config.mcpRegistry.servers.filterValues { it.enabled }
@@ -73,7 +73,7 @@ internal class McpDiscoveryCoordinator(
         )
     }
 
-    suspend fun getSnapshot(config: SessionConfig): McpDiscoverySnapshot {
+    suspend fun getSnapshot(config: KaiConfig): McpDiscoverySnapshot {
         val servers = config.mcpRegistry.servers.mapValues { (serverName, server) ->
             val fingerprint = server.discoveryFingerprint(serverName)
             cache.stateSnapshot(
@@ -102,7 +102,7 @@ internal class McpDiscoveryCoordinator(
     }
 
     fun scheduleDiscovery(
-        config: SessionConfig,
+        config: KaiConfig,
         refreshCached: Boolean = false
     ) {
         config.mcpRegistry.servers.forEach { (serverName, serverConfig) ->

@@ -3,7 +3,7 @@ package com.niki914.kai
 import com.niki914.kai.json.JsonCodec
 import com.niki914.kai.net.HttpTimeouts
 
-open class SessionConfig {
+open class KaiConfig {
     var endpoint: String = ""
     var apiKey: String = ""
     var model: String = ""
@@ -80,8 +80,8 @@ open class SessionConfig {
     internal fun toRoundSnapshot(
         codec: JsonCodec,
         discoveredMcpTools: Map<String, List<McpDiscoveredTool>> = emptyMap()
-    ): SessionSnapshot {
-        return SessionSnapshot(
+    ): KaiSnapshot {
+        return KaiSnapshot(
             endpoint = endpoint,
             apiKey = apiKey,
             model = model,
@@ -103,8 +103,8 @@ open class SessionConfig {
         )
     }
 
-    internal fun snapshot(): SessionConfig {
-        val newConfig = SessionConfig()
+    internal fun snapshot(): KaiConfig {
+        val newConfig = KaiConfig()
         copyInto(newConfig)
         return newConfig
     }
@@ -113,7 +113,7 @@ open class SessionConfig {
         return Builder().also { copyInto(it) }
     }
 
-    protected fun copyInto(target: SessionConfig) {
+    protected fun copyInto(target: KaiConfig) {
         target.endpoint = endpoint
         target.apiKey = apiKey
         target.model = model
@@ -135,8 +135,8 @@ open class SessionConfig {
         target._headers.putAll(_headers)
     }
 
-    class Builder : SessionConfig() {
-        fun build(): SessionConfig {
+    class Builder : KaiConfig() {
+        fun build(): KaiConfig {
             return snapshot()
         }
     }

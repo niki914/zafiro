@@ -1,25 +1,25 @@
 package com.niki914.kai
 
-sealed interface SessionEvent {
-    data class RoundStarted(val input: String) : SessionEvent
+sealed interface KaiEvent {
+    data class RoundStarted(val input: String) : KaiEvent
 
     data class TextDelta(
         val delta: String,
         val fullText: String
-    ) : SessionEvent
+    ) : KaiEvent
 
     data class ToolRunning(
         val callId: String,
         val toolName: String,
         val kind: ToolCallKind
-    ) : SessionEvent
+    ) : KaiEvent
 
     data class ToolSucceeded(
         val callId: String,
         val toolName: String,
         val kind: ToolCallKind,
         val resultJson: String
-    ) : SessionEvent
+    ) : KaiEvent
 
     data class ToolFailed(
         val callId: String,
@@ -27,18 +27,18 @@ sealed interface SessionEvent {
         val kind: ToolCallKind,
         val message: String,
         val resultJson: String? = null
-    ) : SessionEvent
+    ) : KaiEvent
 
     data class RoundCompleted(
         val fullText: String,
         val finishReason: FinishReason = FinishReason.Completed
-    ) : SessionEvent
+    ) : KaiEvent
 
     data class Error(
         val stage: Stage,
         val message: String,
         val cause: Throwable? = null
-    ) : SessionEvent
+    ) : KaiEvent
 
     enum class Stage {
         Transport,

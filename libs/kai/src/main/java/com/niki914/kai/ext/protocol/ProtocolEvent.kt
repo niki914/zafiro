@@ -1,6 +1,6 @@
 package com.niki914.kai.ext.protocol
 
-import com.niki914.kai.SessionEvent
+import com.niki914.kai.KaiEvent
 
 sealed interface ProtocolEvent {
     data class TextDelta(val text: String) : ProtocolEvent
@@ -19,6 +19,6 @@ sealed interface ProtocolEvent {
 
     data class Error(
         val cause: Throwable,
-        val stage: SessionEvent.Stage
+        val stage: KaiEvent.Stage
     ) : ProtocolEvent
 }

@@ -21,33 +21,33 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
-class SessionFlowRegressionTest {
+class KaiFlowRegressionTest {
     @Test
     fun `空 assistant 响应不写入 history 且发出 error 和 complete`() = runBlocking {
         val protocol = RecordingChatProtocol {
             flowOf(ProtocolEvent.Completed)
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val events = session.send("hi").toList()
             assertEquals(
                 listOf(
-                    SessionEvent.RoundStarted(input = "hi"),
-                    SessionEvent.Error(
-                        stage = SessionEvent.Stage.Parse,
+                    KaiEvent.RoundStarted(input = "hi"),
+                    KaiEvent.Error(
+                        stage = KaiEvent.Stage.Parse,
                         message = "Empty assistant response"
                     ),
-                    SessionEvent.RoundCompleted(
+                    KaiEvent.RoundCompleted(
                         fullText = "",
-                        finishReason = SessionEvent.FinishReason.Error
+                        finishReason = KaiEvent.FinishReason.Error
                     )
                 ),
                 events
             )
             assertEquals(
-                SessionEvent.FinishReason.Error,
-                events.filterIsInstance<SessionEvent.RoundCompleted>().single().finishReason
+                KaiEvent.FinishReason.Error,
+                events.filterIsInstance<KaiEvent.RoundCompleted>().single().finishReason
             )
             assertEquals(emptyList<ChatTurn>(), session.getHistory())
         } finally {
@@ -63,21 +63,21 @@ class SessionFlowRegressionTest {
                 ProtocolEvent.Completed
             )
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val events = session.send("hi").toList()
             assertEquals(
                 listOf(
-                    SessionEvent.RoundStarted(input = "hi"),
-                    SessionEvent.TextDelta(delta = "hello", fullText = "hello"),
-                    SessionEvent.RoundCompleted(fullText = "hello")
+                    KaiEvent.RoundStarted(input = "hi"),
+                    KaiEvent.TextDelta(delta = "hello", fullText = "hello"),
+                    KaiEvent.RoundCompleted(fullText = "hello")
                 ),
                 events
             )
             assertEquals(
-                SessionEvent.FinishReason.Completed,
-                events.filterIsInstance<SessionEvent.RoundCompleted>().single().finishReason
+                KaiEvent.FinishReason.Completed,
+                events.filterIsInstance<KaiEvent.RoundCompleted>().single().finishReason
             )
             assertEquals(
                 listOf(
@@ -110,13 +110,13 @@ class SessionFlowRegressionTest {
                 )
             }
         )
-        val session = newChatSession(protocol = protocol, engine = engine)
+        val session = newOKai(protocol = protocol, engine = engine)
 
         try {
             val events = session.send("hi").toList()
 
             assertEquals(listOf("hello", " world"), receivedPayloads)
-            assertEquals(SessionEvent.RoundCompleted(fullText = "hello world"), events.last())
+            assertEquals(KaiEvent.RoundCompleted(fullText = "hello world"), events.last())
             assertEquals(1, engine.frameRequests.size)
         } finally {
             session.close()
@@ -133,13 +133,13 @@ class SessionFlowRegressionTest {
                 ProtocolEvent.Completed
             )
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val events = session.send("hi").toList()
             val assistant = session.getHistory().filterIsInstance<ChatTurn.Assistant>().single()
 
-            assertEquals(SessionEvent.RoundCompleted(fullText = "answer"), events.last())
+            assertEquals(KaiEvent.RoundCompleted(fullText = "answer"), events.last())
             assertEquals("answer", assistant.content)
             assertEquals("why", assistant.reasoningContent)
             assertEquals("sig", assistant.reasoningSignature)
@@ -153,18 +153,18 @@ class SessionFlowRegressionTest {
         val protocol = RecordingChatProtocol {
             flowOf(ProtocolEvent.TextDelta("should not run"))
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             endpoint = "invalid-endpoint"
         }
 
         try {
             val events = session.send("hi").toList()
-            val error = events.filterIsInstance<SessionEvent.Error>().single()
-            val completed = events.filterIsInstance<SessionEvent.RoundCompleted>().single()
+            val error = events.filterIsInstance<KaiEvent.Error>().single()
+            val completed = events.filterIsInstance<KaiEvent.RoundCompleted>().single()
 
-            assertEquals(SessionEvent.Stage.Session, error.stage)
-            assertFalse(events.any { it is SessionEvent.RoundStarted })
-            assertEquals(SessionEvent.FinishReason.Error, completed.finishReason)
+            assertEquals(KaiEvent.Stage.Session, error.stage)
+            assertFalse(events.any { it is KaiEvent.RoundStarted })
+            assertEquals(KaiEvent.FinishReason.Error, completed.finishReason)
             assertEquals("", completed.fullText)
             assertEquals(emptyList<ChatTurn>(), session.getHistory())
         } finally {
@@ -181,15 +181,15 @@ class SessionFlowRegressionTest {
                 ProtocolEvent.Completed
             )
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val events = session.send("hi").toList()
-            val completed = events.filterIsInstance<SessionEvent.RoundCompleted>()
+            val completed = events.filterIsInstance<KaiEvent.RoundCompleted>()
 
             assertEquals(1, completed.size)
-            assertEquals(SessionEvent.RoundCompleted(fullText = "hello"), completed.single())
-            assertEquals(SessionEvent.FinishReason.Completed, completed.single().finishReason)
+            assertEquals(KaiEvent.RoundCompleted(fullText = "hello"), completed.single())
+            assertEquals(KaiEvent.FinishReason.Completed, completed.single().finishReason)
         } finally {
             session.close()
         }
@@ -203,24 +203,24 @@ class SessionFlowRegressionTest {
                 throw IllegalStateException("boom")
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val events = session.send("hi").toList()
             assertEquals(4, events.size)
-            assertEquals(SessionEvent.RoundStarted(input = "hi"), events[0])
+            assertEquals(KaiEvent.RoundStarted(input = "hi"), events[0])
             assertEquals(
-                SessionEvent.TextDelta(delta = "hello", fullText = "hello"),
+                KaiEvent.TextDelta(delta = "hello", fullText = "hello"),
                 events[1]
             )
-            val error = events[2] as SessionEvent.Error
-            assertEquals(SessionEvent.Stage.Parse, error.stage)
+            val error = events[2] as KaiEvent.Error
+            assertEquals(KaiEvent.Stage.Parse, error.stage)
             assertEquals("boom", error.message)
             assertTrue(error.cause is IllegalStateException)
             assertEquals(
-                SessionEvent.RoundCompleted(
+                KaiEvent.RoundCompleted(
                     fullText = "hello",
-                    finishReason = SessionEvent.FinishReason.Error
+                    finishReason = KaiEvent.FinishReason.Error
                 ),
                 events[3]
             )
@@ -237,33 +237,33 @@ class SessionFlowRegressionTest {
             flowOf(
                 ProtocolEvent.Error(
                     cause = protocolError,
-                    stage = SessionEvent.Stage.Parse
+                    stage = KaiEvent.Stage.Parse
                 ),
                 ProtocolEvent.Completed
             )
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val events = session.send("hi").toList()
             assertEquals(
                 listOf(
-                    SessionEvent.RoundStarted(input = "hi"),
-                    SessionEvent.Error(
-                        stage = SessionEvent.Stage.Parse,
+                    KaiEvent.RoundStarted(input = "hi"),
+                    KaiEvent.Error(
+                        stage = KaiEvent.Stage.Parse,
                         message = "protocol boom",
                         cause = protocolError
                     ),
-                    SessionEvent.RoundCompleted(
+                    KaiEvent.RoundCompleted(
                         fullText = "",
-                        finishReason = SessionEvent.FinishReason.Error
+                        finishReason = KaiEvent.FinishReason.Error
                     )
                 ),
                 events
             )
             assertEquals(
-                SessionEvent.FinishReason.Error,
-                events.filterIsInstance<SessionEvent.RoundCompleted>().single().finishReason
+                KaiEvent.FinishReason.Error,
+                events.filterIsInstance<KaiEvent.RoundCompleted>().single().finishReason
             )
             assertEquals(emptyList<ChatTurn>(), session.getHistory())
         } finally {
@@ -279,19 +279,19 @@ class SessionFlowRegressionTest {
                 ProtocolEvent.TextDelta("partial"),
                 ProtocolEvent.Error(
                     cause = protocolError,
-                    stage = SessionEvent.Stage.Parse
+                    stage = KaiEvent.Stage.Parse
                 ),
                 ProtocolEvent.Completed
             )
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val events = session.send("hi").toList()
-            val completed = events.filterIsInstance<SessionEvent.RoundCompleted>().single()
+            val completed = events.filterIsInstance<KaiEvent.RoundCompleted>().single()
 
             assertEquals("partial", completed.fullText)
-            assertEquals(SessionEvent.FinishReason.Error, completed.finishReason)
+            assertEquals(KaiEvent.FinishReason.Error, completed.finishReason)
         } finally {
             session.close()
         }
@@ -299,22 +299,22 @@ class SessionFlowRegressionTest {
 
     @Test
     fun `finishReason 默认兼容且正常完成为 Completed`() = runBlocking {
-        val completed = SessionEvent.RoundCompleted(fullText = "done")
+        val completed = KaiEvent.RoundCompleted(fullText = "done")
         val protocol = RecordingChatProtocol {
             flowOf(
                 ProtocolEvent.TextDelta("done"),
                 ProtocolEvent.Completed
             )
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val events = session.send("hi").toList()
-            val actual = events.filterIsInstance<SessionEvent.RoundCompleted>().single()
+            val actual = events.filterIsInstance<KaiEvent.RoundCompleted>().single()
 
-            assertEquals(SessionEvent.FinishReason.Completed, completed.finishReason)
-            assertEquals(SessionEvent.FinishReason.Completed, actual.finishReason)
-            assertEquals(SessionEvent.RoundCompleted(fullText = "done"), actual)
+            assertEquals(KaiEvent.FinishReason.Completed, completed.finishReason)
+            assertEquals(KaiEvent.FinishReason.Completed, actual.finishReason)
+            assertEquals(KaiEvent.RoundCompleted(fullText = "done"), actual)
         } finally {
             session.close()
         }
@@ -324,7 +324,7 @@ class SessionFlowRegressionTest {
     fun `stop false 取消当前轮且不提交 history`() = runBlocking {
         val textSeen = CompletableDeferred<Unit>()
         val neverRelease = CompletableDeferred<Unit>()
-        val events = mutableListOf<SessionEvent>()
+        val events = mutableListOf<KaiEvent>()
         val protocol = RecordingChatProtocol {
             flow {
                 emit(ProtocolEvent.TextDelta("partial"))
@@ -332,13 +332,13 @@ class SessionFlowRegressionTest {
                 emit(ProtocolEvent.Completed)
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val sendJob = async {
                 session.send("hi") { event ->
                     events += event
-                    if (event is SessionEvent.TextDelta) {
+                    if (event is KaiEvent.TextDelta) {
                         textSeen.complete(Unit)
                     }
                 }
@@ -350,11 +350,11 @@ class SessionFlowRegressionTest {
 
             assertEquals(
                 listOf(
-                    SessionEvent.RoundStarted(input = "hi"),
-                    SessionEvent.TextDelta(delta = "partial", fullText = "partial"),
-                    SessionEvent.RoundCompleted(
+                    KaiEvent.RoundStarted(input = "hi"),
+                    KaiEvent.TextDelta(delta = "partial", fullText = "partial"),
+                    KaiEvent.RoundCompleted(
                         fullText = "partial",
-                        finishReason = SessionEvent.FinishReason.Stopped
+                        finishReason = KaiEvent.FinishReason.Stopped
                     )
                 ),
                 events
@@ -370,7 +370,7 @@ class SessionFlowRegressionTest {
     fun `stop false 在前段已闭合后仍整轮回滚 history`() = runBlocking {
         val tailTextSeen = CompletableDeferred<Unit>()
         val neverRelease = CompletableDeferred<Unit>()
-        val events = mutableListOf<SessionEvent>()
+        val events = mutableListOf<KaiEvent>()
         var parseCount = 0
         val protocol = RecordingChatProtocol {
             when (parseCount++) {
@@ -392,7 +392,7 @@ class SessionFlowRegressionTest {
                 }
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 ok("""{"answer":"ok"}""")
@@ -413,9 +413,9 @@ class SessionFlowRegressionTest {
             }
 
             assertEquals(
-                SessionEvent.RoundCompleted(
+                KaiEvent.RoundCompleted(
                     fullText = "prefixsuffix",
-                    finishReason = SessionEvent.FinishReason.Stopped
+                    finishReason = KaiEvent.FinishReason.Stopped
                 ),
                 events.last()
             )
@@ -430,7 +430,7 @@ class SessionFlowRegressionTest {
     fun `首事件前 stop 会收口且不挂起`() = runBlocking {
         val streamStarted = CompletableDeferred<Unit>()
         val neverRelease = CompletableDeferred<Unit>()
-        val events = mutableListOf<SessionEvent>()
+        val events = mutableListOf<KaiEvent>()
         val protocol = RecordingChatProtocol {
             flow {
                 streamStarted.complete(Unit)
@@ -438,7 +438,7 @@ class SessionFlowRegressionTest {
                 emit(ProtocolEvent.TextDelta("late"))
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val sendJob = async {
@@ -455,9 +455,9 @@ class SessionFlowRegressionTest {
 
             assertEquals(
                 listOf(
-                    SessionEvent.RoundCompleted(
+                    KaiEvent.RoundCompleted(
                         fullText = "",
-                        finishReason = SessionEvent.FinishReason.Stopped
+                        finishReason = KaiEvent.FinishReason.Stopped
                     )
                 ),
                 events
@@ -472,7 +472,7 @@ class SessionFlowRegressionTest {
     @Test
     fun `onEvent 内调用 stop 不会自锁`() = runBlocking {
         val neverRelease = CompletableDeferred<Unit>()
-        val events = mutableListOf<SessionEvent>()
+        val events = mutableListOf<KaiEvent>()
         val protocol = RecordingChatProtocol {
             flow {
                 emit(ProtocolEvent.TextDelta("partial"))
@@ -480,23 +480,23 @@ class SessionFlowRegressionTest {
                 emit(ProtocolEvent.Completed)
             }
         }
-        lateinit var session: ChatSession
-        session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        lateinit var session: OKai
+        session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             withTimeout(3_000) {
                 session.send("hi") { event ->
                     events += event
-                    if (event is SessionEvent.TextDelta) {
+                    if (event is KaiEvent.TextDelta) {
                         session.stop()
                     }
                 }
             }
 
             assertEquals(
-                SessionEvent.RoundCompleted(
+                KaiEvent.RoundCompleted(
                     fullText = "partial",
-                    finishReason = SessionEvent.FinishReason.Stopped
+                    finishReason = KaiEvent.FinishReason.Stopped
                 ),
                 events.last()
             )
@@ -510,10 +510,10 @@ class SessionFlowRegressionTest {
     @Test
     fun `工具事件回调内调用 stop 不会等待当前工具自身`() = runBlocking {
         val hookRelease = CompletableDeferred<Unit>()
-        val events = mutableListOf<SessionEvent>()
+        val events = mutableListOf<KaiEvent>()
         val protocol = hangingToolThenTextProtocol()
-        lateinit var session: ChatSession
-        session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        lateinit var session: OKai
+        session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 hookRelease.await()
@@ -525,16 +525,16 @@ class SessionFlowRegressionTest {
             withTimeout(3_000) {
                 session.send("hi") { event ->
                     events += event
-                    if (event is SessionEvent.ToolRunning) {
+                    if (event is KaiEvent.ToolRunning) {
                         session.stop()
                     }
                 }
             }
 
             assertEquals(
-                SessionEvent.RoundCompleted(
+                KaiEvent.RoundCompleted(
                     fullText = "",
-                    finishReason = SessionEvent.FinishReason.Stopped
+                    finishReason = KaiEvent.FinishReason.Stopped
                 ),
                 events.last()
             )
@@ -549,7 +549,7 @@ class SessionFlowRegressionTest {
     fun `stop true 保留 partial assistant`() = runBlocking {
         val textSeen = CompletableDeferred<Unit>()
         val neverRelease = CompletableDeferred<Unit>()
-        val events = mutableListOf<SessionEvent>()
+        val events = mutableListOf<KaiEvent>()
         val protocol = RecordingChatProtocol {
             flow {
                 emit(ProtocolEvent.TextDelta("partial"))
@@ -557,13 +557,13 @@ class SessionFlowRegressionTest {
                 emit(ProtocolEvent.Completed)
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val sendJob = async {
                 session.send("hi") { event ->
                     events += event
-                    if (event is SessionEvent.TextDelta) {
+                    if (event is KaiEvent.TextDelta) {
                         textSeen.complete(Unit)
                     }
                 }
@@ -574,9 +574,9 @@ class SessionFlowRegressionTest {
             sendJob.await()
 
             assertEquals(
-                SessionEvent.RoundCompleted(
+                KaiEvent.RoundCompleted(
                     fullText = "partial",
-                    finishReason = SessionEvent.FinishReason.Stopped
+                    finishReason = KaiEvent.FinishReason.Stopped
                 ),
                 events.last()
             )
@@ -597,7 +597,7 @@ class SessionFlowRegressionTest {
     fun `stop true 保留已闭合 tool 链路和安全尾文本 但裁掉尾部未闭合 tool call`() = runBlocking {
         val secondToolStarted = CompletableDeferred<Unit>()
         val secondToolRelease = CompletableDeferred<Unit>()
-        val events = mutableListOf<SessionEvent>()
+        val events = mutableListOf<KaiEvent>()
         var parseCount = 0
         val protocol = RecordingChatProtocol {
             when (parseCount++) {
@@ -621,8 +621,8 @@ class SessionFlowRegressionTest {
                 )
             }
         }
-        lateinit var session: ChatSession
-        session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        lateinit var session: OKai
+        session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 when (id) {
@@ -651,9 +651,9 @@ class SessionFlowRegressionTest {
             }
 
             assertEquals(
-                SessionEvent.RoundCompleted(
+                KaiEvent.RoundCompleted(
                     fullText = "tail",
-                    finishReason = SessionEvent.FinishReason.Stopped
+                    finishReason = KaiEvent.FinishReason.Stopped
                 ),
                 events.last()
             )
@@ -691,7 +691,7 @@ class SessionFlowRegressionTest {
     fun `stop true 在多段 assistant 后不重复前文文本`() = runBlocking {
         val tailTextSeen = CompletableDeferred<Unit>()
         val neverRelease = CompletableDeferred<Unit>()
-        val events = mutableListOf<SessionEvent>()
+        val events = mutableListOf<KaiEvent>()
         var parseCount = 0
         val protocol = RecordingChatProtocol {
             when (parseCount++) {
@@ -713,7 +713,7 @@ class SessionFlowRegressionTest {
                 }
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 ok("""{"answer":"ok"}""")
@@ -737,9 +737,9 @@ class SessionFlowRegressionTest {
             val partialAssistant = history.last() as ChatTurn.Assistant
 
             assertEquals(
-                SessionEvent.RoundCompleted(
+                KaiEvent.RoundCompleted(
                     fullText = "prefixsuffix",
-                    finishReason = SessionEvent.FinishReason.Stopped
+                    finishReason = KaiEvent.FinishReason.Stopped
                 ),
                 events.last()
             )
@@ -782,19 +782,19 @@ class SessionFlowRegressionTest {
                 emit(ProtocolEvent.TextDelta("late"))
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             llmIdleTimeoutSeconds = 1
         }
 
         try {
             val events = withTimeout(3_000) { session.send("hi").toList() }
-            val error = events.filterIsInstance<SessionEvent.Error>().single()
-            val completed = events.filterIsInstance<SessionEvent.RoundCompleted>().single()
+            val error = events.filterIsInstance<KaiEvent.Error>().single()
+            val completed = events.filterIsInstance<KaiEvent.RoundCompleted>().single()
 
-            assertFalse(events.any { it is SessionEvent.RoundStarted })
-            assertEquals(SessionEvent.Stage.Session, error.stage)
+            assertFalse(events.any { it is KaiEvent.RoundStarted })
+            assertEquals(KaiEvent.Stage.Session, error.stage)
             assertEquals("LLM idle timeout: no session event for 1 seconds", error.message)
-            assertEquals(SessionEvent.FinishReason.IdleTimeout, completed.finishReason)
+            assertEquals(KaiEvent.FinishReason.IdleTimeout, completed.finishReason)
             assertEquals("", completed.fullText)
             assertEquals(emptyList<ChatTurn>(), session.getHistory())
         } finally {
@@ -813,7 +813,7 @@ class SessionFlowRegressionTest {
                 emit(ProtocolEvent.TextDelta("late"))
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             llmIdleTimeoutSeconds = 1
         }
 
@@ -821,7 +821,7 @@ class SessionFlowRegressionTest {
             try {
                 withTimeout(3_000) {
                     session.send("hi") { event ->
-                        if (event is SessionEvent.Error) {
+                        if (event is KaiEvent.Error) {
                             throw expected
                         }
                     }
@@ -842,7 +842,7 @@ class SessionFlowRegressionTest {
         val hookStarted = CompletableDeferred<Unit>()
         val hookRelease = CompletableDeferred<Unit>()
         val protocol = hangingToolThenTextProtocol()
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             llmIdleTimeoutSeconds = 1
             registerLookupTool()
             hooks {
@@ -854,13 +854,13 @@ class SessionFlowRegressionTest {
 
         try {
             val events = withTimeout(3_000) { session.send("hi").toList() }
-            val error = events.filterIsInstance<SessionEvent.Error>().single()
-            val completed = events.filterIsInstance<SessionEvent.RoundCompleted>().single()
+            val error = events.filterIsInstance<KaiEvent.Error>().single()
+            val completed = events.filterIsInstance<KaiEvent.RoundCompleted>().single()
 
             assertTrue(hookStarted.isCompleted)
-            assertEquals(SessionEvent.Stage.Session, error.stage)
+            assertEquals(KaiEvent.Stage.Session, error.stage)
             assertEquals("LLM idle timeout: no session event for 1 seconds", error.message)
-            assertEquals(SessionEvent.FinishReason.IdleTimeout, completed.finishReason)
+            assertEquals(KaiEvent.FinishReason.IdleTimeout, completed.finishReason)
             assertEquals(emptyList<ChatTurn>(), session.getHistory())
         } finally {
             hookRelease.complete(Unit)
@@ -873,7 +873,7 @@ class SessionFlowRegressionTest {
         suspend fun assertDisabled(timeoutSeconds: Long?) {
             val textSeen = CompletableDeferred<Unit>()
             val neverRelease = CompletableDeferred<Unit>()
-            val events = mutableListOf<SessionEvent>()
+            val events = mutableListOf<KaiEvent>()
             val protocol = RecordingChatProtocol {
                 flow {
                     emit(ProtocolEvent.TextDelta("partial"))
@@ -881,7 +881,7 @@ class SessionFlowRegressionTest {
                     emit(ProtocolEvent.Completed)
                 }
             }
-            val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+            val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
                 llmIdleTimeoutSeconds = timeoutSeconds
             }
 
@@ -889,7 +889,7 @@ class SessionFlowRegressionTest {
                 val sendJob = async {
                     session.send("hi") { event ->
                         events += event
-                        if (event is SessionEvent.TextDelta) {
+                        if (event is KaiEvent.TextDelta) {
                             textSeen.complete(Unit)
                         }
                     }
@@ -898,14 +898,14 @@ class SessionFlowRegressionTest {
                 delay(1_100)
 
                 assertFalse(events.any { event ->
-                    event is SessionEvent.Error &&
+                    event is KaiEvent.Error &&
                         event.message.startsWith("LLM idle timeout")
                 })
                 session.stop()
                 sendJob.await()
                 assertEquals(
-                    SessionEvent.FinishReason.Stopped,
-                    events.filterIsInstance<SessionEvent.RoundCompleted>().single().finishReason
+                    KaiEvent.FinishReason.Stopped,
+                    events.filterIsInstance<KaiEvent.RoundCompleted>().single().finishReason
                 )
             } finally {
                 neverRelease.complete(Unit)
@@ -937,7 +937,7 @@ class SessionFlowRegressionTest {
                 )
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             localTools {
                 add("lookup") {
                     description = "测试工具"
@@ -987,8 +987,8 @@ class SessionFlowRegressionTest {
                 ),
                 assistantWithTool.toolCalls
             )
-            assertEquals(1, events.filterIsInstance<SessionEvent.RoundCompleted>().size)
-            assertEquals(SessionEvent.RoundCompleted(fullText = "done"), events.last())
+            assertEquals(1, events.filterIsInstance<KaiEvent.RoundCompleted>().size)
+            assertEquals(KaiEvent.RoundCompleted(fullText = "done"), events.last())
         } finally {
             session.close()
         }
@@ -1000,7 +1000,7 @@ class SessionFlowRegressionTest {
             toolName = "lookup",
             argumentsJson = """{"query":"hi"}"""
         )
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 ok("""{"answer":"ok"}""")
@@ -1012,20 +1012,20 @@ class SessionFlowRegressionTest {
 
             assertEquals(
                 listOf(
-                    SessionEvent.RoundStarted(input = "hi"),
-                    SessionEvent.ToolRunning(
+                    KaiEvent.RoundStarted(input = "hi"),
+                    KaiEvent.ToolRunning(
                         callId = "call-1",
                         toolName = "lookup",
                         kind = ToolCallKind.Local
                     ),
-                    SessionEvent.ToolSucceeded(
+                    KaiEvent.ToolSucceeded(
                         callId = "call-1",
                         toolName = "lookup",
                         kind = ToolCallKind.Local,
                         resultJson = """{"answer":"ok"}"""
                     ),
-                    SessionEvent.TextDelta(delta = "done", fullText = "done"),
-                    SessionEvent.RoundCompleted(fullText = "done")
+                    KaiEvent.TextDelta(delta = "done", fullText = "done"),
+                    KaiEvent.RoundCompleted(fullText = "done")
                 ),
                 events
             )
@@ -1045,25 +1045,25 @@ class SessionFlowRegressionTest {
     @Test
     fun `未知工具发出 ToolFailed 和 Error 且返回 tool error JSON`() = runBlocking {
         val protocol = singleToolThenTextProtocol(toolName = "missing")
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             val events = session.send("hi").toList()
-            val failed = events.filterIsInstance<SessionEvent.ToolFailed>().single()
-            val error = events.filterIsInstance<SessionEvent.Error>().single()
+            val failed = events.filterIsInstance<KaiEvent.ToolFailed>().single()
+            val error = events.filterIsInstance<KaiEvent.Error>().single()
             val toolResult = protocol.lastHistory.last() as ChatTurn.ToolResult
 
             assertEquals("missing", failed.toolName)
             assertEquals(ToolCallKind.Local, failed.kind)
             assertEquals("Unknown tool 'missing'", failed.message)
-            assertEquals(SessionEvent.Stage.Tool, error.stage)
+            assertEquals(KaiEvent.Stage.Tool, error.stage)
             assertEquals("Unknown tool 'missing'", error.message)
             assertEquals(failed.resultJson, toolResult.resultJson)
             assertTrue(toolResult.resultJson.contains("Unknown tool"))
             assertEquals(
-                SessionEvent.RoundCompleted(
+                KaiEvent.RoundCompleted(
                     fullText = "done",
-                    finishReason = SessionEvent.FinishReason.Error
+                    finishReason = KaiEvent.FinishReason.Error
                 ),
                 events.last()
             )
@@ -1075,26 +1075,26 @@ class SessionFlowRegressionTest {
     @Test
     fun `本地工具无 hooks 发出 ToolFailed 和 Error`() = runBlocking {
         val protocol = singleToolThenTextProtocol(toolName = "lookup")
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
         }
 
         try {
             val events = session.send("hi").toList()
-            val failed = events.filterIsInstance<SessionEvent.ToolFailed>().single()
-            val error = events.filterIsInstance<SessionEvent.Error>().single()
+            val failed = events.filterIsInstance<KaiEvent.ToolFailed>().single()
+            val error = events.filterIsInstance<KaiEvent.Error>().single()
             val toolResult = protocol.lastHistory.last() as ChatTurn.ToolResult
 
             assertEquals(
-                SessionEvent.ToolRunning(
+                KaiEvent.ToolRunning(
                     callId = "call-1",
                     toolName = "lookup",
                     kind = ToolCallKind.Local
                 ),
-                events.filterIsInstance<SessionEvent.ToolRunning>().single()
+                events.filterIsInstance<KaiEvent.ToolRunning>().single()
             )
             assertEquals("No hooks configured", failed.message)
-            assertEquals(SessionEvent.Stage.Tool, error.stage)
+            assertEquals(KaiEvent.Stage.Tool, error.stage)
             assertEquals("no hooks configured", error.message)
             assertTrue(toolResult.resultJson.contains("No hooks configured"))
         } finally {
@@ -1105,7 +1105,7 @@ class SessionFlowRegressionTest {
     @Test
     fun `本地 hook 成功发出 ToolRunning 和 ToolSucceeded 且结果进入下一轮`() = runBlocking {
         val protocol = singleToolThenTextProtocol(toolName = "lookup")
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 ok("""{"answer":"hook-ok"}""")
@@ -1116,21 +1116,21 @@ class SessionFlowRegressionTest {
             val events = session.send("hi").toList()
 
             assertEquals(
-                SessionEvent.ToolRunning(
+                KaiEvent.ToolRunning(
                     callId = "call-1",
                     toolName = "lookup",
                     kind = ToolCallKind.Local
                 ),
-                events.filterIsInstance<SessionEvent.ToolRunning>().single()
+                events.filterIsInstance<KaiEvent.ToolRunning>().single()
             )
             assertEquals(
-                SessionEvent.ToolSucceeded(
+                KaiEvent.ToolSucceeded(
                     callId = "call-1",
                     toolName = "lookup",
                     kind = ToolCallKind.Local,
                     resultJson = """{"answer":"hook-ok"}"""
                 ),
-                events.filterIsInstance<SessionEvent.ToolSucceeded>().single()
+                events.filterIsInstance<KaiEvent.ToolSucceeded>().single()
             )
             assertEquals(
                 ChatTurn.ToolResult(
@@ -1149,7 +1149,7 @@ class SessionFlowRegressionTest {
     fun `本地 hook 抛异常发出 ToolFailed 和 Error 且 round 收尾`() = runBlocking {
         val boom = IllegalStateException("hook boom")
         val protocol = singleToolThenTextProtocol(toolName = "lookup")
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 throw boom
@@ -1158,23 +1158,23 @@ class SessionFlowRegressionTest {
 
         try {
             val events = session.send("hi").toList()
-            val errors = events.filterIsInstance<SessionEvent.Error>()
+            val errors = events.filterIsInstance<KaiEvent.Error>()
 
             assertTrue(
-                events.filterIsInstance<SessionEvent.ToolFailed>()
+                events.filterIsInstance<KaiEvent.ToolFailed>()
                     .any { it.message == "hook boom" && it.toolName == "lookup" }
             )
             assertTrue(
                 errors.any {
-                    it.stage == SessionEvent.Stage.Tool &&
+                    it.stage == KaiEvent.Stage.Tool &&
                         it.message == "hook boom" &&
                         it.cause === boom
                 }
             )
             assertEquals(
-                SessionEvent.RoundCompleted(
+                KaiEvent.RoundCompleted(
                     fullText = "done",
-                    finishReason = SessionEvent.FinishReason.Error
+                    finishReason = KaiEvent.FinishReason.Error
                 ),
                 events.last()
             )
@@ -1186,7 +1186,7 @@ class SessionFlowRegressionTest {
     @Test
     fun `本地 hook 返回 failure outcome 发出 ToolFailed 和 Error`() = runBlocking {
         val protocol = singleToolThenTextProtocol(toolName = "lookup")
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 error("hook failed", """{"reason":"bad"}""")
@@ -1199,27 +1199,27 @@ class SessionFlowRegressionTest {
 
             assertEquals(
                 listOf(
-                    SessionEvent.ToolRunning(
+                    KaiEvent.ToolRunning(
                         callId = "call-1",
                         toolName = "lookup",
                         kind = ToolCallKind.Local
                     ),
-                    SessionEvent.ToolFailed(
+                    KaiEvent.ToolFailed(
                         callId = "call-1",
                         toolName = "lookup",
                         kind = ToolCallKind.Local,
                         message = "hook failed",
                         resultJson = toolResult.resultJson
                     ),
-                    SessionEvent.Error(
-                        stage = SessionEvent.Stage.Tool,
+                    KaiEvent.Error(
+                        stage = KaiEvent.Stage.Tool,
                         message = "hook failed"
                     )
                 ),
                 events.filter {
-                    it is SessionEvent.ToolRunning ||
-                        it is SessionEvent.ToolFailed ||
-                        it is SessionEvent.Error
+                    it is KaiEvent.ToolRunning ||
+                        it is KaiEvent.ToolFailed ||
+                        it is KaiEvent.Error
                 }
             )
             assertEquals("lookup", toolResult.toolName)
@@ -1241,7 +1241,7 @@ class SessionFlowRegressionTest {
             toolName = "remote_search",
             argumentsJson = """{"query":"hi"}"""
         )
-        val session = newChatSession(protocol = protocol, engine = engine) {
+        val session = newOKai(protocol = protocol, engine = engine) {
             registerDocsMcpServer()
         }
 
@@ -1251,21 +1251,21 @@ class SessionFlowRegressionTest {
 
             assertTrue(engine.frameCalls.any { it == "https://mcp.ok" to "tools/call" })
             assertEquals(
-                SessionEvent.ToolRunning(
+                KaiEvent.ToolRunning(
                     callId = "call-1",
                     toolName = "remote_search",
                     kind = ToolCallKind.Mcp("docs")
                 ),
-                events.filterIsInstance<SessionEvent.ToolRunning>().single()
+                events.filterIsInstance<KaiEvent.ToolRunning>().single()
             )
             assertEquals(
-                SessionEvent.ToolSucceeded(
+                KaiEvent.ToolSucceeded(
                     callId = "call-1",
                     toolName = "remote_search",
                     kind = ToolCallKind.Mcp("docs"),
                     resultJson = """{"answer":"remote-ok"}"""
                 ),
-                events.filterIsInstance<SessionEvent.ToolSucceeded>().single()
+                events.filterIsInstance<KaiEvent.ToolSucceeded>().single()
             )
             assertEquals(
                 ChatTurn.ToolResult(
@@ -1290,15 +1290,15 @@ class SessionFlowRegressionTest {
             toolName = "remote_search",
             argumentsJson = """{"query":"hi"}"""
         )
-        val session = newChatSession(protocol = protocol, engine = engine) {
+        val session = newOKai(protocol = protocol, engine = engine) {
             registerDocsMcpServer()
         }
 
         try {
             session.refreshMcpTools()
             val events = session.send("hi").toList()
-            val failed = events.filterIsInstance<SessionEvent.ToolFailed>().single()
-            val error = events.filterIsInstance<SessionEvent.Error>().single()
+            val failed = events.filterIsInstance<KaiEvent.ToolFailed>().single()
+            val error = events.filterIsInstance<KaiEvent.Error>().single()
             val toolResult = protocol.lastHistory.last() as ChatTurn.ToolResult
 
             assertTrue(engine.frameCalls.any { it == "https://mcp.ok" to "tools/call" })
@@ -1306,7 +1306,7 @@ class SessionFlowRegressionTest {
             assertEquals("remote_search", failed.toolName)
             assertEquals("mcp boom", failed.message)
             assertEquals(toolResult.resultJson, failed.resultJson)
-            assertEquals(SessionEvent.Stage.Tool, error.stage)
+            assertEquals(KaiEvent.Stage.Tool, error.stage)
             assertEquals("mcp boom", error.message)
             assertTrue(toolResult.resultJson.contains("mcp boom"))
         } finally {
@@ -1331,7 +1331,7 @@ class SessionFlowRegressionTest {
             },
             codec = codec
         )
-        val snapshot = SessionSnapshot(
+        val snapshot = KaiSnapshot(
             endpoint = "https://example.com/chat",
             apiKey = "",
             model = "test-model",
@@ -1355,7 +1355,7 @@ class SessionFlowRegressionTest {
             headers = emptyMap(),
             maxTokens = 4096
         )
-        val events = mutableListOf<SessionEvent>()
+        val events = mutableListOf<KaiEvent>()
 
         val message = coordinator.handle(
             toolCall = ToolCallSpec(
@@ -1373,20 +1373,20 @@ class SessionFlowRegressionTest {
         assertEquals("remote_search", message.toolName)
         assertEquals(
             listOf(
-                SessionEvent.ToolRunning(
+                KaiEvent.ToolRunning(
                     callId = "call-1",
                     toolName = "remote_search",
                     kind = ToolCallKind.Mcp("docs")
                 ),
-                SessionEvent.ToolFailed(
+                KaiEvent.ToolFailed(
                     callId = "call-1",
                     toolName = "remote_search",
                     kind = ToolCallKind.Mcp("docs"),
                     message = "MCP server 'docs' is not configured",
                     resultJson = message.contentJson
                 ),
-                SessionEvent.Error(
-                    stage = SessionEvent.Stage.Tool,
+                KaiEvent.Error(
+                    stage = KaiEvent.Stage.Tool,
                     message = "MCP server 'docs' is not configured"
                 )
             ),
@@ -1420,7 +1420,7 @@ class SessionFlowRegressionTest {
                 )
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 when (id) {
@@ -1449,8 +1449,8 @@ class SessionFlowRegressionTest {
                 ),
                 protocol.lastHistory.filterIsInstance<ChatTurn.ToolResult>()
             )
-            assertEquals(2, events.filterIsInstance<SessionEvent.ToolSucceeded>().size)
-            assertEquals(SessionEvent.RoundCompleted(fullText = "done"), events.last())
+            assertEquals(2, events.filterIsInstance<KaiEvent.ToolSucceeded>().size)
+            assertEquals(KaiEvent.RoundCompleted(fullText = "done"), events.last())
         } finally {
             session.close()
         }
@@ -1485,7 +1485,7 @@ class SessionFlowRegressionTest {
                 )
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 when (id) {
@@ -1498,11 +1498,11 @@ class SessionFlowRegressionTest {
 
         try {
             val events = session.send("hi").toList()
-            val completed = events.filterIsInstance<SessionEvent.RoundCompleted>()
+            val completed = events.filterIsInstance<KaiEvent.RoundCompleted>()
 
-            assertEquals(1, events.filterIsInstance<SessionEvent.RoundStarted>().size)
+            assertEquals(1, events.filterIsInstance<KaiEvent.RoundStarted>().size)
             assertEquals(1, completed.size)
-            assertEquals(SessionEvent.RoundCompleted(fullText = "done"), completed.single())
+            assertEquals(KaiEvent.RoundCompleted(fullText = "done"), completed.single())
         } finally {
             session.close()
         }
@@ -1517,7 +1517,7 @@ class SessionFlowRegressionTest {
                 ProtocolEvent.Completed
             )
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             try {
@@ -1542,7 +1542,7 @@ class SessionFlowRegressionTest {
                 ProtocolEvent.Completed
             )
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         try {
             try {
@@ -1563,7 +1563,7 @@ class SessionFlowRegressionTest {
         val hookStarted = CompletableDeferred<Unit>()
         val hookRelease = CompletableDeferred<Unit>()
         val protocol = hangingToolThenTextProtocol()
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 hookStarted.complete(Unit)
@@ -1589,7 +1589,7 @@ class SessionFlowRegressionTest {
                 ),
                 session.getHistory()
             )
-            assertEquals(SessionEvent.RoundCompleted(fullText = "done"), secondEvents.last())
+            assertEquals(KaiEvent.RoundCompleted(fullText = "done"), secondEvents.last())
             try {
                 first.await()
                 fail("first send should be cancelled by resetConversation")
@@ -1608,7 +1608,7 @@ class SessionFlowRegressionTest {
         val protocol = RecordingChatProtocol {
             flowOf(ProtocolEvent.TextDelta("next"), ProtocolEvent.Completed)
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
         val restored = listOf(
             ChatTurn.User(content = "hi"),
             ChatTurn.Assistant(content = "hello")
@@ -1620,7 +1620,7 @@ class SessionFlowRegressionTest {
 
             assertEquals(restored, protocol.lastHistory)
             assertEquals("continue", protocol.lastPendingUserInput)
-            assertEquals(SessionEvent.RoundCompleted(fullText = "next"), events.last())
+            assertEquals(KaiEvent.RoundCompleted(fullText = "next"), events.last())
             assertEquals(
                 restored + ChatTurn.User(content = "continue") + ChatTurn.Assistant(content = "next"),
                 session.getHistory()
@@ -1635,7 +1635,7 @@ class SessionFlowRegressionTest {
         val protocol = RecordingChatProtocol {
             flowOf(ProtocolEvent.TextDelta("done"), ProtocolEvent.Completed)
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
         val restored = listOf(
             ChatTurn.System(content = "old system"),
             ChatTurn.User(content = "restored")
@@ -1660,7 +1660,7 @@ class SessionFlowRegressionTest {
         val protocol = RecordingChatProtocol {
             flowOf(ProtocolEvent.TextDelta("answer"), ProtocolEvent.Completed)
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             systemPrompt = "initial"
         }
 
@@ -1689,7 +1689,7 @@ class SessionFlowRegressionTest {
         val hookRelease = CompletableDeferred<Unit>()
         val hookCancelled = CompletableDeferred<Unit>()
         val protocol = hangingToolThenTextProtocol()
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 try {
@@ -1717,7 +1717,7 @@ class SessionFlowRegressionTest {
             assertFalse(protocol.lastHistory.any { turn ->
                 turn is ChatTurn.ToolResult && turn.callId == "call-1"
             })
-            assertEquals(SessionEvent.RoundCompleted(fullText = "done"), secondEvents.last())
+            assertEquals(KaiEvent.RoundCompleted(fullText = "done"), secondEvents.last())
             try {
                 first.await()
                 fail("first send should be cancelled by replaceHistory")
@@ -1736,7 +1736,7 @@ class SessionFlowRegressionTest {
         val protocol = RecordingChatProtocol {
             flowOf(ProtocolEvent.TextDelta("done"), ProtocolEvent.Completed)
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
         val restored = listOf(
             ChatTurn.User(content = "use tool"),
             ChatTurn.Assistant(
@@ -1779,11 +1779,11 @@ class SessionFlowRegressionTest {
         val firstProtocol = RecordingChatProtocol {
             flowOf(ProtocolEvent.TextDelta("hello"), ProtocolEvent.Completed)
         }
-        val firstSession = newChatSession(protocol = firstProtocol, engine = FakeHttpEngine())
+        val firstSession = newOKai(protocol = firstProtocol, engine = FakeHttpEngine())
         val secondProtocol = RecordingChatProtocol {
             flowOf(ProtocolEvent.TextDelta("continued"), ProtocolEvent.Completed)
         }
-        val secondSession = newChatSession(protocol = secondProtocol, engine = FakeHttpEngine())
+        val secondSession = newOKai(protocol = secondProtocol, engine = FakeHttpEngine())
 
         try {
             firstSession.send("hi").toList()
@@ -1805,7 +1805,7 @@ class SessionFlowRegressionTest {
         val hookStarted = CompletableDeferred<Unit>()
         val hookRelease = CompletableDeferred<Unit>()
         val protocol = hangingToolThenTextProtocol()
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             registerLookupTool()
             hooks {
                 hookStarted.complete(Unit)
@@ -1827,7 +1827,7 @@ class SessionFlowRegressionTest {
             assertFalse(session.getHistory().any { turn ->
                 turn is ChatTurn.ToolResult && turn.callId == "call-1"
             })
-            assertEquals(SessionEvent.RoundCompleted(fullText = "done"), secondEvents.last())
+            assertEquals(KaiEvent.RoundCompleted(fullText = "done"), secondEvents.last())
             try {
                 first.await()
                 fail("first send should be cancelled by the next send")
@@ -1847,7 +1847,7 @@ class SessionFlowRegressionTest {
         val protocol = RecordingChatProtocol {
             flowOf(ProtocolEvent.TextDelta("hello"), ProtocolEvent.Completed)
         }
-        val session = newChatSession(protocol = protocol, engine = engine)
+        val session = newOKai(protocol = protocol, engine = engine)
 
         session.close()
 
@@ -1860,7 +1860,7 @@ class SessionFlowRegressionTest {
         val protocol = RecordingChatProtocol {
             flowOf(ProtocolEvent.TextDelta("hello"), ProtocolEvent.Completed)
         }
-        val session = newChatSession(protocol = protocol, engine = engine) {
+        val session = newOKai(protocol = protocol, engine = engine) {
             endpoint = "https://example.com/initial"
             model = "initial-model"
             header("X-Trace", "initial")
@@ -1908,7 +1908,7 @@ class SessionFlowRegressionTest {
                 emit(ProtocolEvent.Completed)
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine()) {
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine()) {
             model = "initial-model"
         }
 
@@ -1945,7 +1945,7 @@ class SessionFlowRegressionTest {
                 emit(ProtocolEvent.Completed)
             }
         }
-        val session = newChatSession(protocol = protocol, engine = FakeHttpEngine())
+        val session = newOKai(protocol = protocol, engine = FakeHttpEngine())
 
         val sendJob = async { session.send("hi").toList() }
         roundStarted.await()
@@ -1970,7 +1970,7 @@ class SessionFlowRegressionTest {
             flowOf(ProtocolEvent.TextDelta("hello"), ProtocolEvent.Completed)
         }
         protocol.apiKeyHeaders = mapOf("Authorization" to "Bearer auth", "X-Trace" to "auth-trace")
-        val session = newChatSession(protocol = protocol, engine = engine) {
+        val session = newOKai(protocol = protocol, engine = engine) {
             apiKey = "test-key"
             header("authorization", "Bearer custom")
             header("X-Custom", "custom")
@@ -1995,7 +1995,7 @@ class SessionFlowRegressionTest {
         val updatedEngine = FakeHttpEngine()
         val initialCodec = GsonJsonCodec()
         val protocol = singleToolThenTextProtocol(toolName = "missing")
-        val session = newChatSession(protocol = protocol, engine = initialEngine) {
+        val session = newOKai(protocol = protocol, engine = initialEngine) {
             jsonCodec = initialCodec
         }
 
@@ -2066,7 +2066,7 @@ class SessionFlowRegressionTest {
         }
     }
 
-    private fun SessionConfig.registerLookupTool() {
+    private fun KaiConfig.registerLookupTool() {
         localTools {
             add("lookup") {
                 description = "测试工具"
@@ -2075,7 +2075,7 @@ class SessionFlowRegressionTest {
         }
     }
 
-    private fun SessionConfig.registerDocsMcpServer() {
+    private fun KaiConfig.registerDocsMcpServer() {
         mcp {
             add("docs") {
                 http { url = "https://mcp.ok" }

@@ -1,7 +1,7 @@
 package com.niki914.kai.ext.protocol
 
 import com.niki914.kai.ChatTurn
-import com.niki914.kai.SessionSnapshot
+import com.niki914.kai.KaiSnapshot
 import com.niki914.kai.json.JsonCodec
 import com.niki914.kai.net.HttpRequest
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +23,7 @@ interface ChatProtocol {
      * tool call delta 的拼接由协议实现自行负责。
      */
     fun buildRequest(
-        snapshot: SessionSnapshot,
+        snapshot: KaiSnapshot,
         history: List<ChatTurn>,
         pendingUserInput: String?
     ): HttpRequest

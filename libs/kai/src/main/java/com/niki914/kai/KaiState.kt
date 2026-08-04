@@ -8,23 +8,23 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-internal class SessionState(
-    initialConfig: SessionConfig
+internal class KaiState(
+    initialConfig: KaiConfig
 ) {
 
     private val configMutex: Mutex = Mutex()
-    private var config: SessionConfig = initialConfig
+    private var config: KaiConfig = initialConfig
     private val roundMutex: Mutex = Mutex()
     private var currentRoundJob: Job? = null
     private var currentStopHook: (suspend (keepCurrentTurn: Boolean) -> Unit)? = null
 
-    internal suspend fun currentConfig(): SessionConfig {
+    internal suspend fun currentConfig(): KaiConfig {
         return configMutex.withLock { config }
     }
 
     internal suspend fun updateConfig(
-        block: SessionConfig.Builder.() -> Unit
-    ): SessionConfig {
+        block: KaiConfig.Builder.() -> Unit
+    ): KaiConfig {
         return configMutex.withLock {
             val baseCodec = config.jsonCodec
             val baseEngine = config.httpEngine

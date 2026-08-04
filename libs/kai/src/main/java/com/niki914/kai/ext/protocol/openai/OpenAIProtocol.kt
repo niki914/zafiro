@@ -1,8 +1,8 @@
 package com.niki914.kai.ext.protocol.openai
 
 import com.niki914.kai.ChatTurn
-import com.niki914.kai.SessionEvent
-import com.niki914.kai.SessionSnapshot
+import com.niki914.kai.KaiEvent
+import com.niki914.kai.KaiSnapshot
 import com.niki914.kai.ToolCallSpec
 import com.niki914.kai.ToolDescriptor
 import com.niki914.kai.json.JsonCodecFactory
@@ -27,7 +27,7 @@ class OpenAIProtocol(
     }
 
     override fun buildRequest(
-        snapshot: SessionSnapshot,
+        snapshot: KaiSnapshot,
         history: List<ChatTurn>,
         pendingUserInput: String?
     ): HttpRequest {
@@ -67,7 +67,7 @@ class OpenAIProtocol(
             val frame = codec.decode(line, OpenAIChatResponseFrame::class.java)
             if (frame == null) {
                 xLog(TAG, "OpenAIProtocol.parseStream failed to decode frame")
-                emit(ProtocolEvent.Error(RuntimeException("Failed to decode SSE frame"), SessionEvent.Stage.Parse))
+                emit(ProtocolEvent.Error(RuntimeException("Failed to decode SSE frame"), KaiEvent.Stage.Parse))
                 return@collect
             }
 
