@@ -6,6 +6,7 @@
 | --- | --- | --- | --- |
 | `kai/` | vendored 自 https://github.com/niki914/s3ss10n @ `e5803ca`（release 2.1.6），本地重命名为 `kai` | — | `:libs:kai` |
 | `libterm/` | https://github.com/niki914/libterm @ `55d02c3` | — | `:libs:libterm-core` / `:libs:libterm-runtime` / `:libs:libterm-backend-{libsu,shizuku,ssh}` |
+| `okai/` | 本地开发的 LLM turn 引擎（kai 重设计的骨架，仅接口与数据类型，无实现），实现依据 `docs/kai-prd.md` | — | `:libs:okai` |
 
 ## 为什么集成
 
