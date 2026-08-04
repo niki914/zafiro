@@ -29,6 +29,13 @@ Nexus 是一个 Android Xposed 模块。它在语音助手 App 中截获用户 q
 - 当前实现以源码为准，wiki 为检索地图，设计文档仅代表意图
 - 不把 `docs/.asc_task/` 当成已实现证据
 - 只在任务明确需要时扩散阅读范围，避免盲目全仓搜索
+- Do not preserve backward compatibility. Remove obsolete paths instead of adding compatibility layers, fallbacks, or migrations.
+- Choose the simplest implementation that fully meets the current requirements. Avoid speculative abstractions, configuration, and indirection.
+- Grow the system in layers. Start from the smallest version that works end to end, and add each new capability on top of a product that already works. Never trade a working product for unfinished complexity.
+- Keep components modular and concerns clearly separated.
+- Prefer established, well-maintained libraries when they reduce overall complexity or improve reliability. Do not reimplement common functionality without a clear reason.
+- Lean on the dependencies already in the project before writing your own implementation or adding packages. Do not assume a library lacks a capability without checking its documentation and types.
+- Make architectural decisions for the long term. Do not accept a stopgap that only works for now and is meant to be replaced later.
 
 ## 首选模式
 
