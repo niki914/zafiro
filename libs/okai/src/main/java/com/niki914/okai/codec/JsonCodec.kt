@@ -4,7 +4,7 @@ package com.niki914.okai.codec
  * JSON serialization abstraction. Keeps Okai free of any concrete JSON library.
  * Host supplies the real codec; tests supply a fake or a plain JVM codec.
  *
- * Design source: inherited from existing kai (s3ss10n) JsonCodec contract.
+ * Design source: independent design; codec-free library requirement per kai PRD section 2.
  */
 interface JsonCodec {
 

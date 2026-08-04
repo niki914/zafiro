@@ -6,13 +6,15 @@ import com.niki914.okai.mcp.McpDiscoverySnapshot
 import com.niki914.okai.mcp.McpRefreshResult
 import com.niki914.okai.message.Message
 import com.niki914.okai.protocol.ChatProtocol
+import com.niki914.okai.runtime.OkaiDependencies
 import kotlin.reflect.KClass
 
 /**
  * Facade over the whole library. The only entry point hosts need; everything
- * else is reached through config, interceptors and events.
+ * else is reached through config, dependencies and events.
  *
- * Design source: existing kai (s3ss10n) Kai interface, restructured per kai PRD.
+ * Design source: independent facade design; surface validated in the Nexus
+ * usage of kai, per kai PRD.
  */
 interface Okai {
 
@@ -48,6 +50,11 @@ interface Okai {
         ): Okai = TODO()
 
         suspend fun open(
+            builder: OkaiConfig.Builder.() -> Unit
+        ): Okai = TODO()
+
+        suspend fun open(
+            dependencies: OkaiDependencies,
             builder: OkaiConfig.Builder.() -> Unit
         ): Okai = TODO()
     }

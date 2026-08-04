@@ -3,15 +3,18 @@ package com.niki914.okai.protocol
 import kotlin.reflect.KClass
 
 /**
- * Resolves a protocol class to its singleton instance. Kept behind an
- * interface so tests register fake protocols; open() uses it to bind
- * a dialect to a session.
+ * Resolves a protocol by stable id or class. Ids persist with sessions so
+ * hosts restore a protocol after reload; classes bind dialects at open().
+ * Registering the same id again replaces the previous factory.
  *
- * Design source: existing kai (s3ss10n) ProtocolRegistry.
+ * Design source: independent design; id-based lookup required by the kai PRD
+ * TODO on protocol switching and session restore.
  */
 interface ProtocolRegistry {
 
-    fun register(protocolClass: KClass<out ChatProtocol>, factory: () -> ChatProtocol)
+    fun register(factory: () -> ChatProtocol)
 
-    fun resolve(protocolClass: KClass<out ChatProtocol>): ChatProtocol
+    fun resolve(id: String): ChatProtocol?
+
+    fun resolve(protocolClass: KClass<out ChatProtocol>): ChatProtocol?
 }

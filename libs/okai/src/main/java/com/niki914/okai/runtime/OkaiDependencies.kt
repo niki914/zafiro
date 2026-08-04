@@ -1,0 +1,35 @@
+package com.niki914.okai.runtime
+
+import com.niki914.okai.loop.AgentLoop
+import com.niki914.okai.mcp.McpClient
+import com.niki914.okai.protocol.ProtocolRegistry
+import com.niki914.okai.session.Session
+import com.niki914.okai.tool.ToolCallInterceptor
+import com.niki914.okai.tool.ToolRegistry
+
+/**
+ * Assembly point of the whole library. open() builds one from config plus
+ * defaults; tests build one with fakes, so every dependency is replaceable
+ * on the JVM. The loop reads registry and chain references from here.
+ *
+ * Design source: independent design; full-facade testability requirement
+ * from kai PRD success criteria 6.
+ */
+interface OkaiDependencies {
+
+    val agentLoop: AgentLoop
+
+    val session: Session
+
+    val protocolRegistry: ProtocolRegistry
+
+    val toolRegistry: ToolRegistry
+
+    val interceptors: List<ToolCallInterceptor>
+
+    val mcpClient: McpClient
+
+    val clock: Clock
+
+    val stopController: StopController
+}

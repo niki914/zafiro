@@ -1,11 +1,13 @@
 package com.niki914.okai.protocol
 
+import com.niki914.okai.message.Usage
+
 /**
  * Protocol-neutral stream events between ChatProtocol.parseStream and the loop.
  * The loop maps these to TurnEvent. Errors carry the cause; classification
  * happens at the error layer.
  *
- * Design source: existing kai (s3ss10n) ProtocolEvent, per kai PRD section 4.3.
+ * Design source: pi (earendil-works/pi) stream events, per kai PRD section 4.3.
  */
 sealed interface ProtocolEvent {
 
@@ -25,8 +27,11 @@ sealed interface ProtocolEvent {
         val argumentsJson: String
     ) : ProtocolEvent
 
-    /** Stream ended normally. */
-    data object Completed : ProtocolEvent
+    /** Stream ended normally. Usage and response model may be absent, so they stay nullable. */
+    data class Completed(
+        val usage: Usage? = null,
+        val responseModel: String? = null
+    ) : ProtocolEvent
 
     /** Stream failed. */
     data class Error(val cause: Throwable) : ProtocolEvent

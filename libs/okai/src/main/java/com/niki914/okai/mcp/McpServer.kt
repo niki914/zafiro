@@ -2,10 +2,11 @@ package com.niki914.okai.mcp
 
 /**
  * MCP server config. Transport is sealed so future SSE/WebSocket variants
- * extend without touching the loop. M0 ships HTTP only, matching the
- * current kai MCP client.
+ * extend without touching the loop. HTTP client only; local-process and
+ * Node-based transports are out of scope for Android/JVM.
  *
- * Design source: existing kai (s3ss10n) McpServerDefinition, per kai PRD section 2.
+ * Design source: independent design; config shape validated in the Nexus
+ * usage of kai, per kai PRD section 2.
  */
 data class McpServer(
     val name: String,

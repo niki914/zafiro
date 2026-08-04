@@ -1,5 +1,6 @@
 package com.niki914.okai.event
 
+import com.niki914.okai.error.LLMError
 import com.niki914.okai.message.AssistantMessage
 import com.niki914.okai.message.ContentBlock
 
@@ -55,8 +56,12 @@ sealed interface TurnEvent {
     /** Turn finished normally. */
     data class TurnCompleted(val message: AssistantMessage, val reason: FinishReason) : TurnEvent
 
-    /** Turn failed or was aborted. */
-    data class TurnFailed(val message: AssistantMessage, val reason: FinishReason) : TurnEvent
+    /** Turn failed or was aborted. The error carries the classification when present. */
+    data class TurnFailed(
+        val message: AssistantMessage,
+        val reason: FinishReason,
+        val error: LLMError? = null
+    ) : TurnEvent
 }
 
 /**

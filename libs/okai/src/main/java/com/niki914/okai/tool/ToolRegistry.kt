@@ -4,8 +4,8 @@ package com.niki914.okai.tool
  * Registry of available tools. Host registers descriptors with executors;
  * the loop resolves model tool calls through this registry.
  *
- * Design source: existing kai (s3ss10n) LocalToolRegistry, generalized to
- * cover local and MCP tools, per kai PRD section 3.
+ * Design source: independent design; generalized from the local tool usage
+ * validated in Nexus, per kai PRD section 3.
  */
 interface ToolRegistry {
 

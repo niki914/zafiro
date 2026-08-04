@@ -12,8 +12,8 @@ import com.niki914.okai.transport.HttpEngine
  * which swaps the whole snapshot so no intermediate state is ever visible.
  * The loop freezes a round snapshot per segment, so retries reuse identical requests.
  *
- * Design source: existing kai (s3ss10n) KaiConfig snapshot pattern, made
- * immutable per the kai PRD concurrency contract (section 4.4).
+ * Design source: independent design; snapshot pattern validated in the Nexus
+ * usage of kai, made immutable per the kai PRD concurrency contract (section 4.4).
  */
 data class OkaiConfig(
     val endpoint: String,
@@ -64,11 +64,11 @@ data class OkaiConfig(
             readTimeoutSeconds = readTimeoutSeconds,
             writeTimeoutSeconds = writeTimeoutSeconds,
             idleTimeoutSeconds = idleTimeoutSeconds,
-            headers = headers,
+            headers = headers.toMap(),
             concurrencyMode = concurrencyMode,
             retryPolicy = retryPolicy,
             stopGracefulTimeoutSeconds = stopGracefulTimeoutSeconds,
-            mcpServers = mcpServers,
+            mcpServers = mcpServers.map { it.copy(headers = it.headers.toMap()) },
             mcpDiscoveryListener = mcpDiscoveryListener,
             jsonCodec = jsonCodec,
             httpEngine = httpEngine

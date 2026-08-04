@@ -7,14 +7,19 @@ import com.niki914.okai.protocol.RequestSnapshot
 
 /**
  * The turn engine: model call, tool execution loop and segment handling.
- * Injectable so tests drive the loop with a fake protocol and fake transport.
+ * The signal is the per-turn stop handle; registry and chain references
+ * come from OkaiDependencies, so tests drive the loop with fakes.
  *
  * Design source: pi (earendil-works/pi) agentLoop and codex run_turn,
  * per kai PRD section 4.4.
  */
 interface AgentLoop {
 
-    suspend fun run(request: LoopRequest, onEvent: suspend (TurnEvent) -> Unit): FinishReason
+    suspend fun run(
+        request: LoopRequest,
+        signal: StopSignal,
+        onEvent: suspend (TurnEvent) -> Unit
+    ): FinishReason
 }
 
 /** Immutable inputs for one turn execution. */

@@ -3,7 +3,8 @@ package com.niki914.okai.transport
 /**
  * Immutable HTTP request built by ChatProtocol and executed by HttpEngine.
  *
- * Design source: inherited from existing kai (s3ss10n) HttpRequest.
+ * Design source: independent design; request shape validated in the Nexus
+ * usage of kai.
  */
 data class HttpRequest(
     val url: String,

@@ -2,10 +2,11 @@ package com.niki914.okai.mcp
 
 /**
  * MCP wire client: discovers tools and executes calls on a server.
- * The concrete HTTP client already exists in kai and is reused in M1;
- * this interface keeps the loop free of any MCP transport knowledge.
+ * The concrete HTTP client lands in M1; this interface keeps the loop free
+ * of any MCP transport knowledge. HTTP transport only.
  *
- * Design source: existing kai (s3ss10n) McpClient, per kai PRD section 2.
+ * Design source: codex (openai/codex protocol/src/mcp.rs), per kai PRD
+ * sections 2 and 5.
  */
 interface McpClient {
 

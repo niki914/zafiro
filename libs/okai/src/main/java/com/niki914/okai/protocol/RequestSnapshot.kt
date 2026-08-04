@@ -7,7 +7,8 @@ import com.niki914.okai.transport.HttpTimeouts
  * Immutable snapshot of one model call's inputs, frozen at segment start so
  * retries reuse identical requests. Built by the loop from config plus turn options.
  *
- * Design source: existing kai (s3ss10n) KaiSnapshot, restructured per kai PRD section 4.3.
+ * Design source: independent design; frozen-snapshot pattern validated in the
+ * Nexus usage of kai, per kai PRD section 4.3.
  */
 data class RequestSnapshot(
     val endpoint: String,
