@@ -155,7 +155,7 @@ interface Compat {   // 对齐 pi OpenAICompletionsCompat，每 provider 一份
 
 ### 4.4 Agent Loop
 
-- `AgentLoop.run(request, onEvent): TurnResult`：无状态回合引擎，LLM ↔ 工具循环直到终态；history 入、本回合增量（assistant 消息 + 工具结果列表）出，由 Okai 提交到 Session
+- `AgentLoop.run(request, onEvent): TurnResult`：无状态回合引擎，LLM ↔ 工具循环直到终态；history 入、本回合消息序列（assistant 与工具结果按发生顺序交错，单个 assistant 消息内 text/thinking/toolCall 混合）出，由 Okai 提交到 Session
 - **段（segment）原子性**：每轮 LLM 调用为一个段；段内失败（且未产出任何 content）可安全重试或回滚；已产出部分内容则按策略提交或丢弃——由 loop 持有边界，host 不必感知
 - 并发契约显式化：`ConcurrencyMode`（`Reject` / `Replace` / `Queue`），由 config 声明（消除 host 自行加锁）；Okai 持有单活跃 turn
 - **stop 为 force-only**：`Okai.stop()` = 取消当前 turn 的协程并等待其收尾完成（cancel + join）。取消传播到所有挂起点（流收集、工具执行、重试延迟）；收尾在 `NonCancellable` 中完成：调用 `ForceStopHook`（至多一次，终止 host 资源，如进程/终端会话）→ 为 partial assistant 消息中所有 pending tool call 产出终态 outcome（`Interrupted` / `Unknown`，由 executor 的 `interruptedOutcome` 提供）→ 返回 `TurnResult`，history 对下一轮 well-formed，模型可见中断。内部取消（stop / idle timeout）正常返回 `Aborted` / `IdleTimeout`；外部取消在收尾后原样抛出

@@ -2,7 +2,6 @@ package com.niki914.okai.loop
 
 import com.niki914.okai.event.FinishReason
 import com.niki914.okai.event.TurnEvent
-import com.niki914.okai.message.AssistantMessage
 import com.niki914.okai.message.Message
 import com.niki914.okai.protocol.RequestSnapshot
 
@@ -35,15 +34,15 @@ interface AgentLoop {
 }
 
 /**
- * The whole turn's delta for the caller to commit: the final assistant
- * message and one terminal result per tool call issued in this turn,
- * including interrupted ones. On cancellation every pending call has a
- * result, so the committed history is complete and the model sees the
- * interruption in the next request.
+ * The whole turn's message delta for the caller to commit, in emission
+ * order. A turn interleaves assistant messages and tool results: the
+ * model may emit several rounds with tool calls between them, and one
+ * assistant message mixes text, thinking and tool call blocks. On
+ * cancellation every pending tool call has a terminal result, so the
+ * committed history is complete and the model sees the interruption.
  */
 data class TurnResult(
-    val message: AssistantMessage,
-    val toolResults: List<Message.ToolResult>,
+    val messages: List<Message>,
     val reason: FinishReason
 )
 
