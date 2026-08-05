@@ -72,6 +72,7 @@ dependencies {
     implementation(project(":ui-kit"))
     implementation(project(":xposed-runtime"))
     implementation(project(":store"))
+    implementation(project(":libs:logging"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation(project(":libs:kai"))
