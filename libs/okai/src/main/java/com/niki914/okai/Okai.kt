@@ -9,11 +9,18 @@ import com.niki914.okai.runtime.OkaiDependencies
 import kotlin.reflect.KClass
 
 /**
- * Facade over the whole library. The only entry point hosts need; everything
- * else is reached through config, dependencies and events.
+ * Facade over the whole library: one instance hosts one conversation and at
+ * most one active turn. send runs a turn against the current session and
+ * commits its delta on completion; stop cancels the active turn and suspends
+ * until cleanup finishes, so history is well-formed for the next send.
+ * fork returns a new independent instance for a new conversation; rewind
+ * moves this conversation back to a past entry. Hosts switch conversations
+ * by building instances with open() and a session loaded through
+ * dependencies, not by reusing one instance for multiple sessions.
  *
- * Design source: independent facade design; surface validated in the Nexus
- * usage of kai, per kai PRD.
+ * Design source: independent facade design; single-conversation hosting and
+ * fork semantics from pi (earendil-works/pi session-manager) and codex
+ * thread-store, surface validated in the Nexus usage of kai, per kai PRD.
  */
 interface Okai {
 
@@ -24,6 +31,12 @@ interface Okai {
     )
 
     suspend fun stop()
+
+    /** New instance hosting a new conversation forked from this one's current path. */
+    suspend fun fork(): Okai
+
+    /** Moves this conversation's current position back to a past entry. */
+    suspend fun rewind(entryId: String)
 
     suspend fun update(block: OkaiConfig.Builder.() -> Unit)
 
