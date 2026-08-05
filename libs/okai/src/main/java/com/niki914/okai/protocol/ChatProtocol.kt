@@ -31,7 +31,7 @@ interface ChatProtocol {
 
     fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent>
 
-    fun encodeToolResult(callId: String, toolName: String, content: String): Message
+    fun encodeToolResult(callId: String, toolName: String, content: String, isError: Boolean): Message
 
     val compat: Compat
 }

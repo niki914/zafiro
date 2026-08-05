@@ -20,6 +20,22 @@ sealed interface ProtocolEvent {
     /** The thinking signature, arriving after the thinking deltas. */
     data class ThinkingSignature(val signature: String) : ProtocolEvent
 
+    /**
+     * A tool call started. Streaming APIs emit ToolCallDelta afterwards;
+     * full-response APIs jump straight to ToolCallReady.
+     */
+    data class ToolCallStarted(
+        val callId: String,
+        val toolName: String
+    ) : ProtocolEvent
+
+    /** A tool call arguments delta for the call started by ToolCallStarted. */
+    data class ToolCallDelta(
+        val callId: String,
+        val toolName: String,
+        val delta: String
+    ) : ProtocolEvent
+
     /** A complete tool call with final arguments JSON. */
     data class ToolCallReady(
         val callId: String,
