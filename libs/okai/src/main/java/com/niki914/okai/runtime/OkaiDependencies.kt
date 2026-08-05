@@ -13,7 +13,8 @@ import com.niki914.okai.tool.ToolRegistry
  * on the JVM. The loop reads registry and chain references from here.
  * forceStopHook terminates host-managed tool resources (processes,
  * sessions) when a turn is cancelled; coroutine cancellation alone cannot
- * kill child processes, so hosts must provide this hook.
+ * kill child processes. null means the host declares there are no such
+ * resources; hosts that run processes (Nexus) must not be null.
  *
  * Design source: independent design; full-facade testability requirement
  * from kai PRD success criteria 6; hook requirement validated in the Nexus

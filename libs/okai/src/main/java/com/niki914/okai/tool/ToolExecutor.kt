@@ -7,14 +7,16 @@ package com.niki914.okai.tool
  *
  * Cancellation contract: when the running turn is cancelled, the suspend
  * point inside execute throws CancellationException and the call bubbles
- * up. The loop then calls interruptedOutcome for every pending tool call
- * in the partial assistant message and commits the outcomes to the
- * history, so the next request stays well-formed and the model sees the
- * interruption. Implementations return Interrupted or Unknown here to
- * mark the call as never retried; the library never fabricates the
- * outcome for them. Interrupted covers calls that did not run, Unknown
- * covers calls whose side effects may have executed (e.g. a remote call
- * cancelled while awaiting its response).
+ * up. Outcome responsibility splits by who owns the facts: calls never
+ * dispatched into the chain are marked Interrupted by the loop itself
+ * (never executed is the loop's own fact); dispatched calls go through
+ * interruptedOutcome here, where the implementation judges from its own
+ * internal state whether the call never ran (Interrupted) or may have
+ * executed remotely (Unknown, never retried, e.g. a remote call cancelled
+ * while awaiting its response). The loop feeds the outcomes back to the
+ * history as ToolResult messages, so the next request stays well-formed
+ * and the model sees the interruption. The library never fabricates an
+ * outcome for a dispatched call.
  *
  * Design source: kai PRD sections 2 and 4.5 ToolExecutor abstraction;
  * interruption outcome requirement from the Nexus stop handling.

@@ -18,13 +18,38 @@ sealed interface Message {
     /** Assistant response, carrying the full message object used in event partials. */
     data class Assistant(val message: AssistantMessage) : Message
 
-    /** Tool execution result fed back to the model. Content is arbitrary text, not necessarily JSON. */
+    /**
+     * Tool execution result fed back to the model. Content is arbitrary
+     * text, not necessarily JSON, and null when the call never produced
+     * one (interrupted or unknown outcomes). status keeps the cancellation
+     * semantics in the history so a reloaded session can tell a call that
+     * never ran from one that may have executed remotely.
+     */
     data class ToolResult(
         val callId: String,
         val toolName: String,
-        val content: String,
-        val isError: Boolean
+        val content: String?,
+        val status: ToolResultStatus
     ) : Message
+}
+
+/**
+ * Terminal state of one tool call in history. Success, Failure and Blocked
+ * are the normal outcomes; Interrupted and Unknown cover a cancelled turn
+ * and must never be retried. The provider encoding's isError flag derives
+ * from status != Success.
+ *
+ * Design source: independent design; cancellation semantics required by the
+ * force-only stop (kai PRD section 4.4). pi and codex tool result messages
+ * carry only content plus isError, without force stop, so this enum has no
+ * precedent in either.
+ */
+enum class ToolResultStatus {
+    Success,
+    Failure,
+    Blocked,
+    Interrupted,
+    Unknown
 }
 
 /**

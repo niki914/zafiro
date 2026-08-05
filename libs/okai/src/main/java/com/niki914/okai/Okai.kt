@@ -10,13 +10,14 @@ import kotlin.reflect.KClass
 
 /**
  * Facade over the whole library: one instance hosts one conversation and at
- * most one active turn. send runs a turn against the current session and
- * commits its delta on completion; stop cancels the active turn and suspends
- * until cleanup finishes, so history is well-formed for the next send.
- * fork returns a new independent instance for a new conversation; rewind
- * moves this conversation back to a past entry. Hosts switch conversations
- * by building instances with open() and a session loaded through
- * dependencies, not by reusing one instance for multiple sessions.
+ * most one active turn. send runs the turn in a child job and commits its
+ * delta to the session, so the turn result is committed on every path:
+ * stop cancels the child job only and suspends until cleanup finishes, an
+ * external cancellation of the caller's coroutine is rethrown after the
+ * commit. fork returns a new independent instance for a new conversation;
+ * rewind moves this conversation back to a past entry. Hosts switch
+ * conversations by building instances with open() and a session loaded
+ * through dependencies, not by reusing one instance for multiple sessions.
  *
  * Design source: independent facade design; single-conversation hosting and
  * fork semantics from pi (earendil-works/pi session-manager) and codex

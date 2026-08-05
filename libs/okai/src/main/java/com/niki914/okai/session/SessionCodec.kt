@@ -3,13 +3,16 @@ package com.niki914.okai.session
 /**
  * Serialization contract for one session snapshot. Storage location and
  * backend stay in the host; this only converts between a snapshot and an
- * exchange format. Id, parent id, entry ids and timestamps persist so hosts
- * rebuild the tree and fork chain after reload. The leaf is not persisted:
- * on reload the current position is the last entry, matching pi, because a
- * rewind is always followed by appends before a session is saved.
+ * exchange format. Id, parent id, entry ids, the leaf position and
+ * timestamps persist so hosts rebuild the tree, the fork chain and the
+ * current position after reload. leafId null means the position falls back
+ * to the last entry. version lets hosts migrate snapshots when the schema
+ * evolves.
  *
- * Design source: kai PRD section 4.6 Session codec interface; entry model
- * from pi (earendil-works/pi coding-agent session-manager.ts).
+ * Design source: kai PRD section 4.6 Session codec interface; leaf handling
+ * from pi (earendil-works/pi coding-agent session-manager.ts), whose
+ * buildSessionPath accepts an explicit leafId with the last entry as
+ * fallback, and whose session files carry a header version.
  */
 interface SessionCodec {
 
@@ -18,9 +21,15 @@ interface SessionCodec {
     fun decode(raw: String): SessionSnapshot
 }
 
-/** Persistable view of one session: identity, fork parent and entries. */
+/**
+ * Persistable view of one session: identity, fork parent, current leaf and
+ * entries. The leaf is the current position; without it a rewind would be
+ * lost on reload.
+ */
 data class SessionSnapshot(
     val id: String,
     val parentSessionId: String?,
+    val leafId: String?,
+    val version: Int,
     val entries: List<SessionEntry>
 )

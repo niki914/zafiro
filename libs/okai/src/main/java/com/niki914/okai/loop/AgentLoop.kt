@@ -14,11 +14,16 @@ import com.niki914.okai.protocol.RequestSnapshot
  * execution, retry delay). On cancellation the loop finishes in a
  * NonCancellable context: it commits produced content, calls the force
  * stop hook once, and produces a terminal outcome for every pending tool
- * call in the partial assistant message (including calls never started),
- * so the returned TurnResult leaves the history well-formed for the next
- * request. An internal stop or idle timeout returns normally with
- * FinishReason.Aborted or IdleTimeout; external cancellation rethrows the
- * CancellationException after cleanup. Registry and chain references
+ * call in the partial assistant message (calls never dispatched into the
+ * chain are marked Interrupted by the loop itself, dispatched ones go
+ * through ToolExecutor.interruptedOutcome), so the returned TurnResult
+ * leaves the history well-formed for the next request.
+ * run never throws CancellationException: the loop cannot tell an
+ * internal stop from an external cancellation, both look like a cancelled
+ * suspension point, so cancellation surfaces as FinishReason.Aborted in
+ * the returned TurnResult after cleanup, and the Okai facade, the only
+ * party that knows the cancel source, decides whether to rethrow. Idle
+ * timeout returns FinishReason.IdleTimeout. Registry and chain references
  * come from OkaiDependencies, so tests drive the loop with fakes.
  *
  * Design source: pi (earendil-works/pi) agentLoop and codex run_turn,

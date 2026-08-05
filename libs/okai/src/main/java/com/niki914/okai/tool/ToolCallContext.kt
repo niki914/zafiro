@@ -24,8 +24,9 @@ data class ToolCallContext(
 /**
  * Terminal result of a tool call, either from an interceptor short-circuit
  * or from the executor. Interrupted and Unknown are the outcomes of a
- * cancelled turn: the loop feeds them back as error tool results so the
- * model sees the interruption, and they are never retried.
+ * cancelled turn: the loop feeds them back as ToolResult messages carrying
+ * the matching ToolResultStatus, so the model sees the interruption and
+ * the history keeps the distinction after reload; they are never retried.
  *
  * Design source: kai PRD section 4.5 ToolCallOutcome; Blocked aligns with
  * codex ReviewDecision::Denied / hook PermissionRequestDecision::Deny;
