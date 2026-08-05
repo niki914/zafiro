@@ -20,4 +20,6 @@ class McpExecutor(
 ) : ToolExecutor {
 
     override suspend fun execute(call: ToolCallContext): ToolCallOutcome = TODO()
+
+    override fun interruptedOutcome(call: ToolCallContext): ToolCallOutcome = TODO()
 }

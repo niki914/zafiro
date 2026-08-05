@@ -1,7 +1,6 @@
 package com.niki914.okai
 
 import com.niki914.okai.event.TurnEvent
-import com.niki914.okai.loop.StopMode
 import com.niki914.okai.mcp.McpDiscoverySnapshot
 import com.niki914.okai.mcp.McpRefreshResult
 import com.niki914.okai.message.Message
@@ -24,7 +23,7 @@ interface Okai {
         onEvent: suspend (TurnEvent) -> Unit
     )
 
-    suspend fun stop(mode: StopMode = StopMode.Force, keepCurrentTurn: Boolean = false)
+    suspend fun stop()
 
     suspend fun update(block: OkaiConfig.Builder.() -> Unit)
 

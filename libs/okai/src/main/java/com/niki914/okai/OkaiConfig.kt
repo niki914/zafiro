@@ -28,7 +28,6 @@ data class OkaiConfig(
     val headers: Map<String, String>,
     val concurrencyMode: ConcurrencyMode,
     val retryPolicy: RetryPolicy,
-    val stopGracefulTimeoutSeconds: Long?,
     val mcpServers: List<McpServer>,
     val mcpDiscoveryListener: McpDiscoveryListener?,
     val jsonCodec: JsonCodec?,
@@ -48,7 +47,6 @@ data class OkaiConfig(
         var headers: Map<String, String> = emptyMap()
         var concurrencyMode: ConcurrencyMode = ConcurrencyMode.Replace
         var retryPolicy: RetryPolicy = RetryPolicy()
-        var stopGracefulTimeoutSeconds: Long? = null
         var mcpServers: List<McpServer> = emptyList()
         var mcpDiscoveryListener: McpDiscoveryListener? = null
         var jsonCodec: JsonCodec? = null
@@ -67,7 +65,6 @@ data class OkaiConfig(
             headers = headers.toMap(),
             concurrencyMode = concurrencyMode,
             retryPolicy = retryPolicy,
-            stopGracefulTimeoutSeconds = stopGracefulTimeoutSeconds,
             mcpServers = mcpServers.map { it.copy(headers = it.headers.toMap()) },
             mcpDiscoveryListener = mcpDiscoveryListener,
             jsonCodec = jsonCodec,

@@ -23,14 +23,3 @@ enum class SegmentFailurePolicy {
     Commit
 }
 
-/**
- * Stop semantics. Graceful waits for running tools, Force cancels them.
- * Graceful still needs an upper timeout bound so hosts never hang.
- *
- * Design source: kai PRD section 4.4 stop levels; Force closes the gap where
- * hosts had to kill processes before stopping.
- */
-enum class StopMode {
-    Graceful,
-    Force
-}

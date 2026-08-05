@@ -11,9 +11,13 @@ import com.niki914.okai.tool.ToolRegistry
  * Assembly point of the whole library. open() builds one from config plus
  * defaults; tests build one with fakes, so every dependency is replaceable
  * on the JVM. The loop reads registry and chain references from here.
+ * forceStopHook terminates host-managed tool resources (processes,
+ * sessions) when a turn is cancelled; coroutine cancellation alone cannot
+ * kill child processes, so hosts must provide this hook.
  *
  * Design source: independent design; full-facade testability requirement
- * from kai PRD success criteria 6.
+ * from kai PRD success criteria 6; hook requirement validated in the Nexus
+ * stop handling (PyRuntime.kill / TerminalSessionPool.closeAll).
  */
 interface OkaiDependencies {
 
@@ -31,5 +35,5 @@ interface OkaiDependencies {
 
     val clock: Clock
 
-    val stopController: StopController
+    val forceStopHook: ForceStopHook?
 }
