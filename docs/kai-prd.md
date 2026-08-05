@@ -100,7 +100,7 @@ sealed interface ContentBlock {
 }
 ```
 
-- 消息模型对齐 pi：`User` / `Assistant` / `ToolResult` 三种具体消息类型，无通用角色+内容基类；`ToolResult` 是消息类型，不是 content block，其 `content` 为任意文本（工具结果不强制 JSON，Nexus 现有工具即返回纯文本）；`ToolResult` 携带结构化 `status`（Success/Failure/Blocked/Interrupted/Unknown），中断语义在持久化恢复后仍可读（超出 pi：pi 仅 content+isError，无 force-only stop）
+- 消息模型对齐 pi：`User` / `Assistant` / `ToolResult` 三种具体消息类型，无通用角色+内容基类；`ToolResult` 是消息类型，不是 content block，其 `content` 为任意文本（工具结果不强制 JSON，Nexus 现有工具即返回纯文本）；`ToolResult` 内嵌统一的 `ToolCallOutcome`（Success/Failure/Blocked/Interrupted/Unknown，拦截器链、执行器、历史共用同一类型，无状态映射），中断语义在持久化恢复后仍可读（超出 pi：pi 仅 content+isError，无 force-only stop）
 - Assistant/User 消息 = `List<ContentBlock>`（支持同一消息内 text+thinking+image+toolCall 并存，Anthropic 风格）
 - 多模态口子：Image block 与 provider 序列化映射在 Provider 层完成；DeepSeek 阶段该 block 置空或报"不支持"
 
@@ -137,7 +137,7 @@ interface ChatProtocol {
     fun withCodec(codec: JsonCodec): ChatProtocol
     fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest
     fun parseStream(raw: Flow<SseLine>): Flow<ProtocolEvent>   // TextDelta/ThinkingDelta/ToolCallReady/Error/Completed
-    fun encodeToolResult(toolCall: ToolCall, result: String): Message
+    fun encodeToolResult(toolCall: ToolCall, outcome: ToolCallOutcome): Message   // isError 由 outcome 派生；Interrupted/Unknown 编码为错误文本
 }
 
 interface Compat {   // 对齐 pi OpenAICompletionsCompat，每 provider 一份
@@ -158,7 +158,7 @@ interface Compat {   // 对齐 pi OpenAICompletionsCompat，每 provider 一份
 - `AgentLoop.run(request, onEvent): TurnResult`：无状态回合引擎，LLM ↔ 工具循环直到终态；history 入、本回合消息序列（assistant 与工具结果按发生顺序交错，单个 assistant 消息内 text/thinking/toolCall 混合）出，由 Okai 提交到 Session
 - **段（segment）原子性**：每轮 LLM 调用为一个段；段内失败（且未产出任何 content）可安全重试或回滚；已产出部分内容则按策略提交或丢弃——由 loop 持有边界，host 不必感知
 - 并发契约显式化：`ConcurrencyMode`（`Reject` / `Replace` / `Queue`），由 config 声明（消除 host 自行加锁）；Okai 持有单活跃 turn
-- **stop 为 force-only**：`Okai.stop()` = 取消当前 turn 子 job 并等待其收尾完成（cancel + join）。取消传播到所有挂起点（流收集、工具执行、重试延迟）；收尾在 `NonCancellable` 中完成：调用 `ForceStopHook`（至多一次，终止 host 资源，如进程/终端会话）→ 为 partial assistant 消息中所有 pending tool call 产出终态 outcome（未派发进链的由 loop 直接标记 `Interrupted`；已派发的由 executor 的 `interruptedOutcome` 判定 `Interrupted` / `Unknown`）→ 返回 `TurnResult`，history 对下一轮 well-formed，模型可见中断。`AgentLoop.run()` 永不抛出 CancellationException（loop 无法区分内部 stop 与外部取消），取消一律以 `FinishReason.Aborted` 表达；`Okai.send()` 持有子 job，任意路径拿到 `TurnResult` 并在 NonCancellable 中提交 session，若调用方协程被外部取消，提交后原样重抛。idle timeout 返回 `IdleTimeout`
+- **stop 为 force-only**：所有取消来源（用户 stop / Replace / 外部取消 / close）走 `Okai` 统一协调路径：记录 `StopCause`（`UserStop` / `Replace` / `External`）→ 调用 `ForceStopHook`（至多一次，参数为本 turn 已派发的工具调用；**先 kill 后 cancel**——解除阻塞工具对协程取消的不响应，stop 不会因阻塞工具而永不返回）→ 取消子 job 并 join。取消传播到所有挂起点（流收集、工具执行、重试延迟）；loop 在 `NonCancellable` 中收尾：为 partial assistant 消息中所有 pending tool call 产出终态 outcome（未派发进链的由 loop 直接标记 `Interrupted`；已派发的由 executor 的 `interruptedOutcome` 判定 `Interrupted` / `Unknown`；未到达 `ToolCallReady` 的不持久化）→ 返回 `TurnResult`，history 对下一轮 well-formed，模型可见中断。`AgentLoop.run()` 永不抛出 CancellationException（loop 无法区分内部 stop 与外部取消），取消以 `FinishReason.Aborted` + `StopCause` 表达；`Okai.send()` 持有子 job，任意路径拿到 `TurnResult` 并在 NonCancellable 中提交 session，若调用方协程被外部取消，提交后原样重抛。idle timeout 返回 `IdleTimeout`（cause 为空）
 - idle 检测：**按传输层活跃度计时**（SSE 任意帧含 keep-alive 注释），而非事件间隔；长思考/长工具执行不误杀
 
 ### 4.5 工具调用拦截器链（核心新增）
@@ -188,7 +188,7 @@ interface ToolCallInterceptor {
 - **顺序 = 注册顺序**；任一拦截器可返回终态（拒绝/失败）短路链路
 - host（Nexus）用拦截器实现：无障碍操作的"先读屏再执行"强制、自定义工具审批、运行中工具状态上报、失败重试策略——**这些现在散落在 Nexus 工具实现里，统一收口到链上**
 - 拦截器不感知具体 executor 类型（本地/MCP/未来沙箱通用）
-- **中断收尾**：按事实归属分工——未派发进链的 call 由 loop 直接标记 `Interrupted`（从未执行是 loop 的直接事实）；已派发的 call 由 executor 的 `interruptedOutcome(call)` 按自身内部状态判定 `Interrupted`（未开始或本地已终止）或 `Unknown`（远端可能已执行，禁止自动重试）；loop 在取消收尾中组装进 history（ToolResult 携带对应 status）
+- **中断收尾**：按事实归属分工——未派发进链的 call 由 loop 直接标记 `Interrupted`（从未执行是 loop 的直接事实）；已派发的 call 由 executor 的 `interruptedOutcome(call)` 按自身内部状态判定 `Interrupted`（未开始或本地已终止）或 `Unknown`（远端可能已执行，禁止自动重试）；loop 在取消收尾中组装进 history（ToolResult 内嵌同一 outcome，无状态映射）；未到达 `ToolCallReady` 的调用不持久化（对齐 pi：未完成的调用不进历史）
 
 ### 4.6 会话与上下文管理
 

@@ -19,37 +19,46 @@ sealed interface Message {
     data class Assistant(val message: AssistantMessage) : Message
 
     /**
-     * Tool execution result fed back to the model. Content is arbitrary
-     * text, not necessarily JSON, and null when the call never produced
-     * one (interrupted or unknown outcomes). status keeps the cancellation
-     * semantics in the history so a reloaded session can tell a call that
-     * never ran from one that may have executed remotely.
+     * Tool execution result fed back to the model. The content lives
+     * inside the outcome, so a call that never produced one (interrupted
+     * or unknown) stays distinguishable after a session reload.
      */
     data class ToolResult(
         val callId: String,
         val toolName: String,
-        val content: String?,
-        val status: ToolResultStatus
+        val outcome: ToolCallOutcome
     ) : Message
 }
 
 /**
- * Terminal state of one tool call in history. Success, Failure and Blocked
- * are the normal outcomes; Interrupted and Unknown cover a cancelled turn
- * and must never be retried. The provider encoding's isError flag derives
- * from status != Success.
+ * Terminal result of one tool call, shared by the interceptor chain, the
+ * executor and the session history, so the chain's outcome and the
+ * persisted message are the same type and no mapping can lose state.
+ * Success, Failure and Blocked are the normal outcomes; Interrupted and
+ * Unknown cover a cancelled turn and must never be retried. The provider
+ * encoding derives its isError flag from the outcome.
  *
  * Design source: independent design; cancellation semantics required by the
  * force-only stop (kai PRD section 4.4). pi and codex tool result messages
- * carry only content plus isError, without force stop, so this enum has no
- * precedent in either.
+ * carry only content plus isError, without force stop, so the
+ * Interrupted/Unknown states have no precedent in either.
  */
-enum class ToolResultStatus {
-    Success,
-    Failure,
-    Blocked,
-    Interrupted,
-    Unknown
+sealed interface ToolCallOutcome {
+
+    /** Tool succeeded with a result payload. Content is arbitrary text, not necessarily JSON. */
+    data class Success(val content: String) : ToolCallOutcome
+
+    /** Tool ran but failed. */
+    data class Failure(val message: String, val content: String? = null) : ToolCallOutcome
+
+    /** Tool was refused before execution. The loop feeds this back to the model. */
+    data class Blocked(val reason: String) : ToolCallOutcome
+
+    /** Tool was interrupted before or during execution; content holds partial output when present. */
+    data class Interrupted(val content: String? = null) : ToolCallOutcome
+
+    /** Execution state unknown, e.g. a remote call may have run before cancellation. Never retried. */
+    data class Unknown(val message: String, val content: String? = null) : ToolCallOutcome
 }
 
 /**

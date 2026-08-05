@@ -1,7 +1,9 @@
 package com.niki914.okai.protocol
 
 import com.niki914.okai.codec.JsonCodec
+import com.niki914.okai.message.ContentBlock
 import com.niki914.okai.message.Message
+import com.niki914.okai.message.ToolCallOutcome
 import com.niki914.okai.transport.HttpRequest
 import com.niki914.okai.transport.SseLine
 import kotlinx.coroutines.flow.Flow
@@ -11,6 +13,9 @@ import kotlinx.coroutines.flow.Flow
  * so tests drive the protocol with plain SseLine flows and fake engines.
  * The id is stable and persisted by hosts to restore a session's protocol,
  * e.g. "deepseek", "openai-messages", "openai-completions".
+ * Tool results encode from the shared ToolCallOutcome, so the provider's
+ * isError flag derives from the outcome and Interrupted or Unknown results
+ * encode as error text.
  *
  * Design source: pi (earendil-works/pi) api layer, which splits OpenAI into
  * openai-completions and openai-responses; per kai PRD section 4.3.
@@ -31,7 +36,7 @@ interface ChatProtocol {
 
     fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent>
 
-    fun encodeToolResult(callId: String, toolName: String, content: String, isError: Boolean): Message
+    fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message
 
     val compat: Compat
 }

@@ -1,5 +1,7 @@
 package com.niki914.okai.tool
 
+import com.niki914.okai.message.ToolCallOutcome
+
 /**
  * Interceptor chain for tool calls, the core new capability of the kai redesign.
  * Interceptors run in registration order before the executor; any interceptor

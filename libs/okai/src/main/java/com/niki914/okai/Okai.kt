@@ -11,8 +11,14 @@ import kotlin.reflect.KClass
 /**
  * Facade over the whole library: one instance hosts one conversation and at
  * most one active turn. send runs the turn in a child job and commits its
- * delta to the session, so the turn result is committed on every path:
- * stop cancels the child job only and suspends until cleanup finishes, an
+ * delta to the session, so the turn result is committed on every path.
+ * All cancellation sources go through one coordinator path: user stop, a
+ * Replace of the active turn, external cancellation of the caller's
+ * coroutine and close. The coordinator records the StopCause, calls the
+ * force stop hook with the turn's dispatched tool calls (kill-then-stop:
+ * killing first unblocks tools that ignore coroutine cancellation), then
+ * cancels the child job with that cause and joins its cleanup. stop
+ * cancels the child job only and suspends until cleanup finishes; an
  * external cancellation of the caller's coroutine is rethrown after the
  * commit. fork returns a new independent instance for a new conversation;
  * rewind moves this conversation back to a past entry. Hosts switch
@@ -57,11 +63,23 @@ interface Okai {
 
     companion object {
 
-        suspend fun open(
-            protocolClass: KClass<out ChatProtocol>,
+        /**
+         * Protocol binds by type at open time, matching the kai surface;
+         * the default open() falls back to the default protocol (DeepSeek
+         * in M0). Hosts that persist a protocol id alongside their
+         * session data resolve it through ProtocolRegistry and bind the
+         * class here; the protocol itself is never part of session state.
+         */
+        suspend fun <P : ChatProtocol> open(
+            protocolClass: KClass<P>,
             builder: OkaiConfig.Builder.() -> Unit
         ): Okai = TODO()
 
+        suspend inline fun <reified P : ChatProtocol> open(
+            noinline builder: OkaiConfig.Builder.() -> Unit
+        ): Okai = open(P::class, builder)
+
+        @JvmName("openDefault")
         suspend fun open(
             builder: OkaiConfig.Builder.() -> Unit
         ): Okai = TODO()

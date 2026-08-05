@@ -1,5 +1,7 @@
 package com.niki914.okai.tool
 
+import com.niki914.okai.message.ToolCallOutcome
+
 /**
  * Executes one tool call. The chain terminates here. Hosts implement local
  * executors; an MCP executor with an HTTP-only client arrives in M1.

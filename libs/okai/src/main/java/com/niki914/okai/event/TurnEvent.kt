@@ -79,3 +79,18 @@ enum class FinishReason {
     IdleTimeout,
     RetryExhausted
 }
+
+/**
+ * Why a turn was cancelled, recorded by the Okai coordinator when it
+ * cancelled the turn job and carried on the cancellation, so the loop
+ * can tell a user stop, a Replace and an external cancellation apart.
+ * Idle timeout is a FinishReason, not a StopCause.
+ *
+ * Design source: kai PRD section 4.4 stop semantics; the three causes
+ * cover the cancellation sources listed in the force-only stop design.
+ */
+enum class StopCause {
+    UserStop,
+    Replace,
+    External
+}

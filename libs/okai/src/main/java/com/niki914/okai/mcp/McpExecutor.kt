@@ -1,7 +1,7 @@
 package com.niki914.okai.mcp
 
+import com.niki914.okai.message.ToolCallOutcome
 import com.niki914.okai.tool.ToolCallContext
-import com.niki914.okai.tool.ToolCallOutcome
 import com.niki914.okai.tool.ToolExecutor
 
 /**
