@@ -6,6 +6,14 @@
 
 ---
 
+## Q & A
+
+- StopSignal: 已经删除，会话中断依赖于协程 cancel
+- 恢复会话时无法确定使用哪个协议是符合预期的，Okai是协议无关的，逻辑层不关心协议，在Okai.open<Protocol>或切换会话的时候就确定了协议 
+- 会话保存保存 fork 相关信息是无意义的业务性功能，我们这个库不需要
+
+---
+
 ## TODOs
 
 [ ] 确认 Nexus 层关于 Fork、对话消息方面的修改是否牵动 Kai 的 history 相关设计。Kai 是否支援树状数据结构等（Coding Agent 的对话在进行 fork 之后数据结构就是树）
