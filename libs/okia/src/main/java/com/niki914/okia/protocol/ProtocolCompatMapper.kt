@@ -16,11 +16,11 @@ import kotlinx.coroutines.flow.Flow
  */
 interface ProtocolCompatMapper {
 
-    // 协议无关数据 → Provider 请求（beforeSerialization 时序在此层前后）
+    // 协议无关数据 → Provider 请求（beforeSerialization 时序在此层前后）。
+    // history 包含当前输入，无独立的 pendingUserInput。
     suspend fun buildRequest(
         snapshot: RequestSnapshot,
-        history: List<Message>,
-        pendingUserInput: String?
+        history: List<Message>
     ): HttpRequest = TODO()
 
     // 工具结果编码（encodeToolResult 边界）
@@ -31,4 +31,8 @@ interface ProtocolCompatMapper {
 
     // 认证头推导
     fun useApiKey(apiKey: String): Map<String, String> = TODO()
+
+    // 协议兼容性事实（每 Provider 的 retryable status、工具结果后是否需要
+    // 助手消息等）；loop 在历史拼装与重试时查询
+    val compat: Compat
 }

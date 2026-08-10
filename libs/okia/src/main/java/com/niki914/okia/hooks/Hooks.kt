@@ -18,8 +18,8 @@ interface Hooks {
     // 用户输入进入后：异步任务通知注入等 transform（§5.10）
     suspend fun beforeInput(input: InputHolder) {}
 
-    // 用户输入处理完成（handled = 是否已被 hook 接管）
-    suspend fun afterInput(input: InputHolder, handled: Boolean) {}
+    // 用户输入处理完成（改写信息见 InputHolder.lastWriter）
+    suspend fun afterInput(input: InputHolder) {}
 
     // 消息序列化前（协议无关层，数据脱敏主战场）
     suspend fun beforeSerialization(request: SerializationHolder) {}

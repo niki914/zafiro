@@ -10,18 +10,16 @@ import com.niki914.okia.protocol.RequestSnapshot
  */
 class SerializationHolder(
     val snapshot: RequestSnapshot,
-    val history: List<Message>,
-    val pendingUserInput: String?
+    val history: List<Message>
 ) {
 
     // 最后写入者签名（write 记录）
     val lastWriter: String? = null
 
-    // 改写请求输入并记录签名
+    // 改写请求输入并记录签名（一次性，发完即弃，不写回会话树）
     fun write(
         snapshot: RequestSnapshot,
         history: List<Message>,
-        pendingUserInput: String?,
         signature: String
     ): Unit = TODO()
 }

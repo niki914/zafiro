@@ -11,7 +11,7 @@ data class McpDiscoverySnapshot(
     val conflicts: List<ToolConflict>
 )
 
-/** 每服务器发现状态。 */
+/** 每服务器发现状态。tools 为发现的工具详情（host 组合 prompt 或持久化用）。 */
 data class McpServerDiscoverySnapshot(
     val serverName: String,
     val enabled: Boolean,
@@ -20,6 +20,7 @@ data class McpServerDiscoverySnapshot(
     val errorMessage: String?,
     val lastSuccessAtMillis: Long?,
     val discoveredToolCount: Int,
+    val tools: List<McpDiscoveredTool> = emptyList(),
     val stale: Boolean
 )
 

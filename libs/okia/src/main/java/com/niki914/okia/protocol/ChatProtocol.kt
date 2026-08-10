@@ -27,11 +27,11 @@ interface ChatProtocol {
     // apiKey → 认证头；apiKey 为空时返回空 map
     fun useApiKey(apiKey: String): Map<String, String> = TODO()
 
-    // 协议无关数据 → Provider 请求
+    // 协议无关数据 → Provider 请求。history 包含当前输入（send 已先提交
+    // User 消息），不存在独立的 pendingUserInput。
     fun buildRequest(
         snapshot: RequestSnapshot,
-        history: List<Message>,
-        pendingUserInput: String?
+        history: List<Message>
     ): HttpRequest = TODO()
 
     // 原始 SSE 流 → 协议无关中间事件

@@ -1,8 +1,13 @@
 package com.niki914.okia
 
+import com.niki914.okia.conversation.Conversation
+import com.niki914.okia.conversation.MessageEntry
+import com.niki914.okia.event.FinishReason
+import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.hooks.ToolCallHolder
 import com.niki914.okia.hooks.ToolResultHolder
+import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
@@ -11,46 +16,165 @@ import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolExecutor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 /**
- * 标准 Okia 调用演示：2 个 Tooling + 1 个 Hook + 清屏打印完整对话。
- * 骨架阶段：库侧未实现处全部 TODO() 占位；本文件演示 host 侧使用形态，
- * 库实现后即可直接运行。
- * Design source: independent demo；形态来自 okia PRD §5.4（UI 状态流）/ §5.9（Hooks）。
+ * 多轮对话 + 伪 Compose UI 驱动演示。
+ *
+ * 骨架阶段库侧全部 TODO() 占位，本文件演示 host 侧使用形态：
+ * 1. UI 只观察 `conversation: StateFlow<Conversation>`，每次发射整帧重渲染；
+ * 2. 打字机 = 快照的 `live` 字段（流式 partial 逐 delta 更新），与 onCommit 无关——
+ *    onCommit 是库内部"消息成条"通道，UI 永远见不到它；
+ * 3. 工具状态 = Running（已提交 ToolCall 无对应 ToolResult）/ Outcome（配到终态），
+ *    由 history 推导，UI 零额外状态；
+ * 4. turn 边界由下游按 Message.User 自行封装（库不提供 turn 分组）。
+ *
+ * Compose 对照：本文件的 collect + 渲染 = `conversation.collectAsState()` +
+ * recomposition；history 遍历 = LazyColumn item；live = 末尾打字机 Text。
+ * Design source: okia PRD §5.4（StateFlow 投影 / live / 消息级更新）。
  */
 fun main() = runBlocking {
-    // 清屏
-    clearScreen()
 
-    // 1. 注册两个工具（Tooling）
-    val toolRegistry: ToolRegistry = TODO()
-    toolRegistry.register(CalculatorTool.descriptor, CalculatorTool())
-    toolRegistry.register(SearchTool.descriptor, SearchTool())
+    // ── 装配 ──────────────────────────────────────────────────────────────
+    val registry: ToolRegistry = TODO()
+    registry.register(CalculatorTool.descriptor, CalculatorTool())
+    registry.register(SearchTool.descriptor, SearchTool())
 
-    // 2. 注册一个 hook（Hooks）
-    val auditHook: Hooks = AuditHook()
-
-    // 3. 打开门面并提交输入（默认协议，M0 DeepSeek）
     val okia: Okia = Okia.open {
         endpoint = "https://api.deepseek.com/v1"
         model = "deepseek-chat"
-        hooks = listOf(auditHook)
+        hooks = listOf(AuditHook())
+        toolRegistry = registry
     }
 
-    // 4. 跑完整个回合（LLM ↔ 工具循环）
-    okia.send("帮我计算 1+1，然后搜索今天的天气") { event ->
-        // 流式事件处理（宿主 IPC 形态）
-        TODO()
+    // ── UI 层（伪 Compose）：订阅状态流，每次发射重渲染一帧 ──────────────
+    // Compose 中等价写法：val snap by okia.conversation.collectAsState()
+    val uiJob: Job = launch {
+        okia.conversation.collect { snapshot -> renderFrame(snapshot) }
     }
 
-    // 5. 清屏后打印完整对话
-    clearScreen()
-    printConversation(okia)
+    // 宿主 IPC 通道：一次性事件流（RenderFrame 流式回调形态，见 kai 实证）
+    val eventJob: Job = launch {
+        okia.events.collect { event -> onTurnEvent(event) }
+    }
 
-    // 6. 释放实例
+    // ── 多轮对话 ──────────────────────────────────────────────────────────
+    // 第一轮：工具循环回合（模型 → 工具调用 → 工具结果 → 模型总结）
+    okia.send("帮我计算 (1+2)*3，再搜索一下今天北京的天气") { /* 事件已走 events 流 */ }
+
+    // 第二轮：历史已累积第一轮全部消息（User / Assistant / ToolResult），
+    // 库把整个历史喂给模型，UI 直接渲染 history 即可
+    okia.send("那 2+2 呢？") { /* 事件已走 events 流 */ }
+
+    // ── 树的回退能力：rewind 到第一轮的用户输入，换个问题重新生成 ───────
+    val firstTurnEntryId: String = okia.conversation.value.history
+        .first { it.message is Message.User }
+        .id
+    okia.rewind(firstTurnEntryId)          // 尾部保留在树中，投影回到第一轮
+    okia.send("改问：2*9 等于几？") { /* 事件已走 events 流 */ }
+
+    // ── fork：从当前状态派生独立分支（新实例，节点不可变共享） ───────────
+    val branch: Okia = okia.fork()
+    branch.close()
+
+    // ── 收尾 ──────────────────────────────────────────────────────────────
+    uiJob.cancelAndJoin()
+    eventJob.cancelAndJoin()
     okia.close()
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// 伪 Compose UI：以下函数把 Conversation 快照映射成 UI 树（终端渲染模拟）
+// ════════════════════════════════════════════════════════════════════════════
+
+/** 渲染一帧：完整快照 → 整屏（Compose 中 = recomposition）。 */
+private fun renderFrame(snapshot: Conversation) {
+    clearScreen()
+    println("── 会话 ${snapshot.id} ──")
+
+    // LazyColumn：history 逐条渲染
+    snapshot.history.forEach { entry -> renderEntry(entry, snapshot.history) }
+
+    // 打字机区：live 是正在流式、尚未成条的助手消息
+    snapshot.live?.let { live ->
+        println("── 流式中 ──")
+        println(renderBlocks(live.content) + "▌")
+    }
+
+    // turn 边界是下游封装（库不提供分组）：演示按 Message.User 切分
+    println("── ${groupByTurns(snapshot.history).size} 个回合 ──")
+}
+
+/** 单条消息渲染。工具块的 Running/Outcome 在这里推导。 */
+private fun renderEntry(entry: MessageEntry, history: List<MessageEntry>) {
+    when (val message = entry.message) {
+        is Message.User -> println("🙋 ${renderBlocks(message.content)}")
+
+        is Message.Assistant -> message.message.content.forEach { block ->
+            when (block) {
+                is ContentBlock.Text -> println("🤖 ${block.text}")
+                is ContentBlock.Thinking -> println("💭 ${block.text}")
+                is ContentBlock.ToolCall -> {
+                    // 状态推导：按 callId 配对后续 ToolResult。
+                    // 配到 = Outcome（终态）；没配到 = Running（执行中）。
+                    val outcome: ToolCallOutcome? = findOutcome(block.id, history)
+                    if (outcome == null) {
+                        println("🔄 [${block.name}] 执行中…")   // Running
+                    } else {
+                        println("🔧 [${block.name}] ${renderOutcome(outcome)}")  // Outcome
+                    }
+                }
+                is ContentBlock.Image -> println("[图片 ${block.mimeType}]")
+            }
+        }
+
+        is Message.ToolResult -> println("  ↳ ${renderOutcome(message.outcome)}")
+    }
+}
+
+/** 工具终态配对：history 里 callId 对应的 ToolResult.outcome；无 = 执行中。 */
+private fun findOutcome(callId: String, history: List<MessageEntry>): ToolCallOutcome? =
+    history.asSequence()
+        .map { it.message }
+        .filterIsInstance<Message.ToolResult>()
+        .firstOrNull { it.callId == callId }
+        ?.outcome
+
+/** turn 边界封装：按 Message.User 切分（库不提供，下游自行封装）。 */
+private fun groupByTurns(history: List<MessageEntry>): List<List<MessageEntry>> {
+    val turns = mutableListOf<MutableList<MessageEntry>>()
+    for (entry in history) {
+        if (entry.message is Message.User) turns += mutableListOf(entry)
+        else turns.lastOrNull()?.add(entry)
+    }
+    return turns
+}
+
+/** 宿主 IPC 事件处理（RenderFrame 流式回调形态）。 */
+private suspend fun onTurnEvent(event: TurnEvent) {
+    when (event) {
+        is TurnEvent.TurnStarted -> println("[事件] 回合开始")
+        is TurnEvent.TextDelta -> println("[事件] 文本 delta: ${event.delta}")
+        is TurnEvent.ToolCallDelta -> println("[事件] 工具参数 delta: ${event.delta}")
+        is TurnEvent.ToolCallEnded -> println("[事件] 工具调用完成: ${event.toolCall.name}")
+        is TurnEvent.TurnCompleted ->
+            if (event.reason == FinishReason.Stop) println("[事件] 回合完成")
+        is TurnEvent.TurnFailed -> println("[事件] 回合失败: ${event.error}")
+        else -> Unit // Thinking*/RetryScheduled 等略
+    }
+}
+
+/** live 是完整 partial 快照，UI 无需累积 delta 即可渲染打字机。 */
+private fun renderLive(live: AssistantMessage): String = renderBlocks(live.content)
+
+// ════════════════════════════════════════════════════════════════════════════
+// 工具与 hook（骨架占位）
+// ════════════════════════════════════════════════════════════════════════════
 
 /** 工具 1：四则运算。 */
 class CalculatorTool : ToolExecutor {
@@ -97,17 +221,6 @@ class AuditHook : Hooks {
 // 清屏：ANSI 控制序列（跨平台终端）
 private fun clearScreen() {
     print("\u001b[2J\u001b[H")
-}
-
-// 打印完整对话：角色 + 内容块 + 工具结果
-private fun printConversation(okia: Okia) {
-    okia.conversation.value.history.forEach { message ->
-        when (message) {
-            is Message.User -> println("[user] ${renderBlocks(message.content)}")
-            is Message.Assistant -> println("[assistant] ${renderBlocks(message.message.content)}")
-            is Message.ToolResult -> println("[tool:${message.toolName}] ${renderOutcome(message.outcome)}")
-        }
-    }
 }
 
 // 内容块渲染：文本 / 思考 / 图像 / 工具调用

@@ -1,11 +1,37 @@
 package com.niki914.okia.conversation
 
+import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.Message
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.Serializable
 
 /**
- * 树中的一条消息及其位置。id / parentId 构成 append-only 链。
+ * UI 友好的不可变快照：StateFlow 每次发射都是完整状态，观察者只读不写。
+ * history 为已提交的完整消息（leaf 路径投影，平列表，不做 turn 分组——
+ * turn 边界由下游按 Message.User 自行封装）；live 为正在流式、尚未成条的
+ * 助手消息，空闲为 null。历史变化与 live 更新都会重新发射。
+ * Design source: okia PRD §5.4（StateFlow 投影）+ 白板 W1（MVI）。
+ */
+data class Conversation(
+    val id: String,
+    val parentSessionId: String?,
+    val history: List<MessageEntry>,
+    val live: AssistantMessage? = null
+)
+
+/**
+ * 门面条目：id 与消息绑定，是 rewind(entryId) 的目标。下游只需认识
+ * 本类型 + Message，不需要接触树结构。turn 级回退 = 取 Message.User
+ * 对应的 entry id（下游自行封装，库不替下游决定粒度）。
+ * Design source: okia CR #1 门面化裁决（避免暴露树节点类型）。
+ */
+data class MessageEntry(
+    val id: String,
+    val message: Message
+)
+
+/**
+ * 树节点与持久化行格式（SessionSnapshot.entries）。id / parentId 构成
+ * append-only 链。非门面类型：下游仅在持久化时接触。
  * Design source: pi（session-manager.ts）SessionEntryBase { id, parentId }。
  */
 @Serializable
@@ -15,40 +41,3 @@ data class ConversationEntry(
     val timestamp: Long,
     val message: Message
 )
-
-/**
- * 对话数据结构维护者：条目树 + leafId 当前位置，内部 Mutex 串行化
- * （KMP 下唯一同步方案 = kotlinx.coroutines.sync.Mutex）。
- * fork 复制当前 leaf 路径（节点不可变共享，修改互不影响）；rewind 原地
- * 移动 leafId，被跳过的尾部保留在树中。历史投影 = leaf 到 root 线性投影。
- * Design source: pi（session-manager.ts）buildSessionPath / createBranchedSession，
- * W3 白板便签。
- */
-class Conversation(
-    val id: String,
-    val parentSessionId: String?,
-    entries: List<ConversationEntry>,
-    leafId: String?
-) {
-
-    // 树形条目（append-only，fork 共享不可变节点）
-    val entries: List<ConversationEntry> get() = TODO()
-
-    // 当前 leaf 位置；append 前进，rewind 移动
-    val leafId: String? get() = TODO()
-
-    // leaf 到 root 的线性历史投影，按对话顺序
-    val history: List<Message> get() = TODO()
-
-    // 追加一条消息，返回新条目
-    suspend fun append(message: Message): ConversationEntry = TODO()
-
-    // 新对话：从当前 leaf 路径 fork，节点不可变共享
-    suspend fun fork(): Conversation = TODO()
-
-    // 原地移动 leafId 到 entryId；被跳过的尾部保留在树中
-    suspend fun rewind(entryId: String): Unit = TODO()
-
-    // 串行化所有数据操作
-    private val mutex: Mutex = TODO()
-}

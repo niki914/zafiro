@@ -3,6 +3,7 @@ package com.niki914.okia
 import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.mcp.McpServer
+import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpEngine
 
 /**
@@ -24,6 +25,7 @@ data class OkiaConfig(
     val retryPolicy: RetryPolicy,
     val mcpServers: List<McpServer>,
     val hooks: List<Hooks>,
+    val toolRegistry: ToolRegistry?,
     val httpEngine: HttpEngine?
 ) {
 
@@ -42,6 +44,7 @@ data class OkiaConfig(
         var retryPolicy: RetryPolicy = RetryPolicy()
         var mcpServers: List<McpServer> = emptyList()
         var hooks: List<Hooks> = emptyList()
+        var toolRegistry: ToolRegistry? = null
         var httpEngine: HttpEngine? = null
 
         // 组装不可变配置快照

@@ -123,25 +123,41 @@ interface Okia {
 
 ### 5.3 Conversation 类（W3）
 
-**决策**：`Conversation` 独立类维护对话数据结构，内部 Mutex 竞争控制（KMP 下唯一同步方案 = `kotlinx.coroutines.sync.Mutex`）。结构为条目树（id / parentId / timestamp）+ 可变的 leafId 当前位置。`fork()` 复制当前 leaf 路径（节点不可变共享，修改互不影响）；`rewind(entryId)` 原地移动 leafId 指针，被跳过的尾部保留在树中。
+**决策**：数据结构由**内部类 `RealConversation`**（conversation/ 包，公开面之外）维护：条目树（id / parentId / timestamp）+ 可变的 leafId 当前位置，内部 Mutex 竞争控制（KMP 下唯一同步方案 = `kotlinx.coroutines.sync.Mutex`）。`fork()` 复制当前 leaf 路径（节点不可变共享，修改互不影响）；`rewind(entryId)` 原地移动 leafId 指针，被跳过的尾部保留在树中。**rewind 不校验目标合法性（放开）**：回退粒度由下游自行约束，非法回退的后果（如停在未配对工具调用上）由下游负责——库不替下游决定什么位置合法（篡改历史的场景是下游的合法用途）。命名参考 OkHttp `Real*` 惯例：公开短名，实现类带 Real 前缀。
 
-**原因**：W3 "单独类维护数据结构 + 内部竞争控制 + Fork/Rewind"；fork 独立性由不可变性保证；rewind 后历史投影 = leaf 到 root 线性投影。
+**原因**：W3 "单独类维护数据结构 + 内部竞争控制 + Fork/Rewind"；fork 独立性由不可变性保证；rewind 后历史投影 = leaf 到 root 线性投影。内部化的原因：公开面只需不可变快照，可变树是库内细节，暴露它会导致下游绕过门面直接修改（CR #1 裁决）。
 
-**先例**：pi `buildSessionPath(entries, leafId)`（leafId 显式 + fallback 到最后一条）、`createBranchedSession(leafId)`、SessionHeader version。
+**先例**：pi `buildSessionPath(entries, leafId)`（leafId 显式 + fallback 到最后一条）、`createBranchedSession(leafId)`、SessionHeader version；OkHttp 公开接口短名 + `RealCall` / `RealInterceptorChain` 实现命名。
 
-**持久化**：`SessionSnapshot(id, parentSessionId, leafId, version, entries)` 由 codec 接口持久化（存储位置 host 决定）。**leafId 必须持久化**（rewind 位置在重载后保持；null = 恢复为最后一条）。
+**持久化**：`SessionSnapshot(id, parentSessionId, leafId, version, entries)` 由 codec 接口持久化（存储位置 host 决定）。**leafId 必须持久化**（rewind 位置在重载后保持；null = 恢复为最后一条）。`entries` 为消息级 `ConversationEntry`（树节点 + 持久化行格式，非门面类型，下游仅在持久化时接触）。
 
 ### 5.4 UI 数据模型：StateFlow + SharedFlow（W1）
 
-**决策**：库提供 `StateFlow<Conversation>` 作为持久性数据源（UI 观察它渲染全部内容），`SharedFlow` 提供失败等一次性事件。参考 MVI。
+**决策**：库提供 `StateFlow<Conversation>` 作为持久性数据源（UI 观察它渲染全部内容），`SharedFlow` 提供失败等一次性事件。参考 MVI。**`Conversation` 是公开不可变快照 dataclass，不是可变树**：
 
-**原因**：下游开发者极可能用 Compose；状态即数据流比事件累计更 Kotlin 原生。
+```kotlin
+data class Conversation(
+    val id: String,
+    val parentSessionId: String?,
+    val history: List<MessageEntry>,   // 已提交的完整消息（leaf 投影，平列表）
+    val live: AssistantMessage?        // 正在流式、尚未成条的助手消息；空闲 null
+)
+
+data class MessageEntry(
+    val id: String,                    // rewind(entryId) 的目标，直接可取
+    val message: Message
+)
+```
+
+**原因**：下游开发者极可能用 Compose；状态即数据流比事件累计更 Kotlin 原生。不可变快照使 StateFlow 每次发射都是新值（不依赖可变对象 emit 语义）；门面条目（`MessageEntry`）把 id 与消息绑定，下游回退目标直接从快照拿，无需接触树结构。turn 边界由下游按 `Message.User` 自行封装（库不提供 turn 分组——替下游做决定）。
+
+**更新粒度（消息级）**：状态流按**消息**更新，不按回合。loop 的消息产出经 `LoopRequest.onCommit` 逐条/逐批即时提交（facade 注入，`RealConversation` 同一把 Mutex 下原子追加），facade 用 `updateState { copy(...) }` 重投影。`TurnResult` 不再携带消息（已随 onCommit 提交），收敛为 `(reason, cause)`。
 
 **流式语义**：
-- **Text**：有一点变化就反馈给 UI（逐 delta 更新快照）
-- **Tool**：arguments 组装完成（`ToolCallEnded`）之前**不进入 UI 状态**（不占位）；组装完成后出现工具块，块状态 = `Start → Running → 终态（ToolCallOutcome）`
+- **Text**：有一点变化就反馈给 UI（`live` 逐 delta 更新快照）
+- **Tool**：arguments 组装完成（`ToolCallEnded`）之前**不进入 UI 状态**（不占位）；组装完成后随助手消息成条进入 `history`，工具块状态 = `Start → Running → 终态（ToolCallOutcome）`（Running 态 = 已提交工具调用尚无对应 ToolResult，UI 从 history 推导）
 
-**开放问题**：库内事件协议（TurnEvent，§5.15）保留与否——宿主 IPC（RenderFrame 流式回调）需要流式事件，倾向"事件为事实 + 状态流为投影"。
+**事件协议**：`TurnEvent` 保留（§8.1 候选 A 已裁决）：宿主 IPC（RenderFrame 流式回调）走事件形态；StateFlow 是已提交历史的投影。`live` 是快照中唯一的中间态。
 
 ### 5.5 Tooling 契约（W4）
 
@@ -149,6 +165,7 @@ interface Okia {
 1. 从门面入口开始，内部方法全部 `suspend`（支持打断）
 2. **Tooling 永不抛异常，总是产出工具结果**。自定义工具强制实现 `onInterrupt`（返回工具结果），中断判定 = executor 内部状态
 3. 中断的资源清理是下游职责，库只提供回调时机（`beforeStop`）
+4. **`ToolCallContext` 不携带对话上下文与重试计数**：ToolExecutor 知道完整对话历史是越界；幂等性由 call id 承载（重试时 id 不变，工具自行记录已处理的 id）。需要会话归属信息的工具由 host 在注册时自行注入
 
 **先例**：okai 骨架的 `ToolExecutor.interruptedOutcome`；PRD 4.4 中断收尾分工（未派发 → loop 标记；已派发 → executor 判定）。
 
@@ -160,24 +177,25 @@ interface Okia {
 sealed interface ToolCallOutcome {
     data class Success(val content: String) : ToolCallOutcome
     data class Failure(val message: String, val content: String? = null) : ToolCallOutcome
-    data class Intercepted(val reason: String) : ToolCallOutcome   // hook 拦截结果
+    data class Intercepted(val reason: String, val content: String? = null) : ToolCallOutcome  // hook 拦截结果
     data class Interrupted(val content: String? = null) : ToolCallOutcome
     data class Unknown(val message: String, val content: String? = null) : ToolCallOutcome
 }
 ```
 
 **`Blocked` 删除的原因**：Blocked 是"审批拒绝"的具体语义，应由下游 hook 泛化（拒绝 = `Intercepted` 或 `Failure`）；okai 骨架的 Blocked 值被裁掉。
-**`Intercepted` 新增的原因**：hook 拦截 ≠ 工具失败，UI 要区分；hook 不只给失败结果（可能给成功模拟、缓存命中、拦截）。机制语义，下游自由泛化。
+**`Intercepted` 新增的原因**：hook 拦截 ≠ 工具失败，UI 要区分；hook 不只给失败结果（可能给成功模拟、缓存命中、拦截）。机制语义，下游自由泛化。**`Intercepted.content` 的原因**：缓存命中 / 成功模拟必须把结果负载回喂模型（`encodeToolResult` 产出 ToolResult 消息），与 `Failure`/`Unknown` 的 `(message, content)` 同构（CR 裁决）。
 
 工具块 UI 终态 = 这 5 态（Start/Running 是过程态，见 §5.4）。`ToolResult` 消息内嵌同一 outcome（无状态映射，中断语义在持久化恢复后可读）。
 
 ### 5.7 Provider 生命周期（W5）
 
 **决策**：
-1. 实例化时协议定死：`Okia.open<P : ChatProtocol>(protocolClass, builder)` + reified 重载 + 默认协议版本（kai 形态）
-2. 协议作用域 == Okia 实例生命周期
-3. **持久化与恢复无矛盾**：恢复时重新 `open<P>()` 提供 Provider；协议 id 不进会话数据
+1. 实例化时协议定死：`Okia.open(protocol: P, builder)`（协议实例）+ `Okia.open(builder)`（默认 M0 DeepSeek，库内部构造）+ `Okia.open(dependencies, builder)`（测试/高级装配）
+2. 协议作用域 == Okia 实例生命周期；实例由调用方构造（`withCodec` / 自定义状态在 open 前就绪），open 后归 Okia 持有
+3. **持久化与恢复无矛盾**：恢复时重新 `open(protocol)` 提供 Provider；协议 id 不进会话数据
 4. **`ProtocolRegistry` 删除**：id 解析无用途（host 自己知道自己用什么协议，Nexus 的 `LlmApiType` 存 Room、恢复时 `openSession` 重新 open）
+5. **`KClass`/reified 重载删除**：KMP 目标（jvm + android + ios）无通用反射，类型令牌无法实例化任意协议接口；保留 `open<P>(protocolClass)` 是误导性 API（对非内置协议必然无法构造）。下游想封装自己的便捷入口（如内部持有协议实例的 `openSession`）由 host 自行实现
 
 **先例**：kai `Kai.open<P>` 泛型绑定；Nexus `LLMController.obtainSession`（apiType 变化 → close + 重建）。
 
@@ -185,7 +203,11 @@ sealed interface ToolCallOutcome {
 
 **决策**：上层（loop / Conversation / Hooks / UI）协议无关，只用自定 dataclass（`Message` / `ContentBlock` / `RequestSnapshot`）；数据到 `ProtocolCompatMapper` 及以下（`ChatProtocol.buildRequest` / `encodeToolResult`）才按 Provider 序列化。host 用抽象 dataclass 实例化、不碰网络 raw data → 切换协议无影响。
 
-保留：`ChatProtocol`（id / withCodec / useApiKey / buildRequest / parseStream / encodeToolResult / compat）、`Compat` 矩阵（maxTokensField / thinkingFormat / retryableStatusCodes 等，M0 仅 DeepSeekCompat）、`ProtocolEvent`（协议无关中间表示，与库级事件两层映射）。
+保留：`ChatProtocol`（id / withCodec / useApiKey / buildRequest / parseStream / encodeToolResult / compat）、`Compat` 矩阵（maxTokensField / thinkingFormat / retryableStatusCodes 等，M0 仅 DeepSeekCompat）、`ProtocolEvent`（协议无关中间表示，与库级事件两层映射）。**`Compat` 挂在 `ProtocolCompatMapper` 上**（loop 已持有 mapper，经 `encodeToolResult` 已跨越协议边界，compat 是同一边上的另一类事实；loop 在历史拼装与重试时查询）。
+
+**`buildRequest` 无独立 pendingUserInput**：不变量为 **history 永远包含当前输入**（send 先提交 User 消息，再启动 loop）。`pendingUserInput` 参数与 `SerializationHolder.pendingUserInput` 字段已删除（CR #3 裁决）。
+
+**hook 与会话树的不变量**：**树（conversation）= 事实**。hook 的 mutation 永远只作用于"本次操作的一次性载体"（holder），发完即弃，**不写回会话树**。因此"UI 显示原文 vs 模型收到改写版"不是不一致性，而是分层预期——例：`beforeSerialization` 数据脱敏时，UI 显示未脱敏原文（自己的界面），模型收到脱敏版（对外边界）。若下游要修正历史本身，正路是 rewind 后重新生成（新分支），不是 hook 隐式改树（链式 hook 会互相踩、历史不可信）。
 
 ### 5.9 Hooks 体系（W2，核心）
 
@@ -216,11 +238,11 @@ sealed interface ToolCallOutcome {
 
 | 时机 | before 形参 | after 形参 | 时序位置 |
 |---|---|---|---|
-| `Input` | `input: InputHolder` | `input: InputHolder, handled: Boolean` | 用户输入进入后 |
+| `Input` | `input: InputHolder` | `input: InputHolder` | 用户输入进入后 |
 | `Serialization` | `request: SerializationHolder` | `request: SerializationHolder, httpRequest: HttpRequest` | 消息序列 → buildRequest 前后（约等于序列化前后） |
 | `Request` | `request: HttpRequestHolder` | `request: HttpRequestHolder, response: HttpResponse` | HttpEngine 发送前后 |
 | `ToolCall` | `call: ToolCallHolder` | `call: ToolCallHolder, result: ToolResultHolder` | 工具执行前后 |
-| `Stop` | `calls: List<ToolCall>` | `—` | 停止流程开始前 / 完成后 |
+| `Stop` | `calls: List<ToolCall>` | `calls: List<ToolCall>` | 停止流程开始前 / 完成后 |
 
 用途映射：
 - 异步 Terminal 注入 → `beforeInput`（§5.10）
@@ -268,8 +290,17 @@ Nexus 的"屏幕操作前先读屏"已通过**版本号机制**强制实现（�
 | `ForceStopHook` | 并入 `beforeStop` |
 | `McpDiscoveryListener` | 并入 Hooks（时机面） |
 | `ToolCallOutcome.Blocked` | §5.6（新增 `Intercepted`） |
+| `Okia.open(protocolClass)` / reified 重载 | §5.7：KMP 无通用反射，类型令牌无法实例化任意协议；改为 `open(protocol: P)` + 默认 `open(builder)` |
+| `TurnResult.messages` | §5.4：消息已随 `LoopRequest.onCommit` 消息级提交，TurnResult 收敛为 `(reason, cause)` |
+| `Conversation` 公开可变树 | §5.3/§5.4：内部化为 `RealConversation`，公开面为不可变 `Conversation` 快照 + `MessageEntry` 门面 |
+| turn 分组投影 | §5.4：turn 边界由下游按 `Message.User` 自行封装，库不替下游决定回退粒度 |
+| `pendingUserInput` | §5.8：不变量为 history 包含当前输入 |
+| `ToolCallContext.conversation` | §5.5：ToolExecutor 知道完整对话历史是越界 |
+| `afterInput.handled` | §5.9：无可写入口（悬空）+ 与 `InputHolder.lastWriter` 冗余 + 无消费者 |
 
 **保留**：`ChatProtocol` / `Compat` / `ProtocolEvent` / `RequestSnapshot`（协议层）、`Message` / `ContentBlock` / `Usage` / `StopReason`、`Session` 树 + `SessionCodec` + leafId 持久化（§5.3）、`ToolExecutor` / `ToolRegistry` / `ToolCallContext` / `ToolDescriptor`、`McpClient` / `McpServer` / `McpExecutor` / `McpDiscoverySnapshot`（Nexus 重度使用：fingerprint 刷新 + PromptComposer 渲染）、`HttpEngine` + transport 数据类（KMP actual 点）、`LLMError` / `RetryPolicy`（Nexus 手工分类要下沉）。
+
+**资源所有权**（fork/close 规则）：装配时宿主传入的资源（`httpEngine` / `toolRegistry` / `agentLoop` / `mcpClient` / 协议实例）**宿主所有**，`close()` 不关闭；config 未提供的默认资源（默认空 `ToolRegistry`、自建 `HttpEngine`）实例所有，`close()` 释放自建部分。fork 复制 config 快照（hooks 列表共享引用，§5.9.3）、共享宿主资源、各自持有独立 `RealConversation` 树。
 
 ### 5.14 KMP 目标
 
@@ -295,6 +326,7 @@ okai 骨架有 `TurnEvent` 11 种 + `FinishReason` + `StopCause`（PRD 4.2）。
 | 6.4 | hooks 列表可变性 | config 不可变原则 vs update 热更新需求 | A：只读 `List<Hooks>` + builder 累积（推荐）；B：`MutableList` |
 | 6.5 | 包名 | §1 | `com.niki914.okia`（已定） |
 | 6.6 | `Clock` 去留 | §5.13 | 删除（kotlin.time.Clock）或保留接口（测试注入价值） |
+| 6.7 | 消息注入 API | 下游可能想篡改历史（rewind 后手动补 ToolResult）；rewind 已放开，但无主动注入消息的入口 | 未来如需，加显式 `append`/`inject` 方法（rewind 后手动补消息），不靠库自动修复；当前无消费者，不实现 |
 
 ## 7. 参考资料
 
@@ -328,17 +360,35 @@ okai 骨架有 `TurnEvent` 11 种 + `FinishReason` + `StopCause`（PRD 4.2）。
 4. **afterStop 形参定为 `calls: List<ToolCall>`**：§5.9.4 表格 Stop 行 after 形参为「—」，但「每时机成对声明」与埋点用途要求 afterStop 存在，取与 beforeStop 相同形参。
 5. **withCodec 参数类型 = `kotlinx.serialization.StringFormat`**：JsonCodec 删除后，kotlinx.serialization 的 `StringFormat`（Json 实现）为注入编解码器的标准入口。
 6. **协议无关 dataclass 标注 `@Serializable`**：Message / ContentBlock / ToolCallOutcome / AssistantMessage / Usage / StopReason / ConversationEntry / SessionSnapshot 直接可序列化（§5.13 JsonCodec 删除的依据落地）。
-7. **ToolCallContext.session → conversation**：命名对齐 §5.3，字段语义不变。
+7. **ToolCallContext.session → conversation（后已删除）**：命名曾对齐 §5.3；本轮 CR 裁决删除字段——ToolExecutor 知道完整对话历史是越界（见 8.2-11）。
 8. **holder 直接置于 `hooks/` 子包**：§5.9.5「holder 归 hooks/ 子包」按「hooks 包的子包」即 `com.niki914.okia.hooks` 落地。
 9. **OkiaDependencies 移入顶层包**：Clock / ForceStopHook 删除后 runtime 包无剩余内容，依赖装配并入顶层（顶层共 4 个类型，满足 ≤5 约束）。
 10. **M0 构建**：AGP 9 内置 Kotlin + `org.jetbrains.kotlin.plugin.serialization` 2.2.0 + kotlinx-serialization-json 1.7.3；`./gradlew :libs:okia:compileDebugKotlin` 通过。
 
-### 8.3 骨架文件清单（38 文件）
+### 8.4 第二轮 CR 落地（2026-08-10）
+
+PR #109 review（head `091e912`）裁决的签名级修改，与 §5 各节同步：
+
+1. **公开快照 + 内部树**：`Conversation` 变为公开不可变快照（`history: List<MessageEntry>` + `live`）；树实现内部化为 `RealConversation`（conversation/RealConversation.kt）。`MessageEntry(id, message)` 为门面条目（rewind 目标直接可取）；`ConversationEntry` 退为树节点 + 持久化行格式。命名参考 OkHttp `Real*` 惯例。
+2. **rewind 放开**：不校验、不抛异常——回退粒度由下游自行约束（库不替下游决定什么位置合法）；非法回退后果写文档、由下游负责；消息注入 API 记为开放问题 6.7。
+3. **消息级状态流**：`LoopRequest.onCommit`（facade 注入，`RealConversation` 同一 Mutex 下原子追加）承载消息产出；`TurnResult` 删 messages，收敛为 `(reason, cause)`；快照更新 = facade `updateState { copy(...) }`（每条消息一次）。
+4. **open 系列**：删 `KClass`/reified 重载（KMP 无通用反射，类型令牌无法实例化任意协议）；改为 `open(protocol: P, builder)` + `open(builder)`（默认 M0）+ `open(dependencies, builder)`。
+5. **删除 pendingUserInput**：`buildRequest(snapshot, history)` 与 `SerializationHolder` 同步删除；不变量 = history 永远包含当前输入（send 先提交 User 再启动 loop）。
+6. **`Compat` 挂在 `ProtocolCompatMapper`**：loop 经 mapper 查兼容事实（历史拼装 / 重试），零新增 plumbing。
+7. **`ToolCallContext.conversation` / `attempt` 删除**：ToolExecutor 知道完整对话历史是越界；幂等性由 call id 承载（重试时 id 不变），重试计数是框架状态外泄且语义未定义（工具失败路径是结果回喂模型，无工具重试）。需要会话归属的工具由 host 注册时自行注入。
+8. **`afterInput(input)` 删 handled**：无可写入口（悬空）+ 与 `InputHolder.lastWriter` 冗余 + 无消费者；接管需求出现时再加 `writeHandled()`。
+9. **`OkiaConfig.toolRegistry`**：builder 可注入生产级工具注册表（null 时门面自建空 registry，实例所有）；demo 显式传入。
+10. **资源所有权**（fork/close）：宿主传入资源（httpEngine / toolRegistry / agentLoop / mcpClient / 协议实例）宿主所有、`close()` 不关；默认资源实例所有；fork 共享宿主资源与 config 快照、各自独立 `RealConversation`。
+11. **`Intercepted` 加 `content: String? = null`**：缓存命中 / 成功模拟需把结果负载回喂模型，与 `Failure`/`Unknown` 同构。
+12. **`McpServerDiscoverySnapshot.tools`**：`List<McpDiscoveredTool>` 补全文档承诺（host 组合 prompt / 持久化发现结果）。
+13. **hook 与会话树不变量写文档**：树 = 事实；hook mutation 一次性、不写回树（§5.8，含脱敏分层例子）。hook 异常策略：默认该步骤失败（模型段 → 回合失败；工具段 → `Failure` outcome），`beforeStop` 保持捕获特例（§5.11）。
+
+### 8.5 骨架文件清单（39 文件）
 
 ```
 com.niki914.okia/
 ├── Okia.kt / OkiaConfig.kt / OkiaDependencies.kt / TurnOptions.kt   （顶层 4 类型）
-├── conversation/  Conversation.kt（条目树 + leafId + Mutex）、SessionCodec.kt（SessionSnapshot）
+├── conversation/  Conversation.kt（快照 + MessageEntry + ConversationEntry）、RealConversation.kt（内部树）、SessionCodec.kt（SessionSnapshot）
 ├── loop/          AgentLoop.kt（AgentLoop / TurnResult / LoopRequest）、LoopOptions.kt
 ├── tooling/       ToolExecutor.kt、ToolRegistry.kt（+ToolDescriptor/ToolKind）、ToolCallContext.kt
 ├── message/       Message.kt、ContentBlock.kt、ToolCallOutcome.kt（5 态）、Usage.kt
