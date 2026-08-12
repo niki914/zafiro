@@ -8,10 +8,12 @@ import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 协议无关数据 → Provider 序列化的边界。上层（loop / Hooks / UI）只接触
- * 自定 dataclass（Message / ContentBlock / RequestSnapshot）；数据到这里
- * 及以下（ChatProtocol.buildRequest / encodeToolResult）才按 Provider 序列化。
- * host 用抽象 dataclass 实例化、不碰网络 raw data，切换协议无影响。
+ * 协议无关数据 → Provider 序列化的边界，是 ChatProtocol 的适配壳。
+ * 上层（loop / Hooks / UI）只接触自定 dataclass（Message / ContentBlock /
+ * RequestSnapshot），loop 不接触 ChatProtocol；数据到这里及以下
+ * （ChatProtocol.buildRequest / encodeToolResult）才按 Provider 序列化。
+ * 连接方式：ProtocolCompatMapper.from(protocol) 工厂（open(protocol) 内部
+ * 经此构造）；host 用抽象 dataclass 实例化、不碰网络 raw data，切换协议无影响。
  * Design source: okia 白板架构图 ProtocolCompatMapper 节点，PRD §5.8。
  */
 interface ProtocolCompatMapper {
@@ -35,4 +37,11 @@ interface ProtocolCompatMapper {
     // 协议兼容性事实（每 Provider 的 retryable status、工具结果后是否需要
     // 助手消息等）；loop 在历史拼装与重试时查询
     val compat: Compat
+
+    companion object {
+
+        // 从协议实例构造适配壳：协议无关层访问 Provider 的唯一入口。
+        // open(protocol) 内部经此构造；open(dependencies) 直接注入实例。
+        fun from(protocol: ChatProtocol): ProtocolCompatMapper = TODO()
+    }
 }

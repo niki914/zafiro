@@ -21,13 +21,15 @@ internal class RealConversation(
     leafId: String?
 ) {
 
-    // 树形条目（append-only，fork 共享不可变节点）
+    // 树形条目（append-only，fork 共享不可变节点）。
+    // 返回防御性复制：外部持有不影响内部存储。
     val entries: List<ConversationEntry> get() = TODO()
 
     // 当前 leaf 位置；append 前进，rewind 移动
     val leafId: String? get() = TODO()
 
-    // leaf 到 root 的线性历史投影，按对话顺序
+    // leaf 到 root 的线性历史投影，按对话顺序。
+    // 返回防御性复制：外部持有不影响内部存储。
     val history: List<Message> get() = TODO()
 
     // 追加一条消息，返回新条目
@@ -36,7 +38,7 @@ internal class RealConversation(
     // 同一把 Mutex 下批量追加（回合产出提交入口，原子）
     suspend fun appendAll(messages: List<Message>): List<ConversationEntry> = TODO()
 
-    // 投影为公开快照
+    // 投影为公开快照（构造即复制，leafId 为当前位置）
     fun toSnapshot(live: AssistantMessage? = null): Conversation = TODO()
 
     // 新对话：从当前 leaf 路径 fork，节点不可变共享

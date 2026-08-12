@@ -16,7 +16,8 @@ interface OkiaDependencies {
     // 回合驱动（LLM ↔ 工具循环）
     val agentLoop: AgentLoop
 
-    // 协议边界（协议无关 → Provider 序列化，含兼容事实）
+    // 协议边界（协议无关 → Provider 序列化，含兼容事实）。
+    // open(protocol) 时经 ProtocolCompatMapper.from 构造；测试直接注入。
     val protocolMapper: ProtocolCompatMapper
 
     // 工具注册表

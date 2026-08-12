@@ -2,12 +2,14 @@ package com.niki914.okia.loop
 
 import com.niki914.okia.event.FinishReason
 import com.niki914.okia.event.StopCause
+import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.message.Message
 import com.niki914.okia.protocol.ProtocolCompatMapper
 import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.okia.transport.HttpEngine
 
 /**
  * 回合驱动：模型调用与工具执行循环，直到最后一条消息不是工具请求。
@@ -39,10 +41,14 @@ data class TurnResult(
 )
 
 /**
- * 一次回合执行的不可变输入。idleTimeoutSeconds 只约束模型流：任何到达帧
- * 重置计时器，工具执行时间不计入。history 包含当前输入（send 已先提交
- * User 消息）；onCommit 是消息产出通道，由 Okia 协调器注入，内部在
- * RealConversation 的同一把 Mutex 下批量追加（原子）。
+ * 一次回合执行的不可变输入。idleTimeoutSeconds 只约束模型流：检测点位于
+ * 原始 SseLine 流（parseStream 之前），任何到达帧（含 keep-alive 的
+ * null data）重置计时器，工具执行时间不计入。httpEngine 是回合唯一的
+ * 传输入口（AgentLoop 必须经它发请求）；retryPolicy 为传输层重试策略
+ * （Compat.retryableStatusCodes + 指数退避），回合层重试在 options。
+ * history 包含当前输入（send 已先提交 User 消息）；onCommit 是消息产出
+ * 通道，由 Okia 协调器注入，内部在 RealConversation 的同一把 Mutex 下
+ * 批量追加（原子）。
  */
 data class LoopRequest(
     val snapshot: RequestSnapshot,
@@ -53,5 +59,7 @@ data class LoopRequest(
     val toolRegistry: ToolRegistry,
     val protocolMapper: ProtocolCompatMapper,
     val hooks: List<Hooks>,
+    val httpEngine: HttpEngine,
+    val retryPolicy: RetryPolicy,
     val onCommit: suspend (List<Message>) -> Unit
 )

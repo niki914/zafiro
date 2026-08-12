@@ -9,6 +9,9 @@ import com.niki914.okia.transport.HttpEngine
 /**
  * 不可变连接配置。一次构建，变更通过 Okia.update 整体替换快照。
  * hooks 只读 List，builder 累积注册（开放问题 6.4 候选 A）。
+ * retryPolicy 为传输层重试（经 LoopRequest 传给 loop）；httpEngine 为
+ * 传输入口（宿主注入时宿主所有，null 时门面自建、实例所有；经
+ * LoopRequest 传给 loop）。
  * Design source: okia 骨架 OkiaConfig 快照模式，删除 ConcurrencyMode / McpDiscoveryListener / JsonCodec。
  */
 data class OkiaConfig(

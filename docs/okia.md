@@ -131,6 +131,8 @@ interface Okia {
 
 **持久化**：`SessionSnapshot(id, parentSessionId, leafId, version, entries)` 由 codec 接口持久化（存储位置 host 决定）。**leafId 必须持久化**（rewind 位置在重载后保持；null = 恢复为最后一条）。`entries` 为消息级 `ConversationEntry`（树节点 + 持久化行格式，非门面类型，下游仅在持久化时接触）。
 
+**持久化入口（CR 第三轮落地）**：门面 `Okia.export(): SessionSnapshot` 导出当前完整树 + leafId + 身份；恢复 = 重新 `open(restore = snapshot)`（协议由 host 重新提供，§5.7 不变）。公开 `Conversation` 快照补 `leafId`（rewind 当前位置，UI 可读）；`MessageEntry` 补 `timestamp`（历史渲染）。
+
 ### 5.4 UI 数据模型：StateFlow + SharedFlow（W1）
 
 **决策**：库提供 `StateFlow<Conversation>` 作为持久性数据源（UI 观察它渲染全部内容），`SharedFlow` 提供失败等一次性事件。参考 MVI。**`Conversation` 是公开不可变快照 dataclass，不是可变树**：
@@ -151,7 +153,7 @@ data class MessageEntry(
 
 **原因**：下游开发者极可能用 Compose；状态即数据流比事件累计更 Kotlin 原生。不可变快照使 StateFlow 每次发射都是新值（不依赖可变对象 emit 语义）；门面条目（`MessageEntry`）把 id 与消息绑定，下游回退目标直接从快照拿，无需接触树结构。turn 边界由下游按 `Message.User` 自行封装（库不提供 turn 分组——替下游做决定）。
 
-**更新粒度（消息级）**：状态流按**消息**更新，不按回合。loop 的消息产出经 `LoopRequest.onCommit` 逐条/逐批即时提交（facade 注入，`RealConversation` 同一把 Mutex 下原子追加），facade 用 `updateState { copy(...) }` 重投影。`TurnResult` 不再携带消息（已随 onCommit 提交），收敛为 `(reason, cause)`。
+**更新粒度（消息级）**：状态流按**消息**更新，不按回合。loop 的消息产出经 `LoopRequest.onCommit` 逐条/逐批即时提交（facade 注入，`RealConversation` 同一把 Mutex 下原子追加），facade 用 `updateState { copy(...) }` 重投影。`TurnResult` 不再携带消息（已随 onCommit 提交），收敛为 `(reason, cause)`。**`send` 返回 `TurnResult`**（CR 第三轮落地）：终态（Stop / Length / Error / Aborted / IdleTimeout / RetryExhausted）由返回值承载，失败不抛异常；onEvent / events 只承担流式中间过程。调用方不再自建"最后一条终态事件"累计。
 
 **流式语义**：
 - **Text**：有一点变化就反馈给 UI（`live` 逐 delta 更新快照）
@@ -177,21 +179,21 @@ data class MessageEntry(
 sealed interface ToolCallOutcome {
     data class Success(val content: String) : ToolCallOutcome
     data class Failure(val message: String, val content: String? = null) : ToolCallOutcome
-    data class Intercepted(val reason: String, val content: String? = null) : ToolCallOutcome  // hook 拦截结果
+    data class Intercepted(val reason: String, val content: String? = null, val isError: Boolean = false) : ToolCallOutcome  // hook 拦截结果
     data class Interrupted(val content: String? = null) : ToolCallOutcome
     data class Unknown(val message: String, val content: String? = null) : ToolCallOutcome
 }
 ```
 
 **`Blocked` 删除的原因**：Blocked 是"审批拒绝"的具体语义，应由下游 hook 泛化（拒绝 = `Intercepted` 或 `Failure`）；okai 骨架的 Blocked 值被裁掉。
-**`Intercepted` 新增的原因**：hook 拦截 ≠ 工具失败，UI 要区分；hook 不只给失败结果（可能给成功模拟、缓存命中、拦截）。机制语义，下游自由泛化。**`Intercepted.content` 的原因**：缓存命中 / 成功模拟必须把结果负载回喂模型（`encodeToolResult` 产出 ToolResult 消息），与 `Failure`/`Unknown` 的 `(message, content)` 同构（CR 裁决）。
+**`Intercepted` 新增的原因**：hook 拦截 ≠ 工具失败，UI 要区分；hook 不只给失败结果（可能给成功模拟、缓存命中、拦截）。机制语义，下游自由泛化。**`Intercepted.content` 的原因**：缓存命中 / 成功模拟必须把结果负载回喂模型（`encodeToolResult` 产出 ToolResult 消息），与 `Failure`/`Unknown` 的 `(message, content)` 同构（CR 裁决）。**`Intercepted.isError` 的原因（CR 第三轮落地）**：Provider 编码的 isError 由 outcome 派生，但 Intercepted 语义上覆盖阻断（审批拒绝 = 错误）与结果替换（缓存命中 / 成功模拟 = 成功），派生函数无输入可分；补 `isError: Boolean = false` 字段，由写入方（hook）传递——审批拒绝传 true，缓存命中 / 模拟传 false。其余 4 态均可唯一派生。
 
 工具块 UI 终态 = 这 5 态（Start/Running 是过程态，见 §5.4）。`ToolResult` 消息内嵌同一 outcome（无状态映射，中断语义在持久化恢复后可读）。
 
 ### 5.7 Provider 生命周期（W5）
 
 **决策**：
-1. 实例化时协议定死：`Okia.open(protocol: P, builder)`（协议实例）+ `Okia.open(builder)`（默认 M0 DeepSeek，库内部构造）+ `Okia.open(dependencies, builder)`（测试/高级装配）
+1. 实例化时协议定死：`Okia.open(protocol: P, restore = null, builder)`（协议实例）+ `Okia.open(restore = null, builder)`（默认 M0 DeepSeek，库内部构造）+ `Okia.open(dependencies, restore = null, builder)`（测试/高级装配）；`restore` 为可选 `SessionSnapshot` 恢复快照（持久化入口，§5.3，null = 新对话）
 2. 协议作用域 == Okia 实例生命周期；实例由调用方构造（`withCodec` / 自定义状态在 open 前就绪），open 后归 Okia 持有
 3. **持久化与恢复无矛盾**：恢复时重新 `open(protocol)` 提供 Provider；协议 id 不进会话数据
 4. **`ProtocolRegistry` 删除**：id 解析无用途（host 自己知道自己用什么协议，Nexus 的 `LlmApiType` 存 Room、恢复时 `openSession` 重新 open）
@@ -206,6 +208,11 @@ sealed interface ToolCallOutcome {
 保留：`ChatProtocol`（id / withCodec / useApiKey / buildRequest / parseStream / encodeToolResult / compat）、`Compat` 矩阵（maxTokensField / thinkingFormat / retryableStatusCodes 等，M0 仅 DeepSeekCompat）、`ProtocolEvent`（协议无关中间表示，与库级事件两层映射）。**`Compat` 挂在 `ProtocolCompatMapper` 上**（loop 已持有 mapper，经 `encodeToolResult` 已跨越协议边界，compat 是同一边上的另一类事实；loop 在历史拼装与重试时查询）。
 
 **`buildRequest` 无独立 pendingUserInput**：不变量为 **history 永远包含当前输入**（send 先提交 User 消息，再启动 loop）。`pendingUserInput` 参数与 `SerializationHolder.pendingUserInput` 字段已删除（CR #3 裁决）。
+
+**依赖图闭合（CR 第三轮落地）**：
+- **mapper 是 ChatProtocol 的适配壳**：`ProtocolCompatMapper.from(protocol)` 工厂声明两者连接——`open(protocol)` 内部经此构造，loop 只接触 mapper、不接触 ChatProtocol。
+- **传输入口进 LoopRequest**：`LoopRequest.httpEngine`（回合唯一传输入口，AgentLoop 必须经它发请求）+ `LoopRequest.retryPolicy`（传输层重试：`Compat.retryableStatusCodes` + 指数退避）；回合层重试仍在 `LoopOptions.turnRetryPolicy`。白板 RetryStrategy 节点由此闭合，自定义 AgentLoop 无法绕过注入的 engine。
+- **idle 检测观察原始 SseLine 流**：`idleTimeoutSeconds` 计时器挂在原始流（parseStream 之前），任何到达帧（含 keep-alive 的 null data）重置——keep-alive 活跃度不随 parseStream 丢弃而丢失。kai 旧实现按事件间隔计时导致长思考误杀（PRD §1.5），此处封死。
 
 **hook 与会话树的不变量**：**树（conversation）= 事实**。hook 的 mutation 永远只作用于"本次操作的一次性载体"（holder），发完即弃，**不写回会话树**。因此"UI 显示原文 vs 模型收到改写版"不是不一致性，而是分层预期——例：`beforeSerialization` 数据脱敏时，UI 显示未脱敏原文（自己的界面），模型收到脱敏版（对外边界）。若下游要修正历史本身，正路是 rewind 后重新生成（新分支），不是 hook 隐式改树（链式 hook 会互相踩、历史不可信）。
 
@@ -245,7 +252,6 @@ sealed interface ToolCallOutcome {
 | `Stop` | `calls: List<ToolCall>` | `calls: List<ToolCall>` | 停止流程开始前 / 完成后 |
 
 用途映射：
-- 异步 Terminal 注入 → `beforeInput`（§5.10）
 - 审批/拦截/参数改写 → `beforeToolCall`（阻断机制见开放问题 6.1）
 - 审计/埋点 → `afterToolCall`、`afterStop`（对称保留，埋点统计有用）
 - 数据脱敏 → `beforeSerialization`（主战场，协议无关层）＋ `beforeRequest`（http 层兜底）
@@ -259,11 +265,13 @@ sealed interface ToolCallOutcome {
 
 **形态选择的背景**：mutation（Pi 做法：原地改 `event.input`，后续 handler 可见）vs 返回值传递（OkHttp interceptor 式）。用户从使用角度选 mutation（只有要改时才调用 write，比"每个 hook 想返回什么"负担小）；签名 write 解决工程上的可追溯性（"最后是谁改的"）。
 
-### 5.10 异步 Terminal 注入 → beforeInput
+### 5.10 异步 Terminal 注入（host 侧拼接，不走 hook）
 
-**决策**：`beforeInput` 承担"异步任务完成通知注入"。
+**决策（CR 第三轮修正）**：`beforeInput` 不再承担"异步任务完成通知注入"。异步注入由 **host 自行拼装进 send 文本**：业务方把后台任务完成通知入队，下一次用户输入时在调用 `send` 前拼接为完整 query 文本再提交。通知是瞬态业务状态，进会话树即污染历史；host 每轮自行组装可保持树 = 对话事实。
 
-**Nexus 实证**（`agent-runtime/.../LLMController.kt:195-203`）：terminal 工具 `background=true + notify_on_complete=true` → `TerminalSessionPool.startAsync` 后台执行 → 完成时通知入队 → 下一次用户输入时 `drainPendingNotifications()` 把 `[IMPORTANT: Background process ...]` 拼接进 query 前缀再 send。当前是 **host 侧文本拼接，Kai 完全不知情**——正是要下沉进 `beforeInput` 的场景。
+**Nexus 实证**（`agent-runtime/.../LLMController.kt:195-203`）：terminal 工具 `background=true + notify_on_complete=true` → `TerminalSessionPool.startAsync` 后台执行 → 完成时通知入队 → 下一次用户输入时 `drainPendingNotifications()` 把 `[IMPORTANT: Background process ...]` 拼接进 query 前缀再 send——**保留现有 host 侧文本拼接，不下沉**。
+
+**beforeInput / afterInput 保留，语义不变**：hook 的 mutation 只影响本次请求载体，不写回会话树（§5.8 不变式）。输入改写若有真实消费场景（如输入规范化），由业务方在 hook 中自行定义；骨架期仅声明槽位，无内置用例。
 
 ### 5.11 kill-then-stop → beforeStop
 
@@ -399,3 +407,12 @@ com.niki914.okia/
 ├── error/         LLMError.kt、RetryPolicy.kt
 └── event/         TurnEvent.kt（+FinishReason / StopCause）
 ```
+
+### 8.6 第三轮 CR 落地（2026-08-11）
+
+1. **send 返回 TurnResult**：终态由返回值承载（Stop / Length / Error / Aborted / IdleTimeout / RetryExhausted），失败不抛异常；事件流只承担流式中间过程（§5.4）。调用方不再自建终态事件累计。
+2. **持久化入口**：门面 `export(): SessionSnapshot` + `open(restore = ...)`（§5.3 / §5.7）；`Conversation` 补 `leafId`、`MessageEntry` 补 `timestamp`。
+3. **依赖图闭合**（§5.8）：`ProtocolCompatMapper.from(protocol)` 工厂；`LoopRequest` 加 `httpEngine` / `retryPolicy`（传输层重试）；idle 检测观察原始 SseLine 流（parseStream 之前，keep-alive 帧重置计时器）。
+4. **Intercepted 补 `isError`**：审批拒绝 = true，缓存命中 / 成功模拟 = false；Provider 的 isError 派生由此闭合（§5.6）。
+5. **异步注入移出 beforeInput**：host 自行拼装进 send 文本（§5.10）；beforeInput / afterInput 保留，hook 语义保持"只影响单次、不写回树"（§5.8）。
+6. **快照防御性复制**：RealConversation 各 getter 与门面快照构造返回复制（构造即复制），fork 共享节点不可经公开面改写（§5.3 / §5.4）。

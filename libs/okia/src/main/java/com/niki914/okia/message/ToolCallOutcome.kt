@@ -22,9 +22,14 @@ sealed interface ToolCallOutcome {
     data class Failure(val message: String, val content: String? = null) : ToolCallOutcome
 
     /** hook 拦截结果（审批拒绝、缓存命中、成功模拟），非工具失败。
-     * content 在拦截产生结果负载时携带（如缓存命中内容、模拟成功输出）。 */
+     * content 在拦截产生结果负载时携带（如缓存命中内容、模拟成功输出）；
+     * isError 供 Provider 派生错误位（审批拒绝 = true，缓存命中 / 模拟 = false）。 */
     @Serializable
-    data class Intercepted(val reason: String, val content: String? = null) : ToolCallOutcome
+    data class Intercepted(
+        val reason: String,
+        val content: String? = null,
+        val isError: Boolean = false
+    ) : ToolCallOutcome
 
     /** 工具执行前或执行中被中断；content 在存在部分输出时携带。 */
     @Serializable

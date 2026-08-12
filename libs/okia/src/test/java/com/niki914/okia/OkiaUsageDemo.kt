@@ -2,7 +2,9 @@ package com.niki914.okia
 
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.MessageEntry
+import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.event.FinishReason
+import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.hooks.ToolCallHolder
@@ -65,7 +67,8 @@ fun main() = runBlocking {
 
     // ── 多轮对话 ──────────────────────────────────────────────────────────
     // 第一轮：工具循环回合（模型 → 工具调用 → 工具结果 → 模型总结）
-    okia.send("帮我计算 (1+2)*3，再搜索一下今天北京的天气") { /* 事件已走 events 流 */ }
+    // 回合结局由返回值承载：Stop / Length / Error / Aborted / IdleTimeout / RetryExhausted
+    val firstTurn: TurnResult = okia.send("帮我计算 (1+2)*3，再搜索一下今天北京的天气") { /* 事件已走 events 流 */ }
 
     // 第二轮：历史已累积第一轮全部消息（User / Assistant / ToolResult），
     // 库把整个历史喂给模型，UI 直接渲染 history 即可
@@ -77,6 +80,10 @@ fun main() = runBlocking {
         .id
     okia.rewind(firstTurnEntryId)          // 尾部保留在树中，投影回到第一轮
     okia.send("改问：2*9 等于几？") { /* 事件已走 events 流 */ }
+
+    // ── 持久化：导出快照 → codec 编码 → 存储（位置由 host 决定）────────
+    // 恢复 = 重新 open(restore = snapshot)（协议由 host 重新提供，§5.7）
+    val snapshot: SessionSnapshot = okia.export()
 
     // ── fork：从当前状态派生独立分支（新实例，节点不可变共享） ───────────
     val branch: Okia = okia.fork()
