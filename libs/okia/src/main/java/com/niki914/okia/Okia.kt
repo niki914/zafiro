@@ -12,7 +12,9 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * 库门面：一次对话一个实例，至多一个活跃回合。send 启动回合；stop 取消回合。
- * 并发调用（活跃回合存在时再次 send）抛异常；Replace 由 stop() + send() 组合表达。
+ * 并发契约：活跃回合存在时，send 与任何改变会话状态的操作（rewind / fork /
+ * update / refreshMcpTools / close）都抛异常；stop 是唯一例外（取消路径）。
+ * Replace 由 stop() + send() 组合表达。
  * Design source: independent facade design, surface from pi session-manager.
  */
 interface Okia {
@@ -24,8 +26,8 @@ interface Okia {
     val events: SharedFlow<TurnEvent>
 
     // 提交用户输入，跑完整个回合（LLM ↔ 工具循环）后返回回合结局。
-    // 终态（Stop / Length / Error / Aborted / IdleTimeout / RetryExhausted）
-    // 由返回值承载，失败不抛异常；onEvent 承担流式中间过程。
+    // 终态由 sealed TurnResult 承载（Completed / Failed / Aborted / IdleTimeout），
+    // 失败不抛异常；onEvent 承担流式中间过程。
     suspend fun send(
         text: String,
         options: TurnOptions? = null,
@@ -39,8 +41,9 @@ interface Okia {
     suspend fun fork(): Okia = TODO()
 
     // 原地移动 leafId 到过去的条目，被跳过的尾部保留在树中。
-    // 不校验目标合法性（放开）：回退粒度由下游自行约束，非法回退的
-    // 后果（如停在未配对工具调用上）由下游负责。
+    // entryId 不存在时抛 IllegalArgumentException；位置语义不校验（放开）：
+    // 停在未配对工具调用等位置由下游负责。改第一条消息 = 新建实例（§5.1），
+    // 库不提供回退到 root 的 API。
     suspend fun rewind(entryId: String): Unit = TODO()
 
     // 导出当前会话持久化快照（完整树 + leafId + 身份）。host 经

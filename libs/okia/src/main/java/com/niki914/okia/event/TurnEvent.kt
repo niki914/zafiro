@@ -6,7 +6,8 @@ import com.niki914.okia.message.ContentBlock
 
 /**
  * 回合事件协议：库的公开契约，事实源。每个块级事件携带完整部分快照，
- * 消费者无需累积 delta 即可渲染流式输出。失败编码为 TurnFailed，不抛出。
+ * 消费者无需累积 delta 即可渲染流式输出。终态编码为 TurnCompleted / TurnFailed /
+ * TurnAborted / TurnIdleTimeout，不抛出。
  * 宿主 IPC（RenderFrame 流式回调）走事件形态；UI 另观察 StateFlow<Conversation>
  * 投影（开放问题 6.2 候选 A）。
  * Design source: pi AssistantMessageEvent 集合，kai PRD §4.2；
@@ -52,35 +53,30 @@ sealed interface TurnEvent {
         val reason: String
     ) : TurnEvent
 
-    /** 回合正常结束。 */
-    data class TurnCompleted(val message: AssistantMessage, val reason: FinishReason) : TurnEvent
+    /** 回合正常结束。最终消息已带 stopReason（Stop / Length）。 */
+    data class TurnCompleted(val message: AssistantMessage) : TurnEvent
 
-    /** 回合失败或中止。error 在存在分类时携带。 */
+    /** 回合失败。error 必带（覆盖 Error / RetryExhausted）。 */
     data class TurnFailed(
         val message: AssistantMessage,
-        val reason: FinishReason,
-        val error: LLMError? = null
+        val error: LLMError
     ) : TurnEvent
-}
 
-/**
- * 整个回合结束的原因。排除 toolUse：那是消息级 StopReason，
- * 回合内的正常中间状态。
- * Design source: kai PRD §4.2 FinishReason。
- */
-enum class FinishReason {
-    Stop,
-    Length,
-    Error,
-    Aborted,
-    IdleTimeout,
-    RetryExhausted
+    /** 回合被取消。cause 必带（UserStop / External）。 */
+    data class TurnAborted(
+        val message: AssistantMessage,
+        val cause: StopCause
+    ) : TurnEvent
+
+    /** 模型流 idle 超时（框架检测）。 */
+    data class TurnIdleTimeout(val message: AssistantMessage) : TurnEvent
 }
 
 /**
  * 回合被取消的原因，由 Okia 协调器在取消回合 job 时记录并随取消携带。
  * Replace 已删除：库内无 Replace 语义（PRD §5.2，由 stop() + send() 表达），
- * 故取消源只剩用户 stop 与外部取消。IdleTimeout 是 FinishReason，不是 StopCause。
+ * 故取消源只剩用户 stop 与外部取消。IdleTimeout 是回合级超时（走
+ * TurnIdleTimeout 事件 / TurnResult.IdleTimeout），不是 StopCause。
  * Design source: kai PRD §4.4 停止语义。
  */
 enum class StopCause {

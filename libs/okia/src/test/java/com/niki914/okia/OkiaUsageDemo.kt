@@ -3,7 +3,6 @@ package com.niki914.okia
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.MessageEntry
 import com.niki914.okia.conversation.SessionSnapshot
-import com.niki914.okia.event.FinishReason
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.hooks.Hooks
@@ -67,18 +66,19 @@ fun main() = runBlocking {
 
     // ── 多轮对话 ──────────────────────────────────────────────────────────
     // 第一轮：工具循环回合（模型 → 工具调用 → 工具结果 → 模型总结）
-    // 回合结局由返回值承载：Stop / Length / Error / Aborted / IdleTimeout / RetryExhausted
+    // 回合结局由 sealed TurnResult 承载：Completed / Failed / Aborted / IdleTimeout
     val firstTurn: TurnResult = okia.send("帮我计算 (1+2)*3，再搜索一下今天北京的天气") { /* 事件已走 events 流 */ }
 
     // 第二轮：历史已累积第一轮全部消息（User / Assistant / ToolResult），
     // 库把整个历史喂给模型，UI 直接渲染 history 即可
     okia.send("那 2+2 呢？") { /* 事件已走 events 流 */ }
 
-    // ── 树的回退能力：rewind 到第一轮的用户输入，换个问题重新生成 ───────
-    val firstTurnEntryId: String = okia.conversation.value.history
-        .first { it.message is Message.User }
-        .id
-    okia.rewind(firstTurnEntryId)          // 尾部保留在树中，投影回到第一轮
+    // ── 树的回退能力：修改第二轮问题（回退到第二轮 User 的前一条再重发）────
+    // 改第一条消息 = 新建实例（§5.1）；rewind 回退到已存在条目，
+    // entryId 不存在时抛 IllegalArgumentException，位置语义不校验。
+    val secondTurnIdx: Int = okia.conversation.value.history
+        .indexOfLast { it.message is Message.User }
+    okia.rewind(okia.conversation.value.history[secondTurnIdx - 1].id)
     okia.send("改问：2*9 等于几？") { /* 事件已走 events 流 */ }
 
     // ── 持久化：导出快照 → codec 编码 → 存储（位置由 host 决定）────────
@@ -169,9 +169,10 @@ private suspend fun onTurnEvent(event: TurnEvent) {
         is TurnEvent.TextDelta -> println("[事件] 文本 delta: ${event.delta}")
         is TurnEvent.ToolCallDelta -> println("[事件] 工具参数 delta: ${event.delta}")
         is TurnEvent.ToolCallEnded -> println("[事件] 工具调用完成: ${event.toolCall.name}")
-        is TurnEvent.TurnCompleted ->
-            if (event.reason == FinishReason.Stop) println("[事件] 回合完成")
+        is TurnEvent.TurnCompleted -> println("[事件] 回合完成: ${event.message.stopReason}")
         is TurnEvent.TurnFailed -> println("[事件] 回合失败: ${event.error}")
+        is TurnEvent.TurnAborted -> println("[事件] 回合取消: ${event.cause}")
+        is TurnEvent.TurnIdleTimeout -> println("[事件] 回合 idle 超时")
         else -> Unit // Thinking*/RetryScheduled 等略
     }
 }

@@ -16,7 +16,7 @@ data class Usage(
 )
 
 /**
- * 模型结束一条响应的原因。消息级，区别于回合级 FinishReason：
+ * 模型结束一条响应的原因。消息级，区别于回合级 sealed TurnResult：
  * toolUse 是回合内的正常中间状态。
  * Design source: pi stopReason。
  */

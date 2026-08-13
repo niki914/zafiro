@@ -1,5 +1,6 @@
 package com.niki914.okia.protocol
 
+import com.niki914.okia.message.StopReason
 import com.niki914.okia.message.Usage
 
 /**
@@ -42,10 +43,13 @@ sealed interface ProtocolEvent {
         val argumentsJson: String
     ) : ProtocolEvent
 
-    /** 流正常结束。usage / responseModel 可能缺失，保持可空。 */
+    /** 流正常结束。usage / responseModel 可能缺失，保持可空。
+     *  stopReason 为协议层映射后的消息级结束原因（Stop / Length / Error / Aborted），
+     *  Provider 不支持 finish reason 时为 null（loop 默认按 Stop 处理）。 */
     data class Completed(
         val usage: Usage? = null,
-        val responseModel: String? = null
+        val responseModel: String? = null,
+        val stopReason: StopReason? = null
     ) : ProtocolEvent
 
     /** 流失败。 */

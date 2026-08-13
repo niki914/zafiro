@@ -10,8 +10,9 @@ package com.niki914.okia.transport
  */
 interface HttpEngine {
 
-    // 流式请求
-    fun stream(request: HttpRequest): StreamResponse = TODO()
+    // 流式请求。suspend 到响应头到达后返回：status / headers 先于 body 行可用，
+    // 供 loop 做结构化重试决策；返回前可被协程取消，不阻塞线程。
+    suspend fun stream(request: HttpRequest): StreamResponse = TODO()
 
     // 单次请求
     suspend fun unary(request: HttpRequest): HttpResponse = TODO()

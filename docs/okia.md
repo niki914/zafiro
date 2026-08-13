@@ -123,7 +123,7 @@ interface Okia {
 
 ### 5.3 Conversation 类（W3）
 
-**决策**：数据结构由**内部类 `RealConversation`**（conversation/ 包，公开面之外）维护：条目树（id / parentId / timestamp）+ 可变的 leafId 当前位置，内部 Mutex 竞争控制（KMP 下唯一同步方案 = `kotlinx.coroutines.sync.Mutex`）。`fork()` 复制当前 leaf 路径（节点不可变共享，修改互不影响）；`rewind(entryId)` 原地移动 leafId 指针，被跳过的尾部保留在树中。**rewind 不校验目标合法性（放开）**：回退粒度由下游自行约束，非法回退的后果（如停在未配对工具调用上）由下游负责——库不替下游决定什么位置合法（篡改历史的场景是下游的合法用途）。命名参考 OkHttp `Real*` 惯例：公开短名，实现类带 Real 前缀。
+**决策**：数据结构由**内部类 `RealConversation`**（conversation/ 包，公开面之外）维护：条目树（id / parentId / timestamp）+ 可变的 leafId 当前位置，内部 Mutex 竞争控制（KMP 下唯一同步方案 = `kotlinx.coroutines.sync.Mutex`）。`fork()` 复制当前 leaf 路径（节点不可变共享，修改互不影响）；`rewind(entryId)` 原地移动 leafId 指针，被跳过的尾部保留在树中。**rewind 校验 entryId 存在（不存在抛 IllegalArgumentException），但位置语义不校验（放开）**：回退粒度由下游自行约束，停在未配对工具调用等位置的后果由下游负责——库不替下游决定什么位置合法（篡改历史的场景是下游的合法用途）。**改第一条消息 = 新建实例（§5.1），库不提供回退到 root 的 API。**命名参考 OkHttp `Real*` 惯例：公开短名，实现类带 Real 前缀。
 
 **原因**：W3 "单独类维护数据结构 + 内部竞争控制 + Fork/Rewind"；fork 独立性由不可变性保证；rewind 后历史投影 = leaf 到 root 线性投影。内部化的原因：公开面只需不可变快照，可变树是库内细节，暴露它会导致下游绕过门面直接修改（CR #1 裁决）。
 
@@ -153,7 +153,7 @@ data class MessageEntry(
 
 **原因**：下游开发者极可能用 Compose；状态即数据流比事件累计更 Kotlin 原生。不可变快照使 StateFlow 每次发射都是新值（不依赖可变对象 emit 语义）；门面条目（`MessageEntry`）把 id 与消息绑定，下游回退目标直接从快照拿，无需接触树结构。turn 边界由下游按 `Message.User` 自行封装（库不提供 turn 分组——替下游做决定）。
 
-**更新粒度（消息级）**：状态流按**消息**更新，不按回合。loop 的消息产出经 `LoopRequest.onCommit` 逐条/逐批即时提交（facade 注入，`RealConversation` 同一把 Mutex 下原子追加），facade 用 `updateState { copy(...) }` 重投影。`TurnResult` 不再携带消息（已随 onCommit 提交），收敛为 `(reason, cause)`。**`send` 返回 `TurnResult`**（CR 第三轮落地）：终态（Stop / Length / Error / Aborted / IdleTimeout / RetryExhausted）由返回值承载，失败不抛异常；onEvent / events 只承担流式中间过程。调用方不再自建"最后一条终态事件"累计。
+**更新粒度（消息级）**：状态流按**消息**更新，不按回合。loop 的消息产出经 `LoopRequest.onCommit` 逐条/逐批即时提交（facade 注入，`RealConversation` 同一把 Mutex 下原子追加），facade 用 `updateState { copy(...) }` 重投影。`TurnResult` 不再携带消息（已随 onCommit 提交），收敛为 sealed（`Completed` / `Failed` / `Aborted` / `IdleTimeout`）。**`send` 返回 `TurnResult`**：终态由 sealed 承载、字段必带，失败不抛异常；onEvent / events 只承担流式中间过程。调用方不再自建"最后一条终态事件"累计。
 
 **流式语义**：
 - **Text**：有一点变化就反馈给 UI（`live` 逐 delta 更新快照）
@@ -296,10 +296,10 @@ Nexus 的"屏幕操作前先读屏"已通过**版本号机制**强制实现（�
 | `ContextPolicy` / `ContextBudget` | PRD 4.6 明确 compaction 口子 M0 不实现、host 实现；骨架放接口 = 空占位，推迟 |
 | `ToolCallInterceptor` + `ToolCallChain` | 并入 Hooks（§5.9）。拦截器链的顺序/短路/改参能力由"链式 hooks + mutation + 拦截结果"表达 |
 | `ForceStopHook` | 并入 `beforeStop` |
-| `McpDiscoveryListener` | 并入 Hooks（时机面） |
+| `McpDiscoveryListener` | 删除（无 hook 替代，观察走 `refreshMcpTools` / `getMcpDiscoverySnapshot`） |
 | `ToolCallOutcome.Blocked` | §5.6（新增 `Intercepted`） |
 | `Okia.open(protocolClass)` / reified 重载 | §5.7：KMP 无通用反射，类型令牌无法实例化任意协议；改为 `open(protocol: P)` + 默认 `open(builder)` |
-| `TurnResult.messages` | §5.4：消息已随 `LoopRequest.onCommit` 消息级提交，TurnResult 收敛为 `(reason, cause)` |
+| `TurnResult.messages` | §5.4：消息已随 `LoopRequest.onCommit` 消息级提交，TurnResult 收敛为 sealed 结局 |
 | `Conversation` 公开可变树 | §5.3/§5.4：内部化为 `RealConversation`，公开面为不可变 `Conversation` 快照 + `MessageEntry` 门面 |
 | turn 分组投影 | §5.4：turn 边界由下游按 `Message.User` 自行封装，库不替下游决定回退粒度 |
 | `pendingUserInput` | §5.8：不变量为 history 包含当前输入 |
@@ -405,7 +405,7 @@ com.niki914.okia/
 ├── mcp/           McpClient.kt、McpServer.kt、McpExecutor.kt、McpDiscoverySnapshot.kt
 ├── transport/     HttpEngine.kt、HttpRequest.kt、HttpResponse.kt、StreamResponse.kt、SseLine.kt
 ├── error/         LLMError.kt、RetryPolicy.kt
-└── event/         TurnEvent.kt（+FinishReason / StopCause）
+└── event/         TurnEvent.kt（终态事件；StopCause）
 ```
 
 ### 8.6 第三轮 CR 落地（2026-08-11）
@@ -416,3 +416,16 @@ com.niki914.okia/
 4. **Intercepted 补 `isError`**：审批拒绝 = true，缓存命中 / 成功模拟 = false；Provider 的 isError 派生由此闭合（§5.6）。
 5. **异步注入移出 beforeInput**：host 自行拼装进 send 文本（§5.10）；beforeInput / afterInput 保留，hook 语义保持"只影响单次、不写回树"（§5.8）。
 6. **快照防御性复制**：RealConversation 各 getter 与门面快照构造返回复制（构造即复制），fork 共享节点不可经公开面改写（§5.3 / §5.4）。
+
+### 8.7 第四轮 CR 落地（2026-08-13）
+
+签名与规则收敛，全部为数据结构 / 文档层，无实现逻辑：
+
+1. **TurnResult 改 sealed，删除 FinishReason**：回合结局由 `sealed interface TurnResult` 表达——`Completed(stopReason)`（只可能是 Stop / Length）、`Failed(error)`（Error / RetryExhausted 经 `LLMErrorCode.RetryExhausted`）、`Aborted(cause)`、`IdleTimeout`。字段必带，消除 `reason=Error 但 error=null` 等含糊态（覆盖 §8.4 #3 与 §8.6 #1 的 `(reason, cause)` 旧形态）。事件层同步：`TurnCompleted(message)`（message 自带 stopReason）、`TurnFailed(message, error)`、`TurnAborted(message, cause)`、`TurnIdleTimeout(message)`。
+2. **ProtocolEvent.Completed 补 stopReason**：`stopReason: StopReason?`，协议层映射后的消息级结束原因；Provider 不支持 finish reason 时为 null（loop 默认按 Stop）。`Compat.supportsFinishReason` 由此闭合。
+3. **HttpEngine.stream 改 suspend**：`suspend fun stream(request): StreamResponse`，响应头先于 body 行可用、返回前可被协程取消，结构化重试（429/503 决策）才可落地。
+4. **rewind 校验 entryId 存在**：不存在抛 `IllegalArgumentException`（客观可校验、fail-fast）；位置语义仍不校验（§5.3）。改第一条消息 = 新建实例（§5.1），不提供回退到 root 的 API。
+5. **活跃回合并发契约**：send 与 rewind / fork / update / refreshMcpTools / close 在活跃回合期间均抛异常；stop 是唯一例外（取消路径）。与 §5.2 并发 send 抛异常一致。
+6. **McpClient.callTool 返回结构化 McpCallResult**：`isError: Boolean`（区分 MCP 工具执行错误与正常成功）+ `content: List<McpContentBlock>`（Text / Image / Resource），McpExecutor 可据此产出 Failure 而非 Success。
+7. **toolRegistry 单一来源**：保留 `OkiaConfig.toolRegistry`，从 `OkiaDependencies` 删除，避免 loop 与 MCP 刷新使用不同 registry。
+8. **McpDiscoveryListener 文档修正**：§5.13 从"并入 Hooks（时机面）"改为"删除，无 hook 替代"，观察走 `refreshMcpTools` / `getMcpDiscoverySnapshot`。

@@ -1,6 +1,6 @@
 # Vendored Libraries
 
-这两个库原先是 JitPack 依赖，现已作为本地模块集成进本仓库，不再拉取远程制品：
+kai 与 libterm 两个库原先是 JitPack 依赖，现已作为本地模块集成进本仓库，不再拉取远程制品；okai / okia 是本地新增骨架模块：
 
 | 目录 | 来源 | 集成 commit | 模块名 |
 | --- | --- | --- | --- |
