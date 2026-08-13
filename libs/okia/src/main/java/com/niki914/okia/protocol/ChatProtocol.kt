@@ -6,7 +6,7 @@ import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.flow.Flow
-import kotlinx.serialization.StringFormat
+import kotlinx.serialization.json.Json
 
 /**
  * 一种 LLM API 方言：构建请求并解析流。传输在库外，测试用 SseLine 流
@@ -19,27 +19,27 @@ import kotlinx.serialization.StringFormat
 interface ChatProtocol {
 
     // 稳定协议 id（如 "deepseek"）
-    val id: String get() = TODO()
+    val id: String
 
     // 注入 JSON 编解码器（kotlinx.serialization 标准替代 JsonCodec）
-    fun withCodec(codec: StringFormat): ChatProtocol = TODO()
+    fun withCodec(codec: Json): ChatProtocol
 
     // apiKey → 认证头；apiKey 为空时返回空 map
-    fun useApiKey(apiKey: String): Map<String, String> = TODO()
+    fun useApiKey(apiKey: String): Map<String, String>
 
     // 协议无关数据 → Provider 请求。history 包含当前输入（send 已先提交
     // User 消息），不存在独立的 pendingUserInput。
     fun buildRequest(
         snapshot: RequestSnapshot,
         history: List<Message>
-    ): HttpRequest = TODO()
+    ): HttpRequest
 
     // 原始 SSE 流 → 协议无关中间事件
-    fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent> = TODO()
+    fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent>
 
     // 工具结果编码（isError 由 outcome 派生；Interrupted / Unknown 编码为错误文本）
-    fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message = TODO()
+    fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message
 
     // 协议兼容性事实
-    val compat: Compat get() = TODO()
+    val compat: Compat
 }

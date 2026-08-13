@@ -27,7 +27,7 @@ interface AgentLoop {
     suspend fun run(
         request: LoopRequest,
         onEvent: suspend (TurnEvent) -> Unit
-    ): TurnResult = TODO()
+    ): TurnResult
 }
 
 /**

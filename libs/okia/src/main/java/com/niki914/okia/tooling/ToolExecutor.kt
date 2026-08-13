@@ -11,8 +11,8 @@ import com.niki914.okia.message.ToolCallOutcome
 interface ToolExecutor {
 
     // 执行工具调用；永不抛异常，总是产出工具结果
-    suspend fun execute(call: ToolCallContext): ToolCallOutcome = TODO()
+    suspend fun execute(call: ToolCallContext): ToolCallOutcome
 
     // 中断判定：未运行 → Interrupted；可能已远程执行 → Unknown（永不重试）
-    fun onInterrupt(call: ToolCallContext): ToolCallOutcome = TODO()
+    fun onInterrupt(call: ToolCallContext): ToolCallOutcome
 }

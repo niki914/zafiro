@@ -10,4 +10,10 @@ data class HttpResponse(
     val statusCode: Int?,
     val headers: Map<String, String>,
     val body: ByteArray?
-)
+) {
+
+    // 响应 headers 脱敏；body 不输出内容，只保留大小信息
+    override fun toString(): String =
+        "HttpResponse(statusCode=$statusCode, headers=${redactHeaders(headers)}, " +
+            "body=${if (body == null) "null" else "byte[${body.size}]"})"
+}

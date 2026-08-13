@@ -23,16 +23,16 @@ interface ProtocolCompatMapper {
     suspend fun buildRequest(
         snapshot: RequestSnapshot,
         history: List<Message>
-    ): HttpRequest = TODO()
+    ): HttpRequest
 
     // 工具结果编码（encodeToolResult 边界）
-    suspend fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message = TODO()
+    suspend fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message
 
     // 原始 SSE 流 → 协议无关中间事件
-    fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent> = TODO()
+    fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent>
 
     // 认证头推导
-    fun useApiKey(apiKey: String): Map<String, String> = TODO()
+    fun useApiKey(apiKey: String): Map<String, String>
 
     // 协议兼容性事实（每 Provider 的 retryable status、工具结果后是否需要
     // 助手消息等）；loop 在历史拼装与重试时查询

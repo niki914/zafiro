@@ -1,6 +1,7 @@
 package com.niki914.okia.mcp
 
 import com.niki914.okia.transport.redactHeaders
+import com.niki914.okia.transport.redactUrl
 
 /**
  * MCP 服务器配置。传输 sealed，未来扩展传输不触碰 loop。仅 HTTP；
@@ -24,5 +25,9 @@ data class McpServer(
 sealed interface McpTransport {
 
     /** HTTP 传输；具体帧格式（streamable 或 SSE）是 M1 客户端细节。 */
-    data class Http(val url: String) : McpTransport
+    data class Http(val url: String) : McpTransport {
+
+        // URL query 值脱敏（签名参数不泄漏）
+        override fun toString(): String = "Http(url=${redactUrl(url)})"
+    }
 }

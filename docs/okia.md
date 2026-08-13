@@ -156,9 +156,9 @@ data class MessageEntry(
 
 **流式语义**：
 - **Text**：有一点变化就反馈给 UI（`live` 逐 delta 更新快照）
-- **Tool**：arguments 组装完成（`ToolCallEnded`）之前**不进入 UI 状态**（不占位）；组装完成后随助手消息成条进入 `history`，工具块状态 = `Start → Running → 终态（ToolCallOutcome）`（Running 态 = 已提交工具调用尚无对应 ToolResult，UI 从 history 推导）
+- **Tool**：arguments 组装完成（`ToolCallReady`）之前**不进入 UI 状态**（不占位）；组装完成后随助手消息成条进入 `history`，工具块状态 = `Start → Running → 终态（ToolCallOutcome）`（Running 态 = 已提交工具调用尚无对应 ToolResult，UI 从 history 推导）
 
-**事件协议**：`TurnEvent` 保留（§8.1 候选 A 已裁决）：宿主 IPC（RenderFrame 流式回调）走事件形态；StateFlow 是已提交历史的投影。`live` 是快照中唯一的中间态。
+**事件协议**：`TurnEvent` 保留（§8.1 候选 A 已裁决）：宿主 IPC（RenderFrame 流式回调）走事件形态；StateFlow 是已提交历史的投影。`live` 是快照中唯一的中间态。工具调用分两个生命周期，事件前缀区分：`ToolCall*` = 模型产出调用意图（`ToolCallStarted` / `ToolCallDelta` / `ToolCallReady`，Ready 为参数组装完成、待执行）；`Tool*` = 工具执行状态（`ToolRunning` / `ToolSucceeded` / `ToolFailed`，Succeeded/Failed 携带 `ToolCallOutcome`）。工具执行状态同时出现在两条轨上：事件流携带当刻产生的 outcome，StateFlow 从 history 推导；消费方按用途取其一。
 
 ### 5.5 Tooling 契约（W4）
 
@@ -246,7 +246,7 @@ sealed interface ToolCallOutcome {
 |---|---|---|---|
 | `Input` | `input: InputHolder` | `input: InputHolder` | 用户输入进入后 |
 | `Serialization` | `request: SerializationHolder` | `request: SerializationHolder, httpRequest: HttpRequest` | 消息序列 → buildRequest 前后（约等于序列化前后） |
-| `Request` | `request: HttpRequestHolder` | `request: HttpRequestHolder, response: HttpResponse` | HttpEngine 发送前后 |
+| `Request` | `request: HttpRequestHolder` | `request: HttpRequestHolder, response: StreamResponse` | 模型流式请求（`HttpEngine.stream`）发送前后 |
 | `ToolCall` | `call: ToolCallHolder` | `call: ToolCallHolder, result: ToolResultHolder` | 工具执行前后 |
 | `Stop` | `calls: List<ToolCall>` | `calls: List<ToolCall>` | 停止流程开始前 / 完成后 |
 
@@ -255,6 +255,8 @@ sealed interface ToolCallOutcome {
 - 审计/埋点 → `afterToolCall`、`afterStop`（对称保留，埋点统计有用）
 - 数据脱敏 → `beforeSerialization`（主战场，协议无关层）＋ `beforeRequest`（http 层兜底）
 - kill-then-stop → `beforeStop`（§5.11）
+
+**覆盖边界**：`beforeRequest` / `afterRequest` 只覆盖模型流式请求（`AgentLoop` 经 `HttpEngine.stream()` 的路径）；`HttpEngine.unary()` 是 MCP 等其他网络请求，不触发任何 hook。`afterRequest` 时机 = 响应头到达、body 行消费前，`response.lines` 是冷流，hook 不得消费（消费后 loop 收不到行）。
 
 **删除**：`onFork` / `onRewind`（fork 已删除；rewind 是 Conversation 内部同步数据结构操作，无外部动作可钩）；`InterceptorChain`（§5.13）。
 
@@ -361,7 +363,7 @@ okai 骨架有 `TurnEvent` 11 种 + `FinishReason` + `StopCause`（PRD 4.2）。
 2. **Okia 门面删除 getHistory / replaceHistory / resetConversation**：历史经 `conversation` 流投影可读；新对话 = 新建实例（§5.1），原地重置无需求。保留 refreshMcpTools / getMcpDiscoverySnapshot。
 3. **Conversation 无 clear()**：同上，新对话走新实例。Conversation 只有 append / fork / rewind 与投影。
 4. **afterStop 形参定为 `calls: List<ToolCall>`**：§5.9.4 表格 Stop 行 after 形参为「—」，但「每时机成对声明」与埋点用途要求 afterStop 存在，取与 beforeStop 相同形参。
-5. **withCodec 参数类型 = `kotlinx.serialization.StringFormat`**：JsonCodec 删除后，kotlinx.serialization 的 `StringFormat`（Json 实现）为注入编解码器的标准入口。
+5. **withCodec 参数类型 = `kotlinx.serialization.json.Json`**：JsonCodec 删除后，协议数据 / SSE payload / schema 均为 JSON，直接注入 `Json`（不再用宽泛的 `StringFormat`，避免非 JSON 格式被注入）。
 6. **协议无关 dataclass 标注 `@Serializable`**：Message / ContentBlock / ToolCallOutcome / AssistantMessage / Usage / StopReason / ConversationEntry / SessionSnapshot 直接可序列化（§5.13 JsonCodec 删除的依据落地）。
 7. **ToolCallContext.session → conversation（后已删除）**：命名曾对齐 §5.3；本轮 CR 裁决删除字段——ToolExecutor 知道完整对话历史是越界（见 8.2-11）。
 8. **holder 直接置于 `hooks/` 子包**：§5.9.5「holder 归 hooks/ 子包」按「hooks 包的子包」即 `com.niki914.okia.hooks` 落地。
@@ -436,3 +438,16 @@ com.niki914.okia/
 5. **凭据脱敏**：新增 `isSensitiveHeader`（Authorization / Cookie / Proxy-Authorization / Set-Cookie，忽略大小写，参考 okhttp `internal/Util.kt`）+ `redactHeaders`；`HttpRequest` / `RequestSnapshot` / `OkiaConfig` / `McpServer` 覆盖 `toString()`，敏感 header 值与 apiKey 替换为 `██`，body 不输出内容。
 6. **新增 `CompletionReason{Stop, Length}`**：`TurnResult.Completed` 改用新枚举，`StopReason` 的 Pending / ToolUse / Error / Aborted 不再可构造为 Completed。
 7. **注释同步**：`RealConversation.rewind` 校验语义（存在性抛 IAE）、`Hooks.beforeInput` 语义（异步注入已移出）、§6 开放问题清理（仅剩 6.7）。
+
+### 8.9 第六轮 CR 落地（2026-08-14）
+
+签名冻结前的契约收敛（head `c7bc321` review 回应）：
+
+1. **`TurnEvent` 补工具执行事件 + 改名**：`ToolCallEnded` → `ToolCallReady`（与协议层 `ProtocolEvent.ToolCallReady` 对齐，消除“组装完成 vs 执行终态”的歧义）；新增 `ToolRunning` / `ToolSucceeded` / `ToolFailed`（Succeeded/Failed 携带 `ToolCallOutcome`）。两个生命周期以前缀区分：`ToolCall*` = 产出调用意图，`Tool*` = 工具执行状态。
+2. **依赖可见性修正**：`kotlinx-coroutines-core` / `kotlinx-serialization-json` 由 `implementation` 改 `api`（公开签名暴露 `StateFlow` / `SharedFlow` / `Flow` / `Json`）。
+3. **核心接口成员改抽象**：`Okia` / `ChatProtocol` / `ProtocolCompatMapper` / `ToolRegistry` / `HttpEngine` / `ToolExecutor` / `McpClient` / `AgentLoop` / `SessionCodec` 的实例成员去掉 `= TODO()` 默认实现（companion 工厂方法保留 TODO 占位）；`Hooks` 保留默认空实现（hook 可选）。实现者漏实现改为编译期报错。
+4. **`afterRequest` 形参修正**：`HttpResponse` → `StreamResponse`，时机 = 响应头到达、body 行消费前。`beforeRequest` / `afterRequest` 只覆盖模型流式路径（`AgentLoop` 经 `HttpEngine.stream`）；`unary()` 是 MCP 等其他网络请求，不触发 hook。
+5. **`withCodec` 收窄**：`StringFormat` → `Json`。
+6. **删除 `Message.User.timestamp`**：时间戳由会话树的 `ConversationEntry` / `MessageEntry` 唯一承载，消息内容不重复。
+7. **凭据脱敏扩展**：`isSensitiveHeader` 从 4 个精确名扩展为精确白名单 + 片段匹配（`api-key` / `apikey` / `-key` / `-token` / `-secret` / `-signature` / `-auth`）；新增 `redactUrl`（query 值全脱敏）；`HttpResponse` / `StreamResponse` / `McpTransport.Http` 补 `toString()`；`Compat` 加 `sensitiveHeaderNames`（默认 empty），`HttpRequest` 加 `sensitiveHeaderNames` 字段（协议层从 Compat 填入）。
+8. **host 契约注释**：`ToolRegistry` 注明活跃回合期间不得直接变更 registry（须经 `Okia.update`）；`InputHolder` 注明实现 write 时字段改私有 backing + 只读 getter。

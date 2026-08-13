@@ -8,12 +8,12 @@ package com.niki914.okia.mcp
 interface McpClient {
 
     // 发现服务器上的工具
-    suspend fun discoverTools(server: McpServer): List<McpDiscoveredTool> = TODO()
+    suspend fun discoverTools(server: McpServer): List<McpDiscoveredTool>
 
     // 调用服务器上的工具。返回结构化结果：isError 区分工具执行错误
     // （MCP 规范：成功 JSON-RPC result 内 isError=true）与正常成功；
     // content 保留多个 content block（当前仅文本）。
-    suspend fun callTool(server: McpServer, toolName: String, argumentsJson: String): McpCallResult = TODO()
+    suspend fun callTool(server: McpServer, toolName: String, argumentsJson: String): McpCallResult
 }
 
 /** 一次 MCP 工具调用的结构化结果，承载工具执行错误与多个 content block。 */

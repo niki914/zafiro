@@ -3,6 +3,7 @@ package com.niki914.okia.event
 import com.niki914.okia.error.LLMError
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.ToolCallOutcome
 
 /**
  * 回合事件协议：库的公开契约，事实源。每个块级事件携带完整部分快照，
@@ -10,6 +11,9 @@ import com.niki914.okia.message.ContentBlock
  * TurnAborted / TurnIdleTimeout，不抛出。
  * 宿主 IPC（RenderFrame 流式回调）走事件形态；UI 另观察 StateFlow<Conversation>
  * 投影（开放问题 6.2 候选 A）。
+ * 工具调用分两个生命周期，前缀区分：ToolCall* = 模型产出调用意图（参数流式
+ * 组装，ToolCallReady 为组装完成、待执行）；Tool* = 工具执行状态
+ * （ToolRunning / ToolSucceeded / ToolFailed）。
  * Design source: pi AssistantMessageEvent 集合，kai PRD §4.2；
  * Turn = 用户输入到最终回答的整轮（codex turn 语义），非单次模型往返。
  */
@@ -42,8 +46,17 @@ sealed interface TurnEvent {
     /** contentIndex 处工具调用参数 delta。 */
     data class ToolCallDelta(val index: Int, val delta: String, val partial: AssistantMessage) : TurnEvent
 
-    /** contentIndex 处工具调用完成，带最终参数。 */
-    data class ToolCallEnded(val index: Int, val toolCall: ContentBlock.ToolCall, val partial: AssistantMessage) : TurnEvent
+    /** contentIndex 处工具调用参数组装完成，带最终参数；之后进入执行阶段。 */
+    data class ToolCallReady(val index: Int, val toolCall: ContentBlock.ToolCall, val partial: AssistantMessage) : TurnEvent
+
+    /** contentIndex 处工具调用开始执行。 */
+    data class ToolRunning(val index: Int, val toolCall: ContentBlock.ToolCall, val partial: AssistantMessage) : TurnEvent
+
+    /** contentIndex 处工具调用执行成功。 */
+    data class ToolSucceeded(val index: Int, val toolCall: ContentBlock.ToolCall, val outcome: ToolCallOutcome, val partial: AssistantMessage) : TurnEvent
+
+    /** contentIndex 处工具调用执行失败。 */
+    data class ToolFailed(val index: Int, val toolCall: ContentBlock.ToolCall, val outcome: ToolCallOutcome, val partial: AssistantMessage) : TurnEvent
 
     /** 一次重试已排定；attempt 从 1 起。 */
     data class RetryScheduled(

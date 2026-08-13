@@ -13,4 +13,10 @@ data class StreamResponse(
     val statusCode: Int?,
     val headers: Map<String, String>,
     val lines: Flow<SseLine>
-)
+) {
+
+    // 响应 headers 脱敏；lines 是冷流，只输出类型，不消费
+    override fun toString(): String =
+        "StreamResponse(statusCode=$statusCode, headers=${redactHeaders(headers)}, " +
+            "lines=Flow<SseLine>)"
+}

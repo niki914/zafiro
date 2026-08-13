@@ -33,35 +33,35 @@ interface Okia {
         text: String,
         options: TurnOptions? = null,
         onEvent: suspend (TurnEvent) -> Unit
-    ): TurnResult = TODO()
+    ): TurnResult
 
     // 取消当前回合；kill-then-stop（先杀工具资源再取消 job）
-    suspend fun stop(): Unit = TODO()
+    suspend fun stop(): Unit
 
     // 原地移动 leafId 到过去的条目，被跳过的尾部保留在树中。
     // entryId 不存在时抛 IllegalArgumentException；位置语义不校验（放开）：
     // 停在未配对工具调用等位置由下游负责。改第一条消息 = 新建实例（§5.1），
     // 库不提供回退到 root 的 API。
-    suspend fun rewind(entryId: String): Unit = TODO()
+    suspend fun rewind(entryId: String): Unit
 
     // 导出当前会话持久化快照（完整树 + leafId + 身份）。host 经
     // SessionCodec 编码后自行决定存储位置；恢复时重新 open(restore = ...)。
-    suspend fun export(): SessionSnapshot = TODO()
+    suspend fun export(): SessionSnapshot
 
     // 热更新配置快照（hooks 列表可调）
-    suspend fun update(block: OkiaConfig.Builder.() -> Unit): Unit = TODO()
+    suspend fun update(block: OkiaConfig.Builder.() -> Unit): Unit
 
     // 当前配置快照
-    suspend fun config(): OkiaConfig = TODO()
+    suspend fun config(): OkiaConfig
 
     // 刷新 MCP 工具发现
-    suspend fun refreshMcpTools(): McpRefreshResult = TODO()
+    suspend fun refreshMcpTools(): McpRefreshResult
 
     // 当前 MCP 发现快照
-    suspend fun getMcpDiscoverySnapshot(): McpDiscoverySnapshot = TODO()
+    suspend fun getMcpDiscoverySnapshot(): McpDiscoverySnapshot
 
     // 释放实例资源
-    suspend fun close(): Unit = TODO()
+    suspend fun close(): Unit
 
     companion object {
 

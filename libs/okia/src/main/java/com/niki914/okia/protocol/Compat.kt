@@ -35,6 +35,11 @@ interface Compat {
 
     // 可重试状态码
     val retryableStatusCodes: Set<Int>
+
+    // 协议层补充的敏感 header 名（默认无）。buildRequest 时填入
+    // HttpRequest.sensitiveHeaderNames，用于 toString / 日志脱敏；
+    // 通用片段匹配覆盖不到的 Provider 特定名（如 Ocp-Apim-Subscription-Key）在此补充。
+    val sensitiveHeaderNames: Set<String> get() = emptySet()
 }
 
 /** 请求体中的 maxTokens 字段名。 */

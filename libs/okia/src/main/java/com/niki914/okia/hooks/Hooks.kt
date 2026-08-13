@@ -2,7 +2,7 @@ package com.niki914.okia.hooks
 
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.transport.HttpRequest
-import com.niki914.okia.transport.HttpResponse
+import com.niki914.okia.transport.StreamResponse
 
 /**
  * 面向下游开发者的统一扩展面：自定义 Okia 在他们手中的表现。
@@ -27,11 +27,14 @@ interface Hooks {
     // 消息序列化后（拿到 Provider 请求）
     suspend fun afterSerialization(request: SerializationHolder, httpRequest: HttpRequest) {}
 
-    // HttpEngine 发送前（http 层兜底脱敏 / 改写）
+    // 模型流式请求发送前（http 层兜底脱敏 / 改写）。只覆盖 loop 经
+    // HttpEngine.stream 的模型请求路径；unary（MCP 等其他网络请求）不触发。
     suspend fun beforeRequest(request: HttpRequestHolder) {}
 
-    // HttpEngine 发送后（拿到响应）
-    suspend fun afterRequest(request: HttpRequestHolder, response: HttpResponse) {}
+    // 模型流式响应头到达后、body 行消费前。response.lines 是冷流，hook 不得
+    // 消费（消费一次后 loop 收不到行）；hook 只观察 status / headers。
+    // unary（MCP 等其他网络请求）不触发。
+    suspend fun afterRequest(request: HttpRequestHolder, response: StreamResponse) {}
 
     // 工具执行前：审批 / 拦截 / 参数改写（阻断机制见开放问题 6.1）
     suspend fun beforeToolCall(call: ToolCallHolder) {}

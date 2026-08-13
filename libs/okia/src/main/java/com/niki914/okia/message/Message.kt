@@ -9,11 +9,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface Message {
 
-    /** 用户输入。内容块支持未来图像输入。 */
+    /** 用户输入。内容块支持未来图像输入。时间戳由会话树的
+     *  ConversationEntry / MessageEntry 承载，不在消息内容里重复。 */
     @Serializable
     data class User(
-        val content: List<ContentBlock>,
-        val timestamp: Long
+        val content: List<ContentBlock>
     ) : Message
 
     /** 助手响应，携带完整消息对象。 */

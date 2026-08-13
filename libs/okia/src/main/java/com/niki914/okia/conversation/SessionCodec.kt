@@ -15,10 +15,10 @@ import kotlinx.serialization.Serializable
 interface SessionCodec {
 
     // 快照 → 交换格式
-    fun encode(snapshot: SessionSnapshot): String = TODO()
+    fun encode(snapshot: SessionSnapshot): String
 
     // 交换格式 → 快照
-    fun decode(raw: String): SessionSnapshot = TODO()
+    fun decode(raw: String): SessionSnapshot
 }
 
 /**

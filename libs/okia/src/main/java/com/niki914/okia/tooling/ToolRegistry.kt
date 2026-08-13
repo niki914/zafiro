@@ -3,21 +3,24 @@ package com.niki914.okia.tooling
 /**
  * 可用工具注册表。host 注册 descriptor + executor；
  * loop 通过它解析模型工具调用。
+ * host 契约：活跃回合期间不得直接变更 registry（remove / register），
+ * 变更须经 Okia.update；直接改注入对象会绕过门面的活跃回合检查，
+ * 导致请求里的工具描述与执行器不再一致。
  * Design source: okia 骨架 ToolRegistry。
  */
 interface ToolRegistry {
 
     // 注册工具
-    fun register(descriptor: ToolDescriptor, executor: ToolExecutor): Unit = TODO()
+    fun register(descriptor: ToolDescriptor, executor: ToolExecutor): Unit
 
     // 按名移除
-    fun remove(name: String): Unit = TODO()
+    fun remove(name: String): Unit
 
     // 按名查找
-    fun find(name: String): RegisteredTool? = TODO()
+    fun find(name: String): RegisteredTool?
 
     // 快照
-    fun snapshot(): List<RegisteredTool> = TODO()
+    fun snapshot(): List<RegisteredTool>
 }
 
 /** 绑定 executor 的工具。 */

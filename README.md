@@ -103,6 +103,12 @@ To build from source:
 ./gradlew assembleDebug
 ```
 
+To compile the okia skeleton together with its usage demo (`OkiaUsageDemo.kt` lives in `src/test`, so it needs the unit-test compile task, not `compileDebugKotlin`):
+
+```bash
+./gradlew :libs:okia:compileDebugUnitTestKotlin
+```
+
 <details>
 <summary>Release signing</summary>
 
