@@ -35,6 +35,8 @@ Nexus 是一个 Android Xposed 模块。它在语音助手 App 中截获用户 q
 - Prefer established, well-maintained libraries when they reduce overall complexity or improve reliability. Do not reimplement common functionality without a clear reason.
 - Lean on the dependencies already in the project before writing your own implementation or adding packages. Do not assume a library lacks a capability without checking its documentation and types.
 - Make architectural decisions for the long term. Do not accept a stopgap that only works for now and is meant to be replaced later.
+- Do not take a screenshot or try to 'see' the results since you are not a vision model and you CANNOT understand images. Just simply implement, and use `open` to ask the user to validate. Ask the user for help if needed instead of bury yourself in a problem that could be very easy for the user but hard for you, such as refactor code with Android Studio. (Stuff like that——that could be solved with a few simple steps by the user)
+- If the difficulty is huge (greater than 6 out of 10), and it's not very necessary to implement the feature(ROI), feel free to negotiate with the user and manage Up. (Requirement Adjustment)
 
 1. 使用标准术语。已有通用说法的概念不要另造表述。
 2. 不要使用比喻。如果一个说法需要读者推断其指代对象，改为直接说明。
