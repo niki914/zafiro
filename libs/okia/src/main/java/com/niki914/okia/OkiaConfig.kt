@@ -5,6 +5,7 @@ import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpEngine
+import com.niki914.okia.transport.redactHeaders
 
 /**
  * 不可变连接配置。一次构建，变更通过 Okia.update 整体替换快照。
@@ -31,6 +32,15 @@ data class OkiaConfig(
     val toolRegistry: ToolRegistry?,
     val httpEngine: HttpEngine?
 ) {
+
+    // apiKey 与敏感 header 值脱敏；mcpServers 内 header 由 McpServer.toString 自行脱敏
+    override fun toString(): String =
+        "OkiaConfig(endpoint=$endpoint, apiKey=██, model=$model, temperature=$temperature, " +
+            "maxTokens=$maxTokens, connectTimeoutSeconds=$connectTimeoutSeconds, " +
+            "readTimeoutSeconds=$readTimeoutSeconds, writeTimeoutSeconds=$writeTimeoutSeconds, " +
+            "idleTimeoutSeconds=$idleTimeoutSeconds, headers=${redactHeaders(headers)}, " +
+            "retryPolicy=$retryPolicy, mcpServers=$mcpServers, hooks=$hooks, " +
+            "toolRegistry=$toolRegistry, httpEngine=$httpEngine)"
 
     /** 可变构建器。build() 之后配置不可变。 */
     class Builder {

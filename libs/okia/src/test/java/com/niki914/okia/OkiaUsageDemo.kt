@@ -83,11 +83,8 @@ fun main() = runBlocking {
 
     // ── 持久化：导出快照 → codec 编码 → 存储（位置由 host 决定）────────
     // 恢复 = 重新 open(restore = snapshot)（协议由 host 重新提供，§5.7）
+    // 分支语义由下游自行实现：export() 导出快照后 open(restore = snapshot)
     val snapshot: SessionSnapshot = okia.export()
-
-    // ── fork：从当前状态派生独立分支（新实例，节点不可变共享） ───────────
-    val branch: Okia = okia.fork()
-    branch.close()
 
     // ── 收尾 ──────────────────────────────────────────────────────────────
     uiJob.cancelAndJoin()

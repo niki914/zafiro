@@ -8,20 +8,19 @@ import kotlinx.coroutines.sync.Mutex
  * 对话树数据结构维护者（内部实现；公开面是 Conversation 快照）。
  * 条目树 + leafId 当前位置，内部 Mutex 串行化（KMP 下唯一同步方案 =
  * kotlinx.coroutines.sync.Mutex）。
- * fork 复制当前 leaf 路径（节点不可变共享，修改互不影响）；rewind 原地
- * 移动 leafId，被跳过的尾部保留在树中。rewind 不校验目标合法性（放开，
- * 回退粒度由下游自行约束）；历史投影 = leaf 到 root 线性投影。
+ * rewind 原地移动 leafId，被跳过的尾部保留在树中。rewind 校验 entryId 存在
+ * （不存在抛 IllegalArgumentException），位置语义不校验（放开，回退粒度由下游
+ * 自行约束）；历史投影 = leaf 到 root 线性投影。
  * Design source: pi（session-manager.ts）buildSessionPath / createBranchedSession，
  * W3 白板便签；命名参考 OkHttp Real* 惯例。
  */
 internal class RealConversation(
     val id: String,
-    val parentSessionId: String?,
     entries: List<ConversationEntry>,
     leafId: String?
 ) {
 
-    // 树形条目（append-only，fork 共享不可变节点）。
+    // 树形条目（append-only）。
     // 返回防御性复制：外部持有不影响内部存储。
     val entries: List<ConversationEntry> get() = TODO()
 
@@ -41,10 +40,8 @@ internal class RealConversation(
     // 投影为公开快照（构造即复制，leafId 为当前位置）
     fun toSnapshot(live: AssistantMessage? = null): Conversation = TODO()
 
-    // 新对话：从当前 leaf 路径 fork，节点不可变共享
-    suspend fun fork(): RealConversation = TODO()
-
-    // 原地移动 leafId 到 entryId；被跳过的尾部保留在树中。不校验合法性。
+    // 原地移动 leafId 到 entryId；被跳过的尾部保留在树中。
+    // entryId 不存在时抛 IllegalArgumentException；位置语义不校验。
     suspend fun rewind(entryId: String): Unit = TODO()
 
     // 串行化所有数据操作

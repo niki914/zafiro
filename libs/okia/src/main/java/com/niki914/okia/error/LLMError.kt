@@ -18,7 +18,7 @@ data class LLMError(
 }
 
 /**
- * 稳定错误分类。quota / contextOverflow 永不重试；
+ * 稳定错误分类。quota / contextOverflow / unknownTool 永不重试；
  * rateLimit / overloaded / transport 可重试。
  * Design source: kai PRD §4.7，对齐 pi 重试黑名单与 codex ApiError 变体。
  */
@@ -30,5 +30,6 @@ enum class LLMErrorCode(val isRetryable: Boolean) {
     ContextOverflow(false),
     Transport(true),
     Parse(false),
+    UnknownTool(false),
     RetryExhausted(false)
 }

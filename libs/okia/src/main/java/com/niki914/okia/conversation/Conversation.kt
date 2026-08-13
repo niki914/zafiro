@@ -15,7 +15,6 @@ import kotlinx.serialization.Serializable
  */
 data class Conversation(
     val id: String,
-    val parentSessionId: String?,
     val leafId: String?,
     val history: List<MessageEntry>,
     val live: AssistantMessage? = null

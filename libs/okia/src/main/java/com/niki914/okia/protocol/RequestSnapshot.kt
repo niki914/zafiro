@@ -2,6 +2,7 @@ package com.niki914.okia.protocol
 
 import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.transport.HttpTimeouts
+import com.niki914.okia.transport.redactHeaders
 
 /**
  * 一次模型调用输入的不可变快照，段开始时冻结，重试复用同一请求。
@@ -18,4 +19,11 @@ data class RequestSnapshot(
     val headers: Map<String, String>,
     val timeouts: HttpTimeouts,
     val tools: List<ToolDescriptor>
-)
+) {
+
+    // apiKey 与敏感 header 值脱敏（systemPrompt 非凭据，保留）
+    override fun toString(): String =
+        "RequestSnapshot(endpoint=$endpoint, apiKey=██, model=$model, " +
+            "systemPrompt=$systemPrompt, temperature=$temperature, maxTokens=$maxTokens, " +
+            "headers=${redactHeaders(headers)}, timeouts=$timeouts, tools=$tools)"
+}

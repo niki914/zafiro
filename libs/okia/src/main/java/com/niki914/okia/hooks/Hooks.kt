@@ -11,11 +11,11 @@ import com.niki914.okia.transport.HttpResponse
  * 默认空实现。全部 suspend 默认阻塞（调用方 await）；返回 Unit，
  * 可改数据走 mutation holder（write 记录签名字段）。
  * Design source: pi extensions（mutation 分发机制）、codex hooks、
- * Xposed 命名风格；注册位置在 config（fork 继承共享 hooks 列表）。
+ * Xposed 命名风格；注册位置在 config（hooks 列表只读，builder 累积）。
  */
 interface Hooks {
 
-    // 用户输入进入后：异步任务通知注入等 transform（§5.10）
+    // 用户输入进入后：输入规范化 / 改写等 transform（异步注入已移出，见 §5.10）
     suspend fun beforeInput(input: InputHolder) {}
 
     // 用户输入处理完成（改写信息见 InputHolder.lastWriter）

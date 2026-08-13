@@ -86,7 +86,7 @@ interface Okia {
 | 节点 | 职责 |
 |---|---|
 | `Okia` | 门面。一次对话的载体（不是 OkHttpClient 式可复用）。持有单活跃回合 |
-| `Conversation` | 数据结构维护者。内部 Mutex 竞争控制；Fork/Rewind 能力 |
+| `Conversation` | 数据结构维护者。内部 Mutex 竞争控制；Rewind 能力 |
 | `[Chat History Ready]` | 屏障：send 先 append User，等待 Conversation 就绪（最新消息可读）再启动 AgentLoop |
 | `AgentLoop` | 回合驱动。LLM ↔ 工具循环直到"最后一条消息不是工具请求" |
 | `Tooling` | 工具执行。永不抛异常，总是产出工具结果 |
@@ -123,15 +123,15 @@ interface Okia {
 
 ### 5.3 Conversation 类（W3）
 
-**决策**：数据结构由**内部类 `RealConversation`**（conversation/ 包，公开面之外）维护：条目树（id / parentId / timestamp）+ 可变的 leafId 当前位置，内部 Mutex 竞争控制（KMP 下唯一同步方案 = `kotlinx.coroutines.sync.Mutex`）。`fork()` 复制当前 leaf 路径（节点不可变共享，修改互不影响）；`rewind(entryId)` 原地移动 leafId 指针，被跳过的尾部保留在树中。**rewind 校验 entryId 存在（不存在抛 IllegalArgumentException），但位置语义不校验（放开）**：回退粒度由下游自行约束，停在未配对工具调用等位置的后果由下游负责——库不替下游决定什么位置合法（篡改历史的场景是下游的合法用途）。**改第一条消息 = 新建实例（§5.1），库不提供回退到 root 的 API。**命名参考 OkHttp `Real*` 惯例：公开短名，实现类带 Real 前缀。
+**决策**：数据结构由**内部类 `RealConversation`**（conversation/ 包，公开面之外）维护：条目树（id / parentId / timestamp）+ 可变的 leafId 当前位置，内部 Mutex 竞争控制（KMP 下唯一同步方案 = `kotlinx.coroutines.sync.Mutex`）。`rewind(entryId)` 原地移动 leafId 指针，被跳过的尾部保留在树中。**rewind 校验 entryId 存在（不存在抛 IllegalArgumentException），但位置语义不校验（放开）**：回退粒度由下游自行约束，停在未配对工具调用等位置的后果由下游负责——库不替下游决定什么位置合法（篡改历史的场景是下游的合法用途）。**改第一条消息 = 新建实例（§5.1），库不提供回退到 root 的 API。**命名参考 OkHttp `Real*` 惯例：公开短名，实现类带 Real 前缀。
 
-**原因**：W3 "单独类维护数据结构 + 内部竞争控制 + Fork/Rewind"；fork 独立性由不可变性保证；rewind 后历史投影 = leaf 到 root 线性投影。内部化的原因：公开面只需不可变快照，可变树是库内细节，暴露它会导致下游绕过门面直接修改（CR #1 裁决）。
+**原因**：W3 "单独类维护数据结构 + 内部竞争控制 + Rewind"；rewind 后历史投影 = leaf 到 root 线性投影。内部化的原因：公开面只需不可变快照，可变树是库内细节，暴露它会导致下游绕过门面直接修改（CR #1 裁决）。
 
-**先例**：pi `buildSessionPath(entries, leafId)`（leafId 显式 + fallback 到最后一条）、`createBranchedSession(leafId)`、SessionHeader version；OkHttp 公开接口短名 + `RealCall` / `RealInterceptorChain` 实现命名。
+**先例**：pi `buildSessionPath(entries, leafId)`（leafId 显式 + fallback 到最后一条）、SessionHeader version；OkHttp 公开接口短名 + `RealCall` / `RealInterceptorChain` 实现命名。
 
-**持久化**：`SessionSnapshot(id, parentSessionId, leafId, version, entries)` 由 codec 接口持久化（存储位置 host 决定）。**leafId 必须持久化**（rewind 位置在重载后保持；null = 恢复为最后一条）。`entries` 为消息级 `ConversationEntry`（树节点 + 持久化行格式，非门面类型，下游仅在持久化时接触）。
+**持久化**：`SessionSnapshot(id, leafId, version, entries)` 由 codec 接口持久化（存储位置 host 决定）。**leafId 必须持久化**（rewind 位置在重载后保持；null = 恢复为最后一条）。`entries` 为消息级 `ConversationEntry`（树节点 + 持久化行格式，非门面类型，下游仅在持久化时接触）。
 
-**持久化入口（CR 第三轮落地）**：门面 `Okia.export(): SessionSnapshot` 导出当前完整树 + leafId + 身份；恢复 = 重新 `open(restore = snapshot)`（协议由 host 重新提供，§5.7 不变）。公开 `Conversation` 快照补 `leafId`（rewind 当前位置，UI 可读）；`MessageEntry` 补 `timestamp`（历史渲染）。
+**持久化入口（CR 第三轮落地）**：门面 `Okia.export(): SessionSnapshot` 导出当前完整树 + id + leafId；恢复 = 重新 `open(restore = snapshot)`（协议由 host 重新提供，§5.7 不变）。公开 `Conversation` 快照补 `leafId`（rewind 当前位置，UI 可读）；`MessageEntry` 补 `timestamp`（历史渲染）。
 
 ### 5.4 UI 数据模型：StateFlow + SharedFlow（W1）
 
@@ -140,7 +140,6 @@ interface Okia {
 ```kotlin
 data class Conversation(
     val id: String,
-    val parentSessionId: String?,
     val history: List<MessageEntry>,   // 已提交的完整消息（leaf 投影，平列表）
     val live: AssistantMessage?        // 正在流式、尚未成条的助手消息；空闲 null
 )
@@ -239,7 +238,7 @@ sealed interface ToolCallOutcome {
 - 全部 `suspend`，**默认阻塞**（调用方 await）；下游要异步自己开子协程——框架不做 fire-and-forget 机制（保持纯粹）
 - 全部返回 `Unit`；可改数据走 **mutation**（holder + 签名 write 机制，见下）
 
-**注册位置**：注册给 `OkiaConfig`（builder DSL：`hooks += ...`），不注册给实例。**fork 继承**：fork 复制 config（含同一 hooks 列表，不可变 List 共享引用）；有状态 hook 的状态隔离是下游职责（状态外置）；fork 后可用 `update {}` 调整 hooks。先例：kai 的 `hooks {}` DSL 在 config；Pi/Codex 的 hooks 均在配置层。
+**注册位置**：注册给 `OkiaConfig`（builder DSL：`hooks += ...`），不注册给实例。有状态 hook 的状态隔离是下游职责（状态外置）；hooks 列表可用 `update {}` 调整。先例：kai 的 `hooks {}` DSL 在 config；Pi/Codex 的 hooks 均在配置层。
 
 #### 5.9.4 时机清单
 
@@ -257,7 +256,7 @@ sealed interface ToolCallOutcome {
 - 数据脱敏 → `beforeSerialization`（主战场，协议无关层）＋ `beforeRequest`（http 层兜底）
 - kill-then-stop → `beforeStop`（§5.11）
 
-**删除**：`onFork` / `onRewind`（fork/rewind 是 Conversation 内部同步数据结构操作，无外部动作可钩）；`InterceptorChain`（§5.13）。
+**删除**：`onFork` / `onRewind`（fork 已删除；rewind 是 Conversation 内部同步数据结构操作，无外部动作可钩）；`InterceptorChain`（§5.13）。
 
 #### 5.9.5 mutation holder
 
@@ -308,7 +307,7 @@ Nexus 的"屏幕操作前先读屏"已通过**版本号机制**强制实现（�
 
 **保留**：`ChatProtocol` / `Compat` / `ProtocolEvent` / `RequestSnapshot`（协议层）、`Message` / `ContentBlock` / `Usage` / `StopReason`、`Session` 树 + `SessionCodec` + leafId 持久化（§5.3）、`ToolExecutor` / `ToolRegistry` / `ToolCallContext` / `ToolDescriptor`、`McpClient` / `McpServer` / `McpExecutor` / `McpDiscoverySnapshot`（Nexus 重度使用：fingerprint 刷新 + PromptComposer 渲染）、`HttpEngine` + transport 数据类（KMP actual 点）、`LLMError` / `RetryPolicy`（Nexus 手工分类要下沉）。
 
-**资源所有权**（fork/close 规则）：装配时宿主传入的资源（`httpEngine` / `toolRegistry` / `agentLoop` / `mcpClient` / 协议实例）**宿主所有**，`close()` 不关闭；config 未提供的默认资源（默认空 `ToolRegistry`、自建 `HttpEngine`）实例所有，`close()` 释放自建部分。fork 复制 config 快照（hooks 列表共享引用，§5.9.3）、共享宿主资源、各自持有独立 `RealConversation` 树。
+**资源所有权**（close 规则）：装配时宿主传入的资源（`httpEngine` / `toolRegistry` / `agentLoop` / `mcpClient` / 协议实例）**宿主所有**，`close()` 不关闭；config 未提供的默认资源（默认空 `ToolRegistry`、自建 `HttpEngine`）实例所有，`close()` 释放自建部分。
 
 ### 5.14 KMP 目标
 
@@ -326,14 +325,10 @@ okai 骨架有 `TurnEvent` 11 种 + `FinishReason` + `StopCause`（PRD 4.2）。
 
 ## 6. 开放问题（未定决策）
 
+6.1–6.6 已在 §8.1 裁决，不再列为开放项。当前仅剩：
+
 | # | 问题 | 背景 | 候选 |
 |---|---|---|---|
-| 6.1 | `beforeToolCall` 阻断机制 | 阻断 = 决策（拒绝执行），参数改写 = 修改（mutation）——两种能力是否同形？ | A：全 `Unit` + holder 预留 outcome 字段（统一 mutation，推荐）；B：返回 `ToolCallOutcome?`（非 null 短路）；C：Xposed 式 holder 操作（`args.return = null` 思路） |
-| 6.2 | `TurnEvent` 事件协议保留与否 | §5.15；宿主 IPC 需要流式事件 | A：保留事件 + StateFlow 投影（推荐）；B：仅 StateFlow（事件派生） |
-| 6.3 | 重试归属 | Codex 传输层内建重试、turn 层 loop 内建；PRD 4.7 分层容错 | A：核心内建（RetryPolicy 在 config）；B：下沉为内置 hook（下游注册） |
-| 6.4 | hooks 列表可变性 | config 不可变原则 vs update 热更新需求 | A：只读 `List<Hooks>` + builder 累积（推荐）；B：`MutableList` |
-| 6.5 | 包名 | §1 | `com.niki914.okia`（已定） |
-| 6.6 | `Clock` 去留 | §5.13 | 删除（kotlin.time.Clock）或保留接口（测试注入价值） |
 | 6.7 | 消息注入 API | 下游可能想篡改历史（rewind 后手动补 ToolResult）；rewind 已放开，但无主动注入消息的入口 | 未来如需，加显式 `append`/`inject` 方法（rewind 后手动补消息），不靠库自动修复；当前无消费者，不实现 |
 
 ## 7. 参考资料
@@ -429,3 +424,15 @@ com.niki914.okia/
 6. **McpClient.callTool 返回结构化 McpCallResult**：`isError: Boolean`（区分 MCP 工具执行错误与正常成功）+ `content: List<McpContentBlock>`（Text / Image / Resource），McpExecutor 可据此产出 Failure 而非 Success。
 7. **toolRegistry 单一来源**：保留 `OkiaConfig.toolRegistry`，从 `OkiaDependencies` 删除，避免 loop 与 MCP 刷新使用不同 registry。
 8. **McpDiscoveryListener 文档修正**：§5.13 从"并入 Hooks（时机面）"改为"删除，无 hook 替代"，观察走 `refreshMcpTools` / `getMcpDiscoverySnapshot`。
+
+### 8.8 冻结前落地（2026-08-13）
+
+签名冻结前按第五轮 CR 裁决收敛，全部为签名 / 契约 / 文档层：
+
+1. **删除 `Okia.fork()` 与 `RealConversation.fork()`**：分支语义由下游 `export()` + `open(restore)` 自行实现，库不再提供 fork。连带删除 `Conversation.parentSessionId` / `SessionSnapshot.parentSessionId` / `RealConversation.parentSessionId`（fork 链的持久化产物，无生产者）。§4 / §5.3 / §5.9 / §5.13 同步；§8.4 #10、§8.6 #5、§8.7 #5 中 fork 相关内容随本条失效。
+2. **取消契约修正**：`Aborted` 终态由协调器（`Okia.send`）在取消 job 后按 `StopCause` 产生，不经被取消 job 的返回值传递；`AgentLoop.run` 保持结构化并发，外部取消在 NonCancellable 清理后重新抛出。
+3. **新增 `LLMErrorCode.UnknownTool`**（不可重试）：模型生成未知工具名时抛异常，回合 `Failed`；错误文案由 host 按 code 映射，核心不预设返回值。
+4. **`McpContentBlock` 收窄**：删除 `Image` / `Resource`，仅保留 `Text`；结构化内容暂不实现，M1 客户端遇到非文本 block 报错，未来需要时新增子类。
+5. **凭据脱敏**：新增 `isSensitiveHeader`（Authorization / Cookie / Proxy-Authorization / Set-Cookie，忽略大小写，参考 okhttp `internal/Util.kt`）+ `redactHeaders`；`HttpRequest` / `RequestSnapshot` / `OkiaConfig` / `McpServer` 覆盖 `toString()`，敏感 header 值与 apiKey 替换为 `██`，body 不输出内容。
+6. **新增 `CompletionReason{Stop, Length}`**：`TurnResult.Completed` 改用新枚举，`StopReason` 的 Pending / ToolUse / Error / Aborted 不再可构造为 Completed。
+7. **注释同步**：`RealConversation.rewind` 校验语义（存在性抛 IAE）、`Hooks.beforeInput` 语义（异步注入已移出）、§6 开放问题清理（仅剩 6.7）。
