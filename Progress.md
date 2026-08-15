@@ -6,9 +6,9 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | T2 已完成（待提交），T3 未开始 |
-| 契约 | 已冻结 + T2 回写（docs/okia.md §8.11） |
-| 最近提交 | a571779（T1 对话树） |
+| 阶段 | T3 已完成（待提交），T4 未开始 |
+| 契约 | 已冻结 + T2/T3 回写（docs/okia.md §8.11 / §8.12） |
+| 最近提交 | d6760ad（T2 垂直切片） |
 | 阻塞项 | 无 |
 
 ## 恢复步骤
@@ -24,7 +24,7 @@
 |---|---|---|---|---|
 | T1 | 对话树：RealConversation + SessionCodec | ~150 | ~300 | 已完成 |
 | T2 | 垂直切片：RealOkia + 最小 AgentLoop + fake 协议/传输 | ~490 | ~650 | 已完成 |
-| T3 | transport：SseLine 流式解析 | ~150 | ~200 | 未开始 |
+| T3 | transport：SseLineParser + SseEventParser + loop 前置校验 | ~220 | ~500 | 已完成 |
 | T4 | protocol：ProtocolCompatMapper.from + M0 DeepSeek 映射 | ~350 | ~300 | 未开始 |
 | T5 | hooks 接线：holder write 语义 + loop 内时机 | ~250 | ~250 | 未开始 |
 | T6 | tooling：ToolExecutor/ToolRegistry + 工具循环 | ~300 | ~300 | 未开始 |
@@ -69,7 +69,12 @@
 | D13 | 外部取消（调用方协程取消）传播 CancellationException，不产生 Aborted(External) | 协程取消语义优先（rethrow）；StopCause.External 路径待真实消费者出现后定（T2 不删枚举值，契约不动） |
 | D14 | Completed 事件 stopReason 为 Error/Aborted/ToolUse/Pending 时按失败处理 | 明确失败优于自动修复；T2 fake 不发此类事件 |
 | D15 | 事件流 replay=0 + extraBufferCapacity=64；一次性事件语义 | 订阅晚的事件不补发；宿主 IPC 与 UI 各自消费 |
+| D16 | StreamResponse sealed 化（Ok / Error 两态）；传输失败抛异常 | 三可空字段靠约定表达三态易误用；sealed 让 when 穷举、Ok 拿不到 body、Error 拿不到 lines；suspend 抛网络异常符合 Kotlin 取消语义（codex transport 同构） |
+| D17 | 新增 SseLineParser（Flow\<String\> → Flow\<SseLine\>） | 行切分是 T4 parseStream 与 T8 默认 HttpEngine 的共同前置；纯逻辑独立可测；W3C 行解析语义 |
+| D18 | 新增 SseEvent(data, event) + SseEventParser；聚合器输出结构化事件而非 data 文本 | MCP 实锤用 event 字段（codex rmcp-client 过滤非 message）；Codex 因 data-only 聚合器服务不了 MCP 被迫写两套；一个聚合器服务模型流与 MCP 两端 |
+| D19 | loop 前置校验：非 2xx 不进 parseStream；content-type text/html 黑名单 | 风控 HTML 真实 case（用户实测）；非 2xx 错误 body 是文本不是 SSE；黑名单避免白名单误伤改 content-type 的真实网关 |
+| D20 | 非 2xx 错误码映射 429→RateLimit / 401,403→Auth / 5xx→Overloaded / 其他→Transport；body 截断 2000 字符进 message | LLMErrorCode 已有分类直接复用；message 是 UI 详情非完整响应 |
 
 ## 下一步
 
-开始 T3：transport 层 SseLine 流式解析 + SSE 解析器（真实协议的前置：把原始 SSE 行流解析为结构化事件/数据，T4 M0 DeepSeek 依赖它）。对照 docs/okia.md §5.8 / §5.14。等待用户验收 T2 后开始。
+开始 T4：protocol 层 ProtocolCompatMapper.from + M0 DeepSeek 映射（buildRequest / parseStream / encodeToolResult / useApiKey），需参考 DeepSeek API 文档（OpenAI 兼容格式）。T3 的 SseLineParser + SseEventParser 已就绪，DeepSeek parseStream 内部消费聚合器（只用 data，[DONE] 判断在协议层）。等待用户验收 T3 后开始。

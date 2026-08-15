@@ -10,6 +10,7 @@ import com.niki914.okia.message.StopReason
 import com.niki914.okia.message.Usage
 import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.transport.SseLine
+import com.niki914.okia.transport.StreamResponse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
@@ -50,12 +51,41 @@ internal class RealAgentLoop : AgentLoop {
             return fail(request, onEvent, StreamState(), LLMError(LLMErrorCode.Transport, "stream failed", e))
         }
 
+        // 前置校验（T3）：2xx 才进 SSE 解析；非 2xx 的 body 是错误文本，
+        // 不进 parseStream（风控 HTML / JSON 错误不会被当 SSE 解析）
         val state = StreamState()
-        return try {
-            collectEvents(request, onEvent, response.lines, state)
-        } catch (e: CancellationException) {
-            withContext(NonCancellable) { commitPartial(request, state) }
-            throw e
+        return when (response) {
+            is StreamResponse.Error -> {
+                val code = when {
+                    response.statusCode == 429 -> LLMErrorCode.RateLimit
+                    response.statusCode == 401 || response.statusCode == 403 -> LLMErrorCode.Auth
+                    response.statusCode in 500..599 -> LLMErrorCode.Overloaded
+                    else -> LLMErrorCode.Transport
+                }
+                // body 截断：错误详情供 UI 展示，非完整响应（HTML 页可能很大）
+                fail(
+                    request, onEvent, state,
+                    LLMError(code, response.body.take(MAX_ERROR_BODY_CHARS), null, response.statusCode)
+                )
+            }
+            is StreamResponse.Ok -> {
+                val contentType = response.headers.entries
+                    .firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }?.value
+                if (contentType?.startsWith("text/html", ignoreCase = true) == true) {
+                    // 黑名单快速失败：content-type 已明确非流式/JSON（如风控页）
+                    fail(
+                        request, onEvent, state,
+                        LLMError(LLMErrorCode.Parse, "unsupported content type: $contentType", null, response.statusCode)
+                    )
+                } else {
+                    try {
+                        collectEvents(request, onEvent, response.lines, state)
+                    } catch (e: CancellationException) {
+                        withContext(NonCancellable) { commitPartial(request, state) }
+                        throw e
+                    }
+                }
+            }
         }
     }
 
@@ -170,3 +200,6 @@ private class StreamState {
  * collect 被异常终止时会退订上游流（无限流场景必需，T2 实测暴露）。
  */
 private class StreamTerminated(val result: TurnResult) : Exception()
+
+// 非 2xx 错误 body 进 LLMError.message 的最大字符数（UI 详情，非完整响应）
+private const val MAX_ERROR_BODY_CHARS = 2000

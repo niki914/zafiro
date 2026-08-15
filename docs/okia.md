@@ -475,3 +475,13 @@ com.niki914.okia/
 6. **事件与状态投影同步（§5.4 落地）**：门面内部事件处理器同步做三件事——更新 live（StateFlow 投影）/ 转发调用方 onEvent / 发射 events SharedFlow。onCommit 原子做 appendAll + 清 live + 重新投影（一次 StateFlow 发射）。事件流 replay=0 + extraBufferCapacity=64（一次性事件，订阅晚不补发）。
 7. **open 工厂状态**：`open(dependencies)` 已实现（测试注入点）；`open(protocol)` / `open(builder)` 留 T4/T8（依赖 M0 DeepSeek 默认协议与默认 McpClient / HttpEngine）。`ProtocolCompatMapper.from` 委托壳随 open(protocol) 一起在 T4 落地。
 8. **默认资源占位**：`EmptyToolRegistry`（internal）为 config 未提供 registry 时的默认空实现；默认 HttpEngine 未实现，send 时 config.httpEngine 为空抛 IllegalStateException（明确失败，T8 落地）。
+
+### 8.12 第三轮实现落地（T3 传输层 SSE，2026-08-16）
+
+T3 实现期契约回写（调研参照：openai/codex `codex-rs`——`eventsource_stream` / `sse_stream` crate、transport 层非 2xx 拦截、`api_bridge.rs` 错误分类；pi 三份自写解析器潦草、无 content-type 校验，不作为范本）。实现细节的决策记录在 Progress.md D16-D20。
+
+1. **StreamResponse sealed 化**：`data class` 三可空字段（statusCode / lines / errorBody）收敛为 `sealed interface` 两态——`Ok(statusCode: Int, headers, lines: Flow<SseLine>)`（2xx，SSE 解析入口）与 `Error(statusCode: Int, headers, body: String)`（非 2xx，body 全文文本）。statusCode 收窄为非空 Int；**传输失败（连接 / 超时）不在此表达**：`HttpEngine.stream` 是 suspend，网络错误抛异常（Kotlin 取消语义，与 codex transport 层同构），骨架"status 可空"的保守设计收窄。错误 body 通道由此闭合：非 2xx 时 HttpEngine 预读 body 文本进 `Error.body`（T8 默认实现保证），loop 不再需要从行流拼回错误文本。
+2. **新增 `SseLineParser`**（transport 层公共类型）：`Flow<String>`（任意分块 UTF-8 字符串流）→ `Flow<SseLine>`。处理 `\n` / `\r\n` / `\r` 三种分隔符（含跨块 `\r\n`）、EOF 无换行 flush、流首 BOM 移除。行分类：注释行（`: 开头`）→ `SseLine(null)`，空行 → `SseLine("")`，其他 → `SseLine(原文)`。null / 空行保留在流中（§5.8 idle 检测的到达证据，不丢弃）。状态在 flow 构建器内创建，冷流无泄漏。
+3. **新增 `SseEvent` + `SseEventParser`**（transport 层公共类型）：`Flow<SseLine>` → `Flow<SseEvent(data: String, event: String?)>`。严格 W3C 标准：空行 = 事件边界（dispatch）、data 字段多行用 `\n` 拼接、流结束时 data 缓冲非空的事件照常 dispatch（EOF flush）、data 缓冲为空字符串的事件丢弃。**event 字段透出**（MCP 等协议用 `event:` 过滤非 message 事件，codex rmcp-client 实证 `event: message` + `data: JSON-RPC`）；id / retry 为重连机制字段，LLM 与 MCP 均不使用，忽略。决策依据：Codex 内部因 data-only 聚合器（`codex-client/src/sse.rs`）服务不了 MCP，rmcp-client 被迫另用 `sse_stream` crate 重写——OKIA 一个聚合器服务模型流与 MCP 两端，避免重复。
+4. **loop 前置校验（RealAgentLoop，T2 代码改动）**：响应按 sealed 分支——`Error` 直接 `Failed(LLMError)`，**不进 parseStream**（风控 HTML / JSON 错误不会被当 SSE 解析）；`Ok` 分支做 content-type 黑名单：`text/html`（忽略大小写，值前缀匹配）→ `Failed(Parse)`，其他（含缺失、`text/event-stream`、`application/json`）放行。content-type 检查是快速失败优化，正确性兜底仍是"流结束无 Completed → Parse 错误"（§8.11 #4 前的既有兜底）。
+5. **非 2xx 错误码映射**：429 → `RateLimit`、401 / 403 → `Auth`、5xx → `Overloaded`、其他 → `Transport`。`Error.body` 截断 2000 字符进 `LLMError.message`（UI 详情非完整响应；错误文案仍由 host 按 code 映射，§8.8 #3 不变）。

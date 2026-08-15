@@ -52,7 +52,13 @@ class FakeProtocolMapper(private val events: Flow<ProtocolEvent>) : ProtocolComp
     override suspend fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message =
         Message.ToolResult(call.id, call.name, outcome)
 
-    override fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent> = events
+    override fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent> {
+        parseStreamCalls++
+        return events
+    }
+
+    // parseStream 被调用的次数（T3 前置校验断言：非 2xx / HTML 不进入解析）
+    var parseStreamCalls = 0
 
     override fun useApiKey(apiKey: String): Map<String, String> =
         if (apiKey.isEmpty()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
@@ -63,7 +69,7 @@ class FakeProtocolMapper(private val events: Flow<ProtocolEvent>) : ProtocolComp
 /** 传输 fake：默认 200 + 空行流；可注入 streamError / 自定义响应。 */
 class FakeHttpEngine : HttpEngine {
     var streamError: Throwable? = null
-    var streamResult: () -> StreamResponse = { StreamResponse(200, emptyMap(), emptyFlow()) }
+    var streamResult: () -> StreamResponse = { StreamResponse.Ok(200, emptyMap(), emptyFlow()) }
     val streamedRequests = mutableListOf<HttpRequest>()
 
     override suspend fun stream(request: HttpRequest): StreamResponse {
