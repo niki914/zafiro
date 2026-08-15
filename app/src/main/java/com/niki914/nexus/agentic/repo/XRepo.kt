@@ -620,8 +620,21 @@ class ExecutionRulesApi internal constructor(
 class TakeoverRulesApi internal constructor(
     private val repo: XRepo,
 ) {
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_TakeoverRules"
+    }
+
     suspend fun list(): List<TakeoverRule> {
-        return RuleSettingsCodec.parseTakeoverRules(repo.readJson(StoreDescriptorRegistry.RULES_TAKEOVER_ID))
+        val startedAtMs = System.currentTimeMillis()
+        return RuleSettingsCodec.parseTakeoverRules(
+            repo.readJson(StoreDescriptorRegistry.RULES_TAKEOVER_ID)
+        ).also { rules ->
+            Logger.d(
+                LOG_TAG,
+                "list count=${rules.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
     }
 
     suspend fun get(id: String): TakeoverRule? {
@@ -629,9 +642,15 @@ class TakeoverRulesApi internal constructor(
     }
 
     suspend fun getDefaultTarget(): RuntimeTakeoverTarget {
+        val startedAtMs = System.currentTimeMillis()
         return RuleSettingsCodec.parseTakeoverSettings(
             repo.readJson(StoreDescriptorRegistry.RULES_TAKEOVER_ID)
-        ).defaultTarget
+        ).defaultTarget.also { target ->
+            Logger.d(
+                LOG_TAG,
+                "default target=$target elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
     }
 
     suspend fun setDefaultTarget(target: RuntimeTakeoverTarget) {

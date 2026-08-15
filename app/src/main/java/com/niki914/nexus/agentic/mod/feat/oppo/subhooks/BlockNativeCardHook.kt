@@ -39,6 +39,7 @@ class BlockNativeCardHook(
                 ?: return
         val typeAnswer = BreenoConfigProvider.CaptureResponseTarget.chatTypeAnswer
         if (chatType != typeAnswer) {
+            Logger.d(LOG_TAG, "native card pass host=breeno source=$name reason=not_answer chatType=$chatType")
             return
         }
 
@@ -46,7 +47,10 @@ class BlockNativeCardHook(
             BreenoConfigProvider.CaptureResponseTarget.beanGetClientLocalDataMethod,
             selfInjectedFlagKey
         ) != null
-        if (isSelfInjected) return
+        if (isSelfInjected) {
+            Logger.d(LOG_TAG, "native card pass host=breeno source=$name reason=self_injected")
+            return
+        }
 
         val activeTurn = ActiveTurnStore.getCurrent()
         when (activeTurn?.mode) {
@@ -55,7 +59,9 @@ class BlockNativeCardHook(
                 Logger.i(LOG_TAG, "native response blocked host=breeno source=$name reason=answer_card_blocked")
             }
 
-            TurnMode.NativeTakeover, null -> Unit
+            TurnMode.NativeTakeover, null -> {
+                Logger.d(LOG_TAG, "native card pass host=breeno source=$name reason=takeover_${activeTurn?.mode}")
+            }
         }
     }
 }

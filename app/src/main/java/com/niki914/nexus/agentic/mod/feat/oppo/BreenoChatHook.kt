@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.mod.feat.oppo
 
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.ActiveTurnStore
 import com.niki914.nexus.agentic.chat.ConversationTurnState
 import com.niki914.nexus.agentic.chat.TurnMode
@@ -23,6 +24,10 @@ class BreenoChatHook(
 ) : AbstractAssistantHook(scope, textSource) {
 
     override val name: String = "BreenoChatHook"
+
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_BreenoChatHook"
+    }
 
     private var dataCenterInstance: Any? = null
     private var viewBeanClass: Class<*>? = null
@@ -94,14 +99,24 @@ class BreenoChatHook(
         isFirst: Boolean,
         isFinal: Boolean
     ) {
+        val startedAtMs = System.currentTimeMillis()
+        Logger.d(
+            LOG_TAG,
+            "render entry turnId=$turnId roomId=$roomId " +
+                "chunkLength=${chunk.length} isFirst=$isFirst isFinal=$isFinal"
+        )
         if (!ActiveTurnStore.isActiveInjection(turnId)) {
+            Logger.d(LOG_TAG, "render skipped inactive turnId=$turnId")
             if (isFinal) {
                 clearRenderSession(turnId)
             }
             return
         }
 
-        val beanClass = viewBeanClass ?: return
+        val beanClass = viewBeanClass ?: run {
+            Logger.w(LOG_TAG, "render skipped viewBeanClass not resolved")
+            return
+        }
         val dataCenterInsertMessageMethod =
             BreenoConfigProvider.RenderCard.dataCenterInsertMessageMethod
         val dataCenterUpdateMessageMethod =
@@ -124,6 +139,14 @@ class BreenoChatHook(
 
         val renderSession = obtainRenderSession(turnId, roomId)
         if (isFirst || renderSession.bean == null) {
+            if (isFirst) {
+                Logger.i(
+                    LOG_TAG,
+                    "first frame turnId=$turnId " +
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                        "chunkLength=${chunk.length}"
+                )
+            }
             val bean = beanClass.newInstance()
             bean.call<Unit>(setChatTypeMethod, typeAnswer)
             bean.call<Unit>(setRoomIdMethod, roomId)
@@ -155,6 +178,12 @@ class BreenoChatHook(
         }
 
         if (isFinal) {
+            Logger.i(
+                LOG_TAG,
+                "render finalized turnId=$turnId " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                    "chunkLength=${chunk.length}"
+            )
             mockBeanLocalDataUnit.firstOrNull { (key, _) -> key == hideFeedbackViewLocalDataKey }
                 ?.let {
                     val bool = (it.second as? Boolean) ?: true
@@ -167,23 +196,32 @@ class BreenoChatHook(
 
     private suspend fun obtainRenderSession(turnId: Long, roomId: String): BreenoRenderSession =
         renderSessionMutex.withLock {
-            currentRenderSession?.takeIf { it.turnId == turnId } ?: BreenoRenderSession(
+            currentRenderSession?.takeIf { it.turnId == turnId }?.also {
+                Logger.d(LOG_TAG, "render session reused turnId=$turnId")
+            } ?: BreenoRenderSession(
                 turnId = turnId,
                 recordId = "mock_record_${roomId}_${turnId}"
-            ).also { currentRenderSession = it }
+            ).also {
+                currentRenderSession = it
+                Logger.d(LOG_TAG, "render session created turnId=$turnId recordId=${it.recordId}")
+            }
         }
 
     private suspend fun clearRenderSession(turnId: Long) {
         renderSessionMutex.withLock {
             if (currentRenderSession?.turnId == turnId) {
                 currentRenderSession = null
+                Logger.d(LOG_TAG, "render session cleared turnId=$turnId")
             }
         }
     }
 
     private suspend fun clearRenderSession() {
         renderSessionMutex.withLock {
-            currentRenderSession = null
+            if (currentRenderSession != null) {
+                currentRenderSession = null
+                Logger.d(LOG_TAG, "render session cleared all")
+            }
         }
     }
 }

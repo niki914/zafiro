@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.chat.agentic
 
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.LocalTool
 import com.niki914.nexus.agentic.chat.McpCachedTool
 import com.niki914.nexus.agentic.chat.McpServerDefinition
@@ -18,6 +19,10 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpToo
 class ToolManager(
     private val builtinToolRegistry: BuiltinToolRegistry = BuiltinToolRegistry.default(),
 ) {
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_ToolManager"
+    }
+
     fun resolve(
         customTools: List<CustomTool>,
         mcpServers: List<McpServer>,
@@ -29,6 +34,14 @@ class ToolManager(
         val mcpRuntimeServers = buildMcpServers(
             servers = mcpServers,
             cachedTools = mcpCachedTools,
+        )
+
+        Logger.d(
+            LOG_TAG,
+            "tools resolve builtin=${builtinTools.size} custom=${customRuntimeTools.size} " +
+                "mcp=${mcpRuntimeServers.size} " +
+                "input builtinSettings=${builtinSettings.size} customTools=${customTools.size} " +
+                "mcpServers=${mcpServers.size} cachedTools=${mcpCachedTools.values.sumOf { it.size }}"
         )
 
         return ResolvedTools(

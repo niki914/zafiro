@@ -95,6 +95,11 @@ abstract class AbstractAssistantHook(
     protected open suspend fun resolveTakeover(query: String): TakeoverDecision {
         val rules = XRepo.takeoverRules.list()
         val defaultTarget = XRepo.takeoverRules.getDefaultTarget()
+        Logger.d(
+            LOG_TAG,
+            "resolve takeover rules=${rules.size} defaultTarget=$defaultTarget " +
+                "queryLength=${query.length}"
+        )
         return TakeoverResolver.resolve(query, rules, defaultTarget)
     }
 

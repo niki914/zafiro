@@ -23,19 +23,26 @@ class BlockNativeInstructionByWhitelistHook : SubHook() {
     override fun beforeHook(param: XC_MethodHook.MethodHookParam) {
         val instruction = param.args.firstOrNull() ?: return
         if (instruction.getTag<Boolean>(injectedFlagKey()) == true) {
+            Logger.d(LOG_TAG, "native instruction pass host=xiaoai source=$name reason=self_injected")
             return
         }
 
         val activeTurn = ActiveTurnStore.getCurrent()
         when (activeTurn?.mode) {
             TurnMode.InjectedLLM -> Unit
-            TurnMode.NativeTakeover, null -> return
+            TurnMode.NativeTakeover, null -> {
+                Logger.d(LOG_TAG, "native instruction pass host=xiaoai source=$name reason=takeover_${activeTurn?.mode}")
+                return
+            }
         }
 
         val config = XiaoaiConfigProvider.BlockNativeInstructionWhitelist
         val fullName = instruction.call<String>(config.instructionFullNameGetter)
         val allowedFullNames = config.allowedInstructionFullNames
-        if (fullName != null && fullName in allowedFullNames) return
+        if (fullName != null && fullName in allowedFullNames) {
+            Logger.d(LOG_TAG, "native instruction pass host=xiaoai source=$name reason=whitelisted fullName=$fullName")
+            return
+        }
 
         param.result = null
         Logger.i(LOG_TAG, "native response blocked host=xiaoai source=$name kind=instruction reason=instruction_blocked")

@@ -26,7 +26,9 @@ class BlockNativeTtsPlaybackHook : SubHook() {
                 Logger.i(LOG_TAG, "native response blocked host=xiaoai source=$name kind=tts reason=tts_blocked")
             }
 
-            TurnMode.NativeTakeover, null -> Unit
+            TurnMode.NativeTakeover, null -> {
+                Logger.d(LOG_TAG, "native tts pass host=xiaoai source=$name reason=takeover_${activeTurn?.mode}")
+            }
         }
     }
 }

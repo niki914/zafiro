@@ -29,11 +29,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
 class TerminalBuiltinTest {
+
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
+
     @After
     fun tearDown() {
         runBlocking {

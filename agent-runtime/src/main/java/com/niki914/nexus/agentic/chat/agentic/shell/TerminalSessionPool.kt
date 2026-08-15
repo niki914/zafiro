@@ -12,6 +12,7 @@ import com.niki914.libterm.runtime.LibTermRuntime
 import com.niki914.libterm.runtime.LibTermSession
 import com.niki914.libterm.runtime.TermResult
 import com.niki914.libterm.runtime.TerminalTextChunk
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stdoutText
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stderrText
 import com.niki914.nexus.xposed.api.util.ContextProvider
@@ -28,6 +29,7 @@ import java.util.UUID
 import kotlin.random.Random
 
 object TerminalSessionPool {
+    private const val LOG_TAG = "niki914_nexus_TerminalSessionPool"
     private const val CUSTOM_TOOL_SESSION = "__custom_user"
     private const val SSH_PUBLIC_IDENTITY = "ssh"
     private const val PUBLIC_HANDLE_LENGTH = 4
@@ -211,6 +213,10 @@ object TerminalSessionPool {
                 if (!reuseExisting) {
                     return TerminalOpenOutcome.InvalidRequest(GENERATED_HANDLE_COLLISION_MESSAGE)
                 }
+                Logger.d(
+                    LOG_TAG,
+                    "session reused handle=${existing.handle} identity=${existing.identity}"
+                )
                 return TerminalOpenOutcome.Success(
                     session = existing.handle,
                     identity = existing.identity,
@@ -256,6 +262,12 @@ object TerminalSessionPool {
                     if (collectOutput) {
                         startInteractiveCollector(entry = entry, holder = holder)
                     }
+                    Logger.i(
+                        LOG_TAG,
+                        "session opened handle=${entry.handle} identity=${entry.identity} " +
+                            "libTermSessionId=${entry.libTermSessionId} " +
+                            "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                    )
                     TerminalOpenOutcome.Success(
                         session = entry.handle,
                         identity = entry.identity,
@@ -263,10 +275,17 @@ object TerminalSessionPool {
                 }
             }
 
-            is OpenResult.Failure -> TerminalOpenOutcome.Failure(
-                failure = result.failure,
-                elapsedSeconds = elapsedSeconds(startTimeMs),
-            )
+            is OpenResult.Failure -> {
+                Logger.w(
+                    LOG_TAG,
+                    "session open failed identity=$publicIdentity failure=${result.failure} " +
+                        "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                )
+                TerminalOpenOutcome.Failure(
+                    failure = result.failure,
+                    elapsedSeconds = elapsedSeconds(startTimeMs),
+                )
+            }
         }
     }
 
@@ -390,16 +409,26 @@ object TerminalSessionPool {
             entry to executeLock
         }
         if (!executeLock.tryLock()) {
+            Logger.d(LOG_TAG, "command busy session=$session")
             return TerminalCommandOutcome.Busy(
                 session = session,
                 asyncId = currentAsyncId(session),
             )
         }
 
+        Logger.i(
+            LOG_TAG,
+            "command start session=$session commandLength=${command.length} timeoutMs=$timeoutMs"
+        )
         return try {
             when (val result = entry.session.exec(command = command, timeoutMillis = timeoutMs)) {
                 is TermResult.Success -> {
                     if (result.value.timedOut) {
+                        Logger.i(
+                            LOG_TAG,
+                            "command timed out session=$session " +
+                                "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                        )
                         TerminalCommandOutcome.Timeout(
                             session = entry.handle,
                             identity = entry.identity,
@@ -407,6 +436,11 @@ object TerminalSessionPool {
                             elapsedSeconds = elapsedSeconds(startTimeMs),
                         )
                     } else {
+                        Logger.i(
+                            LOG_TAG,
+                            "command done session=$session exitCode=${result.value.exitCode} " +
+                                "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                        )
                         TerminalCommandOutcome.Success(
                             session = entry.handle,
                             identity = entry.identity,
@@ -416,16 +450,29 @@ object TerminalSessionPool {
                     }
                 }
 
-                is TermResult.Failure -> TerminalCommandOutcome.Failure(
-                    session = entry.handle,
-                    identity = entry.identity,
-                    failure = result.failure,
-                    elapsedSeconds = elapsedSeconds(startTimeMs),
-                )
+                is TermResult.Failure -> {
+                    Logger.w(
+                        LOG_TAG,
+                        "command failed session=$session failure=${result.failure} " +
+                            "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                    )
+                    TerminalCommandOutcome.Failure(
+                        session = entry.handle,
+                        identity = entry.identity,
+                        failure = result.failure,
+                        elapsedSeconds = elapsedSeconds(startTimeMs),
+                    )
+                }
             }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
+            Logger.w(
+                LOG_TAG,
+                "command unexpected error session=$session " +
+                    "errorType=${error::class.simpleName} message=${error.message} " +
+                    "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+            )
             TerminalCommandOutcome.UnexpectedError(
                 session = entry.handle,
                 throwable = error,
@@ -453,11 +500,17 @@ object TerminalSessionPool {
             Triple(entry, executeLock, holder)
         }
         if (!executeLock.tryLock()) {
+            Logger.d(LOG_TAG, "async busy session=$session")
             return TerminalAsyncStartOutcome.Busy(
                 session = session,
                 asyncId = currentAsyncId(session),
             )
         }
+
+        Logger.i(
+            LOG_TAG,
+            "async start session=$session commandLength=${command.length} timeoutMs=$timeoutMs"
+        )
 
         val asyncId = UUID.randomUUID().toString()
         val stdoutPartial = StringBuilder()
@@ -520,6 +573,7 @@ object TerminalSessionPool {
         }
         execJob.start()
 
+        Logger.d(LOG_TAG, "async accepted session=$session asyncId=$asyncId")
         return TerminalAsyncStartOutcome.Accepted(
             asyncId = asyncId,
             elapsedSeconds = elapsedSeconds(startTimeMs),
@@ -632,10 +686,16 @@ object TerminalSessionPool {
         val entry = removed.entry ?: return TerminalCloseOutcome.Closed
         return try {
             entry.session.close()
+            Logger.d(LOG_TAG, "session closed handle=$session")
             TerminalCloseOutcome.Closed
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
+            Logger.w(
+                LOG_TAG,
+                "session close failed handle=$session errorType=${error::class.simpleName} " +
+                    "message=${error.message}"
+            )
             TerminalCloseOutcome.UnexpectedError(error)
         }
     }
@@ -669,9 +729,15 @@ object TerminalSessionPool {
             runCatching { holder.runtime.closeAll() }.getOrDefault(0)
         } ?: 0
         removed.holder?.scopeJob?.cancel()
-        return TerminalCloseAllOutcome(
+        val outcome = TerminalCloseAllOutcome(
             closedCount = maxOf(removed.sessionCount, runtimeClosedCount),
         )
+        Logger.i(
+            LOG_TAG,
+            "close all sessions closedCount=${outcome.closedCount} " +
+                "sessionCount=${removed.sessionCount} runtimeClosed=$runtimeClosedCount"
+        )
+        return outcome
     }
 
     internal fun installHandleGeneratorForTest(generator: () -> String): AutoCloseable {

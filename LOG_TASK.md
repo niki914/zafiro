@@ -37,7 +37,7 @@
 
 - [x] 梳理代码结构，定位新日志系统与旧日志残留
 - [x] 按业务域梳理关键业务埋点函数，产出 `LOG.md` 草稿
-- [ ] **等待用户审阅/增删 `LOG.md`**（当前卡点）
-- [ ] 按定稿 `LOG.md` 统一旧日志（`xlog/xtlog`、`Log.e`、`XEvent.emit`）
-- [ ] 按定稿 `LOG.md` 为关键业务补埋点
-- [ ] 自测/验证日志输出（debug 构建 + release 关键链路）
+- [x] 用户审阅/增删 `LOG.md`（定稿：注释英语、TAG 格式 `niki914_nexus_XXX`、XEvent 改整体移除）
+- [x] 按定稿 `LOG.md` 统一旧日志（`xlog/xtlog`、`Log.e`、XEvent 整包移除）
+- [x] 按定稿 `LOG.md` 为关键业务补埋点（Chunk 1-6 全部完成，见 `Progress.md` 检查点 #3-#8）
+- [x] 自测/验证日志输出（全模块编译 + 554 单测全绿：agent-runtime 319 / app 216 / store 19）

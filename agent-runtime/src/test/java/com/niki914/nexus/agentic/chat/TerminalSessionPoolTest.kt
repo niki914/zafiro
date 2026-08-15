@@ -23,9 +23,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
 
 class TerminalSessionPoolTest {
+
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
+
     @After
     fun tearDown() {
         runTest {

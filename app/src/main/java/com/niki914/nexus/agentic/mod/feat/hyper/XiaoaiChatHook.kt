@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.mod.feat.hyper
 
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.ActiveTurnStore
 import com.niki914.nexus.agentic.mod.feat.AbstractAssistantHook
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.BlockNativeInstructionByWhitelistHook
@@ -17,6 +18,10 @@ class XiaoaiChatHook(
     textSource: AssistantTextSource,
 ) : AbstractAssistantHook(scope, textSource) {
     override val name: String = "XiaoaiChatHook"
+
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_XiaoaiChatHook"
+    }
 
     private var renderTextStreamCardHook: RenderTextStreamCardHook? = null
 
@@ -65,15 +70,47 @@ class XiaoaiChatHook(
 
     // 覆盖基类：渲染前需等待宿主 UI 卡片就绪（TODO 死等风险：若 Hook 永不触发则挂死）
     override suspend fun dispatchQueryToLLM(turnId: Long, roomId: String, query: String) {
+        val startedAtMs = System.currentTimeMillis()
+        var firstFrameLogged = false
         targetReady.cancel()
         targetReady = CompletableDeferred()
+        Logger.i(
+            LOG_TAG,
+            "dispatch start turnId=$turnId roomId=$roomId queryLength=${query.length}"
+        )
 
         try {
             textSource.submit(query).collect { frame ->
+                if (!firstFrameLogged) {
+                    firstFrameLogged = true
+                    Logger.i(
+                        LOG_TAG,
+                        "dispatch first frame turnId=$turnId " +
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    )
+                }
+                if (frame.isFinal) {
+                    Logger.i(
+                        LOG_TAG,
+                        "dispatch final frame turnId=$turnId " +
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                            "textLength=${frame.text.length}"
+                    )
+                }
                 targetReady.await()
                 renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
             }
+            Logger.i(
+                LOG_TAG,
+                "dispatch completed turnId=$turnId " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
         } catch (e: Exception) {
+            Logger.e(
+                LOG_TAG,
+                "dispatch failed turnId=$turnId errorType=${e::class.simpleName} " +
+                    "message=${e.message} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
             targetReady.await()
             renderStreamCard(
                 turnId, roomId,
@@ -91,9 +128,15 @@ class XiaoaiChatHook(
         isFinal: Boolean
     ) {
         if (!ActiveTurnStore.isActiveInjection(turnId)) {
+            Logger.d(LOG_TAG, "render skipped inactive turnId=$turnId")
             return
         }
 
+        Logger.d(
+            LOG_TAG,
+            "render turnId=$turnId roomId=$roomId chunkLength=${chunk.length} " +
+                "isFirst=$isFirst isFinal=$isFinal"
+        )
         renderTextStreamCardHook?.render(
             turnId = turnId,
             dialogId = roomId,

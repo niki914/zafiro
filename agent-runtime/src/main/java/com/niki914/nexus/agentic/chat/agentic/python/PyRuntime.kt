@@ -7,6 +7,7 @@ import android.content.ServiceConnection
 import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.RemoteException
+import com.niki914.logging.Logger
 import com.niki914.nexus.xposed.api.util.ContextProvider
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
@@ -47,6 +48,8 @@ class PythonWorkerUnavailableException :
  * stays blocked until the worker process dies.
  */
 object PyRuntime {
+
+    private const val LOG_TAG = "niki914_nexus_PyRuntime"
 
     // 锁死检测的 ping 窗口：与 worker 的 30s 初始化上限对齐，覆盖慢设备冷启动
     // （Python.start 首次可达数十秒）。ping 只是预检优化——真正的锁死由 exec
@@ -140,8 +143,26 @@ object PyRuntime {
     suspend fun exec(code: String, timeoutMs: Long): String {
         pythonUsed = true
         activeExecCount.incrementAndGet()
+        val startedAtMs = System.currentTimeMillis()
+        Logger.i(LOG_TAG, "python exec start codeLength=${code.length} timeoutMs=$timeoutMs")
         try {
-            return execInternal(code, timeoutMs)
+            return execInternal(code, timeoutMs).also { result ->
+                Logger.i(
+                    LOG_TAG,
+                    "python exec done codeLength=${code.length} resultLength=${result.length} " +
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                )
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Logger.w(
+                LOG_TAG,
+                "python exec failed codeLength=${code.length} " +
+                    "errorType=${error::class.simpleName} message=${error.message} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+            throw error
         } finally {
             activeExecCount.decrementAndGet()
         }
@@ -166,6 +187,7 @@ object PyRuntime {
     suspend fun kill() {
         if (!pythonUsed) return
         pythonUsed = false
+        Logger.i(LOG_TAG, "python worker kill activeExecCount=${activeExecCount.get()}")
         val target = testService ?: service
         service = null
         if (target == null) {
@@ -257,6 +279,7 @@ object PyRuntime {
     }
 
     private suspend fun killAndReconnect() {
+        Logger.w(LOG_TAG, "python worker kill & reconnect")
         // 注意：不重置 pythonUsed。重连后的在途 exec 仍是本次周期内的 Python 工具，
         // 终止键必须能杀掉它（P1：健康检查失败后的重连不能关闭终止保护）。
         val target = testService ?: service
@@ -291,6 +314,7 @@ object PyRuntime {
                     } catch (_: Throwable) {
                     }
                 }
+                Logger.w(LOG_TAG, "python worker terminated during reconnect")
                 throw CancellationException("Python worker terminated during reconnect")
             }
         }
