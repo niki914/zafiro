@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.base.ComposeMVIViewModel
@@ -165,8 +166,14 @@ class CustomToolSettingsViewModel :
 
     private suspend fun load() {
         updateState { copy(isLoading = true) }
+        val startedAtMs = System.currentTimeMillis()
         try {
             val loadedItems = XRepo.customTools.list().map { it.toItem() }
+            Logger.d(
+                LOG_TAG,
+                "load tools=${loadedItems.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
             updateState {
                 copy(
                     items = loadedItems,
@@ -176,6 +183,7 @@ class CustomToolSettingsViewModel :
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState {
                 copy(
                     isLoading = false,
@@ -236,12 +244,17 @@ class CustomToolSettingsViewModel :
         }
         try {
             XRepo.customTools.setEnabled(currentItem.name, enabled)
+            Logger.i(LOG_TAG, "toggleItemEnabled tool=${currentItem.name} enabled=$enabled")
             updateState {
                 copy(isSaving = false)
             }
             notifySettingsChanged()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(
+                LOG_TAG,
+                "toggleItemEnabled failed tool=${currentItem.name} reason=${throwable.message}"
+            )
             updateState {
                 copy(
                     items = previousItems,
@@ -301,9 +314,15 @@ class CustomToolSettingsViewModel :
                 tool = nextTool,
             )
             if (validation != null) {
+                Logger.w(
+                    LOG_TAG,
+                    "save rejected tool=${nextTool.name} " +
+                        "validation=${validation.field}:${validation.message}"
+                )
                 handleValidationError(normalizedFormState, validation)
                 return
             }
+            Logger.i(LOG_TAG, "save succeeded tool=${nextTool.name}")
 
             val nextItem = nextTool.toItem()
             val updatedItems = buildUpdatedItems(normalizedFormState.editingIndex, nextItem)
@@ -326,6 +345,7 @@ class CustomToolSettingsViewModel :
             sendEffect(CustomToolSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "save failed reason=${throwable.message}")
             updateState {
                 copy(
                     isSaving = false,
@@ -364,6 +384,7 @@ class CustomToolSettingsViewModel :
                 index != editingIndex
             }
             XRepo.customTools.delete(currentItem.name)
+            Logger.i(LOG_TAG, "deleteCurrent succeeded tool=${currentItem.name}")
             updateState {
                 copy(
                     items = updatedItems,
@@ -376,6 +397,10 @@ class CustomToolSettingsViewModel :
             sendEffect(CustomToolSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(
+                LOG_TAG,
+                "deleteCurrent failed tool=${currentItem.name} reason=${throwable.message}"
+            )
             updateState {
                 copy(
                     isSaving = false,
@@ -448,6 +473,7 @@ class CustomToolSettingsViewModel :
     }
 
     private companion object {
+        private const val LOG_TAG = "niki914_nexus_CustomToolSettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }

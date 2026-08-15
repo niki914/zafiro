@@ -5,10 +5,16 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 import com.niki914.kai.ChatTurn
 import com.niki914.kai.ToolCallSpec
+import com.niki914.nexus.agentic.app.util.SilentLoggerRule
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 class ConversationFormatterTest {
+
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
 
     @Test
     fun toHomeTurns_restoresFailureFromTextProtocolResult() {

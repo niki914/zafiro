@@ -7,13 +7,18 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
 
 /**
  * 用 runBlocking（真实时间）而不是 runTest（虚拟时钟）：
  * 超时路径依赖 withTimeout 对真实阻塞线程的取消，虚拟时钟下时序不可控。
  */
 class PyRuntimeTest {
+
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
 
     private class FakeWorker : IPythonWorkerService {
         override fun asBinder(): IBinder = error("not used in tests")

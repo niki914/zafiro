@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.agentic.python.PyRuntime
 import com.niki914.nexus.agentic.app.conversation.ConversationRepo
 import com.niki914.nexus.agentic.repo.UpdateCheckHolder
@@ -22,6 +23,8 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // 日志 debug 门控：release 构建 DEBUG/VERBOSE 全停，仅 INFO+ 输出
+        Logger.setDebugProvider { BuildConfig.DEBUG }
         // `:python` worker 进程只需 PythonWorkerService，跳过主进程全部初始化
         //（否则 ContextProvider 从未 provide，PyRuntime.warmUp 会永远挂起）
         if (isPythonWorkerProcess()) return

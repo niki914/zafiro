@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.nexus.agentic.app.conversation.ConversationFormatter
 import com.niki914.nexus.agentic.app.conversation.ConversationRecord
 import com.niki914.nexus.agentic.app.conversation.ConversationRepo
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.nexus.agentic.chat.LlmErrorCode
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
@@ -227,7 +228,14 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun sendCurrentInput() {
         val query = currentState.input.trim()
-        if (query.isBlank() || currentState.isGenerating) return
+        if (query.isBlank() || currentState.isGenerating) {
+            Logger.d(
+                LOG_TAG,
+                "send skipped blank=${query.isBlank()} isGenerating=${currentState.isGenerating}"
+            )
+            return
+        }
+        Logger.i(LOG_TAG, "send requested queryLength=${query.length}")
 
         val turnId = nextTurnId++
         updateState {
@@ -246,9 +254,18 @@ class HomeChatViewModel internal constructor(
             try {
                 val conversationId = ensureCurrentConversation(query)
                 conversations.updateDraft(conversationId = conversationId, draftText = "")
+                Logger.i(
+                    LOG_TAG,
+                    "send turn started turnId=$turnId conversationId=$conversationId queryLength=${query.length}"
+                )
                 collectLlmStream(turnId = turnId, query = query)
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
+                Logger.e(
+                    LOG_TAG,
+                    "send turn failed turnId=$turnId errorType=${throwable::class.simpleName} " +
+                        "message=${throwable.message}"
+                )
                 throwable.message?.let { message ->
                     applyError(turnId = turnId, message = message, code = null)
                 }
@@ -275,6 +292,7 @@ class HomeChatViewModel internal constructor(
     }
 
     private fun startNewConversation() {
+        Logger.d(LOG_TAG, "start new conversation")
         streamJob?.cancel()
         streamJob = null
         draftSaveJob?.cancel()
@@ -283,9 +301,15 @@ class HomeChatViewModel internal constructor(
         nextTurnId = 0L
         updateState { HomeChatUiState() }
         viewModelScope.launch {
+            val startedAtMs = System.currentTimeMillis()
             try {
                 runtime.resetConversation()
                 conversations.setLastOpenedConversationId("")
+                Logger.i(
+                    LOG_TAG,
+                    "new conversation done " +
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                )
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
             }
@@ -332,10 +356,18 @@ class HomeChatViewModel internal constructor(
             }
 
             is LlmStreamEvent.Error -> {
+                Logger.e(
+                    LOG_TAG,
+                    "apply error turnId=$turnId code=${event.code} message=${event.message}"
+                )
                 applyError(turnId = turnId, message = event.message, code = event.code)
             }
 
             is LlmStreamEvent.Completed -> {
+                Logger.i(
+                    LOG_TAG,
+                    "apply completed turnId=$turnId fullTextLength=${event.fullText.length}"
+                )
                 updateTurn(turnId) {
                     it.appendFinalText(event.fullText)
                 }
@@ -348,12 +380,20 @@ class HomeChatViewModel internal constructor(
     private fun restoreLastConversationOnStartup() {
         if (startupRestoreAttempted) return
         startupRestoreAttempted = true
+        val startedAtMs = System.currentTimeMillis()
         updateState { copy(isLoadingConversation = true) }
         viewModelScope.launch {
             try {
                 val conversationId = conversations.lastOpenedConversationId()
-                if (conversationId.isBlank()) return@launch
-                val record = conversations.getConversation(conversationId) ?: return@launch
+                if (conversationId.isBlank()) {
+                    Logger.d(LOG_TAG, "restore skipped lastOpenedConversationBlank")
+                    return@launch
+                }
+                val record = conversations.getConversation(conversationId)
+                if (record == null) {
+                    Logger.w(LOG_TAG, "restore notFound id=$conversationId")
+                    return@launch
+                }
                 runtime.replaceHistory(record.history)
                 currentConversationId = conversationId
                 val restoredTurns = ConversationFormatter.toHomeTurns(record.history)
@@ -377,6 +417,11 @@ class HomeChatViewModel internal constructor(
                         expandedActionSource = null,
                     )
                 }
+                Logger.i(
+                    LOG_TAG,
+                    "restore done id=$conversationId turnCount=${restoredTurns.size} " +
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                )
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
             } finally {
@@ -429,13 +474,23 @@ class HomeChatViewModel internal constructor(
     }
 
     private suspend fun loadConversation(id: String) {
+        val startedAtMs = System.currentTimeMillis()
+        Logger.i(LOG_TAG, "load conversation id=$id started")
         streamJob?.cancel()
         streamJob = null
         draftSaveJob?.cancel()
         draftSaveJob = null
         updateState { copy(isLoadingConversation = true) }
         try {
-            val record = conversations.getConversation(id) ?: return
+            val record = conversations.getConversation(id)
+            if (record == null) {
+                Logger.w(
+                    LOG_TAG,
+                    "load conversation id=$id notFound " +
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                )
+                return
+            }
             runtime.replaceHistory(record.history)
             currentConversationId = id
             conversations.setLastOpenedConversationId(id)
@@ -460,6 +515,11 @@ class HomeChatViewModel internal constructor(
                     expandedActionSource = null,
                 )
             }
+            Logger.i(
+                LOG_TAG,
+                "load conversation done id=$id turnCount=${restoredTurns.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
         } finally {
             updateState { copy(isLoadingConversation = false) }
         }
@@ -494,6 +554,10 @@ class HomeChatViewModel internal constructor(
         val userTurn = history[userIndex] as? ChatTurn.User ?: return
         val userText = userTurn.content
         val newConvId = conversations.forkConversation(currentId, userIndex)
+        Logger.i(
+            LOG_TAG,
+            "regenerate fork sourceId=$currentId turnId=$turnId newId=$newConvId"
+        )
         loadConversation(newConvId)
         val newTurnId = nextTurnId++
         updateState {
@@ -532,12 +596,21 @@ class HomeChatViewModel internal constructor(
         val nextUserIndex = findNextUserIndex(history, userIndex + 1)
         val endIndex = if (nextUserIndex != null) nextUserIndex - 1 else history.lastIndex
         val newConvId = conversations.forkConversation(currentId, endIndex + 1)
+        Logger.i(
+            LOG_TAG,
+            "fork sourceId=$currentId turnId=$turnId endIndex=$endIndex newId=$newConvId"
+        )
         loadConversation(newConvId)
     }
 
     internal suspend fun deleteConversationNow(id: String) {
+        val startedAtMs = System.currentTimeMillis()
+        Logger.i(LOG_TAG, "delete conversation id=$id started")
         conversations.deleteConversation(id)
-        if (id != currentConversationId) return
+        if (id != currentConversationId) {
+            Logger.d(LOG_TAG, "delete conversation id=$id notCurrent skipped")
+            return
+        }
 
         streamJob?.cancel()
         streamJob = null
@@ -548,6 +621,11 @@ class HomeChatViewModel internal constructor(
         runtime.resetConversation()
         conversations.setLastOpenedConversationId("")
         updateState { HomeChatUiState() }
+        Logger.i(
+            LOG_TAG,
+            "delete conversation done id=$id " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
     }
 
     private suspend fun ensureCurrentConversation(firstUserInput: String): String {
@@ -555,6 +633,7 @@ class HomeChatViewModel internal constructor(
         return conversations.createConversation(firstUserInput).also { id ->
             currentConversationId = id
             conversations.setLastOpenedConversationId(id)
+            Logger.i(LOG_TAG, "conversation created id=$id")
             updateState {
                 copy(
                     currentConversationId = id,
@@ -687,5 +766,6 @@ class HomeChatViewModel internal constructor(
 
     companion object {
         internal const val FAILED_REASON_INTERRUPTED = "Interrupted by user"
+        private const val LOG_TAG = "niki914_nexus_HomeChatState"
     }
 }

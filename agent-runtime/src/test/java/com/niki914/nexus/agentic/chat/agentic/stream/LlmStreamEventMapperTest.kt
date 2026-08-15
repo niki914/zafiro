@@ -1,13 +1,18 @@
 package com.niki914.nexus.agentic.chat.agentic.stream
 
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
+import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
 import com.niki914.kai.KaiEvent
 import com.niki914.kai.ToolCallKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 class LlmStreamEventMapperTest {
+
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
 
     @Test
     fun `ToolSucceeded with failure envelope and whitelisted toolName returns ToolFailed`() {

@@ -1,10 +1,11 @@
 package com.niki914.nexus.xposed.runtime.util
 
-import com.niki914.nexus.xposed.api.util.xlog
-import com.niki914.nexus.xposed.api.xevent.XEvent
+import com.niki914.logging.Logger
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
+
+private const val LOG_TAG = "niki914_nexus_HookExtensions"
 
 
 fun XC_LoadPackage.LoadPackageParam.findClass(name: String): Class<*>? =
@@ -20,7 +21,11 @@ fun XC_LoadPackage.LoadPackageParam.hookMethod(
 ) {
     val hookName = "$className#$methodName"
     hookExtensionTry(this, hookName, onError) {
-        val clazz = findClass(className) ?: return@hookExtensionTry
+        val clazz = findClass(className)
+        if (clazz == null) {
+            Logger.w(LOG_TAG, "hookMethod class not found: $className")
+            return@hookExtensionTry
+        }
         val hookParams = arrayOf(*params, object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 hookExtensionTry(this@hookMethod, hookName, onError) { before(param) }
@@ -31,6 +36,7 @@ fun XC_LoadPackage.LoadPackageParam.hookMethod(
             }
         })
         XposedHelpers.findAndHookMethod(clazz, methodName, *hookParams)
+        Logger.d(LOG_TAG, "hookMethod registered: $hookName")
     }
 }
 
@@ -43,7 +49,11 @@ fun XC_LoadPackage.LoadPackageParam.hookConstructor(
 ) {
     val hookName = "$className#CONSTRUCTOR"
     hookExtensionTry(this, hookName, onError) {
-        val clazz = findClass(className) ?: return@hookExtensionTry
+        val clazz = findClass(className)
+        if (clazz == null) {
+            Logger.w(LOG_TAG, "hookConstructor class not found: $className")
+            return@hookExtensionTry
+        }
         val hookParams = arrayOf(*params, object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 hookExtensionTry(this@hookConstructor, hookName, onError) { before(param) }
@@ -54,6 +64,7 @@ fun XC_LoadPackage.LoadPackageParam.hookConstructor(
             }
         })
         XposedHelpers.findAndHookConstructor(clazz, *hookParams)
+        Logger.d(LOG_TAG, "hookConstructor registered: $hookName")
     }
 }
 
@@ -80,8 +91,7 @@ private fun <T> hookExtensionTry(
     onError: ((Throwable?) -> Unit)? = null,
     block: () -> T
 ): T? = runCatching(block).onFailure {
-    XEvent.hookFailed(name, it)
-    xlog("$name\n${it.stackTraceToString()}")
+    Logger.e(LOG_TAG, "$name\n${it.stackTraceToString()}")
     val className = name.substringBefore('#').substringAfter(':')
     if (className.isNotBlank()) lpparam?.inspectClass(className)
     onError?.invoke(it)

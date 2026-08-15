@@ -18,6 +18,7 @@ android {
 
 dependencies {
     implementation(project(":xposed-api"))
+    implementation(project(":libs:logging"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("com.google.android.material:material:1.12.0")
 

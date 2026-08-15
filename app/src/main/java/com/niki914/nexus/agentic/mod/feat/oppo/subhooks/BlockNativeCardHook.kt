@@ -1,15 +1,13 @@
 package com.niki914.nexus.agentic.mod.feat.oppo.subhooks
 
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.ActiveTurnStore
 import com.niki914.nexus.agentic.chat.TurnMode
 import com.niki914.nexus.agentic.mod.feat.HookTarget
 import com.niki914.nexus.agentic.mod.feat.SubHook
 import com.niki914.nexus.agentic.mod.feat.oppo.BreenoConfigProvider
-import com.niki914.nexus.xposed.api.xevent.XEvent
 import com.niki914.nexus.xposed.runtime.util.call
 import de.robv.android.xposed.XC_MethodHook
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 /**
  * 在 InjectedLLM 模式下拦截原生回答卡片，避免 Breeno 侧基于回答卡片的全量刷新注入被原生回答覆盖。
@@ -23,9 +21,12 @@ import kotlinx.coroutines.launch
  *   - 无状态 → 保守放行
  */
 class BlockNativeCardHook(
-    private val scope: CoroutineScope,
     private val selfInjectedFlagKey: String
 ) : SubHook() {
+
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_BlockNativeCard"
+    }
 
     override val hookTarget: HookTarget?
         get() = BreenoConfigProvider.CaptureResponseTarget.hookTarget
@@ -38,6 +39,7 @@ class BlockNativeCardHook(
                 ?: return
         val typeAnswer = BreenoConfigProvider.CaptureResponseTarget.chatTypeAnswer
         if (chatType != typeAnswer) {
+            Logger.d(LOG_TAG, "native card pass host=breeno source=$name reason=not_answer chatType=$chatType")
             return
         }
 
@@ -45,27 +47,21 @@ class BlockNativeCardHook(
             BreenoConfigProvider.CaptureResponseTarget.beanGetClientLocalDataMethod,
             selfInjectedFlagKey
         ) != null
-        if (isSelfInjected) return
+        if (isSelfInjected) {
+            Logger.d(LOG_TAG, "native card pass host=breeno source=$name reason=self_injected")
+            return
+        }
 
         val activeTurn = ActiveTurnStore.getCurrent()
         when (activeTurn?.mode) {
             TurnMode.InjectedLLM -> {
                 param.result = null
-                val eventContext = XEvent.snapshotContext()
-                scope.launch {
-                    XEvent.withContext(eventContext) {
-                        XEvent.nativeResponseBlocked(
-                            fields = mapOf(
-                                "host" to "breeno",
-                                "source" to name,
-                                "reason" to "answer_card_blocked"
-                            )
-                        )
-                    }
-                }
+                Logger.i(LOG_TAG, "native response blocked host=breeno source=$name reason=answer_card_blocked")
             }
 
-            TurnMode.NativeTakeover, null -> Unit
+            TurnMode.NativeTakeover, null -> {
+                Logger.d(LOG_TAG, "native card pass host=breeno source=$name reason=takeover_${activeTurn?.mode}")
+            }
         }
     }
 }

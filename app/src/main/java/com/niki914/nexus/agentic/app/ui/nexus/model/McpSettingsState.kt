@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.base.ComposeMVIViewModel
@@ -151,8 +152,14 @@ class McpSettingsViewModel :
 
     private suspend fun load() {
         updateState { copy(isLoading = true) }
+        val startedAtMs = System.currentTimeMillis()
         try {
             val loadedItems = XRepo.mcp.list().map { it.toItem() }
+            Logger.d(
+                LOG_TAG,
+                "load servers=${loadedItems.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
             updateState {
                 copy(
                     items = loadedItems,
@@ -162,6 +169,7 @@ class McpSettingsViewModel :
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState {
                 copy(
                     isLoading = false,
@@ -233,6 +241,7 @@ class McpSettingsViewModel :
         }
         try {
             XRepo.mcp.setEnabled(currentItem.name, enabled)
+            Logger.i(LOG_TAG, "toggleItemEnabled server=${currentItem.name} enabled=$enabled")
             updateState {
                 copy(
                     isSaving = false,
@@ -241,6 +250,7 @@ class McpSettingsViewModel :
             notifySettingsChanged()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "toggleItemEnabled failed server=${currentItem.name} reason=${throwable.message}")
             updateState {
                 copy(
                     items = previousItems,
@@ -277,6 +287,11 @@ class McpSettingsViewModel :
         }
         val headersErrorResId = (headersResult as? McpHeadersParseResult.Error)?.messageResId
         if (nameErrorResId != null || urlErrorResId != null || headersErrorResId != null) {
+            Logger.w(
+                LOG_TAG,
+                "save rejected nameError=${nameErrorResId != null} " +
+                    "urlError=${urlErrorResId != null} headersError=${headersErrorResId != null}"
+            )
             updateState {
                 copy(
                     formState = formState.copy(
@@ -335,6 +350,7 @@ class McpSettingsViewModel :
             } else {
                 XRepo.mcp.save(nextItem.toRepo())
             }
+            Logger.i(LOG_TAG, "save succeeded server=${nextItem.name}")
             updateState {
                 copy(
                     items = updatedItems,
@@ -355,6 +371,7 @@ class McpSettingsViewModel :
             sendEffect(McpSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "save failed reason=${throwable.message}")
             updateState {
                 copy(
                     isSaving = false,
@@ -392,6 +409,7 @@ class McpSettingsViewModel :
             val updatedItems =
                 currentState.items.filterIndexed { index, _ -> index != editingIndex }
             XRepo.mcp.delete(currentItem.name)
+            Logger.i(LOG_TAG, "deleteCurrent succeeded server=${currentItem.name}")
             updateState {
                 copy(
                     items = updatedItems,
@@ -404,6 +422,7 @@ class McpSettingsViewModel :
             sendEffect(McpSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "deleteCurrent failed server=${currentItem.name} reason=${throwable.message}")
             updateState {
                 copy(
                     isSaving = false,
@@ -421,6 +440,7 @@ class McpSettingsViewModel :
     }
 
     private companion object {
+        private const val LOG_TAG = "niki914_nexus_McpSettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }

@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.mod.feat
 
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.ActiveTurnStore
 import com.niki914.nexus.agentic.chat.ConversationTurnState
 import com.niki914.nexus.agentic.chat.TurnMode
@@ -8,8 +9,6 @@ import com.niki914.nexus.agentic.runtime.client.AssistantTextSource
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverTarget
 import com.niki914.nexus.agentic.takeover.TakeoverDecision
 import com.niki914.nexus.agentic.takeover.TakeoverResolver
-import com.niki914.nexus.xposed.api.xevent.XEvent
-import com.niki914.nexus.xposed.api.xevent.XEventContext
 import com.niki914.nexus.xposed.runtime.core.runtime.Hook
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +19,10 @@ abstract class AbstractAssistantHook(
     protected val textSource: AssistantTextSource,
 ) : Hook {
     protected open val floatResumeGraceWindowMs: Long = 1500L
+
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_AbstractAssistantHook"
+    }
 
     protected fun installFloatScreenDetachHooks(
         lpparam: XC_LoadPackage.LoadPackageParam,
@@ -37,14 +40,19 @@ abstract class AbstractAssistantHook(
     }
 
     final override fun onHook(lpparam: XC_LoadPackage.LoadPackageParam) {
+        Logger.i(LOG_TAG, "onHook start package=${lpparam.packageName}")
         onBeforeInstallHooks(lpparam)
+        Logger.i(LOG_TAG, "onHook onBeforeInstallHooks done")
         installSessionHooks(lpparam)
+        Logger.i(LOG_TAG, "onHook installSessionHooks done")
         installResponseHooks(lpparam)
+        Logger.i(LOG_TAG, "onHook installResponseHooks done")
         installInputHooks(lpparam) { roomId, query ->
             scope.launch {
                 handleCapturedQuery(roomId, query)
             }
         }
+        Logger.i(LOG_TAG, "onHook installInputHooks done")
     }
 
     protected open fun onBeforeInstallHooks(lpparam: XC_LoadPackage.LoadPackageParam) = Unit
@@ -60,40 +68,26 @@ abstract class AbstractAssistantHook(
             mode = turnMode
         )
         ActiveTurnStore.setCurrent(nextTurnState)
-        val takeoverFields = mapOf(
-            "mode" to nextTurnState.mode.eventName(),
-            "takeoverTarget" to takeoverDecision.target.name,
-            "matchedRuleId" to takeoverDecision.matchedRuleId.orEmpty(),
-            "matchedRuleName" to takeoverDecision.matchedRuleName.orEmpty(),
+        Logger.i(LOG_TAG, "input captured roomId=$roomId queryLength=${query.length}")
+        Logger.i(
+            LOG_TAG,
+            "turn decided mode=${nextTurnState.mode.eventName()} " +
+                "takeoverTarget=${takeoverDecision.target.name} " +
+                "matchedRuleId=${takeoverDecision.matchedRuleId.orEmpty()} " +
+                "matchedRuleName=${takeoverDecision.matchedRuleName.orEmpty()}"
         )
-        val eventContext = XEventContext(
-            roomId = roomId,
-            turnId = nextTurnState.turnId,
-            fields = takeoverFields
-        )
-        XEvent.setContext(eventContext)
-        XEvent.withContext(eventContext) {
-            onTurnStateChanged(nextTurnState)
-            XEvent.inputCaptured(
-                fields = mapOf("queryLength" to query.length)
-            )
-            XEvent.turnDecided(
-                fields = takeoverFields + mapOf(
-                    "queryLength" to query.length
-                )
-            )
+        onTurnStateChanged(nextTurnState)
 
-            if (nextTurnState.mode == TurnMode.NativeTakeover) {
-                textSource.cancel()
-                return@withContext
-            }
-
-            dispatchQueryToLLM(
-                turnId = nextTurnState.turnId,
-                roomId = roomId,
-                query = query
-            )
+        if (nextTurnState.mode == TurnMode.NativeTakeover) {
+            textSource.cancel()
+            return
         }
+
+        dispatchQueryToLLM(
+            turnId = nextTurnState.turnId,
+            roomId = roomId,
+            query = query
+        )
     }
 
     protected open suspend fun onTurnStateChanged(state: ConversationTurnState) = Unit
@@ -101,6 +95,11 @@ abstract class AbstractAssistantHook(
     protected open suspend fun resolveTakeover(query: String): TakeoverDecision {
         val rules = XRepo.takeoverRules.list()
         val defaultTarget = XRepo.takeoverRules.getDefaultTarget()
+        Logger.d(
+            LOG_TAG,
+            "resolve takeover rules=${rules.size} defaultTarget=$defaultTarget " +
+                "queryLength=${query.length}"
+        )
         return TakeoverResolver.resolve(query, rules, defaultTarget)
     }
 
@@ -112,7 +111,6 @@ abstract class AbstractAssistantHook(
     protected open suspend fun onSessionReset() {
         textSource.resetConversation()
         ActiveTurnStore.clear()
-        XEvent.clearContext()
     }
 
     protected abstract fun installSessionHooks(lpparam: XC_LoadPackage.LoadPackageParam)
@@ -126,19 +124,43 @@ abstract class AbstractAssistantHook(
 
     // 默认通过 textSource 提交查询并渲染；子类可覆盖以插入宿主特定的等待逻辑
     protected open suspend fun dispatchQueryToLLM(turnId: Long, roomId: String, query: String) {
-        val eventContext = XEvent.snapshotContext()
-        XEvent.withContext(eventContext) {
-            try {
-                textSource.submit(query).collect { frame ->
-                    renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
+        val startedAtMs = System.currentTimeMillis()
+        var firstFrameLogged = false
+        try {
+            textSource.submit(query).collect { frame ->
+                if (!firstFrameLogged) {
+                    firstFrameLogged = true
+                    Logger.i(
+                        LOG_TAG,
+                        "dispatch first frame turnId=$turnId " +
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    )
                 }
-            } catch (e: Exception) {
-                renderStreamCard(
-                    turnId, roomId,
-                    e.message ?: "Service unavailable",
-                    true, true,
-                )
+                if (frame.isFinal) {
+                    Logger.i(
+                        LOG_TAG,
+                        "dispatch final frame turnId=$turnId " +
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                            "textLength=${frame.text.length}"
+                    )
+                }
+                renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
             }
+            Logger.i(
+                LOG_TAG,
+                "dispatch completed turnId=$turnId elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        } catch (e: Exception) {
+            Logger.e(
+                LOG_TAG,
+                "dispatch failed turnId=$turnId errorType=${e::class.simpleName} " +
+                    "message=${e.message} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+            renderStreamCard(
+                turnId, roomId,
+                e.message ?: "Service unavailable",
+                true, true,
+            )
         }
     }
 

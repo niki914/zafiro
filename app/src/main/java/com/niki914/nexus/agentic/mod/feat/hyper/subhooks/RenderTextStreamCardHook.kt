@@ -1,9 +1,9 @@
 package com.niki914.nexus.agentic.mod.feat.hyper.subhooks
 
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.mod.feat.SubHook
 import com.niki914.nexus.agentic.mod.feat.hyper.XiaoaiConfigProvider
 import com.niki914.nexus.agentic.mod.feat.hyper.XiaoaiRenderSession
-import com.niki914.nexus.xposed.api.xevent.XEvent
 import com.niki914.nexus.xposed.runtime.util.call
 import com.niki914.nexus.xposed.runtime.util.setTag
 import kotlinx.coroutines.sync.Mutex
@@ -40,14 +40,8 @@ class RenderTextStreamCardHook : SubHook() {
             session.renderedText = chunk
             nextDelta
         }
-
         if (target == null) {
-            XEvent.renderTargetMissing(
-                fields = mapOf(
-                    "host" to "xiaoai",
-                    "source" to name
-                )
-            )
+            Logger.w(LOG_TAG, "render target missing host=xiaoai source=$name")
             if (isFinal) {
                 clearSession(turnId)
             }
@@ -57,13 +51,7 @@ class RenderTextStreamCardHook : SubHook() {
         if (delta.isNotEmpty()) {
             injectChunk(target, methodName, dialogId, delta)
             if (markFirstChunkReported(turnId, dialogId)) {
-                XEvent.renderFirstChunkInjected(
-                    fields = mapOf(
-                        "host" to "xiaoai",
-                        "source" to name,
-                        "textLength" to delta.length
-                    )
-                )
+                Logger.d(LOG_TAG, "first chunk injected host=xiaoai textLength=${delta.length}")
             }
         }
 
@@ -75,12 +63,7 @@ class RenderTextStreamCardHook : SubHook() {
                 text = XiaoaiConfigProvider.RenderTextStreamCard.finalChunkText
             )
             if (markFinalizedReported(turnId, dialogId)) {
-                XEvent.renderFinalized(
-                    fields = mapOf(
-                        "host" to "xiaoai",
-                        "source" to name
-                    )
-                )
+                Logger.d(LOG_TAG, "render finalized host=xiaoai source=$name")
             }
             clearSession(turnId)
         }
@@ -164,6 +147,7 @@ class RenderTextStreamCardHook : SubHook() {
         sessionLock.withLock {
             currentSession = null
         }
+        Logger.d(LOG_TAG, "render session reset")
     }
 
     private suspend fun clearSession(turnId: Long) {
@@ -199,6 +183,8 @@ class RenderTextStreamCardHook : SubHook() {
         }
 
     companion object {
+        private const val LOG_TAG = "niki914_nexus_RenderTextStreamCard"
+
         private val runtimePrimitiveTypes = mapOf(
             "boolean" to Boolean::class.javaPrimitiveType!!,
             "byte" to Byte::class.javaPrimitiveType!!,

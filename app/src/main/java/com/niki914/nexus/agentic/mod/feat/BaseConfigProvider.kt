@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.mod.feat
 
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.xposed.api.util.xTry
 import kotlinx.coroutines.runBlocking
@@ -15,6 +16,11 @@ import kotlinx.serialization.json.jsonPrimitive
  * 抽象的配置提供者基类，用于规范各个语音助手的配置包装器
  */
 abstract class BaseConfigProvider {
+
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_BaseConfigProvider"
+    }
+
     private fun getElement(path: String): JsonElement? = runBlocking {
         val config = XRepo.web.await().configOrNull()
         var current: JsonElement? = config?.get(path.substringBefore("."))
@@ -51,6 +57,10 @@ abstract class BaseConfigProvider {
         }
 
     protected fun <T : Any> T?.orThrowException(path: String): T {
-        return this ?: throw IllegalStateException("path not resolved : $path")
+        if (this == null) {
+            Logger.w(LOG_TAG, "config path not resolved: $path")
+            throw IllegalStateException("path not resolved : $path")
+        }
+        return this
     }
 }

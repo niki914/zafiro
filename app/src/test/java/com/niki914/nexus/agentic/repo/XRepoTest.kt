@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.repo
 
 import android.content.Context
 import android.content.ContextWrapper
+import com.niki914.nexus.agentic.app.util.SilentLoggerRule
 import com.niki914.nexus.store.StoreDescriptorRegistry
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -10,6 +11,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import com.niki914.nexus.agentic.runtime.settings.MemoryMutationResult
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomTool as CustomTool
@@ -20,6 +22,9 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpS
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 
 class XRepoTest {
+    @get:Rule
+    val silentLoggerRule = SilentLoggerRule()
+
     private val context: Context = object : ContextWrapper(null) {
         override fun getApplicationContext(): Context = this
     }

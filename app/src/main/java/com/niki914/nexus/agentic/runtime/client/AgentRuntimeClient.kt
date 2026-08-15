@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.RemoteException
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
 import com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService
 import com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback
@@ -51,6 +52,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
+        private const val LOG_TAG = "niki914_nexus_AgentRuntimeClient"
         private const val NEXUS_PACKAGE = "com.niki914.nexus.agentic"
         private const val BIND_ACTION = "com.niki914.nexus.agentic.runtime.BIND"
         private const val SERVICE_CLASS =
@@ -64,6 +66,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     fun connect(): Boolean {
         retryCount = 0
         _connectionState.value = ConnectionState.Connecting
+        Logger.d(LOG_TAG, "connect attempt")
 
         deathRecipient = IBinder.DeathRecipient { handleBinderDeath() }
 
@@ -74,26 +77,36 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         val result = try {
             context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         } catch (e: Exception) {
+            Logger.w(LOG_TAG, "connect bind failed error=${e.message}")
             _connectionState.value = ConnectionState.Unavailable
             return false
         }
 
         if (result) {
             bound = true
+            Logger.i(LOG_TAG, "connect bound")
         } else {
+            Logger.w(LOG_TAG, "connect bind rejected")
             _connectionState.value = ConnectionState.Unavailable
         }
         return result
     }
 
     suspend fun connectAndAwait(timeoutMs: Long = 5_000): Boolean {
+        val startedAtMs = System.currentTimeMillis()
         connect()
         val state = withTimeoutOrNull(timeoutMs.milliseconds) {
             connectionState.first { s ->
                 s == ConnectionState.Connected || s == ConnectionState.Unavailable
             }
         }
-        return state == ConnectionState.Connected
+        val connected = state == ConnectionState.Connected
+        Logger.i(
+            LOG_TAG,
+            "connectAndAwait connected=$connected state=${state?.name ?: "timeout"} " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return connected
     }
 
     fun disconnect() {
@@ -163,12 +176,20 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     override fun readStore(storeId: String): String? {
         val svc = storeService ?: return null
         return try {
-            svc.readStore(storeId)
+            val json = svc.readStore(storeId)
+            Logger.d(
+                LOG_TAG,
+                "readStore storeId=$storeId result=${json != null} " +
+                    "jsonLength=${json?.length ?: 0}"
+            )
+            json
         } catch (_: DeadObjectException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "readStore storeId=$storeId error=DeadObject")
             null
         } catch (_: RemoteException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "readStore storeId=$storeId error=RemoteException")
             null
         }
     }
@@ -177,12 +198,15 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         val svc = storeService ?: return false
         return try {
             svc.writeStore(storeId, json)
+            Logger.i(LOG_TAG, "writeStore storeId=$storeId jsonLength=${json.length}")
             true
         } catch (_: DeadObjectException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "writeStore storeId=$storeId error=DeadObject")
             false
         } catch (_: RemoteException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "writeStore storeId=$storeId error=RemoteException")
             false
         }
     }
@@ -190,12 +214,19 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     override fun mutateStore(storeId: String, path: String, valueJson: String): String? {
         val svc = storeService ?: return null
         return try {
-            svc.mutateStore(storeId, path, valueJson)
+            val updatedJson = svc.mutateStore(storeId, path, valueJson)
+            Logger.i(
+                LOG_TAG,
+                "mutateStore storeId=$storeId path=$path result=${updatedJson != null}"
+            )
+            updatedJson
         } catch (_: DeadObjectException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "mutateStore storeId=$storeId path=$path error=DeadObject")
             null
         } catch (_: RemoteException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "mutateStore storeId=$storeId path=$path error=RemoteException")
             null
         }
     }
@@ -248,6 +279,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     // --- Binder death ---
 
     private fun onBinderUnreachable() {
+        Logger.w(LOG_TAG, "binder unreachable, unbinding and scheduling reconnect")
         service = null
         storeService = null
         binder = null
@@ -265,6 +297,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     }
 
     private fun handleBinderDeath() {
+        Logger.w(LOG_TAG, "binder died, unbinding and scheduling reconnect")
         mainHandler.post {
             deathRecipient = null
             service = null
@@ -300,7 +333,13 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
             }
 
             retryCount = 0
-            _connectionState.value = if (svc != null && storeService != null) {
+            val connected = svc != null && storeService != null
+            Logger.i(
+                LOG_TAG,
+                "onServiceConnected connected=$connected runtime=${svc != null} " +
+                    "store=${storeService != null}"
+            )
+            _connectionState.value = if (connected) {
                 ConnectionState.Connected
             } else {
                 ConnectionState.Unavailable
@@ -308,6 +347,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
+            Logger.w(LOG_TAG, "onServiceDisconnected, scheduling reconnect")
             service = null
             storeService = null
             binder = null
@@ -319,9 +359,11 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     private fun scheduleReconnect() {
         retryCount++
         if (retryCount > MAX_RETRIES) {
+            Logger.w(LOG_TAG, "reconnect exhausted retry=$retryCount max=$MAX_RETRIES")
             _connectionState.value = ConnectionState.Unavailable
             return
         }
+        Logger.d(LOG_TAG, "scheduleReconnect retry=$retryCount/$MAX_RETRIES delayMs=$RETRY_DELAY_MS")
         _connectionState.value = ConnectionState.Reconnecting
         mainHandler.postDelayed(
             {
@@ -334,6 +376,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     }
 
     private fun doReconnect() {
+        Logger.d(LOG_TAG, "doReconnect retry=$retryCount/$MAX_RETRIES")
         deathRecipient = IBinder.DeathRecipient { handleBinderDeath() }
         _connectionState.value = ConnectionState.Connecting
 
@@ -345,8 +388,10 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
             bound = context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         } catch (e: Exception) {
             bound = false
+            Logger.w(LOG_TAG, "doReconnect bind failed error=${e.message}")
         }
         if (!bound) {
+            Logger.w(LOG_TAG, "doReconnect bind rejected")
             _connectionState.value = ConnectionState.Unavailable
         }
     }

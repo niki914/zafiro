@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.app.ui.nexus.nav.NexusSettingsGroup
 import com.niki914.nexus.base.ComposeMVIViewModel
@@ -21,10 +22,20 @@ sealed interface SettingsEffect
 class SettingsViewModel : ComposeMVIViewModel<SettingsIntent, SettingsUiState, SettingsEffect>() {
 
     override fun initUiState(): SettingsUiState {
-        return buildSettingsUiState(defaultHiddenSettingsGroups())
+        val state = buildSettingsUiState(defaultHiddenSettingsGroups())
+        Logger.d(
+            LOG_TAG,
+            "initUiState sections=${state.sections.size} " +
+                "groups=${state.sections.sumOf { it.groups.size }}"
+        )
+        return state
     }
 
     override suspend fun handleIntent(intent: SettingsIntent) = Unit
+
+    private companion object {
+        private const val LOG_TAG = "niki914_nexus_SettingsViewModel"
+    }
 }
 
 private data class SettingsSectionDefinition(

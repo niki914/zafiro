@@ -4,9 +4,13 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 class IpcJsonMutatorTest {
+
+    @get:Rule
+    val silentLoggerRule = SilentLoggerRule()
 
     @Test
     fun mutate_blankJsonCreatesNestedObject() {

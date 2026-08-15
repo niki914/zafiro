@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.repo
 
 import android.content.Context
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverTarget
@@ -26,6 +27,8 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRule as T
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRuleValidation as TakeoverRuleValidation
 
 object XRepo {
+    private const val LOG_TAG = "niki914_nexus_XRepo"
+
     val mcp: McpApi = McpApi(this)
     val customTools: CustomToolApi = CustomToolApi(this)
     val builtinTools: BuiltinToolApi = BuiltinToolApi(this)
@@ -73,33 +76,61 @@ object XRepo {
     }
 
     internal suspend fun readJson(storeId: String): String {
-        return store.readJson(context(), storeId)
+        val startedAtMs = System.currentTimeMillis()
+        val json = store.readJson(context(), storeId)
+        Logger.d(
+            LOG_TAG,
+            "readJson storeId=$storeId jsonLength=${json.length} " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return json
     }
 
     internal suspend fun writeJson(storeId: String, json: String): Boolean {
-        return writeMutex.withLock {
+        val startedAtMs = System.currentTimeMillis()
+        val result = writeMutex.withLock {
             writeJsonLocked(context(), storeId, json)
         }
+        Logger.i(
+            LOG_TAG,
+            "writeJson storeId=$storeId result=$result jsonLength=${json.length} " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return result
     }
 
     internal suspend fun updateJson(storeId: String, transform: (String) -> String): Boolean {
-        return writeMutex.withLock {
+        val startedAtMs = System.currentTimeMillis()
+        val result = writeMutex.withLock {
             val context = context()
             val latest = store.readJson(context, storeId)
             writeJsonLocked(context, storeId, transform(latest))
         }
+        Logger.d(
+            LOG_TAG,
+            "updateJson storeId=$storeId result=$result " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return result
     }
 
     internal suspend fun updateJsonOrFalse(
         storeId: String,
         transform: (String) -> String?
     ): Boolean {
-        return writeMutex.withLock {
+        val startedAtMs = System.currentTimeMillis()
+        val result = writeMutex.withLock {
             val context = context()
             val latest = store.readJson(context, storeId)
             val updated = transform(latest) ?: return@withLock false
             writeJsonLocked(context, storeId, updated)
         }
+        Logger.d(
+            LOG_TAG,
+            "updateJsonOrFalse storeId=$storeId result=$result " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return result
     }
 
     private suspend fun writeJsonLocked(context: Context, storeId: String, json: String): Boolean {
@@ -110,7 +141,8 @@ object XRepo {
     }
 
     suspend fun tryPutDefaultSettings(): Boolean {
-        return writeMutex.withLock {
+        val startedAtMs = System.currentTimeMillis()
+        val result = writeMutex.withLock {
             val context = context()
             val appState = AppStateSettingsCodec.parse(
                 store.readJson(
@@ -153,6 +185,13 @@ object XRepo {
             )
             true
         }
+        Logger.i(
+            LOG_TAG,
+            "tryPutDefaultSettings result=$result " +
+                "reason=${if (result) "initialized" else "alreadyOnboarded"} " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return result
     }
 
     suspend fun onboardingCompleted(): Boolean {
@@ -160,21 +199,43 @@ object XRepo {
     }
 
     suspend fun setOnboardingCompleted(value: Boolean) {
+        val startedAtMs = System.currentTimeMillis()
         updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
             val current = AppStateSettingsCodec.parse(json)
             AppStateSettingsCodec.encode(current.copy(onboardingCompleted = value))
         }
+        Logger.i(
+            LOG_TAG,
+            "setOnboardingCompleted value=$value " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
     }
 
     suspend fun lastOpenedConversationId(): String {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).lastOpenedConversationId
+        val startedAtMs = System.currentTimeMillis()
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .lastOpenedConversationId
+            .also { id ->
+                Logger.d(
+                    LOG_TAG,
+                    "lastOpenedConversationId value=$id " +
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                )
+            }
     }
 
     suspend fun setLastOpenedConversationId(value: String) {
+        val startedAtMs = System.currentTimeMillis()
+        val trimmed = value.trim()
         updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
             val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(lastOpenedConversationId = value.trim()))
+            AppStateSettingsCodec.encode(current.copy(lastOpenedConversationId = trimmed))
         }
+        Logger.d(
+            LOG_TAG,
+            "setLastOpenedConversationId value=$trimmed " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
     }
 
     suspend fun llm(): LlmConfig {
@@ -559,8 +620,21 @@ class ExecutionRulesApi internal constructor(
 class TakeoverRulesApi internal constructor(
     private val repo: XRepo,
 ) {
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_TakeoverRules"
+    }
+
     suspend fun list(): List<TakeoverRule> {
-        return RuleSettingsCodec.parseTakeoverRules(repo.readJson(StoreDescriptorRegistry.RULES_TAKEOVER_ID))
+        val startedAtMs = System.currentTimeMillis()
+        return RuleSettingsCodec.parseTakeoverRules(
+            repo.readJson(StoreDescriptorRegistry.RULES_TAKEOVER_ID)
+        ).also { rules ->
+            Logger.d(
+                LOG_TAG,
+                "list count=${rules.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
     }
 
     suspend fun get(id: String): TakeoverRule? {
@@ -568,9 +642,15 @@ class TakeoverRulesApi internal constructor(
     }
 
     suspend fun getDefaultTarget(): RuntimeTakeoverTarget {
+        val startedAtMs = System.currentTimeMillis()
         return RuleSettingsCodec.parseTakeoverSettings(
             repo.readJson(StoreDescriptorRegistry.RULES_TAKEOVER_ID)
-        ).defaultTarget
+        ).defaultTarget.also { target ->
+            Logger.d(
+                LOG_TAG,
+                "default target=$target elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
     }
 
     suspend fun setDefaultTarget(target: RuntimeTakeoverTarget) {

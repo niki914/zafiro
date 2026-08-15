@@ -3,18 +3,21 @@ package com.niki914.nexus.agentic.chat.agentic.stream
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.chat.ToolCallKind
 import com.niki914.nexus.agentic.chat.ToolCallStatus
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.kai.KaiEvent
 import com.niki914.kai.ToolCallKind as SessionToolCallKind
 
 object LlmStreamEventMapper {
+    private const val LOG_TAG = "niki914_nexus_LlmStreamEventMapper"
+
     fun map(
         event: KaiEvent,
         accumulator: StringBuilder,
         startedAtMs: Long,
         defaultErrorMessage: String,
     ): LlmStreamEvent? {
-        return when (event) {
+        val mapped = when (event) {
             is KaiEvent.RoundStarted -> LlmStreamEvent.RoundStarted
             is KaiEvent.TextDelta -> {
                 accumulator.clear()
@@ -70,6 +73,15 @@ object LlmStreamEventMapper {
                 LlmStreamEvent.Completed(event.fullText)
             }
         }
+        // TextDelta 每 token 触发，属高频路径，不记日志；其余事件低频，保留
+        if (event !is KaiEvent.TextDelta) {
+            Logger.d(
+                LOG_TAG,
+                "mapped kaiEvent=${event::class.simpleName} " +
+                    "-> ${mapped?.let { it::class.simpleName } ?: "null"}"
+            )
+        }
+        return mapped
     }
 
     private fun charsPerSecond(

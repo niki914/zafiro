@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.repo
 
 import android.content.Context
 import android.content.ContextWrapper
+import com.niki914.nexus.agentic.app.util.SilentLoggerRule
 import com.niki914.nexus.store.StoreDescriptorRegistry
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -16,6 +17,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentProfile as AgentProfile
@@ -24,6 +26,9 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpS
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 
 class XRepoDomainSettingsTest {
+    @get:Rule
+    val silentLoggerRule = SilentLoggerRule()
+
     private val context: Context = object : ContextWrapper(null) {
         override fun getApplicationContext(): Context = this
         override fun getPackageName(): String = "com.niki914.nexus.agentic"

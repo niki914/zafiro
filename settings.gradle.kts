@@ -39,6 +39,7 @@ include(":store")
 include(":agent-runtime")
 
 // Vendored libraries (see libs/README.md)
+include(":libs:logging")
 include(":libs:kai")
 include(":libs:okia")
 include(":libs:libterm-core")

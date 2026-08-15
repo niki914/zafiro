@@ -19,11 +19,17 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Rule
 import org.junit.Test
+import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
 class ToolCallDispatcherTest {
+
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
+
     private val context: Context = ContextWrapper(null)
 
     @After

@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.repo
 
 import android.content.Context
 import android.content.ContextWrapper
+import com.niki914.nexus.agentic.app.util.SilentLoggerRule
 import com.niki914.nexus.store.StoreDescriptorRegistry
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -12,6 +13,9 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 
 class DomainSettingsStoreTest {
+
+    @get:Rule
+    val silentLoggerRule = SilentLoggerRule()
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()

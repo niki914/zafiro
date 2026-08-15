@@ -1,5 +1,7 @@
 package a0.a0.a0.a0.a0.a0
 
+import com.niki914.logging.Logger
+import com.niki914.nexus.agentic.app.BuildConfig
 import com.niki914.nexus.agentic.app.getInstalledPackageVersion
 import com.niki914.nexus.agentic.mod.HookLocalSettings
 import com.niki914.nexus.agentic.mod.XService
@@ -28,6 +30,7 @@ import kotlinx.coroutines.launch
 // 仅在锁屏时生效
 class Entrance : IXposed() {
     companion object {
+        private const val LOG_TAG = "niki914_nexus_Entrance"
         private val scope by lazy { CoroutineScope(Dispatchers.Default + SupervisorJob()) }
     }
 
@@ -35,6 +38,12 @@ class Entrance : IXposed() {
         Target.filter(*XValues.appList.toTypedArray())
 
     override fun onLoad(params: XC_LoadPackage.LoadPackageParam) {
+        // 宿主进程（Xposed 注入）不会执行 App.onCreate，必须在此注册 debug 门控
+        Logger.setDebugProvider { BuildConfig.DEBUG }
+        Logger.i(
+            LOG_TAG,
+            "onLoad process=${params.processName} package=${params.packageName}"
+        )
         HookSideLoader.load(scope, ContextHook(), params)
 //        HookSideLoader.load(scope, ActivityHook(), params)
 //        HookSideLoader.load(scope, FloatWindowHook(), params)
@@ -46,6 +55,14 @@ class Entrance : IXposed() {
 
             HookLocalSettings.update(ctx, client)
             val webSettingsResult = XRepo.web.await()
+            val webResultDesc = when (val r = webSettingsResult) {
+                is WebSettingsResult.Success ->
+                    "Success source=${r.source} resolvedVersion=${r.resolvedVersionCode} fallback=${r.isFallbackVersion}"
+
+                is WebSettingsResult.RequestFailed -> "RequestFailed reason=${r.reason}"
+                WebSettingsResult.IpcUnreachable -> "IpcUnreachable"
+            }
+            Logger.i(LOG_TAG, "web config result: $webResultDesc")
             val targetPkg = params.packageName
             val isFallbackVersion =
                 webSettingsResult is WebSettingsResult.Success && webSettingsResult.isFallbackVersion
@@ -60,10 +77,12 @@ class Entrance : IXposed() {
 
             when {
                 isNetworkError -> {
+                    Logger.w(LOG_TAG, "network error, post network error notification")
                     XService.postNetworkErrorNotification(client)
                 }
 
                 isNoSupportedVersion -> {
+                    Logger.w(LOG_TAG, "unsupported version host=$targetPkg, post unsupported notification")
                     XService.postUnsupportedVersionNotification(
                         hostApp = HostApp.fromPackageName(targetPkg),
                         hostVersion = targetPkg?.let {
@@ -94,6 +113,11 @@ class Entrance : IXposed() {
             hostApp == HostApp.XiaoAi -> XiaoaiChatHook(scope, client)
             else -> null
         }
+        Logger.i(
+            LOG_TAG,
+            "hook route hostApp=${hostApp?.name ?: "unknown"} " +
+                "targetPkg=$targetPkg hook=${hookInstance?.name ?: "none"}"
+        )
 
         hookInstance ?: return
 

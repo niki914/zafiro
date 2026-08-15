@@ -5,9 +5,11 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
+import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
 import com.niki914.kai.LocalToolConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomTool as CustomTool
@@ -15,6 +17,9 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpS
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 
 class ToolManagerTest {
+
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
 
     @Test
     fun resolveFromTypedConfig_buildsBuiltinCustomAndMcpDefinitions() {
