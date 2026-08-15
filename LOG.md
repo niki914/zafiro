@@ -6,6 +6,8 @@
 - 统一走 `com.niki914.logging.Logger`（`Logger.d/i/w/e`），tag 建议用类名或固定业务 tag。
 - 普通调试日志用 `Logger.d`（debug 构建才输出）；关键链路/耗时用 `Logger.i` 常开记录。
 - 耗时统一在起止点记录 `elapsedMs`。
+- 注释一律用英语
+- TAG 格式 `niki914_nexus_XXX` XXX 是业务名
 
 ### 对话功能 (Conversation)
 - `LLMController.stream` — turn 加锁、query 长度、refresh 结果、首帧/完成、错误码与总耗时
@@ -72,4 +74,4 @@
 - `xposed-api/.../util/Xlogging.kt` — `xlog` / `xtlog`（`Log.e("nexus-x-log")`）迁移到 `Logger`
 - `xposed-runtime` 各处 `xlog` / `xtlog` 调用点随 Xlogging 统一
 - `ui-kit/.../base/ComposeMVIViewModel.onError` — `Log.e` 改 `Logger.e`
-- `XEvent.emit` 内部 `xtlog` 调用点替换
+- `XEvent` 相关代码移除
