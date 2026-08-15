@@ -37,6 +37,17 @@ data class ToolDescriptor(
     val kind: ToolKind
 )
 
+/**
+ * 默认空注册表：config 未提供 toolRegistry 时门面自建（实例所有）。
+ * 空实现不接受注册：host 需要工具时应注入自己的 registry。
+ */
+internal class EmptyToolRegistry : ToolRegistry {
+    override fun register(descriptor: ToolDescriptor, executor: ToolExecutor): Unit = Unit
+    override fun remove(name: String): Unit = Unit
+    override fun find(name: String): RegisteredTool? = null
+    override fun snapshot(): List<RegisteredTool> = emptyList()
+}
+
 /** 工具在哪里运行。 */
 sealed interface ToolKind {
 

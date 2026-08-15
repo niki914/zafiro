@@ -73,19 +73,22 @@ interface Okia {
             protocol: P,
             restore: SessionSnapshot? = null,
             builder: OkiaConfig.Builder.() -> Unit
-        ): Okia = TODO()
+        ): Okia = TODO("default M0 DeepSeek assembly lands in T4/T8")
 
         // 默认协议版本（M0 DeepSeek），库内部构造协议实例
         suspend fun open(
             restore: SessionSnapshot? = null,
             builder: OkiaConfig.Builder.() -> Unit
-        ): Okia = TODO()
+        ): Okia = TODO("default M0 DeepSeek assembly lands in T4/T8")
 
         // 显式依赖装配（JVM 测试注入点）
         suspend fun open(
             dependencies: OkiaDependencies,
             restore: SessionSnapshot? = null,
             builder: OkiaConfig.Builder.() -> Unit
-        ): Okia = TODO()
+        ): Okia {
+            val config = OkiaConfig.Builder().apply(builder).build()
+            return RealOkia(dependencies, restore, config)
+        }
     }
 }

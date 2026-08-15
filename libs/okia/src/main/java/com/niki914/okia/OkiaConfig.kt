@@ -61,6 +61,42 @@ data class OkiaConfig(
         var httpEngine: HttpEngine? = null
 
         // 组装不可变配置快照
-        fun build(): OkiaConfig = TODO()
+        fun build(): OkiaConfig = OkiaConfig(
+            endpoint = endpoint,
+            apiKey = apiKey,
+            model = model,
+            temperature = temperature,
+            maxTokens = maxTokens,
+            connectTimeoutSeconds = connectTimeoutSeconds,
+            readTimeoutSeconds = readTimeoutSeconds,
+            writeTimeoutSeconds = writeTimeoutSeconds,
+            idleTimeoutSeconds = idleTimeoutSeconds,
+            headers = headers,
+            retryPolicy = retryPolicy,
+            mcpServers = mcpServers,
+            hooks = hooks,
+            toolRegistry = toolRegistry,
+            httpEngine = httpEngine
+        )
+
+        // 从现有快照复制全部字段（update 热更新的基础：只改 block 声明的字段）
+        internal fun copyFrom(other: OkiaConfig): Builder {
+            endpoint = other.endpoint
+            apiKey = other.apiKey
+            model = other.model
+            temperature = other.temperature
+            maxTokens = other.maxTokens
+            connectTimeoutSeconds = other.connectTimeoutSeconds
+            readTimeoutSeconds = other.readTimeoutSeconds
+            writeTimeoutSeconds = other.writeTimeoutSeconds
+            idleTimeoutSeconds = other.idleTimeoutSeconds
+            headers = other.headers
+            retryPolicy = other.retryPolicy
+            mcpServers = other.mcpServers
+            hooks = other.hooks
+            toolRegistry = other.toolRegistry
+            httpEngine = other.httpEngine
+            return this
+        }
     }
 }

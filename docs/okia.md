@@ -462,3 +462,16 @@ com.niki914.okia/
 2. **删除 `McpServerDiscoverySnapshot.stale`**：过期判定以 `McpDiscoveryState` 枚举为唯一权威（`UsingStaleCache` = 旧缓存可用但过期），不再保留独立布尔字段，消除双事实漂移。
 3. **TurnStarted 归 AgentLoop 发**：回合事件序列全部由 loop 产出；`LoopRequest.input` 是原始用户文本（send 入参），供 loop 发 `TurnStarted(input)`，与 history 末尾 User 由构造顺序保证一致，非第二个独立来源。
 4. **RealConversation 构造参数改名**：`entries` / `leafId` → `initialEntries` / `initialLeafId`。原参数与同名成员属性 `val entries` / `val leafId` 遮蔽，初始树状态不可达，实现期照直觉写 `get() = entries` 会无限递归（StackOverflowError）；改名后参数退为初始值语义。
+
+### 8.11 第二轮实现落地（T2 垂直切片，2026-08-16）
+
+`libs:okia` 实现阶段第二轮（T1 对话树 + T2 垂直切片）的契约回写。源码为准；实现细节的决策记录在 Progress.md D9-D15。
+
+1. **消息成条时机与 live 不变量（§5.4 补充，2026-08-16 对齐）**：流式期间只更新 `live`，不碰 `history`（性能 + 不产生半截消息）；消息完整（该消息产出完成）才经 `LoopRequest.onCommit` 提交进 history。**不变量：live 非空 ⇒ history 不含该消息**，UI 渲染 = history 列表 + 末尾 live 打字机，不会出现重复。turn 结束（任何终态）时已产出的部分 commit 进 history（不丢消息）；T2 单消息场景下"消息完整"与"turn 结束"重合，T6 工具循环后每条模型往返消息各自在完成时 commit（含工具调用的消息在工具执行前 commit，Running 态从 history 推导）。
+2. **close 契约补充**：close 后 send / rewind / update / export / config / close 均抛 IllegalStateException；活跃回合时 close 抛异常（§8.7 #5）；close 只取消 turnScope 并标记 closed，注入资源宿主所有不释放。
+3. **export 活跃回合抛异常（§8.7 #5 列表外补充）**：回合中树在提交中，导出的快照不一致；与 rewind / update 一致性处理。
+4. **终态中断流收集（T2 实测暴露）**：`AgentLoop` 收集协议流时，Completed / Error 终态必须以哨兵异常（`StreamTerminated`，非 CancellationException）中断 collect——无限流（SharedFlow 事件源）不自然结束，仅 `return@collect` 退出 action 会让 collect 继续挂起等下一事件，turn 永不完成。有限流（冷流）不受影响。取消路径仍走 CancellationException（§8.8 #2 不变）。
+5. **外部取消传播**：调用方协程取消时 `send` 传播 CancellationException（协程取消语义优先），不产生 `Aborted(External)`；`StopCause.External` 的触发路径待真实消费者出现后定，枚举值保留。
+6. **事件与状态投影同步（§5.4 落地）**：门面内部事件处理器同步做三件事——更新 live（StateFlow 投影）/ 转发调用方 onEvent / 发射 events SharedFlow。onCommit 原子做 appendAll + 清 live + 重新投影（一次 StateFlow 发射）。事件流 replay=0 + extraBufferCapacity=64（一次性事件，订阅晚不补发）。
+7. **open 工厂状态**：`open(dependencies)` 已实现（测试注入点）；`open(protocol)` / `open(builder)` 留 T4/T8（依赖 M0 DeepSeek 默认协议与默认 McpClient / HttpEngine）。`ProtocolCompatMapper.from` 委托壳随 open(protocol) 一起在 T4 落地。
+8. **默认资源占位**：`EmptyToolRegistry`（internal）为 config 未提供 registry 时的默认空实现；默认 HttpEngine 未实现，send 时 config.httpEngine 为空抛 IllegalStateException（明确失败，T8 落地）。

@@ -6,9 +6,9 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | T1 已完成（待提交），T2 未开始 |
-| 契约 | 已冻结（docs/okia.md §8.10 第七轮 CR，2026-08-14） |
-| 最近提交 | bf4008f（骨架冻结合并） |
+| 阶段 | T2 已完成（待提交），T3 未开始 |
+| 契约 | 已冻结 + T2 回写（docs/okia.md §8.11） |
+| 最近提交 | a571779（T1 对话树） |
 | 阻塞项 | 无 |
 
 ## 恢复步骤
@@ -23,7 +23,7 @@
 | 任务 | 内容 | 主代码 | 测试 | 状态 |
 |---|---|---|---|---|
 | T1 | 对话树：RealConversation + SessionCodec | ~150 | ~300 | 已完成 |
-| T2 | 垂直切片：RealOkia + 最小 AgentLoop + fake 协议/传输 | ~450 | ~450 | 未开始 |
+| T2 | 垂直切片：RealOkia + 最小 AgentLoop + fake 协议/传输 | ~490 | ~650 | 已完成 |
 | T3 | transport：SseLine 流式解析 | ~150 | ~200 | 未开始 |
 | T4 | protocol：ProtocolCompatMapper.from + M0 DeepSeek 映射 | ~350 | ~300 | 未开始 |
 | T5 | hooks 接线：holder write 语义 + loop 内时机 | ~250 | ~250 | 未开始 |
@@ -62,7 +62,14 @@
 | D6 | 构造时校验重复 id / 悬挂 leafId（fail-fast） | 与 §8.7 #4 rewind 存在性校验同一原则：客观可校验、快速失败 |
 | D7 | SessionCodec 默认实现 = JsonSessionCodec（kotlinx.serialization 默认 JSON） | §5.13 JsonCodec 删除后 dataclass 直接 @Serializable；非法输入抛异常 |
 | D8 | 对照模型（oracle）必须共享被测对象产出的 id | 模型独立重算投影，但不独立造身份（占位 id 无法映射到真实树，随机序列测试曾因此失败） |
+| D9 | 回合终态必须中断流收集：collect 内终态（Completed/Error）抛 StreamTerminated 哨兵异常 | 无限流（SharedFlow）不自然结束，return@collect 只退出 action、collect 继续挂起等下一事件，turn 永不完成（T2 实测暴露，fix 前 2 个测试超时 60s）；哨兵非 CancellationException，不被取消机制误判 |
+| D10 | RealOkia turnScope 可注入（internal 构造参数） | 测试注入 TestDispatcher 获得可控时序；默认真实线程池，契约无感 |
+| D11 | export 在活跃回合时抛 IllegalStateException | 契约 §8.7 #5 列表未含 export，但回合中树在提交中、导出的快照不一致；按 rewind/update 一致性补充 |
+| D12 | 默认 HttpEngine 未实现（T8），config.httpEngine 为空时 send 抛 IllegalStateException | 契约说 null 时门面自建，T8 落地；T2 明确失败而非静默 |
+| D13 | 外部取消（调用方协程取消）传播 CancellationException，不产生 Aborted(External) | 协程取消语义优先（rethrow）；StopCause.External 路径待真实消费者出现后定（T2 不删枚举值，契约不动） |
+| D14 | Completed 事件 stopReason 为 Error/Aborted/ToolUse/Pending 时按失败处理 | 明确失败优于自动修复；T2 fake 不发此类事件 |
+| D15 | 事件流 replay=0 + extraBufferCapacity=64；一次性事件语义 | 订阅晚的事件不补发；宿主 IPC 与 UI 各自消费 |
 
 ## 下一步
 
-开始 T2：垂直切片——RealOkia 门面 + 最小 AgentLoop + fake 协议/传输，用注入的 fake 跑通 send() → TurnResult 全链路（对照 docs/okia.md §5.1 / §5.2 / §5.4 / §5.15）。这是暴露骨架契约风险的主要手段。
+开始 T3：transport 层 SseLine 流式解析 + SSE 解析器（真实协议的前置：把原始 SSE 行流解析为结构化事件/数据，T4 M0 DeepSeek 依赖它）。对照 docs/okia.md §5.8 / §5.14。等待用户验收 T2 后开始。
