@@ -6,9 +6,9 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | T3 已完成（待提交），T4 未开始 |
-| 契约 | 已冻结 + T2/T3 回写（docs/okia.md §8.11 / §8.12） |
-| 最近提交 | d6760ad（T2 垂直切片） |
+| 阶段 | T4 已完成，T5 未开始 |
+| 契约 | 已冻结 + T2/T3/T4 回写（docs/okia.md §8.11 / §8.12 / §8.13） |
+| 最近提交 | f15af1a（T4 DeepSeek 协议） |
 | 阻塞项 | 无 |
 
 ## 恢复步骤
@@ -25,7 +25,7 @@
 | T1 | 对话树：RealConversation + SessionCodec | ~150 | ~300 | 已完成 |
 | T2 | 垂直切片：RealOkia + 最小 AgentLoop + fake 协议/传输 | ~490 | ~650 | 已完成 |
 | T3 | transport：SseLineParser + SseEventParser + loop 前置校验 | ~220 | ~500 | 已完成 |
-| T4 | protocol：ProtocolCompatMapper.from + M0 DeepSeek 映射 | ~350 | ~300 | 未开始 |
+| T4 | protocol：DeepSeekChatCompletionProtocol（独立实现）+ Mapper.from 委托壳 | ~260 | ~40 用例 | 已完成 |
 | T5 | hooks 接线：holder write 语义 + loop 内时机 | ~250 | ~250 | 未开始 |
 | T6 | tooling：ToolExecutor/ToolRegistry + 工具循环 | ~300 | ~300 | 未开始 |
 | T7 | 取消/重试/idle：kill-then-stop + RetryPolicy + idle 超时 | ~300 | ~300 | 未开始 |
@@ -74,7 +74,12 @@
 | D18 | 新增 SseEvent(data, event) + SseEventParser；聚合器输出结构化事件而非 data 文本 | MCP 实锤用 event 字段（codex rmcp-client 过滤非 message）；Codex 因 data-only 聚合器服务不了 MCP 被迫写两套；一个聚合器服务模型流与 MCP 两端 |
 | D19 | loop 前置校验：非 2xx 不进 parseStream；content-type text/html 黑名单 | 风控 HTML 真实 case（用户实测）；非 2xx 错误 body 是文本不是 SSE；黑名单避免白名单误伤改 content-type 的真实网关 |
 | D20 | 非 2xx 错误码映射 429→RateLimit / 401,403→Auth / 5xx→Overloaded / 其他→Transport；body 截断 2000 字符进 message | LLMErrorCode 已有分类直接复用；message 是 UI 详情非完整响应 |
+| D21 | T4：DeepSeekChatCompletionProtocol 独立实现，不复用 OpenAI 通用层 | 避免未来 DeepSeek 私有字段（reasoning_content 等）牵动通用逻辑；即使 pi 复用 openai-completions 也不学它（用户裁决） |
+| D22 | T4：协议层 Completed = 单次模型流结束（消息级）；finish_reason=tool_calls → Completed(ToolUse)，回合未结束（T6 继续工具循环）；错误 finish_reason / EOF 无 finish_reason → Error 事件 | 骨架注释「消息级结束原因」+ pi done 事件（每次流都发）；T2 判非 Stop/Length 为异常是工具循环未实现前的占位，T6 改 |
+| D23 | T4：encodeToolResult 不加工错误内容：tool 消息 content = outcome.content 原样（null 用空串） | 错误表达由下游在 outcome.content 决定（用户裁决）；骨架「Interrupted/Unknown 编码为错误文本」注释作废 |
+| D24 | T4：Image 块 buildRequest 抛 IllegalStateException（M2 前），不写专门测试 | 明确失败优于自动修复；异常消息讲清楚即可（用户裁决） |
+| D25 | T4：ThinkingSignature 对 DeepSeek 不产出；signature 字段为 null；assistant 无思考补 reasoning_content 空串 | DeepSeek 无签名机制（Anthropic 语义）；requiresReasoningContentOnAssistantMessages=true |
 
 ## 下一步
 
-开始 T4：protocol 层 ProtocolCompatMapper.from + M0 DeepSeek 映射（buildRequest / parseStream / encodeToolResult / useApiKey），需参考 DeepSeek API 文档（OpenAI 兼容格式）。T3 的 SseLineParser + SseEventParser 已就绪，DeepSeek parseStream 内部消费聚合器（只用 data，[DONE] 判断在协议层）。等待用户验收 T3 后开始。
+开始 T5：hooks 接线——holder write 语义 + loop 内时机（beforeInput / beforeSerialization / beforeRequest / beforeToolCall / beforeStop 等 10 时机接入 RealAgentLoop），需先裁决 holder write 签名（§5.9.5 骨架期留空，现在 loop 消费 beforeToolCall 的 outcome 阻断）。等待用户确认后开始。
