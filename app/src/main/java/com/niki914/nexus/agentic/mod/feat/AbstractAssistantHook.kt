@@ -40,14 +40,19 @@ abstract class AbstractAssistantHook(
     }
 
     final override fun onHook(lpparam: XC_LoadPackage.LoadPackageParam) {
+        Logger.i(LOG_TAG, "onHook start package=${lpparam.packageName}")
         onBeforeInstallHooks(lpparam)
+        Logger.i(LOG_TAG, "onHook onBeforeInstallHooks done")
         installSessionHooks(lpparam)
+        Logger.i(LOG_TAG, "onHook installSessionHooks done")
         installResponseHooks(lpparam)
+        Logger.i(LOG_TAG, "onHook installResponseHooks done")
         installInputHooks(lpparam) { roomId, query ->
             scope.launch {
                 handleCapturedQuery(roomId, query)
             }
         }
+        Logger.i(LOG_TAG, "onHook installInputHooks done")
     }
 
     protected open fun onBeforeInstallHooks(lpparam: XC_LoadPackage.LoadPackageParam) = Unit

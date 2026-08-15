@@ -29,26 +29,42 @@ class Runtime(
 
     fun attach(params: XC_LoadPackage.LoadPackageParam) {
         val (dexkitHooks, syncHooks) = hooks.partition { it.useDexkit }
+        Logger.i(
+            LOG_TAG,
+            "attach package=${params.packageName} sync=${syncHooks.size} dexkit=${dexkitHooks.size}"
+        )
 
         // 1. Execute synchronous hooks immediately on the current (main) thread
         syncHooks.forEach { hook ->
-            xTry { hook.onHook(params) }
+            val startedAtMs = System.currentTimeMillis()
+            val ok = xTry("Runtime#attach:${hook.name}") { hook.onHook(params) }
+            Logger.i(
+                LOG_TAG,
+                "sync hook ${hook.name} ok=${ok != null} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
         }
 
         // 2. Execute asynchronous hooks requiring DexKit scanning in a background coroutine
         if (dexkitHooks.isNotEmpty()) {
             scope.launch {
-                xTry {
+                xTry("Runtime#attach:dexkit") {
                     val ms = measureTimeMillis {
                         System.loadLibrary("dexkit")
                         DexKitBridge.create(params.appInfo.sourceDir).use { bridge ->
                             dexkitHooks.forEach { hook ->
-                                xTry("Runtime#attaching: ${hook.name}") {
+                                val startedAtMs = System.currentTimeMillis()
+                                val ok = xTry("Runtime#attaching:${hook.name}") {
                                     hook.onHookWithDexkit(
                                         params,
                                         bridge
                                     )
                                 }
+                                Logger.i(
+                                    LOG_TAG,
+                                    "dexkit hook ${hook.name} ok=${ok != null} " +
+                                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                                )
                             }
                         }
                     }

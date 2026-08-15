@@ -20,9 +20,9 @@
 ## 当前状态
 
 - 分支：`worktree-feat+logging`
-- 已完成：日志系统引入（`libs/logging`）、`LOG.md` 定稿、任务拆解 6 份、Chunk 1 日志统一（含 XEvent 移除）、Chunk 2 对话功能埋点、Chunk 3 对话切换 + 加载耗时、**Chunk 4 设置页配置**
-- 进行中：Chunk 5（Hook 健康度）
-- 工作区：待提交（Chunk 4）
+- 已完成：日志系统引入（`libs/logging`）、`LOG.md` 定稿、任务拆解 6 份、Chunk 1 日志统一（含 XEvent 移除）、Chunk 2 对话功能埋点、Chunk 3 对话切换 + 加载耗时、Chunk 4 设置页配置、**Chunk 5 Hook 健康度**
+- 进行中：Chunk 6（渲染管线 + Takeover + 工具）
+- 工作区：待提交（Chunk 5）
 
 ## 任务拆解（6 份）
 
@@ -31,8 +31,8 @@
 | 1 | 日志统一（地基，必须最先做） | 27（含 XEvent 整包移除，原子操作超预估） | ✅ `79556b1` |
 | 2 | 对话功能 | 8（含 SilentLoggerRule） | ✅ `1ad8014` |
 | 3 | 对话切换 + 加载耗时 | 8（含 app 测试 SilentLoggerRule） | ✅ `5d98d58` |
-| 4 | 设置页配置 | 27（含 store 依赖/测试补漏） | ✅ 本次提交 |
-| 5 | Hook 健康度 | ~12 | ⬜ |
+| 4 | 设置页配置 | 27（含 store 依赖/测试补漏） | ✅ `684f919` |
+| 5 | Hook 健康度 | 8 | ✅ 本次提交 |
 | 6 | 渲染管线 + Takeover + 工具 | ~14 | ⬜ |
 
 每份规模约 1000 行改动 / ≤20 个文件，超出即拆。
@@ -47,24 +47,17 @@
 | 3 | **Chunk 1 日志统一**：4 模块加 `libs:logging` 依赖；`xlog`/`xtlog`/`Log.e` 全部迁到 `Logger`；删除 `Xlogging.kt` 与 `xevent` 整包（含 8 处调用点收编，其中 LLMController/RenderTextStreamCard/AbstractAssistantHook 的 XEvent 事件已等价替换为 Logger 调用） | `79556b1` |
 | 4 | **Chunk 2 对话功能**：`LLMController`（refresh 配置/工具/MCP 耗时与失败列表，stream 锁/首帧/错误码）；`AgentRuntimeService`（submit/cancel/resetConversation/executeTurn）；`AbstractAssistantHook.dispatchQueryToLLM`；`HomeChatState`（sendCurrentInput/collectLlmStream/applyEvent）；`LlmStreamEventMapper.map`；新增 `SilentLoggerRule` 修复纯 JVM 单测 LogcatBackend 崩溃 | `1ad8014` |
 | 5 | **Chunk 3 对话切换 + 加载耗时**：`HomeChatState`（startNew/loadConversation/delete/ensure/fork/reGenerate/restore 冷启动耗时）；`ConversationRepo`（create/fork/get/list）；`ConversationDao` 三条 Room 查询包耗时包装（抽象查询改 `XxxQuery` 后缀 + 默认方法同名包装）；`ConversationFormatter.toHomeTurns`；`LLMController.replaceHistory/getHistory`；`XRepo.lastOpenedConversationId/set`；app 测试源新增 `SilentLoggerRule`（`ConversationFormatterTest` 纯 JVM 需要） | `5d98d58` |
-| 6 | **Chunk 4 设置页配置**：`XRepo`（read/write/update/updateJsonOrFalse/tryPutDefaultSettings/setOnboardingCompleted，读写耗时+结果）；`XIpcDomainSettingsStore` 三方法；`XIpcBridge`（read/write/mutate + resolveTransport 各态日志，store 模块补 `libs:logging` 依赖）；`AgentRuntimeService.StoreStubImpl` 三方法；`AgentRuntimeClient` read/write/mutate（含 DeadObject/RemoteException 分支）；9 个设置页 ViewModel（load 带行数耗时 d、save/toggle/delete i、校验失败 w）；10 个纯 JVM 测试挂 `SilentLoggerRule`；**补 store 模块 `SilentLoggerRule` 修复 Chunk 1 遗留的 `IpcJsonMutatorTest` 崩溃（`XTry.xTry`→`Logger.w` 在纯 JVM 撞 LogcatBackend，store 单测此前从未跑过）** | 本次提交 |
+| 6 | **Chunk 4 设置页配置**：`XRepo`（read/write/update/updateJsonOrFalse/tryPutDefaultSettings/setOnboardingCompleted，读写耗时+结果）；`XIpcDomainSettingsStore` 三方法；`XIpcBridge`（read/write/mutate + resolveTransport 各态日志，store 模块补 `libs:logging` 依赖）；`AgentRuntimeService.StoreStubImpl` 三方法；`AgentRuntimeClient` read/write/mutate（含 DeadObject/RemoteException 分支）；9 个设置页 ViewModel（load 带行数耗时 d、save/toggle/delete i、校验失败 w）；10 个纯 JVM 测试挂 `SilentLoggerRule`；**补 store 模块 `SilentLoggerRule` 修复 Chunk 1 遗留的 `IpcJsonMutatorTest` 崩溃（`XTry.xTry`→`Logger.w` 在纯 JVM 撞 LogcatBackend，store 单测此前从未跑过）** | `684f919` |
+| 7 | **Chunk 5 Hook 健康度**：`Entrance`（onLoad/web config 结果/网络与版本分支/hook 路由）；`Runtime.attach`（sync/dexkit 每 hook 耗时+ok，DexKit 扫描耗时；`RuntimeBootstrap` 已有点位不动）；`HookExtensions`（hookMethod/hookConstructor class 未找到 w + 注册成功 d）；`SubHook.onHook`（hookTarget/paramTypes 解析失败 w）；`AbstractAssistantHook.onHook`（四阶段安装 i）；`BaseConfigProvider`（config path 解析失败 w）；`FloatScreenResetDetector`（install/detach/resume/reset 判定，diffMs）；`AgentRuntimeClient`（connect/connectAndAwait/onServiceConnected/Disconnected/binder death/scheduleReconnect/doReconnect，重试次数与状态） | 本次提交 |
 
 ## 下一步行动
 
-⬜ **Chunk 5 Hook 点健康度**，按 `LOG.md` 该组逐点补 Logger：
+⬜ **Chunk 6 渲染管线 + Takeover + 工具**，按 `LOG.md` 三组逐点补 Logger：
 
-1. `Entrance`（app，`a0/a0/a0/a0/a0/a0/Entrance.kt`）：`onLoad` / `onSettingsFetched` — 进程、targetPkg、web 配置结果、hook 路由结果。
-2. `RuntimeBootstrap.installIfNeeded`（xposed-runtime）：runtime 安装 / 重复安装。
-3. `Runtime.attach`（xposed-runtime）：sync/dexkit hook 执行、DexKit 扫描耗时。
-4. `HookExtensions`（xposed-runtime）：`hookMethod` / `hookConstructor` / `hookExtensionTry` — hook 注册失败与异常。
-5. `SubHook.onHook`（app/mod/feat）：hook target / paramTypes 解析失败。
-6. `AbstractAssistantHook`（app/mod/feat）：`onHook` / `installSessionHooks` / `installResponseHooks` / `installInputHooks`。
-7. `BaseConfigProvider`（app/mod/feat）：`parseHookTarget` / `getString` / `getBoolean` / `getInt` — 配置路径解析失败。
-8. `FloatScreenResetDetector`（app/mod/feat）：`install` / `detach` / `resume` — 悬浮屏复位判定。
-9. `AgentRuntimeClient`（app/runtime/client）：`connect` / `connectAndAwait` / `onBinderUnreachable` / `scheduleReconnect`（连接/重连状态与次数）。
-10. 验证：编译 + 全模块单测全绿；通过后提交并更新本文件。
-
-> 注：`AgentRuntimeClient` 的 store IPC 部分已在 Chunk 4 完成，本份只补连接生命周期。
+1. 渲染管线（app/mod/feat）：`BreenoChatHook.renderStreamCard` / `obtainRenderSession` / `clearRenderSession`；`XiaoaiChatHook.dispatchQueryToLLM` / `renderStreamCard`；`RenderTextStreamCardHook.render` / `injectChunk` / `reset`；`CaptureResponseTargetHook.beforeHook`；`BlockNativeCardHook` / `BlockNativeInstructionByWhitelistHook` / `BlockNativeTtsPlaybackHook` / `SuppressCleanupHook`。
+2. Takeover 决策：`TakeoverResolver.resolve`（命中规则/默认目标）；`AbstractAssistantHook.resolveTakeover`（resolve 结果）；`XRepo.takeoverRules.list` / `getDefaultTarget`。
+3. 工具执行：`ToolCallDispatcher.executeLocalTool` / `executeCustomTool`（含 LLMController.openSession hook 回调）；`ToolManager.resolve`；`PyRuntime` / `TerminalSessionPool` 生命周期。
+4. 验证：编译 + 全模块单测全绿；通过后提交并更新本文件。
 
 ## 关键技术事实（回退后不必重新发现）
 

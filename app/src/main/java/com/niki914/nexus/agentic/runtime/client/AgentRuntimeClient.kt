@@ -66,6 +66,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     fun connect(): Boolean {
         retryCount = 0
         _connectionState.value = ConnectionState.Connecting
+        Logger.d(LOG_TAG, "connect attempt")
 
         deathRecipient = IBinder.DeathRecipient { handleBinderDeath() }
 
@@ -76,26 +77,36 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         val result = try {
             context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         } catch (e: Exception) {
+            Logger.w(LOG_TAG, "connect bind failed error=${e.message}")
             _connectionState.value = ConnectionState.Unavailable
             return false
         }
 
         if (result) {
             bound = true
+            Logger.i(LOG_TAG, "connect bound")
         } else {
+            Logger.w(LOG_TAG, "connect bind rejected")
             _connectionState.value = ConnectionState.Unavailable
         }
         return result
     }
 
     suspend fun connectAndAwait(timeoutMs: Long = 5_000): Boolean {
+        val startedAtMs = System.currentTimeMillis()
         connect()
         val state = withTimeoutOrNull(timeoutMs.milliseconds) {
             connectionState.first { s ->
                 s == ConnectionState.Connected || s == ConnectionState.Unavailable
             }
         }
-        return state == ConnectionState.Connected
+        val connected = state == ConnectionState.Connected
+        Logger.i(
+            LOG_TAG,
+            "connectAndAwait connected=$connected state=${state?.name ?: "timeout"} " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return connected
     }
 
     fun disconnect() {
@@ -268,6 +279,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     // --- Binder death ---
 
     private fun onBinderUnreachable() {
+        Logger.w(LOG_TAG, "binder unreachable, unbinding and scheduling reconnect")
         service = null
         storeService = null
         binder = null
@@ -285,6 +297,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     }
 
     private fun handleBinderDeath() {
+        Logger.w(LOG_TAG, "binder died, unbinding and scheduling reconnect")
         mainHandler.post {
             deathRecipient = null
             service = null
@@ -320,7 +333,13 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
             }
 
             retryCount = 0
-            _connectionState.value = if (svc != null && storeService != null) {
+            val connected = svc != null && storeService != null
+            Logger.i(
+                LOG_TAG,
+                "onServiceConnected connected=$connected runtime=${svc != null} " +
+                    "store=${storeService != null}"
+            )
+            _connectionState.value = if (connected) {
                 ConnectionState.Connected
             } else {
                 ConnectionState.Unavailable
@@ -328,6 +347,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
+            Logger.w(LOG_TAG, "onServiceDisconnected, scheduling reconnect")
             service = null
             storeService = null
             binder = null
@@ -339,9 +359,11 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     private fun scheduleReconnect() {
         retryCount++
         if (retryCount > MAX_RETRIES) {
+            Logger.w(LOG_TAG, "reconnect exhausted retry=$retryCount max=$MAX_RETRIES")
             _connectionState.value = ConnectionState.Unavailable
             return
         }
+        Logger.d(LOG_TAG, "scheduleReconnect retry=$retryCount/$MAX_RETRIES delayMs=$RETRY_DELAY_MS")
         _connectionState.value = ConnectionState.Reconnecting
         mainHandler.postDelayed(
             {
@@ -354,6 +376,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     }
 
     private fun doReconnect() {
+        Logger.d(LOG_TAG, "doReconnect retry=$retryCount/$MAX_RETRIES")
         deathRecipient = IBinder.DeathRecipient { handleBinderDeath() }
         _connectionState.value = ConnectionState.Connecting
 
@@ -365,8 +388,10 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
             bound = context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         } catch (e: Exception) {
             bound = false
+            Logger.w(LOG_TAG, "doReconnect bind failed error=${e.message}")
         }
         if (!bound) {
+            Logger.w(LOG_TAG, "doReconnect bind rejected")
             _connectionState.value = ConnectionState.Unavailable
         }
     }
