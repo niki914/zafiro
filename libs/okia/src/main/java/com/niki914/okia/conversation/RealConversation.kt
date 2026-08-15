@@ -1,0 +1,50 @@
+package com.niki914.okia.conversation
+
+import com.niki914.okia.message.AssistantMessage
+import com.niki914.okia.message.Message
+import kotlinx.coroutines.sync.Mutex
+
+/**
+ * 对话树数据结构维护者（内部实现；公开面是 Conversation 快照）。
+ * 条目树 + leafId 当前位置，内部 Mutex 串行化（KMP 下唯一同步方案 =
+ * kotlinx.coroutines.sync.Mutex）。
+ * rewind 原地移动 leafId，被跳过的尾部保留在树中。rewind 校验 entryId 存在
+ * （不存在抛 IllegalArgumentException），位置语义不校验（放开，回退粒度由下游
+ * 自行约束）；历史投影 = leaf 到 root 线性投影。
+ * Design source: pi（session-manager.ts）buildSessionPath / createBranchedSession，
+ * W3 白板便签；命名参考 OkHttp Real* 惯例。
+ */
+internal class RealConversation(
+    val id: String,
+    // 初始树状态与 leaf 位置（restore 恢复时传入）；公开 getter 返回防御性复制
+    initialEntries: List<ConversationEntry>,
+    initialLeafId: String?
+) {
+
+    // 树形条目（append-only）。
+    // 返回防御性复制：外部持有不影响内部存储。
+    val entries: List<ConversationEntry> get() = TODO()
+
+    // 当前 leaf 位置；append 前进，rewind 移动
+    val leafId: String? get() = TODO()
+
+    // leaf 到 root 的线性历史投影，按对话顺序。
+    // 返回防御性复制：外部持有不影响内部存储。
+    val history: List<Message> get() = TODO()
+
+    // 追加一条消息，返回新条目
+    suspend fun append(message: Message): ConversationEntry = TODO()
+
+    // 同一把 Mutex 下批量追加（回合产出提交入口，原子）
+    suspend fun appendAll(messages: List<Message>): List<ConversationEntry> = TODO()
+
+    // 投影为公开快照（构造即复制，leafId 为当前位置）
+    fun toSnapshot(live: AssistantMessage? = null): Conversation = TODO()
+
+    // 原地移动 leafId 到 entryId；被跳过的尾部保留在树中。
+    // entryId 不存在时抛 IllegalArgumentException；位置语义不校验。
+    suspend fun rewind(entryId: String): Unit = TODO()
+
+    // 串行化所有数据操作
+    private val mutex: Mutex = TODO()
+}

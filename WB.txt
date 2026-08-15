@@ -1,0 +1,106 @@
+# Okai 架构图
+
+## 一、Mermaid 重建图
+
+```mermaid
+flowchart TD
+    O1["\"Hi, 帮我...\""]
+    O2["Okai"]
+    O3["Conversation"]
+    O4["[Chat History Ready]"]
+    O5["AgentLoop"]
+    O6["Tooling"]
+    O8["Hooks (From Coding Agent like Pi|Codex)"]
+    O9["InterceptorChain (DEPRECATED, Hooks is more comprehensive and adjustable)"]
+    O11["ProtocolCompatMapper"]
+    O12["HttpEngine"]
+    O13["RetryStrategy -- [503, 429, ...]"]
+
+    W1["note: UI 数据结构 / 实例语义 / Mutex"]
+    W2["note: Hooks 设计意图"]
+    W3["note: Conversation 类设计"]
+    W4["note: suspend / onInterrupt / 不抛异常"]
+    W5["note: Provider 生命周期"]
+
+    O1 -->|send| O2
+    O1 -.-> W1
+    O2 -->|append: User(\"Hi, 帮我...\")| O3
+    O2 -->|提供 Provider 类型| O11
+    O2 -->|Join until Conversation is ready (appended the latest Msg), then loop the AgentLoop| O4
+    O3 --> O4
+    O3 -.-> W3
+    O3 -->|Provide Data| O5
+    O4 -->|Loops until last msg IS NOT Tool Request| O5
+    O5 -->|"append: Ai | Tool Request | Tool Result"| O3
+    O5 --> O6
+    O5 --> O11
+    O6 -->|Tool Result| O5
+    O6 --> O9
+    O6 -.-> W4
+    O8 -.-> W2
+    O11 -.-> W5
+    O11 -->|用 Map 后的数据发起请求| O12
+    O12 -->|WHEN: failed| O13
+```
+
+## 二、节点清单（含原文、坐标、尺寸）
+
+### 图形节点（composite_shape）
+
+| ID | 文本（原文） | 坐标 | 尺寸 |
+|---|---|---|---|
+| o1:1 | `"Hi, 帮我..."` | (387, 453) | 120x80 |
+| o1:2 | `Okai` | (387, 653) | 120x80 |
+| o1:3 | `Conversation` | (387, 853) | 120x80 |
+| o1:4 | `[Chat History Ready]` | (387, 1053) | 120x80 |
+| o1:5 | `AgentLoop` | (387, 1253) | 120x80 |
+| o1:6 | `Tooling` | (620, 1253) | 120x80 |
+| o1:8 | `Hooks (From Coding Agent like Pi\|Codex)` | (1291, 453) | 120x80 |
+| o1:9 | `InterceptorChain (DEPRECATED, Hooks is more comprehensive and adjustable)` + `---` + `拦截器本身是为了做鉴权和安全管控之类的，但是现在提出了抽象层级更高的 Hooks` | (853, 1155) | 120x276 |
+| o1:11 | `ProtocolCompatMapper` | (352, 1453) | 120x80 |
+| o1:12 | `HttpEngine` | (352, 1653) | 120x80 |
+| o1:13 | `RetryStrategy -- [503, 429, ...]` | (68, 1653) | 120x80 |
+
+### 便签（sticky_note，完整原文）
+
+**w1:1** @(-144, 337) 395x311
+> 没想好的是，Okai 以什么样的数据结构去服务 UI。鉴于项目是 Kt，下游开发者极可能用 Compose，我认为参考 MVI 架构，使用 StateFlow 提供持久性数据（Conversation）是比较理想的，但是复杂的 AgentLoop 难免出现各种中间态：Tool Running 等等，但是理论上还是能提供一个相对准确的信息给 UI 的。然后通过 SharedFlow 提供失败之类的一次性事件
+> ---
+> 另外，Okai 应该是一次对话的载体，而不是像 OkHttpClient 这样。多次大模型对话应该实例化多个 Okai 实例。这也意味着 Okai 务必用 Mutex 做并发控制，目前希望在并发的时候抛出异常，不过这个是实现期考虑的事情了
+
+**w1:2**（mermaid 中为 W2）@(1079, 737) 544x311
+> 预期参考 Pi 或 Codex 的钩子设计，采用一部分而不是全部照抄，面向的是下游开发者，用于自定义 Okai 在他们手中的表现，便于拓展出 Tooling 拦截器、MCP-Client、数据脱敏，或者像 Nexus 现在异步 Terminal 通过 User Msg 注入之类的能力，但不是像 Pi 一样读配置来给用户自定义表现用的
+
+**w1:5**（mermaid 中为 W3）@(600, 813) 160x160
+> 目前希望用这个单独的类来维护数据结构，并且内部做好竞争控制，用 Mutex（整个库只能用 Kotlin 的同步方案）。这个类可能还要考虑 Fork、Rewind 相关的事件。Fork 是 Okai 的方法，作用是实例化一个有着相同数据的对象（Conversation 需要独立，修改节点内容互不影响）。如果认为对话是一个 List/Array，Rewind 就是将指针移到前面的节点，作用是回到过去的一个节点重新出发
+
+**w1:4**（mermaid 中为 W4）@(1079, 1234) 544x197
+> 从门面的入口开始应该尽可能让内部方法 suspend，以支持打断，无论是通过让自定义 Tool 强制重写一个 onInterrupt 返回一个 Tool Result，还是通过其他方式实现，Tooling 不准抛出异常，应该总是产出工具结果。关于中断的资源清理，这和下游开发者的实现有关，我们不管
+
+**w1:3**（mermaid 中为 W5）@(527, 1565) 305x257
+> 在 Okai 实例化之初，Provider 就已经定好：createOkai<Provider.OpenAI>()
+> 这个协议的作用域 == Okai 的生命周期，如果涉及到持久化，没有任何矛盾，因为实例化 Okai 的时候会重新提供 Provider，而且上层抽象是协议无关的，用的都是自定 dataclass，数据到了下层 (低于等于 ProtocolCompatMapper) 的时候才根据 Provider 进行序列化。下游开发者只要用抽象 dataclass 进行实例化——而不是用网络请求的 raw data——就不会有切换协议产生的问题
+
+## 三、连线清单（19 条，含标注原文）
+
+| ID | 起点 | 终点 | 标注（原文） |
+|---|---|---|---|
+| c1:1 | o1:1 `"Hi, 帮我..."` | o1:2 `Okai` | `send` |
+| c1:14 | o1:1 `"Hi, 帮我..."` | w1:1 便签(UI/实例语义) | （无） |
+| c1:17 | o1:2 `Okai` | o1:11 `ProtocolCompatMapper` | `提供 Provider 类型` |
+| c1:2 | o1:2 `Okai` | o1:3 `Conversation` | `append: User("Hi, 帮我...")` |
+| c1:4 | o1:2 `Okai` | o1:4 `[Chat History Ready]` | `Join until Conversation is ready (appended the latest Msg), then loop the AgentLoop` |
+| c1:3 | o1:3 `Conversation` | o1:4 `[Chat History Ready]` | （无） |
+| c1:21 | o1:3 `Conversation` | w1:5 便签(Conversation 类设计) | （无） |
+| c1:6 | o1:3 `Conversation` | o1:5 `AgentLoop` | `Provide Data` |
+| c1:8 | o1:5 `AgentLoop` | o1:3 `Conversation` | `append: Ai \| Tool Request \| Tool Result` |
+| c1:5 | o1:4 `[Chat History Ready]` | o1:5 `AgentLoop` | `Loops until last msg IS NOT Tool Request` |
+| c1:7 | o1:5 `AgentLoop` | o1:6 `Tooling` | （无） |
+| c1:9 | o1:6 `Tooling` | o1:5 `AgentLoop` | `Tool Result` |
+| c1:11 | o1:6 `Tooling` | o1:9 `InterceptorChain (DEPRECATED...)` | （无） |
+| c1:20 | o1:6 `Tooling` | w1:4 便签(suspend/onInterrupt) | （无） |
+| c1:15 | o1:5 `AgentLoop` | o1:11 `ProtocolCompatMapper` | （无） |
+| c1:16 | o1:11 `ProtocolCompatMapper` | o1:12 `HttpEngine` | `用 Map 后的数据发起请求` |
+| c1:18 | o1:11 `ProtocolCompatMapper` | w1:3 便签(Provider 生命周期) | （无） |
+| c1:19 | o1:12 `HttpEngine` | o1:13 `RetryStrategy -- [503, 429, ...]` | `WHEN: failed` |
+| c1:13 | o1:8 `Hooks (From Coding Agent like Pi|Codex)` | w1:2 便签(Hooks 设计意图) | （无） |

@@ -6,6 +6,14 @@
 
 ---
 
+## Q & A
+
+- StopSignal: 已经删除，会话中断依赖于协程 cancel
+- 恢复会话时无法确定使用哪个协议是符合预期的，Okai是协议无关的，逻辑层不关心协议，在Okai.open<Protocol>或切换会话的时候就确定了协议 
+- 会话保存保存 fork 相关信息是无意义的业务性功能，我们这个库不需要
+
+---
+
 ## TODOs
 
 [ ] 确认 Nexus 层关于 Fork、对话消息方面的修改是否牵动 Kai 的 history 相关设计。Kai 是否支援树状数据结构等（Coding Agent 的对话在进行 fork 之后数据结构就是树）
@@ -97,11 +105,11 @@ sealed interface ContentBlock {
     data class Thinking(val text: String, val signature: String? = null) : ContentBlock
     data class Image(val data: String, val mimeType: String) : ContentBlock      // 多模态口子
     data class ToolCall(val id: String, val name: String, val argumentsJson: String) : ContentBlock
-    data class ToolResult(val id: String, val name: String, val contentJson: String) : ContentBlock
 }
 ```
 
-- Assistant/User/Tool 消息 = 角色 + `List<ContentBlock>`（支持同一消息内 text+thinking+image+toolCall 并存，Anthropic 风格）
+- 消息模型对齐 pi：`User` / `Assistant` / `ToolResult` 三种具体消息类型，无通用角色+内容基类；`ToolResult` 是消息类型，不是 content block，其 `content` 为任意文本（工具结果不强制 JSON，Nexus 现有工具即返回纯文本）；`ToolResult` 内嵌统一的 `ToolCallOutcome`（Success/Failure/Blocked/Interrupted/Unknown，拦截器链、执行器、历史共用同一类型，无状态映射），中断语义在持久化恢复后仍可读（超出 pi：pi 仅 content+isError，无 force-only stop）
+- Assistant/User 消息 = `List<ContentBlock>`（支持同一消息内 text+thinking+image+toolCall 并存，Anthropic 风格）
 - 多模态口子：Image block 与 provider 序列化映射在 Provider 层完成；DeepSeek 阶段该 block 置空或报"不支持"
 
 ### 4.2 流式事件协议
@@ -137,7 +145,7 @@ interface ChatProtocol {
     fun withCodec(codec: JsonCodec): ChatProtocol
     fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest
     fun parseStream(raw: Flow<SseLine>): Flow<ProtocolEvent>   // TextDelta/ThinkingDelta/ToolCallReady/Error/Completed
-    fun encodeToolResult(toolCall: ToolCall, result: String): Message
+    fun encodeToolResult(toolCall: ToolCall, outcome: ToolCallOutcome): Message   // isError 由 outcome 派生；Interrupted/Unknown 编码为错误文本
 }
 
 interface Compat {   // 对齐 pi OpenAICompletionsCompat，每 provider 一份
@@ -155,10 +163,10 @@ interface Compat {   // 对齐 pi OpenAICompletionsCompat，每 provider 一份
 
 ### 4.4 Agent Loop
 
-- `agentLoop(prompt, session, config, signal)`：回合驱动，LLM ↔ 工具循环直到 `FinishReason.stop/length`
+- `AgentLoop.run(request, onEvent): TurnResult`：无状态回合引擎，LLM ↔ 工具循环直到终态；history 入、本回合消息序列（assistant 与工具结果按发生顺序交错，单个 assistant 消息内 text/thinking/toolCall 混合）出，由 Okai 提交到 Session
 - **段（segment）原子性**：每轮 LLM 调用为一个段；段内失败（且未产出任何 content）可安全重试或回滚；已产出部分内容则按策略提交或丢弃——由 loop 持有边界，host 不必感知
-- 并发契约显式化：`session.busy` / 新回合取代旧回合 / 队列，三选一由 config 声明（消除 host 自行加锁）
-- stop 语义分级：`stop(graceful)`（等工具结束）/ `stop(force)`（不等待工具，host 注入的终止回调由其资源层实现）
+- 并发契约显式化：`ConcurrencyMode`（`Reject` / `Replace` / `Queue`），由 config 声明（消除 host 自行加锁）；Okai 持有单活跃 turn
+- **stop 为 force-only**：所有取消来源（用户 stop / Replace / 外部取消 / close）走 `Okai` 统一协调路径：记录 `StopCause`（`UserStop` / `Replace` / `External`）→ 调用 `ForceStopHook`（至多一次，参数为本 turn 已派发的工具调用；**先 kill 后 cancel**——解除阻塞工具对协程取消的不响应，stop 不会因阻塞工具而永不返回）→ 取消子 job 并 join。取消传播到所有挂起点（流收集、工具执行、重试延迟）；loop 在 `NonCancellable` 中收尾：为 partial assistant 消息中所有 pending tool call 产出终态 outcome（未派发进链的由 loop 直接标记 `Interrupted`；已派发的由 executor 的 `interruptedOutcome` 判定 `Interrupted` / `Unknown`；未到达 `ToolCallReady` 的不持久化）→ 返回 `TurnResult`，history 对下一轮 well-formed，模型可见中断。`AgentLoop.run()` 永不抛出 CancellationException（loop 无法区分内部 stop 与外部取消），取消以 `FinishReason.Aborted` + `StopCause` 表达；`Okai.send()` 持有子 job，任意路径拿到 `TurnResult` 并在 NonCancellable 中提交 session，若调用方协程被外部取消，提交后原样重抛。idle timeout 返回 `IdleTimeout`（cause 为空）
 - idle 检测：**按传输层活跃度计时**（SSE 任意帧含 keep-alive 注释），而非事件间隔；长思考/长工具执行不误杀
 
 ### 4.5 工具调用拦截器链（核心新增）
@@ -174,7 +182,7 @@ LLM ToolCallReady
       ④ AuditInterceptor       （日志/遥测/用量统计）
       ⑤ CacheInterceptor       （可选结果缓存）
   → ToolExecutor（LocalExecutor / McpExecutor / host 扩展）
-  → 结果回传（ToolResult ContentBlock → 下一段 LLM 调用）
+  → 结果回传（ToolResult 消息 → 下一段 LLM 调用）
 ```
 
 ```kotlin
@@ -188,17 +196,20 @@ interface ToolCallInterceptor {
 - **顺序 = 注册顺序**；任一拦截器可返回终态（拒绝/失败）短路链路
 - host（Nexus）用拦截器实现：无障碍操作的"先读屏再执行"强制、自定义工具审批、运行中工具状态上报、失败重试策略——**这些现在散落在 Nexus 工具实现里，统一收口到链上**
 - 拦截器不感知具体 executor 类型（本地/MCP/未来沙箱通用）
+- **中断收尾**：按事实归属分工——未派发进链的 call 由 loop 直接标记 `Interrupted`（从未执行是 loop 的直接事实）；已派发的 call 由 executor 的 `interruptedOutcome(call)` 按自身内部状态判定 `Interrupted`（未开始或本地已终止）或 `Unknown`（远端可能已执行，禁止自动重试）；loop 在取消收尾中组装进 history（ToolResult 内嵌同一 outcome，无状态映射）；未到达 `ToolCallReady` 的调用不持久化（对齐 pi：未完成的调用不进历史）
 
 ### 4.6 会话与上下文管理
 
-- `Session`：历史（`List<Message>`）+ 可序列化模型 + codec 接口（host 决定存储）
+- `Session`：条目树（`id` / `parentId` / `timestamp`）+ 可变的 `leafId` 当前位置 + codec 接口（host 决定存储）；`history` = leaf 到 root 的线性投影，loop 消费；`SessionSnapshot` 持久化 `leafId`（null = 恢复为最后一条，对齐 pi 的 leafId 显式恢复 + fallback）与 `version`，rewind 位置在重载后保持
+- **fork / rewind**：`Okai.fork()` 返回新实例承载新会话——复制当前 leaf 路径（节点不可变共享，独立性由不可变性保证），`parentSessionId` 指回源会话；`Okai.rewind(entryId)` 原地移动 leaf，被跳过的尾部保留在树中，可再次 rewind 或 fork。对齐 pi `createBranchedSession` / `branch`，不做同实例会话切换
+- **载入对话**：宿主通过 `Okai.open(dependencies, builder)` 传入已恢复的 Session 实例化（会话切换 = 新建实例，不提倡实例内切换）
 - 上下文预算原语：token 粗估（chars/4）+ usage 回填；溢出错误分类（正则库，对齐 pi `overflow.ts` / codex 溢出分类）
 - **compaction 口子**：提供 `ContextPolicy` 接口（触发阈值、压缩回调），**M0 不实现**，host 层（Nexus 提示词层）将来实现
 - 定位：Kai 提供原语，策略决策在 host——对齐 pi 把 compaction 放在 coding-agent 层
 
 ### 4.7 分层容错
 
-- **传输层重试**：结构化 HTTP（status/headers 可用）→ retryable 状态码 + `Retry-After`/`retry-after-ms` 尊重 + 指数退避（`base·2^n`，上限 + jitter）→ 可中断（signal）
+- **传输层重试**：结构化 HTTP（status/headers 可用）→ retryable 状态码 + `Retry-After`/`retry-after-ms` 尊重 + 指数退避（`base·2^n`，上限 + jitter）→ 可中断（协程取消）
 - **回合层重试**：`TurnFailed(reason=error)` + 错误分类（quota/溢出不可重试，overloaded/网络/流中断可重试）→ 段首重试；发出 `RetryScheduled` 事件
 - 错误分类产出**结构化错误码**（`LLMError.Code`：`auth | quota | rateLimit | overloaded | contextOverflow | transport | parse | retryExhausted`），host 直接映射 UI 文案，不再解析异常字符串
 
@@ -208,7 +219,7 @@ interface ToolCallInterceptor {
 |---|---|
 | 工具调用策略散落（读屏前置、审批、失败重试提示） | **ToolCallInterceptor 链**（4.5）——host 只注册拦截器 |
 | `turnMutex.tryLock` 串行化 | Session 并发契约显式化（4.4） |
-| `stop` 前杀进程 workaround | `stop(force)` 分级语义 + 终止回调口子（4.4） |
+| `stop` 前杀进程 workaround | force-only stop + `ForceStopHook` 终止回调口子（4.4） |
 | `llmIdleTimeoutSeconds=50` 硬编码猜测 | 传输层活跃度 idle 检测（4.4） |
 | `lastMcpServersFingerprint` + 刷新决策 | Session 内 MCP 生命周期管理（配置即刷新，host 只管配置） |
 | `LlmErrorCode` 手工分类 + 异常字符串解析 | 结构化错误码 + 分类库（4.7） |

@@ -1,11 +1,13 @@
 # Vendored Libraries
 
-这两个库原先是 JitPack 依赖，现已作为本地模块集成进本仓库，不再拉取远程制品：
+kai 与 libterm 两个库原先是 JitPack 依赖，现已作为本地模块集成进本仓库，不再拉取远程制品；okai / okia 是本地新增骨架模块：
 
 | 目录 | 来源 | 集成 commit | 模块名 |
 | --- | --- | --- | --- |
 | `kai/` | vendored 自 https://github.com/niki914/s3ss10n @ `e5803ca`（release 2.1.6），本地重命名为 `kai` | — | `:libs:kai` |
 | `libterm/` | https://github.com/niki914/libterm @ `55d02c3` | — | `:libs:libterm-core` / `:libs:libterm-runtime` / `:libs:libterm-backend-{libsu,shizuku,ssh}` |
+| `okai/` | 本地开发的 LLM turn 引擎（kai 重设计的骨架，仅接口与数据类型，无实现），实现依据 `docs/kai-prd.md` | — | `:libs:okai` |
+| `okia/` | okai 骨架的重写版（骨架，仅接口与数据类型，无实现），设计依据 `docs/okia.md`；代码命名用 `Okia` 前缀 | — | `:libs:okia` |
 
 ## 为什么集成
 
@@ -28,3 +30,4 @@
   - `libterm-runtime` 的 `project(":libterm-*")` → `project(":libs:libterm-*")`
   - android 模块不应用 `org.jetbrains.kotlin.android`（AGP 9 内置 Kotlin）；`kotlin("test")` 换 `org.jetbrains.kotlin:kotlin-test-junit:2.2.10`（内置 Kotlin 下默认变体不含 JUnit）
 - 单测随本仓库构建：`./gradlew :libs:kai:testDebugUnitTest :libs:libterm-core:test :libs:libterm-runtime:testDebugUnitTest`
+- okia 骨架编译：`./gradlew :libs:okia:compileDebugKotlin`
