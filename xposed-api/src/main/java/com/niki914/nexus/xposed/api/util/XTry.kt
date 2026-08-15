@@ -1,8 +1,12 @@
 package com.niki914.nexus.xposed.api.util
 
+import com.niki914.logging.Logger
+
 fun <T> xTry(
     name: String = "xTry",
     block: () -> T
 ): T? = runCatching(block).onFailure {
-    xtlog("xTry", "$name failed: ${it.message}")
+    Logger.w(LOG_TAG, "$name failed: ${it.message}")
 }.getOrNull()
+
+private const val LOG_TAG = "niki914_nexus_xTry"

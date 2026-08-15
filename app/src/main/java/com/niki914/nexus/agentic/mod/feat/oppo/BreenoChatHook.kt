@@ -67,7 +67,6 @@ class BreenoChatHook(
 
     override fun installResponseHooks(lpparam: XC_LoadPackage.LoadPackageParam) {
         BlockNativeCardHook(
-            scope = scope,
             selfInjectedFlagKey = BreenoConfigProvider.CaptureResponseTarget.selfInjectedFlagKey
         ).onHook(lpparam)
 

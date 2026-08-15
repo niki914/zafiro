@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.chat
 
 import android.content.Context
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.agentic.PromptComposer
 import com.niki914.nexus.agentic.chat.agentic.PromptComposerInput
 import com.niki914.nexus.agentic.chat.agentic.SessionToolBinder
@@ -15,7 +16,6 @@ import com.niki914.nexus.agentic.runtime.R
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.model.LlmApiType
 import com.niki914.nexus.xposed.api.util.LockState
-import com.niki914.nexus.xposed.api.xevent.XEvent
 import com.niki914.kai.ChatTurn
 import com.niki914.kai.Kai
 import com.niki914.kai.KaiConfig
@@ -31,6 +31,7 @@ import kotlinx.coroutines.sync.Mutex
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 
 object LLMController {
+    private const val LOG_TAG = "niki914_nexus_LLMController"
     private val turnMutex = Mutex()
 
     internal const val CONFIG_REQUIRED_MESSAGE = "请先填写配置"
@@ -159,13 +160,7 @@ object LLMController {
                 }
                 runtimeState ?: run {
                     val message = throwable.toUserErrorMessage(defaultErrorMessage)
-                    XEvent.llmError(
-                        fields = mapOf(
-                            "stage" to "refresh",
-                            "errorType" to throwable.eventTypeName(),
-                            "message" to message
-                        )
-                    )
+                    Logger.e(LOG_TAG, "refresh failed errorType=${throwable.eventTypeName()} message=$message")
                     send(
                         LlmStreamEvent.Error(
                             message = message,
@@ -186,12 +181,7 @@ object LLMController {
             var streamErrorReported = false
             val sink: SendChannel<LlmStreamEvent> = this
             try {
-                XEvent.llmRoundStarted(
-                    fields = mapOf(
-                        "queryLength" to query.length,
-                        "isUnlocked" to LockState.isUnlocked()
-                    )
-                )
+                Logger.i(LOG_TAG, "round started queryLength=${query.length} isUnlocked=${LockState.isUnlocked()}")
                 // Inject pending background-task completion notifications
                 // into this turn's effective user message.
                 val notifications = TerminalSessionPool.drainPendingNotifications()
@@ -210,36 +200,27 @@ object LLMController {
                     mapped?.let {
                         if (it is LlmStreamEvent.Error && !streamErrorReported) {
                             streamErrorReported = true
-                            XEvent.llmError(
-                                fields = mapOf(
-                                    "stage" to "session_event",
-                                    "errorType" to (it.throwable?.eventTypeName()
-                                        ?: "KaiEvent"),
-                                    "message" to it.message
-                                )
+                            Logger.e(
+                                LOG_TAG,
+                                "stream error stage=session_event errorType=${it.throwable?.eventTypeName() ?: "KaiEvent"} message=${it.message}"
                             )
                         }
                         sink.send(it)
                     }
                 }
                 if (!streamErrorReported) {
-                    XEvent.llmRoundCompleted(
-                        fields = mapOf(
-                            "textLength" to accumulator.length,
-                            "elapsedMs" to (System.currentTimeMillis() - startedAtMs)
-                        )
+                    Logger.i(
+                        LOG_TAG,
+                        "round completed textLength=${accumulator.length} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                     )
                 }
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) {
                     throw throwable
                 }
-                XEvent.llmError(
-                    fields = mapOf(
-                        "stage" to "send",
-                        "errorType" to throwable.eventTypeName(),
-                        "message" to throwable.toUserErrorMessage(defaultErrorMessage)
-                    )
+                Logger.e(
+                    LOG_TAG,
+                    "stream error stage=send errorType=${throwable.eventTypeName()} message=${throwable.toUserErrorMessage(defaultErrorMessage)}"
                 )
                 send(
                     LlmStreamEvent.Error(

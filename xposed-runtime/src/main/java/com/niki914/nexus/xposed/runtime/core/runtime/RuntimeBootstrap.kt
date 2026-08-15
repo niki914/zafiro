@@ -1,6 +1,6 @@
 package com.niki914.nexus.xposed.runtime.core.runtime
 
-import com.niki914.nexus.xposed.api.util.xtlog
+import com.niki914.logging.Logger
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
 /**
@@ -8,7 +8,7 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage
  * 不尝试跨进程共享实例；每个宿主进程都会拥有自己独立的一份状态。
  */
 object RuntimeBootstrap {
-    private const val TAG = "RuntimeBootstrap"
+    private const val LOG_TAG = "niki914_nexus_RuntimeBootstrap"
 
     @Volatile
     private var runtime: Runtime? = null
@@ -18,20 +18,20 @@ object RuntimeBootstrap {
         create: () -> Runtime
     ): Runtime {
         runtime?.let {
-            xtlog(TAG, "runtime already installed in process=${params.processName}")
+            Logger.i(LOG_TAG, "runtime already installed in process=${params.processName}")
             return it
         }
 
         return synchronized(this) {
             runtime?.let {
-                xtlog(TAG, "runtime already installed in process=${params.processName}")
+                Logger.i(LOG_TAG, "runtime already installed in process=${params.processName}")
                 return@synchronized it
             }
 
             create().also { created ->
                 created.attach(params)
                 runtime = created
-                xtlog(TAG, "runtime installed in process=${params.processName}")
+                Logger.i(LOG_TAG, "runtime installed in process=${params.processName}")
             }
         }
     }

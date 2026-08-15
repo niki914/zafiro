@@ -1,21 +1,21 @@
 package com.niki914.nexus.agentic.mod.feat.hyper.subhooks
 
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.ActiveTurnStore
 import com.niki914.nexus.agentic.chat.TurnMode
 import com.niki914.nexus.agentic.mod.feat.HookTarget
 import com.niki914.nexus.agentic.mod.feat.SubHook
 import com.niki914.nexus.agentic.mod.feat.hyper.XiaoaiConfigProvider
-import com.niki914.nexus.xposed.api.xevent.XEvent
 import com.niki914.nexus.xposed.runtime.util.call
 import com.niki914.nexus.xposed.runtime.util.getTag
 import de.robv.android.xposed.XC_MethodHook
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 /** 在 InjectedLLM 模式下按白名单放行必要原生 Instruction，其余原生样式默认拦截。 */
-class BlockNativeInstructionByWhitelistHook(
-    private val scope: CoroutineScope
-) : SubHook() {
+class BlockNativeInstructionByWhitelistHook : SubHook() {
+
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_BlockNativeInstruction"
+    }
 
     override val hookTarget: HookTarget?
         get() = XiaoaiConfigProvider.BlockNativeInstructionWhitelist.hookTarget
@@ -38,18 +38,6 @@ class BlockNativeInstructionByWhitelistHook(
         if (fullName != null && fullName in allowedFullNames) return
 
         param.result = null
-        val eventContext = XEvent.snapshotContext()
-        scope.launch {
-            XEvent.withContext(eventContext) {
-                XEvent.nativeResponseBlocked(
-                    fields = mapOf(
-                        "host" to "xiaoai",
-                        "source" to name,
-                        "kind" to "instruction",
-                        "reason" to "instruction_blocked"
-                    )
-                )
-            }
-        }
+        Logger.i(LOG_TAG, "native response blocked host=xiaoai source=$name kind=instruction reason=instruction_blocked")
     }
 }

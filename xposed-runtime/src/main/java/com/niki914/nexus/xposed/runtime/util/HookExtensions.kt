@@ -1,10 +1,11 @@
 package com.niki914.nexus.xposed.runtime.util
 
-import com.niki914.nexus.xposed.api.util.xlog
-import com.niki914.nexus.xposed.api.xevent.XEvent
+import com.niki914.logging.Logger
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
+
+private const val LOG_TAG = "niki914_nexus_HookExtensions"
 
 
 fun XC_LoadPackage.LoadPackageParam.findClass(name: String): Class<*>? =
@@ -80,8 +81,7 @@ private fun <T> hookExtensionTry(
     onError: ((Throwable?) -> Unit)? = null,
     block: () -> T
 ): T? = runCatching(block).onFailure {
-    XEvent.hookFailed(name, it)
-    xlog("$name\n${it.stackTraceToString()}")
+    Logger.e(LOG_TAG, "$name\n${it.stackTraceToString()}")
     val className = name.substringBefore('#').substringAfter(':')
     if (className.isNotBlank()) lpparam?.inspectClass(className)
     onError?.invoke(it)

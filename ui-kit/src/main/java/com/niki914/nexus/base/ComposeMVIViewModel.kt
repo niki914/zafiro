@@ -1,6 +1,6 @@
 package com.niki914.nexus.base
 
-import android.util.Log
+import com.niki914.logging.Logger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
@@ -96,9 +96,9 @@ abstract class ComposeMVIViewModel<Intent, State, Effect>(
      * 错误处理 - 子类可重写自定义错误处理
      */
     protected open fun onError(error: Throwable) {
-        Log.e(
-            this::class.simpleName ?: "ComposeMVIViewModel",
-            error.message ?: "Unhandled intent error",
+        Logger.e(
+            "niki914_nexus_ViewModel",
+            "${this::class.simpleName ?: "ComposeMVIViewModel"}: ${error.message ?: "Unhandled intent error"}",
             error
         )
     }

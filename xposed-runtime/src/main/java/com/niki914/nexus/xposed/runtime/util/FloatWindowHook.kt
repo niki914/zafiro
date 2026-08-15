@@ -3,18 +3,21 @@ package com.niki914.nexus.xposed.runtime.util
 import android.app.Dialog
 import android.view.View
 import android.view.ViewGroup
-import com.niki914.nexus.xposed.api.util.xlog
+import com.niki914.logging.Logger
 import com.niki914.nexus.xposed.runtime.core.runtime.Hook
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
 class FloatWindowHook : Hook {
     override val name: String = "FloatWindowHook"
 
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_FloatWindow"
+    }
+
     override fun onHook(lpparam: XC_LoadPackage.LoadPackageParam) {
         fun log(obj: Any, lifecycle: String) {
             val name = obj.javaClass.name
-            val msg = "[FloatWindow] $name $lifecycle"
-            xlog(msg)
+            Logger.d(LOG_TAG, "[FloatWindow] $name $lifecycle")
         }
 
         // 1. Hook WindowManagerImpl (精准捕获所有添加到 WindowManager 的根视图/悬浮窗)

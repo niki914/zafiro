@@ -30,6 +30,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":libs:logging"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 
     // UI infra

@@ -31,6 +31,7 @@ android {
 
 dependencies {
     api(project(":xposed-api"))
+    implementation(project(":libs:logging"))
     implementation("org.luckypray:dexkit:2.1.0")
     compileOnly("de.robv.android.xposed:api:82")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")

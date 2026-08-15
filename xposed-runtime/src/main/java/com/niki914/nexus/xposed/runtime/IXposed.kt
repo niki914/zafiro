@@ -1,10 +1,14 @@
 package com.niki914.nexus.xposed.runtime
 
-import com.niki914.nexus.xposed.api.util.xtlog
+import com.niki914.logging.Logger
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
 abstract class IXposed : IXposedHookLoadPackage {
+
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_IXposed"
+    }
 
     sealed interface Target {
         data class All(val mainProcessOnly: Boolean = true) : Target
@@ -37,13 +41,13 @@ abstract class IXposed : IXposedHookLoadPackage {
 
     override fun handleLoadPackage(lpparams: XC_LoadPackage.LoadPackageParam?) {
         if (lpparams == null) {
-            xtlog("<Unknown>", "params is null!")
+            Logger.w(LOG_TAG, "params is null!")
             onXParamsNull()
             return
         }
 
         if (shouldHandle(lpparams)) {
-            xtlog(lpparams.TAG, "awaken in process: ${lpparams.processName}")
+            Logger.i(LOG_TAG, "awaken in process: ${lpparams.processName}")
             onLoad(lpparams)
         }
     }
@@ -68,17 +72,13 @@ abstract class IXposed : IXposedHookLoadPackage {
             }
         }.also {
             if (!it) {
-                xtlog(lpparams.TAG, "process filtered: ${lpparams.processName}")
+                Logger.d(LOG_TAG, "process filtered: ${lpparams.processName}")
             }
         }
     }
 
     private val XC_LoadPackage.LoadPackageParam.isMainProcess: Boolean
         get() = this.processName == this.packageName
-
-    private val XC_LoadPackage.LoadPackageParam.TAG: String
-        get() = "<${packageName}>"
-
 
     open fun onXParamsNull() {}
 }

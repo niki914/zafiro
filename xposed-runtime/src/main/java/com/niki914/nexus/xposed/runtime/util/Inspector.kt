@@ -1,8 +1,10 @@
 package com.niki914.nexus.xposed.runtime.util
 
-import com.niki914.nexus.xposed.api.util.xlog
+import com.niki914.logging.Logger
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
+
+private const val LOG_TAG = "niki914_nexus_Inspector"
 
 
 fun Class<*>.inspect(): String {
@@ -45,9 +47,9 @@ fun Class<*>.inspect(): String {
 fun XC_LoadPackage.LoadPackageParam.inspectClass(className: String) {
     runCatching {
         val clazz = XposedHelpers.findClass(className, classLoader)
-        xlog(clazz.inspect())
+        Logger.d(LOG_TAG, clazz.inspect())
     }.onFailure {
-        xlog("Inspect failed for $className: ${it.message}")
+        Logger.w(LOG_TAG, "Inspect failed for $className: ${it.message}")
     }
 }
 

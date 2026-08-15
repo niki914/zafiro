@@ -8,7 +8,6 @@ import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.CaptureInputHook
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.CaptureResponseTargetHook
 import com.niki914.nexus.agentic.mod.feat.hyper.subhooks.RenderTextStreamCardHook
 import com.niki914.nexus.agentic.runtime.client.AssistantTextSource
-import com.niki914.nexus.xposed.api.xevent.XEvent
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -49,9 +48,9 @@ class XiaoaiChatHook(
             }
         ).onHook(lpparam)
 
-        BlockNativeInstructionByWhitelistHook(scope).onHook(lpparam)
+        BlockNativeInstructionByWhitelistHook().onHook(lpparam)
 
-        BlockNativeTtsPlaybackHook(scope).onHook(lpparam)
+        BlockNativeTtsPlaybackHook().onHook(lpparam)
 
         renderTextStreamCardHook = RenderTextStreamCardHook()
             .also { it.onHook(lpparam) }
@@ -69,21 +68,18 @@ class XiaoaiChatHook(
         targetReady.cancel()
         targetReady = CompletableDeferred()
 
-        val eventContext = XEvent.snapshotContext()
-        XEvent.withContext(eventContext) {
-            try {
-                textSource.submit(query).collect { frame ->
-                    targetReady.await()
-                    renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
-                }
-            } catch (e: Exception) {
+        try {
+            textSource.submit(query).collect { frame ->
                 targetReady.await()
-                renderStreamCard(
-                    turnId, roomId,
-                    e.message ?: "Service unavailable",
-                    true, true,
-                )
+                renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
             }
+        } catch (e: Exception) {
+            targetReady.await()
+            renderStreamCard(
+                turnId, roomId,
+                e.message ?: "Service unavailable",
+                true, true,
+            )
         }
     }
 

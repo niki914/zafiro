@@ -1,7 +1,7 @@
 package com.niki914.nexus.xposed.runtime.core.runtime
 
+import com.niki914.logging.Logger
 import com.niki914.nexus.xposed.api.util.xTry
-import com.niki914.nexus.xposed.api.util.xtlog
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -24,7 +24,7 @@ class Runtime(
     private val hooks: List<Hook>
 ) {
     companion object {
-        private const val TAG = "XRuntime"
+        private const val LOG_TAG = "niki914_nexus_Runtime"
     }
 
     fun attach(params: XC_LoadPackage.LoadPackageParam) {
@@ -52,7 +52,7 @@ class Runtime(
                             }
                         }
                     }
-                    xtlog(TAG, "DexKit scanner finished in ${ms}ms")
+                    Logger.i(LOG_TAG, "DexKit scanner finished in ${ms}ms")
                 }
             }
         }
