@@ -485,3 +485,13 @@ T3 实现期契约回写（调研参照：openai/codex `codex-rs`——`eventsou
 3. **新增 `SseEvent` + `SseEventParser`**（transport 层公共类型）：`Flow<SseLine>` → `Flow<SseEvent(data: String, event: String?)>`。严格 W3C 标准：空行 = 事件边界（dispatch）、data 字段多行用 `\n` 拼接、流结束时 data 缓冲非空的事件照常 dispatch（EOF flush）、data 缓冲为空字符串的事件丢弃。**event 字段透出**（MCP 等协议用 `event:` 过滤非 message 事件，codex rmcp-client 实证 `event: message` + `data: JSON-RPC`）；id / retry 为重连机制字段，LLM 与 MCP 均不使用，忽略。决策依据：Codex 内部因 data-only 聚合器（`codex-client/src/sse.rs`）服务不了 MCP，rmcp-client 被迫另用 `sse_stream` crate 重写——OKIA 一个聚合器服务模型流与 MCP 两端，避免重复。
 4. **loop 前置校验（RealAgentLoop，T2 代码改动）**：响应按 sealed 分支——`Error` 直接 `Failed(LLMError)`，**不进 parseStream**（风控 HTML / JSON 错误不会被当 SSE 解析）；`Ok` 分支做 content-type 黑名单：`text/html`（忽略大小写，值前缀匹配）→ `Failed(Parse)`，其他（含缺失、`text/event-stream`、`application/json`）放行。content-type 检查是快速失败优化，正确性兜底仍是"流结束无 Completed → Parse 错误"（§8.11 #4 前的既有兜底）。
 5. **非 2xx 错误码映射**：429 → `RateLimit`、401 / 403 → `Auth`、5xx → `Overloaded`、其他 → `Transport`。`Error.body` 截断 2000 字符进 `LLMError.message`（UI 详情非完整响应；错误文案仍由 host 按 code 映射，§8.8 #3 不变）。
+
+### 8.13 T4 落地（2026-08-16）
+
+1. **新增 `DeepSeekChatCompletionProtocol`**（protocol/ 包）：M0 协议实现，OpenAI 兼容格式。独立实现，不复用通用 OpenAI 层——DeepSeek 私有字段（reasoning_content 等）的调整局限在本类，不牵动通用逻辑。映射语义参考 pi openai-completions；产品策略不包含（重试 / 缓存 / 成本在其他层或下游）。
+2. **Completed 语义确认（修正 §8.7 #2 候选列表）**：协议层 `ProtocolEvent.Completed` 是**单次模型流结束**（消息级）。finish_reason 映射：stop/end → Stop、length → Length、function_call/tool_calls → **ToolUse**；content_filter / network_error / 未知值 → `Error` 事件；EOF 无 finish_reason → `Error` 事件。ToolUse 时回合未结束（T6 工具循环执行工具后发起下一轮）；只有 Stop / Length 时 turn 层结束回合（TurnCompleted / TurnResult.Completed）。**T2 RealAgentLoop 对非 Stop/Length 判 "abnormal completion stopReason" 是工具循环未实现前的占位，T6 改为 ToolUse → 继续工具循环。**
+3. **encodeToolResult 不加工内容**：`Message.ToolResult` 序列化为 role=tool 消息时 content = outcome.content 原样（null 用空串）。错误表达由下游在 outcome.content 决定，框架不做错误文本加工（原「Interrupted / Unknown 编码为错误文本」注释作废）。
+4. **thinking 映射**：SSE `reasoning_content`（含 reasoning / reasoning_text 兜底）→ ThinkingDelta；`ThinkingSignature` 对 DeepSeek 不产出（无签名机制，签名是 Anthropic 语义）；assistant 历史回喂：thinking → `reasoning_content` 字段，无思考补空串（`requiresReasoningContentOnAssistantMessages`）。
+5. **请求体要点**：assistant content 用普通字符串（避免模型镜像块结构）；空 assistant 消息（无文本无 tool_calls）跳过；tools 为 function 格式，inputSchemaJson 解析为 parameters（null 省略）；`stream:true` + `stream_options.include_usage`；usage 语义 = pi（input = prompt − cacheRead − cacheWrite）。
+6. **工具调用分片**：delta.tool_calls 按 index 归属，id / name 增量补全，arguments 拼接；空 arguments 分片不发 Delta（对齐 pi）；EOF 按 index 顺序发 ToolCallReady 再发 Completed。
+7. **Image 块**：buildRequest 抛 IllegalStateException（M2 前），异常消息说明；不写专门测试（用户裁决）。
