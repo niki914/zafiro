@@ -2,9 +2,12 @@ package com.niki914.nexus.agentic.app.conversation
 
 import android.content.Context
 import com.niki914.kai.ChatTurn
+import com.niki914.logging.Logger
 import java.util.UUID
 
 object ConversationRepo {
+    private const val LOG_TAG = "niki914_nexus_ConversationRepo"
+
     @Volatile
     private var database: ConversationDatabase? = null
 
@@ -18,11 +21,27 @@ object ConversationRepo {
     }
 
     suspend fun listConversations(): List<ConversationSummary> {
-        return dao().listConversations().map { it.toSummary() }
+        val startedAtMs = System.currentTimeMillis()
+        return dao().listConversations().map { it.toSummary() }.also { summaries ->
+            Logger.i(
+                LOG_TAG,
+                "list conversations count=${summaries.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
     }
 
     suspend fun getConversation(id: String): ConversationRecord? {
-        val conversation = dao().getConversation(id) ?: return null
+        val startedAtMs = System.currentTimeMillis()
+        val conversation = dao().getConversation(id)
+        if (conversation == null) {
+            Logger.d(
+                LOG_TAG,
+                "get conversation id=$id notFound " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+            return null
+        }
         val history = dao().listTurns(id).mapNotNull { turn ->
             ChatTurnJsonCodec.decode(turn.kind, turn.payloadJson)
         }
@@ -30,13 +49,20 @@ object ConversationRepo {
             summary = conversation.toSummary(),
             draftText = conversation.draftText,
             history = history,
-        )
+        ).also {
+            Logger.i(
+                LOG_TAG,
+                "get conversation id=$id turnCount=${history.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
     }
 
     suspend fun createConversation(
         firstUserInput: String,
         now: Long = System.currentTimeMillis(),
     ): String {
+        val startedAtMs = System.currentTimeMillis()
         val id = UUID.randomUUID().toString()
         dao().insertConversation(
             ConversationEntity(
@@ -50,6 +76,11 @@ object ConversationRepo {
                 draftText = "",
             ),
         )
+        Logger.i(
+            LOG_TAG,
+            "conversation created id=$id " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
         return id
     }
 
@@ -58,6 +89,7 @@ object ConversationRepo {
         keepTurnCount: Int,
         now: Long = System.currentTimeMillis(),
     ): String {
+        val startedAtMs = System.currentTimeMillis()
         val source = dao().getConversation(sourceId)
             ?: throw IllegalStateException("Source conversation not found: $sourceId")
 
@@ -88,6 +120,12 @@ object ConversationRepo {
             turn.copy(id = 0L, conversationId = newId, turnIndex = index)
         }
         dao().insertTurns(newTurns)
+        Logger.i(
+            LOG_TAG,
+            "fork done sourceId=$sourceId keepTurnCount=$keepTurnCount " +
+                "newId=$newId turns=${truncated.size} " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
 
         return newId
     }

@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.repo
 
 import android.content.Context
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverTarget
@@ -26,6 +27,8 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRule as T
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRuleValidation as TakeoverRuleValidation
 
 object XRepo {
+    private const val LOG_TAG = "niki914_nexus_XRepo"
+
     val mcp: McpApi = McpApi(this)
     val customTools: CustomToolApi = CustomToolApi(this)
     val builtinTools: BuiltinToolApi = BuiltinToolApi(this)
@@ -167,14 +170,30 @@ object XRepo {
     }
 
     suspend fun lastOpenedConversationId(): String {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).lastOpenedConversationId
+        val startedAtMs = System.currentTimeMillis()
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .lastOpenedConversationId
+            .also { id ->
+                Logger.d(
+                    LOG_TAG,
+                    "lastOpenedConversationId value=$id " +
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                )
+            }
     }
 
     suspend fun setLastOpenedConversationId(value: String) {
+        val startedAtMs = System.currentTimeMillis()
+        val trimmed = value.trim()
         updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
             val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(lastOpenedConversationId = value.trim()))
+            AppStateSettingsCodec.encode(current.copy(lastOpenedConversationId = trimmed))
         }
+        Logger.d(
+            LOG_TAG,
+            "setLastOpenedConversationId value=$trimmed " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
     }
 
     suspend fun llm(): LlmConfig {

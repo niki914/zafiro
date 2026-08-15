@@ -167,12 +167,26 @@ object LLMController {
     suspend fun snapshot(): LlmRuntimeSnapshot? = runtimeState?.snapshot
 
     suspend fun getHistory(): List<ChatTurn> {
-        return kai?.getHistory().orEmpty()
+        val startedAtMs = System.currentTimeMillis()
+        return kai?.getHistory().orEmpty().also { history ->
+            Logger.d(
+                LOG_TAG,
+                "get history turnCount=${history.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
     }
 
     suspend fun replaceHistory(history: List<ChatTurn>) {
+        val startedAtMs = System.currentTimeMillis()
+        Logger.i(LOG_TAG, "replace history turnCount=${history.size} started")
         refresh()
         runtimeState?.kai?.replaceHistory(history)
+        Logger.i(
+            LOG_TAG,
+            "replace history done turnCount=${history.size} " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
     }
 
     fun stream(query: String, context: Context): Flow<LlmStreamEvent> = channelFlow {

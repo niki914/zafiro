@@ -7,8 +7,10 @@ import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.nexus.agentic.chat.agentic.stream.ParsedToolResult
 import com.niki914.kai.ChatTurn
+import com.niki914.logging.Logger
 
 object ConversationFormatter {
+    private const val LOG_TAG = "niki914_nexus_ConversationFormatter"
     private const val DEFAULT_TITLE = "新对话"
     private const val MAX_TITLE_LENGTH = 40
     private const val MAX_PREVIEW_LENGTH = 20
@@ -40,6 +42,7 @@ object ConversationFormatter {
     }
 
     fun toHomeTurns(history: List<ChatTurn>): List<HomeChatTurn> {
+        val startedAtMs = System.currentTimeMillis()
         val turns = mutableListOf<HomeChatTurn>()
         var nextId = 0L
 
@@ -88,7 +91,13 @@ object ConversationFormatter {
             }
         }
 
-        return turns
+        return turns.also {
+            Logger.i(
+                LOG_TAG,
+                "format history size=${history.size} turns=${it.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
     }
 
     private fun HomeChatTurn.appendTextBlock(text: String): HomeChatTurn {

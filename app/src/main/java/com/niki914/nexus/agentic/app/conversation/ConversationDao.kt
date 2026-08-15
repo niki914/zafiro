@@ -5,14 +5,41 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.niki914.logging.Logger
 
 @Dao
 interface ConversationDao {
+    companion object {
+        private const val LOG_TAG = "niki914_nexus_ConversationDao"
+    }
+
     @Query("SELECT * FROM conversation ORDER BY updated_at DESC")
-    suspend fun listConversations(): List<ConversationEntity>
+    suspend fun listConversationsQuery(): List<ConversationEntity>
+
+    suspend fun listConversations(): List<ConversationEntity> {
+        val startedAtMs = System.currentTimeMillis()
+        return listConversationsQuery().also { rows ->
+            Logger.i(
+                LOG_TAG,
+                "query listConversations rows=${rows.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
+    }
 
     @Query("SELECT * FROM conversation WHERE id = :id LIMIT 1")
-    suspend fun getConversation(id: String): ConversationEntity?
+    suspend fun getConversationQuery(id: String): ConversationEntity?
+
+    suspend fun getConversation(id: String): ConversationEntity? {
+        val startedAtMs = System.currentTimeMillis()
+        return getConversationQuery(id).also { row ->
+            Logger.d(
+                LOG_TAG,
+                "query getConversation id=$id found=${row != null} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
+    }
 
     @Query(
         """
@@ -21,7 +48,18 @@ interface ConversationDao {
         ORDER BY turn_index ASC
         """,
     )
-    suspend fun listTurns(conversationId: String): List<ConversationTurnEntity>
+    suspend fun listTurnsQuery(conversationId: String): List<ConversationTurnEntity>
+
+    suspend fun listTurns(conversationId: String): List<ConversationTurnEntity> {
+        val startedAtMs = System.currentTimeMillis()
+        return listTurnsQuery(conversationId).also { rows ->
+            Logger.i(
+                LOG_TAG,
+                "query listTurns conversationId=$conversationId rows=${rows.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
+    }
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertConversation(entity: ConversationEntity): Long
