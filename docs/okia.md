@@ -140,12 +140,14 @@ interface Okia {
 ```kotlin
 data class Conversation(
     val id: String,
+    val leafId: String?,               // rewind 当前位置（null = 最后一条）
     val history: List<MessageEntry>,   // 已提交的完整消息（leaf 投影，平列表）
     val live: AssistantMessage?        // 正在流式、尚未成条的助手消息；空闲 null
 )
 
 data class MessageEntry(
     val id: String,                    // rewind(entryId) 的目标，直接可取
+    val timestamp: Long,               // 历史渲染时间戳（由会话树唯一承载）
     val message: Message
 )
 ```
@@ -246,7 +248,7 @@ sealed interface ToolCallOutcome {
 |---|---|---|---|
 | `Input` | `input: InputHolder` | `input: InputHolder` | 用户输入进入后 |
 | `Serialization` | `request: SerializationHolder` | `request: SerializationHolder, httpRequest: HttpRequest` | 消息序列 → buildRequest 前后（约等于序列化前后） |
-| `Request` | `request: HttpRequestHolder` | `request: HttpRequestHolder, response: StreamResponse` | 模型流式请求（`HttpEngine.stream`）发送前后 |
+| `Request` | `request: HttpRequestHolder` | `request: HttpRequest` | 模型流式请求（`HttpEngine.stream`）发送前后 |
 | `ToolCall` | `call: ToolCallHolder` | `call: ToolCallHolder, result: ToolResultHolder` | 工具执行前后 |
 | `Stop` | `calls: List<ToolCall>` | `calls: List<ToolCall>` | 停止流程开始前 / 完成后 |
 
@@ -256,7 +258,7 @@ sealed interface ToolCallOutcome {
 - 数据脱敏 → `beforeSerialization`（主战场，协议无关层）＋ `beforeRequest`（http 层兜底）
 - kill-then-stop → `beforeStop`（§5.11）
 
-**覆盖边界**：`beforeRequest` / `afterRequest` 只覆盖模型流式请求（`AgentLoop` 经 `HttpEngine.stream()` 的路径）；`HttpEngine.unary()` 是 MCP 等其他网络请求，不触发任何 hook。`afterRequest` 时机 = 响应头到达、body 行消费前，`response.lines` 是冷流，hook 不得消费（消费后 loop 收不到行）。
+**覆盖边界**：`beforeRequest` / `afterRequest` 只覆盖模型流式请求（`AgentLoop` 经 `HttpEngine.stream()` 的路径）；`HttpEngine.unary()` 是 MCP 等其他网络请求，不触发任何 hook。`afterRequest` 时机 = 请求已发出后，只看到实际发出的 `HttpRequest`（只读），不接触 response——body 流归 loop 独占，类型上保证 hook 无法消费。
 
 **删除**：`onFork` / `onRewind`（fork 已删除；rewind 是 Conversation 内部同步数据结构操作，无外部动作可钩）；`InterceptorChain`（§5.13）。
 
@@ -451,3 +453,12 @@ com.niki914.okia/
 6. **删除 `Message.User.timestamp`**：时间戳由会话树的 `ConversationEntry` / `MessageEntry` 唯一承载，消息内容不重复。
 7. **凭据脱敏扩展**：`isSensitiveHeader` 从 4 个精确名扩展为精确白名单 + 片段匹配（`api-key` / `apikey` / `-key` / `-token` / `-secret` / `-signature` / `-auth`）；新增 `redactUrl`（query 值全脱敏）；`HttpResponse` / `StreamResponse` / `McpTransport.Http` 补 `toString()`；`Compat` 加 `sensitiveHeaderNames`（默认 empty），`HttpRequest` 加 `sensitiveHeaderNames` 字段（协议层从 Compat 填入）。
 8. **host 契约注释**：`ToolRegistry` 注明活跃回合期间不得直接变更 registry（须经 `Okia.update`）；`InputHolder` 注明实现 write 时字段改私有 backing + 只读 getter。
+
+### 8.10 第七轮 CR 落地（2026-08-14）
+
+签名冻结前的最后一轮收敛：
+
+1. **afterRequest 收窄为只读请求**：`afterRequest(request: HttpRequestHolder, response: StreamResponse)` → `afterRequest(request: HttpRequest)`。after 时机已无改写意义（请求已发出），且把 response（含 body 冷流）交给 hook 会让 loop 对 body 流的独占所有权退化为文档约束——hook 消费一次后 loop 收不到行、无归因静默失败。收窄后类型封死：before 可写（holder）、after 只读（HttpRequest），hook 碰不到 response。撤销 §8.9 #4 的 StreamResponse 形参。
+2. **删除 `McpServerDiscoverySnapshot.stale`**：过期判定以 `McpDiscoveryState` 枚举为唯一权威（`UsingStaleCache` = 旧缓存可用但过期），不再保留独立布尔字段，消除双事实漂移。
+3. **TurnStarted 归 AgentLoop 发**：回合事件序列全部由 loop 产出；`LoopRequest.input` 是原始用户文本（send 入参），供 loop 发 `TurnStarted(input)`，与 history 末尾 User 由构造顺序保证一致，非第二个独立来源。
+4. **RealConversation 构造参数改名**：`entries` / `leafId` → `initialEntries` / `initialLeafId`。原参数与同名成员属性 `val entries` / `val leafId` 遮蔽，初始树状态不可达，实现期照直觉写 `get() = entries` 会无限递归（StackOverflowError）；改名后参数退为初始值语义。

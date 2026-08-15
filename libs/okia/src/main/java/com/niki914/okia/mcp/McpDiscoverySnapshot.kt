@@ -20,11 +20,13 @@ data class McpServerDiscoverySnapshot(
     val errorMessage: String?,
     val lastSuccessAtMillis: Long?,
     val discoveredToolCount: Int,
-    val tools: List<McpDiscoveredTool> = emptyList(),
-    val stale: Boolean
+    val tools: List<McpDiscoveredTool> = emptyList()
 )
 
-/** 发现生命周期状态。 */
+/**
+ * 发现生命周期状态。过期判定以本枚举为唯一权威：UsingStaleCache = 旧缓存
+ * 可用但过期，host 据此判断是否需要刷新（无独立 stale 布尔字段）。
+ */
 enum class McpDiscoveryState {
     Idle,
     Discovering,

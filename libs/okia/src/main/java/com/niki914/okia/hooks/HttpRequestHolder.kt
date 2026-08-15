@@ -3,7 +3,8 @@ package com.niki914.okia.hooks
 import com.niki914.okia.transport.HttpRequest
 
 /**
- * beforeRequest / afterRequest 的可改数据载体：Provider 请求。
+ * beforeRequest 的可改数据载体：Provider 请求。afterRequest 只读、不经过
+ * holder（见 Hooks.afterRequest）。
  * 骨架期只声明字段，write 留空（没有消费者，不设计 API）。
  * Design source: pi extensions mutation。
  */

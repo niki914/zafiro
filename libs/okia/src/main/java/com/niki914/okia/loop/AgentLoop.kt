@@ -69,9 +69,11 @@ enum class CompletionReason {
  * null data）重置计时器，工具执行时间不计入。httpEngine 是回合唯一的
  * 传输入口（AgentLoop 必须经它发请求）；retryPolicy 为传输层重试策略
  * （Compat.retryableStatusCodes + 指数退避），回合层重试在 options。
- * history 包含当前输入（send 已先提交 User 消息）；onCommit 是消息产出
- * 通道，由 Okia 协调器注入，内部在 RealConversation 的同一把 Mutex 下
- * 批量追加（原子）。
+ * history 包含当前输入（send 已先提交 User 消息）；input 是本回合原始
+ * 用户文本（send 入参），供 loop 发 TurnStarted(input)，与 history 末尾
+ * User 是同一事实，由 send 先 append 再启动 loop 的构造顺序保证一致。
+ * onCommit 是消息产出通道，由 Okia 协调器注入，内部在 RealConversation
+ * 的同一把 Mutex 下批量追加（原子）。
  */
 data class LoopRequest(
     val snapshot: RequestSnapshot,

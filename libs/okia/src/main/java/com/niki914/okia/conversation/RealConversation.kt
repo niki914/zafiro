@@ -16,8 +16,9 @@ import kotlinx.coroutines.sync.Mutex
  */
 internal class RealConversation(
     val id: String,
-    entries: List<ConversationEntry>,
-    leafId: String?
+    // 初始树状态与 leaf 位置（restore 恢复时传入）；公开 getter 返回防御性复制
+    initialEntries: List<ConversationEntry>,
+    initialLeafId: String?
 ) {
 
     // 树形条目（append-only）。
