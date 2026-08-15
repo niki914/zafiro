@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.base.ComposeMVIViewModel
@@ -88,8 +89,14 @@ class MemorySettingsViewModel :
 
     private suspend fun load() {
         updateState { copy(isLoading = true) }
+        val startedAtMs = System.currentTimeMillis()
         try {
             val loadedItems = XRepo.memory.list()
+            Logger.d(
+                LOG_TAG,
+                "load items=${loadedItems.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
             updateState {
                 copy(
                     items = loadedItems,
@@ -100,6 +107,7 @@ class MemorySettingsViewModel :
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState {
                 copy(
                     isLoading = false,
@@ -171,6 +179,10 @@ class MemorySettingsViewModel :
             } else {
                 XRepo.memory.update(dialog.index, trimmedValue)
             }
+            Logger.i(
+                LOG_TAG,
+                "saveEditDialog succeeded index=${dialog.index} valueLength=${trimmedValue.length}"
+            )
             updateState {
                 copy(
                     items = updatedItems,
@@ -183,6 +195,7 @@ class MemorySettingsViewModel :
             notifySettingsChanged()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "saveEditDialog failed reason=${throwable.message}")
             updateState {
                 copy(
                     isSaving = false,
@@ -218,6 +231,7 @@ class MemorySettingsViewModel :
         updateState { copy(isSaving = true, deleteConfirmation = null, inlineError = null) }
         try {
             XRepo.memory.delete(index)
+            Logger.i(LOG_TAG, "deleteItem succeeded index=$index")
             updateState {
                 copy(
                     items = previousItems.filterIndexed { itemIndex, _ -> itemIndex != index },
@@ -229,6 +243,7 @@ class MemorySettingsViewModel :
             notifySettingsChanged()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "deleteItem failed index=$index reason=${throwable.message}")
             val reloadedItems = runCatching { XRepo.memory.list() }.getOrDefault(previousItems)
             updateState {
                 copy(
@@ -249,6 +264,7 @@ class MemorySettingsViewModel :
     }
 
     private companion object {
+        private const val LOG_TAG = "niki914_nexus_MemorySettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }

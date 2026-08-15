@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolSettingItem
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolSettingsManager
@@ -36,6 +37,10 @@ class BuiltinToolSettingsViewModel :
 
     override fun initUiState(): BuiltinToolSettingsUiState = BuiltinToolSettingsUiState()
 
+    private companion object {
+        private const val LOG_TAG = "niki914_nexus_BuiltinToolSettingsViewModel"
+    }
+
     override suspend fun handleIntent(intent: BuiltinToolSettingsIntent) {
         when (intent) {
             BuiltinToolSettingsIntent.Load -> load()
@@ -57,6 +62,7 @@ class BuiltinToolSettingsViewModel :
         runCatching {
             manager.load()
         }.onSuccess { loadedItems ->
+            Logger.d(LOG_TAG, "load tools=${loadedItems.size}")
             updateState {
                 copy(
                     items = loadedItems,
@@ -69,6 +75,7 @@ class BuiltinToolSettingsViewModel :
             if (throwable is CancellationException) {
                 throw throwable
             }
+            Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState {
                 copy(
                     isLoading = false,
@@ -100,8 +107,13 @@ class BuiltinToolSettingsViewModel :
             manager.setEnabled(name, enabled)
         }.onSuccess { result ->
             if (result.ok) {
+                Logger.i(LOG_TAG, "setEnabled succeeded tool=$name enabled=$enabled")
                 refreshAfterSave(fallback = updatedItems)
             } else {
+                Logger.w(
+                    LOG_TAG,
+                    "setEnabled rejected tool=$name enabled=$enabled reason=${result.message}"
+                )
                 updateState {
                     copy(
                         items = previousItems,
@@ -115,6 +127,7 @@ class BuiltinToolSettingsViewModel :
             if (throwable is CancellationException) {
                 throw throwable
             }
+            Logger.w(LOG_TAG, "setEnabled failed tool=$name reason=${throwable.message}")
             updateState {
                 copy(
                     items = previousItems,

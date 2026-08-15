@@ -3,6 +3,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 import android.content.Context
 import android.content.ContextWrapper
 import com.niki914.nexus.agentic.app.R
+import com.niki914.nexus.agentic.app.util.SilentLoggerRule
 import com.niki914.nexus.agentic.repo.FakeDomainSettingsStore
 import com.niki914.nexus.agentic.repo.McpSettingsCodec
 import com.niki914.nexus.agentic.repo.XRepo
@@ -25,6 +26,9 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpS
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class McpSettingsViewModelTest {
+    @get:Rule
+    val silentLoggerRule = SilentLoggerRule()
+
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.SkillImportResult
 import com.niki914.nexus.agentic.repo.XRepo
@@ -119,6 +120,10 @@ class SkillSettingsViewModel(
 
     override fun initUiState(): SkillSettingsUiState = SkillSettingsUiState()
 
+    private companion object {
+        private const val LOG_TAG = "niki914_nexus_SkillSettingsViewModel"
+    }
+
     override suspend fun handleIntent(intent: SkillSettingsIntent) {
         when (intent) {
             SkillSettingsIntent.Load -> load()
@@ -157,6 +162,7 @@ class SkillSettingsViewModel(
         }
         try {
             val loadedItems = provider.listAll().map { it.toListItem() }
+            Logger.d(LOG_TAG, "load skills=${loadedItems.size}")
             updateState {
                 copy(
                     items = loadedItems,
@@ -166,6 +172,7 @@ class SkillSettingsViewModel(
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState {
                 copy(
                     isLoading = false,
@@ -198,6 +205,11 @@ class SkillSettingsViewModel(
         try {
             val validation = provider.setEnabled(targetItem.id, enabled)
             if (validation != null) {
+                Logger.w(
+                    LOG_TAG,
+                    "toggleEnabled rejected skillId=${targetItem.id} " +
+                        "reason=${validationMessage(validation)}"
+                )
                 updateState {
                     copy(
                         items = previousItems,
@@ -210,6 +222,7 @@ class SkillSettingsViewModel(
                 }
                 return
             }
+            Logger.i(LOG_TAG, "toggleEnabled succeeded skillId=${targetItem.id} enabled=$enabled")
             updateState {
                 copy(
                     isSaving = false,
@@ -218,6 +231,10 @@ class SkillSettingsViewModel(
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(
+                LOG_TAG,
+                "toggleEnabled failed skillId=${targetItem.id} reason=${throwable.message}"
+            )
             updateState {
                 copy(
                     items = previousItems,
@@ -238,9 +255,11 @@ class SkillSettingsViewModel(
                 inlineError = null,
             )
         }
+        val startedAtMs = System.currentTimeMillis()
         try {
             val loadedSkill = provider.getDetail(id)
             if (loadedSkill == null) {
+                Logger.w(LOG_TAG, "loadDetail notFound skillId=$id")
                 updateState {
                     copy(
                         isLoading = false,
@@ -252,6 +271,11 @@ class SkillSettingsViewModel(
                 }
                 return
             }
+            Logger.d(
+                LOG_TAG,
+                "loadDetail succeeded skillId=$id contentLength=${loadedSkill.content.length} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
             val title = loadedSkill.name.ifBlank { fallbackTitle.ifBlank { loadedSkill.id } }
             updateState {
                 copy(
@@ -267,6 +291,7 @@ class SkillSettingsViewModel(
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "loadDetail failed skillId=$id reason=${throwable.message}")
             updateState {
                 copy(
                     isLoading = false,
@@ -299,6 +324,11 @@ class SkillSettingsViewModel(
         try {
             val validation = provider.saveContent(formState.skillId, formState.content)
             if (validation != null) {
+                Logger.w(
+                    LOG_TAG,
+                    "save rejected skillId=${formState.skillId} " +
+                        "reason=${validationMessage(validation)}"
+                )
                 updateState {
                     copy(
                         isSaving = false,
@@ -310,6 +340,11 @@ class SkillSettingsViewModel(
                 }
                 return
             }
+            Logger.i(
+                LOG_TAG,
+                "save succeeded skillId=${formState.skillId} " +
+                    "contentLength=${formState.content.length}"
+            )
             updateState {
                 copy(
                     formState = formState.copy(initialContent = formState.content),
@@ -319,6 +354,10 @@ class SkillSettingsViewModel(
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(
+                LOG_TAG,
+                "save failed skillId=${formState.skillId} reason=${throwable.message}"
+            )
             updateState {
                 copy(
                     isSaving = false,
@@ -357,6 +396,11 @@ class SkillSettingsViewModel(
         try {
             val validation = provider.delete(confirmation.skillId)
             if (validation != null) {
+                Logger.w(
+                    LOG_TAG,
+                    "confirmDelete rejected skillId=${confirmation.skillId} " +
+                        "reason=${validationMessage(validation)}"
+                )
                 updateState {
                     copy(
                         isSaving = false,
@@ -368,6 +412,7 @@ class SkillSettingsViewModel(
                 }
                 return
             }
+            Logger.i(LOG_TAG, "confirmDelete succeeded skillId=${confirmation.skillId}")
             updateState {
                 copy(
                     isSaving = false,
@@ -377,6 +422,10 @@ class SkillSettingsViewModel(
             sendEffect(SkillSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(
+                LOG_TAG,
+                "confirmDelete failed skillId=${confirmation.skillId} reason=${throwable.message}"
+            )
             updateState {
                 copy(
                     isSaving = false,
@@ -394,16 +443,22 @@ class SkillSettingsViewModel(
         try {
             when (val result = provider.importSkill(sourceDir, false)) {
                 is SkillImportResult.Success -> {
+                    Logger.i(LOG_TAG, "importSkill succeeded dir=${sourceDir.name}")
                     updateState { copy(isImporting = false) }
                     load()
                 }
 
                 is SkillImportResult.NoSkillFile -> {
+                    Logger.w(LOG_TAG, "importSkill noSkillFile dir=${sourceDir.name}")
                     updateState { copy(isImporting = false) }
                     sendEffect(SkillSettingsEffect.ShowNoSkillFileToast)
                 }
 
                 is SkillImportResult.Conflict -> {
+                    Logger.w(
+                        LOG_TAG,
+                        "importSkill conflict dir=${sourceDir.name} target=${result.targetName}"
+                    )
                     updateState {
                         copy(
                             isImporting = false,
@@ -413,6 +468,7 @@ class SkillSettingsViewModel(
                 }
 
                 is SkillImportResult.Error -> {
+                    Logger.w(LOG_TAG, "importSkill error dir=${sourceDir.name} reason=${result.message}")
                     updateState { copy(isImporting = false) }
                     sendEffect(
                         SkillSettingsEffect.ShowImportErrorToast(
@@ -424,6 +480,7 @@ class SkillSettingsViewModel(
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "importSkill failed dir=${sourceDir.name} reason=${throwable.message}")
             updateState { copy(isImporting = false) }
             sendEffect(
                 SkillSettingsEffect.ShowImportErrorToast(

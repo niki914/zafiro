@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.base.ComposeMVIViewModel
@@ -112,6 +113,10 @@ class ConfigureViewModel internal constructor(
 
     override fun initUiState(): ConfigureUiState = ConfigureUiState()
 
+    private companion object {
+        private const val LOG_TAG = "niki914_nexus_ConfigureViewModel"
+    }
+
     override suspend fun handleIntent(intent: ConfigureIntent) {
         when (intent) {
             is ConfigureIntent.Initialize -> initialize(intent.scene, intent.providerId)
@@ -127,8 +132,14 @@ class ConfigureViewModel internal constructor(
     }
 
     private suspend fun initialize(scene: ConfigureScene, initialProviderId: String?) {
+        val startedAtMs = System.currentTimeMillis()
         try {
             val llmConfig = dependencies.loadLlmConfig()
+            Logger.d(
+                LOG_TAG,
+                "initialize scene=$scene provider=${llmConfig.provider} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
             when (scene) {
                 ConfigureScene.Onboarding -> initializeOnboarding(llmConfig, initialProviderId)
                 ConfigureScene.Settings -> initializeSettings(llmConfig, initialProviderId)
@@ -140,6 +151,7 @@ class ConfigureViewModel internal constructor(
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             val message = throwable.message ?: throwable::class.java.simpleName
+            Logger.w(LOG_TAG, "initialize failed scene=$scene reason=$message")
             val reason = ConfigureErrorReason.LoadSettingsFailed(message)
             updateState {
                 copy(
@@ -350,8 +362,9 @@ class ConfigureViewModel internal constructor(
         if (currentState.isSaving) {
             return
         }
-        when (currentState.firstInvalidField()) {
+        when (val invalidField = currentState.firstInvalidField()) {
             ConfigureFieldTarget.Model -> {
+                Logger.d(LOG_TAG, "save rejected field=model")
                 updateState {
                     copy(
                         modelErrorResId = R.string.ui_settings_configure_error_required,
@@ -363,6 +376,7 @@ class ConfigureViewModel internal constructor(
             }
 
             ConfigureFieldTarget.ApiKey -> {
+                Logger.d(LOG_TAG, "save rejected field=apiKey")
                 updateState {
                     copy(
                         apiKeyErrorResId = R.string.ui_settings_configure_error_required,
@@ -374,6 +388,7 @@ class ConfigureViewModel internal constructor(
             }
 
             ConfigureFieldTarget.Endpoint -> {
+                Logger.d(LOG_TAG, "save rejected field=endpoint")
                 updateState {
                     copy(
                         endpointErrorResId = R.string.ui_settings_configure_error_required,
@@ -385,6 +400,7 @@ class ConfigureViewModel internal constructor(
             }
 
             ConfigureFieldTarget.Proxy -> {
+                Logger.d(LOG_TAG, "save rejected field=proxy")
                 updateState {
                     copy(
                         proxyErrorResId = R.string.ui_settings_configure_error_proxy_invalid,
@@ -414,12 +430,18 @@ class ConfigureViewModel internal constructor(
                 inlineError = null,
             )
         }
+        val startedAtMs = System.currentTimeMillis()
         try {
             dependencies.saveLlmAccess(
                 currentState.providerSpec.id,
                 currentState.resolvedEndpoint(),
                 currentState.modelInput,
                 currentState.apiKeyInput,
+            )
+            Logger.i(
+                LOG_TAG,
+                "saveOnboarding succeeded provider=${currentState.providerSpec.id} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             updateState {
                 copy(
@@ -434,6 +456,7 @@ class ConfigureViewModel internal constructor(
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             val message = throwable.message ?: throwable::class.java.simpleName
+            Logger.w(LOG_TAG, "saveOnboarding failed reason=$message")
             val reason = ConfigureErrorReason.SaveSettingsFailed(message)
             updateState {
                 copy(
@@ -456,6 +479,7 @@ class ConfigureViewModel internal constructor(
                 inlineError = null,
             )
         }
+        val startedAtMs = System.currentTimeMillis()
         try {
             val currentConfig = dependencies.loadLlmConfig()
             dependencies.saveLlmConfig(
@@ -467,6 +491,11 @@ class ConfigureViewModel internal constructor(
                     prompt = currentState.promptInput,
                     proxy = currentState.proxyInput.trim(),
                 ),
+            )
+            Logger.i(
+                LOG_TAG,
+                "saveSettings succeeded provider=${currentState.providerSpec.id} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             updateState {
                 copy(
@@ -482,6 +511,7 @@ class ConfigureViewModel internal constructor(
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             val message = throwable.message ?: throwable::class.java.simpleName
+            Logger.w(LOG_TAG, "saveSettings failed reason=$message")
             val reason = ConfigureErrorReason.SaveSettingsFailed(message)
             updateState {
                 copy(

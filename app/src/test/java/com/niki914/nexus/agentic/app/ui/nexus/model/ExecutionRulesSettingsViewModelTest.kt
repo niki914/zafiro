@@ -3,6 +3,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 import android.content.Context
 import android.content.ContextWrapper
 import com.niki914.nexus.agentic.app.R
+import com.niki914.nexus.agentic.app.util.SilentLoggerRule
 import com.niki914.nexus.agentic.repo.FakeDomainSettingsStore
 import com.niki914.nexus.agentic.repo.LocalSettingsDefaults
 import com.niki914.nexus.agentic.repo.RuleSettingsCodec
@@ -26,6 +27,9 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnab
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExecutionRulesSettingsViewModelTest {
+    @get:Rule
+    val silentLoggerRule = SilentLoggerRule()
+
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

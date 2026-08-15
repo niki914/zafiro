@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.RemoteException
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
 import com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService
 import com.niki914.nexus.agentic.runtime.ipc.IRenderFrameCallback
@@ -51,6 +52,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
+        private const val LOG_TAG = "niki914_nexus_AgentRuntimeClient"
         private const val NEXUS_PACKAGE = "com.niki914.nexus.agentic"
         private const val BIND_ACTION = "com.niki914.nexus.agentic.runtime.BIND"
         private const val SERVICE_CLASS =
@@ -163,12 +165,20 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     override fun readStore(storeId: String): String? {
         val svc = storeService ?: return null
         return try {
-            svc.readStore(storeId)
+            val json = svc.readStore(storeId)
+            Logger.d(
+                LOG_TAG,
+                "readStore storeId=$storeId result=${json != null} " +
+                    "jsonLength=${json?.length ?: 0}"
+            )
+            json
         } catch (_: DeadObjectException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "readStore storeId=$storeId error=DeadObject")
             null
         } catch (_: RemoteException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "readStore storeId=$storeId error=RemoteException")
             null
         }
     }
@@ -177,12 +187,15 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         val svc = storeService ?: return false
         return try {
             svc.writeStore(storeId, json)
+            Logger.i(LOG_TAG, "writeStore storeId=$storeId jsonLength=${json.length}")
             true
         } catch (_: DeadObjectException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "writeStore storeId=$storeId error=DeadObject")
             false
         } catch (_: RemoteException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "writeStore storeId=$storeId error=RemoteException")
             false
         }
     }
@@ -190,12 +203,19 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     override fun mutateStore(storeId: String, path: String, valueJson: String): String? {
         val svc = storeService ?: return null
         return try {
-            svc.mutateStore(storeId, path, valueJson)
+            val updatedJson = svc.mutateStore(storeId, path, valueJson)
+            Logger.i(
+                LOG_TAG,
+                "mutateStore storeId=$storeId path=$path result=${updatedJson != null}"
+            )
+            updatedJson
         } catch (_: DeadObjectException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "mutateStore storeId=$storeId path=$path error=DeadObject")
             null
         } catch (_: RemoteException) {
             onBinderUnreachable()
+            Logger.w(LOG_TAG, "mutateStore storeId=$storeId path=$path error=RemoteException")
             null
         }
     }

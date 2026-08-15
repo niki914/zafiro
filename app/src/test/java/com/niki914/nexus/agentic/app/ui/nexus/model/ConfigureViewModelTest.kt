@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import com.niki914.nexus.agentic.app.R
+import com.niki914.nexus.agentic.app.util.SilentLoggerRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -16,6 +17,9 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmC
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConfigureViewModelTest {
+    @get:Rule
+    val silentLoggerRule = SilentLoggerRule()
+
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

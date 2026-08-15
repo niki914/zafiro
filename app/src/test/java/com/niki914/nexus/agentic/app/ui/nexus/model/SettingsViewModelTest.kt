@@ -1,11 +1,16 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import com.niki914.nexus.agentic.app.ui.nexus.nav.NexusSettingsGroup
+import com.niki914.nexus.agentic.app.util.SilentLoggerRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 class SettingsViewModelTest {
+
+    @get:Rule
+    val silentLoggerRule = SilentLoggerRule()
 
     @Test
     fun buildSettingsUiState_excludesHiddenGroupsAndDropsEmptySections() {

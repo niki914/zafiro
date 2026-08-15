@@ -1,5 +1,6 @@
 package com.niki914.nexus.agentic.app.ui.nexus.model
 
+import com.niki914.nexus.agentic.app.util.SilentLoggerRule
 import com.niki914.nexus.agentic.repo.SkillImportResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.take
@@ -22,6 +23,9 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillValidation a
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SkillSettingsViewModelTest {
+    @get:Rule
+    val silentLoggerRule = SilentLoggerRule()
+
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

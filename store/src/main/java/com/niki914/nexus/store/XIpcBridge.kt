@@ -12,11 +12,13 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import com.niki914.logging.Logger
 import org.json.JSONArray
 import org.json.JSONObject
 
 object XIpcBridge {
 
+    private const val LOG_TAG = "niki914_nexus_XIpcBridge"
     interface StoreClient {
         fun readStore(storeId: String): String?
         fun writeStore(storeId: String, json: String): Boolean
@@ -68,8 +70,9 @@ object XIpcBridge {
         storeId: String,
         client: StoreClient?,
     ): IpcReadResult {
+        val startedAtMs = System.currentTimeMillis()
         StoreDescriptorRegistry.resolveDynamic(storeId) ?: return IpcReadResult.NotFound
-        return when (resolveTransport(context, client)) {
+        val result = when (resolveTransport(context, client)) {
             Transport.Binder -> {
                 val json = client!!.readStore(storeId)
                 if (json != null) IpcReadResult.Success(json) else IpcReadResult.Unreachable
@@ -78,6 +81,12 @@ object XIpcBridge {
             Transport.Local -> IpcReadResult.Success(XIpcStoreRepository.readJson(context, storeId))
             Transport.Unreachable -> IpcReadResult.Unreachable
         }
+        Logger.d(
+            LOG_TAG,
+            "readStoreJson storeId=$storeId result=${result.summary()} " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return result
     }
 
     suspend fun writeStoreJsonFromOwner(
@@ -86,8 +95,9 @@ object XIpcBridge {
         json: String,
         client: StoreClient?,
     ): IpcWriteResult {
+        val startedAtMs = System.currentTimeMillis()
         StoreDescriptorRegistry.resolveDynamic(storeId) ?: return IpcWriteResult.Unreachable
-        return when (resolveTransport(context, client)) {
+        val result = when (resolveTransport(context, client)) {
             Transport.Binder -> {
                 if (client!!.writeStore(
                         storeId,
@@ -103,6 +113,12 @@ object XIpcBridge {
 
             Transport.Unreachable -> IpcWriteResult.Unreachable
         }
+        Logger.i(
+            LOG_TAG,
+            "writeStoreJsonFromOwner storeId=$storeId result=${result.summary()} " +
+                "jsonLength=${json.length} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return result
     }
 
     suspend fun mutateStoreJson(
@@ -112,10 +128,11 @@ object XIpcBridge {
         value: Any?,
         client: StoreClient?,
     ): IpcMutateResult {
+        val startedAtMs = System.currentTimeMillis()
         StoreDescriptorRegistry.resolveDynamic(storeId)
             ?: return IpcMutateResult(IpcWriteResult.Unreachable, null)
         val valueJson = serializeValue(value)
-        return when (resolveTransport(context, client)) {
+        val result = when (resolveTransport(context, client)) {
             Transport.Binder -> {
                 val updatedJson = client!!.mutateStore(storeId, path, valueJson)
                 if (updatedJson != null) {
@@ -137,6 +154,12 @@ object XIpcBridge {
 
             Transport.Unreachable -> IpcMutateResult(IpcWriteResult.Unreachable, null)
         }
+        Logger.i(
+            LOG_TAG,
+            "mutateStoreJson storeId=$storeId path=$path result=${result.writeResult.summary()} " +
+                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return result
     }
 
     suspend fun postNotification(
@@ -168,12 +191,39 @@ object XIpcBridge {
     private enum class Transport { Local, Binder, Unreachable }
 
     private fun resolveTransport(context: Context, client: StoreClient?): Transport {
-        return when (XValues.getAppTypeOf(context)) {
+        val transport = when (XValues.getAppTypeOf(context)) {
             XValues.AppType.Host -> if (client != null) Transport.Binder else Transport.Unreachable
             XValues.AppType.Me -> Transport.Local
             XValues.AppType.Unknown -> throw IllegalStateException(
                 "XIpcBridge does not support package=${context.packageName}"
             )
+        }
+        if (transport == Transport.Unreachable) {
+            Logger.w(
+                LOG_TAG,
+                "resolveTransport unreachable package=${context.packageName} client=${client != null}"
+            )
+        } else {
+            Logger.d(
+                LOG_TAG,
+                "resolveTransport transport=$transport package=${context.packageName}"
+            )
+        }
+        return transport
+    }
+
+    private fun IpcReadResult.summary(): String {
+        return when (this) {
+            is IpcReadResult.Success -> "Success"
+            IpcReadResult.NotFound -> "NotFound"
+            IpcReadResult.Unreachable -> "Unreachable"
+        }
+    }
+
+    private fun IpcWriteResult.summary(): String {
+        return when (this) {
+            IpcWriteResult.Success -> "Success"
+            IpcWriteResult.Unreachable -> "Unreachable"
         }
     }
 

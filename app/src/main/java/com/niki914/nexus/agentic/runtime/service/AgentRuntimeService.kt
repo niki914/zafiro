@@ -190,18 +190,31 @@ class AgentRuntimeService : Service() {
         override fun readStore(storeId: String?): String? {
             if (!validateCaller()) return null
             val id = storeId ?: return null
-            return runBlocking {
+            val startedAtMs = System.currentTimeMillis()
+            val json = runBlocking {
                 XIpcStoreRepository.readJson(this@AgentRuntimeService, id)
             }
+            Logger.d(
+                LOG_TAG,
+                "StoreStub.readStore storeId=$id result=${json != null} " +
+                    "jsonLength=${json?.length ?: 0} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+            return json
         }
 
         override fun writeStore(storeId: String?, json: String?) {
             if (!validateCaller()) return
             val id = storeId ?: return
             val j = json ?: return
+            val startedAtMs = System.currentTimeMillis()
             runBlocking {
                 XIpcStoreRepository.writeJson(this@AgentRuntimeService, id, j)
             }
+            Logger.i(
+                LOG_TAG,
+                "StoreStub.writeStore storeId=$id jsonLength=${j.length} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
         }
 
         override fun mutateStore(storeId: String?, path: String?, valueJson: String?): String? {
@@ -209,9 +222,16 @@ class AgentRuntimeService : Service() {
             val id = storeId ?: return null
             val p = path ?: return null
             val v = valueJson ?: return null
-            return runBlocking {
+            val startedAtMs = System.currentTimeMillis()
+            val updatedJson = runBlocking {
                 XIpcStoreRepository.mutateJson(this@AgentRuntimeService, id, p, v)
             }
+            Logger.i(
+                LOG_TAG,
+                "StoreStub.mutateStore storeId=$id path=$p result=${updatedJson != null} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+            return updatedJson
         }
 
         override fun postNotification(title: String?, content: String?, uri: String?) {

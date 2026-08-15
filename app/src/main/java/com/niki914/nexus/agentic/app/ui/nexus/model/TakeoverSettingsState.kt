@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRule
@@ -166,9 +167,15 @@ class TakeoverSettingsViewModel :
 
     private suspend fun load() {
         updateState { copy(isLoading = true) }
+        val startedAtMs = System.currentTimeMillis()
         try {
             val loadedItems = XRepo.takeoverRules.list().map { it.toItem() }
             val defaultTarget = XRepo.takeoverRules.getDefaultTarget().toUiTarget()
+            Logger.d(
+                LOG_TAG,
+                "load rules=${loadedItems.size} defaultTarget=$defaultTarget " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
             updateState {
                 copy(
                     items = loadedItems,
@@ -179,6 +186,7 @@ class TakeoverSettingsViewModel :
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState {
                 copy(
                     isLoading = false,
@@ -241,10 +249,12 @@ class TakeoverSettingsViewModel :
         }
         try {
             XRepo.takeoverRules.setEnabled(currentItem.id, enabled)
+            Logger.i(LOG_TAG, "toggleItemEnabled ruleId=${currentItem.id} enabled=$enabled")
             updateState { copy(isSaving = false) }
             notifySettingsChanged()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "toggleItemEnabled failed ruleId=${currentItem.id} reason=${throwable.message}")
             updateState {
                 copy(
                     items = previousItems,
@@ -278,6 +288,11 @@ class TakeoverSettingsViewModel :
         )
         val validationErrors = XRepo.takeoverRules.validate(nextRule)
         if (validationErrors.isNotEmpty()) {
+            Logger.w(
+                LOG_TAG,
+                "save rejected validation=" +
+                    validationErrors.joinToString { "${it.field}:${it.message}" }
+            )
             val invalidFields = validationErrors.map { error -> error.field }.toSet()
             val nameInvalid = TAKEOVER_FIELD_NAME in invalidFields
             val patternsInvalid = TAKEOVER_FIELD_PATTERNS in invalidFields
@@ -321,6 +336,7 @@ class TakeoverSettingsViewModel :
                 previousId = normalizedFormState.previousId,
                 rule = nextRule,
             )
+            Logger.i(LOG_TAG, "save succeeded ruleId=${nextRule.id}")
             val nextItem = nextRule.toItem()
             val updatedItems = currentState.items.toMutableList().also { mutableItems ->
                 val editingIndex = normalizedFormState.editingIndex
@@ -346,6 +362,7 @@ class TakeoverSettingsViewModel :
             sendEffect(TakeoverSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "save failed reason=${throwable.message}")
             updateState {
                 copy(
                     isSaving = false,
@@ -378,6 +395,7 @@ class TakeoverSettingsViewModel :
         updateState { copy(isSaving = true) }
         try {
             XRepo.takeoverRules.delete(currentId)
+            Logger.i(LOG_TAG, "deleteCurrent succeeded ruleId=$currentId")
             val updatedItems = if (editingIndex != null) {
                 currentState.items.filterIndexed { index, _ -> index != editingIndex }
             } else {
@@ -395,6 +413,7 @@ class TakeoverSettingsViewModel :
             sendEffect(TakeoverSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "deleteCurrent failed ruleId=$currentId reason=${throwable.message}")
             updateState {
                 copy(
                     isSaving = false,
@@ -409,10 +428,12 @@ class TakeoverSettingsViewModel :
         updateState { copy(defaultTarget = target, inlineError = null, isSaving = true) }
         try {
             XRepo.takeoverRules.setDefaultTarget(target.toRuntime())
+            Logger.i(LOG_TAG, "setDefaultTarget target=$target")
             updateState { copy(isSaving = false) }
             notifySettingsChanged()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "setDefaultTarget failed target=$target reason=${throwable.message}")
             updateState {
                 copy(
                     defaultTarget = previousTarget,
@@ -428,6 +449,7 @@ class TakeoverSettingsViewModel :
     }
 
     private companion object {
+        private const val LOG_TAG = "niki914_nexus_TakeoverSettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }

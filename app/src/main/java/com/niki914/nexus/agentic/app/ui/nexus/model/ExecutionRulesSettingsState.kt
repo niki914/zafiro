@@ -2,6 +2,7 @@ package com.niki914.nexus.agentic.app.ui.nexus.model
 
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.base.ComposeMVIViewModel
@@ -152,8 +153,14 @@ class ExecutionRulesSettingsViewModel :
 
     private suspend fun load() {
         updateState { copy(isLoading = true) }
+        val startedAtMs = System.currentTimeMillis()
         try {
             val loadedItems = XRepo.executionRules.list().map { it.toItem() }
+            Logger.d(
+                LOG_TAG,
+                "load rules=${loadedItems.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
             updateState {
                 copy(
                     items = loadedItems,
@@ -163,6 +170,7 @@ class ExecutionRulesSettingsViewModel :
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState {
                 copy(
                     isLoading = false,
@@ -228,10 +236,15 @@ class ExecutionRulesSettingsViewModel :
         }
         try {
             XRepo.executionRules.setEnabledMode(currentItem.id, nextMode)
+            Logger.i(LOG_TAG, "toggleItemEnabled ruleId=${currentItem.id} mode=$nextMode")
             updateState { copy(isSaving = false) }
             notifySettingsChanged()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(
+                LOG_TAG,
+                "toggleItemEnabled failed ruleId=${currentItem.id} reason=${throwable.message}"
+            )
             updateState {
                 copy(
                     items = previousItems,
@@ -256,6 +269,11 @@ class ExecutionRulesSettingsViewModel :
         val normalizedName = formState.name.trim()
         val normalizedPatterns = formState.patternsInput.normalizedPatterns()
         if (normalizedName.isBlank() || normalizedPatterns.isEmpty()) {
+            Logger.w(
+                LOG_TAG,
+                "save rejected nameError=${normalizedName.isBlank()} " +
+                    "patternsError=${normalizedPatterns.isEmpty()}"
+            )
             val nameErrorResId = if (normalizedName.isBlank()) {
                 R.string.execution_rules_error_name_required
             } else {
@@ -313,6 +331,7 @@ class ExecutionRulesSettingsViewModel :
                 previousId = normalizedFormState.previousId,
                 rule = nextRule,
             )
+            Logger.i(LOG_TAG, "save succeeded ruleId=${nextRule.id}")
             val nextItem = nextRule.toItem()
             val updatedItems = currentState.items.toMutableList().also { mutableItems ->
                 val editingIndex = normalizedFormState.editingIndex
@@ -338,6 +357,7 @@ class ExecutionRulesSettingsViewModel :
             sendEffect(ExecutionRulesSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "save failed reason=${throwable.message}")
             updateState {
                 copy(
                     isSaving = false,
@@ -373,6 +393,7 @@ class ExecutionRulesSettingsViewModel :
         updateState { copy(isSaving = true) }
         try {
             XRepo.executionRules.delete(currentId)
+            Logger.i(LOG_TAG, "deleteCurrent succeeded ruleId=$currentId")
             val updatedItems = if (editingIndex != null) {
                 currentState.items.filterIndexed { index, _ -> index != editingIndex }
             } else {
@@ -390,6 +411,7 @@ class ExecutionRulesSettingsViewModel :
             sendEffect(ExecutionRulesSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "deleteCurrent failed ruleId=$currentId reason=${throwable.message}")
             updateState {
                 copy(
                     isSaving = false,
@@ -407,6 +429,7 @@ class ExecutionRulesSettingsViewModel :
     }
 
     private companion object {
+        private const val LOG_TAG = "niki914_nexus_ExecutionRulesSettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }
