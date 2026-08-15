@@ -40,12 +40,6 @@ class RenderTextStreamCardHook : SubHook() {
             session.renderedText = chunk
             nextDelta
         }
-        Logger.d(
-            LOG_TAG,
-            "render entry turnId=$turnId chunkLength=${chunk.length} " +
-                "deltaLength=${delta.length} isFirst=$isFirst isFinal=$isFinal"
-        )
-
         if (target == null) {
             Logger.w(LOG_TAG, "render target missing host=xiaoai source=$name")
             if (isFinal) {
@@ -120,10 +114,6 @@ class RenderTextStreamCardHook : SubHook() {
         )
         instruction.setTag(injectedFlagKey(), true)
         target.call<Unit>(methodName, instruction)
-        Logger.d(
-            LOG_TAG,
-            "chunk injected textLength=${text.length} instructionId=$instructionId"
-        )
     }
 
     private fun newInstance(

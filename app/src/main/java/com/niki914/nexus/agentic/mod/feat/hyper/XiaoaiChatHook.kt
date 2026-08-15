@@ -132,11 +132,6 @@ class XiaoaiChatHook(
             return
         }
 
-        Logger.d(
-            LOG_TAG,
-            "render turnId=$turnId roomId=$roomId chunkLength=${chunk.length} " +
-                "isFirst=$isFirst isFinal=$isFinal"
-        )
         renderTextStreamCardHook?.render(
             turnId = turnId,
             dialogId = roomId,

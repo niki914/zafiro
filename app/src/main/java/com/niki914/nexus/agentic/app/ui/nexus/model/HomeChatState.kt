@@ -319,7 +319,6 @@ class HomeChatViewModel internal constructor(
     private suspend fun collectLlmStream(turnId: Long, query: String) {
         runtime.stream(query).collect { event ->
             val eventName = eventName(event)
-            Logger.d(LOG_TAG, "stream event turnId=$turnId event=$eventName")
             val eventCount = currentState.streamEventCount + 1
             updateState {
                 copy(

@@ -100,11 +100,6 @@ class BreenoChatHook(
         isFinal: Boolean
     ) {
         val startedAtMs = System.currentTimeMillis()
-        Logger.d(
-            LOG_TAG,
-            "render entry turnId=$turnId roomId=$roomId " +
-                "chunkLength=${chunk.length} isFirst=$isFirst isFinal=$isFinal"
-        )
         if (!ActiveTurnStore.isActiveInjection(turnId)) {
             Logger.d(LOG_TAG, "render skipped inactive turnId=$turnId")
             if (isFinal) {
@@ -196,9 +191,7 @@ class BreenoChatHook(
 
     private suspend fun obtainRenderSession(turnId: Long, roomId: String): BreenoRenderSession =
         renderSessionMutex.withLock {
-            currentRenderSession?.takeIf { it.turnId == turnId }?.also {
-                Logger.d(LOG_TAG, "render session reused turnId=$turnId")
-            } ?: BreenoRenderSession(
+            currentRenderSession?.takeIf { it.turnId == turnId } ?: BreenoRenderSession(
                 turnId = turnId,
                 recordId = "mock_record_${roomId}_${turnId}"
             ).also {

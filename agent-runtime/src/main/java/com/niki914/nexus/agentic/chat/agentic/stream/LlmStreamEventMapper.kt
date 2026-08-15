@@ -73,11 +73,14 @@ object LlmStreamEventMapper {
                 LlmStreamEvent.Completed(event.fullText)
             }
         }
-        Logger.d(
-            LOG_TAG,
-            "mapped kaiEvent=${event::class.simpleName} " +
-                "-> ${mapped?.let { it::class.simpleName } ?: "null"}"
-        )
+        // TextDelta 每 token 触发，属高频路径，不记日志；其余事件低频，保留
+        if (event !is KaiEvent.TextDelta) {
+            Logger.d(
+                LOG_TAG,
+                "mapped kaiEvent=${event::class.simpleName} " +
+                    "-> ${mapped?.let { it::class.simpleName } ?: "null"}"
+            )
+        }
         return mapped
     }
 

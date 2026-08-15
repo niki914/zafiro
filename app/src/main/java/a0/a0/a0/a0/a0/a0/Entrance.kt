@@ -1,6 +1,7 @@
 package a0.a0.a0.a0.a0.a0
 
 import com.niki914.logging.Logger
+import com.niki914.nexus.agentic.app.BuildConfig
 import com.niki914.nexus.agentic.app.getInstalledPackageVersion
 import com.niki914.nexus.agentic.mod.HookLocalSettings
 import com.niki914.nexus.agentic.mod.XService
@@ -37,6 +38,8 @@ class Entrance : IXposed() {
         Target.filter(*XValues.appList.toTypedArray())
 
     override fun onLoad(params: XC_LoadPackage.LoadPackageParam) {
+        // 宿主进程（Xposed 注入）不会执行 App.onCreate，必须在此注册 debug 门控
+        Logger.setDebugProvider { BuildConfig.DEBUG }
         Logger.i(
             LOG_TAG,
             "onLoad process=${params.processName} package=${params.packageName}"
