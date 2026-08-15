@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.nexus.agentic.chat.collectAsFull
 import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
@@ -69,6 +70,7 @@ class AgentRuntimeService : Service() {
     )
 
     companion object {
+        private const val LOG_TAG = "niki914_nexus_AgentRuntimeService"
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "agent_runtime"
         private const val MAX_QUERY_LENGTH = 8192
@@ -120,11 +122,17 @@ class AgentRuntimeService : Service() {
             val cb = callback ?: return
 
             if (q.isBlank() || q.length > MAX_QUERY_LENGTH) {
+                Logger.w(
+                    LOG_TAG,
+                    "submit rejected queryLength=${q.length} maxLength=$MAX_QUERY_LENGTH " +
+                        "reason=${if (q.isBlank()) "blank" else "tooLong"}"
+                )
                 sendError(
                     cb, "Query is blank or exceeds maximum length of $MAX_QUERY_LENGTH characters",
                 )
                 return
             }
+            Logger.i(LOG_TAG, "submit accepted queryLength=${q.length}")
 
             try {
                 cb.asBinder().linkToDeath(deathRecipient, 0)
@@ -140,27 +148,38 @@ class AgentRuntimeService : Service() {
                     cb.asBinder().unlinkToDeath(deathRecipient, 0)
                 } catch (_: Exception) {
                 }
+                Logger.w(LOG_TAG, "submit rejected activeTurnBusy=true")
                 sendError(cb, "Another turn is already in progress")
+            } else {
+                Logger.i(LOG_TAG, "turn registered callbackLinked=true")
             }
         }
 
         override fun cancel() {
-            val turn = activeTurn.getAndSet(null) ?: return
+            val turn = activeTurn.getAndSet(null)
+            if (turn == null) {
+                Logger.i(LOG_TAG, "cancel ignored noActiveTurn=true")
+                return
+            }
             turn.job.cancel()
+            Logger.i(LOG_TAG, "cancel requested")
             scope.launch {
                 try {
                     LLMController.stopCurrentRound()
+                    Logger.i(LOG_TAG, "cancel done stopRoundCompleted=true")
                 } catch (_: Exception) {
                 }
             }
         }
 
         override fun resetConversation() {
+            Logger.i(LOG_TAG, "reset conversation requested")
             scope.launch {
                 val turn = activeTurn.getAndSet(null)
                 turn?.job?.cancelAndJoin()
                 try {
                     LLMController.resetConversation()
+                    Logger.i(LOG_TAG, "reset conversation done")
                 } catch (_: Exception) {
                 }
             }
@@ -315,8 +334,26 @@ class AgentRuntimeService : Service() {
 
     private suspend fun executeTurn(query: String, callback: IRenderFrameCallback) {
         val thisTurn = activeTurn.get()
+        val startedAtMs = System.currentTimeMillis()
+        Logger.i(LOG_TAG, "turn started queryLength=${query.length}")
+        var firstFrameSent = false
         try {
             LLMController.stream(query, this@AgentRuntimeService).collectAsFull { frame ->
+                if (!firstFrameSent) {
+                    firstFrameSent = true
+                    Logger.i(
+                        LOG_TAG,
+                        "first render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                            "textLength=${frame.text.length}"
+                    )
+                }
+                if (frame.isFinal) {
+                    Logger.i(
+                        LOG_TAG,
+                        "final render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                            "textLength=${frame.text.length}"
+                    )
+                }
                 sendFrame(
                     callback,
                     RenderFrame(
@@ -326,9 +363,16 @@ class AgentRuntimeService : Service() {
                     ),
                 )
             }
+            Logger.i(LOG_TAG, "turn completed elapsedMs=${System.currentTimeMillis() - startedAtMs}")
         } catch (e: CancellationException) {
+            Logger.i(LOG_TAG, "turn cancelled elapsedMs=${System.currentTimeMillis() - startedAtMs}")
             throw e
         } catch (e: Exception) {
+            Logger.e(
+                LOG_TAG,
+                "turn failed elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                    "errorType=${e::class.simpleName} message=${e.message}"
+            )
             sendFrame(
                 callback,
                 RenderFrame(text = e.message ?: "Internal error", isFirst = true, isFinal = true),

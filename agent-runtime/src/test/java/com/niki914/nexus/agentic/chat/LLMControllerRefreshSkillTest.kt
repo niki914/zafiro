@@ -1,6 +1,7 @@
 package com.niki914.nexus.agentic.chat
 
 import android.content.Context
+import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
 import kotlinx.coroutines.flow.firstOrNull
@@ -9,11 +10,15 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 
 class LLMControllerRefreshSkillTest {
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
+
     @Test
     fun refresh_passesEnabledSkillsIntoPrompt() = runTest {
         val gateway = installRuntimeSettingsGatewayForTest(

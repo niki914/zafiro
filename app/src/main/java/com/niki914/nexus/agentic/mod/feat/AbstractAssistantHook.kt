@@ -114,11 +114,38 @@ abstract class AbstractAssistantHook(
 
     // 默认通过 textSource 提交查询并渲染；子类可覆盖以插入宿主特定的等待逻辑
     protected open suspend fun dispatchQueryToLLM(turnId: Long, roomId: String, query: String) {
+        val startedAtMs = System.currentTimeMillis()
+        var firstFrameLogged = false
         try {
             textSource.submit(query).collect { frame ->
+                if (!firstFrameLogged) {
+                    firstFrameLogged = true
+                    Logger.i(
+                        LOG_TAG,
+                        "dispatch first frame turnId=$turnId " +
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    )
+                }
+                if (frame.isFinal) {
+                    Logger.i(
+                        LOG_TAG,
+                        "dispatch final frame turnId=$turnId " +
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                            "textLength=${frame.text.length}"
+                    )
+                }
                 renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
             }
+            Logger.i(
+                LOG_TAG,
+                "dispatch completed turnId=$turnId elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
         } catch (e: Exception) {
+            Logger.e(
+                LOG_TAG,
+                "dispatch failed turnId=$turnId errorType=${e::class.simpleName} " +
+                    "message=${e.message} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
             renderStreamCard(
                 turnId, roomId,
                 e.message ?: "Service unavailable",

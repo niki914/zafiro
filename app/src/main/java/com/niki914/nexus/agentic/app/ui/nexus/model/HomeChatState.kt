@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.nexus.agentic.app.conversation.ConversationFormatter
 import com.niki914.nexus.agentic.app.conversation.ConversationRecord
 import com.niki914.nexus.agentic.app.conversation.ConversationRepo
+import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.nexus.agentic.chat.LlmErrorCode
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
@@ -227,7 +228,14 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun sendCurrentInput() {
         val query = currentState.input.trim()
-        if (query.isBlank() || currentState.isGenerating) return
+        if (query.isBlank() || currentState.isGenerating) {
+            Logger.d(
+                LOG_TAG,
+                "send skipped blank=${query.isBlank()} isGenerating=${currentState.isGenerating}"
+            )
+            return
+        }
+        Logger.i(LOG_TAG, "send requested queryLength=${query.length}")
 
         val turnId = nextTurnId++
         updateState {
@@ -246,9 +254,18 @@ class HomeChatViewModel internal constructor(
             try {
                 val conversationId = ensureCurrentConversation(query)
                 conversations.updateDraft(conversationId = conversationId, draftText = "")
+                Logger.i(
+                    LOG_TAG,
+                    "send turn started turnId=$turnId conversationId=$conversationId queryLength=${query.length}"
+                )
                 collectLlmStream(turnId = turnId, query = query)
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
+                Logger.e(
+                    LOG_TAG,
+                    "send turn failed turnId=$turnId errorType=${throwable::class.simpleName} " +
+                        "message=${throwable.message}"
+                )
                 throwable.message?.let { message ->
                     applyError(turnId = turnId, message = message, code = null)
                 }
@@ -295,6 +312,7 @@ class HomeChatViewModel internal constructor(
     private suspend fun collectLlmStream(turnId: Long, query: String) {
         runtime.stream(query).collect { event ->
             val eventName = eventName(event)
+            Logger.d(LOG_TAG, "stream event turnId=$turnId event=$eventName")
             val eventCount = currentState.streamEventCount + 1
             updateState {
                 copy(
@@ -332,10 +350,18 @@ class HomeChatViewModel internal constructor(
             }
 
             is LlmStreamEvent.Error -> {
+                Logger.e(
+                    LOG_TAG,
+                    "apply error turnId=$turnId code=${event.code} message=${event.message}"
+                )
                 applyError(turnId = turnId, message = event.message, code = event.code)
             }
 
             is LlmStreamEvent.Completed -> {
+                Logger.i(
+                    LOG_TAG,
+                    "apply completed turnId=$turnId fullTextLength=${event.fullText.length}"
+                )
                 updateTurn(turnId) {
                     it.appendFinalText(event.fullText)
                 }
@@ -687,5 +713,6 @@ class HomeChatViewModel internal constructor(
 
     companion object {
         internal const val FAILED_REASON_INTERRUPTED = "Interrupted by user"
+        private const val LOG_TAG = "niki914_nexus_HomeChatState"
     }
 }

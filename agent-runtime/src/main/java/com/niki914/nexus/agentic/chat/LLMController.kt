@@ -51,9 +51,15 @@ object LLMController {
 
     suspend fun refresh(): LlmRuntimeSnapshot {
         val previousSnapshot = runtimeState?.snapshot
+        val refreshStartedAtMs = System.currentTimeMillis()
         val gateway = RuntimeEnvironment.awaitSettingsGateway()
         val llmConfig = gateway.readLlmConfig()
         validateLlmConfig(llmConfig)
+        Logger.i(
+            LOG_TAG,
+            "config read provider=${llmConfig.provider} model=${llmConfig.model} " +
+                "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
+        )
         val apiType = LlmApiType.fromProvider(llmConfig.provider)
         val mcpServers = gateway.listMcpServers()
         val customTools = gateway.listCustomTools()
@@ -66,6 +72,12 @@ object LLMController {
             mcpCachedTools = mcpServers.associate { server ->
                 server.name to gateway.listCachedTools(server)
             },
+        )
+        Logger.i(
+            LOG_TAG,
+            "tools resolved builtin=${resolvedTools.builtinTools.size} " +
+                "custom=${resolvedTools.customTools.size} " +
+                "mcpServers=${resolvedTools.mcpServers.size}"
         )
         val configWithoutRuntimePrompt = ResolvedLlmConfig(
             endpoint = llmConfig.endpoint,
@@ -88,14 +100,28 @@ object LLMController {
         val shouldRefreshMcp = resolvedTools.mcpServers.isNotEmpty() &&
                 (isNewSession || currentMcpServersFingerprint != lastMcpServersFingerprint)
         if (shouldRefreshMcp) {
+            val mcpRefreshStartedAtMs = System.currentTimeMillis()
             var refreshSucceeded = false
+            var failedServerNames = emptyList<String>()
             try {
                 val refreshResult = activeSession.refreshMcpTools()
-                refreshSucceeded = refreshResult.failedServers.isEmpty()
+                failedServerNames = refreshResult.failedServers.map { it.serverName }
+                refreshSucceeded = failedServerNames.isEmpty()
+                Logger.i(
+                    LOG_TAG,
+                    "mcp refresh done elapsedMs=${System.currentTimeMillis() - mcpRefreshStartedAtMs} " +
+                        "refreshedServers=${refreshResult.refreshedServers.size} " +
+                        "failedServers=${failedServerNames.joinToString(", ") { "\"$it\"" }}"
+                )
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) {
                     throw throwable
                 }
+                Logger.e(
+                    LOG_TAG,
+                    "mcp refresh failed elapsedMs=${System.currentTimeMillis() - mcpRefreshStartedAtMs} " +
+                        "errorType=${throwable.eventTypeName()} message=${throwable.message}"
+                )
             }
             lastMcpServersFingerprint = if (refreshSucceeded) {
                 currentMcpServersFingerprint
@@ -128,6 +154,11 @@ object LLMController {
 
         return LlmRuntimeSnapshot(finalConfig, resolvedTools, prompt).also { snapshot ->
             runtimeState = RuntimeState(snapshot = snapshot, kai = activeSession)
+            Logger.i(
+                LOG_TAG,
+                "refresh done elapsedMs=${System.currentTimeMillis() - refreshStartedAtMs} " +
+                    "model=${snapshot.config.model} newSession=$isNewSession"
+            )
         }
     }
 
@@ -147,7 +178,8 @@ object LLMController {
     fun stream(query: String, context: Context): Flow<LlmStreamEvent> = channelFlow {
         val defaultErrorMessage = context.getString(R.string.error_llm_request_failed)
         if (!turnMutex.tryLock()) {
-            send(LlmStreamEvent.Error("A turn is already active"))
+            Logger.w(LOG_TAG, "turn rejected lockBusy=true")
+            send(LlmStreamEvent.Error("A turn is already active", code = LlmErrorCode.TurnConflict))
             return@channelFlow
         }
         try {
@@ -175,10 +207,18 @@ object LLMController {
                 send(LlmStreamEvent.Error(defaultErrorMessage))
                 return@channelFlow
             }
+            Logger.i(
+                LOG_TAG,
+                "refresh ok model=${state.snapshot.config.model} " +
+                    "builtin=${state.snapshot.tools.builtinTools.size} " +
+                    "custom=${state.snapshot.tools.customTools.size} " +
+                    "mcp=${state.snapshot.tools.mcpServers.size}"
+            )
 
             val accumulator = StringBuilder()
             val startedAtMs = System.currentTimeMillis()
             var streamErrorReported = false
+            var firstFrameLogged = false
             val sink: SendChannel<LlmStreamEvent> = this
             try {
                 Logger.i(LOG_TAG, "round started queryLength=${query.length} isUnlocked=${LockState.isUnlocked()}")
@@ -198,11 +238,22 @@ object LLMController {
                         defaultErrorMessage
                     )
                     mapped?.let {
+                        if (!firstFrameLogged && it is LlmStreamEvent.TextDelta) {
+                            firstFrameLogged = true
+                            Logger.i(
+                                LOG_TAG,
+                                "first frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                                    "charsPerSecond=${it.charsPerSecond}"
+                            )
+                        }
                         if (it is LlmStreamEvent.Error && !streamErrorReported) {
                             streamErrorReported = true
                             Logger.e(
                                 LOG_TAG,
-                                "stream error stage=session_event errorType=${it.throwable?.eventTypeName() ?: "KaiEvent"} message=${it.message}"
+                                "stream error stage=session_event code=${it.code} " +
+                                    "errorType=${it.throwable?.eventTypeName() ?: "KaiEvent"} " +
+                                    "message=${it.message} " +
+                                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                             )
                         }
                         sink.send(it)
@@ -220,7 +271,10 @@ object LLMController {
                 }
                 Logger.e(
                     LOG_TAG,
-                    "stream error stage=send errorType=${throwable.eventTypeName()} message=${throwable.toUserErrorMessage(defaultErrorMessage)}"
+                    "stream error stage=send code=${throwable.toUserErrorCode()} " +
+                        "errorType=${throwable.eventTypeName()} " +
+                        "message=${throwable.toUserErrorMessage(defaultErrorMessage)} " +
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
                 send(
                     LlmStreamEvent.Error(
@@ -237,14 +291,17 @@ object LLMController {
     }.flowOn(Dispatchers.IO)
 
     suspend fun resetConversation() {
+        Logger.i(LOG_TAG, "reset conversation requested")
         // 先杀 python worker / 关 terminal 会话：Binder 调用与 exec 立即结束，
         // 工具协程快速死亡，新会话不继承上一个回合的工具状态
         PyRuntime.kill()
         TerminalSessionPool.closeAll()
         kai?.resetConversation()
+        Logger.i(LOG_TAG, "reset conversation done")
     }
 
     suspend fun stopCurrentRound(keepCurrentTurn: Boolean = false) {
+        Logger.i(LOG_TAG, "stop round requested keepCurrentTurn=$keepCurrentTurn")
         // 终止键语义 = 杀掉仍在运行的工具，必须先杀后 stop：
         // - PyRuntime.kill()：python 工具在独立进程，杀进程使 Binder 调用断开
         // - TerminalSessionPool.closeAll()：terminal 工具没有独立进程，
@@ -256,6 +313,7 @@ object LLMController {
         PyRuntime.kill()
         TerminalSessionPool.closeAll()
         kai?.stop(keepCurrentTurn = keepCurrentTurn)
+        Logger.i(LOG_TAG, "stop round done keepCurrentTurn=$keepCurrentTurn")
     }
 
     private suspend fun obtainSession(apiType: LlmApiType): Kai {
