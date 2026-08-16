@@ -6,10 +6,10 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | T5 已完成，T6 未开始 |
-| 契约 | 已冻结 + T2/T3/T4/T5 回写（docs/okia.md §8.11-§8.14） |
-| 最近提交 | f15af1a（T4 DeepSeek 协议）；T5 待提交 |
-| 测试 | 199 个全绿（T5 新增 35：holder 13 + loop 时机 22） |
+| 阶段 | T6 已完成，T7 未开始 |
+| 契约 | 已冻结 + T2-T6 回写（docs/okia.md §8.11-§8.15） |
+| 最近提交 | 6d24e4f（T6 工具循环） |
+| 测试 | 234 个全绿（T6 新增 35：工具循环 12 + 工具段 17 + registry 6） |
 | 阻塞项 | 无 |
 
 ## 恢复步骤
@@ -28,7 +28,7 @@
 | T3 | transport：SseLineParser + SseEventParser + loop 前置校验 | ~220 | ~500 | 已完成 |
 | T4 | protocol：DeepSeekChatCompletionProtocol（独立实现）+ Mapper.from 委托壳 | ~260 | ~40 用例 | 已完成 |
 | T5 | hooks 接线：holder write 全部实现 + 链式分发 + Input/Serialization/Request 三对时机接入 | ~200 | ~350 | 已完成 |
-| T6 | tooling：ToolExecutor/ToolRegistry + 工具循环 | ~300 | ~300 | 未开始 |
+| T6 | tooling：DefaultToolRegistry + 工具循环（批量并行，保序提交） | ~490 | ~650 | 已完成 |
 | T7 | 取消/重试/idle：kill-then-stop + RetryPolicy + idle 超时 | ~300 | ~300 | 未开始 |
 | T8 | MCP + M0 默认协议 + 默认 HttpEngine + 持久化入口 | ~400 | ~300 | 未开始 |
 
@@ -58,6 +58,12 @@
 | D1 | 不拆接口/实现两个 Gradle 模块，保持单模块 libs:okia | 公开签名泄漏 StateFlow/Json（api 依赖），纯接口模块不可达；internal 可见性已隔离实现；KMP 迁移是单模块 source-set 工作，拆模块使接线翻倍 |
 | D2 | 实现从 T1 对话树开始，T2 垂直切片紧随 | 门面 send() 依赖对话树；垂直切片先行验证集成契约 |
 | D3 | 实现期不并行开发 | 用户决定（2026-08-16） |
+| D31 | 工具执行模式：pi 批量并行（消息完整后执行 + 并发 + 保序提交），放弃 kai 流水线 | 延迟不敏感；loop 结构简单；已派发列表可推导（零收集） |
+| D32 | outcome → 事件映射：Success→Succeeded；Failure→Failed；Intercepted 按 isError；Interrupted/Unknown→Failed | 事件均携带完整 outcome，映射只决定事件类型 |
+| D33 | executor 违反「永不抛异常」契约 → 回合 Failed(ToolExecutionFailed)，不打包回喂 | 业务方 bug 应显形，模型无法修正代码 bug |
+| D34 | 工具段 hook 异常 → 该工具 Failure outcome，回合继续；阻断（writeOutcome）跳过 afterToolCall | §8.4 #13；对齐 pi immediate result |
+| D35 | 新增 DefaultToolRegistry（无锁，snapshot 复制），EmptyToolRegistry 保留 | host 无需自实现注册表；契约保证回合外写 |
+| D36 | 已派发列表无收集：stop 时从会话树推导（批量模式下已派发 = 已提交 Assistant 中的 ToolCall） | 零新增 API；调用在 T7 |
 | D4 | RealConversation 内部状态 = 不可变 State 快照 + @Volatile 引用 | suspend Mutex 与同步 getter 共存：写入在 mutex 内构建新快照，读取免锁（不可变读安全）；KMP 兼容（kotlin.concurrent.Volatile） |
 | D5 | 条目 id = kotlin.uuid.Uuid.random()；timestamp = kotlin.time.Clock.System | KMP 兼容；自增计数器在 restore 乱序 id 时可能冲突，已排除 |
 | D6 | 构造时校验重复 id / 悬挂 leafId（fail-fast） | 与 §8.7 #4 rewind 存在性校验同一原则：客观可校验、快速失败 |
