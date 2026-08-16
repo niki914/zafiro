@@ -1,6 +1,7 @@
 package com.niki914.okia.conversation
 
 import com.niki914.okia.message.AssistantMessage
+import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -128,5 +129,21 @@ internal class RealConversation(
         }
         reversed.reverse()
         return reversed
+    }
+
+    // 回合起点之后已提交 Assistant 消息中的 ToolCall 块（kill-then-stop 的
+    // beforeStop 参数推导，§8.15 #7：已派发 = 本回合已提交 Assistant 中的
+    // ToolCall）。沿当前 leaf 投影（rewind 后按当前位置）取 entryId 之后。
+    // entryId 不在投影链上（已被 rewind 跳过）时返回空列表（防御）。
+    fun assistantToolCallsSince(entryId: String): List<ContentBlock.ToolCall> {
+        val current = state
+        val ordered = project(current.leafId)
+        val startIndex = ordered.indexOfFirst { it.id == entryId }
+        if (startIndex < 0) return emptyList()
+        return ordered.asSequence().drop(startIndex + 1)
+            .mapNotNull { it.message as? Message.Assistant }
+            .flatMap { it.message.content.asSequence() }
+            .filterIsInstance<ContentBlock.ToolCall>()
+            .toList()
     }
 }

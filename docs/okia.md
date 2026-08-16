@@ -213,7 +213,7 @@ sealed interface ToolCallOutcome {
 **依赖图闭合（CR 第三轮落地）**：
 - **mapper 是 ChatProtocol 的适配壳**：`ProtocolCompatMapper.from(protocol)` 工厂声明两者连接——`open(protocol)` 内部经此构造，loop 只接触 mapper、不接触 ChatProtocol。
 - **传输入口进 LoopRequest**：`LoopRequest.httpEngine`（回合唯一传输入口，AgentLoop 必须经它发请求）+ `LoopRequest.retryPolicy`（传输层重试：`Compat.retryableStatusCodes` + 指数退避）；回合层重试仍在 `LoopOptions.turnRetryPolicy`。白板 RetryStrategy 节点由此闭合，自定义 AgentLoop 无法绕过注入的 engine。
-- **idle 检测观察原始 SseLine 流**：`idleTimeoutSeconds` 计时器挂在原始流（parseStream 之前），任何到达帧（含 keep-alive 的 null data）重置——keep-alive 活跃度不随 parseStream 丢弃而丢失。kai 旧实现按事件间隔计时导致长思考误杀（PRD §1.5），此处封死。
+- **idle 检测（T7 修订，覆盖本条）**：`idleTimeoutSeconds` 计时器挂在 agent 事件层（parseStream 之后，§8.16 #7 的 G7 裁决推翻本条原始 SseLine 检测点）——任何 ProtocolEvent 到达重置，keep-alive（SseLine null/空行，不产出 ProtocolEvent）不重置。kai 旧实现按事件间隔计时导致长思考误杀（PRD §1.5）：thinking delta 是 agent 事件，持续产出不误杀。
 
 **hook 与会话树的不变量**：**树（conversation）= 事实**。hook 的 mutation 永远只作用于"本次操作的一次性载体"（holder），发完即弃，**不写回会话树**。因此"UI 显示原文 vs 模型收到改写版"不是不一致性，而是分层预期——例：`beforeSerialization` 数据脱敏时，UI 显示未脱敏原文（自己的界面），模型收到脱敏版（对外边界）。若下游要修正历史本身，正路是 rewind 后重新生成（新分支），不是 hook 隐式改树（链式 hook 会互相踩、历史不可信）。
 
@@ -411,7 +411,7 @@ com.niki914.okia/
 
 1. **send 返回 TurnResult**：终态由返回值承载（Stop / Length / Error / Aborted / IdleTimeout / RetryExhausted），失败不抛异常；事件流只承担流式中间过程（§5.4）。调用方不再自建终态事件累计。
 2. **持久化入口**：门面 `export(): SessionSnapshot` + `open(restore = ...)`（§5.3 / §5.7）；`Conversation` 补 `leafId`、`MessageEntry` 补 `timestamp`。
-3. **依赖图闭合**（§5.8）：`ProtocolCompatMapper.from(protocol)` 工厂；`LoopRequest` 加 `httpEngine` / `retryPolicy`（传输层重试）；idle 检测观察原始 SseLine 流（parseStream 之前，keep-alive 帧重置计时器）。
+3. **依赖图闭合**（§5.8）：`ProtocolCompatMapper.from(protocol)` 工厂；`LoopRequest` 加 `httpEngine` / `retryPolicy`（传输层重试）；idle 检测观察 agent 事件层（含 keep-alive 帧的重置语义 T7 修订为：keep-alive 不重置，§8.16 #7）。
 4. **Intercepted 补 `isError`**：审批拒绝 = true，缓存命中 / 成功模拟 = false；Provider 的 isError 派生由此闭合（§5.6）。
 5. **异步注入移出 beforeInput**：host 自行拼装进 send 文本（§5.10）；beforeInput / afterInput 保留，hook 语义保持"只影响单次、不写回树"（§5.8）。
 6. **快照防御性复制**：RealConversation 各 getter 与门面快照构造返回复制（构造即复制），fork 共享节点不可经公开面改写（§5.3 / §5.4）。
@@ -524,3 +524,24 @@ T6 实现期契约回写（工具执行模式裁决于 2026-08-16 讨论：采�
 9. **请求历史快照（测试暴露）**：buildRequest 收到的 history 传 `toList()`——history 是 loop 内部累积的可变列表，本轮之后追加产出（commit），协议层 / 测试 fake 不得看到事后修改。
 10. **库默认 ToolRegistry**：新增 `DefaultToolRegistry`（tooling/ 包，公开类型）：LinkedHashMap 无锁实现（register / remove 只在活跃回合外调用，host 契约 §8.4 #10；snapshot 返回复制），host 直接注册工具用；`EmptyToolRegistry` 保留（config 未提供 registry 时门面自建）。RealOkia 的 `RequestSnapshot.tools` 从 registry snapshot 取工具描述（原 T6 TODO 落地）。
 11. **thinking 块落地**：`ThinkingDelta` → ThinkingStarted / Delta / Ended 事件 + Thinking 块累积（块切换 flush：thinking 先行，到 text 时收尾）；`ThinkingSignature` → 消息 `reasoningSignature` 字段。工具调用块 Ready 前不占位（§5.4），Ready 后进 partial。
+
+### 8.16 T7 落地（取消/重试/idle，2026-08-17）
+
+T7 实现期契约回写。裁决来源：2026-08-16/17 讨论（G1-G8），实现为权威，测试 273 全绿（T7 新增 39）。
+
+1. **外部取消也触发 beforeStop（G1 裁决）**：外部取消（send 调用方协程被取消，stopCause == null）与 stop 表现一致——在 `NonCancellable` 中先执行 kill 步骤（beforeStop + 推导 calls）再 cancel turnJob + rethrow。差异只在终态表达：stop → `Aborted(UserStop)`；外部取消 → 传播 CancellationException（不返回 TurnResult）。理由：工具资源泄漏不因取消来源豁免（kai PRD §4.4 统一协调路径）。
+2. **stop 重入/并发至多一次 kill（G2 裁决）**：`stop()` 在 mutex 内原子检查+置 `stopCause`（@Volatile 读不够：两个并发 stop 可能都读到 null），第二个 stop 直接 return 无副作用。kill 步骤（beforeStop）与 cancelAndJoin 在 mutex 外执行。
+3. **回合起点记录（G3 落地）**：`send` 记录 turnStartEntryId（User 消息 entryId），`RealOkia` 经 `RealConversation.assistantToolCallsSince(entryId)`（新增 internal 方法）推导 beforeStop 的 calls——沿当前 leaf 投影取 entryId 之后的已提交 Assistant 中的 ToolCall 块；entryId 不在投影链（rewind 跳过）时返回空（防御）。
+4. **HTTP 状态码 → code 映射表（G4 裁决，对照 pi provider-retry / codex retry）**：401/403 → Auth、402 → Quota、429 → RateLimit、503 → Overloaded、408/409/其他 5xx → Transport、其余（400 系/3xx）→ Parse。可重试 = 408/409/429/全部 5xx/网络（无 status）。**修正旧实现 bug**：原 else 分支把 400/404 归 Transport（可重试，白等客户端错误）。`DeepSeekCompat.retryableStatusCodes` 扩展为 `{408, 409, 429} ∪ (500..599)`。不做错误文本匹配（`insufficient_quota` 等），429 一律 RateLimit，host 自判。
+5. **流中断 = 重发当前段请求，复用已提交历史（G5 裁决，对齐 pi/codex）**：业界现做法是重发请求而非旧 workaround（静默发 user msg「继续」，pi/codex 已无此机制）。重发 = 重新 `buildRequest(history)`（history = 所有已 commit 消息含工具结果），partial（未 commit）丢弃——无状态请求从最新合法状态继续（历史最后一条 = ToolResult，模型「装作无事发生」）。已提交工具结果全部复用，不重跑已完成的工具轮、不重发历史轮次。rounds 例子：两轮工具调用后第三轮 assistant 生成中断 → 重试请求体以 ToolResult 结尾（测试 `segmentRetryReusesCommittedToolResults` 锁死）。
+6. **两层重试边界与嵌套（G6 裁决，对齐 pi）**：
+   - 传输层（`config.retryPolicy`）= 发送阶段（buildRequest 之后：beforeRequest → stream → afterRequest → 前置校验）。失败（网络/可重试状态码/html）→ Retry-After（`retry-after-ms` 优先、`retry-after` 数字秒次之，HTTP-date 不解析）优先，否则指数退避 → 重发。**重试重发同一请求体**：Serialization 时机每段一次，Request 时机每次发送尝试重跑（hook 幂等由下游负责）。
+   - 回合层（`LoopOptions.turnRetryPolicy`）= 段首重试（整段：buildRequest → 流收集 → commit）。发送阶段耗尽或流中断 → 段失败且 `code.isRetryable` → 整段重跑（嵌套对齐 pi retryAssistantCall）。
+   - 耗尽语义：可重试错误 + 回合层配置（但预算耗尽）→ `Failed(RetryExhausted)`（statusCode 保留）；可重试 + 回合层未配置 → 如实返回原错误（库不自动升级）；不可重试 → 原错误。
+   - `RetryPolicy.maxAttempts` = 重试次数（初始请求不计数，总请求 = maxAttempts + 1）；`delayMs(attempt) = min(base·2^(attempt-1), max) × (1 ± jitterRatio)`（乘法抖动，随机源 kotlin.random，KMP）。
+   - 工具执行失败不触发段重试（T6 契约：结果回喂模型）。
+   - idle 超时是独立终态，不重试。
+7. **idle = agent 活跃度（G7 裁决，推翻 §5.8 旧定义）**：计时器挂在 agent 事件层（parseStream 之后）——任何 ProtocolEvent 到达重置；keep-alive（SseLine null/空行，被 SseEventParser 丢弃不产出 ProtocolEvent）**不**重置（网络活跃 ≠ agent 活跃，与 §5.8「任何到达帧重置」相反，本条推翻该条）。计时只在流收集段活，工具执行段不计（T6 串行结构天然满足：先收集完再执行工具）。实现：`collectWithIdle`（channel + select，onTimeout 每次事件重置；流关闭与 idle 用 sealed 信号区分，KMP 兼容、虚拟时间可测）。**超时也写入（裁决）**：partial 消息 commit 进历史 + `TurnIdleTimeout(message)` 事件 + `TurnResult.IdleTimeout` 终态；`idleTimeoutSeconds` null 或 ≤0 不检测。
+8. **失败/重试的 partial 语义分层**：最终失败（不可重试/重试耗尽）→ `fail()` commitPartial（半条消息保留进历史，现有语义）；段首重试路径（可重试）→ partial 丢弃不 commit（重试请求历史不变）。`fail()` 现在是唯一收尾点：`StreamTerminated` 携带 error（不再携带已 fail 的 result），`collectEvents` 的失败路径只抛哨兵，回滚终收尾在段执行统一决定。
+9. **流中断异常归类**：`parseStream(lines)` 的 lines 流 / 解析中途抛非哨兵异常 → `LLMError(Transport, "stream interrupted")`（可重试，段首重试候选）。`StreamIdleTimedOut` 哨兵在 collectEvents 兜底 catch 前重抛（Exception 子类，防止被误转 Transport）。
+10. **`RealConversation.assistantToolCallsSince(entryId)`**（internal）：沿当前 leaf 投影取 entryId 之后已提交 Assistant 的 ToolCall 块（§5.11 推导落地，§8.15 #7 无收集方案执行）。

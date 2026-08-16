@@ -270,10 +270,10 @@ class RealAgentLoopTest {
     }
 
     @Test
-    fun non2xx500MapsToOverloaded() = runTest {
+    fun non2xx500MapsToTransport() = runTest {
         val engine = FakeHttpEngine().apply { streamResult = { errorResponse(500) } }
         val result = runLoop(loopRequest(listOf(completed()), engine = engine))
-        assertEquals(LLMErrorCode.Overloaded, (result as TurnResult.Failed).error.code)
+        assertEquals(LLMErrorCode.Transport, (result as TurnResult.Failed).error.code)
     }
 
     @Test
@@ -284,10 +284,10 @@ class RealAgentLoopTest {
     }
 
     @Test
-    fun non2xx400MapsToTransport() = runTest {
+    fun non2xx400MapsToParse() = runTest {
         val engine = FakeHttpEngine().apply { streamResult = { errorResponse(400) } }
         val result = runLoop(loopRequest(listOf(completed()), engine = engine))
-        assertEquals(LLMErrorCode.Transport, (result as TurnResult.Failed).error.code)
+        assertEquals(LLMErrorCode.Parse, (result as TurnResult.Failed).error.code)
     }
 
     @Test

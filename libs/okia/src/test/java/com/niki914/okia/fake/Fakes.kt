@@ -30,6 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
 
 /**
  * 协议边界 fake：每次 parseStream 调用返回下一轮事件（多轮工具循环用）。
@@ -49,6 +50,13 @@ class FakeProtocolMapper(
     val builtRequests = mutableListOf<HttpRequest>()
     val builtHistories = mutableListOf<List<Message>>()
     var buildRequestError: Throwable? = null
+
+    // 流中断模拟（T7 段首重试测试）：指定轮次（0 起）的流收集在发出
+    // interruptAfterEvents 个事件后抛 interruptError（模拟 socket 中途断开，
+    // Transport 级）；该轮永不成功，重试用下一轮事件。
+    var interruptRound: Int? = null
+    var interruptAfterEvents: Int = Int.MAX_VALUE
+    var interruptError: Throwable = java.io.IOException("stream interrupted")
 
     // parseStream 被调用的次数（T3 前置校验断言：非 2xx / HTML 不进入解析）
     var parseStreamCalls = 0
@@ -76,6 +84,17 @@ class FakeProtocolMapper(
         sharedFlow?.let { return it }
         val index = roundIndex.coerceAtMost(rounds.lastIndex)
         roundIndex++
+        if (index == interruptRound) {
+            return flow {
+                var emitted = 0
+                for (event in rounds[index]) {
+                    if (emitted >= interruptAfterEvents) throw interruptError
+                    emit(event)
+                    emitted++
+                }
+                throw interruptError // 该轮全部发完也中断（永不成功）
+            }
+        }
         return rounds[index].asFlow()
     }
 

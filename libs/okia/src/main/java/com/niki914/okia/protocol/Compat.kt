@@ -70,5 +70,7 @@ class DeepSeekCompat : Compat {
     override val requiresToolResultName: Boolean = false
     override val supportsUsageInStreaming: Boolean = true
     override val supportsFinishReason: Boolean = true
-    override val retryableStatusCodes: Set<Int> = setOf(408, 409, 429, 500, 502, 503, 504)
+    // 约定俗成集合（G4 裁决，对照 pi provider-retry / codex retry）：
+    // 408 / 409 / 429 + 全部 5xx。其余 4xx（400/401/403/402/404 等）不可重试。
+    override val retryableStatusCodes: Set<Int> = setOf(408, 409, 429) + (500..599).toSet()
 }

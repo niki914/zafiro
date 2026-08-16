@@ -21,6 +21,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -81,6 +83,11 @@ internal class RealOkia(
     @Volatile
     private var stopCause: StopCause? = null
 
+    // 当前回合起点（send 提交的 User 消息 entryId）；stop / 外部取消时经会话树
+    // 推导本回合已派发的工具调用（beforeStop 参数，§8.15 #7，kill-then-stop）
+    @Volatile
+    private var turnStartEntryId: String? = null
+
     // 正在流式、尚未成条的助手消息；只在 turn 协程内写
     private var live: AssistantMessage? = null
 
@@ -97,7 +104,8 @@ internal class RealOkia(
         }
 
         // 不变量（§5.8）：history 永远包含当前输入——先提交 User 再启动 loop
-        tree.append(Message.User(listOf(ContentBlock.Text(text))))
+        val turnStartEntry = tree.append(Message.User(listOf(ContentBlock.Text(text))))
+        turnStartEntryId = turnStartEntry.id
         publish()
 
         val request = buildLoopRequest(text, options)
@@ -106,6 +114,7 @@ internal class RealOkia(
                 dependencies.agentLoop.run(request) { event -> handleEvent(event, onEvent) }
             } finally {
                 activeTurn = null
+                turnStartEntryId = null
             }
         }
         activeTurn = turnJob
@@ -116,8 +125,13 @@ internal class RealOkia(
             val cause = stopCause
             stopCause = null
             if (cause == null) {
-                // 外部取消：传播（协程取消语义优先），同时停掉回合 job
-                turnJob.cancel()
+                // 外部取消：与 stop 表现一致（G1 裁决）——先 kill 工具资源
+                // （beforeStop）再停掉回合 job，然后传播取消。kill 在
+                // NonCancellable 中执行：当前协程已取消，但 kill 步骤不能中断。
+                withContext(NonCancellable) {
+                    killDispatchedTools()
+                    turnJob.cancel()
+                }
                 throw e
             }
             val message = lastAssistantMessage() ?: AssistantMessage(emptyList())
@@ -128,7 +142,16 @@ internal class RealOkia(
 
     override suspend fun stop() {
         val job = activeTurn ?: return
-        stopCause = StopCause.UserStop
+        // G2：每回合至多一次 kill——并发/重入 stop 只让第一个通过。
+        // mutex 保证检查+写入原子（stopCause @Volatile 读不够：两个并发 stop
+        // 可能都读到 null）。
+        mutex.withLock {
+            if (stopCause != null) return
+            stopCause = StopCause.UserStop
+        }
+        // kill-then-stop（§5.11）：先 kill 工具资源（beforeStop，异常捕获不中止）
+        // 再取消回合 job（阻塞工具不吃协程取消，直接 cancel 会永久挂住）。
+        killDispatchedTools()
         job.cancelAndJoin()
     }
 
@@ -242,6 +265,20 @@ internal class RealOkia(
 
     private fun publish() {
         conversationFlow.value = tree.toSnapshot(live)
+    }
+
+    // kill 步骤（§5.11）：推导本回合已派发的工具调用（起点之后已提交 Assistant
+    // 中的 ToolCall 块），按注册顺序跑 beforeStop 链。hook 异常被捕获，不中止
+    // 停止流程；CancellationException 也捕获（kill 步骤必须跑完，§5.11）。
+    private suspend fun killDispatchedTools() {
+        val calls = turnStartEntryId?.let { tree.assistantToolCallsSince(it) } ?: emptyList()
+        for (hook in config.hooks) {
+            try {
+                hook.beforeStop(calls)
+            } catch (e: Exception) {
+                // 捕获：kill 步骤不因 hook 失败而中断
+            }
+        }
     }
 
     private fun lastAssistantMessage(): AssistantMessage? =
