@@ -6,10 +6,10 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | T6 已完成，T7 未开始 |
-| 契约 | 已冻结 + T2-T6 回写（docs/okia.md §8.11-§8.15） |
-| 最近提交 | 6d24e4f（T6 工具循环） |
-| 测试 | 234 个全绿（T6 新增 35：工具循环 12 + 工具段 17 + registry 6） |
+| 阶段 | T7 已完成，T8 未开始 |
+| 契约 | 已冻结 + T2-T7 回写（docs/okia.md §8.11-§8.16） |
+| 最近提交 | 96f1d5d（T7 分层重试 + kill-then-stop + idle） |
+| 测试 | 273 个全绿（T7 新增 39：重试 15 + idle 10 + kill/stop 10 + 状态码映射修正 4） |
 | 阻塞项 | 无 |
 
 ## 恢复步骤
@@ -29,7 +29,7 @@
 | T4 | protocol：DeepSeekChatCompletionProtocol（独立实现）+ Mapper.from 委托壳 | ~260 | ~40 用例 | 已完成 |
 | T5 | hooks 接线：holder write 全部实现 + 链式分发 + Input/Serialization/Request 三对时机接入 | ~200 | ~350 | 已完成 |
 | T6 | tooling：DefaultToolRegistry + 工具循环（批量并行，保序提交） | ~490 | ~650 | 已完成 |
-| T7 | 取消/重试/idle：kill-then-stop + RetryPolicy + idle 超时 | ~300 | ~300 | 未开始 |
+| T7 | 取消/重试/idle：kill-then-stop + RetryPolicy + idle 超时 | ~300 | ~300 | 已完成 |
 | T8 | MCP + M0 默认协议 + 默认 HttpEngine + 持久化入口 | ~400 | ~300 | 未开始 |
 
 顺序：T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8。T2 是暴露骨架契约风险的主要手段（LoopRequest / onCommit / 事件序列 / 并发契约）。每任务完成时更新本表状态列，随提交提交本文件。
@@ -64,6 +64,11 @@
 | D34 | 工具段 hook 异常 → 该工具 Failure outcome，回合继续；阻断（writeOutcome）跳过 afterToolCall | §8.4 #13；对齐 pi immediate result |
 | D35 | 新增 DefaultToolRegistry（无锁，snapshot 复制），EmptyToolRegistry 保留 | host 无需自实现注册表；契约保证回合外写 |
 | D36 | 已派发列表无收集：stop 时从会话树推导（批量模式下已派发 = 已提交 Assistant 中的 ToolCall） | 零新增 API；调用在 T7 |
+| D37 | 分层重试：传输层（config.retryPolicy）= 发送阶段；回合层（turnRetryPolicy）= 段首重试，嵌套对齐 pi（传输层耗尽 → 回合层判断） | G6 裁决；用户明确参考 pi 行为；发送阶段耗尽后如实返回原错误（回合层未配置时） |
+| D38 | 流中断 = 重发当前段请求（复用已提交历史，丢弃 partial），不引入「继续」机制 | G5 裁决；pi/codex 均重发请求（无状态幂等），旧 workaround（静默发 user msg 继续）已不存在 |
+| D39 | idle = agent 活跃度（ProtocolEvent 到达重置，keep-alive 不重置），推翻 §5.8 原始 SseLine 检测点；超时 partial commit 进历史 | G7/G8 裁决；keep-alive 是网络活跃不是 agent 活跃；超时也写入（用户裁决） |
+| D40 | 外部取消与 stop 表现一致：都触发 beforeStop（kill 步骤），差异只在终态表达（Aborted vs rethrow） | G1 裁决；资源泄漏不因取消来源豁免 |
+| D41 | 状态码 → code 映射表定案（401/403→Auth、402→Quota、429→RateLimit、503→Overloaded、408/409/5xx→Transport、其余→Parse）；retryableStatusCodes = {408,409,429}+全部5xx | G4 裁决；对照 pi/codex 约定俗成；修正旧实现 400 归 Transport（可重试）的 bug |
 | D4 | RealConversation 内部状态 = 不可变 State 快照 + @Volatile 引用 | suspend Mutex 与同步 getter 共存：写入在 mutex 内构建新快照，读取免锁（不可变读安全）；KMP 兼容（kotlin.concurrent.Volatile） |
 | D5 | 条目 id = kotlin.uuid.Uuid.random()；timestamp = kotlin.time.Clock.System | KMP 兼容；自增计数器在 restore 乱序 id 时可能冲突，已排除 |
 | D6 | 构造时校验重复 id / 悬挂 leafId（fail-fast） | 与 §8.7 #4 rewind 存在性校验同一原则：客观可校验、快速失败 |
