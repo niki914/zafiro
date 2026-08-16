@@ -6,9 +6,10 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | T4 已完成，T5 未开始 |
-| 契约 | 已冻结 + T2/T3/T4 回写（docs/okia.md §8.11 / §8.12 / §8.13） |
-| 最近提交 | f15af1a（T4 DeepSeek 协议） |
+| 阶段 | T5 已完成，T6 未开始 |
+| 契约 | 已冻结 + T2/T3/T4/T5 回写（docs/okia.md §8.11-§8.14） |
+| 最近提交 | f15af1a（T4 DeepSeek 协议）；T5 待提交 |
+| 测试 | 199 个全绿（T5 新增 35：holder 13 + loop 时机 22） |
 | 阻塞项 | 无 |
 
 ## 恢复步骤
@@ -26,7 +27,7 @@
 | T2 | 垂直切片：RealOkia + 最小 AgentLoop + fake 协议/传输 | ~490 | ~650 | 已完成 |
 | T3 | transport：SseLineParser + SseEventParser + loop 前置校验 | ~220 | ~500 | 已完成 |
 | T4 | protocol：DeepSeekChatCompletionProtocol（独立实现）+ Mapper.from 委托壳 | ~260 | ~40 用例 | 已完成 |
-| T5 | hooks 接线：holder write 语义 + loop 内时机 | ~250 | ~250 | 未开始 |
+| T5 | hooks 接线：holder write 全部实现 + 链式分发 + Input/Serialization/Request 三对时机接入 | ~200 | ~350 | 已完成 |
 | T6 | tooling：ToolExecutor/ToolRegistry + 工具循环 | ~300 | ~300 | 未开始 |
 | T7 | 取消/重试/idle：kill-then-stop + RetryPolicy + idle 超时 | ~300 | ~300 | 未开始 |
 | T8 | MCP + M0 默认协议 + 默认 HttpEngine + 持久化入口 | ~400 | ~300 | 未开始 |
@@ -79,7 +80,12 @@
 | D23 | T4：encodeToolResult 不加工错误内容：tool 消息 content = outcome.content 原样（null 用空串） | 错误表达由下游在 outcome.content 决定（用户裁决）；骨架「Interrupted/Unknown 编码为错误文本」注释作废 |
 | D24 | T4：Image 块 buildRequest 抛 IllegalStateException（M2 前），不写专门测试 | 明确失败优于自动修复；异常消息讲清楚即可（用户裁决） |
 | D25 | T4：ThinkingSignature 对 DeepSeek 不产出；signature 字段为 null；assistant 无思考补 reasoning_content 空串 | DeepSeek 无签名机制（Anthropic 语义）；requiresReasoningContentOnAssistantMessages=true |
+| D26 | T5：holder write 全部实现（改值 + lastWriter，覆盖语义），落点按消费点接——Serialization → buildRequest、HttpRequest → stream、Input → 请求历史投影；ToolCall/ToolResult 字段就绪落点 T6 | 骨架已声明全部 write 签名，实现 = 填方法体零契约增量；无落点的 write 在 T5 无调用路径（无工具执行点），无静默风险 |
+| D27 | T5：LLMErrorCode 新增 HookFailed（不可重试） | 模型段 hook 异常 → 回合失败需要稳定 code 供 host 映射文案；枚举增值有先例（§8.8 #3 UnknownTool） |
+| D28 | T5：hook 异常 → 回合 Failed(HookFailed)；取消传播；afterRequest 只在 stream 成功返回后触发 | §8.4 #13 落地；请求未完成不触发 after（§8.10 #1 只读实际发出请求） |
+| D29 | T5：链式分发 = RealAgentLoop 内按注册顺序 for 循环，无独立分发器 | 如无必要不增实体；顺序执行 + mutation 可见由循环天然表达 |
+| D30 | T5：Input 改写落点 = 替换 history 末尾 User 的文本块（保留图像等非文本块）；无 User/无文本块不替换；TurnStarted 保持原始 input | pi 在消息组装前替换将进入 LLM 的文本（无树）；okia 树不变量（§5.8）使落点为 buildRequest 历史投影；事件反映事实 |
 
 ## 下一步
 
-开始 T5：hooks 接线——holder write 语义 + loop 内时机（beforeInput / beforeSerialization / beforeRequest / beforeToolCall / beforeStop 等 10 时机接入 RealAgentLoop），需先裁决 holder write 签名（§5.9.5 骨架期留空，现在 loop 消费 beforeToolCall 的 outcome 阻断）。等待用户确认后开始。
+开始 T6：tooling——ToolExecutor / ToolRegistry 默认实现 + 工具循环（LLM ↔ 工具多轮）+ ToolCall 时机接入（beforeToolCall 改参 / writeOutcome 阻断短路 + afterToolCall + ToolResultHolder 落点）。前置待裁决：ToolCallOutcome 5 态在工具执行结果中的映射（§5.6 已定，落地确认）。等待用户确认后开始。
