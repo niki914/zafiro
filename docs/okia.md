@@ -508,3 +508,19 @@ T5 实现期契约回写（调研参照：pi `extensions/runner.ts` emitToolCall
 3. **hook 异常策略落地（§8.4 #13 执行确认）**：模型段 hook 异常 → 回合 `Failed(LLMErrorCode.HookFailed)`（新增枚举值，不可重试；host 按 code 映射文案；枚举增值先例 §8.8 #3 UnknownTool）；`CancellationException` 传播（hook 被取消 = 回合取消，不转 Failed）。
 4. **afterRequest 触发条件**：只在 `HttpEngine.stream` 成功返回后触发（请求未完成不触发）；形参为实际发出的请求（beforeRequest 改写后的值），不接触 response（§8.10 #1 不变）。
 5. **时机顺序（T5 全量）**：`TurnStarted` → `beforeInput` → `afterInput` → `beforeSerialization` → buildRequest → `afterSerialization` → `beforeRequest` → stream → `afterRequest` → 流事件。ToolCall / Stop 时机随 T6 工具循环 / T7 停止流程接入。
+
+### 8.15 T6 落地（工具循环，2026-08-16）
+
+T6 实现期契约回写（工具执行模式裁决于 2026-08-16 讨论：采纳 pi 批量并行，放弃 kai 流水线）。实现细节的决策记录在 Progress.md D31-D38。
+
+1. **工具执行时机与并发（§5.5 补充）**：消息流完整结束（Completed）→ 整条 Assistant commit（含 ToolCall 块）→ **之后**才执行该消息的工具调用。多条调用**并发执行**（coroutineScope + async，结构化并发，取消传播），ToolResult 消息与事件按调用顺序保序提交（对齐 pi `executeToolCallsParallel`）。不采纳 kai 流水线（ready 即执行）——换取 loop 无并发流收集结构，且「已派发调用列表 = 已提交 Assistant 中的 ToolCall」推导成立（§8.15 #7）。
+2. **工具循环终止**：finish_reason=ToolUse → 执行工具 → ToolResult 回喂 → 下一轮请求；Stop / Length → `TurnCompleted` / `Completed`。防御：ToolUse 但 content 无 ToolCall 块（协议不一致）→ 按 Stop 结束，避免死循环。
+3. **完整响应 API 的 ToolCall 事件（测试暴露，§4.5 契约补全）**：`ToolCallStarted` 注释已声明「完整响应 API 直接跳到 ToolCallReady」——loop 对无 Started 的 Delta / Ready **创建 pending**（不跳过），否则完整响应 API 的工具轮被静默丢弃（findPending 返回 null → return@collect，工具调用块不占位，ToolUse 落入防御分支）。
+4. **outcome 5 态 → 事件映射**：`Success` → ToolSucceeded；`Failure` → ToolFailed；`Intercepted` 按 isError（false → Succeeded，true → Failed）；`Interrupted` / `Unknown` → ToolFailed。事件均携带完整 outcome，UI 不丢信息。
+5. **executor 违反「永不抛异常」契约 → 回合 `Failed(ToolExecutionFailed)`**（新增枚举值，不可重试，先例 §8.8 #3 / §8.14 #3）：业务方 bug 应显形，错误文本打包回喂模型无意义（模型无法修正代码 bug）。区别于 pi（catch 成 error result 回喂）与 kai（xTrySuspend 转 error）。
+6. **工具段 hook 异常 → 该工具 `Failure` outcome（§8.4 #13 落地）**：beforeToolCall / afterToolCall 链中 hook 抛异常 → 该调用 outcome = Failure（消息含 hook 异常信息），回合继续；`CancellationException` 传播。**阻断（writeOutcome）跳过 afterToolCall**（对齐 pi immediate result：未执行的调用不走执行后钩子）。
+7. **已派发调用列表（beforeStop 参数，§5.11）无收集**：批量模式下「本回合已派发 = 本回合已提交 Assistant 消息中的 ToolCall 块」，协调器在 stop() 时从会话树推导（send 记录回合起点），零新增 API / 回调 / 字段。推导与 beforeStop 调用随 T7 停止流程落地。
+8. **loop 累积历史同步（测试暴露）**：`executeTools` 提交 ToolResult 到树（onCommit）后必须返回提交消息，run 同步进内部累积 history（下一轮 buildRequest 用它）——否则第二轮请求缺 ToolResult。
+9. **请求历史快照（测试暴露）**：buildRequest 收到的 history 传 `toList()`——history 是 loop 内部累积的可变列表，本轮之后追加产出（commit），协议层 / 测试 fake 不得看到事后修改。
+10. **库默认 ToolRegistry**：新增 `DefaultToolRegistry`（tooling/ 包，公开类型）：LinkedHashMap 无锁实现（register / remove 只在活跃回合外调用，host 契约 §8.4 #10；snapshot 返回复制），host 直接注册工具用；`EmptyToolRegistry` 保留（config 未提供 registry 时门面自建）。RealOkia 的 `RequestSnapshot.tools` 从 registry snapshot 取工具描述（原 T6 TODO 落地）。
+11. **thinking 块落地**：`ThinkingDelta` → ThinkingStarted / Delta / Ended 事件 + Thinking 块累积（块切换 flush：thinking 先行，到 text 时收尾）；`ThinkingSignature` → 消息 `reasoningSignature` 字段。工具调用块 Ready 前不占位（§5.4），Ready 后进 partial。

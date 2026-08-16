@@ -7,34 +7,54 @@ import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.hooks.HttpRequestHolder
 import com.niki914.okia.hooks.InputHolder
 import com.niki914.okia.hooks.SerializationHolder
+import com.niki914.okia.hooks.ToolCallHolder
+import com.niki914.okia.hooks.ToolResultHolder
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
+import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.protocol.ProtocolEvent
+import com.niki914.okia.tooling.ToolCallContext
+import com.niki914.okia.tooling.ToolExecutor
 import com.niki914.okia.transport.SseLine
 import com.niki914.okia.transport.StreamResponse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 
 /**
- * 最小回合驱动（T2 切片）：单次模型往返，文本流式，终态 commit。
- * 消息产出规则（对齐 PRD §5.4 + 2026-08-16 对齐）：流式期间只发事件
- * （partial 快照），消息完整（Completed / 失败 / 取消）才经 onCommit 提交；
- * 不变量由门面保证：live 非空 ⇒ history 不含该消息。
+ * 回合驱动（T6 工具循环）：模型 ↔ 工具循环，直到最后一条消息不是工具请求。
+ * 每轮 = 一次模型往返：流式收集（text / thinking / toolCall 块）→ 整条
+ * Assistant 消息 commit → finish_reason=ToolUse 时执行工具（消息完整后才
+ * 执行，多条并发、结果按调用顺序保序提交，对齐 pi executeToolCallsParallel）
+ * → 下一轮；Stop / Length → TurnCompleted / Completed。
+ * 工具执行契约（T6 裁决）：beforeToolCall 可改写参数（write）或阻断
+ * （writeOutcome，短路后续 hook 且不执行）；工具段 hook 异常 → 该工具
+ * Failure outcome（§8.4 #13），回合继续；executor 违反「永不抛异常」
+ * 契约 → 回合 Failed(ToolExecutionFailed)；未知工具 → Failed(UnknownTool)
+ * （§8.8 #3）；被阻断 / hook 失败的调用不执行也不走 afterToolCall
+ * （对齐 pi immediate result 语义）。
+ * 消息提交：每条模型往返消息在流结束（Completed）时整条 commit（§8.11 #1，
+ * 含 ToolCall 块）；ToolResult 消息批量 commit（原子，保序）；流式期间只发
+ * 事件（partial 快照），live 不变量由门面保证。
  * 取消契约（§8.8 #2）：外部取消在 NonCancellable 清理（commit 部分产出）后
  * 重新抛出；Aborted 终态与 TurnAborted 事件由协调器产生，loop 不产生。
- * Hooks（T5）：Input / Serialization / Request 三对时机已接入（顺序：
- * TurnStarted → beforeInput → afterInput → beforeSerialization →
- * buildRequest → afterSerialization → beforeRequest → stream → afterRequest）；
- * hook 异常 → 回合 Failed（HookFailed，§8.4 #13）；ToolCall / Stop 时机
- * 随 T6 工具循环 / T7 停止流程接入。
- * 工具 / 思考事件未实现（T6），遇到显式 TODO 失败——明确失败优于自动修复。
- * Design source: pi agentLoop；okia 骨架 AgentLoop 对照基线。
+ * 工具执行阶段取消经 coroutineScope 传播；待决工具结果的补全（onInterrupt）
+ * 随 T7 停止流程落地。
+ * Hooks 时机顺序（T6 全量）：TurnStarted → beforeInput → afterInput →
+ * 每轮（beforeSerialization → buildRequest → afterSerialization →
+ * beforeRequest → stream → afterRequest → 流事件）→ [ToolUse →
+ * beforeToolCall → ToolRunning → 执行 → afterToolCall → 事件 + ToolResult
+ * commit] → 下一轮。
+ * Design source: pi agent-loop.ts（runLoop / executeToolCallsParallel）；
+ * kai RoundRunner / ToolCallWaiter（保序提交）；okia 骨架 AgentLoop 对照基线。
  */
 internal class RealAgentLoop : AgentLoop {
 
@@ -43,119 +63,221 @@ internal class RealAgentLoop : AgentLoop {
         onEvent: suspend (TurnEvent) -> Unit
     ): TurnResult {
         onEvent(TurnEvent.TurnStarted(request.input))
-        val state = StreamState()
 
         // Input 时机（回合入口）：before 可改写输入。改写落点 = 请求历史投影
         // （替换 history 末尾 User 的文本块，树不变；作用域 = 本回合第一次请求，
         // 见 §5.10 分层预期）。事件仍发原始 input（事件反映事实，与树一致）。
         val inputHolder = InputHolder(request.input)
-        hookStep(request, onEvent, state, "beforeInput") { it.beforeInput(inputHolder) }?.let { return it }
-        val effectiveHistory = if (inputHolder.text != request.input) {
+        hookStep(request, onEvent, "beforeInput") { it.beforeInput(inputHolder) }?.let { return it }
+        val baseHistory = if (inputHolder.text != request.input) {
             replaceLastUserText(request.history, inputHolder.text)
         } else {
             request.history
         }
-        hookStep(request, onEvent, state, "afterInput") { it.afterInput(inputHolder) }?.let { return it }
+        hookStep(request, onEvent, "afterInput") { it.afterInput(inputHolder) }?.let { return it }
 
-        val httpRequest = try {
-            // Serialization 时机：before 可改写请求输入（脱敏主战场）；
-            // after 拿 buildRequest 产物（只读，审计 / 埋点）
-            val serializationHolder = SerializationHolder(request.snapshot, effectiveHistory)
-            hookStep(request, onEvent, state, "beforeSerialization") {
-                it.beforeSerialization(serializationHolder)
-            }?.let { return it }
-            val built = request.protocolMapper.buildRequest(
-                serializationHolder.snapshot,
-                serializationHolder.history
-            )
-            hookStep(request, onEvent, state, "afterSerialization") {
-                it.afterSerialization(serializationHolder, built)
-            }?.let { return it }
-            built
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return fail(request, onEvent, state, LLMError(LLMErrorCode.Parse, "request build failed", e))
-        }
+        // 回合累积历史：初始 = 请求历史（含当前输入），每轮产出追加。
+        // 下一轮 buildRequest 用它（工具结果已回喂）。
+        val history = baseHistory.toMutableList()
 
-        val response = try {
-            // Request 时机：before 可改写请求（http 层兜底脱敏）；after 只读
-            // 实际发出的请求（改写后），不接触 response——body 流归 loop 独占
-            val requestHolder = HttpRequestHolder(httpRequest)
-            hookStep(request, onEvent, state, "beforeRequest") {
-                it.beforeRequest(requestHolder)
-            }?.let { return it }
-            val sent = requestHolder.request
-            val resp = request.httpEngine.stream(sent)
-            hookStep(request, onEvent, state, "afterRequest") { it.afterRequest(sent) }?.let { return it }
-            resp
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return fail(request, onEvent, state, LLMError(LLMErrorCode.Transport, "stream failed", e))
-        }
+        while (true) {
+            val state = StreamState()
 
-        // 前置校验（T3）：2xx 才进 SSE 解析；非 2xx 的 body 是错误文本，
-        // 不进 parseStream（风控 HTML / JSON 错误不会被当 SSE 解析）
-        return when (response) {
-            is StreamResponse.Error -> {
-                val code = when {
-                    response.statusCode == 429 -> LLMErrorCode.RateLimit
-                    response.statusCode == 401 || response.statusCode == 403 -> LLMErrorCode.Auth
-                    response.statusCode in 500..599 -> LLMErrorCode.Overloaded
-                    else -> LLMErrorCode.Transport
-                }
-                // body 截断：错误详情供 UI 展示，非完整响应（HTML 页可能很大）
-                fail(
-                    request, onEvent, state,
-                    LLMError(code, response.body.take(MAX_ERROR_BODY_CHARS), null, response.statusCode)
+            // 1. Serialization 时机 + buildRequest（每轮）
+            val httpRequest = try {
+                val serializationHolder = SerializationHolder(request.snapshot, history)
+                hookStep(request, onEvent, "beforeSerialization") {
+                    it.beforeSerialization(serializationHolder)
+                }?.let { return it }
+                // 历史快照：toList() 防御——history 是 loop 内部累积的可变列表，
+                // 本轮之后会追加产出（commit），协议层/测试 fake 不得看到事后修改
+                val built = request.protocolMapper.buildRequest(
+                    serializationHolder.snapshot,
+                    serializationHolder.history.toList()
                 )
+                hookStep(request, onEvent, "afterSerialization") {
+                    it.afterSerialization(serializationHolder, built)
+                }?.let { return it }
+                built
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                return fail(request, onEvent, state, LLMError(LLMErrorCode.Parse, "request build failed", e))
             }
-            is StreamResponse.Ok -> {
-                val contentType = response.headers.entries
-                    .firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }?.value
-                if (contentType?.startsWith("text/html", ignoreCase = true) == true) {
-                    // 黑名单快速失败：content-type 已明确非流式/JSON（如风控页）
-                    fail(
+
+            // 2. Request 时机 + stream（每轮）
+            val response = try {
+                val requestHolder = HttpRequestHolder(httpRequest)
+                hookStep(request, onEvent, "beforeRequest") { it.beforeRequest(requestHolder) }?.let { return it }
+                val sent = requestHolder.request
+                val resp = request.httpEngine.stream(sent)
+                hookStep(request, onEvent, "afterRequest") { it.afterRequest(sent) }?.let { return it }
+                resp
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                return fail(request, onEvent, state, LLMError(LLMErrorCode.Transport, "stream failed", e))
+            }
+
+            // 3. 前置校验（T3）：2xx 才进 SSE 解析；非 2xx / HTML 不进 parseStream
+            when (response) {
+                is StreamResponse.Error -> {
+                    val code = when {
+                        response.statusCode == 429 -> LLMErrorCode.RateLimit
+                        response.statusCode == 401 || response.statusCode == 403 -> LLMErrorCode.Auth
+                        response.statusCode in 500..599 -> LLMErrorCode.Overloaded
+                        else -> LLMErrorCode.Transport
+                    }
+                    // body 截断：错误详情供 UI 展示，非完整响应（HTML 页可能很大）
+                    return fail(
                         request, onEvent, state,
-                        LLMError(LLMErrorCode.Parse, "unsupported content type: $contentType", null, response.statusCode)
+                        LLMError(code, response.body.take(MAX_ERROR_BODY_CHARS), null, response.statusCode)
                     )
-                } else {
-                    try {
-                        collectEvents(request, onEvent, response.lines, state)
-                    } catch (e: CancellationException) {
-                        withContext(NonCancellable) { commitPartial(request, state) }
-                        throw e
+                }
+                is StreamResponse.Ok -> {
+                    val contentType = response.headers.entries
+                        .firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }?.value
+                    if (contentType?.startsWith("text/html", ignoreCase = true) == true) {
+                        // 黑名单快速失败：content-type 已明确非流式/JSON（如风控页）
+                        return fail(
+                            request, onEvent, state,
+                            LLMError(
+                                LLMErrorCode.Parse, "unsupported content type: $contentType",
+                                null, response.statusCode
+                            )
+                        )
                     }
                 }
             }
+
+            // 4. 流收集 → 该轮完整 Assistant 消息（终态中断收集，哨兵携带）
+            val assistant = try {
+                collectEvents(request, onEvent, response.lines, state)
+            } catch (e: StreamTerminated) {
+                return e.result
+            } catch (e: CancellationException) {
+                withContext(NonCancellable) { commitPartial(request, state) }
+                throw e
+            }
+
+            // 5. 整条 commit（含 ToolCall；§8.11 #1）
+            request.onCommit(listOf(Message.Assistant(assistant)))
+            history += Message.Assistant(assistant)
+
+            // 6. ToolUse → 执行工具 → 下一轮；Stop / Length → 回合结束
+            if (assistant.stopReason == StopReason.ToolUse) {
+                val toolCalls = assistant.content.filterIsInstance<ContentBlock.ToolCall>()
+                if (toolCalls.isEmpty()) {
+                    // 防御：ToolUse 但无工具调用块（协议不一致）→ 按 Stop 结束，避免死循环
+                    onEvent(TurnEvent.TurnCompleted(assistant))
+                    return TurnResult.Completed(CompletionReason.Stop)
+                }
+                when (val toolOutcome = executeTools(request, onEvent, assistant, toolCalls)) {
+                    is ToolExecutionOutcome.Failure -> return toolOutcome.result
+                    is ToolExecutionOutcome.Success -> {
+                        // ToolResult 同步进累积历史（树经 onCommit 已提交，loop 侧保持一致）
+                        history += toolOutcome.messages
+                    }
+                }
+                continue
+            }
+
+            val reason = when (assistant.stopReason) {
+                StopReason.Length -> CompletionReason.Length
+                else -> CompletionReason.Stop
+            }
+            onEvent(TurnEvent.TurnCompleted(assistant))
+            return TurnResult.Completed(reason)
         }
     }
+
+    // ── 流收集（每轮） ────────────────────────────────────────────────────
 
     private suspend fun collectEvents(
         request: LoopRequest,
         onEvent: suspend (TurnEvent) -> Unit,
         lines: Flow<SseLine>,
         state: StreamState
-    ): TurnResult {
-        var result: TurnResult? = null
+    ): AssistantMessage {
         try {
             request.protocolMapper.parseStream(lines).collect { event ->
                 when (event) {
                     is ProtocolEvent.TextDelta -> {
-                        if (!state.started) {
-                            state.started = true
+                        // 块切换：thinking 先行（DeepSeek 顺序），到 text 时收尾 thinking
+                        flushThinking(state, onEvent)
+                        if (!state.textStarted) {
+                            state.textStarted = true
                             state.text.append(event.text)
-                            onEvent(TurnEvent.TextStarted(0, state.partialMessage()))
+                            onEvent(TurnEvent.TextStarted(state.blocks.size, state.partialMessage()))
                         } else {
                             state.text.append(event.text)
-                            onEvent(TurnEvent.TextDelta(0, event.text, state.partialMessage()))
+                            onEvent(TurnEvent.TextDelta(state.blocks.size, event.text, state.partialMessage()))
                         }
                     }
+                    is ProtocolEvent.ThinkingDelta -> {
+                        flushText(state, onEvent)
+                        if (!state.thinkingStarted) {
+                            state.thinkingStarted = true
+                            state.thinking.append(event.text)
+                            onEvent(TurnEvent.ThinkingStarted(state.blocks.size, state.partialMessage()))
+                        } else {
+                            state.thinking.append(event.text)
+                            onEvent(TurnEvent.ThinkingDelta(state.blocks.size, event.text, state.partialMessage()))
+                        }
+                    }
+                    is ProtocolEvent.ThinkingSignature -> state.reasoningSignature = event.signature
+                    is ProtocolEvent.ToolCallStarted -> {
+                        state.pendingToolCalls += PendingToolCall(event.callId, event.toolName)
+                        onEvent(
+                            TurnEvent.ToolCallStarted(
+                                toolCallIndex(state, state.pendingToolCalls.lastIndex),
+                                state.partialMessage()
+                            )
+                        )
+                    }
+                    is ProtocolEvent.ToolCallDelta -> {
+                        // 完整响应 API 可能无 Started 直接发 Delta / Ready，找不到时创建
+                        val pending = findPending(state, event.callId)
+                            ?: PendingToolCall(event.callId, event.toolName).also { state.pendingToolCalls += it }
+                        if (pending.id.isEmpty()) pending.id = event.callId
+                        if (pending.name.isEmpty()) pending.name = event.toolName
+                        pending.arguments.append(event.delta)
+                        onEvent(
+                            TurnEvent.ToolCallDelta(
+                                toolCallIndex(state, state.pendingToolCalls.indexOf(pending)),
+                                event.delta,
+                                state.partialMessage()
+                            )
+                        )
+                    }
+                    is ProtocolEvent.ToolCallReady -> {
+                        // 完整响应 API 直接 Ready（无 Started）：pending 不存在时创建
+                        val pending = findPending(state, event.callId)
+                            ?: PendingToolCall(event.callId, event.toolName).also { state.pendingToolCalls += it }
+                        val call = ContentBlock.ToolCall(
+                            id = pending.id.ifEmpty { event.callId },
+                            name = pending.name.ifEmpty { event.toolName },
+                            argumentsJson = pending.arguments.toString()
+                        )
+                        state.pendingToolCalls.remove(pending)
+                        state.readyToolCalls += call
+                        onEvent(
+                            TurnEvent.ToolCallReady(
+                                state.blocks.size + state.readyToolCalls.lastIndex,
+                                call,
+                                state.partialMessage()
+                            )
+                        )
+                    }
                     is ProtocolEvent.Completed -> {
-                        val reason = when (event.stopReason) {
-                            null, StopReason.Stop -> CompletionReason.Stop
-                            StopReason.Length -> CompletionReason.Length
+                        state.usage = event.usage
+                        state.responseModel = event.responseModel
+                        state.stopReason = event.stopReason
+                        when (event.stopReason) {
+                            null, StopReason.Stop, StopReason.Length, StopReason.ToolUse -> {
+                                flushBlocks(state, onEvent)
+                                throw StreamCompleted(buildFinalAssistant(state))
+                            }
                             else -> throw StreamTerminated(
                                 fail(
                                     request, onEvent, state,
@@ -163,23 +285,6 @@ internal class RealAgentLoop : AgentLoop {
                                 )
                             )
                         }
-                        state.usage = event.usage
-                        state.responseModel = event.responseModel
-                        state.stopReason = event.stopReason
-                        if (state.started) {
-                            onEvent(TurnEvent.TextEnded(0, state.text.toString(), state.partialMessage()))
-                        }
-                        val message = AssistantMessage(
-                            content = if (state.started) listOf(ContentBlock.Text(state.text.toString())) else emptyList(),
-                            stopReason = state.stopReason ?: StopReason.Stop,
-                            usage = state.usage,
-                            responseModel = state.responseModel
-                        )
-                        request.onCommit(listOf(Message.Assistant(message)))
-                        onEvent(TurnEvent.TurnCompleted(message))
-                        // 终态即中断收集：无限流（SharedFlow）不会自然结束，
-                        // 只靠 return 退出 action 会让 collect 继续挂起（T2 实测暴露）
-                        throw StreamTerminated(TurnResult.Completed(reason))
                     }
                     is ProtocolEvent.Error -> throw StreamTerminated(
                         fail(
@@ -187,23 +292,165 @@ internal class RealAgentLoop : AgentLoop {
                             LLMError(LLMErrorCode.Parse, "stream parse error", event.cause)
                         )
                     )
-                    is ProtocolEvent.ToolCallStarted,
-                    is ProtocolEvent.ToolCallDelta,
-                    is ProtocolEvent.ToolCallReady,
-                    is ProtocolEvent.ThinkingDelta,
-                    is ProtocolEvent.ThinkingSignature ->
-                        TODO("tool loop and thinking blocks land in T6")
                 }
             }
-        } catch (e: StreamTerminated) {
-            return e.result
+        } catch (e: StreamCompleted) {
+            return e.assistant
         }
         // 流正常结束但没有 Completed 事件 = 协议不完整，明确失败
-        return result ?: fail(
-            request, onEvent, state,
-            LLMError(LLMErrorCode.Parse, "stream ended without Completed")
+        throw StreamTerminated(
+            fail(request, onEvent, state, LLMError(LLMErrorCode.Parse, "stream ended without Completed"))
         )
     }
+
+    // ── 工具执行段落（Phase 1 准备 → Phase 2 并发执行 → Phase 3 保序提交） ──
+
+    private suspend fun executeTools(
+        request: LoopRequest,
+        onEvent: suspend (TurnEvent) -> Unit,
+        assistant: AssistantMessage,
+        toolCalls: List<ContentBlock.ToolCall>
+    ): ToolExecutionOutcome {
+
+        // Phase 1（顺序）：解析 + beforeToolCall 链。outcome 非空 = 已定
+        // （阻断 / hook 失败），不执行；outcome 空 = 待执行。
+        data class Plan(
+            val toolCall: ContentBlock.ToolCall,
+            val holder: ToolCallHolder,
+            val executor: ToolExecutor?,
+            val context: ToolCallContext?,
+            var outcome: ToolCallOutcome?
+        )
+        val plans = mutableListOf<Plan>()
+        for (call in toolCalls) {
+            val registered = request.toolRegistry.find(call.name)
+            if (registered == null) {
+                return ToolExecutionOutcome.Failure(
+                    failTurn(
+                        onEvent, assistant,
+                        LLMError(LLMErrorCode.UnknownTool, "unknown tool: ${call.name}")
+                    )
+                )
+            }
+            val holder = ToolCallHolder(call.id, call.name, call.argumentsJson, registered.descriptor)
+            var hookFailed: ToolCallOutcome? = null
+            try {
+                for (hook in request.hooks) {
+                    hook.beforeToolCall(holder)
+                    if (holder.outcome != null) break // 阻断：后续 hook 不执行
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 工具段 hook 异常 → Failure outcome（§8.4 #13），回合继续
+                hookFailed = ToolCallOutcome.Failure("beforeToolCall hook failed: ${e.message}")
+            }
+            when {
+                hookFailed != null -> plans += Plan(call, holder, null, null, hookFailed)
+                holder.outcome != null -> plans += Plan(call, holder, null, null, holder.outcome)
+                else -> plans += Plan(
+                    call, holder, registered.executor,
+                    ToolCallContext(call.id, call.name, registered.descriptor, holder.argumentsJson),
+                    null
+                )
+            }
+        }
+
+        // Phase 2：按调用顺序发 ToolRunning，然后并发执行（coroutineScope
+        // 结构化并发，取消传播）。executor 违反「永不抛异常」契约 → 回合
+        // Failed(ToolExecutionFailed)（业务方 bug 显形，不打包回喂模型）。
+        val executedOutcomes: Map<Int, ToolCallOutcome> = try {
+            val executable = plans.mapIndexedNotNull { index, plan ->
+                if (plan.outcome == null) index to plan else null
+            }
+            if (executable.isEmpty()) {
+                emptyMap()
+            } else {
+                for ((_, plan) in executable) {
+                    onEvent(
+                        TurnEvent.ToolRunning(
+                            assistant.content.indexOf(plan.toolCall),
+                            plan.toolCall,
+                            assistant
+                        )
+                    )
+                }
+                coroutineScope {
+                    executable.map { (index, plan) ->
+                        async {
+                            index to try {
+                                plan.executor!!.execute(plan.context!!)
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                throw ToolExecutionException(plan.toolCall, e)
+                            }
+                        }
+                    }.awaitAll()
+                }.toMap()
+            }
+        } catch (e: ToolExecutionException) {
+            return ToolExecutionOutcome.Failure(
+                failTurn(
+                    onEvent, assistant,
+                    LLMError(LLMErrorCode.ToolExecutionFailed, "tool ${e.toolCall.name} execution failed", e.failure)
+                )
+            )
+        }
+
+        // Phase 3（顺序，保序）：执行过的调用走 afterToolCall（可替换结果，
+        // 异常 → Failure outcome）→ encodeToolResult → 批量 commit + 事件。
+        // 已定 outcome（阻断 / hook 失败）的调用不执行也不走 afterToolCall。
+        val resultMessages = mutableListOf<Message>()
+        for ((index, plan) in plans.withIndex()) {
+            var outcome = executedOutcomes[index] ?: plan.outcome!!
+            if (plan.outcome == null) {
+                val resultHolder = ToolResultHolder(outcome)
+                try {
+                    for (hook in request.hooks) hook.afterToolCall(plan.holder, resultHolder)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    resultHolder.write(
+                        ToolCallOutcome.Failure("afterToolCall hook failed: ${e.message}"), "okia"
+                    )
+                }
+                outcome = resultHolder.outcome
+            }
+            resultMessages += request.protocolMapper.encodeToolResult(plan.toolCall, outcome)
+            onEvent(toolOutcomeEvent(assistant, plan.toolCall, outcome))
+        }
+        request.onCommit(resultMessages)
+        return ToolExecutionOutcome.Success(resultMessages)
+    }
+
+    // 工具执行段落结果：成功携带提交的 ToolResult 消息（loop 同步进累积历史），
+    // 失败携带回合终态（UnknownTool / ToolExecutionFailed）。
+    private sealed interface ToolExecutionOutcome {
+        data class Success(val messages: List<Message>) : ToolExecutionOutcome
+        data class Failure(val result: TurnResult) : ToolExecutionOutcome
+    }
+
+    // outcome 5 态 → ToolSucceeded / ToolFailed 事件（T6 裁决：Intercepted 按
+    // isError；Interrupted / Unknown 归失败）。事件携带完整 outcome，UI 不丢信息。
+    private fun toolOutcomeEvent(
+        assistant: AssistantMessage,
+        toolCall: ContentBlock.ToolCall,
+        outcome: ToolCallOutcome
+    ): TurnEvent {
+        val index = assistant.content.indexOf(toolCall)
+        return when (outcome) {
+            is ToolCallOutcome.Success -> TurnEvent.ToolSucceeded(index, toolCall, outcome, assistant)
+            is ToolCallOutcome.Failure -> TurnEvent.ToolFailed(index, toolCall, outcome, assistant)
+            is ToolCallOutcome.Intercepted ->
+                if (outcome.isError) TurnEvent.ToolFailed(index, toolCall, outcome, assistant)
+                else TurnEvent.ToolSucceeded(index, toolCall, outcome, assistant)
+            is ToolCallOutcome.Interrupted -> TurnEvent.ToolFailed(index, toolCall, outcome, assistant)
+            is ToolCallOutcome.Unknown -> TurnEvent.ToolFailed(index, toolCall, outcome, assistant)
+        }
+    }
+
+    // ── 收尾与工具函数 ─────────────────────────────────────────────────────
 
     // 失败收尾：commit 部分产出（若有）+ 发 TurnFailed + 返回 Failed 终态
     private suspend fun fail(
@@ -217,9 +464,19 @@ internal class RealAgentLoop : AgentLoop {
         return TurnResult.Failed(error)
     }
 
+    // 工具段失败收尾：Assistant 已 commit（执行前提交），只发事件 + 返回终态
+    private suspend fun failTurn(
+        onEvent: suspend (TurnEvent) -> Unit,
+        message: AssistantMessage,
+        error: LLMError
+    ): TurnResult {
+        onEvent(TurnEvent.TurnFailed(message, error))
+        return TurnResult.Failed(error)
+    }
+
     // 有部分产出时提交（取消清理与失败收尾共用）
     private suspend fun commitPartial(request: LoopRequest, state: StreamState) {
-        if (state.started) {
+        if (state.hasAnyContent()) {
             request.onCommit(listOf(Message.Assistant(state.partialMessage())))
         }
     }
@@ -230,7 +487,6 @@ internal class RealAgentLoop : AgentLoop {
     private suspend fun hookStep(
         request: LoopRequest,
         onEvent: suspend (TurnEvent) -> Unit,
-        state: StreamState,
         phase: String,
         block: suspend (Hooks) -> Unit
     ): TurnResult? {
@@ -242,7 +498,7 @@ internal class RealAgentLoop : AgentLoop {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            return fail(request, onEvent, state, LLMError(LLMErrorCode.HookFailed, "$phase hook failed", e))
+            return fail(request, onEvent, StreamState(), LLMError(LLMErrorCode.HookFailed, "$phase hook failed", e))
         }
     }
 
@@ -259,26 +515,107 @@ internal class RealAgentLoop : AgentLoop {
         }
         return history.toMutableList().apply { this[index] = user.copy(content = content) }
     }
+
+    // 每轮消息完整：flush 后的最终 Assistant（stopReason null 默认 Stop）
+    private fun buildFinalAssistant(state: StreamState): AssistantMessage = AssistantMessage(
+        content = state.blocks + state.readyToolCalls,
+        stopReason = state.stopReason ?: StopReason.Stop,
+        usage = state.usage,
+        responseModel = state.responseModel,
+        reasoningSignature = state.reasoningSignature
+    )
+
+    // ── 块事件工具 ─────────────────────────────────────────────────────────
+
+    private suspend fun flushText(state: StreamState, onEvent: suspend (TurnEvent) -> Unit) {
+        if (!state.textStarted) return
+        val content = state.text.toString()
+        val index = state.blocks.size
+        state.blocks += ContentBlock.Text(content)
+        state.textStarted = false
+        onEvent(TurnEvent.TextEnded(index, content, state.partialMessage()))
+    }
+
+    private suspend fun flushThinking(state: StreamState, onEvent: suspend (TurnEvent) -> Unit) {
+        if (!state.thinkingStarted) return
+        val content = state.thinking.toString()
+        val index = state.blocks.size
+        state.blocks += ContentBlock.Thinking(content)
+        state.thinkingStarted = false
+        onEvent(TurnEvent.ThinkingEnded(index, content, state.partialMessage()))
+    }
+
+    private suspend fun flushBlocks(state: StreamState, onEvent: suspend (TurnEvent) -> Unit) {
+        flushThinking(state, onEvent)
+        flushText(state, onEvent)
+    }
+
+    // 进行中工具调用按 callId 匹配；Started 时 id 可能为空（协议增量补全），
+    // 防御：找不到时用第一个未定 id 的调用（协议按 index 顺序 emit）。
+    private fun findPending(state: StreamState, callId: String): PendingToolCall? {
+        if (callId.isNotEmpty()) {
+            state.pendingToolCalls.firstOrNull { it.id == callId }?.let { return it }
+        }
+        return state.pendingToolCalls.firstOrNull { it.id.isEmpty() }
+    }
+
+    // 进行中工具调用在 partial 中的预估块位置（Ready 前的最终位置；
+    // Ready 前不占位，partial 不含未 Ready 调用，§5.4）
+    private fun toolCallIndex(state: StreamState, pendingIndex: Int): Int =
+        state.blocks.size + state.readyToolCalls.size + pendingIndex
 }
 
-/** 回合内流式累积状态：partial 快照由它派生。 */
+/** 每轮流式累积状态：partial 快照由它派生（thinking/text 进行中、toolCall 已 Ready）。 */
 private class StreamState {
-    val text = StringBuilder()
-    var started = false
+    val blocks = mutableListOf<ContentBlock>() // 已完成的块（text / thinking / toolCall）
+    val text = StringBuilder() // 进行中 text
+    var textStarted = false
+    val thinking = StringBuilder() // 进行中 thinking
+    var thinkingStarted = false
+    val pendingToolCalls = mutableListOf<PendingToolCall>() // 流式组装中（未 Ready，不占位）
+    val readyToolCalls = mutableListOf<ContentBlock.ToolCall>() // 已 Ready（占位，进 partial）
     var usage: Usage? = null
     var responseModel: String? = null
     var stopReason: StopReason? = null
+    var reasoningSignature: String? = null
+
+    fun partialContent(): List<ContentBlock> = buildList {
+        addAll(blocks)
+        if (textStarted) add(ContentBlock.Text(text.toString()))
+        if (thinkingStarted) add(ContentBlock.Thinking(thinking.toString()))
+        addAll(readyToolCalls)
+    }
 
     fun partialMessage(): AssistantMessage = AssistantMessage(
-        content = if (started) listOf(ContentBlock.Text(text.toString())) else emptyList()
+        content = partialContent(),
+        stopReason = stopReason ?: StopReason.Pending,
+        usage = usage,
+        responseModel = responseModel,
+        reasoningSignature = reasoningSignature
     )
+
+    fun hasAnyContent(): Boolean =
+        blocks.isNotEmpty() || textStarted || thinkingStarted || readyToolCalls.isNotEmpty()
 }
+
+/** 流式组装中的工具调用（Ready 后转为 ContentBlock.ToolCall 占位）。 */
+private class PendingToolCall(
+    var id: String,
+    var name: String,
+    val arguments: StringBuilder = StringBuilder()
+)
+
+/** 每轮消息完整信号：中断流收集的内部哨兵，携带该轮完整 Assistant 消息。 */
+private class StreamCompleted(val assistant: AssistantMessage) : Exception()
 
 /**
  * 终态信号：中断流收集的内部哨兵（非 CancellationException，不被取消机制误判）。
  * collect 被异常终止时会退订上游流（无限流场景必需，T2 实测暴露）。
  */
 private class StreamTerminated(val result: TurnResult) : Exception()
+
+/** executor 违反「永不抛异常」契约的哨兵：Phase 2 并发中传播，外层转 Failed。 */
+private class ToolExecutionException(val toolCall: ContentBlock.ToolCall, val failure: Throwable) : Exception()
 
 // 非 2xx 错误 body 进 LLMError.message 的最大字符数（UI 详情，非完整响应）
 private const val MAX_ERROR_BODY_CHARS = 2000

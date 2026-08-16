@@ -87,7 +87,7 @@ class RealOkiaTest {
 
     @Test
     fun initialStateEmpty() = runTest {
-        val okia = openOkia(FakeProtocolMapper(emptyList()))
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()))
         val snapshot = okia.conversation.value
         assertNull(snapshot.leafId)
         assertTrue(snapshot.history.isEmpty())
@@ -282,7 +282,7 @@ class RealOkiaTest {
 
     @Test
     fun stopWithoutActiveTurnIsNoop() = runTest {
-        val okia = openOkia(FakeProtocolMapper(emptyList()), scope = testScope(testScheduler))
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), scope = testScope(testScheduler))
         okia.stop()
         okia.close()
     }
@@ -351,7 +351,7 @@ class RealOkiaTest {
         val decoded = JsonSessionCodec().decode(raw)
 
         val restored = openOkia(
-            FakeProtocolMapper(emptyList()),
+            FakeProtocolMapper(emptyList<ProtocolEvent>()),
             restore = decoded,
             scope = testScope(testScheduler)
         )
@@ -364,7 +364,7 @@ class RealOkiaTest {
 
     @Test
     fun updateReplacesConfigSnapshot() = runTest {
-        val okia = openOkia(FakeProtocolMapper(emptyList()), scope = testScope(testScheduler))
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), scope = testScope(testScheduler))
         val before = okia.config()
         val hook = object : com.niki914.okia.hooks.Hooks {}
 
@@ -383,7 +383,7 @@ class RealOkiaTest {
 
     @Test
     fun closeThenAllOperationsThrow() = runTest {
-        val okia = openOkia(FakeProtocolMapper(emptyList()), scope = testScope(testScheduler))
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), scope = testScope(testScheduler))
         okia.close()
 
         assertNotNull(try { okia.send("hi") { }; null } catch (e: IllegalStateException) { e })
@@ -401,7 +401,7 @@ class RealOkiaTest {
             TurnResult.Completed(CompletionReason.Stop)
         }
         val okia = openOkia(
-            FakeProtocolMapper(emptyList()),
+            FakeProtocolMapper(emptyList<ProtocolEvent>()),
             loop = loop,
             scope = testScope(testScheduler)
         )

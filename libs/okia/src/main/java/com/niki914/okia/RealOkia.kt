@@ -191,7 +191,7 @@ internal class RealOkia(
                 readMs = cfg.readTimeoutSeconds * 1000,
                 writeMs = cfg.writeTimeoutSeconds * 1000
             ),
-            tools = emptyList() // T6：从 toolRegistry 取工具描述
+            tools = (cfg.toolRegistry ?: EmptyToolRegistry()).snapshot().map { it.descriptor }
         )
         return LoopRequest(
             snapshot = snapshot,
