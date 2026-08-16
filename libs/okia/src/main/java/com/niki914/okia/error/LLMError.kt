@@ -31,5 +31,6 @@ enum class LLMErrorCode(val isRetryable: Boolean) {
     Transport(true),
     Parse(false),
     UnknownTool(false),
+    HookFailed(false),
     RetryExhausted(false)
 }

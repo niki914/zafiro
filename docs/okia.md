@@ -495,3 +495,16 @@ T3 实现期契约回写（调研参照：openai/codex `codex-rs`——`eventsou
 5. **请求体要点**：assistant content 用普通字符串（避免模型镜像块结构）；空 assistant 消息（无文本无 tool_calls）跳过；tools 为 function 格式，inputSchemaJson 解析为 parameters（null 省略）；`stream:true` + `stream_options.include_usage`；usage 语义 = pi（input = prompt − cacheRead − cacheWrite）。
 6. **工具调用分片**：delta.tool_calls 按 index 归属，id / name 增量补全，arguments 拼接；空 arguments 分片不发 Delta（对齐 pi）；EOF 按 index 顺序发 ToolCallReady 再发 Completed。
 7. **Image 块**：buildRequest 抛 IllegalStateException（M2 前），异常消息说明；不写专门测试（用户裁决）。
+
+### 8.14 T5 落地（hooks 接线，2026-08-16）
+
+T5 实现期契约回写（调研参照：pi `extensions/runner.ts` emitToolCall block 短路、`agent-session.ts` beforeToolCall 调用点、emitInput transform 链）。实现细节的决策记录在 Progress.md D26-D30。
+
+1. **holder write 全部实现**（Input / Serialization / HttpRequest / ToolCall / ToolResult）：字段只读暴露（私有 backing + 公开 getter），write 改值并记录 lastWriter，多次 write 后者覆盖、lastWriter 为最后写入者。骨架期「write 留空等消费者」的裁决按落点分类落地：
+   - `SerializationHolder.write` → buildRequest 输入（数据脱敏主战场，§5.9.4）；`HttpRequestHolder.write` → HttpEngine.stream 输入（http 层兜底脱敏）
+   - `InputHolder.write` → **请求历史投影**：RealAgentLoop 在 buildRequest 前把 history 末尾 User 消息的文本块替换为改写值（树不变，对齐 §5.8 分层预期；作用域 = 本回合第一次请求；`TurnStarted` 事件保持原始 input，事件反映事实）。无 User 或无文本块时不替换（防御）。与 pi 语义同构：pi 在消息组装前替换将进入 LLM 的文本，okia 的树不变量使落点变为 buildRequest 的历史投影
+   - `ToolCallHolder.write / writeOutcome`、`ToolResultHolder.write`：字段就绪，落点 T6（工具执行参数 / 阻断短路 / 结果回喂前替换）
+2. **链式分发**：RealAgentLoop 内按注册顺序 for 循环执行（无独立分发器实体，如无必要不增实体）；前一个 hook 的 mutation 对后一个可见。ToolCall 的 writeOutcome 短路语义（对齐 pi block，后续 hook 不执行）随 T6 落地。
+3. **hook 异常策略落地（§8.4 #13 执行确认）**：模型段 hook 异常 → 回合 `Failed(LLMErrorCode.HookFailed)`（新增枚举值，不可重试；host 按 code 映射文案；枚举增值先例 §8.8 #3 UnknownTool）；`CancellationException` 传播（hook 被取消 = 回合取消，不转 Failed）。
+4. **afterRequest 触发条件**：只在 `HttpEngine.stream` 成功返回后触发（请求未完成不触发）；形参为实际发出的请求（beforeRequest 改写后的值），不接触 response（§8.10 #1 不变）。
+5. **时机顺序（T5 全量）**：`TurnStarted` → `beforeInput` → `afterInput` → `beforeSerialization` → buildRequest → `afterSerialization` → `beforeRequest` → stream → `afterRequest` → 流事件。ToolCall / Stop 时机随 T6 工具循环 / T7 停止流程接入。

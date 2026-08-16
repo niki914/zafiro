@@ -3,6 +3,10 @@ package com.niki914.okia.loop
 import com.niki914.okia.error.LLMError
 import com.niki914.okia.error.LLMErrorCode
 import com.niki914.okia.event.TurnEvent
+import com.niki914.okia.hooks.Hooks
+import com.niki914.okia.hooks.HttpRequestHolder
+import com.niki914.okia.hooks.InputHolder
+import com.niki914.okia.hooks.SerializationHolder
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -24,6 +28,11 @@ import kotlinx.coroutines.withContext
  * 不变量由门面保证：live 非空 ⇒ history 不含该消息。
  * 取消契约（§8.8 #2）：外部取消在 NonCancellable 清理（commit 部分产出）后
  * 重新抛出；Aborted 终态与 TurnAborted 事件由协调器产生，loop 不产生。
+ * Hooks（T5）：Input / Serialization / Request 三对时机已接入（顺序：
+ * TurnStarted → beforeInput → afterInput → beforeSerialization →
+ * buildRequest → afterSerialization → beforeRequest → stream → afterRequest）；
+ * hook 异常 → 回合 Failed（HookFailed，§8.4 #13）；ToolCall / Stop 时机
+ * 随 T6 工具循环 / T7 停止流程接入。
  * 工具 / 思考事件未实现（T6），遇到显式 TODO 失败——明确失败优于自动修复。
  * Design source: pi agentLoop；okia 骨架 AgentLoop 对照基线。
  */
@@ -34,26 +43,60 @@ internal class RealAgentLoop : AgentLoop {
         onEvent: suspend (TurnEvent) -> Unit
     ): TurnResult {
         onEvent(TurnEvent.TurnStarted(request.input))
+        val state = StreamState()
+
+        // Input 时机（回合入口）：before 可改写输入。改写落点 = 请求历史投影
+        // （替换 history 末尾 User 的文本块，树不变；作用域 = 本回合第一次请求，
+        // 见 §5.10 分层预期）。事件仍发原始 input（事件反映事实，与树一致）。
+        val inputHolder = InputHolder(request.input)
+        hookStep(request, onEvent, state, "beforeInput") { it.beforeInput(inputHolder) }?.let { return it }
+        val effectiveHistory = if (inputHolder.text != request.input) {
+            replaceLastUserText(request.history, inputHolder.text)
+        } else {
+            request.history
+        }
+        hookStep(request, onEvent, state, "afterInput") { it.afterInput(inputHolder) }?.let { return it }
 
         val httpRequest = try {
-            request.protocolMapper.buildRequest(request.snapshot, request.history)
+            // Serialization 时机：before 可改写请求输入（脱敏主战场）；
+            // after 拿 buildRequest 产物（只读，审计 / 埋点）
+            val serializationHolder = SerializationHolder(request.snapshot, effectiveHistory)
+            hookStep(request, onEvent, state, "beforeSerialization") {
+                it.beforeSerialization(serializationHolder)
+            }?.let { return it }
+            val built = request.protocolMapper.buildRequest(
+                serializationHolder.snapshot,
+                serializationHolder.history
+            )
+            hookStep(request, onEvent, state, "afterSerialization") {
+                it.afterSerialization(serializationHolder, built)
+            }?.let { return it }
+            built
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            return fail(request, onEvent, StreamState(), LLMError(LLMErrorCode.Parse, "request build failed", e))
+            return fail(request, onEvent, state, LLMError(LLMErrorCode.Parse, "request build failed", e))
         }
 
         val response = try {
-            request.httpEngine.stream(httpRequest)
+            // Request 时机：before 可改写请求（http 层兜底脱敏）；after 只读
+            // 实际发出的请求（改写后），不接触 response——body 流归 loop 独占
+            val requestHolder = HttpRequestHolder(httpRequest)
+            hookStep(request, onEvent, state, "beforeRequest") {
+                it.beforeRequest(requestHolder)
+            }?.let { return it }
+            val sent = requestHolder.request
+            val resp = request.httpEngine.stream(sent)
+            hookStep(request, onEvent, state, "afterRequest") { it.afterRequest(sent) }?.let { return it }
+            resp
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            return fail(request, onEvent, StreamState(), LLMError(LLMErrorCode.Transport, "stream failed", e))
+            return fail(request, onEvent, state, LLMError(LLMErrorCode.Transport, "stream failed", e))
         }
 
         // 前置校验（T3）：2xx 才进 SSE 解析；非 2xx 的 body 是错误文本，
         // 不进 parseStream（风控 HTML / JSON 错误不会被当 SSE 解析）
-        val state = StreamState()
         return when (response) {
             is StreamResponse.Error -> {
                 val code = when {
@@ -179,6 +222,42 @@ internal class RealAgentLoop : AgentLoop {
         if (state.started) {
             request.onCommit(listOf(Message.Assistant(state.partialMessage())))
         }
+    }
+
+    // 模型段 hook 链分发：按注册顺序执行（前一个的 mutation 对后一个可见）；
+    // hook 异常 → 回合 Failed（§8.4 #13：模型段 hook 失败 = 该步骤失败，
+    // 明确失败优于自动修复），取消传播。返回 null = 继续，非 null = 失败终态。
+    private suspend fun hookStep(
+        request: LoopRequest,
+        onEvent: suspend (TurnEvent) -> Unit,
+        state: StreamState,
+        phase: String,
+        block: suspend (Hooks) -> Unit
+    ): TurnResult? {
+        try {
+            for (hook in request.hooks) {
+                block(hook)
+            }
+            return null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return fail(request, onEvent, state, LLMError(LLMErrorCode.HookFailed, "$phase hook failed", e))
+        }
+    }
+
+    // 改写投影：history 末尾 User 消息的文本块替换为改写文本（树不变，§5.8）。
+    // 无 User 或无文本块时不替换（防御：改写落点只在 User 文本上）。
+    private fun replaceLastUserText(history: List<Message>, newText: String): List<Message> {
+        val index = history.indexOfLast { it is Message.User }
+        if (index < 0) return history
+        val user = history[index] as Message.User
+        val textIndex = user.content.indexOfFirst { it is ContentBlock.Text }
+        if (textIndex < 0) return history
+        val content = user.content.toMutableList().apply {
+            this[textIndex] = ContentBlock.Text(newText)
+        }
+        return history.toMutableList().apply { this[index] = user.copy(content = content) }
     }
 }
 

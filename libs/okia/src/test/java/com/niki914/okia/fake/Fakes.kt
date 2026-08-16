@@ -34,10 +34,12 @@ class FakeProtocolMapper(private val events: Flow<ProtocolEvent>) : ProtocolComp
     constructor(events: List<ProtocolEvent>) : this(events.asFlow())
 
     val builtRequests = mutableListOf<HttpRequest>()
+    val builtHistories = mutableListOf<List<Message>>()
     var buildRequestError: Throwable? = null
 
     override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest {
         buildRequestError?.let { throw it }
+        builtHistories += history
         val request = HttpRequest(
             url = snapshot.endpoint,
             method = "POST",
