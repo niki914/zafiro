@@ -545,3 +545,19 @@ T7 实现期契约回写。裁决来源：2026-08-16/17 讨论（G1-G8），实�
 8. **失败/重试的 partial 语义分层**：最终失败（不可重试/重试耗尽）→ `fail()` commitPartial（半条消息保留进历史，现有语义）；段首重试路径（可重试）→ partial 丢弃不 commit（重试请求历史不变）。`fail()` 现在是唯一收尾点：`StreamTerminated` 携带 error（不再携带已 fail 的 result），`collectEvents` 的失败路径只抛哨兵，回滚终收尾在段执行统一决定。
 9. **流中断异常归类**：`parseStream(lines)` 的 lines 流 / 解析中途抛非哨兵异常 → `LLMError(Transport, "stream interrupted")`（可重试，段首重试候选）。`StreamIdleTimedOut` 哨兵在 collectEvents 兜底 catch 前重抛（Exception 子类，防止被误转 Transport）。
 10. **`RealConversation.assistantToolCallsSince(entryId)`**（internal）：沿当前 leaf 投影取 entryId 之后已提交 Assistant 的 ToolCall 块（§5.11 推导落地，§8.15 #7 无收集方案执行）。
+
+### 8.17 T8 落地（默认引擎 + M0 装配 + 持久化闭合，2026-08-17）
+
+T8 实现期契约回写。裁决来源：2026-08-17 讨论（方案 A、MCP 推迟、默认值），实现为权威，测试 298 全绿（T8 新增 25）。
+
+1. **`ChatProtocol` 新增 `defaultEndpoint: String?`（方案 A）**：协议自带的默认端点（provider 固有事实，与 useApiKey / compat 同类）；调用方在 `config.endpoint` 显式设置时覆盖。解析优先级：`builder.endpoint` 非空 → 用配置值；空 → `protocol.defaultEndpoint`；两者皆空 → `open()` 抛 `IllegalArgumentException`（fail-fast，与 rewind 校验同一原则）。`DeepSeekChatCompletionProtocol.defaultEndpoint = "https://api.deepseek.com/chat/completions"`。**不设全局默认端点**（用户裁决：将来 OpenAI 实现时再考虑 OpenAI 默认端点）。apiKey 仍只经 config（builder）传入，协议 useApiKey 消费，不在 Compat。
+2. **M0 默认装配落定**：`open(protocol)` / `open()` 两个工厂实现（原 T4/T8 TODO）。默认 `open()` = `DeepSeekChatCompletionProtocol()` + `builder.model` 为空时填 `deepseek-v4-flash`（用户裁决；仅默认 open()，`open(protocol)` 不填默认 model）。装配经 `DefaultDependencies`（internal，agentLoop=RealAgentLoop / mapper=ProtocolCompatMapper.from / mcpClient=占位）→ `RealOkia`。
+3. **MCP 推迟 T9（用户裁决）**：`McpExecutor` / `RealOkia.refreshMcpTools` / `getMcpDiscoverySnapshot` 维持 TODO（标注 "deferred to T9"）；`OkiaDependencies.mcpClient` 非空冻结字段由 `UnimplementedMcpClient` 占位（discoverTools / callTool 抛 UnsupportedOperationException，明确失败，不改契约）。默认装配不提供 MCP 能力；host 需要时经 dependencies 注入。
+4. **默认 HttpEngine 落地（D12 闭合）**：`OkHttpEngine`（internal，transport 包，okhttp 4.12.0 `implementation` 不泄漏公开签名；KMP 迁移时本文件进 jvm/android actual）。`config.httpEngine` 为 null 时 `RealOkia` 懒加载自建（实例所有，close 不释放——OkHttp 无显式释放语义，连接池到期自保洁）。
+   - **stream**：异步 enqueue 挂起到响应头；2xx → body 分块读 UTF-8 → `SseLineParser` 切行（行切分与分类单一来源）；非 2xx 预读全文 → `Error`；网络错误/超时抛异常（Kotlin 取消语义）。
+   - **取消**：阻塞字符读不响应协程取消，flow 构建时注册 `job.invokeOnCompletion { call.cancel() }` 打断阻塞读（socket 中断），finally 兜底 cancel + close；每块读前 `ensureActive` 提前退出。
+   - **unary**：异步 enqueue；网络失败/超时返回 `HttpResponse(null, emptyMap(), null)`（缺省结构，契约 §HttpResponse）；catch 收窄为 IOException（运行时错误保持外抛）。
+   - **超时**：每请求按 `HttpRequest.timeouts` 克隆 client（newBuilder 共享连接池/dispatcher）；readTimeout 为读间隔超时，对慢 SSE 流安全。
+5. **持久化闭合**：默认装配下 `export()` / `open(restore)` 往返验证（会话 id / leafId / entries 一致，历史可渲染，restore 后 send 在旧历史之上追加）。协议不进会话数据（§5.7 不变）。
+6. **工具描述快照时机（待整改记录）**：`RequestSnapshot.tools` 取值为 send 时拍一次快照（§8.11 #10 语义落地）。候选整改：每轮 buildRequest 前重新 snapshot（回合内注册工具对模型可见）。当前无消费者（回合内注册的现实触发者是 MCP，已推迟 T9），保持现状并在 `RealOkia.buildLoopRequest` 处 TODO 标注候选方案。
+7. **测试**：`OkHttpEngineTest`（14：stream 2xx/注释行/非 2xx/连接失败/读超时/取消/请求构建/POST 空 body/GET 无 body/unary 2xx/非 2xx/网络失败/空 body/读超时缺省结构）+ `OkiaOpenTest`（11：endpoint 解析 6 例/full turn 端到端/传输错误 Failed/export-restore 往返/restore 后追加/close 后 send）。契约改动波及 `ProtocolCompatMapperTest.RecordingProtocol` 补 `defaultEndpoint = null`。

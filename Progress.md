@@ -6,10 +6,10 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | T7 已完成，T8 未开始 |
-| 契约 | 已冻结 + T2-T7 回写（docs/okia.md §8.11-§8.16） |
-| 最近提交 | 96f1d5d（T7 分层重试 + kill-then-stop + idle） |
-| 测试 | 273 个全绿（T7 新增 39：重试 15 + idle 10 + kill/stop 10 + 状态码映射修正 4） |
+| 阶段 | T8 已完成，T9（MCP）未开始 |
+| 契约 | 已冻结 + T2-T8 回写（docs/okia.md §8.11-§8.17；T8 含方案 A defaultEndpoint 契约增量） |
+| 最近提交 | 79d2dbf（T8 默认引擎 + M0 装配） |
+| 测试 | 298 个全绿（T8 新增 25：OkHttpEngine 14 + M0 装配 11） |
 | 阻塞项 | 无 |
 
 ## 恢复步骤
@@ -30,7 +30,8 @@
 | T5 | hooks 接线：holder write 全部实现 + 链式分发 + Input/Serialization/Request 三对时机接入 | ~200 | ~350 | 已完成 |
 | T6 | tooling：DefaultToolRegistry + 工具循环（批量并行，保序提交） | ~490 | ~650 | 已完成 |
 | T7 | 取消/重试/idle：kill-then-stop + RetryPolicy + idle 超时 | ~300 | ~300 | 已完成 |
-| T8 | MCP + M0 默认协议 + 默认 HttpEngine + 持久化入口 | ~400 | ~300 | 未开始 |
+| T8 | 默认 HttpEngine（OkHttp 4）+ M0 默认协议装配 + 持久化闭合 | ~260 | ~540 | 已完成 |
+| T9 | MCP（McpClient HTTP 客户端 + McpExecutor + 发现/刷新/冲突）+ 工具描述快照候选整改 | — | — | 未开始 |
 
 顺序：T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8。T2 是暴露骨架契约风险的主要手段（LoopRequest / onCommit / 事件序列 / 并发契约）。每任务完成时更新本表状态列，随提交提交本文件。
 
@@ -69,6 +70,11 @@
 | D39 | idle = agent 活跃度（ProtocolEvent 到达重置，keep-alive 不重置），推翻 §5.8 原始 SseLine 检测点；超时 partial commit 进历史 | G7/G8 裁决；keep-alive 是网络活跃不是 agent 活跃；超时也写入（用户裁决） |
 | D40 | 外部取消与 stop 表现一致：都触发 beforeStop（kill 步骤），差异只在终态表达（Aborted vs rethrow） | G1 裁决；资源泄漏不因取消来源豁免 |
 | D41 | 状态码 → code 映射表定案（401/403→Auth、402→Quota、429→RateLimit、503→Overloaded、408/409/5xx→Transport、其余→Parse）；retryableStatusCodes = {408,409,429}+全部5xx | G4 裁决；对照 pi/codex 约定俗成；修正旧实现 400 归 Transport（可重试）的 bug |
+| D42 | MCP 推迟 T9（用户裁决）；McpExecutor / refreshMcpTools / getMcpDiscoverySnapshot 维持 TODO（标注 deferred）；默认装配 mcpClient = UnimplementedMcpClient 占位（抛 UnsupportedOperationException，明确失败不改契约） | 用户裁决 2026-08-17；MCP 需求不明确，线缆需参考规范，推迟到有消费者时再做 |
+| D43 | 方案 A：ChatProtocol 新增 defaultEndpoint；解析 = builder.endpoint 非空 → 配置值 > 协议默认 > 空则 fail-fast（IAE）；DeepSeek 自带官方端点；默认 model = deepseek-v4-flash（仅默认 open()） | 端点是 provider 固有事实（同 useApiKey/compat）；不设全局默认端点（用户裁决）；OpenAI 实现时再议 |
+| D44 | 默认 HttpEngine = OkHttpEngine（okhttp 4.12.0 implementation，internal；KMP 迁移进 actual）；config.httpEngine null 时 RealOkia 懒加载自建 | D12 契约闭合；取消 = job 取消监听 + call.cancel 打断阻塞 IO（阻塞字符读不响应协程取消） |
+| D45 | unary 传输失败（网络/超时）返回 HttpResponse(null, emptyMap, null) 缺省结构；catch 收窄 IOException（运行时错误外抛） | HttpResponse 契约（status/body 传输失败时缺失）；编程错误不应被吞 |
+| D46 | 工具描述快照时机保持现状（send 时快照）+ TODO 标注候选 B（每轮 buildRequest 前重新 snapshot） | 回合内注册工具的现实触发者是 MCP（已推迟）；无消费者不改行为，留文档 §8.17 #6 |
 | D4 | RealConversation 内部状态 = 不可变 State 快照 + @Volatile 引用 | suspend Mutex 与同步 getter 共存：写入在 mutex 内构建新快照，读取免锁（不可变读安全）；KMP 兼容（kotlin.concurrent.Volatile） |
 | D5 | 条目 id = kotlin.uuid.Uuid.random()；timestamp = kotlin.time.Clock.System | KMP 兼容；自增计数器在 restore 乱序 id 时可能冲突，已排除 |
 | D6 | 构造时校验重复 id / 悬挂 leafId（fail-fast） | 与 §8.7 #4 rewind 存在性校验同一原则：客观可校验、快速失败 |
@@ -99,4 +105,4 @@
 
 ## 下一步
 
-开始 T6：tooling——ToolExecutor / ToolRegistry 默认实现 + 工具循环（LLM ↔ 工具多轮）+ ToolCall 时机接入（beforeToolCall 改参 / writeOutcome 阻断短路 + afterToolCall + ToolResultHolder 落点）。前置待裁决：ToolCallOutcome 5 态在工具执行结果中的映射（§5.6 已定，落地确认）。等待用户确认后开始。
+开始 T9（MCP）：McpClient HTTP 客户端（JSON-RPC 2.0 / streamable，需参考 MCP 规范）+ McpExecutor（路由 + outcome 映射）+ 发现/刷新/冲突机制（refreshMcpTools / getMcpDiscoverySnapshot）+ 工具描述快照候选整改。前置待裁决：MCP 线缆范围与传输选型（streamable vs SSE）。等待用户确认后开始。
