@@ -6,10 +6,10 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | T9b 已完成（执行器 + 发现状态机 + 装配 + G5 整改），T9c 集成测试未开始 |
-| 契约 | 已冻结 + T2-T8 回写（docs/okia.md §8.11-§8.17） + T9a 线缆 + T9b 回写（§8.18） |
-| 最近提交 | T9a（MCP 线缆客户端三实现） |
-| 测试 | 396 个全绿（T9b 新增 40：McpExecutor 14 + McpDiscovery 18 + RealOkiaMcp 7 + Snapshot 1） |
+| 阶段 | T9c 已完成：三层集成测试全绿（真实 server-everything + 真实 DeepSeek），全量 401 测试通过 |
+| 契约 | 冻结 + T2-T9b 回写；T9c 零主代码改动（仅新增 3 个集成测试文件） |
+| 最近提交 | 9263de6（T9b）；T9c 测试已就绪待用户验收后提交 |
+| 测试 | 401 全绿（T9c 新增 5：RealOkiaMcpIntegration 3 + DeepSeekApiIntegration 1 + RealMcpLlmsIntegration 1） |
 | 阻塞项 | 无 |
 
 ## 恢复步骤
@@ -33,7 +33,7 @@
 | T8 | 默认 HttpEngine（OkHttp 4）+ M0 默认协议装配 + 持久化闭合 | ~260 | ~540 | 已完成 |
 | T9a | MCP 线缆：McpWire 共享过程 + Legacy(2025-06-18) + Discovery(2026-07-28) + AutoDetect 探测包装 + 会话头往返 | ~460 | ~58 用例 | 已完成 |
 | T9b | McpExecutor 路由 + refreshMcpTools/getMcpDiscoverySnapshot（发现状态机/指纹/冲突）+ 默认装配接线 + G5 快照整改 + EmptyToolRegistry 删除 | ~310 | ~40 用例 | 已完成 |
-| T9c | MCP 集成测试：真实 server-everything 全链路（发现 → 注册 → 工具调用 → 结果显示）+ 门面端到端 | — | — | 未开始 |
+| T9c | MCP 集成测试：真实 server-everything 全链路（发现 → 注册 → 工具调用 → 结果显示）+ 门面端到端 | +160 测试 | +5 用例 | 已完成 |
 
 顺序：T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8。T2 是暴露骨架契约风险的主要手段（LoopRequest / onCommit / 事件序列 / 并发契约）。每任务完成时更新本表状态列，随提交提交本文件。
 
@@ -88,6 +88,12 @@
 | D55 | T9b（Q7）：删 EmptyToolRegistry（门面持默认 DefaultToolRegistry 实例）；默认 mcpClient = AutoDetect 装配（engine = config.httpEngine ?: 默认）；refreshMcpTools 活跃回合抛、快照只读允许 | 单一注册表来源不变；复用 host 注入传输入口 |
 | D56 | T9b（G5）：工具描述每段 buildRequest 前现取（RealAgentLoop 一处 snapshot.copy）；RealOkia.buildLoopRequest 的 tools 退为初始值 | §8.17 #6 候选 B 落地；请求体表达每段发送时的工具集 |
 | D57 | T9b 实现暴露：RealOkia 构造参数与属性同名时 by lazy 内 lambda 捕获构造参数快照 → 改名 initialConfig（对齐 §8.10 #4） | update 热更新后 McpDiscovery 读旧 config（测试暴露）；同款坑 RealConversation 已记录 |
+| D58 | 集成测试 key 隔离：独立环境变量 OKIA_TEST_API_KEY（非 DEEPSEEK_API_KEY），运行时注入不在仓库；缺失 Assume 跳过 | 用户既有 env key 不动、明文 key 用完即 revoke；零仓库残留 |
+| D59 | T9c 三层结构：层1 门面+真实 MCP（自动 JUnit，Assume 3001）；层2 门面+真实 DeepSeek（自动 JUnit，Assume key）；层3 真实 LLM+真实 MCP 混合（自动 JUnit，双 Assume，可当 manual demo） | 用户裁决三层都测；层 3 依赖 LLM 行为，失败重跑属模型不遵循非框架缺陷 |
+| D60 | 层 3 对话 history mock：open(restore) 预置自洽先例（User→Assistant(tool_call)→ToolResult→Assistant），引导模型模仿工具调用 | 真实历史先例比 system prompt 单轮指令更稳；自洽要求 assistant tool_call 与后续 tool 消息按 call id 配对 |
+| D61 | DeepSeek v4-flash 实测为思考模型：reasoning_content 常吃满预算、content 常为 null/finish_reason=length；usage 含 reasoning_tokens | 集成测试预算控制依据：maxTokens 需留思考余量；断言走结构不走措辞 |
+| D62 | 集成测试暴露的两个测试侧问题（非库缺陷）：① builder DSL 内 apiKey 属性遮蔽（builder{apiKey = apiKey!!} 右侧解析为 Builder 属性空串 → 请求无 Authorization → 401）；② MCP 期望值误用 fake 文本（真实 get-sum 返回英文原文） | ① Kotlin 接收者作用域陷阱，先取局部变量再写 builder，已修；② 真实链路应断言真实返回，已修；库零改动 |
+| D63 | 集成测试真实验证结论：协议层对真实字节流完全吻合（SSE/思考/usage/finish_reason），MCP 全链路真实工作，loop 工具循环端到端正确；OkHttp 丢帧疑云实为诊断替换空流的人为失败 | 真实集成测试价值兑现：区分了环境/测试问题与库缺陷；诊断要区分人工干预与真实路径 |
 | D4 | RealConversation 内部状态 = 不可变 State 快照 + @Volatile 引用 | suspend Mutex 与同步 getter 共存：写入在 mutex 内构建新快照，读取免锁（不可变读安全）；KMP 兼容（kotlin.concurrent.Volatile） |
 | D5 | 条目 id = kotlin.uuid.Uuid.random()；timestamp = kotlin.time.Clock.System | KMP 兼容；自增计数器在 restore 乱序 id 时可能冲突，已排除 |
 | D6 | 构造时校验重复 id / 悬挂 leafId（fail-fast） | 与 §8.7 #4 rewind 存在性校验同一原则：客观可校验、快速失败 |
@@ -118,6 +124,9 @@
 
 ## 下一步
 
-开始 T9c：MCP 集成测试。方案（待确认后执行）：
-1. 复用 T9a 的 server-everything 基建（本地 Node 3001，Assume 跳过）：AutoDetect 真实发现 → McpDiscovery 刷新 → 断言 registry 含 ${server}_${tool} → 门面 send 一轮工具循环（fake mapper 产出 MCP 工具调用）→ executor 真实 callTool → 结果回喂模型 → 断言 conversation/事件链完整。
-2. 补充门面端到端（不依赖真实服务器）：open(dependencies) 注入可控 fake client + FakeAgentLoop，验证 refresh → send（MCP 工具描述进请求 + 工具执行路由）→ TurnResult 的完整链路。
+待用户验收后提交 T9c（3 个集成测试文件 + 本文件更新）。
+
+验收/可选后续：
+1. 层 3 可作 manual demo 入口（打印完整回合过程），是否需要独立 main 待用户决定
+2. 集成测试跑法：`export OKIA_TEST_API_KEY=... && ./gradlew :libs:okia:testDebugUnitTest --tests "*Integration*"`
+3. Builder DSL apiKey 不可见坑（D62）是否在 docs/okia.md 给下游开发者提示，待用户决定
