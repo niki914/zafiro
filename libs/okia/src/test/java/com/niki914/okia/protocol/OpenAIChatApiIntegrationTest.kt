@@ -16,7 +16,7 @@ import org.junit.Test
 
 /**
  * 门面 + 真实 DeepSeek 官方 API 集成测试（T9c 层 2）。
- * 验证 DeepSeekChatCompletionProtocol 对真实字节流的吻合：
+ * 验证 OpenAIChatCompletionProtocol（DeepSeek compat 形态）对真实字节流的吻合：
  * - SSE 流式解析（delta.content / reasoning_content / [DONE]）
  * - usage 解析（stream_options.include_usage）
  * - finish_reason → Completed(Stop) → 回合正常结束
@@ -25,7 +25,7 @@ import org.junit.Test
  * 缺失时 Assume 跳过（不是失败）。
  * Design source: 用户 2026-08-17 提供官方 DeepSeek API（deepseek-v4-flash）。
  */
-class DeepSeekApiIntegrationTest {
+class OpenAIChatApiIntegrationTest {
 
     private val apiKey: String? = System.getenv("OKIA_TEST_API_KEY")
 
@@ -37,7 +37,7 @@ class DeepSeekApiIntegrationTest {
     @Test
     fun `real deepseek turn completes with text and usage`() = runBlocking {
         val key = apiKey!!  // 先取局部变量再写入 builder：DSL 内 apiKey 解析为 Builder 属性（遮蔽陷阱）
-        val okia = Okia.open(protocol = DeepSeekChatCompletionProtocol()) {
+        val okia = Okia.open(protocol = OpenAIChatCompletionProtocol()) {
             apiKey = key
             model = "deepseek-v4-flash"
             maxTokens = 512

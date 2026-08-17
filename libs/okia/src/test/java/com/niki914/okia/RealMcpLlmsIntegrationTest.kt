@@ -11,7 +11,7 @@ import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
 import com.niki914.okia.message.ToolCallOutcome
-import com.niki914.okia.protocol.DeepSeekChatCompletionProtocol
+import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -91,7 +91,7 @@ class RealMcpLlmsIntegrationTest {
     fun `llm autonomously calls real mcp tool following mocked precedent`() = runBlocking {
         val key = apiKey!!  // 先取局部变量：DSL 内 apiKey 解析为 Builder 属性（遮蔽陷阱）
         val okia = Okia.open(
-            protocol = DeepSeekChatCompletionProtocol(),
+            protocol = OpenAIChatCompletionProtocol(),
             restore = mockSnapshotWithEchoPrecedent()
         ) {
             apiKey = key

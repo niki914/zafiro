@@ -14,7 +14,7 @@ import com.niki914.okia.mcp.McpDiscoverySnapshot
 import com.niki914.okia.mcp.McpRefreshResult
 import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.protocol.ChatProtocol
-import com.niki914.okia.protocol.DeepSeekChatCompletionProtocol
+import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
 import com.niki914.okia.protocol.ProtocolCompatMapper
 import com.niki914.okia.transport.HttpEngine
 import com.niki914.okia.transport.OkHttpEngine
@@ -88,12 +88,13 @@ interface Okia {
             builder: OkiaConfig.Builder.() -> Unit
         ): Okia = assemble(protocol, restore, builder, fillDefaults = false)
 
-        // 默认协议版本（M0 DeepSeek），库内部构造协议实例。
+        // 默认协议版本（M0 DeepSeek 形态：通用 OpenAI Chat 协议 + DeepSeekCompat），
+        // 库内部构造协议实例。
         // builder.model 为空时填默认模型（deepseek-v4-flash，用户裁决 2026-08-16）。
         suspend fun open(
             restore: SessionSnapshot? = null,
             builder: OkiaConfig.Builder.() -> Unit
-        ): Okia = assemble(DeepSeekChatCompletionProtocol(), restore, builder, fillDefaults = true)
+        ): Okia = assemble(OpenAIChatCompletionProtocol(), restore, builder, fillDefaults = true)
 
         // 显式依赖装配（JVM 测试注入点）
         suspend fun open(

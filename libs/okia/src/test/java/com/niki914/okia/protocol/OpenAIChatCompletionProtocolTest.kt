@@ -32,9 +32,9 @@ import org.junit.Test
  * 输入为真实 SseEventParser 聚合后的 data 负载（fixture 字符串），
  * 全部纯数据变换，不碰网络。
  */
-class DeepSeekChatCompletionProtocolTest {
+class OpenAIChatCompletionProtocolTest {
 
-    private val protocol = DeepSeekChatCompletionProtocol()
+    private val protocol = OpenAIChatCompletionProtocol()
 
     // ── helpers ────────────────────────────────────────────────────────────
 
@@ -487,8 +487,77 @@ class DeepSeekChatCompletionProtocolTest {
 
     @Test
     fun withCodecReturnsNewInstance() {
-        val other = protocol.withCodec(Json { prettyPrint = true }) as DeepSeekChatCompletionProtocol
+        val other = protocol.withCodec(Json { prettyPrint = true }) as OpenAIChatCompletionProtocol
         assertTrue(other !== protocol)
         assertEquals("deepseek", other.id)
+    }
+
+    // ── OpenAI 官方 compat 形态 ───────────────────────────────────────────
+
+    private val openai = OpenAIChatCompletionProtocol(compat = OpenAIChatCompletionCompat())
+
+    @Test
+    fun openaiCompatCarriesIdentityAndEndpoint() {
+        assertEquals("openai", openai.id)
+        assertEquals("https://api.openai.com/v1/chat/completions", openai.defaultEndpoint)
+    }
+
+    @Test
+    fun openaiCompatUsesMaxCompletionTokensField() {
+        val request = openai.buildRequest(snapshot(maxTokens = 1024), emptyList())
+        val json = Json.parseToJsonElement(request.body!!).jsonObject
+        assertEquals(1024, json["max_completion_tokens"]!!.jsonPrimitive.content.toInt())
+        assertNull(json["max_tokens"])
+    }
+
+    @Test
+    fun openaiReasoningDeltaEmitsThinking() = runTest {
+        // OpenAI 官方：delta.reasoning 对象（encrypted_content 不可读，忽略）
+        val events = openai.parseStream(sse(
+            """{"choices":[{"index":0,"delta":{"reasoning":{"content":"推导"}},"finish_reason":null}]}""",
+            """{"choices":[{"index":0,"delta":{"content":"回答"},"finish_reason":"stop"}]}"""
+        )).toList()
+        assertEquals(
+            listOf(
+                ProtocolEvent.ThinkingDelta("推导"),
+                ProtocolEvent.TextDelta("回答"),
+                ProtocolEvent.Completed(null, null, StopReason.Stop)
+            ),
+            events
+        )
+    }
+
+    @Test
+    fun openaiAssistantThinkingConvertsToText() {
+        // OpenAI 官方不接受 reasoning_content 字段：思考按 requiresThinkingAsText 转文本
+        val request = openai.buildRequest(
+            snapshot(),
+            listOf(assistant(listOf(ContentBlock.Thinking("推导"), ContentBlock.Text("答案"))))
+        )
+        val msg = messagesOf(request).single()
+        assertEquals("assistant", msg["role"]!!.jsonPrimitive.content)
+        assertEquals("推导\n答案", msg["content"]!!.jsonPrimitive.content)
+        assertNull(msg["reasoning_content"])
+    }
+
+    @Test
+    fun openaiAssistantWithoutReasoningFieldWhenNoThinking() {
+        // 无思考时 OpenAI 官方不补 reasoning_content 字段（与 DeepSeek 空串不同）
+        val request = openai.buildRequest(snapshot(), listOf(assistant(listOf(ContentBlock.Text("答案")))))
+        val msg = messagesOf(request).single()
+        assertEquals("答案", msg["content"]!!.jsonPrimitive.content)
+        assertNull(msg["reasoning_content"])
+    }
+
+    @Test
+    fun deepSeekCompatStillUsesMaxTokensAndReasoningContent() {
+        // 默认装配（DeepSeek compat）行为不变：max_tokens + reasoning_content 空串
+        val request = protocol.buildRequest(snapshot(maxTokens = 1024), emptyList())
+        val json = Json.parseToJsonElement(request.body!!).jsonObject
+        assertEquals(1024, json["max_tokens"]!!.jsonPrimitive.content.toInt())
+        assertNull(json["max_completion_tokens"])
+        assertEquals("deepseek", protocol.id)
+        assertEquals("https://api.deepseek.com/chat/completions", protocol.defaultEndpoint)
+        assertTrue(protocol.compat is DeepSeekCompat)
     }
 }

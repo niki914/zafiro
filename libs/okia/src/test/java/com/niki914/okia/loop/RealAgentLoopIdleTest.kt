@@ -11,7 +11,7 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
-import com.niki914.okia.protocol.DeepSeekChatCompletionProtocol
+import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
 import com.niki914.okia.protocol.ProtocolCompatMapper
 import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.protocol.RequestSnapshot
@@ -154,7 +154,7 @@ class RealAgentLoopIdleTest {
     fun keepAliveLinesDoNotResetIdleTimer() = runTest {
         // 新定义核心差异（G7）：网络层活跃（keep-alive 注释行持续到达）不算
         // agent 活跃度——真实协议解析下 keep-alive 不产出 ProtocolEvent，仍超时
-        val protocol = DeepSeekChatCompletionProtocol()
+        val protocol = OpenAIChatCompletionProtocol()
         val mapper = ProtocolCompatMapper.from(protocol)
         val lines = flow {
             repeat(20) {
@@ -180,7 +180,7 @@ class RealAgentLoopIdleTest {
     @Test
     fun emptyLinesAlsoNotAgentActivity() = runTest {
         // 空行（SSE 事件边界）同样不算 agent 活跃度
-        val protocol = DeepSeekChatCompletionProtocol()
+        val protocol = OpenAIChatCompletionProtocol()
         val mapper = ProtocolCompatMapper.from(protocol)
         val lines = flow {
             repeat(20) {

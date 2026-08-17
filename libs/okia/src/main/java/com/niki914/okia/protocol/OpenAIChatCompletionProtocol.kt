@@ -27,27 +27,29 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
 /**
- * M0 协议：DeepSeek Chat Completion（OpenAI 兼容格式）。
- * 独立实现，不复用通用 OpenAI 层：DeepSeek 私有字段（reasoning_content 等）
- * 的调整局限在本类，不牵动通用逻辑。映射语义参考 pi
- * openai-completions（同协议侧实现）；产品策略不包含（重试 / 缓存 /
- * 成本在框架其他层或下游）。
- * 边界（对齐 2026-08 讨论）：Completed 是单次模型请求结束（消息级），
- * stopReason=ToolUse 时回合未结束（T6 工具循环继续）；错误工具结果内容
- * 由下游决定，本类不加工（outcome.content 原样，null 用空字符串）。
- * Design source: pi providers/deepseek.ts + api/openai-completions.ts；
- * okia PRD §5.7 / §5.8 / §8.7。
+ * 通用 OpenAI Chat Completions 协议。厂商差异全部由 compat 驱动（构造参数）：
+ * - DeepSeekCompat（默认，M0 形态）：max_tokens 字段、reasoning_content 思考、
+ *   assistant 历史必须带 reasoning_content（可为空串）
+ * - OpenAIChatCompletionCompat：max_completion_tokens、reasoning_effort 思考
+ *   （delta.reasoning 对象）、assistant 历史不接受 reasoning_content（思考转文本）
+ * 其他 OpenAI 兼容厂商（xAI / Groq / Kimi / qwen / OpenRouter 等）用 compat
+ * 表达差异，协议本体不感知厂商（对齐 pi openai-completions 单实现 26 厂商）。
+ * 产品策略不包含（重试 / 缓存 / 成本在框架其他层或下游）。
+ * 边界：Completed 是单次模型请求结束（消息级），stopReason=ToolUse 时回合未
+ * 结束（T6 工具循环继续）；错误工具结果内容由下游决定，本类不加工
+ * （outcome.content 原样，null 用空字符串）。
+ * Design source: pi api/openai-completions.ts；okia T4 DeepSeek 实现（D21 裁决
+ * 已由用户 2026-08-18 推翻：独立实现改为通用实现 + compat 驱动）。
  */
-class DeepSeekChatCompletionProtocol(
-    private val codec: Json = Json
+class OpenAIChatCompletionProtocol(
+    private val codec: Json = Json,
+    override val compat: Compat = DeepSeekCompat()
 ) : ChatProtocol {
 
-    override val id: String = "deepseek"
+    override val id: String get() = compat.id
+    override val defaultEndpoint: String? get() = compat.defaultEndpoint
 
-    // DeepSeek 官方 OpenAI 兼容端点；调用方可经 config.endpoint 覆盖（方案 A）
-    override val defaultEndpoint: String? = "https://api.deepseek.com/chat/completions"
-
-    override fun withCodec(codec: Json): ChatProtocol = DeepSeekChatCompletionProtocol(codec)
+    override fun withCodec(codec: Json): ChatProtocol = OpenAIChatCompletionProtocol(codec, compat)
 
     override fun useApiKey(apiKey: String): Map<String, String> =
         if (apiKey.isEmpty()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
@@ -95,8 +97,15 @@ class DeepSeekChatCompletionProtocol(
             (delta["content"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
                 emit(ProtocolEvent.TextDelta(it))
             }
+            // DeepSeek 私有思考字段
             (delta["reasoning_content"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
                 emit(ProtocolEvent.ThinkingDelta(it))
+            }
+            // OpenAI 官方：delta.reasoning 对象（content 明文；encrypted_content 不可读，忽略）
+            (delta["reasoning"] as? JsonObject)?.let { reasoning ->
+                (reasoning["content"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
+                    emit(ProtocolEvent.ThinkingDelta(it))
+                }
             }
             (delta["tool_calls"] as? JsonArray)?.forEach { tc ->
                 (tc as? JsonObject)?.let { handleToolCallDelta(it, state, ::emit) }
@@ -107,8 +116,6 @@ class DeepSeekChatCompletionProtocol(
 
     override fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message =
         Message.ToolResult(call.id, call.name, outcome)
-
-    override val compat: Compat = DeepSeekCompat()
 
     // ── 请求体 ─────────────────────────────────────────────────────────────
 
@@ -126,7 +133,14 @@ class DeepSeekChatCompletionProtocol(
             })
             put("stream", true)
             put("stream_options", buildJsonObject { put("include_usage", true) })
-            put("max_tokens", snapshot.maxTokens)
+            // maxTokens 字段名由 compat 决定：DeepSeek 用 max_tokens，OpenAI 官方 o 系列用 max_completion_tokens
+            put(
+                when (compat.maxTokensField) {
+                    MaxTokensField.MaxTokens -> "max_tokens"
+                    MaxTokensField.MaxCompletionTokens -> "max_completion_tokens"
+                },
+                snapshot.maxTokens
+            )
             put("temperature", snapshot.temperature)
             if (snapshot.tools.isNotEmpty()) {
                 put("tools", buildJsonArray { snapshot.tools.forEach { add(convertTool(it)) } })
@@ -150,7 +164,7 @@ class DeepSeekChatCompletionProtocol(
         val image = blocks.firstOrNull { it is ContentBlock.Image }
         if (image != null) {
             throw IllegalStateException(
-                "image content is not supported by DeepSeekChatCompletionProtocol before M2"
+                "image content is not supported by OpenAIChatCompletionProtocol before M2"
             )
         }
         return blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
@@ -160,17 +174,29 @@ class DeepSeekChatCompletionProtocol(
         val textBlocks = message.content.filterIsInstance<ContentBlock.Text>()
         val thinkingBlocks = message.content.filterIsInstance<ContentBlock.Thinking>()
         val toolCalls = message.content.filterIsInstance<ContentBlock.ToolCall>()
-        val assistantText = textBlocks.joinToString("") { it.text }
         val thinkingText = thinkingBlocks.joinToString("\n") { it.text }
 
         // 无文本且无工具调用（如被中断的空回复）：跳过，Provider 不接受
-        if (assistantText.isEmpty() && toolCalls.isEmpty()) return null
+        if (textBlocks.isEmpty() && toolCalls.isEmpty()) return null
 
         return buildJsonObject {
             put("role", "assistant")
-            if (assistantText.isEmpty()) put("content", JsonNull) else put("content", assistantText)
-            // DeepSeek 要求 assistant 消息带 reasoning_content（无思考时为空串）
-            if (thinkingText.isEmpty()) put("reasoning_content", "") else put("reasoning_content", thinkingText)
+            // requiresReasoningContentOnAssistantMessages（DeepSeek）：
+            //   reasoning_content 字段原样回带（无思考补空串）。
+            // 否则（OpenAI 官方）：reasoning 不可回放，requiresThinkingAsText 时
+            //   思考合并进 content 文本；无思考则 content 为空串/JsonNull。
+            val text = textBlocks.joinToString("") { it.text }
+            val content = if (!compat.requiresReasoningContentOnAssistantMessages &&
+                thinkingText.isNotEmpty() && compat.requiresThinkingAsText
+            ) {
+                if (text.isEmpty()) thinkingText else "$thinkingText\n$text"
+            } else {
+                text
+            }
+            if (content.isEmpty()) put("content", JsonNull) else put("content", content)
+            if (compat.requiresReasoningContentOnAssistantMessages) {
+                if (thinkingText.isEmpty()) put("reasoning_content", "") else put("reasoning_content", thinkingText)
+            }
             if (toolCalls.isNotEmpty()) {
                 put("tool_calls", buildJsonArray {
                     toolCalls.forEach { call ->
