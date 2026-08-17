@@ -8,13 +8,15 @@ import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.LoopOptions
 import com.niki914.okia.loop.LoopRequest
 import com.niki914.okia.loop.TurnResult
+import com.niki914.okia.mcp.McpDiscovery
 import com.niki914.okia.mcp.McpDiscoverySnapshot
 import com.niki914.okia.mcp.McpRefreshResult
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.protocol.RequestSnapshot
-import com.niki914.okia.tooling.EmptyToolRegistry
+import com.niki914.okia.tooling.DefaultToolRegistry
+import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpEngine
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.OkHttpEngine
@@ -55,7 +57,9 @@ import kotlin.uuid.Uuid
 internal class RealOkia(
     private val dependencies: OkiaDependencies,
     restore: SessionSnapshot?,
-    config: OkiaConfig,
+    // 初始配置；与属性 config 不同名（遮蔽坑 §8.10 #4：同名时 by lazy 内
+    // 嵌套 lambda 会捕获构造参数值而非属性字段）
+    initialConfig: OkiaConfig,
     // 回合执行 scope；测试注入 TestDispatcher 获得可控时序（默认真实线程池）
     private val turnScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) : Okia {
@@ -73,7 +77,7 @@ internal class RealOkia(
     override val events: SharedFlow<TurnEvent> = eventsFlow
 
     @Volatile
-    private var config: OkiaConfig = config
+    private var config: OkiaConfig = initialConfig
 
     @Volatile
     private var closed: Boolean = false
@@ -96,6 +100,22 @@ internal class RealOkia(
     // 默认 HttpEngine：config 未注入时自建（实例所有；OkHttp 无显式释放语义，
     // close 不释放——连接池到期自保洁，§8.17）
     private val defaultEngine by lazy { OkHttpEngine() }
+
+    // 默认工具注册表：config 未注入 toolRegistry 时门面持有（实例所有，T9b）。
+    // MCP 发现结果注册进它（refreshMcpTools）；EmptyToolRegistry 已删除（T9b）。
+    private val defaultRegistry = DefaultToolRegistry()
+
+    // 当前生效注册表：config 注入的或默认实例（单一注册表来源，§8.7 #7）
+    private fun effectiveRegistry(cfg: OkiaConfig): ToolRegistry = cfg.toolRegistry ?: defaultRegistry
+
+    // MCP 发现管理：servers / registry 闭包读最新 config（update 热更新可见）
+    private val mcpDiscovery by lazy {
+        McpDiscovery(
+            client = dependencies.mcpClient,
+            servers = { config.mcpServers },
+            registry = { effectiveRegistry(config) }
+        )
+    }
 
     private val mutex = Mutex()
 
@@ -188,9 +208,20 @@ internal class RealOkia(
 
     override suspend fun config(): OkiaConfig = config
 
-    override suspend fun refreshMcpTools(): McpRefreshResult = TODO("MCP deferred to T9")
+    override suspend fun refreshMcpTools(): McpRefreshResult {
+        mutex.withLock {
+            check(!closed) { "Okia is closed" }
+            check(activeTurn == null) { "cannot refreshMcpTools during active turn" }
+        }
+        return mcpDiscovery.refresh()
+    }
 
-    override suspend fun getMcpDiscoverySnapshot(): McpDiscoverySnapshot = TODO("MCP deferred to T9")
+    // 只读快照；活跃回合允许（并发契约 §8.7 #5 的列表不含本方法，读不与
+    // 提交竞争——发现状态与会话树独立）
+    override suspend fun getMcpDiscoverySnapshot(): McpDiscoverySnapshot {
+        check(!closed) { "Okia is closed" }
+        return mcpDiscovery.current()
+    }
 
     override suspend fun close() {
         mutex.withLock {
@@ -219,10 +250,10 @@ internal class RealOkia(
                 readMs = cfg.readTimeoutSeconds * 1000,
                 writeMs = cfg.writeTimeoutSeconds * 1000
             ),
-            tools = (cfg.toolRegistry ?: EmptyToolRegistry()).snapshot().map { it.descriptor }
-            // TODO(候选整改，§8.17 #6)：tools 为 send 时快照；候选方案每轮
-            // buildRequest 前重新 snapshot（回合内注册工具对模型可见）。
-            // 当前无消费者（MCP 推迟 T9），保持现状。
+            tools = effectiveRegistry(cfg).snapshot().map { it.descriptor }
+            // 工具描述快照（T9b G5 整改）：send 时快照仅为初始值；每段
+            // buildRequest 前 RealAgentLoop 用 registry 现取覆盖（§8.18），
+            // 请求体表达「每段发送时的工具集」。
         )
         return LoopRequest(
             snapshot = snapshot,
@@ -230,7 +261,7 @@ internal class RealOkia(
             input = text,
             options = options?.loopOptions ?: LoopOptions(),
             idleTimeoutSeconds = cfg.idleTimeoutSeconds,
-            toolRegistry = cfg.toolRegistry ?: EmptyToolRegistry(),
+            toolRegistry = effectiveRegistry(cfg),
             protocolMapper = dependencies.protocolMapper,
             hooks = cfg.hooks,
             httpEngine = engine,

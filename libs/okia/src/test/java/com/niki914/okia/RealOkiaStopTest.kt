@@ -75,7 +75,7 @@ class RealOkiaStopTest {
     ): RealOkia = RealOkia(
         dependencies = deps(mapper, loop, engine),
         restore = null,
-        config = OkiaConfig.Builder().apply {
+        initialConfig = OkiaConfig.Builder().apply {
             endpoint = "https://api.test/v1"
             apiKey = "test-key"
             model = "test-model"

@@ -6,10 +6,10 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | T9a 已完成，T9b（执行器 + 发现/刷新/冲突）未开始 |
-| 契约 | 已冻结 + T2-T8 回写（docs/okia.md §8.11-§8.17） + T9a 线缆实现（内部实现为主，公开契约未变） |
-| 最近提交 | T9a（本次提交：MCP 线缆客户端三实现） |
-| 测试 | 356 个全绿（T9a 新增 58：Legacy 35 + Discovery 12 + AutoDetect 8 + 真实服务器集成 3） |
+| 阶段 | T9b 已完成（执行器 + 发现状态机 + 装配 + G5 整改），T9c 集成测试未开始 |
+| 契约 | 已冻结 + T2-T8 回写（docs/okia.md §8.11-§8.17） + T9a 线缆 + T9b 回写（§8.18） |
+| 最近提交 | T9a（MCP 线缆客户端三实现） |
+| 测试 | 396 个全绿（T9b 新增 40：McpExecutor 14 + McpDiscovery 18 + RealOkiaMcp 7 + Snapshot 1） |
 | 阻塞项 | 无 |
 
 ## 恢复步骤
@@ -32,7 +32,8 @@
 | T7 | 取消/重试/idle：kill-then-stop + RetryPolicy + idle 超时 | ~300 | ~300 | 已完成 |
 | T8 | 默认 HttpEngine（OkHttp 4）+ M0 默认协议装配 + 持久化闭合 | ~260 | ~540 | 已完成 |
 | T9a | MCP 线缆：McpWire 共享过程 + Legacy(2025-06-18) + Discovery(2026-07-28) + AutoDetect 探测包装 + 会话头往返 | ~460 | ~58 用例 | 已完成 |
-| T9b | McpExecutor 路由 + refreshMcpTools/getMcpDiscoverySnapshot（发现状态/指纹/冲突）+ 默认装配接线 + G5 快照整改 + EmptyToolRegistry 删除 | — | — | 未开始 |
+| T9b | McpExecutor 路由 + refreshMcpTools/getMcpDiscoverySnapshot（发现状态机/指纹/冲突）+ 默认装配接线 + G5 快照整改 + EmptyToolRegistry 删除 | ~310 | ~40 用例 | 已完成 |
+| T9c | MCP 集成测试：真实 server-everything 全链路（发现 → 注册 → 工具调用 → 结果显示）+ 门面端到端 | — | — | 未开始 |
 
 顺序：T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8。T2 是暴露骨架契约风险的主要手段（LoopRequest / onCommit / 事件序列 / 并发契约）。每任务完成时更新本表状态列，随提交提交本文件。
 
@@ -81,6 +82,12 @@
 | D49 | T9a：AutoDetect 探测回退规则 = -32601（MethodNotFound）或 -32000 且 message 含 not-initialized（含 HTTP 400 包 JSON-RPC error 形态）→ legacy；其余错误抛 | server-everything 对 server/discover 返回 HTTP 400 + -32000（非 200 包 error），checkTransport 解析 body 的 error code 填入异常 |
 | D50 | T9a：服务器名校验 `^[a-zA-Z0-9_]{1,32}$`（fail-fast）+ 分页死循环上限 50 页 + 非文本 content block 报错 | G6 命名设计（${server}_${tool} 拼接）；明确失败优于无限循环；§8.8 #4 收窄落地 |
 | D51 | T9a：集成测试连官方 @modelcontextprotocol/server-everything（本地 Node 3001，Assume 跳过）；echo 真实返回格式为带前缀文本 | 用户在 2026-08-17 提供测试服务器；真实服务器暴露了有状态会话与 HTTP 400 报错两个 MockWebServer 测不到的形态 |
+| D52 | T9b（Q1/Q3）：McpExecutor 映射——成功 = 文本块换行拼接；isError → Failure(固定文案, 内容)；协议/传输异常 → Failure(message, content=null)；取消传播；onInterrupt = Unknown（调用点不落地） | 纯文本通道需拼接；isError 是协议内工具自身错误；Unknown = 可能已远程执行永不重试 |
+| D53 | T9b（Q2）：conflicts 只实现 DuplicateInServer，其余三 reason 枚举保留不产生 | 前缀唯一化后其余无触发路径（依赖未来特性）；conflicts 仅报告不参与注册 |
+| D54 | T9b（Q4/Q5/Q6）：刷新并发（每服务器 async + awaitAll 单线程合并）；enabled=false 跳过高清；注册全量幂等；fingerprint 仅报告；UsingStaleCache = 失败+有缓存；lastSuccessAt 不判新鲜 | 对齐 codex join_all；diff 是过早优化；时间不能证明缓存新鲜 |
+| D55 | T9b（Q7）：删 EmptyToolRegistry（门面持默认 DefaultToolRegistry 实例）；默认 mcpClient = AutoDetect 装配（engine = config.httpEngine ?: 默认）；refreshMcpTools 活跃回合抛、快照只读允许 | 单一注册表来源不变；复用 host 注入传输入口 |
+| D56 | T9b（G5）：工具描述每段 buildRequest 前现取（RealAgentLoop 一处 snapshot.copy）；RealOkia.buildLoopRequest 的 tools 退为初始值 | §8.17 #6 候选 B 落地；请求体表达每段发送时的工具集 |
+| D57 | T9b 实现暴露：RealOkia 构造参数与属性同名时 by lazy 内 lambda 捕获构造参数快照 → 改名 initialConfig（对齐 §8.10 #4） | update 热更新后 McpDiscovery 读旧 config（测试暴露）；同款坑 RealConversation 已记录 |
 | D4 | RealConversation 内部状态 = 不可变 State 快照 + @Volatile 引用 | suspend Mutex 与同步 getter 共存：写入在 mutex 内构建新快照，读取免锁（不可变读安全）；KMP 兼容（kotlin.concurrent.Volatile） |
 | D5 | 条目 id = kotlin.uuid.Uuid.random()；timestamp = kotlin.time.Clock.System | KMP 兼容；自增计数器在 restore 乱序 id 时可能冲突，已排除 |
 | D6 | 构造时校验重复 id / 悬挂 leafId（fail-fast） | 与 §8.7 #4 rewind 存在性校验同一原则：客观可校验、快速失败 |
@@ -111,4 +118,6 @@
 
 ## 下一步
 
-开始 T9b：McpExecutor 路由实现（ToolKind.Mcp 路由 + outcome 映射 + 永不抛异常契约）+ refreshMcpTools / getMcpDiscoverySnapshot（每服务器状态机 Idle→Discovering→Available/Failed/UsingStaleCache、指纹 diff、冲突检测 4 值、McpRefreshResult）+ 默认装配接线（AutoDetectMcpClient + fallback DefaultToolRegistry，删 EmptyToolRegistry）+ G5 快照整改（每段 buildRequest 前重新 snapshot，RealAgentLoop 一处）。
+开始 T9c：MCP 集成测试。方案（待确认后执行）：
+1. 复用 T9a 的 server-everything 基建（本地 Node 3001，Assume 跳过）：AutoDetect 真实发现 → McpDiscovery 刷新 → 断言 registry 含 ${server}_${tool} → 门面 send 一轮工具循环（fake mapper 产出 MCP 工具调用）→ executor 真实 callTool → 结果回喂模型 → 断言 conversation/事件链完整。
+2. 补充门面端到端（不依赖真实服务器）：open(dependencies) 注入可控 fake client + FakeAgentLoop，验证 refresh → send（MCP 工具描述进请求 + 工具执行路由）→ TurnResult 的完整链路。

@@ -162,7 +162,13 @@ internal class RealAgentLoop : AgentLoop {
 
             // 1. Serialization 时机 + buildRequest（每段尝试 fresh request，对齐 pi）
             val httpRequest = try {
-                val serializationHolder = SerializationHolder(request.snapshot, history)
+                // G5 快照整改（§8.18）：工具描述每段尝试现取——快照表达「每段
+                // 发送时的工具集」而非 send 时固定值；合法变更（MCP 刷新 /
+                // Okia.update）走回合外，段间可见。
+                val serializationHolder = SerializationHolder(
+                    request.snapshot.copy(tools = request.toolRegistry.snapshot().map { it.descriptor }),
+                    history
+                )
                 hookStep(request, onEvent, "beforeSerialization") {
                     it.beforeSerialization(serializationHolder)
                 }?.let { return SegmentOutcome.Finished(it) }

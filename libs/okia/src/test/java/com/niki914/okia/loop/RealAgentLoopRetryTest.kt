@@ -18,7 +18,6 @@ import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.tooling.DefaultToolRegistry
-import com.niki914.okia.tooling.EmptyToolRegistry
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.SseLine
@@ -75,7 +74,7 @@ class RealAgentLoopRetryTest {
         input = "hi",
         options = LoopOptions(),
         idleTimeoutSeconds = null,
-        toolRegistry = EmptyToolRegistry(),
+        toolRegistry = DefaultToolRegistry(),
         protocolMapper = FakeProtocolMapper(events),
         hooks = emptyList(),
         httpEngine = engine,

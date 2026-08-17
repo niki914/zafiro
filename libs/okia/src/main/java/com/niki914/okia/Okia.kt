@@ -6,15 +6,18 @@ import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.AgentLoop
 import com.niki914.okia.loop.RealAgentLoop
 import com.niki914.okia.loop.TurnResult
-import com.niki914.okia.mcp.McpCallResult
+import com.niki914.okia.mcp.AutoDetectMcpClient
+import com.niki914.okia.mcp.DiscoveryStreamableHttpMcpClient
+import com.niki914.okia.mcp.LegacyStreamableHttpMcpClient
 import com.niki914.okia.mcp.McpClient
-import com.niki914.okia.mcp.McpDiscoveredTool
 import com.niki914.okia.mcp.McpDiscoverySnapshot
 import com.niki914.okia.mcp.McpRefreshResult
 import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.protocol.ChatProtocol
 import com.niki914.okia.protocol.DeepSeekChatCompletionProtocol
 import com.niki914.okia.protocol.ProtocolCompatMapper
+import com.niki914.okia.transport.HttpEngine
+import com.niki914.okia.transport.OkHttpEngine
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -122,7 +125,7 @@ interface Okia {
             val dependencies = DefaultDependencies(
                 agentLoop = RealAgentLoop(),
                 protocolMapper = ProtocolCompatMapper.from(protocol),
-                mcpClient = UnimplementedMcpClient
+                mcpClient = buildDefaultMcpClient(config.httpEngine ?: OkHttpEngine())
             )
             return RealOkia(dependencies, restore, config)
         }
@@ -134,7 +137,8 @@ interface Okia {
 
 /**
  * 默认依赖装配（open(protocol) / open() 内部使用）：agentLoop 为库默认实现、
- * mapper 经协议构造、mcpClient 为占位（MCP 推迟 T9）。
+ * mapper 经协议构造、mcpClient 为 AutoDetect 默认客户端（T9b 落地，Q7：
+ * 复用 config.httpEngine，宿主注入时复用宿主资源，未注入用默认 OkHttpEngine）。
  * 测试注入点仍是 open(dependencies)，本类 internal 不对外。
  */
 internal class DefaultDependencies(
@@ -143,24 +147,10 @@ internal class DefaultDependencies(
     override val mcpClient: McpClient
 ) : OkiaDependencies
 
-/**
- * MCP 客户端占位：MCP 推迟到 T9，默认装配提供明确失败的实现（不改变冻结契约的
- * 非空字段）。discoverTools / callTool 一律抛 UnsupportedOperationException；
- * host 需要 MCP 时经 OkiaDependencies 注入自己的 McpClient。
- * Design source: okia PRD §5.13（保留 McpClient 契约）；用户裁决 MCP 推迟。
- */
-internal object UnimplementedMcpClient : McpClient {
-
-    override suspend fun discoverTools(server: McpServer): List<McpDiscoveredTool> =
-        throw UnsupportedOperationException(
-            "MCP client is not implemented yet (T9 deferred); inject a McpClient via OkiaDependencies"
-        )
-
-    override suspend fun callTool(
-        server: McpServer,
-        toolName: String,
-        argumentsJson: String
-    ): McpCallResult = throw UnsupportedOperationException(
-        "MCP client is not implemented yet (T9 deferred); inject a McpClient via OkiaDependencies"
-    )
+// 默认 MCP 客户端装配：AutoDetect 包装两协议类（线缆共享 engine）。
+// engine 为 config.httpEngine 或新建默认（Q7 裁决：复用 host 注入的传输入口）。
+private fun buildDefaultMcpClient(engine: HttpEngine): McpClient {
+    val legacy = LegacyStreamableHttpMcpClient(engine)
+    val discovery = DiscoveryStreamableHttpMcpClient(engine)
+    return AutoDetectMcpClient(legacy, discovery)
 }

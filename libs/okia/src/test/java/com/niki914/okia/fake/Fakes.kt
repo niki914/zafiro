@@ -49,6 +49,10 @@ class FakeProtocolMapper(
 
     val builtRequests = mutableListOf<HttpRequest>()
     val builtHistories = mutableListOf<List<Message>>()
+    // G5 快照测试：每次 buildRequest 收到的请求快照（断言工具描述现取）
+    val builtSnapshots = mutableListOf<RequestSnapshot>()
+    // G5 快照测试：每次 buildRequest 前执行（模拟段间注册表变化）
+    var beforeBuild: (suspend () -> Unit)? = null
     var buildRequestError: Throwable? = null
 
     // 流中断模拟（T7 段首重试测试）：指定轮次（0 起）的流收集在发出
@@ -63,17 +67,12 @@ class FakeProtocolMapper(
     private var roundIndex = 0
 
     override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest {
-        buildRequestError?.let { throw it }
+        beforeBuild?.invoke()
+        builtRequests += requestOf(snapshot)
         builtHistories += history
-        val request = HttpRequest(
-            url = snapshot.endpoint,
-            method = "POST",
-            headers = useApiKey(snapshot.apiKey),
-            body = null,
-            timeouts = snapshot.timeouts
-        )
-        builtRequests += request
-        return request
+        builtSnapshots += snapshot
+        buildRequestError?.let { throw it }
+        return requestOf(snapshot)
     }
 
     override suspend fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message =
@@ -102,6 +101,14 @@ class FakeProtocolMapper(
         if (apiKey.isEmpty()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
 
     override val compat: Compat get() = DeepSeekCompat()
+
+    private fun requestOf(snapshot: RequestSnapshot): HttpRequest = HttpRequest(
+        url = snapshot.endpoint,
+        method = "POST",
+        headers = useApiKey(snapshot.apiKey),
+        body = null,
+        timeouts = snapshot.timeouts
+    )
 }
 
 /** 传输 fake：默认 200 + 空行流；可注入 streamError / 自定义响应。 */
