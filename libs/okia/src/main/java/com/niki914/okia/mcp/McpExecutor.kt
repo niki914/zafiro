@@ -15,9 +15,11 @@ class McpExecutor(
     private val servers: (serverName: String) -> McpServer?
 ) : ToolExecutor {
 
-    // 执行 MCP 工具调用；永不抛异常，总是产出工具结果
+    // 执行 MCP 工具调用；永不抛异常，总是产出工具结果。
+    // MCP 推迟 T9：实现随 McpClient 落地一起交付，当前不实现。
     override suspend fun execute(call: ToolCallContext): ToolCallOutcome = TODO()
 
-    // 中断判定：从内部状态判断调用是否已运行
+    // 中断判定：从内部状态判断调用是否已运行。
+    // MCP 推迟 T9：实现随 McpClient 落地一起交付，当前不实现。
     override fun onInterrupt(call: ToolCallContext): ToolCallOutcome = TODO()
 }

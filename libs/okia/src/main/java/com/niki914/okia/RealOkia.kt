@@ -15,7 +15,9 @@ import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.tooling.EmptyToolRegistry
+import com.niki914.okia.transport.HttpEngine
 import com.niki914.okia.transport.HttpTimeouts
+import com.niki914.okia.transport.OkHttpEngine
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -90,6 +92,10 @@ internal class RealOkia(
 
     // 正在流式、尚未成条的助手消息；只在 turn 协程内写
     private var live: AssistantMessage? = null
+
+    // 默认 HttpEngine：config 未注入时自建（实例所有；OkHttp 无显式释放语义，
+    // close 不释放——连接池到期自保洁，§8.17）
+    private val defaultEngine by lazy { OkHttpEngine() }
 
     private val mutex = Mutex()
 
@@ -182,9 +188,9 @@ internal class RealOkia(
 
     override suspend fun config(): OkiaConfig = config
 
-    override suspend fun refreshMcpTools(): McpRefreshResult = TODO("MCP refresh lands in T8")
+    override suspend fun refreshMcpTools(): McpRefreshResult = TODO("MCP deferred to T9")
 
-    override suspend fun getMcpDiscoverySnapshot(): McpDiscoverySnapshot = TODO("MCP lands in T8")
+    override suspend fun getMcpDiscoverySnapshot(): McpDiscoverySnapshot = TODO("MCP deferred to T9")
 
     override suspend fun close() {
         mutex.withLock {
@@ -199,8 +205,7 @@ internal class RealOkia(
 
     private fun buildLoopRequest(text: String, options: TurnOptions?): LoopRequest {
         val cfg = config
-        val engine = cfg.httpEngine
-            ?: throw IllegalStateException("default HttpEngine is not implemented yet (T8); inject one via OkiaConfig.httpEngine")
+        val engine = cfg.httpEngine ?: defaultEngine
         val snapshot = RequestSnapshot(
             endpoint = cfg.endpoint,
             apiKey = cfg.apiKey,
@@ -215,6 +220,9 @@ internal class RealOkia(
                 writeMs = cfg.writeTimeoutSeconds * 1000
             ),
             tools = (cfg.toolRegistry ?: EmptyToolRegistry()).snapshot().map { it.descriptor }
+            // TODO(候选整改，§8.17 #6)：tools 为 send 时快照；候选方案每轮
+            // buildRequest 前重新 snapshot（回合内注册工具对模型可见）。
+            // 当前无消费者（MCP 推迟 T9），保持现状。
         )
         return LoopRequest(
             snapshot = snapshot,

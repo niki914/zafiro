@@ -44,6 +44,9 @@ class DeepSeekChatCompletionProtocol(
 
     override val id: String = "deepseek"
 
+    // DeepSeek 官方 OpenAI 兼容端点；调用方可经 config.endpoint 覆盖（方案 A）
+    override val defaultEndpoint: String? = "https://api.deepseek.com/chat/completions"
+
     override fun withCodec(codec: Json): ChatProtocol = DeepSeekChatCompletionProtocol(codec)
 
     override fun useApiKey(apiKey: String): Map<String, String> =

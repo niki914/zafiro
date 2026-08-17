@@ -21,6 +21,11 @@ interface ChatProtocol {
     // 稳定协议 id（如 "deepseek"）
     val id: String
 
+    // 协议自带的默认端点（如 DeepSeek 官方 API）。调用方在 config.endpoint
+    // 显式设置时覆盖；两者皆空时 open() fail-fast（方案 A，§8.17）。
+    // null = 协议不自带默认端点，调用方必须提供 endpoint。
+    val defaultEndpoint: String?
+
     // 注入 JSON 编解码器（kotlinx.serialization 标准替代 JsonCodec）
     fun withCodec(codec: Json): ChatProtocol
 

@@ -3,10 +3,18 @@ package com.niki914.okia
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.event.TurnEvent
+import com.niki914.okia.loop.AgentLoop
+import com.niki914.okia.loop.RealAgentLoop
 import com.niki914.okia.loop.TurnResult
+import com.niki914.okia.mcp.McpCallResult
+import com.niki914.okia.mcp.McpClient
+import com.niki914.okia.mcp.McpDiscoveredTool
 import com.niki914.okia.mcp.McpDiscoverySnapshot
 import com.niki914.okia.mcp.McpRefreshResult
+import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.protocol.ChatProtocol
+import com.niki914.okia.protocol.DeepSeekChatCompletionProtocol
+import com.niki914.okia.protocol.ProtocolCompatMapper
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -54,10 +62,10 @@ interface Okia {
     // 当前配置快照
     suspend fun config(): OkiaConfig
 
-    // 刷新 MCP 工具发现
+    // 刷新 MCP 工具发现（MCP 推迟 T9，当前实现抛未实现）
     suspend fun refreshMcpTools(): McpRefreshResult
 
-    // 当前 MCP 发现快照
+    // 当前 MCP 发现快照（MCP 推迟 T9，当前实现抛未实现）
     suspend fun getMcpDiscoverySnapshot(): McpDiscoverySnapshot
 
     // 释放实例资源
@@ -69,17 +77,20 @@ interface Okia {
         // 实例由调用方构造（withCodec / 自定义状态在 open 前就绪）；
         // KClass/reified 重载已删除：KMP 无反射，类型令牌无法实例化任意协议。
         // restore 为可选恢复快照（export() 的产物，§5.3）：null = 新对话。
+        // endpoint 解析（方案 A，§8.17）：builder.endpoint 显式设置时用配置值；
+        // 为空时用协议 defaultEndpoint；两者皆空抛 IllegalArgumentException（fail-fast）。
         suspend fun <P : ChatProtocol> open(
             protocol: P,
             restore: SessionSnapshot? = null,
             builder: OkiaConfig.Builder.() -> Unit
-        ): Okia = TODO("default M0 DeepSeek assembly lands in T4/T8")
+        ): Okia = assemble(protocol, restore, builder, fillDefaults = false)
 
-        // 默认协议版本（M0 DeepSeek），库内部构造协议实例
+        // 默认协议版本（M0 DeepSeek），库内部构造协议实例。
+        // builder.model 为空时填默认模型（deepseek-v4-flash，用户裁决 2026-08-16）。
         suspend fun open(
             restore: SessionSnapshot? = null,
             builder: OkiaConfig.Builder.() -> Unit
-        ): Okia = TODO("default M0 DeepSeek assembly lands in T4/T8")
+        ): Okia = assemble(DeepSeekChatCompletionProtocol(), restore, builder, fillDefaults = true)
 
         // 显式依赖装配（JVM 测试注入点）
         suspend fun open(
@@ -90,5 +101,66 @@ interface Okia {
             val config = OkiaConfig.Builder().apply(builder).build()
             return RealOkia(dependencies, restore, config)
         }
+
+        // 装配：默认值与 endpoint 解析 + 依赖构造（agentLoop / mapper / mcpClient 占位）
+        private fun <P : ChatProtocol> assemble(
+            protocol: P,
+            restore: SessionSnapshot?,
+            builder: OkiaConfig.Builder.() -> Unit,
+            fillDefaults: Boolean
+        ): Okia {
+            val config = OkiaConfig.Builder().apply(builder).let { b ->
+                if (fillDefaults && b.model.isBlank()) b.model = DEFAULT_MODEL
+                if (b.endpoint.isBlank()) {
+                    b.endpoint = protocol.defaultEndpoint ?: throw IllegalArgumentException(
+                        "endpoint is required: protocol '${protocol.id}' declares no defaultEndpoint " +
+                            "and builder.endpoint is empty"
+                    )
+                }
+                b.build()
+            }
+            val dependencies = DefaultDependencies(
+                agentLoop = RealAgentLoop(),
+                protocolMapper = ProtocolCompatMapper.from(protocol),
+                mcpClient = UnimplementedMcpClient
+            )
+            return RealOkia(dependencies, restore, config)
+        }
+
+        // 默认装配的模型（M0 DeepSeek）
+        private const val DEFAULT_MODEL = "deepseek-v4-flash"
     }
+}
+
+/**
+ * 默认依赖装配（open(protocol) / open() 内部使用）：agentLoop 为库默认实现、
+ * mapper 经协议构造、mcpClient 为占位（MCP 推迟 T9）。
+ * 测试注入点仍是 open(dependencies)，本类 internal 不对外。
+ */
+internal class DefaultDependencies(
+    override val agentLoop: AgentLoop,
+    override val protocolMapper: ProtocolCompatMapper,
+    override val mcpClient: McpClient
+) : OkiaDependencies
+
+/**
+ * MCP 客户端占位：MCP 推迟到 T9，默认装配提供明确失败的实现（不改变冻结契约的
+ * 非空字段）。discoverTools / callTool 一律抛 UnsupportedOperationException；
+ * host 需要 MCP 时经 OkiaDependencies 注入自己的 McpClient。
+ * Design source: okia PRD §5.13（保留 McpClient 契约）；用户裁决 MCP 推迟。
+ */
+internal object UnimplementedMcpClient : McpClient {
+
+    override suspend fun discoverTools(server: McpServer): List<McpDiscoveredTool> =
+        throw UnsupportedOperationException(
+            "MCP client is not implemented yet (T9 deferred); inject a McpClient via OkiaDependencies"
+        )
+
+    override suspend fun callTool(
+        server: McpServer,
+        toolName: String,
+        argumentsJson: String
+    ): McpCallResult = throw UnsupportedOperationException(
+        "MCP client is not implemented yet (T9 deferred); inject a McpClient via OkiaDependencies"
+    )
 }

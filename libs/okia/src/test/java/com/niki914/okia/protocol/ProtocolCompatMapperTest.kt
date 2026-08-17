@@ -30,6 +30,7 @@ class ProtocolCompatMapperTest {
         private val deepSeekCompat = DeepSeekCompat()
 
         override val id: String = "recording"
+        override val defaultEndpoint: String? = null
         override fun withCodec(codec: Json): ChatProtocol = this
         override fun useApiKey(apiKey: String): Map<String, String> {
             useApiKeyCalls++
