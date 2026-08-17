@@ -26,7 +26,7 @@
 | T1 | 对话树：RealConversation + SessionCodec | ~150 | ~300 | 已完成 |
 | T2 | 垂直切片：RealOkia + 最小 AgentLoop + fake 协议/传输 | ~490 | ~650 | 已完成 |
 | T3 | transport：SseLineParser + SseEventParser + loop 前置校验 | ~220 | ~500 | 已完成 |
-| T4 | protocol：DeepSeekChatCompletionProtocol（独立实现）+ Mapper.from 委托壳 | ~260 | ~40 用例 | 已完成 |
+| T4 | protocol：OpenAIChatCompletionProtocol（DeepSeek/OpenAI 双 compat 形态，D64 推广）+ Mapper.from 委托壳 | ~260 | ~40 用例 | 已完成 |
 | T5 | hooks 接线：holder write 全部实现 + 链式分发 + Input/Serialization/Request 三对时机接入 | ~200 | ~350 | 已完成 |
 | T6 | tooling：DefaultToolRegistry + 工具循环（批量并行，保序提交） | ~490 | ~650 | 已完成 |
 | T7 | 取消/重试/idle：kill-then-stop + RetryPolicy + idle 超时 | ~300 | ~300 | 已完成 |
@@ -94,6 +94,13 @@
 | D61 | DeepSeek v4-flash 实测为思考模型：reasoning_content 常吃满预算、content 常为 null/finish_reason=length；usage 含 reasoning_tokens | 集成测试预算控制依据：maxTokens 需留思考余量；断言走结构不走措辞 |
 | D62 | 集成测试暴露的两个测试侧问题（非库缺陷）：① builder DSL 内 apiKey 属性遮蔽（builder{apiKey = apiKey!!} 右侧解析为 Builder 属性空串 → 请求无 Authorization → 401）；② MCP 期望值误用 fake 文本（真实 get-sum 返回英文原文） | ① Kotlin 接收者作用域陷阱，先取局部变量再写 builder，已修；② 真实链路应断言真实返回，已修；库零改动 |
 | D63 | 集成测试真实验证结论：协议层对真实字节流完全吻合（SSE/思考/usage/finish_reason），MCP 全链路真实工作，loop 工具循环端到端正确；OkHttp 丢帧疑云实为诊断替换空流的人为失败 | 真实集成测试价值兑现：区分了环境/测试问题与库缺陷；诊断要区分人工干预与真实路径 |
+| D64 | 【M1】用户裁决推广 pi 的「26 厂商共用 openai-completions」：DeepSeekChatCompletionProtocol = OpenAIChatCompletionProtocol + compat 构造参数；D21「独立实现不复用通用层」作废 | 新增厂商只加一份 compat；DeepSeek 私有语义（reasoning_content / max_tokens / 回带空串）收敛到 DeepSeekCompat；通用实现差由各厂商 compat 表达 |
+| D65 | 【M1】Compat 接口新增身份字段 id + defaultEndpoint（协议类 from compat 取，withCodec 后身份不变）；内置协议 = OpenAIChatCompletion（DeepSeek/OpenAI 两形态）/ OpenAIResponses / AnthropicMessages / GeminiProtocol，各带一份 compat | D43「端点是 provider 固有事实（同 useApiKey/compat）」落地；id 不进会话数据；Gemini 端点含 {model} 占位符（模型在 URL 路径）buildRequest 时替换 |
+| D66 | 【M1】三个协议真实链路实测：DeepSeek 提供 /responses 与 /anthropic 兼容端点（2026-08-18 验证），OpenAI 两个 + Anthropic 全部能测；Gemini 无 key 只写实现不写测试（用户裁决） | 集成测试走同一把 OKIA_TEST_API_KEY：chat / responses / anthropic 各一份 Assume 门控集成测试；Gemini 靠代码走查 + fixture 语义对照 pi |
+| D67 | 【M1】Anthropic 协议实现点：max_tokens 必填；system 顶层字段；user/assistant 严格交替（连续同角色合并，工具结果并入 user 消息 tool_result 块，可与后续用户文本共存）；thinking 回带带 signature（无签名转文本，不伪造）；x-api-key + anthropic-version 固定头；block_stop 携带 index 移除活跃块 | 实测 DeepSeek /anthropic 网关字节流（thinking/tool_use/usage/stop_reason 全形态）；stream 无 message_stop / stop_reason 缺失 = 协议不完整 → Error |
+| D68 | 【M1】Responses 协议实现点：input 为 item 数组（role 消息 / function_call / function_call_output）；function_call 双 id（item.id 事件引用 + call_id 工具结果引用），arguments delta 用 item_id 映射回 call_id；reasoning_text.delta（DeepSeek）与 reasoning_summary_text.delta（OpenAI）都归 ThinkingDelta；max_output_tokens ≥ 1；status=completed → Stop/ToolUse（按输出含 function_call），incomplete+max_output_tokens → Length | 实测 DeepSeek /responses 字节流（文本/推理/工具/usage）；OpenAI 官方 reasoning 加密不可回放 → 历史思考转文本（requiresThinkingAsText） |
+| D69 | 【M1】协议流解析只捕获自身解析异常（SerializationException / IllegalStateException）转 Error 事件；不宽泛 catch Exception | loop 以 StreamCompleted 哨兵异常中断收集（Flow 异常透明性：catch 块里再 emit 违规，实测暴露）；下游哨兵必须自然传播 |
+| D70 | 【M1】Gemini 协议：contents role=user/model + parts（text / thought:true+thoughtSignature / functionCall / functionResponse）；工具结果回带 functionResponse part（成功 output / 失败 error 二选一）；finishReason STOP / MAX_TOKENS / 其余 → Error；usageMetadata（thoughts 计入输出）；functionCall 无 id 时合成稳定 id（gemini-3 起要求 id） | 无真实 key：语义对齐 pi google-generative-ai.ts（增量分片 + SDK 归一化）；M2 前图片抛错（与其余协议一致） |
 | D4 | RealConversation 内部状态 = 不可变 State 快照 + @Volatile 引用 | suspend Mutex 与同步 getter 共存：写入在 mutex 内构建新快照，读取免锁（不可变读安全）；KMP 兼容（kotlin.concurrent.Volatile） |
 | D5 | 条目 id = kotlin.uuid.Uuid.random()；timestamp = kotlin.time.Clock.System | KMP 兼容；自增计数器在 restore 乱序 id 时可能冲突，已排除 |
 | D6 | 构造时校验重复 id / 悬挂 leafId（fail-fast） | 与 §8.7 #4 rewind 存在性校验同一原则：客观可校验、快速失败 |
@@ -111,7 +118,7 @@
 | D18 | 新增 SseEvent(data, event) + SseEventParser；聚合器输出结构化事件而非 data 文本 | MCP 实锤用 event 字段（codex rmcp-client 过滤非 message）；Codex 因 data-only 聚合器服务不了 MCP 被迫写两套；一个聚合器服务模型流与 MCP 两端 |
 | D19 | loop 前置校验：非 2xx 不进 parseStream；content-type text/html 黑名单 | 风控 HTML 真实 case（用户实测）；非 2xx 错误 body 是文本不是 SSE；黑名单避免白名单误伤改 content-type 的真实网关 |
 | D20 | 非 2xx 错误码映射 429→RateLimit / 401,403→Auth / 5xx→Overloaded / 其他→Transport；body 截断 2000 字符进 message | LLMErrorCode 已有分类直接复用；message 是 UI 详情非完整响应 |
-| D21 | T4：DeepSeekChatCompletionProtocol 独立实现，不复用 OpenAI 通用层 | 避免未来 DeepSeek 私有字段（reasoning_content 等）牵动通用逻辑；即使 pi 复用 openai-completions 也不学它（用户裁决） |
+| D21 | T4：OpenAIChatCompletionProtocol 通用实现 + compat 构造参数（DeepSeek 私有语义入 DeepSeekCompat）；D64 用户裁决推翻原「独立实现不复用通用层」 | M1 多协议落地：OpenAI 官方 / DeepSeek / 其他 OpenAI 兼容厂商共享同一协议类，差异由 compat 表达；pi 26 厂商单实现的实证 |
 | D22 | T4：协议层 Completed = 单次模型流结束（消息级）；finish_reason=tool_calls → Completed(ToolUse)，回合未结束（T6 继续工具循环）；错误 finish_reason / EOF 无 finish_reason → Error 事件 | 骨架注释「消息级结束原因」+ pi done 事件（每次流都发）；T2 判非 Stop/Length 为异常是工具循环未实现前的占位，T6 改 |
 | D23 | T4：encodeToolResult 不加工错误内容：tool 消息 content = outcome.content 原样（null 用空串） | 错误表达由下游在 outcome.content 决定（用户裁决）；骨架「Interrupted/Unknown 编码为错误文本」注释作废 |
 | D24 | T4：Image 块 buildRequest 抛 IllegalStateException（M2 前），不写专门测试 | 明确失败优于自动修复；异常消息讲清楚即可（用户裁决） |
