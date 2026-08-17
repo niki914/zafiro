@@ -6,10 +6,10 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | T8 已完成，T9（MCP）未开始 |
-| 契约 | 已冻结 + T2-T8 回写（docs/okia.md §8.11-§8.17；T8 含方案 A defaultEndpoint 契约增量） |
-| 最近提交 | 79d2dbf（T8 默认引擎 + M0 装配） |
-| 测试 | 298 个全绿（T8 新增 25：OkHttpEngine 14 + M0 装配 11） |
+| 阶段 | T9a 已完成，T9b（执行器 + 发现/刷新/冲突）未开始 |
+| 契约 | 已冻结 + T2-T8 回写（docs/okia.md §8.11-§8.17） + T9a 线缆实现（内部实现为主，公开契约未变） |
+| 最近提交 | T9a（本次提交：MCP 线缆客户端三实现） |
+| 测试 | 356 个全绿（T9a 新增 58：Legacy 35 + Discovery 12 + AutoDetect 8 + 真实服务器集成 3） |
 | 阻塞项 | 无 |
 
 ## 恢复步骤
@@ -31,7 +31,8 @@
 | T6 | tooling：DefaultToolRegistry + 工具循环（批量并行，保序提交） | ~490 | ~650 | 已完成 |
 | T7 | 取消/重试/idle：kill-then-stop + RetryPolicy + idle 超时 | ~300 | ~300 | 已完成 |
 | T8 | 默认 HttpEngine（OkHttp 4）+ M0 默认协议装配 + 持久化闭合 | ~260 | ~540 | 已完成 |
-| T9 | MCP（McpClient HTTP 客户端 + McpExecutor + 发现/刷新/冲突）+ 工具描述快照候选整改 | — | — | 未开始 |
+| T9a | MCP 线缆：McpWire 共享过程 + Legacy(2025-06-18) + Discovery(2026-07-28) + AutoDetect 探测包装 + 会话头往返 | ~460 | ~58 用例 | 已完成 |
+| T9b | McpExecutor 路由 + refreshMcpTools/getMcpDiscoverySnapshot（发现状态/指纹/冲突）+ 默认装配接线 + G5 快照整改 + EmptyToolRegistry 删除 | — | — | 未开始 |
 
 顺序：T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8。T2 是暴露骨架契约风险的主要手段（LoopRequest / onCommit / 事件序列 / 并发契约）。每任务完成时更新本表状态列，随提交提交本文件。
 
@@ -75,6 +76,11 @@
 | D44 | 默认 HttpEngine = OkHttpEngine（okhttp 4.12.0 implementation，internal；KMP 迁移进 actual）；config.httpEngine null 时 RealOkia 懒加载自建 | D12 契约闭合；取消 = job 取消监听 + call.cancel 打断阻塞 IO（阻塞字符读不响应协程取消） |
 | D45 | unary 传输失败（网络/超时）返回 HttpResponse(null, emptyMap, null) 缺省结构；catch 收窄 IOException（运行时错误外抛） | HttpResponse 契约（status/body 传输失败时缺失）；编程错误不应被吞 |
 | D46 | 工具描述快照时机保持现状（send 时快照）+ TODO 标注候选 B（每轮 buildRequest 前重新 snapshot） | 回合内注册工具的现实触发者是 MCP（已推迟）；无消费者不改行为，留文档 §8.17 #6 |
+| D47 | T9a：McpWire 共享 JSON-RPC 线缆过程（request/notify/双响应解析/分页/参数解析），两实现只差握手形态 | D21 模式落地：一个协议一个实现，过程不进实现类；notify 无 id 不解析响应 |
+| D48 | T9a：有状态会话往返——initialize 响应头 mcp-session-id 按服务器缓存，后续请求携带；无状态服务器（无该头）不受影响 | server-everything 实测强制要求 session（不带即 -32000 "Server not initialized"）；重新 discoverTools 时新会话覆盖旧会话 |
+| D49 | T9a：AutoDetect 探测回退规则 = -32601（MethodNotFound）或 -32000 且 message 含 not-initialized（含 HTTP 400 包 JSON-RPC error 形态）→ legacy；其余错误抛 | server-everything 对 server/discover 返回 HTTP 400 + -32000（非 200 包 error），checkTransport 解析 body 的 error code 填入异常 |
+| D50 | T9a：服务器名校验 `^[a-zA-Z0-9_]{1,32}$`（fail-fast）+ 分页死循环上限 50 页 + 非文本 content block 报错 | G6 命名设计（${server}_${tool} 拼接）；明确失败优于无限循环；§8.8 #4 收窄落地 |
+| D51 | T9a：集成测试连官方 @modelcontextprotocol/server-everything（本地 Node 3001，Assume 跳过）；echo 真实返回格式为带前缀文本 | 用户在 2026-08-17 提供测试服务器；真实服务器暴露了有状态会话与 HTTP 400 报错两个 MockWebServer 测不到的形态 |
 | D4 | RealConversation 内部状态 = 不可变 State 快照 + @Volatile 引用 | suspend Mutex 与同步 getter 共存：写入在 mutex 内构建新快照，读取免锁（不可变读安全）；KMP 兼容（kotlin.concurrent.Volatile） |
 | D5 | 条目 id = kotlin.uuid.Uuid.random()；timestamp = kotlin.time.Clock.System | KMP 兼容；自增计数器在 restore 乱序 id 时可能冲突，已排除 |
 | D6 | 构造时校验重复 id / 悬挂 leafId（fail-fast） | 与 §8.7 #4 rewind 存在性校验同一原则：客观可校验、快速失败 |
@@ -105,4 +111,4 @@
 
 ## 下一步
 
-开始 T9（MCP）：McpClient HTTP 客户端（JSON-RPC 2.0 / streamable，需参考 MCP 规范）+ McpExecutor（路由 + outcome 映射）+ 发现/刷新/冲突机制（refreshMcpTools / getMcpDiscoverySnapshot）+ 工具描述快照候选整改。前置待裁决：MCP 线缆范围与传输选型（streamable vs SSE）。等待用户确认后开始。
+开始 T9b：McpExecutor 路由实现（ToolKind.Mcp 路由 + outcome 映射 + 永不抛异常契约）+ refreshMcpTools / getMcpDiscoverySnapshot（每服务器状态机 Idle→Discovering→Available/Failed/UsingStaleCache、指纹 diff、冲突检测 4 值、McpRefreshResult）+ 默认装配接线（AutoDetectMcpClient + fallback DefaultToolRegistry，删 EmptyToolRegistry）+ G5 快照整改（每段 buildRequest 前重新 snapshot，RealAgentLoop 一处）。
