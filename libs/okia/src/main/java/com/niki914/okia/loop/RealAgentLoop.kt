@@ -459,7 +459,10 @@ internal class RealAgentLoop : AgentLoop {
                 val call = ContentBlock.ToolCall(
                     id = pending.id.ifEmpty { event.callId },
                     name = pending.name.ifEmpty { event.toolName },
-                    argumentsJson = pending.arguments.toString()
+                    // Ready 携带最终参数 JSON（事件契约），以它为最终事实源——
+                    // 只有 Ready、无 Delta 的协议执行器不会收到空串。ifEmpty
+                    // 回退累积 delta：兼容 Ready 不重复携带参数的流式协议。
+                    argumentsJson = event.argumentsJson.ifEmpty { pending.arguments.toString() }
                 )
                 state.pendingToolCalls.remove(pending)
                 state.readyToolCalls += call

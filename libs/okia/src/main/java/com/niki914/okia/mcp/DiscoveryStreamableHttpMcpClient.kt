@@ -30,26 +30,40 @@ internal class DiscoveryStreamableHttpMcpClient(
      * 探测：服务器是否接受 2026-07-28 协议。发一次 server/discover：
      * 返回 result → true；JSON-RPC -32601（MethodNotFound，服务器不认识
      * 该方法）→ false（调用方回退 legacy）；其他错误原样抛。
+     * 会话终止（服务器重启后的陈旧 session id，-32000 session 类错误）→
+     * 丢弃旧会话后重试一次（规范：不携带旧会话重新发起），自动治愈。
      */
     suspend fun probe(server: McpServer): Boolean {
-        val result = try {
-            wire.request(
-                server,
-                "server/discover",
-                buildJsonObject { put("_meta", modernMeta()) },
-                wire.nextId()
-            )
-        } catch (e: McpProtocolException) {
-            if (e.jsonRpcCode == McpWire.JSONRPC_METHOD_NOT_FOUND) return false
-            // 有状态服务器对 server/discover 返回 -32000 "Server not initialized"（未先
-            // initialize 会话）：不支持无前置握手的 2026 形态，回退 legacy。
-            if (e.jsonRpcCode == -32000 &&
-                e.message?.contains("not initialized", ignoreCase = true) == true
-            ) {
-                return false
+        var retried = false
+        while (true) {
+            try {
+                return probeOnce(server)
+            } catch (e: McpProtocolException) {
+                if (!retried && McpWire.isSessionTerminated(e)) {
+                    retried = true
+                    wire.discardSession(server.name)
+                    continue
+                }
+                if (e.jsonRpcCode == McpWire.JSONRPC_METHOD_NOT_FOUND) return false
+                // 有状态服务器对 server/discover 返回 -32000 "Server not initialized"（未先
+                // initialize 会话）：不支持无前置握手的 2026 形态，回退 legacy。
+                if (e.jsonRpcCode == -32000 &&
+                    e.message?.contains("not initialized", ignoreCase = true) == true
+                ) {
+                    return false
+                }
+                throw e
             }
-            throw e
         }
+    }
+
+    private suspend fun probeOnce(server: McpServer): Boolean {
+        val result = wire.request(
+            server,
+            "server/discover",
+            buildJsonObject { put("_meta", modernMeta()) },
+            wire.nextId()
+        )
         // 服务器必须显式声明支持我们发起的版本（协商失败 = 明确失败）
         val supported = (result["supportedVersions"] as? JsonArray)
             ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }

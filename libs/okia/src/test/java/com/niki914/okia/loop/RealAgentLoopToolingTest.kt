@@ -105,6 +105,28 @@ class RealAgentLoopToolingTest {
     }
 
     @Test
+    fun toolCallReadyWithoutDeltaCarriesFinalArgumentsToExecutor() = runTest {
+        // 契约回归：ToolCallReady 携带最终参数（ProtocolEvent 契约）；只有 Ready、
+        // 无 Started/Delta 的协议（完整响应 API）执行器必须收到完整参数而非空串。
+        val executor = RecordingToolExecutor()
+        val registry = DefaultToolRegistry().apply { register(localTool("tool"), executor) }
+        val mapper = FakeProtocolMapper(
+            listOf(
+                listOf(
+                    ProtocolEvent.ToolCallReady("call1", "tool", "{\"q\":1,\"k\":\"v\"}"),
+                    ProtocolEvent.Completed(stopReason = StopReason.ToolUse)
+                ),
+                listOf(ProtocolEvent.Completed(stopReason = StopReason.Stop))
+            )
+        )
+
+        runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper))
+
+        // Ready 携带的最终参数是事实源（此前实现用累积 delta，Ready-only 场景收到空串）
+        assertEquals("{\"q\":1,\"k\":\"v\"}", executor.calls.single().argumentsJson)
+    }
+
+    @Test
     fun beforeToolCallWriteOutcomeBlocksExecutionAndStopsLaterHooks() = runTest {
         val executor = RecordingToolExecutor()
         val registry = DefaultToolRegistry().apply { register(localTool("tool"), executor) }

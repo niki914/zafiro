@@ -199,6 +199,28 @@ class DiscoveryStreamableHttpMcpClientTest {
     }
 
     @Test
+    fun `probe discards stale session and retries once after session termination`() = runBlocking {
+        // 服务器重启后的陈旧 session id：第一次 server/discover 拿到 -32000 session
+        // 类错误 → 丢弃旧会话重试；第二次（无会话）成功。此前会一直携带失效 id，
+        // 只能重建整个 Okia 实例恢复。
+        var i = 0
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                i++
+                val body = Json.parseToJsonElement(request.body.peek().readUtf8()).jsonObject
+                return if (i == 1) {
+                    rpcError(body, -32000, "Bad Request: No valid session ID provided")
+                } else {
+                    rpcResult(body, DEFAULT_DISCOVER_RESULT)
+                }
+            }
+        }
+        assertTrue(client.probe(mcpServer()))
+        val second = awaitRequests(2)[1]
+        assertNull(second.getHeader("mcp-session-id"))
+    }
+
+    @Test
     fun `probe propagates unrelated json-rpc errors`() = runBlocking {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {

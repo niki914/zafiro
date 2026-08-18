@@ -314,6 +314,174 @@ class LegacyStreamableHttpMcpClientTest {
         assertEquals("sess-upper", awaitRequests(3)[2].getHeader("mcp-session-id"))
     }
 
+    // ── SSE 响应选择（MCP Streamable HTTP：目标响应前可插入 server 消息） ──
+
+    @Test
+    fun `sse response with server notification before reply is matched by id`() = runBlocking {
+        // 服务器在目标响应前发 JSON-RPC notification（2025-06-18 transports
+        // 明确允许）：不能把第一个 message 事件当响应，必须按 JSON-RPC id 匹配。
+        server.dispatcher = serverWith(
+            init = { b ->
+                val id = b["id"]?.jsonPrimitive?.content ?: "null"
+                sseResponse(
+                    "event: message\n" +
+                        "data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\"," +
+                        "\"params\":{\"level\":\"warning\",\"data\":\"hi\"}}\n\n" +
+                        "event: message\n" +
+                        "data: {\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":$DEFAULT_INIT_RESULT}\n\n"
+                )
+            }
+        )
+        assertEquals("echo", client.discoverTools(mcpServer()).single().name)
+    }
+
+    @Test
+    fun `sse stream with only server messages fails with clear protocol error`() = runBlocking {
+        // 只有通知 / server 请求、没有目标响应：明确报错（而非误导性的 id mismatch）
+        server.dispatcher = serverWith(
+            init = {
+                sseResponse(
+                    "event: message\n" +
+                        "data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\"," +
+                        "\"params\":{\"level\":\"warning\",\"data\":\"hi\"}}\n\n" +
+                        "event: message\n" +
+                        "data: {\"jsonrpc\":\"2.0\",\"id\":100,\"method\":\"ping\"}\n\n"
+                )
+            }
+        )
+        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        assertNotNull(e)
+        assertTrue(e!!.message!!.contains("no JSON-RPC response with id 1"))
+    }
+
+    // ── MCP-Protocol-Version 协商版本头（2025-06-18 §Protocol Version Header）──
+
+    @Test
+    fun `requests after initialize carry negotiated protocol version header`() = runBlocking {
+        server.dispatcher = serverWith()
+        client.discoverTools(mcpServer())
+        val requests = awaitRequests(3)
+        // initialized 通知与 tools/list 都附协商版本（initialize 本身无缓存版本，不带）
+        assertEquals("2025-06-18", requests[1].getHeader("MCP-Protocol-Version"))
+        assertEquals("2025-06-18", requests[2].getHeader("MCP-Protocol-Version"))
+        assertNull(requests[0].getHeader("MCP-Protocol-Version"))
+    }
+
+    @Test
+    fun `negotiated protocol version from server result is attached`() = runBlocking {
+        // 服务器协商返回的版本（而非客户端硬编码）进后续请求头
+        server.dispatcher = serverWith(
+            init = { b ->
+                rpcResult(
+                    b,
+                    """{"protocolVersion":"2030-01-01","capabilities":{},"serverInfo":{"name":"t","version":"1"}}"""
+                )
+            }
+        )
+        client.discoverTools(mcpServer())
+        assertEquals("2030-01-01", awaitRequests(3)[2].getHeader("MCP-Protocol-Version"))
+    }
+
+    // ── 会话终止自愈（2025-06-18 §Session Management） ────────────────────
+
+    @Test
+    fun `discover re-initializes without stale session after 404 session termination`() = runBlocking {
+        // 规范路径：服务器 404 终止会话 → 客户端丢弃旧会话、以不带旧会话的
+        // initialize 重建（MUST），无需重建整个 Okia 实例。
+        var i = 0
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                i++
+                val body = Json.parseToJsonElement(request.body.peek().readUtf8()).jsonObject
+                return when (body["method"]?.jsonPrimitive?.content) {
+                    "initialize" ->
+                        if (i == 1) rpcResult(body, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s1")
+                        else rpcResult(body, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s2")
+                    "notifications/initialized" -> MockResponse().setResponseCode(202)
+                    "tools/list" ->
+                        if (i == 3) MockResponse().setResponseCode(404).setBody("session terminated")
+                        else if (i == 6) rpcResult(body, """{"tools":[$DEFAULT_TOOL]}""")
+                        else MockResponse().setResponseCode(404).setBody("unexpected")
+                    else -> MockResponse().setResponseCode(400).setBody("unknown method")
+                }
+            }
+        }
+        val tools = client.discoverTools(mcpServer())
+        assertEquals("echo", tools.single().name)
+        val requests = awaitRequests(6)
+        assertEquals(
+            listOf("initialize", "notifications/initialized", "tools/list", "initialize", "notifications/initialized", "tools/list"),
+            requests.map { parseJson(it)["method"]?.jsonPrimitive?.content }
+        )
+        // 重建的 initialize 不带旧会话（规范 MUST）；tools/list 用新会话
+        assertNull(requests[3].getHeader("mcp-session-id"))
+        assertEquals("s2", requests[5].getHeader("mcp-session-id"))
+    }
+
+    @Test
+    fun `discover recovers from stale session -32000 error like real servers`() = runBlocking {
+        // 实现现实（server-everything 实测）：会话失效返回 HTTP 400 + JSON-RPC
+        // -32000 "Bad Request: No valid session ID provided" → 同样自愈。
+        var i = 0
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                i++
+                val body = Json.parseToJsonElement(request.body.peek().readUtf8()).jsonObject
+                return when (body["method"]?.jsonPrimitive?.content) {
+                    "initialize" ->
+                        if (i == 1) rpcResult(body, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s1")
+                        else rpcResult(body, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s2")
+                    "notifications/initialized" -> MockResponse().setResponseCode(202)
+                    "tools/list" ->
+                        if (i == 3) {
+                            MockResponse().setResponseCode(400).setBody(
+                                """{"jsonrpc":"2.0","error":{"code":-32000,"message":"Bad Request: No valid session ID provided"}}"""
+                            )
+                        } else if (i == 6) rpcResult(body, """{"tools":[$DEFAULT_TOOL]}""")
+                        else MockResponse().setResponseCode(400).setBody("unexpected")
+                    else -> MockResponse().setResponseCode(400).setBody("unknown method")
+                }
+            }
+        }
+        val tools = client.discoverTools(mcpServer())
+        assertEquals("echo", tools.single().name)
+        val requests = awaitRequests(6)
+        assertNull(requests[3].getHeader("mcp-session-id"))
+        assertEquals("s2", requests[5].getHeader("mcp-session-id"))
+    }
+
+    @Test
+    fun `callTool re-establishes session and retries after session termination`() = runBlocking {
+        // 回合中途服务器重启：callTool 第一个请求 -32000 → 丢弃旧会话、重新握手
+        // （initialize + initialized）、重试成功——host 无需重建实例。
+        server.dispatcher = serverWith(init = { b -> rpcResult(b, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s1") })
+        client.discoverTools(mcpServer())
+        awaitRequests(3)
+
+        var i = 0
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                i++
+                val body = Json.parseToJsonElement(request.body.peek().readUtf8()).jsonObject
+                return when (body["method"]?.jsonPrimitive?.content) {
+                    "initialize" -> rpcResult(body, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s2")
+                    "notifications/initialized" -> MockResponse().setResponseCode(202)
+                    "tools/call" ->
+                        if (i == 1) {
+                            MockResponse().setResponseCode(400).setBody(
+                                """{"jsonrpc":"2.0","error":{"code":-32000,"message":"Bad Request: No valid session ID provided"}}"""
+                            )
+                        } else rpcResult(body, """{"content":[{"type":"text","text":"ok"}]}""")
+                    else -> MockResponse().setResponseCode(400).setBody("unknown method")
+                }
+            }
+        }
+        val result = client.callTool(mcpServer(), "echo", """{"m":"hi"}""")
+        assertEquals("ok", (result.content.single() as McpContentBlock.Text).text)
+        // 重试成功且新会话已生效
+        assertEquals("s2", awaitRequests(4).last().getHeader("mcp-session-id"))
+    }
+
     // ── tools/list 与分页 ───────────────────────────────────────────────
 
     @Test

@@ -69,10 +69,21 @@ internal class McpWire(
 
     // 有状态服务器的会话：initialize 响应头 mcp-session-id 按 serverName 缓存，
     // 后续请求带上。无状态服务器不返回该头 → 不发（无状态模式，两者兼容）。
-    // 会话过期（服务器重启）→ 后续请求返回 -32000，由调用方报错；
-    // 重新 discoverTools 时 initialize 会覆盖旧会话。
+    // 协商版本：initialize 结果 protocolVersion 按 serverName 缓存，后续请求附
+    // MCP-Protocol-Version 头（2025-06-18 transports §Protocol Version Header，MUST）。
+    // 会话终止（服务器重启 / 过期，404 或 -32000 session 类错误）→ 二者同时丢弃，
+    // 由客户端层以不带旧会话的 initialize 重建（§Session Management）。
     private val sessions = HashMap<String, String>()
+    private val protocolVersions = HashMap<String, String>()
     private val sessionMutex = Mutex()
+
+    /** 丢弃服务器的会话与协商版本缓存（会话终止后由客户端层调用；幂等）。 */
+    suspend fun discardSession(serverName: String) {
+        sessionMutex.withLock {
+            sessions.remove(serverName)
+            protocolVersions.remove(serverName)
+        }
+    }
 
     /**
      * 发送 JSON-RPC 请求并返回 result 对象。JSON-RPC error → 抛（带
@@ -85,7 +96,16 @@ internal class McpWire(
             put("method", method)
             if (params != null) put("params", params)
         }
-        return parseResult(send(server, body), id)
+        val result = parseResult(send(server, body), id)
+        // 协商版本缓存：initialize 结果携带 protocolVersion，后续请求必须附
+        // MCP-Protocol-Version 头（规范 MUST；缺失时不缓存，退化到当前行为）。
+        if (method == "initialize") {
+            val negotiated = (result["protocolVersion"] as? JsonPrimitive)?.contentOrNull
+            if (!negotiated.isNullOrEmpty()) {
+                sessionMutex.withLock { protocolVersions[server.name] = negotiated }
+            }
+        }
+        return result
     }
 
     /** 发送 JSON-RPC 通知（无 id）；响应不解析，2xx 即成功。 */
@@ -181,18 +201,36 @@ internal class McpWire(
         val url = when (val transport = server.transport) {
             is McpTransport.Http -> transport.url
         }
-        // 会话头：服务器初始化时下发；默认头可被服务器级 headers 覆盖（host 注入认证等）
-        val session = sessionMutex.withLock { sessions[server.name] }
+        // 会话头 + 协商版本头（同一锁内读取保持一致）；默认头可被服务器级
+        // headers 覆盖（host 注入认证等）。initialize 本身无缓存版本，不带头——
+        // 规范只要求「初始化之后的请求」携带（版本协商结果在此之前未知）。
+        val (session, version) = sessionMutex.withLock {
+            sessions[server.name] to protocolVersions[server.name]
+        }
         val sessionHeader = session?.let { mapOf("mcp-session-id" to it) } ?: emptyMap()
+        val versionHeader = version?.let { mapOf("MCP-Protocol-Version" to it) } ?: emptyMap()
         val response = engine.unary(
             HttpRequest(
                 url = url,
                 method = "POST",
-                headers = DEFAULT_HEADERS + sessionHeader + server.headers,
+                headers = DEFAULT_HEADERS + sessionHeader + versionHeader + server.headers,
                 body = body.toString(),
                 timeouts = timeouts
             )
         )
+        // 会话终止（服务器重启 / 会话过期）：规范要求 404，现实实现常见
+        // 400 + JSON-RPC -32000 session 类错误。按规范丢弃缓存并让上层以全新
+        // initialize（不带旧会话）重建。仅当缓存仍是本次发送的值时丢弃，
+        // 避免并发中已经建立的更新会话被误清。
+        if (isSessionTerminatedResponse(response)) {
+            sessionMutex.withLock {
+                if (sessions[server.name] == session) {
+                    sessions.remove(server.name)
+                    if (protocolVersions[server.name] == version) protocolVersions.remove(server.name)
+                }
+            }
+            return response
+        }
         // 捕获新下发的会话（initialize 握手时服务器常见返回）；头名大小写不敏感
         val issued = response.headers.entries.firstOrNull { (name, _) ->
             name.equals("mcp-session-id", ignoreCase = true)
@@ -205,7 +243,7 @@ internal class McpWire(
 
     private suspend fun parseResult(response: HttpResponse, expectedId: Long): JsonObject {
         checkTransport(response)
-        return parseEnvelope(response).let { envelope ->
+        return parseEnvelope(response, expectedId).let { envelope ->
             if (envelope["jsonrpc"]?.let { (it as? JsonPrimitive)?.contentOrNull } != "2.0") {
                 throw McpProtocolException("MCP response missing jsonrpc=2.0: ${envelope}")
             }
@@ -223,7 +261,7 @@ internal class McpWire(
         }
     }
 
-    private suspend fun parseEnvelope(response: HttpResponse): JsonObject {
+    private suspend fun parseEnvelope(response: HttpResponse, expectedId: Long): JsonObject {
         val body = response.body ?: throw McpProtocolException(
             "MCP response had empty body (HTTP ${response.statusCode})", statusCode = response.statusCode
         )
@@ -231,7 +269,7 @@ internal class McpWire(
         val isSse = response.headers.any { (name, value) ->
             name.equals("Content-Type", ignoreCase = true) && value.contains("text/event-stream")
         }
-        return if (isSse) parseSseEnvelope(text) else parseJsonEnvelope(text)
+        return if (isSse) parseSseEnvelope(text, expectedId) else parseJsonEnvelope(text)
     }
 
     private fun parseJsonEnvelope(text: String): JsonObject = try {
@@ -243,8 +281,15 @@ internal class McpWire(
         throw McpProtocolException("MCP response is not valid JSON: ${text.take(200)}", cause = e)
     }
 
-    /** SSE 信封：聚合 W3C 事件，只取 event=message（缺省 event 亦算，D18），逐事件解析。 */
-    private suspend fun parseSseEnvelope(text: String): JsonObject {
+    /**
+     * SSE 信封：聚合 W3C 事件，只取 event=message（缺省 event 亦算，D18），逐事件解析。
+     * MCP Streamable HTTP 明确允许服务器在目标响应前发送 JSON-RPC request 或
+     * notification（2025-06-18 transports §Response）：不能把第一个 message 事件
+     * 当响应，必须按 JSON-RPC 的 id 精确匹配目标响应并跳过其余 server 消息。
+     * 找不到匹配 → 明确失败（区别于误导性的「id mismatch」：其余消息是 server
+     * 主动消息，本层暂无处理能力，见 §8.17 收窄）。
+     */
+    private suspend fun parseSseEnvelope(text: String, expectedId: Long): JsonObject {
         val events = SseEventParser().parse(SseLineParser().parse(flowOf(text))).toList()
         val envelopes = events
             .filter { it.event == null || it.event == "message" }
@@ -258,8 +303,41 @@ internal class McpWire(
                     throw McpProtocolException("MCP SSE event data is not valid JSON: ${ev.data.take(200)}", cause = e)
                 }
             }
-        return envelopes.firstOrNull()
-            ?: throw McpProtocolException("MCP SSE response contained no message events")
+        val idOf = { envelope: JsonObject ->
+            (envelope["id"] as? JsonPrimitive)?.content
+        }
+        val matched = envelopes.firstOrNull { idOf(it) == expectedId.toString() }
+        if (matched != null) return matched
+        val reason = if (envelopes.isEmpty()) {
+            "MCP SSE response contained no message events"
+        } else {
+            "MCP SSE stream contained ${envelopes.size} message(s) but no JSON-RPC response " +
+                "with id $expectedId (server request/notification messages are not supported); " +
+                "first: ${envelopes.first().toString().take(200)}"
+        }
+        throw McpProtocolException(reason)
+    }
+
+    // 会话终止响应判定（send 层）：404（规范）或 400 + JSON-RPC -32000 session 类
+    // 错误（server-everything 等实现的现实形态："No valid session ID provided" /
+    // "Server not initialized"）。与 companion.isSessionTerminated 同一语义。
+    private fun isSessionTerminatedResponse(response: HttpResponse): Boolean {
+        if (response.statusCode == 404) return true
+        val status = response.statusCode ?: return false
+        if (status in 200..299) return false
+        val detail = response.body?.decodeToString() ?: return false
+        return try {
+            val error = (json.parseToJsonElement(detail) as? JsonObject)?.get("error") as? JsonObject
+                ?: return false
+            val code = (error["code"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return false
+            code == SESSION_INVALID_CODE &&
+                (error["message"] as? JsonPrimitive)?.contentOrNull.orEmpty().let { message ->
+                    message.contains("session", ignoreCase = true) ||
+                        message.contains("not initialized", ignoreCase = true)
+                }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     /** 传输失败（status/body 缺省结构，D45）与非 2xx 统一检查。非 2xx 响应若
@@ -289,6 +367,21 @@ internal class McpWire(
 
         // JSON-RPC 标准错误码：Method Not Found（AutoDetect 探测回退依据）
         const val JSONRPC_METHOD_NOT_FOUND = -32601
+
+        /** 会话失效错误码（-32000）：服务器重启 / 会话过期后的常见表达。 */
+        const val SESSION_INVALID_CODE = -32000
+
+        /**
+         * 会话终止判定（客户端层共享，重试触发用）：404（2025-06-18
+         * §Session Management，收到 404 必须不带旧会话重新 initialize）或
+         * -32000 session 类错误（"No valid session ID provided" 等实现现实）。
+         * 不含 "Server not initialized"：那是「未初始化」而非「已终止」，重试
+         * server/discover 无意义，probe 已有 legacy 回退路径处理它。
+         */
+        fun isSessionTerminated(e: McpProtocolException): Boolean =
+            e.statusCode == 404 || (e.jsonRpcCode == SESSION_INVALID_CODE && e.message.orEmpty().let { message ->
+                message.contains("session", ignoreCase = true)
+            })
 
         /** 防服务器死循环返回 nextCursor 的页数上限（明确失败优于无限循环）。 */
         const val MAX_TOOL_LIST_PAGES = 50

@@ -20,15 +20,19 @@ import com.niki914.okia.message.StopReason
 import com.niki914.okia.protocol.ProtocolCompatMapper
 import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.transport.HttpEngine
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -227,6 +231,71 @@ class RealOkiaTest {
 
         first.cancel()
         runCurrent() // 让 turn job 清理 activeTurn
+        okia.close()
+    }
+
+    @Test
+    fun concurrentSendsReserveExactlyOneActiveTurn() = runBlocking {
+        // 回归守卫（T2 竞态）：check 与回合状态预留必须在同一临界区——多线程并发
+        // send 恰好一个成功、其余抛 IllegalStateException。此前实现 check 通过后
+        // 释放锁、append 完成才设置 activeTurn，多个 send 可同时通过（真实线程
+        // 交错复现：双 loop、双 User 消息、turnStartEntryId 被覆盖）。
+        val gate = CompletableDeferred<Unit>()
+        val loop = FakeAgentLoop { _, _ ->
+            gate.await()
+            TurnResult.Completed(CompletionReason.Stop)
+        }
+        val okia = openOkia(
+            FakeProtocolMapper(listOf(completed())),
+            loop = loop
+            // 默认 scope = Dispatchers.Default（真实线程池，允许并发交错）
+        )
+        // 屏障：全部 24 个 send 实际发起后，等待 23 个败者（抛异常）落定——
+        // 胜者此时必然仍阻塞在 gate（回合还活跃），再放行 gate。不依赖时间窗口。
+        val allStarted = java.util.concurrent.CountDownLatch(24)
+        val attempts = (1..24).map { n ->
+            async(Dispatchers.Default) {
+                allStarted.countDown()
+                runCatching { okia.send("t$n") { } }
+            }
+        }
+        allStarted.await()
+        val deadline = System.currentTimeMillis() + 10_000
+        while (attempts.count { it.isCompleted } < 23 && System.currentTimeMillis() < deadline) {
+            delay(1)
+        }
+        assertTrue(
+            "24 个 send 中应有 23 个败者先落定（胜者阻塞在 gate）",
+            attempts.count { it.isCompleted } >= 23
+        )
+        gate.complete(Unit)
+        val outcomes = attempts.awaitAll()
+        assertEquals(24, outcomes.size)
+        assertEquals(1, outcomes.count { it.isSuccess })
+        assertEquals(23, outcomes.count { it.exceptionOrNull() is IllegalStateException })
+        okia.close()
+    }
+
+    @Test
+    fun mutationAttemptsInsideTurnAbortedCallbackAreRejected() = runTest {
+        // 回归守卫（T2）：Aborted 终态事件派发期间门面仍处于活跃回合——回调内的
+        // rewind 不得通过（此前 activeTurn 在事件派发前已被 job finally 清空，
+        // 回调内可插入 mutation，且其 live=null 会冲掉下一回合的 live）。
+        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
+        val okia = openOkia(FakeProtocolMapper(events), scope = testScope(testScheduler))
+        var rewindResult: Result<Unit>? = null
+        val job = launch {
+            okia.send("one") { event ->
+                if (event is TurnEvent.TurnAborted) {
+                    rewindResult = runCatching { okia.rewind("x") }
+                }
+            }
+        }
+        runCurrent()
+        okia.stop()
+        job.join()
+        val result = rewindResult ?: error("TurnAborted callback never ran")
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
         okia.close()
     }
 

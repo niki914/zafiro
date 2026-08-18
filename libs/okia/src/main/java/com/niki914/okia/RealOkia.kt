@@ -124,26 +124,26 @@ internal class RealOkia(
         options: TurnOptions?,
         onEvent: suspend (TurnEvent) -> Unit
     ): TurnResult {
+        // 回合状态原子预留（T2 竞态整改）：check + 追加 User + 启动 loop +
+        // activeTurn 赋值全部在同一临界区内完成——并发 send / rewind / update /
+        // export / close / refreshMcpTools 无法在「check 通过」与「activeTurn
+        // 就位」之间插入。先提交 User 再启动 loop（不变量 §5.8：history 永远
+        // 包含当前输入）。
+        val turnJob: Deferred<TurnResult>
         mutex.withLock {
             check(!closed) { "Okia is closed" }
             check(activeTurn == null) { "another turn is already active" }
-        }
+            val turnStartEntry = tree.append(Message.User(listOf(ContentBlock.Text(text))))
+            turnStartEntryId = turnStartEntry.id
+            publish()
 
-        // 不变量（§5.8）：history 永远包含当前输入——先提交 User 再启动 loop
-        val turnStartEntry = tree.append(Message.User(listOf(ContentBlock.Text(text))))
-        turnStartEntryId = turnStartEntry.id
-        publish()
-
-        val request = buildLoopRequest(text, options)
-        val turnJob = turnScope.async {
-            try {
+            val request = buildLoopRequest(text, options)
+            val job = turnScope.async {
                 dependencies.agentLoop.run(request) { event -> handleEvent(event, onEvent) }
-            } finally {
-                activeTurn = null
-                turnStartEntryId = null
             }
+            activeTurn = job
+            turnJob = job
         }
-        activeTurn = turnJob
 
         return try {
             turnJob.await()
@@ -163,6 +163,12 @@ internal class RealOkia(
             val message = lastAssistantMessage() ?: AssistantMessage(emptyList())
             handleEvent(TurnEvent.TurnAborted(message, cause), onEvent)
             TurnResult.Aborted(cause)
+        } finally {
+            // 持有回合状态到终态事件处理完成（Aborted 事件由本方法派发，循环内
+            // 终态 Completed/Failed 在 await 返回前已发完）：清除前新回合不得
+            // 开始——否则其 TurnAborted 的 live=null 会冲掉新回合的 live。
+            activeTurn = null
+            turnStartEntryId = null
         }
     }
 
