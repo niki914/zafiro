@@ -7,7 +7,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
-import com.niki914.kai.LocalToolConfig
 import com.niki914.kai.McpDiscoverySnapshot
 import com.niki914.kai.McpDiscoveryState
 import com.niki914.kai.McpServerDiscoverySnapshot
@@ -492,7 +491,6 @@ class PromptComposerTest {
     private class FakeBuiltinTool(
         override val name: String,
     ) : BuiltinTool() {
-        override fun configure(config: LocalToolConfig) = Unit
 
         override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
             return BuiltinToolResult.success(message = "ok")

@@ -6,7 +6,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.xposed.api.util.ContextProvider
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -23,14 +22,7 @@ class OpenUriBuiltin : BuiltinTool() {
 
     override val defaultEnabled: Boolean = true
 
-    override fun configure(config: LocalToolConfig) {
-        config.description = description
-        config.string("uri") {
-            description = "Known-valid Android URI to open. Do not invent or guess URI schemes."
-            required = true
-        }
-        config.rawJsonSchema(OPEN_URI_SCHEMA)
-    }
+    override val inputSchemaJson: String? get() = OPEN_URI_SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         val uri = try {

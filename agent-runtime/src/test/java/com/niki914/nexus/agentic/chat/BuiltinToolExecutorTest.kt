@@ -12,7 +12,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResultCodec
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLoadedSkill
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -137,7 +136,6 @@ class BuiltinToolExecutorTest {
     ) : BuiltinTool() {
         var lastRequest: BuiltinToolRequest? = null
 
-        override fun configure(config: LocalToolConfig) = Unit
 
         override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
             lastRequest = request
@@ -149,7 +147,6 @@ class BuiltinToolExecutorTest {
         override val name: String,
         private val throwable: Throwable,
     ) : BuiltinTool() {
-        override fun configure(config: LocalToolConfig) = Unit
 
         override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
             throw throwable
@@ -159,7 +156,6 @@ class BuiltinToolExecutorTest {
     private class RawJsonBuiltin(
         override val name: String,
     ) : BuiltinTool(), RawJsonBuiltinTool {
-        override fun configure(config: LocalToolConfig) = Unit
 
         override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
             error("should not call invoke() for RawJsonBuiltinTool")

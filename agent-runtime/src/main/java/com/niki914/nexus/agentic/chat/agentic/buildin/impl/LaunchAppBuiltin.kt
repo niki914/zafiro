@@ -9,7 +9,6 @@ import com.niki914.nexus.agentic.chat.agentic.device.AppInfo
 import com.niki914.nexus.agentic.chat.agentic.device.AppInfoProvider
 import com.niki914.nexus.agentic.chat.agentic.device.AppMatchResult
 import com.niki914.nexus.xposed.api.util.ContextProvider
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -28,19 +27,7 @@ class LaunchAppBuiltin : BuiltinTool() {
 
     override val defaultEnabled: Boolean = true
 
-    override fun configure(config: LocalToolConfig) {
-        config.description = description
-        config.string("package_name") {
-            description = "Exact Android package name to launch, for example com.tencent.mm."
-            required = false
-        }
-        config.string("app_name") {
-            description =
-                "App display name to launch. Fuzzy matching is allowed; ambiguous matches return candidates."
-            required = false
-        }
-        config.rawJsonSchema(LAUNCH_APP_SCHEMA)
-    }
+    override val inputSchemaJson: String? get() = LAUNCH_APP_SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         val args = try {

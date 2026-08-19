@@ -1,6 +1,5 @@
 package com.niki914.nexus.agentic.chat.agentic.buildin
 
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
@@ -12,7 +11,6 @@ class TextResultBuiltinToolTest {
     fun invokeTextReturnsSuccess_invokeRawReturnsEncodedToolResultString() = runTest {
         val tool = object : TextResultBuiltinTool() {
             override val name: String = "test_tool"
-            override fun configure(config: LocalToolConfig) = Unit
             override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult =
                 TextToolResult.success("test payload")
         }
@@ -28,7 +26,6 @@ class TextResultBuiltinToolTest {
     fun invokeTextThrowsRuntimeException_invokeRawReturnsUnknownErrorFailure() = runTest {
         val tool = object : TextResultBuiltinTool() {
             override val name: String = "test_tool"
-            override fun configure(config: LocalToolConfig) = Unit
             override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult =
                 throw RuntimeException("something went wrong")
         }
@@ -45,7 +42,6 @@ class TextResultBuiltinToolTest {
     fun invokeTextThrowsCancellationException_invokeRawRethrows() = runTest {
         val tool = object : TextResultBuiltinTool() {
             override val name: String = "test_tool"
-            override fun configure(config: LocalToolConfig) = Unit
             override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult =
                 throw CancellationException("cancelled")
         }

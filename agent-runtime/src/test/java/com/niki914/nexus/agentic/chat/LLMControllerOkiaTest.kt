@@ -4,6 +4,8 @@ import android.content.Context
 import com.niki914.kai.ChatTurn
 import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
 import com.niki914.nexus.agentic.runtime.settings.model.LlmApiType
+import com.niki914.nexus.agentic.runtime.settings.model.RuntimeBuiltinToolSetting
+import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig
 import com.niki914.okia.Okia
 import com.niki914.okia.OkiaDependencies
@@ -36,6 +38,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -74,6 +77,58 @@ class LLMControllerOkiaTest {
         LLMController.refresh()
 
         assertEquals(listOf(LlmApiType.DeepSeek), capturedApiTypes)
+    }
+
+    @Test
+    fun refresh_registersOnlyEnabledLocalTools() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                llmConfig = validLlmConfig(),
+                builtinTools = listOf(
+                    RuntimeBuiltinToolSetting("terminal", "t", enabled = true),
+                    RuntimeBuiltinToolSetting("memory", "m", enabled = false),
+                ),
+                customTools = listOf(
+                    RuntimeCustomTool("custom_x", "dx", "echo", enabled = true),
+                    RuntimeCustomTool("custom_y", "dy", "echo", enabled = false),
+                ),
+            )
+        )
+        LLMController.okiaFactory = LLMController.OkiaFactory { apiType, restore, config ->
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
+        }
+
+        LLMController.refresh()
+
+        // D25 注册装配：refresh 后 registry 只含启用的本地工具
+        val names = LLMController.toolRegistry.snapshot()
+            .map { it.descriptor.name }
+            .toSet()
+        assertEquals(setOf("terminal", "custom_x"), names)
+    }
+
+    @Test
+    fun refresh_iconicCustomToolsAreRegisteredAsLocalWithSchema() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                llmConfig = validLlmConfig(),
+                builtinTools = listOf(
+                    RuntimeBuiltinToolSetting("terminal", "t", enabled = true),
+                ),
+            )
+        )
+        LLMController.okiaFactory = LLMController.OkiaFactory { apiType, restore, config ->
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
+        }
+
+        LLMController.refresh()
+
+        val terminal = LLMController.toolRegistry.snapshot()
+            .firstOrNull { it.descriptor.name == "terminal" }
+        assertNotNull(terminal)
+        // 内置工具携带 inputSchemaJson（D25 描述合法性）；kind = Local
+        assertNotNull(terminal!!.descriptor.inputSchemaJson)
+        assertEquals(com.niki914.okia.tooling.ToolKind.Local, terminal.descriptor.kind)
     }
 
     // ── stream：文本流与终态 ─────────────────────────────────────────────────

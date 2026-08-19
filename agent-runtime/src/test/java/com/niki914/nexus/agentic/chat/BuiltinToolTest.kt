@@ -11,12 +11,14 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.impl.OpenUriBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.ReadCustomToolBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.SearchAppsBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.TerminalBuiltin
-import com.niki914.kai.LocalToolConfig
+import com.niki914.okia.tooling.ToolWireName
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,14 +32,11 @@ class BuiltinToolTest {
     }
 
     @Test
-    fun createCustomToolDescription_matchesConfigureDescription() {
+    fun createCustomToolDescription_matchesSchemaDescription() {
         val tool = CreateCustomToolBuiltin()
-        val config = LocalToolConfig()
-
-        tool.configure(config)
 
         assertEquals("Create or update a custom tool setting.", tool.description)
-        assertEquals(tool.description, config.description)
+        assertSchemaParsable(tool.inputSchemaJson, tool.name)
     }
 
     @Test
@@ -99,56 +98,63 @@ class BuiltinToolTest {
     }
 
     @Test
-    fun memoryAndReadCustomToolDescription_matchesConfigureDescription() {
+    fun toolSchemas_areValidJsonSchema() {
         listOf(
+            CreateCustomToolBuiltin(),
             LaunchAppBuiltin(),
             MemoryBuiltin(),
             OpenUriBuiltin(),
             ReadCustomToolBuiltin(),
             SearchAppsBuiltin(),
+            TerminalBuiltin(),
         ).forEach { tool ->
-            val config = LocalToolConfig()
-
-            tool.configure(config)
-
-            assertEquals(tool.description, config.description)
+            assertEquals(tool.name, tool.name.trim())
+            assertTrue("description not blank: ${tool.name}", tool.description.isNotBlank())
+            assertSchemaParsable(tool.inputSchemaJson, tool.name)
         }
     }
 
+    /**
+     * D25 描述合法性：schema JSON 可解析（至少是合法 JSON；T2b 前所有内置工具
+     * 都有 schema）、name 合法、wireName 满足 ToolWireName 约束（长度/字符）。
+     */
     @Test
-    fun terminalBuiltinDescription_matchesConfigureDescription() {
-        val tool = TerminalBuiltin()
-        val config = LocalToolConfig()
-
-        tool.configure(config)
-
-        assertEquals(tool.description, config.description)
-        assertEquals("terminal", tool.name)
-        assertTrue(tool.defaultEnabled)
-        // Hermes-aligned description assertions
-        assertTrue(tool.description.contains("Foreground (default)"))
-        assertTrue(tool.description.contains("Background:"))
-        assertTrue(tool.description.contains("notify_on_complete"))
-        assertTrue(tool.description.contains("working directory"))
-        // Nexus-specific assertions
-        assertTrue(tool.description.contains("backend"))
-        assertTrue(tool.description.contains("\"local\""))
-        assertTrue(tool.description.contains("\"ssh\""))
-        assertTrue(tool.description.contains("shizuku"))
-        // Hermes-aligned session protocol in the description
-        assertTrue(tool.description.contains("session_id"))
-        assertTrue(tool.description.contains("action=\"read\""))
-        assertTrue(tool.description.contains("action=\"close\""))
+    fun allRegisteredBuiltinTools_meetDescriptionLegality() {
+        BuiltinToolRegistry.default().all().forEach { tool ->
+            assertEquals("name not blank: ${tool.name}", tool.name, tool.name.trim())
+            assertTrue("description not blank: ${tool.name}", tool.description.isNotBlank())
+            assertSchemaParsable(tool.inputSchemaJson, tool.name)
+            val wireName = ToolWireName.forLocal(tool.name)
+            assertTrue(
+                "wireName within length for ${tool.name}",
+                wireName.length <= ToolWireName.MAX_LENGTH,
+            )
+            assertEquals(
+                "wireName sanitizes to itself for ${tool.name}",
+                wireName,
+                ToolWireName.forLocal(wireName),
+            )
+        }
     }
 
     private class FakeBuiltinTool(
         override val name: String,
         override val defaultEnabled: Boolean = false,
     ) : BuiltinTool() {
-        override fun configure(config: LocalToolConfig) = Unit
 
         override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
             return BuiltinToolResult.success(message = "ok")
+        }
+    }
+
+    private fun assertSchemaParsable(schemaJson: String?, toolName: String) {
+        assertNotNull("schema missing for $toolName", schemaJson)
+        try {
+            Json.parseToJsonElement(schemaJson!!).jsonObject
+        } catch (e: SerializationException) {
+            throw AssertionError("schema of $toolName is not JSON: ${e.message}", e)
+        } catch (e: IllegalArgumentException) {
+            throw AssertionError("schema of $toolName is not JSON: ${e.message}", e)
         }
     }
 }

@@ -8,7 +8,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.delay
 
 /**
@@ -59,37 +58,7 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
                 "(#!status, #!code, #!message, then payload). " +
                 "See the Phone Use skill for failure recovery rules."
 
-    override fun configure(config: LocalToolConfig) {
-        config.description = description
-        config.string("operation") {
-            description = "Which operation: read, tap, long_click, scroll_forward, scroll_backward, set_text, search."
-            required = true
-        }
-        config.string("token") {
-            description = "Target node token, assembled as {version}_{i} — snapshot version from YAML header + underscore + node index from the i field. Required for tap, long_click, scroll_forward, scroll_backward, set_text."
-            required = false
-        }
-        config.string("text") {
-            description = "Text to type into the field. Required for set_text."
-            required = false
-        }
-        config.string("match_mode") {
-            description = "Search match mode: \"any\" (default) to match any keyword, \"all\" to require all keywords."
-            required = false
-        }
-        config.number("limit") {
-            description = "Max search results to return, default 10."
-            required = false
-        }
-        config.string("wait_mode") {
-            description = "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh. Must be \"stable\" or \"delay\"."
-            required = false
-        }
-        config.number("wait_ms") {
-            description = "Wait duration in ms. Stable mode: max deadline (default 2000, max 60000). Delay mode: required, fixed sleep (0-60000)."
-            required = false
-        }
-    }
+    override val inputSchemaJson: String? get() = SCREEN_ACCESSIBILITY_SCHEMA
 
     override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult {
         AccessibilityController.ensurePointerShown()
@@ -217,5 +186,46 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
         } else {
             AccessibilityController.waitForStable(args.waitMs)
         }
+    }
+
+    private companion object {
+        // T2a 迁移：原 kai LocalToolConfig DSL（string/number 声明）转录为 JSON Schema，
+        // 字段描述文本一字未改。
+        private val SCREEN_ACCESSIBILITY_SCHEMA = """
+            {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "description": "Which operation: read, tap, long_click, scroll_forward, scroll_backward, set_text, search."
+                },
+                "token": {
+                  "type": "string",
+                  "description": "Target node token, assembled as {version}_{i} — snapshot version from YAML header + underscore + node index from the i field. Required for tap, long_click, scroll_forward, scroll_backward, set_text."
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Text to type into the field. Required for set_text."
+                },
+                "match_mode": {
+                  "type": "string",
+                  "description": "Search match mode: \"any\" (default) to match any keyword, \"all\" to require all keywords."
+                },
+                "limit": {
+                  "type": "number",
+                  "description": "Max search results to return, default 10."
+                },
+                "wait_mode": {
+                  "type": "string",
+                  "description": "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh. Must be \"stable\" or \"delay\"."
+                },
+                "wait_ms": {
+                  "type": "number",
+                  "description": "Wait duration in ms. Stable mode: max deadline (default 2000, max 60000). Delay mode: required, fixed sleep (0-60000)."
+                }
+              },
+              "required": ["operation"]
+            }
+        """
     }
 }

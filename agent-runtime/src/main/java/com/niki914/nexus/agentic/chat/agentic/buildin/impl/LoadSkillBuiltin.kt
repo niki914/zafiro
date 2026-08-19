@@ -5,7 +5,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLoadedSkill
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -21,14 +20,7 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
 
     override val defaultEnabled: Boolean = true
 
-    override fun configure(config: LocalToolConfig) {
-        config.description = description
-        config.string("id") {
-            description = "Skill id from available_skills."
-            required = true
-        }
-        config.rawJsonSchema(LOAD_SKILL_SCHEMA)
-    }
+    override val inputSchemaJson: String? get() = LOAD_SKILL_SCHEMA
 
     override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult {
         val skillId = when (val result = parseSkillId(request.argumentsJson)) {

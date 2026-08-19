@@ -5,7 +5,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.custom.CustomToolCreateRequest
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -24,32 +23,7 @@ class CreateCustomToolBuiltin : BuiltinTool() {
 
     override val defaultEnabled: Boolean = true
 
-    override fun configure(config: LocalToolConfig) {
-        config.description = description
-        config.string("name") {
-            description = "Unique custom tool name matching ^[a-zA-Z_][a-zA-Z0-9_]{1,63}$."
-            required = true
-        }
-        config.string("description") {
-            description = "Human-readable description shown to the model and UI."
-            required = true
-        }
-        config.string("command") {
-            description =
-                "Normal Android shell command executed by the custom tool. Use su -c 'cmd' for root; use `cd /path && cmd` when the command depends on a working directory."
-            required = true
-        }
-        config.boolean("enabled") {
-            description = "Whether the created custom tool is enabled. Defaults to false."
-            required = false
-        }
-        config.boolean("overwrite") {
-            description =
-                "Whether to replace an existing custom tool with the same name. Defaults to false."
-            required = false
-        }
-        config.rawJsonSchema(CREATE_CUSTOM_TOOL_SCHEMA)
-    }
+    override val inputSchemaJson: String? get() = CREATE_CUSTOM_TOOL_SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         val createRequest = try {
@@ -109,7 +83,9 @@ class CreateCustomToolBuiltin : BuiltinTool() {
             name = obj.string("name"),
             description = obj.string("description"),
             command = obj.string("command"),
-            enabled = obj.boolean("enabled", default = false),
+            // D20：创建默认启用（enabled 缺省 true），创建即可被注册与调用；
+            // 显式 false 则仅保存不启用（refresh 的 filter 不会注册）。
+            enabled = obj.boolean("enabled", default = true),
             overwrite = obj.boolean("overwrite", default = false),
         )
     }
@@ -194,8 +170,8 @@ class CreateCustomToolBuiltin : BuiltinTool() {
                 },
                 "enabled": {
                   "type": "boolean",
-                  "description": "Whether the created custom tool is enabled.",
-                  "default": false
+                  "description": "Whether the created custom tool is enabled. Defaults to true.",
+                  "default": true
                 },
                 "overwrite": {
                   "type": "boolean",

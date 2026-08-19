@@ -4,7 +4,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.CreateCustomToolBuiltin
 import com.niki914.nexus.agentic.chat.agentic.custom.CustomToolCreateRequest
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
@@ -26,13 +25,10 @@ class CreateCustomToolBuiltinTest {
     }
 
     @Test
-    fun configure_registersDescriptionAndSchemaWithDisabledDefault() {
-        val config = LocalToolConfig()
-
-        CreateCustomToolBuiltin().configure(config)
-
-        assertTrue(config.description.contains("Create or update a custom tool"))
-        val schema = Json.parseToJsonElement(config.rawInputSchemaJson!!).jsonObject
+    fun schema_containsCreateFieldsWithEnabledDefaultTrue() {
+        val schema = Json.parseToJsonElement(
+            CreateCustomToolBuiltin().inputSchemaJson!!
+        ).jsonObject
         val properties = schema["properties"]!!.jsonObject
         assertEquals(
             listOf("name", "description", "command"),
@@ -49,7 +45,8 @@ class CreateCustomToolBuiltinTest {
         assertTrue(commandDescription.contains("su -c"))
         assertTrue(commandDescription.contains("cd /path && cmd"))
         assertEquals("boolean", properties["enabled"]!!.jsonObject["type"]!!.jsonPrimitive.content)
-        assertFalse(properties["enabled"]!!.jsonObject["default"]!!.jsonPrimitive.boolean)
+        // D20：创建默认启用
+        assertTrue(properties["enabled"]!!.jsonObject["default"]!!.jsonPrimitive.boolean)
         assertEquals(
             "boolean",
             properties["overwrite"]!!.jsonObject["type"]!!.jsonPrimitive.content
@@ -79,7 +76,8 @@ class CreateCustomToolBuiltinTest {
         assertEquals("battery_status", request.name)
         assertEquals("Read current battery status.", request.description)
         assertEquals("dumpsys battery", request.command)
-        assertFalse(request.enabled)
+        // D20：创建默认启用
+        assertTrue(request.enabled)
         assertFalse(request.overwrite)
     }
 

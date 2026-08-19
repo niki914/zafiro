@@ -4,6 +4,7 @@ import android.content.Context
 import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.agentic.PromptComposer
 import com.niki914.nexus.agentic.chat.agentic.PromptComposerInput
+import com.niki914.nexus.agentic.chat.agentic.LocalToolExecutor
 import com.niki914.nexus.agentic.chat.agentic.ToolManager
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
 import com.niki914.nexus.agentic.chat.agentic.python.PyRuntime
@@ -28,6 +29,10 @@ import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
+import com.niki914.okia.tooling.DefaultToolRegistry
+import com.niki914.okia.tooling.ToolDescriptor
+import com.niki914.okia.tooling.ToolKind
+import com.niki914.okia.tooling.ToolRegistry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.SendChannel
@@ -58,6 +63,21 @@ object LLMController {
     private val toolManager =
         ToolManager()
 
+    // T2a：OKIA 工具注册表（host 持有、注入经 OkiaConfig.toolRegistry；
+    // 实例重建共享同一 registry）。本地工具在 refresh 时全量同步；
+    // MCP 工具由 T2b McpDiscovery 注册进同一 registry。
+    internal val toolRegistry: ToolRegistry = DefaultToolRegistry()
+
+    // 回合内创建的自定义工具（CreateCustomTool 成功回调，D20）：
+    // 持久化尚未被下一次 refresh 读取前的执行兜底 + 回合内注册数据源。
+    private val inlineCustomTools = mutableMapOf<String, LocalTool.Custom>()
+
+    private val localToolExecutor = LocalToolExecutor(
+        currentTools = { runtimeState?.snapshot?.tools },
+        inlineCustomTools = inlineCustomTools,
+        onCustomToolCreated = { tool -> registerCustomToolNow(tool) },
+    )
+
     private var runtimeState: RuntimeState? = null
     private var okia: Okia? = null
     private var sessionApiType: LlmApiType? = null
@@ -72,6 +92,8 @@ object LLMController {
         okia = null
         sessionApiType = null
         runtimeState = null
+        toolRegistry.snapshot().forEach { toolRegistry.remove(it.descriptor.wireName) }
+        inlineCustomTools.clear()
         okiaFactory = OkiaFactory { apiType, restore, config ->
             openOkiaWithDefaultProtocol(apiType, restore, config)
         }
@@ -130,6 +152,9 @@ object LLMController {
             apiKey = configWithoutRuntimePrompt.apiKey
             model = configWithoutRuntimePrompt.model
         }
+        // T2a：本地工具注册（enabled 集合全量重建；inline 回合内工具由
+        // registerCustomToolNow 注册，随下次 refresh 由持久化版本接管）
+        syncLocalTools(resolvedTools)
         // T1 工具退化：工具描述仍进入提示词（技能/记忆段依赖它），但注册表为空
         // （不向请求注入 tool 定义）——模型若调用工具 → UnknownTool 失败（T2 接入）。
         // MCP 发现/指纹决策已删（T2 下沉到 OKIA McpDiscovery）。
@@ -423,7 +448,58 @@ object LLMController {
             model = config.model
             hooks += killToolResourcesHook
             idleTimeoutSeconds = LLM_IDLE_TIMEOUT_SECONDS
+            toolRegistry = this@LLMController.toolRegistry
         }
+    }
+
+    // ── T2a 工具注册 ────────────────────────────────────────────────────────
+
+    /**
+     * 全量重建本地工具注册：registry 中所有 Local 工具先移除（含 inline 的，
+     * create_custom_tool 保存成功后本轮会以持久化版本重新注册），再注册当前
+     * resolved 的 enabled 工具。wireName 为 registry 键（默认
+     * ToolWireName.forLocal(name)），同名覆盖无需特判。
+     */
+    private fun syncLocalTools(tools: ResolvedTools) {
+        toolRegistry.snapshot()
+            .map { it.descriptor }
+            .filter { it.kind is ToolKind.Local }
+            .forEach { toolRegistry.remove(it.wireName) }
+        (tools.builtinTools + tools.customTools).forEach { tool ->
+            val inputSchemaJson =
+                (tool as? LocalTool.Builtin)?.tool?.inputSchemaJson
+            toolRegistry.register(
+                ToolDescriptor(
+                    name = tool.name,
+                    description = tool.description,
+                    inputSchemaJson = inputSchemaJson,
+                    kind = ToolKind.Local,
+                ),
+                localToolExecutor,
+            )
+        }
+        inlineCustomTools.clear()
+    }
+
+    /**
+     * CreateCustomTool 成功且 enabled 的回合内注册（D20）：立即注册进
+     * registry，当前回合下一轮模型请求即可见（RealAgentLoop 每段现取
+     * snapshot）。下次 refresh 以持久化版本重新注册（同名覆盖）。
+     */
+    private fun registerCustomToolNow(tool: LocalTool.Custom) {
+        toolRegistry.register(
+            ToolDescriptor(
+                name = tool.name,
+                description = tool.description,
+                inputSchemaJson = null,
+                kind = ToolKind.Local,
+            ),
+            localToolExecutor,
+        )
+        Logger.i(
+            LOG_TAG,
+            "custom tool registered in-turn name=${tool.name} enabled=${tool.enabled}"
+        )
     }
 
     // 全局工具资源 kill 钩子：OKIA 停止流程的 kill 步骤（beforeStop 每回合
