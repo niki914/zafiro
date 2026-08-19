@@ -3,10 +3,21 @@ package com.niki914.okia
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.event.TurnEvent
+import com.niki914.okia.loop.AgentLoop
+import com.niki914.okia.loop.RealAgentLoop
 import com.niki914.okia.loop.TurnResult
+import com.niki914.okia.mcp.AutoDetectMcpClient
+import com.niki914.okia.mcp.DiscoveryStreamableHttpMcpClient
+import com.niki914.okia.mcp.LegacyStreamableHttpMcpClient
+import com.niki914.okia.mcp.McpClient
 import com.niki914.okia.mcp.McpDiscoverySnapshot
 import com.niki914.okia.mcp.McpRefreshResult
+import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.protocol.ChatProtocol
+import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
+import com.niki914.okia.protocol.ProtocolCompatMapper
+import com.niki914.okia.transport.HttpEngine
+import com.niki914.okia.transport.OkHttpEngine
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -54,10 +65,10 @@ interface Okia {
     // 当前配置快照
     suspend fun config(): OkiaConfig
 
-    // 刷新 MCP 工具发现
+    // 刷新 MCP 工具发现（MCP 推迟 T9，当前实现抛未实现）
     suspend fun refreshMcpTools(): McpRefreshResult
 
-    // 当前 MCP 发现快照
+    // 当前 MCP 发现快照（MCP 推迟 T9，当前实现抛未实现）
     suspend fun getMcpDiscoverySnapshot(): McpDiscoverySnapshot
 
     // 释放实例资源
@@ -69,23 +80,78 @@ interface Okia {
         // 实例由调用方构造（withCodec / 自定义状态在 open 前就绪）；
         // KClass/reified 重载已删除：KMP 无反射，类型令牌无法实例化任意协议。
         // restore 为可选恢复快照（export() 的产物，§5.3）：null = 新对话。
+        // endpoint 解析（方案 A，§8.17）：builder.endpoint 显式设置时用配置值；
+        // 为空时用协议 defaultEndpoint；两者皆空抛 IllegalArgumentException（fail-fast）。
         suspend fun <P : ChatProtocol> open(
             protocol: P,
             restore: SessionSnapshot? = null,
             builder: OkiaConfig.Builder.() -> Unit
-        ): Okia = TODO()
+        ): Okia = assemble(protocol, restore, builder, fillDefaults = false)
 
-        // 默认协议版本（M0 DeepSeek），库内部构造协议实例
+        // 默认协议版本（M0 DeepSeek 形态：通用 OpenAI Chat 协议 + DeepSeekCompat），
+        // 库内部构造协议实例。
+        // builder.model 为空时填默认模型（deepseek-v4-flash，用户裁决 2026-08-16）。
         suspend fun open(
             restore: SessionSnapshot? = null,
             builder: OkiaConfig.Builder.() -> Unit
-        ): Okia = TODO()
+        ): Okia = assemble(OpenAIChatCompletionProtocol(), restore, builder, fillDefaults = true)
 
         // 显式依赖装配（JVM 测试注入点）
         suspend fun open(
             dependencies: OkiaDependencies,
             restore: SessionSnapshot? = null,
             builder: OkiaConfig.Builder.() -> Unit
-        ): Okia = TODO()
+        ): Okia {
+            val config = OkiaConfig.Builder().apply(builder).build()
+            return RealOkia(dependencies, restore, config)
+        }
+
+        // 装配：默认值与 endpoint 解析 + 依赖构造（agentLoop / mapper / mcpClient 占位）
+        private fun <P : ChatProtocol> assemble(
+            protocol: P,
+            restore: SessionSnapshot?,
+            builder: OkiaConfig.Builder.() -> Unit,
+            fillDefaults: Boolean
+        ): Okia {
+            val config = OkiaConfig.Builder().apply(builder).let { b ->
+                if (fillDefaults && b.model.isBlank()) b.model = DEFAULT_MODEL
+                if (b.endpoint.isBlank()) {
+                    b.endpoint = protocol.defaultEndpoint ?: throw IllegalArgumentException(
+                        "endpoint is required: protocol '${protocol.id}' declares no defaultEndpoint " +
+                            "and builder.endpoint is empty"
+                    )
+                }
+                b.build()
+            }
+            val dependencies = DefaultDependencies(
+                agentLoop = RealAgentLoop(),
+                protocolMapper = ProtocolCompatMapper.from(protocol),
+                mcpClient = buildDefaultMcpClient(config.httpEngine ?: OkHttpEngine())
+            )
+            return RealOkia(dependencies, restore, config)
+        }
+
+        // 默认装配的模型（M0 DeepSeek）
+        private const val DEFAULT_MODEL = "deepseek-v4-flash"
     }
+}
+
+/**
+ * 默认依赖装配（open(protocol) / open() 内部使用）：agentLoop 为库默认实现、
+ * mapper 经协议构造、mcpClient 为 AutoDetect 默认客户端（T9b 落地，Q7：
+ * 复用 config.httpEngine，宿主注入时复用宿主资源，未注入用默认 OkHttpEngine）。
+ * 测试注入点仍是 open(dependencies)，本类 internal 不对外。
+ */
+internal class DefaultDependencies(
+    override val agentLoop: AgentLoop,
+    override val protocolMapper: ProtocolCompatMapper,
+    override val mcpClient: McpClient
+) : OkiaDependencies
+
+// 默认 MCP 客户端装配：AutoDetect 包装两协议类（线缆共享 engine）。
+// engine 为 config.httpEngine 或新建默认（Q7 裁决：复用 host 注入的传输入口）。
+private fun buildDefaultMcpClient(engine: HttpEngine): McpClient {
+    val legacy = LegacyStreamableHttpMcpClient(engine)
+    val discovery = DiscoveryStreamableHttpMcpClient(engine)
+    return AutoDetectMcpClient(legacy, discovery)
 }

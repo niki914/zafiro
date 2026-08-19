@@ -151,7 +151,7 @@ interface ChatProtocol {
 interface Compat {   // 对齐 pi OpenAICompletionsCompat，每 provider 一份
     val maxTokensField: MaxTokensField          // max_tokens | max_completion_tokens
     val supportsReasoningEffort: Boolean
-    val thinkingFormat: ThinkingFormat          // deepseek(thinking:{type}+effort) | openai(reasoning_effort) | ...
+    val thinkingFormat: ThinkingFormat          // reasoning-content | reasoning-effort | thinking-blocks | thought-parts | chat-template
     val requiresReasoningContentReplay: Boolean // tool 场景必须回传 reasoning_content（DeepSeek 400 规则）
     val requiresAssistantAfterToolResult: Boolean
     val retryableStatusCodes: Set<Int>          // 默认 408/409/429/5xx

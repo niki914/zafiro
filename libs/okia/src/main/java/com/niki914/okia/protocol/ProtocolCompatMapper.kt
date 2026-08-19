@@ -42,6 +42,25 @@ interface ProtocolCompatMapper {
 
         // 从协议实例构造适配壳：协议无关层访问 Provider 的唯一入口。
         // open(protocol) 内部经此构造；open(dependencies) 直接注入实例。
-        fun from(protocol: ChatProtocol): ProtocolCompatMapper = TODO()
+        // 纯委托：协议实现持有全部序列化逻辑，壳不加工数据。
+        fun from(protocol: ChatProtocol): ProtocolCompatMapper = object : ProtocolCompatMapper {
+            override suspend fun buildRequest(
+                snapshot: RequestSnapshot,
+                history: List<Message>
+            ): HttpRequest = protocol.buildRequest(snapshot, history)
+
+            override suspend fun encodeToolResult(
+                call: ContentBlock.ToolCall,
+                outcome: ToolCallOutcome
+            ): Message = protocol.encodeToolResult(call, outcome)
+
+            override fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent> =
+                protocol.parseStream(rawSseLines)
+
+            override fun useApiKey(apiKey: String): Map<String, String> =
+                protocol.useApiKey(apiKey)
+
+            override val compat: Compat get() = protocol.compat
+        }
     }
 }

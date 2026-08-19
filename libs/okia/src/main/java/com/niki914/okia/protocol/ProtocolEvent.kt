@@ -20,6 +20,10 @@ sealed interface ProtocolEvent {
     /** 思考签名，在思考 delta 之后到达。 */
     data class ThinkingSignature(val signature: String) : ProtocolEvent
 
+    /** 协议私有的不可解释数据（如 OpenAI reasoning item envelope），loop 只
+     *  负责挂载到 Thinking 块，不解析内容；由发起的协议负责封装与回放。 */
+    data class ThinkingOpaquePayload(val payload: String) : ProtocolEvent
+
     /**
      * 工具调用开始。流式 API 随后发出 ToolCallDelta；
      * 完整响应 API 直接跳到 ToolCallReady。
@@ -36,11 +40,13 @@ sealed interface ProtocolEvent {
         val delta: String
     ) : ProtocolEvent
 
-    /** 携带最终参数 JSON 的完整工具调用。 */
+    /** 携带最终参数 JSON 的完整工具调用。signature：Gemini 3 思维内工具调用的
+     *  thoughtSignature（须原样回带，见 GeminiProtocol.assistantParts）。 */
     data class ToolCallReady(
         val callId: String,
         val toolName: String,
-        val argumentsJson: String
+        val argumentsJson: String,
+        val signature: String? = null
     ) : ProtocolEvent
 
     /** 流正常结束。usage / responseModel 可能缺失，保持可空。
@@ -52,6 +58,12 @@ sealed interface ProtocolEvent {
         val stopReason: StopReason? = null
     ) : ProtocolEvent
 
-    /** 流失败。 */
-    data class Error(val cause: Throwable) : ProtocolEvent
+    /** 流失败。retryable：协议层判定的临时错误（如 Anthropic overloaded_error /
+     *  rate_limit_error，HTTP 200 后仍可能经 SSE error event 到达）——loop 据此
+     *  选择可重试（Transport）或不可重试（Parse）分类，配置的重试策略才对这些
+     *  临时错误生效（问题 2）。 */
+    data class Error(
+        val cause: Throwable,
+        val retryable: Boolean = false
+    ) : ProtocolEvent
 }

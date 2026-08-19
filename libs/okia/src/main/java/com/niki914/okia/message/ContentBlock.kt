@@ -14,19 +14,27 @@ sealed interface ContentBlock {
     @Serializable
     data class Text(val text: String, val signature: String? = null) : ContentBlock
 
-    /** 模型思考，与最终文本分离。 */
+    /** 模型思考，与最终文本分离。signature：Anthropic/Gemini 块签名（原样回带）；
+     *  opaquePayload：协议私有的不可解释数据（如 OpenAI reasoning item 的完整
+     *  envelope），必须持久化但只由对应协议解析，其他协议不得读取。 */
     @Serializable
-    data class Thinking(val text: String, val signature: String? = null) : ContentBlock
+    data class Thinking(
+        val text: String,
+        val signature: String? = null,
+        val opaquePayload: String? = null
+    ) : ContentBlock
 
     /** Base64 编码图像。多模态入口，M2 前不支持。 */
     @Serializable
     data class Image(val data: String, val mimeType: String) : ContentBlock
 
-    /** 模型发出的工具调用。参数保持 JSON 字符串。 */
+    /** 模型发出的工具调用。参数保持 JSON 字符串。signature：Gemini 3 思维内
+     *  工具调用的 thoughtSignature（回放时原样带回到 functionCall part）。 */
     @Serializable
     data class ToolCall(
         val id: String,
         val name: String,
-        val argumentsJson: String
+        val argumentsJson: String,
+        val signature: String? = null
     ) : ContentBlock
 }

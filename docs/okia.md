@@ -213,7 +213,7 @@ sealed interface ToolCallOutcome {
 **依赖图闭合（CR 第三轮落地）**：
 - **mapper 是 ChatProtocol 的适配壳**：`ProtocolCompatMapper.from(protocol)` 工厂声明两者连接——`open(protocol)` 内部经此构造，loop 只接触 mapper、不接触 ChatProtocol。
 - **传输入口进 LoopRequest**：`LoopRequest.httpEngine`（回合唯一传输入口，AgentLoop 必须经它发请求）+ `LoopRequest.retryPolicy`（传输层重试：`Compat.retryableStatusCodes` + 指数退避）；回合层重试仍在 `LoopOptions.turnRetryPolicy`。白板 RetryStrategy 节点由此闭合，自定义 AgentLoop 无法绕过注入的 engine。
-- **idle 检测观察原始 SseLine 流**：`idleTimeoutSeconds` 计时器挂在原始流（parseStream 之前），任何到达帧（含 keep-alive 的 null data）重置——keep-alive 活跃度不随 parseStream 丢弃而丢失。kai 旧实现按事件间隔计时导致长思考误杀（PRD §1.5），此处封死。
+- **idle 检测（T7 修订，覆盖本条）**：`idleTimeoutSeconds` 计时器挂在 agent 事件层（parseStream 之后，§8.16 #7 的 G7 裁决推翻本条原始 SseLine 检测点）——任何 ProtocolEvent 到达重置，keep-alive（SseLine null/空行，不产出 ProtocolEvent）不重置。kai 旧实现按事件间隔计时导致长思考误杀（PRD §1.5）：thinking delta 是 agent 事件，持续产出不误杀。
 
 **hook 与会话树的不变量**：**树（conversation）= 事实**。hook 的 mutation 永远只作用于"本次操作的一次性载体"（holder），发完即弃，**不写回会话树**。因此"UI 显示原文 vs 模型收到改写版"不是不一致性，而是分层预期——例：`beforeSerialization` 数据脱敏时，UI 显示未脱敏原文（自己的界面），模型收到脱敏版（对外边界）。若下游要修正历史本身，正路是 rewind 后重新生成（新分支），不是 hook 隐式改树（链式 hook 会互相踩、历史不可信）。
 
@@ -411,7 +411,7 @@ com.niki914.okia/
 
 1. **send 返回 TurnResult**：终态由返回值承载（Stop / Length / Error / Aborted / IdleTimeout / RetryExhausted），失败不抛异常；事件流只承担流式中间过程（§5.4）。调用方不再自建终态事件累计。
 2. **持久化入口**：门面 `export(): SessionSnapshot` + `open(restore = ...)`（§5.3 / §5.7）；`Conversation` 补 `leafId`、`MessageEntry` 补 `timestamp`。
-3. **依赖图闭合**（§5.8）：`ProtocolCompatMapper.from(protocol)` 工厂；`LoopRequest` 加 `httpEngine` / `retryPolicy`（传输层重试）；idle 检测观察原始 SseLine 流（parseStream 之前，keep-alive 帧重置计时器）。
+3. **依赖图闭合**（§5.8）：`ProtocolCompatMapper.from(protocol)` 工厂；`LoopRequest` 加 `httpEngine` / `retryPolicy`（传输层重试）；idle 检测观察 agent 事件层（含 keep-alive 帧的重置语义 T7 修订为：keep-alive 不重置，§8.16 #7）。
 4. **Intercepted 补 `isError`**：审批拒绝 = true，缓存命中 / 成功模拟 = false；Provider 的 isError 派生由此闭合（§5.6）。
 5. **异步注入移出 beforeInput**：host 自行拼装进 send 文本（§5.10）；beforeInput / afterInput 保留，hook 语义保持"只影响单次、不写回树"（§5.8）。
 6. **快照防御性复制**：RealConversation 各 getter 与门面快照构造返回复制（构造即复制），fork 共享节点不可经公开面改写（§5.3 / §5.4）。
@@ -462,3 +462,115 @@ com.niki914.okia/
 2. **删除 `McpServerDiscoverySnapshot.stale`**：过期判定以 `McpDiscoveryState` 枚举为唯一权威（`UsingStaleCache` = 旧缓存可用但过期），不再保留独立布尔字段，消除双事实漂移。
 3. **TurnStarted 归 AgentLoop 发**：回合事件序列全部由 loop 产出；`LoopRequest.input` 是原始用户文本（send 入参），供 loop 发 `TurnStarted(input)`，与 history 末尾 User 由构造顺序保证一致，非第二个独立来源。
 4. **RealConversation 构造参数改名**：`entries` / `leafId` → `initialEntries` / `initialLeafId`。原参数与同名成员属性 `val entries` / `val leafId` 遮蔽，初始树状态不可达，实现期照直觉写 `get() = entries` 会无限递归（StackOverflowError）；改名后参数退为初始值语义。
+
+### 8.11 第二轮实现落地（T2 垂直切片，2026-08-16）
+
+`libs:okia` 实现阶段第二轮（T1 对话树 + T2 垂直切片）的契约回写。源码为准；实现细节的决策记录在 Progress.md D9-D15。
+
+1. **消息成条时机与 live 不变量（§5.4 补充，2026-08-16 对齐）**：流式期间只更新 `live`，不碰 `history`（性能 + 不产生半截消息）；消息完整（该消息产出完成）才经 `LoopRequest.onCommit` 提交进 history。**不变量：live 非空 ⇒ history 不含该消息**，UI 渲染 = history 列表 + 末尾 live 打字机，不会出现重复。turn 结束（任何终态）时已产出的部分 commit 进 history（不丢消息）；T2 单消息场景下"消息完整"与"turn 结束"重合，T6 工具循环后每条模型往返消息各自在完成时 commit（含工具调用的消息在工具执行前 commit，Running 态从 history 推导）。
+2. **close 契约补充**：close 后 send / rewind / update / export / config / close 均抛 IllegalStateException；活跃回合时 close 抛异常（§8.7 #5）；close 只取消 turnScope 并标记 closed，注入资源宿主所有不释放。
+3. **export 活跃回合抛异常（§8.7 #5 列表外补充）**：回合中树在提交中，导出的快照不一致；与 rewind / update 一致性处理。
+4. **终态中断流收集（T2 实测暴露）**：`AgentLoop` 收集协议流时，Completed / Error 终态必须以哨兵异常（`StreamTerminated`，非 CancellationException）中断 collect——无限流（SharedFlow 事件源）不自然结束，仅 `return@collect` 退出 action 会让 collect 继续挂起等下一事件，turn 永不完成。有限流（冷流）不受影响。取消路径仍走 CancellationException（§8.8 #2 不变）。
+5. **外部取消传播**：调用方协程取消时 `send` 传播 CancellationException（协程取消语义优先），不产生 `Aborted(External)`；`StopCause.External` 的触发路径待真实消费者出现后定，枚举值保留。
+6. **事件与状态投影同步（§5.4 落地）**：门面内部事件处理器同步做三件事——更新 live（StateFlow 投影）/ 转发调用方 onEvent / 发射 events SharedFlow。onCommit 原子做 appendAll + 清 live + 重新投影（一次 StateFlow 发射）。事件流 replay=0 + extraBufferCapacity=64（一次性事件，订阅晚不补发）。
+7. **open 工厂状态**：`open(dependencies)` 已实现（测试注入点）；`open(protocol)` / `open(builder)` 留 T4/T8（依赖 M0 DeepSeek 默认协议与默认 McpClient / HttpEngine）。`ProtocolCompatMapper.from` 委托壳随 open(protocol) 一起在 T4 落地。
+8. **默认资源占位**：`EmptyToolRegistry`（internal）为 config 未提供 registry 时的默认空实现；默认 HttpEngine 未实现，send 时 config.httpEngine 为空抛 IllegalStateException（明确失败，T8 落地）。
+
+### 8.12 第三轮实现落地（T3 传输层 SSE，2026-08-16）
+
+T3 实现期契约回写（调研参照：openai/codex `codex-rs`——`eventsource_stream` / `sse_stream` crate、transport 层非 2xx 拦截、`api_bridge.rs` 错误分类；pi 三份自写解析器潦草、无 content-type 校验，不作为范本）。实现细节的决策记录在 Progress.md D16-D20。
+
+1. **StreamResponse sealed 化**：`data class` 三可空字段（statusCode / lines / errorBody）收敛为 `sealed interface` 两态——`Ok(statusCode: Int, headers, lines: Flow<SseLine>)`（2xx，SSE 解析入口）与 `Error(statusCode: Int, headers, body: String)`（非 2xx，body 全文文本）。statusCode 收窄为非空 Int；**传输失败（连接 / 超时）不在此表达**：`HttpEngine.stream` 是 suspend，网络错误抛异常（Kotlin 取消语义，与 codex transport 层同构），骨架"status 可空"的保守设计收窄。错误 body 通道由此闭合：非 2xx 时 HttpEngine 预读 body 文本进 `Error.body`（T8 默认实现保证），loop 不再需要从行流拼回错误文本。
+2. **新增 `SseLineParser`**（transport 层公共类型）：`Flow<String>`（任意分块 UTF-8 字符串流）→ `Flow<SseLine>`。处理 `\n` / `\r\n` / `\r` 三种分隔符（含跨块 `\r\n`）、EOF 无换行 flush、流首 BOM 移除。行分类：注释行（`: 开头`）→ `SseLine(null)`，空行 → `SseLine("")`，其他 → `SseLine(原文)`。null / 空行保留在流中（§5.8 idle 检测的到达证据，不丢弃）。状态在 flow 构建器内创建，冷流无泄漏。
+3. **新增 `SseEvent` + `SseEventParser`**（transport 层公共类型）：`Flow<SseLine>` → `Flow<SseEvent(data: String, event: String?)>`。严格 W3C 标准：空行 = 事件边界（dispatch）、data 字段多行用 `\n` 拼接、流结束时 data 缓冲非空的事件照常 dispatch（EOF flush）、data 缓冲为空字符串的事件丢弃。**event 字段透出**（MCP 等协议用 `event:` 过滤非 message 事件，codex rmcp-client 实证 `event: message` + `data: JSON-RPC`）；id / retry 为重连机制字段，LLM 与 MCP 均不使用，忽略。决策依据：Codex 内部因 data-only 聚合器（`codex-client/src/sse.rs`）服务不了 MCP，rmcp-client 被迫另用 `sse_stream` crate 重写——OKIA 一个聚合器服务模型流与 MCP 两端，避免重复。
+4. **loop 前置校验（RealAgentLoop，T2 代码改动）**：响应按 sealed 分支——`Error` 直接 `Failed(LLMError)`，**不进 parseStream**（风控 HTML / JSON 错误不会被当 SSE 解析）；`Ok` 分支做 content-type 黑名单：`text/html`（忽略大小写，值前缀匹配）→ `Failed(Parse)`，其他（含缺失、`text/event-stream`、`application/json`）放行。content-type 检查是快速失败优化，正确性兜底仍是"流结束无 Completed → Parse 错误"（§8.11 #4 前的既有兜底）。
+5. **非 2xx 错误码映射**：429 → `RateLimit`、401 / 403 → `Auth`、5xx → `Overloaded`、其他 → `Transport`。`Error.body` 截断 2000 字符进 `LLMError.message`（UI 详情非完整响应；错误文案仍由 host 按 code 映射，§8.8 #3 不变）。
+
+### 8.13 T4 落地（2026-08-16）
+
+1. **新增 `OpenAIChatCompletionProtocol`**（protocol/ 包，M1 由 D64 推广通用化，原 `DeepSeekChatCompletionProtocol` 删除）：M0 协议实现，OpenAI 兼容格式。厂商差异全部由 compat 构造参数驱动（DeepSeekCompat / OpenAIChatCompletionCompat）：DeepSeek 私有字段（reasoning_content 等）收敛在 compat，不牵动通用逻辑（D21 原「独立实现」裁决由用户 2026-08-18 推翻）。映射语义参考 pi openai-completions；产品策略不包含（重试 / 缓存 / 成本在其他层或下游）。
+2. **Completed 语义确认（修正 §8.7 #2 候选列表）**：协议层 `ProtocolEvent.Completed` 是**单次模型流结束**（消息级）。finish_reason 映射：stop/end → Stop、length → Length、function_call/tool_calls → **ToolUse**；content_filter / network_error / 未知值 → `Error` 事件；EOF 无 finish_reason → `Error` 事件。ToolUse 时回合未结束（T6 工具循环执行工具后发起下一轮）；只有 Stop / Length 时 turn 层结束回合（TurnCompleted / TurnResult.Completed）。**T2 RealAgentLoop 对非 Stop/Length 判 "abnormal completion stopReason" 是工具循环未实现前的占位，T6 改为 ToolUse → 继续工具循环。**
+3. **encodeToolResult 不加工内容**：`Message.ToolResult` 序列化为 role=tool 消息时 content = outcome.content 原样（null 用空串）。错误表达由下游在 outcome.content 决定，框架不做错误文本加工（原「Interrupted / Unknown 编码为错误文本」注释作废）。
+4. **thinking 映射**：SSE `reasoning_content`（含 reasoning / reasoning_text 兜底）→ ThinkingDelta；`ThinkingSignature` 对 DeepSeek 不产出（无签名机制，签名是 Anthropic 语义）；assistant 历史回喂：thinking → `reasoning_content` 字段，无思考补空串（`requiresReasoningContentOnAssistantMessages`）。
+5. **请求体要点**：assistant content 用普通字符串（避免模型镜像块结构）；空 assistant 消息（无文本无 tool_calls）跳过；tools 为 function 格式，inputSchemaJson 解析为 parameters（null 省略）；`stream:true` + `stream_options.include_usage`；usage 语义 = pi（input = prompt − cacheRead − cacheWrite）。
+6. **工具调用分片**：delta.tool_calls 按 index 归属，id / name 增量补全，arguments 拼接；空 arguments 分片不发 Delta（对齐 pi）；EOF 按 index 顺序发 ToolCallReady 再发 Completed。
+7. **Image 块**：buildRequest 抛 IllegalStateException（M2 前），异常消息说明；不写专门测试（用户裁决）。
+
+### 8.14 T5 落地（hooks 接线，2026-08-16）
+
+T5 实现期契约回写（调研参照：pi `extensions/runner.ts` emitToolCall block 短路、`agent-session.ts` beforeToolCall 调用点、emitInput transform 链）。实现细节的决策记录在 Progress.md D26-D30。
+
+1. **holder write 全部实现**（Input / Serialization / HttpRequest / ToolCall / ToolResult）：字段只读暴露（私有 backing + 公开 getter），write 改值并记录 lastWriter，多次 write 后者覆盖、lastWriter 为最后写入者。骨架期「write 留空等消费者」的裁决按落点分类落地：
+   - `SerializationHolder.write` → buildRequest 输入（数据脱敏主战场，§5.9.4）；`HttpRequestHolder.write` → HttpEngine.stream 输入（http 层兜底脱敏）
+   - `InputHolder.write` → **请求历史投影**：RealAgentLoop 在 buildRequest 前把 history 末尾 User 消息的文本块替换为改写值（树不变，对齐 §5.8 分层预期；作用域 = 本回合第一次请求；`TurnStarted` 事件保持原始 input，事件反映事实）。无 User 或无文本块时不替换（防御）。与 pi 语义同构：pi 在消息组装前替换将进入 LLM 的文本，okia 的树不变量使落点变为 buildRequest 的历史投影
+   - `ToolCallHolder.write / writeOutcome`、`ToolResultHolder.write`：字段就绪，落点 T6（工具执行参数 / 阻断短路 / 结果回喂前替换）
+2. **链式分发**：RealAgentLoop 内按注册顺序 for 循环执行（无独立分发器实体，如无必要不增实体）；前一个 hook 的 mutation 对后一个可见。ToolCall 的 writeOutcome 短路语义（对齐 pi block，后续 hook 不执行）随 T6 落地。
+3. **hook 异常策略落地（§8.4 #13 执行确认）**：模型段 hook 异常 → 回合 `Failed(LLMErrorCode.HookFailed)`（新增枚举值，不可重试；host 按 code 映射文案；枚举增值先例 §8.8 #3 UnknownTool）；`CancellationException` 传播（hook 被取消 = 回合取消，不转 Failed）。
+4. **afterRequest 触发条件**：只在 `HttpEngine.stream` 成功返回后触发（请求未完成不触发）；形参为实际发出的请求（beforeRequest 改写后的值），不接触 response（§8.10 #1 不变）。
+5. **时机顺序（T5 全量）**：`TurnStarted` → `beforeInput` → `afterInput` → `beforeSerialization` → buildRequest → `afterSerialization` → `beforeRequest` → stream → `afterRequest` → 流事件。ToolCall / Stop 时机随 T6 工具循环 / T7 停止流程接入。
+
+### 8.15 T6 落地（工具循环，2026-08-16）
+
+T6 实现期契约回写（工具执行模式裁决于 2026-08-16 讨论：采纳 pi 批量并行，放弃 kai 流水线）。实现细节的决策记录在 Progress.md D31-D38。
+
+1. **工具执行时机与并发（§5.5 补充）**：消息流完整结束（Completed）→ 整条 Assistant commit（含 ToolCall 块）→ **之后**才执行该消息的工具调用。多条调用**并发执行**（coroutineScope + async，结构化并发，取消传播），ToolResult 消息与事件按调用顺序保序提交（对齐 pi `executeToolCallsParallel`）。不采纳 kai 流水线（ready 即执行）——换取 loop 无并发流收集结构，且「已派发调用列表 = 已提交 Assistant 中的 ToolCall」推导成立（§8.15 #7）。
+2. **工具循环终止**：finish_reason=ToolUse → 执行工具 → ToolResult 回喂 → 下一轮请求；Stop / Length → `TurnCompleted` / `Completed`。防御：ToolUse 但 content 无 ToolCall 块（协议不一致）→ 按 Stop 结束，避免死循环。
+3. **完整响应 API 的 ToolCall 事件（测试暴露，§4.5 契约补全）**：`ToolCallStarted` 注释已声明「完整响应 API 直接跳到 ToolCallReady」——loop 对无 Started 的 Delta / Ready **创建 pending**（不跳过），否则完整响应 API 的工具轮被静默丢弃（findPending 返回 null → return@collect，工具调用块不占位，ToolUse 落入防御分支）。
+4. **outcome 5 态 → 事件映射**：`Success` → ToolSucceeded；`Failure` → ToolFailed；`Intercepted` 按 isError（false → Succeeded，true → Failed）；`Interrupted` / `Unknown` → ToolFailed。事件均携带完整 outcome，UI 不丢信息。
+5. **executor 违反「永不抛异常」契约 → 回合 `Failed(ToolExecutionFailed)`**（新增枚举值，不可重试，先例 §8.8 #3 / §8.14 #3）：业务方 bug 应显形，错误文本打包回喂模型无意义（模型无法修正代码 bug）。区别于 pi（catch 成 error result 回喂）与 kai（xTrySuspend 转 error）。
+6. **工具段 hook 异常 → 该工具 `Failure` outcome（§8.4 #13 落地）**：beforeToolCall / afterToolCall 链中 hook 抛异常 → 该调用 outcome = Failure（消息含 hook 异常信息），回合继续；`CancellationException` 传播。**阻断（writeOutcome）跳过 afterToolCall**（对齐 pi immediate result：未执行的调用不走执行后钩子）。
+7. **已派发调用列表（beforeStop 参数，§5.11）无收集**：批量模式下「本回合已派发 = 本回合已提交 Assistant 消息中的 ToolCall 块」，协调器在 stop() 时从会话树推导（send 记录回合起点），零新增 API / 回调 / 字段。推导与 beforeStop 调用随 T7 停止流程落地。
+8. **loop 累积历史同步（测试暴露）**：`executeTools` 提交 ToolResult 到树（onCommit）后必须返回提交消息，run 同步进内部累积 history（下一轮 buildRequest 用它）——否则第二轮请求缺 ToolResult。
+9. **请求历史快照（测试暴露）**：buildRequest 收到的 history 传 `toList()`——history 是 loop 内部累积的可变列表，本轮之后追加产出（commit），协议层 / 测试 fake 不得看到事后修改。
+10. **库默认 ToolRegistry**：新增 `DefaultToolRegistry`（tooling/ 包，公开类型）：LinkedHashMap 无锁实现（register / remove 只在活跃回合外调用，host 契约 §8.4 #10；snapshot 返回复制），host 直接注册工具用；`EmptyToolRegistry` 保留（config 未提供 registry 时门面自建）。RealOkia 的 `RequestSnapshot.tools` 从 registry snapshot 取工具描述（原 T6 TODO 落地）。
+11. **thinking 块落地**：`ThinkingDelta` → ThinkingStarted / Delta / Ended 事件 + Thinking 块累积（块切换 flush：thinking 先行，到 text 时收尾）；`ThinkingSignature` → 消息 `reasoningSignature` 字段。工具调用块 Ready 前不占位（§5.4），Ready 后进 partial。
+
+### 8.16 T7 落地（取消/重试/idle，2026-08-17）
+
+T7 实现期契约回写。裁决来源：2026-08-16/17 讨论（G1-G8），实现为权威，测试 273 全绿（T7 新增 39）。
+
+1. **外部取消也触发 beforeStop（G1 裁决）**：外部取消（send 调用方协程被取消，stopCause == null）与 stop 表现一致——在 `NonCancellable` 中先执行 kill 步骤（beforeStop + 推导 calls）再 cancel turnJob + rethrow。差异只在终态表达：stop → `Aborted(UserStop)`；外部取消 → 传播 CancellationException（不返回 TurnResult）。理由：工具资源泄漏不因取消来源豁免（kai PRD §4.4 统一协调路径）。
+2. **stop 重入/并发至多一次 kill（G2 裁决）**：`stop()` 在 mutex 内原子检查+置 `stopCause`（@Volatile 读不够：两个并发 stop 可能都读到 null），第二个 stop 直接 return 无副作用。kill 步骤（beforeStop）与 cancelAndJoin 在 mutex 外执行。
+3. **回合起点记录（G3 落地）**：`send` 记录 turnStartEntryId（User 消息 entryId），`RealOkia` 经 `RealConversation.assistantToolCallsSince(entryId)`（新增 internal 方法）推导 beforeStop 的 calls——沿当前 leaf 投影取 entryId 之后的已提交 Assistant 中的 ToolCall 块；entryId 不在投影链（rewind 跳过）时返回空（防御）。
+4. **HTTP 状态码 → code 映射表（G4 裁决，对照 pi provider-retry / codex retry）**：401/403 → Auth、402 → Quota、429 → RateLimit、503 → Overloaded、408/409/其他 5xx → Transport、其余（400 系/3xx）→ Parse。可重试 = 408/409/429/全部 5xx/网络（无 status）。**修正旧实现 bug**：原 else 分支把 400/404 归 Transport（可重试，白等客户端错误）。`DeepSeekCompat.retryableStatusCodes` 扩展为 `{408, 409, 429} ∪ (500..599)`。不做错误文本匹配（`insufficient_quota` 等），429 一律 RateLimit，host 自判。
+5. **流中断 = 重发当前段请求，复用已提交历史（G5 裁决，对齐 pi/codex）**：业界现做法是重发请求而非旧 workaround（静默发 user msg「继续」，pi/codex 已无此机制）。重发 = 重新 `buildRequest(history)`（history = 所有已 commit 消息含工具结果），partial（未 commit）丢弃——无状态请求从最新合法状态继续（历史最后一条 = ToolResult，模型「装作无事发生」）。已提交工具结果全部复用，不重跑已完成的工具轮、不重发历史轮次。rounds 例子：两轮工具调用后第三轮 assistant 生成中断 → 重试请求体以 ToolResult 结尾（测试 `segmentRetryReusesCommittedToolResults` 锁死）。
+6. **两层重试边界与嵌套（G6 裁决，对齐 pi）**：
+   - 传输层（`config.retryPolicy`）= 发送阶段（buildRequest 之后：beforeRequest → stream → afterRequest → 前置校验）。失败（网络/可重试状态码/html）→ Retry-After（`retry-after-ms` 优先、`retry-after` 数字秒次之，HTTP-date 不解析）优先，否则指数退避 → 重发。**重试重发同一请求体**：Serialization 时机每段一次，Request 时机每次发送尝试重跑（hook 幂等由下游负责）。
+   - 回合层（`LoopOptions.turnRetryPolicy`）= 段首重试（整段：buildRequest → 流收集 → commit）。发送阶段耗尽或流中断 → 段失败且 `code.isRetryable` → 整段重跑（嵌套对齐 pi retryAssistantCall）。
+   - 耗尽语义：可重试错误 + 回合层配置（但预算耗尽）→ `Failed(RetryExhausted)`（statusCode 保留）；可重试 + 回合层未配置 → 如实返回原错误（库不自动升级）；不可重试 → 原错误。
+   - `RetryPolicy.maxAttempts` = 重试次数（初始请求不计数，总请求 = maxAttempts + 1）；`delayMs(attempt) = min(base·2^(attempt-1), max) × (1 ± jitterRatio)`（乘法抖动，随机源 kotlin.random，KMP）。
+   - 工具执行失败不触发段重试（T6 契约：结果回喂模型）。
+   - idle 超时是独立终态，不重试。
+7. **idle = agent 活跃度（G7 裁决，推翻 §5.8 旧定义）**：计时器挂在 agent 事件层（parseStream 之后）——任何 ProtocolEvent 到达重置；keep-alive（SseLine null/空行，被 SseEventParser 丢弃不产出 ProtocolEvent）**不**重置（网络活跃 ≠ agent 活跃，与 §5.8「任何到达帧重置」相反，本条推翻该条）。计时只在流收集段活，工具执行段不计（T6 串行结构天然满足：先收集完再执行工具）。实现：`collectWithIdle`（channel + select，onTimeout 每次事件重置；流关闭与 idle 用 sealed 信号区分，KMP 兼容、虚拟时间可测）。**超时也写入（裁决）**：partial 消息 commit 进历史 + `TurnIdleTimeout(message)` 事件 + `TurnResult.IdleTimeout` 终态；`idleTimeoutSeconds` null 或 ≤0 不检测。
+8. **失败/重试的 partial 语义分层**：最终失败（不可重试/重试耗尽）→ `fail()` commitPartial（半条消息保留进历史，现有语义）；段首重试路径（可重试）→ partial 丢弃不 commit（重试请求历史不变）。`fail()` 现在是唯一收尾点：`StreamTerminated` 携带 error（不再携带已 fail 的 result），`collectEvents` 的失败路径只抛哨兵，回滚终收尾在段执行统一决定。
+9. **流中断异常归类**：`parseStream(lines)` 的 lines 流 / 解析中途抛非哨兵异常 → `LLMError(Transport, "stream interrupted")`（可重试，段首重试候选）。`StreamIdleTimedOut` 哨兵在 collectEvents 兜底 catch 前重抛（Exception 子类，防止被误转 Transport）。
+10. **`RealConversation.assistantToolCallsSince(entryId)`**（internal）：沿当前 leaf 投影取 entryId 之后已提交 Assistant 的 ToolCall 块（§5.11 推导落地，§8.15 #7 无收集方案执行）。
+
+### 8.17 T8 落地（默认引擎 + M0 装配 + 持久化闭合，2026-08-17）
+
+T8 实现期契约回写。裁决来源：2026-08-17 讨论（方案 A、MCP 推迟、默认值），实现为权威，测试 298 全绿（T8 新增 25）。
+
+1. **`ChatProtocol` 新增 `defaultEndpoint: String?`（方案 A）**：协议自带的默认端点（provider 固有事实，与 useApiKey / compat 同类）；M1 起端点从 Compat 取（id / defaultEndpoint 为 Compat 身份字段，D65）。调用方在 `config.endpoint` 显式设置时覆盖。解析优先级：`builder.endpoint` 非空 → 用配置值；空 → `protocol.defaultEndpoint`；两者皆空 → `open()` 抛 `IllegalArgumentException`（fail-fast，与 rewind 校验同一原则）。内置端点：DeepSeek = `https://api.deepseek.com/chat/completions`、OpenAI chat = `https://api.openai.com/v1/chat/completions`、Responses = `https://api.openai.com/v1/responses`、Anthropic = `https://api.anthropic.com/v1/messages`、Gemini = `https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse`（含 {model} 占位符，buildRequest 替换）。apiKey 仍只经 config（builder）传入，协议 useApiKey 消费，不在 Compat。
+2. **M0 默认装配落定**：`open(protocol)` / `open()` 两个工厂实现（原 T4/T8 TODO）。默认 `open()` = `OpenAIChatCompletionProtocol()`（DeepSeek compat 形态）+ `builder.model` 为空时填 `deepseek-v4-flash`（用户裁决；仅默认 open()，`open(protocol)` 不填默认 model）。装配经 `DefaultDependencies`（internal，agentLoop=RealAgentLoop / mapper=ProtocolCompatMapper.from / mcpClient=占位）→ `RealOkia`。
+3. **MCP 推迟 T9（用户裁决）**：`McpExecutor` / `RealOkia.refreshMcpTools` / `getMcpDiscoverySnapshot` 维持 TODO（标注 "deferred to T9"）；`OkiaDependencies.mcpClient` 非空冻结字段由 `UnimplementedMcpClient` 占位（discoverTools / callTool 抛 UnsupportedOperationException，明确失败，不改契约）。默认装配不提供 MCP 能力；host 需要时经 dependencies 注入。
+4. **默认 HttpEngine 落地（D12 闭合）**：`OkHttpEngine`（internal，transport 包，okhttp 4.12.0 `implementation` 不泄漏公开签名；KMP 迁移时本文件进 jvm/android actual）。`config.httpEngine` 为 null 时 `RealOkia` 懒加载自建（实例所有，close 不释放——OkHttp 无显式释放语义，连接池到期自保洁）。
+   - **stream**：异步 enqueue 挂起到响应头；2xx → body 分块读 UTF-8 → `SseLineParser` 切行（行切分与分类单一来源）；非 2xx 预读全文 → `Error`；网络错误/超时抛异常（Kotlin 取消语义）。
+   - **取消**：阻塞字符读不响应协程取消，flow 构建时注册 `job.invokeOnCompletion { call.cancel() }` 打断阻塞读（socket 中断），finally 兜底 cancel + close；每块读前 `ensureActive` 提前退出。
+   - **unary**：异步 enqueue；网络失败/超时返回 `HttpResponse(null, emptyMap(), null)`（缺省结构，契约 §HttpResponse）；catch 收窄为 IOException（运行时错误保持外抛）。
+   - **超时**：每请求按 `HttpRequest.timeouts` 克隆 client（newBuilder 共享连接池/dispatcher）；readTimeout 为读间隔超时，对慢 SSE 流安全。
+5. **持久化闭合**：默认装配下 `export()` / `open(restore)` 往返验证（会话 id / leafId / entries 一致，历史可渲染，restore 后 send 在旧历史之上追加）。协议不进会话数据（§5.7 不变）。
+6. **工具描述快照时机（待整改记录）**：`RequestSnapshot.tools` 取值为 send 时拍一次快照（§8.11 #10 语义落地）。候选整改：每轮 buildRequest 前重新 snapshot（回合内注册工具对模型可见）。当前无消费者（回合内注册的现实触发者是 MCP，已推迟 T9），保持现状并在 `RealOkia.buildLoopRequest` 处 TODO 标注候选方案。
+7. **测试**：`OkHttpEngineTest`（14：stream 2xx/注释行/非 2xx/连接失败/读超时/取消/请求构建/POST 空 body/GET 无 body/unary 2xx/非 2xx/网络失败/空 body/读超时缺省结构）+ `OkiaOpenTest`（11：endpoint 解析 6 例/full turn 端到端/传输错误 Failed/export-restore 往返/restore 后追加/close 后 send）。契约改动波及 `ProtocolCompatMapperTest.RecordingProtocol` 补 `defaultEndpoint = null`。
+
+### 8.18 T9b 落地（MCP 执行器 + 发现状态机 + 装配 + G5 整改，2026-08-17）
+
+T9b 实现期契约回写。裁决来源：2026-08-17 讨论（Q1-Q7），实现为权威，测试 396 全绿（T9b 新增 40）。
+
+1. **McpExecutor 落地（Q1/Q3 裁决）**：路由按 `descriptor.kind = ToolKind.Mcp(serverName)`；工具名还原 = 注册名剥离 `${server}_` 前缀（G6 命名），前缀匹配不上 = 与「工具不存在」同一处理（Failure unknown tool，防御路径，正常不会发生——loop 已按注册名 find）。服务器不存在（servers lambda null，update 删服务器后旧注册残留场景）→ `Failure("MCP server not found")`。outcome 映射：成功 → `Success(content.joinToString("\n"))`（多文本块换行拼接）；`isError=true`（协议内	result.isError）→ `Failure("tool returned isError=true", content=拼接文本)`；`McpProtocolException`（JSON-RPC error / 网络 / 畸形响应）→ `Failure(message=异常文本, content=null)`。永不抛异常契约：除 `CancellationException` 传播外全部转 Failure。与 Codex 差异：codex 保留 content 数组结构回喂（支持结构化 content），本库纯文本通道（§8.8 #4 收窄），多块在 executor 拼接。
+2. **onInterrupt = Unknown，调用点不落地（Q1 裁决）**：HTTP 请求发出后框架无法得知服务器是否已远程执行，返回 `Unknown`（「可能已远程执行，永不重试」）。**结构性事实：`ToolExecutor.onInterrupt` 在 main 代码无调用者**——本地工具由 host 自实现、框架不调；MCP 方法体先就绪。§8.15「取消时待决工具调用以终态结果补全，历史完整」不变量未落地（暂缓，待真实消费者），文档标注。
+3. **发现状态机（Q4/Q5/Q6 裁决）**：新增 internal `McpDiscovery`（mcp/ 包）：状态 Idle → Discovering → Available / Failed / UsingStaleCache。刷新并发（对齐 codex join_all：每服务器独立 async，awaitAll 后单线程合并状态，无锁竞态；`McpDiscovery.refresh` 整体 Mutex 串行化两个并发 refresh）。注册语义 = 全量幂等：成功 → 该服务器工具集整体替换（同名覆盖注册、消失工具从 registry 移除，`registeredNames` 跟踪）；fingerprint = 工具集排序多项式哈希，**仅报告给 host 读，不驱动内部 diff**（量小、覆盖幂等，diff 是过早优化）。enabled=false 跳过刷新、不清理、状态保持。`UsingStaleCache` = 刷新失败 + 有上次成功注册 → 旧工具保留可用 + errorMessage；无缓存 → Failed；`lastSuccessAtMillis` 仅记录、不参与新鲜度判定（Q6：时间不能证明缓存新鲜）。
+4. **冲突（Q2 裁决）**：4 个 reason 枚举全保留（冻结契约），只实现 `DuplicateInServer` 触发路径（同服务器 tools/list 同名多个 → 保留第一个注册，冲突报告 `ToolConflict(name=注册名, DuplicateInServer, candidates=[注册名])`）。`HiddenByLocal` / `ExplicitOverridesDiscovered` / `CrossServerConflict` 在 `{server}_{tool}` 前缀唯一化后无触发路径（触发依赖未来特性：无前缀模式 / explicit 配置），文档注明不产生。conflicts 只报告，不参与注册决策（与 codex 唯一化后 hash 消歧同理，无需 drop）。
+5. **默认装配（Q7 裁决）**：`EmptyToolRegistry` 删除（internal）——config 未注入 toolRegistry 时门面持有 `DefaultToolRegistry` 实例（实例所有），MCP 发现结果注册进它，send 时 `effectiveRegistry(cfg)` 传给 loop（单一注册表来源 §8.7 #7 不变）。`UnimplementedMcpClient` 删除——默认 `mcpClient` = `AutoDetectMcpClient(legacy, discovery)`，engine = `config.httpEngine ?: OkHttpEngine()`（复用 host 注入的传输入口；未注入时默认引擎，T8 决定 close 不释放，两份默认引擎并存可接受）。`RealOkia` 持有 `mcpDiscovery`（懒创建，servers / registry 闭包读最新 config）。`refreshMcpTools` 活跃回合并发契约落地（mutex + check，§8.7 #5）；`getMcpDiscoverySnapshot` 只读、活跃回合允许。
+6. **G5 快照整改落地（§8.17 #6 候选 B）**：`RealAgentLoop.runSegment` 每段尝试现取工具描述：SerializationHolder 构造处 `snapshot.copy(tools = registry.snapshot())`——请求体表达「每段发送时的工具集」而非 send 时固定值；`RealOkia.buildLoopRequest` 的 tools 退为初始值（send 时快照，loop 覆盖），TODO 注释清除。测试 `RealAgentLoopSnapshotTest`（afterToolCall hook 段间注册新工具 → 第二轮 buildRequest 的 tools 含新工具）锁定行为。
+7. **遮蔽坑修复（实现暴露，对齐 §8.10 #4 先例）**：`RealOkia` 构造参数 `config` 与属性 `config` 同名时，`by lazy` 块内嵌套 lambda（McpDiscovery 的 servers/registry 闭包）**捕获构造参数值快照而非属性**——update 热更新后 McpDiscovery 仍读旧 config（updateWithNewServers 测试暴露）。修复：构造参数改名 `initialConfig`。同款问题已在 §8.10 #4（RealConversation initialEntries）记录，写此处供后续避免。
+8. **测试**：`McpExecutorTest`（14：路由/工具名还原/参数透传/headers 透传/多块拼接/单块/空 content/isError 两态/协议异常/运行时异常/取消传播/服务器缺失/前缀不匹配/Local kind 拒绝/onInterrupt=Unknown）；`McpDiscoveryTest`（18：初始快照/刷新成功注册/消失移除/描述覆盖/幂等/fingerprint 稳定与变化/失败 Failed/失败 UsingStaleCache/失败保指纹/enabled=false/重复冲突/无冲突/并发三台/成败混合/取消传播/Discovering 中间态/config 删除服务器/空配置）；`RealOkiaMcpTest`（7：默认 registry 装配/注入 registry/活跃回合 refresh 抛/活跃回合快照可读/失败快照/update 新服务器生效/close 后抛）；`RealAgentLoopSnapshotTest`（1）。`FakeProtocolMapper` 补 builtSnapshots + beforeBuild 注入点。
