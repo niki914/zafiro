@@ -82,17 +82,11 @@ internal class RealOkia(
     @Volatile
     private var closed: Boolean = false
 
+    // 单个活跃回合的不可变句柄（job + 起点 entryId + 取消原因）。@Volatile 单字段
+    // 整体替换：锁外读者拿到完整一致的快照，不分散为多个 volatile 字段——消除
+    // 跨字段一致性边界（CR3 #2 收敛）。null = 无活跃回合。
     @Volatile
-    private var activeTurn: Deferred<TurnResult>? = null
-
-    // stop() 记录的取消原因；send 捕获取消后读取并清零
-    @Volatile
-    private var stopCause: StopCause? = null
-
-    // 当前回合起点（send 提交的 User 消息 entryId）；stop / 外部取消时经会话树
-    // 推导本回合已派发的工具调用（beforeStop 参数，§8.15 #7，kill-then-stop）
-    @Volatile
-    private var turnStartEntryId: String? = null
+    private var activeTurn: ActiveTurn? = null
 
     // 正在流式、尚未成条的助手消息；只在 turn 协程内写
     private var live: AssistantMessage? = null
@@ -134,29 +128,30 @@ internal class RealOkia(
             check(!closed) { "Okia is closed" }
             check(activeTurn == null) { "another turn is already active" }
             val turnStartEntry = tree.append(Message.User(listOf(ContentBlock.Text(text))))
-            turnStartEntryId = turnStartEntry.id
             publish()
 
             val request = buildLoopRequest(text, options)
             val job = turnScope.async {
                 dependencies.agentLoop.run(request) { event -> handleEvent(event, onEvent) }
             }
-            activeTurn = job
+            activeTurn = ActiveTurn(job = job, startEntryId = turnStartEntry.id)
             turnJob = job
         }
 
         return try {
             turnJob.await()
         } catch (e: CancellationException) {
-            val cause = stopCause
-            stopCause = null
+            val cause = activeTurn?.stopCause
             if (cause == null) {
                 // 外部取消：与 stop 表现一致（G1 裁决）——先 kill 工具资源
-                // （beforeStop）再停掉回合 job，然后传播取消。kill 在
-                // NonCancellable 中执行：当前协程已取消，但 kill 步骤不能中断。
+                // （beforeStop）再停掉回合 job，然后传播取消。kill 与 join
+                // 都在 NonCancellable 中执行：当前协程已取消，但 kill 步骤与
+                // 回合退出等待都不能中断。cancelAndJoin 确保旧回合清理
+                // （commitPartial / hook / 事件）真正完成，guard 才由 finally
+                // 释放——否则新回合与旧回合清理会同时写 tree/live（CR3 #1）。
                 withContext(NonCancellable) {
-                    killDispatchedTools()
-                    turnJob.cancel()
+                    killDispatchedTools(activeTurn?.startEntryId)
+                    turnJob.cancelAndJoin()
                 }
                 throw e
             }
@@ -167,24 +162,30 @@ internal class RealOkia(
             // 持有回合状态到终态事件处理完成（Aborted 事件由本方法派发，循环内
             // 终态 Completed/Failed 在 await 返回前已发完）：清除前新回合不得
             // 开始——否则其 TurnAborted 的 live=null 会冲掉新回合的 live。
+            // 整个句柄置 null：stopCause / startEntryId 随旧句柄一起清除，不跨
+            // 回合残留（CR3 #2）。
             activeTurn = null
-            turnStartEntryId = null
         }
     }
 
     override suspend fun stop() {
-        val job = activeTurn ?: return
-        // G2：每回合至多一次 kill——并发/重入 stop 只让第一个通过。
-        // mutex 保证检查+写入原子（stopCause @Volatile 读不够：两个并发 stop
-        // 可能都读到 null）。
-        mutex.withLock {
-            if (stopCause != null) return
-            stopCause = StopCause.UserStop
-        }
+        // 取得活跃句柄 + 确认 job 仍活跃 + 写 stopCause，三者同一临界区原子完成。
+        // job 已完成但 send finally 尚未清句柄时（回合自然完成的短窗口）是
+        // no-op：不写陈旧 stopCause（CR3 #2，避免残留使下回合 stop 失效/取消误判）。
+        val turn = mutex.withLock {
+            val t = activeTurn
+            if (t == null || !t.job.isActive || t.stopCause != null) null
+            else {
+                activeTurn = t.copy(stopCause = StopCause.UserStop)
+                t
+            }
+        } ?: return
+        // G2：每回合至多一次 kill——stopCause 已在临界区去重，只有首个读到
+        // stopCause=null 的调用会写 UserStop 并走到取消。
         // kill-then-stop（§5.11）：先 kill 工具资源（beforeStop，异常捕获不中止）
         // 再取消回合 job（阻塞工具不吃协程取消，直接 cancel 会永久挂住）。
-        killDispatchedTools()
-        job.cancelAndJoin()
+        killDispatchedTools(turn.startEntryId)
+        turn.job.cancelAndJoin()
     }
 
     override suspend fun rewind(entryId: String) {
@@ -319,8 +320,9 @@ internal class RealOkia(
     // kill 步骤（§5.11）：推导本回合已派发的工具调用（起点之后已提交 Assistant
     // 中的 ToolCall 块），按注册顺序跑 beforeStop 链。hook 异常被捕获，不中止
     // 停止流程；CancellationException 也捕获（kill 步骤必须跑完，§5.11）。
-    private suspend fun killDispatchedTools() {
-        val calls = turnStartEntryId?.let { tree.assistantToolCallsSince(it) } ?: emptyList()
+    // startEntryId 取自捕获的回合句柄，不重读 activeTurn（调用方已在锁内确定它）。
+    private suspend fun killDispatchedTools(startEntryId: String?) {
+        val calls = startEntryId?.let { tree.assistantToolCallsSince(it) } ?: emptyList()
         for (hook in config.hooks) {
             try {
                 hook.beforeStop(calls)
@@ -333,3 +335,11 @@ internal class RealOkia(
     private fun lastAssistantMessage(): AssistantMessage? =
         tree.history.asReversed().filterIsInstance<Message.Assistant>().firstOrNull()?.message
 }
+
+// 单个活跃回合的不可变句柄。构造后不修改（stop 用 copy 替换整个句柄），
+// @Volatile 单字段整体替换 → 锁外读者拿到一致快照（CR3 #2 收敛）。
+private data class ActiveTurn(
+    val job: Deferred<TurnResult>,
+    val startEntryId: String?,
+    val stopCause: StopCause? = null
+)

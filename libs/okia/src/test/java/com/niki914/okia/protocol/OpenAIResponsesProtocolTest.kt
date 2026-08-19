@@ -407,6 +407,29 @@ class OpenAIResponsesProtocolTest {
     }
 
     @Test
+    fun incompleteEventFlushesReasoningEnvelopeBeforeLength() = runTest {
+        // CR3 #4：response.incomplete 是独立终态（无后续 response.completed），
+        // 最后一批 reasoning item 在终态前补发 envelope——否则 reasoningItems
+        // 留在 buffer 永久丢失（opaque 推理历史不回放）。
+        val reasoningItem = """{"type":"reasoning","id":"rs_1","summary":[],"content":[],"encrypted_content":"U2FsdGVkX1=="}"""
+        val events = parse(
+            ev("response.output_item.added", """{"type":"response.output_item.added","item":{"type":"reasoning","id":"rs_1"},"output_index":0}"""),
+            ev("response.output_item.done", """{"type":"response.output_item.done","item":$reasoningItem,"output_index":0}"""),
+            ev("response.incomplete", """{"type":"response.incomplete","response":{"id":"r1","status":"incomplete","incomplete_details":{"reason":"max_tokens"},"model":"m","usage":{"input_tokens":3,"output_tokens":9}}}""")
+        )
+        assertEquals(
+            ProtocolEvent.ThinkingOpaquePayload(
+                "openai-responses:reasoning:v1:" + """{"items":[$reasoningItem]}"""
+            ),
+            events.first()
+        )
+        assertEquals(
+            ProtocolEvent.Completed(Usage(3, 9, 0, 0, 0), "m", StopReason.Length),
+            events.last()
+        )
+    }
+
+    @Test
     fun multipleReasoningItemsKeptInOneEnvelope() = runTest {
         // D6：多个 reasoning item 全部保留（数组 envelope，不接受 last-wins）
         val item1 = """{"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"一"}],"content":[],"encrypted_content":"U2FsdGVkXzE="}"""

@@ -23,11 +23,13 @@ import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpEngine
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.async
@@ -36,6 +38,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -340,6 +343,70 @@ class RealOkiaStopTest {
         val assistant = history[1].message as Message.Assistant
         assertEquals("half", (assistant.message.content.single() as ContentBlock.Text).text)
         assertTrue(okia.conversation.value.live == null)
+        okia.close()
+    }
+
+    // ── CR3 #1：外部取消后 guard 等到旧回合真正退出才释放 ──────────────────
+
+    @Test
+    fun externalCancellationHoldsGuardUntilOldTurnExits() = runTest {
+        // 旧实现：外部取消 catch 里只 turnJob.cancel()（不 join），随后 finally 立即
+        // 清 activeTurn → 新 send 可在旧回合清理（commitPartial 写树 / hook / 事件）
+        // 完成前启动，两个回合同写 tree/live。
+        // 新实现 cancelAndJoin：取消后旧回合退出前 guard 一直持有——据此验证
+        // 该窗口内的第二个 send 被 activeTurn 挡住。
+        val gateA = CompletableDeferred<Unit>()
+        val loop = FakeAgentLoop { _, _ ->
+            // 不受取消影响的清理步骤：cancel 信号无法提前打断，必须 gateA 放行
+            withContext(NonCancellable) { gateA.await() }
+            TurnResult.Completed(CompletionReason.Stop)
+        }
+        val okia = openOkia(FakeProtocolMapper(listOf(completed())), loop = loop, scope = testScope(testScheduler))
+        val sendJob = launch { runCatching { okia.send("first") {} } }
+        runCurrent() // 回合 A 挂起在 gateA（清理中）
+
+        sendJob.cancel() // 外部取消 → await 抛取消 → catch 进入 cancelAndJoin（等待）
+        runCurrent() // NonCancellable 内 cancelAndJoin 挂起等待旧回合退出
+
+        // guard 尚未释放：第二个 send 被 activeTurn 挡住
+        val resend = async { runCatching { okia.send("second") {} } }
+        runCurrent()
+        assertEquals("another turn is already active", resend.await().exceptionOrNull()?.message)
+
+        // 放行旧回合退出 → cancelAndJoin 返回 → finally 释放 guard
+        gateA.complete(Unit)
+        sendJob.join()
+        okia.close()
+    }
+
+    // ── CR3 #2：stopCause 收敛为回合句柄字段，不跨回合残留 ─────────────────
+
+    @Test
+    fun completedTurnDoesNotLeakStopCauseToNextTurn() = runTest {
+        // 旧实现：stopCause 是独立 @Volatile 字段，正常完成的 send 不清它；若 stop 撞
+        // 上「job 完成但 activeTurn 未清」窗口会写入陈旧 UserStop，使下一回合 stop
+        // 失效、或外部取消被误判为 Aborted(UserStop)。
+        // 收敛后 stopCause 是 ActiveTurn 私有字段，回合结束句柄整体置 null 一起清除，
+        // 下一回合 stop 仍生效。
+        val gate = AtomicReference(CompletableDeferred<Unit>().also { it.complete(Unit) })
+        val loop = FakeAgentLoop { _, _ ->
+            gate.get().await()
+            TurnResult.Completed(CompletionReason.Stop)
+        }
+        val okia = openOkia(FakeProtocolMapper(listOf(completed())), loop = loop, scope = testScope(testScheduler))
+
+        // 回合 A：gate 已完成 → 正常完成（不经过取消清理路径）
+        val a = async { okia.send("first") {} }
+        runCurrent()
+        assertEquals(TurnResult.Completed(CompletionReason.Stop), a.await())
+
+        // 回合 B：gate 未完成 → 挂起；stop() 必须生效（Aborted），而非因残留失效
+        gate.set(CompletableDeferred())
+        val b = async { okia.send("second") {} }
+        runCurrent()
+
+        okia.stop()
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), b.await())
         okia.close()
     }
 }

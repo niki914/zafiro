@@ -419,6 +419,10 @@ class OpenAIResponsesProtocol(
         when (reason) {
             "max_tokens", "max_output_tokens" -> {
                 state.finished = true
+                // 与 handleCompleted 的 incomplete 分支一致：最后一批 reasoning item
+                // 在终态前补发 envelope——否则 response.incomplete 是独立终态（无后续
+                // completed），reasoningItems 留在 buffer 里永久丢失（CR3 #4）。
+                emitReasoningEnvelope(state, emit)
                 emit(ProtocolEvent.Completed(usage, state.responseModel, StopReason.Length))
             }
             else -> throw IllegalStateException("response incomplete, reason: $reason")

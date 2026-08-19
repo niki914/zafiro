@@ -229,8 +229,12 @@ class AnthropicMessagesProtocol(
             val input = (usage["input_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
             val cacheRead = (usage["cache_read_input_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
             val cacheWrite = (usage["cache_creation_input_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
+            // Anthropic 语义：input_tokens 已为「非缓存输入」，总输入 =
+            // input_tokens + cache_creation_input_tokens + cache_read_input_tokens
+            // （官方 Usage 定义，区别于 OpenAI 的 input_tokens 含缓存）。直接取，
+            // 不扣减 cache——否则 openai 式双重扣减会丢掉真实非缓存 token（CR3 #3）。
             state.usage = Usage(
-                inputTokens = (input - cacheRead - cacheWrite).coerceAtLeast(0),
+                inputTokens = input,
                 outputTokens = 0,
                 cacheReadTokens = cacheRead,
                 cacheWriteTokens = cacheWrite,

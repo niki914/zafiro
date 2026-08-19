@@ -265,7 +265,7 @@ class AnthropicMessagesProtocolTest {
         assertEquals(
             listOf(
                 ProtocolEvent.TextDelta("你好"),
-                ProtocolEvent.Completed(Usage(3, 12, 1, 2, 0), "deepseek-v4-flash", StopReason.Stop)
+                ProtocolEvent.Completed(Usage(6, 12, 1, 2, 0), "deepseek-v4-flash", StopReason.Stop)
             ),
             events
         )
