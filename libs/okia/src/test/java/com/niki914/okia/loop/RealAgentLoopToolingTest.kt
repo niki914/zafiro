@@ -379,6 +379,48 @@ class RealAgentLoopToolingTest {
     }
 
     @Test
+    fun alternatingThinkingTextBlocksFlushWithoutResidue() = runTest {
+        // 回归（评审发现）：flush 只复位 started 标志、未清空 builder。thinking/text
+        // 交替多次时旧内容 append 进新块（Text("AC") 应为 Text("C")），事件与
+        // 最终消息都携带累计残留。正常多 block response（Gemini parts 交替 / Anthropic
+        // 多 thinking 块）即可触发，非并发竞态。
+        val commits = mutableListOf<List<Message>>()
+        val emitted = mutableListOf<TurnEvent>()
+        val mapper = FakeProtocolMapper(
+            listOf(
+                ProtocolEvent.ThinkingDelta("think-1"),
+                ProtocolEvent.TextDelta("answer-1"),
+                ProtocolEvent.ThinkingDelta("think-2"),
+                ProtocolEvent.TextDelta("answer-2"),
+                ProtocolEvent.Completed(stopReason = StopReason.Stop)
+            )
+        )
+
+        runLoop(loopRequest(emptyList()) { commits += it }.copy(protocolMapper = mapper), emitted)
+
+        // 严格断言四个块分别为 think-1 / answer-1 / think-2 / answer-2
+        val assistant = (commits.single().single() as Message.Assistant).message
+        assertEquals(
+            listOf(
+                ContentBlock.Thinking("think-1"),
+                ContentBlock.Text("answer-1"),
+                ContentBlock.Thinking("think-2"),
+                ContentBlock.Text("answer-2")
+            ),
+            assistant.content
+        )
+        // ThinkingEnded / TextEnded 携带各块完整内容（非累计残留）
+        assertEquals(
+            listOf("think-1", "think-2"),
+            emitted.filterIsInstance<TurnEvent.ThinkingEnded>().map { it.content }
+        )
+        assertEquals(
+            listOf("answer-1", "answer-2"),
+            emitted.filterIsInstance<TurnEvent.TextEnded>().map { it.content }
+        )
+    }
+
+    @Test
     fun thinkingSignatureRecordedOnFinalMessage() = runTest {
         val commits = mutableListOf<List<Message>>()
         val mapper = FakeProtocolMapper(

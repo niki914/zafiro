@@ -782,6 +782,7 @@ internal class RealAgentLoop : AgentLoop {
         state.blocks += ContentBlock.Text(content, signature = state.pendingBlockSignature)
         state.pendingBlockSignature = null
         state.textStarted = false
+        state.text.clear()
         onEvent(TurnEvent.TextEnded(index, content, state.partialMessage()))
     }
 
@@ -801,6 +802,7 @@ internal class RealAgentLoop : AgentLoop {
         state.pendingBlockSignature = null
         state.pendingThinkingPayloads.clear()
         state.thinkingStarted = false
+        state.thinking.clear()
         // payload-only 块（无文本）不发 ThinkingEnded（无对应 Started 事件）
         if (hasText) onEvent(TurnEvent.ThinkingEnded(index, content, state.partialMessage()))
     }
