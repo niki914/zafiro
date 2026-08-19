@@ -6,7 +6,7 @@
 ## 状态
 
 - 分支：`feat/okia-integration`（基于 main `84f28cd`，即并入 PR #121 okia 库之后）
-- 当前阶段：**T1 设计讨论中**（未写业务代码）
+- 当前阶段：**T2 决策已落定，待开始 T2a**（本地工具注册与执行；T2b=MCP）
 - 目标：把 Nexus 的 LLM 运行时从 `libs:kai` 切换为 `libs:okia`（`Okia` 门面），`libs:kai` 最终删除，不留兼容层
 - 约束：单个功能点新增+删除合计 ≤1000 行；每完成一个功能点更新本文档并由用户触发 git 提交；允许部分业务 Bug，先跑通主链路
 
@@ -37,6 +37,14 @@
 | D15 | **O3 澄清**：replaceHistory 的 4 个场景（启动恢复/切会话/重新生成/分叉）全部由「持久化 + export/open」覆盖；`getHistory/replaceHistory` 这对 API 整体消失；唯一自定义段 = fork 截断子树构造（D4）；T1 桥接仅为过渡 | 已确认 |
 | D16 | **库坑（实测发现）**：`RealConversation.project(null)` 返回空列表（RealConversation.kt:121），与 PRD §5.3「leafId null = 恢复为最后一条」的文档意图不一致。**T1 绕开**：`buildSnapshotFromChatTurns` 显式设 `leafId = entries.lastOrNull()?.id`。**待提 issue 给 okia**（与 D3 同步发现 API 同批） | 已确认（T1 落地绕开，issue 待提） |
 | D17 | **T1 工具退化记录**：refresh 仍把 resolvedTools 传入 PromptComposer（技能/记忆段依赖工具段渲染），但 OKIA 注册表为空、不向请求注入 tool 定义——模型若调用未注册工具 → `LLMErrorCode.UnknownTool` 回合失败（T2 接入前为已知退化）；MCP 发现/指纹决策已从 refresh 删除 | 已确认 |
+| D18 | **T2 拆分**：T2a=本地工具注册与执行（builtin+custom）；T2b=MCP 装配与发现时序。每块 ≤1000 行 | 已确认 |
+| D19 | **内置工具描述迁移（方案 A）**：BuiltinTool 抽象改为 OKIA 声明式描述（description/inputSchemaJson/轻量参数声明），替换 kai `LocalToolConfig` DSL；15 个工具文件迁移；无 workaround；**描述文本原文照抄一个字符不差**（withCustomShellGuidance 英文段/各工具长 description/CreateCustomTool hint） | 已确认 |
+| D20 | **CreateCustomTool**：默认 `enabled=true`；refresh 注册保持 `filter { it.enabled }`（enabled=false 不注册）；创建成功执行后**回合内注册**（同 Turn 下一轮可见，RealAgentLoop:170 每段现取 registry.snapshot() 支撑）；OKIA ToolRegistry 注释「活跃回合不得直接改 registry」与 update 路由矛盾 → 并 D3 issue 批（文档修复级，不阻塞），Nexus 直接 register | 已确认 |
+| D21 | **custom tool schema**：`inputSchemaJson = null`（协议层省略 parameters），代码打 TODO（未来支持自定义字段） | 已确认 |
+| D22 | **MCP 时序（方案 A）**：LLMController 保存「已 refresh 的服务器配置签名」（name/url/headers/enabled 序列化），签名变化才 `refreshMcpTools()`（该调用本身挂起至完成=同步一轮，无需 OKIA 新 API）；无变化不刷新 | 已确认 |
+| D23 | **MCP 持久化本次不做**：删残链（gateway.listCachedTools / XRepo saveDiscoveredTools / McpCachedTool / mcpCacheKey / McpServerDefinition.cachedTools / refresh 的 mcpCachedTools）；记 TODO：未来 Nexus store 层持久化 OKIA McpDiscoverySnapshot（需先提 issue：McpDiscoveredTool 加 @Serializable，已核实当前无可序列化） | 已确认 |
+| D24 | **hooks 不接**：T2 无 beforeToolCall/afterToolCall（读屏前置非 hook 用例 §5.12），T4 有需求再加 | 已确认 |
+| D25 | **T2 测试策略**：不做逐工具描述 golden 断言（膨胀脆弱）。三档：①注册装配=refresh 后 registry 工具名集合正确（名字级）②描述合法性=schema JSON 可解析/name 合法/wireName 满足 ToolWireName 约束 ③执行行为=fake call→outcome 映射（Success/Failure/Interrupted/Unknown）。不写扫字符串式测试 | 已确认 |
 | D12 | **单测重写而非改**：接口全变处（LLMController/Mapper/持久化）测试重写；工具实现测试不动 | 已确认 |
 | D13 | **删除概念**：SessionToolBinder、McpDiscoveryCacheStore、lastMcpServersFingerprint+shouldRefreshMcp、ChatTurnJsonCodec、turnMutex、`:libs:kai` 依赖。保留：LlmStreamEvent/ToolCallStatus/ToolCallKind、ConversationTurnState/ActiveTurnStore/TurnMode、RenderFrame、Room 表骨架、TerminalSessionPool.pendingNotifications | 已确认 |
 
@@ -44,10 +52,11 @@
 
 | T | 范围 | 验收 | 状态 |
 |---|---|---|---|
-| T1 | 骨架替换：依赖切 okia；重写 LLMController + LlmStreamEventMapper；协议装配（apiType→protocol）；错误/并发/stop 适配；主 App 问答+停止+错误文案跑通 | 宿主与主 App 均一问一答、停止、错误事件正确；UI 消费端零改动 | **已完成**（2026-08-19，待用户验收） |
-| T2 | 工具与 MCP：ToolRegistry 装配 + ToolCallDispatcher→ToolExecutor 适配 + onInterrupt；删 McpDiscoveryCacheStore/fingerprint；发现状态机接入；outcome 5 态映射 | 内置/自定义/MCP 工具回合正确，工具失败/拦截 UI 语义正确 | 待讨论 |
+| T1 | 骨架替换：依赖切 okia；重写 LLMController + LlmStreamEventMapper；协议装配（apiType→protocol）；错误/并发/stop 适配；主 App 问答+停止+错误文案跑通 | 宿主与主 App 均一问一答、停止、错误事件正确；UI 消费端零改动 | **已完成**（2026-08-19 已提交 f842dbc/c87d630） |
+| T2a | 本地工具：BuiltinTool 描述迁移（D19）+ ToolRegistry 装配（refresh 注册 enabled 工具）+ ToolCallDispatcher→ToolExecutor 适配（execute/onInterrupt）+ CreateCustomTool 回合内注册（D20）+ outcome→BuiltinToolResult 拆解 | 内置/自定义工具回合成功（memory/search_apps/python 等）；模型调用已注册工具不再 UnknownTool；工具失败 UI 显示 code/message | **已完成**（2026-08-19，待用户验收） |
+| T2b | MCP：McpServer 配置→OkiaConfig.mcpServers 装配；签名变化触发 refreshMcpTools（D22）；删 cachedTools 残链（D23）；PromptComposer kai snapshot→okia snapshot 类型切换 | MCP 工具被发现、进 prompt 工具段、可调用；禁用/失败不崩；首回合时序符合 D22 | 待开始 |
 | T3 | 持久化：Room 推倒重来（SessionSnapshot 序列化 + leafId）；restore 启动、切会话、fork/regenerate（D4）；`open(restore)` 生命周期 | 重启恢复、切会话、fork 重新生成正确 | 待讨论 |
-| T4 | 细节收口：idle 配置、beforeStop 正式接管 kill、可重试 UI 分支、并发→TurnConflict 回归、删余清尾、全量测试 | 无 kai 引用、无死代码、全测试绿 | 待讨论 |
+| T4 | 细节收口：idle 配置、beforeStop 正式接管 kill、可重试 UI 分支、并发→TurnConflict 回归、删余清尾（含删 :libs:kai 依赖）、全量测试 | 无 kai 引用、无死代码、全测试绿 | 待讨论 |
 
 ## T1 功能定义
 
@@ -91,9 +100,9 @@
 
 | # | 问题 | 倾向 |
 |---|---|---|
-| O1 | T1 是否直接删 `:libs:kai` 依赖 | 若 T1 后无 kai 引用则删（不留兼容层，符合仓库原则；风险 = HomeChatState 的 ChatTurn 相关 API 需同步改） |
-| O2 | kill-then-stop 时机：T1 直接用 OKIA `Hooks.beforeStop` 还是先保原位 | **已决（D14）**：T1 直接接 beforeStop（kill 迁入 hook）；onInterrupt 是 T2 工具契约，非 stop 路径 |
+| O1 | `:libs:kai` 依赖删除 | T4 删；T2 期间 agent-runtime 的 kai 引用集中在 BuiltinTool(LocalToolConfig) 与 ChatTurn 桥接，随 D19 迁移与 T3 移除 |
 | O3 | `TurnOptions.systemPrompt` 每回合拼装：PromptComposer 每轮 refresh 已产出 finalSystemPrompt，LLMController 持有 snapshot.config.finalSystemPrompt → 直接传入，无额外成本 | 已落地（D2） |
+| O4 | 待提 issue 批（记入 D3 系）：① OKIA 无 send 前 ensure 的 MCP 同步发现 API；② McpDiscoveredTool 无可序列化（缓存持久化前置）；③ ToolRegistry 注释「活跃回合不得直接变更」与 update 路由矛盾（文档修复） | T2b 后一并提 |
 
 ## 验证
 
@@ -106,6 +115,42 @@
 ./gradlew :libs:okia:testDebugUnitTest
 # 真机手动：安装 debug 包 → 详情见 T1 手动验收
 ```
+
+## T2a 功能定义（待开始）
+
+**目标**：让内置/自定义工具真正注册进 OKIA 注册表并可执行，模型调用工具不再触发 UnknownTool。
+
+改动文件（估算合 ~1000 行）：
+- `BuiltinTool.kt`（抽象改造 ~50）：删 `configure(LocalToolConfig)`，改为 OKIA 声明式描述（description/inputSchemaJson + 轻量参数声明）；`LocalToolConfig`/kai 依赖从 builtin 包消失
+- 15 个 builtin 工具迁移（~250）：configure 逻辑 → 新描述（**文本原文照抄，D19**）；CreateCustomTool 改默认 `enabled=true`（D20）
+- 新增 Registry 装配（~100）：refresh 后按 `filter { it.enabled }` 注册 enabled 工具到持有的 DefaultToolRegistry（经 `OkiaConfig.toolRegistry` 注入）；移除旧工具的注销
+- 新增 ToolExecutor 适配（~120）：`ToolCallDispatcher` 包成 `ToolExecutor`（execute: ToolCallContext→outcome；onInterrupt: 本地→Interrupted）；BuiltinToolResult/CustomToolResult → Success(content=json)/Failure(message=code+message, content=json)；CreateCustomTool 成功→回合内 register 回调（D20）
+- `LLMController.kt` 注册/注销钩子（~40）
+- 测试（~400）：D25 三档（注册名集合/描述合法性/执行行为）+ CreateCustomTool 回合内注册专项
+
+**验收**：内置工具（memory/search_apps/python/terminal 任一）回合成功呈现；自定义工具回合成功；模型调用已注册工具不再 UnknownTool；工具失败 UI 显示 code/message；
+
+## T2a 测试边界（D25）
+
+1. 注册装配：refresh 后 registry.snapshot() 的工具名集合 == 启用的 builtin+custom 名（名字级）
+2. 描述合法性：每个注册工具 schema JSON 可解析、name 合法、wireName 符合 ToolWireName 约束（长度/字符）
+3. 执行行为：fake ToolCallContext → outcome（Success 携 content / Failure 携 message+content / 中断→Interrupted / 未注册名→UnknownTool 回合失败）；CreateCustomTool 执行成功 → registry 新增工具 + 下一段可见（用 OKIA TestDispatcher 时序）
+
+## T2a 实现记录（2026-08-19，已完成，待验收）
+
+**改动文件**（27 文件，+796/-585 行）：
+- `BuiltinTool.kt`：删 `configure(LocalToolConfig)`（kai DSL），加 `open val inputSchemaJson: String?`（JSON Schema 常量）
+- 14 个 builtin 工具迁移：`configure` → `override val inputSchemaJson`；文本一字未改（D19）；ScreenOperationAccessibility/Shell 原纯 kai DSL，转录为 JSON Schema（描述原文照抄）；CreateCustomTool schema + invoke 解析默认 `enabled=true`（D20）
+- `LocalToolExecutor.kt`（新，182 行）：OKIA ToolExecutor 适配（execute→outcome、onInterrupt→Interrupted）；BuiltinToolResult/CustomTool JSON 按 `ok` 拆 Success/Failure；文本协议经 TextToolResultCodec；create_custom_tool 成功且 enabled → inline 注册 + 回调 host（D20 回合内注册）
+- `ToolCallDispatcher.kt`（删，被 LocalToolExecutor 取代）
+- `LLMController.kt`（+76）：`toolRegistry: DefaultToolRegistry`（持有、注入 OkiaConfig）+ `localToolExecutor` + `syncLocalTools`（refresh 全量重建 local 注册，kind=Local filter）+ `registerCustomToolNow`（回合内注册回调）+ openOkiaWithDefaultProtocol builder 注入 toolRegistry
+- 测试：`LocalToolExecutorTest`（新 271 行：builtin/custom/unknown/textProtocol/onInterrupt/create_custom_tool 注册×3）；`BuiltinToolTest`（+D25 描述合法性：name/schema 可解析/wireName 约束）；`LLMControllerOkiaTest`（+refresh 注册 enabled 名集合、schema/kind）；其余 6 个测试文件去 LocalToolConfig/configure 引用
+
+**已删除 kai 引用**：agent-runtime main 无 `LocalToolConfig`/`configure` 残留；测试已清。`:libs:kai` 依赖仍存在（ChatTurn 桥接 O1-A，T3 移除）。
+
+**测试结果**：`:agent-runtime:testDebugUnitTest` 34x 全绿、`:app:testDebugUnitTest` 全绿、`:app:compileDebugKotlin` 通过；`:libs:okia` 未改动。
+
+**踩坑记录**：`ShellCommandSafetyPolicy` 默认 `awaitSettingsGateway()` 挂起，测试未装 gateway 会挂死 → LocalToolExecutorTest 注入 `ShellCommandSafetyPolicy(listExecutionRules = { emptyList() })`（allowed 短路）。
 
 ## T1 实现记录（2026-08-19，已完成，待验收）
 
