@@ -421,6 +421,64 @@ class RealAgentLoopToolingTest {
     }
 
     @Test
+    fun interleavedToolCallKeepsProviderBlockOrder() = runTest {
+        // CR5 回归：ToolCallReady 到达时先 flush 进行中 thinking/text 再插入统一
+        // blocks，块序保持 provider 原始交错（Anthropic interleaved thinking / Gemini
+        // thought+functionCall）。旧实现双容器拼接把 tool call 推到最后、前后 thinking
+        // 被合并、事件 index 与最终消息位置漂移。
+        val executor = RecordingToolExecutor()
+        val registry = DefaultToolRegistry().apply { register(localTool("tool"), executor) }
+        val commits = mutableListOf<List<Message>>()
+        val emitted = mutableListOf<TurnEvent>()
+        val mapper = FakeProtocolMapper(
+            listOf(
+                listOf(
+                    ProtocolEvent.ThinkingDelta("think-a"),
+                    ProtocolEvent.ToolCallStarted("call1", "tool"),
+                    ProtocolEvent.ToolCallDelta("call1", "tool", """{"q":1}"""),
+                    ProtocolEvent.ToolCallReady("call1", "tool", """{"q":1}"""),
+                    ProtocolEvent.ThinkingDelta("think-b"),
+                    ProtocolEvent.TextDelta("answer"),
+                    ProtocolEvent.Completed(stopReason = StopReason.ToolUse)
+                ),
+                listOf(
+                    ProtocolEvent.TextDelta("done"),
+                    ProtocolEvent.Completed(stopReason = StopReason.Stop)
+                )
+            )
+        )
+
+        runLoop(
+            loopRequest(emptyList(), toolRegistry = registry) { commits += it }.copy(protocolMapper = mapper),
+            emitted
+        )
+
+        // 最终消息块序 = provider 原始交错 [Thinking, ToolCall, Thinking, Text]，
+        // tool call 不被推到最后、前后 thinking 不合并
+        val assistant1 = commits[0].single() as Message.Assistant
+        assertEquals(
+            listOf(
+                ContentBlock.Thinking("think-a"),
+                ContentBlock.ToolCall("call1", "tool", """{"q":1}"""),
+                ContentBlock.Thinking("think-b"),
+                ContentBlock.Text("answer")
+            ),
+            assistant1.message.content
+        )
+        // ToolCallReady 事件 index = 最终消息中的终值位置，不再随后续 flush 漂移
+        val ready = emitted.filterIsInstance<TurnEvent.ToolCallReady>().single()
+        assertEquals(1, ready.index)
+        // 交错的 thinking 各自成块；第一个 ThinkingEnded 先于 ToolCallReady 发出
+        assertEquals(
+            listOf("think-a", "think-b"),
+            emitted.filterIsInstance<TurnEvent.ThinkingEnded>().map { it.content }
+        )
+        val thinkingEndedIndex = emitted.indexOfFirst { it is TurnEvent.ThinkingEnded && it.content == "think-a" }
+        val toolCallReadyIndex = emitted.indexOfFirst { it is TurnEvent.ToolCallReady }
+        assertTrue(thinkingEndedIndex < toolCallReadyIndex)
+    }
+
+    @Test
     fun thinkingSignatureRecordedOnFinalMessage() = runTest {
         val commits = mutableListOf<List<Message>>()
         val mapper = FakeProtocolMapper(

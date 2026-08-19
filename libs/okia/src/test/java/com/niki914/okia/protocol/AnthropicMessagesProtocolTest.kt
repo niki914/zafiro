@@ -272,6 +272,33 @@ class AnthropicMessagesProtocolTest {
     }
 
     @Test
+    fun cacheTokensPreservedWhenMessageDeltaOmitsCacheFields() = runTest {
+        // CR5 回归：真实 Anthropic API 的 message_delta.usage 只携带 output_tokens，
+        // cache 字段仅在 message_start 出现。原实现 delta 缺失字段读 0 并整体覆盖
+        // state.usage，prompt caching 下 cacheRead/cacheWrite 每轮清零。delta 明确
+        // 携带新值（含 0）时以新值覆盖（textTurnStream fixture 断言覆盖）。
+        val events = parse(
+            ev("message_start", """{"type":"message_start","message":{"model":"m","usage":{"input_tokens":100,"cache_read_input_tokens":5000,"cache_creation_input_tokens":300,"output_tokens":0}}}"""),
+            ev("content_block_start", """{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}"""),
+            ev("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hi"}}"""),
+            ev("content_block_stop", """{"type":"content_block_stop","index":0}"""),
+            ev("message_delta", """{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":80}}"""),
+            ev("message_stop", """{"type":"message_stop"}""")
+        )
+        val completed = events.filterIsInstance<ProtocolEvent.Completed>().single()
+        assertEquals(
+            Usage(
+                inputTokens = 100,
+                outputTokens = 80,
+                cacheReadTokens = 5000,
+                cacheWriteTokens = 300,
+                reasoningTokens = 0
+            ),
+            completed.usage
+        )
+    }
+
+    @Test
     fun thinkingBlockEmitsThinkingAndSignature() = runTest {
         val events = parse(
             ev("message_start", """{"type":"message_start","message":{"model":"m","usage":{"input_tokens":5}}}"""),

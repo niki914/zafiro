@@ -41,7 +41,7 @@ class OpenAIResponsesApiIntegrationTest {
         ) {
             apiKey = key
             model = "deepseek-v4-flash"
-            maxTokens = 256
+            maxTokens = 512
             endpoint = "https://api.deepseek.com/responses"
         }
         try {

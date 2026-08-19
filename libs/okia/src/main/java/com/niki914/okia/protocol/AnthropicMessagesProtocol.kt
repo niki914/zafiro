@@ -339,11 +339,16 @@ class AnthropicMessagesProtocol(
         val delta = obj?.get("delta") as? JsonObject
         val stopReason = (delta?.get("stop_reason") as? JsonPrimitive)?.contentOrNull
         stopReason?.let { state.stopReasonRaw = it }
-        // message_delta 的 usage 携带输出 token（message_start 的是输入）
+        // message_delta 的 usage 携带输出 token（message_start 的是输入）。
+        // cache 字段真实 API 只在 message_start 出现，delta 缺失时从 state.usage
+        // 保留（否则覆盖为 0 会丢失 cacheRead/cacheWrite，prompt caching 下
+        // 每轮必现）；delta 明确携带（含 0）时以新值覆盖。
         (obj?.get("usage") as? JsonObject)?.let { usage ->
             val input = state.usage?.inputTokens ?: 0
-            val cacheRead = (usage["cache_read_input_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
-            val cacheWrite = (usage["cache_creation_input_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
+            val cacheRead = (usage["cache_read_input_tokens"] as? JsonPrimitive)?.longOrNull
+                ?: state.usage?.cacheReadTokens ?: 0
+            val cacheWrite = (usage["cache_creation_input_tokens"] as? JsonPrimitive)?.longOrNull
+                ?: state.usage?.cacheWriteTokens ?: 0
             val output = (usage["output_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
             state.usage = Usage(
                 inputTokens = input,

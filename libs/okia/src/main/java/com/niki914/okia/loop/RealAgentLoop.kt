@@ -479,10 +479,14 @@ internal class RealAgentLoop : AgentLoop {
                     signature = event.signature
                 )
                 state.pendingToolCalls.remove(pending)
-                state.readyToolCalls += call
+                // 块交接：插入前先 flush 进行中的 thinking/text，工具调用按流到达
+                // 顺序落进统一 blocks（交错流 [thinking, tool_use, thinking, text]
+                // 不丢边界与顺序；Ready 后 index 即终值，不再随后续 flush 漂移）
+                flushBlocks(state, onEvent)
+                state.blocks += call
                 onEvent(
                     TurnEvent.ToolCallReady(
-                        state.blocks.size + state.readyToolCalls.lastIndex,
+                        state.blocks.lastIndex,
                         call,
                         state.partialMessage()
                     )
@@ -726,7 +730,7 @@ internal class RealAgentLoop : AgentLoop {
 
     // 每轮消息完整：flush 后的最终 Assistant（stopReason null 默认 Stop）
     private fun buildFinalAssistant(state: StreamState): AssistantMessage = AssistantMessage(
-        content = state.blocks + state.readyToolCalls,
+        content = state.blocks.toList(),
         stopReason = state.stopReason ?: StopReason.Stop,
         usage = state.usage,
         responseModel = state.responseModel,
@@ -824,7 +828,7 @@ internal class RealAgentLoop : AgentLoop {
     // 进行中工具调用在 partial 中的预估块位置（Ready 前的最终位置；
     // Ready 前不占位，partial 不含未 Ready 调用，§5.4）
     private fun toolCallIndex(state: StreamState, pendingIndex: Int): Int =
-        state.blocks.size + state.readyToolCalls.size + pendingIndex
+        state.blocks.size + pendingIndex
 }
 
 // ── 段执行结果 / 发送结果 / 流信号与哨兵 ─────────────────────────────────
@@ -850,13 +854,12 @@ private sealed interface StreamSignal {
 
 /** 每轮流式累积状态：partial 快照由它派生（thinking/text 进行中、toolCall 已 Ready）。 */
 private class StreamState {
-    val blocks = mutableListOf<ContentBlock>() // 已完成的块（text / thinking / toolCall）
+    val blocks = mutableListOf<ContentBlock>() // 已完成的块（text / thinking / toolCall），顺序即流到达顺序
     val text = StringBuilder() // 进行中 text
     var textStarted = false
     val thinking = StringBuilder() // 进行中 thinking
     var thinkingStarted = false
     val pendingToolCalls = mutableListOf<PendingToolCall>() // 流式组装中（未 Ready，不占位）
-    val readyToolCalls = mutableListOf<ContentBlock.ToolCall>() // 已 Ready（占位，进 partial）
     var usage: Usage? = null
     var responseModel: String? = null
     var stopReason: StopReason? = null
@@ -871,7 +874,6 @@ private class StreamState {
         addAll(blocks)
         if (textStarted) add(ContentBlock.Text(text.toString()))
         if (thinkingStarted) add(ContentBlock.Thinking(thinking.toString()))
-        addAll(readyToolCalls)
     }
 
     fun partialMessage(): AssistantMessage = AssistantMessage(
@@ -883,7 +885,7 @@ private class StreamState {
     )
 
     fun hasAnyContent(): Boolean =
-        blocks.isNotEmpty() || textStarted || thinkingStarted || readyToolCalls.isNotEmpty()
+        blocks.isNotEmpty() || textStarted || thinkingStarted
 }
 
 /** 流式组装中的工具调用（Ready 后转为 ContentBlock.ToolCall 占位）。 */
