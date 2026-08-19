@@ -11,8 +11,11 @@ class DefaultToolRegistry : ToolRegistry {
 
     private val tools = LinkedHashMap<String, RegisteredTool>()
 
+    // 键 = descriptor.wireName：模型回传的工具调用名即线缆名，find(call.name)
+    // 直接命中。本地工具 wireName == name（规范化后），host 按原始名前缀匹配
+    // 不受影响。
     override fun register(descriptor: ToolDescriptor, executor: ToolExecutor) {
-        tools[descriptor.name] = RegisteredTool(descriptor, executor)
+        tools[descriptor.wireName] = RegisteredTool(descriptor, executor)
     }
 
     override fun remove(name: String) {

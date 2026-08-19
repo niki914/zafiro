@@ -48,14 +48,14 @@ class McpExecutorTest {
         enabled = true
     )
 
-    // kind 指明服务器；注册名 = ${server}_${tool}
+    // kind 指明服务器；descriptor.name = 原始 MCP 工具名（直接用于调用）
     private fun mcpCall(
-        name: String = "docs_search",
+        name: String = "search",
         serverName: String = "docs",
         args: String = "{\"q\":\"x\"}"
     ) = ToolCallContext(
         id = "call-1",
-        name = name,
+        name = "mcp__docs__search",
         descriptor = ToolDescriptor(
             name = name,
             description = "desc",
@@ -75,17 +75,18 @@ class McpExecutorTest {
     // ── 路由与工具名还原 ───────────────────────────────────────────────────
 
     @Test
-    fun routesToServerByKindAndStripsPrefix() = runTest {
+    fun routesToServerByKindAndUsesRawName() = runTest {
         val client = FakeClient().apply {
             result = McpCallResult(false, listOf(TextBlock("ok")))
         }
         val exec = executor(client)
 
-        val outcome = exec.execute(mcpCall(name = "docs_search", serverName = "docs"))
+        // descriptor.name = 原始 MCP 工具名，line 缆线名（call.name）不参与调用
+        val outcome = exec.execute(mcpCall(name = "admin.tools.list", serverName = "docs"))
 
         assertEquals(1, client.calls.size)
         assertEquals("docs", client.calls.single().server.name)
-        assertEquals("search", client.calls.single().toolName) // 前缀剥离
+        assertEquals("admin.tools.list", client.calls.single().toolName) // 原始名原样调用
         assertEquals("{\"q\":\"x\"}", client.calls.single().argumentsJson) // 参数原样
         assertEquals(ToolCallOutcome.Success("ok"), outcome)
     }
@@ -189,23 +190,14 @@ class McpExecutorTest {
     }
 
     @Test
-    fun prefixMismatchIsUnknownToolFailure() = runTest {
-        val client = FakeClient()
-        val exec = executor(client)
-        val failure = exec.execute(mcpCall(name = "other_tool")) as ToolCallOutcome.Failure
-        assertEquals("unknown tool: other_tool", failure.message)
-        assertEquals(0, client.calls.size)
-    }
-
-    @Test
     fun localKindIsRejected() = runTest {
         val client = FakeClient()
         val exec = executor(client)
         val call = mcpCall().copy(
-            descriptor = ToolDescriptor("docs_search", "desc", null, ToolKind.Local)
+            descriptor = ToolDescriptor("search", "desc", null, ToolKind.Local)
         )
         val failure = exec.execute(call) as ToolCallOutcome.Failure
-        assertEquals("not an MCP tool: docs_search", failure.message)
+        assertEquals("not an MCP tool: mcp__docs__search", failure.message)
         assertEquals(0, client.calls.size)
     }
 

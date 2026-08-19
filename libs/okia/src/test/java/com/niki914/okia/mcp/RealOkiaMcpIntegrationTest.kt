@@ -28,7 +28,7 @@ import java.net.Socket
 
 /**
  * 门面 + 真实 server-everything 全链路集成测试（T9c 层 1）。
- * 链路：refreshMcpTools 真实发现 → 注册表含 everything_* 前缀工具 →
+ * 链路：refreshMcpTools 真实发现 → 注册表含 mcp__everything__* 线缆工具 →
  * 真实 loop 收到模型工具调用（fake mapper 受控产出）→ McpExecutor 真实
  * callTool → 结果回喂 → 第二段请求 → 回合完成。
  * 服务器未启动时 Assume 跳过（不是失败）。
@@ -101,9 +101,11 @@ class RealOkiaMcpIntegrationTest {
             val result = okia.refreshMcpTools()
             assertEquals("一个服务器刷新成功", listOf("everything"), result.refreshedServers)
 
-            val names = registry.snapshot().map { it.descriptor.name }
-            assertTrue("注册表含 everything_echo: $names", names.contains("everything_echo"))
-            assertTrue("注册表含 everything_get-sum", names.contains("everything_get-sum"))
+            val names = registry.snapshot().map { it.descriptor.wireName }
+            assertTrue("注册表含 mcp__everything__echo: $names",
+                names.contains("mcp__everything__echo"))
+            assertTrue("注册表含 mcp__everything__get-sum",
+                names.contains("mcp__everything__get-sum"))
 
             val snapshot = okia.getMcpDiscoverySnapshot()
             val st = snapshot.servers["everything"]
@@ -120,7 +122,7 @@ class RealOkiaMcpIntegrationTest {
         // 轮次：round0 = 模型产出 everything_get-sum 调用；round1 = 工具执行后的最终文本
         val mapper = FakeProtocolMapper(
             listOf(
-                toolsRound("everything_get-sum", """{"a":40,"b":2}"""),
+                toolsRound("mcp__everything__get-sum", """{"a":40,"b":2}"""),
                 textRound("40 加 2 等于 42")
             )
         )
@@ -132,8 +134,8 @@ class RealOkiaMcpIntegrationTest {
         }
         try {
             okia.refreshMcpTools()
-            assertEquals("注册表含 everything_get-sum", true,
-                registry.snapshot().any { it.descriptor.name == "everything_get-sum" })
+            assertEquals("注册表含 mcp__everything__get-sum", true,
+                registry.snapshot().any { it.descriptor.wireName == "mcp__everything__get-sum" })
 
             val events = mutableListOf<com.niki914.okia.event.TurnEvent>()
             val result = okia.send("40 加 2 等于多少（用工具）") { events += it }
@@ -146,7 +148,7 @@ class RealOkiaMcpIntegrationTest {
             assertEquals("4 条消息", 4, history.size)
             val assistant1 = history[1].message as Message.Assistant
             val call = assistant1.message.content.filterIsInstance<ContentBlock.ToolCall>().first()
-            assertEquals("everything_get-sum", call.name)
+            assertEquals("mcp__everything__get-sum", call.name)
             val toolResult = history[2].message as Message.ToolResult
             assertTrue("工具结果 Success: $toolResult",
                 toolResult.outcome is ToolCallOutcome.Success)

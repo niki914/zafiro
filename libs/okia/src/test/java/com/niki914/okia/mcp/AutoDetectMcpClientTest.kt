@@ -205,17 +205,4 @@ class AutoDetectMcpClientTest {
         val calls = methodsOf(awaitRequests(1))
         assertEquals(listOf("tools/call"), calls)
     }
-
-    // ── 服务器名校验 ─────────────────────────────────────────────────────
-
-    @Test
-    fun `invalid server name fails fast before any request`() = runBlocking {
-        try {
-            auto.discoverTools(mcpServer(name = "bad name!"))
-            throw AssertionError("expected invalid name failure")
-        } catch (e: McpProtocolException) {
-            // fail-fast：不发出任何请求
-        }
-        assertEquals(0, server.requestCount)
-    }
 }

@@ -29,12 +29,24 @@ data class RegisteredTool(
     val executor: ToolExecutor
 )
 
-/** 工具的静态描述，序列化进请求体。 */
+/**
+ * 工具的静态描述，序列化进请求体。
+ * [name] 为原始名（MCP 工具原始名 / host 配置的本地工具名），仅用于 MCP
+ * 调用与展示；[wireName] 为 provider 可见线缆名（请求体序列化 + registry
+ * 键 + 模型回传匹配）。两者分离的原因：MCP 工具名是用户可控字符串，可含
+ * Provider 不允许的字符（`.` 等）或超长，线缆名必须单独派生（见
+ * ToolWireName），且不能因规范化破坏到原始 MCP 工具名的可逆关系。
+ *
+ * 默认 wireName = ToolWireName.forLocal(name)，适用于本地工具与 host 直接
+ * 注册的干净名字；MCP 工具由 McpDiscovery 显式传入 `mcp__<server>__<tool>`
+ * 形态的线缆名。
+ */
 data class ToolDescriptor(
     val name: String,
     val description: String,
     val inputSchemaJson: String? = null,
-    val kind: ToolKind
+    val kind: ToolKind,
+    val wireName: String = ToolWireName.forLocal(name)
 )
 
 /** 工具在哪里运行。 */

@@ -79,10 +79,10 @@ class RealOkiaMcpTest {
         // config 未注入 toolRegistry → 门面默认实例持有 MCP 工具
         assertTrue(okia.config().toolRegistry == null)
         okia.send("hi") {} // 触发 loop，检查传给 loop 的 registry
-        assertNotNull(seenRegistry!!.find("docs_search"))
+        assertNotNull(seenRegistry!!.find("mcp__docs__search"))
         assertEquals(
             com.niki914.okia.tooling.ToolKind.Mcp("docs"),
-            seenRegistry!!.find("docs_search")!!.descriptor.kind
+            seenRegistry!!.find("mcp__docs__search")!!.descriptor.kind
         )
         okia.close()
     }
@@ -102,7 +102,7 @@ class RealOkiaMcpTest {
 
         okia.refreshMcpTools()
 
-        assertNotNull(injected.find("docs_search")) // 注册进注入实例
+        assertNotNull(injected.find("mcp__docs__search")) // 注册进注入实例
         okia.close()
     }
 

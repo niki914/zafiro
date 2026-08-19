@@ -218,7 +218,7 @@ class OpenAIChatCompletionProtocol(
         buildJsonObject {
             put("type", "function")
             put("function", buildJsonObject {
-                put("name", tool.name)
+                put("name", tool.wireName)
                 put("description", tool.description)
                 tool.inputSchemaJson?.let { put("parameters", codec.parseToJsonElement(it)) }
             })

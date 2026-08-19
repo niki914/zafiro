@@ -3,6 +3,7 @@ package com.niki914.okia.mcp
 import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.okia.tooling.ToolWireName
 import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -28,9 +29,10 @@ import kotlinx.coroutines.sync.withLock
  *
  * 冲突（Q2 裁决）：只检测 DuplicateInServer（同服务器 tools/list 返回同名
  * 多个：保留第一个注册，其余报告进 conflicts）。其余 reason（HiddenByLocal /
- * ExplicitOverridesDiscovered / CrossServerConflict）注册名带服务器前缀唯一
- * 化后无触发路径，枚举保留、不产生（触发依赖未来特性：无前缀模式 / explicit
- * 配置）。conflicts 只报告，不参与注册决策。
+ * ExplicitOverridesDiscovered / CrossServerConflict）线缆名经 ToolWireName
+ * 按服务器命名空间（mcp__<server>__<tool>）唯一化后无触发路径，枚举保留、
+ * 不产生（触发依赖未来特性：无前缀模式 / explicit 配置）。conflicts 只报告，
+ * 不参与注册决策。
  *
  * enabled=false 服务器（Q4 修订，2026-08 评审）：刷新跳过、不连接；其已注册工具
  * 在下次刷新时注销（disabled = 不连接、不暴露、不可调用）；discovery snapshot /
@@ -56,7 +58,8 @@ internal class McpDiscovery(
     @Volatile
     private var snapshot: McpDiscoverySnapshot = McpDiscoverySnapshot(emptyMap(), emptyList())
 
-    // 每服务器上次成功注册的工具全名（清理消失工具的依据）
+    // 每服务器上次成功注册的工具线缆名（清理消失工具的依据；全量替换语义下
+    // 键=server 名，值为已注册 wireName 集合）。
     private val registeredNames = HashMap<String, Set<String>>()
 
     // 串行化刷新流程（两个并发 refresh 只有一个执行；门面活跃回合检查之外的口）
@@ -154,24 +157,34 @@ internal class McpDiscovery(
 
     // ── 注册与状态 ─────────────────────────────────────────────────────────
 
-    // 全量幂等注册：移除该服务器消失的工具、覆盖同名注册（保留第一个已由
-    // dedupe 处理）；registeredNames 同步为本次注册集。
+    // 全量幂等注册：先移除该服务器旧注册（消除哈希消歧改名时的残留旧键），
+    // 再按确定性顺序（原始名排序）重新派生线缆名并注册。线缆名经
+    // ToolWireName 规范化 + 哈希消歧，保证 provider 约束安全且当前 registry
+    // 内唯一；registeredNames 同步为本次注册的 wireName 集。
     private fun registerAll(server: McpServer, tools: List<McpDiscoveredTool>) {
-        val prefix = server.name + "_"
-        val newNames = tools.mapTo(LinkedHashSet()) { prefix + it.name }
-        registeredNames[server.name]?.forEach { oldName ->
-            if (oldName !in newNames) registry().remove(oldName)
-        }
-        for (tool in tools) {
+        registeredNames[server.name]?.forEach { registry().remove(it) }
+        val used = registry().snapshot().map { it.descriptor.wireName }.toMutableSet()
+        val sorted = tools.sortedBy { it.name }
+        val newNames = LinkedHashSet<String>()
+        for (tool in sorted) {
+            val rawIdentity = "${server.name}\u0000${tool.name}"
+            val wireName = ToolWireName.disambiguate(
+                base = ToolWireName.forMcp(server.name, tool.name),
+                rawIdentity = rawIdentity,
+                used = used
+            )
+            used.add(wireName)
             registry().register(
                 ToolDescriptor(
-                    name = prefix + tool.name,
+                    name = tool.name,
                     description = tool.description ?: "",
                     inputSchemaJson = tool.inputSchemaJson,
-                    kind = ToolKind.Mcp(server.name)
+                    kind = ToolKind.Mcp(server.name),
+                    wireName = wireName
                 ),
                 executor
             )
+            newNames += wireName
         }
         registeredNames[server.name] = newNames
     }
@@ -200,7 +213,7 @@ internal class McpDiscovery(
 
     // ── 冲突（Q2：仅 DuplicateInServer） ───────────────────────────────────
 
-    // 服务器内同名：保留第一个，冲突报告（candidates 为参与冲突的注册全名，去重）。
+    // 服务器内同名：保留第一个，冲突报告（candidates 为参与冲突的注册线缆名，去重）。
     // 与 codex 差异：codex 也跳过重复工具（warn），但碰撞名用 hash 后缀消歧；
     // 本库注册名已带服务器前缀唯一，重复只可能是服务器自身的 bug，无需后缀。
     private fun dedupe(
@@ -212,7 +225,7 @@ internal class McpDiscovery(
         var duplicatedRegisteredName: String? = null
         for (tool in tools) {
             if (!seenNames.add(tool.name)) {
-                duplicatedRegisteredName = "${serverName}_${tool.name}"
+                duplicatedRegisteredName = ToolWireName.forMcp(serverName, tool.name)
             } else {
                 kept += tool
             }

@@ -26,10 +26,10 @@ import kotlinx.coroutines.CancellationException
  * - 永不抛异常契约：除取消（CancellationException 传播，契约不吞）外，
  *   全部异常转 Failure outcome。
  *
- * 工具名还原：注册名 = `${server}_${tool}`（G6 命名），execute 时按
- * descriptor.kind 的 serverName 剥离前缀得到服务器上的原始工具名。前缀
- * 匹配不上 = 与「工具不存在」同一处理（Failure unknown tool，用户裁决）——
- * 正常路径不会发生（loop 已按注册名 find 后才路由到本 executor），仅防御。
+ * 工具名还原：注册名与原始 MCP 工具名分离（见 ToolWireName）——executor 收
+ * 到的 ToolCallContext.descriptor.name 即原始 MCP 工具名，直接用于 callTool，
+ * 不再需要从线缆名剥前缀。call.name 是线缆名（`mcp__server__tool`），仅用于
+ * 展示与事件；路由由 descriptor.kind.Mcp.serverName 承担。
  *
  * onInterrupt：HTTP 请求已发出后框架无法得知服务器是否已远程执行，返回
  * Unknown（「可能已远程执行，永不重试」语义）。调用点暂未接线（取消补全
@@ -46,11 +46,7 @@ class McpExecutor(
         return try {
             val serverName = (call.descriptor.kind as? ToolKind.Mcp)?.serverName
                 ?: return ToolCallOutcome.Failure("not an MCP tool: ${call.name}")
-            val prefix = serverName + "_"
-            if (!call.name.startsWith(prefix)) {
-                return ToolCallOutcome.Failure("unknown tool: ${call.name}")
-            }
-            val toolName = call.name.removePrefix(prefix)
+            val toolName = call.descriptor.name // 原始 MCP 工具名，直接调用
             val server = servers(serverName)
                 ?: return ToolCallOutcome.Failure("MCP server not found: $serverName")
             val result = client.callTool(server, toolName, call.argumentsJson)

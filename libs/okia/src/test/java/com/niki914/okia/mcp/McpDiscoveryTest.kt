@@ -97,10 +97,12 @@ class McpDiscoveryTest {
         assertNotNull(state.fingerprint)
         assertEquals(1, state.discoveredToolCount)
         assertEquals("search", state.tools.single().name)
-        // 注册进 registry：名 = ${server}_${tool}，kind = Mcp(server)，元数据透传
-        val registered = registry.find("docs_search")
+        // 注册进 registry：线缆名 = mcp__server__tool，name = 原始工具名，kind = Mcp(server)，元数据透传
+        val registered = registry.find("mcp__docs__search")
         assertNotNull(registered)
-        assertEquals("find things", registered!!.descriptor.description)
+        assertEquals("search", registered!!.descriptor.name)
+        assertEquals("mcp__docs__search", registered.descriptor.wireName)
+        assertEquals("find things", registered.descriptor.description)
         assertEquals("{\"type\":\"object\"}", registered.descriptor.inputSchemaJson)
         assertEquals(ToolKind.Mcp("docs"), registered.descriptor.kind)
     }
@@ -113,14 +115,14 @@ class McpDiscoveryTest {
         }
         val d = discovery(client, listOf(server("a")), registry)
         d.refresh()
-        assertNotNull(registry.find("a_keep"))
-        assertNotNull(registry.find("a_gone"))
+        assertNotNull(registry.find("mcp__a__keep"))
+        assertNotNull(registry.find("mcp__a__gone"))
 
         client.tools = { listOf(tool("keep")) }
         d.refresh()
 
-        assertNotNull(registry.find("a_keep"))
-        assertNull(registry.find("a_gone")) // 消失的工具被移除
+        assertNotNull(registry.find("mcp__a__keep"))
+        assertNull(registry.find("mcp__a__gone")) // 消失的工具被移除
     }
 
     @Test
@@ -133,7 +135,7 @@ class McpDiscoveryTest {
         client.tools = { listOf(tool("t", "new")) }
         d.refresh()
 
-        assertEquals("new", registry.find("a_t")!!.descriptor.description)
+        assertEquals("new", registry.find("mcp__a__t")!!.descriptor.description)
         assertEquals(1, registry.snapshot().size)
     }
 
@@ -199,7 +201,7 @@ class McpDiscoveryTest {
         assertEquals("down again", state.errorMessage)
         assertNotNull(state.lastSuccessAtMillis) // 保留上次成功时间
         assertEquals(listOf("t"), state.tools.map { it.name }) // 旧工具快照保留
-        assertNotNull(registry.find("a_t")) // 旧注册保留可用
+        assertNotNull(registry.find("mcp__a__t")) // 旧注册保留可用
     }
 
     @Test
@@ -237,16 +239,16 @@ class McpDiscoveryTest {
         val servers = mutableListOf(server("a"), server("b"))
         val d = McpDiscovery(client, servers = { servers }, registry = { registry })
         d.refresh()
-        assertNotNull(registry.find("a_t"))
-        assertNotNull(registry.find("b_t"))
+        assertNotNull(registry.find("mcp__a__t"))
+        assertNotNull(registry.find("mcp__b__t"))
 
         servers[1] = server("b", enabled = false) // 禁用 b
         client.discovered.clear()
         val result = d.refresh()
 
         // b 的工具从 registry 注销，a 不受影响；b 不被连接
-        assertNull(registry.find("b_t"))
-        assertNotNull(registry.find("a_t"))
+        assertNull(registry.find("mcp__b__t"))
+        assertNotNull(registry.find("mcp__a__t"))
         assertTrue(client.discovered.none { it == "b" })
         assertEquals(listOf("a"), result.refreshedServers)
         // 诊断信息保留：snapshot 仍显示 b（含 fingerprint / 上次工具集）
@@ -264,15 +266,15 @@ class McpDiscoveryTest {
         val servers = mutableListOf(server("a"), server("b"))
         val d = McpDiscovery(client, servers = { servers }, registry = { registry })
         d.refresh()
-        assertNotNull(registry.find("b_t"))
+        assertNotNull(registry.find("mcp__b__t"))
 
         servers[1] = server("b", enabled = false)
         d.refresh()
-        assertNull(registry.find("b_t"))
+        assertNull(registry.find("mcp__b__t"))
 
         servers[1] = server("b") // 重新启用
         d.refresh()
-        assertNotNull(registry.find("b_t"))
+        assertNotNull(registry.find("mcp__b__t"))
         assertEquals(McpDiscoveryState.Available, d.current().servers.getValue("b").state)
     }
 
@@ -289,13 +291,13 @@ class McpDiscoveryTest {
         d.refresh()
 
         // 保留第一个
-        assertEquals("first", registry.find("docs_search")!!.descriptor.description)
+        assertEquals("first", registry.find("mcp__docs__search")!!.descriptor.description)
         assertEquals(2, registry.snapshot().size)
         // 冲突报告
         val conflict = d.current().conflicts.single()
-        assertEquals("docs_search", conflict.name)
+        assertEquals("mcp__docs__search", conflict.name)
         assertEquals(ToolConflictReason.DuplicateInServer, conflict.reason)
-        assertEquals(listOf("docs_search"), conflict.candidates)
+        assertEquals(listOf("mcp__docs__search"), conflict.candidates)
     }
 
     @Test
@@ -321,9 +323,9 @@ class McpDiscoveryTest {
         assertEquals(setOf("a", "b", "c"), result.refreshedServers.toSet())
         assertEquals(setOf("a", "b", "c"), client.discovered.toSet())
         assertEquals(McpDiscoveryState.Available, d.current().servers.getValue("b").state)
-        assertNotNull(registry.find("a_t_a"))
-        assertNotNull(registry.find("b_t_b"))
-        assertNotNull(registry.find("c_t_c"))
+        assertNotNull(registry.find("mcp__a__t_a"))
+        assertNotNull(registry.find("mcp__b__t_b"))
+        assertNotNull(registry.find("mcp__c__t_c"))
     }
 
     @Test
@@ -397,12 +399,12 @@ class McpDiscoveryTest {
         val d = McpDiscovery(client, servers = { servers }, registry = { registry })
 
         d.refresh()
-        assertNotNull(registry.find("a_t"))
+        assertNotNull(registry.find("mcp__a__t"))
 
         servers.removeAt(0) // 配置删除服务器 a
         d.refresh()
 
-        assertNull("被删服务器的旧工具应从 registry 清理", registry.find("a_t"))
+        assertNull("被删服务器的旧工具应从 registry 清理", registry.find("mcp__a__t"))
     }
 
     @Test

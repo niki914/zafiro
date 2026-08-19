@@ -24,7 +24,7 @@ import java.net.Socket
  * 真实 DeepSeek + 真实 server-everything 混合集成测试（T9c 层 3）。
  *
  * 对话 history mock：open(restore) 预置一段「成功回显」先例（User →
- * Assistant(tool_call=everything_echo) → ToolResult → Assistant），模型
+ * Assistant(tool_call=mcp__everything__echo) → ToolResult → Assistant），模型
  * 在本轮用户指令下模仿先例自主产出工具调用——验证产品形态的完整链路：
  * 真实发现（12 工具注册）→ 模型自主选择工具 → 真实执行 → 结果回喂 →
  * 模型总结 → 回合完成。
@@ -53,7 +53,7 @@ class RealMcpLlmsIntegrationTest {
         )
     }
 
-    // mock 历史：一次成功的 everything_echo 先例（自洽：assistant tool_call 与
+    // mock 历史：一次成功的 mcp__everything__echo 先例（自洽：assistant tool_call 与
     // 后续 tool 消息按 call id 配对，provider 才能接受）
     private fun mockSnapshotWithEchoPrecedent(): SessionSnapshot {
         val callId = "precedent-call"
@@ -64,7 +64,7 @@ class RealMcpLlmsIntegrationTest {
                 Message.Assistant(
                     AssistantMessage(
                         content = listOf(
-                            ContentBlock.ToolCall(callId, "everything_echo", """{"message":"hello"}""")
+                            ContentBlock.ToolCall(callId, "mcp__everything__echo", """{"message":"hello"}""")
                         ),
                         stopReason = StopReason.ToolUse
                     )
@@ -72,7 +72,7 @@ class RealMcpLlmsIntegrationTest {
             ),
             ConversationEntry(
                 "p-t", "p-a", 3,
-                Message.ToolResult(callId, "everything_echo", ToolCallOutcome.Success("Echoed: hello"))
+                Message.ToolResult(callId, "mcp__everything__echo", ToolCallOutcome.Success("Echoed: hello"))
             ),
             ConversationEntry(
                 "p-s", "p-t", 4,
@@ -114,7 +114,7 @@ class RealMcpLlmsIntegrationTest {
             val result = okia.send(
                 text = "请对 'okia 集成测试' 执行完全相同的回显操作，然后把你从工具收到的原文告诉我。",
                 options = com.niki914.okia.TurnOptions(
-                    systemPrompt = "回显操作必须调用工具 everything_echo 完成，工具参数 {\"message\": \"<要回显的文本>\"}。"
+                    systemPrompt = "回显操作必须调用工具 mcp__everything__echo 完成，工具参数 {\"message\": \"<要回显的文本>\"}。"
                 )
             ) {}
 
@@ -128,13 +128,13 @@ class RealMcpLlmsIntegrationTest {
                 8, history.size
             )
 
-            // 本轮链路：User(6) → Assistant(ToolCall everything_echo)(7) → ToolResult(8) → Assistant(9)
+            // 本轮链路：User(6) → Assistant(ToolCall mcp__everything__echo)(7) → ToolResult(8) → Assistant(9)
             val user = history[4].message
             assertTrue("本轮开头是 User: $user", user is Message.User)
             val assistantCall = history[5].message as Message.Assistant
             val call = assistantCall.message.content.filterIsInstance<ContentBlock.ToolCall>().firstOrNull()
-            assertTrue("模型自主调用 everything_echo: ${assistantCall.message.content}", call != null)
-            assertEquals("everything_echo", call?.name)
+            assertTrue("模型自主调用 mcp__everything__echo: ${assistantCall.message.content}", call != null)
+            assertEquals("mcp__everything__echo", call?.name)
             val toolResult = history[6].message as Message.ToolResult
             assertTrue("工具真实执行成功: $toolResult", toolResult.outcome is ToolCallOutcome.Success)
             assertTrue(

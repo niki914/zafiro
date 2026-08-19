@@ -210,7 +210,7 @@ class AnthropicMessagesProtocol(
 
     private fun convertTool(tool: ToolDescriptor): JsonObject =
         buildJsonObject {
-            put("name", tool.name)
+            put("name", tool.wireName)
             put("description", tool.description)
             tool.inputSchemaJson?.let { put("input_schema", codec.parseToJsonElement(it)) }
         }
