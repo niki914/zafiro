@@ -20,6 +20,10 @@ sealed interface ProtocolEvent {
     /** 思考签名，在思考 delta 之后到达。 */
     data class ThinkingSignature(val signature: String) : ProtocolEvent
 
+    /** 协议私有的不可解释数据（如 OpenAI reasoning item envelope），loop 只
+     *  负责挂载到 Thinking 块，不解析内容；由发起的协议负责封装与回放。 */
+    data class ThinkingOpaquePayload(val payload: String) : ProtocolEvent
+
     /**
      * 工具调用开始。流式 API 随后发出 ToolCallDelta；
      * 完整响应 API 直接跳到 ToolCallReady。
@@ -36,11 +40,13 @@ sealed interface ProtocolEvent {
         val delta: String
     ) : ProtocolEvent
 
-    /** 携带最终参数 JSON 的完整工具调用。 */
+    /** 携带最终参数 JSON 的完整工具调用。signature：Gemini 3 思维内工具调用的
+     *  thoughtSignature（须原样回带，见 GeminiProtocol.assistantParts）。 */
     data class ToolCallReady(
         val callId: String,
         val toolName: String,
-        val argumentsJson: String
+        val argumentsJson: String,
+        val signature: String? = null
     ) : ProtocolEvent
 
     /** 流正常结束。usage / responseModel 可能缺失，保持可空。

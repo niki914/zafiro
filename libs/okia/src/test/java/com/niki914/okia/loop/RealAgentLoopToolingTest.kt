@@ -14,14 +14,22 @@ import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
 import com.niki914.okia.message.ToolCallOutcome
+import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.HttpTimeouts
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -385,6 +393,109 @@ class RealAgentLoopToolingTest {
 
         val assistant = (commits.single().single() as Message.Assistant).message
         assertEquals("sig-123", assistant.reasoningSignature)
+    }
+
+    @Test
+    fun thinkingSignatureCarriedOnThinkingBlock() = runTest {
+        // 评审发现（Anthropic thinking 签名）：协议发出 ThinkingSignature 后，
+        // 最终消息的 Thinking 块应携带签名（Anthropic 序列化检查 block.signature，
+        // 无签名思考回放转文本）。当前 flushThinking 只创建 ContentBlock.Thinking(text)，
+        // 签名只落在消息级 reasoningSignature —— 块级签名丢失。
+        val commits = mutableListOf<List<Message>>()
+        val mapper = FakeProtocolMapper(
+            listOf(
+                ProtocolEvent.ThinkingDelta("reason"),
+                ProtocolEvent.ThinkingSignature("sig-123"),
+                ProtocolEvent.Completed(stopReason = StopReason.Stop)
+            )
+        )
+
+        runLoop(loopRequest(emptyList()) { commits += it }.copy(protocolMapper = mapper))
+
+        val assistant = (commits.single().single() as Message.Assistant).message
+        val thinking = assistant.content.single() as ContentBlock.Thinking
+        assertEquals("sig-123", thinking.signature)
+    }
+
+    @Test
+    fun anthropicReplayPreservesThinkingBlockWithSignature() = runTest {
+        // 完整链路回归：loop 收 thinking + 签名 → 消息进历史 → Anthropic 序列化
+        // 应输出 type=thinking 块（带 signature 原样回带）。当前签名在 loop 边界
+        // 丢失 → 序列化按无签名思考转文本（type=text），与 PR 描述不符。
+        val commits = mutableListOf<List<Message>>()
+        val mapper = FakeProtocolMapper(
+            listOf(
+                ProtocolEvent.ThinkingDelta("reason"),
+                ProtocolEvent.ThinkingSignature("sig-123"),
+                ProtocolEvent.Completed(stopReason = StopReason.Stop)
+            )
+        )
+        runLoop(loopRequest(emptyList()) { commits += it }.copy(protocolMapper = mapper))
+        val assistantMessage = (commits.single().single() as Message.Assistant).message
+
+        val request = AnthropicMessagesProtocol().buildRequest(
+            RequestSnapshot(
+                endpoint = "https://api.anthropic.com/v1/messages",
+                apiKey = "sk-test",
+                model = "claude-sonnet-4",
+                systemPrompt = null,
+                temperature = 0.7f,
+                maxTokens = 100,
+                headers = emptyMap(),
+                timeouts = HttpTimeouts(1_000, 1_000, 1_000),
+                tools = emptyList()
+            ),
+            listOf(Message.Assistant(assistantMessage))
+        )
+        val content = Json.parseToJsonElement(request.body!!).jsonObject["messages"]!!.jsonArray[0]
+            .jsonObject["content"]!!.jsonArray
+        val thinkingBlock = content.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.contentOrNull == "thinking"
+        }
+        assertNotNull("thinking 块应保留（当前被转成 text 块）", thinkingBlock)
+        assertEquals("sig-123", thinkingBlock!!.jsonObject["signature"]!!.jsonPrimitive.content)
+        assertEquals("reason", thinkingBlock.jsonObject["thinking"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun opaquePayloadAttachedToThinkingBlock() = runTest {
+        // 协议私有 payload（OpenAI reasoning envelope）：loop 只挂载不解析，
+        // flush 时写入 Thinking 块 opaquePayload。
+        val commits = mutableListOf<List<Message>>()
+        val mapper = FakeProtocolMapper(
+            listOf(
+                ProtocolEvent.ThinkingOpaquePayload("openai-responses:reasoning:v1:{\"items\":[{}]}"),
+                ProtocolEvent.ThinkingDelta("reason"),
+                ProtocolEvent.Completed(stopReason = StopReason.Stop)
+            )
+        )
+
+        runLoop(loopRequest(emptyList()) { commits += it }.copy(protocolMapper = mapper))
+
+        val assistant = (commits.single().single() as Message.Assistant).message
+        val thinking = assistant.content.single() as ContentBlock.Thinking
+        assertEquals("reason", thinking.text)
+        assertEquals("openai-responses:reasoning:v1:{\"items\":[{}]}", thinking.opaquePayload)
+    }
+
+    @Test
+    fun opaquePayloadOnlyStillCommitsThinkingBlock() = runTest {
+        // payload-only：没有思考文本 delta 也须落 Thinking 块（官方 reasoning
+        // summary 需显式启用，不能要求先出现 ThinkingDelta）。
+        val commits = mutableListOf<List<Message>>()
+        val mapper = FakeProtocolMapper(
+            listOf(
+                ProtocolEvent.ThinkingOpaquePayload("openai-responses:reasoning:v1:{\"items\":[{}]}"),
+                ProtocolEvent.Completed(stopReason = StopReason.Stop)
+            )
+        )
+
+        runLoop(loopRequest(emptyList()) { commits += it }.copy(protocolMapper = mapper))
+
+        val assistant = (commits.single().single() as Message.Assistant).message
+        val thinking = assistant.content.single() as ContentBlock.Thinking
+        assertEquals("", thinking.text)
+        assertEquals("openai-responses:reasoning:v1:{\"items\":[{}]}", thinking.opaquePayload)
     }
 
     @Test

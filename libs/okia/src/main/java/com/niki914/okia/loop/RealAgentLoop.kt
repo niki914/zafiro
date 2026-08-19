@@ -427,7 +427,19 @@ internal class RealAgentLoop : AgentLoop {
                     onEvent(TurnEvent.ThinkingDelta(state.blocks.size, event.text, state.partialMessage()))
                 }
             }
-            is ProtocolEvent.ThinkingSignature -> state.reasoningSignature = event.signature
+            is ProtocolEvent.ThinkingSignature -> {
+                state.reasoningSignature = event.signature
+                // 块级签名（评审发现）：签名绑定到当前进行中的块（Anthropic 思考块 /
+                // Gemini 文本·思考块），flush 时写入块。无进行中块（Anthropic
+                // redacted_thinking 无文本 / Gemini functionCall 签名走 ToolCallReady）
+                // 时仅保留消息级。
+                if (state.thinkingStarted || state.textStarted) {
+                    state.pendingBlockSignature = event.signature
+                }
+            }
+            // 协议私有 opaque payload（如 OpenAI reasoning envelope）：只挂载，不解析。
+            // 即使没有思考文本（payload-only）也须落 Thinking 块。
+            is ProtocolEvent.ThinkingOpaquePayload -> state.pendingThinkingPayloads += event.payload
             is ProtocolEvent.ToolCallStarted -> {
                 state.pendingToolCalls += PendingToolCall(event.callId, event.toolName)
                 onEvent(
@@ -462,7 +474,9 @@ internal class RealAgentLoop : AgentLoop {
                     // Ready 携带最终参数 JSON（事件契约），以它为最终事实源——
                     // 只有 Ready、无 Delta 的协议执行器不会收到空串。ifEmpty
                     // 回退累积 delta：兼容 Ready 不重复携带参数的流式协议。
-                    argumentsJson = event.argumentsJson.ifEmpty { pending.arguments.toString() }
+                    argumentsJson = event.argumentsJson.ifEmpty { pending.arguments.toString() },
+                    // Gemini 3 思维内工具调用签名（事件契约，原样回带）
+                    signature = event.signature
                 )
                 state.pendingToolCalls.remove(pending)
                 state.readyToolCalls += call
@@ -765,18 +779,30 @@ internal class RealAgentLoop : AgentLoop {
         if (!state.textStarted) return
         val content = state.text.toString()
         val index = state.blocks.size
-        state.blocks += ContentBlock.Text(content)
+        state.blocks += ContentBlock.Text(content, signature = state.pendingBlockSignature)
+        state.pendingBlockSignature = null
         state.textStarted = false
         onEvent(TurnEvent.TextEnded(index, content, state.partialMessage()))
     }
 
     private suspend fun flushThinking(state: StreamState, onEvent: suspend (TurnEvent) -> Unit) {
-        if (!state.thinkingStarted) return
+        val hasText = state.thinkingStarted
+        val hasPayload = state.pendingThinkingPayloads.isNotEmpty()
+        if (!hasText && !hasPayload) return
         val content = state.thinking.toString()
         val index = state.blocks.size
-        state.blocks += ContentBlock.Thinking(content)
+        state.blocks += ContentBlock.Thinking(
+            text = content,
+            signature = state.pendingBlockSignature,
+            // parser 已封装完整 envelope（含 provider 前缀），loop 只透传；
+            // 单个 reasoning 阶段 = 一个 envelope（多阶段合并超出当前协议形态）
+            opaquePayload = state.pendingThinkingPayloads.firstOrNull()
+        )
+        state.pendingBlockSignature = null
+        state.pendingThinkingPayloads.clear()
         state.thinkingStarted = false
-        onEvent(TurnEvent.ThinkingEnded(index, content, state.partialMessage()))
+        // payload-only 块（无文本）不发 ThinkingEnded（无对应 Started 事件）
+        if (hasText) onEvent(TurnEvent.ThinkingEnded(index, content, state.partialMessage()))
     }
 
     private suspend fun flushBlocks(state: StreamState, onEvent: suspend (TurnEvent) -> Unit) {
@@ -833,6 +859,11 @@ private class StreamState {
     var responseModel: String? = null
     var stopReason: StopReason? = null
     var reasoningSignature: String? = null
+    // 待绑定到下一块 flush 的签名（ThinkingSignature 事件绑定到进行中的块）
+    var pendingBlockSignature: String? = null
+    // 待绑定到下一思考块 flush 的 opaque payload（ThinkingOpaquePayload 事件，
+    // 协议私有、loop 不解析；即使无思考文本也落块）
+    val pendingThinkingPayloads = mutableListOf<String>()
 
     fun partialContent(): List<ContentBlock> = buildList {
         addAll(blocks)

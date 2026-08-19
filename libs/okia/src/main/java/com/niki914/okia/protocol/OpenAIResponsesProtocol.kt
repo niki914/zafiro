@@ -38,11 +38,12 @@ import kotlinx.serialization.json.put
  *   引用）；arguments delta 用 item_id 关联，须映射回 call_id
  * - 思考：DeepSeek 走 response.reasoning_text.delta；OpenAI 官方走
  *   response.reasoning_summary_text.delta（摘要）。两者都解析为 ThinkingDelta。
- *   OpenAI 官方 reasoning 加密不可回放：assistant 历史思考转文本
- *   （requiresThinkingAsText）。
+ *   OpenAI 官方 reasoning item（含 encrypted_content）在 output_item.done 捕获，
+ *   以 ThinkingOpaquePayload 全量保存（envelope = openai-responses:reasoning:v1: +
+ *   {"items":[...]}），回放时原样还原——不转明文（有损）。
  * - response.completed status=completed → Stop / ToolUse（按 output 是否含
- *   function_call）；status=incomplete 且 reason=max_output_tokens → Length；
- *   其余不完整或 failed → Error。
+ *   function_call）；status=incomplete 且 reason=max_tokens / max_output_tokens
+ *   → Length；其余不完整或 failed → Error。
  * Design source: pi api/openai-responses.ts + openai-responses-shared.ts；
  * 实测 DeepSeek /responses 字节流（文本/工具/推理/usage 全形态）。
  */
@@ -92,6 +93,9 @@ class OpenAIResponsesProtocol(
                     "response.output_item.done" -> handleItemDone(event.data, state, ::emit)
                     // 终态
                     "response.completed" -> handleCompleted(event.data, state, ::emit)
+                    // 官方独立终态事件（OpenAI Streaming Events：达到输出上限时发
+                    // response.incomplete，reason=max_tokens；不是 completed 的变体）
+                    "response.incomplete" -> handleIncomplete(event.data, state, ::emit)
                     "response.failed" -> {
                         emit(ProtocolEvent.Error(IllegalStateException("response.failed: ${errorMessage(event.data)}")))
                         failed = true
@@ -143,7 +147,9 @@ class OpenAIResponsesProtocol(
     /**
      * 消息 → Responses input item 列表。一条助手消息可能产出多个 item：
      * 文本 role 消息 + 每条工具调用一个 function_call item。
-     * 思考不可回放（OpenAI 加密）：按 requiresThinkingAsText 合并进文本。
+     * 思考回放：带合法 OpenAI reasoning payload 的 Thinking 块原样还原为
+     * reasoning item（不把其文本拼进 message，避免重复）；无 payload 或前缀
+     * 不认识的思考块继续按明文合并进文本（DeepSeek 网关形态）。
      */
     private fun addInputItem(message: Message): List<JsonObject> = when (message) {
         is Message.User -> listOf(buildJsonObject {
@@ -155,12 +161,19 @@ class OpenAIResponsesProtocol(
             val textBlocks = message.message.content.filterIsInstance<ContentBlock.Text>()
             val thinkingBlocks = message.message.content.filterIsInstance<ContentBlock.Thinking>()
             val toolCalls = message.message.content.filterIsInstance<ContentBlock.ToolCall>()
-            val thinkingText = thinkingBlocks.joinToString("\n") { it.text }
+            // 带合法 OpenAI reasoning payload 的块 → 原样回放 reasoning items（保序）
+            thinkingBlocks.forEach { block ->
+                extractReasoningItems(block.opaquePayload)?.forEach { items += it }
+            }
+            // 无 payload / 前缀不认识 / envelope 损坏的思考文本 → 明文合并路径
+            val plainThinkingText = thinkingBlocks
+                .filter { extractReasoningItems(it.opaquePayload) == null }
+                .joinToString("\n") { it.text }
             val text = textBlocks.joinToString("") { it.text }
             val content = when {
-                thinkingText.isEmpty() -> text
-                text.isEmpty() -> thinkingText
-                else -> "$thinkingText\n$text"
+                plainThinkingText.isEmpty() -> text
+                text.isEmpty() -> plainThinkingText
+                else -> "$plainThinkingText\n$text"
             }
             if (content.isNotEmpty()) {
                 items += buildJsonObject {
@@ -183,6 +196,39 @@ class OpenAIResponsesProtocol(
             put("call_id", message.callId)
             put("output", message.outcome.providerContent())
         })
+    }
+
+    // ── reasoning opaque payload（envelope 封装 / 解析） ───────────────────
+
+    /** 带前缀的 reasoning envelope：openai-responses:reasoning:v1:{"items":[...]}。
+     *  前缀路由 + 版本化；items 恒为数组（单元素也包装），未来多块不升级格式。 */
+    private fun reasoningEnvelope(items: List<String>): String =
+        REASONING_PAYLOAD_PREFIX + codec.encodeToString(
+            JsonObject.serializer(),
+            buildJsonObject {
+                put("items", buildJsonArray { items.forEach { add(codec.parseToJsonElement(it)) } })
+            }
+        )
+
+    /** 解析带前缀 envelope → reasoning items；null = 无 payload / 前缀不认识 / 损坏。 */
+    private fun extractReasoningItems(payload: String?): List<JsonObject>? {
+        if (payload == null || !payload.startsWith(REASONING_PAYLOAD_PREFIX)) return null
+        val envelope = try {
+            codec.parseToJsonElement(payload.removePrefix(REASONING_PAYLOAD_PREFIX)) as? JsonObject
+        } catch (e: SerializationException) {
+            null
+        } ?: return null
+        return (envelope["items"] as? JsonArray)?.mapNotNull { it as? JsonObject } ?: return null
+    }
+
+    /** 累积的 reasoning items 已就绪（阶段边界 / 终态）→ 发一次完整 envelope。 */
+    private suspend fun emitReasoningEnvelope(
+        state: StreamState,
+        emit: suspend (ProtocolEvent) -> Unit
+    ) {
+        if (state.reasoningItems.isEmpty()) return
+        emit(ProtocolEvent.ThinkingOpaquePayload(reasoningEnvelope(state.reasoningItems)))
+        state.reasoningItems.clear()
     }
 
     private fun userContent(blocks: List<ContentBlock>): String {
@@ -212,7 +258,12 @@ class OpenAIResponsesProtocol(
     ) {
         val obj = codec.parseToJsonElement(data) as? JsonObject ?: return
         val item = obj["item"] as? JsonObject ?: return
-        if ((item["type"] as? JsonPrimitive)?.contentOrNull != "function_call") return
+        val type = (item["type"] as? JsonPrimitive)?.contentOrNull ?: return
+        // reasoning 阶段结束边界：非 reasoning item 开始 → 先把已累积的 reasoning
+        // envelope 发出（loop 的思考块在后续文本/工具 delta 到达时 flush，须先于
+        // 它们收到 payload）
+        if (type != "reasoning") emitReasoningEnvelope(state, emit)
+        if (type != "function_call") return
         // item.id 是事件引用 id；call_id 是工具结果引用 id（Anthropic 语义同源）。
         val itemId = (item["id"] as? JsonPrimitive)?.contentOrNull ?: ""
         val callId = (item["call_id"] as? JsonPrimitive)?.contentOrNull ?: itemId
@@ -288,7 +339,15 @@ class OpenAIResponsesProtocol(
     ) {
         val obj = codec.parseToJsonElement(data) as? JsonObject ?: return
         val item = obj["item"] as? JsonObject ?: return
-        if ((item["type"] as? JsonPrimitive)?.contentOrNull != "function_call") return
+        val type = (item["type"] as? JsonPrimitive)?.contentOrNull ?: return
+        // reasoning item 完成：完整 item（id / summary / content / encrypted_content）
+        // 原样累积，阶段边界（下一个非 reasoning item）或终态时统一封装发出。
+        // 支持 payload-only：即使没有 reasoning 文本 delta，item 也完整保存。
+        if (type == "reasoning") {
+            state.reasoningItems += codec.encodeToString(JsonObject.serializer(), item)
+            return
+        }
+        if (type != "function_call") return
         // 无 delta 场景补齐全量参数；同时取回最终参数供 Ready 携带
         val fullArgs = completeArguments(obj, state, emit)
         val itemId = (item["id"] as? JsonPrimitive)?.contentOrNull ?: ""
@@ -317,6 +376,8 @@ class OpenAIResponsesProtocol(
                     ?.any { it is JsonObject && (it["type"] as? JsonPrimitive)?.contentOrNull == "function_call" }
                     ?: false
                 state.finished = true
+                // reasoning-only 回合（无后续非 reasoning item）：终态前补发 envelope
+                emitReasoningEnvelope(state, emit)
                 emit(
                     ProtocolEvent.Completed(
                         usage,
@@ -328,14 +389,39 @@ class OpenAIResponsesProtocol(
             "incomplete" -> {
                 val reason = (response["incomplete_details"] as? JsonObject)
                     ?.get("reason")?.let { (it as? JsonPrimitive)?.contentOrNull }
-                if (reason == "max_output_tokens") {
-                    state.finished = true
-                    emit(ProtocolEvent.Completed(usage, state.responseModel, StopReason.Length))
-                } else {
-                    throw IllegalStateException("response incomplete, reason: $reason")
+                when (reason) {
+                    // 官方 reason=max_tokens；DeepSeek 网关形态 = max_output_tokens
+                    "max_tokens", "max_output_tokens" -> {
+                        state.finished = true
+                        emitReasoningEnvelope(state, emit)
+                        emit(ProtocolEvent.Completed(usage, state.responseModel, StopReason.Length))
+                    }
+                    else -> throw IllegalStateException("response incomplete, reason: $reason")
                 }
             }
             else -> throw IllegalStateException("unexpected response status: $status")
+        }
+    }
+
+    private suspend fun handleIncomplete(
+        data: String,
+        state: StreamState,
+        emit: suspend (ProtocolEvent) -> Unit
+    ) {
+        val obj = codec.parseToJsonElement(data) as? JsonObject ?: return
+        val response = obj["response"] as? JsonObject ?: return
+        (response["model"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
+            if (state.responseModel == null) state.responseModel = it
+        }
+        val usage = (response["usage"] as? JsonObject)?.let { parseUsage(it) }
+        val reason = (response["incomplete_details"] as? JsonObject)
+            ?.get("reason")?.let { (it as? JsonPrimitive)?.contentOrNull }
+        when (reason) {
+            "max_tokens", "max_output_tokens" -> {
+                state.finished = true
+                emit(ProtocolEvent.Completed(usage, state.responseModel, StopReason.Length))
+            }
+            else -> throw IllegalStateException("response incomplete, reason: $reason")
         }
     }
 
@@ -373,8 +459,16 @@ class OpenAIResponsesProtocol(
         val itemToCall = mutableMapOf<String, Pair<String, String>>()
         // item.id → 已累积参数（append 顺序 = 字节序；可能首次 delta 就有全量）
         val toolArgs = mutableMapOf<String, StringBuilder>()
+        // 本段已完成的 reasoning item JSON（原样保存，阶段边界/终态统一封装）
+        val reasoningItems = mutableListOf<String>()
         var responseModel: String? = null
         var finished = false
+    }
+
+    private companion object {
+        // reasoning opaque payload envelope 前缀（provider + 版本标记）；
+        // 内容 = {"items":[<reasoning item>...]}。
+        const val REASONING_PAYLOAD_PREFIX = "openai-responses:reasoning:v1:"
     }
 }
 

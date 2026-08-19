@@ -188,20 +188,22 @@ internal class RealOkia(
     }
 
     override suspend fun rewind(entryId: String) {
+        // 检查 + 操作同一临界区（评审发现 5）：并发 send 不能在 check 通过后、
+        // tree.rewind 前启动（否则活跃回合中回退历史，loop 与树 leaf 不一致）
         mutex.withLock {
             check(!closed) { "Okia is closed" }
             check(activeTurn == null) { "cannot rewind during active turn" }
+            tree.rewind(entryId)
+            publish()
         }
-        tree.rewind(entryId)
-        publish()
     }
 
     override suspend fun export(): SessionSnapshot {
         mutex.withLock {
             check(!closed) { "Okia is closed" }
             check(activeTurn == null) { "cannot export during active turn" }
+            return SessionSnapshot(id = tree.id, leafId = tree.leafId, version = 1, entries = tree.entries)
         }
-        return SessionSnapshot(id = tree.id, leafId = tree.leafId, version = 1, entries = tree.entries)
     }
 
     override suspend fun update(block: OkiaConfig.Builder.() -> Unit) {
@@ -215,11 +217,13 @@ internal class RealOkia(
     override suspend fun config(): OkiaConfig = config
 
     override suspend fun refreshMcpTools(): McpRefreshResult {
+        // 检查 + 刷新同一临界区（评审发现 5）：刷新含注册表变更，不能在活跃
+        // 回合中执行；锁内执行使并发 send 等待刷新完成，不出现竞态窗口
         mutex.withLock {
             check(!closed) { "Okia is closed" }
             check(activeTurn == null) { "cannot refreshMcpTools during active turn" }
+            return mcpDiscovery.refresh()
         }
-        return mcpDiscovery.refresh()
     }
 
     // 只读快照；活跃回合允许（并发契约 §8.7 #5 的列表不含本方法，读不与

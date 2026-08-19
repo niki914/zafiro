@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -216,16 +217,63 @@ class McpDiscoveryTest {
     // ── enabled=false ──────────────────────────────────────────────────────
 
     @Test
-    fun disabledServerIsSkippedNotRefreshedNotCleaned() = runTest {
+    fun disabledServerIsNotDiscovered() = runTest {
         val registry = DefaultToolRegistry()
         val client = FakeClient()
         val d = discovery(client, listOf(server("a"), server("b", enabled = false)), registry)
         val result = d.refresh()
 
         assertEquals(listOf("a"), result.refreshedServers)
-        assertTrue(client.discovered.none { it == "b" }) // 跳过
+        assertTrue(client.discovered.none { it == "b" }) // 跳过，不连接
         assertEquals(McpDiscoveryState.Idle, d.current().servers.getValue("b").state)
-        assertNull(registry.find("b_x"))
+    }
+
+    @Test
+    fun disabledServerToolsAreUnregisteredAndServerNotConnected() = runTest {
+        // 状态转换：enabled → disabled → refresh。工具注销（disabled = 不暴露、
+        // 不可调用），服务器不被连接；discovery snapshot / fingerprint 保留。
+        val registry = DefaultToolRegistry()
+        val client = FakeClient().apply { tools = { listOf(tool("t")) } }
+        val servers = mutableListOf(server("a"), server("b"))
+        val d = McpDiscovery(client, servers = { servers }, registry = { registry })
+        d.refresh()
+        assertNotNull(registry.find("a_t"))
+        assertNotNull(registry.find("b_t"))
+
+        servers[1] = server("b", enabled = false) // 禁用 b
+        client.discovered.clear()
+        val result = d.refresh()
+
+        // b 的工具从 registry 注销，a 不受影响；b 不被连接
+        assertNull(registry.find("b_t"))
+        assertNotNull(registry.find("a_t"))
+        assertTrue(client.discovered.none { it == "b" })
+        assertEquals(listOf("a"), result.refreshedServers)
+        // 诊断信息保留：snapshot 仍显示 b（含 fingerprint / 上次工具集）
+        val snap = d.current().servers.getValue("b")
+        assertFalse(snap.enabled)
+        assertNotNull(snap.fingerprint)
+        assertEquals(McpDiscoveryState.Available, snap.state)
+    }
+
+    @Test
+    fun reEnabledServerToolsAreReRegisteredOnRefresh() = runTest {
+        // 状态转换：disabled → enabled → refresh。工具重新注册，状态回 Available。
+        val registry = DefaultToolRegistry()
+        val client = FakeClient().apply { tools = { listOf(tool("t")) } }
+        val servers = mutableListOf(server("a"), server("b"))
+        val d = McpDiscovery(client, servers = { servers }, registry = { registry })
+        d.refresh()
+        assertNotNull(registry.find("b_t"))
+
+        servers[1] = server("b", enabled = false)
+        d.refresh()
+        assertNull(registry.find("b_t"))
+
+        servers[1] = server("b") // 重新启用
+        d.refresh()
+        assertNotNull(registry.find("b_t"))
+        assertEquals(McpDiscoveryState.Available, d.current().servers.getValue("b").state)
     }
 
     // ── 冲突（DuplicateInServer） ──────────────────────────────────────────
@@ -335,6 +383,26 @@ class McpDiscoveryTest {
 
         servers.removeAt(1)
         assertEquals(setOf("a"), d.current().servers.keys) // config 删除的服务器不出现
+    }
+
+    @Test
+    fun removedServerToolsAreCleanedFromRegistry() = runTest {
+        // 评审发现（P2）：服务器从配置删除后，其已注册工具不应残留——否则模型仍
+        // 被暴露旧工具，执行时却找不到服务器（McpExecutor 返回 Failure）。
+        // 当前 refresh 只处理 enabled 服务器，清理只针对「本次仍被刷新」的服务器
+        // （registerAll 按 registeredNames 差异移除），被删服务器的旧注册永久残留。
+        val registry = DefaultToolRegistry()
+        val client = FakeClient().apply { tools = { listOf(tool("t")) } }
+        val servers = mutableListOf(server("a"))
+        val d = McpDiscovery(client, servers = { servers }, registry = { registry })
+
+        d.refresh()
+        assertNotNull(registry.find("a_t"))
+
+        servers.removeAt(0) // 配置删除服务器 a
+        d.refresh()
+
+        assertNull("被删服务器的旧工具应从 registry 清理", registry.find("a_t"))
     }
 
     @Test

@@ -38,6 +38,9 @@ import kotlinx.serialization.json.put
  *   对齐 @google/genai SDK 语义 / pi google 实现）、finishReason、usageMetadata
  * - 思考：thought: true part + thoughtSignature；工具结果回带为 user 消息的
  *   functionResponse part（响应对象 output / error 二选一）
+ * - 工具：functionCall part 可携带 thoughtSignature（Gemini 3 思维内工具调用，
+ *   原样回带）；finishReason=STOP 但本段出现 functionCall 时映射 ToolUse
+ *   （pi 语义，工具循环依赖 ToolUse 执行）
  * 历史与请求装配：consecutive 同角色内容合并（Anthropic 同规则）；工具结果
  * 并入 user content（functionResponse part），可与用户文本共存。
  * 无集成测试（无真实 key，用户裁决 2026-08-18）：实现经代码走查 + fixture
@@ -186,6 +189,9 @@ class GeminiProtocol(
                         put("args", parseArguments(block.argumentsJson))
                         put("id", block.id)
                     })
+                    // Gemini 3：functionCall part 的 thoughtSignature 原样回带
+                    // （pi 语义，否则下一步返回 400）
+                    block.signature?.let { put("thoughtSignature", it) }
                 }
                 is ContentBlock.Image -> null  // M2 前不支持（user 侧已抛错），防御忽略
             }
@@ -243,12 +249,23 @@ class GeminiProtocol(
             ?: return
         parts.forEach { partElement ->
             val part = partElement as? JsonObject ?: return@forEach
-            if ((part["thought"] as? JsonPrimitive)?.booleanOrNull == true) {
-                handleThinkingPart(part, state, emit)
-            } else if (part["functionCall"] is JsonObject) {
-                handleFunctionCallPart(part["functionCall"] as JsonObject, emit)
-            } else {
-                handleTextPart(part, state, emit)
+            val isThought = (part["thought"] as? JsonPrimitive)?.booleanOrNull == true
+            val hasText = part["text"] is JsonPrimitive
+            val hasFunctionCall = part["functionCall"] is JsonObject
+            when {
+                // 思考 part：文本 + 签名；可同时携带 functionCall（Gemini 3 思维内
+                // 工具调用，functionCall 与 thoughtSignature 同 part）——functionCall
+                // 必须单独解析，不能因 thought 标志跳过
+                isThought -> {
+                    handleThinkingPart(part, state, emit)
+                    if (hasFunctionCall) handleFunctionCallPart(part, state, emit)
+                }
+                // functionCall part（可同时携带文本 / 签名）
+                hasFunctionCall -> {
+                    if (hasText) handleTextPart(part, state, emit)
+                    handleFunctionCallPart(part, state, emit)
+                }
+                else -> handleTextPart(part, state, emit)
             }
         }
     }
@@ -282,9 +299,11 @@ class GeminiProtocol(
     }
 
     private suspend fun handleFunctionCallPart(
-        call: JsonObject,
+        part: JsonObject,
+        state: StreamState,
         emit: suspend (ProtocolEvent) -> Unit
     ) {
+        val call = part["functionCall"] as JsonObject
         val name = (call["name"] as? JsonPrimitive)?.contentOrNull ?: ""
         val args = call["args"] as? JsonObject
             ?: ((call["args"] as? JsonPrimitive)?.let { parseArguments(it.content) })
@@ -294,16 +313,30 @@ class GeminiProtocol(
         val providedId = (call["id"] as? JsonPrimitive)?.contentOrNull
         val id = if (providedId.isNullOrEmpty()) "gemini_fc_${call.hashCode()}" else providedId
         val argsJson = codec.encodeToString(JsonObject.serializer(), args)
-        // functionCall part 是完整对象（非分片）：一次发全生命周期
+        // functionCall part 是完整对象（非分片）：一次发全生命周期。
+        // 签名：functionCall part 可携带 thoughtSignature（Gemini 3 思维内工具调用，
+        // pi 语义：签名原样回带到 functionCall part，见 assistantParts）
+        state.sawFunctionCall = true
+        val signature = (part["thoughtSignature"] as? JsonPrimitive)?.contentOrNull
+            ?.takeIf { it.isNotEmpty() }
         emit(ProtocolEvent.ToolCallStarted(id, name))
         emit(ProtocolEvent.ToolCallDelta(id, name, argsJson))
-        emit(ProtocolEvent.ToolCallReady(id, name, argsJson))
+        emit(ProtocolEvent.ToolCallReady(id, name, argsJson, signature))
     }
 
     private suspend fun finishStream(state: StreamState, emit: suspend (ProtocolEvent) -> Unit) {
         when (state.finishReason) {
             null -> emit(ProtocolEvent.Error(IllegalStateException("stream ended without finishReason")))
-            "STOP" -> emit(ProtocolEvent.Completed(state.usage, state.responseModel, StopReason.Stop))
+            // pi 语义（api/google-generative-ai.ts）：finishReason=STOP 但内容含
+            // functionCall 时映射 ToolUse（工具循环依赖 ToolUse 执行工具；
+            // Gemini 返回 functionCall 后通常以正常结束状态收尾）
+            "STOP" -> emit(
+                ProtocolEvent.Completed(
+                    state.usage,
+                    state.responseModel,
+                    if (state.sawFunctionCall) StopReason.ToolUse else StopReason.Stop
+                )
+            )
             "MAX_TOKENS" -> emit(ProtocolEvent.Completed(state.usage, state.responseModel, StopReason.Length))
             else -> emit(
                 ProtocolEvent.Error(
@@ -334,6 +367,8 @@ class GeminiProtocol(
         var usage: Usage? = null
         var responseModel: String? = null
         var finishReason: String? = null
+        // 本段是否出现过 functionCall（finishReason=STOP 时据此映射 ToolUse，pi 语义）
+        var sawFunctionCall = false
     }
 
     private companion object {

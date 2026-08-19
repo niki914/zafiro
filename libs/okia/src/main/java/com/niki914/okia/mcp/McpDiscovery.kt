@@ -32,9 +32,11 @@ import kotlinx.coroutines.sync.withLock
  * 化后无触发路径，枚举保留、不产生（触发依赖未来特性：无前缀模式 / explicit
  * 配置）。conflicts 只报告，不参与注册决策。
  *
- * enabled=false 服务器（Q4 裁决）：刷新跳过、状态保持、不清理旧注册
- * （host 自行 remove）。lastSuccessAtMillis 仅记录，不参与新鲜度判定
- * （Q6 裁决：时间不能证明缓存新鲜）。
+ * enabled=false 服务器（Q4 修订，2026-08 评审）：刷新跳过、不连接；其已注册工具
+ * 在下次刷新时注销（disabled = 不连接、不暴露、不可调用）；discovery snapshot /
+ * fingerprint / 诊断信息保留（状态保持），重新 enabled 后经 refresh 重新注册。
+ * 从配置删除的服务器同样在下次刷新时注销旧注册。lastSuccessAtMillis 仅记录，
+ * 不参与新鲜度判定（Q6 裁决：时间不能证明缓存新鲜）。
  * Design source: kai ToolRegistryResolver（冲突枚举源）；codex tools.rs
  * （重复工具跳过先例）、connection_manager（并发发现 join_all）。
  */
@@ -60,12 +62,15 @@ internal class McpDiscovery(
     // 串行化刷新流程（两个并发 refresh 只有一个执行；门面活跃回合检查之外的口）
     private val mutex = Mutex()
 
-    /** 当前发现快照：config 里每台服务器至少一个条目（未刷新 = Idle 初始态）。 */
+    /** 当前发现快照：config 里每台服务器至少一个条目（未刷新 = Idle 初始态）。
+     *  enabled 标志以当前配置为准（服务器被禁用 / 重新启用后同步更新，评审
+     *  发现 7 状态转换语义）。 */
     fun current(): McpDiscoverySnapshot {
         val configured = servers()
         if (configured.isEmpty()) return snapshot
         val byName = configured.associate { server ->
-            server.name to (snapshot.servers[server.name] ?: initialState(server))
+            val snap = snapshot.servers[server.name] ?: initialState(server)
+            server.name to snap.copy(enabled = server.enabled)
         }
         return snapshot.copy(servers = byName)
     }
@@ -73,6 +78,17 @@ internal class McpDiscovery(
     /** 刷新全部 enabled 服务器（并发）；结果按服务器分类供 host 暴露连接问题。 */
     suspend fun refresh(): McpRefreshResult {
         return mutex.withLock {
+            // 清理不生效服务器的旧注册（评审发现 7，Q4 修订）：removed（不在配置）
+            // 与 disabled（enabled=false）服务器都从 registry 注销——disabled 语义 =
+            // 不连接、不暴露、不可调用；discovery snapshot / fingerprint / 诊断信息
+            // 保留（状态保持），重新 enabled 后经 refresh 重新注册。
+            val activeNames = servers().filter { it.enabled }.map { it.name }.toSet()
+            registeredNames.keys.toList().forEach { name ->
+                if (name !in activeNames) {
+                    registeredNames.remove(name)?.forEach { registry().remove(it) }
+                }
+            }
+
             val enabledServers = servers().filter { it.enabled }
             val working = current().servers.toMutableMap()
 

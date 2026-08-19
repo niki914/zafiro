@@ -283,6 +283,152 @@ class OpenAIResponsesProtocolTest {
     }
 
     @Test
+    fun responseIncompleteEventMapsToLength() = runTest {
+        // 官方流事件：response.incomplete 是独立终态事件（reason=max_tokens），
+        // 不是 response.completed 的 status 变体（OpenAI Streaming Events 文档）。
+        // 当前事件分发未处理该事件名 → 忽略 → 流结束无 completed → Error。
+        val events = parse(
+            ev("response.incomplete", """{"type":"response.incomplete","response":{"id":"r1","status":"incomplete","incomplete_details":{"reason":"max_tokens"},"model":"m","usage":{"input_tokens":3,"output_tokens":9}}}""")
+        )
+        assertEquals(
+            ProtocolEvent.Completed(Usage(3, 9, 0, 0, 0), "m", StopReason.Length),
+            events.lastOrNull()
+        )
+    }
+
+    @Test
+    fun incompleteStatusWithOfficialMaxTokensReasonMapsToLength() = runTest {
+        // 官方 reason 值是 max_tokens（当前实现只匹配 DeepSeek 网关形态的
+        // max_output_tokens）；官方形态下即使走 response.completed 容器也会抛错。
+        val events = parse(
+            ev("response.completed", """{"type":"response.completed","response":{"id":"r1","status":"incomplete","incomplete_details":{"reason":"max_tokens"},"model":"m","usage":{"input_tokens":3,"output_tokens":9}}}""")
+        )
+        assertEquals(
+            ProtocolEvent.Completed(Usage(3, 9, 0, 0, 0), "m", StopReason.Length),
+            events.lastOrNull()
+        )
+    }
+
+    @Test
+    fun reasoningItemReplayedLosslesslyFromOpaquePayload() = runTest {
+        // 手动历史重放（无 previous_response_id）：OpenAI 官方 reasoning 加密不可
+        // 重建，必须把先前 output 的 reasoning item（encrypted_content）原样回带
+        // （OpenAI 迁移指南）。带合法 envelope 的 Thinking 块原样还原 reasoning
+        // item；其文本不拼进 message item（避免重复）；无 payload 走明文路径。
+        val reasoningItem = """{"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"摘要"}],"content":[{"type":"reasoning_text","text":"推导"}],"encrypted_content":"U2FsdGVkX1=="}"""
+        val payload = "openai-responses:reasoning:v1:" + """{"items":[$reasoningItem]}"""
+        val request = protocol.buildRequest(
+            snapshot(),
+            listOf(
+                assistant(
+                    listOf(
+                        ContentBlock.Thinking("推导", opaquePayload = payload),
+                        ContentBlock.Text("答案")
+                    )
+                )
+            )
+        )
+        val input = body(request)["input"]!!.jsonArray
+        // 期望：reasoning item 单独成条（encrypted_content 原样），文本 message 条并存
+        assertEquals(2, input.size)
+        assertEquals("reasoning", input[0].jsonObject["type"]!!.jsonPrimitive.content)
+        assertEquals("rs_1", input[0].jsonObject["id"]!!.jsonPrimitive.content)
+        assertEquals("U2FsdGVkX1==", input[0].jsonObject["encrypted_content"]!!.jsonPrimitive.content)
+        // 带 payload 的思考文本不拼进 message（D5）；普通 Text 块照常
+        assertEquals("答案", input[1].jsonObject["content"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun unknownOpaquePayloadPrefixFallsBackToPlainText() = runTest {
+        // 前缀不认识（未来其他 provider 的 payload）：忽略 payload，思考文本按明文合并
+        val request = protocol.buildRequest(
+            snapshot(),
+            listOf(
+                assistant(
+                    listOf(
+                        ContentBlock.Thinking("推导", opaquePayload = "other-provider:v9:whatever"),
+                        ContentBlock.Text("答案")
+                    )
+                )
+            )
+        )
+        val input = body(request)["input"]!!.jsonArray
+        assertEquals(1, input.size)
+        assertEquals("推导\n答案", input[0].jsonObject["content"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun reasoningItemCapturedAsOpaquePayloadEnvelope() = runTest {
+        // 解析层：output_item.done(type=reasoning) 的完整 item（含 encrypted_content）
+        // 原样累积；阶段边界（下一个非 reasoning item 开始）统一封装为 envelope
+        // 发出，先于后续文本 delta。
+        val reasoningItem = """{"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"摘要"}],"content":[{"type":"reasoning_text","text":"推导"}],"encrypted_content":"U2FsdGVkX1=="}"""
+        val events = parse(
+            ev("response.output_item.added", """{"type":"response.output_item.added","item":{"type":"reasoning","id":"rs_1","summary":[],"content":[]},"output_index":0}"""),
+            ev("response.reasoning_text.delta", """{"type":"response.reasoning_text.delta","delta":"推导"}"""),
+            ev("response.output_item.done", """{"type":"response.output_item.done","item":$reasoningItem,"output_index":0}"""),
+            ev("response.output_item.added", """{"type":"response.output_item.added","item":{"type":"message","id":"m1","role":"assistant","content":[]},"output_index":1}"""),
+            ev("response.output_text.delta", """{"type":"response.output_text.delta","delta":"答案"}"""),
+            ev("response.output_item.done", """{"type":"response.output_item.done","item":{"type":"message","id":"m1","status":"completed","content":[{"type":"output_text","text":"答案"}]},"output_index":1}"""),
+            ev("response.completed", """{"type":"response.completed","response":{"id":"r1","status":"completed","model":"m","usage":{"input_tokens":3,"output_tokens":9}}}""")
+        )
+        assertEquals(
+            listOf(
+                ProtocolEvent.ThinkingDelta("推导"),
+                ProtocolEvent.ThinkingOpaquePayload(
+                    "openai-responses:reasoning:v1:" + """{"items":[$reasoningItem]}"""
+                ),
+                ProtocolEvent.TextDelta("答案"),
+                ProtocolEvent.Completed(Usage(3, 9, 0, 0, 0), "m", StopReason.Stop)
+            ),
+            events
+        )
+    }
+
+    @Test
+    fun reasoningItemWithoutTextStillCaptured() = runTest {
+        // payload-only：没有 reasoning 文本 delta 也保存完整 item（官方 reasoning
+        // summary 需显式启用，不能要求先出现 ThinkingDelta）。
+        val reasoningItem = """{"type":"reasoning","id":"rs_1","summary":[],"content":[],"encrypted_content":"U2FsdGVkX1=="}"""
+        val events = parse(
+            ev("response.output_item.added", """{"type":"response.output_item.added","item":{"type":"reasoning","id":"rs_1"},"output_index":0}"""),
+            ev("response.output_item.done", """{"type":"response.output_item.done","item":$reasoningItem,"output_index":0}"""),
+            ev("response.completed", """{"type":"response.completed","response":{"id":"r1","status":"completed","model":"m","usage":{"input_tokens":3,"output_tokens":9}}}""")
+        )
+        assertEquals(
+            listOf(
+                ProtocolEvent.ThinkingOpaquePayload(
+                    "openai-responses:reasoning:v1:" + """{"items":[$reasoningItem]}"""
+                ),
+                ProtocolEvent.Completed(Usage(3, 9, 0, 0, 0), "m", StopReason.Stop)
+            ),
+            events
+        )
+    }
+
+    @Test
+    fun multipleReasoningItemsKeptInOneEnvelope() = runTest {
+        // D6：多个 reasoning item 全部保留（数组 envelope，不接受 last-wins）
+        val item1 = """{"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"一"}],"content":[],"encrypted_content":"U2FsdGVkXzE="}"""
+        val item2 = """{"type":"reasoning","id":"rs_2","summary":[{"type":"summary_text","text":"二"}],"content":[],"encrypted_content":"U2FsdGVkXzI="}"""
+        val events = parse(
+            ev("response.output_item.added", """{"type":"response.output_item.added","item":{"type":"reasoning","id":"rs_1"},"output_index":0}"""),
+            ev("response.output_item.done", """{"type":"response.output_item.done","item":$item1,"output_index":0}"""),
+            ev("response.output_item.added", """{"type":"response.output_item.added","item":{"type":"reasoning","id":"rs_2"},"output_index":1}"""),
+            ev("response.output_item.done", """{"type":"response.output_item.done","item":$item2,"output_index":1}"""),
+            ev("response.output_item.added", """{"type":"response.output_item.added","item":{"type":"message","id":"m1"},"output_index":2}"""),
+            ev("response.output_text.delta", """{"type":"response.output_text.delta","delta":"答"}"""),
+            ev("response.output_item.done", """{"type":"response.output_item.done","item":{"type":"message","id":"m1"},"output_index":2}"""),
+            ev("response.completed", """{"type":"response.completed","response":{"id":"r1","status":"completed","model":"m","usage":{"input_tokens":3,"output_tokens":9}}}""")
+        )
+        val payload = events.filterIsInstance<ProtocolEvent.ThinkingOpaquePayload>().single()
+        assertEquals(
+            "openai-responses:reasoning:v1:" + """{"items":[$item1,$item2]}""",
+            payload.payload
+        )
+    }
+
+    @Test
     fun usageParsesCachedAndReasoningTokens() = runTest {
         val events = parse(
             ev("response.completed", """{"type":"response.completed","response":{"id":"r1","status":"completed","usage":{"input_tokens":100,"input_tokens_details":{"cached_tokens":20},"output_tokens":30,"output_tokens_details":{"reasoning_tokens":10}}}}""")
