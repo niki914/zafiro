@@ -374,6 +374,28 @@ class AnthropicMessagesProtocolTest {
     }
 
     @Test
+    fun overloadedStreamErrorIsMarkedRetryable() = runTest {
+        // Anthropic 官方临时错误（overloaded 对应 529）：HTTP 200 后 SSE error event
+        // 仍可达，retryable 标志让 loop 走可重试分类（问题 2）
+        val events = parse(
+            ev("error", """{"type":"error","error":{"type":"overloaded_error","message":"overloaded"}}""")
+        )
+        val error = events.single() as ProtocolEvent.Error
+        assertTrue(error.retryable)
+    }
+
+    @Test
+    fun clientStreamErrorIsNotRetryable() = runTest {
+        // 客户端错误类型（invalid_request_error）：不可重试；message 从嵌套 error 对象解析
+        val events = parse(
+            ev("error", """{"type":"error","error":{"type":"invalid_request_error","message":"bad request"}}""")
+        )
+        val error = events.single() as ProtocolEvent.Error
+        assertTrue(!error.retryable)
+        assertTrue(error.cause.message!!.contains("bad request"))
+    }
+
+    @Test
     fun streamEndWithoutMessageStopEmitsError() = runTest {
         // message_start 后直接 EOF：协议不完整
         val events = parse(

@@ -1,9 +1,11 @@
 package com.niki914.okia.transport
 
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
@@ -133,7 +135,12 @@ internal class OkHttpEngine(
         }
         return flow {
             try {
-                SseLineParser().parse(chunks).collect { emit(it) }
+                // SSE 阻塞读与行切分切到 IO 池：lines 流继承 collector 上下文
+                // （生产默认 turnScope = Dispatchers.Default），阻塞 reader.read 会
+                // 各占一个 CPU worker 等待网络（P2）；flowOn 只改执行线程，取消
+                // 清理（invokeOnCompletion / finally cancel+close / ensureActive）
+                // 不依赖线程，照常生效。
+                SseLineParser().parse(chunks.flowOn(Dispatchers.IO)).collect { emit(it) }
             } finally {
                 call.cancel()
                 response.close()

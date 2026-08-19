@@ -1,5 +1,6 @@
 package com.niki914.okia.loop
 
+import com.niki914.okia.error.CallbackException
 import com.niki914.okia.error.LLMError
 import com.niki914.okia.error.LLMErrorCode
 import com.niki914.okia.event.TurnEvent
@@ -342,6 +343,13 @@ internal class RealAgentLoop : AgentLoop {
         } catch (e: StreamIdleTimedOut) {
             // idle 超时哨兵：非段失败（Exception 子类，须在兜底前重抛）
             throw e
+        } catch (e: CallbackException) {
+            // 事件分发失败（业务 onEvent 抛异常）：host 侧代码问题，不可重试。
+            // 与协议流异常分离——不伪装成 Transport（否则配置 turnRetryPolicy 时
+            // 同一次 LLM 请求被重发：重复计费 / 重复事件 / 掩盖业务错误，问题 1）
+            throw StreamTerminated(
+                LLMError(LLMErrorCode.HookFailed, "onEvent callback failed", e.cause)
+            )
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -509,7 +517,13 @@ internal class RealAgentLoop : AgentLoop {
                 }
             }
             is ProtocolEvent.Error -> throw StreamTerminated(
-                LLMError(LLMErrorCode.Parse, "stream parse error", event.cause)
+                LLMError(
+                    // retryable（协议层判定的临时错误，如 Anthropic overloaded_error）→
+                    // Transport 可重试；其余（畸形 JSON 等）→ Parse 不可重试（问题 2）
+                    if (event.retryable) LLMErrorCode.Transport else LLMErrorCode.Parse,
+                    "stream parse error",
+                    event.cause
+                )
             )
         }
     }

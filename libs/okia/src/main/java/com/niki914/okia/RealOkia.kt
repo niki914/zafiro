@@ -3,6 +3,7 @@ package com.niki914.okia
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.RealConversation
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.error.CallbackException
 import com.niki914.okia.event.StopCause
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.LoopOptions
@@ -309,7 +310,15 @@ internal class RealOkia(
             is TurnEvent.TurnIdleTimeout -> live = null
         }
         publish()
-        onEvent(event)
+        try {
+            onEvent(event)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 业务回调失败：包装后传播（loop 分类为不可重试的 callback failure），
+            // 不伪装成网络错误、不触发请求重发（问题 1）
+            throw CallbackException(e)
+        }
         eventsFlow.emit(event)
     }
 

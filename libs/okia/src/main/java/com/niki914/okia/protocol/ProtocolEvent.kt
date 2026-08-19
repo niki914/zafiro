@@ -58,6 +58,12 @@ sealed interface ProtocolEvent {
         val stopReason: StopReason? = null
     ) : ProtocolEvent
 
-    /** 流失败。 */
-    data class Error(val cause: Throwable) : ProtocolEvent
+    /** 流失败。retryable：协议层判定的临时错误（如 Anthropic overloaded_error /
+     *  rate_limit_error，HTTP 200 后仍可能经 SSE error event 到达）——loop 据此
+     *  选择可重试（Transport）或不可重试（Parse）分类，配置的重试策略才对这些
+     *  临时错误生效（问题 2）。 */
+    data class Error(
+        val cause: Throwable,
+        val retryable: Boolean = false
+    ) : ProtocolEvent
 }

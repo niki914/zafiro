@@ -78,7 +78,8 @@ class AnthropicMessagesProtocol(
                     "message_stop" -> finishStream(state, ::emit)
                     "ping" -> Unit  // keep-alive，无事件
                     "error" -> {
-                        emit(ProtocolEvent.Error(parseError(event.data)))
+                        val error = parseError(event.data)
+                        emit(ProtocolEvent.Error(error.cause, error.retryable))
                         failed = true
                     }
                     else -> Unit  // 未知事件（citations 等）忽略
@@ -380,10 +381,24 @@ class AnthropicMessagesProtocol(
         emit(ProtocolEvent.Completed(state.usage, state.responseModel, stop))
     }
 
-    private fun parseError(data: String): Throwable {
-        val message = (codec.parseToJsonElement(data) as? JsonObject)?.get("message") as? JsonPrimitive
-        return IllegalStateException("anthropic stream error: ${message?.contentOrNull ?: data}")
+    private fun parseError(data: String): StreamError {
+        val obj = codec.parseToJsonElement(data) as? JsonObject
+        // Anthropic error event 官方格式：{"type":"error","error":{"type":"overloaded_error","message":"..."}}
+        // 类型与 message 都嵌套在 error 对象内；error.type 是判定临时错误（可重试）
+        // 的依据（旧实现只取 message，类型信息丢失、全部降级为不可重试 Parse，问题 2）
+        val errorObj = obj?.get("error") as? JsonObject
+        val errorType = (errorObj?.get("type") as? JsonPrimitive)?.contentOrNull
+        val message = (errorObj?.get("message") as? JsonPrimitive)?.contentOrNull
+            ?: (obj?.get("message") as? JsonPrimitive)?.contentOrNull
+            ?: data
+        return StreamError(
+            cause = IllegalStateException("anthropic stream error: $message"),
+            retryable = errorType in RETRYABLE_ERROR_TYPES
+        )
     }
+
+    /** 流内错误解析结果：cause（诊断） + retryable（loop 重试决策）。 */
+    private data class StreamError(val cause: Throwable, val retryable: Boolean)
 
     // ── 流状态 ─────────────────────────────────────────────────────────────
 
@@ -412,6 +427,10 @@ class AnthropicMessagesProtocol(
     private companion object {
         // Anthropic 固定请求头（版本协商）；x-api-key 由 useApiKey 提供
         val ANTHROPIC_HEADERS = mapOf("anthropic-version" to "2023-06-01")
+
+        // 官方临时错误类型（可重试）：overloaded 对应 529、rate_limit 对应 429；
+        // 其余（invalid_request_error / authentication_error 等）不可重试
+        val RETRYABLE_ERROR_TYPES = setOf("overloaded_error", "rate_limit_error")
     }
 }
 

@@ -1,5 +1,6 @@
 package com.niki914.okia.loop
 
+import com.niki914.okia.error.CallbackException
 import com.niki914.okia.error.LLMErrorCode
 import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.event.TurnEvent
@@ -486,5 +487,69 @@ class RealAgentLoopRetryTest {
         job.cancel()
         runCurrent()
         assertTrue(caught != null)
+    }
+
+    // ── C. 事件分发失败（业务 onEvent 异常，问题 1） ─────────────────────
+
+    @Test
+    fun onEventExceptionFailsWithHookFailedWithoutRetry() = runTest {
+        // 业务 onEvent 在 TextDelta 抛异常（此处模拟 RealOkia.handleEvent 的
+        // CallbackException 包装产物）：分类为 callback failure（HookFailed，
+        // 不可重试）——不伪装成 Transport；即使配置回合层重试也不重发请求
+        val engine = FakeHttpEngine()
+        val emitted = mutableListOf<TurnEvent>()
+        val result = RealAgentLoop().run(
+            loopRequest(
+                listOf(ProtocolEvent.TextDelta("a"), ProtocolEvent.TextDelta("b"), completed()),
+                engine = engine
+            ).copy(options = LoopOptions(turnRetryPolicy = RetryPolicy(maxAttempts = 3)))
+        ) { event ->
+            emitted += event
+            if (event is TurnEvent.TextDelta) throw CallbackException(IllegalStateException("ui boom"))
+        }
+        val failed = result as TurnResult.Failed
+        assertEquals(LLMErrorCode.HookFailed, failed.error.code)
+        assertEquals(1, engine.streamedRequests.size) // 不重发
+        assertTrue(emitted.none { it is TurnEvent.RetryScheduled })
+    }
+
+    // ── D. 流内错误重试分类（ProtocolEvent.Error，问题 2） ───────────────
+
+    @Test
+    fun retryableStreamErrorRetriesSegment() = runTest {
+        // ProtocolEvent.Error(retryable=true)（如 Anthropic overloaded_error）→
+        // 可重试：回合层段首重试生效，第二次请求成功
+        val engine = FakeHttpEngine()
+        val mapper = FakeProtocolMapper(
+            listOf(
+                listOf(ProtocolEvent.Error(IllegalStateException("overloaded"), retryable = true)),
+                listOf(ProtocolEvent.TextDelta("ok"), completed())
+            )
+        )
+        val emitted = mutableListOf<TurnEvent>()
+        val request = loopRequest(emptyFlow(), engine = engine).copy(
+            protocolMapper = mapper,
+            options = LoopOptions(turnRetryPolicy = RetryPolicy(maxAttempts = 1))
+        )
+        val result = runLoop(request, emitted)
+
+        assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
+        assertEquals(2, engine.streamedRequests.size) // 初始 + 1 次段首重试
+        assertEquals(1, emitted.count { it is TurnEvent.RetryScheduled })
+        assertTrue(emitted.filterIsInstance<TurnEvent.RetryScheduled>().single().reason.contains("stream"))
+    }
+
+    @Test
+    fun nonRetryableStreamErrorFailsAsParse() = runTest {
+        // ProtocolEvent.Error(retryable=false)（默认，如畸形 JSON）→ Parse，不可重试
+        val mapper = FakeProtocolMapper(
+            listOf(listOf(ProtocolEvent.Error(IllegalStateException("bad json"))))
+        )
+        val emitted = mutableListOf<TurnEvent>()
+        val request = loopRequest(emptyFlow()).copy(protocolMapper = mapper)
+        val result = runLoop(request, emitted)
+
+        assertEquals(LLMErrorCode.Parse, (result as TurnResult.Failed).error.code)
+        assertTrue(emitted.none { it is TurnEvent.RetryScheduled })
     }
 }

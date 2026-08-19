@@ -3,6 +3,8 @@ package com.niki914.okia
 import com.niki914.okia.conversation.JsonSessionCodec
 import com.niki914.okia.event.StopCause
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.error.LLMErrorCode
+import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.fake.FakeAgentLoop
 import com.niki914.okia.fake.FakeHttpEngine
@@ -10,6 +12,7 @@ import com.niki914.okia.fake.FakeProtocolMapper
 import com.niki914.okia.fake.StubMcpClient
 import com.niki914.okia.loop.AgentLoop
 import com.niki914.okia.loop.CompletionReason
+import com.niki914.okia.loop.LoopOptions
 import com.niki914.okia.loop.LoopRequest
 import com.niki914.okia.loop.RealAgentLoop
 import com.niki914.okia.loop.TurnResult
@@ -100,6 +103,32 @@ class RealOkiaTest {
     }
 
     // ── send 正常路径 ──────────────────────────────────────────────────────
+
+    @Test
+    fun sendOnEventExceptionFailsWithHookFailedWithoutRetry() = runTest {
+        // 业务 onEvent 在 TextDelta 抛异常（完整链路，经 RealOkia.handleEvent
+        // 包装为 CallbackException）：分类为 HookFailed（不可重试）——不伪装成
+        // Transport；即使配置回合层重试也不重发请求（问题 1）
+        val engine = FakeHttpEngine()
+        val okia = openOkia(
+            FakeProtocolMapper(
+                listOf(ProtocolEvent.TextDelta("a"), ProtocolEvent.TextDelta("b"), completed())
+            ),
+            engine = engine,
+            scope = testScope(testScheduler)
+        )
+        val result = okia.send(
+            "hi",
+            TurnOptions(loopOptions = LoopOptions(turnRetryPolicy = RetryPolicy(maxAttempts = 3)))
+        ) { event ->
+            if (event is TurnEvent.TextDelta) throw IllegalStateException("ui boom")
+        }
+
+        val failed = result as TurnResult.Failed
+        assertEquals(LLMErrorCode.HookFailed, failed.error.code)
+        assertEquals(1, engine.streamedRequests.size) // 不重发
+        okia.close()
+    }
 
     @Test
     fun sendCompletedCommitsUserAndAssistant() = runTest {
