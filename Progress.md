@@ -6,7 +6,7 @@
 ## 状态
 
 - 分支：`feat/okia-integration`（基于 main `84f28cd`，即并入 PR #121 okia 库之后）
-- 当前阶段：**T2 决策已落定，待开始 T2a**（本地工具注册与执行；T2b=MCP）
+- 当前阶段：**T2b 已完成并验收**（MCP 装配 + 发现时序 + 删缓存链；真机验证通过），待提交
 - 目标：把 Nexus 的 LLM 运行时从 `libs:kai` 切换为 `libs:okia`（`Okia` 门面），`libs:kai` 最终删除，不留兼容层
 - 约束：单个功能点新增+删除合计 ≤1000 行；每完成一个功能点更新本文档并由用户触发 git 提交；允许部分业务 Bug，先跑通主链路
 
@@ -45,6 +45,11 @@
 | D23 | **MCP 持久化本次不做**：删残链（gateway.listCachedTools / XRepo saveDiscoveredTools / McpCachedTool / mcpCacheKey / McpServerDefinition.cachedTools / refresh 的 mcpCachedTools）；记 TODO：未来 Nexus store 层持久化 OKIA McpDiscoverySnapshot（需先提 issue：McpDiscoveredTool 加 @Serializable，已核实当前无可序列化） | 已确认 |
 | D24 | **hooks 不接**：T2 无 beforeToolCall/afterToolCall（读屏前置非 hook 用例 §5.12），T4 有需求再加 | 已确认 |
 | D25 | **T2 测试策略**：不做逐工具描述 golden 断言（膨胀脆弱）。三档：①注册装配=refresh 后 registry 工具名集合正确（名字级）②描述合法性=schema JSON 可解析/name 合法/wireName 满足 ToolWireName 约束 ③执行行为=fake call→outcome 映射（Success/Failure/Interrupted/Unknown）。不写扫字符串式测试 | 已确认 |
+| D-T2B-1 | **MCP 持久化彻底删除**（不作保留空实现）：缓存系统全部删除（网关 4 方法/XRepo McpApi 缓存 6 方法/McpSettingsCodec 缓存/McpCachedTool/RuntimeMcpTool/mcpCacheStoreId）。依据：服务器通→eager 预加载即得；不通→缓存了也不能执行（Codex 亦无跨启动持久化） | 已确认 |
+| D-T2B-2 | **PromptComposer 删 `<mcp_servers>` 块 + mcpDiscoverySnapshot 参数**：线缆名 `mcp__server__tool` 已表达服务器归属；kai snapshot import 从 agent-runtime 消失 | 已确认 |
+| D-T2B-3 | **MCP 时序 = 方案 B（后台不阻塞）**：启动 eager（首次 refresh 签名 null≠配置天然触发）+ turn 前签名变化起后台协程刷新（不 await）+ inFlight 防重 + 失败也更新签名防风暴 + 无保存点回调。Codex 实证：optional 服务器首回合可缺席（仅 required 被 turn 前 await）；Nexus/OKIA 无 required 概念 → 纯 optional 语义 | 已确认 |
+| D-T2B-4 | **Okia 改动本次做**：`OkHttpEngine` internal→public + okhttp implementation→api + 1 测试（proxy/interceptor 注入点）；**proxy 使用本次不做**（llmConfig.proxy 死字段保留，TODO = Nexus 注入带 interceptor 的 client） | 已确认 |
+| D-T2B-5 | custom schema null（D21）/ hooks 不接（D24）等既有项不在 T2b 重复 | 已确认 |
 | D12 | **单测重写而非改**：接口全变处（LLMController/Mapper/持久化）测试重写；工具实现测试不动 | 已确认 |
 | D13 | **删除概念**：SessionToolBinder、McpDiscoveryCacheStore、lastMcpServersFingerprint+shouldRefreshMcp、ChatTurnJsonCodec、turnMutex、`:libs:kai` 依赖。保留：LlmStreamEvent/ToolCallStatus/ToolCallKind、ConversationTurnState/ActiveTurnStore/TurnMode、RenderFrame、Room 表骨架、TerminalSessionPool.pendingNotifications | 已确认 |
 
@@ -54,7 +59,7 @@
 |---|---|---|---|
 | T1 | 骨架替换：依赖切 okia；重写 LLMController + LlmStreamEventMapper；协议装配（apiType→protocol）；错误/并发/stop 适配；主 App 问答+停止+错误文案跑通 | 宿主与主 App 均一问一答、停止、错误事件正确；UI 消费端零改动 | **已完成**（2026-08-19 已提交 f842dbc/c87d630） |
 | T2a | 本地工具：BuiltinTool 描述迁移（D19）+ ToolRegistry 装配（refresh 注册 enabled 工具）+ ToolCallDispatcher→ToolExecutor 适配（execute/onInterrupt）+ CreateCustomTool 回合内注册（D20）+ outcome→BuiltinToolResult 拆解 | 内置/自定义工具回合成功（memory/search_apps/python 等）；模型调用已注册工具不再 UnknownTool；工具失败 UI 显示 code/message | **已完成**（2026-08-19，待用户验收） |
-| T2b | MCP：McpServer 配置→OkiaConfig.mcpServers 装配；签名变化触发 refreshMcpTools（D22）；删 cachedTools 残链（D23）；PromptComposer kai snapshot→okia snapshot 类型切换 | MCP 工具被发现、进 prompt 工具段、可调用；禁用/失败不崩；首回合时序符合 D22 | 待开始 |
+| T2b | MCP：McpServer 配置→OkiaConfig.mcpServers 装配；签名变化触发后台 refreshMcpTools（D22 方案 B）；删 cachedTools 残链（D23）；PromptComposer 删 mcp 段（D-T2B-2）+ 脱离 kai | MCP 工具被发现、注册进 registry、可调用；禁用/失败不崩；后台刷新不阻塞回合；首回合按 eager 预取 | **已完成**（2026-08-19 验收：真机 13 工具 10 可用，禁用不可调用符合预期） |
 | T3 | 持久化：Room 推倒重来（SessionSnapshot 序列化 + leafId）；restore 启动、切会话、fork/regenerate（D4）；`open(restore)` 生命周期 | 重启恢复、切会话、fork 重新生成正确 | 待讨论 |
 | T4 | 细节收口：idle 配置、beforeStop 正式接管 kill、可重试 UI 分支、并发→TurnConflict 回归、删余清尾（含删 :libs:kai 依赖）、全量测试 | 无 kai 引用、无死代码、全测试绿 | 待讨论 |
 
@@ -151,6 +156,24 @@
 **测试结果**：`:agent-runtime:testDebugUnitTest` 34x 全绿、`:app:testDebugUnitTest` 全绿、`:app:compileDebugKotlin` 通过；`:libs:okia` 未改动。
 
 **踩坑记录**：`ShellCommandSafetyPolicy` 默认 `awaitSettingsGateway()` 挂起，测试未装 gateway 会挂死 → LocalToolExecutorTest 注入 `ShellCommandSafetyPolicy(listExecutionRules = { emptyList() })`（allowed 短路）。
+
+## T2b 实现记录（2026-08-19，已完成，待验收）
+
+**改动文件**（增 ~420 / 删 ~380，净 ~40，含测试）：
+- `libs/okia`（D-T2B-4）：`OkHttpEngine` internal→public（构造接受 `OkHttpClient`，proxy/interceptor 注入点）；okhttp `implementation→api`（公开签名暴露）；`OkHttpEngineTest` +1 例（注入 client 经 interceptor 加头生效）
+- `LLMController.kt`（+~130）：`toOkiaMcpServers`（McpServerDefinition.Http→okia McpServer 字段一一对应）；`update { mcpServers }`；`scheduleMcpRefresh`（后台 `mcpRefreshScope` = SupervisorJob+IO，**不 await**；签名变化才刷；inFlight 防重；成功/失败都更新签名防风暴）；`mcpServersSignature`（name/url/headers/enabled 确定性序列化）；删 `gateway.listCachedTools` + `mcpCachedTools` 关联；resetForTest 重置 MCP 状态。**踩坑**：lambda 内 `mcpServers` 被外层局部 `val mcpServers`（RuntimeMcpServer 列表）遮蔽 → 外层改名 `runtimeMcpServers`（D62 同类）
+- `PromptComposer.kt`（-80）：删 `renderMcpServers`/`renderMcpStatus`/`PromptComposerInput.mcpDiscoverySnapshot`/kai 三个 snapshot import（D-T2B-2）——**agent-runtime 的 PromptComposer 脱离 kai**
+- `ToolManager.kt`（-30）：删 `mcpCachedTools` 参数/`toCachedTool`/`McpCachedTool`
+- `LlmModels.kt`（-25）：删 `McpCachedTool`/`mcpCacheKey`（无调用者）/`McpServerDefinition.cachedTools`
+- `RuntimeSettingsGateway.kt`（-15）：删 `listCachedTools`/`saveDiscoveredTools`/`clearMcpCacheByServerNames`/`fingerprintMcpServers` 接口方法
+- `RuntimeSettingsModels.kt`：删 `RuntimeMcpTool`
+- app：`XRepo.kt` McpApi 删缓存 6 方法 + 2 私有 helper；`XRepoRuntimeGateway` 删 4 override；`McpSettingsCodec` 删 parseCache/encodeCache；`LocalSettingsCodec` 删 parseMcpCache/withMcpCache/withoutMcpCache + 死代码（asJsonObjectOrEmpty/mcpCacheKey/MCP_CACHE_KEY）；`SettingModels` 删 mcpDiscoveredToolsCache
+- `store/StoreDescriptorRegistry.kt`：删 `mcpCacheStoreId`/`MCP_CACHE_PREFIX`/resolveDynamic 缓存分支
+- 测试：新增 `LLMControllerMcpTest`（5 例：首次 eager 触发/签名未变不刷/配置变化重刷/失败不风暴/装配映射）；更新 ToolManagerTest/PromptComposerTest；删缓存用例（XRepoTest/XRepoDomainSettingsTest/LocalSettingsCodecTest/SettingsDomainCodecsTest/StoreDescriptorRegistryTest/RuntimeSettingsTestFakes/两个 gateway 测试）
+
+**验证**：`:libs:okia`/`:store`/`:agent-runtime`/`:app` testDebugUnitTest 全绿（1078 测试）；MCP 测试用 fake RecordingMcpClient（无真实网络）；`refresh_mcpDiscoveryFailureStillUpdatesSignatureNoStorm` 验证失败后不重试
+
+**手动验收环境**：server-everything @ 3001 已在跑（`curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3001/mcp` → 400 即在线）+ `adb reverse tcp:3001 tcp:3001`（手机连电脑）
 
 ## T1 实现记录（2026-08-19，已完成，待验收）
 
