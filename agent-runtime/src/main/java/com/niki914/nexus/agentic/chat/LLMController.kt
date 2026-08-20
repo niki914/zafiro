@@ -26,6 +26,9 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
+import com.niki914.okia.mcp.McpRefreshResult
+import com.niki914.okia.mcp.McpServer
+import com.niki914.okia.mcp.McpTransport
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
@@ -34,13 +37,17 @@ import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 
 /**
@@ -82,6 +89,21 @@ object LLMController {
     private var okia: Okia? = null
     private var sessionApiType: LlmApiType? = null
 
+    // T2b MCP 发现（D-T2B-3 方案 B）：后台协程刷新，不阻塞 LLM 回合。
+    // - 启动 eager：首次 refresh（签名 null ≠ 配置）触发一次后台刷新
+    // - turn 前标脏：refresh() 比较服务器配置签名（name/url/headers/enabled
+    //   序列化），变化才起后台刷新；无变化不刷（零网络开销）
+    // - inFlight 防重：同一时刻至多一个后台刷新（失败也更新签名防风暴，
+    //   用户改配置→签名变→重刷）
+    // - 回合中刷新撞活跃回合（OKIA refreshMcpTools 抛异常）→ catch 记日志
+    // - 已知限制：OKIA refreshMcpTools 与 send 共用 RealOkia mutex，后台刷新
+    //   持锁期间发问会短排队——见 ISSUES_okia-integration.md OKIA-1（待提）
+    private val mcpRefreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Volatile
+    private var lastRefreshedMcpSignature: String? = null
+    private val mcpRefreshInFlight = AtomicBoolean(false)
+
     // 测试注入点：T1 单测经 Okia.open(dependencies) 装配 fake loop/mapper。 <--- TODO Workaround???
     internal var okiaFactory: OkiaFactory = OkiaFactory { apiType, restore, config ->
         openOkiaWithDefaultProtocol(apiType, restore, config)
@@ -94,6 +116,8 @@ object LLMController {
         runtimeState = null
         toolRegistry.snapshot().forEach { toolRegistry.remove(it.descriptor.wireName) }
         inlineCustomTools.clear()
+        lastRefreshedMcpSignature = null
+        mcpRefreshInFlight.set(false)
         okiaFactory = OkiaFactory { apiType, restore, config ->
             openOkiaWithDefaultProtocol(apiType, restore, config)
         }
@@ -119,17 +143,14 @@ object LLMController {
                 "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
         )
         val apiType = LlmApiType.fromProvider(llmConfig.provider)
-        val mcpServers = gateway.listMcpServers()
+        val runtimeMcpServers = gateway.listMcpServers()
         val customTools = gateway.listCustomTools()
         val builtinSettings = gateway.listBuiltinToolSettings()
         val enabledSkills = gateway.listEnabledSkills()
         val resolvedTools = toolManager.resolve(
             customTools = customTools,
-            mcpServers = mcpServers,
+            mcpServers = runtimeMcpServers,
             builtinSettings = builtinSettings,
-            mcpCachedTools = mcpServers.associate { server ->
-                server.name to gateway.listCachedTools(server)
-            },
         )
         Logger.i(
             LOG_TAG,
@@ -151,19 +172,23 @@ object LLMController {
             endpoint = configWithoutRuntimePrompt.endpoint
             apiKey = configWithoutRuntimePrompt.apiKey
             model = configWithoutRuntimePrompt.model
+            // T2b：MCP 服务器配置进 OKIA（McpDiscovery 发现后注册进同一 toolRegistry）
+            mcpServers = toOkiaMcpServers(resolvedTools.mcpServers)
         }
         // T2a：本地工具注册（enabled 集合全量重建；inline 回合内工具由
         // registerCustomToolNow 注册，随下次 refresh 由持久化版本接管）
         syncLocalTools(resolvedTools)
-        // T1 工具退化：工具描述仍进入提示词（技能/记忆段依赖它），但注册表为空
-        // （不向请求注入 tool 定义）——模型若调用工具 → UnknownTool 失败（T2 接入）。
-        // MCP 发现/指纹决策已删（T2 下沉到 OKIA McpDiscovery）。
+        // T2b：MCP 发现（方案 B，D-T2B-3）：签名变化才起后台刷新，不 await
+        // （不阻塞回合）；初始化时签名 null → 首次天然触发（启动 eager）
+        val mcpSignature = mcpServersSignature(resolvedTools.mcpServers)
+        scheduleMcpRefresh(activeSession, mcpSignature)
+        // 工具描述进入提示词（技能/记忆段依赖它）；MCP 工具段已删除
+        // （D-T2B-2：线缆名 mcp__server__tool 已表达服务器归属）
         val prompt = promptComposer.compose(
             PromptComposerInput(
                 additionalInstructions = llmConfig.prompt,
                 memoryItems = buildMemoryItems(llmConfig),
                 tools = resolvedTools,
-                mcpDiscoverySnapshot = null,
                 enabledSkills = enabledSkills,
             )
         )
@@ -500,6 +525,79 @@ object LLMController {
             LOG_TAG,
             "custom tool registered in-turn name=${tool.name} enabled=${tool.enabled}"
         )
+    }
+
+    // ── T2b MCP 发现时序（方案 B，D-T2B-3，对齐 Codex eager + 标脏刷新） ────
+
+    /**
+     * 签名变化才起后台刷新（不 await，不阻塞回合）。
+     * 先记签名再 launch：锁住"并发 refresh 只刷一次"（两个回合前 refresh
+     * 并发时，第二个看到签名已更新不会重复刷）。inFlight 防重：同一时刻
+     * 至多一个后台刷新任务。成功/失败都更新签名——本轮已尝试，防止每轮
+     * 重试风暴；用户改配置 → 签名变 → 重新触发。
+     * 初始化 eager：首次 refresh 时 lastRefreshedMcpSignature == null ≠ 配置
+     * 签名 → 天然触发一次后台刷新（LLMController 初始化预取）。
+     */
+    private fun scheduleMcpRefresh(session: Okia, signature: String) {
+        if (signature == lastRefreshedMcpSignature) return
+        lastRefreshedMcpSignature = signature
+        if (!mcpRefreshInFlight.compareAndSet(false, true)) return
+        mcpRefreshScope.launch {
+            val startedAtMs = System.currentTimeMillis()
+            try {
+                val result: McpRefreshResult = session.refreshMcpTools()
+                Logger.i(
+                    LOG_TAG,
+                    "mcp refresh done elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                        "refreshed=${result.refreshedServers.joinToString(",") { "\"$it\"" }} " +
+                        "failed=${result.failedServers.joinToString(",") { "\"$it\"" }}"
+                )
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
+                // 活跃回合撞 refreshMcpTools（OKIA 契约）→ 下轮签名未变不重试；
+                // 连接失败/超时 → 已更新签名，防风暴（用户改配置后重刷）
+                Logger.e(
+                    LOG_TAG,
+                    "mcp refresh failed elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                        "errorType=${throwable.eventTypeName()} message=${throwable.message}"
+                )
+            } finally {
+                mcpRefreshInFlight.set(false)
+            }
+        }
+    }
+
+    /** 服务器配置签名：对 McpServerDefinition.Http（name/url/headers/enabled）确定性序列化。 */
+    private fun mcpServersSignature(servers: List<McpServerDefinition>): String {
+        return servers
+            .sortedBy { it.name }
+            .joinToString(separator = "\n") { server ->
+                when (server) {
+                    is McpServerDefinition.Http -> {
+                        val headers = server.headers
+                            .mapKeys { (key, _) -> key.lowercase() }
+                            .toSortedMap()
+                            .entries
+                            .joinToString(separator = "&") { (key, value) -> "$key=$value" }
+                        "${server.name}|${server.url}|${server.enabled}|$headers"
+                    }
+                }
+            }
+    }
+
+    /** McpServerDefinition.Http → OKIA McpServer（字段一一对应，T2b）。 */
+    private fun toOkiaMcpServers(servers: List<McpServerDefinition>): List<McpServer> {
+        return servers.mapNotNull { server ->
+            when (server) {
+                is McpServerDefinition.Http ->
+                    McpServer(
+                        name = server.name,
+                        transport = McpTransport.Http(server.url),
+                        headers = server.headers,
+                        enabled = server.enabled,
+                    )
+            }
+        }
     }
 
     // 全局工具资源 kill 钩子：OKIA 停止流程的 kill 步骤（beforeStop 每回合

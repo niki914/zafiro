@@ -1,12 +1,8 @@
 package com.niki914.nexus.agentic.chat.agentic
 
 import com.niki914.nexus.agentic.chat.LocalTool
-import com.niki914.nexus.agentic.chat.McpServerDefinition
 import com.niki914.nexus.agentic.chat.ResolvedTools
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
-import com.niki914.kai.McpDiscoverySnapshot
-import com.niki914.kai.McpDiscoveryState
-import com.niki914.kai.McpServerDiscoverySnapshot
 
 data class PromptComposeResult(
     val finalSystemPrompt: String,
@@ -16,7 +12,6 @@ data class PromptComposerInput(
     val additionalInstructions: String,
     val memoryItems: List<String> = emptyList(),
     val tools: ResolvedTools = ResolvedTools(),
-    val mcpDiscoverySnapshot: McpDiscoverySnapshot? = null,
     val enabledSkills: List<RuntimeSkillMetadata> = emptyList(),
 )
 
@@ -37,7 +32,7 @@ class PromptComposer {
         val identity = input.additionalInstructions.trim().ifBlank { DEFAULT_AGENT_IDENTITY }
         return listOfNotNull(
             identity,
-            renderToolContext(input.tools, input.mcpDiscoverySnapshot),
+            renderToolContext(input.tools),
             renderSkillContext(input.enabledSkills)
                 .takeIf { hasBuiltinTool(input, "load_skill") },
             TASK_COMPLETION_GUIDANCE.takeIf { hasAnyTool(input) },
@@ -61,12 +56,10 @@ class PromptComposer {
 
     private fun renderToolContext(
         tools: ResolvedTools,
-        snapshot: McpDiscoverySnapshot?,
     ): String? {
         val blocks = listOfNotNull(
             renderNameBlock("builtin_tools", tools.builtinTools.map { it.name }),
             renderNameBlock("custom_tools", tools.customTools.map { it.name }),
-            renderMcpServers(tools, snapshot),
         )
         if (blocks.isEmpty()) return null
         return "## Tool Context\n\n${blocks.joinToString(separator = "\n\n")}"
@@ -80,37 +73,6 @@ class PromptComposer {
             prefix = "<$tag>\n",
             postfix = "\n</$tag>",
         ) { "- $it" }
-    }
-
-    private fun renderMcpServers(
-        tools: ResolvedTools,
-        snapshot: McpDiscoverySnapshot?,
-    ): String? {
-        val enabled = tools.mcpServers
-            .filter(McpServerDefinition::enabled)
-            .map { it.name.trim() }
-            .filter(String::isNotBlank)
-            .distinct()
-            .sorted()
-        if (enabled.isEmpty()) return null
-        val snapshotByName = snapshot?.servers?.values.orEmpty().associateBy { it.serverName }
-        return enabled.joinToString(
-            separator = "\n",
-            prefix = "<mcp_servers>\n",
-            postfix = "\n</mcp_servers>",
-        ) { name -> "- ${snapshotByName[name]?.let(::renderMcpStatus) ?: "$name: idle"}" }
-    }
-
-    private fun renderMcpStatus(server: McpServerDiscoverySnapshot): String = when (server.state) {
-        McpDiscoveryState.Available -> "${server.serverName}: loaded ${server.discoveredToolCount} tools"
-        McpDiscoveryState.Discovering -> "${server.serverName}: loading"
-        McpDiscoveryState.Failed -> {
-            val msg = server.errorMessage?.trim().takeUnless { it.isNullOrBlank() }
-            if (msg == null) "${server.serverName}: failed"
-            else "${server.serverName}: failed, msg: $msg"
-        }
-        McpDiscoveryState.UsingStaleCache -> "${server.serverName}: using cached ${server.discoveredToolCount} tools"
-        McpDiscoveryState.Idle -> "${server.serverName}: idle"
     }
 
     // --- Skill context ---

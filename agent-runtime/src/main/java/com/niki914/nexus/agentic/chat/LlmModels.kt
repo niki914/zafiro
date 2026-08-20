@@ -2,7 +2,6 @@ package com.niki914.nexus.agentic.chat
 
 import com.niki914.nexus.agentic.chat.agentic.PromptComposeResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinTool
-import kotlinx.serialization.json.JsonObject
 
 data class LlmRuntimeSnapshot(
     val config: ResolvedLlmConfig,
@@ -59,37 +58,12 @@ enum class ToolParameterType {
     Array,
 }
 
-data class McpCachedTool(
-    val name: String,
-    val description: String,
-    val inputSchema: JsonObject,
-)
-
 fun ResolvedTools.allLocalTools(): List<LocalTool> {
     return builtinTools + customTools
 }
 
 fun ResolvedTools.allLocalToolNames(): List<String> {
     return allLocalTools().map { it.name }
-}
-
-internal fun mcpCacheKey(
-    url: String,
-    headers: Map<String, String>,
-): String {
-    val normalizedHeaders = headers
-        .mapKeys { (key, _) -> key.lowercase() }
-        .toSortedMap()
-    return buildString {
-        append(url)
-        append("#")
-        normalizedHeaders.forEach { (key, value) ->
-            append(key)
-            append("=")
-            append(value)
-            append("&")
-        }
-    }
 }
 
 sealed interface McpServerDefinition {
@@ -101,6 +75,5 @@ sealed interface McpServerDefinition {
         val url: String,
         override val enabled: Boolean = true,
         val headers: Map<String, String> = emptyMap(),
-        val cachedTools: List<McpCachedTool> = emptyList(),
     ) : McpServerDefinition
 }

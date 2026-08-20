@@ -14,7 +14,6 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomTool as Cus
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 
 class LocalSettingsCodecTest {
     @Test
@@ -73,35 +72,6 @@ class LocalSettingsCodecTest {
         assertTrue(server["enabled"]!!.jsonPrimitive.boolean)
         assertEquals("abc", server["headers"]!!.jsonObject["X-Token"]!!.jsonPrimitive.content)
         assertFalse(server.containsKey("transport"))
-    }
-
-    @Test
-    fun mcpCache_roundTripByUrlAndHeaders() {
-        val server = McpServer(
-            name = "aslocate",
-            url = "http://127.0.0.1:51338/mcp",
-            headers = mapOf("Authorization" to "Bearer token"),
-        )
-        val tool = McpTool(
-            name = "lookupSymbol",
-            description = "Lookup symbol definition",
-            inputSchemaJson = """{"type":"object"}""",
-        )
-
-        val settings = LocalSettingsCodec.withMcpCache(
-            settings = LocalSettings(),
-            url = server.url,
-            headers = server.headers,
-            tools = listOf(tool),
-        )
-
-        assertEquals(listOf(tool), LocalSettingsCodec.parseMcpCache(settings, server))
-        assertTrue(
-            LocalSettingsCodec.withoutMcpCache(
-                settings,
-                listOf(server)
-            ).mcpDiscoveredToolsCache!!.isEmpty()
-        )
     }
 
     @Test

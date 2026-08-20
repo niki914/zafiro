@@ -11,7 +11,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 
 internal object McpSettingsCodec {
     fun normalizeServerId(name: String): String? {
@@ -79,48 +78,6 @@ internal object McpSettingsCodec {
         ).toString()
     }
 
-    fun parseCache(json: String): List<McpTool> {
-        return parseObject(json)
-            .array(TOOLS_KEY)
-            .orEmptyObjects()
-            .mapNotNull { obj ->
-                val name = obj.string(NAME_KEY).trim()
-                if (name.isBlank()) return@mapNotNull null
-                val inputSchema = obj.obj(INPUT_SCHEMA_KEY) ?: return@mapNotNull null
-                McpTool(
-                    name = name,
-                    description = obj.string(DESCRIPTION_KEY).trim(),
-                    inputSchemaJson = inputSchema.toString(),
-                )
-            }
-    }
-
-    fun encodeCache(
-        serverId: String,
-        fingerprint: String,
-        tools: List<McpTool>,
-        updatedAt: Long,
-    ): String {
-        return JsonObject(
-            mapOf(
-                SERVER_ID_KEY to JsonPrimitive(serverId),
-                FINGERPRINT_KEY to JsonPrimitive(fingerprint),
-                UPDATED_AT_KEY to JsonPrimitive(updatedAt),
-                TOOLS_KEY to JsonArray(
-                    tools.map { tool ->
-                        JsonObject(
-                            mapOf(
-                                NAME_KEY to JsonPrimitive(tool.name),
-                                DESCRIPTION_KEY to JsonPrimitive(tool.description),
-                                INPUT_SCHEMA_KEY to parseObject(tool.inputSchemaJson),
-                            )
-                        )
-                    }
-                ),
-            )
-        ).toString()
-    }
-
     private const val SERVER_ID_MAX_LENGTH = 64
     private val SAFE_SERVER_ID = Regex("[a-z0-9_-]{1,$SERVER_ID_MAX_LENGTH}")
 
@@ -131,10 +88,6 @@ internal object McpSettingsCodec {
     private const val URL_KEY = "url"
     private const val HEADERS_KEY = "headers"
     private const val ENABLED_FOR_AGENTS_KEY = "enabled_for_agents"
-    private const val SERVER_ID_KEY = "server_id"
-    private const val FINGERPRINT_KEY = "fingerprint"
-    private const val UPDATED_AT_KEY = "updated_at"
-    private const val TOOLS_KEY = "tools"
     private const val DESCRIPTION_KEY = "description"
     private const val INPUT_SCHEMA_KEY = "input_schema"
 }

@@ -7,7 +7,6 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomToolValidat
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -28,19 +27,6 @@ private class MinimalRuntimeSettingsGateway : RuntimeSettingsGateway {
     override suspend fun readLlmConfig(agentId: String): RuntimeLlmConfig = RuntimeLlmConfig()
 
     override suspend fun listMcpServers(): List<RuntimeMcpServer> = emptyList()
-
-    override suspend fun listCachedTools(server: RuntimeMcpServer): List<RuntimeMcpTool> =
-        emptyList()
-
-    override suspend fun saveDiscoveredTools(
-        url: String,
-        headers: Map<String, String>,
-        tools: List<RuntimeMcpTool>,
-    ) = Unit
-
-    override suspend fun clearMcpCacheByServerNames(names: Set<String>) = Unit
-
-    override suspend fun fingerprintMcpServers(): String = ""
 
     override suspend fun addMemory(value: String) = Unit
 
