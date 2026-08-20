@@ -44,8 +44,9 @@ import kotlinx.coroutines.withContext
  * 工具执行契约（T6 裁决）：beforeToolCall 可改写参数（write）或阻断
  * （writeOutcome，短路后续 hook 且不执行）；工具段 hook 异常 → 该工具
  * Failure outcome（§8.4 #13），回合继续；executor 违反「永不抛异常」
- * 契约 → 回合 Failed(ToolExecutionFailed)；未知工具 → Failed(UnknownTool)
- * （§8.8 #3）；被阻断 / hook 失败的调用不执行也不走 afterToolCall
+ * 契约 → 回合 Failed(ToolExecutionFailed)；未知工具 → Failure 结果回喂
+ * （模型可自纠，回合继续，见 executeTools）；被阻断 / hook 失败的调用不执行
+ * 也不走 afterToolCall
  * （对齐 pi immediate result 语义）。
  * 分层重试（T7，G4/G5/G6 裁决）：每轮段执行 = buildRequest → 发送阶段
  * （传输层重试：网络错误 / 可重试状态码，config.retryPolicy，Retry-After
@@ -538,10 +539,11 @@ internal class RealAgentLoop : AgentLoop {
     ): ToolExecutionOutcome {
 
         // Phase 1（顺序）：解析 + beforeToolCall 链。outcome 非空 = 已定
-        // （阻断 / hook 失败），不执行；outcome 空 = 待执行。
+        // （阻断 / hook 失败 / 未知工具），不执行；outcome 空 = 待执行。
+        // holder 为 null = 无工具上下文（未知工具）；可执行 plan 必有 holder。
         data class Plan(
             val toolCall: ContentBlock.ToolCall,
-            val holder: ToolCallHolder,
+            val holder: ToolCallHolder?,
             val executor: ToolExecutor?,
             val context: ToolCallContext?,
             var outcome: ToolCallOutcome?
@@ -550,12 +552,21 @@ internal class RealAgentLoop : AgentLoop {
         for (call in toolCalls) {
             val registered = request.toolRegistry.find(call.name)
             if (registered == null) {
-                return ToolExecutionOutcome.Failure(
-                    failTurn(
-                        onEvent, assistant,
-                        LLMError(LLMErrorCode.UnknownTool, "unknown tool: ${call.name}")
-                    )
+                // 模型命名错误（wireName 未注册）→ Failure 结果回喂，回合继续：
+                // 模型可自纠（换名 / 放弃调用），与「MCP 服务器不存在 → Failure」
+                // 同层（§8.18 Q1/Q3）；区别于 ToolExecutionFailed（executor 违反
+                // 「永不抛异常」契约，模型无法修复代码 bug，回合失败，§8.15 #5）。
+                // 默认文案为纯文本（message 与 content 同值），下游如需定制可经
+                // outcome 后续扩展点表达（当前无消费者，不新增 API）。
+                val message = "Unknown tool '${call.name}'"
+                plans += Plan(
+                    toolCall = call,
+                    holder = null,
+                    executor = null,
+                    context = null,
+                    outcome = ToolCallOutcome.Failure(message = message, content = message)
                 )
+                continue
             }
             val holder = ToolCallHolder(call.id, call.name, call.argumentsJson, registered.descriptor)
             var hookFailed: ToolCallOutcome? = null
@@ -630,9 +641,12 @@ internal class RealAgentLoop : AgentLoop {
         for ((index, plan) in plans.withIndex()) {
             var outcome = executedOutcomes[index] ?: plan.outcome!!
             if (plan.outcome == null) {
+                // outcome == null ⇒ 可执行 plan ⇒ holder 必非空
+                // （unknown tool 的 plan 带已定 outcome，不进入本分支）
+                val holder = requireNotNull(plan.holder)
                 val resultHolder = ToolResultHolder(outcome)
                 try {
-                    for (hook in request.hooks) hook.afterToolCall(plan.holder, resultHolder)
+                    for (hook in request.hooks) hook.afterToolCall(holder, resultHolder)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -650,7 +664,7 @@ internal class RealAgentLoop : AgentLoop {
     }
 
     // 工具执行段落结果：成功携带提交的 ToolResult 消息（loop 同步进累积历史），
-    // 失败携带回合终态（UnknownTool / ToolExecutionFailed）。
+    // 失败携带回合终态（ToolExecutionFailed）。
     private sealed interface ToolExecutionOutcome {
         data class Success(val messages: List<Message>) : ToolExecutionOutcome
         data class Failure(val result: TurnResult) : ToolExecutionOutcome

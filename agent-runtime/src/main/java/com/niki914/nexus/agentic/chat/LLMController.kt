@@ -54,8 +54,8 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmC
  * Nexus 的 LLM 回合执行入口。OKIA 接入 T1 重写：
  * - 运行时从 Kai 切到 Okia（一次对话一个实例：换会话/重建 = close + open(restore)）
  * - 终态以 send 返回值（TurnResult）承载，事件流只承担中间过程
- * - 工具注册/执行/MCP 发现留给 T2：T1 不注册工具（模型可能调用未注册工具 →
- *   LLMErrorCode.UnknownTool 失败，已知退化）；kill-then-stop 已下沉到
+ * - 工具注册/执行/MCP 发现留给 T2：T1/T2 期间未注册工具的调用已不死循环（T2c：
+ *   未知工具 = Failure 结果回喂，回合继续，模型可自纠）；kill-then-stop 已下沉到
  *   Hooks.beforeStop（OKIA stop() 先杀资源再取消 job）
  * - getHistory/replaceHistory/resetConversation 为 ChatTurn 桥接（O1-A 过渡，
  *   T3 由 export()/open(restore) 会话生命周期替代）
