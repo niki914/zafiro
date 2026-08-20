@@ -6,7 +6,7 @@
 ## 状态
 
 - 分支：`feat/okia-integration`（基于 main `84f28cd`，即并入 PR #121 okia 库之后）
-- 当前阶段：**T2b 已完成并验收**（MCP 装配 + 发现时序 + 删缓存链；真机验证通过），待提交
+- 当前阶段：**T2c 已完成待验收**（okia 库 unknown tool 行为修复：Failure 回喂而非回合失败）；T3/持久化待讨论
 - 目标：把 Nexus 的 LLM 运行时从 `libs:kai` 切换为 `libs:okia`（`Okia` 门面），`libs:kai` 最终删除，不留兼容层
 - 约束：单个功能点新增+删除合计 ≤1000 行；每完成一个功能点更新本文档并由用户触发 git 提交；允许部分业务 Bug，先跑通主链路
 
@@ -45,6 +45,7 @@
 | D23 | **MCP 持久化本次不做**：删残链（gateway.listCachedTools / XRepo saveDiscoveredTools / McpCachedTool / mcpCacheKey / McpServerDefinition.cachedTools / refresh 的 mcpCachedTools）；记 TODO：未来 Nexus store 层持久化 OKIA McpDiscoverySnapshot（需先提 issue：McpDiscoveredTool 加 @Serializable，已核实当前无可序列化） | 已确认 |
 | D24 | **hooks 不接**：T2 无 beforeToolCall/afterToolCall（读屏前置非 hook 用例 §5.12），T4 有需求再加 | 已确认 |
 | D25 | **T2 测试策略**：不做逐工具描述 golden 断言（膨胀脆弱）。三档：①注册装配=refresh 后 registry 工具名集合正确（名字级）②描述合法性=schema JSON 可解析/name 合法/wireName 满足 ToolWireName 约束 ③执行行为=fake call→outcome 映射（Success/Failure/Interrupted/Unknown）。不写扫字符串式测试 | 已确认 |
+| D26 | **T2c 未知工具行为修复（t2 验收暴露）**：模型调用未注册工具从「回合 Failed(UnknownTool)」改为「ToolCallOutcome.Failure 结果回喂，回合继续」（对齐 KAI ToolCallCoordinator 与 OKIA 内部 MCP server-not-found 一致；§1 哲学：不替产品决策 + 不伪造消息）。默认文案纯文本 `Unknown tool '<name>'`（message 与 content 同值：message 供 UI / content 回喂模型）。**不开下游定制口子**（无消费者，遵循延迟设计 API 哲学；ROI 低，不提 issue）。`LLMErrorCode.UnknownTool` 删除（不再产生，不留死代码，已扫全仓）。边界：仅「模型命名错误」走回喂（模型可自纠）；executor 违反契约（ToolExecutionFailed）/协议/认证等仍回合失败 | 已确认 |
 | D-T2B-1 | **MCP 持久化彻底删除**（不作保留空实现）：缓存系统全部删除（网关 4 方法/XRepo McpApi 缓存 6 方法/McpSettingsCodec 缓存/McpCachedTool/RuntimeMcpTool/mcpCacheStoreId）。依据：服务器通→eager 预加载即得；不通→缓存了也不能执行（Codex 亦无跨启动持久化） | 已确认 |
 | D-T2B-2 | **PromptComposer 删 `<mcp_servers>` 块 + mcpDiscoverySnapshot 参数**：线缆名 `mcp__server__tool` 已表达服务器归属；kai snapshot import 从 agent-runtime 消失 | 已确认 |
 | D-T2B-3 | **MCP 时序 = 方案 B（后台不阻塞）**：启动 eager（首次 refresh 签名 null≠配置天然触发）+ turn 前签名变化起后台协程刷新（不 await）+ inFlight 防重 + 失败也更新签名防风暴 + 无保存点回调。Codex 实证：optional 服务器首回合可缺席（仅 required 被 turn 前 await）；Nexus/OKIA 无 required 概念 → 纯 optional 语义 | 已确认 |
@@ -60,6 +61,7 @@
 | T1 | 骨架替换：依赖切 okia；重写 LLMController + LlmStreamEventMapper；协议装配（apiType→protocol）；错误/并发/stop 适配；主 App 问答+停止+错误文案跑通 | 宿主与主 App 均一问一答、停止、错误事件正确；UI 消费端零改动 | **已完成**（2026-08-19 已提交 f842dbc/c87d630） |
 | T2a | 本地工具：BuiltinTool 描述迁移（D19）+ ToolRegistry 装配（refresh 注册 enabled 工具）+ ToolCallDispatcher→ToolExecutor 适配（execute/onInterrupt）+ CreateCustomTool 回合内注册（D20）+ outcome→BuiltinToolResult 拆解 | 内置/自定义工具回合成功（memory/search_apps/python 等）；模型调用已注册工具不再 UnknownTool；工具失败 UI 显示 code/message | **已完成**（2026-08-19，待用户验收） |
 | T2b | MCP：McpServer 配置→OkiaConfig.mcpServers 装配；签名变化触发后台 refreshMcpTools（D22 方案 B）；删 cachedTools 残链（D23）；PromptComposer 删 mcp 段（D-T2B-2）+ 脱离 kai | MCP 工具被发现、注册进 registry、可调用；禁用/失败不崩；后台刷新不阻塞回合；首回合按 eager 预取 | **已完成**（2026-08-19 验收：真机 13 工具 10 可用，禁用不可调用符合预期） |
+| T2c | okia 库修复：未知工具 → Failure 结果回喂（RealAgentLoop.executeTools find-miss）；删 LLMErrorCode.UnknownTool（死代码扫描）；测试重写 unknownToolFailsTurn→feedsBackFailureAndContinues | okia/agent-runtime/app 全量测试绿；未知工具时不整轮失败、UI 显示工具失败卡片 | **已完成**（2026-08-19，待验收） |
 | T3 | 持久化：Room 推倒重来（SessionSnapshot 序列化 + leafId）；restore 启动、切会话、fork/regenerate（D4）；`open(restore)` 生命周期 | 重启恢复、切会话、fork 重新生成正确 | 待讨论 |
 | T4 | 细节收口：idle 配置、beforeStop 正式接管 kill、可重试 UI 分支、并发→TurnConflict 回归、删余清尾（含删 :libs:kai 依赖）、全量测试 | 无 kai 引用、无死代码、全测试绿 | 待讨论 |
 
@@ -174,6 +176,20 @@
 **验证**：`:libs:okia`/`:store`/`:agent-runtime`/`:app` testDebugUnitTest 全绿（1078 测试）；MCP 测试用 fake RecordingMcpClient（无真实网络）；`refresh_mcpDiscoveryFailureStillUpdatesSignatureNoStorm` 验证失败后不重试
 
 **手动验收环境**：server-everything @ 3001 已在跑（`curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3001/mcp` → 400 即在线）+ `adb reverse tcp:3001 tcp:3001`（手机连电脑）
+
+## T2c 实现记录（2026-08-19，已完成，待验收）
+
+**背景**：T2 验收暴露——模型调用未注册工具时 OKIA 将其视为回合级异常（Failed(UnknownTool)），旧版 Nexus（KAI ToolCallCoordinator）与 OKIA 内部 MCP 路径（server not found → Failure 回喂）均为「错误结果回喂，loop 照常进行」。差异实证见前轮讨论。
+
+**改动**（±72/-22 行，4 文件）：
+- `libs/okia/.../loop/RealAgentLoop.kt`：`Plan.holder` 改 nullable；find-miss 分支从 `failTurn` 改为构造 Failure outcome 的 Plan（不执行、不走 afterToolCall，Phase 3 保序提交回喂，回合继续）；类注释 / Phase 1 注释 / ToolExecutionOutcome 注释同步
+- `libs/okia/.../error/LLMError.kt`：删 `UnknownTool(false)`（不可达）+ 类注释更新（unknownTool 永不重试说明移除，注明未知工具走 Failure 回喂）
+- `agent-runtime/.../LLMController.kt`：类注释（D17 里 UnknownTool 失败描述 → 回喂）仅文档更新，无逻辑改动
+- `libs/okia/.../loop/RealAgentLoopToolLoopTest.kt`：`unknownToolFailsTurn` 重写为 `unknownToolFeedsBackFailureAndContinues`——断言 TurnResult.Completed、无 TurnFailed 事件、未执行真实工具、ToolFailed 事件携带纯文本 `Unknown tool 'missing'`（message==content）、三类 commit（Assistant/含 ToolCall → ToolResult 回喂 → 第二轮空 Assistant）、第二轮请求历史以该 ToolResult 结尾
+
+**死代码扫描**（全仓）：UnknownTool 引用仅剩 `app/src/test/.../XRepoTest.kt:481 builtinSetEnabled_rejectsUnknownTool`（XRepo 设置枚举，同名函数无关，不动）
+
+**验证**：`:libs:okia:testDebugUnitTest` 全量绿（含重写用例）；`:agent-runtime:testDebugUnitTest` + `:app:compileDebugKotlin` 绿。Nexus 侧零行为改动（UI 走既有 ToolFailed 渲染）
 
 ## T1 实现记录（2026-08-19，已完成，待验收）
 
