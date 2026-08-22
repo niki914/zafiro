@@ -67,22 +67,36 @@ internal data class AssistantErrorUi(
 
 internal fun toAssistantErrorUi(message: String, code: LlmErrorCode?): AssistantErrorUi {
     return when (code) {
+        // 配置问题：用户可行动的引导（唯一本地化正文）
         LlmErrorCode.ConfigRequired -> AssistantErrorUi(
             titleRes = R.string.ui_home_error_config_required_title,
             bodyRes = R.string.ui_home_error_config_required_body,
         )
 
-        LlmErrorCode.TurnConflict,
-        null -> {
+        // 服务器/网络异常（用户选的服务器）：标题分类 + 原始 message 透传。
+        // Parse 也归此类：400 系客户端错误（模型名无效等）是用户配置/服务器问题，
+        // 与 Auth 同类，不应算内部错误（正文 message 给出具体原因）。
+        LlmErrorCode.Auth, LlmErrorCode.Quota, LlmErrorCode.RateLimit,
+        LlmErrorCode.Overloaded, LlmErrorCode.Transport, LlmErrorCode.Parse,
+        LlmErrorCode.RetryExhausted,
+        -> AssistantErrorUi(
+            titleRes = R.string.ui_home_error_network_title,
+            body = message.trim().ifEmpty { null },
+        )
+
+        // 内部错误（我们的问题 / 未知）：标题分类 + 原始 message 透传，空则兜底
+        LlmErrorCode.TurnConflict, LlmErrorCode.HookFailed,
+        LlmErrorCode.ToolExecutionFailed, null,
+        -> {
             val normalized = message.trim()
             if (normalized.isEmpty()) {
                 AssistantErrorUi(
-                    titleRes = R.string.ui_home_error_generic_title,
+                    titleRes = R.string.ui_home_error_internal_title,
                     bodyRes = R.string.ui_home_error_retry_body,
                 )
             } else {
                 AssistantErrorUi(
-                    titleRes = R.string.ui_home_error_generic_title,
+                    titleRes = R.string.ui_home_error_internal_title,
                     body = normalized,
                 )
             }

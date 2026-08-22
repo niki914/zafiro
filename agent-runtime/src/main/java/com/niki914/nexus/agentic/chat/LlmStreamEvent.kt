@@ -39,6 +39,15 @@ sealed interface LlmStreamEvent {
 enum class LlmErrorCode {
     ConfigRequired,
     TurnConflict,
+    Auth,
+    Quota,
+    RateLimit,
+    Overloaded,
+    Transport,
+    Parse,
+    RetryExhausted,
+    HookFailed,
+    ToolExecutionFailed,
 }
 
 data class ToolCallStatus(

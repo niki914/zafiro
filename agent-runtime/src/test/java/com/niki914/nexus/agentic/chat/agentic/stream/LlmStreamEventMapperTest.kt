@@ -1,9 +1,10 @@
 package com.niki914.nexus.agentic.chat.agentic.stream
 
+import com.niki914.nexus.agentic.chat.LlmErrorCode
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
 import com.niki914.okia.error.LLMError
-import com.niki914.okia.error.LLMErrorCode
+import com.niki914.okia.error.LLMErrorCode as OkiaLLMErrorCode
 import com.niki914.okia.event.StopCause
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.message.AssistantMessage
@@ -225,8 +226,8 @@ class LlmStreamEventMapperTest {
     }
 
     @Test
-    fun `TurnFailed maps to Error with code null`() {
-        val error = LLMError(LLMErrorCode.Transport, "boom")
+    fun `TurnFailed maps to Error with mapped code`() {
+        val error = LLMError(OkiaLLMErrorCode.Transport, "boom")
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnFailed(AssistantMessage(emptyList()), error),
             0L,
@@ -234,12 +235,34 @@ class LlmStreamEventMapperTest {
         )
         val mapped = result as LlmStreamEvent.Error
         assertEquals("boom", mapped.message)
-        assertEquals(null, mapped.code)
+        assertEquals(LlmErrorCode.Transport, mapped.code)
+    }
+
+    @Test
+    fun `TurnFailed maps Auth to LlmErrorCode Auth`() {
+        val error = LLMError(OkiaLLMErrorCode.Auth, "invalid key")
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.TurnFailed(AssistantMessage(emptyList()), error),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmErrorCode.Auth, (result as LlmStreamEvent.Error).code)
+    }
+
+    @Test
+    fun `TurnFailed maps ContextOverflow to Parse`() {
+        val error = LLMError(OkiaLLMErrorCode.ContextOverflow, "context too long")
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.TurnFailed(AssistantMessage(emptyList()), error),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmErrorCode.Parse, (result as LlmStreamEvent.Error).code)
     }
 
     @Test
     fun `TurnFailed with blank message falls back to default`() {
-        val error = LLMError(LLMErrorCode.Auth, " ")
+        val error = LLMError(OkiaLLMErrorCode.Auth, " ")
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnFailed(AssistantMessage(emptyList()), error),
             0L,
@@ -249,13 +272,15 @@ class LlmStreamEventMapperTest {
     }
 
     @Test
-    fun `TurnIdleTimeout maps to Error with default message`() {
+    fun `TurnIdleTimeout maps to Error with default message and Transport code`() {
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnIdleTimeout(AssistantMessage(emptyList())),
             0L,
             "default error",
         )
-        assertEquals("default error", (result as LlmStreamEvent.Error).message)
+        val mapped = result as LlmStreamEvent.Error
+        assertEquals("default error", mapped.message)
+        assertEquals(LlmErrorCode.Transport, mapped.code)
     }
 
     @Test

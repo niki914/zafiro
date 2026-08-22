@@ -1,9 +1,11 @@
 package com.niki914.nexus.agentic.chat.agentic.stream
 
 import com.niki914.logging.Logger
+import com.niki914.nexus.agentic.chat.LlmErrorCode
 import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.chat.ToolCallKind
 import com.niki914.nexus.agentic.chat.ToolCallStatus
+import com.niki914.okia.error.LLMErrorCode as OkiaLLMErrorCode
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
@@ -86,14 +88,14 @@ object LlmStreamEventMapper {
                 LlmStreamEvent.Error(
                     message = event.error.message.trim().ifEmpty { defaultErrorMessage },
                     throwable = event.error.cause,
-                    code = null,
+                    code = event.error.code.toNexusCode(),
                 )
             }
 
             is TurnEvent.TurnIdleTimeout -> LlmStreamEvent.Error(
                 message = defaultErrorMessage,
                 throwable = null,
-                code = null,
+                code = LlmErrorCode.Transport,
             )
 
             // Thinking 与工具意图阶段：UI 不渲染 thinking（D5）；工具意图无消费端（T2）。
@@ -149,6 +151,23 @@ object LlmStreamEventMapper {
         is ToolCallOutcome.Intercepted -> content
         is ToolCallOutcome.Interrupted -> content
         is ToolCallOutcome.Unknown -> content
+    }
+
+    /**
+     * okia LLMErrorCode → Nexus LlmErrorCode。ContextOverflow 归 Parse
+     * （上下文溢出，用户可感知的模型端内容问题）。
+     */
+    private fun OkiaLLMErrorCode.toNexusCode(): LlmErrorCode = when (this) {
+        OkiaLLMErrorCode.Auth -> LlmErrorCode.Auth
+        OkiaLLMErrorCode.Quota -> LlmErrorCode.Quota
+        OkiaLLMErrorCode.RateLimit -> LlmErrorCode.RateLimit
+        OkiaLLMErrorCode.Overloaded -> LlmErrorCode.Overloaded
+        OkiaLLMErrorCode.ContextOverflow -> LlmErrorCode.Parse
+        OkiaLLMErrorCode.Transport -> LlmErrorCode.Transport
+        OkiaLLMErrorCode.Parse -> LlmErrorCode.Parse
+        OkiaLLMErrorCode.HookFailed -> LlmErrorCode.HookFailed
+        OkiaLLMErrorCode.ToolExecutionFailed -> LlmErrorCode.ToolExecutionFailed
+        OkiaLLMErrorCode.RetryExhausted -> LlmErrorCode.RetryExhausted
     }
 
     private fun ContentBlock.ToolCall.toStatus(): ToolCallStatus =
