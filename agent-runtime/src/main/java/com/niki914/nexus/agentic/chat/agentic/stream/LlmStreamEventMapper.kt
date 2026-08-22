@@ -19,18 +19,48 @@ import com.niki914.okia.message.ToolCallOutcome
 object LlmStreamEventMapper {
     private const val LOG_TAG = "niki914_nexus_LlmStreamEventMapper"
 
+    /**
+     * 当前正在流式的文本块已累积文本（跨事件状态）。
+     * OKIA 把第一个 text delta 发在 TextStarted（不携带增量文本，只在 partial 里），
+     * 后续 TextDelta.delta 才是增量——若直接丢弃 TextStarted，UI 累积会缺第一个
+     * delta，导致 appendFinalText 的 removePrefix 失败产生双份文本。
+     * 这里以 partial 全文为基线，TextStarted 发全量、TextDelta 发增量。
+     */
+    private var accumulatedText: String = ""
+
     fun map(
         event: TurnEvent,
         startedAtMs: Long,
         defaultErrorMessage: String,
     ): LlmStreamEvent? { // <--- TODO 梳理 LlmStreamEvent | Thinking impl
         val mapped = when (event) {
-            is TurnEvent.TurnStarted -> LlmStreamEvent.RoundStarted
+            is TurnEvent.TurnStarted -> {
+                accumulatedText = ""
+                LlmStreamEvent.RoundStarted
+            }
+
+            // 文本块开始：partial 含第一个 delta（OKIA 不单发），以全量作 delta
+            is TurnEvent.TextStarted -> {
+                val fullText = event.partial.textContent()
+                accumulatedText = fullText
+                LlmStreamEvent.TextDelta(
+                    delta = fullText,
+                    fullText = fullText,
+                    charsPerSecond = charsPerSecond(fullText, startedAtMs),
+                )
+            }
 
             is TurnEvent.TextDelta -> {
                 val fullText = event.partial.textContent()
+                val delta = if (fullText.startsWith(accumulatedText)) {
+                    fullText.removePrefix(accumulatedText)
+                } else {
+                    // 防御：partial 与累积不一致（正常不会发生），全量兜底避免丢字
+                    fullText
+                }
+                accumulatedText = fullText
                 LlmStreamEvent.TextDelta(
-                    delta = event.delta,
+                    delta = delta,
                     fullText = fullText,
                     charsPerSecond = charsPerSecond(fullText, startedAtMs),
                 )
@@ -46,13 +76,19 @@ object LlmStreamEventMapper {
                 resultText = event.outcome.contentText(),
             )
 
-            is TurnEvent.TurnCompleted -> LlmStreamEvent.Completed(event.message.textContent())
+            is TurnEvent.TurnCompleted -> {
+                accumulatedText = ""
+                LlmStreamEvent.Completed(event.message.textContent())
+            }
 
-            is TurnEvent.TurnFailed -> LlmStreamEvent.Error(
-                message = event.error.message.trim().ifEmpty { defaultErrorMessage },
-                throwable = event.error.cause,
-                code = null,
-            )
+            is TurnEvent.TurnFailed -> {
+                accumulatedText = ""
+                LlmStreamEvent.Error(
+                    message = event.error.message.trim().ifEmpty { defaultErrorMessage },
+                    throwable = event.error.cause,
+                    code = null,
+                )
+            }
 
             is TurnEvent.TurnIdleTimeout -> LlmStreamEvent.Error(
                 message = defaultErrorMessage,
@@ -61,14 +97,21 @@ object LlmStreamEventMapper {
             )
 
             // Thinking 与工具意图阶段：UI 不渲染 thinking（D5）；工具意图无消费端（T2）。
-            // TextStarted/TextEnded 不发射：TextDelta 已携带累积 partial 文本，
-            // UI 逐 delta 追加即得完整结果，Started/Ended 是多余的边界事件。
+            // TextEnded 是文本块边界：重置累积（多段/跨工具轮）。
             // TurnAborted（用户停止）不映射为错误事件：停止由消费端 cancel 表达。
-            is TurnEvent.TextStarted, is TurnEvent.TextEnded,
+            is TurnEvent.TextEnded -> {
+                accumulatedText = ""
+                null
+            }
+
             is TurnEvent.ThinkingStarted, is TurnEvent.ThinkingDelta, is TurnEvent.ThinkingEnded,
             is TurnEvent.ToolCallStarted, is TurnEvent.ToolCallDelta, is TurnEvent.ToolCallReady,
-            is TurnEvent.RetryScheduled,
-            is TurnEvent.TurnAborted -> null
+            is TurnEvent.RetryScheduled -> null
+
+            is TurnEvent.TurnAborted -> {
+                accumulatedText = ""
+                null
+            }
         }
         if (event !is TurnEvent.TextDelta) {
             Logger.d(

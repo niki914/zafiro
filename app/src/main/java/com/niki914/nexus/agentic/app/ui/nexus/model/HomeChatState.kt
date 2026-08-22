@@ -679,8 +679,17 @@ class HomeChatViewModel internal constructor(
     private fun HomeChatTurn.appendFinalText(fullText: String): HomeChatTurn {
         val displayedText =
             blocks.filterIsInstance<HomeChatBlock.Text>().joinToString(separator = "") { it.text }
-        val delta = fullText.removePrefix(displayedText)
-        return appendText(delta)
+        if (fullText.startsWith(displayedText)) {
+            return appendText(fullText.removePrefix(displayedText))
+        }
+        // 防御：流式累积与最终全文不一致（历史 bug：OKIA 首 delta 在 TextStarted 被
+        // 丢弃导致 removePrefix 失败 → 全量追加产生双份文本）。以 fullText 为准重建
+        // 文本块，绝不追加产生重复。
+        return copy(
+            blocks = blocks.map { block ->
+                if (block is HomeChatBlock.Text) HomeChatBlock.Text(fullText) else block
+            },
+        )
     }
 
     private fun HomeChatTurn.appendError(message: String, code: LlmErrorCode?): HomeChatTurn {
