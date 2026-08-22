@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.agentic.python.PyRuntime
+import com.niki914.nexus.agentic.app.conversation.ConversationPersister
 import com.niki914.nexus.agentic.app.conversation.ConversationRepo
 import com.niki914.nexus.agentic.repo.UpdateCheckHolder
 import com.niki914.nexus.agentic.repo.XRepo
@@ -31,6 +32,9 @@ class App : Application() {
         ContextProvider.provide(applicationContext)
         XRepo.init(this.applicationContext)
         ConversationRepo.init(this.applicationContext)
+        // T3：消息级增量持久化器（观察 LLMController 当前会话快照流，
+        // 独立于 UI 生命周期——回合可能在宿主后台跑，ViewModel 已销毁时仍落盘）
+        ConversationPersister.start(applicationScope)
         RuntimeEnvironment.install(createAppRuntimeBridge())
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         DynamicColors.applyToActivitiesIfAvailable(this)

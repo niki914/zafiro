@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Transaction
 import com.niki914.logging.Logger
 
 @Dao
@@ -41,34 +40,37 @@ interface ConversationDao {
         }
     }
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertConversation(entity: ConversationEntity): Long
+
     @Query(
         """
-        SELECT * FROM conversation_turn
+        SELECT * FROM conversation_entry
         WHERE conversation_id = :conversationId
-        ORDER BY turn_index ASC
         """,
     )
-    suspend fun listTurnsQuery(conversationId: String): List<ConversationTurnEntity>
+    suspend fun listEntriesQuery(conversationId: String): List<ConversationEntryEntity>
 
-    suspend fun listTurns(conversationId: String): List<ConversationTurnEntity> {
+    suspend fun listEntries(conversationId: String): List<ConversationEntryEntity> {
         val startedAtMs = System.currentTimeMillis()
-        return listTurnsQuery(conversationId).also { rows ->
-            Logger.i(
+        return listEntriesQuery(conversationId).also { rows ->
+            Logger.d(
                 LOG_TAG,
-                "query listTurns conversationId=$conversationId rows=${rows.size} " +
+                "query listEntries conversationId=$conversationId rows=${rows.size} " +
                     "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }
     }
 
-    @Insert(onConflict = OnConflictStrategy.ABORT)
-    suspend fun insertConversation(entity: ConversationEntity): Long
+    @Query("SELECT COUNT(*) FROM conversation_entry WHERE conversation_id = :conversationId")
+    suspend fun countEntries(conversationId: String): Int
 
-    @Query("DELETE FROM conversation_turn WHERE conversation_id = :conversationId")
-    suspend fun deleteTurns(conversationId: String): Int
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTurns(turns: List<ConversationTurnEntity>): List<Long>
+    /**
+     * 消息级增量落盘（D3-2/D3-8）：按 (conversation_id, id) 幂等，观察协程
+     * 重启/切会话重复观察不重复写。
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertEntries(entries: List<ConversationEntryEntity>)
 
     @Query(
         """
@@ -79,12 +81,15 @@ interface ConversationDao {
         WHERE id = :conversationId
         """,
     )
-    suspend fun updateHistoryMetadata(
+    suspend fun updateConversationMetadata(
         conversationId: String,
         updatedAt: Long,
         lastMessagePreview: String,
         turnCount: Int,
     ): Int
+
+    @Query("UPDATE conversation SET leaf_id = :leafId WHERE id = :conversationId")
+    suspend fun updateLeafId(conversationId: String, leafId: String): Int
 
     @Query("UPDATE conversation SET draft_text = :draftText WHERE id = :conversationId")
     suspend fun updateDraft(conversationId: String, draftText: String): Int
@@ -94,22 +99,4 @@ interface ConversationDao {
 
     @Query("UPDATE conversation SET title = :title, title_edited = 1 WHERE id = :id")
     suspend fun renameConversation(id: String, title: String): Int
-
-    @Transaction
-    suspend fun replaceTurnsAndMetadata(
-        conversationId: String,
-        turns: List<ConversationTurnEntity>,
-        updatedAt: Long,
-        lastMessagePreview: String,
-        turnCount: Int,
-    ): Int {
-        deleteTurns(conversationId)
-        insertTurns(turns)
-        return updateHistoryMetadata(
-            conversationId = conversationId,
-            updatedAt = updatedAt,
-            lastMessagePreview = lastMessagePreview,
-            turnCount = turnCount,
-        )
-    }
 }

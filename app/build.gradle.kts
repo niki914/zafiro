@@ -75,7 +75,7 @@ dependencies {
     implementation(project(":libs:logging"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-    implementation(project(":libs:kai"))
+    implementation(project(":libs:okia"))
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Room

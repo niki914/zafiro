@@ -338,4 +338,6 @@
     <!-- Feedback templates -->
     <string name="feedback_feature_template">## Feature Suggestion\n\n## Use Case\n\n## Expected Result</string>
     <string name="feedback_bug_template">## Issue Description\n\n## Steps to Reproduce\n\n## Expected Behavior\n\n## Actual Behavior\n\n## Device Info\n- Android version:\n- Assistant (Breeno or other):\n- Module version:\n\n## More\nYou can attach logs, screenshots, or recordings to help us understand the issue.</string>
+    <string name="conversation_fork_title">Fork · %1$s</string>
+    <string name="conversation_regenerate_title">Regenerate · %1$s</string>
 </resources>

@@ -337,4 +337,6 @@
     <string name="notif_unsupported_issue_body">## 问题描述\n当前%1$s版本还未被 Nexus 支持\n宿主版本：%2$s\n\n## 复现步骤\n\n\n## 设备信息\n- 助手：%1$s\n- 助手版本：%2$s\n- 模块版本：</string>
 
     <string name="feedback_bug_template">## 问题描述\n\n## 复现步骤\n\n## 预期行为\n\n## 实际行为\n\n## 设备信息\n- Android 版本：\n- 助手（小布或其他）：\n- 模块版本：\n\n## 更多\n可以补充日志、截图录屏等信息，以便于我们理解</string>
+    <string name="conversation_fork_title">Fork · %1$s</string>
+    <string name="conversation_regenerate_title">Regenerate · %1$s</string>
 </resources>

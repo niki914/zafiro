@@ -2,10 +2,13 @@ package com.niki914.nexus.agentic.app.conversation
 
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatBlock
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
-import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
-import com.niki914.kai.ChatTurn
-import com.niki914.kai.ToolCallSpec
 import com.niki914.nexus.agentic.app.util.SilentLoggerRule
+import com.niki914.okia.conversation.ConversationEntry
+import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.message.AssistantMessage
+import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
+import com.niki914.okia.message.ToolCallOutcome
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -17,167 +20,185 @@ class ConversationFormatterTest {
     val silentLogger = SilentLoggerRule()
 
     @Test
-    fun toHomeTurns_restoresFailureFromTextProtocolResult() {
-        val turns = ConversationFormatter.toHomeTurns(
-            listOf(
-                ChatTurn.User("question"),
-                ChatTurn.Assistant(
-                    content = "let me tap",
-                    toolCalls = listOf(
-                        ToolCallSpec("c1", "screen_operation_accessibility", "{}"),
+    fun toHomeTurns_groupsByUserTurn() {
+        val snapshot = snapshotOf(
+            Message.User(listOf(ContentBlock.Text("first"))),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer 1")))),
+            Message.User(listOf(ContentBlock.Text("second"))),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer 2")))),
+        )
+
+        val turns = ConversationFormatter.toHomeTurns(snapshot)
+
+        assertEquals(2, turns.size)
+        assertEquals("first", turns[0].userText)
+        assertEquals("second", turns[1].userText)
+        assertEquals(
+            listOf("answer 1"),
+            turns[0].blocks.filterIsInstance<HomeChatBlock.Text>().map { it.text },
+        )
+        assertEquals(
+            listOf("answer 2"),
+            turns[1].blocks.filterIsInstance<HomeChatBlock.Text>().map { it.text },
+        )
+    }
+
+    @Test
+    fun toHomeTurns_restoresToolSuccessFromOutcome() {
+        val snapshot = snapshotOf(
+            Message.User(listOf(ContentBlock.Text("question"))),
+            Message.Assistant(
+                AssistantMessage(
+                    listOf(
+                        ContentBlock.Text("let me tap"),
+                        ContentBlock.ToolCall("c1", "screen_operation_accessibility", "{}"),
                     ),
                 ),
-                ChatTurn.ToolResult(
-                    callId = "c1",
-                    toolName = "screen_operation_accessibility",
-                    resultJson = "#!tool-result\n#!status: failure\n#!code: VERSION_MISMATCH\n#!message: Token expired\n\nsome yaml",
+            ),
+            Message.ToolResult(
+                callId = "c1",
+                toolName = "screen_operation_accessibility",
+                outcome = ToolCallOutcome.Success(content = "tree yaml"),
+            ),
+        )
+
+        val turns = ConversationFormatter.toHomeTurns(snapshot)
+        val toolBlock = turns.single().blocks.last() as HomeChatBlock.Tool
+        assertEquals(HomeToolState.Succeeded, toolBlock.status.state)
+        assertEquals("tree yaml", toolBlock.status.resultText)
+    }
+
+    @Test
+    fun toHomeTurns_restoresToolFailureFromOutcome() {
+        val snapshot = snapshotOf(
+            Message.User(listOf(ContentBlock.Text("question"))),
+            Message.Assistant(
+                AssistantMessage(
+                    listOf(
+                        ContentBlock.ToolCall("c1", "screen_operation_accessibility", "{}"),
+                    ),
+                ),
+            ),
+            Message.ToolResult(
+                callId = "c1",
+                toolName = "screen_operation_accessibility",
+                outcome = ToolCallOutcome.Failure(
+                    message = "Token expired",
+                    content = "yaml",
                 ),
             ),
         )
 
+        val turns = ConversationFormatter.toHomeTurns(snapshot)
+        val toolBlock = turns.single().blocks.last() as HomeChatBlock.Tool
+        assertEquals(HomeToolState.Failed, toolBlock.status.state)
+        assertEquals("Token expired", toolBlock.status.failedReason)
+    }
+
+    @Test
+    fun toHomeTurns_interceptedErrorShowsFailed() {
+        val snapshot = snapshotOf(
+            Message.User(listOf(ContentBlock.Text("q"))),
+            Message.Assistant(
+                AssistantMessage(listOf(ContentBlock.ToolCall("c1", "mcp__s__t", "{}"))),
+            ),
+            Message.ToolResult(
+                callId = "c1",
+                toolName = "mcp__s__t",
+                outcome = ToolCallOutcome.Intercepted(reason = "denied", isError = true),
+            ),
+        )
+
+        val turns = ConversationFormatter.toHomeTurns(snapshot)
         val toolBlock = turns.single().blocks.last() as HomeChatBlock.Tool
         assertEquals(HomeToolState.Failed, toolBlock.status.state)
     }
 
     @Test
-    fun toHomeTurns_restoresSuccessFromTextProtocolResult() {
-        val turns = ConversationFormatter.toHomeTurns(
-            listOf(
-                ChatTurn.User("question"),
-                ChatTurn.Assistant(
-                    content = "result",
-                    toolCalls = listOf(
-                        ToolCallSpec("c2", "screen_operation_accessibility", "{}"),
+    fun toHomeTurns_ignoresThinkingBlocks() {
+        val snapshot = snapshotOf(
+            Message.User(listOf(ContentBlock.Text("q"))),
+            Message.Assistant(
+                AssistantMessage(
+                    listOf(
+                        ContentBlock.Thinking("hidden reasoning"),
+                        ContentBlock.Text("visible"),
                     ),
-                ),
-                ChatTurn.ToolResult(
-                    callId = "c2",
-                    toolName = "screen_operation_accessibility",
-                    resultJson = "#!tool-result\n#!status: success\n\ntree yaml",
                 ),
             ),
         )
 
+        val turns = ConversationFormatter.toHomeTurns(snapshot)
+        val textBlocks = turns.single().blocks.filterIsInstance<HomeChatBlock.Text>()
+        assertEquals(listOf("visible"), textBlocks.map { it.text })
+    }
+
+    @Test
+    fun toHomeTurns_unpairedToolCallDefaultsToFailedPlaceholder() {
+        val snapshot = snapshotOf(
+            Message.User(listOf(ContentBlock.Text("q"))),
+            Message.Assistant(
+                AssistantMessage(listOf(ContentBlock.ToolCall("c1", "search", "{}"))),
+            ),
+        )
+
+        val turns = ConversationFormatter.toHomeTurns(snapshot)
         val toolBlock = turns.single().blocks.last() as HomeChatBlock.Tool
-        assertEquals(HomeToolState.Succeeded, toolBlock.status.state)
-    }
-    @Test
-    fun previewFromText_trimsAndKeepsEmptyOrShortText() {
-        assertEquals("", ConversationFormatter.previewFromText("   "))
-        assertEquals("short text", ConversationFormatter.previewFromText("  short text  "))
+        assertEquals(HomeToolState.Failed, toolBlock.status.state)
     }
 
     @Test
-    fun previewFromText_keepsExactlyTwentyCharacters() {
-        assertEquals(
-            "12345678901234567890",
-            ConversationFormatter.previewFromText("12345678901234567890")
+    fun projectLeaf_followsParentChainToRoot() {
+        val entries = listOf(
+            ConversationEntry("e0", null, 0L, Message.User(listOf(ContentBlock.Text("a")))),
+            ConversationEntry("e1", "e0", 1L, Message.User(listOf(ContentBlock.Text("b")))),
+            ConversationEntry("e2", "e1", 2L, Message.User(listOf(ContentBlock.Text("c")))),
         )
+
+        val projected = ConversationFormatter.projectLeaf(entries, "e1")
+
+        assertEquals(listOf("e0", "e1"), projected.map { it.id })
     }
 
     @Test
-    fun previewFromText_truncatesLongTextWithEllipsis() {
-        assertEquals(
-            "12345678901234567890...",
-            ConversationFormatter.previewFromText("123456789012345678901")
+    fun projectLeaf_nullLeafFallsBackToLastEntry() {
+        val entries = listOf(
+            ConversationEntry("e0", null, 0L, Message.User(listOf(ContentBlock.Text("a")))),
+            ConversationEntry("e1", "e0", 1L, Message.User(listOf(ContentBlock.Text("b")))),
         )
+
+        val projected = ConversationFormatter.projectLeaf(entries, null)
+
+        assertEquals(listOf("e0", "e1"), projected.map { it.id })
     }
 
     @Test
-    fun previewFromHistory_ignoresToolResultAndUsesLatestTextTurn() {
-        val history = listOf(
-            ChatTurn.User("first"),
-            ChatTurn.ToolResult(callId = "call-1", toolName = "search", resultJson = "{}"),
-            ChatTurn.Assistant("latest assistant"),
-            ChatTurn.ToolResult(callId = "call-2", toolName = "calc", resultJson = "{}"),
+    fun previewFromEntries_usesLatestNonEmptyMessage() {
+        val entries = listOf(
+            ConversationEntry("e0", null, 0L, Message.User(listOf(ContentBlock.Text("q")))),
+            ConversationEntry("e1", "e0", 1L, Message.ToolResult("c1", "t", ToolCallOutcome.Success("r"))),
         )
 
-        assertEquals("latest assistant", ConversationFormatter.previewFromHistory(history))
+        assertEquals("q", ConversationFormatter.previewFromEntries(entries))
     }
 
-    @Test
-    fun toHomeTurns_mapsUserAssistantTextAndToolCalls() {
-        val turns = ConversationFormatter.toHomeTurns(
-            listOf(
-                ChatTurn.System("ignored"),
-                ChatTurn.User("question"),
-                ChatTurn.Assistant(
-                    content = "answer",
-                    toolCalls = listOf(ToolCallSpec("call-1", "search", "{}")),
-                ),
-                ChatTurn.ToolResult(callId = "call-1", toolName = "search", resultJson = "{}"),
-                ChatTurn.User("next"),
-            ),
-        )
-
-        assertEquals(2, turns.size)
-        assertEquals("question", turns[0].userText)
-        assertEquals(
-            listOf(
-                HomeChatBlock.Text("answer"),
-                HomeChatBlock.Tool(HomeToolStatus("call-1", "search", HomeToolState.Succeeded, resultText = "{}")),
-            ),
-            turns[0].blocks,
-        )
-        assertEquals("next", turns[1].userText)
-        assertEquals(emptyList<HomeChatBlock>(), turns[1].blocks)
-    }
-
-    @Test
-    fun toHomeTurns_restoresToolStateFromToolResults() {
-        val turns = ConversationFormatter.toHomeTurns(
-            listOf(
-                ChatTurn.User("question"),
-                ChatTurn.Assistant(
-                    content = "answer",
-                    toolCalls = listOf(
-                        ToolCallSpec("ok-call", "search", "{}"),
-                        ToolCallSpec("failed-ok-call", "memory", "{}"),
-                        ToolCallSpec("failed-exit-call", "command", "{}"),
-                    ),
-                ),
-                ChatTurn.ToolResult(
-                    callId = "ok-call",
-                    toolName = "search",
-                    resultJson = """{"ok":true}""",
-                ),
-                ChatTurn.ToolResult(
-                    callId = "failed-ok-call",
-                    toolName = "memory",
-                    resultJson = """{"ok":false,"message":"denied"}""",
-                ),
-                ChatTurn.ToolResult(
-                    callId = "failed-exit-call",
-                    toolName = "command",
-                    resultJson = """{"exit_code":"2","stderr":"boom"}""",
-                ),
-            ),
-        )
-
-        assertEquals(
-            listOf(
-                HomeChatBlock.Text("answer"),
-                HomeChatBlock.Tool(HomeToolStatus("ok-call", "search", HomeToolState.Succeeded, resultText = """{"ok":true}""")),
-                HomeChatBlock.Tool(
-                    HomeToolStatus(
-                        "failed-ok-call",
-                        "memory",
-                        HomeToolState.Failed,
-                        resultText = """{"ok":false,"message":"denied"}""",
-                        failedReason = "denied",
-                    )
-                ),
-                HomeChatBlock.Tool(
-                    HomeToolStatus(
-                        "failed-exit-call",
-                        "command",
-                        HomeToolState.Failed,
-                        resultText = """{"exit_code":"2","stderr":"boom"}""",
-                        failedReason = "boom",
-                    )
-                ),
-            ),
-            turns.single().blocks,
+    private fun snapshotOf(vararg messages: Message): SessionSnapshot {
+        var parent: String? = null
+        val entries = messages.mapIndexed { index, message ->
+            val entry = ConversationEntry(
+                id = "e$index",
+                parentId = parent,
+                timestamp = 1000L + index,
+                message = message,
+            )
+            parent = entry.id
+            entry
+        }
+        return SessionSnapshot(
+            id = "session-1",
+            leafId = entries.lastOrNull()?.id,
+            version = 1,
+            entries = entries,
         )
     }
 }

@@ -1,7 +1,7 @@
 package com.niki914.nexus.agentic.chat
 
 import android.content.Context
-import com.niki914.kai.ChatTurn
+import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
 import com.niki914.nexus.agentic.runtime.settings.model.LlmApiType
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeBuiltinToolSetting
@@ -225,66 +225,81 @@ class LLMControllerOkiaTest {
         firstJob.join()
     }
 
-    // ── 历史桥接 ────────────────────────────────────────────────────────────
+    // ── T3 会话生命周期 ───────────────────────────────────────────────────
 
     @Test
-    fun getHistory_projectsOkiaTreeToChatTurns() = runTest {
+    fun ensureSession_createsInstanceAndReturnsTreeId() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
-        val loop = object : AgentLoop {
-            override suspend fun run(request: LoopRequest, onEvent: suspend (TurnEvent) -> Unit): TurnResult {
-                onEvent(TurnEvent.TurnStarted("hello"))
-                onEvent(TurnEvent.TextDelta(0, "hi", AssistantMessage(listOf(ContentBlock.Text("hi")))))
-                // 真实 loop 会把 assistant 提交进树；模拟 onCommit 以见到历史投影
-                request.onCommit.invoke(
-                    listOf(Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("hi")))))
-                )
-                onEvent(TurnEvent.TurnCompleted(AssistantMessage(listOf(ContentBlock.Text("hi")))))
-                return TurnResult.Completed(CompletionReason.Stop)
+        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)), restore)
+        }
+
+        val id = LLMController.ensureSession()
+
+        assertTrue(id.isNotBlank())
+        assertEquals(id, LLMController.currentConversation.value?.id)
+    }
+
+    @Test
+    fun openSession_rebuildsInstanceFromSnapshot() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
+        )
+        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)), restore)
+        }
+        LLMController.refresh()
+        val snapshot = SessionSnapshot(
+            id = "session-restored",
+            leafId = "e1",
+            version = 1,
+            entries = listOf(
+                ConversationEntry(
+                    id = "e0",
+                    parentId = null,
+                    timestamp = 1L,
+                    message = Message.User(listOf(ContentBlock.Text("a"))),
+                ),
+                ConversationEntry(
+                    id = "e1",
+                    parentId = "e0",
+                    timestamp = 2L,
+                    message = Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("b")))),
+                ),
+            ),
+        )
+
+        LLMController.openSession(snapshot)
+
+        assertEquals("session-restored", LLMController.currentConversation.value?.id)
+        val texts = LLMController.historySnapshot().map { message ->
+            when (message) {
+                is Message.User -> message.content
+                    .filterIsInstance<ContentBlock.Text>().map { it.text }.joinToString("\n")
+                is Message.Assistant -> message.message.content
+                    .filterIsInstance<ContentBlock.Text>().map { it.text }.joinToString("\n")
+                is Message.ToolResult -> ""
             }
         }
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
-
-        LLMController.stream("hello", mockContext()).toList()
-
-        val history = LLMController.getHistory()
-        assertEquals(2, history.size)
-        assertEquals(ChatTurn.User("hello"), history[0])
-        assertEquals(ChatTurn.Assistant(content = "hi"), history[1])
+        assertEquals(listOf("a", "b"), texts)
     }
 
     @Test
-    fun replaceHistory_rebuildsSessionWithGivenHistory() = runTest {
+    fun resetConversation_discardsInstanceAndEmitsNull() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
         LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
             openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)), restore)
         }
-
         LLMController.refresh()
-        LLMController.replaceHistory(
-            listOf(ChatTurn.User("a"), ChatTurn.Assistant("b"))
-        )
+        assertTrue(LLMController.currentConversation.value != null)
 
-        val history = LLMController.getHistory()
-        assertEquals(listOf(ChatTurn.User("a"), ChatTurn.Assistant("b")), history)
-    }
-
-    @Test
-    fun resetConversation_rebuildsEmptySession() = runTest {
-        installRuntimeSettingsGatewayForTest(
-            FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
-        )
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
-            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)), restore)
-        }
-
-        LLMController.refresh()
         LLMController.resetConversation()
 
-        assertTrue(LLMController.getHistory().isEmpty())
+        assertTrue(LLMController.currentConversation.value == null)
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────

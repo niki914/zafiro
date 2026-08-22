@@ -6,7 +6,7 @@
 ## 状态
 
 - 分支：`feat/okia-integration`（基于 main `84f28cd`，即并入 PR #121 okia 库之后）
-- 当前阶段：**T2c 已完成待验收**（okia 库 unknown tool 行为修复：Failure 回喂而非回合失败）；T3/持久化待讨论
+- 当前阶段：**T3 已完成待验收**（持久化重做：消息级增量落盘 + Room 树形存储 + open(restore) 恢复 + 两个 bug 修复；决策全量见 `docs/T3.md`）
 - 目标：把 Nexus 的 LLM 运行时从 `libs:kai` 切换为 `libs:okia`（`Okia` 门面），`libs:kai` 最终删除，不留兼容层
 - 约束：单个功能点新增+删除合计 ≤1000 行；每完成一个功能点更新本文档并由用户触发 git 提交；允许部分业务 Bug，先跑通主链路
 
@@ -62,8 +62,43 @@
 | T2a | 本地工具：BuiltinTool 描述迁移（D19）+ ToolRegistry 装配（refresh 注册 enabled 工具）+ ToolCallDispatcher→ToolExecutor 适配（execute/onInterrupt）+ CreateCustomTool 回合内注册（D20）+ outcome→BuiltinToolResult 拆解 | 内置/自定义工具回合成功（memory/search_apps/python 等）；模型调用已注册工具不再 UnknownTool；工具失败 UI 显示 code/message | **已完成**（2026-08-19，待用户验收） |
 | T2b | MCP：McpServer 配置→OkiaConfig.mcpServers 装配；签名变化触发后台 refreshMcpTools（D22 方案 B）；删 cachedTools 残链（D23）；PromptComposer 删 mcp 段（D-T2B-2）+ 脱离 kai | MCP 工具被发现、注册进 registry、可调用；禁用/失败不崩；后台刷新不阻塞回合；首回合按 eager 预取 | **已完成**（2026-08-19 验收：真机 13 工具 10 可用，禁用不可调用符合预期） |
 | T2c | okia 库修复：未知工具 → Failure 结果回喂（RealAgentLoop.executeTools find-miss）；删 LLMErrorCode.UnknownTool（死代码扫描）；测试重写 unknownToolFailsTurn→feedsBackFailureAndContinues | okia/agent-runtime/app 全量测试绿；未知工具时不整轮失败、UI 显示工具失败卡片 | **已完成**（2026-08-19，待验收） |
-| T3 | 持久化：Room 推倒重来（SessionSnapshot 序列化 + leafId）；restore 启动、切会话、fork/regenerate（D4）；`open(restore)` 生命周期 | 重启恢复、切会话、fork 重新生成正确 | 待讨论 |
+| T3 | 持久化：Room 推倒重来（消息级增量 + 树形存储 + leafId）；restore/切会话/fork/regenerate（D4）；错误回合保留 + 切会话 stop 修复 | 见 `docs/T3.md` §5 验收 | **设计已定稿**（docs/T3.md），待开发 |
 | T4 | 细节收口：idle 配置、beforeStop 正式接管 kill、可重试 UI 分支、并发→TurnConflict 回归、删余清尾（含删 :libs:kai 依赖）、全量测试 | 无 kai 引用、无死代码、全测试绿 | 待讨论 |
+
+## T3 实现记录（2026-08-23，已完成，待验收）
+
+**改动文件**（主代码 ±947 行、测试 +550 行，净增 ~1100 行，略超单点 1000 上限，接受）：
+- `app/build.gradle.kts`：`:libs:kai` → `:libs:okia`（app 彻底脱离 kai）
+- `ConversationEntities.kt`（重写）：`ConversationEntity` 加 `leaf_id` 列；`ConversationTurnEntity` → `ConversationEntryEntity`（复合主键 conversation_id+id、parent_id、timestamp、message_json，无 turn_index）；`ConversationRecord.history` → `snapshot: SessionSnapshot`
+- `ConversationDatabase.kt`：version 2 + `fallbackToDestructiveMigration()`（推倒重来，D1）；schema 2.json 已生成（untracked，随提交入库）
+- `ConversationDao.kt`：删 replaceTurnsAndMetadata/listTurns；新 insertEntries(@Insert IGNORE 幂等)/countEntries/updateLeafId/updateConversationMetadata
+- `ConversationRepo.kt`：`createConversation(id, firstUserInput)`（显式 id = OKIA 树 id）；`getConversation` 组装 SessionSnapshot（leafId null → 最后一条，绕 D16）；删 saveHistory；新 insertEntries/updateLeafId/updateMetadata/countEntries；`forkConversation(sourceId, keepEntryCount, kind)` 截断子树复制 + Fork/Regenerate 标题（getString runCatching fallback 硬编码）
+- `ConversationFormatter.kt`（重写）：消费 SessionSnapshot；`projectLeaf(entries, leafId)`（leafId null → 最后一条）；`toHomeTurns` 按 Message.User 分 turn、ToolCall/ToolResult 配对（outcome 5 态 → Succeeded/Failed）、Thinking 忽略（D5）；preview 从尾部找首个非空文本（修复 firstNotNullOfOrNull 取到 ToolResult 的 bug）
+- `ConversationPersister.kt`（新，80 行）：观察 `LLMController.currentConversation` → `persistNow` 条数对比增量写；parentId = 投影前一条 id（线性树）；会话切换按 id 隔离；崩溃窗口=半句话可接受（D3-1）；`resetForTest`
+- `LLMController.kt`（±189）：删 getHistory/replaceHistory/buildSnapshotFromChatTurns/toOkiaMessage/toChatTurn；`resetConversation` 改语义（kill 资源 + close + 置 null，不建实例）；新 `ensureSession()`（惰性建实例返回树 id）、`openSession(restore)`（恢复入口）、`currentConversation: StateFlow<Conversation?>`（统一快照流，实例切换重发射）、`historySnapshot()`
+- `HomeChatState.kt`（±134）：ChatRuntime 接口换（删 getHistory/replaceHistory，加 ensureSession/openSession/historySnapshot）；删 persist 相关（持久化器接管）；`startNewConversation`/`loadConversation`/`deleteConversationNow` 先 stop 再关实例（D3-9）；restore/load 走 openSession + 新 Formatter；ensureCurrentConversation = ensureSession 树 id 建 Room 会话；fork/regen 走 historySnapshot + forkConversation(kind)
+- `App.kt`：`ConversationPersister.start(applicationScope)`
+- strings.xml ×3：`conversation_fork_title`/`conversation_regenerate_title`（英文值 "Fork · %1$s"/"Regenerate · %1$s"，D3-11）
+- 删除：`ChatTurnJsonCodec.kt` + 其测试
+
+**测试**（220 app + 350 agent-runtime 全绿；okia/store 回归绿）：
+- `ConversationRepoTest` 重写（存储往返逐字段/fork 截断标题/幂等/leafId fallback/元信息）
+- `ConversationFormatterTest` 重写（User 分组/工具成败/Thinking 忽略/孤儿 ToolCall 占位/projectLeaf/preview）
+- `ConversationPersisterTest` 新（增量写/幂等/会话隔离/恢复不重插/错误回合 partial/元信息/重置）
+- `HomeChatControllerTest` 更新（fakes 换接口 + fork/regen 端到端 + startupRestore/loadConversation/stop 时序）
+- `LLMControllerOkiaTest` 更新（ensureSession/openSession restore/conversationFlow/resetConversation 弃实例）
+
+**Robolectric 坑（实测）**：`context.getString(R.string.xxx)` 在 Robolectric 4.13 + AGP 9.1 下对**任意**资源 ID 报 `Bad identifier`（0x7f10xxxx 的 type 段不识别；T1-T2 测试从不 getString 所以未暴露；真机正常）。修复 = `ConversationRepo.init` 里 `runCatching { getString }.getOrDefault(硬编码)`。后续新增 getString 调用注意此坑。
+
+**验收映射**（docs/T3.md §5）：
+1. 存储往返 → RepoTest.insertEntries_roundTripsMessageTreeExactly ✅
+2. bug 回归（错误回合最后一条不恢复）→ PersisterTest.errorTurn_partialAssistantIsPersisted + Manual ✅
+3. 切会话丢数据 → 消息级增量天然覆盖 + HomeChatViewModelTest.loadConversation_stopsThenOpensSnapshot（stop 时序）✅
+4. fork/regenerate → RepoTest.fork* + ViewModel fork/regen 端到端 ✅
+5. Formatter OKIA 树渲染 → FormatterTest ✅
+6. 桥接删除 + 无 kai import → grep app/src agent-runtime/src 为空（HomeChatTurn 除外）✅
+
+**遗留（T4）**：`:libs:kai` 依赖仍在 agent-runtime/build.gradle.kts（代码零引用，仅注释提及）；`stopCurrentRound(keepCurrentTurn)` 参数；idle/beforeStop/可重试 UI 收口；app schemas/2.json 需入库。
 
 ## T1 功能定义
 

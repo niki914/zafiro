@@ -14,18 +14,15 @@ import com.niki914.nexus.agentic.runtime.R
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.model.LlmApiType
 import com.niki914.nexus.xposed.api.util.LockState
-import com.niki914.kai.ChatTurn
-import com.niki914.kai.ToolCallSpec
 import com.niki914.okia.Okia
 import com.niki914.okia.TurnOptions
-import com.niki914.okia.conversation.ConversationEntry
+import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
-import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.mcp.McpRefreshResult
 import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.mcp.McpTransport
@@ -39,14 +36,17 @@ import com.niki914.okia.tooling.ToolRegistry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 
@@ -57,8 +57,9 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmC
  * - 工具注册/执行/MCP 发现留给 T2：T1/T2 期间未注册工具的调用已不死循环（T2c：
  *   未知工具 = Failure 结果回喂，回合继续，模型可自纠）；kill-then-stop 已下沉到
  *   Hooks.beforeStop（OKIA stop() 先杀资源再取消 job）
- * - getHistory/replaceHistory/resetConversation 为 ChatTurn 桥接（O1-A 过渡，
- *   T3 由 export()/open(restore) 会话生命周期替代）
+ * - T3：持久化会话生命周期——getHistory/replaceHistory ChatTurn 桥接已删，
+ *   由 ensureSession()（新会话惰性建实例，树 id = Room id）+ openSession(restore)
+ *   （恢复/切会话）+ currentConversation（统一快照流，持久化器消息级增量落盘）替代
  */
 object LLMController {
     private const val LOG_TAG = "niki914_nexus_LLMController"
@@ -89,6 +90,16 @@ object LLMController {
     private var okia: Okia? = null
     private var sessionApiType: LlmApiType? = null
 
+    // T3：当前会话快照统一流（持久化器观察它做消息级增量落盘，D3-8）。
+    // OKIA conversation StateFlow 是每实例的（切会话 = 换实例 = 换引用），
+    // 这里转发当前实例的流，实例切换时重发射，观察者对实例切换透明。
+    private val conversationForwardScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val conversationFlow = MutableStateFlow<Conversation?>(null)
+    private var sessionForwardJob: Job? = null
+
+    /** 当前会话树快照（null = 无会话实例）。实例切换自动重发射。 */
+    val currentConversation: StateFlow<Conversation?> get() = conversationFlow
+
     // T2b MCP 发现（D-T2B-3 方案 B）：后台协程刷新，不阻塞 LLM 回合。
     // - 启动 eager：首次 refresh（签名 null ≠ 配置）触发一次后台刷新
     // - turn 前标脏：refresh() 比较服务器配置签名（name/url/headers/enabled
@@ -114,6 +125,9 @@ object LLMController {
         okia = null
         sessionApiType = null
         runtimeState = null
+        sessionForwardJob?.cancel()
+        sessionForwardJob = null
+        conversationFlow.value = null
         toolRegistry.snapshot().forEach { toolRegistry.remove(it.descriptor.wireName) }
         inlineCustomTools.clear()
         lastRefreshedMcpSignature = null
@@ -214,48 +228,51 @@ object LLMController {
     suspend fun snapshot(): LlmRuntimeSnapshot? = runtimeState?.snapshot
 
     /**
-     * ChatTurn 桥接（O1-A 过渡，T3 移除）：从当前会话树投影为 Kai 时代的历史格式。
-     * OKIA 树是唯一事实；本方法只服务主 App 会话列表/持久化的既有消费端。
+     * 确保存在一个可用会话实例（无则建空实例）并返回其树 id（T3）。
+     * 树 id == Room 会话 id：HomeChatState 拿它创建 Room 会话，
+     * 之后 open(restore) 恢复时树 id 从快照 id 取（对齐）。
      */
-    suspend fun getHistory(): List<ChatTurn> {
-        val startedAtMs = System.currentTimeMillis()
-        val history = okia
-            ?.conversation
-            ?.value
-            ?.history
-            ?.mapNotNull { it.message.toChatTurn() }
-            .orEmpty()
-        Logger.d(
-            LOG_TAG,
-            "get history turnCount=${history.size} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-        )
-        return history
+    suspend fun ensureSession(): String {
+        if (okia == null) {
+            refresh()
+        }
+        return okia?.conversation?.value?.id
+            ?: error("session not available")
     }
 
     /**
-     * ChatTurn 桥接（O1-A 过渡，T3 移除）：丢弃当前实例的会话树，
-     * 以给定历史重建新实例（OKIA 无原地换历史 API，换树 = 换实例）。
+     * 恢复会话（T3，替代 replaceHistory）：关闭当前实例，以 Room 读出的
+     * 树快照重建实例（close + open(restore)）。调用方负责先 stop（D3-9）。
      */
-    suspend fun replaceHistory(history: List<ChatTurn>) {
+    suspend fun openSession(restore: SessionSnapshot) {
         val startedAtMs = System.currentTimeMillis()
-        Logger.i(LOG_TAG, "replace history turnCount=${history.size} started")
-        refresh()
-        val state = runtimeState ?: return
-        val restore = buildSnapshotFromChatTurns(history)
+        Logger.i(
+            LOG_TAG,
+            "open session id=${restore.id} entries=${restore.entries.size} started"
+        )
+        if (runtimeState == null) {
+            refresh()
+        }
+        val current = runtimeState ?: return
         val newSession = obtainSession(
-            apiType = state.sessionApiType,
-            config = state.snapshot.config,
+            apiType = current.sessionApiType,
+            config = current.snapshot.config,
             restore = restore,
             forceNew = true,
         )
-        runtimeState = state.copy(okia = newSession)
+        runtimeState = current.copy(okia = newSession)
         Logger.i(
             LOG_TAG,
-            "replace history done turnCount=${history.size} " +
+            "open session done id=${restore.id} " +
                 "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
     }
+
+    /**
+     * 当前会话树投影消息列表（fork/regen 的 User 定位用，T3）。
+     */
+    suspend fun historySnapshot(): List<Message> =
+        okia?.conversation?.value?.history?.map { it.message }.orEmpty()
 
     fun stream(query: String, context: Context): Flow<LlmStreamEvent> = channelFlow {
         val defaultErrorMessage = context.getString(R.string.error_llm_request_failed)
@@ -409,17 +426,16 @@ object LLMController {
 
     suspend fun resetConversation() {
         Logger.i(LOG_TAG, "reset conversation requested")
-        // 先杀 python worker / 关 terminal 会话：Binder 调用与 exec 立即结束，
-        // 工具协程快速死亡，新会话不继承上一个回合的工具状态
+        // 丢弃当前会话实例（T3）：kill 工具资源 + close，不建新实例。
+        // 新会话实例由 ensureSession() 在第一次 send 时惰性创建
+        // （树 id 与 Room 会话 id 对齐）；kill 动作确保新会话不继承
+        // 上一个回合的工具状态（Binder 调用与 exec 立即结束）。
         PyRuntime.kill()
         TerminalSessionPool.closeAll()
-        val state = runtimeState ?: return
-        obtainSession(
-            apiType = state.sessionApiType,
-            config = state.snapshot.config,
-            restore = null,
-            forceNew = true,
-        )
+        okia?.close()
+        okia = null
+        sessionApiType = null
+        conversationFlow.value = null
         Logger.i(LOG_TAG, "reset conversation done")
     }
 
@@ -448,6 +464,15 @@ object LLMController {
         return openSession(apiType, config, restore).also {
             okia = it
             sessionApiType = apiType
+            forwardConversation(it)
+        }
+    }
+
+    /** 转发当前实例的 conversation StateFlow 到统一流（实例切换重发射）。 */
+    private fun forwardConversation(session: Okia) {
+        sessionForwardJob?.cancel()
+        sessionForwardJob = conversationForwardScope.launch {
+            session.conversation.collect { conversationFlow.value = it }
         }
     }
 
@@ -612,84 +637,6 @@ object LLMController {
             PyRuntime.kill()
             TerminalSessionPool.closeAll()
         }
-    }
-
-    // ── ChatTurn ↔ OKIA 树 桥接（O1-A 过渡，T3 移除） ────────────────────────
-
-    private fun buildSnapshotFromChatTurns(history: List<ChatTurn>): SessionSnapshot {
-        var parentId: String? = null
-        val entries = buildList {
-            history.forEach { turn ->
-                val message = turn.toOkiaMessage() ?: return@forEach
-                val entry = ConversationEntry(
-                    id = UUID.randomUUID().toString(),
-                    parentId = parentId,
-                    timestamp = System.currentTimeMillis(),
-                    message = message,
-                )
-                add(entry)
-                parentId = entry.id
-            }
-        }
-        return SessionSnapshot(
-            id = UUID.randomUUID().toString(),
-            leafId = entries.lastOrNull()?.id,
-            version = 1,
-            entries = entries,
-        )
-    }
-
-    private fun ChatTurn.toOkiaMessage(): Message? = when (this) {
-        is ChatTurn.User -> Message.User(listOf(ContentBlock.Text(content)))
-
-        is ChatTurn.Assistant -> Message.Assistant(
-            AssistantMessage(
-                content = buildList {
-                    reasoningContent?.takeIf { it.isNotBlank() }
-                        ?.let { add(ContentBlock.Thinking(it, signature = reasoningSignature)) }
-                    add(ContentBlock.Text(content))
-                    toolCalls.forEach { call ->
-                        add(ContentBlock.ToolCall(call.callId, call.toolName, call.argumentsJson))
-                    }
-                },
-                reasoningSignature = reasoningSignature,
-            )
-        )
-
-        is ChatTurn.ToolResult ->
-            Message.ToolResult(callId, toolName, ToolCallOutcome.Success(content = resultJson))
-
-        is ChatTurn.System -> null
-    }
-
-    private fun Message.toChatTurn(): ChatTurn? = when (this) {
-        is Message.User -> ChatTurn.User(content = content.textBlocks().joinToString("\n"))
-
-        is Message.Assistant -> ChatTurn.Assistant(
-            content = message.content.textBlocks().joinToString("\n"),
-            toolCalls = message.content
-                .filterIsInstance<ContentBlock.ToolCall>()
-                .map { ToolCallSpec(it.id, it.name, it.argumentsJson) },
-            reasoningContent = message.content
-                .filterIsInstance<ContentBlock.Thinking>()
-                .joinToString("\n") { it.text }
-                .takeIf { it.isNotBlank() },
-            reasoningSignature = message.reasoningSignature,
-        )
-
-        is Message.ToolResult ->
-            ChatTurn.ToolResult(callId, toolName, outcome.contentText())
-    }
-
-    private fun List<ContentBlock>.textBlocks(): List<String> =
-        filterIsInstance<ContentBlock.Text>().map { it.text }
-
-    private fun com.niki914.okia.message.ToolCallOutcome.contentText(): String = when (this) {
-        is com.niki914.okia.message.ToolCallOutcome.Success -> content
-        is com.niki914.okia.message.ToolCallOutcome.Failure -> content.orEmpty()
-        is com.niki914.okia.message.ToolCallOutcome.Intercepted -> content.orEmpty()
-        is com.niki914.okia.message.ToolCallOutcome.Interrupted -> content.orEmpty()
-        is com.niki914.okia.message.ToolCallOutcome.Unknown -> content.orEmpty()
     }
 
     // ── 杂项 ──────────────────────────────────────────────────────────────────
