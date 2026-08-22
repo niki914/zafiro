@@ -33,7 +33,13 @@ class LlmStreamEventMapperTest {
 
     @Test
     fun `TextDelta maps with delta and cumulative fullText from partial`() {
-        val partial = AssistantMessage(content = listOf(ContentBlock.Text("hel")))
+        // 真实序列：先 TextStarted 建立基线，再 TextDelta（delta = partial - 累积）
+        LlmStreamEventMapper.map(
+            TurnEvent.TextStarted(0, AssistantMessage(content = listOf(ContentBlock.Text("he")))),
+            startedAtMs = 0L,
+            defaultErrorMessage = "default error",
+        )
+        val partial = AssistantMessage(content = listOf(ContentBlock.Text("helo")))
         val startedAtMs = System.currentTimeMillis() - 500L
         val result = LlmStreamEventMapper.map(
             TurnEvent.TextDelta(index = 0, delta = "lo", partial = partial),
@@ -42,16 +48,74 @@ class LlmStreamEventMapperTest {
         )
         val delta = result as LlmStreamEvent.TextDelta
         assertEquals("lo", delta.delta)
-        assertEquals("hel", delta.fullText)
-        // elapsed 500ms → charsPerSecond = 3 * 1000 / 500 = 6
-        assertEquals(6f, delta.charsPerSecond!!, 0.001f)
+        assertEquals("helo", delta.fullText)
+        // elapsed 500ms → charsPerSecond = 4 * 1000 / 500 = 8
+        assertEquals(8f, delta.charsPerSecond!!, 0.001f)
     }
 
     @Test
-    fun `TextStarted and TextEnded do not produce events`() {
-        val partial = AssistantMessage(content = listOf(ContentBlock.Text("x")))
-        assertNull(LlmStreamEventMapper.map(TurnEvent.TextStarted(0, partial), 0L, "default error"))
-        assertNull(LlmStreamEventMapper.map(TurnEvent.TextEnded(0, "x", partial), 0L, "default error"))
+    fun `TextStarted maps to full delta and following deltas are incremental`() {
+        // OKIA 首 delta 在 TextStarted（不带增量文本）；Mapper 以 partial 全量作 delta
+        val started = LlmStreamEventMapper.map(
+            TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("你好")))),
+            0L,
+            "default error",
+        ) as LlmStreamEvent.TextDelta
+        assertEquals("你好", started.delta)
+        assertEquals("你好", started.fullText)
+
+        // 后续 TextDelta：delta = partial - 已累积（增量），fullText = 累积
+        val next = LlmStreamEventMapper.map(
+            TurnEvent.TextDelta(0, "！有什么", AssistantMessage(listOf(ContentBlock.Text("你好！有什么")))),
+            0L,
+            "default error",
+        ) as LlmStreamEvent.TextDelta
+        assertEquals("！有什么", next.delta)
+        assertEquals("你好！有什么", next.fullText)
+
+        // 事件序列 delta 累积 == fullText：UI appendText 逐 delta 追加即得完整结果
+        val accumulated = started.delta + next.delta
+        assertEquals(next.fullText, accumulated)
+    }
+
+    @Test
+    fun `TextEnded resets accumulation for next block`() {
+        LlmStreamEventMapper.map(
+            TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("first")))),
+            0L,
+            "default error",
+        )
+        assertNull(LlmStreamEventMapper.map(TurnEvent.TextEnded(0, "first", AssistantMessage(emptyList())), 0L, "default error"))
+
+        // 下一块从新基线开始：TextStarted 全量，不带上一块残留
+        val next = LlmStreamEventMapper.map(
+            TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("second")))),
+            0L,
+            "default error",
+        ) as LlmStreamEvent.TextDelta
+        assertEquals("second", next.delta)
+    }
+
+    @Test
+    fun `TurnCompleted resets accumulation across turns`() {
+        LlmStreamEventMapper.map(
+            TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("answer1")))),
+            0L,
+            "default error",
+        )
+        LlmStreamEventMapper.map(
+            TurnEvent.TurnCompleted(AssistantMessage(listOf(ContentBlock.Text("answer1")))),
+            0L,
+            "default error",
+        )
+
+        val next = LlmStreamEventMapper.map(
+            TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("answer2")))),
+            0L,
+            "default error",
+        ) as LlmStreamEvent.TextDelta
+        assertEquals("answer2", next.delta)
+        assertEquals("answer2", next.fullText)
     }
 
     // ── 工具执行映射（T2 铺路：事件当前不会出现，映射逻辑先行） ────────────────

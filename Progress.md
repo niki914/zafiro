@@ -6,7 +6,7 @@
 ## 状态
 
 - 分支：`feat/okia-integration`（基于 main `84f28cd`，即并入 PR #121 okia 库之后）
-- 当前阶段：**T3 已完成待验收**（持久化重做：消息级增量落盘 + Room 树形存储 + open(restore) 恢复 + 两个 bug 修复；决策全量见 `docs/T3.md`）
+- 当前阶段：**T3 已提交 + 双份消息 bug 已修复**（34bd1bb 根因修复 + cc01488 workaround 清理）；T4 待讨论
 - 目标：把 Nexus 的 LLM 运行时从 `libs:kai` 切换为 `libs:okia`（`Okia` 门面），`libs:kai` 最终删除，不留兼容层
 - 约束：单个功能点新增+删除合计 ≤1000 行；每完成一个功能点更新本文档并由用户触发 git 提交；允许部分业务 Bug，先跑通主链路
 
@@ -273,3 +273,15 @@
 - 持久化：export(): SessionSnapshot（树+leafId）/ open(restore)；Message 全 @Serializable；RealConversation 构造只校验重复 id、悬挂 leafId（不校验 parentId）
 - 错误码：Auth/Quota/RateLimit/Overloaded/Transport/Parse/RetryExhausted/UnknownTool/HookFailed/ToolExecutionFailed（可重试子集见源码 Compat.retryableStatusCodes）
 - systemPrompt：唯一入口 TurnOptions（config 无该字段）
+## 双份消息 bug（2026-08-23，已修复）
+
+**现象**：运行时最终回答显示双份（"！有什么我可以帮你的吗？你好！有什么我可以帮你的吗？"）；冷启动恢复正常（走 ConversationFormatter 全量渲染，不经事件流）。
+
+**根因**：OKIA 把每个文本块的首个 delta 发在 `TurnEvent.TextStarted`（不携带增量文本，内容只在 partial）；`LlmStreamEventMapper` 丢弃 TextStarted → UI 逐 delta 累积缺首 delta → `appendFinalText` 的 `removePrefix(displayedText)` 失败 → 全量追加 → 双份。T1 起就存在，T3 验收才暴露。
+
+**修复（34bd1bb 根因 + cc01488 清理）**：
+- `LlmStreamEventMapper` 状态化：`accumulatedText` 基线，TextStarted 发全量 delta、TextDelta 发增量（partial − 累积）；TextEnded/TurnCompleted/TurnFailed/TurnAborted/TurnStarted 重置。宿主 FullText/Chunk projector 同一 delta 流同步受益。
+- 不保留 UI 防御分支（用户裁定：workaround，掩盖未来问题；违背明确失败优于自动修复）。`appendFinalText` 保持简单形式。
+- 测试：Mapper 增量序列（TextStarted 全量 + TextDelta 增量累积 == fullText）/ 跨块重置 / 跨回合重置；`TextDelta maps with delta` 改为真实序列（先 TextStarted 建基线）。
+
+**教训**：T1 Mapper 注释声称"TextDelta 已携带累积 partial 文本，逐 delta 追加即得完整结果"——断言了 delta 序列完整性，但未验证首 delta 的去向。根因修复在数据源（delta 序列），不在消费端打补丁。
