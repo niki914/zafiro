@@ -250,7 +250,11 @@ class HomeChatViewModel internal constructor(
         updateState {
             copy(
                 input = "",
-                turns = turns + HomeChatTurn(id = turnId, userText = query),
+                // 新回合开始：清除旧错误卡片（瞬态 UI 态，T3 TODO②——
+                // 错误只在当轮显示，下一轮发起即消失）
+                turns = turns.map { turn ->
+                    turn.copy(blocks = turn.blocks.filterNot { it is HomeChatBlock.Error })
+                } + HomeChatTurn(id = turnId, userText = query),
                 isGenerating = true,
                 lastEventName = null,
                 streamEventCount = 0,

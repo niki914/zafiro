@@ -216,6 +216,53 @@ class HomeChatViewModelTest {
     }
 
     @Test
+    fun send_clearsPreviousErrorBlocksWhenStartingNewTurn() = runTest {
+        val conversations = FakeHomeConversationStore()
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(stream = { query ->
+                if (query == "hello") {
+                    flowOf(LlmStreamEvent.Error("network failed"))
+                } else {
+                    flowOf(
+                        LlmStreamEvent.RoundStarted,
+                        LlmStreamEvent.TextDelta(delta = "ok", fullText = "ok"),
+                        LlmStreamEvent.Completed("ok"),
+                    )
+                }
+            }),
+        )
+
+        // 第一轮：出错，错误卡片出现
+        viewModel.sendIntent(HomeChatIntent.InputChanged("hello"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+        assertEquals(
+            listOf(HomeChatBlock.Error("network failed")),
+            viewModel.uiStateFlow.value.turns.single().blocks,
+        )
+
+        // 第二轮：发新消息，旧错误卡片消失，新 turn 正常流式
+        viewModel.sendIntent(HomeChatIntent.InputChanged("again"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        val state = viewModel.uiStateFlow.value
+        assertEquals(2, state.turns.size)
+        assertEquals(
+            "旧 turn 的错误卡片应在新一轮发起时清除",
+            emptyList<HomeChatBlock>(),
+            state.turns[0].blocks,
+        )
+        assertEquals(
+            listOf(HomeChatBlock.Text("ok")),
+            state.turns[1].blocks,
+        )
+    }
+
+    @Test
     fun send_ignoresSecondSendWhileGenerating() = runTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
