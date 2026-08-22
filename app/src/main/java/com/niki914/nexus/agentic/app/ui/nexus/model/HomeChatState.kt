@@ -128,7 +128,7 @@ sealed interface HomeChatIntent {
 internal interface HomeChatRuntime {
     fun stream(query: String): Flow<LlmStreamEvent>
     suspend fun resetConversation()
-    suspend fun stopCurrentRound(keepCurrentTurn: Boolean = false)
+    suspend fun stopCurrentRound()
     suspend fun ensureSession(): String
     suspend fun openSession(restore: SessionSnapshot)
     suspend fun historySnapshot(): List<Message>
@@ -139,8 +139,8 @@ private object LlmHomeChatRuntime : HomeChatRuntime {
         LLMController.stream(query, runBlocking { ContextProvider.await() })
 
     override suspend fun resetConversation() = LLMController.resetConversation()
-    override suspend fun stopCurrentRound(keepCurrentTurn: Boolean) =
-        LLMController.stopCurrentRound(keepCurrentTurn)
+    override suspend fun stopCurrentRound() =
+        LLMController.stopCurrentRound()
 
     override suspend fun ensureSession(): String = LLMController.ensureSession()
     override suspend fun openSession(restore: SessionSnapshot) =
@@ -289,7 +289,7 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun stopGenerating() {
         if (!currentState.isGenerating) return
-        runtime.stopCurrentRound(keepCurrentTurn = true)
+        runtime.stopCurrentRound()
         streamJob?.cancel()
         streamJob = null
         finalizeRunningTools()

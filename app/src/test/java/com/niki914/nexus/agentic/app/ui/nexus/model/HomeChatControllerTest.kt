@@ -656,15 +656,14 @@ class HomeChatViewModelTest {
 private class FakeHomeChatRuntime(
     private val stream: (String) -> Flow<LlmStreamEvent>,
     private val resetConversation: suspend () -> Unit = {},
-    private val stopCurrentRound: suspend (Boolean) -> Unit = {},
+    private val stopCurrentRound: suspend () -> Unit = {},
     private val ensureSession: suspend () -> String = { "fake-session-1" },
     private val openSession: suspend (SessionSnapshot) -> Unit = {},
     private val historySnapshot: suspend () -> List<Message> = { emptyList() },
 ) : HomeChatRuntime {
     override fun stream(query: String): Flow<LlmStreamEvent> = stream.invoke(query)
     override suspend fun resetConversation() = resetConversation.invoke()
-    override suspend fun stopCurrentRound(keepCurrentTurn: Boolean) =
-        stopCurrentRound.invoke(keepCurrentTurn)
+    override suspend fun stopCurrentRound() = stopCurrentRound.invoke()
 
     override suspend fun ensureSession(): String = ensureSession.invoke()
     override suspend fun openSession(restore: SessionSnapshot) = openSession.invoke(restore)

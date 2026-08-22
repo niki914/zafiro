@@ -64,7 +64,7 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmC
 object LLMController {
     private const val LOG_TAG = "niki914_nexus_LLMController"
     internal const val CONFIG_REQUIRED_MESSAGE = "请先填写配置" // <--- TODO res
-    private const val LLM_IDLE_TIMEOUT_SECONDS = 50L
+    private const val LLM_IDLE_TIMEOUT_SECONDS = 30L
 
     private val promptComposer =
         PromptComposer()
@@ -439,14 +439,13 @@ object LLMController {
         Logger.i(LOG_TAG, "reset conversation done")
     }
 
-    suspend fun stopCurrentRound(keepCurrentTurn: Boolean = false) {
-        Logger.i(LOG_TAG, "stop round requested keepCurrentTurn=$keepCurrentTurn")
+    suspend fun stopCurrentRound() {
+        Logger.i(LOG_TAG, "stop round requested")
         // OKIA stop() 内建 kill-then-stop：beforeStop hook（杀 py/tty）先于
         // 取消 job 执行，阻塞工具不再吃得协程取消（§5.11）。
-        // keepCurrentTurn 保留兼容调用方：OKIA 停止不动会话树，下一轮自然承接
-        // 历史（语义恒为 true）；参数为历史遗留，T4 清理。
+        // OKIA 停止不动会话树，下一轮自然承接历史。
         okia?.stop()
-        Logger.i(LOG_TAG, "stop round done keepCurrentTurn=$keepCurrentTurn")
+        Logger.i(LOG_TAG, "stop round done")
     }
 
     // ── 会话管理（OKIA 实例生命周期） ──────────────────────────────────────────

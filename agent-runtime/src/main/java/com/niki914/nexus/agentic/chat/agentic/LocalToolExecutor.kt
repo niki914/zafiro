@@ -139,7 +139,7 @@ class LocalToolExecutor(
                 )
             }
         }
-        // 未知格式：保守成功，原文回喂模型（对齐 kai 行为）
+        // 未知格式：保守成功，原文回喂模型（沿用旧运行时行为）
         return ToolCallOutcome.Success(content = raw)
     }
 
