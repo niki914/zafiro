@@ -8,7 +8,16 @@ import com.niki914.okia.conversation.MessageEntry
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -135,6 +144,33 @@ class ConversationPersisterTest {
         // 不在此测，见 incrementalInsert 对重复快照的幂等覆盖）
         assertEquals(0, ConversationRepo.countEntries(sessionId))
         assertNull(ConversationRepo.getConversation(sessionId)?.snapshot?.leafId)
+    }
+
+    @Test
+    fun deletedSessionSnapshotDoesNotKillCollector() = runTest {
+        // 问题 5 修复：会话已删导致的外键违规被隔离——collector 不灭，
+        // 后续会话仍正常落盘。
+        val deletedId = ConversationRepo.createConversation("deleted", "x")
+        val liveId = ConversationRepo.createConversation("live", "x")
+        ConversationRepo.deleteConversation(deletedId) // row 已删 → 后续 insert 撞 FK
+
+        val source = Channel<Conversation?>(Channel.UNLIMITED)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        ConversationPersister.start(scope, source.receiveAsFlow())
+
+        source.send(conversationOf(deletedId, "d1")) // 撞 FK → 隔离，collector 不灭
+        source.send(conversationOf(liveId, "l1")) // 正常落盘（collector 若死则永不落盘）
+
+        // 轮询等待 live 落盘（Room I/O 在真实线程；轮询须在真实调度器上，
+        // runTest 的虚拟时间不会推进 delay）
+        withContext(Dispatchers.Default) {
+            withTimeout(5_000) {
+                while (ConversationRepo.countEntries(liveId) < 1) delay(10)
+            }
+        }
+        assertEquals(1, ConversationRepo.countEntries(liveId))
+
+        scope.cancel()
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────

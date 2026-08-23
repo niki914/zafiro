@@ -4,6 +4,7 @@ import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.ConversationEntry
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -33,7 +34,23 @@ object ConversationPersister {
     fun start(scope: CoroutineScope, source: Flow<Conversation?> = LLMController.currentConversation) {
         scope.launch {
             source.collect { snapshot ->
-                snapshot?.let { persistNow(it) }
+                snapshot?.let {
+                    try {
+                        persistNow(it)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // 单条失败隔离（问题 5 修复）：会话已删导致的外键违规等
+                        // 不杀死唯一 collector——重置该会话计数（下次快照重新
+                        // 对比），记日志后继续，后续会话持久化不受影响。
+                        Logger.e(
+                            LOG_TAG,
+                            "persist failed sessionId=${it.id} " +
+                                "errorType=${e::class.simpleName} message=${e.message}"
+                        )
+                        persistedCountBySession.remove(it.id)
+                    }
+                }
             }
         }
         Logger.i(LOG_TAG, "persister started")
@@ -62,10 +79,10 @@ object ConversationPersister {
             )
         }
 
-        ConversationRepo.insertEntries(sessionId, newEntries)
-        ConversationRepo.updateLeafId(sessionId, conversation.leafId ?: newEntries.last().id)
-        ConversationRepo.updateConversationMetadata(
+        ConversationRepo.appendEntriesAtomically(
             conversationId = sessionId,
+            entries = newEntries,
+            leafId = conversation.leafId ?: newEntries.last().id,
             updatedAt = System.currentTimeMillis(),
             lastMessagePreview = ConversationFormatter.previewFromMessages(history),
             turnCount = history.size,

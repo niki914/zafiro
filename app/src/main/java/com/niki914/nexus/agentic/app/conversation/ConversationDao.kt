@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.niki914.logging.Logger
 
 @Dao
@@ -99,4 +100,33 @@ interface ConversationDao {
 
     @Query("UPDATE conversation SET title = :title, title_edited = 1 WHERE id = :id")
     suspend fun renameConversation(id: String, title: String): Int
+
+    /**
+     * 消息增量落盘原子化（问题 5 修复）：entry insert + leaf + metadata
+     * 一个事务完成——进程死亡不会留下「entries 已插入但 leaf_id 陈旧」
+     * 的不可达节点中间态。
+     */
+    @Transaction
+    suspend fun appendEntriesTransaction(
+        conversationId: String,
+        entries: List<ConversationEntryEntity>,
+        leafId: String,
+        updatedAt: Long,
+        lastMessagePreview: String,
+        turnCount: Int,
+    ) {
+        insertEntries(entries)
+        updateLeafId(conversationId, leafId)
+        updateConversationMetadata(conversationId, updatedAt, lastMessagePreview, turnCount)
+    }
+
+    /** fork/regenerate 的 conversation row + entries 一个事务完成（问题 5 修复）。 */
+    @Transaction
+    suspend fun forkConversationTransaction(
+        conversation: ConversationEntity,
+        entries: List<ConversationEntryEntity>,
+    ) {
+        insertConversation(conversation)
+        insertEntries(entries)
+    }
 }

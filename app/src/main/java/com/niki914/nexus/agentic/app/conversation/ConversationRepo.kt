@@ -144,8 +144,8 @@ object ConversationRepo {
         }
         val preview = ConversationFormatter.previewFromEntries(truncated)
 
-        dao().insertConversation(
-            ConversationEntity(
+        dao().forkConversationTransaction(
+            conversation = ConversationEntity(
                 id = newId,
                 title = String.format(titleFormat, source.title),
                 titleEdited = true,
@@ -156,11 +156,7 @@ object ConversationRepo {
                 draftText = "",
                 leafId = truncated.lastOrNull()?.id,
             ),
-        )
-        dao().insertEntries(
-            truncated.map { entry ->
-                entry.toEntity(newId)
-            },
+            entries = truncated.map { entry -> entry.toEntity(newId) },
         )
         Logger.i(
             LOG_TAG,
@@ -181,6 +177,29 @@ object ConversationRepo {
     ) {
         if (entries.isEmpty()) return
         dao().insertEntries(entries.map { it.toEntity(conversationId) })
+    }
+
+    /**
+     * 消息增量 + leaf + metadata 原子落盘（问题 5 修复，持久化器调用）：
+     * 一个事务完成，进程死亡不留下中间态。
+     */
+    suspend fun appendEntriesAtomically(
+        conversationId: String,
+        entries: List<ConversationEntry>,
+        leafId: String,
+        updatedAt: Long,
+        lastMessagePreview: String,
+        turnCount: Int,
+    ) {
+        if (entries.isEmpty()) return
+        dao().appendEntriesTransaction(
+            conversationId = conversationId,
+            entries = entries.map { it.toEntity(conversationId) },
+            leafId = leafId,
+            updatedAt = updatedAt,
+            lastMessagePreview = lastMessagePreview,
+            turnCount = turnCount,
+        )
     }
 
     suspend fun countEntries(conversationId: String): Int = dao().countEntries(conversationId)
