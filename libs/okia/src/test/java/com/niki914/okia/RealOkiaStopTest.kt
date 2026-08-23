@@ -18,6 +18,7 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
+import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.protocol.ProtocolCompatMapper
 import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.tooling.DefaultToolRegistry
@@ -312,6 +313,45 @@ class RealOkiaStopTest {
         val send2 = async { okia.send("second") { } }
         runCurrent()
         events.emit(completed())
+        runCurrent()
+        assertEquals(TurnResult.Completed(CompletionReason.Stop), send2.await())
+        okia.close()
+    }
+
+    @Test
+    fun stopDuringToolExecutionCommitsInterruptedToolResult() = runTest {
+        // 问题 1 集成测试：工具执行挂起 → stop → 树尾闭合
+        // （Assistant(tool_calls) 后有 ToolResult(Interrupted)），再发一轮正常。
+        val registry = DefaultToolRegistry()
+        val executor = RecordingToolExecutor()
+        val gate = CompletableDeferred<Unit>()
+        executor.onExecute = { gate.await() } // 工具执行挂起
+        registry.register(localTool("t1"), executor)
+        val mapper = FakeProtocolMapper(
+            listOf(
+                listOf(ProtocolEvent.ToolCallReady("c1", "t1", "{}"), completed(StopReason.ToolUse)),
+                listOf(completed())
+            )
+        )
+        val okia = openOkia(mapper, registry = registry, scope = testScope(testScheduler))
+        val sendJob = async { okia.send("hi") { } }
+        runCurrent() // 工具执行挂起中
+
+        okia.stop()
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), sendJob.await())
+
+        // 树尾闭合：Assistant(tool_calls) 后跟 ToolResult(Interrupted)
+        val snapshot = okia.export()
+        val messages = snapshot.entries.map { it.message }
+        val assistant = messages.filterIsInstance<Message.Assistant>().single()
+        assertEquals(StopReason.ToolUse, assistant.message.stopReason)
+        val toolResults = messages.filterIsInstance<Message.ToolResult>()
+        assertEquals(listOf("c1"), toolResults.map { it.callId })
+        assertTrue(toolResults.single().outcome is ToolCallOutcome.Interrupted)
+
+        // 再发一轮：历史含闭合的 tool 序列（Assistant → ToolResult → User），
+        // 回合正常完成（协议序列合法，不产生不可用的会话）
+        val send2 = async { okia.send("second") { } }
         runCurrent()
         assertEquals(TurnResult.Completed(CompletionReason.Stop), send2.await())
         okia.close()

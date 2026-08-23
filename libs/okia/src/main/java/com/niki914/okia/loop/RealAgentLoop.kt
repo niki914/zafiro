@@ -541,13 +541,6 @@ internal class RealAgentLoop : AgentLoop {
         // Phase 1（顺序）：解析 + beforeToolCall 链。outcome 非空 = 已定
         // （阻断 / hook 失败 / 未知工具），不执行；outcome 空 = 待执行。
         // holder 为 null = 无工具上下文（未知工具）；可执行 plan 必有 holder。
-        data class Plan(
-            val toolCall: ContentBlock.ToolCall,
-            val holder: ToolCallHolder?,
-            val executor: ToolExecutor?,
-            val context: ToolCallContext?,
-            var outcome: ToolCallOutcome?
-        )
         val plans = mutableListOf<Plan>()
         for (call in toolCalls) {
             val registered = request.toolRegistry.find(call.name)
@@ -632,11 +625,42 @@ internal class RealAgentLoop : AgentLoop {
                     LLMError(LLMErrorCode.ToolExecutionFailed, "tool ${e.toolCall.name} execution failed", e.failure)
                 )
             )
+        } catch (e: CancellationException) {
+            // 取消（stop / 会话切换 / 外部取消）：已派发未闭合的调用按
+            // onInterrupt 补全结果（§8.8 #2）。不信任取消时 execute() 的
+            // 返回值——工具可能被 kill 后返回假成功（如 terminal 会话关闭
+            // 后同步返回 exited），也可能没有结果；由 executor 从自身状态
+            // 判定调用算什么（Interrupted / Unknown），在 NonCancellable
+            // 内补写 ToolResult + 发 ToolFailed 事件，保证树尾闭合（协议
+            // 合法，会话可继续），再重新抛出取消。
+            withContext(NonCancellable) {
+                val interrupted = mutableMapOf<Int, ToolCallOutcome>()
+                for ((index, plan) in plans.withIndex()) {
+                    if (plan.outcome == null) {
+                        interrupted[index] = plan.executor!!.onInterrupt(plan.context!!)
+                    }
+                }
+                commitToolOutcomes(request, onEvent, assistant, plans, interrupted)
+            }
+            throw e
         }
 
         // Phase 3（顺序，保序）：执行过的调用走 afterToolCall（可替换结果，
         // 异常 → Failure outcome）→ encodeToolResult → 批量 commit + 事件。
         // 已定 outcome（阻断 / hook 失败）的调用不执行也不走 afterToolCall。
+        val resultMessages = commitToolOutcomes(request, onEvent, assistant, plans, executedOutcomes)
+        return ToolExecutionOutcome.Success(resultMessages)
+    }
+
+    // 工具结果提交（Phase 3；正常与取消补全共用）：保序编码 + afterToolCall
+    // 链（可替换结果，异常 → Failure）→ 批量 commit + 事件。
+    private suspend fun commitToolOutcomes(
+        request: LoopRequest,
+        onEvent: suspend (TurnEvent) -> Unit,
+        assistant: AssistantMessage,
+        plans: List<Plan>,
+        executedOutcomes: Map<Int, ToolCallOutcome>,
+    ): List<Message> {
         val resultMessages = mutableListOf<Message>()
         for ((index, plan) in plans.withIndex()) {
             var outcome = executedOutcomes[index] ?: plan.outcome!!
@@ -660,7 +684,7 @@ internal class RealAgentLoop : AgentLoop {
             onEvent(toolOutcomeEvent(assistant, plan.toolCall, outcome))
         }
         request.onCommit(resultMessages)
-        return ToolExecutionOutcome.Success(resultMessages)
+        return resultMessages
     }
 
     // 工具执行段落结果：成功携带提交的 ToolResult 消息（loop 同步进累积历史），
@@ -938,6 +962,15 @@ private object StreamIdleTimedOut : Exception()
 
 /** executor 违反「永不抛异常」契约的哨兵：Phase 2 并发中传播，外层转 Failed。 */
 private class ToolExecutionException(val toolCall: ContentBlock.ToolCall, val failure: Throwable) : Exception()
+
+/** 单条工具调用执行计划（Phase 1 解析产物；outcome 空 = 待执行）。 */
+private data class Plan(
+    val toolCall: ContentBlock.ToolCall,
+    val holder: ToolCallHolder?,
+    val executor: ToolExecutor?,
+    val context: ToolCallContext?,
+    var outcome: ToolCallOutcome?
+)
 
 // 非 2xx 错误 body 进 LLMError.message 的最大字符数（UI 详情，非完整响应）
 private const val MAX_ERROR_BODY_CHARS = 2000
