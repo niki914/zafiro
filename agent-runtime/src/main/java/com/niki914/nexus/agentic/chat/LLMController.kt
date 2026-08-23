@@ -47,7 +47,6 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.util.concurrent.atomic.AtomicBoolean
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 
 /**
@@ -104,16 +103,17 @@ object LLMController {
     // - 启动 eager：首次 refresh（签名 null ≠ 配置）触发一次后台刷新
     // - turn 前标脏：refresh() 比较服务器配置签名（name/url/headers/enabled
     //   序列化），变化才起后台刷新；无变化不刷（零网络开销）
-    // - inFlight 防重：同一时刻至多一个后台刷新（失败也更新签名防风暴，
-    //   用户改配置→签名变→重刷）
-    // - 回合中刷新撞活跃回合（OKIA refreshMcpTools 抛异常）→ catch 记日志
+    // - 签名三态分离（问题 4 修复）：desired（当前配置想要）/ 已成功 /
+    // T2b MCP 发现（D-T2B-3 方案 B）：后台协程刷新，不阻塞 LLM 回合。
+    // - 启动 eager：首次 refresh（签名 null ≠ 配置）触发一次后台刷新
+    // - turn 前标脏：refresh() 比较服务器配置签名（name/url/headers/enabled
+    //   序列化），变化才起后台刷新；无变化不刷（零网络开销）
+    // - 调度状态机 + 失败退避收敛在 McpRefreshScheduler（问题 4 修复：
+    //   失败/部分失败不记为成功，配置 in-flight 变化不吞）
     // - 已知限制：OKIA refreshMcpTools 与 send 共用 RealOkia mutex，后台刷新
     //   持锁期间发问会短排队——见 ISSUES_okia-integration.md OKIA-1（待提）
-    private val mcpRefreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    @Volatile
-    private var lastRefreshedMcpSignature: String? = null
-    private val mcpRefreshInFlight = AtomicBoolean(false)
+    private val mcpRefreshScheduler =
+        McpRefreshScheduler(CoroutineScope(SupervisorJob() + Dispatchers.IO))
 
     // 测试注入点：T1 单测经 Okia.open(dependencies) 装配 fake loop/mapper。 <--- TODO Workaround???
     internal var okiaFactory: OkiaFactory = OkiaFactory { apiType, restore, config ->
@@ -130,8 +130,7 @@ object LLMController {
         conversationFlow.value = null
         toolRegistry.snapshot().forEach { toolRegistry.remove(it.descriptor.wireName) }
         inlineCustomTools.clear()
-        lastRefreshedMcpSignature = null
-        mcpRefreshInFlight.set(false)
+        mcpRefreshScheduler.reset()
         okiaFactory = OkiaFactory { apiType, restore, config ->
             openOkiaWithDefaultProtocol(apiType, restore, config)
         }
@@ -195,7 +194,7 @@ object LLMController {
         // T2b：MCP 发现（方案 B，D-T2B-3）：签名变化才起后台刷新，不 await
         // （不阻塞回合）；初始化时签名 null → 首次天然触发（启动 eager）
         val mcpSignature = mcpServersSignature(resolvedTools.mcpServers)
-        scheduleMcpRefresh(activeSession, mcpSignature)
+        mcpRefreshScheduler.schedule(activeSession, mcpSignature)
         // 工具描述进入提示词（技能/记忆段依赖它）；MCP 工具段已删除
         // （D-T2B-2：线缆名 mcp__server__tool 已表达服务器归属）
         val prompt = promptComposer.compose(
@@ -552,44 +551,6 @@ object LLMController {
     }
 
     // ── T2b MCP 发现时序（方案 B，D-T2B-3，对齐 Codex eager + 标脏刷新） ────
-
-    /**
-     * 签名变化才起后台刷新（不 await，不阻塞回合）。
-     * 先记签名再 launch：锁住"并发 refresh 只刷一次"（两个回合前 refresh
-     * 并发时，第二个看到签名已更新不会重复刷）。inFlight 防重：同一时刻
-     * 至多一个后台刷新任务。成功/失败都更新签名——本轮已尝试，防止每轮
-     * 重试风暴；用户改配置 → 签名变 → 重新触发。
-     * 初始化 eager：首次 refresh 时 lastRefreshedMcpSignature == null ≠ 配置
-     * 签名 → 天然触发一次后台刷新（LLMController 初始化预取）。
-     */
-    private fun scheduleMcpRefresh(session: Okia, signature: String) {
-        if (signature == lastRefreshedMcpSignature) return
-        lastRefreshedMcpSignature = signature
-        if (!mcpRefreshInFlight.compareAndSet(false, true)) return
-        mcpRefreshScope.launch {
-            val startedAtMs = System.currentTimeMillis()
-            try {
-                val result: McpRefreshResult = session.refreshMcpTools()
-                Logger.i(
-                    LOG_TAG,
-                    "mcp refresh done elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                        "refreshed=${result.refreshedServers.joinToString(",") { "\"$it\"" }} " +
-                        "failed=${result.failedServers.joinToString(",") { "\"$it\"" }}"
-                )
-            } catch (throwable: Throwable) {
-                if (throwable is CancellationException) throw throwable
-                // 活跃回合撞 refreshMcpTools（OKIA 契约）→ 下轮签名未变不重试；
-                // 连接失败/超时 → 已更新签名，防风暴（用户改配置后重刷）
-                Logger.e(
-                    LOG_TAG,
-                    "mcp refresh failed elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                        "errorType=${throwable.eventTypeName()} message=${throwable.message}"
-                )
-            } finally {
-                mcpRefreshInFlight.set(false)
-            }
-        }
-    }
 
     /** 服务器配置签名：对 McpServerDefinition.Http（name/url/headers/enabled）确定性序列化。 */
     private fun mcpServersSignature(servers: List<McpServerDefinition>): String {

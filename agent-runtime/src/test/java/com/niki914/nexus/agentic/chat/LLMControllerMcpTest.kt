@@ -116,20 +116,53 @@ class LLMControllerMcpTest {
     }
 
     @Test
-    fun refresh_mcpDiscoveryFailureStillUpdatesSignatureNoStorm() = runTest {
+    fun refresh_retriesDiscoveryAfterFailure() = runTest {
+        // 问题 4 修复：失败不再记为成功——第一次失败后，退避重试直至成功，
+        // 服务器暂时不可用不导致 MCP 整会话不可用。
         val recording = RecordingMcpClient(
             results = mapOf("server1" to listOf(McpDiscoveredTool("echo", "Echo", null))),
             failWith = IllegalStateException("connection refused"),
+            failTimes = 1, // 第一次失败，之后成功
         )
         installGateway(server("server1", "http://127.0.0.1:3001/mcp"))
         LLMController.okiaFactory = okiaFactoryWith(recording)
 
         LLMController.refresh()
         recording.awaitDiscoveryCalls(1)
-        // 失败后签名已更新 → 下一轮不重试（防风暴）
-        LLMController.refresh()
-        recording.awaitDiscoveryCalls(1)
         assertTrue(recording.failures > 0)
+        // 退避重试后成功：工具最终注册（失败不阻塞重试）
+        recording.awaitDiscoveryCalls(2)
+        val wireNames = LLMController.toolRegistry.snapshot().map { it.descriptor.wireName }
+        assertTrue(wireNames.any { it.startsWith("mcp__server1__") })
+    }
+
+    @Test
+    fun refresh_partialServerFailureDoesNotMarkSignatureSuccess() = runTest {
+        // 问题 4：部分服务器失败（failedServers 非空）不算成功签名——
+        // 退避重试发生，失败服务器不被永久跳过（旧行为：一次尝试后
+        // 同签名永不重刷）。
+        val recording = RecordingMcpClient(
+            results = mapOf(
+                "server1" to listOf(McpDiscoveredTool("echo", "Echo", null)),
+                "server2" to listOf(McpDiscoveredTool("getWeather", "Weather", null)),
+            ),
+            failServerNames = setOf("server2"), // server2 持续失败
+        )
+        installGateway(
+            server("server1", "http://127.0.0.1:3001/mcp"),
+            server("server2", "http://127.0.0.1:3002/mcp"),
+        )
+        LLMController.okiaFactory = okiaFactoryWith(recording)
+
+        LLMController.refresh()
+        recording.awaitDiscoveryCalls(2) // 首轮全量刷（两台各一次）
+        assertTrue(recording.failures > 0)
+        // 退避重试：server2 失败后仍再刷（旧行为在首轮失败后即停止）
+        recording.awaitDiscoveryCalls(4)
+
+        // 部分成功也注册：server1 工具已进 registry
+        val wireNames = LLMController.toolRegistry.snapshot().map { it.descriptor.wireName }
+        assertTrue(wireNames.any { it.startsWith("mcp__server1__") })
     }
 
     @Test
@@ -227,18 +260,27 @@ class LLMControllerMcpTest {
     private class RecordingMcpClient(
         private val results: Map<String, List<McpDiscoveredTool>>,
         private val failWith: Throwable? = null,
+        private val failTimes: Int = Int.MAX_VALUE,
+        private val failServerNames: Set<String> = emptySet(),
     ) : McpClient {
         val discoveredServers = mutableListOf<McpServer>()
         var failures: Int = 0
             private set
+        private var failuresRemaining = failTimes
 
         override suspend fun discoverTools(server: McpServer): List<McpDiscoveredTool> {
             synchronized(discoveredServers) {
                 discoveredServers.add(server)
             }
-            failWith?.let {
-                failures++
-                throw it
+            val shouldFail = synchronized(this) {
+                val byServer = server.name in failServerNames
+                val byCount = failWith != null && failuresRemaining > 0
+                if (byCount) failuresRemaining--
+                byServer || byCount
+            }
+            if (shouldFail) {
+                synchronized(this) { failures++ }
+                throw failWith ?: IllegalStateException("connection refused")
             }
             return results[server.name].orEmpty()
         }
