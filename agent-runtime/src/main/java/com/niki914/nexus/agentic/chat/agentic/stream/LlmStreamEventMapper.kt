@@ -24,8 +24,7 @@ object LlmStreamEventMapper {
     /**
      * 当前正在流式的文本块已累积文本（跨事件状态）。
      * OKIA 把第一个 text delta 发在 TextStarted（不携带增量文本，只在 partial 里），
-     * 后续 TextDelta.delta 才是增量——若直接丢弃 TextStarted，UI 累积会缺第一个
-     * delta，导致 appendFinalText 的 removePrefix 失败产生双份文本。
+     * 后续 TextDelta.delta 才是增量——若直接丢弃 TextStarted，UI 会缺第一个 delta。
      * 这里以 partial 全文为基线，TextStarted 发全量、TextDelta 发增量。
      */
     private var accumulatedText: String = ""
@@ -54,12 +53,8 @@ object LlmStreamEventMapper {
 
             is TurnEvent.TextDelta -> {
                 val fullText = event.partial.textContent()
-                val delta = if (fullText.startsWith(accumulatedText)) {
-                    fullText.removePrefix(accumulatedText)
-                } else {
-                    // 防御：partial 与累积不一致（正常不会发生），全量兜底避免丢字
-                    fullText
-                }
+                // removePrefix 不匹配前缀时返回接收者自身，无需分支
+                val delta = fullText.removePrefix(accumulatedText)
                 accumulatedText = fullText
                 LlmStreamEvent.TextDelta(
                     delta = delta,
@@ -80,7 +75,7 @@ object LlmStreamEventMapper {
 
             is TurnEvent.TurnCompleted -> {
                 accumulatedText = ""
-                LlmStreamEvent.Completed(event.message.textContent())
+                LlmStreamEvent.Completed
             }
 
             is TurnEvent.TurnFailed -> {

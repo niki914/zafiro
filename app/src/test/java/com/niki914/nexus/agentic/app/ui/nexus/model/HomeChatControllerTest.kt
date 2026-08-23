@@ -98,7 +98,7 @@ class HomeChatViewModelTest {
                             label = "Calc"
                         )
                     ),
-                    LlmStreamEvent.Completed(fullText = "hello back"),
+                    LlmStreamEvent.Completed,
                 )
             }),
         )
@@ -134,7 +134,6 @@ class HomeChatViewModelTest {
                         state = HomeToolState.Succeeded
                     )
                 ),
-                HomeChatBlock.Text(" back"),
             ),
             turn.blocks,
         )
@@ -147,7 +146,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf(LlmStreamEvent.Completed("done")) },
+                stream = { flowOf(LlmStreamEvent.Completed) },
                 resetConversation = { resetCalled = true },
             ),
         )
@@ -227,7 +226,7 @@ class HomeChatViewModelTest {
                     flowOf(
                         LlmStreamEvent.RoundStarted,
                         LlmStreamEvent.TextDelta(delta = "ok", fullText = "ok"),
-                        LlmStreamEvent.Completed("ok"),
+                        LlmStreamEvent.Completed,
                     )
                 }
             }),
@@ -420,7 +419,7 @@ class HomeChatViewModelTest {
                     LlmStreamEvent.ToolRunning(ToolCallStatus(name = "search", label = "Search")),
                     LlmStreamEvent.ToolRunning(ToolCallStatus(callId = "c1", name = "search", label = "Search")),
                     LlmStreamEvent.ToolSucceeded(ToolCallStatus(callId = "c1", name = "search", label = "Search")),
-                    LlmStreamEvent.Completed(fullText = ""),
+                    LlmStreamEvent.Completed,
                 )
             }),
         )
@@ -448,7 +447,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf(LlmStreamEvent.Completed(fullText = "hello back")) },
+                stream = { flowOf(LlmStreamEvent.Completed) },
             ),
         )
 
@@ -472,7 +471,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf(LlmStreamEvent.Completed(fullText = "answer")) },
+                stream = { flowOf(LlmStreamEvent.Completed) },
             ),
         )
         viewModel.sendIntent(HomeChatIntent.InputChanged("hello"))
@@ -643,7 +642,7 @@ class HomeChatViewModelTest {
             runtime = FakeHomeChatRuntime(
                 stream = { query ->
                     lastQuery = query
-                    flowOf(LlmStreamEvent.Completed(fullText = "regenerated"))
+                    flowOf(LlmStreamEvent.Completed)
                 },
                 historySnapshot = {
                     listOf(
@@ -675,7 +674,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf(LlmStreamEvent.Completed(fullText = "answer")) },
+                stream = { flowOf(LlmStreamEvent.Completed) },
                 resetConversation = { resetCalled = true },
             ),
         )

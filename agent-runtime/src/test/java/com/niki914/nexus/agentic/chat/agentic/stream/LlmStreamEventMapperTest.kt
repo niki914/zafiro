@@ -216,13 +216,13 @@ class LlmStreamEventMapperTest {
     // ── 终态映射 ──────────────────────────────────────────────────────────────
 
     @Test
-    fun `TurnCompleted maps to Completed with full text`() {
+    fun `TurnCompleted maps to Completed terminal marker`() {
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnCompleted(AssistantMessage(content = listOf(ContentBlock.Text("answer")))),
             0L,
             "default error",
         )
-        assertEquals(LlmStreamEvent.Completed("answer"), result)
+        assertEquals(LlmStreamEvent.Completed, result)
     }
 
     @Test

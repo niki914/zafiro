@@ -114,6 +114,59 @@ class LocalToolExecutorTest {
     }
 
     @Test
+    fun execute_hermesStructuredError_mapsToFailure() = runBlocking {
+        val tool = RawJsonTool(
+            "terminal",
+            """{"stdout":"","stderr":"","exit_code":127,"error":{"code":"CMD_NOT_FOUND","message":"command not found: nope"}}""",
+        )
+        val executor = LocalToolExecutor(
+            builtinToolExecutor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(tool))),
+            currentTools = { builtinResolved(tool) },
+        )
+
+        val outcome = executor.execute(call("terminal", "{}"))
+
+        assertTrue(outcome is ToolCallOutcome.Failure)
+        outcome as ToolCallOutcome.Failure
+        assertEquals("command not found: nope", outcome.message)
+        assertEquals(tool.raw, outcome.content)
+    }
+
+    @Test
+    fun execute_hermesNonZeroExitCode_mapsToFailure() = runBlocking {
+        val tool = RawJsonTool(
+            "terminal",
+            """{"stdout":"","stderr":"sh: nope: not found","exit_code":127}""",
+        )
+        val executor = LocalToolExecutor(
+            builtinToolExecutor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(tool))),
+            currentTools = { builtinResolved(tool) },
+        )
+
+        val outcome = executor.execute(call("terminal", "{}"))
+
+        assertTrue(outcome is ToolCallOutcome.Failure)
+        outcome as ToolCallOutcome.Failure
+        assertEquals("sh: nope: not found", outcome.message)
+    }
+
+    @Test
+    fun execute_hermesSuccessJson_mapsToSuccess() = runBlocking {
+        val tool = RawJsonTool(
+            "terminal",
+            """{"stdout":"hi","stderr":"","exit_code":0}""",
+        )
+        val executor = LocalToolExecutor(
+            builtinToolExecutor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(tool))),
+            currentTools = { builtinResolved(tool) },
+        )
+
+        val outcome = executor.execute(call("terminal", "{}"))
+
+        assertTrue(outcome is ToolCallOutcome.Success)
+    }
+
+    @Test
     fun execute_textProtocolSuccess_mapsToSuccessOutcome() = runBlocking {
         val tool = TextProtocolBuiltinTool("texty", successPayload = "payload-ok")
         val executor = LocalToolExecutor(
@@ -249,6 +302,16 @@ class LocalToolExecutorTest {
 
         fun resultJson(): String =
             BuiltinToolResult.failure(code = "E", message = message).toJsonString()
+    }
+
+    private class RawJsonTool(
+        override val name: String,
+        val raw: String,
+    ) : BuiltinTool(), RawJsonBuiltinTool {
+        override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult =
+            BuiltinToolResult.failure(code = "RAW_OUTPUT_TOOL", message = "raw")
+
+        override suspend fun invokeRawJson(request: BuiltinToolRequest): String = raw
     }
 
     private class TextProtocolBuiltinTool(

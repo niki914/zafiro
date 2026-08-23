@@ -31,9 +31,8 @@ sealed interface LlmStreamEvent {
         val code: LlmErrorCode? = null,
     ) : LlmStreamEvent
 
-    data class Completed(
-        val fullText: String,
-    ) : LlmStreamEvent
+    /** 回合正常结束（纯终态标记；显示文本一律以 TextDelta 累积为准）。 */
+    data object Completed : LlmStreamEvent
 }
 
 enum class LlmErrorCode {

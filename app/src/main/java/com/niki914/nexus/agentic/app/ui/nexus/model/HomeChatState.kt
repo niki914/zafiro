@@ -378,11 +378,8 @@ class HomeChatViewModel internal constructor(
             is LlmStreamEvent.Completed -> {
                 Logger.i(
                     LOG_TAG,
-                    "apply completed turnId=$turnId fullTextLength=${event.fullText.length}"
+                    "apply completed turnId=$turnId",
                 )
-                updateTurn(turnId) {
-                    it.appendFinalText(event.fullText)
-                }
                 updateState { copy(isGenerating = false) }
             }
         }
@@ -678,13 +675,6 @@ class HomeChatViewModel internal constructor(
         } else {
             copy(blocks = blocks + HomeChatBlock.Text(delta))
         }
-    }
-
-    private fun HomeChatTurn.appendFinalText(fullText: String): HomeChatTurn {
-        val displayedText =
-            blocks.filterIsInstance<HomeChatBlock.Text>().joinToString(separator = "") { it.text }
-        val delta = fullText.removePrefix(displayedText)
-        return appendText(delta)
     }
 
     private fun HomeChatTurn.appendError(message: String, code: LlmErrorCode?): HomeChatTurn {

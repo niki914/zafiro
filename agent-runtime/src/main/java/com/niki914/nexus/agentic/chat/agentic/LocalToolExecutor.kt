@@ -8,6 +8,7 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResultCodec
 import com.niki914.nexus.agentic.chat.agentic.custom.CustomToolExecutor
+import com.niki914.nexus.agentic.chat.agentic.stream.LocalToolResultClassifier
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.tooling.ToolCallContext
 import com.niki914.okia.tooling.ToolExecutor
@@ -118,14 +119,13 @@ class LocalToolExecutor(
             null
         }
         if (json != null) {
-            when (json["ok"]?.jsonPrimitive?.booleanOrNull) {
-                true -> return ToolCallOutcome.Success(content = raw)
-                false -> return ToolCallOutcome.Failure(
-                    message = json["message"]?.jsonPrimitive?.contentOrNull
-                        ?: "Tool failed.",
-                    content = raw,
-                )
-                null -> Unit
+            // JSON 结构化错误判定复用统一解码器（error.code / ok=false / 非零
+            // exit_code，覆盖 Hermes 风格 terminal 结果）；无错误标记 = 成功
+            val failure = LocalToolResultClassifier.failureMessage(raw)
+            return if (failure != null) {
+                ToolCallOutcome.Failure(message = failure, content = raw)
+            } else {
+                ToolCallOutcome.Success(content = raw)
             }
         }
         // 非 JSON：文本协议工具结果（#!tool-result 头）

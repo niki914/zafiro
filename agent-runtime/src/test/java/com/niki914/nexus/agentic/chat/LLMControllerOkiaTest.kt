@@ -152,7 +152,7 @@ class LLMControllerOkiaTest {
 
         assertEquals(LlmStreamEvent.RoundStarted, events[0])
         assertEquals("hi", (events[1] as LlmStreamEvent.TextDelta).delta)
-        assertEquals(LlmStreamEvent.Completed("hi"), events[2])
+        assertEquals(LlmStreamEvent.Completed, events[2])
     }
 
     @Test

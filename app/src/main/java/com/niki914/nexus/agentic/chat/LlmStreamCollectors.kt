@@ -128,10 +128,8 @@ private class FullTextProjector(
                 )
             }
 
-            is LlmStreamEvent.Completed -> {
-                appendMissingFinalText(event.fullText)
+            is LlmStreamEvent.Completed ->
                 listOf(LlmTextFrame(renderSegments(), isFirst = false, isFinal = true))
-            }
         }
     }
 
@@ -144,10 +142,6 @@ private class FullTextProjector(
         } else {
             segments += RenderSegment.Text(text)
         }
-    }
-
-    private fun appendMissingFinalText(finalText: String) {
-        appendText(finalText.removePrefix(assistantText.toString()))
     }
 
     private fun appendError(message: String) {
@@ -222,10 +216,8 @@ private class ChunkTextProjector(
                 )
             }
 
-            is LlmStreamEvent.Completed -> {
-                appendMissingFinalText(event.fullText)
+            is LlmStreamEvent.Completed ->
                 listOf(LlmTextFrame(fullText.toString(), isFirst = false, isFinal = true))
-            }
         }
     }
 
@@ -240,10 +232,6 @@ private class ChunkTextProjector(
         assistantText.append(text)
         fullText.append(text)
         lastWasToolLine = false
-    }
-
-    private fun appendMissingFinalText(finalText: String) {
-        appendText(finalText.removePrefix(assistantText.toString()))
     }
 
     private fun appendToolLine(call: ToolCallStatus, label: String) {
