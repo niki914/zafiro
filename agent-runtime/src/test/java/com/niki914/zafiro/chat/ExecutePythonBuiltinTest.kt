@@ -8,6 +8,8 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.niki914.zafiro.settings.model.RuntimeExecutionRule
+import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
 
 class ExecutePythonBuiltinTest {
 
@@ -120,10 +122,10 @@ class ExecutePythonBuiltinTest {
         val blockingPolicy = ShellCommandSafetyPolicy(
             listExecutionRules = {
                 listOf(
-                    com.niki914.zafiro.settings.model.RuntimeExecutionRule(
+                    RuntimeExecutionRule(
                         id = "rule-1",
                         name = "Block su",
-                        enabledMode = com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode.ALWAYS,
+                        enabledMode = RuntimeExecutionRuleEnabledMode.ALWAYS,
                         patterns = listOf("""os\.system"""),
                     )
                 )

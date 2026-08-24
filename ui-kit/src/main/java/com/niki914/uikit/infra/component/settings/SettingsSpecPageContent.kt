@@ -28,7 +28,7 @@ fun SettingsSpecPageContent(
     contentAfterSections: @Composable ColumnScope.() -> Unit = {},
     onAction: (SettingsRowAction) -> Unit,
 ) {
-    _root_ide_package_.com.niki914.uikit.infra.component.SettingsListPageContent(
+    SettingsListPageContent(
         description = spec.description,
         modifier = modifier,
     ) {
@@ -54,7 +54,7 @@ private fun SettingsSectionContent(
 
     when (section.layout) {
         SettingsSectionLayout.GroupedCard -> {
-            _root_ide_package_.com.niki914.uikit.infra.component.SettingsGroupCard(title = section.title) {
+            SettingsGroupCard(title = section.title) {
                 section.rows.forEachIndexed { index, row ->
                     SettingsRowContent(
                         row = row,
@@ -62,7 +62,7 @@ private fun SettingsSectionContent(
                         onAction = onAction,
                     )
                     if (index != section.rows.lastIndex) {
-                        _root_ide_package_.com.niki914.uikit.infra.component.SettingsItemDivider()
+                        SettingsItemDivider()
                     }
                 }
             }
@@ -95,7 +95,7 @@ private fun SettingsCardListRowContent(
             onAction = onAction,
         )
     } else {
-        _root_ide_package_.com.niki914.uikit.infra.component.SettingsGroupCard {
+        SettingsGroupCard {
             SettingsRowContent(
                 row = row,
                 layout = SettingsSectionLayout.CardList,
@@ -112,7 +112,7 @@ private fun SettingsRowContent(
     onAction: (SettingsRowAction) -> Unit,
 ) {
     when (row) {
-        is SettingsRowSpec.Navigation -> _root_ide_package_.com.niki914.uikit.infra.component.SettingsListItem(
+        is SettingsRowSpec.Navigation -> SettingsListItem(
             title = row.title,
             summary = row.summary,
             currentState = row.currentState,
@@ -124,7 +124,7 @@ private fun SettingsRowContent(
             onClick = { onAction(SettingsRowAction.Navigate(row.id)) },
         )
 
-        is SettingsRowSpec.Toggle -> _root_ide_package_.com.niki914.uikit.infra.component.SettingToggleItem(
+        is SettingsRowSpec.Toggle -> SettingToggleItem(
             title = row.title,
             description = row.summary,
             checked = row.checked,
@@ -138,7 +138,7 @@ private fun SettingsRowContent(
             require(layout == SettingsSectionLayout.CardList) {
                 "SettingsRowSpec.ToggleNavigation requires SettingsSectionLayout.CardList."
             }
-            _root_ide_package_.com.niki914.uikit.infra.component.SettingsToggleListItemCard(
+            SettingsToggleListItemCard(
                 title = row.title,
                 summary = row.summary,
                 checked = row.checked,
@@ -150,7 +150,7 @@ private fun SettingsRowContent(
             )
         }
 
-        is SettingsRowSpec.Value -> _root_ide_package_.com.niki914.uikit.infra.component.SettingsListItem(
+        is SettingsRowSpec.Value -> SettingsListItem(
             title = row.title,
             summary = row.summary,
             currentState = row.currentState,
@@ -161,14 +161,14 @@ private fun SettingsRowContent(
             onClick = null,
         )
 
-        is SettingsRowSpec.Action -> _root_ide_package_.com.niki914.uikit.infra.component.SettingsListItem(
+        is SettingsRowSpec.Action -> SettingsListItem(
             title = row.title,
             summary = row.summary,
             enabled = row.enabled,
             onClick = { onAction(SettingsRowAction.Click(row.id)) },
         )
 
-        is SettingsRowSpec.Destructive -> _root_ide_package_.com.niki914.uikit.infra.component.SettingsListItem(
+        is SettingsRowSpec.Destructive -> SettingsListItem(
             title = row.title,
             summary = row.summary,
             enabled = row.enabled,

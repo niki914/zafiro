@@ -50,7 +50,7 @@ import org.junit.Test
 class LLMControllerMcpTest {
 
     @get:Rule
-    val silentLogger = _root_ide_package_.com.niki914.zafiro.chat.util.SilentLoggerRule()
+    val silentLogger = SilentLoggerRule()
 
     @Before
     fun setUp() {
@@ -191,8 +191,8 @@ class LLMControllerMcpTest {
     // ── helpers ─────────────────────────────────────────────────────────────
 
     private fun installGateway(vararg servers: RuntimeMcpServer) {
-        _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
                 llmConfig = validLlmConfig(),
                 builtinTools = listOf(RuntimeBuiltinToolSetting("memory", "m", enabled = true)),
                 mcpServers = servers.toList(),

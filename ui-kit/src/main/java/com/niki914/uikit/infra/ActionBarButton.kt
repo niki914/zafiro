@@ -36,7 +36,6 @@ import com.kyant.backdrop.shadow.Shadow
 import com.niki914.uikit.infra.interaction.ActionBarButtonInteractiveStyle
 import com.niki914.uikit.infra.interaction.InteractiveHighlight
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
-import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,9 +49,9 @@ internal fun ActionBarButton(
     val haptics = LocalHapticFeedback.current
     val animationScope = rememberCoroutineScope()
     val interactiveStyle =
-        _root_ide_package_.com.niki914.uikit.infra.interaction.ActionBarButtonInteractiveStyle
+        ActionBarButtonInteractiveStyle
     val interactiveHighlight = remember(animationScope) {
-        _root_ide_package_.com.niki914.uikit.infra.interaction.InteractiveHighlight(animationScope = animationScope)
+        InteractiveHighlight(animationScope = animationScope)
     }
     val innerShadowLayer = rememberGraphicsLayer().apply {
         compositingStrategy = CompositingStrategy.Offscreen

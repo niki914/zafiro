@@ -49,7 +49,7 @@ import org.mockito.Mockito.mock
 class LLMControllerOkiaTest {
 
     @get:Rule
-    val silentLogger = _root_ide_package_.com.niki914.zafiro.chat.util.SilentLoggerRule()
+    val silentLogger = SilentLoggerRule()
 
     @Before
     fun setUp() {
@@ -65,8 +65,8 @@ class LLMControllerOkiaTest {
 
     @Test
     fun refresh_passesDeepSeekApiTypeToFactory() = runTest {
-        _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
                 llmConfig = validLlmConfig(
                     provider = "deepseek"
                 )
@@ -85,8 +85,8 @@ class LLMControllerOkiaTest {
 
     @Test
     fun refresh_registersOnlyEnabledLocalTools() = runTest {
-        _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
                 llmConfig = validLlmConfig(),
                 builtinTools = listOf(
                     RuntimeBuiltinToolSetting("terminal", "t", enabled = true),
@@ -113,8 +113,8 @@ class LLMControllerOkiaTest {
 
     @Test
     fun refresh_iconicCustomToolsAreRegisteredAsLocalWithSchema() = runTest {
-        _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
                 llmConfig = validLlmConfig(),
                 builtinTools = listOf(
                     RuntimeBuiltinToolSetting("terminal", "t", enabled = true),
@@ -139,8 +139,8 @@ class LLMControllerOkiaTest {
 
     @Test
     fun stream_mapsTextStreamAndCompletion() = runTest {
-        _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
         val loop = stubLoop(
             events = listOf(

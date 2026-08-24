@@ -5,10 +5,10 @@ import java.util.concurrent.atomic.AtomicLong
 data class ConversationTurnState(
     val turnId: Long = 0L,
     val lastQuery: String = "",
-    val mode: com.niki914.zafiro.chat.TurnMode = _root_ide_package_.com.niki914.zafiro.chat.TurnMode.InjectedLLM
+    val mode: TurnMode = TurnMode.InjectedLLM
 ) {
-    fun nextTurn(query: String, mode: com.niki914.zafiro.chat.TurnMode) = ConversationTurnState(
-        turnId = _root_ide_package_.com.niki914.zafiro.chat.TurnIdGenerator.next(),
+    fun nextTurn(query: String, mode: TurnMode) = ConversationTurnState(
+        turnId = TurnIdGenerator.next(),
         lastQuery = query,
         mode = mode
     )

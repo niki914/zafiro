@@ -23,7 +23,7 @@ class BuiltinToolSettingsManagerTest {
     @Test
     fun load_readsThroughRuntimeSettingsGateway() = runTest {
         val gateway =
-            _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest()
+            installRuntimeSettingsGatewayForTest()
 
         val items = manager.load()
 
@@ -38,7 +38,7 @@ class BuiltinToolSettingsManagerTest {
     @Test
     fun setEnabled_writesThroughRuntimeSettingsGateway() = runTest {
         val gateway =
-            _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest()
+            installRuntimeSettingsGatewayForTest()
 
         val result = manager.setEnabled(
             name = "create_custom_tool",
@@ -61,7 +61,7 @@ class BuiltinToolSettingsManagerTest {
     @Test
     fun setEnabled_rejectsUnknownBuiltinWithoutWriting() = runTest {
         val gateway =
-            _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest()
+            installRuntimeSettingsGatewayForTest()
 
         val result = manager.setEnabled(
             name = "unknown_tool",
@@ -76,7 +76,7 @@ class BuiltinToolSettingsManagerTest {
     @Test
     fun setEnabled_acceptsTerminalBuiltin() = runTest {
         val gateway =
-            _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest()
+            installRuntimeSettingsGatewayForTest()
 
         val result = manager.setEnabled(
             name = "terminal",
@@ -92,8 +92,8 @@ class BuiltinToolSettingsManagerTest {
     @Test
     fun setEnabled_preservesOtherBuiltinSettings() = runTest {
         val gateway =
-            _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-                _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(
+            installRuntimeSettingsGatewayForTest(
+                FakeRuntimeSettingsGateway(
                     builtinTools = listOf(
                         RuntimeBuiltinToolSetting(
                             "create_custom_tool",

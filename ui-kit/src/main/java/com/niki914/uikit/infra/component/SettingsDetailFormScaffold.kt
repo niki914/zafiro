@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import com.niki914.uikit.infra.liquidScreenHazeSource
 import com.niki914.uikit.infra.liquidScreenTopPadding
-import com.niki914.uikit.infra.liquidScreenHazeSource
 
 /**
  * 设置详情表单脚手架，必须运行在 `LiquidScreen` 内容树内。
@@ -62,7 +61,7 @@ fun SettingsDetailFormScaffold(
                     horizontal = SettingsDetailPageDefaults.HorizontalPadding,
                 )
                 .padding(
-                    top = _root_ide_package_.com.niki914.uikit.infra.liquidScreenTopPadding(
+                    top = liquidScreenTopPadding(
                         SettingsDetailPageDefaults.VerticalPadding
                     ),
                     bottom = SettingsDetailPageDefaults.VerticalPadding +

@@ -139,7 +139,7 @@ private fun LiquidDialogSurface(
     val panelSurfaceColor = colorScheme.surfaceContainerHigh.copy(alpha = 0.76f)
     val panelTintColor = colorScheme.primaryContainer.copy(alpha = 0.18f)
     val interactionSource = remember { MutableInteractionSource() }
-    val panelShape = _root_ide_package_.com.niki914.uikit.infra.shape.G2FieldShape(48.dp)
+    val panelShape = G2FieldShape(48.dp)
 
     AnimatedVisibility(
         visible = visible,

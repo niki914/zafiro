@@ -26,7 +26,7 @@ import kotlinx.coroutines.delay
 @Composable
 private fun LiquidDialogPreviewContent() {
     var visible by remember { mutableStateOf(false) }
-    val screenState = _root_ide_package_.com.niki914.uikit.infra.rememberLiquidScreenState(
+    val screenState = rememberLiquidScreenState(
         title = "",
         showLeftButton = false,
         showRightButton = false,
@@ -42,14 +42,14 @@ private fun LiquidDialogPreviewContent() {
         }
     }
 
-    _root_ide_package_.com.niki914.uikit.infra.LiquidScreen(state = screenState) {
+    LiquidScreen(state = screenState) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center,
         ) {
-            _root_ide_package_.com.niki914.uikit.infra.LiquidDialog(
+            LiquidDialog(
                 visible = visible,
                 onDismissRequest = {},
                 title = {
@@ -67,14 +67,14 @@ private fun LiquidDialogPreviewContent() {
                     )
                 },
                 actions = {
-                    _root_ide_package_.com.niki914.uikit.infra.component.MaterialTintLiquidButton(
+                    MaterialTintLiquidButton(
                         text = "Cancel",
                         onClick = {},
                         modifier = Modifier.weight(1f),
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                     )
-                    _root_ide_package_.com.niki914.uikit.infra.component.MaterialTintLiquidButton(
+                    MaterialTintLiquidButton(
                         text = "Bypass",
                         onClick = {},
                         modifier = Modifier.weight(1f),

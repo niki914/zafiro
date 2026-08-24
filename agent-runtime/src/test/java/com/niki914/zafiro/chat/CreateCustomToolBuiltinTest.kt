@@ -98,7 +98,7 @@ class CreateCustomToolBuiltinTest {
     @Test
     fun invoke_writesCreatedToolThroughRuntimeSettingsGateway() = runTest {
         val store =
-            _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest()
+            installRuntimeSettingsGatewayForTest()
 
         val result = CreateCustomToolBuiltin().invoke(
             BuiltinToolRequest(
@@ -133,7 +133,7 @@ class CreateCustomToolBuiltinTest {
     @Test
     fun invoke_mapsExecutionRuleValidationToRuleBlocked() = runTest {
         val store =
-            _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest()
+            installRuntimeSettingsGatewayForTest()
         store.nextSaveCustomToolValidation = CustomToolValidation(
             field = "command",
             message = "Command blocked by execution rule '危险删改' with pattern '\\brm\\s+-rf\\b'.",

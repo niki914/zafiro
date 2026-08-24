@@ -9,20 +9,20 @@ class Navigator<P : Page> internal constructor(
 ) {
     fun push(
         page: P,
-        direction: com.niki914.uikit.infra.TitleDirection = _root_ide_package_.com.niki914.uikit.infra.TitleDirection.Forward,
+        direction: TitleDirection = TitleDirection.Forward,
     ) {
         controller.push(page, direction)
     }
 
     fun pop(
-        direction: com.niki914.uikit.infra.TitleDirection = _root_ide_package_.com.niki914.uikit.infra.TitleDirection.Back,
+        direction: TitleDirection = TitleDirection.Back,
     ): Boolean {
         return controller.pop(direction)
     }
 
     fun popMultiple(
         count: Int,
-        direction: com.niki914.uikit.infra.TitleDirection = _root_ide_package_.com.niki914.uikit.infra.TitleDirection.Back,
+        direction: TitleDirection = TitleDirection.Back,
     ): Int {
         return controller.popMultiple(count, direction)
     }

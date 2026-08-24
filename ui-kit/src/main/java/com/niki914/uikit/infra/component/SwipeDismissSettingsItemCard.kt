@@ -89,7 +89,7 @@ fun SwipeDismissSettingsItemCard(
         label = "swipeDismissDistance",
     )
 
-    val shape = _root_ide_package_.com.niki914.uikit.infra.shape.G2CardShape(28.dp)
+    val shape = G2CardShape(28.dp)
     val backgroundColor = lerp(
         start = MaterialTheme.colorScheme.surfaceContainer,
         stop = MaterialTheme.colorScheme.error,

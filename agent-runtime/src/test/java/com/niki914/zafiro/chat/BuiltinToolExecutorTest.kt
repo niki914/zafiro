@@ -89,8 +89,8 @@ class BuiltinToolExecutorTest {
 
     @Test
     fun execute_loadSkillBuiltin_usesBuiltinToolPath() = runTest {
-        _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
                 loadedSkills = mapOf(
                     "skill-a" to RuntimeLoadedSkill(
                         id = "skill-a",

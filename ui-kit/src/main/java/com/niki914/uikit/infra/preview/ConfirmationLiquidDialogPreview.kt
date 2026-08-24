@@ -17,21 +17,21 @@ import com.niki914.uikit.base.BaseTheme
 
 @Composable
 private fun ConfirmationLiquidDialogPreviewContent() {
-    val screenState = _root_ide_package_.com.niki914.uikit.infra.rememberLiquidScreenState(
+    val screenState = rememberLiquidScreenState(
         title = "",
         showLeftButton = false,
         showRightButton = false,
         showBlurLayer = false,
     )
 
-    _root_ide_package_.com.niki914.uikit.infra.LiquidScreen(state = screenState) {
+    LiquidScreen(state = screenState) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center,
         ) {
-            _root_ide_package_.com.niki914.uikit.infra.ConfirmationLiquidDialog(
+            ConfirmationLiquidDialog(
                 visible = true,
                 onDismissRequest = {},
                 title = "Hi,\niOS",

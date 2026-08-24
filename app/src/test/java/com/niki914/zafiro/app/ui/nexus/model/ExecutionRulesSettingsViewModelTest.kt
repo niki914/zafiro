@@ -23,15 +23,16 @@ import org.junit.Rule
 import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
+import com.niki914.zafiro.app.util.SilentLoggerRule
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExecutionRulesSettingsViewModelTest {
     @get:Rule
-    val silentLoggerRule = _root_ide_package_.com.niki914.zafiro.app.util.SilentLoggerRule()
+    val silentLoggerRule = SilentLoggerRule()
 
     @get:Rule
     val mainDispatcherRule =
-        _root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.MainDispatcherRule()
+        MainDispatcherRule()
 
     private val context: Context = object : ContextWrapper(null) {
         override fun getApplicationContext(): Context = this
@@ -171,7 +172,7 @@ class ExecutionRulesSettingsViewModelTest {
 
     private fun installStore(vararg initialJson: Pair<String, String>) {
         XRepo.installStoreForTest(
-            _root_ide_package_.com.niki914.zafiro.repo.FakeDomainSettingsStore(
+            FakeDomainSettingsStore(
                 *initialJson
             )
         )

@@ -43,6 +43,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
+import com.niki914.zafiro.chat.agentic.PromptComposer
+import com.niki914.zafiro.chat.agentic.ToolManager
 
 /**
  * Nexus 的 LLM 回合执行入口。OKIA 接入 T1 重写：
@@ -61,9 +63,9 @@ object LLMController {
     private const val LLM_IDLE_TIMEOUT_SECONDS = 30L
 
     private val promptComposer =
-        _root_ide_package_.com.niki914.zafiro.chat.agentic.PromptComposer()
+        PromptComposer()
     private val toolManager =
-        _root_ide_package_.com.niki914.zafiro.chat.agentic.ToolManager()
+        ToolManager()
 
     // T2a：OKIA 工具注册表（host 持有、注入经 OkiaConfig.toolRegistry；
     // 实例重建共享同一 registry）。本地工具在 refresh 时全量同步；

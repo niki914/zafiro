@@ -35,7 +35,7 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class ConversationPersisterTest {
     @get:Rule
-    val silentLogger = _root_ide_package_.com.niki914.zafiro.app.util.SilentLoggerRule()
+    val silentLogger = SilentLoggerRule()
 
     private lateinit var context: Context
     @Before

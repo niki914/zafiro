@@ -28,14 +28,14 @@ class ConversationRepoTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        context.deleteDatabase(_root_ide_package_.com.niki914.zafiro.app.conversation.DB_NAME)
+        context.deleteDatabase(DB_NAME)
         ConversationRepo.init(context)
     }
 
     @After
     fun tearDown() = runTest {
         ConversationRepo.closeForTest()
-        context.deleteDatabase(_root_ide_package_.com.niki914.zafiro.app.conversation.DB_NAME)
+        context.deleteDatabase(DB_NAME)
     }
 
     @Test

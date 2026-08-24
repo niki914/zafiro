@@ -11,6 +11,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 
 class XRepoRuntimeGatewayTest {
 
@@ -41,7 +42,7 @@ class XRepoRuntimeGatewayTest {
         XRepo.init(context)
 
         XRepo.saveLlm(
-            com.niki914.zafiro.settings.model.RuntimeLlmConfig(
+            RuntimeLlmConfig(
                 provider = "openai",
                 endpoint = "https://api.openai.com",
                 model = "gpt-4",

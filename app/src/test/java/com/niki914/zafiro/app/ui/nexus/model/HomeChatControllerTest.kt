@@ -12,7 +12,6 @@ import com.niki914.zafiro.chat.ToolCallStatus
 import com.niki914.zafiro.repo.AppStateSettings
 import com.niki914.zafiro.repo.AppStateSettingsCodec
 import com.niki914.zafiro.repo.DomainSettingsStore
-import com.niki914.zafiro.repo.FakeDomainSettingsStore
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.okia.conversation.ConversationEntry
@@ -51,18 +50,18 @@ import org.robolectric.RobolectricTestRunner
 class HomeChatViewModelTest {
     @get:Rule
     val mainDispatcherRule =
-        _root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.MainDispatcherRule(
+        MainDispatcherRule(
             UnconfinedTestDispatcher()
         )
 
     private lateinit var context: Context
-    private lateinit var store: com.niki914.zafiro.app.ui.nexus.model.FakeDomainSettingsStore
+    private lateinit var store: FakeDomainSettingsStore
 
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        context.deleteDatabase(_root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.DB_NAME)
-        store = _root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.FakeDomainSettingsStore()
+        context.deleteDatabase(DB_NAME)
+        store = FakeDomainSettingsStore()
         XRepo.installStoreForTest(store)
         XRepo.init(context)
         ConversationRepo.init(context)
@@ -72,16 +71,16 @@ class HomeChatViewModelTest {
     fun tearDown() = runTest {
         ConversationRepo.closeForTest()
         XRepo.resetForTest()
-        context.deleteDatabase(_root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.DB_NAME)
+        context.deleteDatabase(DB_NAME)
     }
 
     @Test
     fun send_collectsTextAndToolCallsInStreamOrder() = runTest {
         val conversations =
-            _root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.FakeHomeConversationStore()
+            FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
-            runtime = _root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.FakeHomeChatRuntime(
+            runtime = FakeHomeChatRuntime(
                 stream = { query ->
                     assertEquals("hello", query)
                     flowOf(
@@ -159,10 +158,10 @@ class HomeChatViewModelTest {
     fun newConversation_clearsUiStateAndResetsRuntime() = runTest {
         var resetCalled = false
         val conversations =
-            _root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.FakeHomeConversationStore()
+            FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
-            runtime = _root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.FakeHomeChatRuntime(
+            runtime = FakeHomeChatRuntime(
                 stream = { flowOf(LlmStreamEvent.Completed) },
                 resetConversation = { resetCalled = true },
             ),

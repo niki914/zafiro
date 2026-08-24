@@ -31,7 +31,7 @@ fun SettingsGroupCard(
 ) {
     val titleColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
     val cardColor = MaterialTheme.colorScheme.surfaceContainer
-    val cardShape = _root_ide_package_.com.niki914.uikit.infra.shape.G2CardShape(28.dp)
+    val cardShape = G2CardShape(28.dp)
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (!title.isNullOrBlank()) {

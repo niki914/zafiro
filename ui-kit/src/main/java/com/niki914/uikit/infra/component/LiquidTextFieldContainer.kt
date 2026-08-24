@@ -49,10 +49,9 @@ import com.niki914.uikit.infra.interaction.InteractiveHighlight
 import com.niki914.uikit.infra.interaction.LiquidInteractiveStyle
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 import com.niki914.uikit.infra.shape.G2FieldShape
-import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 
 private val LiquidTextFieldInteractiveStyle =
-    _root_ide_package_.com.niki914.uikit.infra.interaction.LiquidInteractiveStyle(
+    LiquidInteractiveStyle(
         pressScalePx = 3.dp,
         maxDragScalePx = 3.dp,
     )
@@ -74,11 +73,11 @@ internal fun LiquidTextFieldContainer(
     val backdrop = rememberLayerBackdrop()
     val animationScope = rememberCoroutineScope()
     val interactiveHighlight = remember(animationScope) {
-        _root_ide_package_.com.niki914.uikit.infra.interaction.InteractiveHighlight(animationScope = animationScope)
+        InteractiveHighlight(animationScope = animationScope)
     }
     val focusManager = LocalFocusManager.current
     val density = LocalDensity.current
-    val viewportAvoidanceController = _root_ide_package_.com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController.current
+    val viewportAvoidanceController = LocalLiquidViewportAvoidanceController.current
     val viewportAvoidanceRequestId = remember { Any() }
     var isFocused by remember { mutableStateOf(false) }
     var imeWasVisibleWhileFocused by remember { mutableStateOf(false) }
@@ -93,7 +92,7 @@ internal fun LiquidTextFieldContainer(
     }
     val interactiveEffectsEnabled = enabled && (!isFocused || textFieldValue.text.isEmpty())
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
-    val fieldShape = _root_ide_package_.com.niki914.uikit.infra.shape.G2FieldShape(28.dp)
+    val fieldShape = G2FieldShape(28.dp)
 
     LaunchedEffect(value) {
         if (value != textFieldValue.text) {

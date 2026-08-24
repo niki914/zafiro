@@ -78,8 +78,8 @@ class CustomToolManagerTest {
 
     @Test
     fun validate_allowsBenignCommand() = runTest {
-        _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(executionRules = dangerousRules())
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(executionRules = dangerousRules())
         )
 
         val result = manager.validate(
@@ -93,8 +93,8 @@ class CustomToolManagerTest {
 
     @Test
     fun validate_allowsShellWrappedBenignPayload() = runTest {
-        _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(executionRules = dangerousRules())
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(executionRules = dangerousRules())
         )
 
         val result = manager.validate(
@@ -109,7 +109,7 @@ class CustomToolManagerTest {
     @Test
     fun createOrUpdate_writesThroughRuntimeSettingsGateway() = runTest {
         val store =
-            _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest()
+            installRuntimeSettingsGatewayForTest()
 
         val result = manager.createOrUpdate(
             request = request(command = "getprop ro.product.model").copy(enabled = true),
@@ -133,7 +133,7 @@ class CustomToolManagerTest {
     @Test
     fun createOrUpdate_rejectsDuplicateNameWithoutWriting() = runTest {
         val store =
-            _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest()
+            installRuntimeSettingsGatewayForTest()
         assertTrue(
             manager.createOrUpdate(
                 request = request(command = "getprop ro.product.model"),
@@ -152,8 +152,8 @@ class CustomToolManagerTest {
 
     @Test
     fun createOrUpdate_rejectsUnsafeCommandWithoutWriting() = runTest {
-        val store = _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(executionRules = dangerousRules())
+        val store = installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(executionRules = dangerousRules())
         )
 
         val result = manager.createOrUpdate(
@@ -172,7 +172,7 @@ class CustomToolManagerTest {
     @Test
     fun saveAll_replacesRuntimeCustomTools() = runTest {
         val store =
-            _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest()
+            installRuntimeSettingsGatewayForTest()
         assertTrue(
             manager.createOrUpdate(
                 request = request(command = "getprop ro.product.model").copy(name = "old_tool"),
@@ -212,8 +212,8 @@ class CustomToolManagerTest {
             command = "getprop ro.product.model",
             enabled = true,
         )
-        val store = _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(
+        val store = installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
                 customTools = listOf(
                     existing
                 )
@@ -237,8 +237,8 @@ class CustomToolManagerTest {
     }
 
     private suspend fun assertUnsafe(command: String) {
-        _root_ide_package_.com.niki914.zafiro.chat.installRuntimeSettingsGatewayForTest(
-            _root_ide_package_.com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(executionRules = dangerousRules())
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(executionRules = dangerousRules())
         )
         val result = manager.validate(
             request = request(command = command),

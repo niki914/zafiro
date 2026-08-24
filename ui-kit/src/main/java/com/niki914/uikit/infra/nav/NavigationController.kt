@@ -30,7 +30,7 @@ class NavigationController<P : Page>(
     private val entryStack = mutableStateListOf(createEntry(initialPage))
     private var lastNavigationAtMillis: Long? = null
 
-    var lastDirection by mutableStateOf(_root_ide_package_.com.niki914.uikit.infra.TitleDirection.None)
+    var lastDirection by mutableStateOf(TitleDirection.None)
         private set
 
     val stack: List<NavigationEntry<P>>
@@ -46,7 +46,7 @@ class NavigationController<P : Page>(
 
     fun push(
         page: P,
-        direction: com.niki914.uikit.infra.TitleDirection = _root_ide_package_.com.niki914.uikit.infra.TitleDirection.Forward,
+        direction: TitleDirection = TitleDirection.Forward,
     ) {
         if (!tryConsumeNavigationDebounce()) return
         entryStack += createEntry(page)
@@ -54,7 +54,7 @@ class NavigationController<P : Page>(
     }
 
     fun pop(
-        direction: com.niki914.uikit.infra.TitleDirection = _root_ide_package_.com.niki914.uikit.infra.TitleDirection.Back,
+        direction: TitleDirection = TitleDirection.Back,
     ): Boolean {
         if (!canGoBack) return false
         if (!tryConsumeNavigationDebounce()) return false
@@ -66,7 +66,7 @@ class NavigationController<P : Page>(
 
     fun popMultiple(
         count: Int,
-        direction: com.niki914.uikit.infra.TitleDirection = _root_ide_package_.com.niki914.uikit.infra.TitleDirection.Back,
+        direction: TitleDirection = TitleDirection.Back,
     ): Int {
         if (!tryConsumeNavigationDebounce()) return 0
         var popped = 0
@@ -87,13 +87,13 @@ class NavigationController<P : Page>(
         entryStack.forEach { entry -> entry.viewModelStore.clear() }
         entryStack.clear()
         entryStack += createEntry(page)
-        lastDirection = _root_ide_package_.com.niki914.uikit.infra.TitleDirection.Forward
+        lastDirection = TitleDirection.Forward
     }
 
     fun clear() {
         entryStack.forEach { entry -> entry.viewModelStore.clear() }
         entryStack.clear()
-        lastDirection = _root_ide_package_.com.niki914.uikit.infra.TitleDirection.None
+        lastDirection = TitleDirection.None
     }
 
     private fun tryConsumeNavigationDebounce(): Boolean {

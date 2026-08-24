@@ -13,7 +13,7 @@ import org.junit.Test
 class AboutSettingsViewModelTest {
     @get:Rule
     val mainDispatcherRule =
-        _root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.MainDispatcherRule()
+        MainDispatcherRule()
 
     @Test
     fun openItem_withGithub_emitsOpenUri() = runTest {

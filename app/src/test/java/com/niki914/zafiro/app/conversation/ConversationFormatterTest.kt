@@ -17,7 +17,7 @@ import org.junit.Test
 class ConversationFormatterTest {
 
     @get:Rule
-    val silentLogger = _root_ide_package_.com.niki914.zafiro.app.util.SilentLoggerRule()
+    val silentLogger = SilentLoggerRule()
 
     @Test
     fun toHomeTurns_groupsByUserTurn() {

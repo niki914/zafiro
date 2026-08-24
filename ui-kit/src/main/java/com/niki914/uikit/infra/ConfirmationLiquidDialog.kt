@@ -55,14 +55,14 @@ fun ConfirmationLiquidDialog(
             }
         },
         actions = {
-            _root_ide_package_.com.niki914.uikit.infra.component.MaterialTintLiquidButton(
+            MaterialTintLiquidButton(
                 text = positiveButtonText,
                 onClick = onPositiveClick,
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
             )
-            _root_ide_package_.com.niki914.uikit.infra.component.MaterialTintLiquidButton(
+            MaterialTintLiquidButton(
                 text = negativeButtonText,
                 onClick = onNegativeClick,
                 modifier = Modifier.weight(1f),

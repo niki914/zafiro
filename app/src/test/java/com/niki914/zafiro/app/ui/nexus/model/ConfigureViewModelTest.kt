@@ -18,11 +18,11 @@ import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConfigureViewModelTest {
     @get:Rule
-    val silentLoggerRule = _root_ide_package_.com.niki914.zafiro.app.util.SilentLoggerRule()
+    val silentLoggerRule = SilentLoggerRule()
 
     @get:Rule
     val mainDispatcherRule =
-        _root_ide_package_.com.niki914.zafiro.app.ui.nexus.model.MainDispatcherRule()
+        MainDispatcherRule()
 
     @Test
     fun save_withMissingApiKey_staysOnPageAndRequestsFieldFocus() = runTest {

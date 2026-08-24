@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.liquidScreenHazeSource
 import com.niki914.uikit.infra.liquidScreenTopPadding
-import com.niki914.uikit.infra.liquidScreenHazeSource
 
 /**
  * 设置列表页容器，必须运行在 `LiquidScreen` 内容树内。
@@ -30,7 +29,7 @@ fun SettingsListPageContent(
             .fillMaxSize()
             .liquidScreenHazeSource()
             .verticalScroll(rememberScrollState())
-            .padding(top = _root_ide_package_.com.niki914.uikit.infra.liquidScreenTopPadding())
+            .padding(top = liquidScreenTopPadding())
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {

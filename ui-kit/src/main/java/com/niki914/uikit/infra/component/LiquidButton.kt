@@ -27,7 +27,6 @@ import com.niki914.uikit.infra.interaction.InteractiveHighlight
 import com.niki914.uikit.infra.interaction.LiquidButtonInteractiveStyle
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 import com.niki914.uikit.infra.shape.G2CapsuleShape
-import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 
 @Composable
 fun LiquidButton(
@@ -42,10 +41,10 @@ fun LiquidButton(
 ) {
     val animationScope = rememberCoroutineScope()
     val interactiveStyle =
-        _root_ide_package_.com.niki914.uikit.infra.interaction.LiquidButtonInteractiveStyle
+        LiquidButtonInteractiveStyle
 
     val interactiveHighlight = remember(animationScope) {
-        _root_ide_package_.com.niki914.uikit.infra.interaction.InteractiveHighlight(
+        InteractiveHighlight(
             animationScope = animationScope
         )
     }
@@ -54,7 +53,7 @@ fun LiquidButton(
         modifier
             .drawBackdrop(
                 backdrop = backdrop,
-                shape = { _root_ide_package_.com.niki914.uikit.infra.shape.G2CapsuleShape() },
+                shape = { G2CapsuleShape() },
                 effects = {
                     vibrancy()
                     blur(2f.dp.toPx())
