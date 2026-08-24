@@ -12,11 +12,11 @@ ksp {
 }
 
 android {
-    namespace = "com.niki914.nexus.agentic.app"
+    namespace = "com.niki914.zafiro.app"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.niki914.nexus.agentic"
+        applicationId = "com.niki914.zafiro"
         minSdk = 26
         targetSdk = 34
         versionName = "1.0.1"

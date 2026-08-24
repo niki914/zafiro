@@ -1,0 +1,110 @@
+package com.niki914.zafiro.app.ui.nexus.content
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.ui.nexus.content.mcp.McpSettingsContent
+import com.niki914.zafiro.app.ui.nexus.model.SettingsViewModel
+import com.niki914.zafiro.app.ui.nexus.nav.CustomToolDetailPage
+import com.niki914.zafiro.app.ui.nexus.nav.ExecutionRuleDetailPage
+import com.niki914.zafiro.app.ui.nexus.nav.McpServerDetailPage
+import com.niki914.zafiro.app.ui.nexus.nav.NexusPage
+import com.niki914.zafiro.app.ui.nexus.nav.NexusSettingsGroup
+import com.niki914.zafiro.app.ui.nexus.nav.SettingsProviderPickPage
+import com.niki914.zafiro.app.ui.nexus.nav.SkillDetailPage
+import com.niki914.zafiro.app.ui.nexus.nav.TakeoverRuleDetailPage
+
+@Composable
+fun SettingsDetailPageContent(
+    group: NexusSettingsGroup,
+    onPush: (NexusPage) -> Unit,
+    onBack: () -> Unit,
+) {
+    val viewModel = pageViewModel<SettingsViewModel>()
+    val uiState by viewModel.uiStateFlow.collectAsState()
+    val visibleGroups = uiState.sections.flatMap { it.groups }.toSet()
+    if (group !in visibleGroups) {
+        return
+    }
+
+    if (group == NexusSettingsGroup.ModelConfig) {
+        ModelConfigSettingsContent(
+            onBack = onBack,
+            onOpenProviderPick = {
+                onPush(SettingsProviderPickPage)
+            },
+        )
+        return
+    }
+
+    if (group == NexusSettingsGroup.BuiltinTools) {
+        BuiltinToolsSettingsContent()
+        return
+    }
+
+    if (group == NexusSettingsGroup.Skills) {
+        SkillsSettingsContent(
+            onOpenSkillDetail = { id, title ->
+                onPush(SkillDetailPage(id, title))
+            },
+        )
+        return
+    }
+
+    if (group == NexusSettingsGroup.CustomShellTools) {
+        CustomShellToolsSettingsContent(
+            onOpenToolDetail = { name, index, isCreating ->
+                onPush(CustomToolDetailPage(name, index, isCreating))
+            },
+        )
+        return
+    }
+
+    if (group == NexusSettingsGroup.Mcp) {
+        McpSettingsContent(
+            onOpenServerDetail = { name, index, isCreating ->
+                onPush(McpServerDetailPage(name, index, isCreating))
+            },
+        )
+        return
+    }
+
+    if (group == NexusSettingsGroup.About) {
+        AboutSettingsContent()
+        return
+    }
+
+    if (group == NexusSettingsGroup.Memory) {
+        MemorySettingsContent()
+        return
+    }
+
+    if (group == NexusSettingsGroup.Takeover) {
+        TakeoverSettingsContent(
+            onOpenRuleDetail = { id, name, index, isCreating ->
+                onPush(
+                    TakeoverRuleDetailPage(
+                        ruleId = id,
+                        ruleName = name,
+                        ruleIndex = index,
+                        isCreating = isCreating,
+                    )
+                )
+            },
+        )
+        return
+    }
+
+    if (group == NexusSettingsGroup.ExecutionRules) {
+        ExecutionRulesSettingsContent(
+            onOpenRuleDetail = { name, index, isCreating ->
+                onPush(ExecutionRuleDetailPage(name, index, isCreating))
+            },
+        )
+        return
+    }
+
+    TODOPageContent()
+    return
+}

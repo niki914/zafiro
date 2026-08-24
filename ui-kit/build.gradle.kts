@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.niki914.nexus.base"
+    namespace = "com.niki914.uikit"
     compileSdk = 37
 
     defaultConfig {

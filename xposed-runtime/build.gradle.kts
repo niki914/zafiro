@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.niki914.nexus.xposed.runtime"
+    namespace = "com.niki914.xposed.runtime"
     compileSdk = 37
 
     defaultConfig {

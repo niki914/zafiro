@@ -7,7 +7,7 @@
             通过杀进程实现，Python 侧 segfault/内存膨胀不会带崩主进程。
         -->
         <service
-            android:name="com.niki914.nexus.agentic.chat.agentic.python.PythonWorkerService"
+            android:name="com.niki914.zafiro.chat.agentic.python.PythonWorkerService"
             android:process=":python"
             android:exported="false" />
     </application>
