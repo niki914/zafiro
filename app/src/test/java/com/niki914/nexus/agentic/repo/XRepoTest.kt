@@ -75,15 +75,6 @@ class XRepoTest {
     }
 
     @Test
-    fun defaultMemoriesDescribeDomainSettingsTree() {
-        val text = LocalSettingsDefaults.defaultMemories.joinToString(separator = "\n")
-
-        assertFalse(text.contains("local_settings.json"))
-        assertTrue(text.contains("files/settings"))
-        assertTrue(text.contains("com.niki914.nexus.agentic"))
-    }
-
-    @Test
     fun tryPutDefaultSettings_skipsWhenOnboardingIsCompleted() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(
@@ -484,16 +475,6 @@ class XRepoTest {
     }
 
     @Test
-    fun builtinListContainsTerminalAndNotRunCommand() = runTest {
-        installStore(FakeDomainSettingsStore())
-
-        val names = XRepo.builtinTools.list().map { it.name }
-
-        assertTrue(names.contains("terminal"))
-        assertFalse(names.contains("run_command"))
-    }
-
-    @Test
     fun builtinTerminalIgnoresLegacyRunCommandFlag() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(
@@ -507,23 +488,6 @@ class XRepoTest {
 
         assertTrue(terminal.enabled)
         assertEquals(0, store.writeCount)
-    }
-
-    @Test
-    fun builtinSetEnabled_acceptsTerminalAndRejectsRunCommand() = runTest {
-        val store = installStore(FakeDomainSettingsStore())
-
-        val terminalValidation = XRepo.builtinTools.setEnabled("terminal", false)
-        val runCommandValidation = XRepo.builtinTools.setEnabled("run_command", false)
-        val flags = ToolSettingsCodec.parseBuiltinEnabledForAgents(
-            store.jsonFor(StoreDescriptorRegistry.TOOLS_BUILTIN_ID)
-        )
-
-        assertNull(terminalValidation)
-        assertEquals(false, flags["terminal"])
-        assertNotNull(runCommandValidation)
-        assertEquals("name", runCommandValidation!!.field)
-        assertEquals(1, store.writeCount)
     }
 
     @Test

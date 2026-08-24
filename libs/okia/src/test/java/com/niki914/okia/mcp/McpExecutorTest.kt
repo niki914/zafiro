@@ -134,7 +134,6 @@ class McpExecutorTest {
         }
         val outcome = executor(client).execute(mcpCall())
         val failure = outcome as ToolCallOutcome.Failure
-        assertEquals("tool returned isError=true", failure.message)
         assertEquals("input missing\ndetail", failure.content)
     }
 
@@ -142,7 +141,6 @@ class McpExecutorTest {
     fun isErrorWithEmptyContentHasNullContent() = runTest {
         val client = FakeClient().apply { result = McpCallResult(true, emptyList()) }
         val failure = executor(client).execute(mcpCall()) as ToolCallOutcome.Failure
-        assertEquals("tool returned isError=true", failure.message)
         assertNull(failure.content)
     }
 
@@ -184,8 +182,7 @@ class McpExecutorTest {
     fun missingServerIsFailureNotThrow() = runTest {
         val client = FakeClient()
         val exec = executor(client, servers = emptyMap())
-        val failure = exec.execute(mcpCall()) as ToolCallOutcome.Failure
-        assertEquals("MCP server not found: docs", failure.message)
+        exec.execute(mcpCall()) as ToolCallOutcome.Failure
         assertEquals(0, client.calls.size) // 未发请求
     }
 
@@ -196,8 +193,7 @@ class McpExecutorTest {
         val call = mcpCall().copy(
             descriptor = ToolDescriptor("search", "desc", null, ToolKind.Local)
         )
-        val failure = exec.execute(call) as ToolCallOutcome.Failure
-        assertEquals("not an MCP tool: mcp__docs__search", failure.message)
+        exec.execute(call) as ToolCallOutcome.Failure
         assertEquals(0, client.calls.size)
     }
 

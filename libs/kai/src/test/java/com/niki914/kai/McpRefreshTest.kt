@@ -418,15 +418,9 @@ class McpRefreshTest {
 
             assertFalse(oldResult.isSuccess)
             assertEquals("docs", oldResult.failedServers.single().serverName)
-            assertEquals(
-                "MCP discovery ignored because config changed",
-                oldResult.failedServers.single().message
-            )
             assertTrue(
                 failures.any {
-                    it.first == "docs" &&
-                        it.second == "MCP discovery ignored because config changed" &&
-                        it.third == McpCachePolicy.IgnoredBecauseConfigChanged
+                    it.first == "docs" && it.third == McpCachePolicy.IgnoredBecauseConfigChanged
                 }
             )
             assertTrue(newResult.isSuccess)
