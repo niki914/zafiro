@@ -287,6 +287,53 @@ class LLMControllerOkiaTest {
     }
 
     @Test
+    fun refresh_providerSwitchCarriesTreeViaRestore() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(llmConfig = validLlmConfig(provider = "deepseek"))
+        )
+        val capturedRestores = mutableListOf<SessionSnapshot?>()
+        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
+            capturedRestores += restore
+            openOkiaWithStubLoop(
+                stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)),
+                restore,
+            )
+        }
+        val snapshot = SessionSnapshot(
+            id = "session-continued",
+            leafId = "e1",
+            version = 1,
+            entries = listOf(
+                ConversationEntry(
+                    id = "e0",
+                    parentId = null,
+                    timestamp = 1L,
+                    message = Message.User(listOf(ContentBlock.Text("a"))),
+                ),
+                ConversationEntry(
+                    id = "e1",
+                    parentId = "e0",
+                    timestamp = 2L,
+                    message = Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("b")))),
+                ),
+            ),
+        )
+        // 以 deepseek 载入会话（树有内容）
+        LLMController.openSession(snapshot)
+
+        // 切到 anthropic 再 refresh：应带 restore 延续同一棵树（id + entries 不变）
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(llmConfig = validLlmConfig(provider = "anthropic"))
+        )
+        LLMController.refresh()
+
+        val carried = capturedRestores.last()
+        assertNotNull("provider switch must carry session snapshot", carried)
+        assertEquals("session-continued", carried?.id)
+        assertEquals(snapshot.entries.size, carried?.entries?.size)
+    }
+
+    @Test
     fun resetConversation_discardsInstanceAndEmitsNull() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())

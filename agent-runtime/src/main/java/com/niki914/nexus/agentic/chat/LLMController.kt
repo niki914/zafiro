@@ -179,7 +179,8 @@ object LLMController {
             finalSystemPrompt = llmConfig.prompt,
             proxy = llmConfig.proxy,
         )
-        // T1：会话按协议类型重建；协议切换 = close + 新实例（D1/§5.1）
+        // 会话实例按协议重建；协议切换 = close + 新实例，但树经 restore 延续
+        // （P1 #3：export 当前树给新协议实例，会话 id + 历史跨 Provider 保留）
         val activeSession = obtainSession(apiType, configWithoutRuntimePrompt)
         activeSession.update {
             endpoint = configWithoutRuntimePrompt.endpoint
@@ -458,8 +459,11 @@ object LLMController {
         if (!forceNew && restore == null) {
             okia?.takeIf { sessionApiType == apiType }?.let { return it }
         }
+        // 协议切换（P1 #3）：关旧实例前导出当前树，restore 给新协议实例，
+        // 会话 id + 历史跨 Provider 延续（okia §5.7：协议 id 不进会话数据）
+        val carried = restore ?: okia?.takeIf { sessionApiType != apiType }?.export()
         okia?.close()
-        return openSession(apiType, config, restore).also {
+        return openSession(apiType, config, carried).also {
             okia = it
             sessionApiType = apiType
             forwardConversation(it)
