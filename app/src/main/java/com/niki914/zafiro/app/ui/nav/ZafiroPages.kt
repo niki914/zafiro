@@ -1,0 +1,190 @@
+package com.niki914.zafiro.app.ui.nav
+
+import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.niki914.zafiro.app.R
+import com.niki914.uikit.infra.nav.Page
+
+sealed interface PageTitleSpec
+
+data object NoTitle : PageTitleSpec
+
+data class ResTitle(
+    @StringRes val resId: Int,
+) : PageTitleSpec
+
+data class TextTitle(
+    val value: String,
+) : PageTitleSpec
+
+data class TopBarActionSpec(
+    val icon: ImageVector,
+    val onClick: (() -> Unit)? = null,
+    val contentDescription: String? = null,
+)
+
+sealed interface ZafiroPage : Page {
+    val titleSpec: PageTitleSpec
+    val leftAction: TopBarActionSpec?
+    val rightAction: TopBarActionSpec?
+    val showBlurLayer: Boolean
+        get() = true
+}
+
+data object StartupPage : ZafiroPage {
+    override val routeKey: String = "startup"
+    override val titleSpec: PageTitleSpec = NoTitle
+    override val leftAction: TopBarActionSpec? = null
+    override val rightAction: TopBarActionSpec? = null
+    override val showBlurLayer: Boolean = false
+}
+
+data object ProviderPickPage : ZafiroPage {
+    override val routeKey: String = "provider-pick"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_onboard_provider_pick_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+}
+
+data object SettingsProviderPickPage : ZafiroPage {
+    override val routeKey: String = "settings-provider-pick"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_onboard_provider_pick_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+}
+
+data class ConfigurePage(
+    val providerId: String? = null,
+    val explicitTitleSpec: PageTitleSpec? = null,
+) : ZafiroPage {
+    override val routeKey: String = if (providerId == null) "configure" else "configure:$providerId"
+    override val titleSpec: PageTitleSpec =
+        explicitTitleSpec ?: ResTitle(R.string.ui_onboard_configure_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+}
+
+data class SettingsConfigurePage(
+    val providerId: String,
+    val explicitTitleSpec: PageTitleSpec? = null,
+) : ZafiroPage {
+    override val routeKey: String = "settings-configure:$providerId"
+    override val titleSpec: PageTitleSpec =
+        explicitTitleSpec ?: ResTitle(R.string.ui_onboard_configure_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+}
+
+data object DonePage : ZafiroPage {
+    override val routeKey: String = "done"
+    override val titleSpec: PageTitleSpec = NoTitle
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+}
+
+data object HomePage : ZafiroPage {
+    override val routeKey: String = "home"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_home_title)
+    override val leftAction: TopBarActionSpec? = null
+    override val rightAction: TopBarActionSpec = TopBarActionSpec(
+        icon = Icons.Default.MoreHoriz,
+    )
+}
+
+data object ConversationHistoryPage : ZafiroPage {
+    override val routeKey: String = "conversation-history"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_home_title)
+    override val leftAction: TopBarActionSpec? = null
+    override val rightAction: TopBarActionSpec? = null
+}
+
+data object SettingsHomePage : ZafiroPage {
+    override val routeKey: String = "settings-home"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+}
+
+data class SettingsDetailPage(
+    val group: ZafiroSettingsGroup,
+    val explicitTitleSpec: PageTitleSpec? = null,
+) : ZafiroPage {
+    override val routeKey: String = "settings-detail:${group.routeSuffix}"
+    override val titleSpec: PageTitleSpec = explicitTitleSpec ?: ResTitle(group.titleRes)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+}
+
+data class McpServerDetailPage(
+    val serverName: String,
+    val serverIndex: Int,
+    val isCreating: Boolean = false,
+) : ZafiroPage {
+    override val routeKey: String = "mcp-server-detail:$serverIndex:$serverName"
+    override val titleSpec: PageTitleSpec = TextTitle(serverName)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? =
+        if (isCreating) null else TopBarActionSpec(Icons.Default.Delete)
+}
+
+data class ExecutionRuleDetailPage(
+    val ruleName: String,
+    val ruleIndex: Int,
+    val isCreating: Boolean = false,
+) : ZafiroPage {
+    override val routeKey: String = "execution-rule-detail:$ruleIndex:$ruleName"
+    override val titleSpec: PageTitleSpec = TextTitle(ruleName)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+}
+
+data class TakeoverRuleDetailPage(
+    val ruleId: String?,
+    val ruleName: String,
+    val ruleIndex: Int,
+    val isCreating: Boolean = false,
+) : ZafiroPage {
+    override val routeKey: String = "takeover-rule-detail:${ruleId ?: "new"}:$ruleIndex:$ruleName"
+    override val titleSpec: PageTitleSpec = TextTitle(ruleName)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? =
+        if (isCreating) null else TopBarActionSpec(Icons.Default.Delete)
+}
+
+data class CustomToolDetailPage(
+    val toolName: String,
+    val toolIndex: Int,
+    val isCreating: Boolean = false,
+) : ZafiroPage {
+    override val routeKey: String = "custom-tool-detail:$toolIndex:$toolName"
+    override val titleSpec: PageTitleSpec = TextTitle(toolName)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? =
+        if (isCreating) null else TopBarActionSpec(Icons.Default.Delete)
+}
+
+data class SkillDetailPage(
+    val skillId: String,
+    val skillTitle: String,
+) : ZafiroPage {
+    override val routeKey: String = "skill-detail:$skillId"
+    override val titleSpec: PageTitleSpec = TextTitle(skillTitle)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = TopBarActionSpec(Icons.Default.Delete)
+}

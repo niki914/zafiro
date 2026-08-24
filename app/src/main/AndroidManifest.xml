@@ -18,7 +18,7 @@
     </queries>
 
     <application
-        android:name="com.niki914.nexus.agentic.app.App"
+        android:name="com.niki914.zafiro.app.App"
         android:allowBackup="true"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
@@ -45,7 +45,7 @@
         <!--XPOSED-->
 
         <activity
-            android:name="com.niki914.nexus.agentic.app.MainActivity"
+            android:name="com.niki914.zafiro.app.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustNothing">
@@ -61,7 +61,7 @@
             android:exported="true"
             android:label="@string/app_name"
             android:launchMode="singleTask"
-            android:targetActivity="com.niki914.nexus.agentic.app.MainActivity">
+            android:targetActivity="com.niki914.zafiro.app.MainActivity">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -69,7 +69,7 @@
         </activity-alias>
 
         <service
-            android:name="com.niki914.nexus.agentic.mod.feat.NexusAccessibilityService"
+            android:name="com.niki914.zafiro.mod.feat.ZafiroAccessibilityService"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
@@ -81,14 +81,14 @@
         </service>
 
         <service
-            android:name="com.niki914.nexus.agentic.runtime.service.AgentRuntimeService"
+            android:name="com.niki914.zafiro.runtime.service.AgentRuntimeService"
             android:exported="true"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="agent_runtime_ipc" />
             <intent-filter>
-                <action android:name="com.niki914.nexus.agentic.runtime.BIND" />
+                <action android:name="com.niki914.zafiro.runtime.BIND" />
             </intent-filter>
         </service>
     </application>

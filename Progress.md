@@ -1,4 +1,4 @@
-# Nexus × OKIA 接入 Progress
+# Zafiro × OKIA 接入 Progress
 
 > 本文档是 Agent 会话的恢复锚点。每次回退会话/回退提交后，先读本文件恢复上下文。
 > 状态标签：`待讨论` / `已确认` / `进行中` / `已完成` / `已提交`
@@ -7,7 +7,7 @@
 
 - 分支：`feat/okia-integration`（基于 main `84f28cd`，即并入 PR #121 okia 库之后）
 - 当前阶段：**T3 已提交 + 双份消息 bug 已修复**（34bd1bb 根因修复 + cc01488 workaround 清理）；T4 待讨论
-- 目标：把 Nexus 的 LLM 运行时从 `libs:kai` 切换为 `libs:okia`（`Okia` 门面），`libs:kai` 最终删除，不留兼容层
+- 目标：把 Zafiro 的 LLM 运行时从 `libs:kai` 切换为 `libs:okia`（`Okia` 门面），`libs:kai` 最终删除，不留兼容层
 - 约束：单个功能点新增+删除合计 ≤1000 行；每完成一个功能点更新本文档并由用户触发 git 提交；允许部分业务 Bug，先跑通主链路
 
 ## 工作方式（与用户的约定）
@@ -16,7 +16,7 @@
 2. 用户会把会话回退到某个点位（git 回退 / 会话回退）后重新开始 → 靠本文件恢复
 3. 本文件在每次功能点完成时更新，并随功能点一起提交
 4. 用户验收命令：见「验证」节
-5. 调研结论（Nexus↔KAI 交接现状、OKIA 概念对照）归档在下方「调研记录」节，不回退后重查代码可先读它
+5. 调研结论（Zafiro↔KAI 交接现状、OKIA 概念对照）归档在下方「调研记录」节，不回退后重查代码可先读它
 
 ## 已定决策（2026-08-19）
 
@@ -39,17 +39,17 @@
 | D17 | **T1 工具退化记录**：refresh 仍把 resolvedTools 传入 PromptComposer（技能/记忆段依赖工具段渲染），但 OKIA 注册表为空、不向请求注入 tool 定义——模型若调用未注册工具 → `LLMErrorCode.UnknownTool` 回合失败（T2 接入前为已知退化）；MCP 发现/指纹决策已从 refresh 删除 | 已确认 |
 | D18 | **T2 拆分**：T2a=本地工具注册与执行（builtin+custom）；T2b=MCP 装配与发现时序。每块 ≤1000 行 | 已确认 |
 | D19 | **内置工具描述迁移（方案 A）**：BuiltinTool 抽象改为 OKIA 声明式描述（description/inputSchemaJson/轻量参数声明），替换 kai `LocalToolConfig` DSL；15 个工具文件迁移；无 workaround；**描述文本原文照抄一个字符不差**（withCustomShellGuidance 英文段/各工具长 description/CreateCustomTool hint） | 已确认 |
-| D20 | **CreateCustomTool**：默认 `enabled=true`；refresh 注册保持 `filter { it.enabled }`（enabled=false 不注册）；创建成功执行后**回合内注册**（同 Turn 下一轮可见，RealAgentLoop:170 每段现取 registry.snapshot() 支撑）；OKIA ToolRegistry 注释「活跃回合不得直接改 registry」与 update 路由矛盾 → 并 D3 issue 批（文档修复级，不阻塞），Nexus 直接 register | 已确认 |
+| D20 | **CreateCustomTool**：默认 `enabled=true`；refresh 注册保持 `filter { it.enabled }`（enabled=false 不注册）；创建成功执行后**回合内注册**（同 Turn 下一轮可见，RealAgentLoop:170 每段现取 registry.snapshot() 支撑）；OKIA ToolRegistry 注释「活跃回合不得直接改 registry」与 update 路由矛盾 → 并 D3 issue 批（文档修复级，不阻塞），Zafiro 直接 register | 已确认 |
 | D21 | **custom tool schema**：`inputSchemaJson = null`（协议层省略 parameters），代码打 TODO（未来支持自定义字段） | 已确认 |
 | D22 | **MCP 时序（方案 A）**：LLMController 保存「已 refresh 的服务器配置签名」（name/url/headers/enabled 序列化），签名变化才 `refreshMcpTools()`（该调用本身挂起至完成=同步一轮，无需 OKIA 新 API）；无变化不刷新 | 已确认 |
-| D23 | **MCP 持久化本次不做**：删残链（gateway.listCachedTools / XRepo saveDiscoveredTools / McpCachedTool / mcpCacheKey / McpServerDefinition.cachedTools / refresh 的 mcpCachedTools）；记 TODO：未来 Nexus store 层持久化 OKIA McpDiscoverySnapshot（需先提 issue：McpDiscoveredTool 加 @Serializable，已核实当前无可序列化） | 已确认 |
+| D23 | **MCP 持久化本次不做**：删残链（gateway.listCachedTools / XRepo saveDiscoveredTools / McpCachedTool / mcpCacheKey / McpServerDefinition.cachedTools / refresh 的 mcpCachedTools）；记 TODO：未来 Zafiro store 层持久化 OKIA McpDiscoverySnapshot（需先提 issue：McpDiscoveredTool 加 @Serializable，已核实当前无可序列化） | 已确认 |
 | D24 | **hooks 不接**：T2 无 beforeToolCall/afterToolCall（读屏前置非 hook 用例 §5.12），T4 有需求再加 | 已确认 |
 | D25 | **T2 测试策略**：不做逐工具描述 golden 断言（膨胀脆弱）。三档：①注册装配=refresh 后 registry 工具名集合正确（名字级）②描述合法性=schema JSON 可解析/name 合法/wireName 满足 ToolWireName 约束 ③执行行为=fake call→outcome 映射（Success/Failure/Interrupted/Unknown）。不写扫字符串式测试 | 已确认 |
 | D26 | **T2c 未知工具行为修复（t2 验收暴露）**：模型调用未注册工具从「回合 Failed(UnknownTool)」改为「ToolCallOutcome.Failure 结果回喂，回合继续」（对齐 KAI ToolCallCoordinator 与 OKIA 内部 MCP server-not-found 一致；§1 哲学：不替产品决策 + 不伪造消息）。默认文案纯文本 `Unknown tool '<name>'`（message 与 content 同值：message 供 UI / content 回喂模型）。**不开下游定制口子**（无消费者，遵循延迟设计 API 哲学；ROI 低，不提 issue）。`LLMErrorCode.UnknownTool` 删除（不再产生，不留死代码，已扫全仓）。边界：仅「模型命名错误」走回喂（模型可自纠）；executor 违反契约（ToolExecutionFailed）/协议/认证等仍回合失败 | 已确认 |
 | D-T2B-1 | **MCP 持久化彻底删除**（不作保留空实现）：缓存系统全部删除（网关 4 方法/XRepo McpApi 缓存 6 方法/McpSettingsCodec 缓存/McpCachedTool/RuntimeMcpTool/mcpCacheStoreId）。依据：服务器通→eager 预加载即得；不通→缓存了也不能执行（Codex 亦无跨启动持久化） | 已确认 |
 | D-T2B-2 | **PromptComposer 删 `<mcp_servers>` 块 + mcpDiscoverySnapshot 参数**：线缆名 `mcp__server__tool` 已表达服务器归属；kai snapshot import 从 agent-runtime 消失 | 已确认 |
-| D-T2B-3 | **MCP 时序 = 方案 B（后台不阻塞）**：启动 eager（首次 refresh 签名 null≠配置天然触发）+ turn 前签名变化起后台协程刷新（不 await）+ inFlight 防重 + 失败也更新签名防风暴 + 无保存点回调。Codex 实证：optional 服务器首回合可缺席（仅 required 被 turn 前 await）；Nexus/OKIA 无 required 概念 → 纯 optional 语义 | 已确认 |
-| D-T2B-4 | **Okia 改动本次做**：`OkHttpEngine` internal→public + okhttp implementation→api + 1 测试（proxy/interceptor 注入点）；**proxy 使用本次不做**（llmConfig.proxy 死字段保留，TODO = Nexus 注入带 interceptor 的 client） | 已确认 |
+| D-T2B-3 | **MCP 时序 = 方案 B（后台不阻塞）**：启动 eager（首次 refresh 签名 null≠配置天然触发）+ turn 前签名变化起后台协程刷新（不 await）+ inFlight 防重 + 失败也更新签名防风暴 + 无保存点回调。Codex 实证：optional 服务器首回合可缺席（仅 required 被 turn 前 await）；Zafiro/OKIA 无 required 概念 → 纯 optional 语义 | 已确认 |
+| D-T2B-4 | **Okia 改动本次做**：`OkHttpEngine` internal→public + okhttp implementation→api + 1 测试（proxy/interceptor 注入点）；**proxy 使用本次不做**（llmConfig.proxy 死字段保留，TODO = Zafiro 注入带 interceptor 的 client） | 已确认 |
 | D-T2B-5 | custom schema null（D21）/ hooks 不接（D24）等既有项不在 T2b 重复 | 已确认 |
 | D12 | **单测重写而非改**：接口全变处（LLMController/Mapper/持久化）测试重写；工具实现测试不动 | 已确认 |
 | D13 | **删除概念**：SessionToolBinder、McpDiscoveryCacheStore、lastMcpServersFingerprint+shouldRefreshMcp、ChatTurnJsonCodec、turnMutex、`:libs:kai` 依赖。保留：LlmStreamEvent/ToolCallStatus/ToolCallKind、ConversationTurnState/ActiveTurnStore/TurnMode、RenderFrame、Room 表骨架、TerminalSessionPool.pendingNotifications | 已确认 |
@@ -102,7 +102,7 @@
 
 ## T1 功能定义
 
-**一句话**：把 Nexus 的"提问 → 流式回答 → 停止 → 错误"骨架从 KAI 换到 OKIA，UI 消费端接口不变，历史/工具/持久化允许退化。
+**一句话**：把 Zafiro 的"提问 → 流式回答 → 停止 → 错误"骨架从 KAI 换到 OKIA，UI 消费端接口不变，历史/工具/持久化允许退化。
 
 改动文件（估算合 ~1000 行）：
 - `agent-runtime/build.gradle.kts`：+`implementation(project(":libs:okia"))`（保留 kai 依赖到 T4 删，或 T1 直接删？见开放问题 O1）
@@ -214,7 +214,7 @@
 
 ## T2c 实现记录（2026-08-19，已完成，待验收）
 
-**背景**：T2 验收暴露——模型调用未注册工具时 OKIA 将其视为回合级异常（Failed(UnknownTool)），旧版 Nexus（KAI ToolCallCoordinator）与 OKIA 内部 MCP 路径（server not found → Failure 回喂）均为「错误结果回喂，loop 照常进行」。差异实证见前轮讨论。
+**背景**：T2 验收暴露——模型调用未注册工具时 OKIA 将其视为回合级异常（Failed(UnknownTool)），旧版 Zafiro（KAI ToolCallCoordinator）与 OKIA 内部 MCP 路径（server not found → Failure 回喂）均为「错误结果回喂，loop 照常进行」。差异实证见前轮讨论。
 
 **改动**（±72/-22 行，4 文件）：
 - `libs/okia/.../loop/RealAgentLoop.kt`：`Plan.holder` 改 nullable；find-miss 分支从 `failTurn` 改为构造 Failure outcome 的 Plan（不执行、不走 afterToolCall，Phase 3 保序提交回喂，回合继续）；类注释 / Phase 1 注释 / ToolExecutionOutcome 注释同步
@@ -224,7 +224,7 @@
 
 **死代码扫描**（全仓）：UnknownTool 引用仅剩 `app/src/test/.../XRepoTest.kt:481 builtinSetEnabled_rejectsUnknownTool`（XRepo 设置枚举，同名函数无关，不动）
 
-**验证**：`:libs:okia:testDebugUnitTest` 全量绿（含重写用例）；`:agent-runtime:testDebugUnitTest` + `:app:compileDebugKotlin` 绿。Nexus 侧零行为改动（UI 走既有 ToolFailed 渲染）
+**验证**：`:libs:okia:testDebugUnitTest` 全量绿（含重写用例）；`:agent-runtime:testDebugUnitTest` + `:app:compileDebugKotlin` 绿。Zafiro 侧零行为改动（UI 走既有 ToolFailed 渲染）
 
 ## T1 实现记录（2026-08-19，已完成，待验收）
 
@@ -243,13 +243,13 @@
 
 ## 调研记录（2026-08-19，避免回退后重查代码）
 
-### Nexus ↔ KAI 交接现状（已核实）
+### Zafiro ↔ KAI 交接现状（已核实）
 
 - 消费入口：`AgentRuntimeService.executeTurn`（宿主）+ `HomeChatState`（主 App），都经 `LLMController` 单例（agent-runtime/.../chat/LLMController.kt，417 行）
 - 装配：`refresh()` 每轮重读配置/工具 → `obtainSession(apiType)`（apiType 变化 close+重建）→ `update { applyRuntimeConfig }` 热更新 endpoint/apiKey/model/systemPrompt/tools
 - 协议：`Kai.open<KClass>`：Anthropic/DeepSeek/OpenAI
 - 工具：`SessionToolBinder`（KaiConfig DSL localTools/mcp 全量差量）+ `hooks { when(kind) Local -> ok(...) ; Mcp -> delegate() }` + `ToolCallDispatcher` → BuiltinToolExecutor/CustomToolExecutor
-- MCP：`mcpHooks.onToolsDiscovered` + Nexus 侧 `lastMcpServersFingerprint` + shouldRefreshMcp + `McpDiscoveryCacheStore`（cachedTools 经 XRepoRuntimeGateway 持久化）
+- MCP：`mcpHooks.onToolsDiscovered` + Zafiro 侧 `lastMcpServersFingerprint` + shouldRefreshMcp + `McpDiscoveryCacheStore`（cachedTools 经 XRepoRuntimeGateway 持久化）
 - 事件：`KaiEvent`(RoundStarted/TextDelta/ToolRunning/Succeeded/Failed/Error/RoundCompleted) → `LlmStreamEventMapper` → `LlmStreamEvent` → RenderFrame（宿主）/ HomeChatBlock（主 App）
 - 停止：`PyRuntime.kill()` + `TerminalSessionPool.closeAll()` + `kai.stop(keepCurrentTurn)`（kill-then-stop 是 KAI 缺陷 workaround）
 - 历史：`getHistory()/replaceHistory()`（ChatTurn 平列表）+ `resetConversation()`；主 App 用 Room（conversation + conversation_turn 两表，payload_json=ChatTurnJsonCodec）

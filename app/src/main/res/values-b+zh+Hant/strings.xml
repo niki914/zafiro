@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App / Module -->
-    <string name="app_name">Nexus</string>
+    <string name="app_name">Zafiro</string>
     <string name="xposed_desc">讓語音助理接入你自己的模型能力\n\n現已支援：\n\n- ColorOS 小布助手\n- HyperOS 小愛同學</string>
 
     <!-- Onboarding -->
@@ -38,11 +38,11 @@
     <string name="ui_onboard_configure_error_load_failed">讀取設定失敗：%1$s</string>
     <string name="ui_onboard_configure_error_save_failed">儲存設定失敗：%1$s</string>
     <string name="ui_onboard_done_headline">設定完成。</string>
-    <string name="ui_onboard_done_description">設定已完成，你可以立即開始使用 Nexus，或稍後再到設定繼續調整。</string>
-    <string name="ui_onboard_done_enter_home">進入 Nexus</string>
+    <string name="ui_onboard_done_description">設定已完成，你可以立即開始使用 Zafiro，或稍後再到設定繼續調整。</string>
+    <string name="ui_onboard_done_enter_home">進入 Zafiro</string>
 
     <!-- Home -->
-    <string name="ui_home_title">Nexus</string>
+    <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">新對話</string>
     <string name="ui_home_input_placeholder">輸入訊息…</string>
     <string name="ui_tool_status_called">已調用</string>
@@ -91,11 +91,11 @@
 
     <!-- Settings Home Items -->
     <string name="ui_settings_model_config">模型設定</string>
-    <string name="ui_settings_model_config_summary">調整 Nexus 的模型連接設定</string>
+    <string name="ui_settings_model_config_summary">調整 Zafiro 的模型連接設定</string>
     <string name="ui_settings_memory">記憶</string>
     <string name="ui_settings_memory_summary">管理持久化的記憶與偏好設定</string>
     <string name="ui_settings_builtin_tools">內建工具</string>
-    <string name="ui_settings_builtin_tools_summary">管理 Nexus 提供的內建工具</string>
+    <string name="ui_settings_builtin_tools_summary">管理 Zafiro 提供的內建工具</string>
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">管理本地 Skills</string>
     <string name="skill_page_description">開啟或關閉本地 Skills。啟用後，Agent 可在對話中按需使用。</string>
@@ -121,7 +121,7 @@
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">連接外部 MCP 服務與工具</string>
     <string name="ui_settings_takeover">接管規則</string>
-    <string name="ui_settings_takeover_summary">設定哪些輸入交給原生助理或 Nexus</string>
+    <string name="ui_settings_takeover_summary">設定哪些輸入交給原生助理或 Zafiro</string>
     <string name="ui_settings_execution_rules">執行規則</string>
     <string name="ui_settings_execution_rules_summary">設定 Shell 的安全策略</string>
     <string name="ui_settings_about">關於</string>
@@ -206,13 +206,13 @@
     <string name="takeover_empty_action_hint">點擊右上角以新增第一條接管規則。</string>
     <string name="takeover_loading">正在讀取接管規則…</string>
     <string name="takeover_editor_title_create">新增接管規則</string>
-    <string name="takeover_editor_description">設定哪些問題交給原生助理，哪些繼續交給 Nexus。</string>
+    <string name="takeover_editor_description">設定哪些問題交給原生助理，哪些繼續交給 Zafiro。</string>
     <string name="takeover_field_name">規則名稱</string>
     <string name="takeover_field_name_hint">例如：小布生活服務</string>
     <string name="takeover_field_enabled">啟用規則</string>
     <string name="takeover_field_target">命中時由誰接管</string>
     <string name="takeover_target_native_assistant">原生助理</string>
-    <string name="takeover_target_nexus">Nexus</string>
+    <string name="takeover_target_nexus">Zafiro</string>
     <string name="takeover_field_patterns">規則</string>
     <string name="takeover_field_patterns_hint">天氣\n.*鬧鐘.*\n開啟.*</string>
     <string name="takeover_field_patterns_description">每行輸入一個關鍵字或正則表達式，只要符合其中一項，便會使用上方的接管方式。</string>
@@ -268,7 +268,7 @@
     <string name="custom_tool_save_failed">儲存失敗：%1$s</string>
 
     <!-- MCP Module -->
-    <string name="mcp_page_description">設定 MCP 服務的連線方式與驗證資訊。儲存後，Nexus 會在執行時自動發現可用工具。</string>
+    <string name="mcp_page_description">設定 MCP 服務的連線方式與驗證資訊。儲存後，Zafiro 會在執行時自動發現可用工具。</string>
     <string name="mcp_page_empty_description">點擊右上角以新增第一個伺服器。</string>
     <string name="mcp_loading">正在讀取已儲存的 MCP 服務…</string>
     <string name="mcp_editor_title_create">新增 MCP 服務</string>

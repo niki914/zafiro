@@ -1,4 +1,4 @@
-# Nexus Agent 启动文档
+# Zafiro Agent 启动文档
 
 ## 作用
 
@@ -6,13 +6,13 @@
 
 ## 项目定位
 
-Nexus 是一个 Android Xposed 模块。它在语音助手 App 中截获用户 query，交给 LLM 运行时生成回答，再注入回宿主 UI 替换原生回复。
+Zafiro 是一个 Android Xposed 模块。它在语音助手 App 中截获用户 query，交给 LLM 运行时生成回答，再注入回宿主 UI 替换原生回复。
 
 ### 术语（你在对话中会用到这些词）
 
 - **宿主 / Host**：被 Hook 的语音助手 App。Breeno（ColorOS，`com.heytap.speechassist`）和 XiaoAi（HyperOS，`com.miui.voiceassist`）
-- **主 App**：Nexus 自己的进程（`com.niki914.nexus.agentic`），跑设置 UI + Runtime Service
-- **takeover**：本轮 query 的接管决策——`InjectedLLM`（Nexus 替换回答）或 `NativeTakeover`（放行原生回复），由 `TakeoverResolver` 判定
+- **主 App**：Zafiro 自己的进程（`com.niki914.zafiro`），跑设置 UI + Runtime Service
+- **takeover**：本轮 query 的接管决策——`InjectedLLM`（Zafiro 替换回答）或 `NativeTakeover`（放行原生回复），由 `TakeoverResolver` 判定
 - **turn**：一轮"用户问 → 回答呈现"的完整生命周期，`ConversationTurnState` 跟踪
 - **store**：一个命名的 JSON 持久化单元（如 `agent.main.config`、`rules.takeover`），原子写入 `filesDir/` 下对应路径
 - **render pipeline**：LLM 响应注入宿主 UI 的链路。Breeno 走卡片全量刷新，XiaoAi 走响应目标捕获 + 指令分片注入
@@ -154,7 +154,7 @@ Ray 的端口会跟自己撞 → 多个任务的 Ray 抢占同一端口
   - 用于编写或修改提示词、Agent 文档、Skill 文档、任务说明
   - 凡是目标读者主要是 Agent 而不是人类用户，优先加载它
 - `release-new-version`
-  - 用于 Nexus 发版提交流程（同步 app/build.gradle.kts 版本字段与 GitHub release）
+  - 用于 Zafiro 发版提交流程（同步 app/build.gradle.kts 版本字段与 GitHub release）
 
 ## 默认执行顺序
 

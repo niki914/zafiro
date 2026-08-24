@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.niki914.nexus.agentic.runtime"
+    namespace = "com.niki914.zafiro"
     compileSdk = 37
 
     defaultConfig {

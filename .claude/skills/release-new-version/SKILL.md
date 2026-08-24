@@ -1,13 +1,13 @@
 ---
 name: "release-new-version"
-description: "Use when preparing a Nexus release commit that requires syncing app/build.gradle.kts version fields with the latest GitHub release."
+description: "Use when preparing a Zafiro release commit that requires syncing app/build.gradle.kts version fields with the latest GitHub release."
 ---
 
 # Release New Version
 
 ## Overview
 
-这个 skill 用于执行 Nexus 的发版提交流程。
+这个 skill 用于执行 Zafiro 的发版提交流程。
 
 它的核心规则只有三条：
 

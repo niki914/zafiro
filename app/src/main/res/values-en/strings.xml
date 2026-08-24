@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App / Module -->
-    <string name="app_name">Nexus</string>
+    <string name="app_name">Zafiro</string>
     <string name="xposed_desc">Empower your voice assistant with your own models\n\nCurrently supported:\n\n- ColorOS Breeno\n- HyperOS XiaoAi</string>
 
     <!-- Onboarding -->
@@ -38,11 +38,11 @@
     <string name="ui_onboard_configure_error_load_failed">Failed to load configuration: %1$s</string>
     <string name="ui_onboard_configure_error_save_failed">Failed to save configuration: %1$s</string>
     <string name="ui_onboard_done_headline">All set.</string>
-    <string name="ui_onboard_done_description">Setup is complete. You can start using Nexus now or fine-tune it later in Settings.</string>
-    <string name="ui_onboard_done_enter_home">Open Nexus</string>
+    <string name="ui_onboard_done_description">Setup is complete. You can start using Zafiro now or fine-tune it later in Settings.</string>
+    <string name="ui_onboard_done_enter_home">Open Zafiro</string>
 
     <!-- Home -->
-    <string name="ui_home_title">Nexus</string>
+    <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">New conversation</string>
     <string name="ui_home_input_placeholder">Type a message...</string>
     <string name="ui_tool_status_called">Called</string>
@@ -92,11 +92,11 @@
 
     <!-- Settings Home Items -->
     <string name="ui_settings_model_config">Model Configuration</string>
-    <string name="ui_settings_model_config_summary">Adjust how Nexus connects to your model</string>
+    <string name="ui_settings_model_config_summary">Adjust how Zafiro connects to your model</string>
     <string name="ui_settings_memory">Memory</string>
     <string name="ui_settings_memory_summary">Manage saved memories and preferences</string>
     <string name="ui_settings_builtin_tools">Built-in Tools</string>
-    <string name="ui_settings_builtin_tools_summary">Manage tools provided by Nexus</string>
+    <string name="ui_settings_builtin_tools_summary">Manage tools provided by Zafiro</string>
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">Manage local Skills</string>
     <string name="skill_page_description">Turn local Skills on or off. Enabled Skills can be used by the Agent when needed.</string>
@@ -122,7 +122,7 @@
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">Connect external MCP services and tools</string>
     <string name="ui_settings_takeover">Takeover Rules</string>
-    <string name="ui_settings_takeover_summary">Route matched requests to the native assistant or Nexus</string>
+    <string name="ui_settings_takeover_summary">Route matched requests to the native assistant or Zafiro</string>
     <string name="ui_settings_execution_rules">Execution Rules</string>
     <string name="ui_settings_execution_rules_summary">Set safety rules for Shell execution</string>
     <string name="ui_settings_about">About</string>
@@ -207,13 +207,13 @@
     <string name="takeover_empty_action_hint">Tap the top right to add your first takeover rule.</string>
     <string name="takeover_loading">Loading takeover rules...</string>
     <string name="takeover_editor_title_create">New Takeover Rule</string>
-    <string name="takeover_editor_description">Choose which requests go to the native assistant and which stay with Nexus.</string>
+    <string name="takeover_editor_description">Choose which requests go to the native assistant and which stay with Zafiro.</string>
     <string name="takeover_field_name">Rule Name</string>
     <string name="takeover_field_name_hint">For example: Native assistant services</string>
     <string name="takeover_field_enabled">Enable Rule</string>
     <string name="takeover_field_target">Responder When Matched</string>
     <string name="takeover_target_native_assistant">Native Assistant</string>
-    <string name="takeover_target_nexus">Nexus</string>
+    <string name="takeover_target_nexus">Zafiro</string>
     <string name="takeover_field_patterns">Rules</string>
     <string name="takeover_field_patterns_hint">weather\n.*alarm.*\nopen.*</string>
     <string name="takeover_field_patterns_description">Enter one keyword or regular expression per line. The selected responder is used as soon as any rule matches.</string>
@@ -269,7 +269,7 @@
     <string name="custom_tool_save_failed">Failed to save: %1$s</string>
 
     <!-- MCP Module -->
-    <string name="mcp_page_description">Configure connection and authentication for MCP services. After saving, Nexus will automatically discover available tools at runtime.</string>
+    <string name="mcp_page_description">Configure connection and authentication for MCP services. After saving, Zafiro will automatically discover available tools at runtime.</string>
     <string name="mcp_page_empty_description">Tap the top right to add your first server.</string>
     <string name="mcp_loading">Loading saved MCP services...</string>
     <string name="mcp_editor_title_create">New MCP Service</string>
@@ -300,9 +300,9 @@
     <string name="notif_network_error_title">Network Error</string>
     <string name="notif_network_error_body">Network connection failed. Please check your network and try again.</string>
     <string name="notif_unsupported_version_title">Unsupported Host Version</string>
-    <string name="notif_unsupported_version_body">The current %1$s version is not yet supported by Nexus\nHost version: %2$s</string>
+    <string name="notif_unsupported_version_body">The current %1$s version is not yet supported by Zafiro\nHost version: %2$s</string>
     <string name="notif_unsupported_issue_title">[BUG] Unsupported host version</string>
-    <string name="notif_unsupported_issue_body">## Issue Description\nThe current version of %1$s is not yet supported by Nexus\nHost version: %2$s\n\n## Steps to Reproduce\n\n\n## Device Info\n- Assistant: %1$s\n- Assistant version: %2$s\n- Module version:</string>
+    <string name="notif_unsupported_issue_body">## Issue Description\nThe current version of %1$s is not yet supported by Zafiro\nHost version: %2$s\n\n## Steps to Reproduce\n\n\n## Device Info\n- Assistant: %1$s\n- Assistant version: %2$s\n- Module version:</string>
 
     <!-- Fallback -->
     <string name="fallback_assistant_name">Assistant</string>
