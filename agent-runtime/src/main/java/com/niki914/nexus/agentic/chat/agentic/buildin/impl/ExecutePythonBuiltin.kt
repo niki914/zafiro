@@ -5,7 +5,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
 import com.niki914.nexus.agentic.chat.agentic.python.PyRuntime
 import com.niki914.nexus.agentic.chat.agentic.shell.ShellCommandSafetyPolicy
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -114,18 +113,7 @@ can access them via file:// URIs.
 
     override val defaultEnabled: Boolean = true
 
-    override fun configure(config: LocalToolConfig) {
-        config.description = description
-        config.string("code") {
-            description = "Python 3.11 source code to execute. Print final result to stdout."
-            required = true
-        }
-        config.integer("timeout_ms") {
-            description = "Max wait in milliseconds (default 30000, max 120000)."
-            required = false
-        }
-        config.rawJsonSchema(SCHEMA)
-    }
+    override val inputSchemaJson: String? get() = SCHEMA
 
     override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult {
         val args = parseArgs(request.argumentsJson)

@@ -58,10 +58,11 @@
     <string name="ui_home_action_regenerate_content_description">重新生成</string>
     <string name="ui_home_action_fork_content_description">分叉对话</string>
     <string name="ui_toast_copied">已复制</string>
-    <string name="ui_home_error_generic_title">当前无法继续</string>
     <string name="ui_home_error_retry_body">请稍后重试。</string>
-    <string name="ui_home_error_config_required_title">配置还没填好</string>
-    <string name="ui_home_error_config_required_body">请先填写模型地址和模型名称。</string>
+    <string name="ui_home_error_config_required_title">模型配置不完整</string>
+    <string name="ui_home_error_config_required_body">请前往填写模型配置。</string>
+    <string name="ui_home_error_network_title">网络异常</string>
+    <string name="ui_home_error_internal_title">内部错误</string>
     <string name="ui_home_history_content_description">对话历史</string>
     <string name="ui_conversation_history_back_content_description">返回</string>
     <string name="ui_conversation_history_loading">正在读取对话历史...</string>
@@ -337,4 +338,6 @@
     <string name="notif_unsupported_issue_body">## 问题描述\n当前%1$s版本还未被 Nexus 支持\n宿主版本：%2$s\n\n## 复现步骤\n\n\n## 设备信息\n- 助手：%1$s\n- 助手版本：%2$s\n- 模块版本：</string>
 
     <string name="feedback_bug_template">## 问题描述\n\n## 复现步骤\n\n## 预期行为\n\n## 实际行为\n\n## 设备信息\n- Android 版本：\n- 助手（小布或其他）：\n- 模块版本：\n\n## 更多\n可以补充日志、截图录屏等信息，以便于我们理解</string>
+    <string name="conversation_fork_title">Fork · %1$s</string>
+    <string name="conversation_regenerate_title">Regenerate · %1$s</string>
 </resources>

@@ -29,39 +29,4 @@ class StoreDescriptorRegistryTest {
         assertEquals(StoreDescriptorRegistry.WEB_SETTINGS_ID, descriptor!!.id)
         assertEquals("settings/hooks.json", descriptor.relativePath)
     }
-
-    @Test
-    fun mcpCacheRejectsPathTraversalServerId() {
-        assertNull(StoreDescriptorRegistry.mcpCacheStoreId("../bad"))
-        assertNull(StoreDescriptorRegistry.resolveDynamic("tools.mcp.cache.../bad"))
-    }
-
-    @Test
-    fun mcpCacheRejectsBlankServerId() {
-        assertNull(StoreDescriptorRegistry.mcpCacheStoreId(""))
-        assertNull(StoreDescriptorRegistry.mcpCacheStoreId(" "))
-    }
-
-    @Test
-    fun mcpCacheRejectsSlashServerId() {
-        assertNull(StoreDescriptorRegistry.mcpCacheStoreId("bad/id"))
-        assertNull(StoreDescriptorRegistry.resolveDynamic("tools.mcp.cache.bad/id"))
-    }
-
-    @Test
-    fun mcpCacheRejectsOverlongServerId() {
-        val serverId = "a".repeat(65)
-
-        assertNull(StoreDescriptorRegistry.mcpCacheStoreId(serverId))
-    }
-
-    @Test
-    fun mcpCacheAcceptsSafeServerId() {
-        val storeId = StoreDescriptorRegistry.mcpCacheStoreId("filesystem_1")
-
-        assertEquals("tools.mcp.cache.filesystem_1", storeId)
-        val descriptor = StoreDescriptorRegistry.resolveDynamic(storeId!!)
-        assertEquals("settings/tools/mcp/cache/filesystem_1.json", descriptor!!.relativePath)
-        assertTrue(descriptor.defaultJson.contains("filesystem_1"))
-    }
 }

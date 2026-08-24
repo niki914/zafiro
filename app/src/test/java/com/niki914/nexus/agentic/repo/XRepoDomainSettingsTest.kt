@@ -23,7 +23,6 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentMemoryMode a
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 
 class XRepoDomainSettingsTest {
     @get:Rule
@@ -121,33 +120,6 @@ class XRepoDomainSettingsTest {
                 )
             )
         )
-    }
-
-    @Test
-    fun mcpCacheWritesOnlyMatchingServerCacheStore() = runTest {
-        val filesystem = McpServer("FileSystem", "http://127.0.0.1:3000/mcp")
-        val weather = McpServer("Weather", "http://127.0.0.1:3001/mcp")
-        val store = FakeDomainSettingsStore(
-            StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID to McpSettingsCodec.encodeServers(
-                listOf(filesystem, weather)
-            )
-        )
-        XRepo.installStoreForTest(store)
-        XRepo.init(context)
-
-        XRepo.mcp.saveDiscoveredTools(
-            url = filesystem.url,
-            headers = filesystem.headers,
-            tools = listOf(McpTool("read_file", "Read", """{"type":"object"}""")),
-        )
-
-        val cacheStoreId = StoreDescriptorRegistry.mcpCacheStoreId("filesystem")!!
-        assertEquals(listOf(cacheStoreId), store.writeIds)
-        assertEquals(
-            listOf(McpTool("read_file", "Read", """{"type":"object"}""")),
-            McpSettingsCodec.parseCache(store.jsonFor(cacheStoreId)),
-        )
-        assertFalse(store.writeIds.contains(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID))
     }
 
     @Test

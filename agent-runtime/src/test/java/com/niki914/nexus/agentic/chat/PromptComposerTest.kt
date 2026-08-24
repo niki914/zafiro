@@ -7,12 +7,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
-import com.niki914.kai.LocalToolConfig
-import com.niki914.kai.McpDiscoverySnapshot
-import com.niki914.kai.McpDiscoveryState
-import com.niki914.kai.McpServerDiscoverySnapshot
-import com.niki914.kai.ToolRegistrySnapshot
-import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -152,54 +146,24 @@ class PromptComposerTest {
     }
 
     @Test
-    fun compose_rendersMcpStatusWithoutToolNames() {
+    fun compose_rendersMcpServersWithoutStatusBlock() {
+        // D-T2B-2：MCP 服务器状态块删除（线缆名 mcp__server__tool 已表达归属）。
+        // 配置了 MCP 服务器也不再产出 <mcp_servers> 段。
         val result = PromptComposer().compose(
             PromptComposerInput(
                 additionalInstructions = "",
                 tools = ResolvedTools(
                     mcpServers = listOf(
-                        mcpServer("docs", "secret_tool"),
-                        mcpServer("loading", "loading_tool"),
-                        mcpServer("broken", "broken_tool"),
-                        mcpServer("cached", "cached_tool"),
+                        McpServerDefinition.Http(name = "docs", url = "https://example.com/docs"),
+                        McpServerDefinition.Http(name = "broken", url = "https://example.com/broken"),
                     )
                 ),
-                mcpDiscoverySnapshot = McpDiscoverySnapshot(
-                    servers = listOf(
-                        mcpSnapshot("docs", McpDiscoveryState.Available, discoveredToolCount = 20),
-                        mcpSnapshot("loading", McpDiscoveryState.Discovering),
-                        mcpSnapshot("broken", McpDiscoveryState.Failed, errorMessage = "boom"),
-                        mcpSnapshot("cached", McpDiscoveryState.UsingStaleCache, discoveredToolCount = 3),
-                    ).associateBy { it.serverName },
-                    finalToolRegistry = ToolRegistrySnapshot.Empty,
-                ),
             )
         )
 
-        assertTrue(result.finalSystemPrompt.contains("- docs: loaded 20 tools"))
-        assertTrue(result.finalSystemPrompt.contains("- loading: loading"))
-        assertTrue(result.finalSystemPrompt.contains("- broken: failed, msg: boom"))
-        assertTrue(result.finalSystemPrompt.contains("- cached: using cached 3 tools"))
-        assertFalse(result.finalSystemPrompt.contains("secret_tool"))
-        assertFalse(result.finalSystemPrompt.contains("loading_tool"))
-        assertFalse(result.finalSystemPrompt.contains("broken_tool"))
-        assertFalse(result.finalSystemPrompt.contains("cached_tool"))
-    }
-
-    @Test
-    fun compose_rendersIdleMcpServerWhenSnapshotMissing() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "",
-                tools = ResolvedTools(
-                    mcpServers = listOf(mcpServer("docs", "secret_tool"))
-                ),
-                mcpDiscoverySnapshot = null,
-            )
-        )
-
-        assertTrue(result.finalSystemPrompt.contains("<mcp_servers>\n- docs: idle\n</mcp_servers>"))
-        assertFalse(result.finalSystemPrompt.contains("secret_tool"))
+        assertFalse(result.finalSystemPrompt.contains("<mcp_servers>"))
+        assertFalse(result.finalSystemPrompt.contains("docs"))
+        assertFalse(result.finalSystemPrompt.contains("broken"))
     }
 
     // --- Skill context (stable tier) ---
@@ -457,42 +421,9 @@ class PromptComposerTest {
         )
     }
 
-    private fun mcpServer(name: String, cachedToolName: String): McpServerDefinition.Http {
-        return McpServerDefinition.Http(
-            name = name,
-            url = "https://example.com/$name",
-            cachedTools = listOf(
-                McpCachedTool(
-                    name = cachedToolName,
-                    description = "hidden",
-                    inputSchema = JsonObject(emptyMap()),
-                )
-            ),
-        )
-    }
-
-    private fun mcpSnapshot(
-        name: String,
-        state: McpDiscoveryState,
-        errorMessage: String? = null,
-        discoveredToolCount: Int = 0,
-    ): McpServerDiscoverySnapshot {
-        return McpServerDiscoverySnapshot(
-            serverName = name,
-            enabled = true,
-            fingerprint = name,
-            state = state,
-            errorMessage = errorMessage,
-            lastSuccessAtMillis = null,
-            discoveredToolCount = discoveredToolCount,
-            stale = false,
-        )
-    }
-
     private class FakeBuiltinTool(
         override val name: String,
     ) : BuiltinTool() {
-        override fun configure(config: LocalToolConfig) = Unit
 
         override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
             return BuiltinToolResult.success(message = "ok")

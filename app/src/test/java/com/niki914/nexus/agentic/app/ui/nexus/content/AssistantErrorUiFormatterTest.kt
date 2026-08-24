@@ -19,21 +19,57 @@ class AssistantErrorUiFormatterTest {
     }
 
     @Test
-    fun toAssistantErrorUi_usesGenericTitleForOtherErrors() {
+    fun toAssistantErrorUi_usesNetworkTitleForServerErrors() {
         assertEquals(
             AssistantErrorUi(
-                titleRes = R.string.ui_home_error_generic_title,
-                body = "network failed",
+                titleRes = R.string.ui_home_error_network_title,
+                body = "Connection refused",
             ),
-            toAssistantErrorUi("network failed"),
+            toAssistantErrorUi("Connection refused", LlmErrorCode.Transport),
         )
     }
 
     @Test
-    fun toAssistantErrorUi_fallsBackForBlankMessage() {
+    fun toAssistantErrorUi_networkBlankMessageHasNoBody() {
         assertEquals(
             AssistantErrorUi(
-                titleRes = R.string.ui_home_error_generic_title,
+                titleRes = R.string.ui_home_error_network_title,
+                body = null,
+            ),
+            toAssistantErrorUi("  ", LlmErrorCode.RateLimit),
+        )
+    }
+
+    @Test
+    fun toAssistantErrorUi_parseGoesToNetworkBucket() {
+        assertEquals(
+            AssistantErrorUi(
+                titleRes = R.string.ui_home_error_network_title,
+                body = "The supported API model names are DeepSeek...",
+            ),
+            toAssistantErrorUi(
+                "The supported API model names are DeepSeek...",
+                LlmErrorCode.Parse,
+            ),
+        )
+    }
+
+    @Test
+    fun toAssistantErrorUi_usesInternalTitleForOtherErrors() {
+        assertEquals(
+            AssistantErrorUi(
+                titleRes = R.string.ui_home_error_internal_title,
+                body = "boom",
+            ),
+            toAssistantErrorUi("boom", LlmErrorCode.HookFailed),
+        )
+    }
+
+    @Test
+    fun toAssistantErrorUi_fallsBackForBlankInternalMessage() {
+        assertEquals(
+            AssistantErrorUi(
+                titleRes = R.string.ui_home_error_internal_title,
                 bodyRes = R.string.ui_home_error_retry_body,
             ),
             toAssistantErrorUi(" "),

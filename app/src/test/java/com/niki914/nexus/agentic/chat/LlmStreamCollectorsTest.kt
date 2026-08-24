@@ -22,7 +22,7 @@ class LlmStreamCollectorsTest {
                 delta = "I've done the check.",
                 fullText = "I'll call search.I've done the check.",
             ),
-            LlmStreamEvent.Completed("I'll call search.I've done the check."),
+            LlmStreamEvent.Completed,
         ).collectAsFull(testLabels) { frame ->
             frames += frame
         }
@@ -53,7 +53,7 @@ class LlmStreamCollectorsTest {
                 delta = "I've done the check.",
                 fullText = "I'll call search.I've done the check.",
             ),
-            LlmStreamEvent.Completed("I'll call search.I've done the check."),
+            LlmStreamEvent.Completed,
         ).collectAsChunk(testLabels) { frame ->
             frames += frame
         }
@@ -89,7 +89,7 @@ class LlmStreamCollectorsTest {
                 delta = "I've handled the crossed results.",
                 fullText = "I'll call tools.I've handled the crossed results.",
             ),
-            LlmStreamEvent.Completed("I'll call tools.I've handled the crossed results."),
+            LlmStreamEvent.Completed,
         ).collectAsFull(testLabels) { frame ->
             frames += frame
         }
@@ -133,7 +133,7 @@ class LlmStreamCollectorsTest {
                 delta = "I've handled the crossed results.",
                 fullText = "I'll call tools.I've handled the crossed results.",
             ),
-            LlmStreamEvent.Completed("I'll call tools.I've handled the crossed results."),
+            LlmStreamEvent.Completed,
         ).collectAsChunk(testLabels) { frame ->
             frames += frame
         }

@@ -66,12 +66,6 @@ data class RuntimeMcpServer(
     val headers: Map<String, String> = emptyMap(),
 )
 
-data class RuntimeMcpTool(
-    val name: String,
-    val description: String = "",
-    val inputSchemaJson: String,
-)
-
 data class RuntimeCustomTool(
     val name: String,
     val description: String,

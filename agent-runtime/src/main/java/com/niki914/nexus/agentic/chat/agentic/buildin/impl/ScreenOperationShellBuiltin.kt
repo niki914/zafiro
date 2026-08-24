@@ -6,7 +6,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.ScreenOperationError
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.TextToolResult
-import com.niki914.kai.LocalToolConfig
 
 /**
  * TextResultBuiltinTool for shell-based screen interaction.
@@ -36,53 +35,7 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
                 "(#!status, #!code, #!message, then payload). " +
                 "See the Phone Use skill for failure recovery rules."
 
-    override fun configure(config: LocalToolConfig) {
-        config.description = description
-        config.string("operation") {
-            description = "Which operation: tap, long_click, swipe, key."
-            required = true
-        }
-        config.number("x") {
-            description = "X coordinate in screen pixels. Required for tap, long_click."
-            required = false
-        }
-        config.number("y") {
-            description = "Y coordinate in screen pixels. Required for tap, long_click."
-            required = false
-        }
-        config.number("start_x") {
-            description = "Swipe start X coordinate. Required for swipe."
-            required = false
-        }
-        config.number("start_y") {
-            description = "Swipe start Y coordinate. Required for swipe."
-            required = false
-        }
-        config.number("end_x") {
-            description = "Swipe end X coordinate. Required for swipe."
-            required = false
-        }
-        config.number("end_y") {
-            description = "Swipe end Y coordinate. Required for swipe."
-            required = false
-        }
-        config.number("duration") {
-            description = "Swipe duration in ms, default 300."
-            required = false
-        }
-        config.number("code") {
-            description = "Android key code: BACK=4, HOME=3, RECENTS=187, NOTIFICATIONS=83, QUICK_SETTINGS=84."
-            required = false
-        }
-        config.string("wait_mode") {
-            description = "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh. Must be \"stable\" or \"delay\"."
-            required = false
-        }
-        config.number("wait_ms") {
-            description = "Wait duration in ms. Stable mode: max deadline (default 2000, max 60000). Delay mode: required, fixed sleep (0-60000)."
-            required = false
-        }
-    }
+    override val inputSchemaJson: String? get() = SCREEN_SHELL_SCHEMA
 
     override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult {
         AccessibilityController.ensurePointerShown()
@@ -168,5 +121,62 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
                 )
             },
         )
+    }
+
+    private companion object {
+        // T2a 迁移：原 kai LocalToolConfig DSL（string/number 声明）转录为 JSON Schema，
+        // 字段描述文本一字未改。
+        private val SCREEN_SHELL_SCHEMA = """
+            {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "description": "Which operation: tap, long_click, swipe, key."
+                },
+                "x": {
+                  "type": "number",
+                  "description": "X coordinate in screen pixels. Required for tap, long_click."
+                },
+                "y": {
+                  "type": "number",
+                  "description": "Y coordinate in screen pixels. Required for tap, long_click."
+                },
+                "start_x": {
+                  "type": "number",
+                  "description": "Swipe start X coordinate. Required for swipe."
+                },
+                "start_y": {
+                  "type": "number",
+                  "description": "Swipe start Y coordinate. Required for swipe."
+                },
+                "end_x": {
+                  "type": "number",
+                  "description": "Swipe end X coordinate. Required for swipe."
+                },
+                "end_y": {
+                  "type": "number",
+                  "description": "Swipe end Y coordinate. Required for swipe."
+                },
+                "duration": {
+                  "type": "number",
+                  "description": "Swipe duration in ms, default 300."
+                },
+                "code": {
+                  "type": "number",
+                  "description": "Android key code: BACK=4, HOME=3, RECENTS=187, NOTIFICATIONS=83, QUICK_SETTINGS=84."
+                },
+                "wait_mode": {
+                  "type": "string",
+                  "description": "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh. Must be \"stable\" or \"delay\"."
+                },
+                "wait_ms": {
+                  "type": "number",
+                  "description": "Wait duration in ms. Stable mode: max deadline (default 2000, max 60000). Delay mode: required, fixed sleep (0-60000)."
+                }
+              },
+              "required": ["operation"]
+            }
+        """
     }
 }

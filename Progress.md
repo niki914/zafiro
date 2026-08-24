@@ -1,139 +1,287 @@
-# OKIA 实现进度（Progress）
+# Nexus × OKIA 接入 Progress
 
-用途：会话恢复锚点。工作流 = 每完成一个功能点提交 git → 对话回退到任意点位 → 新会话从本文件恢复。本文件随每次提交更新，回退到任意提交时，该提交内的本文件独立支撑恢复。
+> 本文档是 Agent 会话的恢复锚点。每次回退会话/回退提交后，先读本文件恢复上下文。
+> 状态标签：`待讨论` / `已确认` / `进行中` / `已完成` / `已提交`
 
-## 当前状态
+## 状态
 
-| 项 | 值 |
-|---|---|
-| 阶段 | T9c 已完成：三层集成测试全绿（真实 server-everything + 真实 DeepSeek），全量 401 测试通过 |
-| 契约 | 冻结 + T2-T9b 回写；T9c 零主代码改动（仅新增 3 个集成测试文件） |
-| 最近提交 | 9263de6（T9b）；T9c 测试已就绪待用户验收后提交 |
-| 测试 | 401 全绿（T9c 新增 5：RealOkiaMcpIntegration 3 + DeepSeekApiIntegration 1 + RealMcpLlmsIntegration 1） |
-| 阻塞项 | 无 |
+- 分支：`feat/okia-integration`（基于 main `84f28cd`，即并入 PR #121 okia 库之后）
+- 当前阶段：**T3 已提交 + 双份消息 bug 已修复**（34bd1bb 根因修复 + cc01488 workaround 清理）；T4 待讨论
+- 目标：把 Nexus 的 LLM 运行时从 `libs:kai` 切换为 `libs:okia`（`Okia` 门面），`libs:kai` 最终删除，不留兼容层
+- 约束：单个功能点新增+删除合计 ≤1000 行；每完成一个功能点更新本文档并由用户触发 git 提交；允许部分业务 Bug，先跑通主链路
 
-## 恢复步骤
+## 工作方式（与用户的约定）
 
-1. 读本文件
-2. 读 docs/okia.md（契约事实源；与源码冲突时以源码为准并回写）
-3. 读当前任务涉及的源码（libs/okia/src/main/java/com/niki914/okia/）
-4. 从「下一步」开始执行
+1. 每个功能点 = 一个 T 或 T 的子任务，做完由用户验收
+2. 用户会把会话回退到某个点位（git 回退 / 会话回退）后重新开始 → 靠本文件恢复
+3. 本文件在每次功能点完成时更新，并随功能点一起提交
+4. 用户验收命令：见「验证」节
+5. 调研结论（Nexus↔KAI 交接现状、OKIA 概念对照）归档在下方「调研记录」节，不回退后重查代码可先读它
 
-## 实现计划
+## 已定决策（2026-08-19）
 
-| 任务 | 内容 | 主代码 | 测试 | 状态 |
-|---|---|---|---|---|
-| T1 | 对话树：RealConversation + SessionCodec | ~150 | ~300 | 已完成 |
-| T2 | 垂直切片：RealOkia + 最小 AgentLoop + fake 协议/传输 | ~490 | ~650 | 已完成 |
-| T3 | transport：SseLineParser + SseEventParser + loop 前置校验 | ~220 | ~500 | 已完成 |
-| T4 | protocol：OpenAIChatCompletionProtocol（DeepSeek/OpenAI 双 compat 形态，D64 推广）+ Mapper.from 委托壳 | ~260 | ~40 用例 | 已完成 |
-| T5 | hooks 接线：holder write 全部实现 + 链式分发 + Input/Serialization/Request 三对时机接入 | ~200 | ~350 | 已完成 |
-| T6 | tooling：DefaultToolRegistry + 工具循环（批量并行，保序提交） | ~490 | ~650 | 已完成 |
-| T7 | 取消/重试/idle：kill-then-stop + RetryPolicy + idle 超时 | ~300 | ~300 | 已完成 |
-| T8 | 默认 HttpEngine（OkHttp 4）+ M0 默认协议装配 + 持久化闭合 | ~260 | ~540 | 已完成 |
-| T9a | MCP 线缆：McpWire 共享过程 + Legacy(2025-06-18) + Discovery(2026-07-28) + AutoDetect 探测包装 + 会话头往返 | ~460 | ~58 用例 | 已完成 |
-| T9b | McpExecutor 路由 + refreshMcpTools/getMcpDiscoverySnapshot（发现状态机/指纹/冲突）+ 默认装配接线 + G5 快照整改 + EmptyToolRegistry 删除 | ~310 | ~40 用例 | 已完成 |
-| T9c | MCP 集成测试：真实 server-everything 全链路（发现 → 注册 → 工具调用 → 结果显示）+ 门面端到端 | +160 测试 | +5 用例 | 已完成 |
-
-顺序：T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8。T2 是暴露骨架契约风险的主要手段（LoopRequest / onCommit / 事件序列 / 并发契约）。每任务完成时更新本表状态列，随提交提交本文件。
-
-## 工作纪律
-
-1. 任务粒度：每任务 ≤1000 行（含测试）。超预算拆分为「一个测试文件 + 其覆盖的实现」。
-2. 测试方法论：
-   - 测试断言公开面可观察的行为（docs/okia.md 承诺的能力），不依赖实现内部结构
-   - 不变量测试：随机 append/rewind 序列后断言不变量恒成立（leafId 指向真实条目、投影 leaf→root、快照构造即复制）
-   - 对照模型：测试内维护朴素预期模型，同一操作序列逐步对比
-   - 并发测试：并发 append 无丢失、顺序保持、条目 id 唯一
-   - 往返测试：export → encode → decode → restore → re-export 深度相等（含 leafId / timestamp / rewind 位置）
-   - 失败路径：非法输入触发规定异常或快速失败
-   - 切片测试用 hand-written fake（独立 canned 行为），不用 mock 框架
-   - 时间相关测试用 kotlinx-coroutines-test 虚拟时间
-   - 禁止：扫描源码字符串的检测；「不崩溃」类同义反复断言
-3. 契约改动纪律：任务内若测试逼出契约改动，停下与用户讨论并回写 docs/okia.md，不在任务中途静默改签名。
-4. 提交纪律：仅当用户要求时提交；提交前更新本文件（当前状态 + 决策记录 + 计划状态列）；commit message 用 conventional commits 风格（参照仓库历史）。
-5. KMP 红线：共享代码零 Android 引用（不 import android.*）；依赖保持 KMP 兼容（coroutines / serialization）；HTTP 只经 HttpEngine 接口。
-
-## 决策记录
-
-| # | 决策 | 原因 |
+| # | 决策 | 状态 |
 |---|---|---|
-| D1 | 不拆接口/实现两个 Gradle 模块，保持单模块 libs:okia | 公开签名泄漏 StateFlow/Json（api 依赖），纯接口模块不可达；internal 可见性已隔离实现；KMP 迁移是单模块 source-set 工作，拆模块使接线翻倍 |
-| D2 | 实现从 T1 对话树开始，T2 垂直切片紧随 | 门面 send() 依赖对话树；垂直切片先行验证集成契约 |
-| D3 | 实现期不并行开发 | 用户决定（2026-08-16） |
-| D31 | 工具执行模式：pi 批量并行（消息完整后执行 + 并发 + 保序提交），放弃 kai 流水线 | 延迟不敏感；loop 结构简单；已派发列表可推导（零收集） |
-| D32 | outcome → 事件映射：Success→Succeeded；Failure→Failed；Intercepted 按 isError；Interrupted/Unknown→Failed | 事件均携带完整 outcome，映射只决定事件类型 |
-| D33 | executor 违反「永不抛异常」契约 → 回合 Failed(ToolExecutionFailed)，不打包回喂 | 业务方 bug 应显形，模型无法修正代码 bug |
-| D34 | 工具段 hook 异常 → 该工具 Failure outcome，回合继续；阻断（writeOutcome）跳过 afterToolCall | §8.4 #13；对齐 pi immediate result |
-| D35 | 新增 DefaultToolRegistry（无锁，snapshot 复制），EmptyToolRegistry 保留 | host 无需自实现注册表；契约保证回合外写 |
-| D36 | 已派发列表无收集：stop 时从会话树推导（批量模式下已派发 = 已提交 Assistant 中的 ToolCall） | 零新增 API；调用在 T7 |
-| D37 | 分层重试：传输层（config.retryPolicy）= 发送阶段；回合层（turnRetryPolicy）= 段首重试，嵌套对齐 pi（传输层耗尽 → 回合层判断） | G6 裁决；用户明确参考 pi 行为；发送阶段耗尽后如实返回原错误（回合层未配置时） |
-| D38 | 流中断 = 重发当前段请求（复用已提交历史，丢弃 partial），不引入「继续」机制 | G5 裁决；pi/codex 均重发请求（无状态幂等），旧 workaround（静默发 user msg 继续）已不存在 |
-| D39 | idle = agent 活跃度（ProtocolEvent 到达重置，keep-alive 不重置），推翻 §5.8 原始 SseLine 检测点；超时 partial commit 进历史 | G7/G8 裁决；keep-alive 是网络活跃不是 agent 活跃；超时也写入（用户裁决） |
-| D40 | 外部取消与 stop 表现一致：都触发 beforeStop（kill 步骤），差异只在终态表达（Aborted vs rethrow） | G1 裁决；资源泄漏不因取消来源豁免 |
-| D41 | 状态码 → code 映射表定案（401/403→Auth、402→Quota、429→RateLimit、503→Overloaded、408/409/5xx→Transport、其余→Parse）；retryableStatusCodes = {408,409,429}+全部5xx | G4 裁决；对照 pi/codex 约定俗成；修正旧实现 400 归 Transport（可重试）的 bug |
-| D42 | MCP 推迟 T9（用户裁决）；McpExecutor / refreshMcpTools / getMcpDiscoverySnapshot 维持 TODO（标注 deferred）；默认装配 mcpClient = UnimplementedMcpClient 占位（抛 UnsupportedOperationException，明确失败不改契约） | 用户裁决 2026-08-17；MCP 需求不明确，线缆需参考规范，推迟到有消费者时再做 |
-| D43 | 方案 A：ChatProtocol 新增 defaultEndpoint；解析 = builder.endpoint 非空 → 配置值 > 协议默认 > 空则 fail-fast（IAE）；DeepSeek 自带官方端点；默认 model = deepseek-v4-flash（仅默认 open()） | 端点是 provider 固有事实（同 useApiKey/compat）；不设全局默认端点（用户裁决）；OpenAI 实现时再议 |
-| D44 | 默认 HttpEngine = OkHttpEngine（okhttp 4.12.0 implementation，internal；KMP 迁移进 actual）；config.httpEngine null 时 RealOkia 懒加载自建 | D12 契约闭合；取消 = job 取消监听 + call.cancel 打断阻塞 IO（阻塞字符读不响应协程取消） |
-| D45 | unary 传输失败（网络/超时）返回 HttpResponse(null, emptyMap, null) 缺省结构；catch 收窄 IOException（运行时错误外抛） | HttpResponse 契约（status/body 传输失败时缺失）；编程错误不应被吞 |
-| D46 | 工具描述快照时机保持现状（send 时快照）+ TODO 标注候选 B（每轮 buildRequest 前重新 snapshot） | 回合内注册工具的现实触发者是 MCP（已推迟）；无消费者不改行为，留文档 §8.17 #6 |
-| D47 | T9a：McpWire 共享 JSON-RPC 线缆过程（request/notify/双响应解析/分页/参数解析），两实现只差握手形态 | D21 模式落地：一个协议一个实现，过程不进实现类；notify 无 id 不解析响应 |
-| D48 | T9a：有状态会话往返——initialize 响应头 mcp-session-id 按服务器缓存，后续请求携带；无状态服务器（无该头）不受影响 | server-everything 实测强制要求 session（不带即 -32000 "Server not initialized"）；重新 discoverTools 时新会话覆盖旧会话 |
-| D49 | T9a：AutoDetect 探测回退规则 = -32601（MethodNotFound）或 -32000 且 message 含 not-initialized（含 HTTP 400 包 JSON-RPC error 形态）→ legacy；其余错误抛 | server-everything 对 server/discover 返回 HTTP 400 + -32000（非 200 包 error），checkTransport 解析 body 的 error code 填入异常 |
-| D50 | T9a：服务器名校验 `^[a-zA-Z0-9_]{1,32}$`（fail-fast）+ 分页死循环上限 50 页 + 非文本 content block 报错 | G6 命名设计（${server}_${tool} 拼接）；明确失败优于无限循环；§8.8 #4 收窄落地 |
-| D51 | T9a：集成测试连官方 @modelcontextprotocol/server-everything（本地 Node 3001，Assume 跳过）；echo 真实返回格式为带前缀文本 | 用户在 2026-08-17 提供测试服务器；真实服务器暴露了有状态会话与 HTTP 400 报错两个 MockWebServer 测不到的形态 |
-| D52 | T9b（Q1/Q3）：McpExecutor 映射——成功 = 文本块换行拼接；isError → Failure(固定文案, 内容)；协议/传输异常 → Failure(message, content=null)；取消传播；onInterrupt = Unknown（调用点不落地） | 纯文本通道需拼接；isError 是协议内工具自身错误；Unknown = 可能已远程执行永不重试 |
-| D53 | T9b（Q2）：conflicts 只实现 DuplicateInServer，其余三 reason 枚举保留不产生 | 前缀唯一化后其余无触发路径（依赖未来特性）；conflicts 仅报告不参与注册 |
-| D54 | T9b（Q4/Q5/Q6）：刷新并发（每服务器 async + awaitAll 单线程合并）；enabled=false 跳过高清；注册全量幂等；fingerprint 仅报告；UsingStaleCache = 失败+有缓存；lastSuccessAt 不判新鲜 | 对齐 codex join_all；diff 是过早优化；时间不能证明缓存新鲜 |
-| D55 | T9b（Q7）：删 EmptyToolRegistry（门面持默认 DefaultToolRegistry 实例）；默认 mcpClient = AutoDetect 装配（engine = config.httpEngine ?: 默认）；refreshMcpTools 活跃回合抛、快照只读允许 | 单一注册表来源不变；复用 host 注入传输入口 |
-| D56 | T9b（G5）：工具描述每段 buildRequest 前现取（RealAgentLoop 一处 snapshot.copy）；RealOkia.buildLoopRequest 的 tools 退为初始值 | §8.17 #6 候选 B 落地；请求体表达每段发送时的工具集 |
-| D57 | T9b 实现暴露：RealOkia 构造参数与属性同名时 by lazy 内 lambda 捕获构造参数快照 → 改名 initialConfig（对齐 §8.10 #4） | update 热更新后 McpDiscovery 读旧 config（测试暴露）；同款坑 RealConversation 已记录 |
-| D58 | 集成测试 key 隔离：独立环境变量 OKIA_TEST_API_KEY（非 DEEPSEEK_API_KEY），运行时注入不在仓库；缺失 Assume 跳过 | 用户既有 env key 不动、明文 key 用完即 revoke；零仓库残留 |
-| D59 | T9c 三层结构：层1 门面+真实 MCP（自动 JUnit，Assume 3001）；层2 门面+真实 DeepSeek（自动 JUnit，Assume key）；层3 真实 LLM+真实 MCP 混合（自动 JUnit，双 Assume，可当 manual demo） | 用户裁决三层都测；层 3 依赖 LLM 行为，失败重跑属模型不遵循非框架缺陷 |
-| D60 | 层 3 对话 history mock：open(restore) 预置自洽先例（User→Assistant(tool_call)→ToolResult→Assistant），引导模型模仿工具调用 | 真实历史先例比 system prompt 单轮指令更稳；自洽要求 assistant tool_call 与后续 tool 消息按 call id 配对 |
-| D61 | DeepSeek v4-flash 实测为思考模型：reasoning_content 常吃满预算、content 常为 null/finish_reason=length；usage 含 reasoning_tokens | 集成测试预算控制依据：maxTokens 需留思考余量；断言走结构不走措辞 |
-| D62 | 集成测试暴露的两个测试侧问题（非库缺陷）：① builder DSL 内 apiKey 属性遮蔽（builder{apiKey = apiKey!!} 右侧解析为 Builder 属性空串 → 请求无 Authorization → 401）；② MCP 期望值误用 fake 文本（真实 get-sum 返回英文原文） | ① Kotlin 接收者作用域陷阱，先取局部变量再写 builder，已修；② 真实链路应断言真实返回，已修；库零改动 |
-| D63 | 集成测试真实验证结论：协议层对真实字节流完全吻合（SSE/思考/usage/finish_reason），MCP 全链路真实工作，loop 工具循环端到端正确；OkHttp 丢帧疑云实为诊断替换空流的人为失败 | 真实集成测试价值兑现：区分了环境/测试问题与库缺陷；诊断要区分人工干预与真实路径 |
-| D64 | 【M1】用户裁决推广 pi 的「26 厂商共用 openai-completions」：DeepSeekChatCompletionProtocol = OpenAIChatCompletionProtocol + compat 构造参数；D21「独立实现不复用通用层」作废 | 新增厂商只加一份 compat；DeepSeek 私有语义（reasoning_content / max_tokens / 回带空串）收敛到 DeepSeekCompat；通用实现差由各厂商 compat 表达 |
-| D65 | 【M1】Compat 接口新增身份字段 id + defaultEndpoint（协议类 from compat 取，withCodec 后身份不变）；内置协议 = OpenAIChatCompletion（DeepSeek/OpenAI 两形态）/ OpenAIResponses / AnthropicMessages / GeminiProtocol，各带一份 compat | D43「端点是 provider 固有事实（同 useApiKey/compat）」落地；id 不进会话数据；Gemini 端点含 {model} 占位符（模型在 URL 路径）buildRequest 时替换 |
-| D66 | 【M1】三个协议真实链路实测：DeepSeek 提供 /responses 与 /anthropic 兼容端点（2026-08-18 验证），OpenAI 两个 + Anthropic 全部能测；Gemini 无 key 只写实现不写测试（用户裁决） | 集成测试走同一把 OKIA_TEST_API_KEY：chat / responses / anthropic 各一份 Assume 门控集成测试；Gemini 靠代码走查 + fixture 语义对照 pi |
-| D67 | 【M1】Anthropic 协议实现点：max_tokens 必填；system 顶层字段；user/assistant 严格交替（连续同角色合并，工具结果并入 user 消息 tool_result 块，可与后续用户文本共存）；thinking 回带带 signature（无签名转文本，不伪造）；x-api-key + anthropic-version 固定头；block_stop 携带 index 移除活跃块 | 实测 DeepSeek /anthropic 网关字节流（thinking/tool_use/usage/stop_reason 全形态）；stream 无 message_stop / stop_reason 缺失 = 协议不完整 → Error |
-| D68 | 【M1】Responses 协议实现点：input 为 item 数组（role 消息 / function_call / function_call_output）；function_call 双 id（item.id 事件引用 + call_id 工具结果引用），arguments delta 用 item_id 映射回 call_id；reasoning_text.delta（DeepSeek）与 reasoning_summary_text.delta（OpenAI）都归 ThinkingDelta；max_output_tokens ≥ 1；status=completed → Stop/ToolUse（按输出含 function_call），incomplete+max_output_tokens → Length | 实测 DeepSeek /responses 字节流（文本/推理/工具/usage）；OpenAI 官方 reasoning 加密不可回放 → 历史思考转文本（requiresThinkingAsText） |
-| D69 | 【M1】协议流解析只捕获自身解析异常（SerializationException / IllegalStateException）转 Error 事件；不宽泛 catch Exception | loop 以 StreamCompleted 哨兵异常中断收集（Flow 异常透明性：catch 块里再 emit 违规，实测暴露）；下游哨兵必须自然传播 |
-| D70 | 【M1】Gemini 协议：contents role=user/model + parts（text / thought:true+thoughtSignature / functionCall / functionResponse）；工具结果回带 functionResponse part（成功 output / 失败 error 二选一）；finishReason STOP / MAX_TOKENS / 其余 → Error；usageMetadata（thoughts 计入输出）；functionCall 无 id 时合成稳定 id（gemini-3 起要求 id） | 无真实 key：语义对齐 pi google-generative-ai.ts（增量分片 + SDK 归一化）；M2 前图片抛错（与其余协议一致） |
-| D4 | RealConversation 内部状态 = 不可变 State 快照 + @Volatile 引用 | suspend Mutex 与同步 getter 共存：写入在 mutex 内构建新快照，读取免锁（不可变读安全）；KMP 兼容（kotlin.concurrent.Volatile） |
-| D5 | 条目 id = kotlin.uuid.Uuid.random()；timestamp = kotlin.time.Clock.System | KMP 兼容；自增计数器在 restore 乱序 id 时可能冲突，已排除 |
-| D6 | 构造时校验重复 id / 悬挂 leafId（fail-fast） | 与 §8.7 #4 rewind 存在性校验同一原则：客观可校验、快速失败 |
-| D7 | SessionCodec 默认实现 = JsonSessionCodec（kotlinx.serialization 默认 JSON） | §5.13 JsonCodec 删除后 dataclass 直接 @Serializable；非法输入抛异常 |
-| D8 | 对照模型（oracle）必须共享被测对象产出的 id | 模型独立重算投影，但不独立造身份（占位 id 无法映射到真实树，随机序列测试曾因此失败） |
-| D9 | 回合终态必须中断流收集：collect 内终态（Completed/Error）抛 StreamTerminated 哨兵异常 | 无限流（SharedFlow）不自然结束，return@collect 只退出 action、collect 继续挂起等下一事件，turn 永不完成（T2 实测暴露，fix 前 2 个测试超时 60s）；哨兵非 CancellationException，不被取消机制误判 |
-| D10 | RealOkia turnScope 可注入（internal 构造参数） | 测试注入 TestDispatcher 获得可控时序；默认真实线程池，契约无感 |
-| D11 | export 在活跃回合时抛 IllegalStateException | 契约 §8.7 #5 列表未含 export，但回合中树在提交中、导出的快照不一致；按 rewind/update 一致性补充 |
-| D12 | 默认 HttpEngine 未实现（T8），config.httpEngine 为空时 send 抛 IllegalStateException | 契约说 null 时门面自建，T8 落地；T2 明确失败而非静默 |
-| D13 | 外部取消（调用方协程取消）传播 CancellationException，不产生 Aborted(External) | 协程取消语义优先（rethrow）；StopCause.External 路径待真实消费者出现后定（T2 不删枚举值，契约不动） |
-| D14 | Completed 事件 stopReason 为 Error/Aborted/ToolUse/Pending 时按失败处理 | 明确失败优于自动修复；T2 fake 不发此类事件 |
-| D15 | 事件流 replay=0 + extraBufferCapacity=64；一次性事件语义 | 订阅晚的事件不补发；宿主 IPC 与 UI 各自消费 |
-| D16 | StreamResponse sealed 化（Ok / Error 两态）；传输失败抛异常 | 三可空字段靠约定表达三态易误用；sealed 让 when 穷举、Ok 拿不到 body、Error 拿不到 lines；suspend 抛网络异常符合 Kotlin 取消语义（codex transport 同构） |
-| D17 | 新增 SseLineParser（Flow\<String\> → Flow\<SseLine\>） | 行切分是 T4 parseStream 与 T8 默认 HttpEngine 的共同前置；纯逻辑独立可测；W3C 行解析语义 |
-| D18 | 新增 SseEvent(data, event) + SseEventParser；聚合器输出结构化事件而非 data 文本 | MCP 实锤用 event 字段（codex rmcp-client 过滤非 message）；Codex 因 data-only 聚合器服务不了 MCP 被迫写两套；一个聚合器服务模型流与 MCP 两端 |
-| D19 | loop 前置校验：非 2xx 不进 parseStream；content-type text/html 黑名单 | 风控 HTML 真实 case（用户实测）；非 2xx 错误 body 是文本不是 SSE；黑名单避免白名单误伤改 content-type 的真实网关 |
-| D20 | 非 2xx 错误码映射 429→RateLimit / 401,403→Auth / 5xx→Overloaded / 其他→Transport；body 截断 2000 字符进 message | LLMErrorCode 已有分类直接复用；message 是 UI 详情非完整响应 |
-| D21 | T4：OpenAIChatCompletionProtocol 通用实现 + compat 构造参数（DeepSeek 私有语义入 DeepSeekCompat）；D64 用户裁决推翻原「独立实现不复用通用层」 | M1 多协议落地：OpenAI 官方 / DeepSeek / 其他 OpenAI 兼容厂商共享同一协议类，差异由 compat 表达；pi 26 厂商单实现的实证 |
-| D22 | T4：协议层 Completed = 单次模型流结束（消息级）；finish_reason=tool_calls → Completed(ToolUse)，回合未结束（T6 继续工具循环）；错误 finish_reason / EOF 无 finish_reason → Error 事件 | 骨架注释「消息级结束原因」+ pi done 事件（每次流都发）；T2 判非 Stop/Length 为异常是工具循环未实现前的占位，T6 改 |
-| D23 | T4：encodeToolResult 不加工错误内容：tool 消息 content = outcome.content 原样（null 用空串） | 错误表达由下游在 outcome.content 决定（用户裁决）；骨架「Interrupted/Unknown 编码为错误文本」注释作废 |
-| D24 | T4：Image 块 buildRequest 抛 IllegalStateException（M2 前），不写专门测试 | 明确失败优于自动修复；异常消息讲清楚即可（用户裁决） |
-| D25 | T4：ThinkingSignature 对 DeepSeek 不产出；signature 字段为 null；assistant 无思考补 reasoning_content 空串 | DeepSeek 无签名机制（Anthropic 语义）；requiresReasoningContentOnAssistantMessages=true |
-| D26 | T5：holder write 全部实现（改值 + lastWriter，覆盖语义），落点按消费点接——Serialization → buildRequest、HttpRequest → stream、Input → 请求历史投影；ToolCall/ToolResult 字段就绪落点 T6 | 骨架已声明全部 write 签名，实现 = 填方法体零契约增量；无落点的 write 在 T5 无调用路径（无工具执行点），无静默风险 |
-| D27 | T5：LLMErrorCode 新增 HookFailed（不可重试） | 模型段 hook 异常 → 回合失败需要稳定 code 供 host 映射文案；枚举增值有先例（§8.8 #3 UnknownTool） |
-| D28 | T5：hook 异常 → 回合 Failed(HookFailed)；取消传播；afterRequest 只在 stream 成功返回后触发 | §8.4 #13 落地；请求未完成不触发 after（§8.10 #1 只读实际发出请求） |
-| D29 | T5：链式分发 = RealAgentLoop 内按注册顺序 for 循环，无独立分发器 | 如无必要不增实体；顺序执行 + mutation 可见由循环天然表达 |
-| D30 | T5：Input 改写落点 = 替换 history 末尾 User 的文本块（保留图像等非文本块）；无 User/无文本块不替换；TurnStarted 保持原始 input | pi 在消息组装前替换将进入 LLM 的文本（无树）；okia 树不变量（§5.8）使落点为 buildRequest 历史投影；事件反映事实 |
+| D1 | **持久化推倒重来**：Room schema 不写迁移，直接重建；`ChatTurnJsonCodec` 删除；旧会话数据可丢 | 已确认 |
+| D2 | **systemPrompt 每回合传** `send(text, TurnOptions(systemPrompt))`（OKIA 的 config 无 systemPrompt 字段，唯一入口是 TurnOptions）替代现在 `update{ systemPrompt }` 会话级热更新 | 已确认 |
+| D3 | **MCP 同步发现**：OKIA 缺首次 send 前同步 `refreshMcpTools` 的 ensure API → 在 `feat/okia-integration` 分支开 issue 提给 okia，未来补；接入期先接受异步发现或手动先 refresh | 已确认 |
+| D4 | **fork/regenerate 截断** = 以目标 entry 为根沿 parentId 链回溯收集闭合子树 → 新 `SessionSnapshot(id=新, leafId=null, version, entries=子树)` → `open(restore)` 新实例。前提：截断点必须是 User 消息；fork 前无活跃回合（export 活跃回合抛异常）。`RealConversation` 构造只校验重复 id / 悬挂 leafId，不校验 parentId，子树必须自行保证链闭合 | 已确认 |
+| D5 | **不写 UI thinking**：T1-T4 均不接入 thinking 块渲染 | 已确认 |
+| D6 | **消息接驳**：`Okia.send(text, options, onEvent)` 是 callback + 返回 `TurnResult`（终态唯一权威 = 返回值）。`LLMController.stream` 内部把 onEvent 包成 `Flow<LlmStreamEvent>`，两个消费端（`AgentRuntimeService.executeTurn`、`HomeChatState.collectLlmStream`）接口不动 | 已确认 |
+| D7 | **延迟消息不用 Hook**：`TerminalSessionPool.drainPendingNotifications()` 保持 host 侧拼进 send 文本（okia PRD §5.10 裁决），不进 beforeInput | 已确认 |
+| D8 | **错误可重试维度进入 UI**：`TurnResult.Failed(error)` 的 LLMErrorCode 分类 → 可重试（RateLimit/Overloaded/Transport/RetryExhausted）保留"请稍后重试"；不可重试（Auth/Quota/ConfigRequired/UnknownTool/HookFailed）给具体文案 | 已确认 |
+| D9 | **锁**：删 `LLMController.turnMutex`（OKIA 实例内 Mutex 承担）；adapter 捕获 OKIA 并发异常 → 转 `LlmStreamEvent.Error(TurnConflict)` 保持 UI 行为；`AgentRuntimeService.activeTurn`（Binder 层 CAS）保留 | 已确认 |
+| D10 | **kill-then-stop 下沉**：PyRuntime.kill + TerminalSessionPool.closeAll 移入 `Hooks.beforeStop`；`stop()` 由 OKIA 统一协调 | 已确认 |
+| D11 | **idle 显式配置**：`OkiaConfig.idleTimeoutSeconds`（默认 null），按 agent 事件活跃度，阈值接入时定 | 已确认 |
+| D14 | **O2 澄清**：kill 资源动作放 `Hooks.beforeStop`（回合级杀资源时机，参数=本回合已派发 calls）；`ToolExecutor.onInterrupt` 是工具级中断语义契约，库 main 代码当前无调用者（§8.18 Q1），T2 实现方法体，与 stop 路径无关 | 已确认 |
+| D15 | **O3 澄清**：replaceHistory 的 4 个场景（启动恢复/切会话/重新生成/分叉）全部由「持久化 + export/open」覆盖；`getHistory/replaceHistory` 这对 API 整体消失；唯一自定义段 = fork 截断子树构造（D4）；T1 桥接仅为过渡 | 已确认 |
+| D16 | **库坑（实测发现）**：`RealConversation.project(null)` 返回空列表（RealConversation.kt:121），与 PRD §5.3「leafId null = 恢复为最后一条」的文档意图不一致。**T1 绕开**：`buildSnapshotFromChatTurns` 显式设 `leafId = entries.lastOrNull()?.id`。**待提 issue 给 okia**（与 D3 同步发现 API 同批） | 已确认（T1 落地绕开，issue 待提） |
+| D17 | **T1 工具退化记录**：refresh 仍把 resolvedTools 传入 PromptComposer（技能/记忆段依赖工具段渲染），但 OKIA 注册表为空、不向请求注入 tool 定义——模型若调用未注册工具 → `LLMErrorCode.UnknownTool` 回合失败（T2 接入前为已知退化）；MCP 发现/指纹决策已从 refresh 删除 | 已确认 |
+| D18 | **T2 拆分**：T2a=本地工具注册与执行（builtin+custom）；T2b=MCP 装配与发现时序。每块 ≤1000 行 | 已确认 |
+| D19 | **内置工具描述迁移（方案 A）**：BuiltinTool 抽象改为 OKIA 声明式描述（description/inputSchemaJson/轻量参数声明），替换 kai `LocalToolConfig` DSL；15 个工具文件迁移；无 workaround；**描述文本原文照抄一个字符不差**（withCustomShellGuidance 英文段/各工具长 description/CreateCustomTool hint） | 已确认 |
+| D20 | **CreateCustomTool**：默认 `enabled=true`；refresh 注册保持 `filter { it.enabled }`（enabled=false 不注册）；创建成功执行后**回合内注册**（同 Turn 下一轮可见，RealAgentLoop:170 每段现取 registry.snapshot() 支撑）；OKIA ToolRegistry 注释「活跃回合不得直接改 registry」与 update 路由矛盾 → 并 D3 issue 批（文档修复级，不阻塞），Nexus 直接 register | 已确认 |
+| D21 | **custom tool schema**：`inputSchemaJson = null`（协议层省略 parameters），代码打 TODO（未来支持自定义字段） | 已确认 |
+| D22 | **MCP 时序（方案 A）**：LLMController 保存「已 refresh 的服务器配置签名」（name/url/headers/enabled 序列化），签名变化才 `refreshMcpTools()`（该调用本身挂起至完成=同步一轮，无需 OKIA 新 API）；无变化不刷新 | 已确认 |
+| D23 | **MCP 持久化本次不做**：删残链（gateway.listCachedTools / XRepo saveDiscoveredTools / McpCachedTool / mcpCacheKey / McpServerDefinition.cachedTools / refresh 的 mcpCachedTools）；记 TODO：未来 Nexus store 层持久化 OKIA McpDiscoverySnapshot（需先提 issue：McpDiscoveredTool 加 @Serializable，已核实当前无可序列化） | 已确认 |
+| D24 | **hooks 不接**：T2 无 beforeToolCall/afterToolCall（读屏前置非 hook 用例 §5.12），T4 有需求再加 | 已确认 |
+| D25 | **T2 测试策略**：不做逐工具描述 golden 断言（膨胀脆弱）。三档：①注册装配=refresh 后 registry 工具名集合正确（名字级）②描述合法性=schema JSON 可解析/name 合法/wireName 满足 ToolWireName 约束 ③执行行为=fake call→outcome 映射（Success/Failure/Interrupted/Unknown）。不写扫字符串式测试 | 已确认 |
+| D26 | **T2c 未知工具行为修复（t2 验收暴露）**：模型调用未注册工具从「回合 Failed(UnknownTool)」改为「ToolCallOutcome.Failure 结果回喂，回合继续」（对齐 KAI ToolCallCoordinator 与 OKIA 内部 MCP server-not-found 一致；§1 哲学：不替产品决策 + 不伪造消息）。默认文案纯文本 `Unknown tool '<name>'`（message 与 content 同值：message 供 UI / content 回喂模型）。**不开下游定制口子**（无消费者，遵循延迟设计 API 哲学；ROI 低，不提 issue）。`LLMErrorCode.UnknownTool` 删除（不再产生，不留死代码，已扫全仓）。边界：仅「模型命名错误」走回喂（模型可自纠）；executor 违反契约（ToolExecutionFailed）/协议/认证等仍回合失败 | 已确认 |
+| D-T2B-1 | **MCP 持久化彻底删除**（不作保留空实现）：缓存系统全部删除（网关 4 方法/XRepo McpApi 缓存 6 方法/McpSettingsCodec 缓存/McpCachedTool/RuntimeMcpTool/mcpCacheStoreId）。依据：服务器通→eager 预加载即得；不通→缓存了也不能执行（Codex 亦无跨启动持久化） | 已确认 |
+| D-T2B-2 | **PromptComposer 删 `<mcp_servers>` 块 + mcpDiscoverySnapshot 参数**：线缆名 `mcp__server__tool` 已表达服务器归属；kai snapshot import 从 agent-runtime 消失 | 已确认 |
+| D-T2B-3 | **MCP 时序 = 方案 B（后台不阻塞）**：启动 eager（首次 refresh 签名 null≠配置天然触发）+ turn 前签名变化起后台协程刷新（不 await）+ inFlight 防重 + 失败也更新签名防风暴 + 无保存点回调。Codex 实证：optional 服务器首回合可缺席（仅 required 被 turn 前 await）；Nexus/OKIA 无 required 概念 → 纯 optional 语义 | 已确认 |
+| D-T2B-4 | **Okia 改动本次做**：`OkHttpEngine` internal→public + okhttp implementation→api + 1 测试（proxy/interceptor 注入点）；**proxy 使用本次不做**（llmConfig.proxy 死字段保留，TODO = Nexus 注入带 interceptor 的 client） | 已确认 |
+| D-T2B-5 | custom schema null（D21）/ hooks 不接（D24）等既有项不在 T2b 重复 | 已确认 |
+| D12 | **单测重写而非改**：接口全变处（LLMController/Mapper/持久化）测试重写；工具实现测试不动 | 已确认 |
+| D13 | **删除概念**：SessionToolBinder、McpDiscoveryCacheStore、lastMcpServersFingerprint+shouldRefreshMcp、ChatTurnJsonCodec、turnMutex、`:libs:kai` 依赖。保留：LlmStreamEvent/ToolCallStatus/ToolCallKind、ConversationTurnState/ActiveTurnStore/TurnMode、RenderFrame、Room 表骨架、TerminalSessionPool.pendingNotifications | 已确认 |
 
-## 下一步
+## T 计划
 
-待用户验收后提交 T9c（3 个集成测试文件 + 本文件更新）。
+| T | 范围 | 验收 | 状态 |
+|---|---|---|---|
+| T1 | 骨架替换：依赖切 okia；重写 LLMController + LlmStreamEventMapper；协议装配（apiType→protocol）；错误/并发/stop 适配；主 App 问答+停止+错误文案跑通 | 宿主与主 App 均一问一答、停止、错误事件正确；UI 消费端零改动 | **已完成**（2026-08-19 已提交 f842dbc/c87d630） |
+| T2a | 本地工具：BuiltinTool 描述迁移（D19）+ ToolRegistry 装配（refresh 注册 enabled 工具）+ ToolCallDispatcher→ToolExecutor 适配（execute/onInterrupt）+ CreateCustomTool 回合内注册（D20）+ outcome→BuiltinToolResult 拆解 | 内置/自定义工具回合成功（memory/search_apps/python 等）；模型调用已注册工具不再 UnknownTool；工具失败 UI 显示 code/message | **已完成**（2026-08-19，待用户验收） |
+| T2b | MCP：McpServer 配置→OkiaConfig.mcpServers 装配；签名变化触发后台 refreshMcpTools（D22 方案 B）；删 cachedTools 残链（D23）；PromptComposer 删 mcp 段（D-T2B-2）+ 脱离 kai | MCP 工具被发现、注册进 registry、可调用；禁用/失败不崩；后台刷新不阻塞回合；首回合按 eager 预取 | **已完成**（2026-08-19 验收：真机 13 工具 10 可用，禁用不可调用符合预期） |
+| T2c | okia 库修复：未知工具 → Failure 结果回喂（RealAgentLoop.executeTools find-miss）；删 LLMErrorCode.UnknownTool（死代码扫描）；测试重写 unknownToolFailsTurn→feedsBackFailureAndContinues | okia/agent-runtime/app 全量测试绿；未知工具时不整轮失败、UI 显示工具失败卡片 | **已完成**（2026-08-19，待验收） |
+| T3 | 持久化：Room 推倒重来（消息级增量 + 树形存储 + leafId）；restore/切会话/fork/regenerate（D4）；错误回合保留 + 切会话 stop 修复 | 见 `docs/T3.md` §5 验收 | **设计已定稿**（docs/T3.md），待开发 |
+| T4 | 细节收口：idle 配置、beforeStop 正式接管 kill、可重试 UI 分支、并发→TurnConflict 回归、删余清尾（含删 :libs:kai 依赖）、全量测试 | 无 kai 引用、无死代码、全测试绿 | 待讨论 |
 
-验收/可选后续：
-1. 层 3 可作 manual demo 入口（打印完整回合过程），是否需要独立 main 待用户决定
-2. 集成测试跑法：`export OKIA_TEST_API_KEY=... && ./gradlew :libs:okia:testDebugUnitTest --tests "*Integration*"`
-3. Builder DSL apiKey 不可见坑（D62）是否在 docs/okia.md 给下游开发者提示，待用户决定
+## T3 实现记录（2026-08-23，已完成，待验收）
+
+**改动文件**（主代码 ±947 行、测试 +550 行，净增 ~1100 行，略超单点 1000 上限，接受）：
+- `app/build.gradle.kts`：`:libs:kai` → `:libs:okia`（app 彻底脱离 kai）
+- `ConversationEntities.kt`（重写）：`ConversationEntity` 加 `leaf_id` 列；`ConversationTurnEntity` → `ConversationEntryEntity`（复合主键 conversation_id+id、parent_id、timestamp、message_json，无 turn_index）；`ConversationRecord.history` → `snapshot: SessionSnapshot`
+- `ConversationDatabase.kt`：version 2 + `fallbackToDestructiveMigration()`（推倒重来，D1）；schema 2.json 已生成（untracked，随提交入库）
+- `ConversationDao.kt`：删 replaceTurnsAndMetadata/listTurns；新 insertEntries(@Insert IGNORE 幂等)/countEntries/updateLeafId/updateConversationMetadata
+- `ConversationRepo.kt`：`createConversation(id, firstUserInput)`（显式 id = OKIA 树 id）；`getConversation` 组装 SessionSnapshot（leafId null → 最后一条，绕 D16）；删 saveHistory；新 insertEntries/updateLeafId/updateMetadata/countEntries；`forkConversation(sourceId, keepEntryCount, kind)` 截断子树复制 + Fork/Regenerate 标题（getString runCatching fallback 硬编码）
+- `ConversationFormatter.kt`（重写）：消费 SessionSnapshot；`projectLeaf(entries, leafId)`（leafId null → 最后一条）；`toHomeTurns` 按 Message.User 分 turn、ToolCall/ToolResult 配对（outcome 5 态 → Succeeded/Failed）、Thinking 忽略（D5）；preview 从尾部找首个非空文本（修复 firstNotNullOfOrNull 取到 ToolResult 的 bug）
+- `ConversationPersister.kt`（新，80 行）：观察 `LLMController.currentConversation` → `persistNow` 条数对比增量写；parentId = 投影前一条 id（线性树）；会话切换按 id 隔离；崩溃窗口=半句话可接受（D3-1）；`resetForTest`
+- `LLMController.kt`（±189）：删 getHistory/replaceHistory/buildSnapshotFromChatTurns/toOkiaMessage/toChatTurn；`resetConversation` 改语义（kill 资源 + close + 置 null，不建实例）；新 `ensureSession()`（惰性建实例返回树 id）、`openSession(restore)`（恢复入口）、`currentConversation: StateFlow<Conversation?>`（统一快照流，实例切换重发射）、`historySnapshot()`
+- `HomeChatState.kt`（±134）：ChatRuntime 接口换（删 getHistory/replaceHistory，加 ensureSession/openSession/historySnapshot）；删 persist 相关（持久化器接管）；`startNewConversation`/`loadConversation`/`deleteConversationNow` 先 stop 再关实例（D3-9）；restore/load 走 openSession + 新 Formatter；ensureCurrentConversation = ensureSession 树 id 建 Room 会话；fork/regen 走 historySnapshot + forkConversation(kind)
+- `App.kt`：`ConversationPersister.start(applicationScope)`
+- strings.xml ×3：`conversation_fork_title`/`conversation_regenerate_title`（英文值 "Fork · %1$s"/"Regenerate · %1$s"，D3-11）
+- 删除：`ChatTurnJsonCodec.kt` + 其测试
+
+**测试**（220 app + 350 agent-runtime 全绿；okia/store 回归绿）：
+- `ConversationRepoTest` 重写（存储往返逐字段/fork 截断标题/幂等/leafId fallback/元信息）
+- `ConversationFormatterTest` 重写（User 分组/工具成败/Thinking 忽略/孤儿 ToolCall 占位/projectLeaf/preview）
+- `ConversationPersisterTest` 新（增量写/幂等/会话隔离/恢复不重插/错误回合 partial/元信息/重置）
+- `HomeChatControllerTest` 更新（fakes 换接口 + fork/regen 端到端 + startupRestore/loadConversation/stop 时序）
+- `LLMControllerOkiaTest` 更新（ensureSession/openSession restore/conversationFlow/resetConversation 弃实例）
+
+**Robolectric 坑（实测）**：`context.getString(R.string.xxx)` 在 Robolectric 4.13 + AGP 9.1 下对**任意**资源 ID 报 `Bad identifier`（0x7f10xxxx 的 type 段不识别；T1-T2 测试从不 getString 所以未暴露；真机正常）。修复 = `ConversationRepo.init` 里 `runCatching { getString }.getOrDefault(硬编码)`。后续新增 getString 调用注意此坑。
+
+**验收映射**（docs/T3.md §5）：
+1. 存储往返 → RepoTest.insertEntries_roundTripsMessageTreeExactly ✅
+2. bug 回归（错误回合最后一条不恢复）→ PersisterTest.errorTurn_partialAssistantIsPersisted + Manual ✅
+3. 切会话丢数据 → 消息级增量天然覆盖 + HomeChatViewModelTest.loadConversation_stopsThenOpensSnapshot（stop 时序）✅
+4. fork/regenerate → RepoTest.fork* + ViewModel fork/regen 端到端 ✅
+5. Formatter OKIA 树渲染 → FormatterTest ✅
+6. 桥接删除 + 无 kai import → grep app/src agent-runtime/src 为空（HomeChatTurn 除外）✅
+
+**遗留（T4）**：`:libs:kai` 依赖仍在 agent-runtime/build.gradle.kts（代码零引用，仅注释提及）；`stopCurrentRound(keepCurrentTurn)` 参数；idle/beforeStop/可重试 UI 收口；app schemas/2.json 需入库。
+
+## T1 功能定义
+
+**一句话**：把 Nexus 的"提问 → 流式回答 → 停止 → 错误"骨架从 KAI 换到 OKIA，UI 消费端接口不变，历史/工具/持久化允许退化。
+
+改动文件（估算合 ~1000 行）：
+- `agent-runtime/build.gradle.kts`：+`implementation(project(":libs:okia"))`（保留 kai 依赖到 T4 删，或 T1 直接删？见开放问题 O1）
+- `LLMController.kt`（重写 ~330 行）：
+  - `Okia.open(protocol, restore, builder)` 按 `LlmApiType` → 协议实例（OpenAIChatCompletion / AnthropicMessages；DeepSeek 也走 OpenAI-Channel compat）
+  - 实例管理：`obtainSession(apiType)` 等价物（apiType 变化 → close+重建）；replaceHistory/resetConversation 语义 → 重建实例（D4 变体：空 restore 或导出的子树）
+  - `send(text, TurnOptions(systemPrompt = <per-turn 拼好的 final prompt>), onEvent)`；onEvent 经 `channelFlow` 包回 `Flow<LlmStreamEvent>`
+  - 终态：`TurnResult.Completed/Failed/Aborted/IdleTimeout` → 流关闭语义
+  - stop：`stop()`（beforeStop 接管 kill 在 T4，T1 先保留原位 kill 或直接接 beforeStop？见 O2）
+- `LlmStreamEventMapper.kt`（重写 ~200 行）：`TurnEvent` → `LlmStreamEvent`；错误事件携带 code；终态事件映射为流结束
+- `HomeChatState.kt`（小改 ~50 行）：getHistory/replaceHistory 的适配（Message ↔ ChatTurn 投影 / 重建）+ 错误 code 映射
+- 测试（~450 行）：见下方测试边界
+
+## T1 测试边界（怎么证明没问题）
+
+**测试原则**：
+- 纯函数（Mapper）穷举事件映射，不依赖任何 IO
+- LLMController 装配用 OKIA 的 `open(dependencies)` 注入点（fake AgentLoop / fake ProtocolCompatMapper / fake McpClient，参考 `libs/okia/src/test/.../fake/Fakes.kt`），不回放真实网络
+- 并发/停止/终态用注入的 TestDispatcher 控制时序
+- 端到端真实链路（真机/真实 key）只做手动验收，不进单测
+
+**边界矩阵（每个边界测什么、保证什么）**：
+1. `Mapper：TurnEvent → LlmStreamEvent 一一映射`——TextStarted/Delta/Ended 累积成 fullText；ToolRunning/Succeeded/Failed 事件透传；TurnStarted/RoundStarted；不认识的终态事件不产生重复完成事件。保证：UI 渲染与事件序正确（不变量：TextEnded 的 content 与累积一致）
+2. `Mapper：错误分类`——TurnFailed(message, error: LLMError) 的 code（Auth/Quota/RateLimit/Overloaded/Transport/Parse/RetryExhausted/HookFailed/UnknownTool/ToolExecutionFailed...）→ LlmErrorCode 结构映射；message 空时 fallback 默认文案。保证：app 的 toAssistantErrorUi 分支不回归
+3. `终态语义`——TurnResult.Completed → 流正常关闭且最后一条被消费；Failed → 流内已发条目不丢（partial 保留）+ 流关闭；Aborted(UserStop) → 流关闭无错误事件；IdleTimeout → 流关闭。保证：两个消费端不依赖"完成事件的发射顺序"（OKIA 终态在返回值）
+4. `并发`——活跃回合中第二次 send → OKIA 抛并发异常 → adapter 捕获 → 产出 TurnConflict 错误事件且不回环卡死。保证：UI 的"一个回合进行中再发消息"提示回归不丢
+5. `装配`——apiType=DeepSeek/Anthropic/OpenAI → 对应协议实例；builder 传入 endpoint/apiKey/model 正确；TurnOptions.systemPrompt 进 RequestSnapshot（fake mapper 断言请求字段）。保证：配置与协议选择正确
+6. `stop`——stop() 后流终止、无卡死；beforeStop（若 T1 接入）先于取消执行。保证：终止键不挂起
+7. `重建实例`——replaceHistory/resetConversation → 旧实例 closed、新实例可 send。保证：会话切换不泄漏
+
+**手动验收步骤**（真机，每次 T 完成）：
+1. 语音助手宿主问答一轮（注入 LLM 回答呈现）
+2. 主 App 问答一轮、终止键、配置错误（空 endpoint）→"请先填写配置"
+3. 断网 → 错误事件文案出现
+
+## 开放问题
+
+| # | 问题 | 倾向 |
+|---|---|---|
+| O1 | `:libs:kai` 依赖删除 | T4 删；T2 期间 agent-runtime 的 kai 引用集中在 BuiltinTool(LocalToolConfig) 与 ChatTurn 桥接，随 D19 迁移与 T3 移除 |
+| O3 | `TurnOptions.systemPrompt` 每回合拼装：PromptComposer 每轮 refresh 已产出 finalSystemPrompt，LLMController 持有 snapshot.config.finalSystemPrompt → 直接传入，无额外成本 | 已落地（D2） |
+| O4 | 待提 issue 批（记入 D3 系）：① OKIA 无 send 前 ensure 的 MCP 同步发现 API；② McpDiscoveredTool 无可序列化（缓存持久化前置）；③ ToolRegistry 注释「活跃回合不得直接变更」与 update 路由矛盾（文档修复） | T2b 后一并提 |
+
+## 验证
+
+```bash
+# 指定模块单测（T1 主要是 agent-runtime）
+./gradlew :agent-runtime:testDebugUnitTest
+# 主 App
+./gradlew :app:testDebugUnitTest
+# okia 库自身（不应有改动，回归确认）
+./gradlew :libs:okia:testDebugUnitTest
+# 真机手动：安装 debug 包 → 详情见 T1 手动验收
+```
+
+## T2a 功能定义（待开始）
+
+**目标**：让内置/自定义工具真正注册进 OKIA 注册表并可执行，模型调用工具不再触发 UnknownTool。
+
+改动文件（估算合 ~1000 行）：
+- `BuiltinTool.kt`（抽象改造 ~50）：删 `configure(LocalToolConfig)`，改为 OKIA 声明式描述（description/inputSchemaJson + 轻量参数声明）；`LocalToolConfig`/kai 依赖从 builtin 包消失
+- 15 个 builtin 工具迁移（~250）：configure 逻辑 → 新描述（**文本原文照抄，D19**）；CreateCustomTool 改默认 `enabled=true`（D20）
+- 新增 Registry 装配（~100）：refresh 后按 `filter { it.enabled }` 注册 enabled 工具到持有的 DefaultToolRegistry（经 `OkiaConfig.toolRegistry` 注入）；移除旧工具的注销
+- 新增 ToolExecutor 适配（~120）：`ToolCallDispatcher` 包成 `ToolExecutor`（execute: ToolCallContext→outcome；onInterrupt: 本地→Interrupted）；BuiltinToolResult/CustomToolResult → Success(content=json)/Failure(message=code+message, content=json)；CreateCustomTool 成功→回合内 register 回调（D20）
+- `LLMController.kt` 注册/注销钩子（~40）
+- 测试（~400）：D25 三档（注册名集合/描述合法性/执行行为）+ CreateCustomTool 回合内注册专项
+
+**验收**：内置工具（memory/search_apps/python/terminal 任一）回合成功呈现；自定义工具回合成功；模型调用已注册工具不再 UnknownTool；工具失败 UI 显示 code/message；
+
+## T2a 测试边界（D25）
+
+1. 注册装配：refresh 后 registry.snapshot() 的工具名集合 == 启用的 builtin+custom 名（名字级）
+2. 描述合法性：每个注册工具 schema JSON 可解析、name 合法、wireName 符合 ToolWireName 约束（长度/字符）
+3. 执行行为：fake ToolCallContext → outcome（Success 携 content / Failure 携 message+content / 中断→Interrupted / 未注册名→UnknownTool 回合失败）；CreateCustomTool 执行成功 → registry 新增工具 + 下一段可见（用 OKIA TestDispatcher 时序）
+
+## T2a 实现记录（2026-08-19，已完成，待验收）
+
+**改动文件**（27 文件，+796/-585 行）：
+- `BuiltinTool.kt`：删 `configure(LocalToolConfig)`（kai DSL），加 `open val inputSchemaJson: String?`（JSON Schema 常量）
+- 14 个 builtin 工具迁移：`configure` → `override val inputSchemaJson`；文本一字未改（D19）；ScreenOperationAccessibility/Shell 原纯 kai DSL，转录为 JSON Schema（描述原文照抄）；CreateCustomTool schema + invoke 解析默认 `enabled=true`（D20）
+- `LocalToolExecutor.kt`（新，182 行）：OKIA ToolExecutor 适配（execute→outcome、onInterrupt→Interrupted）；BuiltinToolResult/CustomTool JSON 按 `ok` 拆 Success/Failure；文本协议经 TextToolResultCodec；create_custom_tool 成功且 enabled → inline 注册 + 回调 host（D20 回合内注册）
+- `ToolCallDispatcher.kt`（删，被 LocalToolExecutor 取代）
+- `LLMController.kt`（+76）：`toolRegistry: DefaultToolRegistry`（持有、注入 OkiaConfig）+ `localToolExecutor` + `syncLocalTools`（refresh 全量重建 local 注册，kind=Local filter）+ `registerCustomToolNow`（回合内注册回调）+ openOkiaWithDefaultProtocol builder 注入 toolRegistry
+- 测试：`LocalToolExecutorTest`（新 271 行：builtin/custom/unknown/textProtocol/onInterrupt/create_custom_tool 注册×3）；`BuiltinToolTest`（+D25 描述合法性：name/schema 可解析/wireName 约束）；`LLMControllerOkiaTest`（+refresh 注册 enabled 名集合、schema/kind）；其余 6 个测试文件去 LocalToolConfig/configure 引用
+
+**已删除 kai 引用**：agent-runtime main 无 `LocalToolConfig`/`configure` 残留；测试已清。`:libs:kai` 依赖仍存在（ChatTurn 桥接 O1-A，T3 移除）。
+
+**测试结果**：`:agent-runtime:testDebugUnitTest` 34x 全绿、`:app:testDebugUnitTest` 全绿、`:app:compileDebugKotlin` 通过；`:libs:okia` 未改动。
+
+**踩坑记录**：`ShellCommandSafetyPolicy` 默认 `awaitSettingsGateway()` 挂起，测试未装 gateway 会挂死 → LocalToolExecutorTest 注入 `ShellCommandSafetyPolicy(listExecutionRules = { emptyList() })`（allowed 短路）。
+
+## T2b 实现记录（2026-08-19，已完成，待验收）
+
+**改动文件**（增 ~420 / 删 ~380，净 ~40，含测试）：
+- `libs/okia`（D-T2B-4）：`OkHttpEngine` internal→public（构造接受 `OkHttpClient`，proxy/interceptor 注入点）；okhttp `implementation→api`（公开签名暴露）；`OkHttpEngineTest` +1 例（注入 client 经 interceptor 加头生效）
+- `LLMController.kt`（+~130）：`toOkiaMcpServers`（McpServerDefinition.Http→okia McpServer 字段一一对应）；`update { mcpServers }`；`scheduleMcpRefresh`（后台 `mcpRefreshScope` = SupervisorJob+IO，**不 await**；签名变化才刷；inFlight 防重；成功/失败都更新签名防风暴）；`mcpServersSignature`（name/url/headers/enabled 确定性序列化）；删 `gateway.listCachedTools` + `mcpCachedTools` 关联；resetForTest 重置 MCP 状态。**踩坑**：lambda 内 `mcpServers` 被外层局部 `val mcpServers`（RuntimeMcpServer 列表）遮蔽 → 外层改名 `runtimeMcpServers`（D62 同类）
+- `PromptComposer.kt`（-80）：删 `renderMcpServers`/`renderMcpStatus`/`PromptComposerInput.mcpDiscoverySnapshot`/kai 三个 snapshot import（D-T2B-2）——**agent-runtime 的 PromptComposer 脱离 kai**
+- `ToolManager.kt`（-30）：删 `mcpCachedTools` 参数/`toCachedTool`/`McpCachedTool`
+- `LlmModels.kt`（-25）：删 `McpCachedTool`/`mcpCacheKey`（无调用者）/`McpServerDefinition.cachedTools`
+- `RuntimeSettingsGateway.kt`（-15）：删 `listCachedTools`/`saveDiscoveredTools`/`clearMcpCacheByServerNames`/`fingerprintMcpServers` 接口方法
+- `RuntimeSettingsModels.kt`：删 `RuntimeMcpTool`
+- app：`XRepo.kt` McpApi 删缓存 6 方法 + 2 私有 helper；`XRepoRuntimeGateway` 删 4 override；`McpSettingsCodec` 删 parseCache/encodeCache；`LocalSettingsCodec` 删 parseMcpCache/withMcpCache/withoutMcpCache + 死代码（asJsonObjectOrEmpty/mcpCacheKey/MCP_CACHE_KEY）；`SettingModels` 删 mcpDiscoveredToolsCache
+- `store/StoreDescriptorRegistry.kt`：删 `mcpCacheStoreId`/`MCP_CACHE_PREFIX`/resolveDynamic 缓存分支
+- 测试：新增 `LLMControllerMcpTest`（5 例：首次 eager 触发/签名未变不刷/配置变化重刷/失败不风暴/装配映射）；更新 ToolManagerTest/PromptComposerTest；删缓存用例（XRepoTest/XRepoDomainSettingsTest/LocalSettingsCodecTest/SettingsDomainCodecsTest/StoreDescriptorRegistryTest/RuntimeSettingsTestFakes/两个 gateway 测试）
+
+**验证**：`:libs:okia`/`:store`/`:agent-runtime`/`:app` testDebugUnitTest 全绿（1078 测试）；MCP 测试用 fake RecordingMcpClient（无真实网络）；`refresh_mcpDiscoveryFailureStillUpdatesSignatureNoStorm` 验证失败后不重试
+
+**手动验收环境**：server-everything @ 3001 已在跑（`curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3001/mcp` → 400 即在线）+ `adb reverse tcp:3001 tcp:3001`（手机连电脑）
+
+## T2c 实现记录（2026-08-19，已完成，待验收）
+
+**背景**：T2 验收暴露——模型调用未注册工具时 OKIA 将其视为回合级异常（Failed(UnknownTool)），旧版 Nexus（KAI ToolCallCoordinator）与 OKIA 内部 MCP 路径（server not found → Failure 回喂）均为「错误结果回喂，loop 照常进行」。差异实证见前轮讨论。
+
+**改动**（±72/-22 行，4 文件）：
+- `libs/okia/.../loop/RealAgentLoop.kt`：`Plan.holder` 改 nullable；find-miss 分支从 `failTurn` 改为构造 Failure outcome 的 Plan（不执行、不走 afterToolCall，Phase 3 保序提交回喂，回合继续）；类注释 / Phase 1 注释 / ToolExecutionOutcome 注释同步
+- `libs/okia/.../error/LLMError.kt`：删 `UnknownTool(false)`（不可达）+ 类注释更新（unknownTool 永不重试说明移除，注明未知工具走 Failure 回喂）
+- `agent-runtime/.../LLMController.kt`：类注释（D17 里 UnknownTool 失败描述 → 回喂）仅文档更新，无逻辑改动
+- `libs/okia/.../loop/RealAgentLoopToolLoopTest.kt`：`unknownToolFailsTurn` 重写为 `unknownToolFeedsBackFailureAndContinues`——断言 TurnResult.Completed、无 TurnFailed 事件、未执行真实工具、ToolFailed 事件携带纯文本 `Unknown tool 'missing'`（message==content）、三类 commit（Assistant/含 ToolCall → ToolResult 回喂 → 第二轮空 Assistant）、第二轮请求历史以该 ToolResult 结尾
+
+**死代码扫描**（全仓）：UnknownTool 引用仅剩 `app/src/test/.../XRepoTest.kt:481 builtinSetEnabled_rejectsUnknownTool`（XRepo 设置枚举，同名函数无关，不动）
+
+**验证**：`:libs:okia:testDebugUnitTest` 全量绿（含重写用例）；`:agent-runtime:testDebugUnitTest` + `:app:compileDebugKotlin` 绿。Nexus 侧零行为改动（UI 走既有 ToolFailed 渲染）
+
+## T1 实现记录（2026-08-19，已完成，待验收）
+
+**改动文件**（主代码 ±579 行、测试 +515 行、删 ~100 行）：
+- `agent-runtime/build.gradle.kts`：+`:libs:okia`（`:libs:kai` 保留至 T4，O1-A）
+- `LLMController.kt`（417→561 行）重写：Kai→Okia 门面；`okiaFactory` 内部注入点（测试用 `Okia.open(dependencies)` 装配 fake loop/mapper）；`TurnOptions(systemPrompt)` 每回合传；终态 `TurnResult` 判定；并发/closed 契约违例 → `Error(TurnConflict)`；`beforeStop` 迁走 kill（PyRuntime.kill + TerminalSessionPool.closeAll）；`resetForTest()`
+- `LlmStreamEventMapper.kt`（118→119 行）重写：`TurnEvent`→`LlmStreamEvent` 全事件映射（Thinking/ToolCall*/Retry/Aborted/TextStarted/Ended → null）；终态只透传 Completed/Failed/IdleTimeout，Aborted 不产错事件
+- **删除**：`SessionToolBinder.kt`、`McpDiscoveryCacheStore.kt` + 其测试（kai 绑定，T2 用 OKIA 形态重写）
+- 测试：`LlmStreamEventMapperTest` 重写（206 行，穷举事件映射）；新增 `LLMControllerOkiaTest`（309 行：装配/终态/并发/历史桥接/重建）
+
+**桥接保留（O1-A，T3 移除）**：`getHistory`（OKIA 树 → `List<ChatTurn>` 投影）、`replaceHistory`（`close + open(restore=由 ChatTurn 构造的 snapshot)`，leafId 显式=最后一条，D16 绕坑）、`resetConversation`（重建空实例）、`stopCurrentRound(keepCurrentTurn)`（参数 no-op，T4 清理）
+
+**测试结果**：`:agent-runtime:testDebugUnitTest` 全绿（--rerun-tasks）；`:app:compileDebugKotlin` 通过（HomeChatState 零改动）；app 的 HomeChatController/ConversationFormatter/ChatTurnJsonCodec/ConversationRepo 测试通过。`LLMControllerRefreshSkillTest` 行为不变。
+
+**遗留**：`LLMControllerRefreshSkillTest.stream_reusesPreviousSnapshotWhenSkillListFails` 会真实连 example.com（既有行为，1s 超时兜底，仅慢不挂）。
+
+## 调研记录（2026-08-19，避免回退后重查代码）
+
+### Nexus ↔ KAI 交接现状（已核实）
+
+- 消费入口：`AgentRuntimeService.executeTurn`（宿主）+ `HomeChatState`（主 App），都经 `LLMController` 单例（agent-runtime/.../chat/LLMController.kt，417 行）
+- 装配：`refresh()` 每轮重读配置/工具 → `obtainSession(apiType)`（apiType 变化 close+重建）→ `update { applyRuntimeConfig }` 热更新 endpoint/apiKey/model/systemPrompt/tools
+- 协议：`Kai.open<KClass>`：Anthropic/DeepSeek/OpenAI
+- 工具：`SessionToolBinder`（KaiConfig DSL localTools/mcp 全量差量）+ `hooks { when(kind) Local -> ok(...) ; Mcp -> delegate() }` + `ToolCallDispatcher` → BuiltinToolExecutor/CustomToolExecutor
+- MCP：`mcpHooks.onToolsDiscovered` + Nexus 侧 `lastMcpServersFingerprint` + shouldRefreshMcp + `McpDiscoveryCacheStore`（cachedTools 经 XRepoRuntimeGateway 持久化）
+- 事件：`KaiEvent`(RoundStarted/TextDelta/ToolRunning/Succeeded/Failed/Error/RoundCompleted) → `LlmStreamEventMapper` → `LlmStreamEvent` → RenderFrame（宿主）/ HomeChatBlock（主 App）
+- 停止：`PyRuntime.kill()` + `TerminalSessionPool.closeAll()` + `kai.stop(keepCurrentTurn)`（kill-then-stop 是 KAI 缺陷 workaround）
+- 历史：`getHistory()/replaceHistory()`（ChatTurn 平列表）+ `resetConversation()`；主 App 用 Room（conversation + conversation_turn 两表，payload_json=ChatTurnJsonCodec）
+- 错误：`LlmErrorCode` 仅 ConfigRequired/TurnConflict；`toAssistantErrorUi` 三个分支，无重试维度
+- 延迟消息：`TerminalSessionPool.drainPendingNotifications()` 拼进 effectiveQuery 前缀（LLMController:241）
+- 锁：`AgentRuntimeService.activeTurn`（Binder CAS）+ `LLMController.turnMutex.tryLock`（→TurnConflict）
+
+### OKIA 关键契约（已核实源码）
+
+- 门面：`Okia.open(protocol, restore, builder)` / `open(restore, builder)` / `open(dependencies, restore, builder)`（测试注入点）
+- send：`suspend fun send(text, options: TurnOptions? = null, onEvent: suspend (TurnEvent) -> Unit): TurnResult`（**callback，非 Flow**；终态唯一权威 = 返回值）
+- 流：`conversation: StateFlow<Conversation>`（history 投影 + live）+ `events: SharedFlow<TurnEvent>`（replay=0）
+- 并发：活跃回合中 send/rewind/update/export/refreshMcpTools/close 抛异常；`stop()` 唯一例外
+- TurnResult：Completed(reason: Stop/Length) / Failed(error: LLMError) / Aborted(cause: UserStop/External) / IdleTimeout
+- TurnEvent：TurnStarted / TextStarted/Delta/Ended（partial）/ ThinkingStarted/Delta/Ended / ToolCallStarted/Delta/Ready / ToolRunning/Succeeded/Failed / RetryScheduled / TurnCompleted/Failed/Aborted/IdleTimeout
+- 工具：ToolRegistry（注册）+ ToolExecutor（execute/onInterrupt）+ Hooks.before/afterToolCall（mutation holder，writeOutcome 短路）；ToolCallOutcome 5 态：Success/Failure/Intercepted(isError)/Interrupted/Unknown（onInterrupt 当前库 main 代码无调用者）
+- Hooks：beforeInput/afterInput（不进树）、beforeSerialization/afterSerialization（脱敏）、beforeRequest/afterRequest（只读）、beforeStop/afterStop（kill-then-stop）
+- 重试：传输层 config.retryPolicy（Retry-After+退避 jitter，默认开）+ 回合层 LoopOptions.turnRetryPolicy
+- idle：idleTimeoutSeconds 默认 null；agent 事件活跃度（thinking 不误杀、keep-alive 不重置）
+- MCP：OkiaConfig.mcpServers → AutoDetectMcpClient → McpDiscovery 状态机（Idle→Discovering→Available/Failed/UsingStaleCache）注册进 registry；无同步 ensure API（D3）
+- 持久化：export(): SessionSnapshot（树+leafId）/ open(restore)；Message 全 @Serializable；RealConversation 构造只校验重复 id、悬挂 leafId（不校验 parentId）
+- 错误码：Auth/Quota/RateLimit/Overloaded/Transport/Parse/RetryExhausted/UnknownTool/HookFailed/ToolExecutionFailed（可重试子集见源码 Compat.retryableStatusCodes）
+- systemPrompt：唯一入口 TurnOptions（config 无该字段）
+## 双份消息 bug（2026-08-23，已修复）
+
+**现象**：运行时最终回答显示双份（"！有什么我可以帮你的吗？你好！有什么我可以帮你的吗？"）；冷启动恢复正常（走 ConversationFormatter 全量渲染，不经事件流）。
+
+**根因**：OKIA 把每个文本块的首个 delta 发在 `TurnEvent.TextStarted`（不携带增量文本，内容只在 partial）；`LlmStreamEventMapper` 丢弃 TextStarted → UI 逐 delta 累积缺首 delta → `appendFinalText` 的 `removePrefix(displayedText)` 失败 → 全量追加 → 双份。T1 起就存在，T3 验收才暴露。
+
+**修复（34bd1bb 根因 + cc01488 清理）**：
+- `LlmStreamEventMapper` 状态化：`accumulatedText` 基线，TextStarted 发全量 delta、TextDelta 发增量（partial − 累积）；TextEnded/TurnCompleted/TurnFailed/TurnAborted/TurnStarted 重置。宿主 FullText/Chunk projector 同一 delta 流同步受益。
+- 不保留 UI 防御分支（用户裁定：workaround，掩盖未来问题；违背明确失败优于自动修复）。`appendFinalText` 保持简单形式。
+- 测试：Mapper 增量序列（TextStarted 全量 + TextDelta 增量累积 == fullText）/ 跨块重置 / 跨回合重置；`TextDelta maps with delta` 改为真实序列（先 TextStarted 建基线）。
+
+**教训**：T1 Mapper 注释声称"TextDelta 已携带累积 partial 文本，逐 delta 追加即得完整结果"——断言了 delta 序列完整性，但未验证首 delta 的去向。根因修复在数据源（delta 序列），不在消费端打补丁。

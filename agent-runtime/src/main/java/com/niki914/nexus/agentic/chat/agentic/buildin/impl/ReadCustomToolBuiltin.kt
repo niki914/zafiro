@@ -5,7 +5,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.RawJsonBuiltinTool
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -25,14 +24,7 @@ class ReadCustomToolBuiltin : BuiltinTool(), RawJsonBuiltinTool {
 
     override val defaultEnabled: Boolean = true
 
-    override fun configure(config: LocalToolConfig) {
-        config.description = description
-        config.string("name") {
-            description = "Optional custom tool name. Omit to read all custom tool implementations."
-            required = false
-        }
-        config.rawJsonSchema(READ_CUSTOM_TOOL_SCHEMA)
-    }
+    override val inputSchemaJson: String? get() = READ_CUSTOM_TOOL_SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         return BuiltinToolResult.failure(

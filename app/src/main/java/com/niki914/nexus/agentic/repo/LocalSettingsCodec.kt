@@ -17,7 +17,6 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as 
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverTarget as TakeoverTarget
 
@@ -124,56 +123,6 @@ internal object LocalSettingsCodec {
                 }
             ),
         )
-    }
-
-    fun parseMcpCache(settings: LocalSettings, server: McpServer): List<McpTool> {
-        val key = mcpCacheKey(url = server.url, headers = server.headers)
-        return (settings.mcpDiscoveredToolsCache?.get(key) as? JsonObject)
-            ?.array(TOOLS_KEY)
-            .orEmptyObjects()
-            .mapNotNull { obj ->
-                val name =
-                    obj.string(NAME_KEY).trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                val inputSchema = obj.obj(INPUT_SCHEMA_KEY) ?: return@mapNotNull null
-                McpTool(
-                    name = name,
-                    description = obj.string(DESCRIPTION_KEY),
-                    inputSchemaJson = inputSchema.toString(),
-                )
-            }
-    }
-
-    fun withMcpCache(
-        settings: LocalSettings,
-        url: String,
-        headers: Map<String, String>,
-        tools: List<McpTool>,
-    ): LocalSettings {
-        val cache = settings.mcpDiscoveredToolsCache?.toMutableMap() ?: mutableMapOf()
-        cache[mcpCacheKey(url = url, headers = headers)] = JsonObject(
-            mapOf(
-                TOOLS_KEY to JsonArray(
-                    tools.map { tool ->
-                        JsonObject(
-                            mapOf(
-                                NAME_KEY to JsonPrimitive(tool.name),
-                                DESCRIPTION_KEY to JsonPrimitive(tool.description),
-                                INPUT_SCHEMA_KEY to tool.inputSchemaJson.asJsonObjectOrEmpty(),
-                            )
-                        )
-                    }
-                )
-            )
-        )
-        return settings.withTopLevel(MCP_CACHE_KEY, JsonObject(cache))
-    }
-
-    fun withoutMcpCache(settings: LocalSettings, servers: Collection<McpServer>): LocalSettings {
-        val cache = settings.mcpDiscoveredToolsCache?.toMutableMap() ?: mutableMapOf()
-        servers.forEach { server ->
-            cache.remove(mcpCacheKey(url = server.url, headers = server.headers))
-        }
-        return settings.withTopLevel(MCP_CACHE_KEY, JsonObject(cache))
     }
 
     fun parseCustomTools(settings: LocalSettings): List<CustomTool> {
@@ -332,19 +281,6 @@ internal object LocalSettingsCodec {
         return LocalSettings(JsonObject(props))
     }
 
-    private fun String.asJsonObjectOrEmpty(): JsonObject {
-        if (isBlank()) {
-            return JsonObject(emptyMap())
-        }
-        return try {
-            Json.parseToJsonElement(this).jsonObject
-        } catch (_: SerializationException) {
-            JsonObject(emptyMap())
-        } catch (_: IllegalArgumentException) {
-            JsonObject(emptyMap())
-        }
-    }
-
     private fun JsonArray?.orEmptyObjects(): List<JsonObject> {
         return this?.mapNotNull { it as? JsonObject } ?: emptyList()
     }
@@ -381,22 +317,6 @@ internal object LocalSettingsCodec {
         return memories.map(String::trim).filter(String::isNotBlank)
     }
 
-    private fun mcpCacheKey(url: String, headers: Map<String, String>): String {
-        val normalizedHeaders = headers
-            .mapKeys { (key, _) -> key.lowercase() }
-            .toSortedMap()
-        return buildString {
-            append(url)
-            append("#")
-            normalizedHeaders.forEach { (key, value) ->
-                append(key)
-                append("=")
-                append(value)
-                append("&")
-            }
-        }
-    }
-
     private const val PROVIDER_KEY = "provider"
     private const val ENDPOINT_KEY = "endpoint"
     private const val API_KEY_KEY = "api_key"
@@ -408,7 +328,6 @@ internal object LocalSettingsCodec {
     private const val TAKEOVER_KEYWORDS_KEY = "takeover_keywords"
     private const val TAKEOVER_RULES_KEY = "takeover_rules"
     private const val MCP_SERVERS_KEY = "mcp_servers"
-    private const val MCP_CACHE_KEY = "mcp_discovered_tools_cache"
     private const val CUSTOM_TOOLS_KEY = "custom_tools"
     private const val SHELL_SAFETY_POLICIES_KEY = "shell_safety_policies"
     private const val BUILTIN_TOOL_FLAGS_KEY = "builtin_tool_flags"
@@ -418,8 +337,6 @@ internal object LocalSettingsCodec {
     private const val TRANSPORT_KEY = "transport"
     private const val HEADERS_KEY = "headers"
     private const val ENABLED_KEY = "enabled"
-    private const val TOOLS_KEY = "tools"
-    private const val INPUT_SCHEMA_KEY = "inputSchema"
     private const val DESCRIPTION_KEY = "description"
     private const val COMMAND_KEY = "command"
     private const val ENABLED_MODE_KEY = "enabled_mode"

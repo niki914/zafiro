@@ -21,7 +21,6 @@ import com.niki914.libterm.runtime.CommandResult
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stdoutText
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalToolResponse.stderrText
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -83,10 +82,7 @@ class TerminalBuiltin(
 
     override val defaultEnabled: Boolean = true
 
-    override fun configure(config: LocalToolConfig) {
-        config.description = description
-        config.rawJsonSchema(TERMINAL_SCHEMA)
-    }
+    override val inputSchemaJson: String? get() = TERMINAL_SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         return BuiltinToolResult.failure(

@@ -6,7 +6,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.util.SilentLoggerRule
-import com.niki914.kai.LocalToolConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -14,7 +13,6 @@ import org.junit.Test
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomTool as CustomTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 
 class ToolManagerTest {
 
@@ -46,15 +44,6 @@ class ToolManagerTest {
                     enabled = true
                 )
             ),
-            mcpCachedTools = mapOf(
-                "aslocate" to listOf(
-                    McpTool(
-                        name = "lookupSymbol",
-                        description = "Lookup symbol definition",
-                        inputSchemaJson = """{"type":"object"}""",
-                    )
-                )
-            ),
         )
 
         assertEquals(listOf("time"), resolved.builtinTools.map { it.name })
@@ -68,18 +57,13 @@ class ToolManagerTest {
         assertTrue(customTool.description.contains("cd /path && cmd"))
         assertEquals("date +%s", customTool.command)
         assertEquals(listOf("aslocate"), resolved.mcpServers.map { it.name })
-        val mcpServer = resolved.mcpServers.single()
-        val cachedTool = (mcpServer as McpServerDefinition.Http)
-            .cachedTools
-            .single()
-        assertEquals("lookupSymbol", cachedTool.name)
-        assertEquals("Lookup symbol definition", cachedTool.description)
-        assertEquals("""{"type":"object"}""", cachedTool.inputSchema.toString())
+        val mcpServer = resolved.mcpServers.single() as McpServerDefinition.Http
+        assertEquals("http://127.0.0.1:51338/mcp", mcpServer.url)
         assertEquals(listOf("time", "current_time"), resolved.allLocalToolNames())
     }
 
     @Test
-    fun resolveFromTypedConfig_preservesMcpHeadersAndCache() {
+    fun resolveFromTypedConfig_preservesMcpHeaders() {
         val resolved = ToolManager(
             builtinToolRegistry = BuiltinToolRegistry(
                 listOf(FakeBuiltinTool(name = "time", description = "Read current time."))
@@ -108,23 +92,12 @@ class ToolManagerTest {
                     enabled = true,
                 )
             ),
-            mcpCachedTools = mapOf(
-                "aslocate" to listOf(
-                    McpTool(
-                        name = "lookupSymbol",
-                        description = "Lookup symbol definition",
-                        inputSchemaJson = """{"type":"object"}""",
-                    )
-                )
-            ),
         )
 
         assertEquals(listOf("time"), resolved.builtinTools.map { it.name })
         assertEquals(listOf("current_time"), resolved.customTools.map { it.name })
         val mcpServer = resolved.mcpServers.single() as McpServerDefinition.Http
         assertEquals(mapOf("Authorization" to "Bearer token"), mcpServer.headers)
-        assertEquals("lookupSymbol", mcpServer.cachedTools.single().name)
-        assertEquals("""{"type":"object"}""", mcpServer.cachedTools.single().inputSchema.toString())
         assertTrue(resolved.allLocalTools().all { it.name in setOf("time", "current_time") })
     }
 
@@ -132,7 +105,6 @@ class ToolManagerTest {
         override val name: String,
         override val description: String = "Builtin tool: $name",
     ) : BuiltinTool() {
-        override fun configure(config: LocalToolConfig) = Unit
 
         override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
             return BuiltinToolResult.success(message = "ok")

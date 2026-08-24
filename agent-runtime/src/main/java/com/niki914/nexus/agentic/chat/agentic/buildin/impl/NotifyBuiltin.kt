@@ -4,7 +4,6 @@ import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -22,23 +21,7 @@ class NotifyBuiltin : BuiltinTool() {
 
     override val defaultEnabled: Boolean = true
 
-    override fun configure(config: LocalToolConfig) {
-        config.description = description
-        config.string("title") {
-            description = "Notification title. Must be a non-blank string."
-            required = true
-        }
-        config.string("content") {
-            description = "Notification body text. Must be a non-blank string."
-            required = true
-        }
-        config.string("uri") {
-            description =
-                "Optional Android uri to open when the notification is tapped. Only provide this when you already know it is valid and usable; never invent or guess a uri."
-            required = false
-        }
-        config.rawJsonSchema(NOTIFY_SCHEMA)
-    }
+    override val inputSchemaJson: String? get() = NOTIFY_SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         val args = try {

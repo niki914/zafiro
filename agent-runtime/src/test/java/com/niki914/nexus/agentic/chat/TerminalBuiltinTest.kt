@@ -13,7 +13,6 @@ import com.niki914.nexus.agentic.chat.agentic.shell.TerminalRuntimePort
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPort
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
-import com.niki914.kai.LocalToolConfig
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
@@ -419,12 +418,10 @@ class TerminalBuiltinTest {
     // ── Schema ───────────────────────────────────────────────────────────────
 
     @Test
-    fun configure_schemaContainsHermesAlignedFields() {
-        val config = LocalToolConfig()
-
-        TerminalBuiltin().configure(config)
-
-        val schema = Json.parseToJsonElement(config.rawInputSchemaJson!!).jsonObject
+    fun schema_containsHermesAlignedFields() {
+        val schema = Json.parseToJsonElement(
+            TerminalBuiltin().inputSchemaJson!!
+        ).jsonObject
         val properties = schema["properties"]!!.jsonObject
 
         // Hermes-aligned fields
@@ -469,10 +466,10 @@ class TerminalBuiltinTest {
     }
 
     @Test
-    fun configure_schemaDoesNotRequireCommand() {
-        val config = LocalToolConfig()
-        TerminalBuiltin().configure(config)
-        val schema = Json.parseToJsonElement(config.rawInputSchemaJson!!).jsonObject
+    fun schema_doesNotRequireCommand() {
+        val schema = Json.parseToJsonElement(
+            TerminalBuiltin().inputSchemaJson!!
+        ).jsonObject
 
         // Schema has no required fields (command or action is checked at runtime)
         val required = schema["required"]

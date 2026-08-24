@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.nexus.agentic.app.conversation.ConversationFormatter
 import com.niki914.nexus.agentic.app.conversation.ConversationRecord
 import com.niki914.nexus.agentic.app.conversation.ConversationRepo
+import com.niki914.nexus.agentic.app.conversation.ForkKind
 import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.LLMController
 import com.niki914.nexus.agentic.chat.LlmErrorCode
@@ -11,7 +12,9 @@ import com.niki914.nexus.agentic.chat.LlmStreamEvent
 import com.niki914.nexus.agentic.repo.XRepo
 import com.niki914.nexus.base.ComposeMVIViewModel
 import com.niki914.nexus.xposed.api.util.ContextProvider
-import com.niki914.kai.ChatTurn
+import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
@@ -22,12 +25,11 @@ import kotlinx.coroutines.runBlocking
 internal interface HomeConversationStore {
     suspend fun lastOpenedConversationId(): String
     suspend fun setLastOpenedConversationId(value: String)
-    suspend fun createConversation(firstUserInput: String): String
+    suspend fun createConversation(id: String, firstUserInput: String)
     suspend fun getConversation(id: String): ConversationRecord?
-    suspend fun saveHistory(conversationId: String, history: List<ChatTurn>)
     suspend fun updateDraft(conversationId: String, draftText: String)
     suspend fun deleteConversation(id: String)
-    suspend fun forkConversation(sourceId: String, keepTurnCount: Int): String
+    suspend fun forkConversation(sourceId: String, keepEntryCount: Int, kind: ForkKind): String
 }
 
 private object DefaultHomeConversationStore : HomeConversationStore {
@@ -35,18 +37,14 @@ private object DefaultHomeConversationStore : HomeConversationStore {
     override suspend fun setLastOpenedConversationId(value: String) =
         XRepo.setLastOpenedConversationId(value)
 
-    override suspend fun createConversation(firstUserInput: String): String {
-        return ConversationRepo.createConversation(firstUserInput)
+    override suspend fun createConversation(id: String, firstUserInput: String) {
+        ConversationRepo.createConversation(id = id, firstUserInput = firstUserInput)
     }
 
     override suspend fun getConversation(
         id: String,
     ): ConversationRecord? {
         return ConversationRepo.getConversation(id)
-    }
-
-    override suspend fun saveHistory(conversationId: String, history: List<ChatTurn>) {
-        ConversationRepo.saveHistory(conversationId = conversationId, history = history)
     }
 
     override suspend fun updateDraft(conversationId: String, draftText: String) {
@@ -57,8 +55,16 @@ private object DefaultHomeConversationStore : HomeConversationStore {
         ConversationRepo.deleteConversation(id)
     }
 
-    override suspend fun forkConversation(sourceId: String, keepTurnCount: Int): String {
-        return ConversationRepo.forkConversation(sourceId, keepTurnCount)
+    override suspend fun forkConversation(
+        sourceId: String,
+        keepEntryCount: Int,
+        kind: ForkKind,
+    ): String {
+        return ConversationRepo.forkConversation(
+            sourceId = sourceId,
+            keepEntryCount = keepEntryCount,
+            kind = kind,
+        )
     }
 }
 
@@ -122,9 +128,10 @@ sealed interface HomeChatIntent {
 internal interface HomeChatRuntime {
     fun stream(query: String): Flow<LlmStreamEvent>
     suspend fun resetConversation()
-    suspend fun stopCurrentRound(keepCurrentTurn: Boolean = false)
-    suspend fun getHistory(): List<ChatTurn>
-    suspend fun replaceHistory(history: List<ChatTurn>)
+    suspend fun stopCurrentRound()
+    suspend fun ensureSession(): String
+    suspend fun openSession(restore: SessionSnapshot)
+    suspend fun historySnapshot(): List<Message>
 }
 
 private object LlmHomeChatRuntime : HomeChatRuntime {
@@ -132,12 +139,14 @@ private object LlmHomeChatRuntime : HomeChatRuntime {
         LLMController.stream(query, runBlocking { ContextProvider.await() })
 
     override suspend fun resetConversation() = LLMController.resetConversation()
-    override suspend fun stopCurrentRound(keepCurrentTurn: Boolean) =
-        LLMController.stopCurrentRound(keepCurrentTurn)
+    override suspend fun stopCurrentRound() =
+        LLMController.stopCurrentRound()
 
-    override suspend fun getHistory(): List<ChatTurn> = LLMController.getHistory()
-    override suspend fun replaceHistory(history: List<ChatTurn>) =
-        LLMController.replaceHistory(history)
+    override suspend fun ensureSession(): String = LLMController.ensureSession()
+    override suspend fun openSession(restore: SessionSnapshot) =
+        LLMController.openSession(restore)
+
+    override suspend fun historySnapshot(): List<Message> = LLMController.historySnapshot()
 }
 
 class HomeChatViewModel internal constructor(
@@ -241,7 +250,11 @@ class HomeChatViewModel internal constructor(
         updateState {
             copy(
                 input = "",
-                turns = turns + HomeChatTurn(id = turnId, userText = query),
+                // 新回合开始：清除旧错误卡片（瞬态 UI 态，T3 TODO②——
+                // 错误只在当轮显示，下一轮发起即消失）
+                turns = turns.map { turn ->
+                    turn.copy(blocks = turn.blocks.filterNot { it is HomeChatBlock.Error })
+                } + HomeChatTurn(id = turnId, userText = query),
                 isGenerating = true,
                 lastEventName = null,
                 streamEventCount = 0,
@@ -280,15 +293,11 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun stopGenerating() {
         if (!currentState.isGenerating) return
-        runtime.stopCurrentRound(keepCurrentTurn = true)
+        runtime.stopCurrentRound()
         streamJob?.cancel()
         streamJob = null
         finalizeRunningTools()
-        try {
-            persistCurrentHistoryIfAny()
-        } finally {
-            updateState { copy(isGenerating = false) }
-        }
+        updateState { copy(isGenerating = false) }
     }
 
     private fun startNewConversation() {
@@ -303,6 +312,9 @@ class HomeChatViewModel internal constructor(
         viewModelScope.launch {
             val startedAtMs = System.currentTimeMillis()
             try {
+                // D3-9：先 stop（终止回合）再丢弃实例（kill 工具资源 + close），
+                // 避免 close 撞活跃回合（OKIA §8.7 #5）
+                runtime.stopCurrentRound()
                 runtime.resetConversation()
                 conversations.setLastOpenedConversationId("")
                 Logger.i(
@@ -366,12 +378,8 @@ class HomeChatViewModel internal constructor(
             is LlmStreamEvent.Completed -> {
                 Logger.i(
                     LOG_TAG,
-                    "apply completed turnId=$turnId fullTextLength=${event.fullText.length}"
+                    "apply completed turnId=$turnId",
                 )
-                updateTurn(turnId) {
-                    it.appendFinalText(event.fullText)
-                }
-                persistCurrentHistoryIfAny()
                 updateState { copy(isGenerating = false) }
             }
         }
@@ -394,9 +402,9 @@ class HomeChatViewModel internal constructor(
                     Logger.w(LOG_TAG, "restore notFound id=$conversationId")
                     return@launch
                 }
-                runtime.replaceHistory(record.history)
+                runtime.openSession(record.snapshot)
                 currentConversationId = conversationId
-                val restoredTurns = ConversationFormatter.toHomeTurns(record.history)
+                val restoredTurns = ConversationFormatter.toHomeTurns(record.snapshot)
                 val restoredTitle = record.summary.title.takeIf {
                     restoredTurns.isNotEmpty() && it.isNotBlank()
                 }
@@ -428,23 +436,6 @@ class HomeChatViewModel internal constructor(
                 updateState { copy(isLoadingConversation = false) }
             }
         }
-    }
-
-    private suspend fun persistCompletedHistory(
-        conversationId: String,
-        history: List<ChatTurn>,
-    ) {
-        conversations.saveHistory(conversationId = conversationId, history = history)
-        if (currentConversationId == conversationId) {
-            conversations.setLastOpenedConversationId(conversationId)
-        }
-    }
-
-    private suspend fun persistCurrentHistoryIfAny() {
-        val conversationId = currentConversationId ?: return
-        val history = runtime.getHistory()
-        if (history.isEmpty()) return
-        persistCompletedHistory(conversationId, history)
     }
 
     private fun finalizeRunningTools() {
@@ -480,6 +471,9 @@ class HomeChatViewModel internal constructor(
         streamJob = null
         draftSaveJob?.cancel()
         draftSaveJob = null
+        // D3-9：先 stop（终止回合 + kill 工具资源）再关实例换树，
+        // 避免 close 撞活跃回合（OKIA §8.7 #5）
+        runtime.stopCurrentRound()
         updateState { copy(isLoadingConversation = true) }
         try {
             val record = conversations.getConversation(id)
@@ -491,10 +485,10 @@ class HomeChatViewModel internal constructor(
                 )
                 return
             }
-            runtime.replaceHistory(record.history)
+            runtime.openSession(record.snapshot)
             currentConversationId = id
             conversations.setLastOpenedConversationId(id)
-            val restoredTurns = ConversationFormatter.toHomeTurns(record.history)
+            val restoredTurns = ConversationFormatter.toHomeTurns(record.snapshot)
             val restoredTitle = record.summary.title.takeIf {
                 restoredTurns.isNotEmpty() && it.isNotBlank()
             }
@@ -525,10 +519,10 @@ class HomeChatViewModel internal constructor(
         }
     }
 
-    private fun findUserTurnIndex(history: List<ChatTurn>, targetTurnId: Long): Int {
+    private fun findUserTurnIndex(history: List<Message>, targetTurnId: Long): Int {
         var userCount = 0L
         for ((index, turn) in history.withIndex()) {
-            if (turn is ChatTurn.User) {
+            if (turn is Message.User) {
                 if (userCount == targetTurnId) return index
                 userCount++
             }
@@ -536,24 +530,28 @@ class HomeChatViewModel internal constructor(
         return -1
     }
 
-    private fun findNextUserIndex(history: List<ChatTurn>, startIndex: Int): Int? {
+    private fun findNextUserIndex(history: List<Message>, startIndex: Int): Int? {
         for (index in startIndex until history.size) {
-            if (history[index] is ChatTurn.User) return index
+            if (history[index] is Message.User) return index
         }
         return null
     }
+
+    private fun Message.User.text(): String =
+        content.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
 
     private suspend fun reGenerateAt(turnId: Long) {
         if (currentState.isGenerating) return
         val currentId = currentConversationId ?: return
         streamJob?.cancel()
         streamJob = null
-        val history = runtime.getHistory()
+        val history = runtime.historySnapshot()
         val userIndex = findUserTurnIndex(history, turnId)
         if (userIndex < 0) return
-        val userTurn = history[userIndex] as? ChatTurn.User ?: return
-        val userText = userTurn.content
-        val newConvId = conversations.forkConversation(currentId, userIndex)
+        val userTurn = history[userIndex] as? Message.User ?: return
+        val userText = userTurn.text()
+        // D3-10/D3-11：regen = fork（复制截断子树，新会话互不影响）+ 自动 resend
+        val newConvId = conversations.forkConversation(currentId, userIndex, ForkKind.Regenerate)
         Logger.i(
             LOG_TAG,
             "regenerate fork sourceId=$currentId turnId=$turnId newId=$newConvId"
@@ -590,12 +588,12 @@ class HomeChatViewModel internal constructor(
     private suspend fun forkAt(turnId: Long) {
         if (currentState.isGenerating) return
         val currentId = currentConversationId ?: return
-        val history = runtime.getHistory()
+        val history = runtime.historySnapshot()
         val userIndex = findUserTurnIndex(history, turnId)
         if (userIndex < 0) return
         val nextUserIndex = findNextUserIndex(history, userIndex + 1)
         val endIndex = if (nextUserIndex != null) nextUserIndex - 1 else history.lastIndex
-        val newConvId = conversations.forkConversation(currentId, endIndex + 1)
+        val newConvId = conversations.forkConversation(currentId, endIndex + 1, ForkKind.Fork)
         Logger.i(
             LOG_TAG,
             "fork sourceId=$currentId turnId=$turnId endIndex=$endIndex newId=$newConvId"
@@ -618,6 +616,8 @@ class HomeChatViewModel internal constructor(
         draftSaveJob = null
         currentConversationId = null
         nextTurnId = 0L
+        // D3-9：先 stop 再丢弃实例（close 撞活跃回合防护）
+        runtime.stopCurrentRound()
         runtime.resetConversation()
         conversations.setLastOpenedConversationId("")
         updateState { HomeChatUiState() }
@@ -630,19 +630,22 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun ensureCurrentConversation(firstUserInput: String): String {
         currentConversationId?.let { return it }
-        return conversations.createConversation(firstUserInput).also { id ->
-            currentConversationId = id
-            conversations.setLastOpenedConversationId(id)
-            Logger.i(LOG_TAG, "conversation created id=$id")
-            updateState {
-                copy(
-                    currentConversationId = id,
-                    currentConversationTitle = ConversationFormatter
-                        .titleFromFirstInput(firstUserInput)
-                        .takeIf { turns.isNotEmpty() && it.isNotBlank() },
-                )
-            }
+        // T3：新会话实例由 LLMController 惰性创建（ensureSession），
+        // 树 id 即 Room 会话 id（对齐，open(restore) 恢复时从快照 id 取）
+        val sessionId = runtime.ensureSession()
+        conversations.createConversation(id = sessionId, firstUserInput = firstUserInput)
+        currentConversationId = sessionId
+        conversations.setLastOpenedConversationId(sessionId)
+        Logger.i(LOG_TAG, "conversation created id=$sessionId")
+        updateState {
+            copy(
+                currentConversationId = sessionId,
+                currentConversationTitle = ConversationFormatter
+                    .titleFromFirstInput(firstUserInput)
+                    .takeIf { turns.isNotEmpty() && it.isNotBlank() },
+            )
         }
+        return sessionId
     }
 
     private fun applyError(turnId: Long, message: String, code: LlmErrorCode?) {
@@ -672,13 +675,6 @@ class HomeChatViewModel internal constructor(
         } else {
             copy(blocks = blocks + HomeChatBlock.Text(delta))
         }
-    }
-
-    private fun HomeChatTurn.appendFinalText(fullText: String): HomeChatTurn {
-        val displayedText =
-            blocks.filterIsInstance<HomeChatBlock.Text>().joinToString(separator = "") { it.text }
-        val delta = fullText.removePrefix(displayedText)
-        return appendText(delta)
     }
 
     private fun HomeChatTurn.appendError(message: String, code: LlmErrorCode?): HomeChatTurn {

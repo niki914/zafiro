@@ -6,6 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.SocketPolicy
@@ -275,5 +276,30 @@ class OkHttpEngineTest {
         assertNull(response.statusCode)
         assertNull(response.body)
         assertTrue(response.headers.isEmpty())
+    }
+
+    @Test
+    fun `injected OkHttpClient is used for requests`() = runBlocking {
+        // D-T2B-4：OkHttpEngine 接受自定义 OkHttpClient（proxy/interceptor 注入点）。
+        // 注入的 client 通过 header 透传证明其生效（自定义 interceptor 加头）。
+        server.enqueue(MockResponse().setBody("ok"))
+        val injected = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                chain.proceed(
+                    chain.request().newBuilder()
+                        .header("X-Injected", "yes")
+                        .build()
+                )
+            }
+            .build()
+        val customEngine = OkHttpEngine(injected)
+
+        val response = customEngine.unary(
+            HttpRequest(server.url("/injected").toString(), "GET", emptyMap(), null, defaultTimeouts)
+        )
+
+        assertEquals(200, response.statusCode)
+        val recorded = server.takeRequest()
+        assertEquals("yes", recorded.getHeader("X-Injected"))
     }
 }

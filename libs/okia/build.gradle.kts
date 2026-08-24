@@ -31,9 +31,9 @@ dependencies {
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
-    // 默认 HttpEngine（OkHttpEngine，internal）：实现不泄漏到公开签名，用 implementation。
-    // KMP 迁移时本依赖进 jvm/android target（OkHttp5 或 Ktor 替代，HttpEngine 契约不动）。
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // 默认 HttpEngine（OkHttpEngine，public）：构造签名暴露 OkHttpClient（D-T2B-4），
+    // 消费者需自建 client 注入（如 proxy interceptor），故 api。
+    api("com.squareup.okhttp3:okhttp:4.12.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")

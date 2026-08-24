@@ -22,7 +22,6 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as 
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRuleValidation as TakeoverRuleValidation
 
@@ -773,79 +772,6 @@ class McpApi internal constructor(
                 },
             )
         }
-    }
-
-    suspend fun cachedTools(server: McpServer): List<McpTool> {
-        val storeId = cacheStoreId(server) ?: return emptyList()
-        return McpSettingsCodec.parseCache(repo.readJson(storeId))
-    }
-
-    suspend fun saveDiscoveredTools(
-        url: String,
-        headers: Map<String, String>,
-        tools: List<McpTool>,
-    ) {
-        val server = list().firstOrNull { it.url == url && it.headers == headers } ?: return
-        val serverId = McpSettingsCodec.normalizeServerId(server.name) ?: return
-        val storeId = StoreDescriptorRegistry.mcpCacheStoreId(serverId) ?: return
-        repo.writeJson(
-            storeId,
-            McpSettingsCodec.encodeCache(
-                serverId = serverId,
-                fingerprint = serverFingerprint(server),
-                tools = tools,
-                updatedAt = System.currentTimeMillis(),
-            ),
-        )
-    }
-
-    suspend fun clearCache(server: McpServer) {
-        val serverId = McpSettingsCodec.normalizeServerId(server.name) ?: return
-        val storeId = StoreDescriptorRegistry.mcpCacheStoreId(serverId) ?: return
-        repo.writeJson(
-            storeId,
-            McpSettingsCodec.encodeCache(
-                serverId,
-                serverFingerprint(server),
-                emptyList(),
-                System.currentTimeMillis()
-            ),
-        )
-    }
-
-    suspend fun clearCacheByServerNames(names: Set<String>) {
-        list()
-            .filter { it.name in names }
-            .forEach { server ->
-                clearCache(server)
-            }
-    }
-
-    suspend fun fingerprint(): String {
-        return list()
-            .sortedBy { it.name }
-            .joinToString(separator = "\n") { server ->
-                val headers = server.headers
-                    .mapKeys { (key, _) -> key.lowercase() }
-                    .toSortedMap()
-                    .entries
-                    .joinToString(separator = "&") { (key, value) -> "$key=$value" }
-                "${server.name}|${server.url}|${server.enabled}|$headers"
-            }
-    }
-
-    private fun cacheStoreId(server: McpServer): String? {
-        val serverId = McpSettingsCodec.normalizeServerId(server.name) ?: return null
-        return StoreDescriptorRegistry.mcpCacheStoreId(serverId)
-    }
-
-    private fun serverFingerprint(server: McpServer): String {
-        val headers = server.headers
-            .mapKeys { (key, _) -> key.lowercase() }
-            .toSortedMap()
-            .entries
-            .joinToString(separator = "&") { (key, value) -> "$key=$value" }
-        return "${server.name}|${server.url}|${server.enabled}|$headers"
     }
 }
 

@@ -14,11 +14,9 @@ object StoreDescriptorRegistry {
     const val RULES_TAKEOVER_ID = "rules.takeover"
     const val APP_STATE_ID = "app.state"
     const val AGENT_CONFIG_PREFIX = "agent.config."
-    const val MCP_CACHE_PREFIX = "tools.mcp.cache."
     const val MAIN_AGENT_ID = "main"
 
     private val safeAgentIdPattern = Regex("[a-z][a-z0-9_-]{1,31}")
-    private val safeServerIdPattern = Regex("[a-zA-Z0-9_-]{1,64}")
 
     private val staticDescriptors = listOf(
         StoreDescriptor(WEB_SETTINGS_ID, "settings/hooks.json"),
@@ -64,12 +62,6 @@ object StoreDescriptorRegistry {
         return resolveDynamic(storeId) ?: throw IllegalArgumentException("Unknown storeId=$storeId")
     }
 
-    fun mcpCacheStoreId(serverId: String): String? {
-        return serverId
-            .takeIf { safeServerIdPattern.matches(it) }
-            ?.let { MCP_CACHE_PREFIX + it }
-    }
-
     fun agentConfigStoreId(agentId: String): String? {
         return agentId.trim().lowercase()
             .takeIf { safeAgentIdPattern.matches(it) }
@@ -87,13 +79,7 @@ object StoreDescriptorRegistry {
             )
         }
 
-        val serverId = storeId.removePrefix(MCP_CACHE_PREFIX)
-        if (serverId == storeId || !safeServerIdPattern.matches(serverId)) return null
-        return StoreDescriptor(
-            id = storeId,
-            relativePath = "settings/tools/mcp/cache/$serverId.json",
-            defaultJson = """{"server_id":"$serverId","fingerprint":"","updated_at":0,"tools":[]}"""
-        )
+        return null
     }
 
     fun allStatic(): List<StoreDescriptor> {

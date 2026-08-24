@@ -15,7 +15,6 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as 
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeTakeoverTarget as TakeoverTarget
 
@@ -151,23 +150,6 @@ class SettingsDomainCodecsTest {
             ),
             servers,
         )
-    }
-
-    @Test
-    fun mcpCacheToolMissingInputSchemaIsSkipped() {
-        val tools = McpSettingsCodec.parseCache(
-            """
-            {
-              "server_id": "filesystem",
-              "tools": [
-                {"name":"read_file","description":"Read","input_schema":{"type":"object"}},
-                {"name":"broken","description":"Broken"}
-              ]
-            }
-            """.trimIndent()
-        )
-
-        assertEquals(listOf(McpTool("read_file", "Read", """{"type":"object"}""")), tools)
     }
 
     @Test

@@ -12,7 +12,6 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLoadedSkill
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
 
 internal fun installRuntimeSettingsGatewayForTest(
@@ -55,7 +54,6 @@ internal class FakeRuntimeSettingsGateway(
         private set
     var failListEnabledSkills: Throwable? = null
     var failLoadSkill: Throwable? = null
-    val discoveredToolWrites: MutableList<RuntimeMcpCacheWrite> = mutableListOf()
 
     override suspend fun readLlmConfig(agentId: String): RuntimeLlmConfig = llmConfig
 
@@ -72,26 +70,6 @@ internal class FakeRuntimeSettingsGateway(
     }
 
     override suspend fun listMcpServers(): List<RuntimeMcpServer> = mcpServers
-
-    override suspend fun listCachedTools(server: RuntimeMcpServer): List<RuntimeMcpTool> {
-        return discoveredToolWrites
-            .lastOrNull { write -> write.url == server.url && write.headers == server.headers }
-            ?.tools
-            .orEmpty()
-    }
-
-    override suspend fun saveDiscoveredTools(
-        url: String,
-        headers: Map<String, String>,
-        tools: List<RuntimeMcpTool>,
-    ) {
-        recordWrite()
-        discoveredToolWrites.add(RuntimeMcpCacheWrite(url, headers, tools))
-    }
-
-    override suspend fun clearMcpCacheByServerNames(names: Set<String>) = Unit
-
-    override suspend fun fingerprintMcpServers(): String = ""
 
     override suspend fun addMemory(value: String) {
         val normalized = value.trim()
@@ -205,12 +183,6 @@ internal class FakeRuntimeSettingsGateway(
         writeCount++
     }
 }
-
-internal data class RuntimeMcpCacheWrite(
-    val url: String,
-    val headers: Map<String, String>,
-    val tools: List<RuntimeMcpTool>,
-)
 
 private object FakeRuntimeHostGateway : RuntimeHostGateway {
     override suspend fun postNotification(title: String, content: String, uri: String?): Boolean =

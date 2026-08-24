@@ -317,23 +317,58 @@ class RealAgentLoopToolLoopTest {
     // ── 失败路径与边界防御 ─────────────────────────────────────────────────
 
     @Test
-    fun unknownToolFailsTurn() = runTest {
+    fun unknownToolFeedsBackFailureAndContinues() = runTest {
         val executor = RecordingToolExecutor()
         val registry = DefaultToolRegistry().apply { register(localTool("known"), executor) }
         val emitted = mutableListOf<TurnEvent>()
+        val commits = mutableListOf<List<Message>>()
+        // 第一轮：模型调用未注册的 missing（命名错误）→ Failure 结果回喂；
+        // 第二轮：模型未再发起调用（对照派：收到失败后正常收尾）→ Stop 结束。
         val mapper = FakeProtocolMapper(
             listOf(
-                ProtocolEvent.ToolCallReady("call1", "missing", "{}"),
-                ProtocolEvent.Completed(stopReason = StopReason.ToolUse)
+                listOf(
+                    ProtocolEvent.ToolCallReady("call1", "missing", "{}"),
+                    ProtocolEvent.Completed(stopReason = StopReason.ToolUse)
+                ),
+                listOf(
+                    ProtocolEvent.Completed(stopReason = StopReason.Stop)
+                )
             )
         )
 
-        val result = runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper), emitted)
+        val result = runLoop(
+            loopRequest(emptyList(), toolRegistry = registry) { commits += it }.copy(protocolMapper = mapper),
+            emitted
+        )
 
-        val failed = result as TurnResult.Failed
-        assertEquals(LLMErrorCode.UnknownTool, failed.error.code)
+        // 未知工具 = 工具级失败回喂：回合正常完成、未执行任何真实工具、无回合失败事件
+        assertTrue(result is TurnResult.Completed)
         assertTrue(executor.calls.isEmpty())
-        assertTrue(emitted.any { it is TurnEvent.TurnFailed })
+        assertTrue(emitted.none { it is TurnEvent.TurnFailed })
+
+        // ToolFailed 事件携带纯文本错误（默认文案；message 与 content 同值，
+        // message 供 UI / content 回喂模型）
+        val failedEvent = emitted.filterIsInstance<TurnEvent.ToolFailed>().single()
+        val outcome = failedEvent.outcome as ToolCallOutcome.Failure
+        assertEquals("Unknown tool 'missing'", outcome.message)
+        assertEquals("Unknown tool 'missing'", outcome.content)
+
+        // 提交顺序（消息级, onCommit）：第一批 = 第一轮 Assistant（含 ToolCall）→
+        // 第二批 = ToolResult 回喂（callId 与调用一致，模型据此自纠）→
+        // 第三批 = 第二轮 Assistant（空内容，Stop 收尾）
+        assertEquals(3, commits.size)
+        val assistant1 = commits[0].single() as Message.Assistant
+        assertEquals(
+            listOf("missing"),
+            assistant1.message.content.filterIsInstance<ContentBlock.ToolCall>().map { it.name }
+        )
+        val toolResult = toolResultOf(commits[1].single())
+        assertEquals("call1", toolResult.callId)
+        assertEquals("missing", toolResult.toolName)
+
+        // 第二轮请求历史以该 ToolResult 结尾（回喂生效）
+        val secondRoundHistory = mapper.builtHistories[1]
+        assertEquals("missing", (secondRoundHistory.last() as Message.ToolResult).toolName)
     }
 
     @Test

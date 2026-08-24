@@ -37,7 +37,7 @@ chaquopy {
 dependencies {
     implementation(project(":xposed-api"))
     implementation(project(":libs:logging"))
-    implementation(project(":libs:kai"))
+    implementation(project(":libs:okia"))
     implementation(project(":libs:libterm-runtime"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")

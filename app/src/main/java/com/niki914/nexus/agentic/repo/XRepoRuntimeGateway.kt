@@ -9,7 +9,6 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLoadedSkill
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
 
 class XRepoRuntimeGateway(
@@ -30,24 +29,6 @@ class XRepoRuntimeGateway(
     override suspend fun loadSkill(id: String): RuntimeLoadedSkill? {
         return repo.skills.getDetail(id)
     }
-
-    override suspend fun listCachedTools(server: RuntimeMcpServer): List<RuntimeMcpTool> {
-        return repo.mcp.cachedTools(server)
-    }
-
-    override suspend fun saveDiscoveredTools(
-        url: String,
-        headers: Map<String, String>,
-        tools: List<RuntimeMcpTool>,
-    ) {
-        repo.mcp.saveDiscoveredTools(url, headers, tools)
-    }
-
-    override suspend fun clearMcpCacheByServerNames(names: Set<String>) {
-        repo.mcp.clearCacheByServerNames(names)
-    }
-
-    override suspend fun fingerprintMcpServers(): String = repo.mcp.fingerprint()
 
     override suspend fun addMemory(value: String) {
         repo.memory.add(value)

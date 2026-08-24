@@ -30,7 +30,7 @@ class ToolEventFormatterTest {
         assertTrue(replace?.replacePreviousStatus ?: false)
         assertNull(
             ToolEventFormatter.format(
-                LlmStreamEvent.Completed("done"),
+                LlmStreamEvent.Completed,
                 ToolRenderMode.AppendOnly
             )
         )

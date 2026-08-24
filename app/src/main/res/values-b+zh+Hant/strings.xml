@@ -58,10 +58,11 @@
     <string name="ui_home_action_regenerate_content_description">重新生成</string>
     <string name="ui_home_action_fork_content_description">分叉對話</string>
     <string name="ui_toast_copied">已複製</string>
-    <string name="ui_home_error_generic_title">目前無法繼續</string>
     <string name="ui_home_error_retry_body">請稍後再試。</string>
-    <string name="ui_home_error_config_required_title">設定尚未完成</string>
-    <string name="ui_home_error_config_required_body">請先填寫模型地址和模型名稱。</string>
+    <string name="ui_home_error_config_required_title">模型配置不完整</string>
+    <string name="ui_home_error_config_required_body">請前往填寫模型配置。</string>
+    <string name="ui_home_error_network_title">網路異常</string>
+    <string name="ui_home_error_internal_title">內部錯誤</string>
     <string name="ui_home_history_content_description">對話歷史</string>
     <string name="ui_conversation_history_back_content_description">返回</string>
     <string name="ui_conversation_history_loading">正在讀取對話歷史...</string>
@@ -291,4 +292,6 @@
     <string name="update_dialog_text">v%1$s 已發佈，建議升級</string>
     <string name="update_dialog_confirm">前往更新</string>
     <string name="update_dialog_cancel">稍後</string>
+    <string name="conversation_fork_title">Fork · %1$s</string>
+    <string name="conversation_regenerate_title">Regenerate · %1$s</string>
 </resources>

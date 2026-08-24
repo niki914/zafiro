@@ -19,7 +19,6 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule as 
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 
 class XRepoTest {
     @get:Rule
@@ -325,39 +324,6 @@ class XRepoTest {
                 McpServer("weather", "http://weather.example/mcp"),
             ),
             XRepo.mcp.list(),
-        )
-    }
-
-    @Test
-    fun mcpClearCache_removesOnlyTargetCacheKey() = runTest {
-        val first = McpServer("aslocate", "http://127.0.0.1:51338/mcp")
-        val second = McpServer("weather", "http://127.0.0.1:51339/mcp")
-        installStore(
-            FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID to McpSettingsCodec.encodeServers(
-                    listOf(first, second)
-                ),
-                StoreDescriptorRegistry.mcpCacheStoreId("aslocate")!! to McpSettingsCodec.encodeCache(
-                    serverId = "aslocate",
-                    fingerprint = "",
-                    tools = listOf(McpTool("lookupSymbol", "Lookup", """{"type":"object"}""")),
-                    updatedAt = 1L,
-                ),
-                StoreDescriptorRegistry.mcpCacheStoreId("weather")!! to McpSettingsCodec.encodeCache(
-                    serverId = "weather",
-                    fingerprint = "",
-                    tools = listOf(McpTool("getWeather", "Weather", """{"type":"object"}""")),
-                    updatedAt = 1L,
-                ),
-            )
-        )
-
-        XRepo.mcp.clearCache(first)
-
-        assertEquals(emptyList<McpTool>(), XRepo.mcp.cachedTools(first))
-        assertEquals(
-            listOf(McpTool("getWeather", "Weather", """{"type":"object"}""")),
-            XRepo.mcp.cachedTools(second)
         )
     }
 

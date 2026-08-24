@@ -4,50 +4,145 @@ import android.content.Context
 import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.agentic.PromptComposer
 import com.niki914.nexus.agentic.chat.agentic.PromptComposerInput
-import com.niki914.nexus.agentic.chat.agentic.SessionToolBinder
-import com.niki914.nexus.agentic.chat.agentic.ToolCallDispatcher
+import com.niki914.nexus.agentic.chat.agentic.LocalToolExecutor
 import com.niki914.nexus.agentic.chat.agentic.ToolManager
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
-import com.niki914.nexus.agentic.chat.agentic.mcp.McpDiscoveryCacheStore
-import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.agentic.chat.agentic.python.PyRuntime
+import com.niki914.nexus.agentic.chat.agentic.shell.TerminalSessionPool
 import com.niki914.nexus.agentic.chat.agentic.stream.LlmStreamEventMapper
 import com.niki914.nexus.agentic.runtime.R
 import com.niki914.nexus.agentic.runtime.settings.RuntimeEnvironment
 import com.niki914.nexus.agentic.runtime.settings.model.LlmApiType
 import com.niki914.nexus.xposed.api.util.LockState
-import com.niki914.kai.ChatTurn
-import com.niki914.kai.Kai
-import com.niki914.kai.KaiConfig
-import com.niki914.kai.KaiProviderProtocols
-import com.niki914.kai.ToolCallKind
+import com.niki914.okia.Okia
+import com.niki914.okia.TurnOptions
+import com.niki914.okia.conversation.Conversation
+import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.hooks.Hooks
+import com.niki914.okia.loop.TurnResult
+import com.niki914.okia.message.AssistantMessage
+import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
+import com.niki914.okia.mcp.McpRefreshResult
+import com.niki914.okia.mcp.McpServer
+import com.niki914.okia.mcp.McpTransport
+import com.niki914.okia.protocol.AnthropicMessagesProtocol
+import com.niki914.okia.protocol.OpenAIChatCompletionCompat
+import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
+import com.niki914.okia.tooling.DefaultToolRegistry
+import com.niki914.okia.tooling.ToolDescriptor
+import com.niki914.okia.tooling.ToolKind
+import com.niki914.okia.tooling.ToolRegistry
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig as LlmConfig
 
+/**
+ * Nexus 的 LLM 回合执行入口。OKIA 接入 T1 重写：
+ * - 运行时从 Kai 切到 Okia（一次对话一个实例：换会话/重建 = close + open(restore)）
+ * - 终态以 send 返回值（TurnResult）承载，事件流只承担中间过程
+ * - 工具注册/执行/MCP 发现留给 T2：T1/T2 期间未注册工具的调用已不死循环（T2c：
+ *   未知工具 = Failure 结果回喂，回合继续，模型可自纠）；kill-then-stop 已下沉到
+ *   Hooks.beforeStop（OKIA stop() 先杀资源再取消 job）
+ * - T3：持久化会话生命周期——getHistory/replaceHistory ChatTurn 桥接已删，
+ *   由 ensureSession()（新会话惰性建实例，树 id = Room id）+ openSession(restore)
+ *   （恢复/切会话）+ currentConversation（统一快照流，持久化器消息级增量落盘）替代
+ */
 object LLMController {
     private const val LOG_TAG = "niki914_nexus_LLMController"
-    private val turnMutex = Mutex()
+    internal const val CONFIG_REQUIRED_MESSAGE = "请先填写配置" // <--- TODO res
+    private const val LLM_IDLE_TIMEOUT_SECONDS = 30L
 
-    internal const val CONFIG_REQUIRED_MESSAGE = "请先填写配置"
     private val promptComposer =
         PromptComposer()
     private val toolManager =
         ToolManager()
-    private val mcpCacheStore =
-        McpDiscoveryCacheStore()
-    private val toolCallDispatcher =
-        ToolCallDispatcher { runtimeState?.snapshot?.tools }
+
+    // T2a：OKIA 工具注册表（host 持有、注入经 OkiaConfig.toolRegistry；
+    // 实例重建共享同一 registry）。本地工具在 refresh 时全量同步；
+    // MCP 工具由 T2b McpDiscovery 注册进同一 registry。
+    internal val toolRegistry: ToolRegistry = DefaultToolRegistry()
+
+    // 回合内创建的自定义工具（CreateCustomTool 成功回调，D20）：
+    // 持久化尚未被下一次 refresh 读取前的执行兜底 + 回合内注册数据源。
+    private val inlineCustomTools = mutableMapOf<String, LocalTool.Custom>()
+
+    private val localToolExecutor = LocalToolExecutor(
+        currentTools = { runtimeState?.snapshot?.tools },
+        inlineCustomTools = inlineCustomTools,
+        onCustomToolCreated = { tool -> registerCustomToolNow(tool) },
+    )
 
     private var runtimeState: RuntimeState? = null
-    private var kai: Kai? = null
+    private var okia: Okia? = null
     private var sessionApiType: LlmApiType? = null
-    private var lastMcpServersFingerprint: String? = null
+
+    // T3：当前会话快照统一流（持久化器观察它做消息级增量落盘，D3-8）。
+    // OKIA conversation StateFlow 是每实例的（切会话 = 换实例 = 换引用），
+    // 这里转发当前实例的流，实例切换时重发射，观察者对实例切换透明。
+    private val conversationForwardScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val conversationFlow = MutableStateFlow<Conversation?>(null)
+    private var sessionForwardJob: Job? = null
+
+    /** 当前会话树快照（null = 无会话实例）。实例切换自动重发射。 */
+    val currentConversation: StateFlow<Conversation?> get() = conversationFlow
+
+    // T2b MCP 发现（D-T2B-3 方案 B）：后台协程刷新，不阻塞 LLM 回合。
+    // - 启动 eager：首次 refresh（签名 null ≠ 配置）触发一次后台刷新
+    // - turn 前标脏：refresh() 比较服务器配置签名（name/url/headers/enabled
+    //   序列化），变化才起后台刷新；无变化不刷（零网络开销）
+    // - 签名三态分离（问题 4 修复）：desired（当前配置想要）/ 已成功 /
+    // T2b MCP 发现（D-T2B-3 方案 B）：后台协程刷新，不阻塞 LLM 回合。
+    // - 启动 eager：首次 refresh（签名 null ≠ 配置）触发一次后台刷新
+    // - turn 前标脏：refresh() 比较服务器配置签名（name/url/headers/enabled
+    //   序列化），变化才起后台刷新；无变化不刷（零网络开销）
+    // - 调度状态机 + 失败退避收敛在 McpRefreshScheduler（问题 4 修复：
+    //   失败/部分失败不记为成功，配置 in-flight 变化不吞）
+    // - 已知限制：OKIA refreshMcpTools 与 send 共用 RealOkia mutex，后台刷新
+    //   持锁期间发问会短排队——见 ISSUES_okia-integration.md OKIA-1（待提）
+    private val mcpRefreshScheduler =
+        McpRefreshScheduler(CoroutineScope(SupervisorJob() + Dispatchers.IO))
+
+    // 测试注入点：T1 单测经 Okia.open(dependencies) 装配 fake loop/mapper。 <--- TODO Workaround???
+    internal var okiaFactory: OkiaFactory = OkiaFactory { apiType, restore, config ->
+        openOkiaWithDefaultProtocol(apiType, restore, config)
+    }
+
+    internal fun resetForTest() {
+        kotlinx.coroutines.runBlocking { okia?.close() }
+        okia = null
+        sessionApiType = null
+        runtimeState = null
+        sessionForwardJob?.cancel()
+        sessionForwardJob = null
+        conversationFlow.value = null
+        toolRegistry.snapshot().forEach { toolRegistry.remove(it.descriptor.wireName) }
+        inlineCustomTools.clear()
+        mcpRefreshScheduler.reset()
+        okiaFactory = OkiaFactory { apiType, restore, config ->
+            openOkiaWithDefaultProtocol(apiType, restore, config)
+        }
+    }
+
+    internal fun interface OkiaFactory {
+        suspend fun create(
+            apiType: LlmApiType,
+            restore: SessionSnapshot?,
+            config: ResolvedLlmConfig,
+        ): Okia
+    }
 
     suspend fun refresh(): LlmRuntimeSnapshot {
         val previousSnapshot = runtimeState?.snapshot
@@ -61,17 +156,14 @@ object LLMController {
                 "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
         )
         val apiType = LlmApiType.fromProvider(llmConfig.provider)
-        val mcpServers = gateway.listMcpServers()
+        val runtimeMcpServers = gateway.listMcpServers()
         val customTools = gateway.listCustomTools()
         val builtinSettings = gateway.listBuiltinToolSettings()
         val enabledSkills = gateway.listEnabledSkills()
         val resolvedTools = toolManager.resolve(
             customTools = customTools,
-            mcpServers = mcpServers,
+            mcpServers = runtimeMcpServers,
             builtinSettings = builtinSettings,
-            mcpCachedTools = mcpServers.associate { server ->
-                server.name to gateway.listCachedTools(server)
-            },
         )
         Logger.i(
             LOG_TAG,
@@ -87,77 +179,46 @@ object LLMController {
             finalSystemPrompt = llmConfig.prompt,
             proxy = llmConfig.proxy,
         )
-        val isNewSession = kai == null || sessionApiType != apiType
-        val currentMcpServersFingerprint = gateway.fingerprintMcpServers()
-        val activeSession = obtainSession(apiType)
+        // 会话实例按协议重建；协议切换 = close + 新实例，但树经 restore 延续
+        // （P1 #3：export 当前树给新协议实例，会话 id + 历史跨 Provider 保留）
+        val activeSession = obtainSession(apiType, configWithoutRuntimePrompt)
         activeSession.update {
-            applyRuntimeConfig(
-                config = configWithoutRuntimePrompt,
-                tools = resolvedTools,
-                previousTools = previousSnapshot?.tools,
-            )
+            endpoint = configWithoutRuntimePrompt.endpoint
+            apiKey = configWithoutRuntimePrompt.apiKey
+            model = configWithoutRuntimePrompt.model
+            // T2b：MCP 服务器配置进 OKIA（McpDiscovery 发现后注册进同一 toolRegistry）
+            mcpServers = toOkiaMcpServers(resolvedTools.mcpServers)
         }
-        val shouldRefreshMcp = resolvedTools.mcpServers.isNotEmpty() &&
-                (isNewSession || currentMcpServersFingerprint != lastMcpServersFingerprint)
-        if (shouldRefreshMcp) {
-            val mcpRefreshStartedAtMs = System.currentTimeMillis()
-            var refreshSucceeded = false
-            var failedServerNames = emptyList<String>()
-            try {
-                val refreshResult = activeSession.refreshMcpTools()
-                failedServerNames = refreshResult.failedServers.map { it.serverName }
-                refreshSucceeded = failedServerNames.isEmpty()
-                Logger.i(
-                    LOG_TAG,
-                    "mcp refresh done elapsedMs=${System.currentTimeMillis() - mcpRefreshStartedAtMs} " +
-                        "refreshedServers=${refreshResult.refreshedServers.size} " +
-                        "failedServers=${failedServerNames.joinToString(", ") { "\"$it\"" }}"
-                )
-            } catch (throwable: Throwable) {
-                if (throwable is CancellationException) {
-                    throw throwable
-                }
-                Logger.e(
-                    LOG_TAG,
-                    "mcp refresh failed elapsedMs=${System.currentTimeMillis() - mcpRefreshStartedAtMs} " +
-                        "errorType=${throwable.eventTypeName()} message=${throwable.message}"
-                )
-            }
-            lastMcpServersFingerprint = if (refreshSucceeded) {
-                currentMcpServersFingerprint
-            } else {
-                null
-            }
-        } else {
-            lastMcpServersFingerprint = currentMcpServersFingerprint
-        }
-
-        val mcpSnapshot = activeSession.getMcpDiscoverySnapshot()
+        // T2a：本地工具注册（enabled 集合全量重建；inline 回合内工具由
+        // registerCustomToolNow 注册，随下次 refresh 由持久化版本接管）
+        syncLocalTools(resolvedTools)
+        // T2b：MCP 发现（方案 B，D-T2B-3）：签名变化才起后台刷新，不 await
+        // （不阻塞回合）；初始化时签名 null → 首次天然触发（启动 eager）
+        val mcpSignature = mcpServersSignature(resolvedTools.mcpServers)
+        mcpRefreshScheduler.schedule(activeSession, mcpSignature)
+        // 工具描述进入提示词（技能/记忆段依赖它）；MCP 工具段已删除
+        // （D-T2B-2：线缆名 mcp__server__tool 已表达服务器归属）
         val prompt = promptComposer.compose(
             PromptComposerInput(
                 additionalInstructions = llmConfig.prompt,
                 memoryItems = buildMemoryItems(llmConfig),
                 tools = resolvedTools,
-                mcpDiscoverySnapshot = mcpSnapshot,
                 enabledSkills = enabledSkills,
             )
         )
         val finalConfig =
             configWithoutRuntimePrompt.copy(finalSystemPrompt = prompt.finalSystemPrompt)
-        activeSession.update {
-            applyRuntimeConfig(
-                config = finalConfig,
-                tools = resolvedTools,
-                previousTools = previousSnapshot?.tools,
-            )
-        }
 
         return LlmRuntimeSnapshot(finalConfig, resolvedTools, prompt).also { snapshot ->
-            runtimeState = RuntimeState(snapshot = snapshot, kai = activeSession)
+            runtimeState = RuntimeState(
+                snapshot = snapshot,
+                okia = activeSession,
+                sessionApiType = apiType,
+            )
             Logger.i(
                 LOG_TAG,
                 "refresh done elapsedMs=${System.currentTimeMillis() - refreshStartedAtMs} " +
-                    "model=${snapshot.config.model} newSession=$isNewSession"
+                    "model=${snapshot.config.model}"
             )
         }
     }
@@ -166,36 +227,55 @@ object LLMController {
 
     suspend fun snapshot(): LlmRuntimeSnapshot? = runtimeState?.snapshot
 
-    suspend fun getHistory(): List<ChatTurn> {
-        val startedAtMs = System.currentTimeMillis()
-        return kai?.getHistory().orEmpty().also { history ->
-            Logger.d(
-                LOG_TAG,
-                "get history turnCount=${history.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-            )
+    /**
+     * 确保存在一个可用会话实例（无则建空实例）并返回其树 id（T3）。
+     * 树 id == Room 会话 id：HomeChatState 拿它创建 Room 会话，
+     * 之后 open(restore) 恢复时树 id 从快照 id 取（对齐）。
+     */
+    suspend fun ensureSession(): String {
+        if (okia == null) {
+            refresh()
         }
+        return okia?.conversation?.value?.id
+            ?: error("session not available")
     }
 
-    suspend fun replaceHistory(history: List<ChatTurn>) {
+    /**
+     * 恢复会话（T3，替代 replaceHistory）：关闭当前实例，以 Room 读出的
+     * 树快照重建实例（close + open(restore)）。调用方负责先 stop（D3-9）。
+     */
+    suspend fun openSession(restore: SessionSnapshot) {
         val startedAtMs = System.currentTimeMillis()
-        Logger.i(LOG_TAG, "replace history turnCount=${history.size} started")
-        refresh()
-        runtimeState?.kai?.replaceHistory(history)
         Logger.i(
             LOG_TAG,
-            "replace history done turnCount=${history.size} " +
+            "open session id=${restore.id} entries=${restore.entries.size} started"
+        )
+        if (runtimeState == null) {
+            refresh()
+        }
+        val current = runtimeState ?: return
+        val newSession = obtainSession(
+            apiType = current.sessionApiType,
+            config = current.snapshot.config,
+            restore = restore,
+            forceNew = true,
+        )
+        runtimeState = current.copy(okia = newSession)
+        Logger.i(
+            LOG_TAG,
+            "open session done id=${restore.id} " +
                 "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
     }
 
+    /**
+     * 当前会话树投影消息列表（fork/regen 的 User 定位用，T3）。
+     */
+    suspend fun historySnapshot(): List<Message> =
+        okia?.conversation?.value?.history?.map { it.message }.orEmpty()
+
     fun stream(query: String, context: Context): Flow<LlmStreamEvent> = channelFlow {
         val defaultErrorMessage = context.getString(R.string.error_llm_request_failed)
-        if (!turnMutex.tryLock()) {
-            Logger.w(LOG_TAG, "turn rejected lockBusy=true")
-            send(LlmStreamEvent.Error("A turn is already active", code = LlmErrorCode.TurnConflict))
-            return@channelFlow
-        }
         try {
             val state = try {
                 refresh()
@@ -229,54 +309,95 @@ object LLMController {
                     "mcp=${state.snapshot.tools.mcpServers.size}"
             )
 
-            val accumulator = StringBuilder()
             val startedAtMs = System.currentTimeMillis()
             var streamErrorReported = false
             var firstFrameLogged = false
             val sink: SendChannel<LlmStreamEvent> = this
             try {
                 Logger.i(LOG_TAG, "round started queryLength=${query.length} isUnlocked=${LockState.isUnlocked()}")
-                // Inject pending background-task completion notifications
-                // into this turn's effective user message.
+                // 异步任务完成通知注入（PRD okia §5.10）：host 侧拼进 send 文本，
+                // 不进 hook、不进会话树（通知进树即污染历史）
                 val notifications = TerminalSessionPool.drainPendingNotifications()
                 val effectiveQuery = if (notifications.isNotEmpty()) {
                     notifications.joinToString("\n\n") + "\n\n" + query
                 } else {
                     query
                 }
-                state.kai.send(effectiveQuery).collect { event ->
-                    val mapped = LlmStreamEventMapper.map(
-                        event,
-                        accumulator,
-                        startedAtMs,
-                        defaultErrorMessage
-                    )
-                    mapped?.let {
-                        if (!firstFrameLogged && it is LlmStreamEvent.TextDelta) {
-                            firstFrameLogged = true
-                            Logger.i(
-                                LOG_TAG,
-                                "first frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                    "charsPerSecond=${it.charsPerSecond}"
-                            )
+                // 终态以返回值承载（TurnResult）；onEvent 只承担流式中间过程。
+                val result = try {
+                    state.okia.send(
+                        text = effectiveQuery,
+                        options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt),
+                    ) { event ->
+                        val mapped = LlmStreamEventMapper.map(event, startedAtMs, defaultErrorMessage)
+                        mapped?.let {
+                            if (!firstFrameLogged && it is LlmStreamEvent.TextDelta) {
+                                firstFrameLogged = true
+                                Logger.i(
+                                    LOG_TAG,
+                                    "first frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                                        "charsPerSecond=${it.charsPerSecond}"
+                                )
+                            }
+                            if (it is LlmStreamEvent.Error && !streamErrorReported) {
+                                streamErrorReported = true
+                                Logger.e(
+                                    LOG_TAG,
+                                    "stream error stage=session_event code=${it.code} " +
+                                        "errorType=${it.throwable?.eventTypeName() ?: "OkiaEvent"} " +
+                                        "message=${it.message} " +
+                                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                                )
+                            }
+                            sink.send(it)
                         }
-                        if (it is LlmStreamEvent.Error && !streamErrorReported) {
-                            streamErrorReported = true
-                            Logger.e(
-                                LOG_TAG,
-                                "stream error stage=session_event code=${it.code} " +
-                                    "errorType=${it.throwable?.eventTypeName() ?: "KaiEvent"} " +
-                                    "message=${it.message} " +
-                                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-                            )
-                        }
-                        sink.send(it)
                     }
+                } catch (throwable: Throwable) {
+                    if (throwable is CancellationException) {
+                        throw throwable
+                    }
+                    // OKIA 失败走 TurnResult 不抛；此处捕获契约违例（并发 send /
+                    // closed 等），转错误事件保持 UI 行为（D9）
+                    if (!streamErrorReported) {
+                        Logger.e(
+                            LOG_TAG,
+                            "stream error stage=send code=${throwable.toUserErrorCode()} " +
+                                "errorType=${throwable.eventTypeName()} " +
+                                "message=${throwable.toUserErrorMessage(defaultErrorMessage)} " +
+                                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        )
+                        send(
+                            LlmStreamEvent.Error(
+                                message = throwable.toUserErrorMessage(defaultErrorMessage),
+                                throwable = throwable,
+                                code = throwable.toUserErrorCode(),
+                            )
+                        )
+                    }
+                    null
+                }
+                // 终态兜底：事件流中间过程未覆盖的失败（防御路径，正常事件已含
+                // TurnFailed 映射），按返回值补发一条错误事件
+                if (result is TurnResult.Failed && !streamErrorReported) {
+                    val error = result.error
+                    Logger.e(
+                        LOG_TAG,
+                        "stream failed by TurnResult code=${error.code} " +
+                            "message=${error.message} " +
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    )
+                    send(
+                        LlmStreamEvent.Error(
+                            message = error.message.trim().ifEmpty { defaultErrorMessage },
+                            throwable = error.cause,
+                            code = null,
+                        )
+                    )
                 }
                 if (!streamErrorReported) {
                     Logger.i(
                         LOG_TAG,
-                        "round completed textLength=${accumulator.length} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "round completed elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                     )
                 }
             } catch (throwable: Throwable) {
@@ -300,73 +421,189 @@ object LLMController {
             }
         } finally {
             AccessibilityController.onTurnEnd()
-            turnMutex.unlock()
         }
     }.flowOn(Dispatchers.IO)
 
     suspend fun resetConversation() {
         Logger.i(LOG_TAG, "reset conversation requested")
-        // 先杀 python worker / 关 terminal 会话：Binder 调用与 exec 立即结束，
-        // 工具协程快速死亡，新会话不继承上一个回合的工具状态
+        // 丢弃当前会话实例（T3）：kill 工具资源 + close，不建新实例。
+        // 新会话实例由 ensureSession() 在第一次 send 时惰性创建
+        // （树 id 与 Room 会话 id 对齐）；kill 动作确保新会话不继承
+        // 上一个回合的工具状态（Binder 调用与 exec 立即结束）。
         PyRuntime.kill()
         TerminalSessionPool.closeAll()
-        kai?.resetConversation()
+        okia?.close()
+        okia = null
+        sessionApiType = null
+        conversationFlow.value = null
         Logger.i(LOG_TAG, "reset conversation done")
     }
 
-    suspend fun stopCurrentRound(keepCurrentTurn: Boolean = false) {
-        Logger.i(LOG_TAG, "stop round requested keepCurrentTurn=$keepCurrentTurn")
-        // 终止键语义 = 杀掉仍在运行的工具，必须先杀后 stop：
-        // - PyRuntime.kill()：python 工具在独立进程，杀进程使 Binder 调用断开
-        // - TerminalSessionPool.closeAll()：terminal 工具没有独立进程，
-        //   协程取消传播不可靠（命令进程不随取消终止，exec 的 coroutineScope
-        //   会等子协程，且 executeForegroundLocal 取消时会话泄漏）。
-        //   关会话 → session.state 变 Closed → 正在执行的 exec 走
-        //   SessionTerminated 正常路径返回 → 工具协程立即结束。
-        // 不先杀，kai 的 stop 会 join 等待工具协程直到命令自然结束。
-        PyRuntime.kill()
-        TerminalSessionPool.closeAll()
-        kai?.stop(keepCurrentTurn = keepCurrentTurn)
-        Logger.i(LOG_TAG, "stop round done keepCurrentTurn=$keepCurrentTurn")
+    suspend fun stopCurrentRound() {
+        Logger.i(LOG_TAG, "stop round requested")
+        // OKIA stop() 内建 kill-then-stop：beforeStop hook（杀 py/tty）先于
+        // 取消 job 执行，阻塞工具不再吃得协程取消（§5.11）。
+        // OKIA 停止不动会话树，下一轮自然承接历史。
+        okia?.stop()
+        Logger.i(LOG_TAG, "stop round done")
     }
 
-    private suspend fun obtainSession(apiType: LlmApiType): Kai {
-        kai?.takeIf { sessionApiType == apiType }?.let { return it }
-        kai?.close()
-        lastMcpServersFingerprint = null
-        return openSession(apiType).also {
-            kai = it
+    // ── 会话管理（OKIA 实例生命周期） ──────────────────────────────────────────
+
+    private suspend fun obtainSession(
+        apiType: LlmApiType,
+        config: ResolvedLlmConfig,
+        restore: SessionSnapshot? = null,
+        forceNew: Boolean = false,
+    ): Okia {
+        if (!forceNew && restore == null) {
+            okia?.takeIf { sessionApiType == apiType }?.let { return it }
+        }
+        // 协议切换（P1 #3）：关旧实例前导出当前树，restore 给新协议实例，
+        // 会话 id + 历史跨 Provider 延续（okia §5.7：协议 id 不进会话数据）
+        val carried = restore ?: okia?.takeIf { sessionApiType != apiType }?.export()
+        okia?.close()
+        return openSession(apiType, config, carried).also {
+            okia = it
             sessionApiType = apiType
+            forwardConversation(it)
         }
     }
 
-    private suspend fun openSession(apiType: LlmApiType): Kai {
-        val configBlock: KaiConfig.Builder.() -> Unit = {
-            mcpHooks {
-                onToolsDiscovered = mcpCacheStore::onToolsDiscovered
-            }
-            hooks {
-                when (kind) {
-                    ToolCallKind.Local -> {
-                        ok(
-                            toolCallDispatcher.executeLocalTool(
-                                name = name,
-                                argumentsJson = argumentsJson,
-                            )
-                        )
-                    }
+    /** 转发当前实例的 conversation StateFlow 到统一流（实例切换重发射）。 */
+    private fun forwardConversation(session: Okia) {
+        sessionForwardJob?.cancel()
+        sessionForwardJob = conversationForwardScope.launch {
+            session.conversation.collect { conversationFlow.value = it }
+        }
+    }
 
-                    is ToolCallKind.Mcp -> delegate()
+    private suspend fun openSession(
+        apiType: LlmApiType,
+        config: ResolvedLlmConfig,
+        restore: SessionSnapshot?,
+    ): Okia = okiaFactory.create(apiType, restore, config)
+
+    private suspend fun openOkiaWithDefaultProtocol(
+        apiType: LlmApiType,
+        restore: SessionSnapshot?,
+        config: ResolvedLlmConfig,
+    ): Okia {
+        val protocol = when (apiType) {
+            LlmApiType.DeepSeek -> OpenAIChatCompletionProtocol()
+            LlmApiType.Anthropic -> AnthropicMessagesProtocol()
+            LlmApiType.OpenAI -> OpenAIChatCompletionProtocol(Json, OpenAIChatCompletionCompat())
+        }
+        return Okia.open(protocol, restore) {
+            endpoint = config.endpoint
+            apiKey = config.apiKey
+            model = config.model
+            hooks += killToolResourcesHook
+            idleTimeoutSeconds = LLM_IDLE_TIMEOUT_SECONDS
+            toolRegistry = this@LLMController.toolRegistry
+        }
+    }
+
+    // ── T2a 工具注册 ────────────────────────────────────────────────────────
+
+    /**
+     * 全量重建本地工具注册：registry 中所有 Local 工具先移除（含 inline 的，
+     * create_custom_tool 保存成功后本轮会以持久化版本重新注册），再注册当前
+     * resolved 的 enabled 工具。wireName 为 registry 键（默认
+     * ToolWireName.forLocal(name)），同名覆盖无需特判。
+     */
+    private fun syncLocalTools(tools: ResolvedTools) {
+        toolRegistry.snapshot()
+            .map { it.descriptor }
+            .filter { it.kind is ToolKind.Local }
+            .forEach { toolRegistry.remove(it.wireName) }
+        (tools.builtinTools + tools.customTools).forEach { tool ->
+            val inputSchemaJson =
+                (tool as? LocalTool.Builtin)?.tool?.inputSchemaJson
+            toolRegistry.register(
+                ToolDescriptor(
+                    name = tool.name,
+                    description = tool.description,
+                    inputSchemaJson = inputSchemaJson,
+                    kind = ToolKind.Local,
+                ),
+                localToolExecutor,
+            )
+        }
+        inlineCustomTools.clear()
+    }
+
+    /**
+     * CreateCustomTool 成功且 enabled 的回合内注册（D20）：立即注册进
+     * registry，当前回合下一轮模型请求即可见（RealAgentLoop 每段现取
+     * snapshot）。下次 refresh 以持久化版本重新注册（同名覆盖）。
+     */
+    private fun registerCustomToolNow(tool: LocalTool.Custom) {
+        toolRegistry.register(
+            ToolDescriptor(
+                name = tool.name,
+                description = tool.description,
+                inputSchemaJson = null,
+                kind = ToolKind.Local,
+            ),
+            localToolExecutor,
+        )
+        Logger.i(
+            LOG_TAG,
+            "custom tool registered in-turn name=${tool.name} enabled=${tool.enabled}"
+        )
+    }
+
+    // ── T2b MCP 发现时序（方案 B，D-T2B-3，对齐 Codex eager + 标脏刷新） ────
+
+    /** 服务器配置签名：对 McpServerDefinition.Http（name/url/headers/enabled）确定性序列化。 */
+    private fun mcpServersSignature(servers: List<McpServerDefinition>): String {
+        return servers
+            .sortedBy { it.name }
+            .joinToString(separator = "\n") { server ->
+                when (server) {
+                    is McpServerDefinition.Http -> {
+                        val headers = server.headers
+                            .mapKeys { (key, _) -> key.lowercase() }
+                            .toSortedMap()
+                            .entries
+                            .joinToString(separator = "&") { (key, value) -> "$key=$value" }
+                        "${server.name}|${server.url}|${server.enabled}|$headers"
+                    }
                 }
             }
-            llmIdleTimeoutSeconds = 50
-        }
-        return when (apiType) {
-            LlmApiType.Anthropic -> Kai.open<KaiProviderProtocols.Anthropic>(configBlock)
-            LlmApiType.DeepSeek -> Kai.open<KaiProviderProtocols.DeepSeek>(configBlock)
-            else -> Kai.open<KaiProviderProtocols.OpenAI>(configBlock)
+    }
+
+    /** McpServerDefinition.Http → OKIA McpServer（字段一一对应，T2b）。 */
+    private fun toOkiaMcpServers(servers: List<McpServerDefinition>): List<McpServer> {
+        return servers.mapNotNull { server ->
+            when (server) {
+                is McpServerDefinition.Http ->
+                    McpServer(
+                        name = server.name,
+                        transport = McpTransport.Http(server.url),
+                        headers = server.headers,
+                        enabled = server.enabled,
+                    )
+            }
         }
     }
+
+    // 全局工具资源 kill 钩子：OKIA 停止流程的 kill 步骤（beforeStop 每回合
+    // 至多一次，参数为本回合已派发的工具调用，共享资源池不会被误杀）
+    private val killToolResourcesHook = object : Hooks {
+        override suspend fun beforeStop(calls: List<ContentBlock.ToolCall>) {
+            Logger.i(LOG_TAG, "beforeStop killing tool resources dispatchedCalls=${calls.size}")
+            // 不先杀，OKIA 的 stop 会 join 等待工具协程直到命令自然结束：
+            // - PyRuntime.kill()：python 工具在独立进程，杀进程使 Binder 调用断开
+            // - TerminalSessionPool.closeAll()：terminal 工具没有独立进程，
+            //   协程取消传播不可靠，关会话使正在执行的 exec 走正常终止路径
+            PyRuntime.kill()
+            TerminalSessionPool.closeAll()
+        }
+    }
+
+    // ── 杂项 ──────────────────────────────────────────────────────────────────
 
     private fun buildMemoryItems(config: LlmConfig): List<String> {
         val memories = config.memories.map(String::trim).filter(String::isNotBlank)
@@ -392,26 +629,19 @@ object LLMController {
     private fun Throwable.toUserErrorCode(): LlmErrorCode? {
         return when (this) {
             is LlmConfigRequiredException -> LlmErrorCode.ConfigRequired
+            // OKIA 并发契约违例（活跃回合中 send）转 TurnConflict，保持 UI 行为
+            is IllegalStateException -> LlmErrorCode.TurnConflict
             else -> null
         }
     }
 
     private fun Throwable.eventTypeName(): String = this::class.simpleName ?: "Throwable"
 
-    private fun KaiConfig.Builder.applyRuntimeConfig(
-        config: ResolvedLlmConfig,
-        tools: ResolvedTools,
-        previousTools: ResolvedTools?,
-    ) {
-        endpoint = config.endpoint
-        apiKey = config.apiKey
-        model = config.model
-        systemPrompt = config.finalSystemPrompt
-
-        SessionToolBinder.run { bindTools(tools = tools, previousTools = previousTools) }
-    }
-
-    private data class RuntimeState(val snapshot: LlmRuntimeSnapshot, val kai: Kai)
+    private data class RuntimeState(
+        val snapshot: LlmRuntimeSnapshot,
+        val okia: Okia,
+        val sessionApiType: LlmApiType,
+    )
 
     private class LlmConfigRequiredException : IllegalStateException(CONFIG_REQUIRED_MESSAGE)
 }

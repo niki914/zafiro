@@ -7,7 +7,6 @@ import com.niki914.nexus.agentic.runtime.settings.model.RuntimeExecutionRule
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLlmConfig
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeLoadedSkill
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeSkillMetadata
 
 interface RuntimeSettingsGateway {
@@ -18,18 +17,6 @@ interface RuntimeSettingsGateway {
     suspend fun loadSkill(id: String): RuntimeLoadedSkill? = null
 
     suspend fun listMcpServers(): List<RuntimeMcpServer>
-
-    suspend fun listCachedTools(server: RuntimeMcpServer): List<RuntimeMcpTool>
-
-    suspend fun saveDiscoveredTools(
-        url: String,
-        headers: Map<String, String>,
-        tools: List<RuntimeMcpTool>,
-    )
-
-    suspend fun clearMcpCacheByServerNames(names: Set<String>)
-
-    suspend fun fingerprintMcpServers(): String
 
     suspend fun addMemory(value: String)
 

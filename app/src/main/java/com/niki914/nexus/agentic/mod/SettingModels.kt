@@ -109,9 +109,6 @@ class LocalSettings(props: JsonObject = JsonObject(emptyMap())) : XSettings(prop
 
     val mcpServers: JsonArray?
         get() = getArray("mcp_servers")
-
-    val mcpDiscoveredToolsCache: JsonObject?
-        get() = getObject("mcp_discovered_tools_cache")
 }
 
 internal fun parseJsonObject(jsonString: String?): JsonObject {

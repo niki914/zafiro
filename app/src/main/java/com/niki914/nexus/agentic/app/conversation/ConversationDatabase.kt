@@ -5,12 +5,16 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
+/**
+ * T3 推倒重来（D1）：version 2，不写迁移（fallbackToDestructiveMigration），
+ * 旧 conversation_turn 数据直接丢弃。
+ */
 @Database(
     entities = [
         ConversationEntity::class,
-        ConversationTurnEntity::class,
+        ConversationEntryEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class ConversationDatabase : RoomDatabase() {
@@ -22,5 +26,7 @@ fun buildConversationDatabase(context: Context): ConversationDatabase {
         context.applicationContext,
         ConversationDatabase::class.java,
         "conversation_history.db",
-    ).build()
+    )
+        .fallbackToDestructiveMigration()
+        .build()
 }

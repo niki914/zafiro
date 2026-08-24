@@ -24,9 +24,10 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * 默认 HttpEngine：OkHttp 4 实现。内部实现，经 OkiaConfig.httpEngine 注入或
- * 门面自建；KMP 迁移时本文件进入 jvm/android actual（OkHttp5 或 Ktor 替代，
- * HttpEngine 契约不动）。
+ * 默认 HttpEngine：OkHttp 4 实现。public（D-T2B-4）：构造接受自定义
+ * OkHttpClient，供 host 注入 proxy interceptor 等；默认 client 门面自建。
+ * 经 OkiaConfig.httpEngine 注入或门面自建；KMP 迁移时本文件进入 jvm/android
+ * actual（OkHttp5 或 Ktor 替代，HttpEngine 契约不动）。
  * stream：异步 enqueue 挂起到响应头；2xx → body 分块读字符流经 SseLineParser
  * 切行（SSE 行语义单一来源）；非 2xx 预读全文 → Error；网络错误 / 超时抛异常
  * （Kotlin 取消语义，§8.17）。lines 冷流，collect 取消时 call.cancel() 打断
@@ -37,7 +38,7 @@ import kotlin.coroutines.resumeWithException
  * OkHttp 4 无主动释放语义（连接池到期自保洁、线程 daemon）。
  * Design source: okia PRD §5.14（KMP actual 点）；okhttp3 API。
  */
-internal class OkHttpEngine(
+class OkHttpEngine(
     private val base: OkHttpClient = OkHttpClient()
 ) : HttpEngine {
 

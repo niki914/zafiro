@@ -59,10 +59,11 @@
     <string name="ui_home_action_regenerate_content_description">Regenerate</string>
     <string name="ui_home_action_fork_content_description">Fork conversation</string>
     <string name="ui_toast_copied">Copied</string>
-    <string name="ui_home_error_generic_title">Cannot continue right now</string>
     <string name="ui_home_error_retry_body">Please try again later.</string>
-    <string name="ui_home_error_config_required_title">Configuration is incomplete</string>
-    <string name="ui_home_error_config_required_body">Please fill in the model endpoint and model name first.</string>
+    <string name="ui_home_error_config_required_title">Model configuration is incomplete</string>
+    <string name="ui_home_error_config_required_body">Please go fill in the model configuration.</string>
+    <string name="ui_home_error_network_title">Network error</string>
+    <string name="ui_home_error_internal_title">Internal error</string>
     <string name="ui_home_history_content_description">Conversation history</string>
     <string name="ui_conversation_history_back_content_description">Back</string>
     <string name="ui_conversation_history_loading">Loading conversation history...</string>
@@ -338,4 +339,6 @@
     <!-- Feedback templates -->
     <string name="feedback_feature_template">## Feature Suggestion\n\n## Use Case\n\n## Expected Result</string>
     <string name="feedback_bug_template">## Issue Description\n\n## Steps to Reproduce\n\n## Expected Behavior\n\n## Actual Behavior\n\n## Device Info\n- Android version:\n- Assistant (Breeno or other):\n- Module version:\n\n## More\nYou can attach logs, screenshots, or recordings to help us understand the issue.</string>
+    <string name="conversation_fork_title">Fork · %1$s</string>
+    <string name="conversation_regenerate_title">Regenerate · %1$s</string>
 </resources>

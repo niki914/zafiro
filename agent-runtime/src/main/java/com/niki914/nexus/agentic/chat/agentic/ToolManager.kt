@@ -2,19 +2,14 @@ package com.niki914.nexus.agentic.chat.agentic
 
 import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.LocalTool
-import com.niki914.nexus.agentic.chat.McpCachedTool
 import com.niki914.nexus.agentic.chat.McpServerDefinition
 import com.niki914.nexus.agentic.chat.ResolvedTools
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeCustomTool as CustomTool
 import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpServer as McpServer
-import com.niki914.nexus.agentic.runtime.settings.model.RuntimeMcpTool as McpTool
 
 class ToolManager(
     private val builtinToolRegistry: BuiltinToolRegistry = BuiltinToolRegistry.default(),
@@ -27,21 +22,17 @@ class ToolManager(
         customTools: List<CustomTool>,
         mcpServers: List<McpServer>,
         builtinSettings: List<BuiltinToolSetting>,
-        mcpCachedTools: Map<String, List<McpTool>> = emptyMap(),
     ): ResolvedTools {
         val builtinTools = buildBuiltinTools(builtinSettings)
         val customRuntimeTools = buildCustomTools(customTools)
-        val mcpRuntimeServers = buildMcpServers(
-            servers = mcpServers,
-            cachedTools = mcpCachedTools,
-        )
+        val mcpRuntimeServers = buildMcpServers(servers = mcpServers)
 
         Logger.d(
             LOG_TAG,
             "tools resolve builtin=${builtinTools.size} custom=${customRuntimeTools.size} " +
                 "mcp=${mcpRuntimeServers.size} " +
                 "input builtinSettings=${builtinSettings.size} customTools=${customTools.size} " +
-                "mcpServers=${mcpServers.size} cachedTools=${mcpCachedTools.values.sumOf { it.size }}"
+                "mcpServers=${mcpServers.size}"
         )
 
         return ResolvedTools(
@@ -88,7 +79,6 @@ class ToolManager(
 
     private fun buildMcpServers(
         servers: List<McpServer>,
-        cachedTools: Map<String, List<McpTool>>,
     ): List<McpServerDefinition> {
         return servers.map { server ->
             McpServerDefinition.Http(
@@ -96,29 +86,7 @@ class ToolManager(
                 url = server.url,
                 enabled = server.enabled,
                 headers = server.headers,
-                cachedTools = cachedTools[server.name].orEmpty().map(::toCachedTool),
             )
-        }
-    }
-
-    private fun toCachedTool(tool: McpTool): McpCachedTool {
-        return McpCachedTool(
-            name = tool.name,
-            description = tool.description,
-            inputSchema = tool.inputSchemaJson.asJsonObjectOrEmpty(),
-        )
-    }
-
-    private fun String.asJsonObjectOrEmpty(): JsonObject {
-        if (isBlank()) {
-            return JsonObject(emptyMap())
-        }
-        return try {
-            Json.parseToJsonElement(this).jsonObject
-        } catch (_: SerializationException) {
-            JsonObject(emptyMap())
-        } catch (_: IllegalArgumentException) {
-            JsonObject(emptyMap())
         }
     }
 
