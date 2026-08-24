@@ -69,7 +69,7 @@ private data object DeepSeekSpec : ProviderSpec {
     override val id: String = "deepseek"
     override val brandName: String = "DeepSeek"
     override val officialEndpoint: String = "https://api.deepseek.com/chat/completions"
-    override val exampleModelId: String = "deepseek-v4-pro"
+    override val exampleModelId: String = "deepseek-v4-flash"
     override val showEndpointConfigInOnboarding: Boolean = false
     override val iconRes: Int = R.drawable.deepseek
     override val tintIcon: Boolean = true

@@ -9,6 +9,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import com.niki914.nexus.agentic.app.overlay.PointerOverlay
 import com.niki914.nexus.agentic.chat.agentic.accessibility.AccessibilityController
 import com.niki914.nexus.agentic.chat.agentic.accessibility.IAccessibility
+import com.niki914.nexus.agentic.chat.agentic.accessibility.UiEventClassifier
 
 class NexusAccessibilityService : AccessibilityService(), IAccessibility {
 
@@ -29,7 +30,8 @@ class NexusAccessibilityService : AccessibilityService(), IAccessibility {
             || type == AccessibilityEvent.TYPE_VIEW_SCROLLED
             || type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
         ) {
-            AccessibilityController.recordUiEvent()
+            val significance = UiEventClassifier.classify(type, event.contentChangeTypes)
+            AccessibilityController.recordUiEvent(significance, type, event.contentChangeTypes)
         }
     }
 

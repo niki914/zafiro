@@ -45,8 +45,8 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
                 "Returns matched nodes with index + version header.\n\n" +
                 "If read returns root-only or empty tree: app likely uses non-native UI " +
                 "(Flutter/Unity/WebView) — stop, do not retry.\n\n" +
-                "wait_mode (default \"stable\"): \"stable\" detects when the UI actually settles " +
-                "(event idle + tree hash) and returns early — use for taps, scrolls, text input. " +
+                "wait_mode (default \"stable\"): \"stable\" detects when the model-visible UI tree settles " +
+                "and tolerates non-semantic accessibility event noise — use for taps, scrolls, text input. " +
                 "\"delay\" does a blind fixed wait — use for search/refresh where data arrives " +
                 "asynchronously and the UI may appear stable before results load. " +
                 "Must be \"stable\" or \"delay\".\n" +

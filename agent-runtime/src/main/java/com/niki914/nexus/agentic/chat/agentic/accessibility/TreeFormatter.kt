@@ -13,7 +13,7 @@ object TreeFormatter {
         screenHeight: Int,
         appPackage: String,
         version: String,
-    ): String {
+    ): FormattedTree {
         val indexCounter = AtomicInteger(0)
         val nodeCounter = AtomicInteger(0)
         val depthExceeded = AtomicBoolean(false)
@@ -41,7 +41,17 @@ object TreeFormatter {
             children = nodes,
             moreSummary = emptyList(),
         )
-        return toYaml(rootNode, screenWidth, screenHeight, appPackage, version, nodeCounter, depthExceeded)
+        return FormattedTree(
+            yaml = toYaml(rootNode, screenWidth, screenHeight, appPackage, version, nodeCounter, depthExceeded),
+            semanticFingerprint = computeSemanticFingerprint(
+                rootNode,
+                screenWidth,
+                screenHeight,
+                appPackage,
+                truncatedMaxNodes = nodeCounter.get() >= 200,
+                truncatedMaxDepth = depthExceeded.get(),
+            ),
+        )
     }
 
     private fun buildTree(
@@ -222,4 +232,78 @@ object TreeFormatter {
             text
         }
     }
+
+    /**
+     * Deterministic 64-bit FNV-1a fingerprint over the pruned tree's semantic
+     * fields plus screen size, app package and truncation flags.
+     *
+     * Must stay in sync with [toYaml]: every field that can reach the YAML
+     * output is mixed in here, and fields the YAML ignores (index, version,
+     * raw class names) must not be. Traversal follows [toYaml]'s DFS order.
+     */
+    internal fun computeSemanticFingerprint(
+        root: NodeInfo,
+        screenWidth: Int,
+        screenHeight: Int,
+        appPackage: String,
+        truncatedMaxNodes: Boolean,
+        truncatedMaxDepth: Boolean,
+    ): Long {
+        var seed = FNV_OFFSET_BASIS
+        seed = mixLong(seed, screenWidth.toLong())
+        seed = mixLong(seed, screenHeight.toLong())
+        seed = mixString(seed, appPackage)
+        seed = mixNode(seed, root)
+        seed = mixLong(seed, if (truncatedMaxNodes) 1L else 0L)
+        seed = mixLong(seed, if (truncatedMaxDepth) 1L else 0L)
+        return seed
+    }
+
+    private fun mixNode(seed: Long, node: NodeInfo): Long {
+        var s = mixString(seed, node.semanticType.name)
+        s = mixString(s, node.text)
+        s = mixString(s, node.contentDesc)
+        s = mixLong(s, node.bounds.left.toLong())
+        s = mixLong(s, node.bounds.top.toLong())
+        s = mixLong(s, node.bounds.right.toLong())
+        s = mixLong(s, node.bounds.bottom.toLong())
+        s = mixLong(s, if (node.isClickable) 1L else 0L)
+        s = mixLong(s, if (node.isLongClickable) 1L else 0L)
+        s = mixLong(s, if (node.isEditable) 1L else 0L)
+        s = mixLong(s, if (node.isScrollable) 1L else 0L)
+        s = mixLong(s, if (node.isChecked) 1L else 0L)
+        s = mixString(s, node.moreSummary.joinToString(", "))
+        for (child in node.children) {
+            s = mixNode(s, child)
+        }
+        return s
+    }
+
+    private fun mixLong(seed: Long, value: Long): Long = (seed xor value) * FNV_PRIME
+
+    private fun mixString(seed: Long, value: String): Long {
+        var s = seed
+        for (c in value) {
+            s = (s xor c.code.toLong()) * FNV_PRIME
+        }
+        return s
+    }
+
+    // 0xcbf29ce484222325 (14695981039346656037) exceeds Long.MAX_VALUE, so it
+    // is written as its two's-complement form: the bit pattern is identical
+    // and FNV-1a arithmetic is unaffected.
+    private const val FNV_OFFSET_BASIS = -0x340d631b7bdddcdbL
+    private const val FNV_PRIME = 0x100000001b3L
 }
+
+/**
+ * Result of a single formatting pass: the model-visible YAML and a
+ * deterministic 64-bit semantic fingerprint over the same pruned tree.
+ *
+ * Public because it is the return type of the public [TreeFormatter.format]
+ * (same pattern as [ScreenSnapshot]).
+ */
+data class FormattedTree(
+    val yaml: String,
+    val semanticFingerprint: Long,
+)

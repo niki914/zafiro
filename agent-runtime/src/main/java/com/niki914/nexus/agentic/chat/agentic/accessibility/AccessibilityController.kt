@@ -28,6 +28,7 @@ import android.os.SystemClock
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Accessibility service interaction controller.
@@ -66,6 +67,15 @@ object AccessibilityController {
     @Volatile
     var lastUiEventTime: Long = 0L
         private set
+
+    /**
+     * Monotonic generation counter, advanced only by strong UI events
+     * (window/text/scroll/checked changes). Sampled together with each stable
+     * sample; any change invalidates an in-progress semantic-stability run.
+     */
+    private val strongUiEventGeneration = AtomicLong(0L)
+
+    val currentStrongUiEventGeneration: Long get() = strongUiEventGeneration.get()
 
     /** Set by the app module before any screen-interaction calls. */
     @Volatile
@@ -135,10 +145,33 @@ object AccessibilityController {
         nodeCache.clear()
     }
 
-    /** Called from [NexusAccessibilityService.onAccessibilityEvent] on UI-significant events. */
-    fun recordUiEvent() {
+    /**
+     * Called from [NexusAccessibilityService.onAccessibilityEvent] for every
+     * filtered accessibility event: refreshes [lastUiEventTime] for all events,
+     * but advances the strong-event generation only for strong ones.
+     */
+    fun recordUiEvent(
+        significance: UiEventSignificance,
+        eventType: Int = 0,
+        contentChangeTypes: Int = 0,
+    ) {
         lastUiEventTime = SystemClock.elapsedRealtime()
+        if (significance == UiEventSignificance.STRONG) {
+            strongUiEventGeneration.incrementAndGet()
+            lastStrongEventType = eventType
+            lastStrongContentChangeTypes = contentChangeTypes
+        }
     }
+
+    // Temporary diagnostic (QA): last strong event details for timeout
+    // root-cause logging. Delete together with the QA block.
+    @Volatile
+    var lastStrongEventType: Int = 0
+        private set
+
+    @Volatile
+    var lastStrongContentChangeTypes: Int = 0
+        private set
 
     fun clearPointerOverlay() {
         pointerOverlay?.dispose()
@@ -314,7 +347,7 @@ object AccessibilityController {
 
         ensurePointerShown()
 
-        val yaml = TreeFormatter.format(ctx.root, ctx.widthPixels, ctx.heightPixels, ctx.appPackage, currentVersion)
+        val yaml = TreeFormatter.format(ctx.root, ctx.widthPixels, ctx.heightPixels, ctx.appPackage, currentVersion).yaml
 
         if (nodeCache.size <= 1) {
             return Result.failure(
@@ -341,85 +374,308 @@ object AccessibilityController {
         return captureScreen()
     }
 
+    private data class StableSample(
+        val snapshot: ScreenSnapshot,
+        val semanticFingerprint: Long,
+        val sampleTimeMs: Long,
+        val strongEventGeneration: Long,
+        // Temporary diagnostic (QA): per-class aggregated signature for
+        // timeout root-cause logging. Delete together with the QA block.
+        val classSignatures: Map<String, ClassSig> = emptyMap(),
+        // Temporary diagnostic (QA): per-channel fingerprint components.
+        val channels: DebugChannels? = null,
+    )
+
+    private const val MIN_DWELL_MS = 200L
+    private const val POLL_INTERVAL_MS = 50L
+    private const val EVENT_IDLE_MS = 300L
+
     /**
-     * Waits for the UI to settle after a write operation using a unified
-     * event-idle + tree-hash detection loop:
+     * Waits for the UI to settle after a write operation via dual exit channels:
      *
-     * 1. Dwell at least 200ms to let post-action events arrive.
-     * 2. Sample the tree every 50ms and compare consecutive structural hashes.
-     * 3. Return when two consecutive hashes match, no accessibility event arrived
-     *    between the two samples, and the event stream has been idle for >= 300ms.
+     * - Channel A (event idle): the previous and current samples share a
+     *   semantic fingerprint, no accessibility event arrived between the two
+     *   samples, and the event stream has been idle for >= 300ms.
+     * - Channel B (semantic stable): [UiStabilityTracker] reports
+     *   SEMANTIC_STABLE (3 consecutive identical fingerprints across >= 150ms),
+     *   tolerating weak accessibility event noise.
      *
-     * Falls back to a forced capture (with a warning header) if [settleTimeoutMs]
-     * is exceeded.
+     * Both channels re-check the strong-event generation before returning, and
+     * both return the sample that was judged stable (no second capture).
+     * If [settleTimeoutMs] is exceeded, returns the last successful sample with
+     * a timeout note header.
      */
     suspend fun waitForStable(settleTimeoutMs: Long): Result<ScreenSnapshot> {
         val startTime = SystemClock.elapsedRealtime()
+        val deadline = startTime + settleTimeoutMs
 
-        // Minimum 200ms dwell to let post-action events arrive, capped at remaining deadline.
-        val remaining = settleTimeoutMs - (SystemClock.elapsedRealtime() - startTime)
-        if (remaining > 0) {
-            delay(minOf(200L, remaining))
-        }
+        val dwellRemaining = deadline - SystemClock.elapsedRealtime()
+        if (dwellRemaining > 0) delay(minOf(MIN_DWELL_MS, dwellRemaining))
 
-        refreshNodeCache()
-        var previousHash = computeStructuralHash()
-        var previousSampleTime = SystemClock.elapsedRealtime()
+        val tracker = UiStabilityTracker()
+        var previous: StableSample? = null
+        var sampleCount = 0
+        // Temporary diagnostic (QA): per-class change counters for timeout
+        // root-cause logging. Delete together with the QA block.
+        val classChangeCounts = HashMap<String, Int>()
+        val classChangeFields = HashMap<String, MutableSet<String>>()
+        val channelChangeCounts = HashMap<String, Int>()
+        var genChangeCount = 0
 
         while (true) {
-            val now = SystemClock.elapsedRealtime()
-            if (now - startTime >= settleTimeoutMs) {
-                return captureScreen().map { snapshot ->
-                    snapshot.copy(yaml = buildString {
-                        appendLine("# Note: settle timed out after ${settleTimeoutMs}ms")
-                        append(snapshot.yaml)
-                    })
+            val sample = captureStableSample()
+            sampleCount += 1
+            val now = sample.sampleTimeMs
+
+            // Temporary diagnostic (QA): count strong-generation changes
+            // between adjacent samples.
+            if (previous != null && sample.strongEventGeneration != previous.strongEventGeneration) {
+                genChangeCount += 1
+            }
+
+            // Temporary diagnostic (QA): accumulate per-channel changes.
+            val prevCh = previous?.channels
+            val curCh = sample.channels
+            if (prevCh != null && curCh != null) {
+                if (prevCh.structure != curCh.structure) channelChangeCounts["struct"] = (channelChangeCounts["struct"] ?: 0) + 1
+                if (prevCh.text != curCh.text) channelChangeCounts["text"] = (channelChangeCounts["text"] ?: 0) + 1
+                if (prevCh.offscreen != curCh.offscreen) channelChangeCounts["offscreen"] = (channelChangeCounts["offscreen"] ?: 0) + 1
+                if (prevCh.bounds != curCh.bounds) channelChangeCounts["bounds"] = (channelChangeCounts["bounds"] ?: 0) + 1
+                if (prevCh.flags != curCh.flags) channelChangeCounts["flags"] = (channelChangeCounts["flags"] ?: 0) + 1
+                if (prevCh.truncation != curCh.truncation) channelChangeCounts["trunc"] = (channelChangeCounts["trunc"] ?: 0) + 1
+            }
+
+            // Temporary diagnostic (QA): accumulate per-class signature changes.
+            val prevSigs = previous?.classSignatures
+            if (prevSigs != null) {
+                val allClasses = sample.classSignatures.keys + prevSigs.keys
+                for (cn in allClasses) {
+                    val cur = sample.classSignatures[cn]
+                    val prev = prevSigs[cn]
+                    if (cur != prev) {
+                        classChangeCounts[cn] = (classChangeCounts[cn] ?: 0) + 1
+                        val fields = classChangeFields[cn] ?: mutableSetOf<String>()
+                        if (prev == null || cur == null) {
+                            fields.add("node-count")
+                        } else {
+                            if (prev.textHash != cur.textHash) fields.add("text")
+                            if (prev.boundsHash != cur.boundsHash) fields.add("bounds")
+                            if (prev.flagsHash != cur.flagsHash) fields.add("flags")
+                        }
+                        classChangeFields[cn] = fields
+                    }
                 }
             }
-            delay(50)
-            refreshNodeCache()
-            val currentHash = computeStructuralHash()
-            val sampleTime = SystemClock.elapsedRealtime()
 
-            if (currentHash == previousHash
-                && lastUiEventTime <= previousSampleTime
-                && sampleTime - lastUiEventTime >= 300L
-            ) {
-                return captureScreen()
+            if (now >= deadline) {
+                logSettleResult(StableExitReason.TIMEOUT, now - startTime, sampleCount)
+                val channelsStr = channelChangeCounts.entries
+                    .sortedByDescending { it.value }
+                    .joinToString(" ") { (name, count) -> "$name=$count" }
+                android.util.Log.d(
+                    "NexusStable",
+                    "timeout channels: $channelsStr",
+                )
+                val lastStrongTypeName = when (lastStrongEventType) {
+                    32 -> "WINDOW_STATE_CHANGED"
+                    2048 -> "WINDOW_CONTENT_CHANGED"
+                    4194304 -> "WINDOWS_CHANGED"
+                    4096 -> "VIEW_SCROLLED"
+                    16 -> "VIEW_TEXT_CHANGED"
+                    else -> lastStrongEventType.toString()
+                }
+                android.util.Log.d(
+                    "NexusStable",
+                    "timeout genChanges=$genChangeCount lastStrongEvent=$lastStrongTypeName(0x${lastStrongContentChangeTypes.toString(16)})",
+                )
+                val topChangers = classChangeCounts.entries
+                    .sortedByDescending { it.value }
+                    .take(3)
+                    .joinToString(", ") { (cn, count) ->
+                        val fields = classChangeFields[cn]?.sorted()?.joinToString("/") ?: ""
+                        "$cn($count)[$fields]"
+                    }
+                android.util.Log.d(
+                    "NexusStable",
+                    "timeout topClassChanges: $topChangers",
+                )
+                return Result.success(sample.snapshot.copy(yaml = buildString {
+                    appendLine("# Note: settle timed out after ${settleTimeoutMs}ms")
+                    append(sample.snapshot.yaml)
+                }))
             }
 
-            previousHash = currentHash
-            previousSampleTime = sampleTime
+            val prev = previous
+            if (prev != null
+                && sample.semanticFingerprint == prev.semanticFingerprint
+                && lastUiEventTime <= prev.sampleTimeMs
+                && now - lastUiEventTime >= EVENT_IDLE_MS
+                && currentStrongUiEventGeneration == sample.strongEventGeneration
+            ) {
+                logSettleResult(StableExitReason.EVENT_IDLE, now - startTime, sampleCount)
+                return Result.success(sample.snapshot)
+            }
+
+            val decision = tracker.addSample(
+                sample.semanticFingerprint, now, sample.strongEventGeneration,
+            )
+            if (decision == StabilityDecision.SEMANTIC_STABLE
+                && (currentStrongUiEventGeneration == sample.strongEventGeneration
+                    || tracker.noiseToleranceActive())
+            ) {
+                logSettleResult(StableExitReason.SEMANTIC_STABLE, now - startTime, sampleCount)
+                return Result.success(sample.snapshot)
+            }
+
+            previous = sample
+            delay(POLL_INTERVAL_MS)
         }
     }
 
     /**
-     * Computes a version-independent structural hash of the current [nodeCache].
+     * Builds one stable-wait sample: refreshes the node cache, formats the
+     * pruned tree into YAML + semantic fingerprint in one pass, and records
+     * the sample time and strong-event generation.
      *
-     * The hash covers node count, per-node class name, bounds, text, content
-     * description, and key boolean flags — enough to detect meaningful tree
-     * changes without paying YAML serialization cost.
+     * Sampling failures propagate to the caller unchanged (the existing
+     * [refreshNodeCache] exception protocol is preserved).
      */
-    private fun computeStructuralHash(): Int {
-        var hash = nodeCache.size
-        nodeCache.entries.sortedBy { it.key }.forEach { (index, node) ->
-            hash = 31 * hash + index
-            hash = 31 * hash + (node.className?.toString().orEmpty().hashCode())
-            hash = 31 * hash + (node.text?.toString().orEmpty().hashCode())
-            hash = 31 * hash + (node.contentDescription?.toString().orEmpty().hashCode())
-            hash = 31 * hash + node.isClickable.hashCode()
-            hash = 31 * hash + node.isLongClickable.hashCode()
-            hash = 31 * hash + node.isEditable.hashCode()
-            hash = 31 * hash + node.isScrollable.hashCode()
-            hash = 31 * hash + node.isVisibleToUser.hashCode()
+    private suspend fun captureStableSample(): StableSample {
+        val ctx = refreshNodeCache()
+        ensurePointerShown()
+        val formatted = TreeFormatter.format(
+            ctx.root, ctx.widthPixels, ctx.heightPixels, ctx.appPackage, currentVersion,
+        )
+        val snapshot = ScreenSnapshot(formatted.yaml, currentVersion, nodeCache.size)
+        return StableSample(
+            snapshot = snapshot,
+            semanticFingerprint = formatted.semanticFingerprint,
+            sampleTimeMs = SystemClock.elapsedRealtime(),
+            strongEventGeneration = strongUiEventGeneration.get(),
+            classSignatures = sampleClassSignatures(ctx),
+            channels = computeDebugChannels(ctx),
+        )
+    }
+
+    // Temporary diagnostic (QA): per-channel fingerprint components over the
+    // raw tree, mirroring the fingerprint's mix-in fields so timeout logging
+    // can show which semantic channel keeps changing (structure/order/type,
+    // text, offscreen summaries, bounds, flags, truncation). Delete together
+    // with the QA block.
+    private data class DebugChannels(
+        val structure: Long,
+        val text: Long,
+        val offscreen: Long,
+        val bounds: Long,
+        val flags: Long,
+        val truncation: Long,
+    )
+
+    private fun computeDebugChannels(ctx: ScreenContext): DebugChannels {
+        var structure = 0L
+        var text = 0L
+        var offscreen = 0L
+        var bounds = 0L
+        var flags = 0L
+        var nodeCount = 0
+        var maxDepth = 0
+
+        fun walk(node: AccessibilityNodeInfo, parentType: SemanticType?, depth: Int) {
+            nodeCount += 1
+            if (depth > maxDepth) maxDepth = depth
+            val cn = node.className?.toString() ?: ""
+            val type = PruningRules.mapSemanticType(cn, parentType)
+            structure = structure * 31 + type.name.hashCode()
+            structure = structure * 31 + nodeCount
+            val nodeText = node.text?.toString().orEmpty()
+            val nodeDesc = node.contentDescription?.toString().orEmpty()
+            text = text * 31 + nodeText.hashCode()
+            text = text * 31 + nodeDesc.hashCode()
             val rect = android.graphics.Rect()
             node.getBoundsInScreen(rect)
-            hash = 31 * hash + rect.left
-            hash = 31 * hash + rect.top
-            hash = 31 * hash + rect.right
-            hash = 31 * hash + rect.bottom
+            bounds = bounds * 31 + rect.left
+            bounds = bounds * 31 + rect.top
+            bounds = bounds * 31 + rect.right
+            bounds = bounds * 31 + rect.bottom
+            flags = flags * 31 + node.isClickable.hashCode()
+            flags = flags * 31 + node.isLongClickable.hashCode()
+            flags = flags * 31 + node.isEditable.hashCode()
+            flags = flags * 31 + node.isScrollable.hashCode()
+            flags = flags * 31 + node.isChecked.hashCode()
+            if (node.isScrollable) {
+                for (i in 0 until node.childCount) {
+                    val child = node.getChild(i) ?: continue
+                    val childRect = android.graphics.Rect()
+                    child.getBoundsInScreen(childRect)
+                    if (childRect.bottom <= 0 || childRect.top >= ctx.heightPixels) {
+                        offscreen = offscreen * 31 + (child.text?.toString().orEmpty().hashCode())
+                        offscreen = offscreen * 31 + (child.contentDescription?.toString().orEmpty().hashCode())
+                    }
+                }
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { walk(it, type, depth + 1) }
+            }
         }
-        return hash
+
+        walk(ctx.root, null, 0)
+        val truncation = (if (nodeCount >= 200) 1L else 0L) * 31 + (if (maxDepth > 20) 1L else 0L)
+        return DebugChannels(structure, text, offscreen, bounds, flags, truncation)
+    }
+
+    // Temporary diagnostic (QA): aggregate per-class signature over the raw
+    // tree so timeout logging can show which class keeps changing and in
+    // which field channel. Delete together with the QA block.
+    private data class ClassSig(
+        val textHash: Long,
+        val boundsHash: Long,
+        val flagsHash: Long,
+    )
+
+    private fun sampleClassSignatures(ctx: ScreenContext): Map<String, ClassSig> {
+        val byClass = HashMap<String, ClassSig>()
+        val stack = ArrayDeque<AccessibilityNodeInfo>()
+        stack.add(ctx.root)
+        while (stack.isNotEmpty()) {
+            val node = stack.removeLast()
+            val className = node.className?.toString().orEmpty()
+            if (className.isNotEmpty()) {
+                val prev = byClass[className]
+                var text = prev?.textHash ?: 0L
+                var bounds = prev?.boundsHash ?: 0L
+                var flags = prev?.flagsHash ?: 0L
+                text = text * 31 + node.text?.toString().orEmpty().hashCode()
+                text = text * 31 + node.contentDescription?.toString().orEmpty().hashCode()
+                text = text * 31 + node.childCount
+                val rect = android.graphics.Rect()
+                node.getBoundsInScreen(rect)
+                bounds = bounds * 31 + rect.left
+                bounds = bounds * 31 + rect.top
+                bounds = bounds * 31 + rect.right
+                bounds = bounds * 31 + rect.bottom
+                flags = flags * 31 + node.isClickable.hashCode()
+                flags = flags * 31 + node.isLongClickable.hashCode()
+                flags = flags * 31 + node.isEditable.hashCode()
+                flags = flags * 31 + node.isScrollable.hashCode()
+                flags = flags * 31 + node.isChecked.hashCode()
+                byClass[className] = ClassSig(text, bounds, flags)
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { stack.add(it) }
+            }
+        }
+        return byClass
+    }
+
+    // Temporary diagnostic log (F-09): delete this entire block after QA
+    // verification — remove this function definition and the 3 standalone call
+    // lines in waitForStable (EVENT_IDLE / SEMANTIC_STABLE / TIMEOUT branches).
+    // No other logic is affected.
+    private fun logSettleResult(exitReason: StableExitReason, elapsedMs: Long, sampleCount: Int) {
+        android.util.Log.d(
+            "NexusStable",
+            "waitForStable elapsedMs=$elapsedMs exitReason=$exitReason sampleCount=$sampleCount",
+        )
     }
 
     /**
