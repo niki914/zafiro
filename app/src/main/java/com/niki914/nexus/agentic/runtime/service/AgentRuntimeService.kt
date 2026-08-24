@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.niki914.logging.Logger
 import com.niki914.nexus.agentic.chat.LLMController
+import com.niki914.nexus.agentic.chat.ToolStatusLabels
 import com.niki914.nexus.agentic.chat.collectAsFull
 import com.niki914.nexus.agentic.runtime.ipc.IAgentRuntimeService
 import com.niki914.nexus.agentic.runtime.ipc.IAgentStoreService
@@ -358,7 +359,14 @@ class AgentRuntimeService : Service() {
         Logger.i(LOG_TAG, "turn started queryLength=${query.length}")
         var firstFrameSent = false
         try {
-            LLMController.stream(query, this@AgentRuntimeService).collectAsFull { frame ->
+            LLMController.stream(query, this@AgentRuntimeService).collectAsFull(
+                labels = ToolStatusLabels(
+                    called = getString(AppR.string.ui_tool_status_called),
+                    running = getString(AppR.string.ui_tool_status_running),
+                    success = getString(AppR.string.ui_tool_status_success),
+                    failed = getString(AppR.string.ui_tool_status_failed),
+                )
+            ) { frame ->
                 if (!firstFrameSent) {
                     firstFrameSent = true
                     Logger.i(
@@ -395,7 +403,7 @@ class AgentRuntimeService : Service() {
             )
             sendFrame(
                 callback,
-                RenderFrame(text = e.message ?: "Internal error", isFirst = true, isFinal = true),
+                RenderFrame(text = e.message ?: getString(AppR.string.runtime_error_internal), isFirst = true, isFinal = true),
             )
         } finally {
             try {

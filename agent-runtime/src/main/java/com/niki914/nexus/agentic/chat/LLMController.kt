@@ -285,7 +285,13 @@ object LLMController {
                     throw throwable
                 }
                 runtimeState ?: run {
-                    val message = throwable.toUserErrorMessage(defaultErrorMessage)
+                    // 用户可见错误文案在 IPC 前用资源本地化。CONFIG_REQUIRED 的异常
+                    // message 是内部码（ValidationTest 以 const 断言它），不直接展示
+                    val message = if (throwable.toUserErrorCode() == LlmErrorCode.ConfigRequired) {
+                        context.getString(R.string.error_config_required)
+                    } else {
+                        throwable.toUserErrorMessage(defaultErrorMessage)
+                    }
                     Logger.e(LOG_TAG, "refresh failed errorType=${throwable.eventTypeName()} message=$message")
                     send(
                         LlmStreamEvent.Error(

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="error_llm_request_failed">Request failed. Please try again.</string>
+    <string name="error_config_required">Please configure your model first</string>
 </resources>

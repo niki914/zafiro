@@ -158,6 +158,7 @@ abstract class AbstractAssistantHook(
             )
             renderStreamCard(
                 turnId, roomId,
+                // Intentionally hardcoded: runs inside host process; must not reference app resources across IPC/Xposed boundary.
                 e.message ?: "Service unavailable",
                 true, true,
             )

@@ -45,6 +45,7 @@
     <string name="ui_home_title">Nexus</string>
     <string name="ui_home_menu_new_conversation">新对话</string>
     <string name="ui_home_input_placeholder">输入消息...</string>
+    <string name="ui_tool_status_called">已调用</string>
     <string name="ui_tool_status_running">执行中</string>
     <string name="ui_tool_status_success">成功</string>
     <string name="ui_tool_status_failed">失败</string>
@@ -63,6 +64,7 @@
     <string name="ui_home_error_config_required_body">请前往填写模型配置。</string>
     <string name="ui_home_error_network_title">网络异常</string>
     <string name="ui_home_error_internal_title">内部错误</string>
+    <string name="runtime_error_internal">内部错误</string>
     <string name="ui_home_history_content_description">对话历史</string>
     <string name="ui_conversation_history_back_content_description">返回</string>
     <string name="ui_conversation_history_loading">正在读取对话历史...</string>

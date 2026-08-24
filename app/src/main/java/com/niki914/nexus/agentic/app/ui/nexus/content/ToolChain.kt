@@ -51,6 +51,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.nexus.agentic.app.R
 import com.niki914.nexus.agentic.app.ui.infra.shape.G2CapsuleShape
+import com.niki914.nexus.agentic.app.ui.nexus.model.HomeChatViewModel
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolState
 import com.niki914.nexus.agentic.app.ui.nexus.model.HomeToolStatus
 
@@ -297,8 +299,13 @@ private fun ToolResultDetail(
         modifier = Modifier.fillMaxWidth(),
     ) {
         failedReason?.let { reason ->
+            // 用户中断原因 UI 本地化；其余 failedReason 来自模型工具结果，保持原样
             Text(
-                text = reason,
+                text = if (reason == HomeChatViewModel.FAILED_REASON_INTERRUPTED) {
+                    stringResource(R.string.ui_tool_status_failed_reason_interrupted)
+                } else {
+                    reason
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = FailedColor.copy(alpha = 0.72f),
                 modifier = Modifier

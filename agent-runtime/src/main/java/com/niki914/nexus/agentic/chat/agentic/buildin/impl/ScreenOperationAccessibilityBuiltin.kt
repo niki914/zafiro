@@ -77,6 +77,7 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
                     onFailure = { e ->
                         TextToolResult.failure(
                             ScreenOperationError.SERVICE_UNAVAILABLE.code,
+                            // 给 LLM 的工具错误 fallback（模型消费的英文契约文本），非 UI 本地化文案，保持英文
                             e.message ?: "Service unavailable",
                         )
                     },
