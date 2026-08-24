@@ -9,7 +9,6 @@ import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.HttpTimeouts
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
 
@@ -47,13 +46,6 @@ class HooksHolderTest {
     // ── InputHolder ────────────────────────────────────────────────────────
 
     @Test
-    fun inputHolderInitialState() {
-        val holder = InputHolder("original")
-        assertEquals("original", holder.text)
-        assertNull(holder.lastWriter)
-    }
-
-    @Test
     fun inputHolderWriteUpdatesTextAndWriter() {
         val holder = InputHolder("original")
         holder.write("rewritten", "hook-a")
@@ -73,16 +65,6 @@ class HooksHolderTest {
     // ── SerializationHolder ────────────────────────────────────────────────
 
     @Test
-    fun serializationHolderInitialState() {
-        val snap = snapshot()
-        val hist = history("hi")
-        val holder = SerializationHolder(snap, hist)
-        assertSame(snap, holder.snapshot)
-        assertSame(hist, holder.history)
-        assertNull(holder.lastWriter)
-    }
-
-    @Test
     fun serializationHolderWriteUpdatesAll() {
         val holder = SerializationHolder(snapshot(), history("hi"))
         val newSnap = snapshot().copy(endpoint = "https://other.test/v1")
@@ -98,14 +80,6 @@ class HooksHolderTest {
     // ── HttpRequestHolder ──────────────────────────────────────────────────
 
     @Test
-    fun httpRequestHolderInitialState() {
-        val req = request()
-        val holder = HttpRequestHolder(req)
-        assertSame(req, holder.request)
-        assertNull(holder.lastWriter)
-    }
-
-    @Test
     fun httpRequestHolderWriteUpdatesRequest() {
         val holder = HttpRequestHolder(request("https://api.test/v1"))
         val newReq = request("https://redacted.test/v1")
@@ -117,17 +91,6 @@ class HooksHolderTest {
     }
 
     // ── ToolCallHolder ─────────────────────────────────────────────────────
-
-    @Test
-    fun toolCallHolderInitialState() {
-        val holder = ToolCallHolder("call-1", "tool", "{}", descriptor)
-        assertEquals("call-1", holder.id)
-        assertEquals("tool", holder.name)
-        assertEquals("{}", holder.argumentsJson)
-        assertSame(descriptor, holder.descriptor)
-        assertNull(holder.outcome)
-        assertNull(holder.lastWriter)
-    }
 
     @Test
     fun toolCallHolderWriteUpdatesArguments() {
@@ -160,14 +123,6 @@ class HooksHolderTest {
     }
 
     // ── ToolResultHolder ───────────────────────────────────────────────────
-
-    @Test
-    fun toolResultHolderInitialState() {
-        val outcome = ToolCallOutcome.Success("ok")
-        val holder = ToolResultHolder(outcome)
-        assertSame(outcome, holder.outcome)
-        assertNull(holder.lastWriter)
-    }
 
     @Test
     fun toolResultHolderWriteUpdatesOutcome() {

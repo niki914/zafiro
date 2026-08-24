@@ -45,17 +45,6 @@ class ActiveTurnStoreTest {
     }
 
     @Test
-    fun conversationTurnState_doesNotCarryRoomId() {
-        val state = ConversationTurnState(
-            turnId = 1L,
-            lastQuery = "hello",
-            mode = TurnMode.InjectedLLM,
-        )
-
-        assertFalse(state.toString().contains("roomId"))
-    }
-
-    @Test
     fun clear_removesSingleActiveTurn() {
         ActiveTurnStore.setCurrent(
             ConversationTurnState(

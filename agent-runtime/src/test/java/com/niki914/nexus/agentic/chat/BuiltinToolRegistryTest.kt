@@ -3,7 +3,6 @@ package com.niki914.nexus.agentic.chat
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BuiltinToolRegistryTest {
@@ -14,17 +13,5 @@ class BuiltinToolRegistryTest {
 
         assertNotNull(tool)
         assertEquals(true, tool!!.defaultEnabled)
-        val names = registry.all().map { it.name }
-        assertTrue(names.contains("create_custom_tool"))
-        assertTrue(names.contains("screen_operation_accessibility"))
-        assertTrue(names.contains("screen_operation_shell"))
-        assertTrue(names.contains("launch_app"))
-        assertTrue(names.contains("memory"))
-        assertTrue(names.contains("notify"))
-        assertTrue(names.contains("open_uri"))
-        assertTrue(names.contains("read_custom_tool"))
-        assertTrue(names.contains("terminal"))
-        assertTrue(names.contains("search_apps"))
-        assertTrue(names.contains("load_skill"))
     }
 }

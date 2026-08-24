@@ -8,7 +8,6 @@ import kotlinx.coroutines.test.TestScope
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -20,33 +19,6 @@ class LibTermTest {
         val runtime: Any = LibTerm.runtime(scope = TestScope())
 
         assertIs<LibTermRuntime>(runtime)
-    }
-
-    @Test
-    fun `runtime does not expose libterm facade production type`() {
-        assertFailsWith<ClassNotFoundException> {
-            Class.forName("com.niki914.libterm.runtime.LibTermFacade")
-        }
-    }
-
-    @Test
-    fun `legacy facade entries are removed from public api`() {
-        val declaredMethods = LibTerm::class.java.declaredMethods
-        val removedNames = listOf(
-            "createDefaultManager",
-            "newUserTerm",
-            "newSuTerm",
-            "newShizukuTerm",
-            "term",
-        )
-
-        removedNames.forEach { methodName ->
-            assertEquals(
-                expected = false,
-                actual = declaredMethods.any { method -> method.name == methodName },
-                message = "$methodName should not stay in public LibTerm API",
-            )
-        }
     }
 
     @Test

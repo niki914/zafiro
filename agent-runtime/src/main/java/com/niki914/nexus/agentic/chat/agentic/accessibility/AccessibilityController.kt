@@ -53,6 +53,9 @@ enum class NodeAction { CLICK, LONG_CLICK, SET_TEXT, SCROLL_FORWARD, SCROLL_BACK
 data class ScreenSnapshot(val yaml: String, val version: String, val nodeCount: Int)
 
 object AccessibilityController {
+    // 以下各工具失败分支的 "Service unavailable" 是给 LLM 的工具错误 fallback（模型
+    // 消费的英文契约文本，非 UI 本地化文案），与宿主渲染卡片的边界 hardcode 用途不同，
+    // 保持英文原样，不资源化。
 
     private var serviceInstance: IAccessibility? = null
     private val nodeCache = ConcurrentHashMap<Int, AccessibilityNodeInfo>()

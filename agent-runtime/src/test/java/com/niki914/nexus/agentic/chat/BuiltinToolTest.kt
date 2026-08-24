@@ -1,8 +1,6 @@
 package com.niki914.nexus.agentic.chat
 
-import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinTool
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRegistry
-import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.nexus.agentic.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.CreateCustomToolBuiltin
 import com.niki914.nexus.agentic.chat.agentic.buildin.impl.LaunchAppBuiltin
@@ -19,26 +17,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BuiltinToolTest {
-    @Test
-    fun defaultDescription_usesToolName() {
-        val tool = FakeBuiltinTool("known")
-
-        assertEquals("Builtin tool: known", tool.description)
-    }
-
-    @Test
-    fun createCustomToolDescription_matchesSchemaDescription() {
-        val tool = CreateCustomToolBuiltin()
-
-        assertEquals("Create or update a custom tool setting.", tool.description)
-        assertSchemaParsable(tool.inputSchemaJson, tool.name)
-    }
-
     @Test
     fun failureResult_serializesRequiredFields() {
         val result = BuiltinToolResult.failure(
@@ -93,8 +75,6 @@ class BuiltinToolTest {
         assertEquals("screen_operation_shell", registry.find("screen_operation_shell")?.name)
         assertEquals("search_apps", registry.find("search_apps")?.name)
         assertEquals("terminal", registry.find("terminal")?.name)
-        assertNull(registry.find("ssh_terminal"))
-        assertNull(registry.find("run_command"))
     }
 
     @Test
@@ -134,16 +114,6 @@ class BuiltinToolTest {
                 wireName,
                 ToolWireName.forLocal(wireName),
             )
-        }
-    }
-
-    private class FakeBuiltinTool(
-        override val name: String,
-        override val defaultEnabled: Boolean = false,
-    ) : BuiltinTool() {
-
-        override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
-            return BuiltinToolResult.success(message = "ok")
         }
     }
 

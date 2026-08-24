@@ -260,6 +260,7 @@ private fun MutableList<RenderSegment>.render(): String {
         when (segment) {
             is RenderSegment.Text -> builder.appendTextSegment(segment.value)
             is RenderSegment.Tool -> builder.appendToolSegment(segment)
+            // "## Error" 是注入宿主 markdown 的代码块结构标题，本地化会破坏注入内容一致性，保持原样
             is RenderSegment.Error -> builder.appendTextSegment("## Error\n```\n${segment.value}\n```")
         }
     }

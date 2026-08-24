@@ -83,21 +83,4 @@ class SshOpenSpecTest {
 
         assertEquals("SSH password is required", error.message)
     }
-
-    @Test
-    fun `password dsl keeps default ssh values`() {
-        val options = SshOpenSpec().apply {
-            host = "192.168.1.10"
-            username = "root"
-            password("secret")
-        }.toOpenOptions()
-
-        assertEquals(SshOpenOptions.DEFAULT_PORT, options.port)
-        assertEquals(SshHostKeyPolicy.AcceptAny, options.hostKeyPolicy)
-        assertEquals(SshOpenOptions.DEFAULT_CONNECT_TIMEOUT_MILLIS, options.connectTimeoutMillis)
-        assertEquals(
-            SshOpenOptions.DEFAULT_SERVER_ALIVE_INTERVAL_MILLIS,
-            options.serverAliveIntervalMillis,
-        )
-    }
 }

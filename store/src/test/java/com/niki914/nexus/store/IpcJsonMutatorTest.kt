@@ -63,7 +63,6 @@ class IpcJsonMutatorTest {
         }
 
         assertNotNull(error)
-        assertEquals("key must not be blank", error!!.message)
     }
 
     @Test

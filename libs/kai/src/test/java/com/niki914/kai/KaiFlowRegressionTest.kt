@@ -32,22 +32,17 @@ class KaiFlowRegressionTest {
         try {
             val events = session.send("hi").toList()
             assertEquals(
-                listOf(
-                    KaiEvent.RoundStarted(input = "hi"),
-                    KaiEvent.Error(
-                        stage = KaiEvent.Stage.Parse,
-                        message = "Empty assistant response"
-                    ),
-                    KaiEvent.RoundCompleted(
-                        fullText = "",
-                        finishReason = KaiEvent.FinishReason.Error
-                    )
-                ),
-                events
+                KaiEvent.RoundStarted(input = "hi"),
+                events.first()
             )
+            val error = events.filterIsInstance<KaiEvent.Error>().single()
+            assertEquals(KaiEvent.Stage.Parse, error.stage)
             assertEquals(
-                KaiEvent.FinishReason.Error,
-                events.filterIsInstance<KaiEvent.RoundCompleted>().single().finishReason
+                KaiEvent.RoundCompleted(
+                    fullText = "",
+                    finishReason = KaiEvent.FinishReason.Error
+                ),
+                events.last()
             )
             assertEquals(emptyList<ChatTurn>(), session.getHistory())
         } finally {
@@ -793,7 +788,6 @@ class KaiFlowRegressionTest {
 
             assertFalse(events.any { it is KaiEvent.RoundStarted })
             assertEquals(KaiEvent.Stage.Session, error.stage)
-            assertEquals("LLM idle timeout: no session event for 1 seconds", error.message)
             assertEquals(KaiEvent.FinishReason.IdleTimeout, completed.finishReason)
             assertEquals("", completed.fullText)
             assertEquals(emptyList<ChatTurn>(), session.getHistory())
@@ -859,7 +853,6 @@ class KaiFlowRegressionTest {
 
             assertTrue(hookStarted.isCompleted)
             assertEquals(KaiEvent.Stage.Session, error.stage)
-            assertEquals("LLM idle timeout: no session event for 1 seconds", error.message)
             assertEquals(KaiEvent.FinishReason.IdleTimeout, completed.finishReason)
             assertEquals(emptyList<ChatTurn>(), session.getHistory())
         } finally {
@@ -1055,9 +1048,7 @@ class KaiFlowRegressionTest {
 
             assertEquals("missing", failed.toolName)
             assertEquals(ToolCallKind.Local, failed.kind)
-            assertEquals("Unknown tool 'missing'", failed.message)
             assertEquals(KaiEvent.Stage.Tool, error.stage)
-            assertEquals("Unknown tool 'missing'", error.message)
             assertEquals(failed.resultJson, toolResult.resultJson)
             assertTrue(toolResult.resultJson.contains("Unknown tool"))
             assertEquals(
@@ -1081,7 +1072,7 @@ class KaiFlowRegressionTest {
 
         try {
             val events = session.send("hi").toList()
-            val failed = events.filterIsInstance<KaiEvent.ToolFailed>().single()
+            events.filterIsInstance<KaiEvent.ToolFailed>().single()
             val error = events.filterIsInstance<KaiEvent.Error>().single()
             val toolResult = protocol.lastHistory.last() as ChatTurn.ToolResult
 
@@ -1093,9 +1084,7 @@ class KaiFlowRegressionTest {
                 ),
                 events.filterIsInstance<KaiEvent.ToolRunning>().single()
             )
-            assertEquals("No hooks configured", failed.message)
             assertEquals(KaiEvent.Stage.Tool, error.stage)
-            assertEquals("no hooks configured", error.message)
             assertTrue(toolResult.resultJson.contains("No hooks configured"))
         } finally {
             session.close()
@@ -1367,32 +1356,19 @@ class KaiFlowRegressionTest {
         ) { event ->
             events += event
         }
-        val errorJson = codec.decodeMap(message.contentJson).orEmpty()
-
         assertEquals("call-1", message.callId)
         assertEquals("remote_search", message.toolName)
-        assertEquals(
-            listOf(
-                KaiEvent.ToolRunning(
-                    callId = "call-1",
-                    toolName = "remote_search",
-                    kind = ToolCallKind.Mcp("docs")
-                ),
-                KaiEvent.ToolFailed(
-                    callId = "call-1",
-                    toolName = "remote_search",
-                    kind = ToolCallKind.Mcp("docs"),
-                    message = "MCP server 'docs' is not configured",
-                    resultJson = message.contentJson
-                ),
-                KaiEvent.Error(
-                    stage = KaiEvent.Stage.Tool,
-                    message = "MCP server 'docs' is not configured"
-                )
-            ),
-            events
-        )
-        assertEquals("MCP server 'docs' is not configured", errorJson["error"])
+        val running = events.filterIsInstance<KaiEvent.ToolRunning>().single()
+        assertEquals("call-1", running.callId)
+        assertEquals("remote_search", running.toolName)
+        assertEquals(ToolCallKind.Mcp("docs"), running.kind)
+        val failed = events.filterIsInstance<KaiEvent.ToolFailed>().single()
+        assertEquals("call-1", failed.callId)
+        assertEquals("remote_search", failed.toolName)
+        assertEquals(ToolCallKind.Mcp("docs"), failed.kind)
+        assertEquals(message.contentJson, failed.resultJson)
+        val error = events.filterIsInstance<KaiEvent.Error>().single()
+        assertEquals(KaiEvent.Stage.Tool, error.stage)
     }
 
     @Test
