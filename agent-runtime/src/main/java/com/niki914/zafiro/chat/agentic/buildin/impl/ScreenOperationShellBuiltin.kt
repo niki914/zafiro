@@ -124,8 +124,6 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
     }
 
     private companion object {
-        // T2a 迁移：原 kai LocalToolConfig DSL（string/number 声明）转录为 JSON Schema，
-        // 字段描述文本一字未改。
         private val SCREEN_SHELL_SCHEMA = """
             {
               "type": "object",

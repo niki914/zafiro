@@ -36,16 +36,15 @@
 
 ## 2. 背景与动机
 
-- **Zafiro 现状**：Zafiro 把 kai 当回合执行引擎使用（`LLMController` 唯一持有实例），暴露的真实缺口：工具调用链管理/拦截能力缺失、错误分类不可移植、流式事件模型单薄、重试缺失、idle 检测语义错误、职责上溢（详见 `docs/kai-prd.md` §1）
-- **重写而非修 kai**：kai 是历史实现，问题深入结构；okai 骨架（`libs/okai`）是重设计的第一版，但经 review 迭代后发现扩展点体系（拦截器链 + ForceStopHook + McpDiscoveryListener 三个平行接口）分散、协议 id 解析无用途、KMP 化有阻（JsonCodec/Clock 抽象）
-- **本模块**：在 `libs:okai` 骨架的教训之上重写骨架，采纳白板架构的门面形态
+- **Zafiro 现状**：Zafiro 把 LLM 运行时当回合执行引擎使用（`LLMController` 唯一持有实例），暴露的真实缺口：工具调用链管理/拦截能力缺失、错误分类不可移植、流式事件模型单薄、重试缺失、idle 检测语义错误、职责上溢
+- **本模块**：作为面向 Agent 运行时的基础库重写，采纳白板架构的门面形态
 
 ## 3. 骨架约束
 
 1. 全部编译通过：方法体 `TODO()`，无业务逻辑；**数据结构与功能设计必须固定**（骨架定型后不轻易改签名）
 2. 顶层 `com.niki914.okia/` 下类数 ≤5，其余分包要详细
 3. 所有 enum / sealed interface / data class 完整声明
-4. 0 代码级注释（行内/方法内）；允许的方法注释只有类级 `/** */`，记录设计来源（kai / pi / codex / independent）
+4. 0 代码级注释（行内/方法内）；允许的方法注释只有类级 `/** */`，记录设计来源（pi / codex / independent）
 5. **新注释风格**：方法用空方法体 + `// 注释` + `return TODO()` 解释功能，类级注释缩减：
 
 ```kotlin
@@ -61,7 +60,7 @@ interface Okia {
 
 6. 0 历史包袱：不保留向后兼容，废弃路径直接删除
 7. 从一开始考虑 JVM 单元测试便利（接口可 fake、依赖可注入）
-8. 实现参考 Pi/Codex，绝不复制 kai
+8. 实现参考 Pi/Codex
 
 ## 4. 目标架构
 
@@ -113,7 +112,7 @@ interface Okia {
 
 **原因**：对话状态（Conversation）内聚在实例内；并发控制（Mutex）只作用于本实例。
 
-**先例**：pi session-manager（fork 产生新会话文件）；kai 的 `OKai` 单会话实现。
+**先例**：pi session-manager（fork 产生新会话文件）。
 
 ### 5.2 并发：Mutex + 抛异常（W1）
 
@@ -170,7 +169,7 @@ data class MessageEntry(
 3. 中断的资源清理是下游职责，库只提供回调时机（`beforeStop`）
 4. **`ToolCallContext` 不携带对话上下文与重试计数**：ToolExecutor 知道完整对话历史是越界；幂等性由 call id 承载（重试时 id 不变，工具自行记录已处理的 id）。需要会话归属信息的工具由 host 在注册时自行注入
 
-**先例**：okai 骨架的 `ToolExecutor.interruptedOutcome`；PRD 4.4 中断收尾分工（未派发 → loop 标记；已派发 → executor 判定）。
+**先例**：pi 的中断取消传播；未派发 → loop 标记；已派发 → executor 判定。
 
 ### 5.6 ToolCallOutcome（5 态）
 
@@ -186,7 +185,7 @@ sealed interface ToolCallOutcome {
 }
 ```
 
-**`Blocked` 删除的原因**：Blocked 是"审批拒绝"的具体语义，应由下游 hook 泛化（拒绝 = `Intercepted` 或 `Failure`）；okai 骨架的 Blocked 值被裁掉。
+**`Blocked` 删除的原因**：Blocked 是"审批拒绝"的具体语义，应由下游 hook 泛化（拒绝 = `Intercepted` 或 `Failure`）。
 **`Intercepted` 新增的原因**：hook 拦截 ≠ 工具失败，UI 要区分；hook 不只给失败结果（可能给成功模拟、缓存命中、拦截）。机制语义，下游自由泛化。**`Intercepted.content` 的原因**：缓存命中 / 成功模拟必须把结果负载回喂模型（`encodeToolResult` 产出 ToolResult 消息），与 `Failure`/`Unknown` 的 `(message, content)` 同构（CR 裁决）。**`Intercepted.isError` 的原因（CR 第三轮落地）**：Provider 编码的 isError 由 outcome 派生，但 Intercepted 语义上覆盖阻断（审批拒绝 = 错误）与结果替换（缓存命中 / 成功模拟 = 成功），派生函数无输入可分；补 `isError: Boolean = false` 字段，由写入方（hook）传递——审批拒绝传 true，缓存命中 / 模拟传 false。其余 4 态均可唯一派生。
 
 工具块 UI 终态 = 这 5 态（Start/Running 是过程态，见 §5.4）。`ToolResult` 消息内嵌同一 outcome（无状态映射，中断语义在持久化恢复后可读）。
@@ -200,7 +199,7 @@ sealed interface ToolCallOutcome {
 4. **`ProtocolRegistry` 删除**：id 解析无用途（host 自己知道自己用什么协议，Zafiro 的 `LlmApiType` 存 Room、恢复时 `openSession` 重新 open）
 5. **`KClass`/reified 重载删除**：KMP 目标（jvm + android + ios）无通用反射，类型令牌无法实例化任意协议接口；保留 `open<P>(protocolClass)` 是误导性 API（对非内置协议必然无法构造）。下游想封装自己的便捷入口（如内部持有协议实例的 `openSession`）由 host 自行实现
 
-**先例**：kai `Kai.open<P>` 泛型绑定；Zafiro `LLMController.obtainSession`（apiType 变化 → close + 重建）。
+**先例**：Zafiro `LLMController.obtainSession`（apiType 变化 → close + 重建）。
 
 ### 5.8 分层与序列化边界（W5）
 
@@ -213,7 +212,7 @@ sealed interface ToolCallOutcome {
 **依赖图闭合（CR 第三轮落地）**：
 - **mapper 是 ChatProtocol 的适配壳**：`ProtocolCompatMapper.from(protocol)` 工厂声明两者连接——`open(protocol)` 内部经此构造，loop 只接触 mapper、不接触 ChatProtocol。
 - **传输入口进 LoopRequest**：`LoopRequest.httpEngine`（回合唯一传输入口，AgentLoop 必须经它发请求）+ `LoopRequest.retryPolicy`（传输层重试：`Compat.retryableStatusCodes` + 指数退避）；回合层重试仍在 `LoopOptions.turnRetryPolicy`。白板 RetryStrategy 节点由此闭合，自定义 AgentLoop 无法绕过注入的 engine。
-- **idle 检测（T7 修订，覆盖本条）**：`idleTimeoutSeconds` 计时器挂在 agent 事件层（parseStream 之后，§8.16 #7 的 G7 裁决推翻本条原始 SseLine 检测点）——任何 ProtocolEvent 到达重置，keep-alive（SseLine null/空行，不产出 ProtocolEvent）不重置。kai 旧实现按事件间隔计时导致长思考误杀（PRD §1.5）：thinking delta 是 agent 事件，持续产出不误杀。
+- **idle 检测(T7 修订,覆盖本条)**:`idleTimeoutSeconds` 计时器挂在 agent 事件层(parseStream 之后,§8.16 #7 的 G7 裁决推翻本条原始 SseLine 检测点)--任何 ProtocolEvent 到达重置,keep-alive(SseLine null/空行，不产出 ProtocolEvent）不重置。thinking delta 是 agent 事件，持续产出不误杀。
 
 **hook 与会话树的不变量**：**树（conversation）= 事实**。hook 的 mutation 永远只作用于"本次操作的一次性载体"（holder），发完即弃，**不写回会话树**。因此"UI 显示原文 vs 模型收到改写版"不是不一致性，而是分层预期——例：`beforeSerialization` 数据脱敏时，UI 显示未脱敏原文（自己的界面），模型收到脱敏版（对外边界）。若下游要修正历史本身，正路是 rewind 后重新生成（新分支），不是 hook 隐式改树（链式 hook 会互相踩、历史不可信）。
 
@@ -282,13 +281,13 @@ sealed interface ToolCallOutcome {
 
 **原因（死锁论证）**：协作式取消不影响阻塞工具调用（子进程 readLine、blocking socket）→ 若在 loop cleanup 中调用钩子则永不执行 → `stop()` join 永远挂住。必须先 kill 再 cancel。
 
-**Zafiro 实证**（`LLMController.kt:266-278`）：`PyRuntime.kill()` → `TerminalSessionPool.closeAll()` → `kai.stop()`——注释明言"不先杀，Kai 的 stop 会 join 等待工具协程直到命令自然结束"。
+**Zafiro 实证**：kill-then-stop 顺序（先杀掉异步资源再停回合），注释明言"不先杀，stop 会 join 等待工具协程直到命令自然结束"。
 
 ### 5.12 读屏前置：伪需求，不是 Hooks 用例
 
 Zafiro 的"屏幕操作前先读屏"已通过**版本号机制**强制实现（操作前校验屏幕快照版本）。它不是 Hooks 的用例，不纳入设计。曾误以为它是 `beforeToolCall` 改参数的驱动场景——不成立。
 
-### 5.13 删除项汇总（相对 okai 骨架）
+### 5.13 删除项汇总
 
 | 删除 | 原因 |
 |---|---|
@@ -316,14 +315,14 @@ Zafiro 的"屏幕操作前先读屏"已通过**版本号机制**强制实现（�
 ### 5.14 KMP 目标
 
 - 库定位：**KMP Agent 基建**（jvm + android + ios）
-- 现状：okai 骨架源码零 Android 类型引用，纯 Kotlin 可编译，仅 `com.android.library` 插件——换 KMP 插件无源码阻碍
+- 现状：源码零 Android 类型引用，纯 Kotlin 可编译，仅 `com.android.library` 插件——换 KMP 插件无源码阻碍
 - 同步方案：仅 `kotlinx.coroutines.sync.Mutex`（W3"整个库只能用 Kotlin 的同步方案"）
 - JSON：kotlinx.serialization；时钟：kotlin.time.Clock；HTTP：`HttpEngine` 接口保留（JVM/Android OkHttp actual，iOS Ktor/NSURLSession actual）
 - UI 流：StateFlow/SharedFlow（coroutines 多平台）
 
 ### 5.15 事件协议（开放问题）
 
-okai 骨架有 `TurnEvent` 11 种 + `FinishReason` + `StopCause`（PRD 4.2）。宿主 IPC 实证需要流式回调（`AgentRuntimeService.executeTurn` 把 `RenderFrame` 经 Binder 发给 Breeno/XiaoAi——事件流形态，宿主进程没有 UI 观察 StateFlow）。
+宿主 IPC 实证需要流式回调（`AgentRuntimeService.executeTurn` 把 `RenderFrame` 经 Binder 发给 Breeno/XiaoAi——事件流形态，宿主进程没有 UI 观察 StateFlow）。
 
 倾向：**库内保留事件协议（事实）+ `StateFlow<Conversation>` 投影（UI）**。是否在骨架期声明 `TurnEvent` 待定（开放问题 6.2）。
 
@@ -338,11 +337,9 @@ okai 骨架有 `TurnEvent` 11 种 + `FinishReason` + `StopCause`（PRD 4.2）。
 ## 7. 参考资料
 
 - 白板原始导出：`WB.txt`（仓库根）
-- 现设计 PRD：`docs/kai-prd.md`（§4.1-4.7 为能力依据；okai 骨架已实现其接口形态）
 - Pi：`/tmp/pi/packages/coding-agent/src/core/extensions/types.ts`（33 时机）、`runner.ts`（分发机制）、`session-manager.ts`（fork/leafId）
 - Codex：`/tmp/codex/codex-rs/protocol/src/protocol.rs:1499`（HookEventName）、`hooks/src/`（declarations/registry）、`core/src/session/turn.rs`（hooks 调用点）
 - Zafiro 实证：`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/LLMController.kt`（kill-then-stop :266-278、异步注入 :195-203、协议切换 :280-288）、`TerminalSessionPool.kt`（异步任务通知队列）
-- okai 骨架现状：`libs/okai/src/main/java/com/niki914/okai/`（36 文件，重写的对照基线）
 
 ## 8. 骨架落地记录（2026-08-09）
 
@@ -465,7 +462,7 @@ com.niki914.okia/
 
 ### 8.11 第二轮实现落地（T2 垂直切片，2026-08-16）
 
-`libs:okia` 实现阶段第二轮（T1 对话树 + T2 垂直切片）的契约回写。源码为准；实现细节的决策记录在 Progress.md D9-D15。
+`libs:okia` 实现阶段第二轮（T1 对话树 + T2 垂直切片）的契约回写。源码为准。
 
 1. **消息成条时机与 live 不变量（§5.4 补充，2026-08-16 对齐）**：流式期间只更新 `live`，不碰 `history`（性能 + 不产生半截消息）；消息完整（该消息产出完成）才经 `LoopRequest.onCommit` 提交进 history。**不变量：live 非空 ⇒ history 不含该消息**，UI 渲染 = history 列表 + 末尾 live 打字机，不会出现重复。turn 结束（任何终态）时已产出的部分 commit 进 history（不丢消息）；T2 单消息场景下"消息完整"与"turn 结束"重合，T6 工具循环后每条模型往返消息各自在完成时 commit（含工具调用的消息在工具执行前 commit，Running 态从 history 推导）。
 2. **close 契约补充**：close 后 send / rewind / update / export / config / close 均抛 IllegalStateException；活跃回合时 close 抛异常（§8.7 #5）；close 只取消 turnScope 并标记 closed，注入资源宿主所有不释放。
@@ -478,7 +475,7 @@ com.niki914.okia/
 
 ### 8.12 第三轮实现落地（T3 传输层 SSE，2026-08-16）
 
-T3 实现期契约回写（调研参照：openai/codex `codex-rs`——`eventsource_stream` / `sse_stream` crate、transport 层非 2xx 拦截、`api_bridge.rs` 错误分类；pi 三份自写解析器潦草、无 content-type 校验，不作为范本）。实现细节的决策记录在 Progress.md D16-D20。
+T3 实现期契约回写（调研参照：openai/codex `codex-rs`——`eventsource_stream` / `sse_stream` crate、transport 层非 2xx 拦截、`api_bridge.rs` 错误分类；pi 三份自写解析器潦草、无 content-type 校验，不作为范本）。
 
 1. **StreamResponse sealed 化**：`data class` 三可空字段（statusCode / lines / errorBody）收敛为 `sealed interface` 两态——`Ok(statusCode: Int, headers, lines: Flow<SseLine>)`（2xx，SSE 解析入口）与 `Error(statusCode: Int, headers, body: String)`（非 2xx，body 全文文本）。statusCode 收窄为非空 Int；**传输失败（连接 / 超时）不在此表达**：`HttpEngine.stream` 是 suspend，网络错误抛异常（Kotlin 取消语义，与 codex transport 层同构），骨架"status 可空"的保守设计收窄。错误 body 通道由此闭合：非 2xx 时 HttpEngine 预读 body 文本进 `Error.body`（T8 默认实现保证），loop 不再需要从行流拼回错误文本。
 2. **新增 `SseLineParser`**（transport 层公共类型）：`Flow<String>`（任意分块 UTF-8 字符串流）→ `Flow<SseLine>`。处理 `\n` / `\r\n` / `\r` 三种分隔符（含跨块 `\r\n`）、EOF 无换行 flush、流首 BOM 移除。行分类：注释行（`: 开头`）→ `SseLine(null)`，空行 → `SseLine("")`，其他 → `SseLine(原文)`。null / 空行保留在流中（§5.8 idle 检测的到达证据，不丢弃）。状态在 flow 构建器内创建，冷流无泄漏。
@@ -498,7 +495,7 @@ T3 实现期契约回写（调研参照：openai/codex `codex-rs`——`eventsou
 
 ### 8.14 T5 落地（hooks 接线，2026-08-16）
 
-T5 实现期契约回写（调研参照：pi `extensions/runner.ts` emitToolCall block 短路、`agent-session.ts` beforeToolCall 调用点、emitInput transform 链）。实现细节的决策记录在 Progress.md D26-D30。
+T5 实现期契约回写（调研参照：pi `extensions/runner.ts` emitToolCall block 短路、`agent-session.ts` beforeToolCall 调用点、emitInput transform 链）。
 
 1. **holder write 全部实现**（Input / Serialization / HttpRequest / ToolCall / ToolResult）：字段只读暴露（私有 backing + 公开 getter），write 改值并记录 lastWriter，多次 write 后者覆盖、lastWriter 为最后写入者。骨架期「write 留空等消费者」的裁决按落点分类落地：
    - `SerializationHolder.write` → buildRequest 输入（数据脱敏主战场，§5.9.4）；`HttpRequestHolder.write` → HttpEngine.stream 输入（http 层兜底脱敏）
@@ -511,13 +508,13 @@ T5 实现期契约回写（调研参照：pi `extensions/runner.ts` emitToolCall
 
 ### 8.15 T6 落地（工具循环，2026-08-16）
 
-T6 实现期契约回写（工具执行模式裁决于 2026-08-16 讨论：采纳 pi 批量并行，放弃 kai 流水线）。实现细节的决策记录在 Progress.md D31-D38。
+T6 实现期契约回写（工具执行模式裁决于 2026-08-16 讨论：采纳 pi 批量并行）。
 
-1. **工具执行时机与并发（§5.5 补充）**：消息流完整结束（Completed）→ 整条 Assistant commit（含 ToolCall 块）→ **之后**才执行该消息的工具调用。多条调用**并发执行**（coroutineScope + async，结构化并发，取消传播），ToolResult 消息与事件按调用顺序保序提交（对齐 pi `executeToolCallsParallel`）。不采纳 kai 流水线（ready 即执行）——换取 loop 无并发流收集结构，且「已派发调用列表 = 已提交 Assistant 中的 ToolCall」推导成立（§8.15 #7）。
+1. **工具执行时机与并发（§5.5 补充）**：消息流完整结束（Completed）→ 整条 Assistant commit（含 ToolCall 块）→ **之后**才执行该消息的工具调用。多条调用**并发执行**（coroutineScope + async，结构化并发，取消传播），ToolResult 消息与事件按调用顺序保序提交（对齐 pi `executeToolCallsParallel`）。「已派发调用列表 = 已提交 Assistant 中的 ToolCall」推导成立（§8.15 #7）。
 2. **工具循环终止**：finish_reason=ToolUse → 执行工具 → ToolResult 回喂 → 下一轮请求；Stop / Length → `TurnCompleted` / `Completed`。防御：ToolUse 但 content 无 ToolCall 块（协议不一致）→ 按 Stop 结束，避免死循环。
 3. **完整响应 API 的 ToolCall 事件（测试暴露，§4.5 契约补全）**：`ToolCallStarted` 注释已声明「完整响应 API 直接跳到 ToolCallReady」——loop 对无 Started 的 Delta / Ready **创建 pending**（不跳过），否则完整响应 API 的工具轮被静默丢弃（findPending 返回 null → return@collect，工具调用块不占位，ToolUse 落入防御分支）。
 4. **outcome 5 态 → 事件映射**：`Success` → ToolSucceeded；`Failure` → ToolFailed；`Intercepted` 按 isError（false → Succeeded，true → Failed）；`Interrupted` / `Unknown` → ToolFailed。事件均携带完整 outcome，UI 不丢信息。
-5. **executor 违反「永不抛异常」契约 → 回合 `Failed(ToolExecutionFailed)`**（新增枚举值，不可重试，先例 §8.8 #3 / §8.14 #3）：业务方 bug 应显形，错误文本打包回喂模型无意义（模型无法修正代码 bug）。区别于 pi（catch 成 error result 回喂）与 kai（xTrySuspend 转 error）。
+5. **executor 违反「永不抛异常」契约 → 回合 `Failed(ToolExecutionFailed)`**（新增枚举值，不可重试，先例 §8.8 #3 / §8.14 #3）：业务方 bug 应显形，错误文本打包回喂模型无意义（模型无法修正代码 bug）。区别于 pi（catch 成 error result 回喂）。
 6. **工具段 hook 异常 → 该工具 `Failure` outcome（§8.4 #13 落地）**：beforeToolCall / afterToolCall 链中 hook 抛异常 → 该调用 outcome = Failure（消息含 hook 异常信息），回合继续；`CancellationException` 传播。**阻断（writeOutcome）跳过 afterToolCall**（对齐 pi immediate result：未执行的调用不走执行后钩子）。
 7. **已派发调用列表（beforeStop 参数，§5.11）无收集**：批量模式下「本回合已派发 = 本回合已提交 Assistant 消息中的 ToolCall 块」，协调器在 stop() 时从会话树推导（send 记录回合起点），零新增 API / 回调 / 字段。推导与 beforeStop 调用随 T7 停止流程落地。
 8. **loop 累积历史同步（测试暴露）**：`executeTools` 提交 ToolResult 到树（onCommit）后必须返回提交消息，run 同步进内部累积 history（下一轮 buildRequest 用它）——否则第二轮请求缺 ToolResult。
@@ -529,7 +526,7 @@ T6 实现期契约回写（工具执行模式裁决于 2026-08-16 讨论：采�
 
 T7 实现期契约回写。裁决来源：2026-08-16/17 讨论（G1-G8），实现为权威，测试 273 全绿（T7 新增 39）。
 
-1. **外部取消也触发 beforeStop（G1 裁决）**：外部取消（send 调用方协程被取消，stopCause == null）与 stop 表现一致——在 `NonCancellable` 中先执行 kill 步骤（beforeStop + 推导 calls）再 cancel turnJob + rethrow。差异只在终态表达：stop → `Aborted(UserStop)`；外部取消 → 传播 CancellationException（不返回 TurnResult）。理由：工具资源泄漏不因取消来源豁免（kai PRD §4.4 统一协调路径）。
+1. **外部取消也触发 beforeStop（G1 裁决）**：外部取消（send 调用方协程被取消，stopCause == null）与 stop 表现一致——在 `NonCancellable` 中先执行 kill 步骤（beforeStop + 推导 calls）再 cancel turnJob + rethrow。差异只在终态表达：stop → `Aborted(UserStop)`；外部取消 → 传播 CancellationException（不返回 TurnResult）。理由：工具资源泄漏不因取消来源豁免。
 2. **stop 重入/并发至多一次 kill（G2 裁决）**：`stop()` 在 mutex 内原子检查+置 `stopCause`（@Volatile 读不够：两个并发 stop 可能都读到 null），第二个 stop 直接 return 无副作用。kill 步骤（beforeStop）与 cancelAndJoin 在 mutex 外执行。
 3. **回合起点记录（G3 落地）**：`send` 记录 turnStartEntryId（User 消息 entryId），`RealOkia` 经 `RealConversation.assistantToolCallsSince(entryId)`（新增 internal 方法）推导 beforeStop 的 calls——沿当前 leaf 投影取 entryId 之后的已提交 Assistant 中的 ToolCall 块；entryId 不在投影链（rewind 跳过）时返回空（防御）。
 4. **HTTP 状态码 → code 映射表（G4 裁决，对照 pi provider-retry / codex retry）**：401/403 → Auth、402 → Quota、429 → RateLimit、503 → Overloaded、408/409/其他 5xx → Transport、其余（400 系/3xx）→ Parse。可重试 = 408/409/429/全部 5xx/网络（无 status）。**修正旧实现 bug**：原 else 分支把 400/404 归 Transport（可重试，白等客户端错误）。`DeepSeekCompat.retryableStatusCodes` 扩展为 `{408, 409, 429} ∪ (500..599)`。不做错误文本匹配（`insufficient_quota` 等），429 一律 RateLimit，host 自判。

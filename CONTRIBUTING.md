@@ -88,11 +88,11 @@ These scenarios need human judgment — don't proceed without asking:
 
 ## Testing
 
-JVM unit tests live in `libs/kai/src/test` (the regression suite pins loop/stop/rollback behavior) and `app/src/test`. Run them with `./gradlew :libs:kai:testDebugUnitTest` and `:app:testDebugUnitTest`. The primary end-to-end verification is still building the APK and testing on a real device — when you finish a change, tell the human what to test, especially hooks, IPC, or the render pipeline.
+JVM unit tests live in `app/src/test`. Run them with `./gradlew :app:testDebugUnitTest`. The primary end-to-end verification is still building the APK and testing on a real device — when you finish a change, tell the human what to test, especially hooks, IPC, or the render pipeline.
 
 ## Documentation
 
-If a design decision is worth recording, put it in `docs/` as a design doc and mark its status (proposal / implemented). The Kai redesign requirements live in `docs/kai-prd.md`.
+If a design decision is worth recording, put it in `docs/` as a design doc and mark its status (proposal / implemented).
 
 ## License
 

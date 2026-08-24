@@ -40,7 +40,6 @@ include(":agent-runtime")
 
 // Vendored libraries (see libs/README.md)
 include(":libs:logging")
-include(":libs:kai")
 include(":libs:okia")
 include(":libs:libterm-core")
 project(":libs:libterm-core").projectDir = file("libs/libterm/libterm-core")

@@ -13,7 +13,6 @@ abstract class BuiltinTool {
 
     // JSON Schema（type:object + properties + required），随请求序列化为 parameters。
     // null = 无参数约束（请求体省略 parameters，模型按 description 调用）。
-    // T2a 迁移：kai LocalToolConfig DSL 已删除；schema 声明式常量为唯一来源。
     open val inputSchemaJson: String? = null
 
     abstract suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult

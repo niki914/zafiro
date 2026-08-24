@@ -28,7 +28,7 @@ import kotlinx.serialization.json.jsonPrimitive
  * - create_custom_tool 成功且 enabled 时：注册进 inline 表并回调 host
  *   （D20 回合内注册：RealAgentLoop 每段现取 registry.snapshot()，同回合
  *   下一轮模型请求即可见新工具）
- * Design source: kai 时代 ToolCallDispatcher 执行逻辑 + okia ToolExecutor 契约。
+ * Design source: okia ToolExecutor 契约。
  */
 class LocalToolExecutor(
     private val builtinToolExecutor: BuiltinToolExecutor = BuiltinToolExecutor(),
