@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App / Module -->
-    <string name="app_name">Nexus</string>
+    <string name="app_name">Zafiro</string>
     <string name="xposed_desc">让语音助手接入你自己的模型能力\n\n现支持:\n\n- ColorOS 小布助手\n- HyperOS 小爱同学</string>
 
     <!-- Onboarding -->
@@ -38,11 +38,11 @@
     <string name="ui_onboard_configure_error_load_failed">读取配置失败：%1$s</string>
     <string name="ui_onboard_configure_error_save_failed">保存配置失败：%1$s</string>
     <string name="ui_onboard_done_headline">大功告成。</string>
-    <string name="ui_onboard_done_description">配置已完成，你可以开始使用 Nexus，或稍后在设置中继续调整。</string>
-    <string name="ui_onboard_done_enter_home">进入 Nexus</string>
+    <string name="ui_onboard_done_description">配置已完成，你可以开始使用 Zafiro，或稍后在设置中继续调整。</string>
+    <string name="ui_onboard_done_enter_home">进入 Zafiro</string>
 
     <!-- Home -->
-    <string name="ui_home_title">Nexus</string>
+    <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">新对话</string>
     <string name="ui_home_input_placeholder">输入消息...</string>
     <string name="ui_tool_status_called">已调用</string>
@@ -91,11 +91,11 @@
 
     <!-- Settings Home Items -->
     <string name="ui_settings_model_config">模型配置</string>
-    <string name="ui_settings_model_config_summary">调整 Nexus 的模型接入</string>
+    <string name="ui_settings_model_config_summary">调整 Zafiro 的模型接入</string>
     <string name="ui_settings_memory">记忆</string>
     <string name="ui_settings_memory_summary">管理持久化的记忆与偏好</string>
     <string name="ui_settings_builtin_tools">内置工具</string>
-    <string name="ui_settings_builtin_tools_summary">管理 Nexus 提供的工具</string>
+    <string name="ui_settings_builtin_tools_summary">管理 Zafiro 提供的工具</string>
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">管理本地 Skills</string>
     <string name="skill_page_description">开启或关闭本地 Skills。开启后，Agent 可在对话中按需使用。</string>
@@ -121,7 +121,7 @@
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">接入外部 MCP 服务与工具</string>
     <string name="ui_settings_takeover">接管规则</string>
-    <string name="ui_settings_takeover_summary">设置哪些输入交给原生助手或 Nexus</string>
+    <string name="ui_settings_takeover_summary">设置哪些输入交给原生助手或 Zafiro</string>
     <string name="ui_settings_execution_rules">执行规则</string>
     <string name="ui_settings_execution_rules_summary">设置 Shell 的安全策略</string>
     <string name="ui_settings_about">关于</string>
@@ -206,13 +206,13 @@
     <string name="takeover_empty_action_hint">点击右上方，添加第一条接管规则。</string>
     <string name="takeover_loading">正在读取接管规则…</string>
     <string name="takeover_editor_title_create">新增接管规则</string>
-    <string name="takeover_editor_description">设置哪些问题交给原生助手，哪些继续交给 Nexus。</string>
+    <string name="takeover_editor_description">设置哪些问题交给原生助手，哪些继续交给 Zafiro。</string>
     <string name="takeover_field_name">规则名称</string>
     <string name="takeover_field_name_hint">例如：小布生活服务</string>
     <string name="takeover_field_enabled">启用规则</string>
     <string name="takeover_field_target">命中时让谁接管</string>
     <string name="takeover_target_native_assistant">原生助手</string>
-    <string name="takeover_target_nexus">Nexus</string>
+    <string name="takeover_target_nexus">Zafiro</string>
     <string name="takeover_field_patterns">规则</string>
     <string name="takeover_field_patterns_hint">天气\n.*闹钟.*\n打开.*</string>
     <string name="takeover_field_patterns_description">每行输入一个关键字或正则表达式，命中任意一条时，使用上方的接管方式。</string>
@@ -268,7 +268,7 @@
     <string name="custom_tool_save_failed">保存失败：%1$s</string>
 
     <!-- MCP Module -->
-    <string name="mcp_page_description">配置 MCP 服务的连接方式与鉴权信息。保存后，Nexus 会在运行时自动发现可用工具。</string>
+    <string name="mcp_page_description">配置 MCP 服务的连接方式与鉴权信息。保存后，Zafiro 会在运行时自动发现可用工具。</string>
     <string name="mcp_page_empty_description">点击右上方，添加你的第一个服务器。</string>
     <string name="mcp_loading">正在读取已保存的 MCP 服务...</string>
     <string name="mcp_editor_title_create">新增 MCP 服务</string>
@@ -335,9 +335,9 @@
     <!-- XService notifications -->
     <string name="fallback_assistant_name">助手</string>
     <string name="notif_unsupported_version_title">宿主版本未适配</string>
-    <string name="notif_unsupported_version_body">当前%1$s版本还未被 Nexus 支持\n宿主版本：%2$s</string>
+    <string name="notif_unsupported_version_body">当前%1$s版本还未被 Zafiro 支持\n宿主版本：%2$s</string>
     <string name="notif_unsupported_issue_title">[BUG] 宿主版本未适配</string>
-    <string name="notif_unsupported_issue_body">## 问题描述\n当前%1$s版本还未被 Nexus 支持\n宿主版本：%2$s\n\n## 复现步骤\n\n\n## 设备信息\n- 助手：%1$s\n- 助手版本：%2$s\n- 模块版本：</string>
+    <string name="notif_unsupported_issue_body">## 问题描述\n当前%1$s版本还未被 Zafiro 支持\n宿主版本：%2$s\n\n## 复现步骤\n\n\n## 设备信息\n- 助手：%1$s\n- 助手版本：%2$s\n- 模块版本：</string>
 
     <string name="feedback_bug_template">## 问题描述\n\n## 复现步骤\n\n## 预期行为\n\n## 实际行为\n\n## 设备信息\n- Android 版本：\n- 助手（小布或其他）：\n- 模块版本：\n\n## 更多\n可以补充日志、截图录屏等信息，以便于我们理解</string>
     <string name="conversation_fork_title">Fork · %1$s</string>

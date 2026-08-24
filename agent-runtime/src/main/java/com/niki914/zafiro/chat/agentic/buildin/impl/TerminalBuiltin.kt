@@ -574,7 +574,7 @@ class TerminalBuiltin(
             timeout = obj.optionalLong("timeout"),
             workdir = obj.optionalString("workdir"),
             notifyOnComplete = obj.optionalBoolean("notify_on_complete") ?: false,
-            // Nexus extensions
+            // Zafiro extensions
             backend = obj.optionalString("backend")?.let { resolveBackend(it) } ?: Backend.LOCAL,
             identity = obj.optionalString("identity")?.trim(),
             host = obj.optionalString("host")?.trim(),
@@ -754,7 +754,7 @@ class TerminalBuiltin(
         val timeout: Long?,
         val workdir: String?,
         val notifyOnComplete: Boolean,
-        // Nexus extensions
+        // Zafiro extensions
         val backend: Backend,
         val identity: String?,
         val host: String?,
@@ -793,7 +793,7 @@ class TerminalBuiltin(
         private val KNOWN_KEYS = setOf(
             // Hermes-aligned
             "command", "background", "timeout", "workdir", "notify_on_complete",
-            // Nexus extensions
+            // Zafiro extensions
             "backend", "identity",
             "host", "port", "username", "password",
             "host_key_policy", "known_hosts_path", "strict_host_key_checking",

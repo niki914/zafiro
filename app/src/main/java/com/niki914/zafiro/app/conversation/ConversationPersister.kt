@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
  * - 新增消息永远追加在 leaf 投影尾部（线性 append-only），drop(persistedCount)
  *   就是新消息；插入按 (conversation_id, id) 幂等（@Insert IGNORE），观察协程
  *   重启/切会话重复观察不重复写
- * - parentId 从投影前一条 id 推导（Nexus 无 rewind，树恒线性，D3-3）
+ * - parentId 从投影前一条 id 推导（Zafiro 无 rewind，树恒线性，D3-3）
  * - 会话切换：快照 id 变化 → 新会话从 Room 现有条数开始对比（恢复场景
  *   Room 已有全量，不重复插）
  * - 崩溃窗口：消息已 commit 但观察者未落盘 → 丢这条（"半句话"扩展版，

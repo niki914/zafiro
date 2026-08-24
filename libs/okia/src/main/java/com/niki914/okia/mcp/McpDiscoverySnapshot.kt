@@ -3,7 +3,7 @@ package com.niki914.okia.mcp
 /**
  * 每服务器的当前发现状态。host 读取它以组合 prompt、暴露连接问题或
  * 持久化发现的工具；库在配置变更时刷新。fingerprint 驱动增量刷新决策。
- * Design source: okia 骨架 McpDiscoverySnapshot（Nexus 重度使用：
+ * Design source: okia 骨架 McpDiscoverySnapshot（Zafiro 重度使用：
  * fingerprint 刷新 + PromptComposer 渲染）。
  */
 data class McpDiscoverySnapshot(

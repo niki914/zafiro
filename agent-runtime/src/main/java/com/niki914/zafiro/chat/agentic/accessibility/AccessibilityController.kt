@@ -271,9 +271,9 @@ object AccessibilityController {
             }
 
             return Result.failure(RuntimeException(
-                "Nexus cannot control this device because the Accessibility Service is not enabled, " +
+                "Zafiro cannot control this device because the Accessibility Service is not enabled, " +
                         "and neither root nor Shizuku is available to enable it automatically. " +
-                        "Tell the user to open Settings > Accessibility and turn on 'Nexus' manually, " +
+                        "Tell the user to open Settings > Accessibility and turn on 'Zafiro' manually, " +
                         "then grant 'Display over other apps' permission."
             ))
         }

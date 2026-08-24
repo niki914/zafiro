@@ -435,7 +435,7 @@ class TerminalBuiltinTest {
                 .contains("automatically")
         )
 
-        // Nexus extension fields
+        // Zafiro extension fields
         assertTrue(properties.containsKey("backend"))
         assertTrue(properties.containsKey("identity"))
         assertTrue(properties.containsKey("host"))
@@ -461,7 +461,7 @@ class TerminalBuiltinTest {
         )
         assertTrue(properties.containsKey("session_id"))
 
-        // pty must NOT be in the schema (not a Nexus protocol field)
+        // pty must NOT be in the schema (not a Zafiro protocol field)
         assertFalse(properties.containsKey("pty"))
     }
 

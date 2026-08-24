@@ -76,7 +76,7 @@ class AgentRuntimeService : Service() {
         private const val CHANNEL_ID = "agent_runtime"
         private const val MAX_QUERY_LENGTH = 8192
         private const val STORE_CHANNEL_ID = "nexus_xservice_default_channel"
-        private const val STORE_CHANNEL_NAME = "Nexus"
+        private const val STORE_CHANNEL_NAME = "Zafiro"
     }
 
     private fun createNotificationChannel() {
@@ -102,7 +102,7 @@ class AgentRuntimeService : Service() {
             null
         }
         return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Nexus Agent Runtime")
+            .setContentTitle("Zafiro Agent Runtime")
             .setContentText("Running")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)

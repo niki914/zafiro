@@ -1,6 +1,6 @@
 # ISSUES — okia 整合待提清单
 
-> Nexus × OKIA 接入过程中发现、需要提给 `libs:okia` 的 issue 批。
+> Zafiro × OKIA 接入过程中发现、需要提给 `libs:okia` 的 issue 批。
 > 维护：T 链推进时增删；标「作废」= 因方案变化不再需要，不提交。
 > 状态：`待提` / `已提(#xx)` / `作废`
 

@@ -47,7 +47,7 @@ import com.niki914.zafiro.chat.agentic.PromptComposer
 import com.niki914.zafiro.chat.agentic.ToolManager
 
 /**
- * Nexus 的 LLM 回合执行入口。OKIA 接入 T1 重写：
+ * Zafiro 的 LLM 回合执行入口。OKIA 接入 T1 重写：
  * - 运行时从 Kai 切到 Okia（一次对话一个实例：换会话/重建 = close + open(restore)）
  * - 终态以 send 返回值（TurnResult）承载，事件流只承担中间过程
  * - 工具注册/执行/MCP 发现留给 T2：T1/T2 期间未注册工具的调用已不死循环（T2c：

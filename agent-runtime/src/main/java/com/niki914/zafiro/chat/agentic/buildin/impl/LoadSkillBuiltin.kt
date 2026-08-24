@@ -16,7 +16,7 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
     override val name: String = "load_skill"
 
     override val description: String =
-        "Load a Nexus skill by id when its full SKILL.md content is needed."
+        "Load a Zafiro skill by id when its full SKILL.md content is needed."
 
     override val defaultEnabled: Boolean = true
 

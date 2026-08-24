@@ -1,4 +1,4 @@
-# Contributing to Nexus
+# Contributing to Zafiro
 
 This document is written for AI coding agents (Claude Code, Codex, etc.) that contributors will use to work on this repo. It tells you how to navigate the codebase, what constraints matter, and when to stop and ask the human.
 
@@ -15,8 +15,8 @@ Rule: **source is the truth.** Design documents (`docs/`) represent intent, not 
 | Term | Meaning |
 |------|---------|
 | **Host** | The voice assistant app being hooked — Breeno (`com.heytap.speechassist`) or XiaoAi (`com.miui.voiceassist`) |
-| **Main App** | Nexus's own process (`com.niki914.nexus.agentic`) — settings UI + `AgentRuntimeService` |
-| **takeover** | Decision per query: `InjectedLLM` (Nexus answers) or `NativeTakeover` (let host answer natively) |
+| **Main App** | Zafiro's own process (`com.niki914.zafiro`) — settings UI + `AgentRuntimeService` |
+| **takeover** | Decision per query: `InjectedLLM` (Zafiro answers) or `NativeTakeover` (let host answer natively) |
 | **turn** | One query→response lifecycle, tracked by `ConversationTurnState` |
 | **store** | A named JSON persistence unit (e.g. `agent.main.config`, `rules.takeover`), atomically written under `filesDir/` |
 | **render pipeline** | The path that injects LLM output into host UI. Breeno replaces cards wholesale; XiaoAi captures response targets and injects in chunks |

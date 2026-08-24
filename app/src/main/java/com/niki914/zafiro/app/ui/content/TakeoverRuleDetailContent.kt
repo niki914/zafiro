@@ -284,7 +284,7 @@ private fun TakeoverRuleDetailRegexContentPreview() {
             TakeoverRuleDetailContentBody(
                 uiState = TakeoverSettingsUiState(
                     formState = TakeoverRuleFormState(
-                        name = "复杂问题交给 Nexus",
+                        name = "复杂问题交给 Zafiro",
                         target = TakeoverTarget.Zafiro,
                         patternsInput = ".*崩溃.*\n.*日志.*",
                         enabled = true,

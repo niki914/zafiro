@@ -36,7 +36,7 @@
 
 ## 2. 背景与动机
 
-- **Nexus 现状**：Nexus 把 kai 当回合执行引擎使用（`LLMController` 唯一持有实例），暴露的真实缺口：工具调用链管理/拦截能力缺失、错误分类不可移植、流式事件模型单薄、重试缺失、idle 检测语义错误、职责上溢（详见 `docs/kai-prd.md` §1）
+- **Zafiro 现状**：Zafiro 把 kai 当回合执行引擎使用（`LLMController` 唯一持有实例），暴露的真实缺口：工具调用链管理/拦截能力缺失、错误分类不可移植、流式事件模型单薄、重试缺失、idle 检测语义错误、职责上溢（详见 `docs/kai-prd.md` §1）
 - **重写而非修 kai**：kai 是历史实现，问题深入结构；okai 骨架（`libs/okai`）是重设计的第一版，但经 review 迭代后发现扩展点体系（拦截器链 + ForceStopHook + McpDiscoveryListener 三个平行接口）分散、协议 id 解析无用途、KMP 化有阻（JsonCodec/Clock 抽象）
 - **本模块**：在 `libs:okai` 骨架的教训之上重写骨架，采纳白板架构的门面形态
 
@@ -119,7 +119,7 @@ interface Okia {
 
 **决策**：**`ConcurrencyMode` 枚举删除**。实例内部用 Mutex 串行化；并发调用（活跃回合存在时再次 send）直接抛异常。
 
-**原因**：白板 W1 "Okia 务必用 Mutex 做并发控制，目前希望在并发的时候抛出异常"。Nexus 实证：`AgentRuntimeService` 是"先 cancel 再提交"（stop-then-send），库内 Replace 语义无需求——Replace 可由 `stop() + send()` 组合表达。Queue 亦无需求。三值枚举收敛为单一行为。
+**原因**：白板 W1 "Okia 务必用 Mutex 做并发控制，目前希望在并发的时候抛出异常"。Zafiro 实证：`AgentRuntimeService` 是"先 cancel 再提交"（stop-then-send），库内 Replace 语义无需求——Replace 可由 `stop() + send()` 组合表达。Queue 亦无需求。三值枚举收敛为单一行为。
 
 ### 5.3 Conversation 类（W3）
 
@@ -197,10 +197,10 @@ sealed interface ToolCallOutcome {
 1. 实例化时协议定死：`Okia.open(protocol: P, restore = null, builder)`（协议实例）+ `Okia.open(restore = null, builder)`（默认 M0 DeepSeek，库内部构造）+ `Okia.open(dependencies, restore = null, builder)`（测试/高级装配）；`restore` 为可选 `SessionSnapshot` 恢复快照（持久化入口，§5.3，null = 新对话）
 2. 协议作用域 == Okia 实例生命周期；实例由调用方构造（`withCodec` / 自定义状态在 open 前就绪），open 后归 Okia 持有
 3. **持久化与恢复无矛盾**：恢复时重新 `open(protocol)` 提供 Provider；协议 id 不进会话数据
-4. **`ProtocolRegistry` 删除**：id 解析无用途（host 自己知道自己用什么协议，Nexus 的 `LlmApiType` 存 Room、恢复时 `openSession` 重新 open）
+4. **`ProtocolRegistry` 删除**：id 解析无用途（host 自己知道自己用什么协议，Zafiro 的 `LlmApiType` 存 Room、恢复时 `openSession` 重新 open）
 5. **`KClass`/reified 重载删除**：KMP 目标（jvm + android + ios）无通用反射，类型令牌无法实例化任意协议接口；保留 `open<P>(protocolClass)` 是误导性 API（对非内置协议必然无法构造）。下游想封装自己的便捷入口（如内部持有协议实例的 `openSession`）由 host 自行实现
 
-**先例**：kai `Kai.open<P>` 泛型绑定；Nexus `LLMController.obtainSession`（apiType 变化 → close + 重建）。
+**先例**：kai `Kai.open<P>` 泛型绑定；Zafiro `LLMController.obtainSession`（apiType 变化 → close + 重建）。
 
 ### 5.8 分层与序列化边界（W5）
 
@@ -272,7 +272,7 @@ sealed interface ToolCallOutcome {
 
 **决策（CR 第三轮修正）**：`beforeInput` 不再承担"异步任务完成通知注入"。异步注入由 **host 自行拼装进 send 文本**：业务方把后台任务完成通知入队，下一次用户输入时在调用 `send` 前拼接为完整 query 文本再提交。通知是瞬态业务状态，进会话树即污染历史；host 每轮自行组装可保持树 = 对话事实。
 
-**Nexus 实证**（`agent-runtime/.../LLMController.kt:195-203`）：terminal 工具 `background=true + notify_on_complete=true` → `TerminalSessionPool.startAsync` 后台执行 → 完成时通知入队 → 下一次用户输入时 `drainPendingNotifications()` 把 `[IMPORTANT: Background process ...]` 拼接进 query 前缀再 send——**保留现有 host 侧文本拼接，不下沉**。
+**Zafiro 实证**（`agent-runtime/.../LLMController.kt:195-203`）：terminal 工具 `background=true + notify_on_complete=true` → `TerminalSessionPool.startAsync` 后台执行 → 完成时通知入队 → 下一次用户输入时 `drainPendingNotifications()` 把 `[IMPORTANT: Background process ...]` 拼接进 query 前缀再 send——**保留现有 host 侧文本拼接，不下沉**。
 
 **beforeInput / afterInput 保留，语义不变**：hook 的 mutation 只影响本次请求载体，不写回会话树（§5.8 不变式）。输入改写若有真实消费场景（如输入规范化），由业务方在 hook 中自行定义；骨架期仅声明槽位，无内置用例。
 
@@ -282,11 +282,11 @@ sealed interface ToolCallOutcome {
 
 **原因（死锁论证）**：协作式取消不影响阻塞工具调用（子进程 readLine、blocking socket）→ 若在 loop cleanup 中调用钩子则永不执行 → `stop()` join 永远挂住。必须先 kill 再 cancel。
 
-**Nexus 实证**（`LLMController.kt:266-278`）：`PyRuntime.kill()` → `TerminalSessionPool.closeAll()` → `kai.stop()`——注释明言"不先杀，Kai 的 stop 会 join 等待工具协程直到命令自然结束"。
+**Zafiro 实证**（`LLMController.kt:266-278`）：`PyRuntime.kill()` → `TerminalSessionPool.closeAll()` → `kai.stop()`——注释明言"不先杀，Kai 的 stop 会 join 等待工具协程直到命令自然结束"。
 
 ### 5.12 读屏前置：伪需求，不是 Hooks 用例
 
-Nexus 的"屏幕操作前先读屏"已通过**版本号机制**强制实现（操作前校验屏幕快照版本）。它不是 Hooks 的用例，不纳入设计。曾误以为它是 `beforeToolCall` 改参数的驱动场景——不成立。
+Zafiro 的"屏幕操作前先读屏"已通过**版本号机制**强制实现（操作前校验屏幕快照版本）。它不是 Hooks 的用例，不纳入设计。曾误以为它是 `beforeToolCall` 改参数的驱动场景——不成立。
 
 ### 5.13 删除项汇总（相对 okai 骨架）
 
@@ -309,7 +309,7 @@ Nexus 的"屏幕操作前先读屏"已通过**版本号机制**强制实现（�
 | `ToolCallContext.conversation` | §5.5：ToolExecutor 知道完整对话历史是越界 |
 | `afterInput.handled` | §5.9：无可写入口（悬空）+ 与 `InputHolder.lastWriter` 冗余 + 无消费者 |
 
-**保留**：`ChatProtocol` / `Compat` / `ProtocolEvent` / `RequestSnapshot`（协议层）、`Message` / `ContentBlock` / `Usage` / `StopReason`、`Session` 树 + `SessionCodec` + leafId 持久化（§5.3）、`ToolExecutor` / `ToolRegistry` / `ToolCallContext` / `ToolDescriptor`、`McpClient` / `McpServer` / `McpExecutor` / `McpDiscoverySnapshot`（Nexus 重度使用：fingerprint 刷新 + PromptComposer 渲染）、`HttpEngine` + transport 数据类（KMP actual 点）、`LLMError` / `RetryPolicy`（Nexus 手工分类要下沉）。
+**保留**：`ChatProtocol` / `Compat` / `ProtocolEvent` / `RequestSnapshot`（协议层）、`Message` / `ContentBlock` / `Usage` / `StopReason`、`Session` 树 + `SessionCodec` + leafId 持久化（§5.3）、`ToolExecutor` / `ToolRegistry` / `ToolCallContext` / `ToolDescriptor`、`McpClient` / `McpServer` / `McpExecutor` / `McpDiscoverySnapshot`（Zafiro 重度使用：fingerprint 刷新 + PromptComposer 渲染）、`HttpEngine` + transport 数据类（KMP actual 点）、`LLMError` / `RetryPolicy`（Zafiro 手工分类要下沉）。
 
 **资源所有权**（close 规则）：装配时宿主传入的资源（`httpEngine` / `toolRegistry` / `agentLoop` / `mcpClient` / 协议实例）**宿主所有**，`close()` 不关闭；config 未提供的默认资源（默认空 `ToolRegistry`、自建 `HttpEngine`）实例所有，`close()` 释放自建部分。
 
@@ -341,7 +341,7 @@ okai 骨架有 `TurnEvent` 11 种 + `FinishReason` + `StopCause`（PRD 4.2）。
 - 现设计 PRD：`docs/kai-prd.md`（§4.1-4.7 为能力依据；okai 骨架已实现其接口形态）
 - Pi：`/tmp/pi/packages/coding-agent/src/core/extensions/types.ts`（33 时机）、`runner.ts`（分发机制）、`session-manager.ts`（fork/leafId）
 - Codex：`/tmp/codex/codex-rs/protocol/src/protocol.rs:1499`（HookEventName）、`hooks/src/`（declarations/registry）、`core/src/session/turn.rs`（hooks 调用点）
-- Nexus 实证：`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/LLMController.kt`（kill-then-stop :266-278、异步注入 :195-203、协议切换 :280-288）、`TerminalSessionPool.kt`（异步任务通知队列）
+- Zafiro 实证：`agent-runtime/src/main/java/com/niki914/nexus/agentic/chat/LLMController.kt`（kill-then-stop :266-278、异步注入 :195-203、协议切换 :280-288）、`TerminalSessionPool.kt`（异步任务通知队列）
 - okai 骨架现状：`libs/okai/src/main/java/com/niki914/okai/`（36 文件，重写的对照基线）
 
 ## 8. 骨架落地记录（2026-08-09）

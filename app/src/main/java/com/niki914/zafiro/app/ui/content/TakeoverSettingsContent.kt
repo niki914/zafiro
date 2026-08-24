@@ -248,7 +248,7 @@ private fun TakeoverSettingsContentPreview() {
                         ),
                         TakeoverRuleItem(
                             id = "nexus-debug",
-                            name = "调试问题交给 Nexus",
+                            name = "调试问题交给 Zafiro",
                             target = TakeoverTarget.Zafiro,
                             patterns = listOf(".*崩溃.*", ".*日志.*"),
                         ),

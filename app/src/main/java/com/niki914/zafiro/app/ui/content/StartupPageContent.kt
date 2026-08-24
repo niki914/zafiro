@@ -58,7 +58,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.text.iterator
 
-private const val LETTERS = "NEXUS"
+private const val LETTERS = "ZAFIRO"
 private val LetterFontSize = 96.sp
 private val LetterSpacing = 28.dp
 

@@ -101,7 +101,7 @@ internal fun toAssistantErrorUi(message: String): AssistantErrorUi {
 }
 
 private const val AssistantMarkdownPreviewText = """
-# Nexus 对话排版
+# Zafiro 对话排版
 
 这是一段用于观察正文、标题、引用和表格体感的示例内容。标题不应该再像页面 Hero 一样夸张。
 
