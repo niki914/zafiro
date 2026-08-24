@@ -7,7 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.content.ContextCompat
-import com.niki914.zafiro.app.ui.nexus.model.StartupAssistantUi
+import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.store.HostApp
 import com.niki914.store.XValues
 import com.niki914.xposed.api.util.OsFamily

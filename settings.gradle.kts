@@ -30,7 +30,7 @@ dependencyResolutionManagement {
         maven { url = uri("https://chaquo.com/maven") }
     }
 }
-rootProject.name = "Nexus"
+rootProject.name = "Zafiro"
 include(":app")
 include(":xposed-api")
 include(":xposed-runtime")

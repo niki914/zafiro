@@ -5,8 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import com.niki914.zafiro.app.ui.nexus.NexusApp
-import com.niki914.zafiro.app.ui.nexus.model.AppLaunchDecision
+import com.niki914.zafiro.app.ui.NexusApp
+import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.uikit.base.BaseTheme
 import kotlinx.coroutines.runBlocking
 

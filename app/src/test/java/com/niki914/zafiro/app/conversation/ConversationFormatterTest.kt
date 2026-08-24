@@ -1,7 +1,7 @@
 package com.niki914.zafiro.app.conversation
 
-import com.niki914.zafiro.app.ui.nexus.model.HomeChatBlock
-import com.niki914.zafiro.app.ui.nexus.model.HomeToolState
+import com.niki914.zafiro.app.ui.model.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
@@ -10,7 +10,6 @@ import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 

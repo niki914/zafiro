@@ -1,10 +1,10 @@
 package com.niki914.zafiro.app.conversation
 
 import com.niki914.logging.Logger
-import com.niki914.zafiro.app.ui.nexus.model.HomeChatBlock
-import com.niki914.zafiro.app.ui.nexus.model.HomeChatTurn
-import com.niki914.zafiro.app.ui.nexus.model.HomeToolState
-import com.niki914.zafiro.app.ui.nexus.model.HomeToolStatus
+import com.niki914.zafiro.app.ui.model.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.HomeChatTurn
+import com.niki914.zafiro.app.ui.model.HomeToolState
+import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
