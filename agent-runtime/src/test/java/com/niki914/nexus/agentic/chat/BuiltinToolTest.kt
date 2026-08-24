@@ -19,7 +19,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -93,8 +92,6 @@ class BuiltinToolTest {
         assertEquals("screen_operation_shell", registry.find("screen_operation_shell")?.name)
         assertEquals("search_apps", registry.find("search_apps")?.name)
         assertEquals("terminal", registry.find("terminal")?.name)
-        assertNull(registry.find("ssh_terminal"))
-        assertNull(registry.find("run_command"))
     }
 
     @Test

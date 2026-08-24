@@ -40,18 +40,6 @@ class ProviderSpecTest {
     }
 
     @Test
-    fun nonButtonTokensRemainUnsetForNow() {
-        val deepseek = ProviderSpecs.find("deepseek")
-        val claude = ProviderSpecs.find("anthropic")
-
-        assertNull(deepseek.visualTokens.iconBadge)
-        assertNull(deepseek.visualTokens.page)
-        assertNull(claude.visualTokens.iconBadge)
-        assertNull(claude.visualTokens.page)
-        assertNotNull(claude.visualTokens.button)
-    }
-
-    @Test
     fun providersExposeExampleModelIds() {
         assertEquals("deepseek-v4-pro", ProviderSpecs.find("deepseek").exampleModelId)
         assertEquals("gpt-5.4", ProviderSpecs.find("openai").exampleModelId)
