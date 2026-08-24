@@ -10,7 +10,7 @@ import com.niki914.zafiro.app.ui.nav.DonePage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
-import com.niki914.zafiro.app.ui.nav.NexusPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SettingsConfigurePage
 import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
@@ -36,15 +36,15 @@ import com.niki914.zafiro.app.ui.route.StartupPageRoute
 import com.niki914.zafiro.app.ui.route.TakeoverRuleDetailRoute
 
 @Composable
-fun NexusPageContent(
-    entry: NavigationEntry<NexusPage>,
+fun ZafiroPageContent(
+    entry: NavigationEntry<ZafiroPage>,
     startupAssistantUi: StartupAssistantUi,
-    onPush: (NexusPage) -> Unit,
-    onPushFromLeft: (NexusPage) -> Unit,
+    onPush: (ZafiroPage) -> Unit,
+    onPushFromLeft: (ZafiroPage) -> Unit,
     onPop: () -> Unit,
     onPopMultiple: (Int) -> Unit,
     onPopToRight: () -> Unit,
-    onResetTo: (NexusPage) -> Unit,
+    onResetTo: (ZafiroPage) -> Unit,
     selectedConversationId: String?,
     onConversationSelected: (String) -> Unit,
     onConversationSelectionConsumed: (String) -> Unit,

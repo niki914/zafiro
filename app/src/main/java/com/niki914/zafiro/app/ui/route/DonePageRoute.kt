@@ -4,13 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import com.niki914.zafiro.app.ui.content.DonePageContent
 import com.niki914.zafiro.app.ui.nav.HomePage
-import com.niki914.zafiro.app.ui.nav.NexusPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.launch
 
 @Composable
 internal fun DonePageRoute(
-    onResetTo: (NexusPage) -> Unit,
+    onResetTo: (ZafiroPage) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 

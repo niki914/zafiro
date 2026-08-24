@@ -249,7 +249,7 @@ private fun TakeoverSettingsContentPreview() {
                         TakeoverRuleItem(
                             id = "nexus-debug",
                             name = "调试问题交给 Nexus",
-                            target = TakeoverTarget.Nexus,
+                            target = TakeoverTarget.Zafiro,
                             patterns = listOf(".*崩溃.*", ".*日志.*"),
                         ),
                         TakeoverRuleItem(
@@ -260,7 +260,7 @@ private fun TakeoverSettingsContentPreview() {
                             enabled = false,
                         ),
                     ),
-                    defaultTarget = TakeoverTarget.Nexus,
+                    defaultTarget = TakeoverTarget.Zafiro,
                 ),
                 onOpenRuleDetail = { _, _, _, _ -> },
             )

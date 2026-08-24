@@ -83,7 +83,7 @@ object LlmStreamEventMapper {
                 LlmStreamEvent.Error(
                     message = event.error.message.trim().ifEmpty { defaultErrorMessage },
                     throwable = event.error.cause,
-                    code = event.error.code.toNexusCode(),
+                    code = event.error.code.toZafiroCode(),
                 )
             }
 
@@ -152,7 +152,7 @@ object LlmStreamEventMapper {
      * okia LLMErrorCode → Nexus LlmErrorCode。ContextOverflow 归 Parse
      * （上下文溢出，用户可感知的模型端内容问题）。
      */
-    private fun OkiaLLMErrorCode.toNexusCode(): LlmErrorCode = when (this) {
+    private fun OkiaLLMErrorCode.toZafiroCode(): LlmErrorCode = when (this) {
         OkiaLLMErrorCode.Auth -> LlmErrorCode.Auth
         OkiaLLMErrorCode.Quota -> LlmErrorCode.Quota
         OkiaLLMErrorCode.RateLimit -> LlmErrorCode.RateLimit

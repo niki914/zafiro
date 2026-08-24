@@ -134,7 +134,7 @@ object AccessibilityController {
         nodeCache.clear()
     }
 
-    /** Called from [NexusAccessibilityService.onAccessibilityEvent] on UI-significant events. */
+    /** Called from [ZafiroAccessibilityService.onAccessibilityEvent] on UI-significant events. */
     fun recordUiEvent() {
         lastUiEventTime = SystemClock.elapsedRealtime()
     }
@@ -181,7 +181,7 @@ object AccessibilityController {
         if (serviceInstance != null) return Result.success(Unit)
 
         val ctx = ContextProvider.await()
-        val serviceName = "${ctx.packageName}/.mod.feat.NexusAccessibilityService"
+        val serviceName = "${ctx.packageName}/.mod.feat.ZafiroAccessibilityService"
 
         // Try root, then shizuku to enable the accessibility service.
         // Each attempt runs a real command and checks exit codes — a

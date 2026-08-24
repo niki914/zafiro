@@ -94,7 +94,7 @@ data class RuntimeExecutionRule(
 
 enum class RuntimeTakeoverTarget {
     NATIVE_ASSISTANT,
-    NEXUS,
+    ZAFIRO,
 }
 
 data class RuntimeTakeoverRule(
@@ -106,7 +106,7 @@ data class RuntimeTakeoverRule(
 )
 
 data class RuntimeTakeoverSettings(
-    val defaultTarget: RuntimeTakeoverTarget = RuntimeTakeoverTarget.NEXUS,
+    val defaultTarget: RuntimeTakeoverTarget = RuntimeTakeoverTarget.ZAFIRO,
     val rules: List<RuntimeTakeoverRule> = emptyList(),
 )
 

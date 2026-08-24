@@ -61,7 +61,7 @@ abstract class AbstractAssistantHook(
         val takeoverDecision = resolveTakeover(query)
         val turnMode = when (takeoverDecision.target) {
             RuntimeTakeoverTarget.NATIVE_ASSISTANT -> TurnMode.NativeTakeover
-            RuntimeTakeoverTarget.NEXUS -> TurnMode.InjectedLLM
+            RuntimeTakeoverTarget.ZAFIRO -> TurnMode.InjectedLLM
         }
         val nextTurnState = ConversationTurnState().nextTurn(
             query = query,

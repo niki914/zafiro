@@ -69,7 +69,7 @@
         </activity-alias>
 
         <service
-            android:name="com.niki914.zafiro.mod.feat.NexusAccessibilityService"
+            android:name="com.niki914.zafiro.mod.feat.ZafiroAccessibilityService"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>

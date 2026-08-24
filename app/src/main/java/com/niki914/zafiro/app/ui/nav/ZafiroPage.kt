@@ -27,7 +27,7 @@ data class TopBarActionSpec(
     val contentDescription: String? = null,
 )
 
-sealed interface NexusPage : Page {
+sealed interface ZafiroPage : Page {
     val titleSpec: PageTitleSpec
     val leftAction: TopBarActionSpec?
     val rightAction: TopBarActionSpec?
@@ -35,7 +35,7 @@ sealed interface NexusPage : Page {
         get() = true
 }
 
-data object StartupPage : NexusPage {
+data object StartupPage : ZafiroPage {
     override val routeKey: String = "startup"
     override val titleSpec: PageTitleSpec = NoTitle
     override val leftAction: TopBarActionSpec? = null
@@ -43,7 +43,7 @@ data object StartupPage : NexusPage {
     override val showBlurLayer: Boolean = false
 }
 
-data object ProviderPickPage : NexusPage {
+data object ProviderPickPage : ZafiroPage {
     override val routeKey: String = "provider-pick"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_onboard_provider_pick_title)
     override val leftAction: TopBarActionSpec =
@@ -51,7 +51,7 @@ data object ProviderPickPage : NexusPage {
     override val rightAction: TopBarActionSpec? = null
 }
 
-data object SettingsProviderPickPage : NexusPage {
+data object SettingsProviderPickPage : ZafiroPage {
     override val routeKey: String = "settings-provider-pick"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_onboard_provider_pick_title)
     override val leftAction: TopBarActionSpec =
@@ -62,7 +62,7 @@ data object SettingsProviderPickPage : NexusPage {
 data class ConfigurePage(
     val providerId: String? = null,
     val explicitTitleSpec: PageTitleSpec? = null,
-) : NexusPage {
+) : ZafiroPage {
     override val routeKey: String = if (providerId == null) "configure" else "configure:$providerId"
     override val titleSpec: PageTitleSpec =
         explicitTitleSpec ?: ResTitle(R.string.ui_onboard_configure_title)
@@ -74,7 +74,7 @@ data class ConfigurePage(
 data class SettingsConfigurePage(
     val providerId: String,
     val explicitTitleSpec: PageTitleSpec? = null,
-) : NexusPage {
+) : ZafiroPage {
     override val routeKey: String = "settings-configure:$providerId"
     override val titleSpec: PageTitleSpec =
         explicitTitleSpec ?: ResTitle(R.string.ui_onboard_configure_title)
@@ -83,7 +83,7 @@ data class SettingsConfigurePage(
     override val rightAction: TopBarActionSpec? = null
 }
 
-data object DonePage : NexusPage {
+data object DonePage : ZafiroPage {
     override val routeKey: String = "done"
     override val titleSpec: PageTitleSpec = NoTitle
     override val leftAction: TopBarActionSpec =
@@ -91,7 +91,7 @@ data object DonePage : NexusPage {
     override val rightAction: TopBarActionSpec? = null
 }
 
-data object HomePage : NexusPage {
+data object HomePage : ZafiroPage {
     override val routeKey: String = "home"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_home_title)
     override val leftAction: TopBarActionSpec? = null
@@ -100,14 +100,14 @@ data object HomePage : NexusPage {
     )
 }
 
-data object ConversationHistoryPage : NexusPage {
+data object ConversationHistoryPage : ZafiroPage {
     override val routeKey: String = "conversation-history"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_home_title)
     override val leftAction: TopBarActionSpec? = null
     override val rightAction: TopBarActionSpec? = null
 }
 
-data object SettingsHomePage : NexusPage {
+data object SettingsHomePage : ZafiroPage {
     override val routeKey: String = "settings-home"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_title)
     override val leftAction: TopBarActionSpec =
@@ -116,9 +116,9 @@ data object SettingsHomePage : NexusPage {
 }
 
 data class SettingsDetailPage(
-    val group: NexusSettingsGroup,
+    val group: ZafiroSettingsGroup,
     val explicitTitleSpec: PageTitleSpec? = null,
-) : NexusPage {
+) : ZafiroPage {
     override val routeKey: String = "settings-detail:${group.routeSuffix}"
     override val titleSpec: PageTitleSpec = explicitTitleSpec ?: ResTitle(group.titleRes)
     override val leftAction: TopBarActionSpec =
@@ -130,7 +130,7 @@ data class McpServerDetailPage(
     val serverName: String,
     val serverIndex: Int,
     val isCreating: Boolean = false,
-) : NexusPage {
+) : ZafiroPage {
     override val routeKey: String = "mcp-server-detail:$serverIndex:$serverName"
     override val titleSpec: PageTitleSpec = TextTitle(serverName)
     override val leftAction: TopBarActionSpec =
@@ -143,7 +143,7 @@ data class ExecutionRuleDetailPage(
     val ruleName: String,
     val ruleIndex: Int,
     val isCreating: Boolean = false,
-) : NexusPage {
+) : ZafiroPage {
     override val routeKey: String = "execution-rule-detail:$ruleIndex:$ruleName"
     override val titleSpec: PageTitleSpec = TextTitle(ruleName)
     override val leftAction: TopBarActionSpec =
@@ -156,7 +156,7 @@ data class TakeoverRuleDetailPage(
     val ruleName: String,
     val ruleIndex: Int,
     val isCreating: Boolean = false,
-) : NexusPage {
+) : ZafiroPage {
     override val routeKey: String = "takeover-rule-detail:${ruleId ?: "new"}:$ruleIndex:$ruleName"
     override val titleSpec: PageTitleSpec = TextTitle(ruleName)
     override val leftAction: TopBarActionSpec =
@@ -169,7 +169,7 @@ data class CustomToolDetailPage(
     val toolName: String,
     val toolIndex: Int,
     val isCreating: Boolean = false,
-) : NexusPage {
+) : ZafiroPage {
     override val routeKey: String = "custom-tool-detail:$toolIndex:$toolName"
     override val titleSpec: PageTitleSpec = TextTitle(toolName)
     override val leftAction: TopBarActionSpec =
@@ -181,7 +181,7 @@ data class CustomToolDetailPage(
 data class SkillDetailPage(
     val skillId: String,
     val skillTitle: String,
-) : NexusPage {
+) : ZafiroPage {
     override val routeKey: String = "skill-detail:$skillId"
     override val titleSpec: PageTitleSpec = TextTitle(skillTitle)
     override val leftAction: TopBarActionSpec =

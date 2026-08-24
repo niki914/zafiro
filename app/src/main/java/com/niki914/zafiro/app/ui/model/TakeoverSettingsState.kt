@@ -17,7 +17,7 @@ import java.util.UUID
 
 enum class TakeoverTarget {
     NativeAssistant,
-    Nexus,
+    Zafiro,
 }
 
 data class TakeoverRuleItem(
@@ -57,7 +57,7 @@ data class TakeoverDeleteConfirmationState(
 
 data class TakeoverSettingsUiState(
     val items: List<TakeoverRuleItem> = emptyList(),
-    val defaultTarget: TakeoverTarget = TakeoverTarget.Nexus,
+    val defaultTarget: TakeoverTarget = TakeoverTarget.Zafiro,
     val formState: TakeoverRuleFormState = TakeoverRuleFormState(),
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
@@ -457,14 +457,14 @@ class TakeoverSettingsViewModel :
 fun TakeoverTarget.toRuntime(): RuntimeTakeoverTarget {
     return when (this) {
         TakeoverTarget.NativeAssistant -> RuntimeTakeoverTarget.NATIVE_ASSISTANT
-        TakeoverTarget.Nexus -> RuntimeTakeoverTarget.NEXUS
+        TakeoverTarget.Zafiro -> RuntimeTakeoverTarget.ZAFIRO
     }
 }
 
 fun RuntimeTakeoverTarget.toUiTarget(): TakeoverTarget {
     return when (this) {
         RuntimeTakeoverTarget.NATIVE_ASSISTANT -> TakeoverTarget.NativeAssistant
-        RuntimeTakeoverTarget.NEXUS -> TakeoverTarget.Nexus
+        RuntimeTakeoverTarget.ZAFIRO -> TakeoverTarget.Zafiro
     }
 }
 

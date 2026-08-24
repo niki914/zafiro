@@ -18,12 +18,12 @@ import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.ui.model.SettingsUiState
 import com.niki914.zafiro.app.ui.model.SettingsViewModel
 import com.niki914.zafiro.app.ui.model.buildSettingsUiState
-import com.niki914.zafiro.app.ui.nav.NexusSettingsGroup
+import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 import com.niki914.uikit.base.BaseTheme
 
 @Composable
 fun SettingsHomePageContent(
-    onOpenGroup: (NexusSettingsGroup) -> Unit,
+    onOpenGroup: (ZafiroSettingsGroup) -> Unit,
 ) {
     val viewModel = pageViewModel<SettingsViewModel>()
     val uiState by viewModel.uiStateFlow.collectAsState()
@@ -37,7 +37,7 @@ fun SettingsHomePageContent(
 @Composable
 private fun SettingsHomePageContentBody(
     uiState: SettingsUiState,
-    onOpenGroup: (NexusSettingsGroup) -> Unit,
+    onOpenGroup: (ZafiroSettingsGroup) -> Unit,
 ) {
     val groupsById = uiState.sections
         .flatMap { it.groups }

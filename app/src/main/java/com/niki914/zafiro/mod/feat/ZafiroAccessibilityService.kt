@@ -10,7 +10,7 @@ import com.niki914.zafiro.app.overlay.PointerOverlay
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.accessibility.IAccessibility
 
-class NexusAccessibilityService : AccessibilityService(), IAccessibility {
+class ZafiroAccessibilityService : AccessibilityService(), IAccessibility {
 
     override fun onServiceConnected() {
         super.onServiceConnected()

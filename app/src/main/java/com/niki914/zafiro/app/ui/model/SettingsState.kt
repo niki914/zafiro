@@ -3,12 +3,12 @@ package com.niki914.zafiro.app.ui.model
 import androidx.annotation.StringRes
 import com.niki914.logging.Logger
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.nav.NexusSettingsGroup
+import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 import com.niki914.uikit.base.ComposeMVIViewModel
 
 data class SettingsSectionUiState(
     @StringRes val titleRes: Int,
-    val groups: List<NexusSettingsGroup>,
+    val groups: List<ZafiroSettingsGroup>,
 )
 
 data class SettingsUiState(
@@ -40,11 +40,11 @@ class SettingsViewModel : ComposeMVIViewModel<SettingsIntent, SettingsUiState, S
 
 private data class SettingsSectionDefinition(
     @StringRes val titleRes: Int,
-    val groups: List<NexusSettingsGroup>,
+    val groups: List<ZafiroSettingsGroup>,
 )
 
 internal fun buildSettingsUiState(
-    hiddenGroups: Set<NexusSettingsGroup>,
+    hiddenGroups: Set<ZafiroSettingsGroup>,
 ): SettingsUiState {
     return SettingsUiState(
         sections = settingsSections()
@@ -65,35 +65,35 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
         SettingsSectionDefinition(
             titleRes = R.string.ui_settings_section_model,
             groups = listOf(
-                NexusSettingsGroup.ModelConfig,
-                NexusSettingsGroup.Memory,
+                ZafiroSettingsGroup.ModelConfig,
+                ZafiroSettingsGroup.Memory,
             ),
         ),
         SettingsSectionDefinition(
             titleRes = R.string.ui_settings_section_tools,
             groups = listOf(
-                NexusSettingsGroup.BuiltinTools,
-                NexusSettingsGroup.Skills,
-                NexusSettingsGroup.CustomShellTools,
-                NexusSettingsGroup.Mcp,
+                ZafiroSettingsGroup.BuiltinTools,
+                ZafiroSettingsGroup.Skills,
+                ZafiroSettingsGroup.CustomShellTools,
+                ZafiroSettingsGroup.Mcp,
             ),
         ),
         SettingsSectionDefinition(
             titleRes = R.string.ui_settings_section_rules,
             groups = listOf(
-                NexusSettingsGroup.Takeover,
-                NexusSettingsGroup.ExecutionRules,
+                ZafiroSettingsGroup.Takeover,
+                ZafiroSettingsGroup.ExecutionRules,
             ),
         ),
         SettingsSectionDefinition(
             titleRes = R.string.ui_settings_section_app,
             groups = listOf(
-                NexusSettingsGroup.About,
+                ZafiroSettingsGroup.About,
             ),
         ),
     )
 }
 
-private fun defaultHiddenSettingsGroups(): Set<NexusSettingsGroup> {
+private fun defaultHiddenSettingsGroups(): Set<ZafiroSettingsGroup> {
     return emptySet()
 }

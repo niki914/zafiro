@@ -3,13 +3,13 @@ package com.niki914.zafiro.app.ui.route
 import androidx.compose.runtime.Composable
 import com.niki914.zafiro.app.ui.content.HomePageContent
 import com.niki914.zafiro.app.ui.nav.ConversationHistoryPage
-import com.niki914.zafiro.app.ui.nav.NexusPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.SettingsHomePage
 
 @Composable
 internal fun HomePageRoute(
-    onPush: (NexusPage) -> Unit,
-    onPushFromLeft: (NexusPage) -> Unit,
+    onPush: (ZafiroPage) -> Unit,
+    onPushFromLeft: (ZafiroPage) -> Unit,
     selectedConversationId: String?,
     onConversationSelectionConsumed: (String) -> Unit,
     onActiveConversationChanged: (String?, String?) -> Unit,

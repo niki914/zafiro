@@ -9,16 +9,16 @@ import com.niki914.zafiro.app.ui.model.SettingsViewModel
 import com.niki914.zafiro.app.ui.nav.CustomToolDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
-import com.niki914.zafiro.app.ui.nav.NexusPage
-import com.niki914.zafiro.app.ui.nav.NexusSettingsGroup
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
+import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
 
 @Composable
 fun SettingsDetailPageContent(
-    group: NexusSettingsGroup,
-    onPush: (NexusPage) -> Unit,
+    group: ZafiroSettingsGroup,
+    onPush: (ZafiroPage) -> Unit,
     onBack: () -> Unit,
 ) {
     val viewModel = pageViewModel<SettingsViewModel>()
@@ -28,7 +28,7 @@ fun SettingsDetailPageContent(
         return
     }
 
-    if (group == NexusSettingsGroup.ModelConfig) {
+    if (group == ZafiroSettingsGroup.ModelConfig) {
         ModelConfigSettingsContent(
             onBack = onBack,
             onOpenProviderPick = {
@@ -38,12 +38,12 @@ fun SettingsDetailPageContent(
         return
     }
 
-    if (group == NexusSettingsGroup.BuiltinTools) {
+    if (group == ZafiroSettingsGroup.BuiltinTools) {
         BuiltinToolsSettingsContent()
         return
     }
 
-    if (group == NexusSettingsGroup.Skills) {
+    if (group == ZafiroSettingsGroup.Skills) {
         SkillsSettingsContent(
             onOpenSkillDetail = { id, title ->
                 onPush(SkillDetailPage(id, title))
@@ -52,7 +52,7 @@ fun SettingsDetailPageContent(
         return
     }
 
-    if (group == NexusSettingsGroup.CustomShellTools) {
+    if (group == ZafiroSettingsGroup.CustomShellTools) {
         CustomShellToolsSettingsContent(
             onOpenToolDetail = { name, index, isCreating ->
                 onPush(CustomToolDetailPage(name, index, isCreating))
@@ -61,7 +61,7 @@ fun SettingsDetailPageContent(
         return
     }
 
-    if (group == NexusSettingsGroup.Mcp) {
+    if (group == ZafiroSettingsGroup.Mcp) {
         McpSettingsContent(
             onOpenServerDetail = { name, index, isCreating ->
                 onPush(McpServerDetailPage(name, index, isCreating))
@@ -70,17 +70,17 @@ fun SettingsDetailPageContent(
         return
     }
 
-    if (group == NexusSettingsGroup.About) {
+    if (group == ZafiroSettingsGroup.About) {
         AboutSettingsContent()
         return
     }
 
-    if (group == NexusSettingsGroup.Memory) {
+    if (group == ZafiroSettingsGroup.Memory) {
         MemorySettingsContent()
         return
     }
 
-    if (group == NexusSettingsGroup.Takeover) {
+    if (group == ZafiroSettingsGroup.Takeover) {
         TakeoverSettingsContent(
             onOpenRuleDetail = { id, name, index, isCreating ->
                 onPush(
@@ -96,7 +96,7 @@ fun SettingsDetailPageContent(
         return
     }
 
-    if (group == NexusSettingsGroup.ExecutionRules) {
+    if (group == ZafiroSettingsGroup.ExecutionRules) {
         ExecutionRulesSettingsContent(
             onOpenRuleDetail = { name, index, isCreating ->
                 onPush(ExecutionRuleDetailPage(name, index, isCreating))

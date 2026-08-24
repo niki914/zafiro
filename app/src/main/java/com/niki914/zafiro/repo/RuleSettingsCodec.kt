@@ -83,7 +83,7 @@ internal object RuleSettingsCodec {
         val obj = parseObject(json)
         val defaultTarget = TakeoverTarget.entries.firstOrNull {
             it.name == obj.string(DEFAULT_TARGET_KEY)
-        } ?: TakeoverTarget.NEXUS
+        } ?: TakeoverTarget.ZAFIRO
         val rules = obj.array(RULES_KEY)
             .orEmptyObjects()
             .mapNotNull { ruleObj ->
@@ -98,7 +98,7 @@ internal object RuleSettingsCodec {
                             TARGET_KEY
                         )
                     }
-                        ?: TakeoverTarget.NEXUS,
+                        ?: TakeoverTarget.ZAFIRO,
                     enabled = ruleObj.boolean(ENABLED_KEY, default = true),
                     patterns = ruleObj.array(PATTERNS_KEY).stringValues(),
                 )

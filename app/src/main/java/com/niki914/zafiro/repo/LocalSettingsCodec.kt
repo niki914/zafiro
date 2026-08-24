@@ -1,8 +1,6 @@
 package com.niki914.zafiro.repo
 
 import com.niki914.zafiro.mod.LocalSettings
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -10,7 +8,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
@@ -302,7 +299,7 @@ internal object LocalSettingsCodec {
     private fun JsonObject.takeoverTarget(): TakeoverTarget {
         val value = string(TARGET_KEY)
         return TakeoverTarget.entries.firstOrNull { it.name == value }
-            ?: TakeoverTarget.NEXUS
+            ?: TakeoverTarget.ZAFIRO
     }
 
     private fun JsonObject.array(key: String): JsonArray? {

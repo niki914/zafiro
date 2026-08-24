@@ -18,7 +18,7 @@ import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.zafiro.app.ui.content.StartupPageContent
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
-import com.niki914.zafiro.app.ui.nav.NexusPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
 import com.niki914.zafiro.mod.WebSettings
 import com.niki914.zafiro.repo.WebSettingsFailureReason
@@ -36,7 +36,7 @@ internal typealias WebSettingsLoader = suspend (forceRetry: Boolean) -> WebSetti
 @Composable
 internal fun StartupPageRoute(
     startupAssistantUi: StartupAssistantUi,
-    onPush: (NexusPage) -> Unit,
+    onPush: (ZafiroPage) -> Unit,
     loadWebSettings: WebSettingsLoader = defaultWebSettingsLoader(),
     initialLoading: Boolean = false,
     initialDialog: StartupWebSettingsDialog? = debugStartupWebSettingsInitialDialog(),

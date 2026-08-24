@@ -208,7 +208,7 @@ private fun takeoverFieldErrorText(errorResId: Int?): String? {
 internal fun TakeoverTarget.label(): String {
     return when (this) {
         TakeoverTarget.NativeAssistant -> stringResource(R.string.takeover_target_native_assistant)
-        TakeoverTarget.Nexus -> stringResource(R.string.takeover_target_nexus)
+        TakeoverTarget.Zafiro -> stringResource(R.string.takeover_target_nexus)
     }
 }
 
@@ -285,7 +285,7 @@ private fun TakeoverRuleDetailRegexContentPreview() {
                 uiState = TakeoverSettingsUiState(
                     formState = TakeoverRuleFormState(
                         name = "复杂问题交给 Nexus",
-                        target = TakeoverTarget.Nexus,
+                        target = TakeoverTarget.Zafiro,
                         patternsInput = ".*崩溃.*\n.*日志.*",
                         enabled = true,
                     ),

@@ -1,9 +1,6 @@
 package com.niki914.zafiro.app.ui.model
 
-import com.niki914.zafiro.app.ui.model.SettingsUiState
-import com.niki914.zafiro.app.ui.model.SettingsViewModel
-import com.niki914.zafiro.app.ui.model.buildSettingsUiState
-import com.niki914.zafiro.app.ui.nav.NexusSettingsGroup
+import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -19,29 +16,29 @@ class SettingsViewModelTest {
     fun buildSettingsUiState_excludesHiddenGroupsAndDropsEmptySections() {
         val state = buildSettingsUiState(
             hiddenGroups = setOf(
-                NexusSettingsGroup.Memory,
-                NexusSettingsGroup.Mcp,
-                NexusSettingsGroup.About,
+                ZafiroSettingsGroup.Memory,
+                ZafiroSettingsGroup.Mcp,
+                ZafiroSettingsGroup.About,
             )
         )
 
         assertEquals(3, state.sections.size)
         assertEquals(
-            listOf(NexusSettingsGroup.ModelConfig),
+            listOf(ZafiroSettingsGroup.ModelConfig),
             state.sections[0].groups,
         )
         assertEquals(
             listOf(
-                NexusSettingsGroup.BuiltinTools,
-                NexusSettingsGroup.Skills,
-                NexusSettingsGroup.CustomShellTools,
+                ZafiroSettingsGroup.BuiltinTools,
+                ZafiroSettingsGroup.Skills,
+                ZafiroSettingsGroup.CustomShellTools,
             ),
             state.sections[1].groups,
         )
         assertEquals(
             listOf(
-                NexusSettingsGroup.Takeover,
-                NexusSettingsGroup.ExecutionRules,
+                ZafiroSettingsGroup.Takeover,
+                ZafiroSettingsGroup.ExecutionRules,
             ),
             state.sections[2].groups,
         )
@@ -52,18 +49,18 @@ class SettingsViewModelTest {
         val viewModel = SettingsViewModel()
         val state = viewModel.uiStateFlow.value
 
-        assertTrue(state.isGroupVisible(NexusSettingsGroup.ModelConfig))
-        assertTrue(state.isGroupVisible(NexusSettingsGroup.Memory))
-        assertTrue(state.isGroupVisible(NexusSettingsGroup.BuiltinTools))
-        assertTrue(state.isGroupVisible(NexusSettingsGroup.Skills))
-        assertTrue(state.isGroupVisible(NexusSettingsGroup.CustomShellTools))
-        assertTrue(state.isGroupVisible(NexusSettingsGroup.Mcp))
-        assertTrue(state.isGroupVisible(NexusSettingsGroup.Takeover))
-        assertTrue(state.isGroupVisible(NexusSettingsGroup.ExecutionRules))
-        assertTrue(state.isGroupVisible(NexusSettingsGroup.About))
+        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.ModelConfig))
+        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Memory))
+        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.BuiltinTools))
+        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Skills))
+        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.CustomShellTools))
+        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Mcp))
+        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Takeover))
+        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.ExecutionRules))
+        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.About))
     }
 }
 
-private fun SettingsUiState.isGroupVisible(group: NexusSettingsGroup): Boolean {
+private fun SettingsUiState.isGroupVisible(group: ZafiroSettingsGroup): Boolean {
     return sections.any { section -> group in section.groups }
 }

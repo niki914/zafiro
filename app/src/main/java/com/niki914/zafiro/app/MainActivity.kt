@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import com.niki914.zafiro.app.ui.NexusApp
+import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.uikit.base.BaseTheme
 import kotlinx.coroutines.runBlocking
@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             BaseTheme {
-                NexusApp(
+                ZafiroApp(
                     startupAssistantUi = startupAssistantUi,
                     launchDecision = launchDecision,
                 )

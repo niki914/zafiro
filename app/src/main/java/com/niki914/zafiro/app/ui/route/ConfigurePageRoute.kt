@@ -15,12 +15,12 @@ import com.niki914.zafiro.app.ui.model.ConfigureIntent
 import com.niki914.zafiro.app.ui.model.ConfigureViewModel
 import com.niki914.zafiro.app.ui.nav.ConfigurePage
 import com.niki914.zafiro.app.ui.nav.DonePage
-import com.niki914.zafiro.app.ui.nav.NexusPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 
 @Composable
 internal fun ConfigurePageRoute(
     page: ConfigurePage,
-    onPush: (NexusPage) -> Unit,
+    onPush: (ZafiroPage) -> Unit,
 ) {
     val viewModel = pageViewModel<ConfigureViewModel>(
         key = page.providerId,

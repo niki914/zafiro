@@ -3,7 +3,7 @@ package com.niki914.zafiro.app.ui.nav
 import androidx.annotation.StringRes
 import com.niki914.zafiro.app.R
 
-enum class NexusSettingsGroup(
+enum class ZafiroSettingsGroup(
     @StringRes val titleRes: Int,
     @StringRes val summaryRes: Int,
     val routeSuffix: String,

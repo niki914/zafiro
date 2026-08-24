@@ -238,7 +238,7 @@ class SettingsDomainCodecsTest {
     @Test
     fun ruleEncodingWritesRulesArray() {
         val json = RuleSettingsCodec.encodeTakeoverRules(
-            listOf(TakeoverRule("default", "Default", TakeoverTarget.NEXUS, false, listOf(".*")))
+            listOf(TakeoverRule("default", "Default", TakeoverTarget.ZAFIRO, false, listOf(".*")))
         )
         val rule = jsonObject(json)["rules"]!!.jsonArray.single().jsonObject
 

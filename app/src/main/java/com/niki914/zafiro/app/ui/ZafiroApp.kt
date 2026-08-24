@@ -53,7 +53,7 @@ import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.HomeChatViewModel
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.nav.HomePage
-import com.niki914.zafiro.app.ui.nav.NexusPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.NoTitle
 import com.niki914.zafiro.app.ui.nav.PageTitleSpec
 import com.niki914.zafiro.app.ui.nav.ResTitle
@@ -61,7 +61,7 @@ import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 
 @Composable
-fun NexusApp(
+fun ZafiroApp(
     startupAssistantUi: StartupAssistantUi,
     launchDecision: AppLaunchDecision,
 ) {
@@ -79,7 +79,7 @@ fun NexusApp(
     var activeConversationId by remember { mutableStateOf<String?>(null) }
     var activeConversationTitle by remember { mutableStateOf<String?>(null) }
     val initialPage = launchDecision.initialPage
-    val controller = rememberNavigationController<NexusPage>(initialPage = initialPage)
+    val controller = rememberNavigationController<ZafiroPage>(initialPage = initialPage)
     val navigator = controller.navigator
     val currentEntry = controller.currentEntry
     val currentPage = currentEntry.page
@@ -112,17 +112,17 @@ fun NexusApp(
         showBlurLayer = currentPage.showBlurLayer,
     )
 
-    fun push(page: NexusPage) {
+    fun push(page: ZafiroPage) {
         closeChromeMenu()
         navigator.push(page)
     }
 
-    fun pushFromLeft(page: NexusPage) {
+    fun pushFromLeft(page: ZafiroPage) {
         closeChromeMenu()
         navigator.push(page, direction = TitleDirection.Back)
     }
 
-    fun resetTo(page: NexusPage) {
+    fun resetTo(page: ZafiroPage) {
         closeChromeMenu()
         navigator.resetTo(page)
     }
@@ -299,7 +299,7 @@ fun NexusApp(
                         LocalNavigationEntry provides entry,
                         LocalPageChrome provides pageChromeRegistrar,
                     ) {
-                        NexusPageContent(
+                        ZafiroPageContent(
                             entry = entry,
                             startupAssistantUi = startupAssistantUi,
                             onPush = ::push,
