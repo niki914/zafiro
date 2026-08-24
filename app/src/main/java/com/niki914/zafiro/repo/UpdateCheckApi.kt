@@ -47,7 +47,7 @@ private object UpdateCheckApi {
     private val json = Json { ignoreUnknownKeys = true }
 
     private const val GITHUB_API_LATEST =
-        "https://api.github.com/repos/niki914/agentic-nexus/releases/latest"
+        "https://api.github.com/repos/niki914/zafiro/releases/latest"
 
     private val semverRe = Regex("""(\d+\.\d+\.\d+)""")
 

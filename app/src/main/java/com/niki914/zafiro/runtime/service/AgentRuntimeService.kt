@@ -265,7 +265,7 @@ class AgentRuntimeService : Service() {
             val issueUri = Uri.Builder()
                 .scheme("https")
                 .authority("github.com")
-                .path("/niki914/agentic-nexus/issues/new")
+                .path("/niki914/zafiro/issues/new")
                 .appendQueryParameter(
                     "title",
                     ctx.getString(AppR.string.notif_unsupported_issue_title)

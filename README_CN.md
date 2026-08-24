@@ -4,19 +4,22 @@
 
 </div>
 
-```
-███╗   ██╗███████╗██╗  ██╗██╗   ██╗███████╗
-████╗  ██║██╔════╝╚██╗██╔╝██║   ██║██╔════╝
-██╔██╗ ██║█████╗   ╚███╔╝ ██║   ██║███████╗
-██║╚██╗██║██╔══╝   ██╔██╗ ██║   ██║╚════██║
-██║ ╚████║███████╗██╔╝ ██╗╚██████╔╝███████║
-╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝
-```
+<div align="center"><pre>
+                  ▄█▀█▄ ▄▀▀▄                  
+                 █▓▌  █▌▌■▀▐▌                 
+▄██▄▄    ▄██▄   ▐▓▓▄  ▀ ▀■▓▀  ▀░▄▄     ▄▓██▄  
+▀▀  ▓▓  ▀  ▀█▌   ▒▒▌▀█▄  ▄▄▓▀  ▓▓▌▄▄  ▓▓▀  ▀▓ 
+ ▄▀▀▀    ▄▄█▓█  ▐░░  ░   ▐▓▓  ▐▒▒▀▄▓█▐▒▌   ▐▓▌
+░█░  ▐█▌██▀ ▀▓▌ ██▌       ▒▒▌ ░░▌ ▀░▀▐░░▄ ▄▒▒ 
+ ▀██▄░█ ▓█▄▄▒▒ ▀░█       ▐░░ ▀██      ▀█░█░▀  
+   ░▀▀   ▀▀▀▀     ▀      ██▀    ▀        ▀    
+                         ▀▄                   
+</pre></div>
 
 <p align="center">
-  <a href="https://github.com/niki914/agentic-nexus"><img src="https://img.shields.io/github/stars/niki914/agentic-nexus?label=stars" alt="stars"/></a>
-  <a href="https://github.com/niki914/agentic-nexus/releases/latest"><img src="https://img.shields.io/github/v/release/niki914/agentic-nexus?include_prereleases" alt="release"/></a>
-  <a href="https://github.com/niki914/agentic-nexus/releases/latest"><img src="https://img.shields.io/github/downloads/niki914/agentic-nexus/total" alt="downloads"/></a>
+  <a href="https://github.com/niki914/zafiro"><img src="https://img.shields.io/github/stars/niki914/zafiro?label=stars" alt="stars"/></a>
+  <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/v/release/niki914/zafiro?include_prereleases" alt="release"/></a>
+  <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/downloads/niki914/zafiro/total" alt="downloads"/></a>
 </p>
 
 <p align="center">
@@ -26,7 +29,7 @@ Android Native Agent · Phone-Use · Skills · MCP
 Zafiro 是你的 Android 手机上运行一个智能代理。它能看懂你的屏幕，操控你的设备，代你完成各种 App 操作，它有记忆、MCP、Skills，也能通过 SSH 对接你远程开发机上的 Coding Agent 进行协作
 
 <p align="center">
-  <img src="https://github.com/niki914/agentic-nexus/blob/main/res/nexus_demo.gif?raw=true" alt="Zafiro 手机操控演示" width="200"/>
+  <img src="https://github.com/niki914/zafiro/blob/main/res/nexus_demo.gif?raw=true" alt="Zafiro 手机操控演示" width="200"/>
 </p>
 
 > 演示为剪辑版本。实际操作耗时取决于指令精准度与模型的响应速度
@@ -34,7 +37,7 @@ Zafiro 是你的 Android 手机上运行一个智能代理。它能看懂你的�
 > [!IMPORTANT]
 > Zafiro 当前仍处于 Beta 阶段，功能、兼容性与稳定性仍在持续改进。
 >
-> 项目源码已开放，你可以前往 [Releases](https://github.com/niki914/agentic-nexus/releases/latest) 下载发布版本，或从源码构建。
+> 项目源码已开放，你可以前往 [Releases](https://github.com/niki914/zafiro/releases/latest) 下载发布版本，或从源码构建。
 
 > [!NOTE]
 > 接管系统语音助手入口需要 **Root + [LSPosed](https://github.com/lsposed/lsposed)**，目前适配：
@@ -69,8 +72,8 @@ Zafiro 可以连接本地或远程终端环境，让 Agent 在命令行中执行
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/termux_long_cn.jpg?raw=true" alt="通过 Termux 执行任务" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/agentic/headless_cc_cn.jpg?raw=true" alt="远程调用 Claude Code" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/agentic/termux_long_cn.jpg?raw=true" alt="通过 Termux 执行任务" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/agentic/headless_cc_cn.jpg?raw=true" alt="远程调用 Claude Code" width="200"/></td>
 </tr>
 </table>
 
@@ -85,9 +88,9 @@ Zafiro 可以连接本地或远程终端环境，让 Agent 在命令行中执行
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/breeno_github_mcp.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/hyper_intro.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/agentic-nexus/blob/main/res/breeno_magisk.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno_github_mcp.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/hyper_intro.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno_magisk.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
 </tr>
 </table>
 
@@ -95,7 +98,7 @@ Zafiro 可以连接本地或远程终端环境，让 Agent 在命令行中执行
 
 ## 安装
 
-前往 [Releases](https://github.com/niki914/agentic-nexus/releases/latest) 下载最新版本。使用前需准备：一台兼容的 Android 设备、至少一个模型服务的 API Key，以及按需配置的 Shizuku / Root / Termux / SSH。具体配置以应用内说明为准。
+前往 [Releases](https://github.com/niki914/zafiro/releases/latest) 下载最新版本。使用前需准备：一台兼容的 Android 设备、至少一个模型服务的 API Key，以及按需配置的 Shizuku / Root / Termux / SSH。具体配置以应用内说明为准。
 
 如需从源码构建：
 
@@ -124,7 +127,7 @@ keytool -genkeypair -v -keystore my-release.jks \
 ## 社区
 
 - [Telegram](https://t.me/+ZPX2xtSl6RwyZGNl) — 交流、提问、反馈问题
-- [GitHub Issues](https://github.com/niki914/agentic-nexus/issues) — 提交 Bug 或功能请求
+- [GitHub Issues](https://github.com/niki914/zafiro/issues) — 提交 Bug 或功能请求
 
 如果遇到问题，请尽量提供：手机型号与 Android 版本、系统语音助手及版本、Zafiro 版本、复现步骤、截图或录屏。
 

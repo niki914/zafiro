@@ -196,7 +196,7 @@ private fun previewAboutSettingsUiState(): AboutSettingsUiState {
             AboutSettingsItemUiState(
                 id = AboutSettingsItemId.Github,
                 titleRes = R.string.ui_settings_about_github,
-                uri = "https://github.com/niki914/agentic-nexus",
+                uri = "https://github.com/niki914/zafiro",
             ),
             AboutSettingsItemUiState(
                 id = AboutSettingsItemId.Afdian,
@@ -211,12 +211,12 @@ private fun previewAboutSettingsUiState(): AboutSettingsUiState {
             AboutSettingsItemUiState(
                 id = AboutSettingsItemId.FeatureFeedback,
                 titleRes = R.string.ui_settings_about_feedback_feature,
-                uri = "https://github.com/niki914/agentic-nexus/issues/new",
+                uri = "https://github.com/niki914/zafiro/issues/new",
             ),
             AboutSettingsItemUiState(
                 id = AboutSettingsItemId.BugFeedback,
                 titleRes = R.string.ui_settings_about_feedback_bug,
-                uri = "https://github.com/niki914/agentic-nexus/issues/new",
+                uri = "https://github.com/niki914/zafiro/issues/new",
             ),
         )
     )

@@ -28,7 +28,7 @@ class AboutSettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(
-            AboutSettingsEffect.OpenUri("https://github.com/niki914/agentic-nexus"),
+            AboutSettingsEffect.OpenUri("https://github.com/niki914/zafiro"),
             effectDeferred.await(),
         )
     }

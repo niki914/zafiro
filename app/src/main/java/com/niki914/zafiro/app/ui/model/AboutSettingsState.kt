@@ -79,7 +79,7 @@ private fun aboutSettingsItems(): List<AboutSettingsItemUiState> {
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.Github,
             titleRes = R.string.ui_settings_about_github,
-            uri = "https://github.com/niki914/agentic-nexus",
+            uri = "https://github.com/niki914/zafiro",
         ),
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.Afdian,
@@ -112,7 +112,7 @@ internal fun buildIssueUri(title: String, body: String): String {
     return Uri.Builder()
         .scheme("https")
         .authority("github.com")
-        .path("/niki914/agentic-nexus/issues/new")
+        .path("/niki914/zafiro/issues/new")
         .appendQueryParameter("title", title)
         .appendQueryParameter("body", body)
         .build()
