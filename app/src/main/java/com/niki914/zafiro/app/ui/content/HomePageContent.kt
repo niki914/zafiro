@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -232,11 +233,15 @@ fun HomePageContent(
         },
         expandedToolRuns = uiState.expandedToolRuns,
         expandedToolResults = uiState.expandedToolResults,
+        expandedThinking = uiState.expandedThinking,
         onToggleToolRun = { turnId, runStartIndex ->
             viewModel.sendIntent(HomeChatIntent.ToggleToolRun(turnId, runStartIndex))
         },
         onToggleToolResult = { turnId, runStartIndex, toolIndex ->
             viewModel.sendIntent(HomeChatIntent.ToggleToolResult(turnId, runStartIndex, toolIndex))
+        },
+        onToggleThinking = { turnId ->
+            viewModel.sendIntent(HomeChatIntent.ToggleThinking(turnId))
         },
         expandedActionTurnId = uiState.expandedActionTurnId,
         expandedActionSource = uiState.expandedActionSource,
@@ -284,8 +289,10 @@ private fun HomePageContentBody(
     onFork: (Long) -> Unit,
     expandedToolRuns: Set<String>,
     expandedToolResults: Set<String>,
+    expandedThinking: Set<Long>,
     onToggleToolRun: (Long, Int) -> Unit,
     onToggleToolResult: (Long, Int, Int) -> Unit,
+    onToggleThinking: (Long) -> Unit,
     expandedActionTurnId: Long?,
     expandedActionSource: ActionSource?,
     onToggleActionRow: (Long, ActionSource) -> Unit,
@@ -322,8 +329,10 @@ private fun HomePageContentBody(
                     onFork = onFork,
                     expandedToolRuns = expandedToolRuns,
                     expandedToolResults = expandedToolResults,
+                    expandedThinking = expandedThinking,
                     onToggleToolRun = onToggleToolRun,
                     onToggleToolResult = onToggleToolResult,
+                    onToggleThinking = onToggleThinking,
                     expandedActionTurnId = expandedActionTurnId,
                     expandedActionSource = expandedActionSource,
                     onToggleActionRow = onToggleActionRow,
@@ -391,8 +400,10 @@ private fun HomeChatTurnItem(
     onFork: (Long) -> Unit,
     expandedToolRuns: Set<String>,
     expandedToolResults: Set<String>,
+    expandedThinking: Set<Long>,
     onToggleToolRun: (Long, Int) -> Unit,
     onToggleToolResult: (Long, Int, Int) -> Unit,
+    onToggleThinking: (Long) -> Unit,
     expandedActionTurnId: Long?,
     expandedActionSource: ActionSource?,
     onToggleActionRow: (Long, ActionSource) -> Unit,
@@ -508,6 +519,21 @@ private fun HomeChatTurnItem(
                             modifier = Modifier.padding(top = 12.dp),
                         )
                     }
+                    is HomeChatBlock.Thinking -> {
+                        CollapsibleBlock(
+                            icon = ToolIcons.Thinking,
+                            title = "Thinking",
+                            isExpanded = turn.id in expandedThinking,
+                            onToggle = { onToggleThinking(turn.id) },
+                            modifier = Modifier.padding(top = 12.dp),
+                        ) {
+                            Text(
+                                text = block.text,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
                     is HomeChatBlock.Tool -> {} // handled above
                 }
                 blockIndex++
@@ -592,8 +618,10 @@ private fun HomePageContentPreview() {
                 onFork = { },
                 expandedToolRuns = emptySet(),
                 expandedToolResults = emptySet(),
+                expandedThinking = emptySet(),
                 onToggleToolRun = { _, _ -> },
                 onToggleToolResult = { _, _, _ -> },
+                onToggleThinking = { _ -> },
                 expandedActionTurnId = null,
                 expandedActionSource = null,
                 onToggleActionRow = { _, _ -> },

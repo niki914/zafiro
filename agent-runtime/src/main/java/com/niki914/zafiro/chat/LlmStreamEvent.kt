@@ -10,6 +10,16 @@ sealed interface LlmStreamEvent {
         val charsPerSecond: Float? = null,
     ) : LlmStreamEvent
 
+    /** 思考块开始/进行中：text 为当前全量（OKIA Delta 也映射为它），单独累积渲染不混入正文。 */
+    data class ThinkingStarted(
+        val text: String,
+    ) : LlmStreamEvent
+
+    /** 思考块完成（含被掐中断）：text 为最终全量；宿主据此把 [Thinking] 切成 [Thought]。 */
+    data class ThinkingEnded(
+        val text: String,
+    ) : LlmStreamEvent
+
     data class ToolRunning(
         val call: ToolCallStatus,
     ) : LlmStreamEvent

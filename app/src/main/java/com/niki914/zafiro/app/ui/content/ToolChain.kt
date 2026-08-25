@@ -1,38 +1,22 @@
 package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,10 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -54,30 +36,21 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.zafiro.app.R
-import com.niki914.uikit.infra.shape.G2CapsuleShape
 import com.niki914.zafiro.app.ui.model.HomeChatViewModel
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import kotlinx.coroutines.delay
 
-private val SucceededColor = Color(0xFF4F8F6B)
 private val FailedColor = Color(0xFFB85C5C)
-
-private sealed interface DotVisibility {
-    data object Gone : DotVisibility
-    data class Visible(val color: Color) : DotVisibility
-}
 
 // ── shared animation specs ─────────────────────────────────────────────────
 
-private val ChevronSpring = spring<Float>(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium)
 private val StaggerFadeSpring = spring<Float>(dampingRatio = 1f, stiffness = 300f)
-private val StaggerSlideSpring = spring<IntOffset>(dampingRatio = 0.8f, stiffness = 300f)
+private val StaggerSlideSpring = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.8f, stiffness = 300f)
 
 // ── nested scroll: pass through user drag, block fling inertia ─────────────
 
@@ -98,9 +71,10 @@ private val BlockFlingScrollPropagation: NestedScrollConnection = object : Neste
 // ── ToolChain — stateless, state driven by ViewModel ────────────────────────
 
 /**
- * Stateless tool call list. Single-tool: renders one [ToolRowBase] directly.
- * Multi-tool: renders a header [ToolRowBase] (dot gone, name = count)
- * whose expansion reveals a staggered list of per-tool [ToolRowBase] rows.
+ * Stateless tool call list. Single-tool: renders one [CollapsibleBlock] directly.
+ * Multi-tool: renders a header [CollapsibleBlock] (title = count) whose expansion
+ * reveals a staggered list of per-tool [CollapsibleBlock] rows.
+ * 图标按工具名分派（ToolIcons.forTool），无专有布局时走默认折叠块。
  */
 @Composable
 fun ToolChain(
@@ -111,180 +85,55 @@ fun ToolChain(
     onToggleResult: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessLow,
-                ),
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        if (tools.size == 1) {
-            val status = tools[0]
-            val hasResult = status.resultText != null || status.failedReason != null
-            val isRunning = status.state == HomeToolState.Running
-            val isOpen = 0 in expandedResults
-            ToolRowBase(
-                name = status.name,
-                nameAlpha = 0.78f,
-                dot = DotVisibility.Visible(statusDotColor(status.state, contentColor)),
-                isExpanded = isOpen,
-                isPressable = !isRunning,
-                hasResult = hasResult,
-                showSpinner = isRunning,
-                onClick = { onToggleResult(0) },
-            ) {
-                ExpandableContainer(visible = isOpen && hasResult) {
-                    ToolResultDetail(status.failedReason, status.resultText)
-                }
-            }
-        } else {
-            ToolRowBase(
-                name = pluralStringResource(R.plurals.ui_tool_chain_count, tools.size, tools.size),
-                nameAlpha = 0.72f,
-                dot = DotVisibility.Gone,
-                isExpanded = isExpanded,
-                isPressable = true,
-                hasResult = true,
-                showSpinner = false,
-                onClick = onToggleRun,
-            ) {
-                if (isExpanded) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    tools.forEachIndexed { index, status ->
-                        val isOpen = index in expandedResults
-                        val hasResult = status.resultText != null || status.failedReason != null
-                        val isRunning = status.state == HomeToolState.Running
-                        StaggeredEntry(
-                            index = index,
-                            staggerMs = index * 40L,
-                        ) {
-                            ToolRowBase(
-                                name = status.name,
-                                nameAlpha = 0.78f,
-                                dot = DotVisibility.Visible(statusDotColor(status.state, contentColor)),
-                                isExpanded = isOpen,
-                                isPressable = !isRunning,
-                                hasResult = hasResult,
-                                showSpinner = isRunning,
-                                onClick = { onToggleResult(index) },
-                            ) {
-                                ExpandableContainer(visible = isOpen && hasResult) {
-                                    ToolResultDetail(status.failedReason, status.resultText)
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                }
-            }
-        }
-    }
-}
-
-// ── unified tool row ────────────────────────────────────────────────────────
-
-/**
- * Base row for both multi-tool header and individual tool rows.
- *
- * [dot] controls visibility: [DotVisibility.Gone] omits the dot entirely
- * (header), [DotVisibility.Visible] renders a colored dot (individual tools).
- * [showSpinner] replaces the chevron with a [CircularProgressIndicator].
- */
-@Composable
-private fun ToolRowBase(
-    name: String,
-    nameAlpha: Float,
-    dot: DotVisibility,
-    isExpanded: Boolean,
-    isPressable: Boolean,
-    hasResult: Boolean,
-    showSpinner: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit = {},
-) {
-    val chevron by animateFloatAsState(
-        targetValue = if (isExpanded) 90f else 0f,
-        animationSpec = ChevronSpring,
-        label = "chevron",
-    )
-    val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val showChevron = hasResult || showSpinner
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { if (isPressable && hasResult) onClick() },
-                )
-                .padding(vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    if (tools.size == 1) {
+        val status = tools[0]
+        SingleToolRow(
+            status = status,
+            isOpen = 0 in expandedResults,
+            onToggle = { onToggleResult(0) },
+        )
+    } else {
+        CollapsibleBlock(
+            icon = ToolIcons.Multi,
+            title = pluralStringResource(R.plurals.ui_tool_chain_count, tools.size, tools.size),
+            isExpanded = isExpanded,
+            onToggle = onToggleRun,
+            modifier = modifier,
         ) {
-            when (dot) {
-                is DotVisibility.Visible -> {
-                    StatusDot(color = dot.color)
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                DotVisibility.Gone -> {}
-            }
-            Text(
-                text = name,
-                style = MaterialTheme.typography.bodyLarge,
-                color = contentColor.copy(alpha = nameAlpha),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 180.dp),
-            )
-            if (showChevron) {
-                Spacer(modifier = Modifier.width(8.dp))
-                if (showSpinner) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(12.dp),
-                        strokeWidth = 1.5.dp,
-                        color = contentColor,
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = contentColor.copy(alpha = 0.28f),
-                        modifier = Modifier
-                            .size(16.dp)
-                            .graphicsLayer { rotationZ = chevron },
+            Spacer(modifier = Modifier.height(2.dp))
+            tools.forEachIndexed { index, status ->
+                StaggeredEntry(index = index, staggerMs = index * 40L) {
+                    SingleToolRow(
+                        status = status,
+                        isOpen = index in expandedResults,
+                        onToggle = { onToggleResult(index) },
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(6.dp))
         }
-        content()
     }
 }
 
-// ── expandable container (reusable animation wrapper) ───────────────────────
-
 @Composable
-private fun ExpandableContainer(
-    visible: Boolean,
-    enter: EnterTransition = fadeIn(StaggerFadeSpring) +
-            slideInVertically(StaggerSlideSpring) { it / 4 },
-    exit: ExitTransition = fadeOut(tween(80)),
-    content: @Composable () -> Unit,
+private fun SingleToolRow(
+    status: HomeToolStatus,
+    isOpen: Boolean,
+    onToggle: () -> Unit,
 ) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = enter,
-        exit = exit,
-    ) { content() }
+    val hasResult = status.resultText != null || status.failedReason != null
+    val isRunning = status.state == HomeToolState.Running
+    CollapsibleBlock(
+        icon = ToolIcons.forTool(status.name),
+        title = status.name,
+        isExpanded = isOpen,
+        isRunning = isRunning,
+        onToggle = { if (!isRunning && hasResult) onToggle() },
+    ) {
+        if (hasResult) {
+            ToolResultDetail(status.failedReason, status.resultText)
+        }
+    }
 }
 
 // ── tool result detail (failed reason + result text) ────────────────────────
@@ -296,7 +145,7 @@ private fun ToolResultDetail(
 ) {
     val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.Start,
         modifier = Modifier.fillMaxWidth(),
     ) {
         failedReason?.let { reason ->
@@ -333,10 +182,14 @@ private fun StaggeredEntry(
         delay(staggerMs)
         visible = true
     }
-    ExpandableContainer(visible = visible) { content() }
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(StaggerFadeSpring) + slideInVertically(StaggerSlideSpring) { it / 4 },
+        exit = fadeOut(tween(80)),
+    ) { content() }
 }
 
-// ── result text — single-line centered, multi-line fill-width ───────────────
+// ── result text — left-aligned, expands to scroll on overflow ───────────────
 
 @Composable
 private fun ToolResultText(
@@ -354,10 +207,16 @@ private fun ToolResultText(
 
     Box(
         modifier = Modifier
-            .let { if (overflow) it.fillMaxWidth() else it }
+            .fillMaxWidth()
             .heightIn(max = 102.dp)
-            .let { if (overflow) it.nestedScroll(BlockFlingScrollPropagation).verticalScroll(rememberScrollState()) else it },
-        contentAlignment = if (overflow) Alignment.TopStart else Alignment.Center,
+            .let {
+                if (overflow) {
+                    it.nestedScroll(BlockFlingScrollPropagation).verticalScroll(rememberScrollState())
+                } else {
+                    it
+                }
+            },
+        contentAlignment = Alignment.TopStart,
     ) {
         SelectionContainer {
             Text(
@@ -367,7 +226,6 @@ private fun ToolResultText(
                 maxLines = if (overflow) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
                 softWrap = overflow,
-                modifier = if (overflow) Modifier.fillMaxWidth() else Modifier,
                 onTextLayout = { layoutResult ->
                     if (!overflow && layoutResult.hasVisualOverflow) {
                         overflow = true
@@ -376,26 +234,4 @@ private fun ToolResultText(
             )
         }
     }
-}
-
-// ── status dot ──────────────────────────────────────────────────────────────
-
-@Composable
-private fun StatusDot(color: Color) {
-    val dotShape = G2CapsuleShape()
-    Box(
-        modifier = Modifier
-            .size(8.dp)
-            .clip(dotShape)
-            .background(color, dotShape),
-    )
-}
-
-// ── helpers ─────────────────────────────────────────────────────────────────
-
-@Composable
-private fun statusDotColor(state: HomeToolState, fallback: Color): Color = when (state) {
-    HomeToolState.Succeeded -> SucceededColor
-    HomeToolState.Failed -> FailedColor
-    HomeToolState.Running -> fallback
 }

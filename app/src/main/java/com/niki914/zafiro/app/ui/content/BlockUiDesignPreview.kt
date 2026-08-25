@@ -1,34 +1,14 @@
 package com.niki914.zafiro.app.ui.content
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,32 +19,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.shape.G2BubbleShape
-
-// 图标映射（思路稿）：
-//  - Thinking        → 四角星星（也可换 Psychology 脑子）
-//  - Terminal        → 终端
-//  - Skill           → 笔记本
-//  - Python          → Python logo（自绘矢量）
-//  - 默认工具 / MCP   → 扳手
-private val ThinkingIcon = Icons.Filled.AutoAwesome // TODO New
-private val TerminalIcon = Icons.Filled.Terminal
-private val SkillIcon = Icons.AutoMirrored.Filled.MenuBook
-
-/** Python logo：res/drawable/python_logo.xml（VectorDrawable），@Composable 内用 vectorResource 加载。 */
-
-/** 默认工具 / MCP 兜底图标。 */
-private val DefaultToolIcon = Icons.Filled.Build
 
 /** 思考块内容：正文区，展开后左右比头部再多一点内缩。 */
 private val ThinkingBody = """
@@ -95,84 +56,6 @@ private val SkillBody = """
 /** 默认工具兜底展开内容：单行等宽，过长省略。 */
 private val DefaultToolBody =
     "Retrieved 12 documents. Matched 3 results. Summarized by relevance score."
-
-/**
- * 可复用折叠块：左图标 + 标题（过长右侧省略），点击展开。
- * 展开内容左右 inner margin 比头部再多一点（thinking / tooling 共用骨架）。
- */
-@Composable
-private fun CollapsibleBlock(
-    icon: ImageVector,
-    title: String,
-    isExpanded: Boolean,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit = {},
-) {
-    val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val chevron by animateFloatAsState(
-        targetValue = if (isExpanded) 90f else 0f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-        label = "chevron",
-    )
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessLow,
-                ),
-            ),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onToggle,
-                )
-                .padding(vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(15.dp),
-                tint = contentColor,
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = contentColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = contentColor.copy(alpha = 0.28f),
-                modifier = Modifier
-                    .size(16.dp)
-                    .graphicsLayer { rotationZ = chevron },
-            )
-        }
-        AnimatedVisibility(
-            visible = isExpanded,
-            enter = expandVertically() + fadeIn(tween(120)),
-        ) {
-            // 展开内容：左右比头部再多 14.dp 内缩
-            Column(modifier = Modifier.padding(start = 28.dp, end = 14.dp, bottom = 6.dp)) {
-                content()
-            }
-        }
-    }
-}
 
 /** 默认兜底展开内容：单行等宽，过长省略（软换行，避免撑宽导致拉伸）。 */
 @Composable
@@ -206,7 +89,6 @@ private fun BlockUiDesignPreview() {
         var longTitleOpen by remember { mutableStateOf(false) }
         var longContentOpen by remember { mutableStateOf(true) }
 
-        val pythonIcon = ImageVector.vectorResource(R.drawable.python_logo)
         val bodyColor = MaterialTheme.colorScheme.onSurface
         val bubbleShape = G2BubbleShape(24.dp)
 
@@ -242,7 +124,7 @@ private fun BlockUiDesignPreview() {
 
             // 思考块
             CollapsibleBlock(
-                icon = ThinkingIcon,
+                icon = ToolIcons.Thinking,
                 title = "Thinking",
                 isExpanded = thinkingOpen,
                 onToggle = { thinkingOpen = !thinkingOpen },
@@ -256,7 +138,7 @@ private fun BlockUiDesignPreview() {
 
             // Terminal 专有布局
             CollapsibleBlock(
-                icon = TerminalIcon,
+                icon = ToolIcons.forTool("terminal"),
                 title = "Terminal · ls -la /home/niki/projects",
                 isExpanded = terminalOpen,
                 onToggle = { terminalOpen = !terminalOpen },
@@ -276,7 +158,7 @@ private fun BlockUiDesignPreview() {
 
             // Python 专有布局（与 Terminal 区分）
             CollapsibleBlock(
-                icon = pythonIcon,
+                icon = ToolIcons.forTool("python"),
                 title = "Python · count files in dir",
                 isExpanded = pythonOpen,
                 onToggle = { pythonOpen = !pythonOpen },
@@ -296,7 +178,7 @@ private fun BlockUiDesignPreview() {
 
             // Skill 专有布局
             CollapsibleBlock(
-                icon = SkillIcon,
+                icon = ToolIcons.forTool("skill"),
                 title = "Skill · phone-use",
                 isExpanded = skillOpen,
                 onToggle = { skillOpen = !skillOpen },
@@ -310,7 +192,7 @@ private fun BlockUiDesignPreview() {
 
             // 默认工具（兜底布局）
             CollapsibleBlock(
-                icon = DefaultToolIcon,
+                icon = ToolIcons.forTool("search_docs"),
                 title = "search_docs",
                 isExpanded = defaultOpen,
                 onToggle = { defaultOpen = !defaultOpen },
@@ -320,7 +202,7 @@ private fun BlockUiDesignPreview() {
 
             // 超长标题（外部文本）：右侧省略
             CollapsibleBlock(
-                icon = TerminalIcon,
+                icon = ToolIcons.forTool("terminal"),
                 title = "Terminal · python3 -m pip install --upgrade torch torchvision torchaudio " +
                     "--index-url https://download.pytorch.org/whl/cu121 --no-cache-dir",
                 isExpanded = longTitleOpen,
@@ -335,7 +217,7 @@ private fun BlockUiDesignPreview() {
 
             // 超长内容（内部文本）：默认展开，单行等宽省略
             CollapsibleBlock(
-                icon = DefaultToolIcon,
+                icon = ToolIcons.forTool("search_knowledge_base"),
                 title = "search_knowledge_base",
                 isExpanded = longContentOpen,
                 onToggle = { longContentOpen = !longContentOpen },

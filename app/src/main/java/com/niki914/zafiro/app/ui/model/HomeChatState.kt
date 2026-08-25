@@ -86,6 +86,7 @@ data class HomeToolStatus(
 
 sealed interface HomeChatBlock {
     data class Text(val text: String) : HomeChatBlock
+    data class Thinking(val text: String) : HomeChatBlock
     data class Tool(val status: HomeToolStatus) : HomeChatBlock
     data class Error(val message: String, val code: LlmErrorCode? = null) : HomeChatBlock
 }
@@ -107,6 +108,7 @@ data class HomeChatUiState(
     val currentConversationTitle: String? = null,
     val expandedToolRuns: Set<String> = emptySet(),
     val expandedToolResults: Set<String> = emptySet(),
+    val expandedThinking: Set<Long> = emptySet(),
     val expandedActionTurnId: Long? = null,
     val expandedActionSource: ActionSource? = null,
 )
@@ -120,6 +122,7 @@ sealed interface HomeChatIntent {
     data class DeleteConversation(val id: String) : HomeChatIntent
     data class ToggleToolRun(val turnId: Long, val runStartIndex: Int) : HomeChatIntent
     data class ToggleToolResult(val turnId: Long, val runStartIndex: Int, val toolIndex: Int) : HomeChatIntent
+    data class ToggleThinking(val turnId: Long) : HomeChatIntent
     data class ToggleActionRow(val turnId: Long, val source: ActionSource) : HomeChatIntent
     data class ReGenerateAt(val turnId: Long) : HomeChatIntent
     data class ForkAt(val turnId: Long) : HomeChatIntent
@@ -182,6 +185,8 @@ class HomeChatViewModel internal constructor(
                 intent.turnId, intent.runStartIndex, intent.toolIndex,
             )
 
+            is HomeChatIntent.ToggleThinking -> toggleThinking(intent.turnId)
+
             is HomeChatIntent.ToggleActionRow -> toggleActionRow(
                 intent.turnId, intent.source,
             )
@@ -212,6 +217,18 @@ class HomeChatViewModel internal constructor(
                     expandedToolResults - key
                 } else {
                     expandedToolResults + key
+                },
+            )
+        }
+    }
+
+    private fun toggleThinking(turnId: Long) {
+        updateState {
+            copy(
+                expandedThinking = if (turnId in expandedThinking) {
+                    expandedThinking - turnId
+                } else {
+                    expandedThinking + turnId
                 },
             )
         }
@@ -349,6 +366,14 @@ class HomeChatViewModel internal constructor(
                 it.appendText(event.delta)
             }
 
+            is LlmStreamEvent.ThinkingStarted -> updateTurn(turnId) {
+                it.upsertThinking(event.text)
+            }
+
+            is LlmStreamEvent.ThinkingEnded -> updateTurn(turnId) {
+                it.upsertThinking(event.text)
+            }
+
             is LlmStreamEvent.ToolRunning -> updateTurn(turnId) {
                 it.appendTool(event.call.callId, event.call.label, HomeToolState.Running)
             }
@@ -421,6 +446,7 @@ class HomeChatViewModel internal constructor(
                         currentConversationTitle = restoredTitle,
                         expandedToolRuns = emptySet(),
                         expandedToolResults = emptySet(),
+                        expandedThinking = emptySet(),
                         expandedActionTurnId = null,
                         expandedActionSource = null,
                     )
@@ -667,6 +693,21 @@ class HomeChatViewModel internal constructor(
         }
     }
 
+    /** 思考块全量替换：事件携带的是全量文本，直接覆盖，不拼接。 */
+    private fun HomeChatTurn.upsertThinking(text: String): HomeChatTurn {
+        if (text.isBlank()) return this
+        val index = blocks.indexOfLast { it is HomeChatBlock.Thinking }
+        return if (index != -1) {
+            copy(
+                blocks = blocks.toMutableList().also { mutableBlocks ->
+                    mutableBlocks[index] = (mutableBlocks[index] as HomeChatBlock.Thinking).copy(text = text)
+                },
+            )
+        } else {
+            copy(blocks = blocks + HomeChatBlock.Thinking(text))
+        }
+    }
+
     private fun HomeChatTurn.appendText(delta: String): HomeChatTurn {
         if (delta.isEmpty()) return this
         val lastBlock = blocks.lastOrNull()
@@ -753,6 +794,8 @@ class HomeChatViewModel internal constructor(
     private fun eventName(event: LlmStreamEvent): String = when (event) {
         LlmStreamEvent.RoundStarted -> "RoundStarted"
         is LlmStreamEvent.TextDelta -> "TextDelta"
+        is LlmStreamEvent.ThinkingStarted -> "ThinkingStarted"
+        is LlmStreamEvent.ThinkingEnded -> "ThinkingEnded"
         is LlmStreamEvent.ToolRunning -> "ToolRunning"
         is LlmStreamEvent.ToolSucceeded -> "ToolSucceeded"
         is LlmStreamEvent.ToolFailed -> "ToolFailed"

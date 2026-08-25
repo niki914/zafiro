@@ -93,6 +93,7 @@ object ConversationFormatter {
                 is Message.Assistant -> {
                     val target = turns.lastOrNull() ?: HomeChatTurn(id = nextId++, userText = "")
                     val updated = target
+                        .appendThinkingBlocks(message.message)
                         .appendTextBlock(message.message.textBlocks().joinToString("\n"))
                         .appendToolBlocks(message.message)
                     turns.replaceLastOrAdd(updated)
@@ -133,6 +134,12 @@ object ConversationFormatter {
     private fun HomeChatTurn.appendTextBlock(text: String): HomeChatTurn {
         if (text.isBlank()) return this
         return copy(blocks = blocks + HomeChatBlock.Text(text))
+    }
+
+    private fun HomeChatTurn.appendThinkingBlocks(assistant: com.niki914.okia.message.AssistantMessage): HomeChatTurn {
+        val thoughts = assistant.content.filterIsInstance<ContentBlock.Thinking>()
+        if (thoughts.isEmpty()) return this
+        return copy(blocks = blocks + thoughts.map { HomeChatBlock.Thinking(it.text) })
     }
 
     private fun HomeChatTurn.appendToolBlocks(assistant: com.niki914.okia.message.AssistantMessage): HomeChatTurn {

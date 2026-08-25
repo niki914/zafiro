@@ -196,21 +196,103 @@ class LlmStreamEventMapperTest {
     // ── 工具意图阶段不发射（无 UI 消费端） ────────────────────────────────────
 
     @Test
-    fun `ToolCall intent and Thinking and Retry events are dropped`() {
+    fun `ToolCall intent and Retry events are dropped`() {
         val partial = AssistantMessage(emptyList())
         val call = ContentBlock.ToolCall("c", "t", "{}")
         val events = listOf(
             TurnEvent.ToolCallStarted(0, partial),
             TurnEvent.ToolCallDelta(0, "{}", partial),
             TurnEvent.ToolCallReady(0, call, partial),
-            TurnEvent.ThinkingStarted(0, partial),
-            TurnEvent.ThinkingDelta(0, "th", partial),
-            TurnEvent.ThinkingEnded(0, "th", partial),
             TurnEvent.RetryScheduled(1, 3, 100L, "rate limit"),
         )
         events.forEach {
             assertNull(LlmStreamEventMapper.map(it, 0L, "default error"))
         }
+    }
+
+    // ── 思考块：全量两态映射 ──────────────────────────────────────────────────
+
+    private fun thinkingPartial(text: String) =
+        AssistantMessage(content = listOf(ContentBlock.Thinking(text)))
+
+    @Test
+    fun `ThinkingStarted maps to ThinkingStarted with full text`() {
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.ThinkingStarted(0, thinkingPartial("deep think")),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmStreamEvent.ThinkingStarted("deep think"), result)
+    }
+
+    @Test
+    fun `ThinkingDelta re-emits ThinkingStarted with updated full text`() {
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.ThinkingDelta(0, "think", thinkingPartial("deep think")),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmStreamEvent.ThinkingStarted("deep think"), result)
+    }
+
+    @Test
+    fun `ThinkingEnded maps to ThinkingEnded with final content`() {
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.ThinkingEnded(0, "deep think", thinkingPartial("deep think")),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmStreamEvent.ThinkingEnded("deep think"), result)
+    }
+
+    @Test
+    fun `Thinking with blank text produces no event`() {
+        assertNull(
+            LlmStreamEventMapper.map(
+                TurnEvent.ThinkingStarted(0, thinkingPartial("")),
+                0L,
+                "default error",
+            )
+        )
+        assertNull(
+            LlmStreamEventMapper.map(
+                TurnEvent.ThinkingDelta(0, "", thinkingPartial("  ")),
+                0L,
+                "default error",
+            )
+        )
+        assertNull(
+            LlmStreamEventMapper.map(
+                TurnEvent.ThinkingEnded(0, "", thinkingPartial("")),
+                0L,
+                "default error",
+            )
+        )
+    }
+
+    @Test
+    fun `TurnAborted with active thinking maps to ThinkingEnded (interrupted counts as done)`() {
+        LlmStreamEventMapper.map(
+            TurnEvent.ThinkingStarted(0, thinkingPartial("half thought")),
+            0L,
+            "default error",
+        )
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.TurnAborted(AssistantMessage(emptyList()), StopCause.UserStop),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmStreamEvent.ThinkingEnded("half thought"), result)
+    }
+
+    @Test
+    fun `TurnAborted without active thinking stays null`() {
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.TurnAborted(AssistantMessage(emptyList()), StopCause.UserStop),
+            0L,
+            "default error",
+        )
+        assertNull(result)
     }
 
     // ── 终态映射 ──────────────────────────────────────────────────────────────

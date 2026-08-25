@@ -29,14 +29,20 @@ object LlmStreamEventMapper {
      */
     private var accumulatedText: String = ""
 
+    /** 思考块是否在途（尚未被 ThinkingEnded 关闭）；终止时用于合成完成事件（被掐 = 完成）。 */
+    private var thinkingActive = false
+    private var lastThinkingText: String = ""
+
     fun map(
         event: TurnEvent,
         startedAtMs: Long,
         defaultErrorMessage: String,
-    ): LlmStreamEvent? { // <--- TODO 梳理 LlmStreamEvent | Thinking impl
+    ): LlmStreamEvent? {
         val mapped = when (event) {
             is TurnEvent.TurnStarted -> {
                 accumulatedText = ""
+                thinkingActive = false
+                lastThinkingText = ""
                 LlmStreamEvent.RoundStarted
             }
 
@@ -75,11 +81,15 @@ object LlmStreamEventMapper {
 
             is TurnEvent.TurnCompleted -> {
                 accumulatedText = ""
+                thinkingActive = false
+                lastThinkingText = ""
                 LlmStreamEvent.Completed
             }
 
             is TurnEvent.TurnFailed -> {
                 accumulatedText = ""
+                thinkingActive = false
+                lastThinkingText = ""
                 LlmStreamEvent.Error(
                     message = event.error.message.trim().ifEmpty { defaultErrorMessage },
                     throwable = event.error.cause,
@@ -87,30 +97,47 @@ object LlmStreamEventMapper {
                 )
             }
 
-            is TurnEvent.TurnIdleTimeout -> LlmStreamEvent.Error(
-                message = defaultErrorMessage,
-                throwable = null,
-                code = LlmErrorCode.Transport,
-            )
+            // 超时也视为回合终止：清思考在途态（不合成——正常流不会走到这里）
+            is TurnEvent.TurnIdleTimeout -> {
+                thinkingActive = false
+                lastThinkingText = ""
+                LlmStreamEvent.Error(
+                    message = defaultErrorMessage,
+                    throwable = null,
+                    code = LlmErrorCode.Transport,
+                )
+            }
 
-            // Thinking 与工具意图阶段：UI 不渲染 thinking（D5）；工具意图无消费端（T2）。
-            // TextEnded 是文本块边界：重置累积（多段/跨工具轮）。
-            // TurnAborted（用户停止）不映射为错误事件：停止由消费端 cancel 表达。
+            // 思考块：全量直传两态。OKIA Delta 也映射为 ThinkingStarted（思考中），
+            // 文本为空不发事件（"一个字都没有就不显示块"）。
+            is TurnEvent.ThinkingStarted -> thinkingInProgress(event.partial.thinkingContent())
+
+            is TurnEvent.ThinkingDelta -> thinkingInProgress(event.partial.thinkingContent())
+
+            is TurnEvent.ThinkingEnded -> {
+                thinkingActive = false
+                val full = event.content
+                lastThinkingText = ""
+                full.takeIf { it.isNotBlank() }?.let { LlmStreamEvent.ThinkingEnded(it) }
+            }
+
+            // 工具意图阶段无消费端（T2）；TextEnded 是文本块边界：重置累积（多段/跨工具轮）。
             is TurnEvent.TextEnded -> {
                 accumulatedText = ""
                 null
             }
 
-            is TurnEvent.ThinkingStarted, is TurnEvent.ThinkingDelta, is TurnEvent.ThinkingEnded,
             is TurnEvent.ToolCallStarted, is TurnEvent.ToolCallDelta, is TurnEvent.ToolCallReady,
             is TurnEvent.RetryScheduled -> null
 
+            // 用户停止：不映射为错误事件（停止由消费端 cancel 表达）；
+            // 若思考块仍在途，合成 ThinkingEnded（被掐也算完成）。
             is TurnEvent.TurnAborted -> {
                 accumulatedText = ""
-                null
+                completeInterruptedThinking()
             }
         }
-        if (event !is TurnEvent.TextDelta) {
+        if (event !is TurnEvent.TextDelta && event !is TurnEvent.ThinkingDelta) {
             Logger.d(
                 LOG_TAG,
                 "mapped turnEvent=${event::class.simpleName} " +
@@ -118,6 +145,27 @@ object LlmStreamEventMapper {
             )
         }
         return mapped
+    }
+
+    /** 思考中状态事件：非空全量直接透传，空文本忽略。 */
+    private fun thinkingInProgress(text: String): LlmStreamEvent? {
+        if (text.isBlank()) {
+            thinkingActive = false
+            lastThinkingText = ""
+            return null
+        }
+        thinkingActive = true
+        lastThinkingText = text
+        return LlmStreamEvent.ThinkingStarted(text)
+    }
+
+    /** 回合非正常终止时，若思考在途则补发完成事件（被掐 = 完成）。 */
+    private fun completeInterruptedThinking(): LlmStreamEvent? {
+        if (!thinkingActive) return null
+        thinkingActive = false
+        val final = lastThinkingText
+        lastThinkingText = ""
+        return LlmStreamEvent.ThinkingEnded(final)
     }
 
     private fun TurnEvent.ToolSucceeded.toToolSucceededOrFailed(): LlmStreamEvent {
@@ -170,6 +218,9 @@ object LlmStreamEventMapper {
 
     private fun AssistantMessage.textContent(): String =
         content.filterIsInstance<ContentBlock.Text>().joinToString("") { it.text }
+
+    private fun AssistantMessage.thinkingContent(): String =
+        content.filterIsInstance<ContentBlock.Thinking>().joinToString("") { it.text }
     private fun charsPerSecond(fullText: String, startedAtMs: Long): Float {
         val elapsedMs = (System.currentTimeMillis() - startedAtMs).coerceAtLeast(1)
         return fullText.length * 1000f / elapsedMs
