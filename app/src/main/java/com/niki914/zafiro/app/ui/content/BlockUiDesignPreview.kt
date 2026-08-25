@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.shape.G2BubbleShape
 
@@ -124,7 +125,7 @@ private fun BlockUiDesignPreview() {
 
             // 思考块
             CollapsibleBlock(
-                icon = ToolIcons.Thinking,
+                icon = ToolPresentation.Thinking,
                 title = "Thinking",
                 isExpanded = thinkingOpen,
                 onToggle = { thinkingOpen = !thinkingOpen },
@@ -138,7 +139,7 @@ private fun BlockUiDesignPreview() {
 
             // Terminal 专有布局
             CollapsibleBlock(
-                icon = ToolIcons.forTool("terminal"),
+                icon = ToolPresentation.forTool("terminal"),
                 title = "Terminal · ls -la /home/niki/projects",
                 isExpanded = terminalOpen,
                 onToggle = { terminalOpen = !terminalOpen },
@@ -158,7 +159,7 @@ private fun BlockUiDesignPreview() {
 
             // Python 专有布局（与 Terminal 区分）
             CollapsibleBlock(
-                icon = ToolIcons.forTool("python"),
+                icon = ToolPresentation.forTool("python"),
                 title = "Python · count files in dir",
                 isExpanded = pythonOpen,
                 onToggle = { pythonOpen = !pythonOpen },
@@ -178,7 +179,7 @@ private fun BlockUiDesignPreview() {
 
             // Skill 专有布局
             CollapsibleBlock(
-                icon = ToolIcons.forTool("skill"),
+                icon = ToolPresentation.forTool("skill"),
                 title = "Skill · phone-use",
                 isExpanded = skillOpen,
                 onToggle = { skillOpen = !skillOpen },
@@ -192,7 +193,7 @@ private fun BlockUiDesignPreview() {
 
             // 默认工具（兜底布局）
             CollapsibleBlock(
-                icon = ToolIcons.forTool("search_docs"),
+                icon = ToolPresentation.forTool("search_docs"),
                 title = "search_docs",
                 isExpanded = defaultOpen,
                 onToggle = { defaultOpen = !defaultOpen },
@@ -202,7 +203,7 @@ private fun BlockUiDesignPreview() {
 
             // 超长标题（外部文本）：右侧省略
             CollapsibleBlock(
-                icon = ToolIcons.forTool("terminal"),
+                icon = ToolPresentation.forTool("terminal"),
                 title = "Terminal · python3 -m pip install --upgrade torch torchvision torchaudio " +
                     "--index-url https://download.pytorch.org/whl/cu121 --no-cache-dir",
                 isExpanded = longTitleOpen,
@@ -217,7 +218,7 @@ private fun BlockUiDesignPreview() {
 
             // 超长内容（内部文本）：默认展开，单行等宽省略
             CollapsibleBlock(
-                icon = ToolIcons.forTool("search_knowledge_base"),
+                icon = ToolPresentation.forTool("search_knowledge_base"),
                 title = "search_knowledge_base",
                 isExpanded = longContentOpen,
                 onToggle = { longContentOpen = !longContentOpen },

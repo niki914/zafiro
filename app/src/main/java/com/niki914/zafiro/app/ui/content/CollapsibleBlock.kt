@@ -1,13 +1,13 @@
 package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
@@ -35,9 +35,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * THINKING / TOOLING 共用折叠块：左图标 + 标题（过长右侧省略），点击展开。
- * 展开内容左右 inner margin 比头部再多一点（content 槽内已有内缩，无需再加）。
+ * THINKING / TOOLING 共用折叠块：左图标 + 标题（过长右侧省略），点击展开；头部相对正文内收 6dp。
+ * 展开内容左缘对齐 icon 中线、右缘对齐箭头中线（比头部更宽，展示更多内容）。
  * [isRunning] 为 true 时右上角显示 spinner（工具执行中），否则显示箭头。
+ * 显隐动画：纯匀速展开/收缩（无 fade、无弹性），短时长。
  */
 @Composable
 fun CollapsibleBlock(
@@ -57,14 +58,7 @@ fun CollapsibleBlock(
     )
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessLow,
-                ),
-            ),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier
@@ -74,7 +68,7 @@ fun CollapsibleBlock(
                     indication = null,
                     onClick = onToggle,
                 )
-                .padding(vertical = 6.dp),
+                .padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -112,10 +106,11 @@ fun CollapsibleBlock(
         }
         AnimatedVisibility(
             visible = isExpanded,
-            enter = expandVertically() + fadeIn(tween(120)),
+            enter = expandVertically(animationSpec = tween(160, easing = LinearEasing)),
+            exit = shrinkVertically(animationSpec = tween(160, easing = LinearEasing)),
         ) {
-            // 展开内容：左右比头部再多 14.dp 内缩
-            Column(modifier = Modifier.padding(start = 28.dp, end = 14.dp, bottom = 6.dp)) {
+            // 展开内容：左缘对齐 icon 中线（6 + 15/2 ≈ 14），右缘对齐箭头中线（6 + 16/2 = 14）
+            Column(modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 6.dp)) {
                 content()
             }
         }

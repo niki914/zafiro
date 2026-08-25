@@ -9,6 +9,7 @@ import com.niki914.logging.Logger
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
+import com.niki914.zafiro.chat.ToolCallStatus
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.xposed.api.util.ContextProvider
@@ -82,11 +83,15 @@ data class HomeToolStatus(
     val state: HomeToolState,
     val resultText: String? = null,
     val failedReason: String? = null,
+    /** 本地化显示名 res id；null → 回退 [name]（Custom Tool / MCP）。 */
+    val displayNameRes: Int? = null,
+    /** 参数摘要预览；null → 只显示标题无预览。 */
+    val summary: String? = null,
 )
 
 sealed interface HomeChatBlock {
     data class Text(val text: String) : HomeChatBlock
-    data class Thinking(val text: String) : HomeChatBlock
+    data class Thinking(val id: Int, val text: String) : HomeChatBlock
     data class Tool(val status: HomeToolStatus) : HomeChatBlock
     data class Error(val message: String, val code: LlmErrorCode? = null) : HomeChatBlock
 }
@@ -108,7 +113,7 @@ data class HomeChatUiState(
     val currentConversationTitle: String? = null,
     val expandedToolRuns: Set<String> = emptySet(),
     val expandedToolResults: Set<String> = emptySet(),
-    val expandedThinking: Set<Long> = emptySet(),
+    val expandedThinking: Set<String> = emptySet(),
     val expandedActionTurnId: Long? = null,
     val expandedActionSource: ActionSource? = null,
 )
@@ -122,7 +127,7 @@ sealed interface HomeChatIntent {
     data class DeleteConversation(val id: String) : HomeChatIntent
     data class ToggleToolRun(val turnId: Long, val runStartIndex: Int) : HomeChatIntent
     data class ToggleToolResult(val turnId: Long, val runStartIndex: Int, val toolIndex: Int) : HomeChatIntent
-    data class ToggleThinking(val turnId: Long) : HomeChatIntent
+    data class ToggleThinking(val turnId: Long, val blockIndex: Int) : HomeChatIntent
     data class ToggleActionRow(val turnId: Long, val source: ActionSource) : HomeChatIntent
     data class ReGenerateAt(val turnId: Long) : HomeChatIntent
     data class ForkAt(val turnId: Long) : HomeChatIntent
@@ -185,7 +190,7 @@ class HomeChatViewModel internal constructor(
                 intent.turnId, intent.runStartIndex, intent.toolIndex,
             )
 
-            is HomeChatIntent.ToggleThinking -> toggleThinking(intent.turnId)
+            is HomeChatIntent.ToggleThinking -> toggleThinking(intent.turnId, intent.blockIndex)
 
             is HomeChatIntent.ToggleActionRow -> toggleActionRow(
                 intent.turnId, intent.source,
@@ -222,13 +227,14 @@ class HomeChatViewModel internal constructor(
         }
     }
 
-    private fun toggleThinking(turnId: Long) {
+    private fun toggleThinking(turnId: Long, blockIndex: Int) {
+        val key = "${turnId}_$blockIndex"
         updateState {
             copy(
-                expandedThinking = if (turnId in expandedThinking) {
-                    expandedThinking - turnId
+                expandedThinking = if (key in expandedThinking) {
+                    expandedThinking - key
                 } else {
-                    expandedThinking + turnId
+                    expandedThinking + key
                 },
             )
         }
@@ -367,27 +373,27 @@ class HomeChatViewModel internal constructor(
             }
 
             is LlmStreamEvent.ThinkingStarted -> updateTurn(turnId) {
-                it.upsertThinking(event.text)
+                it.upsertThinking(event.id, event.text)
             }
 
             is LlmStreamEvent.ThinkingEnded -> updateTurn(turnId) {
-                it.upsertThinking(event.text)
+                it.upsertThinking(event.id, event.text)
             }
 
             is LlmStreamEvent.ToolRunning -> updateTurn(turnId) {
-                it.appendTool(event.call.callId, event.call.label, HomeToolState.Running)
+                it.appendTool(event.call, HomeToolState.Running)
             }
 
             is LlmStreamEvent.ToolSucceeded -> updateTurn(turnId) {
                 it.updateTool(
-                    event.call.callId, event.call.label,
+                    event.call,
                     HomeToolState.Succeeded, event.outputText,
                 )
             }
 
             is LlmStreamEvent.ToolFailed -> updateTurn(turnId) {
                 it.updateTool(
-                    event.call.callId, event.call.label,
+                    event.call,
                     HomeToolState.Failed, event.resultText, event.message,
                 )
             }
@@ -693,18 +699,18 @@ class HomeChatViewModel internal constructor(
         }
     }
 
-    /** 思考块全量替换：事件携带的是全量文本，直接覆盖，不拼接。 */
-    private fun HomeChatTurn.upsertThinking(text: String): HomeChatTurn {
+    /** 思考块按 Mapper 分配的回合内 id 全量替换：同 id 覆盖文本，新 id 按到达顺序追加（可穿插在工具/文本之间）。 */
+    private fun HomeChatTurn.upsertThinking(id: Int, text: String): HomeChatTurn {
         if (text.isBlank()) return this
-        val index = blocks.indexOfLast { it is HomeChatBlock.Thinking }
-        return if (index != -1) {
+        val found = blocks.indexOfLast { it is HomeChatBlock.Thinking && it.id == id }
+        return if (found != -1) {
             copy(
                 blocks = blocks.toMutableList().also { mutableBlocks ->
-                    mutableBlocks[index] = (mutableBlocks[index] as HomeChatBlock.Thinking).copy(text = text)
+                    mutableBlocks[found] = (mutableBlocks[found] as HomeChatBlock.Thinking).copy(text = text)
                 },
             )
         } else {
-            copy(blocks = blocks + HomeChatBlock.Thinking(text))
+            copy(blocks = blocks + HomeChatBlock.Thinking(id = id, text = text))
         }
     }
 
@@ -724,43 +730,45 @@ class HomeChatViewModel internal constructor(
     }
 
     private fun HomeChatTurn.appendTool(
-        callId: String?,
-        label: String,
+        call: ToolCallStatus,
         state: HomeToolState,
         resultText: String? = null,
         failedReason: String? = null,
     ): HomeChatTurn = copy(
         blocks = blocks + HomeChatBlock.Tool(
             HomeToolStatus(
-                callId = callId,
-                name = label,
+                callId = call.callId,
+                name = call.label,
                 state = state,
                 resultText = resultText,
                 failedReason = failedReason,
+                displayNameRes = ToolPresentation.displayNameResOf(call.name),
+                summary = ToolPresentation.summaryOf(call.name, call.argumentsJson),
             ),
         ),
     )
 
     private fun HomeChatTurn.updateTool(
-        callId: String?,
-        label: String,
+        call: ToolCallStatus,
         state: HomeToolState,
         resultText: String? = null,
         failedReason: String? = null,
     ): HomeChatTurn {
-        val index = findToolBlockIndex(callId, label)
+        val index = findToolBlockIndex(call.callId, call.label)
         if (index == -1) {
-            return appendTool(callId, label, state, resultText, failedReason)
+            return appendTool(call, state, resultText, failedReason)
         }
         return copy(
             blocks = blocks.toMutableList().also { mutableBlocks ->
                 mutableBlocks[index] = HomeChatBlock.Tool(
                     HomeToolStatus(
-                        callId = callId,
-                        name = label,
+                        callId = call.callId,
+                        name = call.label,
                         state = state,
                         resultText = resultText,
                         failedReason = failedReason,
+                        displayNameRes = ToolPresentation.displayNameResOf(call.name),
+                        summary = ToolPresentation.summaryOf(call.name, call.argumentsJson),
                     ),
                 )
             },

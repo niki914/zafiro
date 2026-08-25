@@ -296,4 +296,17 @@
     <string name="update_dialog_cancel">稍後</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_regenerate_title">Regenerate · %1$s</string>
+    <!-- Tool display names -->
+    <string name="ui_tool_display_terminal">終端</string>
+    <string name="ui_tool_display_load_skill">載入技能</string>
+    <string name="ui_tool_display_execute_python">Python</string>
+    <string name="ui_tool_display_create_custom_tool">建立自訂工具</string>
+    <string name="ui_tool_display_launch_app">啟動應用</string>
+    <string name="ui_tool_display_memory">記憶</string>
+    <string name="ui_tool_display_notify">通知</string>
+    <string name="ui_tool_display_open_uri">開啟連結</string>
+    <string name="ui_tool_display_read_custom_tool">讀取自訂工具</string>
+    <string name="ui_tool_display_search_apps">搜尋應用</string>
+    <string name="ui_tool_display_screen_operation_accessibility">螢幕操作</string>
+    <string name="ui_tool_display_screen_operation_shell">螢幕操作</string>
 </resources>

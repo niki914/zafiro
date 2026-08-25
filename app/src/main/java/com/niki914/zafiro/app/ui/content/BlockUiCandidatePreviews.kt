@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.uikit.base.BaseTheme
 
 // ── 多工具链头部图标候选 ─────────────────────────────────────────────────────
@@ -109,7 +110,7 @@ private fun MultiToolHeaderIconCandidatesPreview() {
 @Composable
 private fun SampleToolRow(toolName: String, title: String) {
     CollapsibleBlock(
-        icon = ToolIcons.forTool(toolName),
+        icon = ToolPresentation.forTool(toolName),
         title = title,
         isExpanded = false,
         onToggle = {},
@@ -154,7 +155,7 @@ private fun LoadingStatesPreview() {
 
             // Thinking 思考中：展开、正文持续更新
             CollapsibleBlock(
-                icon = ToolIcons.Thinking,
+                icon = ToolPresentation.Thinking,
                 title = "Thinking",
                 isExpanded = true,
                 onToggle = {},
@@ -170,7 +171,7 @@ private fun LoadingStatesPreview() {
 
             // Terminal running：右上角 spinner
             CollapsibleBlock(
-                icon = ToolIcons.forTool("terminal"),
+                icon = ToolPresentation.forTool("terminal"),
                 title = "Terminal · ls -la /home/niki/projects",
                 isRunning = true,
                 isExpanded = false,
@@ -179,7 +180,7 @@ private fun LoadingStatesPreview() {
 
             // Python running：右上角 spinner
             CollapsibleBlock(
-                icon = ToolIcons.forTool("python"),
+                icon = ToolPresentation.forTool("python"),
                 title = "Python · count files in dir",
                 isRunning = true,
                 isExpanded = false,
@@ -188,7 +189,7 @@ private fun LoadingStatesPreview() {
 
             // 对照组：已完成的工具（箭头而非转圈）
             CollapsibleBlock(
-                icon = ToolIcons.forTool("terminal"),
+                icon = ToolPresentation.forTool("terminal"),
                 title = "Terminal · ls -la /home/niki/projects",
                 isRunning = false,
                 isExpanded = false,

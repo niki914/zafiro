@@ -7,6 +7,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -34,6 +36,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
@@ -43,6 +46,7 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.HomeChatViewModel
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 import kotlinx.coroutines.delay
 
 private val FailedColor = Color(0xFFB85C5C)
@@ -74,7 +78,7 @@ private val BlockFlingScrollPropagation: NestedScrollConnection = object : Neste
  * Stateless tool call list. Single-tool: renders one [CollapsibleBlock] directly.
  * Multi-tool: renders a header [CollapsibleBlock] (title = count) whose expansion
  * reveals a staggered list of per-tool [CollapsibleBlock] rows.
- * 图标按工具名分派（ToolIcons.forTool），无专有布局时走默认折叠块。
+ * 图标按工具名分派（ToolPresentation.forTool），无专有布局时走默认折叠块。
  */
 @Composable
 fun ToolChain(
@@ -84,6 +88,8 @@ fun ToolChain(
     onToggleRun: () -> Unit,
     onToggleResult: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** 展开内容（工具结果）点击回调；null 时不拦截点击（head 仍只管展开/收起）。 */
+    onContentClick: (() -> Unit)? = null,
 ) {
     if (tools.size == 1) {
         val status = tools[0]
@@ -91,10 +97,11 @@ fun ToolChain(
             status = status,
             isOpen = 0 in expandedResults,
             onToggle = { onToggleResult(0) },
+            onContentClick = onContentClick,
         )
     } else {
         CollapsibleBlock(
-            icon = ToolIcons.Multi,
+            icon = ToolPresentation.Multi,
             title = pluralStringResource(R.plurals.ui_tool_chain_count, tools.size, tools.size),
             isExpanded = isExpanded,
             onToggle = onToggleRun,
@@ -107,6 +114,7 @@ fun ToolChain(
                         status = status,
                         isOpen = index in expandedResults,
                         onToggle = { onToggleResult(index) },
+                        onContentClick = onContentClick,
                     )
                 }
             }
@@ -120,18 +128,34 @@ private fun SingleToolRow(
     status: HomeToolStatus,
     isOpen: Boolean,
     onToggle: () -> Unit,
+    onContentClick: (() -> Unit)? = null,
 ) {
     val hasResult = status.resultText != null || status.failedReason != null
     val isRunning = status.state == HomeToolState.Running
+    val title = buildString {
+        append(status.displayNameRes?.let { stringResource(it) } ?: status.name)
+        status.summary?.let { summary -> append(" · ").append(summary) }
+    }
     CollapsibleBlock(
-        icon = ToolIcons.forTool(status.name),
-        title = status.name,
+        icon = ToolPresentation.forTool(status.name),
+        title = title,
         isExpanded = isOpen,
         isRunning = isRunning,
         onToggle = { if (!isRunning && hasResult) onToggle() },
     ) {
         if (hasResult) {
-            ToolResultDetail(status.failedReason, status.resultText)
+            val contentModifier = if (onContentClick != null) {
+                Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onContentClick!!,
+                )
+            } else {
+                Modifier
+            }
+            Box(modifier = Modifier.fillMaxWidth().then(contentModifier)) {
+                ToolResultDetail(status.failedReason, status.resultText)
+            }
         }
     }
 }
@@ -164,7 +188,15 @@ private fun ToolResultDetail(
             )
         }
         resultText?.let { text ->
-            ToolResultText(text = text, contentColor = contentColor)
+            ToolResultText(
+                text = text,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                ),
+                color = contentColor.copy(alpha = 0.58f),
+            )
         }
     }
 }
@@ -189,21 +221,15 @@ private fun StaggeredEntry(
     ) { content() }
 }
 
-// ── result text — left-aligned, expands to scroll on overflow ───────────────
+// ── result text — 共享有界滚动文本（工具结果 / 思考展开共用，高度上限统一 102dp） ───
 
 @Composable
-private fun ToolResultText(
+internal fun ToolResultText(
     text: String,
-    contentColor: Color,
+    style: TextStyle,
+    color: Color,
 ) {
     var overflow by remember { mutableStateOf(false) }
-
-    val resultStyle = MaterialTheme.typography.bodySmall.copy(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
-    )
-    val resultColor = contentColor.copy(alpha = 0.58f)
 
     Box(
         modifier = Modifier
@@ -221,8 +247,8 @@ private fun ToolResultText(
         SelectionContainer {
             Text(
                 text = text,
-                style = resultStyle,
-                color = resultColor,
+                style = style,
+                color = color,
                 maxLines = if (overflow) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
                 softWrap = overflow,

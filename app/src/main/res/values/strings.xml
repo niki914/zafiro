@@ -342,4 +342,17 @@
     <string name="feedback_bug_template">## 问题描述\n\n## 复现步骤\n\n## 预期行为\n\n## 实际行为\n\n## 设备信息\n- Android 版本：\n- 助手（小布或其他）：\n- 模块版本：\n\n## 更多\n可以补充日志、截图录屏等信息，以便于我们理解</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_regenerate_title">Regenerate · %1$s</string>
+    <!-- Tool display names -->
+    <string name="ui_tool_display_terminal">终端</string>
+    <string name="ui_tool_display_load_skill">加载技能</string>
+    <string name="ui_tool_display_execute_python">Python</string>
+    <string name="ui_tool_display_create_custom_tool">创建自定义工具</string>
+    <string name="ui_tool_display_launch_app">启动应用</string>
+    <string name="ui_tool_display_memory">记忆</string>
+    <string name="ui_tool_display_notify">通知</string>
+    <string name="ui_tool_display_open_uri">打开链接</string>
+    <string name="ui_tool_display_read_custom_tool">读取自定义工具</string>
+    <string name="ui_tool_display_search_apps">搜索应用</string>
+    <string name="ui_tool_display_screen_operation_accessibility">屏幕操作</string>
+    <string name="ui_tool_display_screen_operation_shell">屏幕操作</string>
 </resources>

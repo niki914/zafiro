@@ -5,6 +5,7 @@ import com.niki914.zafiro.app.ui.model.HomeChatBlock
 import com.niki914.zafiro.app.ui.model.HomeChatTurn
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
@@ -139,7 +140,10 @@ object ConversationFormatter {
     private fun HomeChatTurn.appendThinkingBlocks(assistant: com.niki914.okia.message.AssistantMessage): HomeChatTurn {
         val thoughts = assistant.content.filterIsInstance<ContentBlock.Thinking>()
         if (thoughts.isEmpty()) return this
-        return copy(blocks = blocks + thoughts.map { HomeChatBlock.Thinking(it.text) })
+        // 恢复后不再流式，index 仅需块内唯一（按出现顺序编号）
+        val thinkingBlocks =
+            thoughts.mapIndexed { i, thought -> HomeChatBlock.Thinking(id = i, text = thought.text) }
+        return copy(blocks = blocks + thinkingBlocks)
     }
 
     private fun HomeChatTurn.appendToolBlocks(assistant: com.niki914.okia.message.AssistantMessage): HomeChatTurn {
@@ -151,6 +155,8 @@ object ConversationFormatter {
                     callId = toolCall.id,
                     name = toolCall.name,
                     state = HomeToolState.Failed,
+                    displayNameRes = ToolPresentation.displayNameResOf(toolCall.name),
+                    summary = ToolPresentation.summaryOf(toolCall.name, toolCall.argumentsJson),
                 ),
             )
         }

@@ -72,6 +72,7 @@ import com.niki914.zafiro.app.ui.model.HomeChatUiState
 import com.niki914.zafiro.app.ui.model.HomeChatViewModel
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.repo.UpdateCheckHolder
@@ -240,8 +241,8 @@ fun HomePageContent(
         onToggleToolResult = { turnId, runStartIndex, toolIndex ->
             viewModel.sendIntent(HomeChatIntent.ToggleToolResult(turnId, runStartIndex, toolIndex))
         },
-        onToggleThinking = { turnId ->
-            viewModel.sendIntent(HomeChatIntent.ToggleThinking(turnId))
+        onToggleThinking = { turnId, blockIndex ->
+            viewModel.sendIntent(HomeChatIntent.ToggleThinking(turnId, blockIndex))
         },
         expandedActionTurnId = uiState.expandedActionTurnId,
         expandedActionSource = uiState.expandedActionSource,
@@ -289,10 +290,10 @@ private fun HomePageContentBody(
     onFork: (Long) -> Unit,
     expandedToolRuns: Set<String>,
     expandedToolResults: Set<String>,
-    expandedThinking: Set<Long>,
+    expandedThinking: Set<String>,
     onToggleToolRun: (Long, Int) -> Unit,
     onToggleToolResult: (Long, Int, Int) -> Unit,
-    onToggleThinking: (Long) -> Unit,
+    onToggleThinking: (Long, Int) -> Unit,
     expandedActionTurnId: Long?,
     expandedActionSource: ActionSource?,
     onToggleActionRow: (Long, ActionSource) -> Unit,
@@ -400,10 +401,10 @@ private fun HomeChatTurnItem(
     onFork: (Long) -> Unit,
     expandedToolRuns: Set<String>,
     expandedToolResults: Set<String>,
-    expandedThinking: Set<Long>,
+    expandedThinking: Set<String>,
     onToggleToolRun: (Long, Int) -> Unit,
     onToggleToolResult: (Long, Int, Int) -> Unit,
-    onToggleThinking: (Long) -> Unit,
+    onToggleThinking: (Long, Int) -> Unit,
     expandedActionTurnId: Long?,
     expandedActionSource: ActionSource?,
     onToggleActionRow: (Long, ActionSource) -> Unit,
@@ -484,6 +485,12 @@ private fun HomeChatTurnItem(
                     onToggleResult = { ti ->
                         onToggleToolResult(turn.id, runStart, ti)
                     },
+                    onContentClick = {
+                        onContentTap()
+                        if (canToggleAction) {
+                            onToggleActionRow(turn.id, ActionSource.Agent)
+                        }
+                    },
                     modifier = Modifier.padding(top = 12.dp),
                 )
                 blockIndex = runEnd
@@ -520,18 +527,39 @@ private fun HomeChatTurnItem(
                         )
                     }
                     is HomeChatBlock.Thinking -> {
+                        // blockIndex 是 var，lambda 捕获按引用；先快照成 val 再进 lambda
+                        val blockIndexNow = blockIndex
+                        val thinkingKey = "${turn.id}_$blockIndexNow"
                         CollapsibleBlock(
-                            icon = ToolIcons.Thinking,
-                            title = "Thinking",
-                            isExpanded = turn.id in expandedThinking,
-                            onToggle = { onToggleThinking(turn.id) },
+                            icon = ToolPresentation.Thinking,
+                            title = "Thinking" + ToolPresentation
+                                .thinkingPreviewOf(block.text)
+                                ?.let { " · $it" }
+                                .orEmpty(),
+                            isExpanded = thinkingKey in expandedThinking,
+                            onToggle = { onToggleThinking(turn.id, blockIndexNow) },
                             modifier = Modifier.padding(top = 12.dp),
                         ) {
-                            Text(
-                                text = block.text,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = {
+                                            onContentTap()
+                                            if (canToggleAction) {
+                                                onToggleActionRow(turn.id, ActionSource.Agent)
+                                            }
+                                        },
+                                    ),
+                            ) {
+                                ToolResultText(
+                                    text = block.text,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
                         }
                     }
                     is HomeChatBlock.Tool -> {} // handled above
@@ -621,7 +649,7 @@ private fun HomePageContentPreview() {
                 expandedThinking = emptySet(),
                 onToggleToolRun = { _, _ -> },
                 onToggleToolResult = { _, _, _ -> },
-                onToggleThinking = { _ -> },
+                onToggleThinking = { _, _ -> },
                 expandedActionTurnId = null,
                 expandedActionSource = null,
                 onToggleActionRow = { _, _ -> },
