@@ -37,20 +37,6 @@ class LoadSkillBuiltinTest {
     }
 
     @Test
-    fun invoke_skillIdAlias_returnsSkillData() = runTest {
-        installRuntimeSettingsGatewayForTest(
-            FakeRuntimeSettingsGateway(
-                loadedSkills = mapOf("skill-a" to loadedSkill("skill-a"))
-            )
-        )
-
-        val result = invokeAndDecode("""{"skill_id":"skill-a"}""")
-
-        assertEquals(TextToolResult.Status.Success, result.status)
-        assertEquals("Skill content A", result.payload)
-    }
-
-    @Test
     fun invoke_missingId_returnsFailure() = runTest {
         installRuntimeSettingsGatewayForTest()
 

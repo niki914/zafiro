@@ -20,7 +20,7 @@ class ReadCustomToolBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     override val name: String = "read_custom_tool"
 
     override val description: String =
-        "Read custom tool implementations, including command strings. Use only when tool implementation details are needed."
+        "Read a custom tool's implementation, including its command string."
 
     override val defaultEnabled: Boolean = true
 

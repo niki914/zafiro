@@ -24,39 +24,24 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
     override val name = "screen_operation_accessibility"
     override val defaultEnabled = true
     override val description: String =
-        "Screen interaction via accessibility service. " +
-                "Operations: read (capture YAML tree), tap, long_click, scroll_forward, " +
-                "scroll_backward, set_text, search. Target nodes by constructing a token " +
-                "from the snapshot version (YAML header) and the node's index (i field), " +
-                "joined with underscore: \"{version}_{i}\" (e.g. version \"a3f2c91e7b40\" + " +
-                "node {i: 42, ...} → token \"a3f2c91e7b40_42\"). " +
-                "Every successful write op auto-captures the updated tree — " +
-                "no separate read needed.\n\n" +
-                "YAML fields: version=snapshot_version (header), " +
-                "i=node_index (assemble token as {version}_{i} when calling back), " +
-                "t=semantic_type(button/input/text/image/list/list_item/switch/checkbox/tab/chip/toolbar/dialog/container), " +
-                "b=bounds[left,top,right,bottom], pos=3x3_grid_position, txt=display_text, h=content_description, " +
-                "tap=clickable, hold=long_clickable, edit=editable, scroll=scrollable, " +
-                "checked=checked_state, ch=children, more=off_screen_children_summaries.\n\n" +
-                "search: case-insensitive keyword match on txt/h. " +
-                "keywords: [\"term1\", \"term2\"] (required, JSON string array). " +
-                "match_mode: \"any\" (default) | \"all\". " +
-                "limit: max results (default 10). " +
-                "Returns matched nodes with index + version header.\n\n" +
-                "If read returns root-only or empty tree: app likely uses non-native UI " +
-                "(Flutter/Unity/WebView) — stop, do not retry.\n\n" +
-                "wait_mode (default \"stable\"): \"stable\" detects when the UI actually settles " +
-                "(event idle + tree hash) and returns early — use for taps, scrolls, text input. " +
-                "\"delay\" does a blind fixed wait — use for search/refresh where data arrives " +
-                "asynchronously and the UI may appear stable before results load. " +
-                "Must be \"stable\" or \"delay\".\n" +
-                "wait_ms: for \"stable\" the max deadline (default 2000, max 60000); " +
-                "for \"delay\" required (no default), the fixed blind-wait duration.\n\n" +
-                "Every read, search, and successful write operation produces a fresh version. " +
+        "Read and interact with the Android screen through the accessibility service. " +
+                "Operations: read (capture YAML UI tree), tap, long_click, scroll_forward, " +
+                "scroll_backward, set_text, search. " +
+                "Target a node by token \"{version}_{i}\" — snapshot version from the YAML header + " +
+                "node index from the i field (e.g. version \"a3f2c91e7b40\" + node {i: 42} → " +
+                "token \"a3f2c91e7b40_42\"). Every successful write op returns the updated tree. " +
                 "Assemble tokens from the most recently returned result only.\n\n" +
-                "Every result uses the #!tool-result protocol " +
-                "(#!status, #!code, #!message, then payload). " +
-                "See the Phone Use skill for failure recovery rules."
+                "Node fields: i=index, t=semantic_type (button/input/...), b=bounds[left,top,right,bottom], " +
+                "pos=3x3_grid_position, txt=display_text, h=content_description, tap=clickable, " +
+                "hold=long_clickable, edit=editable, scroll=scrollable, checked=checked_state, " +
+                "ch=children, more=off_screen_children_summaries.\n\n" +
+                "search: keywords (required, JSON string array), match_mode \"any\" (default) | \"all\", " +
+                "limit (default 10). Returns matched nodes with index and version header.\n\n" +
+                "wait_mode \"stable\" (default) waits for the UI to settle and returns early; " +
+                "\"delay\" waits a fixed wait_ms — use for search/refresh where data arrives asynchronously.\n\n" +
+                "If read returns a root-only or empty tree, the app likely uses non-native UI " +
+                "(Flutter/Unity/WebView) — report this to the user without retrying.\n\n" +
+                "Results use the #!tool-result protocol. Usage rules and failure recovery: see the Phone Use skill."
 
     override val inputSchemaJson: String? get() = SCREEN_ACCESSIBILITY_SCHEMA
 
@@ -190,8 +175,6 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
     }
 
     private companion object {
-        // T2a 迁移：原 kai LocalToolConfig DSL（string/number 声明）转录为 JSON Schema，
-        // 字段描述文本一字未改。
         private val SCREEN_ACCESSIBILITY_SCHEMA = """
             {
               "type": "object",
@@ -218,11 +201,11 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
                 },
                 "wait_mode": {
                   "type": "string",
-                  "description": "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh. Must be \"stable\" or \"delay\"."
+                  "description": "\"stable\" (default) waits for the UI to settle, then captures; \"delay\" waits a fixed wait_ms (use for search/refresh with async data)."
                 },
                 "wait_ms": {
                   "type": "number",
-                  "description": "Wait duration in ms. Stable mode: max deadline (default 2000, max 60000). Delay mode: required, fixed sleep (0-60000)."
+                  "description": "Wait in ms: for \"stable\" the max deadline (default 2000, max 60000); for \"delay\" required, fixed wait (0-60000)."
                 }
               },
               "required": ["operation"]

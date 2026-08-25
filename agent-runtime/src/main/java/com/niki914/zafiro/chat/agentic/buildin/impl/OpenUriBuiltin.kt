@@ -18,7 +18,7 @@ class OpenUriBuiltin : BuiltinTool() {
     override val name: String = "open_uri"
 
     override val description: String =
-        "Open a known-valid Android URI with ACTION_VIEW, such as https, geo, tel, mailto, or an app deep link. Do not invent or guess URI schemes."
+        "Open a known-valid Android URI with ACTION_VIEW (https, geo, tel, mailto, or an app deep link)."
 
     override val defaultEnabled: Boolean = true
 

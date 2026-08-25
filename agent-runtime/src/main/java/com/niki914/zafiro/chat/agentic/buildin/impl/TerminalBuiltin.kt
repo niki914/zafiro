@@ -39,46 +39,25 @@ class TerminalBuiltin(
     override val name: String = "terminal"
 
     override val description: String =
-        "Execute shell commands in an Android terminal environment. " +
-                "Filesystem and current working directory persist between calls within a session. " +
-                "Exported environment variables persist within a session but reset when the session is closed.\n" +
+        "Execute shell commands in an Android terminal environment. Working directory and filesystem state " +
+                "persist between calls within a session; exported environment variables persist within a session " +
+                "and reset when the session closes.\n" +
                 "\n" +
-                "Reserve terminal for: builds, installs, git, processes, scripts, network, package managers, " +
-                "and anything that needs a shell.\n" +
+                "Command mode (default): pass command, optionally timeout in seconds (default 180). " +
+                "A foreground command returns when it finishes; a command still running when the timeout " +
+                "elapses returns a timeout result and its session is released.\n" +
                 "\n" +
-                "Foreground (default): Commands return INSTANTLY when done, even if the timeout is high. " +
-                "Set timeout=300 for long builds/scripts — you'll still get the result in seconds if it's fast. " +
-                "Prefer foreground for short commands. Foreground mode is available for the local backend only.\n" +
+                "Background mode: set background=true to start a command asynchronously; the response returns " +
+                "a session_id. A background task notifies completion only when notify_on_complete=true is set; " +
+                "otherwise poll it with action=\"read\". Use action=\"write\" (no newline appended) or " +
+                "\"submit\" (newline appended) to send stdin; action=\"close\" releases the session.\n" +
                 "\n" +
-                "Background: Set background=true to run a command asynchronously. " +
-                "Almost always pair with notify_on_complete=true — background without notify runs silently. " +
-                "Two legitimate uses:\n" +
-                "  (1) Long-lived processes that never exit (servers, watchers, daemons) — silent is correct, " +
-                "there's no exit to notify on.\n" +
-                "  (2) Long-running bounded tasks (tests, builds, deploys, batch jobs) — MUST set " +
-                "notify_on_complete=true. Without it you'll either forget to check or sit blocked waiting.\n" +
-                "For servers/watchers, do NOT use shell-level background wrappers (nohup/disown/setsid/trailing '&') " +
-                "in foreground mode. Use background=true so the runtime can track lifecycle and output.\n" +
-                "After starting a server, verify readiness with a health check or log signal, " +
-                "then run tests in a separate terminal() call. Avoid blind sleep loops.\n" +
+                "Backend: \"local\" (default) executes on the device shell with identity \"user\" (default), " +
+                "\"root\" (via su), or \"shizuku\". \"ssh\" connects to a remote host (host, username, " +
+                "password) and requires background=true.\n" +
                 "\n" +
-                "Working directory: Use 'workdir' for per-command cwd.\n" +
-                "\n" +
-                "Backend: Set backend to \"local\" (default) for the Android device shell, " +
-                "or \"ssh\" for a remote host. SSH backend requires background=true; " +
-                "it cannot reliably detect command completion in foreground mode.\n" +
-                "- backend=\"local\": Use identity to pick the execution user — \"user\" (default, unprivileged), " +
-                "\"root\" (via su), or \"shizuku\". Shizuku requires device support, a running service, " +
-                "and granted authorization.\n" +
-                "- backend=\"ssh\": Connect to a remote host. Provide host, username, and password. " +
-                "host_key_policy defaults to \"accept_any\"; use \"known_hosts_file\" with known_hosts_path " +
-                "for host verification.\n" +
-                "\n" +
-                "Background tasks return a session_id. Use action=\"read\" to poll output and status " +
-                "(status is \"running\" while the process is active, \"exited\" once it finishes — with exit_code), " +
-                "action=\"write\" to send stdin input (newline is NOT appended automatically — add \\n when needed), " +
-                "action=\"submit\" to send stdin input plus a newline, and action=\"close\" to release the session. " +
-                "Sessions opened for foreground commands are automatically closed after the command completes."
+                "Foreground results are JSON with stdout, stderr, and exit_code. Sessions opened for a " +
+                "foreground command close automatically; background sessions stay open until action=\"close\"."
 
     override val defaultEnabled: Boolean = true
 
@@ -581,9 +560,6 @@ class TerminalBuiltin(
             port = obj.optionalLong("port")?.toInt(),
             username = obj.optionalString("username")?.trim(),
             password = obj.optionalString("password"),
-            hostKeyPolicy = obj.optionalString("host_key_policy")?.trim(),
-            knownHostsPath = obj.optionalString("known_hosts_path")?.trim(),
-            strictHostKeyChecking = obj.optionalBoolean("strict_host_key_checking"),
             connectTimeout = obj.optionalLong("connect_timeout")?.toInt(),
             serverAliveInterval = obj.optionalLong("server_alive_interval")?.toInt(),
             // Action mode
@@ -655,30 +631,10 @@ class TerminalBuiltin(
             port = port ?: SshOpenOptions.DEFAULT_PORT,
             username = username,
             auth = SshAuth.Password(password),
-            hostKeyPolicy = resolveHostKeyPolicy(),
+            hostKeyPolicy = SshHostKeyPolicy.AcceptAny,
             connectTimeoutMillis = (connectTimeout ?: SshOpenOptions.DEFAULT_CONNECT_TIMEOUT_MILLIS / 1000) * 1000,
             serverAliveIntervalMillis = (serverAliveInterval ?: SshOpenOptions.DEFAULT_SERVER_ALIVE_INTERVAL_MILLIS / 1000) * 1000,
         )
-    }
-
-    private fun TerminalArgs.resolveHostKeyPolicy(): SshHostKeyPolicy {
-        return when (hostKeyPolicy?.lowercase() ?: HOST_KEY_POLICY_ACCEPT_ANY) {
-            HOST_KEY_POLICY_ACCEPT_ANY -> SshHostKeyPolicy.AcceptAny
-            HOST_KEY_POLICY_KNOWN_HOSTS_FILE -> {
-                val path = knownHostsPath?.takeIf(String::isNotBlank)
-                    ?: throw IllegalArgumentException(
-                        "Field 'known_hosts_path' is required when host_key_policy is 'known_hosts_file'."
-                    )
-                SshHostKeyPolicy.KnownHostsFile(
-                    path = path,
-                    strict = strictHostKeyChecking ?: true,
-                )
-            }
-
-            else -> throw IllegalArgumentException(
-                "Field 'host_key_policy' must be one of accept_any, known_hosts_file."
-            )
-        }
     }
 
     /** Resolve timeout in seconds. Defaults to 180s. */
@@ -761,9 +717,6 @@ class TerminalBuiltin(
         val port: Int?,
         val username: String?,
         val password: String?,
-        val hostKeyPolicy: String?,
-        val knownHostsPath: String?,
-        val strictHostKeyChecking: Boolean?,
         val connectTimeout: Int?,
         val serverAliveInterval: Int?,
         // Action mode
@@ -787,16 +740,12 @@ class TerminalBuiltin(
         private const val DEFAULT_LOCAL_IDENTITY = "user"
         private const val DEFAULT_MAX_BYTES = 8192
         private const val UNKNOWN_EXIT_CODE = -1
-        private const val HOST_KEY_POLICY_ACCEPT_ANY = "accept_any"
-        private const val HOST_KEY_POLICY_KNOWN_HOSTS_FILE = "known_hosts_file"
-
         private val KNOWN_KEYS = setOf(
             // Hermes-aligned
             "command", "background", "timeout", "workdir", "notify_on_complete",
             // Zafiro extensions
             "backend", "identity",
             "host", "port", "username", "password",
-            "host_key_policy", "known_hosts_path", "strict_host_key_checking",
             "connect_timeout", "server_alive_interval",
             // Action mode
             "action", "session_id", "text", "request_id", "mode", "max_bytes",
@@ -810,17 +759,17 @@ class TerminalBuiltin(
               "properties": {
                 "command": {
                   "type": "string",
-                  "description": "The shell command to execute. For one-shot commands, just pass command and the tool handles session open/exec/close automatically."
+                  "description": "The shell command to execute. With only command, runs a foreground one-shot command and closes its session automatically."
                 },
                 "background": {
                   "type": "boolean",
-                  "description": "Run the command in the background. Almost always pair with notify_on_complete=true — without it, the process runs silently and you'll have no way to learn it finished short of checking yourself. Two legitimate patterns: (1) Long-lived processes that never exit (servers, watchers, daemons) — these stay silent because there's no exit to notify on. (2) Long-running bounded tasks (tests, builds, deploys, batch jobs) — these MUST set notify_on_complete=true. For short commands, prefer foreground with a generous timeout instead.",
+                  "description": "Run the command asynchronously and return a session_id immediately.",
                   "default": false
                 },
                 "timeout": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "Max seconds to wait (default: 180). Returns INSTANTLY when command finishes — set high for long tasks, you won't wait unnecessarily."
+                  "description": "Max seconds to wait (default 180)."
                 },
                 "workdir": {
                   "type": "string",
@@ -828,19 +777,19 @@ class TerminalBuiltin(
                 },
                 "notify_on_complete": {
                   "type": "boolean",
-                  "description": "When true (and background=true), you'll be automatically notified when the process finishes. Use this for long-running tasks — tests, builds, deployments, batch jobs. MUTUALLY EXCLUSIVE with long-lived servers/daemons that never exit.",
+                  "description": "Notify when a background task finishes. Set it for background tasks whose result you need.",
                   "default": false
                 },
                 "backend": {
                   "type": "string",
                   "enum": ["local", "ssh"],
-                  "description": "Terminal backend. 'local' (default) uses the Android device shell. 'ssh' connects to a remote host and requires background=true.",
+                  "description": "Terminal backend: 'local' (device shell, default) or 'ssh' (remote host, requires background=true).",
                   "default": "local"
                 },
                 "identity": {
                   "type": "string",
                   "enum": ["user", "root", "shizuku"],
-                  "description": "Execution identity for local backend. 'user' (default, unprivileged), 'root' (via su), or 'shizuku' (requires device support, a running service, and granted authorization)."
+                  "description": "Execution identity for local backend: 'user' (default, unprivileged), 'root' (via su), or 'shizuku' (requires device support, a running service, and granted authorization)."
                 },
                 "host": {
                   "type": "string",
@@ -850,7 +799,7 @@ class TerminalBuiltin(
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 65535,
-                  "description": "SSH port. Defaults to 22."
+                  "description": "SSH port, default 22."
                 },
                 "username": {
                   "type": "string",
@@ -859,19 +808,6 @@ class TerminalBuiltin(
                 "password": {
                   "type": "string",
                   "description": "SSH password. Credentials are not stored by this tool."
-                },
-                "host_key_policy": {
-                  "type": "string",
-                  "enum": ["accept_any", "known_hosts_file"],
-                  "description": "SSH host key verification policy. Defaults to 'accept_any'."
-                },
-                "known_hosts_path": {
-                  "type": "string",
-                  "description": "Path to known_hosts file. Required when host_key_policy is 'known_hosts_file'."
-                },
-                "strict_host_key_checking": {
-                  "type": "boolean",
-                  "description": "Enforce strict host key checking when using known_hosts_file. Defaults to true."
                 },
                 "connect_timeout": {
                   "type": "integer",
@@ -886,25 +822,25 @@ class TerminalBuiltin(
                 "action": {
                   "type": "string",
                   "enum": ["read", "write", "submit", "close"],
-                  "description": "Session management actions for background tasks: read (poll output and status), write (send stdin input without appending a newline), submit (send stdin input plus a newline), close (release the session)."
+                  "description": "Session action for background tasks: read (poll output/status), write (send stdin, no newline), submit (send stdin plus newline), close (release session)."
                 },
                 "session_id": {
                   "type": "string",
-                  "description": "Session handle returned when a background command is started. Required for action-based operations."
+                  "description": "Session handle returned by a background start. Required for action-based calls."
                 },
                 "text": {
                   "type": "string",
-                  "description": "Input text for the write/submit actions. write does NOT append a newline — add \\n when you want to submit a line."
+                  "description": "Input text for write/submit actions."
                 },
                 "mode": {
                   "type": "string",
                   "enum": ["delta", "snapshot"],
-                  "description": "Read mode for action=read. 'delta' (default) returns only new output since the last read. 'snapshot' returns all accumulated output."
+                  "description": "Read mode for action=read: 'delta' (default, output since last read) or 'snapshot' (all accumulated output)."
                 },
                 "max_bytes": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "Maximum bytes to return for action=read. Defaults to 8192."
+                  "description": "Maximum bytes returned by action=read, default 8192."
                 }
               }
             }

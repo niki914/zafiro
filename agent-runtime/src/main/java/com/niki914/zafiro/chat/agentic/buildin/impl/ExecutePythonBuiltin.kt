@@ -27,88 +27,15 @@ class ExecutePythonBuiltin(
     override val name: String = "execute_python"
 
     override val description: String = """
-Execute Python 3.11 code in an embedded runtime with requests, bs4, and
-the full standard library.
+Execute Python code in an Android environment with the full standard library plus requests and bs4.
+The Android shell has no curl/wget — use this tool for HTTP requests.
+Can drive Android system commands (am, pm, input) via os.popen or subprocess; prefix with su -c when root is needed.
+Write files to public directories like /sdcard/Download so other apps can access them via file:// URIs.
 
-## When to use
+State does not persist between calls: every run starts fresh — no variables, working directory, environment
+changes, open handles, or background tasks. Persist intentionally through files when needed.
 
-Use execute_python instead of terminal when:
-- You need HTTP requests (Android shell has no curl/wget)
-- You need to filter, parse, or transform output with regex, slicing, or JSON
-- Multi-step logic with conditions, loops, or retries — only stdout and
-  stderr enter the model context. Keep printed output concise and print
-  only the final relevant result.
-- You need to drive Android system actions from processed data (am, pm,
-  input commands via os.popen or subprocess)
-- A shell command may produce verbose output — use Python to extract just
-  the relevant parts before they enter your context
-
-Use terminal instead when:
-- Single shell command with no processing needed
-- You need session state — terminal holds a handle and preserves working
-  directory and environment across calls. execute_python is stateless:
-  each run starts fresh.
-
-## Calling Android system commands
-
-Use os.popen or subprocess to execute am, pm, input and other Android
-commands. Prefix with su -c when root privileges are needed:
-
-    # Regular commands (no root needed)
-    os.popen("am start -a android.settings.WIFI_SETTINGS").read()
-
-    # su -c: input tap / install / uninstall
-    os.popen('su -c "input tap 500 800"').read()
-    os.popen('su -c "pm install -r /sdcard/app.apk"').read()
-    os.popen('su -c "pm uninstall com.example.app"').read()
-
-    # su -c: open a file with a specific app
-    # -p target package, -d file URI, -t MIME type
-    os.popen('su -c "am start -p com.example.viewer -d file:///sdcard/Download/result.txt -t text/plain"').read()
-
-Write files to public directories like /sdcard/Download so other apps
-can access them via file:// URIs.
-
-## Network requests and output control
-
-    import requests
-
-    # Extract only what you need -- don't print raw HTML or full JSON
-    resp = requests.get("https://example.com/api/data", timeout=15)
-    resp.raise_for_status()
-    data = resp.json()
-    for item in data["results"][:10]:
-        print(item["id"], item["title"])
-
-    # Scrape and extract with BeautifulSoup
-    from bs4 import BeautifulSoup
-    from urllib.parse import urljoin
-
-    resp = requests.get(
-        "https://example.com/search",
-        params={"q": "topic"},
-        timeout=15,
-    )
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
-    for link in soup.select("h3 a")[:10]:
-        title = link.get_text(" ", strip=True)
-        url = urljoin(resp.url, link.get("href", ""))
-        print(f"{title}\n  {url}")
-
-    # Or extract readable plain text
-    for tag in soup(["script", "style", "noscript"]):
-        tag.decompose()
-    text = "\n".join(soup.stripped_strings)
-    print(text[:2000])
-
-## Limits
-
-- Timeout: 30 s default, 120 s max
-- Output capped at 50 KB
-- Treat every call as stateless — do not rely on variables, working
-  directory, environment changes, open handles, or background tasks
-  from earlier calls. Persist intentionally through files when needed.
+Limits: timeout 30 s default, 120 s max; output capped at 50 KB.
     """.trimIndent()
 
     override val defaultEnabled: Boolean = true

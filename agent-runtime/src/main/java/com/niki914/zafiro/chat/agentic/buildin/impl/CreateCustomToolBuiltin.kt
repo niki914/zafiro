@@ -19,7 +19,9 @@ import com.niki914.zafiro.settings.model.RuntimeCustomToolValidation as CustomTo
 class CreateCustomToolBuiltin : BuiltinTool() {
     override val name: String = "create_custom_tool"
 
-    override val description: String = "Create or update a custom tool setting."
+    override val description: String = "Create or update a custom tool: a named shell command the agent can call. " +
+            "Custom tools execute a fixed command and take no parameters — write the description as " +
+            "what the command does and when to use it, not as a parameterized function."
 
     override val defaultEnabled: Boolean = true
 
@@ -162,7 +164,7 @@ class CreateCustomToolBuiltin : BuiltinTool() {
                 },
                 "description": {
                   "type": "string",
-                  "description": "Human-readable description shown to the model and UI."
+                  "description": "What the fixed command does and when to use it. The agent reads this to decide when to call the tool; it takes no arguments. Keep it concise and output-focused."
                 },
                 "command": {
                   "type": "string",
