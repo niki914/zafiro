@@ -17,18 +17,11 @@ class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     override val name: String = "memory"
 
     override val description: String =
-        "Save durable facts to persistent memory that survive across sessions. Memory is " +
-            "injected into every future turn, so keep entries compact and high-signal.\n\n" +
-            "WHEN: save proactively when the user states a preference, correction, or personal " +
-            "detail, or you learn a stable fact about their environment, conventions, or workflow. " +
-            "Priority: user preferences & corrections > environment facts > procedures. The best " +
-            "memory stops the user repeating themselves.\n\n" +
-            "ACTIONS: add (save a new fact), replace (update an existing entry), remove (delete " +
+        "Save durable facts to persistent memory that is injected into every future turn. " +
+            "Keep entries compact and high-signal.\n\n" +
+            "Actions: add (save a new fact), replace (update an existing entry), remove (delete " +
             "an entry). Use old_text — a short unique substring of the target entry — to identify " +
-            "it for replace and remove.\n\n" +
-            "SKIP: trivial/obvious info, easily re-discovered facts, raw data dumps, task progress, " +
-            "completed-work logs, temporary TODO state. Reusable procedures belong in a skill, " +
-            "not memory."
+            "it for replace and remove."
 
     override val defaultEnabled: Boolean = true
 
@@ -202,7 +195,7 @@ class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                 },
                 "old_text": {
                   "type": "string",
-                  "description": "REQUIRED for 'replace' and 'remove': a short unique substring identifying the existing entry to modify. Omit only for 'add'."
+                  "description": "Required for 'replace' and 'remove': a short unique substring identifying the existing entry. Omit for 'add'."
                 }
               },
               "required": ["action"]

@@ -17,7 +17,9 @@ class NotifyBuiltin : BuiltinTool() {
     override val name: String = "notify"
 
     override val description: String =
-        "Send an Android notification with title and content. The optional uri must be a known-valid Android uri that you are certain can be handled by the system; never invent, guess, or fabricate a uri. If uncertain, omit uri."
+        "Send an Android notification with title and content. " +
+                "The optional uri must be a known-valid Android uri that the system can handle; " +
+                "keep it only when certain."
 
     override val defaultEnabled: Boolean = true
 

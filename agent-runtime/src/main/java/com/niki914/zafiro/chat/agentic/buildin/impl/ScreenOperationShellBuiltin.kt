@@ -22,18 +22,14 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
     override val name = "screen_operation_shell"
     override val defaultEnabled = true
     override val description: String =
-        "Screen interaction via shell (input tap/swipe/keyevent). FALLBACK — prefer " +
-                "screen_operation_accessibility. Operations: tap(x,y), long_click(x,y), " +
-                "swipe(start_x,start_y,end_x,end_y,duration), key(code). All coordinate-based. " +
-                "Coordinates MUST come from the most recently returned screen tree — never " +
-                "hallucinate. Every successful write op auto-captures the updated tree.\n\n" +
+        "Screen interaction via shell input (tap/swipe/keyevent). " +
+                "Operations: tap(x,y), long_click(x,y), swipe(start_x,start_y,end_x,end_y,duration), " +
+                "key(code). Coordinates are in screen pixels from the most recently returned screen tree. " +
+                "Every successful operation returns the updated tree automatically.\n\n" +
                 "Key codes: BACK=4, HOME=3, RECENTS=187, NOTIFICATIONS=83, QUICK_SETTINGS=84.\n\n" +
-                "wait_mode (default \"stable\"): \"stable\" auto-detects UI stability before capture. " +
-                "\"delay\" does a blind fixed wait — use for search/refresh. " +
-                "wait_ms (default 2000): deadline for stable, required for delay.\n\n" +
-                "Every result uses the #!tool-result protocol " +
-                "(#!status, #!code, #!message, then payload). " +
-                "See the Phone Use skill for failure recovery rules."
+                "wait_mode \"stable\" (default) waits for the UI to settle; \"delay\" waits a fixed " +
+                "wait_ms (use for search/refresh).\n\n" +
+                "Results use the #!tool-result protocol. Usage rules: see the Phone Use skill."
 
     override val inputSchemaJson: String? get() = SCREEN_SHELL_SCHEMA
 
@@ -134,27 +130,27 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
                 },
                 "x": {
                   "type": "number",
-                  "description": "X coordinate in screen pixels. Required for tap, long_click."
+                  "description": "X coordinate in screen pixels (from the latest screen tree). Required for tap, long_click."
                 },
                 "y": {
                   "type": "number",
-                  "description": "Y coordinate in screen pixels. Required for tap, long_click."
+                  "description": "Y coordinate in screen pixels (from the latest screen tree). Required for tap, long_click."
                 },
                 "start_x": {
                   "type": "number",
-                  "description": "Swipe start X coordinate. Required for swipe."
+                  "description": "Swipe start X. Required for swipe."
                 },
                 "start_y": {
                   "type": "number",
-                  "description": "Swipe start Y coordinate. Required for swipe."
+                  "description": "Swipe start Y. Required for swipe."
                 },
                 "end_x": {
                   "type": "number",
-                  "description": "Swipe end X coordinate. Required for swipe."
+                  "description": "Swipe end X. Required for swipe."
                 },
                 "end_y": {
                   "type": "number",
-                  "description": "Swipe end Y coordinate. Required for swipe."
+                  "description": "Swipe end Y. Required for swipe."
                 },
                 "duration": {
                   "type": "number",
@@ -166,11 +162,11 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
                 },
                 "wait_mode": {
                   "type": "string",
-                  "description": "\"stable\" (default): detect UI stability before capture, returns early if settled. \"delay\": blind fixed wait — use for search/refresh. Must be \"stable\" or \"delay\"."
+                  "description": "\"stable\" (default) waits for the UI to settle, then captures; \"delay\" waits a fixed wait_ms (use for search/refresh with async data)."
                 },
                 "wait_ms": {
                   "type": "number",
-                  "description": "Wait duration in ms. Stable mode: max deadline (default 2000, max 60000). Delay mode: required, fixed sleep (0-60000)."
+                  "description": "Wait in ms: for \"stable\" the max deadline (default 2000, max 60000); for \"delay\" required, fixed wait (0-60000)."
                 }
               },
               "required": ["operation"]
