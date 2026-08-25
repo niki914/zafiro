@@ -68,7 +68,7 @@ fun CollapsibleBlock(
                     indication = null,
                     onClick = onToggle,
                 )
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+                .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -110,7 +110,7 @@ fun CollapsibleBlock(
             exit = shrinkVertically(animationSpec = tween(160, easing = LinearEasing)),
         ) {
             // 展开内容：左缘对齐 icon 中线（6 + 15/2 ≈ 14），右缘对齐箭头中线（6 + 16/2 = 14）
-            Column(modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 6.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp)) {
                 content()
             }
         }

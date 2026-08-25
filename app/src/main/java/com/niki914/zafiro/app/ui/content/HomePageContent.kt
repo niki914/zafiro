@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -424,7 +425,10 @@ private fun HomeChatTurnItem(
         showActionRow = isActionExpanded
     }
 
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -456,7 +460,6 @@ private fun HomeChatTurnItem(
                 },
                 onReGenerate = { onReGenerate(turn.id) },
                 onFork = { onFork(turn.id) },
-                modifier = Modifier.padding(top = 10.dp),
             )
         }
 
@@ -491,7 +494,6 @@ private fun HomeChatTurnItem(
                             onToggleActionRow(turn.id, ActionSource.Agent)
                         }
                     },
-                    modifier = Modifier.padding(top = 12.dp),
                 )
                 blockIndex = runEnd
             } else {
@@ -514,7 +516,6 @@ private fun HomeChatTurnItem(
                             ) {
                                 AssistantOutputText(
                                     text = block.text,
-                                    modifier = Modifier.padding(top = 12.dp),
                                 )
                             }
                         }
@@ -523,7 +524,6 @@ private fun HomeChatTurnItem(
                         AssistantErrorBlock(
                             message = block.message,
                             code = block.code,
-                            modifier = Modifier.padding(top = 12.dp),
                         )
                     }
                     is HomeChatBlock.Thinking -> {
@@ -538,7 +538,6 @@ private fun HomeChatTurnItem(
                                 .orEmpty(),
                             isExpanded = thinkingKey in expandedThinking,
                             onToggle = { onToggleThinking(turn.id, blockIndexNow) },
-                            modifier = Modifier.padding(top = 12.dp),
                         ) {
                             Box(
                                 modifier = Modifier
@@ -583,7 +582,6 @@ private fun HomeChatTurnItem(
                 },
                 onReGenerate = { onReGenerate(turn.id) },
                 onFork = { onFork(turn.id) },
-                modifier = Modifier.padding(top = 10.dp),
             )
         }
     }

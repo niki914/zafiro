@@ -9,11 +9,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -107,18 +106,18 @@ fun ToolChain(
             onToggle = onToggleRun,
             modifier = modifier,
         ) {
-            Spacer(modifier = Modifier.height(2.dp))
-            tools.forEachIndexed { index, status ->
-                StaggeredEntry(index = index, staggerMs = index * 40L) {
-                    SingleToolRow(
-                        status = status,
-                        isOpen = index in expandedResults,
-                        onToggle = { onToggleResult(index) },
-                        onContentClick = onContentClick,
-                    )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                tools.forEachIndexed { index, status ->
+                    StaggeredEntry(index = index, staggerMs = index * 40L) {
+                        SingleToolRow(
+                            status = status,
+                            isOpen = index in expandedResults,
+                            onToggle = { onToggleResult(index) },
+                            onContentClick = onContentClick,
+                        )
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(6.dp))
         }
     }
 }

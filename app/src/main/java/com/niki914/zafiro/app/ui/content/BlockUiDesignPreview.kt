@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -97,7 +96,7 @@ private fun BlockUiDesignPreview() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             // 用户消息
             Box(
@@ -120,8 +119,6 @@ private fun BlockUiDesignPreview() {
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.size(4.dp))
 
             // 思考块
             CollapsibleBlock(
@@ -230,8 +227,6 @@ private fun BlockUiDesignPreview() {
                         "by cosine similarity against the embedding index.",
                 )
             }
-
-            Spacer(modifier = Modifier.size(8.dp))
 
             // 正文 markdown（作为块的左对齐参照）
             Box(modifier = Modifier.fillMaxWidth()) {
