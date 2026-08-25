@@ -560,9 +560,6 @@ class TerminalBuiltin(
             port = obj.optionalLong("port")?.toInt(),
             username = obj.optionalString("username")?.trim(),
             password = obj.optionalString("password"),
-            hostKeyPolicy = obj.optionalString("host_key_policy")?.trim(),
-            knownHostsPath = obj.optionalString("known_hosts_path")?.trim(),
-            strictHostKeyChecking = obj.optionalBoolean("strict_host_key_checking"),
             connectTimeout = obj.optionalLong("connect_timeout")?.toInt(),
             serverAliveInterval = obj.optionalLong("server_alive_interval")?.toInt(),
             // Action mode
@@ -634,30 +631,10 @@ class TerminalBuiltin(
             port = port ?: SshOpenOptions.DEFAULT_PORT,
             username = username,
             auth = SshAuth.Password(password),
-            hostKeyPolicy = resolveHostKeyPolicy(),
+            hostKeyPolicy = SshHostKeyPolicy.AcceptAny,
             connectTimeoutMillis = (connectTimeout ?: SshOpenOptions.DEFAULT_CONNECT_TIMEOUT_MILLIS / 1000) * 1000,
             serverAliveIntervalMillis = (serverAliveInterval ?: SshOpenOptions.DEFAULT_SERVER_ALIVE_INTERVAL_MILLIS / 1000) * 1000,
         )
-    }
-
-    private fun TerminalArgs.resolveHostKeyPolicy(): SshHostKeyPolicy {
-        return when (hostKeyPolicy?.lowercase() ?: HOST_KEY_POLICY_ACCEPT_ANY) {
-            HOST_KEY_POLICY_ACCEPT_ANY -> SshHostKeyPolicy.AcceptAny
-            HOST_KEY_POLICY_KNOWN_HOSTS_FILE -> {
-                val path = knownHostsPath?.takeIf(String::isNotBlank)
-                    ?: throw IllegalArgumentException(
-                        "Field 'known_hosts_path' is required when host_key_policy is 'known_hosts_file'."
-                    )
-                SshHostKeyPolicy.KnownHostsFile(
-                    path = path,
-                    strict = strictHostKeyChecking ?: true,
-                )
-            }
-
-            else -> throw IllegalArgumentException(
-                "Field 'host_key_policy' must be one of accept_any, known_hosts_file."
-            )
-        }
     }
 
     /** Resolve timeout in seconds. Defaults to 180s. */
@@ -740,9 +717,6 @@ class TerminalBuiltin(
         val port: Int?,
         val username: String?,
         val password: String?,
-        val hostKeyPolicy: String?,
-        val knownHostsPath: String?,
-        val strictHostKeyChecking: Boolean?,
         val connectTimeout: Int?,
         val serverAliveInterval: Int?,
         // Action mode
@@ -766,16 +740,12 @@ class TerminalBuiltin(
         private const val DEFAULT_LOCAL_IDENTITY = "user"
         private const val DEFAULT_MAX_BYTES = 8192
         private const val UNKNOWN_EXIT_CODE = -1
-        private const val HOST_KEY_POLICY_ACCEPT_ANY = "accept_any"
-        private const val HOST_KEY_POLICY_KNOWN_HOSTS_FILE = "known_hosts_file"
-
         private val KNOWN_KEYS = setOf(
             // Hermes-aligned
             "command", "background", "timeout", "workdir", "notify_on_complete",
             // Zafiro extensions
             "backend", "identity",
             "host", "port", "username", "password",
-            "host_key_policy", "known_hosts_path", "strict_host_key_checking",
             "connect_timeout", "server_alive_interval",
             // Action mode
             "action", "session_id", "text", "request_id", "mode", "max_bytes",
@@ -838,19 +808,6 @@ class TerminalBuiltin(
                 "password": {
                   "type": "string",
                   "description": "SSH password. Credentials are not stored by this tool."
-                },
-                "host_key_policy": {
-                  "type": "string",
-                  "enum": ["accept_any", "known_hosts_file"],
-                  "description": "SSH host key verification policy, default 'accept_any'."
-                },
-                "known_hosts_path": {
-                  "type": "string",
-                  "description": "Path to known_hosts file. Required when host_key_policy is 'known_hosts_file'."
-                },
-                "strict_host_key_checking": {
-                  "type": "boolean",
-                  "description": "Enforce strict host key checking with known_hosts_file. Default true."
                 },
                 "connect_timeout": {
                   "type": "integer",

@@ -80,7 +80,6 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
         val obj = element as? JsonObject
             ?: return SkillIdParseResult.InvalidJson("argumentsJson must be a JSON object.")
         val id = obj.stringOrNull("id")?.trim()?.ifBlank { null }
-            ?: obj.stringOrNull("skill_id")?.trim()?.ifBlank { null }
         return id?.let(SkillIdParseResult::Success) ?: SkillIdParseResult.MissingId
     }
 
@@ -102,10 +101,6 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
                 "id": {
                   "type": "string",
                   "description": "Skill id from the available_skills prompt block."
-                },
-                "skill_id": {
-                  "type": "string",
-                  "description": "Alias for id."
                 }
               },
               "required": ["id"]
