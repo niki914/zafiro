@@ -34,11 +34,26 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/**
- * 聊天块统一间距：块内容与头部之间、多工具链行之间、turn 内块之间全部用同一个值。
- * 目前临时定为 24dp；调整时只改这一处。
- */
-internal val BlockSpacing = 24.dp
+// ── 块 UI 密度参数表（折叠块 + 命令型工具正文 + turn 分隔共用）────────────────
+// 调视觉密度只改这一处；使用处按名引用或组合计算（如 TurnSeparator - BlockSpacing），
+// 不要散落魔法数字。
+internal val TurnSeparator = 32.dp    // turn 分隔总间距：UserMsg→agent 内容（补差 TurnSeparator - BlockSpacing）与 跨 turn（上一 turn 末尾→下一 UserMsg，LazyColumn item 顶距）共用
+internal val BlockSpacing = 12.dp      // 统一块间距：turn 内块间、头部↔展开内容、多工具链行间、命令↔输出缝隙
+// ======
+internal val BlockRowInset = 6.dp     // 折叠行左右内收
+internal val BlockContentInset = 12.dp // 展开内容左右内收（比头部宽，展示更多）
+internal val BlockRowGap = 8.dp       // 折叠行 icon↔标题、标题↔箭头
+internal val BlockRowIcon = 13.dp     // 折叠行图标
+internal val BlockRowChevron = 14.dp  // 折叠行箭头
+internal val BlockSpinnerSize = 11.dp // 运行中 spinner
+internal val CommandPanelPadX = 12.dp // 命令面板左右内收
+internal val CopyBtnGap = 6.dp        // 面板内容 / 文本 ↔ 复制按钮 的邻近间隙
+internal val CommandRowPadY = 4.dp    // 命令行纵向
+internal val OutputPadY = 6.dp        // 输出区纵向
+internal val OutputBtnInset = 36.dp   // 多行输出右缘给右上角按钮让位
+internal val CopyBtnSize = 26.dp      // 复制按钮
+internal val CopyIconSize = 14.dp     // 复制图标
+internal val ResultScrollMaxHeight = 102.dp // 工具结果/思考正文滚动高度上限
 
 /** 展开正文颜色
  * （thinking/skill 兜底共用：onSurfaceVariant.copy(alpha = 这里)）；
@@ -84,16 +99,16 @@ fun CollapsibleBlock(
                     indication = null,
                     onClick = onToggle,
                 )
-                .padding(horizontal = 6.dp),
+                .padding(horizontal = BlockRowInset),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(13.dp),
+                modifier = Modifier.size(BlockRowIcon),
                 tint = contentColor,
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(BlockRowGap))
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelLarge,
@@ -102,10 +117,10 @@ fun CollapsibleBlock(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(BlockRowGap))
             if (isRunning) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(11.dp),
+                    modifier = Modifier.size(BlockSpinnerSize),
                     strokeWidth = 1.5.dp,
                     color = contentColor.copy(alpha = 0.6f),
                 )
@@ -115,7 +130,7 @@ fun CollapsibleBlock(
                     contentDescription = null,
                     tint = contentColor.copy(alpha = 0.6f),
                     modifier = Modifier
-                        .size(14.dp)
+                        .size(BlockRowChevron)
                         .graphicsLayer { rotationZ = chevron },
                 )
             }
@@ -127,7 +142,7 @@ fun CollapsibleBlock(
         ) {
             // 展开内容：左缘对齐 icon 中线（6 + 13/2 ≈ 12.5）、右缘对齐箭头中线（6 + 14/2 = 13）
             // 统一 12dp；top = BlockSpacing：头部与内容间间距与块间/行间一致（padding 放在收起态高度为 0 的内容内，折叠时不产生幻影空隙）
-            Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = BlockSpacing)) {
+            Column(modifier = Modifier.padding(start = BlockContentInset, end = BlockContentInset, top = BlockSpacing)) {
                 content()
             }
         }

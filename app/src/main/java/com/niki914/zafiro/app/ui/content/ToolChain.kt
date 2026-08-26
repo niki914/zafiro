@@ -224,8 +224,8 @@ private fun CodeToolBody(
                         bottomStart = innerCorner,
                     ),
                 )
-                .padding(start = 12.dp, end = 6.dp)
-                .padding(vertical = 5.dp),
+                .padding(start = CommandPanelPadX, end = CopyBtnGap)
+                .padding(vertical = CommandRowPadY),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -236,10 +236,11 @@ private fun CodeToolBody(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(CopyBtnGap))
             MiniCopyButton(text = copyText ?: command)
         }
 
+        // 命令↔输出缝隙：固定 3dp，不随 BlockSpacing 变（遵循工具正文自绘布局，脱离统一间距）
         Spacer(modifier = Modifier.height(3.dp))
 
         // 单行时按钮垂直居中，多行时回到右上角；首帧按是否含换行预估，onTextLayout 纠正
@@ -269,16 +270,16 @@ private fun CodeToolBody(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 12.dp, end = if (singleLine) 12.dp else 36.dp)
-                    .padding(vertical = 10.dp),
+                    .padding(start = CommandPanelPadX, end = if (singleLine) CommandPanelPadX else OutputBtnInset)
+                    .padding(vertical = OutputPadY),
                 onTextLayout = { singleLine = it.lineCount == 1 },
             )
             MiniCopyButton(
                 text = output,
                 modifier = if (singleLine) {
-                    Modifier.align(Alignment.CenterEnd).padding(end = 6.dp)
+                    Modifier.align(Alignment.CenterEnd).padding(end = CopyBtnGap)
                 } else {
-                    Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp)
+                    Modifier.align(Alignment.TopEnd).padding(top = CopyBtnGap, end = CopyBtnGap)
                 },
             )
         }
@@ -292,7 +293,7 @@ private fun MiniCopyButton(text: String, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
     Box(
         modifier = modifier
-            .size(26.dp)
+            .size(CopyBtnSize)
             .clickable {
                 scope.launch {
                     clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
@@ -304,7 +305,7 @@ private fun MiniCopyButton(text: String, modifier: Modifier = Modifier) {
             imageVector = Icons.Default.ContentCopy,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
-            modifier = Modifier.size(14.dp),
+            modifier = Modifier.size(CopyIconSize),
         )
     }
 }
@@ -388,7 +389,7 @@ internal fun ToolResultText(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = 102.dp)
+            .heightIn(max = ResultScrollMaxHeight)
             .let {
                 if (overflow) {
                     it.nestedScroll(BlockFlingScrollPropagation).verticalScroll(scrollState)

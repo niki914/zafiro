@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -325,10 +325,12 @@ private fun HomePageContentBody(
                 bottom = 128.dp,
             ),
         ) {
-            items(
+            itemsIndexed(
                 items = uiState.turns,
-                key = { turn -> turn.id },
-            ) { turn ->
+                key = { _, turn -> turn.id },
+            ) { index, turn ->
+                // 跨 turn 分隔：上一 turn 末尾（markdown/操作行）→ 本 turn UserMsg；首个 turn 顶部由 LazyColumn contentPadding 负责
+                val turnTopPad = if (index == 0) Modifier else Modifier.padding(top = TurnSeparator)
                 HomeChatTurnItem(
                     turn = turn,
                     onContentTap = onContentTap,
@@ -345,9 +347,7 @@ private fun HomePageContentBody(
                     activeThinkingKey = activeThinkingKey,
                     onToggleActionRow = onToggleActionRow,
                     isGenerating = uiState.isGenerating,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 18.dp),
+                    modifier = turnTopPad.fillMaxWidth(),
                 )
             }
             item(key = "bottom_anchor") {
@@ -455,7 +455,9 @@ private fun HomeChatTurnItem(
                             onToggleActionRow(turn.id, ActionSource.User)
                         }
                     },
-                ),
+                )
+                // 用户消息 → agent 内容的 turn 分隔：总间距 TurnSeparator（块间距之上补差，见参数表）
+                .padding(bottom = TurnSeparator - BlockSpacing),
             contentAlignment = Alignment.CenterEnd,
         ) {
             UserMessageBubble(text = turn.userText)
