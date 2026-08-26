@@ -329,10 +329,19 @@ private fun HomePageContentBody(
                 items = uiState.turns,
                 key = { _, turn -> turn.id },
             ) { index, turn ->
-                // 跨 turn 分隔：上一 turn 末尾（markdown/操作行）→ 本 turn UserMsg；首个 turn 顶部由 LazyColumn contentPadding 负责
-                val turnTopPad = if (index == 0) Modifier else Modifier.padding(top = TurnSeparator)
+                // User 气泡组内位置（渲染层：相邻 turn 无 agent 内容即同组，与数据层 turn 无关）
+                val position = userBubblePosition(uiState.turns, index)
+                // 顶距：组中/组末用组内间隙与上一气泡连体；组首/单条维持 turn 分隔
+                val turnTopPad = when {
+                    index == 0 -> Modifier
+                    position == UserBubblePosition.GroupMid || position == UserBubblePosition.GroupLast ->
+                        Modifier.padding(top = UserBubbleGap)
+
+                    else -> Modifier.padding(top = TurnSeparator)
+                }
                 HomeChatTurnItem(
                     turn = turn,
+                    userBubblePosition = position,
                     onContentTap = onContentTap,
                     onReGenerate = onReGenerate,
                     onFork = onFork,
@@ -400,9 +409,26 @@ private fun HomePageContentBody(
     }
 }
 
+/**
+ * 渲染层连续 User 气泡分组：纯 User turn（blocks 为空）与相邻纯 User turn 连成一组。
+ * 单条判定：自身有 agent 内容，或前后均非纯 User。
+ */
+private fun userBubblePosition(turns: List<HomeChatTurn>, index: Int): UserBubblePosition {
+    val isBare = turns[index].blocks.isEmpty()
+    val prevBare = index > 0 && turns[index - 1].blocks.isEmpty()
+    val nextBare = index < turns.lastIndex && turns[index + 1].blocks.isEmpty()
+    return when {
+        !isBare || (!prevBare && !nextBare) -> UserBubblePosition.Single
+        !prevBare -> UserBubblePosition.GroupFirst
+        !nextBare -> UserBubblePosition.GroupLast
+        else -> UserBubblePosition.GroupMid
+    }
+}
+
 @Composable
 private fun HomeChatTurnItem(
     turn: HomeChatTurn,
+    userBubblePosition: UserBubblePosition,
     onContentTap: () -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
@@ -456,11 +482,18 @@ private fun HomeChatTurnItem(
                         }
                     },
                 )
-                // 用户消息 → agent 内容的 turn 分隔：总间距 TurnSeparator（块间距之上补差，见参数表）
-                .padding(bottom = TurnSeparator - BlockSpacing),
+                // 用户消息 → agent 内容的 turn 分隔：总间距 TurnSeparator（块间距之上补差，见参数表）；
+                // 组内成员不放底部补差，组内间隙由下一 item 顶距承担（单条独立时保留）
+                .padding(
+                    bottom = if (userBubblePosition == UserBubblePosition.Single) {
+                        TurnSeparator - BlockSpacing
+                    } else {
+                        0.dp
+                    }
+                ),
             contentAlignment = Alignment.CenterEnd,
         ) {
-            UserMessageBubble(text = turn.userText)
+            UserMessageBubble(text = turn.userText, position = userBubblePosition)
         }
 
         AnimatedVisibility(
@@ -647,6 +680,9 @@ private fun HomePageContentPreview() {
                                 HomeChatBlock.Text("I've done the check and summarized the result."),
                             ),
                         ),
+                        // 连续用户消息组：失败回合（错误卡已随新回合清除）→ 再发一条，两条纯 User 连成一组
+                        HomeChatTurn(id = 1L, userText = "继续分析一下 MCP 的配置差异。"),
+                        HomeChatTurn(id = 2L, userText = "先不用管 MCP 了，讲讲会话树。"),
                     ),
                 ),
                 listState = rememberLazyListState(),

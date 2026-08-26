@@ -29,6 +29,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -47,6 +51,7 @@ import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.component.LiquidTextField
 import com.niki914.uikit.infra.shape.G2BubbleShape
 import com.niki914.uikit.infra.shape.G2CardShape
+import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.ui.model.ActionSource
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.uikit.base.BaseTheme
@@ -228,13 +233,61 @@ private fun AssistantOutputTextPreview() {
     }
 }
 
+/** User 气泡在连续用户消息组内的位置（渲染层分组：组边界 = 相邻 turn 有 agent 内容）。 */
+enum class UserBubblePosition {
+    /** 独立单条：右上圆角、右下直角 + 尾巴 */
+    Single,
+
+    /** 组首：右上圆角、右下直角 */
+    GroupFirst,
+
+    /** 组中：右上、右下均直角 */
+    GroupMid,
+
+    /** 组末：右上、右下均直角 + 尾巴 */
+    GroupLast,
+}
+
 @Composable
 fun UserMessageBubble(
     text: String,
     modifier: Modifier = Modifier,
+    position: UserBubblePosition = UserBubblePosition.Single,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val bubbleShape = G2BubbleShape(24.dp)
+    val bubbleBg = colorScheme.primary.copy(alpha = 0.18f)
+    // 接缝侧（右）小圆角与命令工具结果体分割侧一致（2dp）；带尾巴的角保持直角
+    val innerCorner = 2.dp
+    val bubbleShape = when (position) {
+        UserBubblePosition.Single -> G2FieldShape(
+            topStart = 24.dp,
+            topEnd = 24.dp,
+            bottomEnd = 0.dp,
+            bottomStart = 24.dp,
+        )
+
+        UserBubblePosition.GroupFirst -> G2FieldShape(
+            topStart = 24.dp,
+            topEnd = 24.dp,
+            bottomEnd = innerCorner,
+            bottomStart = 24.dp,
+        )
+
+        UserBubblePosition.GroupMid -> G2FieldShape(
+            topStart = 24.dp,
+            topEnd = innerCorner,
+            bottomEnd = innerCorner,
+            bottomStart = 24.dp,
+        )
+
+        UserBubblePosition.GroupLast -> G2FieldShape(
+            topStart = 24.dp,
+            topEnd = innerCorner,
+            bottomEnd = 0.dp,
+            bottomStart = 24.dp,
+        )
+    }
+    val hasTail = position == UserBubblePosition.Single || position == UserBubblePosition.GroupLast
 
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth(),
@@ -243,8 +296,9 @@ fun UserMessageBubble(
         Box(
             modifier = Modifier
                 .widthIn(max = maxWidth * 0.82f)
+                .then(if (hasTail) Modifier.drawBehind { drawUserBubbleTail(bubbleBg) } else Modifier)
                 .clip(bubbleShape)
-                .background(colorScheme.primary.copy(alpha = 0.18f), bubbleShape)
+                .background(bubbleBg, bubbleShape)
                 .padding(horizontal = 18.dp, vertical = 12.dp),
             contentAlignment = Alignment.CenterEnd,
         ) {
@@ -258,6 +312,30 @@ fun UserMessageBubble(
             }
         }
     }
+}
+
+/**
+ * 气泡右下角尖尾巴（高 9dp、凸出 5dp）：上段为从右缘上部到尖点的下凹曲线，
+ * 下段为沿底边的水平直线。由 drawBehind 在气泡主体之前绘制，超出 clip 区域的部分不被裁剪；
+ * 不叠入主体（起点贴右缘），避免半透明背景两次绘制产生色差。
+ */
+private fun DrawScope.drawUserBubbleTail(color: Color) {
+    val w = size.width
+    val h = size.height
+    val path = Path().apply {
+        // 起点：右缘上部
+        moveTo(w, h - 9.dp.toPx())
+        // 上段：从左上（右缘上部）到右下（尖点）的下凹曲线，中段低于两点连线
+        cubicTo(
+            w + 2.dp.toPx(), h - 3.dp.toPx(),
+            w + 3.5.dp.toPx(), h - 2.dp.toPx(),
+            w + 5.dp.toPx(), h,
+        )
+        // 下段：尖点到右下角的水平直线
+        lineTo(w, h)
+        close()
+    }
+    drawPath(path, color)
 }
 
 @Composable
