@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,7 +26,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -176,7 +175,7 @@ private fun SingleToolRow(
             if (useCommandBody) {
                 CodeToolBody(
                     command = status.summary.orEmpty(),
-                    output = displayOutput(status),
+                    output = displayOutput(status).trim(),
                     isError = status.state == HomeToolState.Failed,
                 )
             } else {
@@ -191,9 +190,9 @@ private fun SingleToolRow(
 // ── tool result bodies ──────────────────────────────────────────────────────
 
 /**
- * 命令型结果体：Capsule 容器上下分段。
- * 上半：命令单行（bodyMedium，与 Thinking 一致）+ 复制按钮；
- * 下半：输出最多 6 行（bodySmall 等宽）+ 右上角复制按钮；[isError] 时仅下半区变红。
+ * 命令型结果体：上下两段独立着色，中间 2dp 透明缝隙露出页面背景（M3E 分割样式）。
+ * 上段：命令单行（bodyMedium）+ 复制按钮；下段：输出最多 6 行（bodySmall 等宽）
+ * + 复制按钮；[isError] 时仅下段变红。分割侧两角 2dp 小圆角，外侧两角 16dp G2。
  */
 @Composable
 private fun CodeToolBody(
@@ -201,16 +200,22 @@ private fun CodeToolBody(
     output: String,
     isError: Boolean,
 ) {
-    val shape = G2FieldShape(16.dp)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape),
-    ) {
+    val outerCorner = 16.dp
+    val innerCorner = 2.dp
+    val background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(
+                    background,
+                    G2FieldShape(
+                        topStart = outerCorner,
+                        topEnd = outerCorner,
+                        bottomEnd = innerCorner,
+                        bottomStart = innerCorner,
+                    ),
+                )
                 .padding(start = 12.dp, end = 6.dp)
                 .padding(vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -227,12 +232,23 @@ private fun CodeToolBody(
             MiniCopyButton(text = command)
         }
 
-        HorizontalDivider(
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-        )
+        Spacer(modifier = Modifier.height(3.dp))
 
-        Box(modifier = Modifier.fillMaxWidth()) {
+        // 单行时按钮垂直居中，多行时回到右上角；首帧按是否含换行预估，onTextLayout 纠正
+        var singleLine by remember(output) { mutableStateOf(!output.contains('\n')) }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    background,
+                    G2FieldShape(
+                        topStart = innerCorner,
+                        topEnd = innerCorner,
+                        bottomEnd = outerCorner,
+                        bottomStart = outerCorner,
+                    ),
+                ),
+        ) {
             Text(
                 text = output,
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
@@ -245,13 +261,17 @@ private fun CodeToolBody(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(start = 12.dp, end = if (singleLine) 12.dp else 36.dp)
+                    .padding(vertical = 10.dp),
+                onTextLayout = { singleLine = it.lineCount == 1 },
             )
             MiniCopyButton(
                 text = output,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 6.dp, end = 6.dp),
+                modifier = if (singleLine) {
+                    Modifier.align(Alignment.CenterEnd).padding(end = 6.dp)
+                } else {
+                    Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp)
+                },
             )
         }
     }

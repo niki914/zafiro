@@ -16,6 +16,19 @@ import com.kyant.capsule.continuities.G2Continuity
 fun G2FieldShape(cornerRadius: Dp = 28.dp): Shape =
     G2CornerBasedShape(cornerRadius)
 
+/** 四角独立半径的 G2 圆角（用于上下分段拼接：外侧大圆角、分割侧小圆角）。 */
+fun G2FieldShape(
+    topStart: Dp,
+    topEnd: Dp,
+    bottomEnd: Dp,
+    bottomStart: Dp,
+): Shape = G2CornerBasedShape(
+    topStartSize = CornerSize(topStart),
+    topEndSize = CornerSize(topEnd),
+    bottomEndSize = CornerSize(bottomEnd),
+    bottomStartSize = CornerSize(bottomStart),
+)
+
 fun G2CardShape(cornerRadius: Dp = 28.dp): Shape =
     G2CornerBasedShape(cornerRadius)
 
