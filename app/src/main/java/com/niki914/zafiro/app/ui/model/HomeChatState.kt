@@ -116,6 +116,28 @@ data class HomeChatUiState(
     val expandedThinking: Set<String> = emptySet(),
     val expandedActionTurnId: Long? = null,
     val expandedActionSource: ActionSource? = null,
+    /** 当前正在流式产生的思考块 key；仅驱动 thinking 块内滚动跟随。 */
+    val activeThinkingKey: String? = null,
+    /**
+     * 已自动展开过的思考块身份（"${turnId}_t${thinkingId}"）。
+     * Mapper 对 Delta 续接也重发 ThinkingStarted（同 id），此集合区分「新块首发」与「续接回声」：
+     * 首发自动展开；回声不重复展开，用户手动收起后不被续接重新撑开。
+     */
+    val autoExpandedThinking: Set<String> = emptySet(),
+)
+
+/**
+ * 会话切换时的统一瞬态清理：三组展开态 + 操作行 + active thinking 指针 + 自动展开记录全清，
+ * 新会话不复用任何展开状态。所有会话切换路径（restore/load/new/delete）统一调用。
+ */
+fun HomeChatUiState.withClearedTransient() = copy(
+    expandedToolRuns = emptySet(),
+    expandedToolResults = emptySet(),
+    expandedThinking = emptySet(),
+    expandedActionTurnId = null,
+    expandedActionSource = null,
+    activeThinkingKey = null,
+    autoExpandedThinking = emptySet(),
 )
 
 sealed interface HomeChatIntent {
@@ -281,6 +303,8 @@ class HomeChatViewModel internal constructor(
                 isGenerating = true,
                 lastEventName = null,
                 streamEventCount = 0,
+                activeThinkingKey = null,
+                autoExpandedThinking = emptySet(),
             )
         }
         draftSaveJob?.cancel()
@@ -320,7 +344,7 @@ class HomeChatViewModel internal constructor(
         streamJob?.cancel()
         streamJob = null
         finalizeRunningTools()
-        updateState { copy(isGenerating = false) }
+        updateState { copy(isGenerating = false, activeThinkingKey = null) }
     }
 
     private fun startNewConversation() {
@@ -372,12 +396,40 @@ class HomeChatViewModel internal constructor(
                 it.appendText(event.delta)
             }
 
-            is LlmStreamEvent.ThinkingStarted -> updateTurn(turnId) {
-                it.upsertThinking(event.id, event.text)
+            is LlmStreamEvent.ThinkingStarted -> {
+                // 首发自动展开 + 置 active；续接回声（同块 Delta 重发同 id）不重复展开，
+                // 手动收起后不复活；块完成后保持展开不收起（见 withClearedTransient）
+                updateState {
+                    val turnIndex = turns.indexOfFirst { it.id == turnId }
+                    if (turnIndex == -1) return@updateState this
+                    val updated = turns[turnIndex].upsertThinking(event.id, event.text)
+                    val thinkingIndex = updated.blocks.indexOfLast {
+                        it is HomeChatBlock.Thinking && it.id == event.id
+                    }
+                    val key = if (thinkingIndex != -1) "${turnId}_$thinkingIndex" else null
+                    if (key == null) {
+                        return@updateState copy(
+                            turns = turns.toMutableList().also { it[turnIndex] = updated },
+                        )
+                    }
+                    val blockId = "${turnId}_t${event.id}"
+                    copy(
+                        turns = turns.toMutableList().also { it[turnIndex] = updated },
+                        expandedThinking = if (blockId in autoExpandedThinking) {
+                            expandedThinking
+                        } else {
+                            expandedThinking + key
+                        },
+                        autoExpandedThinking = autoExpandedThinking + blockId,
+                        activeThinkingKey = key,
+                    )
+                }
             }
 
-            is LlmStreamEvent.ThinkingEnded -> updateTurn(turnId) {
-                it.upsertThinking(event.id, event.text)
+            is LlmStreamEvent.ThinkingEnded -> {
+                updateTurn(turnId) { it.upsertThinking(event.id, event.text) }
+                // 思考结束：只摘 active 指针（停止滚动跟随），块保持展开不收起
+                updateState { copy(activeThinkingKey = null) }
             }
 
             is LlmStreamEvent.ToolRunning -> updateTurn(turnId) {
@@ -411,7 +463,7 @@ class HomeChatViewModel internal constructor(
                     LOG_TAG,
                     "apply completed turnId=$turnId",
                 )
-                updateState { copy(isGenerating = false) }
+                updateState { copy(isGenerating = false, activeThinkingKey = null) }
             }
         }
     }
@@ -455,7 +507,7 @@ class HomeChatViewModel internal constructor(
                         expandedThinking = emptySet(),
                         expandedActionTurnId = null,
                         expandedActionSource = null,
-                    )
+                    ).withClearedTransient()
                 }
                 Logger.i(
                     LOG_TAG,
@@ -539,7 +591,7 @@ class HomeChatViewModel internal constructor(
                     expandedToolResults = emptySet(),
                     expandedActionTurnId = null,
                     expandedActionSource = null,
-                )
+                ).withClearedTransient()
             }
             Logger.i(
                 LOG_TAG,
@@ -684,7 +736,7 @@ class HomeChatViewModel internal constructor(
         updateTurn(turnId) {
             it.appendError(message, code)
         }
-        updateState { copy(isGenerating = false) }
+        updateState { copy(isGenerating = false, activeThinkingKey = null) }
     }
 
     private fun updateTurn(turnId: Long, transform: (HomeChatTurn) -> HomeChatTurn) {

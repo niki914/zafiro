@@ -247,6 +247,7 @@ fun HomePageContent(
         },
         expandedActionTurnId = uiState.expandedActionTurnId,
         expandedActionSource = uiState.expandedActionSource,
+        activeThinkingKey = uiState.activeThinkingKey,
         onToggleActionRow = { turnId, source ->
             viewModel.sendIntent(
                 HomeChatIntent.ToggleActionRow(turnId, source)
@@ -297,6 +298,7 @@ private fun HomePageContentBody(
     onToggleThinking: (Long, Int) -> Unit,
     expandedActionTurnId: Long?,
     expandedActionSource: ActionSource?,
+    activeThinkingKey: String? = null,
     onToggleActionRow: (Long, ActionSource) -> Unit,
 ) {
     Box(
@@ -337,6 +339,7 @@ private fun HomePageContentBody(
                     onToggleThinking = onToggleThinking,
                     expandedActionTurnId = expandedActionTurnId,
                     expandedActionSource = expandedActionSource,
+                    activeThinkingKey = activeThinkingKey,
                     onToggleActionRow = onToggleActionRow,
                     isGenerating = uiState.isGenerating,
                     modifier = Modifier
@@ -408,6 +411,7 @@ private fun HomeChatTurnItem(
     onToggleThinking: (Long, Int) -> Unit,
     expandedActionTurnId: Long?,
     expandedActionSource: ActionSource?,
+    activeThinkingKey: String? = null,
     onToggleActionRow: (Long, ActionSource) -> Unit,
     isGenerating: Boolean,
     modifier: Modifier = Modifier,
@@ -530,13 +534,14 @@ private fun HomeChatTurnItem(
                         // blockIndex 是 var，lambda 捕获按引用；先快照成 val 再进 lambda
                         val blockIndexNow = blockIndex
                         val thinkingKey = "${turn.id}_$blockIndexNow"
+                        val isThinkingExpanded = thinkingKey in expandedThinking
                         CollapsibleBlock(
                             icon = ToolPresentation.Thinking,
                             title = "Thinking" + ToolPresentation
                                 .thinkingPreviewOf(block.text)
                                 ?.let { " · $it" }
                                 .orEmpty(),
-                            isExpanded = thinkingKey in expandedThinking,
+                            isExpanded = isThinkingExpanded,
                             onToggle = { onToggleThinking(turn.id, blockIndexNow) },
                         ) {
                             Box(
@@ -557,6 +562,8 @@ private fun HomeChatTurnItem(
                                     text = block.text,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurface,
+                                    // active 思考块展开时滚到底跟随；用户可手动滚动不锁
+                                    autoScrollToEnd = isThinkingExpanded && thinkingKey == activeThinkingKey,
                                 )
                             }
                         }

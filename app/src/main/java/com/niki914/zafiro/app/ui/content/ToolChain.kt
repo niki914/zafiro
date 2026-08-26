@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -57,6 +58,7 @@ import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.uikit.infra.shape.G2FieldShape
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -357,8 +359,20 @@ internal fun ToolResultText(
     text: String,
     style: TextStyle,
     color: Color,
+    /** active 思考块流式更新时自动滚到底跟随；不锁手动滚动（不尊重用户位置，每次增长都回底）。 */
+    autoScrollToEnd: Boolean = false,
 ) {
     var overflow by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+
+    // maxValue 更新（内容增长/布局完成）即滚到底；autoScrollToEnd 置位瞬间先跟随当前尾部。
+    LaunchedEffect(autoScrollToEnd) {
+        if (autoScrollToEnd) {
+            snapshotFlow { scrollState.maxValue }
+                .distinctUntilChanged()
+                .collect { max -> scrollState.scrollTo(max) }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -366,7 +380,7 @@ internal fun ToolResultText(
             .heightIn(max = 102.dp)
             .let {
                 if (overflow) {
-                    it.nestedScroll(BlockFlingScrollPropagation).verticalScroll(rememberScrollState())
+                    it.nestedScroll(BlockFlingScrollPropagation).verticalScroll(scrollState)
                 } else {
                     it
                 }
