@@ -38,20 +38,21 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -79,6 +80,8 @@ import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.uikit.base.BaseTheme
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import android.content.ClipData
 
 @Composable
 fun HomePageContent(
@@ -418,9 +421,16 @@ private fun HomeChatTurnItem(
 ) {
     val canToggleAction = !isGenerating && turn.blocks.isNotEmpty()
 
-    @Suppress("DEPRECATION")
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    fun copyText(text: String) {
+        scope.launch {
+            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
+        }
+        Toast.makeText(context, R.string.ui_toast_copied, Toast.LENGTH_SHORT).show()
+    }
 
     val isActionExpanded = expandedActionTurnId == turn.id
     val actionSource = expandedActionSource
@@ -458,9 +468,7 @@ private fun HomeChatTurnItem(
             TurnActionRow(
                 source = ActionSource.User,
                 onCopy = {
-                    val text = turn.userText
-                    clipboardManager.setText(AnnotatedString(text))
-                    Toast.makeText(context, R.string.ui_toast_copied, Toast.LENGTH_SHORT).show()
+                    copyText(turn.userText)
                 },
                 onReGenerate = { onReGenerate(turn.id) },
                 onFork = { onFork(turn.id) },
@@ -538,7 +546,7 @@ private fun HomeChatTurnItem(
                         CollapsibleBlock(
                             icon = ToolPresentation.Thinking,
                             title = "Thinking" + ToolPresentation
-                                .thinkingPreviewOf(block.text)
+                                .previewOf(block.text)
                                 ?.let { " · $it" }
                                 .orEmpty(),
                             isExpanded = isThinkingExpanded,
@@ -560,8 +568,8 @@ private fun HomeChatTurnItem(
                             ) {
                                 ToolResultText(
                                     text = block.text,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = BlockBodyAlpha),
                                     // active 思考块展开时滚到底跟随；用户可手动滚动不锁
                                     autoScrollToEnd = isThinkingExpanded && thinkingKey == activeThinkingKey,
                                 )
@@ -584,8 +592,7 @@ private fun HomeChatTurnItem(
                     val text = turn.blocks
                         .filterIsInstance<HomeChatBlock.Text>()
                         .joinToString("\n\n") { it.text }
-                    clipboardManager.setText(AnnotatedString(text))
-                    Toast.makeText(context, R.string.ui_toast_copied, Toast.LENGTH_SHORT).show()
+                    copyText(text)
                 },
                 onReGenerate = { onReGenerate(turn.id) },
                 onFork = { onFork(turn.id) },

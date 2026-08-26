@@ -16,11 +16,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * 折叠块 UI 展示数据：图标、显示名（本地化 res id）、摘要预览。纯函数对象。
- * 图标访问器 @Composable（python 走自绘 drawable）；显示名/摘要为普通函数，
+ * 折叠块 UI 展示数据：图标、显示名（本地化 res id）、输入预览。纯函数对象。
+ * 图标访问器 @Composable（python 走自绘 drawable）；显示名/预览为普通函数，
  * ViewModel 与 ConversationFormatter 均可调用（直播与恢复共用同一映射）。
- * summaryOf 目前按工具名从参数提取；预留演进：后续可改为 agent 传的意图字段，
- * 直接展示"这个操作是要干啥"（如"罗列文件"），不再依赖参数猜。
+ * inputOf 取工具参数原文（复制/全量展示用），previewOf 是发布于 [inputOf] 的显示变换（首行压平）；
+ * 预留演进：后续可改为 agent 传的意图字段，直接展示"这个操作是要干啥"（如"罗列文件"），不再依赖参数猜。
  */
 object ToolPresentation {
     /** Thinking 图标（用户待定，暂用四角星星）。 */
@@ -64,28 +64,27 @@ object ToolPresentation {
     }
 
     /**
-     * 工具参数摘要：Terminal 取 command、load_skill 取 id、execute_python 取代码首行；
-     * 其余工具 / 参数缺失 → null（只显示标题，无预览）。
+     * 工具参数原文：terminal 取完整 command、execute_python 取完整 code、load_skill 取 id；
+     * 其余工具 / 参数缺失 → null。复制按原文，展示按 [previewOf] 裁剪。
      */
-    fun summaryOf(name: String, argumentsJson: String?): String? {
+    fun inputOf(name: String, argumentsJson: String?): String? {
         if (argumentsJson.isNullOrBlank()) return null
         val args = try {
             Json.parseToJsonElement(argumentsJson).jsonObject
         } catch (_: Exception) {
             return null
         }
-        val raw = when (name) {
+        return when (name) {
             "terminal" -> args["command"]
             "load_skill" -> args["id"]
             "execute_python" -> args["code"]
             else -> null
         }?.jsonPrimitive?.contentOrNull
-        return raw?.lineSequence()?.firstOrNull { it.isNotBlank() }?.collapseToSingleLine()
     }
 
-    /** Thinking 标题摘要：首段非空行，压成单行；空文本 → null（只显示 "Thinking"）。 */
-    fun thinkingPreviewOf(text: String): String? =
-        text.lineSequence().firstOrNull { it.isNotBlank() }?.collapseToSingleLine()
+    /** 输入预览：首段非空行压成单行；空 → null（只显示工具名）。 */
+    fun previewOf(input: String?): String? =
+        input?.lineSequence()?.firstOrNull { it.isNotBlank() }?.collapseToSingleLine()
 
     private fun String.collapseToSingleLine(): String? =
         replace(Regex("\\s+"), " ").trim().takeIf { it.isNotEmpty() }

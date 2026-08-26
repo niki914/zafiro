@@ -1,5 +1,6 @@
 package com.niki914.zafiro.app.ui.content
 
+import android.content.ClipData
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -34,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -43,10 +45,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,6 +60,7 @@ import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.uikit.infra.shape.G2FieldShape
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -149,12 +152,13 @@ private fun SingleToolRow(
 ) {
     val hasResult = status.resultText != null || status.failedReason != null
     val isRunning = status.state == HomeToolState.Running
-    // 命令型工具的摘要已在结果体上半区展示完整命令，标题不再重复拼摘要
-    val useCommandBody = status.name in CommandToolNames && !status.summary.isNullOrBlank()
+    // 命令型工具的输入预览已在结果体上半区展示，标题不再重复拼预览
+    val useCommandBody = status.name in CommandToolNames && !status.inputText.isNullOrBlank()
+    val inputPreview = ToolPresentation.previewOf(status.inputText)
     val title = buildString {
         append(status.displayNameRes?.let { stringResource(it) } ?: status.name)
         if (!useCommandBody) {
-            status.summary?.let { summary -> append(" · ").append(summary) }
+            inputPreview?.let { preview -> append(" · ").append(preview) }
         }
     }
     CollapsibleBlock(
@@ -176,7 +180,8 @@ private fun SingleToolRow(
         Box(modifier = Modifier.fillMaxWidth().then(contentModifier)) {
             if (useCommandBody) {
                 CodeToolBody(
-                    command = status.summary.orEmpty(),
+                    command = inputPreview.orEmpty(),
+                    copyText = status.inputText,
                     output = displayOutput(status).trim(),
                     isError = status.state == HomeToolState.Failed,
                 )
@@ -199,6 +204,7 @@ private fun SingleToolRow(
 @Composable
 private fun CodeToolBody(
     command: String,
+    copyText: String?,
     output: String,
     isError: Boolean,
 ) {
@@ -231,7 +237,7 @@ private fun CodeToolBody(
                 modifier = Modifier.weight(1f),
             )
             Spacer(modifier = Modifier.width(6.dp))
-            MiniCopyButton(text = command)
+            MiniCopyButton(text = copyText ?: command)
         }
 
         Spacer(modifier = Modifier.height(3.dp))
@@ -282,12 +288,16 @@ private fun CodeToolBody(
 /** 小号复制按钮（比标准 IconButton 小、无背景直接融入），点击写入剪贴板。 */
 @Composable
 private fun MiniCopyButton(text: String, modifier: Modifier = Modifier) {
-    @Suppress("DEPRECATION")
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     Box(
         modifier = modifier
             .size(26.dp)
-            .clickable { clipboard.setText(AnnotatedString(text)) },
+            .clickable {
+                scope.launch {
+                    clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -304,11 +314,12 @@ private fun MiniCopyButton(text: String, modifier: Modifier = Modifier) {
 private fun FallbackResultBody(isFailed: Boolean) {
     Text(
         text = stringResource(if (isFailed) R.string.ui_tool_status_failed else R.string.ui_tool_status_success),
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodySmall,
         color = if (isFailed) {
             MaterialTheme.colorScheme.error
         } else {
-            MaterialTheme.colorScheme.onSurface
+            // 与 Thinking 正文同款淡文本色（onSurface → onSurfaceVariant 降 alpha）
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = BlockBodyAlpha)
         },
     )
 }

@@ -85,8 +85,8 @@ data class HomeToolStatus(
     val failedReason: String? = null,
     /** 本地化显示名 res id；null → 回退 [name]（Custom Tool / MCP）。 */
     val displayNameRes: Int? = null,
-    /** 参数摘要预览；null → 只显示标题无预览。 */
-    val summary: String? = null,
+    /** 工具参数原文（复制用）；显示预览由 UI 从原文裁剪。null → 只显示标题无预览、无复制。 */
+    val inputText: String? = null,
 )
 
 sealed interface HomeChatBlock {
@@ -502,11 +502,6 @@ class HomeChatViewModel internal constructor(
                         streamEventCount = 0,
                         currentConversationId = conversationId,
                         currentConversationTitle = restoredTitle,
-                        expandedToolRuns = emptySet(),
-                        expandedToolResults = emptySet(),
-                        expandedThinking = emptySet(),
-                        expandedActionTurnId = null,
-                        expandedActionSource = null,
                     ).withClearedTransient()
                 }
                 Logger.i(
@@ -587,10 +582,6 @@ class HomeChatViewModel internal constructor(
                     streamEventCount = 0,
                     currentConversationId = id,
                     currentConversationTitle = restoredTitle,
-                    expandedToolRuns = emptySet(),
-                    expandedToolResults = emptySet(),
-                    expandedActionTurnId = null,
-                    expandedActionSource = null,
                 ).withClearedTransient()
             }
             Logger.i(
@@ -795,7 +786,7 @@ class HomeChatViewModel internal constructor(
                 resultText = resultText,
                 failedReason = failedReason,
                 displayNameRes = ToolPresentation.displayNameResOf(call.name),
-                summary = ToolPresentation.summaryOf(call.name, call.argumentsJson),
+                inputText = ToolPresentation.inputOf(call.name, call.argumentsJson),
             ),
         ),
     )
@@ -820,7 +811,7 @@ class HomeChatViewModel internal constructor(
                         resultText = resultText,
                         failedReason = failedReason,
                         displayNameRes = ToolPresentation.displayNameResOf(call.name),
-                        summary = ToolPresentation.summaryOf(call.name, call.argumentsJson),
+                        inputText = ToolPresentation.inputOf(call.name, call.argumentsJson),
                     ),
                 )
             },

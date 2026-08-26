@@ -156,7 +156,7 @@ object ConversationFormatter {
                     name = toolCall.name,
                     state = HomeToolState.Failed,
                     displayNameRes = ToolPresentation.displayNameResOf(toolCall.name),
-                    summary = ToolPresentation.summaryOf(toolCall.name, toolCall.argumentsJson),
+                    inputText = ToolPresentation.inputOf(toolCall.name, toolCall.argumentsJson),
                 ),
             )
         }
