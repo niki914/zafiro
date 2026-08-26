@@ -35,6 +35,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
+ * 聊天块统一间距：块内容与头部之间、多工具链行之间、turn 内块之间全部用同一个值。
+ * 目前临时定为 24dp；调整时只改这一处。
+ */
+internal val BlockSpacing = 24.dp
+
+/**
  * THINKING / TOOLING 共用折叠块：左图标 + 标题（过长右侧省略），点击展开；头部相对正文内收 6dp。
  * 展开内容左缘对齐 icon 中线、右缘对齐箭头中线（比头部更宽，展示更多内容）。
  * [isRunning] 为 true 时右上角显示 spinner（工具执行中），否则显示箭头。
@@ -110,7 +116,8 @@ fun CollapsibleBlock(
             exit = shrinkVertically(animationSpec = tween(160, easing = LinearEasing)),
         ) {
             // 展开内容：左缘对齐 icon 中线（6 + 15/2 ≈ 14），右缘对齐箭头中线（6 + 16/2 = 14）
-            Column(modifier = Modifier.padding(horizontal = 14.dp)) {
+            // top = BlockSpacing：头部与内容间间距与块间/行间一致（padding 放在收起态高度为 0 的内容内，折叠时不产生幻影空隙）
+            Column(modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = BlockSpacing)) {
                 content()
             }
         }

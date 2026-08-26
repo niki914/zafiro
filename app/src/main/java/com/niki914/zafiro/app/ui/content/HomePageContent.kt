@@ -427,7 +427,7 @@ private fun HomeChatTurnItem(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+        verticalArrangement = Arrangement.spacedBy(BlockSpacing),
     ) {
         Box(
             modifier = Modifier

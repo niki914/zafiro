@@ -36,19 +36,15 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.HomeChatViewModel
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import kotlinx.coroutines.delay
-
-private val FailedColor = Color(0xFFB85C5C)
 
 // ── shared animation specs ─────────────────────────────────────────────────
 
@@ -106,7 +102,7 @@ fun ToolChain(
             onToggle = onToggleRun,
             modifier = modifier,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(BlockSpacing)) {
                 tools.forEachIndexed { index, status ->
                     StaggeredEntry(index = index, staggerMs = index * 40L) {
                         SingleToolRow(
@@ -142,7 +138,10 @@ private fun SingleToolRow(
         isRunning = isRunning,
         onToggle = { if (!isRunning && hasResult) onToggle() },
     ) {
-        if (hasResult) {
+        // 兜底内容样式 = Thinking 同款正文（bodyMedium / onSurface），失败时整体转错误色。
+        // 文本只显示一份（resultText 优先，缺省时回退 failedReason），避免结果内重复同一段文字。
+        val text = status.resultText ?: status.failedReason
+        if (text != null) {
             val contentModifier = if (onContentClick != null) {
                 Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -153,49 +152,20 @@ private fun SingleToolRow(
                 Modifier
             }
             Box(modifier = Modifier.fillMaxWidth().then(contentModifier)) {
-                ToolResultDetail(status.failedReason, status.resultText)
+                ToolResultText(
+                    text = if (text == HomeChatViewModel.FAILED_REASON_INTERRUPTED) {
+                        stringResource(R.string.ui_tool_status_failed_reason_interrupted)
+                    } else {
+                        text
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (status.state == HomeToolState.Failed) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                )
             }
-        }
-    }
-}
-
-// ── tool result detail (failed reason + result text) ────────────────────────
-
-@Composable
-private fun ToolResultDetail(
-    failedReason: String?,
-    resultText: String?,
-) {
-    val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-    Column(
-        horizontalAlignment = Alignment.Start,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        failedReason?.let { reason ->
-            // 用户中断原因 UI 本地化；其余 failedReason 来自模型工具结果，保持原样
-            Text(
-                text = if (reason == HomeChatViewModel.FAILED_REASON_INTERRUPTED) {
-                    stringResource(R.string.ui_tool_status_failed_reason_interrupted)
-                } else {
-                    reason
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = FailedColor.copy(alpha = 0.72f),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = if (resultText != null) 2.dp else 0.dp),
-            )
-        }
-        resultText?.let { text ->
-            ToolResultText(
-                text = text,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                ),
-                color = contentColor.copy(alpha = 0.58f),
-            )
         }
     }
 }

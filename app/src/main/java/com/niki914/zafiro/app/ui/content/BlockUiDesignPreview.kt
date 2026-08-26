@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,60 +16,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.shape.G2BubbleShape
 
-/** 思考块内容：正文区，展开后左右比头部再多一点内缩。 */
+/** 思考块内容：正文区，展开后左右比头部再多一点内缩（兜底样式的参照）。 */
 private val ThinkingBody = """
     让我先拆解一下这个问题。用户想要在语音助手里获得一个能执行本地工具的智能回答，
     我需要判断：任务是否允许本地执行、需要调用哪些工具、以及如何把多次工具结果整理成一段连贯的中文回答。
 """.trimIndent()
 
-/** Terminal 专有展开内容：终端风格（等宽、命令/输出分块）。 */
-private val TerminalBody = """
-$ ls -la /home/niki/projects
-drwxr-xr-x  12 niki  staff   384  size
-total 48
-""".trimIndent()
-
-/** Python 专有展开内容：代码块风格（等宽）。 */
-private val PythonBody = """
-import os
-count = sum(len(files) for _, _, files in os.walk('/home/niki/projects'))
-print(f"total files: {count}")
-""".trimIndent()
-
-/** Skill 专有展开内容：普通正文说明技能用途。 */
-private val SkillBody = """
-    已加载「phone-use」技能。该技能用于通过无障碍服务操作手机屏幕，
-    可完成点击、滑动、输入等屏幕操作，并在最后返回操作后的界面状态。
-""".trimIndent()
-
-/** 默认工具兜底展开内容：单行等宽，过长省略。 */
+/** 兜底工具结果正文：与 Thinking 同款排版（bodyMedium / onSurface）。 */
 private val DefaultToolBody =
     "Retrieved 12 documents. Matched 3 results. Summarized by relevance score."
 
-/** 默认兜底展开内容：单行等宽，过长省略（软换行，避免撑宽导致拉伸）。 */
-@Composable
-private fun DefaultToolContent(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodySmall.copy(
-            fontFamily = FontFamily.Monospace,
-            fontSize = 13.sp,
-            lineHeight = 18.sp,
-        ),
-        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
-}
+/** 超长内容（内部文本）：默认展开，验证 ToolResultText 的 102dp 上限与内部滚动。 */
+private val LongContentBody = """
+    Retrieved 12 documents. Matched 3 results. Summarized by relevance score. Additional context:
+    the query matched several internal knowledge base entries with overlapping content, ranked by
+    cosine similarity against the embedding index. The top hit was an internal design doc on the
+    agent runtime, followed by the Onboarding flow spec and the MCP bridge contract.
+""".trimIndent()
 
 @Preview(
     name = "Block UI Design",
@@ -82,9 +49,6 @@ private fun DefaultToolContent(text: String) {
 private fun BlockUiDesignPreview() {
     BaseTheme {
         var thinkingOpen by remember { mutableStateOf(false) }
-        var terminalOpen by remember { mutableStateOf(false) }
-        var skillOpen by remember { mutableStateOf(false) }
-        var pythonOpen by remember { mutableStateOf(false) }
         var defaultOpen by remember { mutableStateOf(false) }
         var longTitleOpen by remember { mutableStateOf(false) }
         var longContentOpen by remember { mutableStateOf(true) }
@@ -96,7 +60,7 @@ private fun BlockUiDesignPreview() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+            verticalArrangement = Arrangement.spacedBy(BlockSpacing),
         ) {
             // 用户消息
             Box(
@@ -120,7 +84,7 @@ private fun BlockUiDesignPreview() {
                 }
             }
 
-            // 思考块
+            // 思考块（保留样式参照）
             CollapsibleBlock(
                 icon = ToolPresentation.Thinking,
                 title = "Thinking",
@@ -134,68 +98,18 @@ private fun BlockUiDesignPreview() {
                 )
             }
 
-            // Terminal 专有布局
-            CollapsibleBlock(
-                icon = ToolPresentation.forTool("terminal"),
-                title = "Terminal · ls -la /home/niki/projects",
-                isExpanded = terminalOpen,
-                onToggle = { terminalOpen = !terminalOpen },
-            ) {
-                SelectionContainer {
-                    Text(
-                        text = TerminalBody,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                    )
-                }
-            }
-
-            // Python 专有布局（与 Terminal 区分）
-            CollapsibleBlock(
-                icon = ToolPresentation.forTool("python"),
-                title = "Python · count files in dir",
-                isExpanded = pythonOpen,
-                onToggle = { pythonOpen = !pythonOpen },
-            ) {
-                SelectionContainer {
-                    Text(
-                        text = PythonBody,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                    )
-                }
-            }
-
-            // Skill 专有布局
-            CollapsibleBlock(
-                icon = ToolPresentation.forTool("skill"),
-                title = "Skill · phone-use",
-                isExpanded = skillOpen,
-                onToggle = { skillOpen = !skillOpen },
-            ) {
-                Text(
-                    text = SkillBody,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-
-            // 默认工具（兜底布局）
+            // 兜底工具结果：与 Thinking 同款正文
             CollapsibleBlock(
                 icon = ToolPresentation.forTool("search_docs"),
                 title = "search_docs",
                 isExpanded = defaultOpen,
                 onToggle = { defaultOpen = !defaultOpen },
             ) {
-                DefaultToolContent(DefaultToolBody)
+                Text(
+                    text = DefaultToolBody,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             }
 
             // 超长标题（外部文本）：右侧省略
@@ -213,18 +127,17 @@ private fun BlockUiDesignPreview() {
                 )
             }
 
-            // 超长内容（内部文本）：默认展开，单行等宽省略
+            // 超长内容（内部文本）：默认展开，验证 102dp 上限 + 内部滚动
             CollapsibleBlock(
                 icon = ToolPresentation.forTool("search_knowledge_base"),
                 title = "search_knowledge_base",
                 isExpanded = longContentOpen,
                 onToggle = { longContentOpen = !longContentOpen },
             ) {
-                DefaultToolContent(
-                    "Retrieved 12 documents. Matched 3 results. " +
-                        "Summarized by relevance score. Additional context: the query matched " +
-                        "several internal knowledge base entries with overlapping content, ranked " +
-                        "by cosine similarity against the embedding index.",
+                ToolResultText(
+                    text = LongContentBody,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
 
