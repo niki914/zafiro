@@ -238,6 +238,14 @@
     <string name="builtin_tool_empty">目前沒有可用的內建工具。</string>
     <string name="builtin_tool_load_failed">讀取失敗：%1$s</string>
     <string name="builtin_tool_save_failed">儲存失敗：%1$s</string>
+    <string name="builtin_tool_group_dev_tools">開發工具</string>
+    <string name="builtin_tool_group_dev_tools_summary">在裝置上執行 Shell 指令與 Python 程式碼</string>
+    <string name="builtin_tool_group_android_native">Android 原生</string>
+    <string name="builtin_tool_group_android_native_summary">開啟連結、搜尋與啟動應用程式、傳送通知等系統原生操作</string>
+    <string name="builtin_tool_group_screen_operation">螢幕操作</string>
+    <string name="builtin_tool_group_screen_operation_summary">透過無障礙服務或 Shell 兩種方式讀取、操作螢幕</string>
+    <string name="builtin_tool_group_custom_tool">自訂工具</string>
+    <string name="builtin_tool_group_custom_tool_summary">建立、更新與讀取自訂工具</string>
 
     <!-- Custom Tool Module -->
     <string name="custom_tool_page_description">管理你的自訂工具。</string>

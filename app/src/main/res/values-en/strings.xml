@@ -239,6 +239,14 @@
     <string name="builtin_tool_empty">No built-in tools are available right now.</string>
     <string name="builtin_tool_load_failed">Failed to load: %1$s</string>
     <string name="builtin_tool_save_failed">Failed to save: %1$s</string>
+    <string name="builtin_tool_group_dev_tools">Dev Tools</string>
+    <string name="builtin_tool_group_dev_tools_summary">Execute shell commands and Python code on your device</string>
+    <string name="builtin_tool_group_android_native">Android Native</string>
+    <string name="builtin_tool_group_android_native_summary">System-native actions: open links, search and launch apps, send notifications</string>
+    <string name="builtin_tool_group_screen_operation">Screen Operation</string>
+    <string name="builtin_tool_group_screen_operation_summary">Read and operate the screen via accessibility service or shell</string>
+    <string name="builtin_tool_group_custom_tool">Custom Tools</string>
+    <string name="builtin_tool_group_custom_tool_summary">Create, update, and read custom shell tools</string>
 
     <!-- Custom Tool Module -->
     <string name="custom_tool_page_description">Manage your custom tools.</string>
