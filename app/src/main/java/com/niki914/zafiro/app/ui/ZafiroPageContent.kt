@@ -6,7 +6,6 @@ import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.nav.ConfigurePage
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
 import com.niki914.zafiro.app.ui.nav.ConversationHistoryPage
-import com.niki914.zafiro.app.ui.nav.CustomToolDetailPage
 import com.niki914.zafiro.app.ui.nav.DonePage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.HomePage
@@ -23,7 +22,6 @@ import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
 import com.niki914.zafiro.app.ui.route.ConfigurePageRoute
 import com.niki914.zafiro.app.ui.route.BuiltinToolGroupDetailRoute
 import com.niki914.zafiro.app.ui.route.ConversationHistoryPageRoute
-import com.niki914.zafiro.app.ui.route.CustomToolDetailRoute
 import com.niki914.zafiro.app.ui.route.DonePageRoute
 import com.niki914.zafiro.app.ui.route.ExecutionRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.HomePageRoute
@@ -126,11 +124,6 @@ fun ZafiroPageContent(
         )
 
         is TakeoverRuleDetailPage -> TakeoverRuleDetailRoute(
-            page = page,
-            onBack = onPop,
-        )
-
-        is CustomToolDetailPage -> CustomToolDetailRoute(
             page = page,
             onBack = onPop,
         )

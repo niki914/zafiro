@@ -11,7 +11,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
+import com.niki914.zafiro.settings.model.RuntimePyTool as PyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
@@ -91,14 +91,14 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
-    fun customToolsUseEnabledForAgentsAndSkipInvalidTools() {
-        val tools = ToolSettingsCodec.parseCustomTools(
+    fun pyToolsParseFieldsAndSkipInvalidEntries() {
+        val tools = ToolSettingsCodec.parsePyTools(
             """
             {
               "tools": [
-                {"name":"battery","description":"Battery","command":"dumpsys battery","enabled_for_agents":["main"]},
-                {"name":"ghost","command":"date","enabled_for_agents":["ghost"]},
-                {"name":"missing_command","description":"Broken"}
+                {"name":"py_battery","description":"Battery","code":"def main():\n    pass","schema":"{\"type\":\"object\"}","enabled":true,"timeout_ms":45000},
+                {"name":"py_disabled","code":"def main():\n    pass","enabled":false},
+                {"name":"py_missing_code","description":"Broken"}
               ]
             }
             """.trimIndent()
@@ -106,11 +106,20 @@ class SettingsDomainCodecsTest {
 
         assertEquals(
             listOf(
-                CustomTool("battery", "Battery", "dumpsys battery", true),
-                CustomTool("ghost", "", "date", false),
+                PyTool(name = "py_battery", code = "def main():\n    pass", description = "Battery",
+                    schemaJson = "{\"type\":\"object\"}", enabled = true, timeoutMs = 45000),
+                PyTool(name = "py_disabled", code = "def main():\n    pass", enabled = false),
             ),
             tools,
         )
+    }
+
+    @Test
+    fun pyToolsEncodeRoundTrips() {
+        val tools = listOf(
+            PyTool(name = "py_battery", code = "def main():\n    pass", description = "Battery"),
+        )
+        assertEquals(tools, ToolSettingsCodec.parsePyTools(ToolSettingsCodec.encodePyTools(tools)))
     }
 
     @Test

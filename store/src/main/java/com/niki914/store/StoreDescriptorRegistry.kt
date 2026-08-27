@@ -8,7 +8,7 @@ object StoreDescriptorRegistry {
     const val AGENT_MAIN_CONFIG_ID = "agent.main.config"
     const val AGENT_MAIN_MEMORY_ID = "agent.main.memory"
     const val TOOLS_BUILTIN_ID = "tools.builtin"
-    const val TOOLS_CUSTOM_ID = "tools.custom"
+    const val TOOLS_PY_ID = "tools.py"
     const val TOOLS_MCP_SERVERS_ID = "tools.mcp.servers"
     const val RULES_EXECUTION_ID = "rules.execution"
     const val RULES_TAKEOVER_ID = "rules.takeover"
@@ -33,7 +33,7 @@ object StoreDescriptorRegistry {
             "settings/tools/builtin_tools.json",
             """{"version":2,"enabled":{}}"""
         ),
-        StoreDescriptor(TOOLS_CUSTOM_ID, "settings/tools/custom_tools.json", """{"tools":[]}"""),
+        StoreDescriptor(TOOLS_PY_ID, "settings/tools/py_tools.json", """{"tools":[]}"""),
         StoreDescriptor(
             TOOLS_MCP_SERVERS_ID,
             "settings/tools/mcp/servers.json",

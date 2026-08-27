@@ -117,8 +117,6 @@
     <string name="skill_import_cancel">Cancel</string>
     <string name="skill_import_resolve_failed">Unable to access the selected folder</string>
     <string name="skill_import_error">Import failed</string>
-    <string name="ui_settings_custom_shell_tools">Custom Shell Tools</string>
-    <string name="ui_settings_custom_shell_tools_summary">Wrap common commands as tools your Agent can use</string>
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">Connect external MCP services and tools</string>
     <string name="ui_settings_takeover">Takeover Rules</string>
@@ -245,38 +243,9 @@
     <string name="builtin_tool_group_android_native_summary">System-native actions: open links, search and launch apps, send notifications</string>
     <string name="builtin_tool_group_screen_operation">Screen Operation</string>
     <string name="builtin_tool_group_screen_operation_summary">Read and operate the screen via accessibility service or shell</string>
-    <string name="builtin_tool_group_custom_tool">Custom Tools</string>
-    <string name="builtin_tool_group_custom_tool_summary">Create, update, and read custom shell tools</string>
+    <string name="builtin_tool_group_py_tools">Python tools</string>
+    <string name="builtin_tool_group_py_tools_summary">Parameterized Python tools the agent can create, modify, and test-run</string>
 
-    <!-- Custom Tool Module -->
-    <string name="custom_tool_page_description">Manage your custom tools.</string>
-    <string name="custom_tool_page_empty_description">Let your Agent help you out, or tap the top right to create a new tool.</string>
-    <string name="custom_tool_loading">Loading saved custom tools...</string>
-    <string name="custom_tool_editor_title_create">New Custom Tool</string>
-    <string name="custom_tool_editor_description">Configure your custom tool. After saving, the Agent can call it when needed. Running commands carries risk, so use this feature with caution.</string>
-    <string name="custom_tool_field_name">Tool Name</string>
-    <string name="custom_tool_field_name_hint">For example: open_project</string>
-    <string name="custom_tool_field_description">Tool Description</string>
-    <string name="custom_tool_field_description_hint">Describe what this tool does so the Agent can understand it and use it at the right time.</string>
-    <string name="custom_tool_field_enabled">Enable Tool</string>
-    <string name="custom_tool_field_command">Command</string>
-    <string name="custom_tool_field_command_hint">For example: bash /sdcard/my_script.sh</string>
-    <string name="custom_tool_save_action">Save Custom Tool</string>
-    <string name="custom_tool_error_name_required">Please enter a tool name</string>
-    <string name="custom_tool_error_description_required">Please enter a tool description</string>
-    <string name="custom_tool_error_command_required">Please enter a command</string>
-    <string name="custom_tool_error_name_invalid">The name must start with a letter or underscore and contain only letters, numbers, or underscores</string>
-    <string name="custom_tool_error_name_duplicate">This name already exists. Please choose another one and try again</string>
-    <string name="custom_tool_error_name_reserved">This name is already used by a built-in tool</string>
-    <string name="custom_tool_error_command_unsafe">This command was blocked by the safety policy. Please adjust it and try again</string>
-    <string name="custom_tool_error_load_failed">Failed to load custom tools: %1$s</string>
-    <string name="custom_tool_error_save_failed">Failed to save custom tools: %1$s</string>
-    <string name="custom_tool_delete_dialog_title">Delete Custom Tool</string>
-    <string name="custom_tool_delete_dialog_text">Are you sure you want to delete the tool \"%1$s\"? This action cannot be undone.</string>
-    <string name="custom_tool_error_delete_failed">Failed to delete custom tools: %1$s</string>
-    <string name="custom_tool_save_failed">Failed to save: %1$s</string>
-
-    <!-- MCP Module -->
     <string name="mcp_page_description">Configure connection and authentication for MCP services. After saving, Zafiro will automatically discover available tools at runtime.</string>
     <string name="mcp_page_empty_description">Tap the top right to add your first server.</string>
     <string name="mcp_loading">Loading saved MCP services...</string>
@@ -336,12 +305,6 @@
     <string name="error_skill_import_failed">Failed to import skill</string>
     <string name="error_skill_delete_failed">Failed to delete skill</string>
 
-    <!-- Error: Custom Tool -->
-    <string name="error_custom_tool_load_failed">Failed to load custom tools</string>
-    <string name="error_custom_tool_save_failed">Failed to save custom tool</string>
-    <string name="error_custom_tool_delete_failed">Failed to delete custom tool</string>
-
-    <!-- Error: Memory -->
     <string name="error_memory_load_failed">Failed to load memories</string>
     <string name="error_memory_save_failed">Failed to save memory</string>
     <string name="error_memory_delete_failed">Failed to delete memory</string>

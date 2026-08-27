@@ -51,11 +51,11 @@ object BuiltinToolGroups {
             ),
         ),
         BuiltinToolGroup(
-            id = "custom_tool",
-            titleRes = R.string.builtin_tool_group_custom_tool,
-            summaryRes = R.string.builtin_tool_group_custom_tool_summary,
+            id = "py_tools",
+            titleRes = R.string.builtin_tool_group_py_tools,
+            summaryRes = R.string.builtin_tool_group_py_tools_summary,
             mode = BuiltinToolGroupMode.WHOLE,
-            members = listOf("create_custom_tool", "read_custom_tool"),
+            members = listOf("pytools"),
         ),
     )
 

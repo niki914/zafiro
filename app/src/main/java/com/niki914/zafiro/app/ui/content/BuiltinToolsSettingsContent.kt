@@ -186,13 +186,6 @@ private fun previewUiState(): BuiltinToolSettingsUiState = BuiltinToolSettingsUi
             mode = BuiltinToolGroupMode.WHOLE,
             checked = true,
         ),
-        BuiltinToolGroupUiItem(
-            id = "custom_tool",
-            titleRes = R.string.builtin_tool_group_custom_tool,
-            summaryRes = R.string.builtin_tool_group_custom_tool_summary,
-            mode = BuiltinToolGroupMode.WHOLE,
-            checked = true,
-        ),
     ),
     standaloneTools = listOf(
         BuiltinToolSettingItem(

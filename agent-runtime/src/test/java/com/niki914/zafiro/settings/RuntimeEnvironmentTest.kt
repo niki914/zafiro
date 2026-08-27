@@ -2,8 +2,8 @@ package com.niki914.zafiro.settings
 
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimeCustomTool
-import com.niki914.zafiro.settings.model.RuntimeCustomToolValidation
+import com.niki914.zafiro.settings.model.RuntimePyTool
+import com.niki914.zafiro.settings.model.RuntimeToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
@@ -87,32 +87,28 @@ private class FakeRuntimeSettingsGateway : RuntimeSettingsGateway {
     override suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult =
         MemoryMutationResult.Ok
 
-    override suspend fun listCustomTools(): List<RuntimeCustomTool> = emptyList()
+    override suspend fun listPyTools(): List<RuntimePyTool> = emptyList()
 
-    override suspend fun saveCustomTool(
-        tool: RuntimeCustomTool,
+    override suspend fun savePyTool(
+        tool: RuntimePyTool,
         overwrite: Boolean,
-    ): RuntimeCustomToolValidation? = null
+    ): RuntimeToolValidation? = null
 
-    override suspend fun replaceAllCustomTools(
-        tools: List<RuntimeCustomTool>,
-    ): RuntimeCustomToolValidation? = null
+    override suspend fun deletePyTool(name: String) = Unit
 
-    override suspend fun deleteCustomTool(name: String) = Unit
-
-    override suspend fun setCustomToolEnabled(name: String, enabled: Boolean) = Unit
+    override suspend fun setPyToolEnabled(name: String, enabled: Boolean) = Unit
 
     override suspend fun listBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> = emptyList()
 
     override suspend fun setBuiltinToolEnabled(
         name: String,
         enabled: Boolean,
-    ): RuntimeCustomToolValidation? = null
+    ): RuntimeToolValidation? = null
 
     override suspend fun setBuiltinToolGroupEnabled(
         groupId: String,
         enabled: Boolean,
-    ): RuntimeCustomToolValidation? = null
+    ): RuntimeToolValidation? = null
 
     override suspend fun listExecutionRules(): List<RuntimeExecutionRule> = emptyList()
 }

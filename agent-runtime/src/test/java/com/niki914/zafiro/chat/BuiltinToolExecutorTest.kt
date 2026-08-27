@@ -26,15 +26,15 @@ class BuiltinToolExecutorTest {
 
     @Test
     fun execute_invokesBuiltinWithArgumentsJson() = runTest {
-        val tool = RecordingBuiltinTool("create_custom_tool")
+        val tool = RecordingBuiltinTool("fake_tool")
         val executor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(tool)))
 
         val resultJson = executor.execute(
-            name = "create_custom_tool",
+            name = "fake_tool",
             argumentsJson = """{"name":"battery_status"}""",
         )
 
-        assertEquals("create_custom_tool", tool.lastRequest?.name)
+        assertEquals("fake_tool", tool.lastRequest?.name)
         assertEquals("""{"name":"battery_status"}""", tool.lastRequest?.argumentsJson)
         val json = Json.parseToJsonElement(resultJson).jsonObject
         assertEquals("OK", json["code"]!!.jsonPrimitive.content)
@@ -49,7 +49,7 @@ class BuiltinToolExecutorTest {
         val json = Json.parseToJsonElement(resultJson).jsonObject
         assertEquals("LOCAL_TOOL_NOT_EXECUTABLE", json["code"]!!.jsonPrimitive.content)
         assertEquals(
-            "Check builtin_tool_flags or custom_tools configuration.",
+            "Check builtin_tool_flags or py tools configuration.",
             json["hint"]!!.jsonPrimitive.content,
         )
     }

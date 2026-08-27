@@ -31,10 +31,10 @@ class XIpcStoreRepositoryTest {
     @Test
     fun blankFileReturnsDescriptorDefaultJson() = runTest {
         val context = testContext()
-        val descriptor = StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_CUSTOM_ID)
+        val descriptor = StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_PY_ID)
         ConfigPersistence.fileFor(context, descriptor).writeUtf8("   ")
 
-        val json = XIpcStoreRepository.readJson(context, StoreDescriptorRegistry.TOOLS_CUSTOM_ID)
+        val json = XIpcStoreRepository.readJson(context, StoreDescriptorRegistry.TOOLS_PY_ID)
 
         assertEquals("""{"tools":[]}""", json)
     }
@@ -75,7 +75,7 @@ class XIpcStoreRepositoryTest {
         val targetDescriptor =
             StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_BUILTIN_ID)
         val otherDescriptor =
-            StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_CUSTOM_ID)
+            StoreDescriptorRegistry.require(StoreDescriptorRegistry.TOOLS_PY_ID)
         val otherFile = ConfigPersistence.fileFor(context, otherDescriptor)
         otherFile.writeUtf8("""{"tools":[]}""")
 

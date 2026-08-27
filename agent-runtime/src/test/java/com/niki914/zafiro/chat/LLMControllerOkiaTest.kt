@@ -5,7 +5,7 @@ import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.zafiro.settings.model.LlmApiType
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimeCustomTool
+import com.niki914.zafiro.settings.model.RuntimePyTool
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.okia.Okia
 import com.niki914.okia.OkiaDependencies
@@ -92,9 +92,9 @@ class LLMControllerOkiaTest {
                     RuntimeBuiltinToolSetting("terminal", "t", enabled = true),
                     RuntimeBuiltinToolSetting("memory", "m", enabled = false),
                 ),
-                customTools = listOf(
-                    RuntimeCustomTool("custom_x", "dx", "echo", enabled = true),
-                    RuntimeCustomTool("custom_y", "dy", "echo", enabled = false),
+                pyTools = listOf(
+                    RuntimePyTool(name = "py_x", code = "print('x')", description = "dx", enabled = true),
+                    RuntimePyTool(name = "py_y", code = "print('y')", description = "dy", enabled = false),
                 ),
             )
         )
@@ -108,11 +108,11 @@ class LLMControllerOkiaTest {
         val names = LLMController.toolRegistry.snapshot()
             .map { it.descriptor.name }
             .toSet()
-        assertEquals(setOf("terminal", "custom_x"), names)
+        assertEquals(setOf("terminal", "py_x"), names)
     }
 
     @Test
-    fun refresh_iconicCustomToolsAreRegisteredAsLocalWithSchema() = runTest {
+    fun refresh_enabledPyToolsAreRegisteredAsLocalWithSchema() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
                 llmConfig = validLlmConfig(),

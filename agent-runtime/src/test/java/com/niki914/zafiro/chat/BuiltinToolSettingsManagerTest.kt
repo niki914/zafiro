@@ -28,7 +28,7 @@ class BuiltinToolSettingsManagerTest {
         val items = manager.load()
 
         assertEquals(
-            listOf("create_custom_tool", "load_skill", "memory", "notify", "read_custom_tool", "terminal"),
+            listOf("load_skill", "memory", "notify", "pytools", "terminal"),
             items.map { it.name }.sorted()
         )
         assertTrue(items.all { it.enabled })
@@ -41,19 +41,19 @@ class BuiltinToolSettingsManagerTest {
             installRuntimeSettingsGatewayForTest()
 
         val result = manager.setEnabled(
-            name = "create_custom_tool",
+            name = "pytools",
             enabled = true,
         )
 
         assertTrue(result.ok)
         assertEquals("OK", result.code)
         assertTrue(result.data["available_next_turn"]!!.jsonPrimitive.boolean)
-        assertEquals("create_custom_tool", result.data["name"]!!.jsonPrimitive.content)
+        assertEquals("pytools", result.data["name"]!!.jsonPrimitive.content)
         assertTrue(result.data["enabled"]!!.jsonPrimitive.boolean)
         assertEquals(1, gateway.writeCount)
         assertTrue(
             gateway.builtinTools
-                .single { it.name == "create_custom_tool" }
+                .single { it.name == "pytools" }
                 .enabled
         )
     }
@@ -96,8 +96,8 @@ class BuiltinToolSettingsManagerTest {
                 FakeRuntimeSettingsGateway(
                     builtinTools = listOf(
                         RuntimeBuiltinToolSetting(
-                            "create_custom_tool",
-                            "Create custom tools.",
+                            "pytools",
+                            "Manage persistent Python tools.",
                             enabled = false
                         ),
                         RuntimeBuiltinToolSetting(
@@ -110,13 +110,13 @@ class BuiltinToolSettingsManagerTest {
             )
 
         manager.setEnabled(
-            name = "create_custom_tool",
+            name = "pytools",
             enabled = true,
         )
 
         assertTrue(
             gateway.builtinTools
-                .single { it.name == "create_custom_tool" }
+                .single { it.name == "pytools" }
                 .enabled
         )
         assertTrue(

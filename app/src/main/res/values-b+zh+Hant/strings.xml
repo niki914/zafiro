@@ -116,8 +116,6 @@
     <string name="skill_import_cancel">取消</string>
     <string name="skill_import_resolve_failed">無法存取所選文件夾</string>
     <string name="skill_import_error">匯入失敗</string>
-    <string name="ui_settings_custom_shell_tools">自訂 Shell 工具</string>
-    <string name="ui_settings_custom_shell_tools_summary">將常用命令封裝成 Agent 可用的工具</string>
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">連接外部 MCP 服務與工具</string>
     <string name="ui_settings_takeover">接管規則</string>
@@ -244,38 +242,9 @@
     <string name="builtin_tool_group_android_native_summary">開啟連結、搜尋與啟動應用程式、傳送通知等系統原生操作</string>
     <string name="builtin_tool_group_screen_operation">螢幕操作</string>
     <string name="builtin_tool_group_screen_operation_summary">透過無障礙服務或 Shell 兩種方式讀取、操作螢幕</string>
-    <string name="builtin_tool_group_custom_tool">自訂工具</string>
-    <string name="builtin_tool_group_custom_tool_summary">建立、更新與讀取自訂工具</string>
+    <string name="builtin_tool_group_py_tools">Python 工具</string>
+    <string name="builtin_tool_group_py_tools_summary">Agent 可建立、修改與試運行的可傳參 Python 工具</string>
 
-    <!-- Custom Tool Module -->
-    <string name="custom_tool_page_description">管理你的自訂工具。</string>
-    <string name="custom_tool_page_empty_description">讓你的 Agent 幫到你，或點擊右上角建立新工具。</string>
-    <string name="custom_tool_loading">正在讀取已儲存的自訂工具…</string>
-    <string name="custom_tool_editor_title_create">新增自訂工具</string>
-    <string name="custom_tool_editor_description">設定你的自訂工具。儲存後，Agent 可在需要時呼叫此工具。執行命令有風險，請審慎使用此功能。</string>
-    <string name="custom_tool_field_name">工具名稱</string>
-    <string name="custom_tool_field_name_hint">例如：open_project</string>
-    <string name="custom_tool_field_description">工具說明</string>
-    <string name="custom_tool_field_description_hint">描述這個工具的用途，方便 Agent 理解並在適當時機使用。</string>
-    <string name="custom_tool_field_enabled">啟用工具</string>
-    <string name="custom_tool_field_command">固定命令</string>
-    <string name="custom_tool_field_command_hint">例如：bash /sdcard/my_script.sh</string>
-    <string name="custom_tool_save_action">儲存自訂工具</string>
-    <string name="custom_tool_error_name_required">請輸入工具名稱</string>
-    <string name="custom_tool_error_description_required">請輸入工具說明</string>
-    <string name="custom_tool_error_command_required">請輸入固定命令</string>
-    <string name="custom_tool_error_name_invalid">名稱須以字母或底線開頭，且只能包含字母、數字或底線</string>
-    <string name="custom_tool_error_name_duplicate">名稱已存在，請更換後重試</string>
-    <string name="custom_tool_error_name_reserved">此名稱已被內建工具使用</string>
-    <string name="custom_tool_error_command_unsafe">命令已被安全策略攔截，請調整後再試</string>
-    <string name="custom_tool_error_load_failed">讀取自訂工具失敗：%1$s</string>
-    <string name="custom_tool_error_save_failed">儲存自訂工具失敗：%1$s</string>
-    <string name="custom_tool_delete_dialog_title">刪除自訂工具</string>
-    <string name="custom_tool_delete_dialog_text">確定要刪除工具「%1$s」嗎？此操作不可撤銷。</string>
-    <string name="custom_tool_error_delete_failed">刪除自訂工具失敗：%1$s</string>
-    <string name="custom_tool_save_failed">儲存失敗：%1$s</string>
-
-    <!-- MCP Module -->
     <string name="mcp_page_description">設定 MCP 服務的連線方式與驗證資訊。儲存後，Zafiro 會在執行時自動發現可用工具。</string>
     <string name="mcp_page_empty_description">點擊右上角以新增第一個伺服器。</string>
     <string name="mcp_loading">正在讀取已儲存的 MCP 服務…</string>

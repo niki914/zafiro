@@ -72,14 +72,14 @@ object LLMController {
     // MCP 工具由 T2b McpDiscovery 注册进同一 registry。
     internal val toolRegistry: ToolRegistry = DefaultToolRegistry()
 
-    // 回合内创建的自定义工具（CreateCustomTool 成功回调，D20）：
+    // 回合内写入的 py 工具（pytools write 成功回调，D20）：
     // 持久化尚未被下一次 refresh 读取前的执行兜底 + 回合内注册数据源。
-    private val inlineCustomTools = mutableMapOf<String, LocalTool.Custom>()
+    private val inlinePyTools = mutableMapOf<String, LocalTool.Py>()
 
     private val localToolExecutor = LocalToolExecutor(
         currentTools = { runtimeState?.snapshot?.tools },
-        inlineCustomTools = inlineCustomTools,
-        onCustomToolCreated = { tool -> registerCustomToolNow(tool) },
+        inlinePyTools = inlinePyTools,
+        onPyToolWritten = { tool -> registerPyToolNow(tool) },
     )
 
     private var runtimeState: RuntimeState? = null
@@ -126,7 +126,7 @@ object LLMController {
         sessionForwardJob = null
         conversationFlow.value = null
         toolRegistry.snapshot().forEach { toolRegistry.remove(it.descriptor.wireName) }
-        inlineCustomTools.clear()
+        inlinePyTools.clear()
         mcpRefreshScheduler.reset()
         okiaFactory = OkiaFactory { apiType, restore, config ->
             openOkiaWithDefaultProtocol(apiType, restore, config)
@@ -154,18 +154,18 @@ object LLMController {
         )
         val apiType = LlmApiType.fromProvider(llmConfig.provider)
         val runtimeMcpServers = gateway.listMcpServers()
-        val customTools = gateway.listCustomTools()
+        val pyTools = gateway.listPyTools()
         val builtinSettings = gateway.listBuiltinToolSettings()
         val enabledSkills = gateway.listEnabledSkills()
         val resolvedTools = toolManager.resolve(
-            customTools = customTools,
+            pyTools = pyTools,
             mcpServers = runtimeMcpServers,
             builtinSettings = builtinSettings,
         )
         Logger.i(
             LOG_TAG,
             "tools resolved builtin=${resolvedTools.builtinTools.size} " +
-                "custom=${resolvedTools.customTools.size} " +
+                "py=${resolvedTools.pyTools.size} " +
                 "mcpServers=${resolvedTools.mcpServers.size}"
         )
         val configWithoutRuntimePrompt = ResolvedLlmConfig(
@@ -187,7 +187,7 @@ object LLMController {
             mcpServers = toOkiaMcpServers(resolvedTools.mcpServers)
         }
         // T2a：本地工具注册（enabled 集合全量重建；inline 回合内工具由
-        // registerCustomToolNow 注册，随下次 refresh 由持久化版本接管）
+        // registerPyToolNow 注册，随下次 refresh 由持久化版本接管）
         syncLocalTools(resolvedTools)
         // T2b：MCP 发现（方案 B，D-T2B-3）：签名变化才起后台刷新，不 await
         // （不阻塞回合）；初始化时签名 null → 首次天然触发（启动 eager）
@@ -308,7 +308,7 @@ object LLMController {
                 LOG_TAG,
                 "refresh ok model=${state.snapshot.config.model} " +
                     "builtin=${state.snapshot.tools.builtinTools.size} " +
-                    "custom=${state.snapshot.tools.customTools.size} " +
+                    "py=${state.snapshot.tools.pyTools.size} " +
                     "mcp=${state.snapshot.tools.mcpServers.size}"
             )
 
@@ -511,7 +511,7 @@ object LLMController {
 
     /**
      * 全量重建本地工具注册：registry 中所有 Local 工具先移除（含 inline 的，
-     * create_custom_tool 保存成功后本轮会以持久化版本重新注册），再注册当前
+     * pytools write 成功后本轮会以持久化版本重新注册），再注册当前
      * resolved 的 enabled 工具。wireName 为 registry 键（默认
      * ToolWireName.forLocal(name)），同名覆盖无需特判。
      */
@@ -520,9 +520,11 @@ object LLMController {
             .map { it.descriptor }
             .filter { it.kind is ToolKind.Local }
             .forEach { toolRegistry.remove(it.wireName) }
-        (tools.builtinTools + tools.customTools).forEach { tool ->
-            val inputSchemaJson =
-                (tool as? LocalTool.Builtin)?.tool?.inputSchemaJson
+        (tools.builtinTools + tools.pyTools).forEach { tool ->
+            val inputSchemaJson = when (tool) {
+                is LocalTool.Builtin -> tool.tool.inputSchemaJson
+                is LocalTool.Py -> tool.inputSchemaJson
+            }
             toolRegistry.register(
                 ToolDescriptor(
                     name = tool.name,
@@ -533,27 +535,27 @@ object LLMController {
                 localToolExecutor,
             )
         }
-        inlineCustomTools.clear()
+        inlinePyTools.clear()
     }
 
     /**
-     * CreateCustomTool 成功且 enabled 的回合内注册（D20）：立即注册进
+     * pytools write 成功且 enabled 的回合内注册（D20）：立即注册进
      * registry，当前回合下一轮模型请求即可见（RealAgentLoop 每段现取
      * snapshot）。下次 refresh 以持久化版本重新注册（同名覆盖）。
      */
-    private fun registerCustomToolNow(tool: LocalTool.Custom) {
+    private fun registerPyToolNow(tool: LocalTool.Py) {
         toolRegistry.register(
             ToolDescriptor(
                 name = tool.name,
                 description = tool.description,
-                inputSchemaJson = null,
+                inputSchemaJson = tool.inputSchemaJson,
                 kind = ToolKind.Local,
             ),
             localToolExecutor,
         )
         Logger.i(
             LOG_TAG,
-            "custom tool registered in-turn name=${tool.name} enabled=${tool.enabled}"
+            "py tool registered in-turn name=${tool.name}"
         )
     }
 

@@ -17,7 +17,7 @@ class BuiltinToolExecutor(
             ?: return BuiltinToolResult.failure(
                 code = "LOCAL_TOOL_NOT_EXECUTABLE",
                 message = "Local tool '$name' is not executable in current runtime.",
-                hint = "Check builtin_tool_flags or custom_tools configuration.",
+                hint = "Check builtin_tool_flags or py tools configuration.",
             ).toJsonString()
 
         return execute(tool = tool, argumentsJson = argumentsJson)

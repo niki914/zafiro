@@ -1,7 +1,6 @@
 package com.niki914.zafiro.repo
 
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.array
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.enabledForAgent
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.orEmptyObjects
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
@@ -9,7 +8,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
+import kotlinx.serialization.json.longOrNull
+import com.niki914.zafiro.settings.model.RuntimePyTool as PyTool
 
 internal object ToolSettingsCodec {
     // v2：一个工具一个布尔，缺失回退 defaultEnabled；未知工具名由调用方按 registry 过滤（读端忽略、写端 GC）。
@@ -31,24 +31,27 @@ internal object ToolSettingsCodec {
         ).toString()
     }
 
-    fun parseCustomTools(json: String, agentId: String = MAIN_AGENT_ID): List<CustomTool> {
+    fun parsePyTools(json: String): List<PyTool> {
         return parseObject(json)
             .array(TOOLS_KEY)
             .orEmptyObjects()
             .mapNotNull { obj ->
                 val name = obj.string(NAME_KEY).trim()
-                val command = obj.string(COMMAND_KEY).trim()
-                if (name.isBlank() || command.isBlank()) return@mapNotNull null
-                CustomTool(
+                val code = obj.string(CODE_KEY)
+                if (name.isBlank() || code.isBlank()) return@mapNotNull null
+                PyTool(
                     name = name,
-                    description = obj.string(DESCRIPTION_KEY).trim(),
-                    command = command,
-                    enabled = enabledForAgent(obj[ENABLED_FOR_AGENTS_KEY], agentId) == true,
+                    code = code,
+                    description = obj.string(DESCRIPTION_KEY),
+                    schemaJson = obj.string(SCHEMA_KEY),
+                    enabled = (obj[ENABLED_KEY] as? JsonPrimitive)?.booleanOrNull ?: true,
+                    timeoutMs = (obj[TIMEOUT_KEY] as? JsonPrimitive)?.longOrNull
+                        ?: PyTool.DEFAULT_PY_TOOL_TIMEOUT_MS,
                 )
             }
     }
 
-    fun encodeCustomTools(tools: List<CustomTool>, agentId: String = MAIN_AGENT_ID): String {
+    fun encodePyTools(tools: List<PyTool>): String {
         return JsonObject(
             mapOf(
                 TOOLS_KEY to JsonArray(
@@ -56,11 +59,11 @@ internal object ToolSettingsCodec {
                         JsonObject(
                             mapOf(
                                 NAME_KEY to JsonPrimitive(tool.name),
+                                CODE_KEY to JsonPrimitive(tool.code),
                                 DESCRIPTION_KEY to JsonPrimitive(tool.description),
-                                COMMAND_KEY to JsonPrimitive(tool.command),
-                                ENABLED_FOR_AGENTS_KEY to JsonArray(
-                                    if (tool.enabled) listOf(JsonPrimitive(agentId)) else emptyList()
-                                ),
+                                SCHEMA_KEY to JsonPrimitive(tool.schemaJson),
+                                ENABLED_KEY to JsonPrimitive(tool.enabled),
+                                TIMEOUT_KEY to JsonPrimitive(tool.timeoutMs),
                             )
                         )
                     }
@@ -69,13 +72,13 @@ internal object ToolSettingsCodec {
         ).toString()
     }
 
-    private const val MAIN_AGENT_ID = "main"
-    private const val ENABLED_FOR_AGENTS_KEY = "enabled_for_agents"
     private const val VERSION_KEY = "version"
     private const val BUILTIN_VERSION = 2
     private const val ENABLED_KEY = "enabled"
     private const val TOOLS_KEY = "tools"
     private const val NAME_KEY = "name"
     private const val DESCRIPTION_KEY = "description"
-    private const val COMMAND_KEY = "command"
+    private const val CODE_KEY = "code"
+    private const val SCHEMA_KEY = "schema"
+    private const val TIMEOUT_KEY = "timeout_ms"
 }

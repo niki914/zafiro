@@ -3,8 +3,8 @@ package com.niki914.zafiro.repo
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.RuntimeSettingsGateway
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimeCustomTool
-import com.niki914.zafiro.settings.model.RuntimeCustomToolValidation
+import com.niki914.zafiro.settings.model.RuntimePyTool
+import com.niki914.zafiro.settings.model.RuntimeToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
@@ -42,27 +42,21 @@ class XRepoRuntimeGateway(
         return repo.memory.replaceByText(oldText, content)
     }
 
-    override suspend fun listCustomTools(): List<RuntimeCustomTool> = repo.customTools.list()
+    override suspend fun listPyTools(): List<RuntimePyTool> = repo.pyTools.list()
 
-    override suspend fun saveCustomTool(
-        tool: RuntimeCustomTool,
+    override suspend fun savePyTool(
+        tool: RuntimePyTool,
         overwrite: Boolean,
-    ): RuntimeCustomToolValidation? {
-        return repo.customTools.save(tool, overwrite)
+    ): RuntimeToolValidation? {
+        return repo.pyTools.save(tool, overwrite)
     }
 
-    override suspend fun replaceAllCustomTools(
-        tools: List<RuntimeCustomTool>,
-    ): RuntimeCustomToolValidation? {
-        return repo.customTools.replaceAll(tools)
+    override suspend fun deletePyTool(name: String) {
+        repo.pyTools.delete(name)
     }
 
-    override suspend fun deleteCustomTool(name: String) {
-        repo.customTools.delete(name)
-    }
-
-    override suspend fun setCustomToolEnabled(name: String, enabled: Boolean) {
-        repo.customTools.setEnabled(name, enabled)
+    override suspend fun setPyToolEnabled(name: String, enabled: Boolean) {
+        repo.pyTools.setEnabled(name, enabled)
     }
 
     override suspend fun listBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> {
@@ -72,14 +66,14 @@ class XRepoRuntimeGateway(
     override suspend fun setBuiltinToolEnabled(
         name: String,
         enabled: Boolean,
-    ): RuntimeCustomToolValidation? {
+    ): RuntimeToolValidation? {
         return repo.builtinTools.setEnabled(name, enabled)
     }
 
     override suspend fun setBuiltinToolGroupEnabled(
         groupId: String,
         enabled: Boolean,
-    ): RuntimeCustomToolValidation? {
+    ): RuntimeToolValidation? {
         return repo.builtinTools.setGroupEnabled(groupId, enabled)
     }
 

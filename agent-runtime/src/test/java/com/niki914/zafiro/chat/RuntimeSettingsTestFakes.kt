@@ -6,8 +6,8 @@ import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.RuntimeHostGateway
 import com.niki914.zafiro.settings.RuntimeSettingsGateway
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimeCustomTool
-import com.niki914.zafiro.settings.model.RuntimeCustomToolValidation
+import com.niki914.zafiro.settings.model.RuntimePyTool
+import com.niki914.zafiro.settings.model.RuntimeToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
@@ -28,7 +28,7 @@ internal fun installRuntimeSettingsGatewayForTest(
 
 internal class FakeRuntimeSettingsGateway(
     private val llmConfig: RuntimeLlmConfig = RuntimeLlmConfig(),
-    customTools: List<RuntimeCustomTool> = emptyList(),
+    pyTools: List<RuntimePyTool> = emptyList(),
     builtinTools: List<RuntimeBuiltinToolSetting> = defaultBuiltinToolSettings(),
     memories: List<String> = emptyList(),
     executionRules: List<RuntimeExecutionRule> = emptyList(),
@@ -36,7 +36,7 @@ internal class FakeRuntimeSettingsGateway(
     private val loadedSkills: Map<String, RuntimeLoadedSkill> = emptyMap(),
     private val mcpServers: List<RuntimeMcpServer> = emptyList(),
 ) : RuntimeSettingsGateway {
-    var customTools: MutableList<RuntimeCustomTool> = customTools.toMutableList()
+    var pyTools: MutableList<RuntimePyTool> = pyTools.toMutableList()
         private set
     var builtinTools: MutableList<RuntimeBuiltinToolSetting> = builtinTools.toMutableList()
         private set
@@ -47,7 +47,7 @@ internal class FakeRuntimeSettingsGateway(
     var writeCount: Int = 0
         private set
     var failOnWriteNumber: Int? = null
-    var nextSaveCustomToolValidation: RuntimeCustomToolValidation? = null
+    var nextSavePyToolValidation: RuntimeToolValidation? = null
     var listEnabledSkillsCallCount: Int = 0
         private set
     var loadSkillCallCount: Int = 0
@@ -112,45 +112,37 @@ internal class FakeRuntimeSettingsGateway(
         }
     }
 
-    override suspend fun listCustomTools(): List<RuntimeCustomTool> = customTools.toList()
+    override suspend fun listPyTools(): List<RuntimePyTool> = pyTools.toList()
 
-    override suspend fun saveCustomTool(
-        tool: RuntimeCustomTool,
+    override suspend fun savePyTool(
+        tool: RuntimePyTool,
         overwrite: Boolean,
-    ): RuntimeCustomToolValidation? {
-        nextSaveCustomToolValidation?.let { validation ->
-            nextSaveCustomToolValidation = null
+    ): RuntimeToolValidation? {
+        nextSavePyToolValidation?.let { validation ->
+            nextSavePyToolValidation = null
             return validation
         }
-        val index = customTools.indexOfFirst { it.name == tool.name }
+        val index = pyTools.indexOfFirst { it.name == tool.name }
         if (index >= 0 && !overwrite) {
-            return RuntimeCustomToolValidation("name", "Already exists in custom_tools.")
+            return RuntimeToolValidation("name", "Already exists in py_tools.")
         }
         recordWrite()
         if (index >= 0) {
-            customTools[index] = tool
+            pyTools[index] = tool
         } else {
-            customTools.add(tool)
+            pyTools.add(tool)
         }
         return null
     }
 
-    override suspend fun replaceAllCustomTools(
-        tools: List<RuntimeCustomTool>,
-    ): RuntimeCustomToolValidation? {
+    override suspend fun deletePyTool(name: String) {
         recordWrite()
-        customTools = tools.toMutableList()
-        return null
+        pyTools.removeAll { it.name == name }
     }
 
-    override suspend fun deleteCustomTool(name: String) {
+    override suspend fun setPyToolEnabled(name: String, enabled: Boolean) {
         recordWrite()
-        customTools.removeAll { it.name == name }
-    }
-
-    override suspend fun setCustomToolEnabled(name: String, enabled: Boolean) {
-        recordWrite()
-        customTools = customTools
+        pyTools = pyTools
             .map { if (it.name == name) it.copy(enabled = enabled) else it }
             .toMutableList()
     }
@@ -162,10 +154,10 @@ internal class FakeRuntimeSettingsGateway(
     override suspend fun setBuiltinToolEnabled(
         name: String,
         enabled: Boolean,
-    ): RuntimeCustomToolValidation? {
+    ): RuntimeToolValidation? {
         val index = builtinTools.indexOfFirst { it.name == name }
         if (index < 0) {
-            return RuntimeCustomToolValidation("name", "Unknown builtin tool.")
+            return RuntimeToolValidation("name", "Unknown builtin tool.")
         }
         recordWrite()
         builtinTools[index] = builtinTools[index].copy(enabled = enabled)
@@ -175,7 +167,7 @@ internal class FakeRuntimeSettingsGateway(
     override suspend fun setBuiltinToolGroupEnabled(
         groupId: String,
         enabled: Boolean,
-    ): RuntimeCustomToolValidation? {
+    ): RuntimeToolValidation? {
         recordWrite()
         return null
     }
@@ -199,15 +191,10 @@ private object FakeRuntimeHostGateway : RuntimeHostGateway {
 
 private fun defaultBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> {
     return listOf(
-        RuntimeBuiltinToolSetting("create_custom_tool", "Create custom tools.", enabled = true),
+        RuntimeBuiltinToolSetting("pytools", "Manage persistent Python tools.", enabled = true),
         RuntimeBuiltinToolSetting("load_skill", "Load a skill by id.", enabled = true),
         RuntimeBuiltinToolSetting("memory", "Add a memory item.", enabled = true),
         RuntimeBuiltinToolSetting("notify", "Post host notifications.", enabled = true),
-        RuntimeBuiltinToolSetting(
-            "read_custom_tool",
-            "Read custom tool implementations.",
-            enabled = true
-        ),
         RuntimeBuiltinToolSetting("terminal", "Manage Android terminal sessions.", enabled = true),
     )
 }

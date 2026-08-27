@@ -7,7 +7,6 @@ import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.ui.content.mcp.McpSettingsContent
 import com.niki914.zafiro.app.ui.model.SettingsViewModel
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
-import com.niki914.zafiro.app.ui.nav.CustomToolDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
@@ -52,15 +51,6 @@ fun SettingsDetailPageContent(
         SkillsSettingsContent(
             onOpenSkillDetail = { id, title ->
                 onPush(SkillDetailPage(id, title))
-            },
-        )
-        return
-    }
-
-    if (group == ZafiroSettingsGroup.CustomShellTools) {
-        CustomShellToolsSettingsContent(
-            onOpenToolDetail = { name, index, isCreating ->
-                onPush(CustomToolDetailPage(name, index, isCreating))
             },
         )
         return

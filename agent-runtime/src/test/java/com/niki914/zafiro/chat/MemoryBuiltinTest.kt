@@ -2,7 +2,6 @@ package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.ReadCustomToolBuiltin
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -14,9 +13,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
 
-class MemoryAndCustomToolBuiltinTest {
+class MemoryBuiltinTest {
     @After
     fun tearDown() {
         RuntimeEnvironment.clearForTest()
@@ -231,79 +229,4 @@ class MemoryAndCustomToolBuiltinTest {
         assertEquals(listOf("updated entry", "same entry"), store.memories)
     }
 
-    @Test
-    fun readCustomTool_returnsAllCustomToolImplementationsWhenNameIsOmitted() = runTest {
-        installRuntimeSettingsGatewayForTest(
-            FakeRuntimeSettingsGateway(
-                customTools = listOf(
-                    CustomTool(
-                        "battery_status",
-                        "Read battery.",
-                        "dumpsys battery",
-                        enabled = true
-                    ),
-                    CustomTool("wifi_status", "Read wifi.", "cmd wifi status", enabled = false),
-                )
-            )
-        )
-
-        val resultJson = ReadCustomToolBuiltin().invokeRawJson(
-            BuiltinToolRequest(
-                name = "read_custom_tool",
-                argumentsJson = "{}",
-            )
-        )
-
-        val json = Json.parseToJsonElement(resultJson).jsonObject
-        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        val tools = json["tools"]!!.jsonArray
-        assertEquals(2, tools.size)
-        assertEquals("battery_status", tools[0].jsonObject["name"]!!.jsonPrimitive.content)
-        assertEquals("dumpsys battery", tools[0].jsonObject["command"]!!.jsonPrimitive.content)
-        assertEquals("wifi_status", tools[1].jsonObject["name"]!!.jsonPrimitive.content)
-    }
-
-    @Test
-    fun readCustomTool_returnsSingleCustomToolByName() = runTest {
-        installRuntimeSettingsGatewayForTest(
-            FakeRuntimeSettingsGateway(
-                customTools = listOf(
-                    CustomTool(
-                        "battery_status",
-                        "Read battery.",
-                        "dumpsys battery",
-                        enabled = true
-                    ),
-                )
-            )
-        )
-
-        val resultJson = ReadCustomToolBuiltin().invokeRawJson(
-            BuiltinToolRequest(
-                name = "read_custom_tool",
-                argumentsJson = """{"name":"battery_status"}""",
-            )
-        )
-
-        val tool = Json.parseToJsonElement(resultJson).jsonObject["tool"]!!.jsonObject
-        assertEquals("battery_status", tool["name"]!!.jsonPrimitive.content)
-        assertEquals("Read battery.", tool["description"]!!.jsonPrimitive.content)
-        assertEquals("dumpsys battery", tool["command"]!!.jsonPrimitive.content)
-    }
-
-    @Test
-    fun readCustomTool_returnsStructuredErrorForUnknownName() = runTest {
-        installRuntimeSettingsGatewayForTest()
-
-        val resultJson = ReadCustomToolBuiltin().invokeRawJson(
-            BuiltinToolRequest(
-                name = "read_custom_tool",
-                argumentsJson = """{"name":"missing_tool"}""",
-            )
-        )
-
-        val json = Json.parseToJsonElement(resultJson).jsonObject
-        assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("CUSTOM_TOOL_NOT_FOUND", json["code"]!!.jsonPrimitive.content)
-    }
 }
