@@ -127,21 +127,19 @@ fun ModelConfigSettingsContent(
         )
     }
 
-    if (showUnsavedBeforeAdd) {
-        ConfirmationLiquidDialog(
-            visible = true,
-            onDismissRequest = { showUnsavedBeforeAdd = false },
-            title = stringResource(R.string.unsaved_changes_dialog_title),
-            text = stringResource(R.string.unsaved_changes_dialog_text),
-            negativeButtonText = stringResource(R.string.unsaved_changes_dialog_cancel),
-            positiveButtonText = stringResource(R.string.unsaved_changes_dialog_confirm_exit),
-            onNegativeClick = { showUnsavedBeforeAdd = false },
-            onPositiveClick = {
-                showUnsavedBeforeAdd = false
-                onOpenProviderPick()
-            },
-        )
-    }
+    ConfirmationLiquidDialog(
+        visible = showUnsavedBeforeAdd,
+        onDismissRequest = { showUnsavedBeforeAdd = false },
+        title = stringResource(R.string.unsaved_changes_dialog_title),
+        text = stringResource(R.string.unsaved_changes_dialog_text),
+        negativeButtonText = stringResource(R.string.unsaved_changes_dialog_cancel),
+        positiveButtonText = stringResource(R.string.unsaved_changes_dialog_confirm_exit),
+        onNegativeClick = { showUnsavedBeforeAdd = false },
+        onPositiveClick = {
+            showUnsavedBeforeAdd = false
+            onOpenProviderPick()
+        },
+    )
 
     ConfirmationLiquidDialog(
         visible = pendingDeleteConfigId != null,

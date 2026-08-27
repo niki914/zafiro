@@ -293,25 +293,23 @@ fun HomePageContent(
     )
 
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()
-    if (updateCheckResult?.hasUpdate == true) {
-        val uriHandler = LocalUriHandler.current
-        val remoteVersion = updateCheckResult!!.remoteVersion.orEmpty()
-        val releaseUrl = updateCheckResult!!.releaseUrl.orEmpty()
-        ConfirmationLiquidDialog(
-            visible = true,
-            onDismissRequest = { UpdateCheckHolder.dismiss() },
-            title = stringResource(R.string.update_dialog_title),
-            text = stringResource(R.string.update_dialog_text, remoteVersion),
-            positiveButtonText = stringResource(R.string.update_dialog_confirm),
-            negativeButtonText = stringResource(R.string.update_dialog_cancel),
-            onPositiveClick = {
-                uriHandler.openUri(releaseUrl)
-                UpdateCheckHolder.dismiss()
-            },
-            onNegativeClick = { UpdateCheckHolder.dismiss() },
-            dismissOnBackgroundTap = false,
-        )
-    }
+    val uriHandler = LocalUriHandler.current
+    val remoteVersion = updateCheckResult?.remoteVersion.orEmpty()
+    val releaseUrl = updateCheckResult?.releaseUrl.orEmpty()
+    ConfirmationLiquidDialog(
+        visible = updateCheckResult?.hasUpdate == true,
+        onDismissRequest = { UpdateCheckHolder.dismiss() },
+        title = stringResource(R.string.update_dialog_title),
+        text = stringResource(R.string.update_dialog_text, remoteVersion),
+        positiveButtonText = stringResource(R.string.update_dialog_confirm),
+        negativeButtonText = stringResource(R.string.update_dialog_cancel),
+        onPositiveClick = {
+            uriHandler.openUri(releaseUrl)
+            UpdateCheckHolder.dismiss()
+        },
+        onNegativeClick = { UpdateCheckHolder.dismiss() },
+        dismissOnBackgroundTap = false,
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
