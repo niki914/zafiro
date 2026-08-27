@@ -212,7 +212,7 @@
     <string name="takeover_field_enabled">启用规则</string>
     <string name="takeover_field_target">命中时让谁接管</string>
     <string name="takeover_target_native_assistant">原生助手</string>
-    <string name="takeover_target_nexus">Zafiro</string>
+    <string name="takeover_target_zafiro">Zafiro</string>
     <string name="takeover_field_patterns">规则</string>
     <string name="takeover_field_patterns_hint">天气\n.*闹钟.*\n打开.*</string>
     <string name="takeover_field_patterns_description">每行输入一个关键字或正则表达式，命中任意一条时，使用上方的接管方式。</string>

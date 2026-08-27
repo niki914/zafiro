@@ -208,7 +208,7 @@ private fun takeoverFieldErrorText(errorResId: Int?): String? {
 internal fun TakeoverTarget.label(): String {
     return when (this) {
         TakeoverTarget.NativeAssistant -> stringResource(R.string.takeover_target_native_assistant)
-        TakeoverTarget.Zafiro -> stringResource(R.string.takeover_target_nexus)
+        TakeoverTarget.Zafiro -> stringResource(R.string.takeover_target_zafiro)
     }
 }
 

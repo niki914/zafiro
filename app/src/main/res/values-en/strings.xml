@@ -213,7 +213,7 @@
     <string name="takeover_field_enabled">Enable Rule</string>
     <string name="takeover_field_target">Responder When Matched</string>
     <string name="takeover_target_native_assistant">Native Assistant</string>
-    <string name="takeover_target_nexus">Zafiro</string>
+    <string name="takeover_target_zafiro">Zafiro</string>
     <string name="takeover_field_patterns">Rules</string>
     <string name="takeover_field_patterns_hint">weather\n.*alarm.*\nopen.*</string>
     <string name="takeover_field_patterns_description">Enter one keyword or regular expression per line. The selected responder is used as soon as any rule matches.</string>

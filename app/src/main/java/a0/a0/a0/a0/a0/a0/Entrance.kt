@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 // 仅在锁屏时生效
 class Entrance : IXposed() {
     companion object {
-        private const val LOG_TAG = "niki914_nexus_Entrance"
+        private const val LOG_TAG = "niki914_zafiro_Entrance"
         private val scope by lazy { CoroutineScope(Dispatchers.Default + SupervisorJob()) }
     }
 
