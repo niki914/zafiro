@@ -305,7 +305,7 @@ object XRepo {
         """.trimIndent()
 
     private val SCHEMA_WEB_SEARCH =
-        "{" + """"type":"object","properties":{"query":{"type":"string"},""" + """"max_results":{"type":"integer","description":"default: 8"}},"required":["query"]}""" + "}"
+        """{"type":"object","properties":{"query":{"type":"string"},"max_results":{"type":"integer","description":"default: 8"}},"required":["query"]}"""
 
     private val DEFAULT_WEB_SEARCH_TOOL = PyTool(
         name = "py_web_search",
