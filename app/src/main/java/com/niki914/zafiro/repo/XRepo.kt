@@ -183,7 +183,9 @@ object XRepo {
             writeJsonLocked(
                 context,
                 StoreDescriptorRegistry.TOOLS_PY_ID,
-                ToolSettingsCodec.encodePyTools(listOf(DEFAULT_WEB_SEARCH_TOOL)),
+                ToolSettingsCodec.encodePyTools(
+                    listOf(DEFAULT_WEB_SEARCH_TOOL, DEFAULT_LAUNCH_WECHAT_TOOL)
+                ),
             )
             writeJsonLocked(
                 context,
@@ -320,6 +322,30 @@ object XRepo {
         description = "Search the web with DuckDuckGo. Returns a list of {title, url, snippet}.",
         schemaJson = SCHEMA_WEB_SEARCH,
         code = CODE_WEB_SEARCH,
+    )
+
+    // 复活自旧 CustomTool launch_wechat（am start -n com.tencent.mm/...）
+    private val CODE_LAUNCH_WECHAT = """
+        import subprocess
+
+
+        def main():
+            '''启动微信 (Launch WeChat).'''
+            result = subprocess.run(
+                ["am", "start", "-n", "com.tencent.mm/com.tencent.mm.ui.LauncherUI"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.returncode != 0:
+                print(result.stderr.strip())
+                raise SystemExit(1)
+            print("WeChat launched.")
+        """.trimIndent()
+
+    private val DEFAULT_LAUNCH_WECHAT_TOOL = PyTool(
+        name = "py_launch_wechat",
+        description = "启动微信 (Launch WeChat).",
+        schemaJson = """{"type":"object","properties":{},"required":[]}""",
+        code = CODE_LAUNCH_WECHAT,
     )
 
     private fun defaultMainAgentProfile(nowMillis: Long): AgentProfile {

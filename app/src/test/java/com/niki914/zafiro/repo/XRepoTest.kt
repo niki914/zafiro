@@ -59,7 +59,7 @@ class XRepoTest {
             MemorySettingsCodec.parseMemories(store.jsonFor(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)),
         )
         assertEquals(
-            listOf("py_web_search"),
+            listOf("py_web_search", "py_launch_wechat"),
             ToolSettingsCodec.parsePyTools(store.jsonFor(StoreDescriptorRegistry.TOOLS_PY_ID))
                 .map { it.name },
         )
