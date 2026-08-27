@@ -7,7 +7,7 @@ import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 
 /**
- * 多语言 strings 键对齐守护：三个 locale 的键集合必须完全一致。
+ * 多语言 strings 键对齐守护：所有 locale 的键集合必须与默认（values）完全一致。
  * 防止新增文案只写了一个 locale，其它语言静默回落（或直接缺资源崩溃）。
  * 纯 JVM 测试：直接解析 src/main/res 下的 xml，不需要 Robolectric。
  */
@@ -17,6 +17,8 @@ class I18nAlignmentTest {
         "values/strings.xml",
         "values-en/strings.xml",
         "values-b+zh+Hant/strings.xml",
+        "values-es/strings.xml",
+        "values-ja/strings.xml",
     )
 
     private fun stringNames(relativePath: String): Set<String> {

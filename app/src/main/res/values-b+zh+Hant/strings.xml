@@ -338,9 +338,10 @@
     <string name="error_skill_read_failed">讀取 Skill 失敗</string>
     <string name="error_skill_import_failed">匯入 Skill 失敗</string>
     <string name="error_skill_delete_failed">刪除 Skill 失敗</string>
-    <string name="error_custom_tool_load_failed">讀取自訂工具失敗</string>
-    <string name="error_custom_tool_save_failed">儲存自訂工具失敗</string>
-    <string name="error_custom_tool_delete_failed">刪除自訂工具失敗</string>
+    <string name="error_py_tool_load_failed">讀取 Python 工具失敗</string>
+    <string name="error_py_tool_save_failed">儲存 Python 工具失敗</string>
+    <string name="error_py_tool_delete_failed">刪除 Python 工具失敗</string>
+
     <string name="error_memory_load_failed">讀取記憶失敗</string>
     <string name="error_memory_save_failed">儲存記憶失敗</string>
     <string name="error_memory_delete_failed">刪除記憶失敗</string>

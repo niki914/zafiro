@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App / Module -->
+    <string name="app_name">Zafiro</string>
+    <string name="xposed_desc">音声アシスタントに独自のモデル機能を連携\n\n対応中:\n\n- ColorOS Breeno\n- HyperOS XiaoAi</string>
+
+    <!-- Onboarding -->
+    <string name="ui_onboard_startup_demo_button">利用を開始</string>
+    <string name="ui_onboard_web_beta_title">現在のサポートは Beta 段階です</string>
+    <string name="ui_onboard_web_beta_body">このアシスタントの適用は検証中のため、一部のシーンで不安定になる可能性があります。このまま連携を進めることもできます。問題が発生した場合は設定に戻って調整するか、フィードバックを送信してください。</string>
+    <string name="ui_onboard_web_fetch_failed_title">設定を取得できません</string>
+    <string name="ui_onboard_web_fetch_failed_body">設定サービスに接続できませんでした。再試行するか、直接設定に進んでください。</string>
+    <string name="ui_onboard_web_unsupported_title">未対応のホストバージョンです</string>
+    <string name="ui_onboard_web_unsupported_body">現在のホストバージョン専用の設定がないため、直近のバージョンの設定を適用しました。問題が発生した場合はフィードバックをお願いします。</string>
+    <string name="ui_onboard_web_network_error_title">ネットワークリクエストエラー</string>
+    <string name="ui_onboard_web_network_error_body">ネットワークエラーが発生しました。接続を確認して再試行するか、直接設定に進んでください。</string>
+    <string name="ui_onboard_web_confirm">OK</string>
+    <string name="ui_onboard_web_cancel">キャンセル</string>
+    <string name="ui_onboard_web_enter_directly">直接進む</string>
+    <string name="ui_onboard_web_retry">再試行</string>
+    <string name="ui_onboard_provider_pick_title">プロバイダーを選択</string>
+    <string name="ui_onboard_provider_pick_description">ここからモデル機能の連携を開始します。\nプロバイダーを選択して続行してください。</string>
+    <string name="ui_onboard_configure_title">モデル連携情報の設定</string>
+    <string name="ui_onboard_configure_description">モデル設定を入力すると、すぐに利用を開始できます。</string>
+    <string name="ui_onboard_configure_next">次へ</string>
+    <string name="ui_onboard_configure_endpoint_override_title">カスタムエンドポイント</string>
+    <string name="ui_onboard_configure_endpoint_override_description_off">デフォルトのエンドポイントを使用</string>
+    <string name="ui_onboard_configure_endpoint_override_description_on">カスタムエンドポイントを使用</string>
+    <string name="ui_onboard_configure_endpoint_label">エンドポイント URL</string>
+    <string name="ui_onboard_configure_endpoint_placeholder">エンドポイント URL を入力</string>
+    <string name="ui_onboard_configure_model_label">モデル名</string>
+    <string name="ui_onboard_configure_model_placeholder">モデル名を入力</string>
+    <string name="ui_onboard_configure_model_example">例：%1$s</string>
+    <string name="ui_onboard_configure_api_key_label">API キー</string>
+    <string name="ui_onboard_configure_api_key_placeholder">API キーを入力</string>
+    <string name="ui_onboard_configure_api_key_show">API キーを表示</string>
+    <string name="ui_onboard_configure_api_key_hide">API キーを非表示</string>
+    <string name="ui_onboard_configure_error_load_failed">設定の読み込みに失敗しました：%1$s</string>
+    <string name="ui_onboard_configure_error_save_failed">設定の保存に失敗しました：%1$s</string>
+    <string name="ui_onboard_done_headline">準備が完了しました</string>
+    <string name="ui_onboard_done_description">設定が完了しました。すぐに Zafiro を使用するか、後から設定で調整できます。</string>
+    <string name="ui_onboard_done_enter_home">Zafiro を開く</string>
+
+    <!-- Home -->
+    <string name="ui_home_title">Zafiro</string>
+    <string name="ui_home_menu_new_conversation">新しい会話</string>
+    <string name="ui_home_input_placeholder">メッセージを入力...</string>
+    <string name="ui_tool_status_called">呼び出し済み</string>
+    <string name="ui_tool_status_running">実行中</string>
+    <string name="ui_tool_status_success">成功</string>
+    <string name="ui_tool_status_failed">失敗</string>
+    <string name="ui_tool_status_failed_reason_interrupted">ユーザーによる中断</string>
+    <plurals name="ui_tool_chain_count">
+    <item quantity="other">%d 個のツール</item>
+    </plurals>
+    <string name="ui_home_send_content_description">メッセージを送信</string>
+    <string name="ui_home_stop_content_description">生成を停止</string>
+    <string name="ui_home_action_copy_content_description">コピー</string>
+    <string name="ui_home_action_regenerate_content_description">再生成</string>
+    <string name="ui_home_action_fork_content_description">会話を分岐</string>
+    <string name="ui_toast_copied">コピーしました</string>
+    <string name="ui_home_error_retry_body">しばらくしてからもう一度お試しください。</string>
+    <string name="ui_home_error_config_required_title">モデル設定が不完全です</string>
+    <string name="ui_home_error_config_required_body">モデル設定を完了してください。</string>
+    <string name="ui_home_error_network_title">ネットワークエラー</string>
+    <string name="ui_home_error_internal_title">内部エラー</string>
+    <string name="runtime_error_internal">内部エラー</string>
+    <string name="ui_home_history_content_description">会話履歴</string>
+    <string name="ui_conversation_history_back_content_description">戻る</string>
+    <string name="ui_conversation_history_loading">会話履歴を読み込み中...</string>
+    <string name="ui_conversation_history_empty_title">会話履歴はありません</string>
+    <string name="ui_conversation_history_empty_body">メッセージを送信すると、ここに会話が表示されます。</string>
+    <string name="ui_conversation_history_error_title">会話履歴を読み込めませんでした</string>
+    <string name="ui_conversation_history_untitled">無題の会話</string>
+    <string name="ui_conversation_history_delete_dialog_title">会話の削除</string>
+    <string name="ui_conversation_history_delete_dialog_text">この会話を削除してもよろしいですか？この操作は取り消せません。\n\n%1$s</string>
+    <string name="ui_conversation_history_delete_dialog_confirm">削除</string>
+    <string name="ui_conversation_history_delete_dialog_cancel">キャンセル</string>
+    <string name="ui_conversation_history_delete_error">会話の削除に失敗しました：%1$s</string>
+    <string name="ui_root_back_to_home_hint">もう一度押すとホーム画面に戻ります</string>
+
+    <!-- Settings Shell -->
+    <string name="ui_settings_title">設定</string>
+    <string name="ui_settings_menu_entry">設定</string>
+
+    <!-- Settings Home Sections -->
+    <string name="ui_settings_section_model">モデル</string>
+    <string name="ui_settings_section_tools">ツール</string>
+    <string name="ui_settings_section_rules">ルール</string>
+    <string name="ui_settings_section_app">アプリ</string>
+
+    <!-- Settings Home Items -->
+    <string name="ui_settings_model_config">モデル設定</string>
+    <string name="ui_settings_model_config_summary">Zafiro のモデル連携を調整</string>
+    <string name="ui_settings_memory">メモリ</string>
+    <string name="ui_settings_memory_summary">永続化された記憶と設定を管理</string>
+    <string name="ui_settings_builtin_tools">組み込みツール</string>
+    <string name="ui_settings_builtin_tools_summary">Zafiro が提供するツールを管理</string>
+    <string name="ui_settings_skills">Skills</string>
+    <string name="ui_settings_skills_summary">ローカルの Skills を管理</string>
+    <string name="ui_settings_py_tools">Python ツール</string>
+    <string name="ui_settings_py_tools_summary">カスタム Python ツールを管理</string>
+    <string name="skill_page_description">ローカル Skills の有効化/無効化を切り替えます。有効にすると、Agent が会話中に必要に応じて使用します。</string>
+    <string name="skill_loading">Skills を読み込み中...</string>
+    <string name="skill_empty">利用可能な Skill はありません。</string>
+    <string name="skill_editor_description">完全な SKILL.md を編集します。保存された変更は次回の会話から反映されます。</string>
+    <string name="skill_save_action">保存</string>
+    <string name="skill_error_load_failed">Skills の読み込みに失敗しました：%1$s</string>
+    <string name="skill_error_save_failed">Skill の保存に失敗しました：%1$s</string>
+    <string name="skill_delete_dialog_title">Skill の削除</string>
+    <string name="skill_delete_dialog_text">Skill「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
+    <string name="skill_error_delete_failed">Skill の削除に失敗しました：%1$s</string>
+    <string name="skill_import_button">Skill をインポート</string>
+    <string name="skill_import_no_skill_file">選択したフォルダ内に SKILL.md が見つからないため、インポートできません</string>
+    <string name="skill_import_conflict_title">同名の Skill が既に存在します</string>
+    <string name="skill_import_conflict_text">Skill「%1$s」は既に存在します。上書きしますか？</string>
+    <string name="skill_import_overwrite">上書き</string>
+    <string name="skill_import_cancel">キャンセル</string>
+    <string name="skill_import_resolve_failed">選択したフォルダにアクセスできません</string>
+    <string name="skill_import_error">インポート失敗</string>
+    <string name="ui_settings_mcp">MCP</string>
+    <string name="ui_settings_mcp_summary">外部 MCP サービスとツールを連携</string>
+    <string name="ui_settings_takeover">制御ルール</string>
+    <string name="ui_settings_takeover_summary">入力に応じてネイティブアシスタントと Zafiro のどちらが応答するかを設定</string>
+    <string name="ui_settings_execution_rules">実行ルール</string>
+    <string name="ui_settings_execution_rules_summary">Shell のセキュリティポリシーを設定</string>
+    <string name="ui_settings_about">アプリについて</string>
+    <string name="ui_settings_about_summary"></string>
+    <string name="ui_settings_about_description">音声アシスタントに独自のモデル機能を連携</string>
+    <string name="ui_settings_about_author_homepage">作者ホームページ</string>
+    <string name="ui_settings_about_github">GitHub</string>
+    <string name="ui_settings_about_afdian">Afdian</string>
+    <string name="ui_settings_about_telegram">Telegram グループ</string>
+    <string name="ui_settings_about_feedback_feature">機能のリクエスト</string>
+    <string name="ui_settings_about_feedback_bug">バグ報告</string>
+    <string name="ui_settings_about_version">バージョン</string>
+
+    <!-- Settings Detail Shared -->
+    <string name="ui_todo_page_title">開発中の機能です</string>
+    <string name="ui_todo_page_description">今後のバージョンで対応予定です。お楽しみに。</string>
+    <string name="unsaved_changes_dialog_title">未保存の変更があります</string>
+    <string name="unsaved_changes_dialog_text">終了してもよろしいですか？</string>
+    <string name="unsaved_changes_dialog_confirm_exit">終了</string>
+    <string name="unsaved_changes_dialog_cancel">キャンセル</string>
+
+    <!-- Settings Configure Page -->
+    <string name="ui_settings_configure_description">モデル連携、プロンプト、プロキシ設定を調整します。</string>
+    <string name="ui_settings_configure_save">設定を保存</string>
+    <string name="ui_settings_configure_prompt_label">プロンプト</string>
+    <string name="ui_settings_configure_prompt_placeholder">アシスタントにどのような振る舞いをさせますか？</string>
+    <string name="ui_settings_configure_proxy_label">プロキシ</string>
+    <string name="ui_settings_configure_proxy_placeholder">例：http://127.0.0.1:7890</string>
+    <string name="ui_settings_configure_error_required">必須項目を入力してください</string>
+    <string name="ui_settings_configure_error_name_duplicate">この設定名は既に存在します。別の名前を試してください</string>
+    <string name="ui_settings_configure_error_proxy_invalid">プロキシアドレスが有効な URI ではありません</string>
+    <string name="ui_settings_mcp_config">MCP 設定</string>
+
+    <!-- Memory Module -->
+    <string name="memory_page_description">メモリを管理します。左右にスワイプして削除、タップして単一のメモリを編集できます。追加された内容は、新しい会話でも Agent に記憶されます。</string>
+    <string name="memory_page_empty_description">保存されたメモリはありません。右上のボタンをタップして最初のメモリを追加してください。</string>
+    <string name="memory_loading">メモリを読み込み中...</string>
+    <string name="memory_editor_title_create">新規メモリ</string>
+    <string name="memory_editor_title_edit">メモリの編集</string>
+    <string name="memory_field_content">内容を入力</string>
+    <string name="memory_field_content_hint">例：ユーザーの誕生日は X 月 Y 日</string>
+    <string name="memory_save_action">メモリを保存</string>
+    <string name="memory_cancel_action">キャンセル</string>
+    <string name="memory_delete_dialog_title">メモリの削除</string>
+    <string name="memory_delete_dialog_text">このメモリを削除してもよろしいですか？\n\n%1$s</string>
+    <string name="memory_delete_dialog_confirm">削除</string>
+    <string name="memory_delete_dialog_cancel">キャンセル</string>
+    <string name="delete_dialog_confirm">削除</string>
+    <string name="delete_dialog_cancel">キャンセル</string>
+    <string name="memory_error_load_failed">メモリの読み込みに失敗しました：%1$s</string>
+    <string name="memory_error_save_failed">メモリの保存に失敗しました：%1$s</string>
+    <string name="memory_error_delete_failed">メモリの削除に失敗しました：%1$s</string>
+
+    <!-- Execution Rules Module -->
+    <string name="execution_rules_page_description">コマンド実行の安全性を高めるための実行ルールを追加します。スクリプトを除くアプリのすべてのコマンド実行がポリシーによって管理されます。</string>
+    <string name="execution_rules_empty_action_hint">右上をタップして、最初の実行ルールを追加してください。</string>
+    <string name="execution_rules_loading">実行ルールを読み込み中…</string>
+    <string name="execution_rules_editor_title_create">新規実行ルール</string>
+    <string name="execution_rules_delete_dialog_title">実行ルールの削除</string>
+    <string name="execution_rules_delete_dialog_text">実行ルール「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
+    <string name="execution_rules_editor_description">コマンド実行の安全性を高めるための実行ルールを追加します。スクリプトを除くアプリのすべてのコマンド実行がポリシーによって管理されます。</string>
+    <string name="execution_rules_field_name">ポリシー名</string>
+    <string name="execution_rules_field_name_hint">例：危険な変更の防止</string>
+    <string name="execution_rules_field_enabled_mode">適用タイミング</string>
+    <string name="execution_rules_enabled_mode_enabled">常時</string>
+    <string name="execution_rules_enabled_mode_locked_only">画面ロック時のみ</string>
+    <string name="execution_rules_enabled_mode_disabled">無効</string>
+    <string name="execution_rules_field_patterns">ルール</string>
+    <string name="execution_rules_field_patterns_hint">例：\brm\s+-rf\b</string>
+    <string name="execution_rules_field_patterns_description">1行につき1つのキーワードまたは正規表現を入力します。いずれかにマッチした場合、そのコマンドをブロックします。</string>
+    <string name="execution_rules_error_name_required">ポリシー名を入力してください</string>
+    <string name="execution_rules_error_patterns_required">ルールを少なくとも1つ入力してください</string>
+    <string name="execution_rules_save_action">ポリシーを保存</string>
+
+    <!-- Takeover Module -->
+    <string name="takeover_default_responder">デフォルトモデル</string>
+    <string name="takeover_page_description">ルールを順番にチェックし、マッチした条件に基づいて応答者を決定します。</string>
+    <string name="takeover_empty_action_hint">右上をタップして、最初の制御ルールを追加してください。</string>
+    <string name="takeover_loading">制御ルールを読み込み中…</string>
+    <string name="takeover_editor_title_create">新規制御ルール</string>
+    <string name="takeover_editor_description">ネイティブアシスタントに委任する質問と、Zafiro で処理する質問を設定します。</string>
+    <string name="takeover_field_name">ルール名</string>
+    <string name="takeover_field_name_hint">例：生活サービス</string>
+    <string name="takeover_field_enabled">ルールを有効化</string>
+    <string name="takeover_field_target">マッチ時の応答者</string>
+    <string name="takeover_target_native_assistant">ネイティブアシスタント</string>
+    <string name="takeover_target_zafiro">Zafiro</string>
+    <string name="takeover_field_patterns">ルール</string>
+    <string name="takeover_field_patterns_hint">天気\n.*アラーム.*\n.*を開く</string>
+    <string name="takeover_field_patterns_description">1行につき1つのキーワードまたは正規表現を入力します。いずれかにマッチした場合、上記の応答方法を使用します。</string>
+    <string name="takeover_save_action">ルールを保存</string>
+    <string name="takeover_rule_enabled">有効</string>
+    <string name="takeover_rule_disabled">無効</string>
+    <string name="takeover_rule_summary_more"> 他 %1$d 件</string>
+    <string name="takeover_error_name_required">ルール名を入力してください</string>
+    <string name="takeover_error_patterns_required">ルールを少なくとも1つ入力してください</string>
+    <string name="takeover_error_load_failed_generic">制御ルールの読み込みに失敗しました</string>
+    <string name="takeover_error_load_failed">制御ルールの読み込みに失敗しました：%1$s</string>
+    <string name="takeover_error_save_failed_generic">制御ルールの保存に失敗しました</string>
+    <string name="takeover_error_save_failed">制御ルールの保存に失敗しました：%1$s</string>
+    <string name="takeover_error_delete_failed_generic">制御ルールの削除に失敗しました</string>
+    <string name="takeover_delete_dialog_title">制御ルールの削除</string>
+    <string name="takeover_delete_dialog_text">制御ルール「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
+    <string name="takeover_error_delete_failed">制御ルールの削除に失敗しました：%1$s</string>
+    <string name="takeover_save_failed">保存に失敗しました：%1$s</string>
+
+    <!-- Builtin Tool Module -->
+    <string name="builtin_tool_page_description">プリセットされている組み込みツールの有効/無効を切り替えます。有効化されたツールは次回の会話から更新されます。</string>
+    <string name="builtin_tool_loading">組み込みツールの状態を読み込み中...</string>
+    <string name="builtin_tool_empty">利用可能な組み込みツールはありません。</string>
+    <string name="builtin_tool_load_failed">読み込み失敗：%1$s</string>
+    <string name="builtin_tool_save_failed">保存失敗：%1$s</string>
+    <string name="builtin_tool_group_dev_tools">開発ツール</string>
+    <string name="builtin_tool_group_dev_tools_summary">デバイス上で Shell コマンドおよび Python コードを実行</string>
+    <string name="builtin_tool_group_android_native">Android ネイティブ</string>
+    <string name="builtin_tool_group_android_native_summary">リンクを開く、アプリの検索と起動、通知の送信などのシステム操作</string>
+    <string name="builtin_tool_group_screen_operation">画面操作</string>
+    <string name="builtin_tool_group_screen_operation_summary">アクセシビリティサービスまたは Shell を使用した画面情報の読み取りと操作</string>
+    <string name="builtin_tool_group_py_tools">Python ツール</string>
+    <string name="builtin_tool_group_py_tools_summary">Agent が作成・変更・テスト実行できる引数付き Python ツール</string>
+
+    <!-- Python Tool Module -->
+    <string name="py_tool_page_description">Python ツールを管理します。</string>
+    <string name="py_tool_page_empty_description">Agent に作成を依頼するか、右上をタップして新規追加してください。</string>
+    <string name="py_tool_loading">保存された Python ツールを読み込み中...</string>
+    <string name="py_tool_editor_title_create">新規 Python ツール</string>
+    <string name="py_tool_editor_description">Python ツールを設定します。ツールの説明とパラメータシグネチャは、コード内の main() 関数の docstring と型ヒントから自動的に抽出されます。保存後、Agent は必要に応じてこのツールを呼び出せます。</string>
+    <string name="py_tool_field_name">ツール名</string>
+    <string name="py_tool_field_name_hint">例：py_web_search</string>
+    <string name="py_tool_field_enabled">ツールを有効化</string>
+    <string name="py_tool_field_code">Python コード</string>
+    <string name="py_tool_field_code_hint">main(query: str) などの型ヒントを持つエントリーポイント関数を定義</string>
+    <string name="py_tool_save_action">Python ツールを保存</string>
+    <string name="py_tool_error_name_required">ツール名を入力してください</string>
+    <string name="py_tool_error_code_required">ツールコードを入力してください</string>
+    <string name="py_tool_error_name_invalid">名前は py_[a-z][a-z0-9_] の形式に一致する必要があります</string>
+    <string name="py_tool_error_name_duplicate">名前が既に存在します。変更して再試行してください</string>
+    <string name="py_tool_error_name_reserved">この名前は組み込みツールによって予約されています</string>
+    <string name="py_tool_error_load_failed">Python ツールの読み込みに失敗しました：%1$s</string>
+    <string name="py_tool_error_save_failed">Python ツールの保存に失敗しました：%1$s</string>
+    <string name="py_tool_error_delete_failed">Python ツールの削除に失敗しました：%1$s</string>
+    <string name="py_tool_delete_dialog_title">Python ツールの削除</string>
+    <string name="py_tool_delete_dialog_text">ツール「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
+    <string name="py_tool_save_failed">保存失敗：%1$s</string>
+
+    <string name="mcp_page_description">MCP サービスの接続方法と認証情報を設定します。保存後、Zafiro は実行時に利用可能なツールを自動検出します。</string>
+    <string name="mcp_page_empty_description">右上をタップして、最初のサーバーを追加してください。</string>
+    <string name="mcp_loading">保存された MCP サービスを読み込み中...</string>
+    <string name="mcp_editor_title_create">新規 MCP サービス</string>
+    <string name="mcp_field_name">名前</string>
+    <string name="mcp_field_name_hint">例：my-xxx-mcp-server</string>
+    <string name="mcp_field_url">URL</string>
+    <string name="mcp_field_url_hint">例：https://a.b.c/mcp</string>
+    <string name="mcp_field_enabled">サービスを有効化</string>
+    <string name="mcp_field_headers">カスタムリクエストヘッダー</string>
+    <string name="mcp_field_headers_hint">{\n  \"Authorization\": \"Bearer xxx\"\n}</string>
+    <string name="mcp_save_action">MCP サービスを保存</string>
+    <string name="mcp_error_name_required">名前を入力してください</string>
+    <string name="mcp_error_name_duplicate">名前が既に存在します。変更して再試行してください</string>
+    <string name="mcp_error_url_required">URL を入力してください</string>
+    <string name="mcp_error_url_invalid">URL は http:// または https:// のみサポートされています</string>
+    <string name="mcp_error_headers_invalid_json">リクエストヘッダーが有効な JSON ではありません</string>
+    <string name="mcp_error_headers_not_object">リクエストヘッダーは JSON オブジェクトである必要があります</string>
+    <string name="mcp_error_headers_empty_key">ヘッダー名を空にすることはできません</string>
+    <string name="mcp_delete_dialog_title">MCP サーバーの削除</string>
+    <string name="mcp_delete_dialog_text">MCP サーバー「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
+    <string name="mcp_error_headers_non_string">ヘッダーの値は文字列である必要があります</string>
+    <string name="update_dialog_title">新しいバージョンが利用可能です</string>
+    <string name="update_dialog_text">v%1$s がリリースされました。アップデートを推奨します</string>
+    <string name="update_dialog_confirm">アップデートへ</string>
+    <string name="update_dialog_cancel">後で</string>
+
+    <!-- Notification strings -->
+    <string name="notif_network_error_title">ネットワークエラー</string>
+    <string name="notif_network_error_body">ネットワーク接続に失敗しました。接続を確認して再試行してください</string>
+
+    <!-- Error: MCP -->
+    <string name="error_mcp_load_failed">MCP 設定の読み込みに失敗しました</string>
+    <string name="error_mcp_save_failed">MCP 設定の保存に失敗しました</string>
+    <string name="error_mcp_delete_failed">MCP 設定の削除に失敗しました</string>
+
+    <!-- Error: Execution Rules -->
+    <string name="error_exec_rules_load_failed">実行ルールの読み込みに失敗しました</string>
+    <string name="error_exec_rules_save_failed">実行ルールの保存に失敗しました</string>
+    <string name="error_exec_rules_delete_failed">実行ルールの削除に失敗しました</string>
+
+    <!-- Error: Skill -->
+    <string name="error_skill_load_failed">Skills の読み込みに失敗しました</string>
+    <string name="error_skill_save_failed">Skill の保存に失敗しました</string>
+    <string name="error_skill_read_failed">Skill の読み込みに失敗しました</string>
+    <string name="error_skill_import_failed">Skill のインポートに失敗しました</string>
+    <string name="error_skill_delete_failed">Skill の削除に失敗しました</string>
+
+    <string name="error_py_tool_load_failed">Python ツールの読み込みに失敗しました</string>
+    <string name="error_py_tool_save_failed">Python ツールの保存に失敗しました</string>
+    <string name="error_py_tool_delete_failed">Python ツールの削除に失敗しました</string>
+
+    <string name="error_memory_load_failed">メモリの読み込みに失敗しました</string>
+    <string name="error_memory_save_failed">メモリの保存に失敗しました</string>
+    <string name="error_memory_delete_failed">メモリの削除に失敗しました</string>
+
+    <!-- Feedback templates -->
+    <string name="feedback_feature_template">## 機能のリクエスト\n\n## 利用シーン\n\n## 期待される効果</string>
+    <!-- Host App Display Names -->
+    <string name="host_breeno_display_name">Breeno</string>
+    <string name="host_xiaoai_display_name">XiaoAi</string>
+
+    <!-- XService notifications -->
+    <string name="fallback_assistant_name">アシスタント</string>
+    <string name="notif_unsupported_version_title">ホストバージョン未対応</string>
+    <string name="notif_unsupported_version_body">現在の%1$sバージョンはまだ Zafiro に対応していません\nホストバージョン：%2$s</string>
+    <string name="notif_unsupported_issue_title">[BUG] ホストバージョン未対応</string>
+    <string name="notif_unsupported_issue_body">## 問題の説明\n現在の%1$sバージョンはまだ Zafiro に対応していません\nホストバージョン：%2$s\n\n## 再現手順\n\n\n## デバイス情報\n- アシスタント：%1$s\n- アシスタントのバージョン：%2$s\n- モジュールのバージョン：</string>
+
+    <string name="feedback_bug_template">## 問題の説明\n\n## 再現手順\n\n## 期待される動作\n\n## 実際の動作\n\n## デバイス情報\n- Android バージョン：\n- アシスタント（Breeno またはその他）：\n- モジュールのバージョン：\n\n## その他\n理解を深めるため、ログやスクリーンショット、画面録画などを添付できます</string>
+    <string name="conversation_fork_title">Fork · %1$s</string>
+    <string name="conversation_regenerate_title">Regenerate · %1$s</string>
+    <!-- Tool display names -->
+    <string name="ui_tool_display_terminal">ターミナル</string>
+    <string name="ui_tool_display_load_skill">Skill 読み込み</string>
+    <string name="ui_tool_display_execute_python">Python</string>
+    <string name="ui_tool_display_create_custom_tool">カスタムツール作成</string>
+    <string name="ui_tool_display_launch_app">アプリ起動</string>
+    <string name="ui_tool_display_memory">メモリ</string>
+    <string name="ui_tool_display_notify">通知</string>
+    <string name="ui_tool_display_open_uri">リンクを開く</string>
+    <string name="ui_tool_display_read_custom_tool">カスタムツール読み込み</string>
+    <string name="ui_tool_display_search_apps">アプリ検索</string>
+    <string name="ui_tool_display_screen_operation_accessibility">画面操作</string>
+    <string name="ui_tool_display_screen_operation_shell">画面操作</string>
+    <string name="dialog_cancel">キャンセル</string>
+    <string name="dialog_confirm_delete">削除</string>
+    <string name="ui_settings_section_general">一般</string>
+    <string name="ui_settings_general">一般設定</string>
+    <string name="ui_settings_general_summary">言語と起動時の動作</string>
+    <string name="ui_settings_general_language">言語</string>
+    <string name="ui_settings_general_language_follow_system">システムに従う</string>
+    <string name="ui_settings_general_load_last_conversation">起動時に前回の会話を読み込む</string>
+    <string name="ui_settings_saved_configuration_title">保存済みの設定</string>
+    <string name="ui_settings_saved_configuration_delete_title">設定の削除</string>
+    <string name="ui_settings_saved_configuration_delete_text">この設定は削除されます。この操作は元に戻せません。</string>
+    <string name="ui_settings_saved_configuration_edit">編集</string>
+    <string name="ui_settings_configure_add">設定を追加</string>
+    <string name="ui_settings_configure_name_label">設定名</string>
+    <string name="ui_settings_configure_name_placeholder">例：DeepSeek メイン</string>
+    <string name="ui_settings_configure_protocol_label">プロトコル</string>
+    <string name="ui_settings_configure_protocol_hint">プロトコル切り替え後、エンドポイントがプロトコルと一致しているか確認してください。</string>
+</resources>

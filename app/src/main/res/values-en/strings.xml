@@ -114,7 +114,7 @@
     <string name="skill_import_button">Import Skill</string>
     <string name="skill_import_no_skill_file">SKILL.md not found in the selected folder, cannot import</string>
     <string name="skill_import_conflict_title">Duplicate Skill</string>
-    <string name="skill_import_conflict_text">The Skill "%1$s" already exists. Overwrite it?</string>
+    <string name="skill_import_conflict_text">The Skill \"%1$s\" already exists. Overwrite it?</string>
     <string name="skill_import_overwrite">Overwrite</string>
     <string name="skill_import_cancel">Cancel</string>
     <string name="skill_import_resolve_failed">Unable to access the selected folder</string>

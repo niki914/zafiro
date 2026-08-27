@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App / Module -->
+    <string name="app_name">Zafiro</string>
+    <string name="xposed_desc">Conecte el asistente de voz a sus propios modelos\n\nCompatible con:\n\n- ColorOS Breeno\n- HyperOS XiaoAi</string>
+
+    <!-- Onboarding -->
+    <string name="ui_onboard_startup_demo_button">Empezar</string>
+    <string name="ui_onboard_web_beta_title">Compatibilidad en fase Beta</string>
+    <string name="ui_onboard_web_beta_body">La adaptación para este asistente aún está en verificación y puede ser inestable. Puede continuar con la configuración y ajustarla o enviar comentarios si surge algún problema.</string>
+    <string name="ui_onboard_web_fetch_failed_title">No se pudo obtener la configuración</string>
+    <string name="ui_onboard_web_fetch_failed_body">No se pudo conectar al servicio de configuración. Reintente o vaya directamente a la configuración.</string>
+    <string name="ui_onboard_web_unsupported_title">Versión de la app host no compatible</string>
+    <string name="ui_onboard_web_unsupported_body">La versión actual de la app host no tiene una configuración específica; se aplicó la configuración de la versión más reciente. Si encuentra problemas, envíe comentarios.</string>
+    <string name="ui_onboard_web_network_error_title">Error de red</string>
+    <string name="ui_onboard_web_network_error_body">Error en la red actual. Compruebe la conexión y vuelva a intentarlo, o vaya directamente a la configuración.</string>
+    <string name="ui_onboard_web_confirm">Aceptar</string>
+    <string name="ui_onboard_web_cancel">Cancelar</string>
+    <string name="ui_onboard_web_enter_directly">Continuar de todos modos</string>
+    <string name="ui_onboard_web_retry">Reintentar</string>
+    <string name="ui_onboard_provider_pick_title">Seleccionar proveedor</string>
+    <string name="ui_onboard_provider_pick_description">Comience a conectar sus modelos desde aquí.\nSeleccione un proveedor para continuar.</string>
+    <string name="ui_onboard_configure_title">Configurar modelo</string>
+    <string name="ui_onboard_configure_description">Complete la configuración del modelo para empezar a usar Zafiro.</string>
+    <string name="ui_onboard_configure_next">Siguiente</string>
+    <string name="ui_onboard_configure_endpoint_override_title">Endpoint personalizado</string>
+    <string name="ui_onboard_configure_endpoint_override_description_off">Usar endpoint predeterminado</string>
+    <string name="ui_onboard_configure_endpoint_override_description_on">Se usará un endpoint personalizado</string>
+    <string name="ui_onboard_configure_endpoint_label">Dirección del endpoint</string>
+    <string name="ui_onboard_configure_endpoint_placeholder">Introduzca la dirección del endpoint</string>
+    <string name="ui_onboard_configure_model_label">Nombre del modelo</string>
+    <string name="ui_onboard_configure_model_placeholder">Introduzca el nombre del modelo</string>
+    <string name="ui_onboard_configure_model_example">Ejemplo: %1$s</string>
+    <string name="ui_onboard_configure_api_key_label">API Key</string>
+    <string name="ui_onboard_configure_api_key_placeholder">Introduzca su API Key</string>
+    <string name="ui_onboard_configure_api_key_show">Mostrar API Key</string>
+    <string name="ui_onboard_configure_api_key_hide">Ocultar API Key</string>
+    <string name="ui_onboard_configure_error_load_failed">Error al cargar la configuración: %1$s</string>
+    <string name="ui_onboard_configure_error_save_failed">Error al guardar la configuración: %1$s</string>
+    <string name="ui_onboard_done_headline">Todo listo.</string>
+    <string name="ui_onboard_done_description">Configuración completada. Puede empezar a usar Zafiro o ajustar la configuración más tarde.</string>
+    <string name="ui_onboard_done_enter_home">Ir a Zafiro</string>
+
+    <!-- Home -->
+    <string name="ui_home_title">Zafiro</string>
+    <string name="ui_home_menu_new_conversation">Nueva conversación</string>
+    <string name="ui_home_input_placeholder">Escriba un mensaje...</string>
+    <string name="ui_tool_status_called">Llamado</string>
+    <string name="ui_tool_status_running">Ejecutando</string>
+    <string name="ui_tool_status_success">Completado</string>
+    <string name="ui_tool_status_failed">Error</string>
+    <string name="ui_tool_status_failed_reason_interrupted">Interrumpido por el usuario</string>
+    <plurals name="ui_tool_chain_count">
+        <item quantity="one">%d herramienta</item>
+        <item quantity="other">%d herramientas</item>
+    </plurals>
+    <string name="ui_home_send_content_description">Enviar mensaje</string>
+    <string name="ui_home_stop_content_description">Detener generación</string>
+    <string name="ui_home_action_copy_content_description">Copiar</string>
+    <string name="ui_home_action_regenerate_content_description">Regenerar</string>
+    <string name="ui_home_action_fork_content_description">Crear bifurcación</string>
+    <string name="ui_toast_copied">Copiado al portapapeles</string>
+    <string name="ui_home_error_retry_body">Inténtelo de nuevo más tarde.</string>
+    <string name="ui_home_error_config_required_title">Configuración del modelo incompleta</string>
+    <string name="ui_home_error_config_required_body">Complete la configuración del modelo antes de continuar.</string>
+    <string name="ui_home_error_network_title">Error de red</string>
+    <string name="ui_home_error_internal_title">Error interno</string>
+    <string name="runtime_error_internal">Error interno</string>
+    <string name="ui_home_history_content_description">Historial de conversaciones</string>
+    <string name="ui_conversation_history_back_content_description">Volver</string>
+    <string name="ui_conversation_history_loading">Cargando historial...</string>
+    <string name="ui_conversation_history_empty_title">Sin conversaciones</string>
+    <string name="ui_conversation_history_empty_body">Envíe un mensaje para comenzar una nueva conversación.</string>
+    <string name="ui_conversation_history_error_title">No se pudo cargar el historial</string>
+    <string name="ui_conversation_history_untitled">Conversación sin título</string>
+    <string name="ui_conversation_history_delete_dialog_title">Eliminar conversación</string>
+    <string name="ui_conversation_history_delete_dialog_text">¿Está seguro de que desea eliminar esta conversación? Esta acción no se puede deshacer.\n\n%1$s</string>
+    <string name="ui_conversation_history_delete_dialog_confirm">Eliminar</string>
+    <string name="ui_conversation_history_delete_dialog_cancel">Cancelar</string>
+    <string name="ui_conversation_history_delete_error">Error al eliminar la conversación: %1$s</string>
+    <string name="ui_root_back_to_home_hint">Presione de nuevo para volver al inicio</string>
+
+    <!-- Settings Shell -->
+    <string name="ui_settings_title">Ajustes</string>
+    <string name="ui_settings_menu_entry">Ajustes</string>
+
+    <!-- Settings Home Sections -->
+    <string name="ui_settings_section_model">Modelo</string>
+    <string name="ui_settings_section_tools">Herramientas</string>
+    <string name="ui_settings_section_rules">Reglas</string>
+    <string name="ui_settings_section_app">Aplicación</string>
+
+    <!-- Settings Home Items -->
+    <string name="ui_settings_model_config">Configuración del modelo</string>
+    <string name="ui_settings_model_config_summary">Ajustar los parámetros de conexión del modelo</string>
+    <string name="ui_settings_memory">Memoria</string>
+    <string name="ui_settings_memory_summary">Gestionar memorias y preferencias persistentes</string>
+    <string name="ui_settings_builtin_tools">Herramientas integradas</string>
+    <string name="ui_settings_builtin_tools_summary">Gestionar las herramientas integradas de Zafiro</string>
+    <string name="ui_settings_skills">Skills</string>
+    <string name="ui_settings_skills_summary">Gestionar Skills locales</string>
+    <string name="ui_settings_py_tools">Herramientas de Python</string>
+    <string name="ui_settings_py_tools_summary">Gestionar herramientas personalizadas de Python</string>
+    <string name="skill_page_description">Activar o desactivar Skills locales. Cuando están activadas, el agente puede usarlas según sea necesario durante las conversaciones.</string>
+    <string name="skill_loading">Cargando Skills...</string>
+    <string name="skill_empty">No hay Skills disponibles actualmente.</string>
+    <string name="skill_editor_description">Editar el archivo SKILL.md completo. Los cambios se aplicarán en la siguiente conversación tras guardar.</string>
+    <string name="skill_save_action">Guardar</string>
+    <string name="skill_error_load_failed">Error al cargar las Skills: %1$s</string>
+    <string name="skill_error_save_failed">Error al guardar la Skill: %1$s</string>
+    <string name="skill_delete_dialog_title">Eliminar Skill</string>
+    <string name="skill_delete_dialog_text">¿Está seguro de que desea eliminar la Skill «%1$s»? Esta acción no se puede deshacer.</string>
+    <string name="skill_error_delete_failed">Error al eliminar la Skill: %1$s</string>
+    <string name="skill_import_button">Importar Skill</string>
+    <string name="skill_import_no_skill_file">No se encontró el archivo SKILL.md en la carpeta seleccionada</string>
+    <string name="skill_import_conflict_title">La Skill ya existe</string>
+    <string name="skill_import_conflict_text">La Skill «%1$s» ya existe. ¿Desea sobrescribirla?</string>
+    <string name="skill_import_overwrite">Sobrescribir</string>
+    <string name="skill_import_cancel">Cancelar</string>
+    <string name="skill_import_resolve_failed">No se puede acceder a la carpeta seleccionada</string>
+    <string name="skill_import_error">Error al importar</string>
+    <string name="ui_settings_mcp">MCP</string>
+    <string name="ui_settings_mcp_summary">Conectar servicios y herramientas MCP externos</string>
+    <string name="ui_settings_takeover">Reglas de control</string>
+    <string name="ui_settings_takeover_summary">Configurar qué entradas procesa el asistente nativo o Zafiro</string>
+    <string name="ui_settings_execution_rules">Reglas de ejecución</string>
+    <string name="ui_settings_execution_rules_summary">Configurar la política de seguridad para comandos Shell</string>
+    <string name="ui_settings_about">Acerca de</string>
+    <string name="ui_settings_about_summary"></string>
+    <string name="ui_settings_about_description">Conecte su asistente de voz a sus propios modelos</string>
+    <string name="ui_settings_about_author_homepage">Sitio web del autor</string>
+    <string name="ui_settings_about_github">GitHub</string>
+    <string name="ui_settings_about_afdian">Afdian</string>
+    <string name="ui_settings_about_telegram">Grupo de Telegram</string>
+    <string name="ui_settings_about_feedback_feature">Sugerir función</string>
+    <string name="ui_settings_about_feedback_bug">Notificar error</string>
+    <string name="ui_settings_about_version">Versión</string>
+
+    <!-- Settings Detail Shared -->
+    <string name="ui_todo_page_title">Función en desarrollo</string>
+    <string name="ui_todo_page_description">Estará disponible en próximas versiones.</string>
+    <string name="unsaved_changes_dialog_title">Cambios sin guardar</string>
+    <string name="unsaved_changes_dialog_text">¿Está seguro de que desea salir?</string>
+    <string name="unsaved_changes_dialog_confirm_exit">Aceptar</string>
+    <string name="unsaved_changes_dialog_cancel">Cancelar</string>
+
+    <!-- Settings Configure Page -->
+    <string name="ui_settings_configure_description">Ajustar la configuración del modelo, prompt del sistema y proxy.</string>
+    <string name="ui_settings_configure_save">Guardar configuración</string>
+    <string name="ui_settings_configure_prompt_label">Prompt del sistema</string>
+    <string name="ui_settings_configure_prompt_placeholder">¿Cómo debería comportarse el asistente?</string>
+    <string name="ui_settings_configure_proxy_label">Proxy</string>
+    <string name="ui_settings_configure_proxy_placeholder">Ejemplo: http://127.0.0.1:7890</string>
+    <string name="ui_settings_configure_error_required">Los campos obligatorios no pueden estar vacíos</string>
+    <string name="ui_settings_configure_error_name_duplicate">El nombre de la configuración ya existe. Elija otro nombre.</string>
+    <string name="ui_settings_configure_error_proxy_invalid">La dirección del proxy no es un URI válido</string>
+    <string name="ui_settings_mcp_config">Configuración MCP</string>
+
+    <!-- Memory Module -->
+    <string name="memory_page_description">Gestione memorias guardadas. Deslice a la izquierda o derecha para eliminar, o toque para editar. Una vez añadidas, el agente las recordará en todas las conversaciones.</string>
+    <string name="memory_page_empty_description">No hay memorias guardadas. Toque el botón superior derecho para añadir la primera.</string>
+    <string name="memory_loading">Cargando memorias...</string>
+    <string name="memory_editor_title_create">Añadir memoria</string>
+    <string name="memory_editor_title_edit">Editar memoria</string>
+    <string name="memory_field_content">Contenido</string>
+    <string name="memory_field_content_hint">Ejemplo: El cumpleaños del usuario es el 15 de octubre</string>
+    <string name="memory_save_action">Guardar memoria</string>
+    <string name="memory_cancel_action">Cancelar</string>
+    <string name="memory_delete_dialog_title">Eliminar memoria</string>
+    <string name="memory_delete_dialog_text">¿Está seguro de que desea eliminar esta memoria?\n\n%1$s</string>
+    <string name="memory_delete_dialog_confirm">Eliminar</string>
+    <string name="memory_delete_dialog_cancel">Cancelar</string>
+    <string name="delete_dialog_confirm">Eliminar</string>
+    <string name="delete_dialog_cancel">Cancelar</string>
+    <string name="memory_error_load_failed">Error al cargar las memorias: %1$s</string>
+    <string name="memory_error_save_failed">Error al guardar la memoria: %1$s</string>
+    <string name="memory_error_delete_failed">Error al eliminar la memoria: %1$s</string>
+
+    <!-- Execution Rules Module -->
+    <string name="execution_rules_page_description">Añada reglas de ejecución para mejorar la seguridad. Salvo los scripts, todas las ejecuciones de comandos de la app están reguladas por estas políticas.</string>
+    <string name="execution_rules_empty_action_hint">Toque en la esquina superior derecha para añadir la primera regla de ejecución.</string>
+    <string name="execution_rules_loading">Cargando reglas de ejecución...</string>
+    <string name="execution_rules_editor_title_create">Nueva regla de ejecución</string>
+    <string name="execution_rules_delete_dialog_title">Eliminar regla de ejecución</string>
+    <string name="execution_rules_delete_dialog_text">¿Está seguro de que desea eliminar la regla de ejecución «%1$s»? Esta acción no se puede deshacer.</string>
+    <string name="execution_rules_editor_description">Añada reglas de ejecución para mejorar la seguridad. Salvo los scripts, todas las ejecuciones de comandos de la app están reguladas por estas políticas.</string>
+    <string name="execution_rules_field_name">Nombre de la política</string>
+    <string name="execution_rules_field_name_hint">Ejemplo: Bloquear comandos peligrosos</string>
+    <string name="execution_rules_field_enabled_mode">Condición de activación</string>
+    <string name="execution_rules_enabled_mode_enabled">Siempre</string>
+    <string name="execution_rules_enabled_mode_locked_only">Solo con pantalla bloqueada</string>
+    <string name="execution_rules_enabled_mode_disabled">Desactivado</string>
+    <string name="execution_rules_field_patterns">Reglas</string>
+    <string name="execution_rules_field_patterns_hint">Ejemplo: \brm\s+-rf\b</string>
+    <string name="execution_rules_field_patterns_description">Introduzca una palabra clave o expresión regular por línea. El comando se interceptará si coincide con cualquiera de ellas.</string>
+    <string name="execution_rules_error_name_required">Introduzca un nombre para la política</string>
+    <string name="execution_rules_error_patterns_required">Introduzca al menos una regla</string>
+    <string name="execution_rules_save_action">Guardar política</string>
+
+    <!-- Takeover Module -->
+    <string name="takeover_default_responder">Modelo predeterminado</string>
+    <string name="takeover_page_description">Las reglas se evalúan en orden para determinar qué asistente responderá cuando haya una coincidencia.</string>
+    <string name="takeover_empty_action_hint">Toque en la esquina superior derecha para añadir la primera regla de control.</string>
+    <string name="takeover_loading">Cargando reglas de control...</string>
+    <string name="takeover_editor_title_create">Nueva regla de control</string>
+    <string name="takeover_editor_description">Configure qué peticiones debe responder el asistente nativo y cuáles deben enviarse a Zafiro.</string>
+    <string name="takeover_field_name">Nombre de la regla</string>
+    <string name="takeover_field_name_hint">Ejemplo: Servicios locales Breeno</string>
+    <string name="takeover_field_enabled">Activar regla</string>
+    <string name="takeover_field_target">Asistente al coincidir</string>
+    <string name="takeover_target_native_assistant">Asistente nativo</string>
+    <string name="takeover_target_zafiro">Zafiro</string>
+    <string name="takeover_field_patterns">Reglas</string>
+    <string name="takeover_field_patterns_hint">tiempo\n.*alarma.*\nabrir.*</string>
+    <string name="takeover_field_patterns_description">Introduzca una palabra clave o expresión regular por línea. Si se detecta una coincidencia, se utilizará el asistente seleccionado arriba.</string>
+    <string name="takeover_save_action">Guardar regla</string>
+    <string name="takeover_rule_enabled">Activada</string>
+    <string name="takeover_rule_disabled">Desactivada</string>
+    <string name="takeover_rule_summary_more"> y %1$d más</string>
+    <string name="takeover_error_name_required">Introduzca un nombre para la regla</string>
+    <string name="takeover_error_patterns_required">Introduzca al menos una regla</string>
+    <string name="takeover_error_load_failed_generic">Error al cargar las reglas de control</string>
+    <string name="takeover_error_load_failed">Error al cargar las reglas de control: %1$s</string>
+    <string name="takeover_error_save_failed_generic">Error al guardar las reglas de control</string>
+    <string name="takeover_error_save_failed">Error al guardar las reglas de control: %1$s</string>
+    <string name="takeover_error_delete_failed_generic">Error al eliminar la regla de control</string>
+    <string name="takeover_delete_dialog_title">Eliminar regla de control</string>
+    <string name="takeover_delete_dialog_text">¿Está seguro de que desea eliminar la regla de control «%1$s»? Esta acción no se puede deshacer.</string>
+    <string name="takeover_error_delete_failed">Error al eliminar la regla de control: %1$s</string>
+    <string name="takeover_save_failed">Error al guardar: %1$s</string>
+
+    <!-- Builtin Tool Module -->
+    <string name="builtin_tool_page_description">Active o desactive las herramientas integradas. Los cambios se aplicarán en la siguiente conversación.</string>
+    <string name="builtin_tool_loading">Cargando estado de las herramientas integradas...</string>
+    <string name="builtin_tool_empty">No hay herramientas integradas disponibles actualmente.</string>
+    <string name="builtin_tool_load_failed">Error al cargar: %1$s</string>
+    <string name="builtin_tool_save_failed">Error al guardar: %1$s</string>
+    <string name="builtin_tool_group_dev_tools">Herramientas de desarrollo</string>
+    <string name="builtin_tool_group_dev_tools_summary">Ejecutar comandos Shell y código Python en el dispositivo</string>
+    <string name="builtin_tool_group_android_native">Nativo de Android</string>
+    <string name="builtin_tool_group_android_native_summary">Operaciones nativas del sistema como abrir enlaces, buscar/abrir apps y enviar notificaciones</string>
+    <string name="builtin_tool_group_screen_operation">Operaciones de pantalla</string>
+    <string name="builtin_tool_group_screen_operation_summary">Leer y controlar la pantalla mediante Servicios de accesibilidad o Shell</string>
+    <string name="builtin_tool_group_py_tools">Herramientas de Python</string>
+    <string name="builtin_tool_group_py_tools_summary">Herramientas de Python parametrizadas que el agente puede crear, modificar y probar</string>
+
+    <!-- Python Tool Module -->
+    <string name="py_tool_page_description">Gestione sus herramientas de Python.</string>
+    <string name="py_tool_page_empty_description">Deje que el agente las cree por usted o toque el botón superior derecho para añadir una nueva.</string>
+    <string name="py_tool_loading">Cargando herramientas de Python guardadas...</string>
+    <string name="py_tool_editor_title_create">Añadir herramienta de Python</string>
+    <string name="py_tool_editor_description">Configure su herramienta de Python. La descripción y la firma de parámetros se extraerán automáticamente de los docstrings y anotaciones de tipo de la función main(). Una vez guardada, el agente podrá llamarla según sea necesario.</string>
+    <string name="py_tool_field_name">Nombre de la herramienta</string>
+    <string name="py_tool_field_name_hint">Ejemplo: py_web_search</string>
+    <string name="py_tool_field_enabled">Activar herramienta</string>
+    <string name="py_tool_field_code">Código Python</string>
+    <string name="py_tool_field_code_hint">Defina una función de entrada con anotaciones de tipo, como main(query: str)</string>
+    <string name="py_tool_save_action">Guardar herramienta de Python</string>
+    <string name="py_tool_error_name_required">Introduzca un nombre para la herramienta</string>
+    <string name="py_tool_error_code_required">Introduzca el código de la herramienta</string>
+    <string name="py_tool_error_name_invalid">El nombre debe coincidir con el formato py_[a-z][a-z0-9_]</string>
+    <string name="py_tool_error_name_duplicate">El nombre ya existe. Elija otro nombre.</string>
+    <string name="py_tool_error_name_reserved">Este nombre está reservado por una herramienta integrada</string>
+    <string name="py_tool_error_load_failed">Error al cargar las herramientas de Python: %1$s</string>
+    <string name="py_tool_error_save_failed">Error al guardar la herramienta de Python: %1$s</string>
+    <string name="py_tool_error_delete_failed">Error al eliminar la herramienta de Python: %1$s</string>
+    <string name="py_tool_delete_dialog_title">Eliminar herramienta de Python</string>
+    <string name="py_tool_delete_dialog_text">¿Está seguro de que desea eliminar la herramienta «%1$s»? Esta acción no se puede deshacer.</string>
+    <string name="py_tool_save_failed">Error al guardar: %1$s</string>
+
+    <string name="mcp_page_description">Configure los métodos de conexión y autenticación para servicios MCP. Tras guardar, Zafiro descubrirá automáticamente las herramientas disponibles en tiempo de ejecución.</string>
+    <string name="mcp_page_empty_description">Toque en la esquina superior derecha para añadir su primer servidor.</string>
+    <string name="mcp_loading">Cargando servidores MCP guardados...</string>
+    <string name="mcp_editor_title_create">Añadir servicio MCP</string>
+    <string name="mcp_field_name">Nombre</string>
+    <string name="mcp_field_name_hint">Ejemplo: mi-servidor-mcp</string>
+    <string name="mcp_field_url">URL</string>
+    <string name="mcp_field_url_hint">Ejemplo: https://a.b.c/mcp</string>
+    <string name="mcp_field_enabled">Activar servicio</string>
+    <string name="mcp_field_headers">Encabezados personalizados</string>
+    <string name="mcp_field_headers_hint">{\n  \"Authorization\": \"Bearer xxx\"\n}</string>
+    <string name="mcp_save_action">Guardar servicio MCP</string>
+    <string name="mcp_error_name_required">Introduzca un nombre</string>
+    <string name="mcp_error_name_duplicate">El nombre ya existe. Elija otro nombre.</string>
+    <string name="mcp_error_url_required">Introduzca una URL</string>
+    <string name="mcp_error_url_invalid">La URL solo admite esquemas http:// o https://</string>
+    <string name="mcp_error_headers_invalid_json">Los encabezados de solicitud no son un JSON válido</string>
+    <string name="mcp_error_headers_not_object">Los encabezados de solicitud deben ser un objeto JSON</string>
+    <string name="mcp_error_headers_empty_key">El nombre del encabezado no puede estar vacío</string>
+    <string name="mcp_delete_dialog_title">Eliminar servidor MCP</string>
+    <string name="mcp_delete_dialog_text">¿Está seguro de que desea eliminar el servidor MCP «%1$s»? Esta acción no se puede deshacer.</string>
+    <string name="mcp_error_headers_non_string">El valor del encabezado debe ser una cadena de texto</string>
+    <string name="update_dialog_title">Nueva versión disponible</string>
+    <string name="update_dialog_text">v%1$s ya está disponible. Se recomienda actualizar.</string>
+    <string name="update_dialog_confirm">Actualizar</string>
+    <string name="update_dialog_cancel">Ahora no</string>
+
+    <!-- Notification strings -->
+    <string name="notif_network_error_title">Error de red</string>
+    <string name="notif_network_error_body">Error en la conexión. Compruebe la red y vuelva a intentarlo.</string>
+
+    <!-- Error: MCP -->
+    <string name="error_mcp_load_failed">Error al cargar la configuración de MCP</string>
+    <string name="error_mcp_save_failed">Error al guardar la configuración de MCP</string>
+    <string name="error_mcp_delete_failed">Error al eliminar la configuración de MCP</string>
+
+    <!-- Error: Execution Rules -->
+    <string name="error_exec_rules_load_failed">Error al cargar las reglas de ejecución</string>
+    <string name="error_exec_rules_save_failed">Error al guardar las reglas de ejecución</string>
+    <string name="error_exec_rules_delete_failed">Error al eliminar las reglas de ejecución</string>
+
+    <!-- Error: Skill -->
+    <string name="error_skill_load_failed">Error al cargar las Skills</string>
+    <string name="error_skill_save_failed">Error al guardar la Skill</string>
+    <string name="error_skill_read_failed">Error al leer la Skill</string>
+    <string name="error_skill_import_failed">Error al importar la Skill</string>
+    <string name="error_skill_delete_failed">Error al eliminar la Skill</string>
+
+    <string name="error_py_tool_load_failed">Error al cargar las herramientas de Python</string>
+    <string name="error_py_tool_save_failed">Error al guardar la herramienta de Python</string>
+    <string name="error_py_tool_delete_failed">Error al eliminar la herramienta de Python</string>
+
+    <string name="error_memory_load_failed">Error al cargar las memorias</string>
+    <string name="error_memory_save_failed">Error al guardar la memoria</string>
+    <string name="error_memory_delete_failed">Error al eliminar la memoria</string>
+
+    <!-- Feedback templates -->
+    <string name="feedback_feature_template">## Sugerencia de función\n\n## Caso de uso\n\n## Resultado esperado</string>
+    <!-- Host App Display Names -->
+    <string name="host_breeno_display_name">Breeno</string>
+    <string name="host_xiaoai_display_name">XiaoAi</string>
+
+    <!-- XService notifications -->
+    <string name="fallback_assistant_name">Asistente</string>
+    <string name="notif_unsupported_version_title">Versión de la app host no compatible</string>
+    <string name="notif_unsupported_version_body">La versión actual de %1$s aún no es compatible con Zafiro\nVersión de la app host: %2$s</string>
+    <string name="notif_unsupported_issue_title">[BUG] Versión de la app host no compatible</string>
+    <string name="notif_unsupported_issue_body">## Descripción del problema\nLa versión actual de %1$s aún no es compatible con Zafiro\nVersión de la app host: %2$s\n\n## Pasos para reproducir\n\n\n## Información del dispositivo\n- Asistente: %1$s\n- Versión del asistente: %2$s\n- Versión del módulo:</string>
+
+    <string name="feedback_bug_template">## Descripción del problema\n\n## Pasos para reproducir\n\n## Comportamiento esperado\n\n## Comportamiento real\n\n## Información del dispositivo\n- Versión de Android:\n- Asistente (Breeno u otro):\n- Versión del módulo:\n\n## Información adicional\nPuede adjuntar registros, capturas o grabaciones de pantalla para ayudarnos a entender el problema.</string>
+    <string name="conversation_fork_title">Fork · %1$s</string>
+    <string name="conversation_regenerate_title">Regenerar · %1$s</string>
+    <!-- Tool display names -->
+    <string name="ui_tool_display_terminal">Terminal</string>
+    <string name="ui_tool_display_load_skill">Cargar Skill</string>
+    <string name="ui_tool_display_execute_python">Python</string>
+    <string name="ui_tool_display_create_custom_tool">Crear herramienta personalizada</string>
+    <string name="ui_tool_display_launch_app">Abrir app</string>
+    <string name="ui_tool_display_memory">Memoria</string>
+    <string name="ui_tool_display_notify">Notificación</string>
+    <string name="ui_tool_display_open_uri">Abrir enlace</string>
+    <string name="ui_tool_display_read_custom_tool">Leer herramienta personalizada</string>
+    <string name="ui_tool_display_search_apps">Buscar apps</string>
+    <string name="ui_tool_display_screen_operation_accessibility">Operaciones de pantalla</string>
+    <string name="ui_tool_display_screen_operation_shell">Operaciones de pantalla</string>
+    <string name="dialog_cancel">Cancelar</string>
+    <string name="dialog_confirm_delete">Eliminar</string>
+    <string name="ui_settings_section_general">General</string>
+    <string name="ui_settings_general">Ajustes generales</string>
+    <string name="ui_settings_general_summary">Idioma y comportamiento de inicio</string>
+    <string name="ui_settings_general_language">Idioma</string>
+    <string name="ui_settings_general_language_follow_system">Usar el del sistema</string>
+    <string name="ui_settings_general_load_last_conversation">Cargar la última conversación al iniciar</string>
+    <string name="ui_settings_saved_configuration_title">Configuraciones guardadas</string>
+    <string name="ui_settings_saved_configuration_delete_title">Eliminar configuración</string>
+    <string name="ui_settings_saved_configuration_delete_text">Esta configuración se eliminará y la acción no se podrá deshacer.</string>
+    <string name="ui_settings_saved_configuration_edit">Editar</string>
+    <string name="ui_settings_configure_add">Añadir configuración</string>
+    <string name="ui_settings_configure_name_label">Nombre de la configuración</string>
+    <string name="ui_settings_configure_name_placeholder">Ejemplo: DeepSeek Principal</string>
+    <string name="ui_settings_configure_protocol_label">Protocolo</string>
+    <string name="ui_settings_configure_protocol_hint">Tras cambiar el protocolo, asegúrese de que el endpoint sea compatible con dicho protocolo.</string>
+</resources>
