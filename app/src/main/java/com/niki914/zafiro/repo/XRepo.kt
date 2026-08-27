@@ -3,7 +3,15 @@ package com.niki914.zafiro.repo
 import android.content.Context
 import com.niki914.logging.Logger
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
+import com.niki914.zafiro.chat.agentic.python.PyRuntime
+import com.niki914.zafiro.chat.agentic.python.PyToolHarness
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_PATTERNS
@@ -16,8 +24,8 @@ import com.niki914.zafiro.settings.model.RuntimeAgentMemoryMode as AgentMemoryMo
 import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.zafiro.settings.model.RuntimeAgentValidation as AgentValidation
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
-import com.niki914.zafiro.settings.model.RuntimeCustomToolValidation as CustomToolValidation
+import com.niki914.zafiro.settings.model.RuntimePyTool as PyTool
+import com.niki914.zafiro.settings.model.RuntimeToolValidation as ToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
@@ -29,7 +37,7 @@ object XRepo {
     private const val LOG_TAG = "niki914_nexus_XRepo"
 
     val mcp: McpApi = McpApi(this)
-    val customTools: CustomToolApi = CustomToolApi(this)
+    val pyTools: PyToolApi = PyToolApi(this)
     val builtinTools: BuiltinToolApi = BuiltinToolApi(this)
     val memory: MemoryApi = MemoryApi(this)
     val web: WebSettingsApi = WebSettingsApi(this)
@@ -177,8 +185,10 @@ object XRepo {
             )
             writeJsonLocked(
                 context,
-                StoreDescriptorRegistry.TOOLS_CUSTOM_ID,
-                ToolSettingsCodec.encodeCustomTools(listOf(DEFAULT_WECHAT_TOOL)),
+                StoreDescriptorRegistry.TOOLS_PY_ID,
+                ToolSettingsCodec.encodePyTools(
+                    listOf(DEFAULT_WEB_SEARCH_TOOL, DEFAULT_LAUNCH_WECHAT_TOOL)
+                ),
             )
             writeJsonLocked(
                 context,
@@ -263,10 +273,80 @@ object XRepo {
         }
     }
 
-    private val DEFAULT_WECHAT_TOOL = CustomTool(
-        name = "launch_wechat",
-        description = "启动微信",
-        command = "am start -n com.tencent.mm/com.tencent.mm.ui.LauncherUI",
+    // Seed py tool: web search via DuckDuckGo HTML endpoint. Code/schema are the
+    // reflection cache written by the same pipeline pytools write uses.
+    private val CODE_WEB_SEARCH = """
+        import json
+        import urllib.parse
+
+        import requests
+        from bs4 import BeautifulSoup
+
+
+        def main(query: str, max_results: int = 8):
+            '''Search the web with DuckDuckGo (HTML endpoint). Returns a list of {title, url, snippet}.'''
+            resp = requests.post(
+                "https://html.duckduckgo.com/html/",
+                data={"q": query},
+                headers={"User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36"},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            results = []
+            for item in soup.select("div.result.results_links")[: max_results]:
+                link = item.select_one("a.result__a")
+                if link is None:
+                    continue
+                title = link.get_text(strip=True)
+                url = _clean_url(link.get("href", ""))
+                snippet_el = item.select_one("td.result__snippet") or item.select_one(".result__snippet")
+                snippet = snippet_el.get_text(strip=True) if snippet_el else ""
+                if title and url:
+                    results.append({"title": title, "url": url, "snippet": snippet})
+            print(json.dumps(results, ensure_ascii=False))
+
+
+        def _clean_url(href: str) -> str:
+            if href.startswith("//duckduckgo.com/l/") or href.startswith("https://duckduckgo.com/l/"):
+                parsed = urllib.parse.urlparse(href if href.startswith("http") else "https:" + href)
+                target = urllib.parse.parse_qs(parsed.query).get("uddg", [""])[0]
+                return urllib.parse.unquote(target)
+            return href
+        """.trimIndent()
+
+    private val SCHEMA_WEB_SEARCH =
+        """{"type":"object","properties":{"query":{"type":"string"},"max_results":{"type":"integer","description":"default: 8"}},"required":["query"]}"""
+
+    private val DEFAULT_WEB_SEARCH_TOOL = PyTool(
+        name = "py_web_search",
+        description = "Search the web with DuckDuckGo. Returns a list of {title, url, snippet}.",
+        schemaJson = SCHEMA_WEB_SEARCH,
+        code = CODE_WEB_SEARCH,
+    )
+
+    // 复活自旧 CustomTool launch_wechat（am start -n com.tencent.mm/...）
+    private val CODE_LAUNCH_WECHAT = """
+        import subprocess
+
+
+        def main():
+            '''启动微信 (Launch WeChat).'''
+            result = subprocess.run(
+                ["am", "start", "-n", "com.tencent.mm/com.tencent.mm.ui.LauncherUI"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.returncode != 0:
+                print(result.stderr.strip())
+                raise SystemExit(1)
+            print("WeChat launched.")
+        """.trimIndent()
+
+    private val DEFAULT_LAUNCH_WECHAT_TOOL = PyTool(
+        name = "py_launch_wechat",
+        description = "启动微信 (Launch WeChat).",
+        schemaJson = """{"type":"object","properties":{},"required":[]}""",
+        code = CODE_LAUNCH_WECHAT,
     )
 
     private fun defaultMainAgentProfile(nowMillis: Long): AgentProfile {
@@ -851,137 +931,140 @@ class McpApi internal constructor(
     }
 }
 
-class CustomToolApi internal constructor(
+class PyToolApi internal constructor(
     private val repo: XRepo,
     private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(
         listExecutionRules = { repo.executionRules.list() },
     ),
     private val builtinToolRegistry: BuiltinToolRegistry = BuiltinToolRegistry.default(),
 ) {
-    suspend fun list(): List<CustomTool> {
-        return ToolSettingsCodec.parseCustomTools(repo.readJson(StoreDescriptorRegistry.TOOLS_CUSTOM_ID))
+    suspend fun list(): List<PyTool> {
+        return ToolSettingsCodec.parsePyTools(repo.readJson(StoreDescriptorRegistry.TOOLS_PY_ID))
     }
 
-    suspend fun get(name: String): CustomTool? {
+    suspend fun get(name: String): PyTool? {
         return list().firstOrNull { it.name == name }
     }
 
-    suspend fun save(tool: CustomTool, overwrite: Boolean = true): CustomToolValidation? {
+    suspend fun save(tool: PyTool, overwrite: Boolean = true): ToolValidation? {
         validate(tool, overwrite)?.let { return it }
         val normalized = tool.normalized()
-        repo.updateJson(StoreDescriptorRegistry.TOOLS_CUSTOM_ID) { json ->
-            val tools = ToolSettingsCodec.parseCustomTools(json)
+        repo.updateJson(StoreDescriptorRegistry.TOOLS_PY_ID) { json ->
+            val tools = ToolSettingsCodec.parsePyTools(json)
             val updated = if (tools.any { it.name == normalized.name }) {
                 tools.map { if (it.name == normalized.name) normalized else it }
             } else {
                 tools + normalized
             }
-            ToolSettingsCodec.encodeCustomTools(updated)
+            ToolSettingsCodec.encodePyTools(updated)
         }
-        return null
-    }
-
-    suspend fun replace(previousName: String?, tool: CustomTool): CustomToolValidation? {
-        validate(tool, overwrite = true)?.let { return it }
-        val normalized = tool.normalized()
-        val existingTools = list()
-        val withoutPrevious = if (previousName != null) {
-            existingTools.filterNot { it.name == previousName }
-        } else {
-            existingTools
-        }
-        if (withoutPrevious.any { it.name == normalized.name }) {
-            return CustomToolValidation("name", "Already exists in custom_tools.")
-        }
-        repo.updateJson(StoreDescriptorRegistry.TOOLS_CUSTOM_ID) { json ->
-            val tools = ToolSettingsCodec.parseCustomTools(json)
-            val withoutPrevious = previousName
-                ?.let { name -> tools.filterNot { it.name == name } }
-                ?: tools
-            val updated = withoutPrevious + normalized
-            ToolSettingsCodec.encodeCustomTools(updated)
-        }
-        return null
-    }
-
-    suspend fun replaceAll(tools: List<CustomTool>): CustomToolValidation? {
-        val normalizedTools = tools.map { it.normalized() }
-        val duplicateName = normalizedTools
-            .groupingBy { it.name }
-            .eachCount()
-            .entries
-            .firstOrNull { it.value > 1 }
-            ?.key
-        if (duplicateName != null) {
-            return CustomToolValidation("name", "Duplicate name in custom_tools.")
-        }
-        normalizedTools.forEach { tool ->
-            validate(tool, overwrite = true)?.let { return it }
-        }
-        repo.writeJson(
-            StoreDescriptorRegistry.TOOLS_CUSTOM_ID,
-            ToolSettingsCodec.encodeCustomTools(normalizedTools)
-        )
         return null
     }
 
     suspend fun delete(name: String) {
-        repo.updateJson(StoreDescriptorRegistry.TOOLS_CUSTOM_ID) { json ->
-            ToolSettingsCodec.encodeCustomTools(
-                ToolSettingsCodec.parseCustomTools(json).filterNot { it.name == name })
+        repo.updateJson(StoreDescriptorRegistry.TOOLS_PY_ID) { json ->
+            ToolSettingsCodec.encodePyTools(
+                ToolSettingsCodec.parsePyTools(json).filterNot { it.name == name })
         }
     }
 
     suspend fun setEnabled(name: String, enabled: Boolean) {
-        repo.updateJson(StoreDescriptorRegistry.TOOLS_CUSTOM_ID) { json ->
-            ToolSettingsCodec.encodeCustomTools(
-                ToolSettingsCodec.parseCustomTools(json).map { tool ->
+        repo.updateJson(StoreDescriptorRegistry.TOOLS_PY_ID) { json ->
+            ToolSettingsCodec.encodePyTools(
+                ToolSettingsCodec.parsePyTools(json).map { tool ->
                     if (tool.name == name) tool.copy(enabled = enabled) else tool
                 },
             )
         }
     }
 
-    suspend fun validate(tool: CustomTool, overwrite: Boolean = true): CustomToolValidation? {
-        val normalized = tool.normalized()
-        if (normalized.name.isBlank()) {
-            return CustomToolValidation("name", "Required field 'name' is missing.")
+    /**
+     * UI 保存入口：与 pytools write 同管线，先对 code 做签名反射，
+     * 用结果回填 description/schemaJson 缓存，再走 validate/save。
+     * 反射失败（语法错误、缺 main、注解缺失等）返回 field="code" 的 validation。
+     */
+    suspend fun saveIntrospected(tool: PyTool): ToolValidation? {
+        val introspection = introspectMain(tool.code)
+        introspection.error?.let { error -> return ToolValidation("code", error) }
+        return save(
+            tool.copy(
+                description = introspection.description.orEmpty(),
+                schemaJson = introspection.schemaJson.orEmpty(),
+            ),
+        )
+    }
+
+    private suspend fun introspectMain(code: String): PyIntrospection {
+        val output = try {
+            PyRuntime.exec(PyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            return PyIntrospection(error = t.message ?: "Python signature check failed.")
         }
+        val json = try {
+            Json.parseToJsonElement(output.trim()).jsonObject
+        } catch (_: Exception) {
+            return PyIntrospection(error = "Unexpected signature check output: ${output.take(200)}")
+        }
+        json["error"]?.jsonPrimitive?.contentOrNull?.let { type ->
+            val line = json["line"]?.jsonPrimitive?.longOrNull
+            val message = json["message"]?.jsonPrimitive?.contentOrNull ?: "Invalid tool code."
+            return PyIntrospection(error = if (line != null) "$message (line $line)" else message)
+        }
+        return PyIntrospection(
+            description = json["description"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            schemaJson = json["schema"]?.jsonObject?.toString().orEmpty(),
+        )
+    }
+
+    suspend fun validate(tool: PyTool, overwrite: Boolean = true): ToolValidation? {
+        val normalized = tool.normalized()
         if (!NAME_PATTERN.matches(normalized.name)) {
-            return CustomToolValidation(
+            return ToolValidation(
                 field = "name",
-                message = "Name must start with a letter or underscore and contain only letters, digits, or underscores.",
+                message = "Name must match py_[a-z][a-z0-9_] (the py_ prefix is added automatically).",
             )
         }
-        if (normalized.description.isBlank()) {
-            return CustomToolValidation("description", "Required field 'description' is missing.")
+        if (normalized.name.removePrefix(PY_PREFIX) in
+            builtinToolRegistry.all().map { it.name }.toSet()
+        ) {
+            return ToolValidation("name", "Reserved builtin tool name.")
         }
-        if (normalized.command.isBlank()) {
-            return CustomToolValidation("command", "Required field 'command' is missing.")
+        if (normalized.code.isBlank()) {
+            return ToolValidation("code", "Required field 'code' is missing.")
         }
-        if (normalized.name in builtinToolRegistry.all().map { it.name }.toSet()) {
-            return CustomToolValidation("name", "Reserved builtin tool name.")
+        if (normalized.timeoutMs !in 1_000L..PyTool.MAX_PY_TOOL_TIMEOUT_MS) {
+            return ToolValidation("timeout_ms", "Must be between 1000 and 120000.")
         }
-        val decision = safetyPolicy.evaluate(normalized.command)
+        val decision = safetyPolicy.evaluate(normalized.code)
         if (!decision.allowed) {
-            return CustomToolValidation("command", decision.reason)
+            return ToolValidation("code", decision.reason)
         }
         if (!overwrite && list().any { it.name == normalized.name }) {
-            return CustomToolValidation("name", "Already exists in custom_tools.")
+            return ToolValidation("name", "Already exists in py_tools.")
         }
         return null
     }
 
-    private fun CustomTool.normalized(): CustomTool {
+    private fun PyTool.normalized(): PyTool {
         return copy(
             name = name.trim(),
+            code = code.trim(),
             description = description.trim(),
-            command = command.trim(),
         )
     }
 
+    private data class PyIntrospection(
+        val description: String? = null,
+        val schemaJson: String? = null,
+        val error: String? = null,
+    )
+
     companion object {
-        private val NAME_PATTERN = Regex("^[a-zA-Z_][a-zA-Z0-9_]{1,63}$")
+        private const val PY_PREFIX = "py_"
+        private const val INTROSPECTION_TIMEOUT_MS = 30_000L
+        private val NAME_PATTERN = Regex("^py_[a-z][a-z0-9_]{0,63}$")
     }
 }
 
@@ -990,7 +1073,7 @@ class BuiltinToolApi internal constructor(
     private val registry: BuiltinToolRegistry = BuiltinToolRegistry.default(),
 ) {
     suspend fun list(): List<BuiltinToolSetting> {
-        val flags = ToolSettingsCodec.parseBuiltinEnabledForAgents(
+        val flags = ToolSettingsCodec.parseBuiltinEnabled(
             repo.readJson(StoreDescriptorRegistry.TOOLS_BUILTIN_ID)
         )
         return registry.all()
@@ -1008,16 +1091,34 @@ class BuiltinToolApi internal constructor(
         return list().filter { it.enabled }
     }
 
-    suspend fun setEnabled(name: String, enabled: Boolean): CustomToolValidation? {
+    suspend fun setEnabled(name: String, enabled: Boolean): ToolValidation? {
         if (registry.find(name) == null) {
-            return CustomToolValidation("name", "Builtin tool is not registered.")
+            return ToolValidation("name", "Builtin tool is not registered.")
         }
         repo.updateJson(StoreDescriptorRegistry.TOOLS_BUILTIN_ID) { json ->
-            val flags = ToolSettingsCodec.parseBuiltinEnabledForAgents(json).toMutableMap()
+            val flags = parseKnownFlags(json).toMutableMap()
             flags[name] = enabled
-            ToolSettingsCodec.encodeBuiltinEnabledForAgents(flags)
+            ToolSettingsCodec.encodeBuiltinEnabled(flags)
         }
         return null
+    }
+
+    // 写穿：组内成员在同一闭包内一次原子写，失败无部分提交。新成员无 flag → 回退 defaultEnabled。
+    suspend fun setGroupEnabled(groupId: String, enabled: Boolean): ToolValidation? {
+        val group = BuiltinToolGroups.find(groupId)
+            ?: return ToolValidation("groupId", "Unknown builtin tool group.")
+        repo.updateJson(StoreDescriptorRegistry.TOOLS_BUILTIN_ID) { json ->
+            val flags = parseKnownFlags(json).toMutableMap()
+            group.members.forEach { member -> flags[member] = enabled }
+            ToolSettingsCodec.encodeBuiltinEnabled(flags)
+        }
+        return null
+    }
+
+    // 读端忽略未知工具名，写端丢弃孤儿 flag（下架/改名卫生），文件不累积旧键。
+    private fun parseKnownFlags(json: String): Map<String, Boolean> {
+        return ToolSettingsCodec.parseBuiltinEnabled(json)
+            .filterKeys { name -> registry.find(name) != null }
     }
 
     private fun Map<String, Boolean>.enabledFlagFor(

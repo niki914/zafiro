@@ -68,12 +68,23 @@ data class RuntimeMcpServer(
     val headers: Map<String, String> = emptyMap(),
 )
 
-data class RuntimeCustomTool(
+/**
+ * 持久化 Python 工具（pytools）条目。
+ * code 是工具本体；description/schemaJson 是反射结果的缓存，代码变更后重算覆盖。
+ */
+data class RuntimePyTool(
     val name: String,
-    val description: String,
-    val command: String,
+    val code: String,
+    val description: String = "",
+    val schemaJson: String = "",
     val enabled: Boolean = true,
-)
+    val timeoutMs: Long = DEFAULT_PY_TOOL_TIMEOUT_MS,
+) {
+    companion object {
+        const val DEFAULT_PY_TOOL_TIMEOUT_MS: Long = 30_000L
+        const val MAX_PY_TOOL_TIMEOUT_MS: Long = 120_000L
+    }
+}
 
 data class RuntimeBuiltinToolSetting(
     val name: String,
@@ -120,7 +131,7 @@ data class RuntimeTakeoverRuleValidation(
     val message: String,
 )
 
-data class RuntimeCustomToolValidation(
+data class RuntimeToolValidation(
     val field: String,
     val message: String,
 )

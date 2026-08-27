@@ -17,13 +17,19 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.ui.model.BuiltinToolGroupUiItem
 import com.niki914.zafiro.app.ui.model.BuiltinToolSettingsIntent
 import com.niki914.zafiro.app.ui.model.BuiltinToolSettingsUiState
 import com.niki914.zafiro.app.ui.model.BuiltinToolSettingsViewModel
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingItem
+import com.niki914.zafiro.repo.BuiltinToolGroupMode
+
+private const val GROUP_ID_PREFIX = "group:"
 
 @Composable
-fun BuiltinToolsSettingsContent() {
+fun BuiltinToolsSettingsContent(
+    onOpenGroupDetail: (groupId: String) -> Unit,
+) {
     val viewModel = pageViewModel<BuiltinToolSettingsViewModel>()
     val uiState by viewModel.uiStateFlow.collectAsState()
 
@@ -41,6 +47,15 @@ fun BuiltinToolsSettingsContent() {
                 )
             )
         },
+        onGroupToggled = { groupId, checked ->
+            viewModel.sendIntent(
+                BuiltinToolSettingsIntent.GroupToggled(
+                    groupId = groupId,
+                    value = checked,
+                )
+            )
+        },
+        onOpenGroupDetail = onOpenGroupDetail,
     )
 }
 
@@ -48,14 +63,27 @@ fun BuiltinToolsSettingsContent() {
 private fun BuiltinToolsSettingsContentBody(
     uiState: BuiltinToolSettingsUiState,
     onItemEnabledChange: (String, Boolean) -> Unit,
+    onGroupToggled: (String, Boolean) -> Unit,
+    onOpenGroupDetail: (String) -> Unit,
 ) {
     SettingsSpecPageContent(
         spec = builtinToolsSettingsSpec(uiState),
         onAction = { action ->
             when (action) {
-                is SettingsRowAction.ToggleChanged -> onItemEnabledChange(action.id, action.checked)
+                is SettingsRowAction.ToggleChanged -> {
+                    if (action.id.startsWith(GROUP_ID_PREFIX)) {
+                        onGroupToggled(action.id.removePrefix(GROUP_ID_PREFIX), action.checked)
+                    } else {
+                        onItemEnabledChange(action.id, action.checked)
+                    }
+                }
+                is SettingsRowAction.Navigate -> {
+                    val groupId = action.id.removePrefix(GROUP_ID_PREFIX)
+                    if (action.id.startsWith(GROUP_ID_PREFIX)) {
+                        onOpenGroupDetail(groupId)
+                    }
+                }
                 is SettingsRowAction.Click -> Unit
-                is SettingsRowAction.Navigate -> Unit
             }
         },
     )
@@ -63,29 +91,51 @@ private fun BuiltinToolsSettingsContentBody(
 
 @Composable
 private fun builtinToolsSettingsSpec(uiState: BuiltinToolSettingsUiState): SettingsPageSpec {
-    val sections = if (!uiState.isLoading && uiState.items.isNotEmpty()) {
-        listOf(
-            SettingsSectionSpec(
-                layout = SettingsSectionLayout.GroupedCard,
-                rows = uiState.items.map { item ->
-                    SettingsRowSpec.Toggle(
-                        id = item.name,
-                        title = item.name,
-                        summary = item.description,
-                        checked = item.enabled,
-                        enabled = !uiState.isSaving,
-                    )
-                },
-            )
+    val rows = uiState.groups.map { group ->
+        group.toRow(enabled = !uiState.isSaving)
+    } + uiState.standaloneTools.map { item ->
+        SettingsRowSpec.Toggle(
+            id = item.name,
+            title = item.name,
+            summary = item.description,
+            checked = item.enabled,
+            enabled = !uiState.isSaving,
         )
-    } else {
-        emptyList()
     }
 
     return SettingsPageSpec(
         description = builtinToolDescription(uiState),
-        sections = sections,
+        sections = if (rows.isNotEmpty()) {
+            listOf(
+                SettingsSectionSpec(
+                    layout = SettingsSectionLayout.GroupedCard,
+                    rows = rows,
+                ),
+            )
+        } else {
+            emptyList()
+        },
     )
+}
+
+@Composable
+private fun BuiltinToolGroupUiItem.toRow(enabled: Boolean): SettingsRowSpec {    return when (mode) {
+        // 绑定式：与单独工具同款 Switch，点击写穿全组成员，无二级页
+        BuiltinToolGroupMode.WHOLE -> SettingsRowSpec.Toggle(
+            id = "$GROUP_ID_PREFIX$id",
+            title = stringResource(titleRes),
+            summary = stringResource(summaryRes),
+            checked = checked,
+            enabled = enabled,
+        )
+        // 不绑定：导航行进二级页逐工具开关
+        BuiltinToolGroupMode.PER_TOOL -> SettingsRowSpec.Navigation(
+            id = "$GROUP_ID_PREFIX$id",
+            title = stringResource(titleRes),
+            summary = stringResource(summaryRes),
+            enabled = enabled,
+        )
+    }
 }
 
 @Composable
@@ -98,42 +148,57 @@ private fun builtinToolDescription(uiState: BuiltinToolSettingsUiState): String 
     }
 }
 
-@Preview(name = "Builtin Tools Empty", showBackground = true, widthDp = 420, heightDp = 900)
+@Preview(name = "Builtin Tools Grouped", showBackground = true, widthDp = 420, heightDp = 900)
 @Composable
-private fun BuiltinToolsSettingsContentEmptyPreview() {
+private fun BuiltinToolsSettingsContentGroupedPreview() {
     MaterialTheme {
         ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
             BuiltinToolsSettingsContentBody(
-                uiState = BuiltinToolSettingsUiState(
-                    isLoading = false,
-                    descriptionResId = R.string.builtin_tool_empty,
-                ),
+                uiState = previewUiState(),
                 onItemEnabledChange = { _, _ -> },
+                onGroupToggled = { _, _ -> },
+                onOpenGroupDetail = {},
             )
         }
     }
 }
 
-@Preview(name = "Builtin Tools Long List", showBackground = true, widthDp = 420, heightDp = 900)
-@Composable
-private fun BuiltinToolsSettingsContentLongListPreview() {
-    MaterialTheme {
-        ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
-            BuiltinToolsSettingsContentBody(
-                uiState = BuiltinToolSettingsUiState(
-                    items = List(20) { index ->
-                        val displayIndex = index + 1
-                        BuiltinToolSettingItem(
-                            name = "builtin_tool_$displayIndex",
-                            description = "用于预览滚动列表的内置工具说明 $displayIndex",
-                            enabled = index % 2 == 0,
-                        )
-                    },
-                    isLoading = false,
-                    descriptionResId = R.string.builtin_tool_page_description,
-                ),
-                onItemEnabledChange = { _, _ -> },
-            )
-        }
-    }
-}
+private fun previewUiState(): BuiltinToolSettingsUiState = BuiltinToolSettingsUiState(
+    groups = listOf(
+        BuiltinToolGroupUiItem(
+            id = "dev_tools",
+            titleRes = R.string.builtin_tool_group_dev_tools,
+            summaryRes = R.string.builtin_tool_group_dev_tools_summary,
+            mode = BuiltinToolGroupMode.PER_TOOL,
+            checked = true,
+        ),
+        BuiltinToolGroupUiItem(
+            id = "android_native",
+            titleRes = R.string.builtin_tool_group_android_native,
+            summaryRes = R.string.builtin_tool_group_android_native_summary,
+            mode = BuiltinToolGroupMode.PER_TOOL,
+            checked = true,
+        ),
+        BuiltinToolGroupUiItem(
+            id = "screen_operation",
+            titleRes = R.string.builtin_tool_group_screen_operation,
+            summaryRes = R.string.builtin_tool_group_screen_operation_summary,
+            mode = BuiltinToolGroupMode.WHOLE,
+            checked = true,
+        ),
+    ),
+    standaloneTools = listOf(
+        BuiltinToolSettingItem(
+            name = "load_skill",
+            description = "Load a skill by id when its full SKILL.md is needed.",
+            enabled = false,
+        ),
+        BuiltinToolSettingItem(
+            name = "memory",
+            description = "Save durable facts to persistent memory.",
+            enabled = true,
+        ),
+    ),
+    isLoading = false,
+    descriptionResId = R.string.builtin_tool_page_description,
+)

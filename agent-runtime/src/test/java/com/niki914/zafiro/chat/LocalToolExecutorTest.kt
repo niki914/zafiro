@@ -9,8 +9,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResultCodec
-import com.niki914.zafiro.chat.agentic.custom.CustomCommandExecutionResult
-import com.niki914.zafiro.chat.agentic.custom.CustomToolExecutor
+import com.niki914.zafiro.chat.agentic.python.PyToolExecutor
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.okia.message.ToolCallOutcome
@@ -35,8 +34,8 @@ class LocalToolExecutorTest {
     private fun builtinResolved(vararg tools: BuiltinTool): ResolvedTools =
         ResolvedTools(builtinTools = tools.map { LocalTool.Builtin(it.name, it.name, it) })
 
-    private fun customResolved(tools: List<LocalTool.Custom>): ResolvedTools =
-        ResolvedTools(customTools = tools)
+    private fun pyResolved(tools: List<LocalTool.Py>): ResolvedTools =
+        ResolvedTools(pyTools = tools)
 
     @Test
     fun execute_builtinSuccess_mapsToSuccessOutcome() = runBlocking {
@@ -69,33 +68,33 @@ class LocalToolExecutorTest {
     }
 
     @Test
-    fun execute_customSuccess_mapsToSuccessOutcome() = runBlocking {
-        val custom = LocalTool.Custom("custom_a", "desc", true, "echo hi")
-        val customExec = fakeCustomExecutor { _, _ ->
-            CustomCommandExecutionResult(ok = true, stdout = "hi")
-        }
+    fun execute_pySuccess_mapsToSuccessOutcome() = runBlocking {
+        val py = LocalTool.Py("py_a", "desc", "print('hi')", null)
+        val pyExec = fakePyExecutor { _, _ -> "{\"ok\":true,\"stdout\":\"hi\"}" }
         val executor = LocalToolExecutor(
-            customToolExecutor = customExec,
-            currentTools = { customResolved(listOf(custom)) },
+            pyToolExecutor = pyExec,
+            currentTools = { pyResolved(listOf(py)) },
         )
 
-        val outcome = executor.execute(call("custom_a", "{}"))
+        val outcome = executor.execute(call("py_a", "{}"))
 
         assertTrue(outcome is ToolCallOutcome.Success)
     }
 
     @Test
-    fun execute_customFailure_mapsToFailure() = runBlocking {
-        val custom = LocalTool.Custom("custom_b", "desc", true, "false")
-        val customExec = fakeCustomExecutor { _, _ ->
-            CustomCommandExecutionResult(ok = false, message = "denied")
+    fun execute_pyFailure_mapsToFailure() = runBlocking {
+        val py = LocalTool.Py("py_b", "desc", "raise RuntimeError()", null)
+        val pyExec = fakePyExecutor { _, _ ->
+            throw RuntimeException("denied")
+            @Suppress("UNREACHABLE_CODE")
+            ""
         }
         val executor = LocalToolExecutor(
-            customToolExecutor = customExec,
-            currentTools = { customResolved(listOf(custom)) },
+            pyToolExecutor = pyExec,
+            currentTools = { pyResolved(listOf(py)) },
         )
 
-        val outcome = executor.execute(call("custom_b", "{}"))
+        val outcome = executor.execute(call("py_b", "{}"))
 
         assertTrue(outcome is ToolCallOutcome.Failure)
         outcome as ToolCallOutcome.Failure
@@ -209,69 +208,87 @@ class LocalToolExecutorTest {
     }
 
     @Test
-    fun createCustomTool_successAndEnabled_registersInlineAndInvokesCallback() = runBlocking {
-        val createTool = OkBuiltinTool("create_custom_tool")
-        var created: LocalTool.Custom? = null
-        val inline = mutableMapOf<String, LocalTool.Custom>()
-        val executor = LocalToolExecutor(
-            builtinToolExecutor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(createTool))),
-            currentTools = { builtinResolved(createTool) },
-            inlineCustomTools = inline,
-            onCustomToolCreated = { created = it },
+    fun pytoolsWrite_successAndEnabled_registersInlineAndInvokesCallback() = runBlocking {
+        val writeResult = BuiltinToolResult.success(
+            message = "ok",
+            data = kotlinx.serialization.json.buildJsonObject {
+                put("name", kotlinx.serialization.json.JsonPrimitive("py_my_tool"))
+                put("description", kotlinx.serialization.json.JsonPrimitive("d"))
+                put("schema_json", kotlinx.serialization.json.JsonPrimitive("{\"type\":\"object\"}"))
+                put("enabled", kotlinx.serialization.json.JsonPrimitive(true))
+            },
         )
-        val args = """{"name":"my_tool","description":"d","command":"echo x","enabled":true}"""
+        val manageTool = StaticBuiltinTool("pytools", writeResult)
+        var written: LocalTool.Py? = null
+        val inline = mutableMapOf<String, LocalTool.Py>()
+        val executor = LocalToolExecutor(
+            builtinToolExecutor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(manageTool))),
+            currentTools = { builtinResolved(manageTool) },
+            inlinePyTools = inline,
+            onPyToolWritten = { written = it },
+        )
+        val args = """{"action":"write","name":"py_my_tool","code":"def main():\n    pass"}"""
 
-        executor.execute(call("create_custom_tool", args))
+        executor.execute(call("pytools", args))
 
-        assertTrue(inline.containsKey("my_tool"))
-        assertEquals("my_tool", created?.name)
-        assertTrue(created?.enabled == true)
+        assertTrue(inline.containsKey("py_my_tool"))
+        assertEquals("py_my_tool", written?.name)
+        assertEquals("{\"type\":\"object\"}", written?.inputSchemaJson)
     }
 
     @Test
-    fun createCustomTool_enabledFalse_doesNotRegister() = runBlocking {
-        val createTool = OkBuiltinTool("create_custom_tool")
-        var created: LocalTool.Custom? = null
-        val inline = mutableMapOf<String, LocalTool.Custom>()
-        val executor = LocalToolExecutor(
-            builtinToolExecutor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(createTool))),
-            currentTools = { builtinResolved(createTool) },
-            inlineCustomTools = inline,
-            onCustomToolCreated = { created = it },
+    fun pytoolsWrite_enabledFalse_doesNotRegister() = runBlocking {
+        val writeResult = BuiltinToolResult.success(
+            message = "ok",
+            data = kotlinx.serialization.json.buildJsonObject {
+                put("name", kotlinx.serialization.json.JsonPrimitive("py_off_tool"))
+                put("enabled", kotlinx.serialization.json.JsonPrimitive(false))
+            },
         )
-        val args = """{"name":"off_tool","description":"d","command":"echo","enabled":false}"""
+        val manageTool = StaticBuiltinTool("pytools", writeResult)
+        var written: LocalTool.Py? = null
+        val inline = mutableMapOf<String, LocalTool.Py>()
+        val executor = LocalToolExecutor(
+            builtinToolExecutor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(manageTool))),
+            currentTools = { builtinResolved(manageTool) },
+            inlinePyTools = inline,
+            onPyToolWritten = { written = it },
+        )
+        val args = """{"action":"write","name":"py_off_tool","code":"def main():\n    pass","enabled":false}"""
 
-        executor.execute(call("create_custom_tool", args))
+        executor.execute(call("pytools", args))
 
-        assertNull(inline["off_tool"])
-        assertNull(created)
+        assertNull(inline["py_off_tool"])
+        assertNull(written)
     }
 
     @Test
-    fun createCustomTool_inlineTool_executesViaInlineFallback() = runBlocking {
-        val inline = mutableMapOf<String, LocalTool.Custom>()
-        val customExec = fakeCustomExecutor { _, _ ->
-            CustomCommandExecutionResult(ok = true, stdout = "ran")
-        }
+    fun pytoolsWrite_inlineTool_executesViaInlineFallback() = runBlocking {
+        val inline = mutableMapOf<String, LocalTool.Py>()
+        val pyExec = fakePyExecutor { _, _ -> "{\"ok\":true,\"stdout\":\"ran\"}" }
         val executor = LocalToolExecutor(
-            customToolExecutor = customExec,
+            pyToolExecutor = pyExec,
             currentTools = { ResolvedTools() }, // snapshot 里没有该工具
-            inlineCustomTools = inline,
-            onCustomToolCreated = {},
+            inlinePyTools = inline,
+            onPyToolWritten = {},
         )
-        inline["my_tool"] = LocalTool.Custom("my_tool", "d", true, "echo x")
+        inline["py_my_tool"] = LocalTool.Py("py_my_tool", "d", "print('ran')", null)
 
-        val outcome = executor.execute(call("my_tool", "{}"))
+        val outcome = executor.execute(call("py_my_tool", "{}"))
 
         assertTrue(outcome is ToolCallOutcome.Success)
     }
 
-    private fun fakeCustomExecutor(
-        fake: suspend (String, Long) -> CustomCommandExecutionResult,
-    ): CustomToolExecutor = CustomToolExecutor(
-        commandExecutor = fake,
-        safetyPolicy = ShellCommandSafetyPolicy(listExecutionRules = { emptyList() }),
-    )
+    private fun fakePyExecutor(
+        fake: suspend (String, Long) -> String,
+    ): PyToolExecutor = PyToolExecutor(exec = fake)
+
+    private class StaticBuiltinTool(
+        override val name: String,
+        private val result: BuiltinToolResult,
+    ) : BuiltinTool() {
+        override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult = result
+    }
 
     private fun call(name: String, args: String): ToolCallContext =
         ToolCallContext("id-$name", name, descriptor(name), args)

@@ -1,13 +1,13 @@
 package com.niki914.zafiro.settings
 
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimeCustomTool
-import com.niki914.zafiro.settings.model.RuntimeCustomToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
 import com.niki914.zafiro.settings.model.RuntimeMcpServer
+import com.niki914.zafiro.settings.model.RuntimePyTool
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
+import com.niki914.zafiro.settings.model.RuntimeToolValidation
 
 interface RuntimeSettingsGateway {
     suspend fun readLlmConfig(agentId: String = "main"): RuntimeLlmConfig
@@ -24,27 +24,29 @@ interface RuntimeSettingsGateway {
 
     suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult
 
-    suspend fun listCustomTools(): List<RuntimeCustomTool>
+    suspend fun listPyTools(): List<RuntimePyTool>
 
-    suspend fun saveCustomTool(
-        tool: RuntimeCustomTool,
+    suspend fun savePyTool(
+        tool: RuntimePyTool,
         overwrite: Boolean = true,
-    ): RuntimeCustomToolValidation?
+    ): RuntimeToolValidation?
 
-    suspend fun replaceAllCustomTools(
-        tools: List<RuntimeCustomTool>,
-    ): RuntimeCustomToolValidation?
+    suspend fun deletePyTool(name: String)
 
-    suspend fun deleteCustomTool(name: String)
-
-    suspend fun setCustomToolEnabled(name: String, enabled: Boolean)
+    suspend fun setPyToolEnabled(name: String, enabled: Boolean)
 
     suspend fun listBuiltinToolSettings(): List<RuntimeBuiltinToolSetting>
 
     suspend fun setBuiltinToolEnabled(
         name: String,
         enabled: Boolean,
-    ): RuntimeCustomToolValidation?
+    ): RuntimeToolValidation?
+
+    // 组定义在 app 层，网关仅透传 groupId；校验由实现完成。
+    suspend fun setBuiltinToolGroupEnabled(
+        groupId: String,
+        enabled: Boolean,
+    ): RuntimeToolValidation?
 
     suspend fun listExecutionRules(): List<RuntimeExecutionRule>
 }

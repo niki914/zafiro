@@ -14,7 +14,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import com.niki914.zafiro.settings.MemoryMutationResult
-import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
+import com.niki914.zafiro.settings.model.RuntimePyTool as PyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
@@ -44,7 +44,7 @@ class XRepoTest {
                 StoreDescriptorRegistry.LLM_CONFIGS_ID,
                 StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID,
                 StoreDescriptorRegistry.AGENT_REGISTRY_ID,
-                StoreDescriptorRegistry.TOOLS_CUSTOM_ID,
+                StoreDescriptorRegistry.TOOLS_PY_ID,
                 StoreDescriptorRegistry.RULES_EXECUTION_ID,
             ),
             store.writeIds,
@@ -58,14 +58,9 @@ class XRepoTest {
             MemorySettingsCodec.parseMemories(store.jsonFor(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)),
         )
         assertEquals(
-            listOf(
-                CustomTool(
-                    name = "launch_wechat",
-                    description = "启动微信",
-                    command = "am start -n com.tencent.mm/com.tencent.mm.ui.LauncherUI",
-                )
-            ),
-            ToolSettingsCodec.parseCustomTools(store.jsonFor(StoreDescriptorRegistry.TOOLS_CUSTOM_ID)),
+            listOf("py_web_search", "py_launch_wechat"),
+            ToolSettingsCodec.parsePyTools(store.jsonFor(StoreDescriptorRegistry.TOOLS_PY_ID))
+                .map { it.name },
         )
         assertEquals(
             LocalSettingsDefaults.defaultExecutionRules,
@@ -396,102 +391,93 @@ class XRepoTest {
     }
 
     @Test
-    fun customToolSave_rejectsUnsafeCommand() = runTest {
+    fun pyToolSave_rejectsUnsafeCode() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(StoreDescriptorRegistry.RULES_EXECUTION_ID to unsafeRuleSettings())
         )
 
-        val validation = XRepo.customTools.save(
-            CustomTool(
-                name = "wipe_data",
+        val validation = XRepo.pyTools.save(
+            PyTool(
+                name = "py_wipe_data",
                 description = "Dangerous",
-                command = "rm -rf /data/local/tmp/cache",
+                code = "import os\nos.popen('rm -rf /data/local/tmp/cache')",
             )
         )
 
         assertNotNull(validation)
-        assertEquals("command", validation!!.field)
+        assertEquals("code", validation!!.field)
         assertEquals(0, store.writeCount)
     }
 
     @Test
-    fun customToolReplace_renamesAndPreservesOtherTools() = runTest {
+    fun pyToolSave_rejectsInvalidName() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+
+        val validation = XRepo.pyTools.save(
+            PyTool(name = "not_py_prefix", code = "def main():\n    pass")
+        )
+
+        assertNotNull(validation)
+        assertEquals("name", validation!!.field)
+        assertEquals(0, store.writeCount)
+    }
+
+    @Test
+    fun pyToolSave_rejectsReservedName() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+
+        val validation = XRepo.pyTools.save(
+            PyTool(name = "py_terminal", code = "def main():\n    pass")
+        )
+
+        assertNotNull(validation)
+        assertEquals("name", validation!!.field)
+        assertEquals(0, store.writeCount)
+    }
+
+    @Test
+    fun pyToolSave_rejectsDuplicateNameWhenNotOverwriting() = runTest {
+        val initialTools = listOf(PyTool(name = "py_existing", code = "def main():\n    pass"))
         val store = installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_CUSTOM_ID to ToolSettingsCodec.encodeCustomTools(
-                    listOf(
-                        CustomTool("old_name", "Old description", "dumpsys battery"),
-                        CustomTool("other_tool", "Other description", "settings list system"),
-                    )
-                )
+                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodePyTools(initialTools)
             )
         )
 
-        val validation = XRepo.customTools.replace(
-            previousName = "old_name",
-            tool = CustomTool("new_name", "New description", "pm list packages", enabled = false),
+        val validation = XRepo.pyTools.save(
+            PyTool(name = "py_existing", code = "def main():\n    pass"),
+            overwrite = false,
+        )
+
+        assertNotNull(validation)
+        assertEquals("name", validation!!.field)
+        assertEquals(0, store.writeCount)
+        assertEquals(initialTools, XRepo.pyTools.list())
+    }
+
+    @Test
+    fun pyToolSave_overwriteReplacesEntry() = runTest {
+        val initialTools = listOf(
+            PyTool(name = "py_a", code = "def main():\n    print('a')"),
+            PyTool(name = "py_b", code = "def main():\n    print('b')"),
+        )
+        val store = installStore(
+            FakeDomainSettingsStore(
+                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodePyTools(initialTools)
+            )
+        )
+
+        val validation = XRepo.pyTools.save(
+            PyTool(name = "py_a", code = "def main():\n    print('a2')", enabled = false),
         )
 
         assertNull(validation)
         assertEquals(1, store.writeCount)
         assertEquals(
-            listOf(
-                CustomTool("other_tool", "Other description", "settings list system"),
-                CustomTool("new_name", "New description", "pm list packages", enabled = false),
-            ),
-            XRepo.customTools.list(),
+            listOf("py_a", "py_b"),
+            XRepo.pyTools.list().map { it.name },
         )
-    }
-
-    @Test
-    fun customToolReplace_rejectsDuplicateName() = runTest {
-        val initialTools = listOf(
-            CustomTool("old_name", "Old description", "dumpsys battery"),
-            CustomTool("existing_tool", "Existing description", "settings list system"),
-        )
-        val store = installStore(
-            FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_CUSTOM_ID to ToolSettingsCodec.encodeCustomTools(
-                    initialTools
-                )
-            )
-        )
-
-        val validation = XRepo.customTools.replace(
-            previousName = "old_name",
-            tool = CustomTool("existing_tool", "New description", "pm list packages"),
-        )
-
-        assertNotNull(validation)
-        assertEquals("name", validation!!.field)
-        assertEquals("Already exists in custom_tools.", validation.message)
-        assertEquals(0, store.writeCount)
-        assertEquals(initialTools, XRepo.customTools.list())
-    }
-
-    @Test
-    fun customToolReplace_rejectsUnsafeCommand() = runTest {
-        val initialTools = listOf(
-            CustomTool("old_name", "Old description", "dumpsys battery"),
-        )
-        val store = installStore(
-            FakeDomainSettingsStore(
-                StoreDescriptorRegistry.RULES_EXECUTION_ID to unsafeRuleSettings(),
-                StoreDescriptorRegistry.TOOLS_CUSTOM_ID to ToolSettingsCodec.encodeCustomTools(
-                    initialTools
-                ),
-            )
-        )
-
-        val validation = XRepo.customTools.replace(
-            previousName = "old_name",
-            tool = CustomTool("new_name", "New description", "rm -rf /data/local/tmp/cache"),
-        )
-
-        assertNotNull(validation)
-        assertEquals("command", validation!!.field)
-        assertEquals(0, store.writeCount)
-        assertEquals(initialTools, XRepo.customTools.list())
+        assertFalse(XRepo.pyTools.list().single { it.name == "py_a" }.enabled)
     }
 
     @Test
@@ -509,7 +495,7 @@ class XRepoTest {
     fun builtinTerminalIgnoresLegacyRunCommandFlag() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_BUILTIN_ID to ToolSettingsCodec.encodeBuiltinEnabledForAgents(
+                StoreDescriptorRegistry.TOOLS_BUILTIN_ID to ToolSettingsCodec.encodeBuiltinEnabled(
                     mapOf("run_command" to false)
                 )
             )
@@ -522,22 +508,22 @@ class XRepoTest {
     }
 
     @Test
-    fun customToolSave_acceptsSafeCommand() = runTest {
+    fun pyToolSave_acceptsValidTool() = runTest {
         val store = installStore(FakeDomainSettingsStore())
 
-        val validation = XRepo.customTools.save(
-            CustomTool(
-                name = "battery_status",
+        val validation = XRepo.pyTools.save(
+            PyTool(
+                name = "py_battery",
                 description = "Battery status",
-                command = "dumpsys battery",
+                code = "def main():\n    print('ok')",
             )
         )
 
         assertNull(validation)
         assertEquals(1, store.writeCount)
         assertEquals(
-            listOf(CustomTool("battery_status", "Battery status", "dumpsys battery")),
-            XRepo.customTools.list(),
+            listOf("py_battery"),
+            XRepo.pyTools.list().map { it.name },
         )
     }
 

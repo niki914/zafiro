@@ -20,7 +20,7 @@ data class ResolvedLlmConfig(
 
 data class ResolvedTools(
     val builtinTools: List<LocalTool> = emptyList(),
-    val customTools: List<LocalTool> = emptyList(),
+    val pyTools: List<LocalTool> = emptyList(),
     val mcpServers: List<McpServerDefinition> = emptyList(),
 )
 
@@ -34,11 +34,15 @@ sealed interface LocalTool {
         val tool: BuiltinTool,
     ) : LocalTool
 
-    data class Custom(
+    /**
+     * 持久化 Python 工具：code 在 ：python 进程执行，参数 schema 来自签名反射缓存。
+     */
+    data class Py(
         override val name: String,
         override val description: String,
-        val enabled: Boolean,
-        val command: String,
+        val code: String,
+        val inputSchemaJson: String?,
+        val timeoutMs: Long = 30_000L,
     ) : LocalTool
 }
 
@@ -59,7 +63,7 @@ enum class ToolParameterType {
 }
 
 fun ResolvedTools.allLocalTools(): List<LocalTool> {
-    return builtinTools + customTools
+    return builtinTools + pyTools
 }
 
 fun ResolvedTools.allLocalToolNames(): List<String> {

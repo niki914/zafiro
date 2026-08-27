@@ -6,7 +6,7 @@ import androidx.compose.runtime.getValue
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.ui.content.mcp.McpSettingsContent
 import com.niki914.zafiro.app.ui.model.SettingsViewModel
-import com.niki914.zafiro.app.ui.nav.CustomToolDetailPage
+import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
@@ -14,6 +14,7 @@ import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
+import com.niki914.zafiro.app.ui.nav.PyToolDetailPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
 
 @Composable
@@ -43,7 +44,11 @@ fun SettingsDetailPageContent(
     }
 
     if (group == ZafiroSettingsGroup.BuiltinTools) {
-        BuiltinToolsSettingsContent()
+        BuiltinToolsSettingsContent(
+            onOpenGroupDetail = { groupId ->
+                onPush(BuiltinToolGroupDetailPage(groupId))
+            },
+        )
         return
     }
 
@@ -56,10 +61,10 @@ fun SettingsDetailPageContent(
         return
     }
 
-    if (group == ZafiroSettingsGroup.CustomShellTools) {
-        CustomShellToolsSettingsContent(
+    if (group == ZafiroSettingsGroup.PyTools) {
+        PyToolsSettingsContent(
             onOpenToolDetail = { name, index, isCreating ->
-                onPush(CustomToolDetailPage(name, index, isCreating))
+                onPush(PyToolDetailPage(name, index, isCreating))
             },
         )
         return

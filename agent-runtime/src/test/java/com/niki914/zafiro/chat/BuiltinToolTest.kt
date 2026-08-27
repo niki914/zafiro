@@ -2,11 +2,9 @@ package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.zafiro.chat.agentic.buildin.impl.CreateCustomToolBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.ReadCustomToolBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.SearchAppsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.TerminalBuiltin
 import com.niki914.okia.tooling.ToolWireName
@@ -49,14 +47,13 @@ class BuiltinToolTest {
 
         assertEquals(
             listOf(
-                "create_custom_tool",
                 "execute_python",
                 "launch_app",
                 "load_skill",
                 "memory",
                 "notify",
                 "open_uri",
-                "read_custom_tool",
+                "pytools",
                 "screen_operation_accessibility",
                 "screen_operation_shell",
                 "search_apps",
@@ -64,13 +61,12 @@ class BuiltinToolTest {
             ),
             registry.all().map { it.name }.sorted()
         )
-        assertEquals("create_custom_tool", registry.find("create_custom_tool")?.name)
         assertEquals("launch_app", registry.find("launch_app")?.name)
         assertEquals("load_skill", registry.find("load_skill")?.name)
         assertEquals("memory", registry.find("memory")?.name)
         assertEquals("notify", registry.find("notify")?.name)
         assertEquals("open_uri", registry.find("open_uri")?.name)
-        assertEquals("read_custom_tool", registry.find("read_custom_tool")?.name)
+        assertEquals("pytools", registry.find("pytools")?.name)
         assertEquals("screen_operation_accessibility", registry.find("screen_operation_accessibility")?.name)
         assertEquals("screen_operation_shell", registry.find("screen_operation_shell")?.name)
         assertEquals("search_apps", registry.find("search_apps")?.name)
@@ -80,13 +76,12 @@ class BuiltinToolTest {
     @Test
     fun toolSchemas_areValidJsonSchema() {
         listOf(
-            CreateCustomToolBuiltin(),
             LaunchAppBuiltin(),
             MemoryBuiltin(),
             OpenUriBuiltin(),
-            ReadCustomToolBuiltin(),
             SearchAppsBuiltin(),
             TerminalBuiltin(),
+            com.niki914.zafiro.chat.agentic.buildin.impl.ManagePyToolBuiltin(),
         ).forEach { tool ->
             assertEquals(tool.name, tool.name.trim())
             assertTrue("description not blank: ${tool.name}", tool.description.isNotBlank())

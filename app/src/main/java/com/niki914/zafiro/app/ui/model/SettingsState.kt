@@ -80,7 +80,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
             groups = listOf(
                 ZafiroSettingsGroup.BuiltinTools,
                 ZafiroSettingsGroup.Skills,
-                ZafiroSettingsGroup.CustomShellTools,
+                ZafiroSettingsGroup.PyTools,
                 ZafiroSettingsGroup.Mcp,
             ),
         ),

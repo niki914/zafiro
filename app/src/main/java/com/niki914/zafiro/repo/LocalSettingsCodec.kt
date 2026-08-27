@@ -9,7 +9,6 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
-import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
@@ -117,42 +116,6 @@ internal object LocalSettingsCodec {
                         )
                     }
                     JsonObject(fields)
-                }
-            ),
-        )
-    }
-
-    fun parseCustomTools(settings: LocalSettings): List<CustomTool> {
-        return settings.customTools
-            .orEmptyObjects()
-            .mapNotNull { obj ->
-                val name = obj.string(NAME_KEY).trim()
-                val command = obj.string(COMMAND_KEY).trim()
-                if (name.isBlank() || command.isBlank()) {
-                    return@mapNotNull null
-                }
-                CustomTool(
-                    name = name,
-                    description = obj.string(DESCRIPTION_KEY).trim(),
-                    command = command,
-                    enabled = obj.boolean(ENABLED_KEY, default = true),
-                )
-            }
-    }
-
-    fun withCustomTools(settings: LocalSettings, tools: List<CustomTool>): LocalSettings {
-        return settings.withTopLevel(
-            CUSTOM_TOOLS_KEY,
-            JsonArray(
-                tools.map { tool ->
-                    JsonObject(
-                        mapOf(
-                            NAME_KEY to JsonPrimitive(tool.name),
-                            DESCRIPTION_KEY to JsonPrimitive(tool.description),
-                            COMMAND_KEY to JsonPrimitive(tool.command),
-                            ENABLED_KEY to JsonPrimitive(tool.enabled),
-                        )
-                    )
                 }
             ),
         )
@@ -325,7 +288,6 @@ internal object LocalSettingsCodec {
     private const val TAKEOVER_KEYWORDS_KEY = "takeover_keywords"
     private const val TAKEOVER_RULES_KEY = "takeover_rules"
     private const val MCP_SERVERS_KEY = "mcp_servers"
-    private const val CUSTOM_TOOLS_KEY = "custom_tools"
     private const val SHELL_SAFETY_POLICIES_KEY = "shell_safety_policies"
     private const val BUILTIN_TOOL_FLAGS_KEY = "builtin_tool_flags"
     private const val ID_KEY = "id"

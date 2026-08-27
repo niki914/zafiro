@@ -10,7 +10,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
@@ -72,26 +71,6 @@ class LocalSettingsCodecTest {
         assertTrue(server["enabled"]!!.jsonPrimitive.boolean)
         assertEquals("abc", server["headers"]!!.jsonObject["X-Token"]!!.jsonPrimitive.content)
         assertFalse(server.containsKey("transport"))
-    }
-
-    @Test
-    fun parseCustomTools_ignoresBlankEntries() {
-        val settings = localSettings(
-            """
-            {
-              "custom_tools": [
-                {"name":"battery_status","description":"Battery","command":"dumpsys battery","enabled":true},
-                {"name":"missing_command","description":"Broken","command":" "},
-                {"name":" ","description":"Broken","command":"date"}
-              ]
-            }
-            """.trimIndent()
-        )
-
-        assertEquals(
-            listOf(CustomTool("battery_status", "Battery", "dumpsys battery", true)),
-            LocalSettingsCodec.parseCustomTools(settings),
-        )
     }
 
     @Test
@@ -167,18 +146,18 @@ class LocalSettingsCodecTest {
             {
               "endpoint": "https://example.invalid",
               "builtin_tool_flags": {
-                "create_custom_tool": {"enabled": false},
+                "terminal": {"enabled": false},
                 "legacy_builtin": true
               }
             }
             """.trimIndent()
         )
 
-        val updated = LocalSettingsCodec.withBuiltinFlag(settings, "create_custom_tool", true)
+        val updated = LocalSettingsCodec.withBuiltinFlag(settings, "terminal", true)
         val flags = updated.builtinToolFlags!!
 
         assertEquals("https://example.invalid", updated.endpoint)
-        assertTrue(flags["create_custom_tool"]!!.jsonPrimitive.boolean)
+        assertTrue(flags["terminal"]!!.jsonPrimitive.boolean)
         assertTrue(flags["legacy_builtin"]!!.jsonPrimitive.boolean)
     }
 
@@ -190,8 +169,7 @@ class LocalSettingsCodecTest {
               "prompt":"base",
               "proxy":"http://proxy",
               "memory_prompt":"memory",
-              "takeover_keywords":["nexus"],
-              "custom_tools":[{"name":"battery_status","description":"Battery","command":"dumpsys battery"}]
+              "takeover_keywords":["nexus"]
             }
             """.trimIndent()
         )
@@ -212,7 +190,6 @@ class LocalSettingsCodecTest {
         assertEquals("http://proxy", updated.proxy)
         assertEquals("memory", updated.memoryPrompt)
         assertEquals(listOf("nexus"), updated.takeoverKeywords)
-        assertEquals(1, updated.customTools!!.size)
     }
 
     @Test

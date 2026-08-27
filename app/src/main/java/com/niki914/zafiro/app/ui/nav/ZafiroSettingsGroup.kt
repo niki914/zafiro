@@ -28,10 +28,10 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_skills_summary,
         routeSuffix = "skills",
     ),
-    CustomShellTools(
-        titleRes = R.string.ui_settings_custom_shell_tools,
-        summaryRes = R.string.ui_settings_custom_shell_tools_summary,
-        routeSuffix = "custom-shell-tools",
+    PyTools(
+        titleRes = R.string.ui_settings_py_tools,
+        summaryRes = R.string.ui_settings_py_tools_summary,
+        routeSuffix = "py-tools",
     ),
     Mcp(
         titleRes = R.string.ui_settings_mcp,
