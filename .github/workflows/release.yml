@@ -22,6 +22,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'   # Chaquopy buildPython requirement
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
@@ -55,14 +60,14 @@ jobs:
       - name: Stage APK
         run: |
           cp app/build/outputs/apk/release/app-release.apk \
-             "agentic-nexus-${{ steps.version.outputs.name }}.apk"
+             "Zafiro-${{ steps.version.outputs.name }}.apk"
 
       - name: Upload APK artifact
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: agentic-nexus-${{ steps.version.outputs.name }}
-          path: agentic-nexus-*.apk
+          name: Zafiro-${{ steps.version.outputs.name }}
+          path: Zafiro-*.apk
           if-no-files-found: error
 
       - name: Create GitHub Release
@@ -71,6 +76,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ github.ref_name }}" \
-            agentic-nexus-*.apk \
+            Zafiro-*.apk \
             --title "${{ github.ref_name }}" \
             --generate-notes

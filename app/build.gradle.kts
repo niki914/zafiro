@@ -19,13 +19,13 @@ android {
         applicationId = "com.niki914.zafiro"
         minSdk = 26
         targetSdk = 34
-        versionName = "1.0.1"
-        versionCode = 6
+        versionName = "1.1.0-preview"
+        versionCode = 7
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            // 指定你想要支持的ABIs
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            // 真机都是 arm64；x86_64 模拟器在各模块的 debug 构建里追加
+            abiFilters += "arm64-v8a"
         }
     }
 
@@ -47,6 +47,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            ndk {
+                abiFilters += "x86_64"   // 模拟器调试
+            }
         }
     }
     compileOptions {
