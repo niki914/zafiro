@@ -1,5 +1,11 @@
 package com.niki914.zafiro.app.ui.content
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
@@ -7,33 +13,42 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import com.niki914.zafiro.app.R
+import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
-import com.niki914.zafiro.app.ui.model.ConfigureEffect
+import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
+import com.niki914.uikit.infra.component.SettingsGroupCard
+import com.niki914.uikit.infra.component.SettingExpandableTextItem
+import com.niki914.uikit.infra.liquidScreenTopPadding
+import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureIntent
 import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureViewModel
-import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
-import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
+import kotlinx.coroutines.delay
 
+/**
+ * Model Configuration 一级页：System Prompt（防抖自动保存）+ Saved Configuration 列表。
+ * 编辑/新建走 SavedConfigDetailPage 二级页。
+ */
 @Composable
 fun ModelConfigSettingsContent(
     onBack: () -> Unit,
     onOpenProviderPick: () -> Unit,
+    onOpenConfigDetail: (configId: String, configName: String) -> Unit,
 ) {
     val viewModel = pageViewModel<ConfigureViewModel>(
         key = "settings-configure",
     )
     val uiState by viewModel.uiStateFlow.collectAsState()
-    var pendingFocusField by rememberSaveable {
-        mutableStateOf<ConfigureEditableField?>(null)
-    }
-    var showUnsavedBeforeAdd by rememberSaveable { mutableStateOf(false) }
     var pendingDeleteConfigId by rememberSaveable { mutableStateOf<String?>(null) }
+    // 首次加载 document.prompt 时不触发自动保存
+    var promptLoadSettled by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.sendIntent(
@@ -42,105 +57,74 @@ fun ModelConfigSettingsContent(
             ),
         )
     }
-    LaunchedEffect(viewModel) {
-        viewModel.uiEffect.collect { effect ->
-            when (effect) {
-                ConfigureEffect.SettingsSaveSucceeded -> Unit // 保存后留在本页（列表/表单已刷新）
-                ConfigureEffect.AllConfigsDeleted -> onBack()
 
-                ConfigureEffect.FocusModel -> pendingFocusField = ConfigureEditableField.Model
-                ConfigureEffect.FocusApiKey -> pendingFocusField = ConfigureEditableField.ApiKey
-                ConfigureEffect.FocusEndpoint -> pendingFocusField = ConfigureEditableField.Endpoint
-                ConfigureEffect.FocusProxy -> pendingFocusField = ConfigureEditableField.Proxy
-
-                ConfigureEffect.OnboardingSaveSucceeded,
-                is ConfigureEffect.SaveFailed,
-                -> Unit
-            }
+    // prompt 防抖自动保存：停止输入 500ms 后持久化
+    LaunchedEffect(uiState.promptInput) {
+        if (!promptLoadSettled) {
+            promptLoadSettled = true
+            return@LaunchedEffect
         }
+        delay(PROMPT_AUTO_SAVE_DEBOUNCE_MILLIS)
+        viewModel.sendIntent(ConfigureIntent.SavePrompt)
     }
 
     EditableSettingsDetailChrome(
         isCreating = false,
-        hasUnsavedChanges = { uiState.hasUnsavedChanges },
+        hasUnsavedChanges = { false },
         onDiscardChanges = onBack,
         rightAction = TopBarActionSpec(
             icon = Icons.Default.Add,
             contentDescription = stringResource(R.string.ui_settings_configure_add),
-            onClick = {
-                if (uiState.hasUnsavedChanges) {
-                    showUnsavedBeforeAdd = true
-                } else {
-                    onOpenProviderPick()
-                }
-            },
+            onClick = onOpenProviderPick,
         ),
     ) {
-        ConfigurePageContent(
-            uiState = uiState,
-            onNameChange = { value ->
-                viewModel.sendIntent(ConfigureIntent.UpdateName(value))
-            },
-            onEndpointOverrideChange = { enabled ->
-                viewModel.sendIntent(ConfigureIntent.SetEndpointOverride(enabled))
-            },
-            onEndpointChange = { endpoint ->
-                viewModel.sendIntent(ConfigureIntent.UpdateEndpoint(endpoint))
-            },
-            onModelChange = { model ->
-                viewModel.sendIntent(ConfigureIntent.UpdateModel(model))
-            },
-            onApiKeyChange = { apiKey ->
-                viewModel.sendIntent(ConfigureIntent.UpdateApiKey(apiKey))
-            },
-            onProtocolSelected = { wireId ->
-                viewModel.sendIntent(ConfigureIntent.SelectProtocol(wireId))
-            },
-            onToggleApiKeyVisibility = {
-                viewModel.sendIntent(ConfigureIntent.ToggleApiKeyVisibility)
-            },
-            onPromptChange = { prompt ->
-                viewModel.sendIntent(ConfigureIntent.UpdatePrompt(prompt))
-            },
-            onProxyChange = { proxy ->
-                viewModel.sendIntent(ConfigureIntent.UpdateProxy(proxy))
-            },
-            onComplete = { viewModel.sendIntent(ConfigureIntent.Save) },
-            requestedFocusField = pendingFocusField,
-            onRequestedFocusHandled = {
-                pendingFocusField = null
-            },
-            onEditSavedConfig = { configId ->
-                viewModel.sendIntent(
-                    ConfigureIntent.Initialize(
-                        scene = ConfigureScene.SettingsEdit,
-                        configId = configId,
-                    ),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = SettingsDetailPageDefaults.HorizontalPadding)
+                .padding(
+                    top = liquidScreenTopPadding(SettingsDetailPageDefaults.VerticalPadding),
+                    bottom = SettingsDetailPageDefaults.VerticalPadding +
+                            SettingsDetailPageDefaults.RootVerticalSpacing,
+                ),
+            verticalArrangement = Arrangement.spacedBy(SettingsDetailPageDefaults.ContentVerticalSpacing),
+        ) {
+            SettingsGroupCard {
+                var promptExpanded by rememberSaveable { mutableStateOf(false) }
+                SettingExpandableTextItem(
+                    title = stringResource(R.string.ui_settings_configure_prompt_label),
+                    value = uiState.promptInput,
+                    onValueChange = { value ->
+                        viewModel.sendIntent(ConfigureIntent.UpdatePrompt(value))
+                    },
+                    placeholder = stringResource(R.string.ui_settings_configure_prompt_placeholder),
+                    description = null,
+                    minLines = 3,
+                    maxLines = 8,
+                    expanded = promptExpanded,
+                    onExpandedChange = { promptExpanded = it },
                 )
-            },
-            onActivateSavedConfig = { configId ->
-                viewModel.sendIntent(ConfigureIntent.ActivateConfig(configId))
-            },
-            onDeleteSavedConfig = { configId ->
-                pendingDeleteConfigId = configId
-            },
-        )
-    }
+            }
 
-    if (showUnsavedBeforeAdd) {
-        ConfirmationLiquidDialog(
-            visible = true,
-            onDismissRequest = { showUnsavedBeforeAdd = false },
-            title = stringResource(R.string.unsaved_changes_dialog_title),
-            text = stringResource(R.string.unsaved_changes_dialog_text),
-            negativeButtonText = stringResource(R.string.unsaved_changes_dialog_cancel),
-            positiveButtonText = stringResource(R.string.unsaved_changes_dialog_confirm_exit),
-            onNegativeClick = { showUnsavedBeforeAdd = false },
-            onPositiveClick = {
-                showUnsavedBeforeAdd = false
-                onOpenProviderPick()
-            },
-        )
+            SavedConfigurationBlock(
+                configs = uiState.savedConfigs.map { summary ->
+                    summary.copy(isActive = summary.id == uiState.activeConfigId)
+                },
+                onEditClick = { configId ->
+                    val summary = uiState.savedConfigs.firstOrNull { it.id == configId }
+                    if (summary != null) {
+                        onOpenConfigDetail(configId, summary.name)
+                    }
+                },
+                onActivateClick = { configId ->
+                    viewModel.sendIntent(ConfigureIntent.ActivateConfig(configId))
+                },
+                onDeleteRequest = { configId ->
+                    pendingDeleteConfigId = configId
+                },
+            )
+        }
     }
 
     ConfirmationLiquidDialog(
@@ -159,3 +143,5 @@ fun ModelConfigSettingsContent(
         },
     )
 }
+
+private const val PROMPT_AUTO_SAVE_DEBOUNCE_MILLIS = 500L

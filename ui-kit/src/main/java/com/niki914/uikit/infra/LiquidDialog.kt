@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -141,8 +143,18 @@ private fun LiquidDialogSurface(
     val interactionSource = remember { MutableInteractionSource() }
     val panelShape = G2FieldShape(48.dp)
 
+    // 治本：调用方条件组合（首帧 visible 即 true）时，AnimatedVisibility 无过渡可播、
+    // 直接闪现。这里先按 false 渲染一帧再翻转，强制播放入场过渡；对常驻
+    // 组合（先 false 后翻 true）的调用姿势无影响。
+    var dialogMounted by remember { mutableStateOf(false) }
+    val effectiveVisible = dialogMounted && visible
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        dialogMounted = true
+    }
+
     AnimatedVisibility(
-        visible = visible,
+        visible = effectiveVisible,
         enter = fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
                 scaleIn(
                     initialScale = 1.04f,

@@ -11,6 +11,7 @@ import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
+import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
@@ -33,6 +34,9 @@ fun SettingsDetailPageContent(
             onBack = onBack,
             onOpenProviderPick = {
                 onPush(SettingsProviderPickPage)
+            },
+            onOpenConfigDetail = { configId, configName ->
+                onPush(SavedConfigDetailPage(configId = configId, configName = configName))
             },
         )
         return

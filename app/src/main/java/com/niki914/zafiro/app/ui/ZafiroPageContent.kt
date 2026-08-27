@@ -12,7 +12,7 @@ import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
-import com.niki914.zafiro.app.ui.nav.SettingsConfigurePage
+import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsHomePage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
@@ -27,7 +27,7 @@ import com.niki914.zafiro.app.ui.route.ExecutionRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.HomePageRoute
 import com.niki914.zafiro.app.ui.route.McpServerDetailRoute
 import com.niki914.zafiro.app.ui.route.ProviderPickPageRoute
-import com.niki914.zafiro.app.ui.route.SettingsConfigurePageRoute
+import com.niki914.zafiro.app.ui.route.SavedConfigDetailRoute
 import com.niki914.zafiro.app.ui.route.SettingsDetailPageRoute
 import com.niki914.zafiro.app.ui.route.SettingsHomePageRoute
 import com.niki914.zafiro.app.ui.route.SettingsProviderPickPageRoute
@@ -72,11 +72,10 @@ fun ZafiroPageContent(
             onPush = onPush,
         )
 
-        is SettingsConfigurePage -> SettingsConfigurePageRoute(
+        is SavedConfigDetailPage -> SavedConfigDetailRoute(
             page = page,
             onBack = onPop,
-            // 保存成功后 pop 回顶级 Model Configuration 页（跳过品牌选择层）
-            onSaveCompleted = { onPopMultiple(2) },
+            onPopMultiple = onPopMultiple,
         )
 
         DonePage -> DonePageRoute(

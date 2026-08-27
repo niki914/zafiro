@@ -1,6 +1,5 @@
 package com.niki914.zafiro.app.ui.content
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -12,7 +11,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -22,8 +20,8 @@ import com.niki914.zafiro.app.ui.model.SavedConfigSummary
 
 /**
  * Saved Configuration 列表块：
- * ◉ = 当前生效配置（点击状态圆点即切换生效）；
- * 行点击 = 加载进上方表单编辑；整行左滑 = 删除（复用记忆页同款组件）。
+ * ◉ = 当前生效配置（纯指示器，不可点击）；
+ * 行点击 = 切换为生效配置；尾随「编辑」= 加载进上方表单编辑；整行左滑 = 删除。
  */
 @Composable
 internal fun SavedConfigurationBlock(
@@ -49,14 +47,15 @@ internal fun SavedConfigurationBlock(
                         title = config.name,
                         summary = config.modelId,
                         leadingContent = {
-                            ActiveConfigDot(
-                                isActive = config.isActive,
-                                onClick = { onActivateClick(config.id) },
-                            )
+                            ActiveConfigDot(isActive = config.isActive)
                         },
-                        onClick = { onEditClick(config.id) },
+                        onClick = { onActivateClick(config.id) },
+                        trailingActionText = stringResource(R.string.ui_settings_saved_configuration_edit),
+                        onTrailingActionClick = { onEditClick(config.id) },
                         onDismissRequest = { onDeleteRequest(config.id) },
                         showChevron = false,
+                        // 生效配置不可删：禁用左滑，点击不受影响
+                        swipeEnabled = !config.isActive,
                     )
                 }
             }
@@ -67,7 +66,6 @@ internal fun SavedConfigurationBlock(
 @Composable
 private fun ActiveConfigDot(
     isActive: Boolean,
-    onClick: () -> Unit,
 ) {
     Icon(
         imageVector = if (isActive) {
@@ -76,7 +74,6 @@ private fun ActiveConfigDot(
             Icons.Default.RadioButtonUnchecked
         },
         contentDescription = null,
-        modifier = Modifier.clickable(onClick = onClick),
         tint = if (isActive) {
             MaterialTheme.colorScheme.primary
         } else {

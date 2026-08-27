@@ -45,7 +45,7 @@ internal fun ConfigurePageRoute(
             when (effect) {
                 ConfigureEffect.OnboardingSaveSucceeded -> onPush(DonePage)
                 ConfigureEffect.SettingsSaveSucceeded -> Unit
-                ConfigureEffect.AllConfigsDeleted -> Unit
+                ConfigureEffect.ConfigDeleted -> Unit
                 ConfigureEffect.FocusModel -> {
                     pendingFocusField = ConfigureEditableField.Model
                 }

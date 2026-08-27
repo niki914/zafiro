@@ -422,19 +422,24 @@ class LlmConfigsApi internal constructor(
     suspend fun upsert(config: SavedLlmConfig): String? {
         val nowMillis = System.currentTimeMillis()
         val normalizedId = config.id.trim().ifBlank { newConfigId() }
-        val normalizedConfig = config.copy(
-            id = normalizedId,
-            name = config.name.trim().ifBlank { config.provider },
-            endpoint = config.endpoint.trim(),
-            model = config.model.trim(),
-            protocol = config.protocol.trim().lowercase(),
-            proxy = config.proxy.trim(),
-            createdAt = config.createdAt.takeIf { it > 0L } ?: nowMillis,
-            updatedAt = nowMillis,
-        )
         repo.updateJson(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
             val doc = LlmConfigsSettingsCodec.parse(json)
-            val exists = doc.configs.any { it.id == normalizedId }
+            val existing = doc.configs.firstOrNull { it.id == normalizedId }
+            // 编辑保存保留原 createdAt：列表按 createdAt 排序，不因编辑而重排
+            val createdAt = existing?.createdAt?.takeIf { it > 0L }
+                ?: config.createdAt.takeIf { it > 0L }
+                ?: nowMillis
+            val normalizedConfig = config.copy(
+                id = normalizedId,
+                name = config.name.trim().ifBlank { config.provider },
+                endpoint = config.endpoint.trim(),
+                model = config.model.trim(),
+                protocol = config.protocol.trim().lowercase(),
+                proxy = config.proxy.trim(),
+                createdAt = createdAt,
+                updatedAt = nowMillis,
+            )
+            val exists = existing != null
             val updatedConfigs = if (exists) {
                 doc.configs.map { if (it.id == normalizedId) normalizedConfig else it }
             } else {

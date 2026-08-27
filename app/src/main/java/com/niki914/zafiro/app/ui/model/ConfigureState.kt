@@ -99,6 +99,8 @@ sealed interface ConfigureIntent {
     data class UpdateApiKey(val value: String) : ConfigureIntent
     data class SelectProtocol(val wireId: String) : ConfigureIntent
     data class UpdatePrompt(val value: String) : ConfigureIntent
+    /** 仅持久化全局 prompt（列表页防抖自动保存）。 */
+    data object SavePrompt : ConfigureIntent
     data class UpdateProxy(val value: String) : ConfigureIntent
     data object ToggleApiKeyVisibility : ConfigureIntent
     data class ActivateConfig(val configId: String) : ConfigureIntent
@@ -114,8 +116,8 @@ sealed interface ConfigureEffect {
     data object FocusApiKey : ConfigureEffect
     data object FocusEndpoint : ConfigureEffect
     data object FocusProxy : ConfigureEffect
-    /** 配置列表被清空（删除后），页面应退出。 */
-    data object AllConfigsDeleted : ConfigureEffect
+    /** 配置删除成功，详情页应退出。 */
+    data object ConfigDeleted : ConfigureEffect
 }
 
 internal data class ConfigureViewModelDependencies(
@@ -189,6 +191,7 @@ class ConfigureViewModel internal constructor(
             is ConfigureIntent.ActivateConfig -> activateConfig(intent.configId)
             is ConfigureIntent.DeleteConfig -> deleteConfig(intent.configId)
             ConfigureIntent.Save -> save()
+            ConfigureIntent.SavePrompt -> savePromptOnly()
         }
     }
 
@@ -367,6 +370,14 @@ class ConfigureViewModel internal constructor(
         }
     }
 
+    private suspend fun savePromptOnly() {
+        runCatching { dependencies.saveGlobalPrompt(currentState.promptInput) }
+            .onFailure { throwable ->
+                if (throwable is CancellationException) throw throwable
+                Logger.w(LOG_TAG, "save prompt failed reason=${throwable.message}")
+            }
+    }
+
     private suspend fun deleteConfig(configId: String) {
         dependencies.deleteConfig(configId)
         val document = dependencies.loadDocument()
@@ -382,9 +393,7 @@ class ConfigureViewModel internal constructor(
                 },
             )
         }
-        if (document.configs.isEmpty()) {
-            sendEffect(ConfigureEffect.AllConfigsDeleted)
-        }
+        sendEffect(ConfigureEffect.ConfigDeleted)
     }
 
     private suspend fun save() {
@@ -445,7 +454,6 @@ class ConfigureViewModel internal constructor(
             dependencies.upsertConfig(
                 current.toSavedLlmConfig().copy(id = targetConfigId)
             )
-            dependencies.saveGlobalPrompt(current.promptInput)
             val refreshed = dependencies.loadDocument()
             updateState {
                 val next = copy(

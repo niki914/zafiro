@@ -114,17 +114,16 @@ fun GeneralSettingsContent() {
         },
     )
 
-    if (showLanguageDialog) {
-        val labeledOptions = languageOptions()
-        SingleChoiceLiquidDialog(
-            visible = true,
-            onDismissRequest = { showLanguageDialog = false },
-            title = stringResource(R.string.ui_settings_general_language),
-            options = labeledOptions,
-            selectedId = savedLanguageTag ?: "",
-            optionId = LanguageOption::tag,
-            optionLabel = LanguageOption::label,
-            onSelect = { option ->
+    val labeledOptions = languageOptions()
+    SingleChoiceLiquidDialog(
+        visible = showLanguageDialog,
+        onDismissRequest = { showLanguageDialog = false },
+        title = stringResource(R.string.ui_settings_general_language),
+        options = labeledOptions,
+        selectedId = savedLanguageTag ?: "",
+        optionId = LanguageOption::tag,
+        optionLabel = LanguageOption::label,
+        onSelect = { option ->
                 savedLanguageTag = option.tag
                 showLanguageDialog = false
                 // 必须同步落盘：setApplicationLocales 触发 recreate 会取消协程作用域
@@ -140,5 +139,4 @@ fun GeneralSettingsContent() {
                 )
             },
         )
-    }
 }
