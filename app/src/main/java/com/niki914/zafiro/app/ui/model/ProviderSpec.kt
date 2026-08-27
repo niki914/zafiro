@@ -70,10 +70,10 @@ object ProviderSpecs {
 private data object DeepSeekSpec : ProviderSpec {
     override val id: String = "deepseek"
     override val brandName: String = "DeepSeek"
-    override val officialEndpoint: String = "https://api.deepseek.com/chat/completions"
+    override val officialEndpoint: String = "https://api.deepseek.com/responses"
     override val exampleModelId: String = "deepseek-v4-pro"
     override val showEndpointConfigInOnboarding: Boolean = false
-    // DeepSeek 官方 /responses 网关兼容 OpenAI Responses 协议（okia 实测）
+    // DeepSeek 官方 /responses 网关兼容 OpenAI Responses 协议（实测可用，2026-02）
     override val defaultProtocol: String = "openai-responses"
     override val iconRes: Int = R.drawable.deepseek
     override val tintIcon: Boolean = true

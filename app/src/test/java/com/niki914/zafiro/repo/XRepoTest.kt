@@ -126,6 +126,20 @@ class XRepoTest {
     }
 
     @Test
+    fun llmConfigs_upsertEditPreservesCreatedAt() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+        val storeJson = { LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID)) }
+
+        XRepo.llmConfigs.upsert(savedConfig(id = "cfg-a"))
+        val createdAt = storeJson().configs.first { it.id == "cfg-a" }.createdAt
+        assertTrue(createdAt > 0L)
+
+        // 编辑保存不得重置 createdAt，否则按 createdAt 排序的列表会重排
+        XRepo.llmConfigs.upsert(savedConfig(id = "cfg-a").copy(model = "edited-model"))
+        assertEquals(createdAt, storeJson().configs.first { it.id == "cfg-a" }.createdAt)
+    }
+
+    @Test
     fun llmConfigs_deleteFallsBackAndResetsOnboardingWhenEmpty() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(

@@ -35,11 +35,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -59,6 +62,9 @@ fun SwipeDismissSettingsItemCard(
     summary: String? = null,
     leadingContent: (@Composable () -> Unit)? = null,
     showChevron: Boolean = false,
+    /** 尾随动作文字（如「编辑」），点击命中由 SettingsItemSurface 统一分发。 */
+    trailingActionText: String? = null,
+    onTrailingActionClick: (() -> Unit)? = null,
     highlightPulseKey: Any? = null,
     highlightPulseDurationMillis: Int = 500,
     enabled: Boolean = true,
@@ -67,6 +73,8 @@ fun SwipeDismissSettingsItemCard(
     dampingRange: Dp = SwipeDismissSettingsItemDefaults.DampingRange,
     dismissIcon: ImageVector = Icons.Default.Delete,
 ) {
+    var trailingActionBounds by remember { mutableStateOf<Rect?>(null) }
+
     val density = LocalDensity.current
     val thresholdPx = with(density) { threshold.toPx() }
     val dampingRangePx = with(density) { dampingRange.toPx() }
@@ -198,6 +206,8 @@ fun SwipeDismissSettingsItemCard(
             highlightPulseKey = highlightPulseKey,
             highlightPulseDurationMillis = highlightPulseDurationMillis,
             onClick = onClick,
+            onTrailingActionClick = onTrailingActionClick,
+            trailingActionBoundsInWindow = trailingActionBounds.takeIf { !trailingActionText.isNullOrBlank() },
             modifier = Modifier
                 .offset { IntOffset(x = -animatedDistancePx.toInt(), y = 0) },
         ) {
@@ -206,6 +216,8 @@ fun SwipeDismissSettingsItemCard(
                 summary = summary,
                 leadingContent = leadingContent,
                 showChevron = showChevron,
+                trailingActionText = trailingActionText,
+                onTrailingActionBoundsChange = { trailingActionBounds = it },
                 contentColor = contentColor,
                 summaryColor = summaryColor,
             )
@@ -219,6 +231,8 @@ private fun SwipeDismissSettingsItemContent(
     summary: String?,
     leadingContent: (@Composable () -> Unit)?,
     showChevron: Boolean,
+    trailingActionText: String?,
+    onTrailingActionBoundsChange: (Rect?) -> Unit,
     contentColor: Color,
     summaryColor: Color,
 ) {
@@ -262,6 +276,17 @@ private fun SwipeDismissSettingsItemContent(
             }
 
             Spacer(modifier = Modifier.weight(1f))
+
+            if (!trailingActionText.isNullOrBlank()) {
+                Text(
+                    text = trailingActionText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = summaryColor,
+                    modifier = Modifier.onGloballyPositioned { layoutCoordinates ->
+                        onTrailingActionBoundsChange(layoutCoordinates.boundsInWindow())
+                    },
+                )
+            }
 
             if (showChevron) {
                 Icon(

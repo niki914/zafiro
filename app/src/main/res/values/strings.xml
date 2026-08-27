@@ -362,8 +362,10 @@
     <string name="ui_settings_saved_configuration_title">已保存配置</string>
     <string name="ui_settings_saved_configuration_delete_title">删除配置</string>
     <string name="ui_settings_saved_configuration_delete_text">该配置将被删除，此操作无法恢复。</string>
+    <string name="ui_settings_saved_configuration_edit">编辑</string>
     <string name="ui_settings_configure_add">添加配置</string>
     <string name="ui_settings_configure_name_label">配置名称</string>
     <string name="ui_settings_configure_name_placeholder">例如：DeepSeek 主力</string>
     <string name="ui_settings_configure_protocol_label">协议</string>
+    <string name="ui_settings_configure_protocol_hint">切换协议后，请确认端点与协议匹配。</string>
 </resources>

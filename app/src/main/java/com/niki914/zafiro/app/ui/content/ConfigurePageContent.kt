@@ -110,20 +110,9 @@ fun ConfigurePageContent(
             onClearActiveField = fieldController.clearActiveField,
         )
 
-        // ── Saved Configuration / System Prompt：仅编辑既有配置时展示 ──
+        // ── System Prompt / Saved Configuration：仅编辑既有配置时展示 ──
         if (uiState.scene == ConfigureScene.SettingsEdit) {
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                SavedConfigurationBlock(
-                    configs = uiState.savedConfigs.map { summary ->
-                        summary.copy(isActive = summary.id == uiState.activeConfigId)
-                    },
-                    onEditClick = { configId ->
-                        fieldController.clearActiveField()
-                        onEditSavedConfig(configId)
-                    },
-                    onActivateClick = onActivateSavedConfig,
-                    onDeleteRequest = onDeleteSavedConfig,
-                )
                 SettingsGroupCard {
                     SettingExpandableTextItem(
                         title = stringResource(R.string.ui_settings_configure_prompt_label),
@@ -142,25 +131,36 @@ fun ConfigurePageContent(
                         },
                     )
                 }
+
+                SavedConfigurationBlock(
+                    configs = uiState.savedConfigs.map { summary ->
+                        summary.copy(isActive = summary.id == uiState.activeConfigId)
+                    },
+                    onEditClick = { configId ->
+                        fieldController.clearActiveField()
+                        onEditSavedConfig(configId)
+                    },
+                    onActivateClick = onActivateSavedConfig,
+                    onDeleteRequest = onDeleteSavedConfig,
+                )
             }
         }
     }
 
-    if (showProtocolDialog) {
-        SingleChoiceLiquidDialog(
-            visible = true,
-            onDismissRequest = { showProtocolDialog = false },
-            title = stringResource(R.string.ui_settings_configure_protocol_label),
-            options = LlmProtocol.entries.toList(),
-            selectedId = uiState.protocolWireId,
-            optionId = LlmProtocol::wireId,
-            optionLabel = LlmProtocol::wireId,
-            onSelect = { protocol ->
-                showProtocolDialog = false
-                onProtocolSelected(protocol.wireId)
-            },
-        )
-    }
+    SingleChoiceLiquidDialog(
+        visible = showProtocolDialog,
+        onDismissRequest = { showProtocolDialog = false },
+        title = stringResource(R.string.ui_settings_configure_protocol_label),
+        hint = stringResource(R.string.ui_settings_configure_protocol_hint),
+        options = LlmProtocol.entries.toList(),
+        selectedId = uiState.protocolWireId,
+        optionId = LlmProtocol::wireId,
+        optionLabel = LlmProtocol::wireId,
+        onSelect = { protocol ->
+            showProtocolDialog = false
+            onProtocolSelected(protocol.wireId)
+        },
+    )
 }
 
 @Composable

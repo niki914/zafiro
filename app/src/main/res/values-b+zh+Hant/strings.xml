@@ -316,10 +316,12 @@
     <string name="ui_settings_saved_configuration_title">已儲存配置</string>
     <string name="ui_settings_saved_configuration_delete_title">刪除配置</string>
     <string name="ui_settings_saved_configuration_delete_text">該配置將被刪除，此操作無法復原。</string>
+    <string name="ui_settings_saved_configuration_edit">編輯</string>
     <string name="ui_settings_configure_add">新增配置</string>
     <string name="ui_settings_configure_name_label">配置名稱</string>
     <string name="ui_settings_configure_name_placeholder">例如：DeepSeek 主力</string>
     <string name="ui_settings_configure_protocol_label">協議</string>
+    <string name="ui_settings_configure_protocol_hint">切換協議後，請確認端點與協議匹配。</string>
     <string name="notif_network_error_title">網路異常</string>
     <string name="notif_network_error_body">網路連線失敗，請檢查網路後重試</string>
     <string name="error_mcp_load_failed">讀取 MCP 配置失敗</string>

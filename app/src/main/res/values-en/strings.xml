@@ -363,8 +363,10 @@
     <string name="ui_settings_saved_configuration_title">Saved configurations</string>
     <string name="ui_settings_saved_configuration_delete_title">Delete configuration</string>
     <string name="ui_settings_saved_configuration_delete_text">This configuration will be deleted and cannot be recovered.</string>
+    <string name="ui_settings_saved_configuration_edit">Edit</string>
     <string name="ui_settings_configure_add">Add configuration</string>
     <string name="ui_settings_configure_name_label">Name</string>
     <string name="ui_settings_configure_name_placeholder">e.g. DeepSeek primary</string>
     <string name="ui_settings_configure_protocol_label">Protocol</string>
+    <string name="ui_settings_configure_protocol_hint">After switching protocols, confirm the endpoint matches the protocol.</string>
 </resources>

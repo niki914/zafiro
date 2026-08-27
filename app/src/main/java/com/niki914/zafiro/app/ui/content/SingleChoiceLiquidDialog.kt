@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,6 +35,7 @@ fun <T> SingleChoiceLiquidDialog(
     visible: Boolean,
     onDismissRequest: () -> Unit,
     title: String,
+    hint: String? = null,
     options: List<T>,
     selectedId: String?,
     optionId: (T) -> String,
@@ -44,12 +46,22 @@ fun <T> SingleChoiceLiquidDialog(
         visible = visible,
         onDismissRequest = onDismissRequest,
         title = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (hint != null) {
+                    Text(
+                        text = hint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         },
         content = {
             options.forEach { option ->
