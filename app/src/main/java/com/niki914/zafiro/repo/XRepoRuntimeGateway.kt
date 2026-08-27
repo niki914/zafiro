@@ -15,9 +15,19 @@ class XRepoRuntimeGateway(
     private val repo: XRepo = XRepo,
 ) : RuntimeSettingsGateway {
     override suspend fun readLlmConfig(agentId: String): RuntimeLlmConfig {
-        val llm = repo.agents.llm(agentId)
+        val doc = repo.llmConfigs.document()
+        val active = doc.activeConfig()
         val memories = repo.agents.memoriesFor(agentId)
-        return llm.copy(memories = memories)
+        return RuntimeLlmConfig(
+            provider = active?.provider.orEmpty(),
+            endpoint = active?.endpoint.orEmpty(),
+            apiKey = active?.apiKey.orEmpty(),
+            model = active?.model.orEmpty(),
+            protocol = active?.protocol.orEmpty(),
+            proxy = active?.proxy.orEmpty(),
+            prompt = doc.prompt,
+            memories = memories,
+        )
     }
 
     override suspend fun listMcpServers(): List<RuntimeMcpServer> = repo.mcp.list()

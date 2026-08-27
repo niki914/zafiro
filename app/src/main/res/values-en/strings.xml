@@ -147,16 +147,12 @@
     <!-- Settings Configure Page -->
     <string name="ui_settings_configure_description">Configure model access, prompts, and proxy settings.</string>
     <string name="ui_settings_configure_save">Save Configuration</string>
-    <string name="ui_settings_configure_switch_provider">Choose Provider Again</string>
-    <string name="save_before_provider_pick_dialog_title">Save current changes?</string>
-    <string name="save_before_provider_pick_dialog_text">Save the current model configuration before choosing another provider.</string>
-    <string name="save_before_provider_pick_dialog_save">Save</string>
-    <string name="save_before_provider_pick_dialog_cancel">Cancel</string>
     <string name="ui_settings_configure_prompt_label">Prompt</string>
     <string name="ui_settings_configure_prompt_placeholder">What should your assistant do?</string>
     <string name="ui_settings_configure_proxy_label">Proxy</string>
     <string name="ui_settings_configure_proxy_placeholder">For example: http://127.0.0.1:7890</string>
     <string name="ui_settings_configure_error_required">This field cannot be empty</string>
+    <string name="ui_settings_configure_error_name_duplicate">Configuration name already exists. Please use a different name.</string>
     <string name="ui_settings_configure_error_proxy_invalid">Proxy address is not a valid URI</string>
     <string name="ui_settings_mcp_config">MCP Configuration</string>
 
@@ -213,7 +209,7 @@
     <string name="takeover_field_enabled">Enable Rule</string>
     <string name="takeover_field_target">Responder When Matched</string>
     <string name="takeover_target_native_assistant">Native Assistant</string>
-    <string name="takeover_target_nexus">Zafiro</string>
+    <string name="takeover_target_zafiro">Zafiro</string>
     <string name="takeover_field_patterns">Rules</string>
     <string name="takeover_field_patterns_hint">weather\n.*alarm.*\nopen.*</string>
     <string name="takeover_field_patterns_description">Enter one keyword or regular expression per line. The selected responder is used as soon as any rule matches.</string>
@@ -356,4 +352,19 @@
     <string name="ui_tool_display_search_apps">Search Apps</string>
     <string name="ui_tool_display_screen_operation_accessibility">Screen Operation</string>
     <string name="ui_tool_display_screen_operation_shell">Screen Operation</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_confirm_delete">Delete</string>
+    <string name="ui_settings_section_general">General</string>
+    <string name="ui_settings_general">General Settings</string>
+    <string name="ui_settings_general_summary">Language and startup behavior</string>
+    <string name="ui_settings_general_language">Language</string>
+    <string name="ui_settings_general_language_follow_system">Follow system</string>
+    <string name="ui_settings_general_load_last_conversation">Load last conversation on startup</string>
+    <string name="ui_settings_saved_configuration_title">Saved configurations</string>
+    <string name="ui_settings_saved_configuration_delete_title">Delete configuration</string>
+    <string name="ui_settings_saved_configuration_delete_text">This configuration will be deleted and cannot be recovered.</string>
+    <string name="ui_settings_configure_add">Add configuration</string>
+    <string name="ui_settings_configure_name_label">Name</string>
+    <string name="ui_settings_configure_name_placeholder">e.g. DeepSeek primary</string>
+    <string name="ui_settings_configure_protocol_label">Protocol</string>
 </resources>

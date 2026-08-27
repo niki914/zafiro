@@ -41,14 +41,19 @@ class XRepoRuntimeGatewayTest {
         XRepo.installStoreForTest(store)
         XRepo.init(context)
 
-        XRepo.saveLlm(
-            RuntimeLlmConfig(
+        XRepo.llmConfigs.upsert(
+            SavedLlmConfig(
+                id = "cfg-1",
+                name = "OpenAI",
                 provider = "openai",
                 endpoint = "https://api.openai.com",
+                apiKey = "secret",
                 model = "gpt-4",
-                prompt = "Hello"
+                protocol = "openai-chat-completions",
+                proxy = "",
             )
         )
+        XRepo.llmConfigs.savePrompt("Hello")
 
         XRepo.memory.replaceAll(listOf("Fact 1", "Fact 2"))
 

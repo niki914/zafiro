@@ -146,16 +146,12 @@
     <!-- Settings Configure Page -->
     <string name="ui_settings_configure_description">调整模型接入、提示词与代理配置。</string>
     <string name="ui_settings_configure_save">保存配置</string>
-    <string name="ui_settings_configure_switch_provider">重新选择提供商</string>
-    <string name="save_before_provider_pick_dialog_title">保存当前修改？</string>
-    <string name="save_before_provider_pick_dialog_text">重新选择提供商前，需要先保存当前模型配置。</string>
-    <string name="save_before_provider_pick_dialog_save">保存</string>
-    <string name="save_before_provider_pick_dialog_cancel">取消</string>
     <string name="ui_settings_configure_prompt_label">提示词</string>
     <string name="ui_settings_configure_prompt_placeholder">你的助手应该怎么做？</string>
     <string name="ui_settings_configure_proxy_label">代理</string>
     <string name="ui_settings_configure_proxy_placeholder">例如：http://127.0.0.1:7890</string>
     <string name="ui_settings_configure_error_required">必填项不能为空</string>
+    <string name="ui_settings_configure_error_name_duplicate">配置名称已存在，请更换后重试</string>
     <string name="ui_settings_configure_error_proxy_invalid">代理地址不是合法 URI</string>
     <string name="ui_settings_mcp_config">MCP 配置</string>
 
@@ -212,7 +208,7 @@
     <string name="takeover_field_enabled">启用规则</string>
     <string name="takeover_field_target">命中时让谁接管</string>
     <string name="takeover_target_native_assistant">原生助手</string>
-    <string name="takeover_target_nexus">Zafiro</string>
+    <string name="takeover_target_zafiro">Zafiro</string>
     <string name="takeover_field_patterns">规则</string>
     <string name="takeover_field_patterns_hint">天气\n.*闹钟.*\n打开.*</string>
     <string name="takeover_field_patterns_description">每行输入一个关键字或正则表达式，命中任意一条时，使用上方的接管方式。</string>
@@ -355,4 +351,19 @@
     <string name="ui_tool_display_search_apps">搜索应用</string>
     <string name="ui_tool_display_screen_operation_accessibility">屏幕操作</string>
     <string name="ui_tool_display_screen_operation_shell">屏幕操作</string>
+    <string name="dialog_cancel">取消</string>
+    <string name="dialog_confirm_delete">删除</string>
+    <string name="ui_settings_section_general">通用</string>
+    <string name="ui_settings_general">通用设置</string>
+    <string name="ui_settings_general_summary">语言与启动行为</string>
+    <string name="ui_settings_general_language">语言</string>
+    <string name="ui_settings_general_language_follow_system">跟随系统</string>
+    <string name="ui_settings_general_load_last_conversation">启动时载入上次对话</string>
+    <string name="ui_settings_saved_configuration_title">已保存配置</string>
+    <string name="ui_settings_saved_configuration_delete_title">删除配置</string>
+    <string name="ui_settings_saved_configuration_delete_text">该配置将被删除，此操作无法恢复。</string>
+    <string name="ui_settings_configure_add">添加配置</string>
+    <string name="ui_settings_configure_name_label">配置名称</string>
+    <string name="ui_settings_configure_name_placeholder">例如：DeepSeek 主力</string>
+    <string name="ui_settings_configure_protocol_label">协议</string>
 </resources>

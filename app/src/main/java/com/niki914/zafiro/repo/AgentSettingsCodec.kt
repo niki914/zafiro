@@ -15,7 +15,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 
 internal object AgentSettingsCodec {
     fun parseRegistry(
@@ -52,48 +51,6 @@ internal object AgentSettingsCodec {
                 )
             }
         return JsonObject(mapOf(AGENTS_KEY to JsonArray(entries))).toString()
-    }
-
-    fun parseConfig(json: String): LlmConfig {
-        val llm = parseObject(json).obj(LLM_KEY) ?: return LlmConfig()
-        return LlmConfig(
-            provider = llm.string(PROVIDER_KEY),
-            endpoint = llm.string(ENDPOINT_KEY),
-            apiKey = llm.string(API_KEY_KEY),
-            model = llm.string(MODEL_KEY),
-            prompt = llm.string(PROMPT_KEY),
-            proxy = llm.string(PROXY_KEY),
-            memoryPrompt = llm.string(MEMORY_PROMPT_KEY),
-            takeoverKeywords = llm.array(TAKEOVER_KEYWORDS_KEY).stringValues(),
-        )
-    }
-
-    fun encodeConfig(agentId: String, config: LlmConfig): String {
-        return JsonObject(
-            mapOf(
-                ID_KEY to JsonPrimitive(normalizeAgentId(agentId) ?: agentId.trim().lowercase()),
-                LLM_KEY to JsonObject(
-                    mapOf(
-                        PROVIDER_KEY to JsonPrimitive(config.provider),
-                        ENDPOINT_KEY to JsonPrimitive(config.endpoint),
-                        MODEL_KEY to JsonPrimitive(config.model),
-                        API_KEY_KEY to JsonPrimitive(config.apiKey),
-                        PROMPT_KEY to JsonPrimitive(config.prompt),
-                        PROXY_KEY to JsonPrimitive(config.proxy),
-                        MEMORY_PROMPT_KEY to JsonPrimitive(config.memoryPrompt),
-                        TAKEOVER_KEYWORDS_KEY to JsonArray(config.takeoverKeywords.map(::JsonPrimitive)),
-                    )
-                ),
-            )
-        ).toString()
-    }
-
-    fun parseMainConfig(json: String): LlmConfig {
-        return parseConfig(json)
-    }
-
-    fun encodeMainConfig(config: LlmConfig): String {
-        return encodeConfig(StoreDescriptorRegistry.MAIN_AGENT_ID, config)
     }
 
     fun normalizeAgentId(value: String): String? {
@@ -166,13 +123,4 @@ internal object AgentSettingsCodec {
     private const val UPDATED_AT_KEY = "updated_at"
     private const val MEMORY_MODE_DISABLED = "disabled"
     private const val MEMORY_MODE_SHARED_MAIN = "shared_main"
-    private const val LLM_KEY = "llm"
-    private const val PROVIDER_KEY = "provider"
-    private const val ENDPOINT_KEY = "endpoint"
-    private const val API_KEY_KEY = "api_key"
-    private const val MODEL_KEY = "model"
-    private const val PROMPT_KEY = "prompt"
-    private const val PROXY_KEY = "proxy"
-    private const val MEMORY_PROMPT_KEY = "memory_prompt"
-    private const val TAKEOVER_KEYWORDS_KEY = "takeover_keywords"
 }

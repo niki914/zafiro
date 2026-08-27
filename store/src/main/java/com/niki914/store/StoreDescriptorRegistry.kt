@@ -5,7 +5,7 @@ object StoreDescriptorRegistry {
     const val WEB_SETTINGS_ID = "web_settings"
     const val LOCAL_SETTINGS_ID = "local_settings"
     const val AGENT_REGISTRY_ID = "agents.registry"
-    const val AGENT_MAIN_CONFIG_ID = "agent.main.config"
+    const val LLM_CONFIGS_ID = "llm.saved_configs"
     const val AGENT_MAIN_MEMORY_ID = "agent.main.memory"
     const val TOOLS_BUILTIN_ID = "tools.builtin"
     const val TOOLS_CUSTOM_ID = "tools.custom"
@@ -22,7 +22,7 @@ object StoreDescriptorRegistry {
         StoreDescriptor(WEB_SETTINGS_ID, "settings/hooks.json"),
         StoreDescriptor(LOCAL_SETTINGS_ID, "local_settings.json"),
         StoreDescriptor(AGENT_REGISTRY_ID, "settings/agents/registry.json", """{"agents":[]}"""),
-        StoreDescriptor(AGENT_MAIN_CONFIG_ID, "settings/agents/main/config.json"),
+        StoreDescriptor(LLM_CONFIGS_ID, "settings/llm/saved_configs.json"),
         StoreDescriptor(
             AGENT_MAIN_MEMORY_ID,
             "settings/agents/main/memory.json",

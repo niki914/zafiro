@@ -28,6 +28,7 @@ internal fun SettingsProviderPickPageRoute(
                     onPush(
                         SettingsConfigurePage(
                             providerId = spec.id,
+                            isNew = true,
                             explicitTitleSpec = TextTitle(spec.brandName),
                         ),
                     )

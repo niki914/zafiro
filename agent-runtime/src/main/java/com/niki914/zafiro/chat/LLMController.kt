@@ -10,7 +10,7 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.stream.LlmStreamEventMapper
 import com.niki914.zafiro.R
 import com.niki914.zafiro.settings.RuntimeEnvironment
-import com.niki914.zafiro.settings.model.LlmApiType
+import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.xposed.api.util.LockState
 import com.niki914.okia.Okia
 import com.niki914.okia.TurnOptions
@@ -25,6 +25,7 @@ import com.niki914.okia.mcp.McpTransport
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
+import com.niki914.okia.protocol.OpenAIResponsesProtocol
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolKind
@@ -84,7 +85,7 @@ object LLMController {
 
     private var runtimeState: RuntimeState? = null
     private var okia: Okia? = null
-    private var sessionApiType: LlmApiType? = null
+    private var sessionProtocol: LlmProtocol? = null
 
     // T3：当前会话快照统一流（持久化器观察它做消息级增量落盘，D3-8）。
     // OKIA conversation StateFlow 是每实例的（切会话 = 换实例 = 换引用），
@@ -120,7 +121,7 @@ object LLMController {
     internal fun resetForTest() {
         kotlinx.coroutines.runBlocking { okia?.close() }
         okia = null
-        sessionApiType = null
+        sessionProtocol = null
         runtimeState = null
         sessionForwardJob?.cancel()
         sessionForwardJob = null
@@ -128,14 +129,14 @@ object LLMController {
         toolRegistry.snapshot().forEach { toolRegistry.remove(it.descriptor.wireName) }
         inlineCustomTools.clear()
         mcpRefreshScheduler.reset()
-        okiaFactory = OkiaFactory { apiType, restore, config ->
-            openOkiaWithDefaultProtocol(apiType, restore, config)
+        okiaFactory = OkiaFactory { protocol, restore, config ->
+            openOkiaWithDefaultProtocol(protocol, restore, config)
         }
     }
 
     internal fun interface OkiaFactory {
         suspend fun create(
-            apiType: LlmApiType,
+            protocol: LlmProtocol,
             restore: SessionSnapshot?,
             config: ResolvedLlmConfig,
         ): Okia
@@ -152,7 +153,7 @@ object LLMController {
             "config read provider=${llmConfig.provider} model=${llmConfig.model} " +
                 "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
         )
-        val apiType = LlmApiType.fromProvider(llmConfig.provider)
+        val protocol = LlmProtocol.fromWire(llmConfig.protocol)
         val runtimeMcpServers = gateway.listMcpServers()
         val customTools = gateway.listCustomTools()
         val builtinSettings = gateway.listBuiltinToolSettings()
@@ -178,7 +179,7 @@ object LLMController {
         )
         // 会话实例按协议重建；协议切换 = close + 新实例，但树经 restore 延续
         // （P1 #3：export 当前树给新协议实例，会话 id + 历史跨 Provider 保留）
-        val activeSession = obtainSession(apiType, configWithoutRuntimePrompt)
+        val activeSession = obtainSession(protocol, configWithoutRuntimePrompt)
         activeSession.update {
             endpoint = configWithoutRuntimePrompt.endpoint
             apiKey = configWithoutRuntimePrompt.apiKey
@@ -210,7 +211,7 @@ object LLMController {
             runtimeState = RuntimeState(
                 snapshot = snapshot,
                 okia = activeSession,
-                sessionApiType = apiType,
+                sessionProtocol = protocol,
             )
             Logger.i(
                 LOG_TAG,
@@ -252,7 +253,7 @@ object LLMController {
         }
         val current = runtimeState ?: return
         val newSession = obtainSession(
-            apiType = current.sessionApiType,
+            protocol = current.sessionProtocol,
             config = current.snapshot.config,
             restore = restore,
             forceNew = true,
@@ -437,7 +438,7 @@ object LLMController {
         TerminalSessionPool.closeAll()
         okia?.close()
         okia = null
-        sessionApiType = null
+        sessionProtocol = null
         conversationFlow.value = null
         Logger.i(LOG_TAG, "reset conversation done")
     }
@@ -454,21 +455,21 @@ object LLMController {
     // ── 会话管理（OKIA 实例生命周期） ──────────────────────────────────────────
 
     private suspend fun obtainSession(
-        apiType: LlmApiType,
+        protocol: LlmProtocol?,
         config: ResolvedLlmConfig,
         restore: SessionSnapshot? = null,
         forceNew: Boolean = false,
     ): Okia {
         if (!forceNew && restore == null) {
-            okia?.takeIf { sessionApiType == apiType }?.let { return it }
+            okia?.takeIf { sessionProtocol == protocol }?.let { return it }
         }
         // 协议切换（P1 #3）：关旧实例前导出当前树，restore 给新协议实例，
         // 会话 id + 历史跨 Provider 延续（okia §5.7：协议 id 不进会话数据）
-        val carried = restore ?: okia?.takeIf { sessionApiType != apiType }?.export()
+        val carried = restore ?: okia?.takeIf { sessionProtocol != protocol }?.export()
         okia?.close()
-        return openSession(apiType, config, carried).also {
+        return openSession(protocol ?: LlmProtocol.Default, config, carried).also {
             okia = it
-            sessionApiType = apiType
+            sessionProtocol = protocol
             forwardConversation(it)
         }
     }
@@ -482,23 +483,37 @@ object LLMController {
     }
 
     private suspend fun openSession(
-        apiType: LlmApiType,
+        protocol: LlmProtocol,
         config: ResolvedLlmConfig,
         restore: SessionSnapshot?,
-    ): Okia = okiaFactory.create(apiType, restore, config)
+    ): Okia = okiaFactory.create(protocol, restore, config)
+
+    /** 端点留空时的兑底：OpenAI Responses / Anthropic / DeepSeek 协议自带官方端点。 */
+    private fun protocolDefaultEndpointFallback(protocol: LlmProtocol): String {
+        return when (protocol) {
+            LlmProtocol.DeepSeek -> "https://api.deepseek.com/chat/completions"
+            LlmProtocol.OpenAiChatCompletions -> "https://api.openai.com/v1/chat/completions"
+            LlmProtocol.OpenAiResponses -> "https://api.openai.com/v1/responses"
+            LlmProtocol.AnthropicMessages -> "https://api.anthropic.com/v1/messages"
+        }
+    }
 
     private suspend fun openOkiaWithDefaultProtocol(
-        apiType: LlmApiType,
+        protocol: LlmProtocol,
         restore: SessionSnapshot?,
         config: ResolvedLlmConfig,
     ): Okia {
-        val protocol = when (apiType) {
-            LlmApiType.DeepSeek -> OpenAIChatCompletionProtocol()
-            LlmApiType.Anthropic -> AnthropicMessagesProtocol()
-            LlmApiType.OpenAI -> OpenAIChatCompletionProtocol(Json, OpenAIChatCompletionCompat())
+        val endpoint = config.endpoint.ifBlank { protocolDefaultEndpointFallback(protocol) }
+        val wireProtocol = when (protocol) {
+            LlmProtocol.DeepSeek -> OpenAIChatCompletionProtocol()
+            LlmProtocol.OpenAiChatCompletions ->
+                OpenAIChatCompletionProtocol(Json, OpenAIChatCompletionCompat())
+
+            LlmProtocol.OpenAiResponses -> OpenAIResponsesProtocol()
+            LlmProtocol.AnthropicMessages -> AnthropicMessagesProtocol()
         }
-        return Okia.open(protocol, restore) {
-            endpoint = config.endpoint
+        return Okia.open(wireProtocol, restore) {
+            this.endpoint = endpoint
             apiKey = config.apiKey
             model = config.model
             hooks += killToolResourcesHook
@@ -643,7 +658,7 @@ object LLMController {
     private data class RuntimeState(
         val snapshot: LlmRuntimeSnapshot,
         val okia: Okia,
-        val sessionApiType: LlmApiType,
+        val sessionProtocol: LlmProtocol?,
     )
 
     private class LlmConfigRequiredException : IllegalStateException(CONFIG_REQUIRED_MESSAGE)

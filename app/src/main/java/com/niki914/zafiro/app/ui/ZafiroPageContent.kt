@@ -75,9 +75,8 @@ fun ZafiroPageContent(
         is SettingsConfigurePage -> SettingsConfigurePageRoute(
             page = page,
             onBack = onPop,
-            onResetToSettingsHome = {
-                onPopMultiple(2)
-            },
+            // 保存成功后 pop 回顶级 Model Configuration 页（跳过品牌选择层）
+            onSaveCompleted = { onPopMultiple(2) },
         )
 
         DonePage -> DonePageRoute(

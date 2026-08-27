@@ -22,10 +22,14 @@ class SettingsViewModelTest {
             )
         )
 
-        assertEquals(3, state.sections.size)
+        assertEquals(4, state.sections.size)
         assertEquals(
             listOf(ZafiroSettingsGroup.ModelConfig),
             state.sections[0].groups,
+        )
+        assertEquals(
+            listOf(ZafiroSettingsGroup.GeneralSettings),
+            state.sections[1].groups,
         )
         assertEquals(
             listOf(
@@ -33,14 +37,14 @@ class SettingsViewModelTest {
                 ZafiroSettingsGroup.Skills,
                 ZafiroSettingsGroup.CustomShellTools,
             ),
-            state.sections[1].groups,
+            state.sections[2].groups,
         )
         assertEquals(
             listOf(
                 ZafiroSettingsGroup.Takeover,
                 ZafiroSettingsGroup.ExecutionRules,
             ),
-            state.sections[2].groups,
+            state.sections[3].groups,
         )
     }
 

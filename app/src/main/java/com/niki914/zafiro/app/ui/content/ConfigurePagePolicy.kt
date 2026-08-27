@@ -7,7 +7,6 @@ data class ConfigurePagePolicy(
     val showEndpointSection: Boolean,
     val showEndpointOverrideToggle: Boolean,
     val endpointEditable: Boolean,
-    val showAdvancedSection: Boolean,
 )
 
 internal fun onboardingConfigurePolicy(providerSpec: ProviderSpec): ConfigurePagePolicy {
@@ -15,7 +14,6 @@ internal fun onboardingConfigurePolicy(providerSpec: ProviderSpec): ConfigurePag
         showEndpointSection = providerSpec.showEndpointConfigInOnboarding,
         showEndpointOverrideToggle = providerSpec.showEndpointConfigInOnboarding,
         endpointEditable = providerSpec.showEndpointConfigInOnboarding,
-        showAdvancedSection = false,
     )
 }
 
@@ -24,14 +22,15 @@ internal fun configurePagePolicy(
     providerSpec: ProviderSpec,
 ): ConfigurePagePolicy {
     return when (scene) {
-        ConfigureScene.Onboarding,
-        ConfigureScene.SettingsProviderSwitch -> onboardingConfigurePolicy(providerSpec)
+        ConfigureScene.Onboarding -> onboardingConfigurePolicy(providerSpec)
 
-        ConfigureScene.Settings -> ConfigurePagePolicy(
+        ConfigureScene.SettingsNew,
+        ConfigureScene.SettingsEdit,
+        -> ConfigurePagePolicy(
             showEndpointSection = true,
-            showEndpointOverrideToggle = false,
+            // 设置页编辑已有配置：端点行始终展示（可覆盖）；新建时给官方端点 + 覆盖开关
+            showEndpointOverrideToggle = scene == ConfigureScene.SettingsNew,
             endpointEditable = true,
-            showAdvancedSection = true,
         )
     }
 }

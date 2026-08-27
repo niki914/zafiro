@@ -873,6 +873,10 @@ private class FakeHomeChatRuntime(
 }
 
 private open class FakeHomeConversationStore : HomeConversationStore {
+    var shouldLoadLastConversationOnStartup: Boolean = true
+
+    override suspend fun loadLastConversationOnStartup(): Boolean =
+        shouldLoadLastConversationOnStartup
     private val records = linkedMapOf<String, ConversationRecord>()
     private var lastOpenedId = ""
 

@@ -17,7 +17,6 @@ import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 
 class XRepoTest {
@@ -42,7 +41,7 @@ class XRepoTest {
         assertTrue(updated)
         assertEquals(
             listOf(
-                StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID,
+                StoreDescriptorRegistry.LLM_CONFIGS_ID,
                 StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID,
                 StoreDescriptorRegistry.AGENT_REGISTRY_ID,
                 StoreDescriptorRegistry.TOOLS_CUSTOM_ID,
@@ -51,8 +50,8 @@ class XRepoTest {
             store.writeIds,
         )
         assertEquals(
-            LlmConfig(prompt = LocalSettingsDefaults.DEFAULT_SYSTEM_PROMPT.trimIndent()),
-            AgentSettingsCodec.parseMainConfig(store.jsonFor(StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID)),
+            LlmConfigsDocument(prompt = LocalSettingsDefaults.DEFAULT_SYSTEM_PROMPT.trimIndent()),
+            LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID)),
         )
         assertEquals(
             LocalSettingsDefaults.defaultMemories,
@@ -101,43 +100,61 @@ class XRepoTest {
     }
 
     @Test
-    fun saveLlmAccess_updatesOnlyAccessFields() = runTest {
+    fun llmConfigs_upsertNewBecomesActiveEditKeepsActive() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+
+        val firstId = "cfg-first"
+        assertNull(XRepo.llmConfigs.upsert(savedConfig(id = firstId)))
+        var document = LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+        assertEquals(firstId, document.activeId)
+
+        // 编辑非 active 的第二份，active 不变
+        val secondId = "cfg-second"
+        XRepo.llmConfigs.upsert(savedConfig(id = secondId))
+        document = LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+        assertEquals(secondId, document.activeId)
+        document = LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+        XRepo.llmConfigs.setActive(firstId)
+        document = LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+        assertEquals(firstId, document.activeId)
+        XRepo.llmConfigs.upsert(
+            savedConfig(id = secondId).copy(model = "edited-model")
+        )
+        document = LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+        assertEquals(firstId, document.activeId)
+        assertEquals("edited-model", document.configs.first { it.id == secondId }.model)
+    }
+
+    @Test
+    fun llmConfigs_deleteFallsBackAndResetsOnboardingWhenEmpty() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID to AgentSettingsCodec.encodeMainConfig(
-                    LlmConfig(
-                        provider = "old",
-                        endpoint = "https://old.example",
-                        apiKey = "old-key",
-                        model = "old-model",
-                        prompt = "base",
-                        proxy = "http://proxy",
-                        memoryPrompt = "memory",
-                    )
+                StoreDescriptorRegistry.APP_STATE_ID to AppStateSettingsCodec.encode(
+                    AppStateSettings(onboardingCompleted = true)
                 )
             )
         )
 
-        XRepo.saveLlmAccess(
-            provider = "openai",
-            endpoint = "https://api.example",
-            model = "gpt-test",
-            apiKey = "secret",
-        )
+        XRepo.llmConfigs.upsert(savedConfig(id = "cfg-a"))
+        XRepo.llmConfigs.upsert(savedConfig(id = "cfg-b"))
+        // active = 最后新建的 cfg-b；删除 cfg-b 回落 cfg-a
+        XRepo.llmConfigs.delete("cfg-b")
+        assertEquals("cfg-a", XRepo.llmConfigs.document().activeId)
+        assertTrue(XRepo.onboardingCompleted())
 
-        assertEquals(1, store.writeCount)
-        assertEquals(
-            LlmConfig(
-                provider = "openai",
-                endpoint = "https://api.example",
-                apiKey = "secret",
-                model = "gpt-test",
-                prompt = "base",
-                proxy = "http://proxy",
-                memoryPrompt = "memory",
-            ),
-            AgentSettingsCodec.parseMainConfig(store.jsonFor(StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID)),
-        )
+        // 清空后回 onboarding
+        XRepo.llmConfigs.delete("cfg-a")
+        assertTrue(XRepo.llmConfigs.document().configs.isEmpty())
+        assertFalse(XRepo.onboardingCompleted())
+    }
+
+    @Test
+    fun llmConfigs_promptIsGlobal() = runTest {
+        installStore(FakeDomainSettingsStore())
+
+        XRepo.llmConfigs.savePrompt("global prompt")
+        XRepo.llmConfigs.upsert(savedConfig(id = "cfg-x"))
+        assertEquals("global prompt", XRepo.llmConfigs.prompt())
     }
 
     @Test
@@ -531,4 +548,20 @@ class XRepoTest {
             ),
         )
     }
+}
+
+private fun savedConfig(
+    id: String,
+    model: String = "test-model",
+): SavedLlmConfig {
+    return SavedLlmConfig(
+        id = id,
+        name = id,
+        provider = "deepseek",
+        endpoint = "https://api.deepseek.com/chat/completions",
+        apiKey = "secret",
+        model = model,
+        protocol = "openai-responses",
+        proxy = "",
+    )
 }

@@ -10,6 +10,8 @@ sealed interface ProviderSpec {
     val officialEndpoint: String
     val exampleModelId: String
     val showEndpointConfigInOnboarding: Boolean
+    /** 新建配置时预填的协议（LlmProtocol.wireId）。 */
+    val defaultProtocol: String
 
     @get:DrawableRes
     val iconRes: Int
@@ -71,6 +73,8 @@ private data object DeepSeekSpec : ProviderSpec {
     override val officialEndpoint: String = "https://api.deepseek.com/chat/completions"
     override val exampleModelId: String = "deepseek-v4-pro"
     override val showEndpointConfigInOnboarding: Boolean = false
+    // DeepSeek 官方 /responses 网关兼容 OpenAI Responses 协议（okia 实测）
+    override val defaultProtocol: String = "openai-responses"
     override val iconRes: Int = R.drawable.deepseek
     override val tintIcon: Boolean = true
     override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
@@ -89,6 +93,7 @@ private data object OpenAiSpec : ProviderSpec {
     override val officialEndpoint: String = "https://api.openai.com/v1/chat/completions"
     override val exampleModelId: String = "gpt-5.4"
     override val showEndpointConfigInOnboarding: Boolean = true
+    override val defaultProtocol: String = "openai-responses"
     override val iconRes: Int = R.drawable.openai
     override val tintIcon: Boolean = true
     override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
@@ -107,6 +112,7 @@ private data object AnthropicSpec : ProviderSpec {
     override val officialEndpoint: String = "https://api.anthropic.com/v1/messages"
     override val exampleModelId: String = "claude-sonnet-4-6"
     override val showEndpointConfigInOnboarding: Boolean = true
+    override val defaultProtocol: String = "anthropic-messages"
     override val iconRes: Int = R.drawable.anthropic
     override val tintIcon: Boolean = true
     override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
@@ -126,6 +132,8 @@ private data object GoogleSpec : ProviderSpec {
         "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
     override val exampleModelId: String = "gemini-3.5-flash"
     override val showEndpointConfigInOnboarding: Boolean = true
+    // Google 品牌走官方 OpenAI 兼容端点，如实展示 openai 协议（不提供 gemini-native）
+    override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.gemini
     override val tintIcon: Boolean = false
     override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(

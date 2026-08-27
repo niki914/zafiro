@@ -70,6 +70,11 @@ fun SettingsDetailPageContent(
         return
     }
 
+    if (group == ZafiroSettingsGroup.GeneralSettings) {
+        GeneralSettingsContent()
+        return
+    }
+
     if (group == ZafiroSettingsGroup.About) {
         AboutSettingsContent()
         return
