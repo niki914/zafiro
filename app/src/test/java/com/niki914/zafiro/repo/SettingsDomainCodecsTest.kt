@@ -2,6 +2,7 @@ package com.niki914.zafiro.repo
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -47,54 +48,46 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
-    fun builtinGhostAgentReturnsFalseAndNonStringAgentsAreIgnored() {
-        val flags = ToolSettingsCodec.parseBuiltinEnabledForAgents(
+    fun builtinV2ParsesBooleansAndIgnoresNonBooleans() {
+        val flags = ToolSettingsCodec.parseBuiltinEnabled(
             """
             {
-              "enabled_for_agents": {
-                "launch_app": ["ghost"],
-                "search_apps": ["main", 1, true, {"bad": "agent"}, ["nested"]],
-                "open_uri": "main"
+              "version": 2,
+              "enabled": {
+                "launch_app": false,
+                "terminal": true,
+                "open_uri": "yes",
+                "notify": null
               }
             }
             """.trimIndent()
         )
 
         assertEquals(false, flags["launch_app"])
-        assertEquals(true, flags["search_apps"])
+        assertEquals(true, flags["terminal"])
         assertNull(flags["open_uri"])
+        assertNull(flags["notify"])
     }
 
     @Test
-    fun builtinFlagsEncodeEnabledForMainAgent() {
-        val json = ToolSettingsCodec.encodeBuiltinEnabledForAgents(
+    fun builtinV2LegacyKeyYieldsEmptyConfig() {
+        val flags = ToolSettingsCodec.parseBuiltinEnabled(
+            """{"enabled_for_agents":{"terminal":["main"]}}"""
+        )
+
+        assertTrue(flags.isEmpty())
+    }
+
+    @Test
+    fun builtinV2EncodeRoundTripWritesVersionAuditKey() {
+        val json = ToolSettingsCodec.encodeBuiltinEnabled(
             mapOf("launch_app" to true, "terminal" to false)
         )
-        val agents = jsonObject(json)["enabled_for_agents"]!!.jsonObject
 
-        assertEquals(
-            listOf("main"),
-            agents["launch_app"]!!.jsonArray.map { it.jsonPrimitive.content })
-        assertTrue(agents["terminal"]!!.jsonArray.isEmpty())
-    }
-
-    @Test
-    fun builtinFlagsDecodeLegacyRunCommandWithoutRewritingKey() {
-        val json = """
-            {
-              "enabled_for_agents": {
-                "run_command": []
-              }
-            }
-        """.trimIndent()
-
-        val flags = ToolSettingsCodec.parseBuiltinEnabledForAgents(json)
-        val encoded = ToolSettingsCodec.encodeBuiltinEnabledForAgents(flags)
-        val agents = jsonObject(encoded)["enabled_for_agents"]!!.jsonObject
-
-        assertEquals(false, flags["run_command"])
-        assertTrue(agents["run_command"]!!.jsonArray.isEmpty())
-        assertFalse(agents.containsKey("terminal"))
+        assertEquals(2, jsonObject(json)["version"]!!.jsonPrimitive.int)
+        val flags = ToolSettingsCodec.parseBuiltinEnabled(json)
+        assertEquals(true, flags["launch_app"])
+        assertEquals(false, flags["terminal"])
     }
 
     @Test

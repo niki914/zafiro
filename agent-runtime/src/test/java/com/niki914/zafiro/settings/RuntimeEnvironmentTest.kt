@@ -109,5 +109,10 @@ private class FakeRuntimeSettingsGateway : RuntimeSettingsGateway {
         enabled: Boolean,
     ): RuntimeCustomToolValidation? = null
 
+    override suspend fun setBuiltinToolGroupEnabled(
+        groupId: String,
+        enabled: Boolean,
+    ): RuntimeCustomToolValidation? = null
+
     override suspend fun listExecutionRules(): List<RuntimeExecutionRule> = emptyList()
 }

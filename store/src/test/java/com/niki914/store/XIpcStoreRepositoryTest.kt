@@ -82,18 +82,17 @@ class XIpcStoreRepositoryTest {
         val updated = XIpcStoreRepository.mutateJson(
             context = context,
             storeId = StoreDescriptorRegistry.TOOLS_BUILTIN_ID,
-            path = "enabled_for_agents.launch_app",
-            valueJson = """["main"]"""
+            path = "enabled.launch_app",
+            valueJson = "true"
         )
 
         val targetFile = ConfigPersistence.fileFor(context, targetDescriptor)
         assertTrue(targetFile.exists())
         assertEquals(updated, targetFile.readText())
         assertEquals(
-            listOf("main"), JSONObject(updated)
-                .getJSONObject("enabled_for_agents")
-                .getJSONArray("launch_app")
-                .let { array -> List(array.length()) { index -> array.getString(index) } })
+            true, JSONObject(updated)
+                .getJSONObject("enabled")
+                .getBoolean("launch_app"))
         assertEquals("""{"tools":[]}""", otherFile.readText())
     }
 

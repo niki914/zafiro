@@ -45,6 +45,33 @@ class BuiltinToolSettingsManager {
         }
     }
 
+    suspend fun setGroupEnabled(
+        groupId: String,
+        enabled: Boolean,
+    ): BuiltinToolResult {
+        return try {
+            val gateway = RuntimeEnvironment.awaitSettingsGateway()
+            val validation = gateway.setBuiltinToolGroupEnabled(groupId, enabled)
+            if (validation != null) {
+                return BuiltinToolResult.failure(
+                    code = "UNKNOWN_BUILTIN_GROUP",
+                    message = "Unknown builtin tool group: $groupId.",
+                    fieldErrors = mapOf(validation.field to validation.message),
+                )
+            }
+            successResult(name = groupId, enabled = enabled)
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) {
+                throw throwable
+            }
+            BuiltinToolResult.failure(
+                code = "SETTINGS_WRITE_FAILED",
+                message = "Failed to update builtin tool group settings.",
+                hint = throwable.message.orEmpty(),
+            )
+        }
+    }
+
     private fun successResult(
         name: String,
         enabled: Boolean,

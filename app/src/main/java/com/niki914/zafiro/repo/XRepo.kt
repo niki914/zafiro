@@ -914,7 +914,7 @@ class BuiltinToolApi internal constructor(
     private val registry: BuiltinToolRegistry = BuiltinToolRegistry.default(),
 ) {
     suspend fun list(): List<BuiltinToolSetting> {
-        val flags = ToolSettingsCodec.parseBuiltinEnabledForAgents(
+        val flags = ToolSettingsCodec.parseBuiltinEnabled(
             repo.readJson(StoreDescriptorRegistry.TOOLS_BUILTIN_ID)
         )
         return registry.all()
@@ -937,11 +937,29 @@ class BuiltinToolApi internal constructor(
             return CustomToolValidation("name", "Builtin tool is not registered.")
         }
         repo.updateJson(StoreDescriptorRegistry.TOOLS_BUILTIN_ID) { json ->
-            val flags = ToolSettingsCodec.parseBuiltinEnabledForAgents(json).toMutableMap()
+            val flags = parseKnownFlags(json).toMutableMap()
             flags[name] = enabled
-            ToolSettingsCodec.encodeBuiltinEnabledForAgents(flags)
+            ToolSettingsCodec.encodeBuiltinEnabled(flags)
         }
         return null
+    }
+
+    // 写穿：组内成员在同一闭包内一次原子写，失败无部分提交。新成员无 flag → 回退 defaultEnabled。
+    suspend fun setGroupEnabled(groupId: String, enabled: Boolean): CustomToolValidation? {
+        val group = BuiltinToolGroups.find(groupId)
+            ?: return CustomToolValidation("groupId", "Unknown builtin tool group.")
+        repo.updateJson(StoreDescriptorRegistry.TOOLS_BUILTIN_ID) { json ->
+            val flags = parseKnownFlags(json).toMutableMap()
+            group.members.forEach { member -> flags[member] = enabled }
+            ToolSettingsCodec.encodeBuiltinEnabled(flags)
+        }
+        return null
+    }
+
+    // 读端忽略未知工具名，写端丢弃孤儿 flag（下架/改名卫生），文件不累积旧键。
+    private fun parseKnownFlags(json: String): Map<String, Boolean> {
+        return ToolSettingsCodec.parseBuiltinEnabled(json)
+            .filterKeys { name -> registry.find(name) != null }
     }
 
     private fun Map<String, Boolean>.enabledFlagFor(

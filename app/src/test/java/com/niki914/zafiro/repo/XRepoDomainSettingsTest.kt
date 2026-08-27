@@ -16,6 +16,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -140,15 +141,58 @@ class XRepoDomainSettingsTest {
     }
 
     @Test
-    fun builtinGhostAgentReferenceDoesNotCrashAndReturnsDisabledForMain() = runTest {
+    fun builtinGroupWriteThroughTogglesAllMembersAtomically() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        val validation = XRepo.builtinTools.setGroupEnabled("screen_operation", false)
+
+        assertNull(validation)
+        assertEquals(1, store.writeIds.count { it == StoreDescriptorRegistry.TOOLS_BUILTIN_ID })
+        val settings = XRepo.builtinTools.list().associateBy { it.name }
+        assertFalse(settings.getValue("screen_operation_accessibility").enabled)
+        assertFalse(settings.getValue("screen_operation_shell").enabled)
+        assertTrue(settings.getValue("terminal").enabled)
+
+        // 未知的组返回校验错误且不写盘
+        val unknown = XRepo.builtinTools.setGroupEnabled("no_such_group", true)
+        assertEquals(1, store.writeIds.count { it == StoreDescriptorRegistry.TOOLS_BUILTIN_ID })
+        assertEquals("groupId", unknown!!.field)
+    }
+
+    @Test
+    fun builtinGroupsReferenceRegisteredToolsWithoutOverlap() {
+        val registryNames = com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry.default()
+            .all().map { it.name }.toSet()
+        val groupedNames = BuiltinToolGroups.all.flatMap { it.members }
+
+        assertEquals(groupedNames.size, groupedNames.toSet().size)
+        assertTrue(groupedNames.all { it in registryNames })
+    }
+
+    @Test
+    fun builtinV2UnknownToolFlagDoesNotLeakToRegisteredTools() = runTest {
         val store = FakeDomainSettingsStore(
-            StoreDescriptorRegistry.TOOLS_BUILTIN_ID to """
-                {
-                  "enabled_for_agents": {
-                    "launch_app": ["ghost"]
-                  }
-                }
-            """.trimIndent()
+            StoreDescriptorRegistry.TOOLS_BUILTIN_ID to ToolSettingsCodec.encodeBuiltinEnabled(
+                mapOf("ghost_tool" to false)
+            )
+        )
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        val launchApp = XRepo.builtinTools.list().first { it.name == "launch_app" }
+
+        assertTrue(launchApp.enabled)
+        assertTrue(store.writeIds.isEmpty())
+    }
+
+    @Test
+    fun builtinV2ExplicitDisabledFlagIsHonored() = runTest {
+        val store = FakeDomainSettingsStore(
+            StoreDescriptorRegistry.TOOLS_BUILTIN_ID to ToolSettingsCodec.encodeBuiltinEnabled(
+                mapOf("launch_app" to false)
+            )
         )
         XRepo.installStoreForTest(store)
         XRepo.init(context)
@@ -156,26 +200,6 @@ class XRepoDomainSettingsTest {
         val launchApp = XRepo.builtinTools.list().first { it.name == "launch_app" }
 
         assertFalse(launchApp.enabled)
-        assertTrue(store.writeIds.isEmpty())
-    }
-
-    @Test
-    fun builtinTerminalInheritsLegacyRunCommandDisabledFlag() = runTest {
-        val store = FakeDomainSettingsStore(
-            StoreDescriptorRegistry.TOOLS_BUILTIN_ID to """
-                {
-                  "enabled_for_agents": {
-                    "run_command": []
-                  }
-                }
-            """.trimIndent()
-        )
-        XRepo.installStoreForTest(store)
-        XRepo.init(context)
-
-        val terminal = XRepo.builtinTools.list().first { it.name == "terminal" }
-
-        assertTrue(terminal.enabled)
         assertTrue(store.writeIds.isEmpty())
     }
 

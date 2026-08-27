@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.nav.Page
+import com.niki914.zafiro.repo.BuiltinToolGroups
 
 sealed interface PageTitleSpec
 
@@ -187,4 +188,17 @@ data class SkillDetailPage(
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
     override val rightAction: TopBarActionSpec? = TopBarActionSpec(Icons.Default.Delete)
+}
+
+data class BuiltinToolGroupDetailPage(
+    val groupId: String,
+) : ZafiroPage {
+    override val routeKey: String = "builtin-tool-group:$groupId"
+    override val titleSpec: PageTitleSpec = ResTitle(
+        BuiltinToolGroups.find(groupId)?.titleRes
+            ?: R.string.ui_settings_builtin_tools
+    )
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
 }

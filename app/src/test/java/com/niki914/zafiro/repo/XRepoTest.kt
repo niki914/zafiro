@@ -478,7 +478,7 @@ class XRepoTest {
     fun builtinTerminalIgnoresLegacyRunCommandFlag() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_BUILTIN_ID to ToolSettingsCodec.encodeBuiltinEnabledForAgents(
+                StoreDescriptorRegistry.TOOLS_BUILTIN_ID to ToolSettingsCodec.encodeBuiltinEnabled(
                     mapOf("run_command" to false)
                 )
             )

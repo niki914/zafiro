@@ -172,6 +172,14 @@ internal class FakeRuntimeSettingsGateway(
         return null
     }
 
+    override suspend fun setBuiltinToolGroupEnabled(
+        groupId: String,
+        enabled: Boolean,
+    ): RuntimeCustomToolValidation? {
+        recordWrite()
+        return null
+    }
+
     override suspend fun listExecutionRules(): List<RuntimeExecutionRule> {
         return executionRules.toList()
     }

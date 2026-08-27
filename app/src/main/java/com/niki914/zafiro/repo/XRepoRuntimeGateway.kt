@@ -76,6 +76,13 @@ class XRepoRuntimeGateway(
         return repo.builtinTools.setEnabled(name, enabled)
     }
 
+    override suspend fun setBuiltinToolGroupEnabled(
+        groupId: String,
+        enabled: Boolean,
+    ): RuntimeCustomToolValidation? {
+        return repo.builtinTools.setGroupEnabled(groupId, enabled)
+    }
+
     override suspend fun listExecutionRules(): List<RuntimeExecutionRule> {
         return repo.executionRules.list()
     }

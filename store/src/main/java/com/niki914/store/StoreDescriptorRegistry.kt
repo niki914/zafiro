@@ -31,7 +31,7 @@ object StoreDescriptorRegistry {
         StoreDescriptor(
             TOOLS_BUILTIN_ID,
             "settings/tools/builtin_tools.json",
-            """{"enabled_for_agents":{}}"""
+            """{"version":2,"enabled":{}}"""
         ),
         StoreDescriptor(TOOLS_CUSTOM_ID, "settings/tools/custom_tools.json", """{"tools":[]}"""),
         StoreDescriptor(

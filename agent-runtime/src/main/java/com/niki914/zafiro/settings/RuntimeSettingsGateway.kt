@@ -46,5 +46,11 @@ interface RuntimeSettingsGateway {
         enabled: Boolean,
     ): RuntimeCustomToolValidation?
 
+    // 组定义在 app 层，网关仅透传 groupId；校验由实现完成。
+    suspend fun setBuiltinToolGroupEnabled(
+        groupId: String,
+        enabled: Boolean,
+    ): RuntimeCustomToolValidation?
+
     suspend fun listExecutionRules(): List<RuntimeExecutionRule>
 }

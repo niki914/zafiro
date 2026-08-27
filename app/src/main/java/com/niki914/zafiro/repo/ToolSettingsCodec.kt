@@ -2,37 +2,33 @@ package com.niki914.zafiro.repo
 
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.array
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.enabledForAgent
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.obj
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.orEmptyObjects
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
 
 internal object ToolSettingsCodec {
-    fun parseBuiltinEnabledForAgents(
-        json: String,
-        agentId: String = MAIN_AGENT_ID
-    ): Map<String, Boolean> {
-        return parseObject(json)
-            .obj(ENABLED_FOR_AGENTS_KEY)
-            ?.mapNotNull { (toolName, agents) ->
-                enabledForAgent(agents, agentId)?.let { enabled -> toolName to enabled }
-            }
-            ?.toMap()
-            ?: emptyMap()
+    // v2：一个工具一个布尔，缺失回退 defaultEnabled；未知工具名由调用方按 registry 过滤（读端忽略、写端 GC）。
+    // version 仅审计，不参与解析。旧 enabled_for_agents 键不识别 = 空配置，无迁移。
+    fun parseBuiltinEnabled(json: String): Map<String, Boolean> {
+        val enabled = parseObject(json)[ENABLED_KEY] as? JsonObject ?: return emptyMap()
+        return enabled.mapNotNull { (toolName, value) ->
+            (value as? JsonPrimitive)?.booleanOrNull?.let { toolName to it }
+        }.toMap()
     }
 
-    fun encodeBuiltinEnabledForAgents(
-        enabled: Map<String, Boolean>,
-        agentId: String = MAIN_AGENT_ID,
-    ): String {
-        val flags = enabled.mapValues { (_, isEnabled) ->
-            JsonArray(if (isEnabled) listOf(JsonPrimitive(agentId)) else emptyList())
-        }
-        return JsonObject(mapOf(ENABLED_FOR_AGENTS_KEY to JsonObject(flags))).toString()
+    fun encodeBuiltinEnabled(enabled: Map<String, Boolean>): String {
+        val flags = enabled.mapValues { (_, isEnabled) -> JsonPrimitive(isEnabled) }
+        return JsonObject(
+            mapOf(
+                VERSION_KEY to JsonPrimitive(BUILTIN_VERSION),
+                ENABLED_KEY to JsonObject(flags),
+            )
+        ).toString()
     }
 
     fun parseCustomTools(json: String, agentId: String = MAIN_AGENT_ID): List<CustomTool> {
@@ -75,6 +71,9 @@ internal object ToolSettingsCodec {
 
     private const val MAIN_AGENT_ID = "main"
     private const val ENABLED_FOR_AGENTS_KEY = "enabled_for_agents"
+    private const val VERSION_KEY = "version"
+    private const val BUILTIN_VERSION = 2
+    private const val ENABLED_KEY = "enabled"
     private const val TOOLS_KEY = "tools"
     private const val NAME_KEY = "name"
     private const val DESCRIPTION_KEY = "description"

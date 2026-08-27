@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import com.niki914.uikit.infra.nav.NavigationEntry
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.nav.ConfigurePage
+import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
 import com.niki914.zafiro.app.ui.nav.ConversationHistoryPage
 import com.niki914.zafiro.app.ui.nav.CustomToolDetailPage
 import com.niki914.zafiro.app.ui.nav.DonePage
@@ -20,6 +21,7 @@ import com.niki914.zafiro.app.ui.nav.SkillDetailPage
 import com.niki914.zafiro.app.ui.nav.StartupPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
 import com.niki914.zafiro.app.ui.route.ConfigurePageRoute
+import com.niki914.zafiro.app.ui.route.BuiltinToolGroupDetailRoute
 import com.niki914.zafiro.app.ui.route.ConversationHistoryPageRoute
 import com.niki914.zafiro.app.ui.route.CustomToolDetailRoute
 import com.niki914.zafiro.app.ui.route.DonePageRoute
@@ -134,6 +136,11 @@ fun ZafiroPageContent(
         )
 
         is SkillDetailPage -> SkillDetailRoute(
+            page = page,
+            onBack = onPop,
+        )
+
+        is BuiltinToolGroupDetailPage -> BuiltinToolGroupDetailRoute(
             page = page,
             onBack = onPop,
         )
