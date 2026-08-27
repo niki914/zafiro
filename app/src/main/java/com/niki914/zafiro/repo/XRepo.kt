@@ -3,7 +3,15 @@ package com.niki914.zafiro.repo
 import android.content.Context
 import com.niki914.logging.Logger
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
+import com.niki914.zafiro.chat.agentic.python.PyRuntime
+import com.niki914.zafiro.chat.agentic.python.PyToolHarness
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_PATTERNS
@@ -868,6 +876,46 @@ class PyToolApi internal constructor(
         }
     }
 
+    /**
+     * UI 保存入口：与 pytools write 同管线，先对 code 做签名反射，
+     * 用结果回填 description/schemaJson 缓存，再走 validate/save。
+     * 反射失败（语法错误、缺 main、注解缺失等）返回 field="code" 的 validation。
+     */
+    suspend fun saveIntrospected(tool: PyTool): ToolValidation? {
+        val introspection = introspectMain(tool.code)
+        introspection.error?.let { error -> return ToolValidation("code", error) }
+        return save(
+            tool.copy(
+                description = introspection.description.orEmpty(),
+                schemaJson = introspection.schemaJson.orEmpty(),
+            ),
+        )
+    }
+
+    private suspend fun introspectMain(code: String): PyIntrospection {
+        val output = try {
+            PyRuntime.exec(PyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            return PyIntrospection(error = t.message ?: "Python signature check failed.")
+        }
+        val json = try {
+            Json.parseToJsonElement(output.trim()).jsonObject
+        } catch (_: Exception) {
+            return PyIntrospection(error = "Unexpected signature check output: ${output.take(200)}")
+        }
+        json["error"]?.jsonPrimitive?.contentOrNull?.let { type ->
+            val line = json["line"]?.jsonPrimitive?.longOrNull
+            val message = json["message"]?.jsonPrimitive?.contentOrNull ?: "Invalid tool code."
+            return PyIntrospection(error = if (line != null) "$message (line $line)" else message)
+        }
+        return PyIntrospection(
+            description = json["description"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            schemaJson = json["schema"]?.jsonObject?.toString().orEmpty(),
+        )
+    }
+
     suspend fun validate(tool: PyTool, overwrite: Boolean = true): ToolValidation? {
         val normalized = tool.normalized()
         if (!NAME_PATTERN.matches(normalized.name)) {
@@ -905,8 +953,15 @@ class PyToolApi internal constructor(
         )
     }
 
+    private data class PyIntrospection(
+        val description: String? = null,
+        val schemaJson: String? = null,
+        val error: String? = null,
+    )
+
     companion object {
         private const val PY_PREFIX = "py_"
+        private const val INTROSPECTION_TIMEOUT_MS = 30_000L
         private val NAME_PATTERN = Regex("^py_[a-z][a-z0-9_]{0,63}$")
     }
 }

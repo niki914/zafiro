@@ -28,6 +28,11 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_skills_summary,
         routeSuffix = "skills",
     ),
+    PyTools(
+        titleRes = R.string.ui_settings_py_tools,
+        summaryRes = R.string.ui_settings_py_tools_summary,
+        routeSuffix = "py-tools",
+    ),
     Mcp(
         titleRes = R.string.ui_settings_mcp,
         summaryRes = R.string.ui_settings_mcp_summary,

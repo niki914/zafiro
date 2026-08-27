@@ -98,6 +98,8 @@
     <string name="ui_settings_builtin_tools_summary">管理 Zafiro 提供的內建工具</string>
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">管理本地 Skills</string>
+    <string name="ui_settings_py_tools">Python 工具</string>
+    <string name="ui_settings_py_tools_summary">管理自訂 Python 工具</string>
     <string name="skill_page_description">開啟或關閉本地 Skills。啟用後，Agent 可在對話中按需使用。</string>
     <string name="skill_loading">正在讀取 Skills...</string>
     <string name="skill_empty">目前沒有可用的 Skill。</string>
@@ -244,6 +246,30 @@
     <string name="builtin_tool_group_screen_operation_summary">透過無障礙服務或 Shell 兩種方式讀取、操作螢幕</string>
     <string name="builtin_tool_group_py_tools">Python 工具</string>
     <string name="builtin_tool_group_py_tools_summary">Agent 可建立、修改與試運行的可傳參 Python 工具</string>
+
+    <!-- Python Tool Module -->
+    <string name="py_tool_page_description">管理你的 Python 工具。</string>
+    <string name="py_tool_page_empty_description">讓你的 Agent 幫你建立，或點擊右上角新增。</string>
+    <string name="py_tool_loading">正在讀取已儲存的 Python 工具…</string>
+    <string name="py_tool_editor_title_create">新增 Python 工具</string>
+    <string name="py_tool_editor_description">設定你的 Python 工具。工具說明與參數簽名由程式碼中 main() 函式的 docstring 與型別標註自動擷取。儲存後，Agent 可在需要時呼叫此工具。</string>
+    <string name="py_tool_field_name">工具名稱</string>
+    <string name="py_tool_field_name_hint">例如：py_web_search</string>
+    <string name="py_tool_field_enabled">啟用工具</string>
+    <string name="py_tool_field_code">Python 程式碼</string>
+    <string name="py_tool_field_code_hint">定義 main(query: str) 等帶型別標註的進入函式</string>
+    <string name="py_tool_save_action">儲存 Python 工具</string>
+    <string name="py_tool_error_name_required">請輸入工具名稱</string>
+    <string name="py_tool_error_code_required">請輸入工具程式碼</string>
+    <string name="py_tool_error_name_invalid">名稱需符合 py_[a-z][a-z0-9_] 格式</string>
+    <string name="py_tool_error_name_duplicate">名稱已存在，請更換後重試</string>
+    <string name="py_tool_error_name_reserved">此名稱已被內建工具使用</string>
+    <string name="py_tool_error_load_failed">讀取 Python 工具失敗：%1$s</string>
+    <string name="py_tool_error_save_failed">儲存 Python 工具失敗：%1$s</string>
+    <string name="py_tool_error_delete_failed">刪除 Python 工具失敗：%1$s</string>
+    <string name="py_tool_delete_dialog_title">刪除 Python 工具</string>
+    <string name="py_tool_delete_dialog_text">確定要刪除工具「%1$s」嗎？此操作不可撤銷。</string>
+    <string name="py_tool_save_failed">儲存失敗：%1$s</string>
 
     <string name="mcp_page_description">設定 MCP 服務的連線方式與驗證資訊。儲存後，Zafiro 會在執行時自動發現可用工具。</string>
     <string name="mcp_page_empty_description">點擊右上角以新增第一個伺服器。</string>
