@@ -329,7 +329,7 @@ private fun HomePageContentBody(
                 items = uiState.turns,
                 key = { _, turn -> turn.id },
             ) { index, turn ->
-                // User 气泡组内位置（渲染层：相邻 turn 无 agent 内容即同组，与数据层 turn 无关）
+                // User 气泡组内位置（渲染层：两个相邻 UserBubble 之间无任何内容即同组，见 userBubblePosition）
                 val position = userBubblePosition(uiState.turns, index)
                 // 顶距：组中/组末用组内间隙与上一气泡连体；组首/单条维持 turn 分隔
                 val turnTopPad = when {
@@ -342,6 +342,7 @@ private fun HomePageContentBody(
                 HomeChatTurnItem(
                     turn = turn,
                     userBubblePosition = position,
+                    isLastTurn = index == uiState.turns.lastIndex,
                     onContentTap = onContentTap,
                     onReGenerate = onReGenerate,
                     onFork = onFork,
@@ -410,18 +411,20 @@ private fun HomePageContentBody(
 }
 
 /**
- * 渲染层连续 User 气泡分组：纯 User turn（blocks 为空）与相邻纯 User turn 连成一组。
- * 单条判定：自身有 agent 内容，或前后均非纯 User。
+ * 渲染层连续 User 气泡分组：两个相邻 UserBubble 之间有无内容，取决于上一 turn 的 blocks
+ * 是否为空（内容夹在上一气泡与下一气泡之间）。规则：
+ * - 对下一条黏（自身成为组首/组中）：自身 blocks 为空——自身内容会显示在自身气泡与下一条之间；
+ * - 对上一条黏（自身成为组末/组中）：上一 turn blocks 为空。
+ * 因此流式内容到达只会改变"自身→下一条"一侧，组首一侧的黏性由上一 turn 决定，组不随内容跳变。
  */
 private fun userBubblePosition(turns: List<HomeChatTurn>, index: Int): UserBubblePosition {
-    val isBare = turns[index].blocks.isEmpty()
-    val prevBare = index > 0 && turns[index - 1].blocks.isEmpty()
-    val nextBare = index < turns.lastIndex && turns[index + 1].blocks.isEmpty()
+    val stickyUp = index > 0 && turns[index - 1].blocks.isEmpty()
+    val stickyDown = index < turns.lastIndex && turns[index].blocks.isEmpty()
     return when {
-        !isBare || (!prevBare && !nextBare) -> UserBubblePosition.Single
-        !prevBare -> UserBubblePosition.GroupFirst
-        !nextBare -> UserBubblePosition.GroupLast
-        else -> UserBubblePosition.GroupMid
+        stickyUp && stickyDown -> UserBubblePosition.GroupMid
+        stickyUp -> UserBubblePosition.GroupLast
+        stickyDown -> UserBubblePosition.GroupFirst
+        else -> UserBubblePosition.Single
     }
 }
 
@@ -429,6 +432,7 @@ private fun userBubblePosition(turns: List<HomeChatTurn>, index: Int): UserBubbl
 private fun HomeChatTurnItem(
     turn: HomeChatTurn,
     userBubblePosition: UserBubblePosition,
+    isLastTurn: Boolean,
     onContentTap: () -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
@@ -446,6 +450,9 @@ private fun HomeChatTurnItem(
     modifier: Modifier = Modifier,
 ) {
     val canToggleAction = !isGenerating && turn.blocks.isNotEmpty()
+    // User 操作行（仅复制）：最后一条 turn 即使无内容（失败后无错误卡/被中断的裸回合）也放开，
+    // 使本条 query 仍可复制；非最后一条裸回合维持不可复制（历史行为），Agent 操作行不放开
+    val canToggleUserAction = !isGenerating && (turn.blocks.isNotEmpty() || isLastTurn)
 
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
@@ -477,19 +484,10 @@ private fun HomeChatTurnItem(
                     indication = null,
                     onClick = {
                         onContentTap()
-                        if (canToggleAction) {
+                        if (canToggleUserAction) {
                             onToggleActionRow(turn.id, ActionSource.User)
                         }
                     },
-                )
-                // 用户消息 → agent 内容的 turn 分隔：总间距 TurnSeparator（块间距之上补差，见参数表）；
-                // 组内成员不放底部补差，组内间隙由下一 item 顶距承担（单条独立时保留）
-                .padding(
-                    bottom = if (userBubblePosition == UserBubblePosition.Single) {
-                        TurnSeparator - BlockSpacing
-                    } else {
-                        0.dp
-                    }
                 ),
             contentAlignment = Alignment.CenterEnd,
         ) {
@@ -510,110 +508,126 @@ private fun HomeChatTurnItem(
             )
         }
 
-        var blockIndex = 0
-        while (blockIndex < turn.blocks.size) {
-            // Collect consecutive Tool blocks into a run
-            val runStart = blockIndex
-            var runEnd = runStart
-            while (runEnd < turn.blocks.size && turn.blocks[runEnd] is HomeChatBlock.Tool) {
-                runEnd++
-            }
-            val runSize = runEnd - runStart
-            if (runSize >= 1) {
-                val statuses = turn.blocks.subList(runStart, runEnd)
-                    .map { (it as HomeChatBlock.Tool).status }
-                val runKey = "${turn.id}_${runStart}"
-                val runResults = expandedToolResults
-                    .filter { it.startsWith("${runKey}_") }
-                    .mapNotNull { it.removePrefix("${runKey}_").toIntOrNull() }
-                    .toSet()
-                ToolChain(
-                    tools = statuses,
-                    isExpanded = runKey in expandedToolRuns,
-                    expandedResults = runResults,
-                    onToggleRun = { onToggleToolRun(turn.id, runStart) },
-                    onToggleResult = { ti ->
-                        onToggleToolResult(turn.id, runStart, ti)
-                    },
-                    onContentClick = {
-                        onContentTap()
-                        if (canToggleAction) {
-                            onToggleActionRow(turn.id, ActionSource.Agent)
-                        }
-                    },
-                )
-                blockIndex = runEnd
-            } else {
-                when (val block = turn.blocks[blockIndex]) {
-                    is HomeChatBlock.Text -> {
-                        if (block.text.isNotBlank()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = {
-                                            onContentTap()
-                                            if (canToggleAction) {
-                                                onToggleActionRow(turn.id, ActionSource.Agent)
-                                            }
-                                        },
-                                    ),
-                            ) {
-                                AssistantOutputText(
-                                    text = block.text,
-                                )
-                            }
-                        }
+        // 内容区：turn 分隔补差（TurnSeparator - BlockSpacing）放在内容区顶部而非气泡底部，
+        // 使气泡→用户操作行（复制按钮）的间距仅剩 BlockSpacing 12dp，与 markdown→操作行一致；
+        // 组内成员（非 Single）不设补差，与下一气泡保持组内紧凑
+        if (turn.blocks.isNotEmpty()) {
+            Column(
+                modifier = Modifier.padding(
+                    top = if (userBubblePosition == UserBubblePosition.Single) {
+                        TurnSeparator - BlockSpacing
+                    } else {
+                        0.dp
                     }
-                    is HomeChatBlock.Error -> {
-                        AssistantErrorBlock(
-                            message = block.message,
-                            code = block.code,
+                ),
+                verticalArrangement = Arrangement.spacedBy(BlockSpacing),
+            ) {
+                var blockIndex = 0
+                while (blockIndex < turn.blocks.size) {
+                    // Collect consecutive Tool blocks into a run
+                    val runStart = blockIndex
+                    var runEnd = runStart
+                    while (runEnd < turn.blocks.size && turn.blocks[runEnd] is HomeChatBlock.Tool) {
+                        runEnd++
+                    }
+                    val runSize = runEnd - runStart
+                    if (runSize >= 1) {
+                        val statuses = turn.blocks.subList(runStart, runEnd)
+                            .map { (it as HomeChatBlock.Tool).status }
+                        val runKey = "${turn.id}_${runStart}"
+                        val runResults = expandedToolResults
+                            .filter { it.startsWith("${runKey}_") }
+                            .mapNotNull { it.removePrefix("${runKey}_").toIntOrNull() }
+                            .toSet()
+                        ToolChain(
+                            tools = statuses,
+                            isExpanded = runKey in expandedToolRuns,
+                            expandedResults = runResults,
+                            onToggleRun = { onToggleToolRun(turn.id, runStart) },
+                            onToggleResult = { ti ->
+                                onToggleToolResult(turn.id, runStart, ti)
+                            },
+                            onContentClick = {
+                                onContentTap()
+                                if (canToggleAction) {
+                                    onToggleActionRow(turn.id, ActionSource.Agent)
+                                }
+                            },
                         )
-                    }
-                    is HomeChatBlock.Thinking -> {
-                        // blockIndex 是 var，lambda 捕获按引用；先快照成 val 再进 lambda
-                        val blockIndexNow = blockIndex
-                        val thinkingKey = "${turn.id}_$blockIndexNow"
-                        val isThinkingExpanded = thinkingKey in expandedThinking
-                        CollapsibleBlock(
-                            icon = ToolPresentation.Thinking,
-                            title = "Thinking" + ToolPresentation
-                                .previewOf(block.text)
-                                ?.let { " · $it" }
-                                .orEmpty(),
-                            isExpanded = isThinkingExpanded,
-                            onToggle = { onToggleThinking(turn.id, blockIndexNow) },
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = {
-                                            onContentTap()
-                                            if (canToggleAction) {
-                                                onToggleActionRow(turn.id, ActionSource.Agent)
-                                            }
-                                        },
-                                    ),
-                            ) {
-                                ToolResultText(
-                                    text = block.text,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = BlockBodyAlpha),
-                                    // active 思考块展开时滚到底跟随；用户可手动滚动不锁
-                                    autoScrollToEnd = isThinkingExpanded && thinkingKey == activeThinkingKey,
+                        blockIndex = runEnd
+                    } else {
+                        when (val block = turn.blocks[blockIndex]) {
+                            is HomeChatBlock.Text -> {
+                                if (block.text.isNotBlank()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null,
+                                                onClick = {
+                                                    onContentTap()
+                                                    if (canToggleAction) {
+                                                        onToggleActionRow(turn.id, ActionSource.Agent)
+                                                    }
+                                                },
+                                            ),
+                                    ) {
+                                        AssistantOutputText(
+                                            text = block.text,
+                                        )
+                                    }
+                                }
+                            }
+                            is HomeChatBlock.Error -> {
+                                AssistantErrorBlock(
+                                    message = block.message,
+                                    code = block.code,
                                 )
                             }
+                            is HomeChatBlock.Thinking -> {
+                                // blockIndex 是 var，lambda 捕获按引用；先快照成 val 再进 lambda
+                                val blockIndexNow = blockIndex
+                                val thinkingKey = "${turn.id}_$blockIndexNow"
+                                val isThinkingExpanded = thinkingKey in expandedThinking
+                                CollapsibleBlock(
+                                    icon = ToolPresentation.Thinking,
+                                    title = "Thinking" + ToolPresentation
+                                        .previewOf(block.text)
+                                        ?.let { " · $it" }
+                                        .orEmpty(),
+                                    isExpanded = isThinkingExpanded,
+                                    onToggle = { onToggleThinking(turn.id, blockIndexNow) },
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null,
+                                                onClick = {
+                                                    onContentTap()
+                                                    if (canToggleAction) {
+                                                        onToggleActionRow(turn.id, ActionSource.Agent)
+                                                    }
+                                                },
+                                            ),
+                                    ) {
+                                        ToolResultText(
+                                            text = block.text,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = BlockBodyAlpha),
+                                            // active 思考块展开时滚到底跟随；用户可手动滚动不锁
+                                            autoScrollToEnd = isThinkingExpanded && thinkingKey == activeThinkingKey,
+                                        )
+                                    }
+                                }
+                            }
+                            is HomeChatBlock.Tool -> {} // handled above
                         }
+                        blockIndex++
                     }
-                    is HomeChatBlock.Tool -> {} // handled above
                 }
-                blockIndex++
             }
         }
 

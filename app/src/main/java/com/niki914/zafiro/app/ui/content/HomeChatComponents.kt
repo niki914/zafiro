@@ -233,7 +233,7 @@ private fun AssistantOutputTextPreview() {
     }
 }
 
-/** User 气泡在连续用户消息组内的位置（渲染层分组：组边界 = 相邻 turn 有 agent 内容）。 */
+/** User 气泡在连续用户消息组内的位置（渲染层分组：组边界 = 相邻 UserBubble 之间存在任何内容，见 userBubblePosition）。 */
 enum class UserBubblePosition {
     /** 独立单条：右上圆角、右下直角 + 尾巴 */
     Single,
@@ -248,6 +248,9 @@ enum class UserBubblePosition {
     GroupLast,
 }
 
+/** 接缝侧小圆角（组内 User 气泡相接角与尾巴底角共用）。 */
+private val UserBubbleInnerCorner = 2.dp
+
 @Composable
 fun UserMessageBubble(
     text: String,
@@ -257,7 +260,6 @@ fun UserMessageBubble(
     val colorScheme = MaterialTheme.colorScheme
     val bubbleBg = colorScheme.primary.copy(alpha = 0.18f)
     // 接缝侧（右）小圆角与命令工具结果体分割侧一致（2dp）；带尾巴的角保持直角
-    val innerCorner = 2.dp
     val bubbleShape = when (position) {
         UserBubblePosition.Single -> G2FieldShape(
             topStart = 24.dp,
@@ -269,20 +271,20 @@ fun UserMessageBubble(
         UserBubblePosition.GroupFirst -> G2FieldShape(
             topStart = 24.dp,
             topEnd = 24.dp,
-            bottomEnd = innerCorner,
+            bottomEnd = UserBubbleInnerCorner,
             bottomStart = 24.dp,
         )
 
         UserBubblePosition.GroupMid -> G2FieldShape(
             topStart = 24.dp,
-            topEnd = innerCorner,
-            bottomEnd = innerCorner,
+            topEnd = UserBubbleInnerCorner,
+            bottomEnd = UserBubbleInnerCorner,
             bottomStart = 24.dp,
         )
 
         UserBubblePosition.GroupLast -> G2FieldShape(
             topStart = 24.dp,
-            topEnd = innerCorner,
+            topEnd = UserBubbleInnerCorner,
             bottomEnd = 0.dp,
             bottomStart = 24.dp,
         )
@@ -315,25 +317,25 @@ fun UserMessageBubble(
 }
 
 /**
- * 气泡右下角尖尾巴（高 9dp、凸出 5dp）：上段为从右缘上部到尖点的下凹曲线，
- * 下段为沿底边的水平直线。由 drawBehind 在气泡主体之前绘制，超出 clip 区域的部分不被裁剪；
- * 不叠入主体（起点贴右缘），避免半透明背景两次绘制产生色差。
+ * 右下角尾巴：沿气泡右缘向上突的小竖条。右上角为 1/4 圆角（普通圆角），
+ * 右下角与接缝一致的 2dp 小圆角，顶边平直、左缘贴气泡右缘、底缘贴气泡底边，
+ * 不叠入主体（避免半透明背景两次绘制产生色差）。
  */
 private fun DrawScope.drawUserBubbleTail(color: Color) {
     val w = size.width
     val h = size.height
+    val tw = 5.dp.toPx()                  // 尾巴宽度
+    val th = 8.dp.toPx()                 // 尾巴高度（沿右缘向上突）
+    val rTop = 4.dp.toPx()                // 右上 1/4 圆角半径
+    val rBot = UserBubbleInnerCorner.toPx() // 右下小圆角，与接缝一致
     val path = Path().apply {
-        // 起点：右缘上部
-        moveTo(w, h - 9.dp.toPx())
-        // 上段：从左上（右缘上部）到右下（尖点）的下凹曲线，中段低于两点连线
-        cubicTo(
-            w + 2.dp.toPx(), h - 3.dp.toPx(),
-            w + 3.5.dp.toPx(), h - 2.dp.toPx(),
-            w + 5.dp.toPx(), h,
-        )
-        // 下段：尖点到右下角的水平直线
-        lineTo(w, h)
-        close()
+        moveTo(w, h)                             // 气泡右下角
+        lineTo(w + tw - rBot, h)                 // 底边
+        quadraticTo(w + tw, h, w + tw, h - rBot) // 右下 1/4 圆角
+        lineTo(w + tw, h - th + rTop)            // 右缘向上
+        quadraticTo(w + tw, h - th, w + tw - rTop, h - th) // 右上 1/4 圆角
+        lineTo(w, h - th)                        // 平直顶边
+        close()                                  // 沿气泡右缘回到底角
     }
     drawPath(path, color)
 }
