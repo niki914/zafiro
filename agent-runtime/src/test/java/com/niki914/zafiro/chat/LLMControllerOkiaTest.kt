@@ -3,7 +3,7 @@ package com.niki914.zafiro.chat
 import android.content.Context
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.zafiro.chat.util.SilentLoggerRule
-import com.niki914.zafiro.settings.model.LlmApiType
+import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
 import com.niki914.zafiro.settings.model.RuntimeCustomTool
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
@@ -61,26 +61,27 @@ class LLMControllerOkiaTest {
         LLMController.resetForTest()
     }
 
-    // ── 装配：apiType → 协议 ────────────────────────────────────────────────
+    // ── 装配：protocol → 协议 ───────────────────────────────────────────────
 
     @Test
-    fun refresh_passesDeepSeekApiTypeToFactory() = runTest {
+    fun refresh_passesDeepSeekProtocolToFactory() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
                 llmConfig = validLlmConfig(
-                    provider = "deepseek"
+                    provider = "deepseek",
+                    protocol = LlmProtocol.DeepSeek.wireId,
                 )
             )
         )
-        val capturedApiTypes = mutableListOf<LlmApiType>()
-        LLMController.okiaFactory = LLMController.OkiaFactory { apiType, _, _ ->
-            capturedApiTypes += apiType
+        val capturedProtocols = mutableListOf<LlmProtocol>()
+        LLMController.okiaFactory = LLMController.OkiaFactory { protocol, _, _ ->
+            capturedProtocols += protocol
             openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
         }
 
         LLMController.refresh()
 
-        assertEquals(listOf(LlmApiType.DeepSeek), capturedApiTypes)
+        assertEquals(listOf(LlmProtocol.DeepSeek), capturedProtocols)
     }
 
     @Test
@@ -357,10 +358,12 @@ class LLMControllerOkiaTest {
 
     private fun validLlmConfig(
         provider: String = "deepseek",
+        protocol: String = LlmProtocol.OpenAiResponses.wireId,
         prompt: String = "Base prompt",
     ): RuntimeLlmConfig {
         return RuntimeLlmConfig(
             provider = provider,
+            protocol = protocol,
             endpoint = "https://example.com/v1",
             model = "deepseek-chat",
             prompt = prompt,

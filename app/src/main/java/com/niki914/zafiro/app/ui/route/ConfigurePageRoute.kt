@@ -12,6 +12,7 @@ import com.niki914.zafiro.app.ui.content.ConfigureEditableField
 import com.niki914.zafiro.app.ui.content.ConfigurePageContent
 import com.niki914.zafiro.app.ui.model.ConfigureEffect
 import com.niki914.zafiro.app.ui.model.ConfigureIntent
+import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureViewModel
 import com.niki914.zafiro.app.ui.nav.ConfigurePage
 import com.niki914.zafiro.app.ui.nav.DonePage
@@ -32,13 +33,19 @@ internal fun ConfigurePageRoute(
     }
 
     LaunchedEffect(page.providerId) {
-        viewModel.sendIntent(ConfigureIntent.Initialize(page.providerId))
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                scene = ConfigureScene.Onboarding,
+                providerId = page.providerId,
+            ),
+        )
     }
     LaunchedEffect(viewModel) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 ConfigureEffect.OnboardingSaveSucceeded -> onPush(DonePage)
                 ConfigureEffect.SettingsSaveSucceeded -> Unit
+                ConfigureEffect.AllConfigsDeleted -> Unit
                 ConfigureEffect.FocusModel -> {
                     pendingFocusField = ConfigureEditableField.Model
                 }
@@ -77,6 +84,9 @@ internal fun ConfigurePageRoute(
         },
         onApiKeyChange = { apiKey ->
             viewModel.sendIntent(ConfigureIntent.UpdateApiKey(apiKey))
+        },
+        onProtocolSelected = { wireId ->
+            viewModel.sendIntent(ConfigureIntent.SelectProtocol(wireId))
         },
         onToggleApiKeyVisibility = {
             viewModel.sendIntent(ConfigureIntent.ToggleApiKeyVisibility)

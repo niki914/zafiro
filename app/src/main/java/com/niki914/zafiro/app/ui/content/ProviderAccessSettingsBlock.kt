@@ -7,6 +7,8 @@ import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
+import com.niki914.uikit.infra.component.SettingsListItem
+import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
 
 @Composable
@@ -15,14 +17,36 @@ internal fun ProviderAccessSettingsBlock(
     policy: ConfigurePagePolicy,
     expandedField: ConfigureEditableField?,
     onExpandedFieldChange: (ConfigureEditableField?) -> Unit,
+    onNameChange: (String) -> Unit,
     onEndpointOverrideChange: (Boolean) -> Unit,
     onEndpointChange: (String) -> Unit,
     onModelChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
+    onProtocolClick: () -> Unit,
     onToggleApiKeyVisibility: () -> Unit,
+    onProxyChange: (String) -> Unit,
     onClearActiveField: () -> Unit,
 ) {
     SettingsGroupCard {
+        val showNameField = uiState.scene != ConfigureScene.Onboarding
+        if (showNameField) {
+            SettingExpandableTextItem(
+                title = stringResource(R.string.ui_settings_configure_name_label),
+                value = uiState.configNameInput,
+                onValueChange = onNameChange,
+                placeholder = stringResource(R.string.ui_settings_configure_name_placeholder),
+                description = null,
+                minLines = 1,
+                maxLines = 1,
+                expanded = expandedField == ConfigureEditableField.Name,
+                onExpandedChange = { isExpanded ->
+                    onExpandedFieldChange(
+                        if (isExpanded) ConfigureEditableField.Name else null,
+                    )
+                },
+            )
+            SettingsItemDivider()
+        }
         if (policy.showEndpointSection) {
             val endpointEditable = policy.endpointEditable &&
                     (!policy.showEndpointOverrideToggle || uiState.endpointOverrideEnabled)
@@ -52,12 +76,7 @@ internal fun ProviderAccessSettingsBlock(
                 value = uiState.endpointInput,
                 onValueChange = onEndpointChange,
                 placeholder = stringResource(R.string.ui_onboard_configure_endpoint_placeholder),
-                description = uiState.endpointErrorResId?.let { stringResource(it) }
-                    ?: if (endpointEditable) {
-                        null
-                    } else {
-                        uiState.endpointInput
-                    },
+                description = uiState.endpointErrorResId?.let { stringResource(it) },
                 enabled = endpointEditable && !uiState.isSaving,
                 minLines = 3,
                 maxLines = 6,
@@ -95,6 +114,14 @@ internal fun ProviderAccessSettingsBlock(
             },
         )
         SettingsItemDivider()
+        // 协议行：与 About version 行同款 Value Row 组件（点击弹选择弹窗）
+        SettingsListItem(
+            title = stringResource(R.string.ui_settings_configure_protocol_label),
+            currentState = uiState.protocolWireId,
+            showChevron = true,
+            onClick = onProtocolClick,
+        )
+        SettingsItemDivider()
         SettingExpandableTextItem(
             title = stringResource(R.string.ui_onboard_configure_api_key_label),
             value = uiState.apiKeyInput,
@@ -116,6 +143,23 @@ internal fun ProviderAccessSettingsBlock(
             onExpandedChange = { isExpanded ->
                 onExpandedFieldChange(
                     if (isExpanded) ConfigureEditableField.ApiKey else null,
+                )
+            },
+        )
+        SettingsItemDivider()
+        SettingExpandableTextItem(
+            title = stringResource(R.string.ui_settings_configure_proxy_label),
+            value = uiState.proxyInput,
+            onValueChange = onProxyChange,
+            placeholder = stringResource(R.string.ui_settings_configure_proxy_placeholder),
+            description = uiState.proxyErrorResId?.let { stringResource(it) },
+            enabled = !uiState.isSaving,
+            minLines = 1,
+            maxLines = 1,
+            expanded = expandedField == ConfigureEditableField.Proxy,
+            onExpandedChange = { isExpanded ->
+                onExpandedFieldChange(
+                    if (isExpanded) ConfigureEditableField.Proxy else null,
                 )
             },
         )

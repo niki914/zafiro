@@ -57,6 +57,7 @@ fun SwipeDismissSettingsItemCard(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     summary: String? = null,
+    leadingContent: (@Composable () -> Unit)? = null,
     showChevron: Boolean = false,
     highlightPulseKey: Any? = null,
     highlightPulseDurationMillis: Int = 500,
@@ -203,6 +204,7 @@ fun SwipeDismissSettingsItemCard(
             SwipeDismissSettingsItemContent(
                 title = title,
                 summary = summary,
+                leadingContent = leadingContent,
                 showChevron = showChevron,
                 contentColor = contentColor,
                 summaryColor = summaryColor,
@@ -215,18 +217,28 @@ fun SwipeDismissSettingsItemCard(
 private fun SwipeDismissSettingsItemContent(
     title: String,
     summary: String?,
+    leadingContent: (@Composable () -> Unit)?,
     showChevron: Boolean,
     contentColor: Color,
     summaryColor: Color,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val titleAreaMaxWidth = maxWidth * 0.66f
+        val titleAreaMaxWidth = if (leadingContent != null) {
+            (maxWidth - 32.dp) * 0.66f
+        } else {
+            maxWidth * 0.66f
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (leadingContent != null) {
+                Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    leadingContent()
+                }
+            }
             Column(
                 modifier = Modifier.widthIn(max = titleAreaMaxWidth),
                 verticalArrangement = Arrangement.spacedBy(2.dp),

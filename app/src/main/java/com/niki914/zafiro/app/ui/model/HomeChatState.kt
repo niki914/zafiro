@@ -26,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 internal interface HomeConversationStore {
     suspend fun lastOpenedConversationId(): String
     suspend fun setLastOpenedConversationId(value: String)
+    suspend fun loadLastConversationOnStartup(): Boolean
     suspend fun createConversation(id: String, firstUserInput: String)
     suspend fun getConversation(id: String): ConversationRecord?
     suspend fun updateDraft(conversationId: String, draftText: String)
@@ -37,6 +38,9 @@ private object DefaultHomeConversationStore : HomeConversationStore {
     override suspend fun lastOpenedConversationId(): String = XRepo.lastOpenedConversationId()
     override suspend fun setLastOpenedConversationId(value: String) =
         XRepo.setLastOpenedConversationId(value)
+
+    override suspend fun loadLastConversationOnStartup(): Boolean =
+        XRepo.loadLastConversationOnStartup()
 
     override suspend fun createConversation(id: String, firstUserInput: String) {
         ConversationRepo.createConversation(id = id, firstUserInput = firstUserInput)
@@ -471,6 +475,19 @@ class HomeChatViewModel internal constructor(
     private fun restoreLastConversationOnStartup() {
         if (startupRestoreAttempted) return
         startupRestoreAttempted = true
+        viewModelScope.launch {
+            // General Settings 开关：默认关（冷启动进入新对话），打开才恢复上次会话
+            val shouldRestore = runCatching { conversations.loadLastConversationOnStartup() }
+                .getOrDefault(false)
+            if (!shouldRestore) {
+                Logger.d(LOG_TAG, "restore skipped loadLastConversationOff")
+                return@launch
+            }
+            restoreLastConversation()
+        }
+    }
+
+    private suspend fun restoreLastConversation() {
         val startedAtMs = System.currentTimeMillis()
         updateState { copy(isLoadingConversation = true) }
         viewModelScope.launch {

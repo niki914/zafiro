@@ -70,6 +70,12 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
             ),
         ),
         SettingsSectionDefinition(
+            titleRes = R.string.ui_settings_section_general,
+            groups = listOf(
+                ZafiroSettingsGroup.GeneralSettings,
+            ),
+        ),
+        SettingsSectionDefinition(
             titleRes = R.string.ui_settings_section_tools,
             groups = listOf(
                 ZafiroSettingsGroup.BuiltinTools,

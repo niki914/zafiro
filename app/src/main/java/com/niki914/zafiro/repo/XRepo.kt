@@ -37,6 +37,7 @@ object XRepo {
     val takeoverRules: TakeoverRulesApi = TakeoverRulesApi(this)
     val agents: AgentApi = AgentApi(this)
     val skills: SkillApi = SkillApi(this)
+    val llmConfigs = LlmConfigsApi(this)
 
     private val writeMutex = Mutex()
     private var appContext: Context? = null
@@ -154,9 +155,11 @@ object XRepo {
             }
             writeJsonLocked(
                 context,
-                StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID,
-                AgentSettingsCodec.encodeMainConfig(
-                    LlmConfig(prompt = LocalSettingsDefaults.DEFAULT_SYSTEM_PROMPT.trimIndent())
+                StoreDescriptorRegistry.LLM_CONFIGS_ID,
+                LlmConfigsSettingsCodec.encode(
+                    LlmConfigsDocument(
+                        prompt = LocalSettingsDefaults.DEFAULT_SYSTEM_PROMPT.trimIndent(),
+                    )
                 ),
             )
             writeJsonLocked(
@@ -237,28 +240,26 @@ object XRepo {
         )
     }
 
-    suspend fun llm(): LlmConfig {
-        return agents.llm(StoreDescriptorRegistry.MAIN_AGENT_ID)
+    suspend fun languageTag(): String {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).languageTag
     }
 
-    suspend fun saveLlmAccess(
-        provider: String,
-        endpoint: String,
-        model: String,
-        apiKey: String,
-    ) {
-        val updated = llm().copy(
-            provider = provider,
-            endpoint = endpoint,
-            model = model,
-            apiKey = apiKey,
-        )
-        saveLlm(updated)
+    suspend fun setLanguageTag(tag: String) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(languageTag = tag.trim()))
+        }
     }
 
-    suspend fun saveLlm(config: LlmConfig) {
-        agents.saveLlm(StoreDescriptorRegistry.MAIN_AGENT_ID, config)?.let { validation ->
-            throw IllegalArgumentException("${validation.field}: ${validation.message}")
+    suspend fun loadLastConversationOnStartup(): Boolean {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .loadLastConversationOnStartup
+    }
+
+    suspend fun setLoadLastConversationOnStartup(value: Boolean) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(loadLastConversationOnStartup = value))
         }
     }
 
@@ -362,38 +363,6 @@ class AgentApi internal constructor(
         return null
     }
 
-    suspend fun llm(agentId: String = StoreDescriptorRegistry.MAIN_AGENT_ID): LlmConfig {
-        val normalizedId = AgentSettingsCodec.normalizeAgentId(agentId) ?: return LlmConfig()
-        if (normalizedId == StoreDescriptorRegistry.MAIN_AGENT_ID) {
-            return AgentSettingsCodec.parseMainConfig(repo.readJson(StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID))
-        }
-        if (enabledProfile(normalizedId) == null) {
-            return LlmConfig()
-        }
-        val storeId = StoreDescriptorRegistry.agentConfigStoreId(normalizedId) ?: return LlmConfig()
-        return AgentSettingsCodec.parseConfig(repo.readJson(storeId))
-    }
-
-    suspend fun saveLlm(agentId: String, config: LlmConfig): AgentValidation? {
-        val normalizedId = AgentSettingsCodec.normalizeAgentId(agentId)
-            ?: return AgentValidation("id", "Invalid agent id.")
-        if (normalizedId == StoreDescriptorRegistry.MAIN_AGENT_ID) {
-            repo.writeJson(
-                StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID,
-                AgentSettingsCodec.encodeMainConfig(config)
-            )
-            return null
-        }
-        val profile = get(normalizedId) ?: return AgentValidation("id", "Agent does not exist.")
-        if (!profile.enabled) {
-            return AgentValidation("enabled", "Agent is disabled.")
-        }
-        val storeId = StoreDescriptorRegistry.agentConfigStoreId(normalizedId)
-            ?: return AgentValidation("id", "Invalid agent id.")
-        repo.writeJson(storeId, AgentSettingsCodec.encodeConfig(normalizedId, config))
-        return null
-    }
-
     suspend fun memoriesFor(agentId: String): List<String> {
         val normalizedId = AgentSettingsCodec.normalizeAgentId(agentId) ?: return emptyList()
         if (normalizedId == StoreDescriptorRegistry.MAIN_AGENT_ID) {
@@ -408,6 +377,108 @@ class AgentApi internal constructor(
 
     private suspend fun enabledProfile(agentId: String): AgentProfile? {
         return get(agentId)?.takeIf { it.enabled }
+    }
+}
+
+/**
+ * Saved Configuration 多份保存的 LLM 接入配置（active 那份即生效配置）。
+ * - 新建保存时置 active；编辑非 active 配置不改变归属
+ * - 删除 active 后回落列表第一份；列表清空则回 onboarding 态
+ * - prompt 为全局一份的行为层配置，不随配置切换
+ */
+class LlmConfigsApi internal constructor(
+    private val repo: XRepo,
+) {
+    suspend fun document(): LlmConfigsDocument {
+        return LlmConfigsSettingsCodec.parse(repo.readJson(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+    }
+
+    suspend fun list(): List<SavedLlmConfig> = document().configs
+
+    suspend fun active(): SavedLlmConfig? = document().activeConfig()
+
+    /** 全局 system prompt；空串 = 未设置。 */
+    suspend fun prompt(): String = document().prompt
+
+    suspend fun savePrompt(prompt: String) {
+        val normalizedPrompt = prompt.trim()
+        repo.updateJson(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            if (doc.prompt == normalizedPrompt) return@updateJson json
+            LlmConfigsSettingsCodec.encode(doc.copy(prompt = normalizedPrompt))
+        }
+    }
+
+    suspend fun setActive(id: String) {
+        repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            if (doc.configs.none { it.id == id.trim() }) return@updateJsonOrFalse null
+            if (doc.activeId == id.trim()) return@updateJsonOrFalse null
+            LlmConfigsSettingsCodec.encode(doc.copy(activeId = id.trim()))
+        }
+    }
+
+    /** @return null = 成功；非 null = 用户可读的失败原因 */
+    suspend fun upsert(config: SavedLlmConfig): String? {
+        val nowMillis = System.currentTimeMillis()
+        val normalizedId = config.id.trim().ifBlank { newConfigId() }
+        val normalizedConfig = config.copy(
+            id = normalizedId,
+            name = config.name.trim().ifBlank { config.provider },
+            endpoint = config.endpoint.trim(),
+            model = config.model.trim(),
+            protocol = config.protocol.trim().lowercase(),
+            proxy = config.proxy.trim(),
+            createdAt = config.createdAt.takeIf { it > 0L } ?: nowMillis,
+            updatedAt = nowMillis,
+        )
+        repo.updateJson(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            val exists = doc.configs.any { it.id == normalizedId }
+            val updatedConfigs = if (exists) {
+                doc.configs.map { if (it.id == normalizedId) normalizedConfig else it }
+            } else {
+                doc.configs + normalizedConfig
+            }
+            // 仅新建时自动生效；编辑保存不改变 active 归属（若已失效由读取方兑底）
+            val nextActiveId = when {
+                !exists -> normalizedId
+                doc.configs.none { it.id == doc.activeId } -> normalizedId
+                else -> doc.activeId
+            }
+            LlmConfigsSettingsCodec.encode(doc.copy(configs = updatedConfigs, activeId = nextActiveId))
+        }
+        return null
+    }
+
+    suspend fun delete(id: String) {
+        val deleted = repo.updateJsonOrFalse(
+            StoreDescriptorRegistry.LLM_CONFIGS_ID,
+        ) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            val targetId = id.trim()
+            val remaining = doc.configs.filterNot { it.id == targetId }
+            if (remaining.size == doc.configs.size) return@updateJsonOrFalse null
+            val nextActiveId = when {
+                remaining.isEmpty() -> null
+                doc.activeId != targetId -> doc.activeId
+                else -> remaining.first().id
+            }
+            LlmConfigsSettingsCodec.encode(doc.copy(configs = remaining, activeId = nextActiveId))
+        }
+        if (!deleted) return
+        // 删除后若无任何配置：回 onboarding 态（下次冷启动重新引导）
+        if (list().isEmpty()) {
+            repo.setOnboardingCompleted(false)
+        }
+    }
+
+    private companion object {
+        private const val LOG_TAG = "niki914_nexus_LlmConfigs"
+
+        fun newConfigId(): String {
+            return "cfg-" + java.util.UUID.randomUUID().toString().replace("-", "").take(12)
+        }
     }
 }
 

@@ -5,6 +5,8 @@ data class RuntimeLlmConfig(
     val endpoint: String = "",
     val apiKey: String = "",
     val model: String = "",
+    /** LlmProtocol.wireId，如 "openai-responses"。空串回落默认协议。 */
+    val protocol: String = "",
     val prompt: String = "",
     val proxy: String = "",
     val memoryPrompt: String = "",

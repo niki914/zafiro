@@ -1,14 +1,12 @@
 package com.niki914.zafiro.app.ui.model
 
+import androidx.annotation.StringRes
+import com.niki914.logging.Logger
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.model.ConfigureEffect
-import com.niki914.zafiro.app.ui.model.ConfigureIntent
-import com.niki914.zafiro.app.ui.model.ConfigureScene
-import com.niki914.zafiro.app.ui.model.ConfigureViewModel
-import com.niki914.zafiro.app.ui.model.ConfigureViewModelDependencies
-import com.niki914.zafiro.app.ui.model.ProviderSpecs
-import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
 import com.niki914.zafiro.app.util.SilentLoggerRule
+import com.niki914.zafiro.repo.LlmConfigsDocument
+import com.niki914.zafiro.repo.SavedLlmConfig
+import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -20,10 +18,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConfigureViewModelTest {
+
     @get:Rule
     val silentLoggerRule = SilentLoggerRule()
 
@@ -31,348 +29,266 @@ class ConfigureViewModelTest {
     val mainDispatcherRule =
         MainDispatcherRule()
 
-    @Test
-    fun save_withMissingApiKey_staysOnPageAndRequestsFieldFocus() = runTest {
-        var saveCalled = false
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = { LlmConfig() },
-                saveLlmAccess = { _, _, _, _ -> saveCalled = true },
+    /** 记录式依赖：upsert/delete/setActive/savePrompt 全部落到内存 document。 */
+    private class RecordingDeps {
+        var document = LlmConfigsDocument()
+        val upserted = mutableListOf<SavedLlmConfig>()
+        val deletedIds = mutableListOf<String>()
+        val activatedIds = mutableListOf<String>()
+        val savedPrompts = mutableListOf<String>()
+
+        fun toDependencies(): ConfigureViewModelDependencies =
+            ConfigureViewModelDependencies(
+                loadDocument = { document },
+                upsertConfig = { config ->
+                    upserted += config
+                    document = document.copy(
+                        configs = document.configs.filterNot { it.id == config.id } + config,
+                        activeId = when {
+                            // 新建即 active；编辑保存不改变归属（失效时修复）
+                            document.configs.none { it.id == config.id } -> config.id
+                            document.configs.none { it.id == document.activeId } -> config.id
+                            else -> document.activeId
+                        },
+                    )
+                    null
+                },
+                deleteConfig = { id ->
+                    deletedIds += id
+                    val remaining = document.configs.filterNot { it.id == id }
+                    document = document.copy(
+                        configs = remaining,
+                        activeId = when {
+                            remaining.isEmpty() -> null
+                            document.activeId == id -> remaining.first().id
+                            else -> document.activeId
+                        },
+                    )
+                },
+                setActiveConfig = { id ->
+                    activatedIds += id
+                    document = document.copy(activeId = id)
+                },
+                saveGlobalPrompt = { prompt ->
+                    savedPrompts += prompt
+                    document = document.copy(prompt = prompt)
+                },
             )
+    }
+
+    private fun savedLlmConfig(
+        id: String,
+        model: String = "test-model",
+    ): SavedLlmConfig = SavedLlmConfig(
+        id = id,
+        name = id,
+        provider = "deepseek",
+        endpoint = "https://api.deepseek.com/chat/completions",
+        apiKey = "secret",
+        model = model,
+        protocol = LlmProtocol.OpenAiResponses.wireId,
+        proxy = "",
+    )
+
+    @Test
+    fun initializeSettingsEdit_loadsActiveConfigAndGlobalPrompt() = runTest {
+        val deps = RecordingDeps()
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            prompt = "global",
+            configs = listOf(savedLlmConfig("cfg-a", model = "deepseek-v4-pro")),
         )
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit))
+        advanceUntilIdle()
+
+        val state = viewModel.uiStateFlow.value
+        assertEquals(ConfigureScene.SettingsEdit, state.scene)
+        assertEquals("cfg-a", state.editingConfigId)
+        assertEquals("global", state.promptInput)
+        assertEquals("deepseek-v4-pro", state.modelInput)
+        assertEquals(LlmProtocol.OpenAiResponses.wireId, state.protocolWireId)
+        assertTrue(state.savedConfigs.first().isActive)
+    }
+
+    @Test
+    fun initializeSettingsEdit_withoutExistingConfig_fallsBackToNewDraft() = runTest {
+        val deps = RecordingDeps()
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit, configId = "ghost"))
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiStateFlow.value.editingConfigId)
+        assertEquals(ConfigureScene.SettingsNew, viewModel.uiStateFlow.value.scene)
+    }
+
+    @Test
+    fun saveOnNewConfig_activatesItAndSavesGlobalPrompt() = runTest {
+        val deps = RecordingDeps()
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
+        advanceUntilIdle()
         val effectDeferred = async { viewModel.uiEffect.first() }
 
-        viewModel.sendIntent(ConfigureIntent.Initialize("deepseek"))
-        advanceUntilIdle()
+        viewModel.sendIntent(ConfigureIntent.UpdateName("主力"))
+        viewModel.sendIntent(ConfigureIntent.UpdatePrompt("你是一个测试助手。"))
+        viewModel.sendIntent(ConfigureIntent.UpdateModel("gpt-5"))
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk"))
         viewModel.sendIntent(ConfigureIntent.Save)
         advanceUntilIdle()
 
-        val state = viewModel.uiStateFlow.value
-        assertFalse(saveCalled)
-        assertFalse(state.isSaving)
-        assertNull(state.inlineError)
-        assertEquals(R.string.ui_settings_configure_error_required, state.apiKeyErrorResId)
-        assertEquals(ConfigureEffect.FocusApiKey, effectDeferred.await())
-    }
-
-    @Test
-    fun save_withCompleteFields_persistsSettings() = runTest {
-        var savedConfig: LlmConfig? = null
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = { LlmConfig() },
-                saveLlmAccess = { provider, endpoint, model, apiKey ->
-                    savedConfig = LlmConfig(
-                        provider = provider,
-                        endpoint = endpoint,
-                        model = model,
-                        apiKey = apiKey,
-                    )
-                },
-            )
-        )
-
-        viewModel.sendIntent(ConfigureIntent.Initialize("deepseek"))
-        advanceUntilIdle()
-        viewModel.sendIntent(ConfigureIntent.UpdateModel("deepseek-chat"))
-        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-demo"))
-        viewModel.sendIntent(ConfigureIntent.Save)
-        advanceUntilIdle()
-
-        assertEquals("deepseek", savedConfig?.provider)
-        assertEquals("deepseek-chat", savedConfig?.model)
-        assertEquals("sk-demo", savedConfig?.apiKey)
-        assertNull(viewModel.uiStateFlow.value.inlineError)
-    }
-
-    @Test
-    fun initialize_onboarding_preservesOfficialEndpointPolicy() = runTest {
-        val officialEndpoint = ProviderSpecs.find("openai").officialEndpoint
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = {
-                    LlmConfig(
-                        provider = "openai",
-                        endpoint = officialEndpoint,
-                        model = "gpt-4o",
-                        apiKey = "sk-demo",
-                        prompt = "settings prompt",
-                        proxy = "http://127.0.0.1:7890",
-                    )
-                },
-            )
-        )
-
-        viewModel.sendIntent(
-            ConfigureIntent.Initialize(
-                providerId = "openai",
-                scene = ConfigureScene.Onboarding,
-            )
-        )
-        advanceUntilIdle()
-
-        val state = viewModel.uiStateFlow.value
-        assertEquals(ConfigureScene.Onboarding, state.scene)
-        assertEquals(officialEndpoint, state.endpointInput)
-        assertFalse(state.endpointOverrideEnabled)
-        assertEquals("gpt-4o", state.modelInput)
-        assertEquals("", state.promptInput)
-        assertEquals("", state.proxyInput)
-    }
-
-    @Test
-    fun initialize_onboarding_usesProviderExampleModelWhenSavedModelBlank() = runTest {
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = {
-                    LlmConfig(
-                        provider = "openai",
-                        endpoint = ProviderSpecs.find("openai").officialEndpoint,
-                        model = "   ",
-                        apiKey = "sk-demo",
-                    )
-                },
-            )
-        )
-
-        viewModel.sendIntent(
-            ConfigureIntent.Initialize(
-                providerId = "openai",
-                scene = ConfigureScene.Onboarding,
-            )
-        )
-        advanceUntilIdle()
-
-        assertEquals("gpt-5.4", viewModel.uiStateFlow.value.modelInput)
-    }
-
-    @Test
-    fun initialize_settings_usesSavedEndpoint() = runTest {
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = {
-                    LlmConfig(
-                        provider = "openai",
-                        endpoint = "https://user.example.com/v1",
-                        model = "gpt-4o-mini",
-                        apiKey = "sk-demo",
-                        prompt = "settings assistant prompt",
-                        proxy = "http://127.0.0.1:7890",
-                    )
-                },
-            )
-        )
-
-        viewModel.sendIntent(ConfigureIntent.Initialize(scene = ConfigureScene.Settings))
-        advanceUntilIdle()
-
-        val state = viewModel.uiStateFlow.value
-        assertEquals(ConfigureScene.Settings, state.scene)
-        assertEquals("openai", state.providerSpec.id)
-        assertEquals("https://user.example.com/v1", state.endpointInput)
-        assertTrue(state.endpointOverrideEnabled)
-        assertEquals("gpt-4o-mini", state.modelInput)
-        assertEquals("settings assistant prompt", state.promptInput)
-        assertEquals("http://127.0.0.1:7890", state.proxyInput)
-    }
-
-    @Test
-    fun initialize_settings_usesProviderExampleModelWhenSavedModelBlank() = runTest {
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = {
-                    LlmConfig(
-                        provider = "anthropic",
-                        endpoint = "https://api.anthropic.com/v1/messages",
-                        model = "",
-                        apiKey = "sk-demo",
-                    )
-                },
-            )
-        )
-
-        viewModel.sendIntent(ConfigureIntent.Initialize(scene = ConfigureScene.Settings))
-        advanceUntilIdle()
-
-        assertEquals("claude-sonnet-4-6", viewModel.uiStateFlow.value.modelInput)
-    }
-
-    @Test
-    fun save_settings_persistsFullConfigAndKeepsUneditedFields() = runTest {
-        val existingConfig = LlmConfig(
-            provider = "openai",
-            endpoint = "https://old.example.com/v1",
-            model = "old-model",
-            apiKey = "old-key",
-            prompt = "old prompt",
-            proxy = "http://127.0.0.1:7890",
-            memoryPrompt = "keep memory",
-            takeoverKeywords = listOf("keep", "keywords"),
-        )
-        var saveAccessCalled = false
-        var savedConfig: LlmConfig? = null
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = { existingConfig },
-                saveLlmAccess = { _, _, _, _ -> saveAccessCalled = true },
-                saveLlmConfig = { config -> savedConfig = config },
-            )
-        )
-        val effectDeferred = async { viewModel.uiEffect.first() }
-
-        viewModel.sendIntent(ConfigureIntent.Initialize(scene = ConfigureScene.Settings))
-        advanceUntilIdle()
-        viewModel.sendIntent(ConfigureIntent.UpdateEndpoint("https://new.example.com/v1"))
-        viewModel.sendIntent(ConfigureIntent.UpdateModel("gpt-4.1"))
-        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-new"))
-        viewModel.sendIntent(ConfigureIntent.UpdatePrompt("new prompt"))
-        viewModel.sendIntent(ConfigureIntent.UpdateProxy(" socks5://127.0.0.1:1080 "))
-        viewModel.sendIntent(ConfigureIntent.Save)
-        advanceUntilIdle()
-
-        assertFalse(saveAccessCalled)
+        assertEquals(1, deps.upserted.size)
+        assertTrue(deps.upserted.first().id.isNotBlank())
+        assertEquals("你是一个测试助手。", deps.savedPrompts.single())
+        assertTrue(deps.activatedIds.isEmpty())
+        assertEquals(deps.upserted.first().id, viewModel.uiStateFlow.value.activeConfigId)
         assertEquals(ConfigureEffect.SettingsSaveSucceeded, effectDeferred.await())
-        assertEquals("openai", savedConfig?.provider)
-        assertEquals("https://new.example.com/v1", savedConfig?.endpoint)
-        assertEquals("gpt-4.1", savedConfig?.model)
-        assertEquals("sk-new", savedConfig?.apiKey)
-        assertEquals("new prompt", savedConfig?.prompt)
-        assertEquals("socks5://127.0.0.1:1080", savedConfig?.proxy)
-        assertEquals("keep memory", savedConfig?.memoryPrompt)
-        assertEquals(listOf("keep", "keywords"), savedConfig?.takeoverKeywords)
-        assertNull(viewModel.uiStateFlow.value.inlineError)
     }
 
     @Test
-    fun save_settings_invalidProxyFocusesProxy() = runTest {
-        var savedConfig: LlmConfig? = null
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = {
-                    LlmConfig(
-                        provider = "openai",
-                        endpoint = "https://user.example.com/v1",
-                        model = "gpt-4o-mini",
-                        apiKey = "sk-demo",
-                    )
-                },
-                saveLlmConfig = { config -> savedConfig = config },
-            )
+    fun saveEditedNonActiveConfig_doesNotChangeActiveBelonging() = runTest {
+        val deps = RecordingDeps()
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            configs = listOf(
+                savedLlmConfig("cfg-a"),
+                savedLlmConfig("cfg-b"),
+            ),
         )
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        // cfg-b 非 active：初始化即建立"编辑非生效配置"场景
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit, configId = "cfg-b"))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+
+        // VM 契约：编辑保存只 upsert，归属判定交给 repo 层
+        assertEquals(1, deps.upserted.size)
+        assertTrue(deps.activatedIds.isEmpty())
+    }
+
+    @Test
+    fun save_withBlankModel_sendsFocusEffectWithoutWriting() = runTest {
+        val deps = RecordingDeps()
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
+        advanceUntilIdle()
         val effectDeferred = async { viewModel.uiEffect.first() }
 
-        viewModel.sendIntent(ConfigureIntent.Initialize(scene = ConfigureScene.Settings))
-        advanceUntilIdle()
-        viewModel.sendIntent(ConfigureIntent.UpdateProxy("not a uri"))
+        viewModel.sendIntent(ConfigureIntent.UpdateModel(""))
         viewModel.sendIntent(ConfigureIntent.Save)
         advanceUntilIdle()
 
-        val state = viewModel.uiStateFlow.value
-        assertNull(savedConfig)
-        assertFalse(state.isSaving)
-        assertNull(state.inlineError)
-        assertEquals(R.string.ui_settings_configure_error_proxy_invalid, state.proxyErrorResId)
-        assertEquals(ConfigureEffect.FocusProxy, effectDeferred.await())
+        assertTrue(deps.upserted.isEmpty())
+        assertEquals(ConfigureEffect.FocusModel, effectDeferred.await())
     }
 
-    @Test
-    fun endpointOverrideToggle_usesDefaultWhenDisabledAndRestoresCustomWhenEnabled() = runTest {
-        var savedConfig: LlmConfig? = null
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = { LlmConfig() },
-                saveLlmAccess = { provider, endpoint, model, apiKey ->
-                    savedConfig = LlmConfig(
-                        provider = provider,
-                        endpoint = endpoint,
-                        model = model,
-                        apiKey = apiKey,
-                    )
-                },
-            )
-        )
-        val officialEndpoint = ProviderSpecs.find("openai").officialEndpoint
-
-        viewModel.sendIntent(ConfigureIntent.Initialize("openai"))
-        advanceUntilIdle()
-        viewModel.sendIntent(ConfigureIntent.SetEndpointOverride(true))
-        advanceUntilIdle()
-        assertEquals(officialEndpoint, viewModel.uiStateFlow.value.endpointInput)
-
-        viewModel.sendIntent(ConfigureIntent.UpdateEndpoint("abc"))
-        viewModel.sendIntent(ConfigureIntent.UpdateModel("gpt-5.4"))
-        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-demo"))
-        advanceUntilIdle()
-        viewModel.sendIntent(ConfigureIntent.SetEndpointOverride(false))
-        advanceUntilIdle()
-
-        assertEquals(officialEndpoint, viewModel.uiStateFlow.value.endpointInput)
-        viewModel.sendIntent(ConfigureIntent.Save)
-        advanceUntilIdle()
-        assertEquals(officialEndpoint, savedConfig?.endpoint)
-
-        viewModel.sendIntent(ConfigureIntent.SetEndpointOverride(true))
-        advanceUntilIdle()
-
-        assertEquals("abc", viewModel.uiStateFlow.value.endpointInput)
-    }
 
     @Test
-    fun hasUnsavedChanges_isFalseForUneditedSettingsAndRestoredPrompt() = runTest {
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = {
-                    LlmConfig(
-                        provider = "openai",
-                        endpoint = "https://user.example.com/v1",
-                        model = "gpt-4o-mini",
-                        apiKey = "sk-demo",
-                        prompt = "original prompt",
-                        proxy = "http://127.0.0.1:7890",
-                    )
-                },
-            )
+    fun initializeSettingsEdit_withoutChanges_isNotDirty() = runTest {
+        val deps = RecordingDeps()
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            prompt = "global",
+            configs = listOf(savedLlmConfig("cfg-a")),
         )
-
-        viewModel.sendIntent(ConfigureIntent.Initialize(scene = ConfigureScene.Settings))
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit))
         advanceUntilIdle()
+
         assertFalse(viewModel.uiStateFlow.value.hasUnsavedChanges)
+    }
 
-        viewModel.sendIntent(ConfigureIntent.UpdatePrompt("changed prompt"))
+    @Test
+    fun editingField_marksDirtyAndRevertingClearsIt() = runTest {
+        val deps = RecordingDeps()
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            configs = listOf(savedLlmConfig("cfg-a")),
+        )
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConfigureIntent.UpdateModel("changed"))
         advanceUntilIdle()
         assertTrue(viewModel.uiStateFlow.value.hasUnsavedChanges)
 
-        viewModel.sendIntent(ConfigureIntent.UpdatePrompt("original prompt"))
+        viewModel.sendIntent(ConfigureIntent.UpdateModel("test-model"))
         advanceUntilIdle()
         assertFalse(viewModel.uiStateFlow.value.hasUnsavedChanges)
     }
 
     @Test
-    fun hasUnsavedChanges_isAlwaysFalseForOnboardingScene() = runTest {
-        val viewModel = ConfigureViewModel(
-            ConfigureViewModelDependencies.Default.copy(
-                loadLlmConfig = {
-                    LlmConfig(
-                        provider = "openai",
-                        endpoint = ProviderSpecs.find("openai").officialEndpoint,
-                        model = "gpt-4o",
-                        apiKey = "sk-demo",
-                    )
-                },
-            )
+    fun editingPrompt_marksDirty() = runTest {
+        val deps = RecordingDeps()
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            configs = listOf(savedLlmConfig("cfg-a")),
         )
-
-        viewModel.sendIntent(
-            ConfigureIntent.Initialize(
-                providerId = "openai",
-                scene = ConfigureScene.Onboarding,
-            )
-        )
-        advanceUntilIdle()
-        viewModel.sendIntent(ConfigureIntent.UpdateModel("gpt-4.1"))
-        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-new"))
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit))
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiStateFlow.value.hasUnsavedChanges)
+        viewModel.sendIntent(ConfigureIntent.UpdatePrompt("new prompt"))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiStateFlow.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun initialize_prefillsNameWithProviderBrandName() = runTest {
+        val deps = RecordingDeps()
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew, providerId = "deepseek"))
+        advanceUntilIdle()
+        assertEquals("DeepSeek", viewModel.uiStateFlow.value.configNameInput)
+
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.Onboarding, providerId = "deepseek"))
+        advanceUntilIdle()
+        assertEquals("DeepSeek", viewModel.uiStateFlow.value.configNameInput)
+    }
+
+    @Test
+    fun save_withDuplicateName_rejectsWithNameError() = runTest {
+        val deps = RecordingDeps()
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            configs = listOf(savedLlmConfig("cfg-a").copy(name = "Taken")),
+        )
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConfigureIntent.UpdateName("Taken"))
+        viewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+
+        assertTrue(deps.upserted.isEmpty())
+        assertEquals(
+            R.string.ui_settings_configure_error_name_duplicate,
+            viewModel.uiStateFlow.value.nameErrorResId,
+        )
+    }
+
+    @Test
+    fun save_editingConfigWithOwnName_allowed() = runTest {
+        val deps = RecordingDeps()
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            configs = listOf(savedLlmConfig("cfg-a").copy(name = "Same")),
+        )
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit, configId = "cfg-a"))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+
+        assertEquals(1, deps.upserted.size)
+        assertNull(viewModel.uiStateFlow.value.nameErrorResId)
     }
 }

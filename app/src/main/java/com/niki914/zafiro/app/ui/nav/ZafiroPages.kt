@@ -73,9 +73,11 @@ data class ConfigurePage(
 
 data class SettingsConfigurePage(
     val providerId: String,
+    /** true = Add 流程（新建配置并置 active）。 */
+    val isNew: Boolean = false,
     val explicitTitleSpec: PageTitleSpec? = null,
 ) : ZafiroPage {
-    override val routeKey: String = "settings-configure:$providerId"
+    override val routeKey: String = "settings-configure:$providerId:$isNew"
     override val titleSpec: PageTitleSpec =
         explicitTitleSpec ?: ResTitle(R.string.ui_onboard_configure_title)
     override val leftAction: TopBarActionSpec =

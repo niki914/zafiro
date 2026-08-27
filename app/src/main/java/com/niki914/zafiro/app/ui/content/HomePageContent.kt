@@ -44,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -79,9 +81,18 @@ import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.uikit.base.BaseTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import android.content.ClipData
+
+/**
+ * 冷启动后仅首次进入 Home 时抢焦点弹键盘；进程内不再重复
+ * （从设置页/历史页返回不打断用户）。仿 StartupPageContent.demoHasPlayed 的写法。
+ */
+private var composerAutoFocusDone = false
+private const val AUTO_FOCUS_MAX_ATTEMPTS = 20
+private const val AUTO_FOCUS_RETRY_INTERVAL_MILLIS = 150L
 
 @Composable
 fun HomePageContent(
@@ -209,12 +220,35 @@ fun HomePageContent(
             ),
         )
     }
+    val composerFocusRequester = remember { FocusRequester() }
+
     RegisterPageChrome(pageChromeContribution)
+
+    // 冷启动键盘焦点：仅进程内首次进入 Home、无草稿输入且不在加载中时抢焦点。
+    // 标志在成功/耗尽后才置位：若 effect 在重试期间被组合销毁取消，
+    // 下次进入 Home 会重新尝试（否则会像日志里那样 begin 后无 attempt 直接丢失）。
+    if (!composerAutoFocusDone && !uiState.isLoadingConversation) {
+        LaunchedEffect(uiState.input.isBlank(), uiState.isGenerating) {
+            if (uiState.input.isBlank() && !uiState.isGenerating) {
+                repeat(AUTO_FOCUS_MAX_ATTEMPTS) {
+                    delay(AUTO_FOCUS_RETRY_INTERVAL_MILLIS)
+                    val focused = runCatching { composerFocusRequester.requestFocus() }.isSuccess
+                    if (focused) {
+                        keyboardController?.show()
+                        composerAutoFocusDone = true
+                        return@LaunchedEffect
+                    }
+                }
+                composerAutoFocusDone = true
+            }
+        }
+    }
 
     HomePageContentBody(
         uiState = uiState,
         listState = listState,
         composerBottomPadding = composerBottomPadding,
+        composerFocusRequester = composerFocusRequester,
         onContentTap = dismissInputFocus,
         onInputChange = { value ->
             viewModel.sendIntent(HomeChatIntent.InputChanged(value))
@@ -286,6 +320,7 @@ private fun HomePageContentBody(
     uiState: HomeChatUiState,
     listState: LazyListState,
     composerBottomPadding: Dp,
+    composerFocusRequester: FocusRequester,
     onContentTap: () -> Unit,
     onInputChange: (String) -> Unit,
     onSendClick: () -> Unit,
@@ -382,6 +417,7 @@ private fun HomePageContentBody(
                     .onFocusChanged { focusState ->
                         onComposerFocusChanged(focusState.hasFocus)
                     }
+                    .focusRequester(composerFocusRequester)
                     .padding(
                         start = 20.dp,
                         end = 20.dp,
@@ -661,6 +697,7 @@ private fun HomePageContentPreview() {
     BaseTheme {
         ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
             HomePageContentBody(
+                composerFocusRequester = remember { FocusRequester() },
                 uiState = HomeChatUiState(
                     input = "继续分析",
                     turns = listOf(

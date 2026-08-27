@@ -15,13 +15,13 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
 import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 
 class XRepoDomainSettingsTest {
@@ -39,26 +39,61 @@ class XRepoDomainSettingsTest {
     }
 
     @Test
-    fun llmReadsAndWritesOnlyAgentMainConfigStore() = runTest {
-        val store = FakeDomainSettingsStore(
-            StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID to AgentSettingsCodec.encodeMainConfig(
-                LlmConfig(provider = "old", model = "old-model")
-            )
-        )
+    fun appStateTogglePersistsAndKeepsOtherFields() = runTest {
+        val store = FakeDomainSettingsStore()
         XRepo.installStoreForTest(store)
         XRepo.init(context)
 
-        assertEquals("old-model", XRepo.llm().model)
-        XRepo.saveLlm(LlmConfig(provider = "openai", model = "gpt-test"))
+        XRepo.setOnboardingCompleted(true)
+        XRepo.setLoadLastConversationOnStartup(true)
+        XRepo.setLanguageTag("zh-CN")
 
-        assertEquals(listOf(StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID), store.readIds)
-        assertEquals(listOf(StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID), store.writeIds)
+        assertTrue(XRepo.loadLastConversationOnStartup())
+        assertEquals("zh-CN", XRepo.languageTag())
+        assertTrue(XRepo.onboardingCompleted())
+    }
+
+    @Test
+    fun llmConfigs_upsertBlankNameFallsBackToProvider() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        XRepo.llmConfigs.upsert(savedConfig(id = "cfg-1", model = "deepseek-chat").copy(name = " "))
+
+        assertEquals("deepseek", XRepo.llmConfigs.active()?.name)
+    }
+
+    @Test
+    fun activeSavedConfigReadsAndWritesOnlyLlmConfigsStore() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        assertNull(XRepo.llmConfigs.active())
+        XRepo.llmConfigs.upsert(savedConfig(id = "cfg-1", model = "gpt-test"))
+
         assertEquals(
-            "gpt-test", AgentSettingsCodec.parseMainConfig(
-                store.jsonFor(
-                    StoreDescriptorRegistry.AGENT_MAIN_CONFIG_ID
-                )
-            ).model
+            listOf(StoreDescriptorRegistry.LLM_CONFIGS_ID),
+            store.writeIds.distinct(),
+        )
+        assertEquals("cfg-1", XRepo.llmConfigs.active()?.id)
+        assertEquals("gpt-test", XRepo.llmConfigs.active()?.model)
+    }
+
+    private fun savedConfig(
+        id: String,
+        model: String,
+    ): SavedLlmConfig {
+        return SavedLlmConfig(
+            id = id,
+            name = id,
+            provider = "deepseek",
+            endpoint = "https://api.deepseek.com/chat/completions",
+            apiKey = "secret",
+            model = model,
+            protocol = "openai-responses",
+            proxy = "",
         )
     }
 
@@ -89,18 +124,7 @@ class XRepoDomainSettingsTest {
         )
         XRepo.installStoreForTest(store)
         XRepo.init(context)
-
-        assertEquals(null, XRepo.agents.saveLlm("agent_a", LlmConfig(model = "model-a")))
-        assertEquals("model-a", XRepo.agents.llm("agent_a").model)
         assertEquals(listOf("Fact"), XRepo.agents.memoriesFor("agent_a"))
-
-        val missingValidation = XRepo.agents.saveLlm("ghost_agent", LlmConfig(model = "ghost"))
-        assertEquals("id", missingValidation?.field)
-        assertEquals("", XRepo.agents.llm("ghost_agent").model)
-
-        val disabledValidation = XRepo.agents.saveLlm("agent_b", LlmConfig(model = "model-b"))
-        assertEquals("enabled", disabledValidation?.field)
-        assertEquals("", XRepo.agents.llm("agent_b").model)
         assertEquals(emptyList<String>(), XRepo.agents.memoriesFor("agent_b"))
     }
 

@@ -13,7 +13,6 @@ import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeCustomTool as CustomTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget as TakeoverTarget
@@ -21,29 +20,35 @@ import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget as TakeoverTarget
 class SettingsDomainCodecsTest {
 
     @Test
-    fun agentMissingLlmReturnsEmptyConfig() {
-        assertEquals(LlmConfig(), AgentSettingsCodec.parseMainConfig("""{}"""))
+    fun llmConfigsMissingDocumentParsesToEmpty() {
+        assertEquals(LlmConfigsDocument(), LlmConfigsSettingsCodec.parse("""{}"""))
     }
 
     @Test
-    fun agentConfigRoundTripKeepsCurrentLlmFields() {
-        val config = LlmConfig(
-            provider = "openai",
-            endpoint = "https://api.example",
-            apiKey = "secret",
-            model = "gpt-test",
-            prompt = "base prompt",
-            proxy = "http://proxy",
-            memoryPrompt = "memory prompt",
-            takeoverKeywords = listOf("nexus", "chat"),
+    fun llmConfigsDocumentRoundTripKeepsAllFields() {
+        val document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            prompt = "global prompt",
+            configs = listOf(
+                SavedLlmConfig(
+                    id = "cfg-a",
+                    name = "Primary",
+                    provider = "openai",
+                    endpoint = "https://api.example",
+                    apiKey = "secret",
+                    model = "gpt-test",
+                    protocol = "openai-responses",
+                    proxy = "http://proxy",
+                    createdAt = 1L,
+                    updatedAt = 2L,
+                ),
+                SavedLlmConfig(id = "cfg-b", name = "Backup", provider = "anthropic", endpoint = "", apiKey = "", model = "", protocol = "", proxy = ""),
+            ),
         )
 
-        val json = AgentSettingsCodec.encodeMainConfig(config)
+        val parsed = LlmConfigsSettingsCodec.encode(document).let(LlmConfigsSettingsCodec::parse)
 
-        assertEquals(config, AgentSettingsCodec.parseMainConfig(json))
-        val root = jsonObject(json)
-        assertEquals("main", root["id"]!!.jsonPrimitive.content)
-        assertFalse(root["llm"]!!.jsonObject.containsKey("memories"))
+        assertEquals(document, parsed)
     }
 
     @Test
@@ -264,6 +269,22 @@ class SettingsDomainCodecsTest {
         assertEquals(state, AppStateSettingsCodec.parse(json))
         assertTrue(root["onboarding_completed"]!!.jsonPrimitive.boolean)
         assertEquals("chat_only", root["startup_assistant_ui"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun appStateRoundTripKeepsLanguageAndLoadLastConversation() {
+        val state = AppStateSettings(
+            onboardingCompleted = true,
+            languageTag = "zh-CN",
+            loadLastConversationOnStartup = true,
+        )
+
+        val parsed = AppStateSettingsCodec.encode(state).let(AppStateSettingsCodec::parse)
+
+        assertEquals(state, parsed)
+        val root = jsonObject(AppStateSettingsCodec.encode(state))
+        assertEquals("zh-CN", root["language_tag"]!!.jsonPrimitive.content)
+        assertEquals(true, root["load_last_conversation_on_startup"]!!.jsonPrimitive.boolean)
     }
 
     private fun jsonObject(json: String) = Json.parseToJsonElement(json).jsonObject

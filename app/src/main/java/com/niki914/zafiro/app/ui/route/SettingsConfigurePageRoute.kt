@@ -18,14 +18,20 @@ import com.niki914.zafiro.app.ui.model.ConfigureViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
 import com.niki914.zafiro.app.ui.nav.SettingsConfigurePage
 
+/**
+ * 设置页 Add 流程：品牌选择后进入新建配置表单。
+ * 本页面与 ModelConfig 页共享 Store? 不——pageViewModel 按 NavigationEntry 隔离，
+ * 各自持有独立 ConfigureViewModel；保存成功后返回，ModelConfig 页重新组合时
+ * 重新 Initialize 刷新列表。
+ */
 @Composable
 internal fun SettingsConfigurePageRoute(
     page: SettingsConfigurePage,
     onBack: () -> Unit,
-    onResetToSettingsHome: () -> Unit,
+    onSaveCompleted: () -> Unit,
 ) {
     val viewModel = pageViewModel<ConfigureViewModel>(
-        key = "settings-configure:${page.providerId}",
+        key = "settings-configure-new:${page.providerId}",
     )
     val uiState by viewModel.uiStateFlow.collectAsState()
     val colors = providerButtonColors(uiState.providerSpec)
@@ -36,15 +42,15 @@ internal fun SettingsConfigurePageRoute(
     LaunchedEffect(page.providerId) {
         viewModel.sendIntent(
             ConfigureIntent.Initialize(
+                scene = ConfigureScene.SettingsNew,
                 providerId = page.providerId,
-                scene = ConfigureScene.SettingsProviderSwitch,
             ),
         )
     }
     LaunchedEffect(viewModel) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
-                ConfigureEffect.SettingsSaveSucceeded -> onResetToSettingsHome()
+                ConfigureEffect.SettingsSaveSucceeded -> onSaveCompleted()
                 ConfigureEffect.FocusModel -> {
                     pendingFocusField = ConfigureEditableField.Model
                 }
@@ -62,40 +68,49 @@ internal fun SettingsConfigurePageRoute(
                 }
 
                 ConfigureEffect.OnboardingSaveSucceeded,
-                is ConfigureEffect.SaveFailed -> Unit
+                ConfigureEffect.AllConfigsDeleted,
+                is ConfigureEffect.SaveFailed,
+                -> Unit
             }
         }
     }
 
     EditableSettingsDetailChrome(
-        isCreating = false,
-        hasUnsavedChanges = {
-            uiState.scene == ConfigureScene.SettingsProviderSwitch && uiState.hasUnsavedChanges
-        },
+        isCreating = true,
+        hasUnsavedChanges = { uiState.hasUnsavedChanges },
         onDiscardChanges = onBack,
     ) {
         ConfigurePageContent(
-            uiState = uiState,
-            buttonDarkContainerColor = colors.darkContainerColor,
-            buttonLightContainerColor = colors.lightContainerColor,
-            buttonDarkContentColor = colors.darkContentColor,
-            buttonLightContentColor = colors.lightContentColor,
-            onEndpointOverrideChange = { enabled ->
-                viewModel.sendIntent(ConfigureIntent.SetEndpointOverride(enabled))
-            },
-            onEndpointChange = { endpoint ->
-                viewModel.sendIntent(ConfigureIntent.UpdateEndpoint(endpoint))
-            },
-            onModelChange = { model ->
-                viewModel.sendIntent(ConfigureIntent.UpdateModel(model))
-            },
-            onApiKeyChange = { apiKey ->
-                viewModel.sendIntent(ConfigureIntent.UpdateApiKey(apiKey))
-            },
-            onToggleApiKeyVisibility = {
-                viewModel.sendIntent(ConfigureIntent.ToggleApiKeyVisibility)
-            },
-            onComplete = { viewModel.sendIntent(ConfigureIntent.Save) },
+        uiState = uiState,
+        buttonDarkContainerColor = colors.darkContainerColor,
+        buttonLightContainerColor = colors.lightContainerColor,
+        buttonDarkContentColor = colors.darkContentColor,
+        buttonLightContentColor = colors.lightContentColor,
+        onEndpointOverrideChange = { enabled ->
+            viewModel.sendIntent(ConfigureIntent.SetEndpointOverride(enabled))
+        },
+        onEndpointChange = { endpoint ->
+            viewModel.sendIntent(ConfigureIntent.UpdateEndpoint(endpoint))
+        },
+        onModelChange = { model ->
+            viewModel.sendIntent(ConfigureIntent.UpdateModel(model))
+        },
+        onNameChange = { value ->
+            viewModel.sendIntent(ConfigureIntent.UpdateName(value))
+        },
+        onApiKeyChange = { apiKey ->
+            viewModel.sendIntent(ConfigureIntent.UpdateApiKey(apiKey))
+        },
+        onProtocolSelected = { wireId ->
+            viewModel.sendIntent(ConfigureIntent.SelectProtocol(wireId))
+        },
+        onProxyChange = { proxy ->
+            viewModel.sendIntent(ConfigureIntent.UpdateProxy(proxy))
+        },
+        onToggleApiKeyVisibility = {
+            viewModel.sendIntent(ConfigureIntent.ToggleApiKeyVisibility)
+        },
+        onComplete = { viewModel.sendIntent(ConfigureIntent.Save) },
             requestedFocusField = pendingFocusField,
             onRequestedFocusHandled = {
                 pendingFocusField = null

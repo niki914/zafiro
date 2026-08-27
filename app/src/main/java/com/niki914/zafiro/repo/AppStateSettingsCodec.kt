@@ -11,6 +11,10 @@ internal data class AppStateSettings(
     val startupAssistantUi: String = "auto",
     val lastOpenedAgentId: String = "main",
     val lastOpenedConversationId: String = "",
+    /** BCP-47 tag；空串 = 跟随系统语言。 */
+    val languageTag: String = "",
+    /** 冷启动是否恢复上次会话；false = 默认进入新对话。 */
+    val loadLastConversationOnStartup: Boolean = false,
 )
 
 internal object AppStateSettingsCodec {
@@ -21,6 +25,11 @@ internal object AppStateSettingsCodec {
             startupAssistantUi = root.string(STARTUP_ASSISTANT_UI_KEY).ifBlank { "auto" },
             lastOpenedAgentId = root.string(LAST_OPENED_AGENT_ID_KEY).ifBlank { "main" },
             lastOpenedConversationId = root.string(LAST_OPENED_CONVERSATION_ID_KEY),
+            languageTag = root.string(LANGUAGE_TAG_KEY),
+            loadLastConversationOnStartup = root.boolean(
+                LOAD_LAST_CONVERSATION_KEY,
+                default = false
+            ),
         )
     }
 
@@ -31,6 +40,8 @@ internal object AppStateSettingsCodec {
                 STARTUP_ASSISTANT_UI_KEY to JsonPrimitive(state.startupAssistantUi),
                 LAST_OPENED_AGENT_ID_KEY to JsonPrimitive(state.lastOpenedAgentId),
                 LAST_OPENED_CONVERSATION_ID_KEY to JsonPrimitive(state.lastOpenedConversationId),
+                LANGUAGE_TAG_KEY to JsonPrimitive(state.languageTag),
+                LOAD_LAST_CONVERSATION_KEY to JsonPrimitive(state.loadLastConversationOnStartup),
             )
         ).toString()
     }
@@ -39,4 +50,6 @@ internal object AppStateSettingsCodec {
     private const val STARTUP_ASSISTANT_UI_KEY = "startup_assistant_ui"
     private const val LAST_OPENED_AGENT_ID_KEY = "last_opened_agent_id"
     private const val LAST_OPENED_CONVERSATION_ID_KEY = "last_opened_conversation_id"
+    private const val LANGUAGE_TAG_KEY = "language_tag"
+    private const val LOAD_LAST_CONVERSATION_KEY = "load_last_conversation_on_startup"
 }
