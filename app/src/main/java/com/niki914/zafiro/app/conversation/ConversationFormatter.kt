@@ -5,6 +5,7 @@ import com.niki914.zafiro.app.ui.model.HomeChatBlock
 import com.niki914.zafiro.app.ui.model.HomeChatTurn
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
@@ -93,6 +94,7 @@ object ConversationFormatter {
                 is Message.Assistant -> {
                     val target = turns.lastOrNull() ?: HomeChatTurn(id = nextId++, userText = "")
                     val updated = target
+                        .appendThinkingBlocks(message.message)
                         .appendTextBlock(message.message.textBlocks().joinToString("\n"))
                         .appendToolBlocks(message.message)
                     turns.replaceLastOrAdd(updated)
@@ -135,6 +137,15 @@ object ConversationFormatter {
         return copy(blocks = blocks + HomeChatBlock.Text(text))
     }
 
+    private fun HomeChatTurn.appendThinkingBlocks(assistant: com.niki914.okia.message.AssistantMessage): HomeChatTurn {
+        val thoughts = assistant.content.filterIsInstance<ContentBlock.Thinking>()
+        if (thoughts.isEmpty()) return this
+        // 恢复后不再流式，index 仅需块内唯一（按出现顺序编号）
+        val thinkingBlocks =
+            thoughts.mapIndexed { i, thought -> HomeChatBlock.Thinking(id = i, text = thought.text) }
+        return copy(blocks = blocks + thinkingBlocks)
+    }
+
     private fun HomeChatTurn.appendToolBlocks(assistant: com.niki914.okia.message.AssistantMessage): HomeChatTurn {
         val toolCalls = assistant.content.filterIsInstance<ContentBlock.ToolCall>()
         if (toolCalls.isEmpty()) return this
@@ -144,6 +155,8 @@ object ConversationFormatter {
                     callId = toolCall.id,
                     name = toolCall.name,
                     state = HomeToolState.Failed,
+                    displayNameRes = ToolPresentation.displayNameResOf(toolCall.name),
+                    inputText = ToolPresentation.inputOf(toolCall.name, toolCall.argumentsJson),
                 ),
             )
         }

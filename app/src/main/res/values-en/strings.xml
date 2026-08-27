@@ -343,4 +343,17 @@
     <string name="feedback_bug_template">## Issue Description\n\n## Steps to Reproduce\n\n## Expected Behavior\n\n## Actual Behavior\n\n## Device Info\n- Android version:\n- Assistant (Breeno or other):\n- Module version:\n\n## More\nYou can attach logs, screenshots, or recordings to help us understand the issue.</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_regenerate_title">Regenerate · %1$s</string>
+    <!-- Tool display names -->
+    <string name="ui_tool_display_terminal">Terminal</string>
+    <string name="ui_tool_display_load_skill">Load Skill</string>
+    <string name="ui_tool_display_execute_python">Python</string>
+    <string name="ui_tool_display_create_custom_tool">Create Custom Tool</string>
+    <string name="ui_tool_display_launch_app">Launch App</string>
+    <string name="ui_tool_display_memory">Memory</string>
+    <string name="ui_tool_display_notify">Notify</string>
+    <string name="ui_tool_display_open_uri">Open URI</string>
+    <string name="ui_tool_display_read_custom_tool">Read Custom Tool</string>
+    <string name="ui_tool_display_search_apps">Search Apps</string>
+    <string name="ui_tool_display_screen_operation_accessibility">Screen Operation</string>
+    <string name="ui_tool_display_screen_operation_shell">Screen Operation</string>
 </resources>

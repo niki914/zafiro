@@ -74,6 +74,9 @@ private sealed interface RenderSegment {
         val label: String,
     ) : RenderSegment
 
+    /** 思考状态行：label 为 Thinking（思考中）或 Thought（完成），渲染为 `[label]`。 */
+    data class Thinking(val label: String) : RenderSegment
+
     data class Error(val value: String) : RenderSegment
 }
 
@@ -82,6 +85,7 @@ private class FullTextProjector(
 ) {
     private val segments = mutableListOf<RenderSegment>()
     private val assistantText = StringBuilder()
+    private var thinkingShown = false
 
     fun apply(event: LlmStreamEvent): List<LlmTextFrame> {
         return when (event) {
@@ -95,6 +99,25 @@ private class FullTextProjector(
 
             is LlmStreamEvent.TextDelta -> {
                 appendText(event.delta)
+                listOf(LlmTextFrame(renderSegments(), isFirst = false, isFinal = false))
+            }
+
+            // 思考状态行：思考中 `[Thinking]`，完成（含被掐）更新为 `[Thought]`。空文本不发。
+            is LlmStreamEvent.ThinkingStarted -> {
+                if (!thinkingShown && event.text.isNotBlank()) {
+                    thinkingShown = true
+                    segments += RenderSegment.Thinking("Thinking")
+                }
+                listOf(LlmTextFrame(renderSegments(), isFirst = false, isFinal = false))
+            }
+
+            is LlmStreamEvent.ThinkingEnded -> {
+                if (thinkingShown) {
+                    val index = segments.indexOfLast { it is RenderSegment.Thinking }
+                    if (index != -1) {
+                        segments[index] = RenderSegment.Thinking("Thought")
+                    }
+                }
                 listOf(LlmTextFrame(renderSegments(), isFirst = false, isFinal = false))
             }
 
@@ -172,6 +195,7 @@ private class ChunkTextProjector(
     private val fullText = StringBuilder()
     private val assistantText = StringBuilder()
     private var lastWasToolLine = false
+    private var thinkingShown = false
 
     fun apply(event: LlmStreamEvent): List<LlmTextFrame> {
         return when (event) {
@@ -181,6 +205,22 @@ private class ChunkTextProjector(
 
             is LlmStreamEvent.TextDelta -> {
                 appendText(event.delta)
+                listOf(LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false))
+            }
+
+            // 思考状态行：思考中 `[Thinking]`；完成后追加 `[Thought]`（增量流只追加，与工具行一致）。
+            is LlmStreamEvent.ThinkingStarted -> {
+                if (!thinkingShown && event.text.isNotBlank()) {
+                    thinkingShown = true
+                    appendThinkingLine("Thinking")
+                }
+                listOf(LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false))
+            }
+
+            is LlmStreamEvent.ThinkingEnded -> {
+                if (thinkingShown) {
+                    appendThinkingLine("Thought")
+                }
                 listOf(LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false))
             }
 
@@ -243,6 +283,15 @@ private class ChunkTextProjector(
         lastWasToolLine = true
     }
 
+    private fun appendThinkingLine(label: String) {
+        if (fullText.isNotEmpty() && fullText.last() != '\n') {
+            fullText.append('\n')
+        }
+        fullText.append("`[$label]`")
+        fullText.append('\n')
+        lastWasToolLine = true
+    }
+
     private fun appendErrorLine(message: String) {
         val normalized = message.trim()
         if (normalized.isEmpty()) return
@@ -260,6 +309,7 @@ private fun MutableList<RenderSegment>.render(): String {
         when (segment) {
             is RenderSegment.Text -> builder.appendTextSegment(segment.value)
             is RenderSegment.Tool -> builder.appendToolSegment(segment)
+            is RenderSegment.Thinking -> builder.appendThinkingSegment(segment.label)
             // "## Error" 是注入宿主 markdown 的代码块结构标题，本地化会破坏注入内容一致性，保持原样
             is RenderSegment.Error -> builder.appendTextSegment("## Error\n```\n${segment.value}\n```")
         }
@@ -280,6 +330,13 @@ private fun StringBuilder.appendToolSegment(tool: RenderSegment.Tool) {
         append('\n')
     }
     append(tool.name.toMarkdownLine(tool.label))
+}
+
+private fun StringBuilder.appendThinkingSegment(label: String) {
+    if (isNotEmpty() && last() != '\n') {
+        append('\n')
+    }
+    append("`[$label]`")
 }
 
 private fun ToolCallStatus.toolKey(): String = callId ?: name

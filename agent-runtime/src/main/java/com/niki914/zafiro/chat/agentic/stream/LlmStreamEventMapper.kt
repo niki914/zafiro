@@ -29,14 +29,23 @@ object LlmStreamEventMapper {
      */
     private var accumulatedText: String = ""
 
+    /** 思考块在途状态：OKIA 的 content index 仅单轮内唯一（StreamState 每轮新建），
+     *  跨工具轮会复用 → 身份用 Mapper 分配的回合内单调 id。
+     *  nextBlockId 在 TurnFailed 时重置：重试会重发同一块，id 归零让 HomeChat 覆盖旧块。 */
+    private var nextThinkingId = 0
+    private var activeThinkingId: Int? = null
+    private var activeThinkingIndex: Int? = null
+    private var activeThinkingText: String = ""
+
     fun map(
         event: TurnEvent,
         startedAtMs: Long,
         defaultErrorMessage: String,
-    ): LlmStreamEvent? { // <--- TODO 梳理 LlmStreamEvent | Thinking impl
+    ): LlmStreamEvent? {
         val mapped = when (event) {
             is TurnEvent.TurnStarted -> {
                 accumulatedText = ""
+                resetThinkingState()
                 LlmStreamEvent.RoundStarted
             }
 
@@ -75,11 +84,13 @@ object LlmStreamEventMapper {
 
             is TurnEvent.TurnCompleted -> {
                 accumulatedText = ""
+                resetThinkingState()
                 LlmStreamEvent.Completed
             }
 
             is TurnEvent.TurnFailed -> {
                 accumulatedText = ""
+                resetThinkingState()
                 LlmStreamEvent.Error(
                     message = event.error.message.trim().ifEmpty { defaultErrorMessage },
                     throwable = event.error.cause,
@@ -87,30 +98,62 @@ object LlmStreamEventMapper {
                 )
             }
 
-            is TurnEvent.TurnIdleTimeout -> LlmStreamEvent.Error(
-                message = defaultErrorMessage,
-                throwable = null,
-                code = LlmErrorCode.Transport,
-            )
+            // 超时也视为回合终止：清思考在途态（不合成——正常流不会走到这里）
+            is TurnEvent.TurnIdleTimeout -> {
+                resetThinkingState()
+                LlmStreamEvent.Error(
+                    message = defaultErrorMessage,
+                    throwable = null,
+                    code = LlmErrorCode.Transport,
+                )
+            }
 
-            // Thinking 与工具意图阶段：UI 不渲染 thinking（D5）；工具意图无消费端（T2）。
-            // TextEnded 是文本块边界：重置累积（多段/跨工具轮）。
-            // TurnAborted（用户停止）不映射为错误事件：停止由消费端 cancel 表达。
+            // 思考块：全量直传两态，块身份 = Mapper 回合内单调 id。
+            // ThinkingStarted 恒为新块（OKIA 每块只发一次 Started）；Delta 续接当前块。
+            // 文本为空不发事件（"一个字都没有就不显示块"）。
+            is TurnEvent.ThinkingStarted -> {
+                if (event.partial.thinkingContent().isBlank()) {
+                    clearActiveThinking()
+                    null
+                } else {
+                    activeThinkingId = nextThinkingId++
+                    activeThinkingIndex = event.index
+                    activeThinkingText = event.partial.thinkingContent()
+                    LlmStreamEvent.ThinkingStarted(activeThinkingId!!, activeThinkingText)
+                }
+            }
+
+            is TurnEvent.ThinkingDelta -> thinkingInProgress(event.index, event.partial.thinkingContent())
+
+            is TurnEvent.ThinkingEnded -> {
+                if (activeThinkingIndex != event.index) {
+                    // 已关闭块再次 ended（异常流）：不重复处理
+                    null
+                } else {
+                    val content = event.content
+                    val id = activeThinkingId
+                    clearActiveThinking()
+                    content.takeIf { it.isNotBlank() }?.let { LlmStreamEvent.ThinkingEnded(id!!, it) }
+                }
+            }
+
+            // 工具意图阶段无消费端（T2）；TextEnded 是文本块边界：重置累积（多段/跨工具轮）。
             is TurnEvent.TextEnded -> {
                 accumulatedText = ""
                 null
             }
 
-            is TurnEvent.ThinkingStarted, is TurnEvent.ThinkingDelta, is TurnEvent.ThinkingEnded,
             is TurnEvent.ToolCallStarted, is TurnEvent.ToolCallDelta, is TurnEvent.ToolCallReady,
             is TurnEvent.RetryScheduled -> null
 
+            // 用户停止：不映射为错误事件（停止由消费端 cancel 表达）；
+            // 若思考块仍在途，为最后一块合成 ThinkingEnded（被掐也算完成）。
             is TurnEvent.TurnAborted -> {
                 accumulatedText = ""
-                null
+                completeInterruptedThinking()
             }
         }
-        if (event !is TurnEvent.TextDelta) {
+        if (event !is TurnEvent.TextDelta && event !is TurnEvent.ThinkingDelta) {
             Logger.d(
                 LOG_TAG,
                 "mapped turnEvent=${event::class.simpleName} " +
@@ -118,6 +161,38 @@ object LlmStreamEventMapper {
             )
         }
         return mapped
+    }
+
+    /** 思考中续接：Delta 沿用当前块 id，全量替换文本。 */
+    private fun thinkingInProgress(index: Int, text: String): LlmStreamEvent? {
+        if (text.isBlank()) return null
+        // 防御：无 Started 直接来 Delta 时按新块处理
+        if (activeThinkingIndex != index || activeThinkingId == null) {
+            activeThinkingId = nextThinkingId++
+        }
+        activeThinkingIndex = index
+        activeThinkingText = text
+        return LlmStreamEvent.ThinkingStarted(activeThinkingId!!, text)
+    }
+
+    /** 回合非正常终止时，若思考在途则补发完成事件（被掐 = 完成）。 */
+    private fun completeInterruptedThinking(): LlmStreamEvent? {
+        val id = activeThinkingId ?: return null
+        val text = activeThinkingText
+        resetThinkingState()
+        return LlmStreamEvent.ThinkingEnded(id, text)
+    }
+
+    private fun resetThinkingState() {
+        nextThinkingId = 0
+        clearActiveThinking()
+    }
+
+    /** 块结束：只清在途块，保留 id 计数器（下一轮思考块继续递增，避免跨轮合并）。 */
+    private fun clearActiveThinking() {
+        activeThinkingId = null
+        activeThinkingIndex = null
+        activeThinkingText = ""
     }
 
     private fun TurnEvent.ToolSucceeded.toToolSucceededOrFailed(): LlmStreamEvent {
@@ -166,10 +241,19 @@ object LlmStreamEventMapper {
     }
 
     private fun ContentBlock.ToolCall.toStatus(): ToolCallStatus =
-        ToolCallStatus(callId = id, name = name, label = name, kind = ToolCallKind.Unknown)
+        ToolCallStatus(
+            callId = id,
+            name = name,
+            label = name,
+            kind = ToolCallKind.Unknown,
+            argumentsJson = argumentsJson,
+        )
 
     private fun AssistantMessage.textContent(): String =
         content.filterIsInstance<ContentBlock.Text>().joinToString("") { it.text }
+
+    private fun AssistantMessage.thinkingContent(): String =
+        content.filterIsInstance<ContentBlock.Thinking>().joinToString("") { it.text }
     private fun charsPerSecond(fullText: String, startedAtMs: Long): Float {
         val elapsedMs = (System.currentTimeMillis() - startedAtMs).coerceAtLeast(1)
         return fullText.length * 1000f / elapsedMs

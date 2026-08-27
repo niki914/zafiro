@@ -29,12 +29,14 @@ import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -43,6 +45,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -746,6 +749,109 @@ class HomeChatViewModelTest {
         assertTrue(state.turns.isEmpty())
         assertEquals(null, state.currentConversationId)
         assertEquals(null, state.currentConversationTitle)
+    }
+    @Test
+    fun thinking_autoExpandsWhileActive_manualCollapseSurvivesEchoEndKeepsState() = runTest {
+        val conversations = FakeHomeConversationStore()
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(
+                stream = {
+                    flow {
+                        emit(LlmStreamEvent.RoundStarted)
+                        // 首发：块 0 开始（Mapper 只对 Started 发新块，Delta 续接重发同 id）
+                        emit(LlmStreamEvent.ThinkingStarted(0, "one"))
+                        delay(50)
+                        // 续接回声（同 id）：手动收起后不复活
+                        emit(LlmStreamEvent.ThinkingStarted(0, "one two"))
+                        delay(50)
+                        emit(LlmStreamEvent.ThinkingEnded(0, "one two"))
+                        emit(LlmStreamEvent.Completed)
+                    }
+                },
+            ),
+        )
+        viewModel.sendIntent(HomeChatIntent.InputChanged("q"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        runCurrent()
+        runCurrent()
+
+        // 首发：自动展开 + active 指针
+        var state = viewModel.uiStateFlow.value
+        assertEquals("0_0", state.activeThinkingKey)
+        assertTrue("0_0" in state.expandedThinking)
+
+        // 思考中手动收起：允许
+        viewModel.sendIntent(HomeChatIntent.ToggleThinking(0, 0))
+        runCurrent()
+        state = viewModel.uiStateFlow.value
+        assertFalse("0_0" in state.expandedThinking)
+
+        // 续接回声到达：不重新撑开
+        advanceTimeBy(50)
+        runCurrent()
+        state = viewModel.uiStateFlow.value
+        assertFalse("0_0" in state.expandedThinking)
+
+        // 块完成：摘 active（停滚动跟随）、块保持收起、回合结束
+        advanceTimeBy(50)
+        runCurrent()
+        state = viewModel.uiStateFlow.value
+        assertNull(state.activeThinkingKey)
+        assertFalse("0_0" in state.expandedThinking)
+        assertFalse(state.isGenerating)
+    }
+
+    @Test
+    fun loadConversation_clearsTransientThinkingAndActionState() = runTest {
+        val conversations = FakeHomeConversationStore()
+        conversations.createConversation("session-second", "second")
+        conversations.setSnapshot(
+            "session-second",
+            snapshotOf(
+                Message.User(listOf(ContentBlock.Text("second"))),
+                Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("two")))),
+            ),
+        )
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(
+                stream = {
+                    flowOf(
+                        LlmStreamEvent.RoundStarted,
+                        LlmStreamEvent.ThinkingStarted(0, "one"),
+                        LlmStreamEvent.ThinkingEnded(0, "one"),
+                        LlmStreamEvent.Completed,
+                    )
+                },
+            ),
+        )
+        viewModel.sendIntent(HomeChatIntent.InputChanged("q"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        // 当前会话：thinking 自动展开 + 操作行展开，瞬态非空
+        viewModel.sendIntent(HomeChatIntent.ToggleActionRow(0, ActionSource.Agent))
+        runCurrent()
+        val before = viewModel.uiStateFlow.value
+        assertTrue("0_0" in before.expandedThinking)
+        assertTrue("0_t0" in before.autoExpandedThinking)
+        assertEquals(0L, before.expandedActionTurnId)
+
+        // 切换会话：全部瞬态清理，不跨会话复用（loadConversation 曾漏清 expandedThinking）
+        viewModel.sendIntent(HomeChatIntent.LoadConversation("session-second"))
+        advanceUntilIdle()
+        val after = viewModel.uiStateFlow.value
+        assertEquals("session-second", after.currentConversationId)
+        assertTrue(after.expandedThinking.isEmpty())
+        assertTrue(after.autoExpandedThinking.isEmpty())
+        assertTrue(after.expandedToolRuns.isEmpty())
+        assertTrue(after.expandedToolResults.isEmpty())
+        assertNull(after.expandedActionTurnId)
+        assertNull(after.expandedActionSource)
+        assertNull(after.activeThinkingKey)
     }
 }
 

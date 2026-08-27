@@ -12,6 +12,7 @@ import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.ToolCallOutcome
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -50,8 +51,8 @@ class LlmStreamEventMapperTest {
         val delta = result as LlmStreamEvent.TextDelta
         assertEquals("lo", delta.delta)
         assertEquals("helo", delta.fullText)
-        // elapsed 500ms → charsPerSecond = 4 * 1000 / 500 = 8
-        assertEquals(8f, delta.charsPerSecond!!, 0.001f)
+        // elapsed 500ms 基准 → charsPerSecond ≈ 8；壁钟计时有 ms 级漂移，断言容差按范围
+        assertTrue(delta.charsPerSecond!! in 7.9f..8.1f)
     }
 
     @Test
@@ -196,21 +197,142 @@ class LlmStreamEventMapperTest {
     // ── 工具意图阶段不发射（无 UI 消费端） ────────────────────────────────────
 
     @Test
-    fun `ToolCall intent and Thinking and Retry events are dropped`() {
+    fun `ToolCall intent and Retry events are dropped`() {
         val partial = AssistantMessage(emptyList())
         val call = ContentBlock.ToolCall("c", "t", "{}")
         val events = listOf(
             TurnEvent.ToolCallStarted(0, partial),
             TurnEvent.ToolCallDelta(0, "{}", partial),
             TurnEvent.ToolCallReady(0, call, partial),
-            TurnEvent.ThinkingStarted(0, partial),
-            TurnEvent.ThinkingDelta(0, "th", partial),
-            TurnEvent.ThinkingEnded(0, "th", partial),
             TurnEvent.RetryScheduled(1, 3, 100L, "rate limit"),
         )
         events.forEach {
             assertNull(LlmStreamEventMapper.map(it, 0L, "default error"))
         }
+    }
+
+    // ── 思考块：全量两态，Mapper 分配回合内单调 id ───────────────────────────
+
+    private fun thinkingPartial(text: String) =
+        AssistantMessage(content = listOf(ContentBlock.Thinking(text)))
+
+    @Test
+    fun `ThinkingStarted maps to ThinkingStarted with fresh id and full text`() {
+        LlmStreamEventMapper.map(TurnEvent.TurnStarted("q"), 0L, "default error")
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.ThinkingStarted(1, thinkingPartial("deep think")),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmStreamEvent.ThinkingStarted(0, "deep think"), result)
+    }
+
+    @Test
+    fun `ThinkingDelta re-emits ThinkingStarted with same id and updated full text`() {
+        LlmStreamEventMapper.map(TurnEvent.TurnStarted("q"), 0L, "default error")
+        LlmStreamEventMapper.map(
+            TurnEvent.ThinkingStarted(1, thinkingPartial("dee")),
+            0L,
+            "default error",
+        )
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.ThinkingDelta(1, "p", thinkingPartial("deep think")),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmStreamEvent.ThinkingStarted(0, "deep think"), result)
+    }
+
+    @Test
+    fun `ThinkingEnded maps to ThinkingEnded with final content`() {
+        LlmStreamEventMapper.map(TurnEvent.TurnStarted("q"), 0L, "default error")
+        LlmStreamEventMapper.map(
+            TurnEvent.ThinkingStarted(1, thinkingPartial("deep think")),
+            0L,
+            "default error",
+        )
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.ThinkingEnded(1, "deep think", thinkingPartial("deep think")),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmStreamEvent.ThinkingEnded(0, "deep think"), result)
+    }
+
+    @Test
+    fun `New round reusing same index gets a distinct id (no merge across tool rounds)`() {
+        LlmStreamEventMapper.map(TurnEvent.TurnStarted("q"), 0L, "default error")
+        // 第一轮：index=0 的思考块
+        val first = LlmStreamEventMapper.map(
+            TurnEvent.ThinkingStarted(0, thinkingPartial("first block")),
+            0L,
+            "default error",
+        )
+        LlmStreamEventMapper.map(
+            TurnEvent.ThinkingEnded(0, "first block", thinkingPartial("first block")),
+            0L,
+            "default error",
+        )
+        // 第二轮（工具轮后 StreamState 重建）：index 又回到 0，必须是新 id
+        val second = LlmStreamEventMapper.map(
+            TurnEvent.ThinkingStarted(0, thinkingPartial("second block")),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmStreamEvent.ThinkingStarted(0, "first block"), first)
+        assertEquals(LlmStreamEvent.ThinkingStarted(1, "second block"), second)
+    }
+
+    @Test
+    fun `Thinking with blank text produces no event`() {
+        LlmStreamEventMapper.map(TurnEvent.TurnStarted("q"), 0L, "default error")
+        assertNull(
+            LlmStreamEventMapper.map(
+                TurnEvent.ThinkingStarted(0, thinkingPartial("")),
+                0L,
+                "default error",
+            )
+        )
+        assertNull(
+            LlmStreamEventMapper.map(
+                TurnEvent.ThinkingDelta(0, "", thinkingPartial("  ")),
+                0L,
+                "default error",
+            )
+        )
+        assertNull(
+            LlmStreamEventMapper.map(
+                TurnEvent.ThinkingEnded(0, "", thinkingPartial("")),
+                0L,
+                "default error",
+            )
+        )
+    }
+
+    @Test
+    fun `TurnAborted with active thinking maps to ThinkingEnded (interrupted counts as done)`() {
+        LlmStreamEventMapper.map(TurnEvent.TurnStarted("q"), 0L, "default error")
+        LlmStreamEventMapper.map(
+            TurnEvent.ThinkingStarted(3, thinkingPartial("half thought")),
+            0L,
+            "default error",
+        )
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.TurnAborted(AssistantMessage(emptyList()), StopCause.UserStop),
+            0L,
+            "default error",
+        )
+        assertEquals(LlmStreamEvent.ThinkingEnded(0, "half thought"), result)
+    }
+
+    @Test
+    fun `TurnAborted without active thinking stays null`() {
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.TurnAborted(AssistantMessage(emptyList()), StopCause.UserStop),
+            0L,
+            "default error",
+        )
+        assertNull(result)
     }
 
     // ── 终态映射 ──────────────────────────────────────────────────────────────
