@@ -54,6 +54,8 @@ internal fun SavedConfigurationBlock(
                         onTrailingActionClick = { onEditClick(config.id) },
                         onDismissRequest = { onDeleteRequest(config.id) },
                         showChevron = false,
+                        // 生效配置不可删：禁用左滑，点击不受影响
+                        swipeEnabled = !config.isActive,
                     )
                 }
             }

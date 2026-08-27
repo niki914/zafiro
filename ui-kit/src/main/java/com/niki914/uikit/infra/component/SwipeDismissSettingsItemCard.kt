@@ -68,6 +68,8 @@ fun SwipeDismissSettingsItemCard(
     highlightPulseKey: Any? = null,
     highlightPulseDurationMillis: Int = 500,
     enabled: Boolean = true,
+    /** 仅控制左滑删除手势；false 时保留点击，用于「生效配置不可删」这类行。 */
+    swipeEnabled: Boolean = true,
     threshold: Dp = SwipeDismissSettingsItemDefaults.Threshold,
     iconAnchor: Dp = SwipeDismissSettingsItemDefaults.IconAnchor,
     dampingRange: Dp = SwipeDismissSettingsItemDefaults.DampingRange,
@@ -121,7 +123,7 @@ fun SwipeDismissSettingsItemCard(
             .clip(shape)
             .background(backgroundColor, shape)
             .then(
-                if (enabled) {
+                if (enabled && swipeEnabled) {
                     Modifier.pointerInput(thresholdPx) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)

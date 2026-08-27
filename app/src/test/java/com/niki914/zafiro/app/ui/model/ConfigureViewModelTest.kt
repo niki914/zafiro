@@ -125,7 +125,7 @@ class ConfigureViewModelTest {
     }
 
     @Test
-    fun saveOnNewConfig_activatesItAndSavesGlobalPrompt() = runTest {
+    fun saveOnNewConfig_activatesIt_promptSavedViaSeparateIntent() = runTest {
         val deps = RecordingDeps()
         val viewModel = ConfigureViewModel(deps.toDependencies())
         viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
@@ -141,6 +141,9 @@ class ConfigureViewModelTest {
 
         assertEquals(1, deps.upserted.size)
         assertTrue(deps.upserted.first().id.isNotBlank())
+        assertTrue(deps.savedPrompts.isEmpty())
+        viewModel.sendIntent(ConfigureIntent.SavePrompt)
+        advanceUntilIdle()
         assertEquals("你是一个测试助手。", deps.savedPrompts.single())
         assertTrue(deps.activatedIds.isEmpty())
         assertEquals(deps.upserted.first().id, viewModel.uiStateFlow.value.activeConfigId)

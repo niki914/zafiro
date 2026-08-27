@@ -71,17 +71,19 @@ data class ConfigurePage(
     override val rightAction: TopBarActionSpec? = null
 }
 
-data class SettingsConfigurePage(
-    val providerId: String,
-    /** true = Add 流程（新建配置并置 active）。 */
-    val isNew: Boolean = false,
-    val explicitTitleSpec: PageTitleSpec? = null,
+data class SavedConfigDetailPage(
+    /** null = 新建（品牌选择后进入）。 */
+    val configId: String?,
+    val configName: String,
+    val providerId: String? = null,
 ) : ZafiroPage {
-    override val routeKey: String = "settings-configure:$providerId:$isNew"
-    override val titleSpec: PageTitleSpec =
-        explicitTitleSpec ?: ResTitle(R.string.ui_onboard_configure_title)
+    val isCreating: Boolean
+        get() = configId == null
+    override val routeKey: String = "saved-config-detail:${configId ?: providerId ?: "new"}"
+    override val titleSpec: PageTitleSpec = TextTitle(configName)
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    // Delete 由内容层 PageChrome 提供（生效中的配置不提供删除）
     override val rightAction: TopBarActionSpec? = null
 }
 

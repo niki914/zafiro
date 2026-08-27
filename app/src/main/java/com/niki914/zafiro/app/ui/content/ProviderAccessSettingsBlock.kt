@@ -1,20 +1,25 @@
 package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
-import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
 
 @Composable
 internal fun ProviderAccessSettingsBlock(
     uiState: ConfigureUiState,
     policy: ConfigurePagePolicy,
+    showNameField: Boolean,
     expandedField: ConfigureEditableField?,
     onExpandedFieldChange: (ConfigureEditableField?) -> Unit,
     onNameChange: (String) -> Unit,
@@ -22,20 +27,21 @@ internal fun ProviderAccessSettingsBlock(
     onEndpointChange: (String) -> Unit,
     onModelChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
-    onProtocolClick: () -> Unit,
+    onProtocolSelected: (String) -> Unit = {},
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit,
     onClearActiveField: () -> Unit,
 ) {
+    var showProtocolDialog by rememberSaveable { mutableStateOf(false) }
+
     SettingsGroupCard {
-        val showNameField = uiState.scene != ConfigureScene.Onboarding
         if (showNameField) {
             SettingExpandableTextItem(
                 title = stringResource(R.string.ui_settings_configure_name_label),
                 value = uiState.configNameInput,
                 onValueChange = onNameChange,
                 placeholder = stringResource(R.string.ui_settings_configure_name_placeholder),
-                description = null,
+                description = uiState.nameErrorResId?.let { stringResource(it) },
                 minLines = 1,
                 maxLines = 1,
                 expanded = expandedField == ConfigureEditableField.Name,
@@ -119,7 +125,10 @@ internal fun ProviderAccessSettingsBlock(
             title = stringResource(R.string.ui_settings_configure_protocol_label),
             currentState = uiState.protocolWireId,
             showChevron = true,
-            onClick = onProtocolClick,
+            onClick = {
+                onClearActiveField()
+                showProtocolDialog = true
+            },
         )
         SettingsItemDivider()
         SettingExpandableTextItem(
@@ -164,4 +173,19 @@ internal fun ProviderAccessSettingsBlock(
             },
         )
     }
+
+    SingleChoiceLiquidDialog(
+        visible = showProtocolDialog,
+        onDismissRequest = { showProtocolDialog = false },
+        title = stringResource(R.string.ui_settings_configure_protocol_label),
+        hint = stringResource(R.string.ui_settings_configure_protocol_hint),
+        options = LlmProtocol.entries.toList(),
+        selectedId = uiState.protocolWireId,
+        optionId = LlmProtocol::wireId,
+        optionLabel = LlmProtocol::wireId,
+        onSelect = { protocol ->
+            showProtocolDialog = false
+            onProtocolSelected(protocol.wireId)
+        },
+    )
 }
