@@ -43,6 +43,9 @@ class TitleBarCollapseState {
     var isCollapsed: Boolean by mutableStateOf(false)
 }
 
+// ponytail: 折叠信号有 Pinned（根部嵌套滚动观测）与 Collapsible（页面自报）两条通道；
+// 再出现第三个 Collapsible 容器时，应把大标题收敛进 LiquidScreen 统一渲染，删除双通道。
+
 val LocalTitleBarCollapseState: ProvidableCompositionLocal<TitleBarCollapseState> =
     staticCompositionLocalOf { TitleBarCollapseState() }
 

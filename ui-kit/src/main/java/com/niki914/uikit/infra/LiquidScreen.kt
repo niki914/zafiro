@@ -166,7 +166,7 @@ fun LiquidScreen(
             .fillMaxSize()
             .onSizeChanged { size -> screenHeightPx = size.height },
     ) {
-        // Layer 1: page content owns the haze source placement.
+        // Layer 1: page content.
         CompositionLocalProvider(
             LocalLiquidScreenContentContext provides LiquidScreenContentContext(
                 topPadding = actionBarHeight,
