@@ -21,8 +21,6 @@ sealed interface ProviderSpec {
 
 data class ProviderVisualTokens(
     val button: ProviderButtonTokens,
-    val iconBadge: ProviderIconBadgeTokens? = null,
-    val page: ProviderPageTokens? = null,
 )
 
 data class ProviderButtonTokens(
@@ -31,26 +29,6 @@ data class ProviderButtonTokens(
     @ColorRes val darkContentColorRes: Int? = null,
     @ColorRes val lightContentColorRes: Int? = null,
 )
-
-data class ProviderIconBadgeTokens(
-    @ColorRes val darkContainerColorRes: Int?,
-    @ColorRes val lightContainerColorRes: Int?,
-    @ColorRes val darkContentColorRes: Int?,
-    @ColorRes val lightContentColorRes: Int?,
-)
-
-data class ProviderPageTokens(
-    @ColorRes val preferredAccentColorRes: Int? = null,
-    val suggestedOnAccentMode: OnAccentMode? = null,
-    @ColorRes val reservedDarkBackgroundColorRes: Int? = null,
-    @ColorRes val reservedLightBackgroundColorRes: Int? = null,
-)
-
-enum class OnAccentMode {
-    Light,
-    Dark,
-    AutoContrast,
-}
 
 object ProviderSpecs {
     val default: ProviderSpec = DeepSeekSpec

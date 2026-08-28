@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.liquidScreenTopPadding
 
 /**
@@ -91,6 +92,7 @@ fun SettingsDetailFormScaffold(
             text = actionText,
             enabled = actionEnabled,
             onClick = onActionClick,
+            buttonHeight = 56.dp,
             darkContainerColor = actionButtonDarkContainerColor,
             lightContainerColor = actionButtonLightContainerColor,
             darkContentColor = actionButtonDarkContentColor,

@@ -14,16 +14,16 @@ internal fun ProviderPickPageRoute(
 ) {
     SelectionPageContent(
         options = ProviderSpecs.all.map { spec ->
-            val colors = providerButtonColors(spec)
+            val colors = providerButtonColorsOrNull(spec)
             SelectionOption(
                 id = spec.id,
                 title = spec.brandName,
                 leadingIconRes = spec.iconRes,
                 tintLeadingIcon = spec.tintIcon,
-                darkContainerColor = colors.darkContainerColor,
-                lightContainerColor = colors.lightContainerColor,
-                darkContentColor = colors.darkContentColor,
-                lightContentColor = colors.lightContentColor,
+                darkContainerColor = colors?.darkContainerColor,
+                lightContainerColor = colors?.lightContainerColor,
+                darkContentColor = colors?.darkContentColor,
+                lightContentColor = colors?.lightContentColor,
                 onClick = {
                     onPush(
                         ConfigurePage(
