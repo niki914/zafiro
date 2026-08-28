@@ -20,7 +20,9 @@ import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
+import com.niki914.okia.mcp.McpDiscoveryState
 import com.niki914.okia.mcp.McpServer
+import com.niki914.okia.mcp.McpServerDiscoverySnapshot
 import com.niki914.okia.mcp.McpTransport
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
@@ -113,6 +115,11 @@ object LLMController {
     private val mcpRefreshScheduler =
         McpRefreshScheduler(CoroutineScope(SupervisorJob() + Dispatchers.IO))
 
+    // MCP 失败注入去重（#switch-refresh 配套）：同一失败片段（服务器集合 +
+    // 错误摘要）只注入一次；恢复（无 Failed）即重置，新失败片段重新注入
+    @Volatile
+    private var mcpFailureSignature: String? = null
+
     // 测试注入点：T1 单测经 Okia.open(dependencies) 装配 fake loop/mapper。 <--- TODO Workaround???
     internal var okiaFactory: OkiaFactory = OkiaFactory { apiType, restore, config ->
         openOkiaWithDefaultProtocol(apiType, restore, config)
@@ -129,6 +136,7 @@ object LLMController {
         toolRegistry.snapshot().forEach { toolRegistry.remove(it.descriptor.wireName) }
         inlinePyTools.clear()
         mcpRefreshScheduler.reset()
+        mcpFailureSignature = null
         okiaFactory = OkiaFactory { protocol, restore, config ->
             openOkiaWithDefaultProtocol(protocol, restore, config)
         }
@@ -179,6 +187,7 @@ object LLMController {
         )
         // 会话实例按协议重建；协议切换 = close + 新实例，但树经 restore 延续
         // （P1 #3：export 当前树给新协议实例，会话 id + 历史跨 Provider 保留）
+        val previousSession = runtimeState?.okia
         val activeSession = obtainSession(protocol, configWithoutRuntimePrompt)
         activeSession.update {
             endpoint = configWithoutRuntimePrompt.endpoint
@@ -193,7 +202,13 @@ object LLMController {
         // T2b：MCP 发现（方案 B，D-T2B-3）：签名变化才起后台刷新，不 await
         // （不阻塞回合）；初始化时签名 null → 首次天然触发（启动 eager）
         val mcpSignature = mcpServersSignature(resolvedTools.mcpServers)
-        mcpRefreshScheduler.schedule(activeSession, mcpSignature)
+        // 新实例（新对话/协议切换）预冷强制刷一次：签名去重会让新实例错过
+        // 首轮刷新，发消息时工具未就绪（#switch-refresh）；老实例仍按签名去重
+        mcpRefreshScheduler.schedule(
+            activeSession,
+            mcpSignature,
+            force = activeSession !== previousSession,
+        )
         // 工具描述进入提示词（技能/记忆段依赖它）；MCP 工具段已删除
         // （D-T2B-2：线缆名 mcp__server__tool 已表达服务器归属）
         val prompt = promptComposer.compose(
@@ -259,6 +274,16 @@ object LLMController {
             forceNew = true,
         )
         runtimeState = current.copy(okia = newSession)
+        // 会话切换预热（#switch-refresh）：restore 建的新实例不带 mcpServers
+        // 配置（只有 refresh 会写，discovery 读到空服务器），先补配置再强制
+        // 刷一次，抢出用户打字时间窗口，提高首条消息的 MCP 工具就绪率
+        val switchMcpServers = current.snapshot.tools.mcpServers
+        newSession.update { mcpServers = toOkiaMcpServers(switchMcpServers) }
+        mcpRefreshScheduler.schedule(
+            newSession,
+            mcpServersSignature(switchMcpServers),
+            force = true,
+        )
         Logger.i(
             LOG_TAG,
             "open session done id=${restore.id} " +
@@ -320,10 +345,16 @@ object LLMController {
             try {
                 Logger.i(LOG_TAG, "round started queryLength=${query.length} isUnlocked=${LockState.isUnlocked()}")
                 // 异步任务完成通知注入（PRD okia §5.10）：host 侧拼进 send 文本，
-                // 不进 hook、不进会话树（通知进树即污染历史）
+                // 不进 hook、不进会话树（通知进树即污染历史）；MCP 发现失败
+                // 说明同样前置（Failed 服务器工具不可用，模型需知）
                 val notifications = TerminalSessionPool.drainPendingNotifications()
-                val effectiveQuery = if (notifications.isNotEmpty()) {
-                    notifications.joinToString("\n\n") + "\n\n" + query
+                val mcpNotice = mcpFailureNotice()
+                val prefixes = buildList {
+                    mcpNotice?.let { add(it) }
+                    addAll(notifications)
+                }
+                val effectiveQuery = if (prefixes.isNotEmpty()) {
+                    prefixes.joinToString("\n\n") + "\n\n" + query
                 } else {
                     query
                 }
@@ -576,6 +607,36 @@ object LLMController {
 
     // ── T2b MCP 发现时序（方案 B，D-T2B-3，对齐 Codex eager + 标脏刷新） ────
 
+    /** McpServerDefinition.Http → OKIA McpServer（字段一一对应，T2b）。 */
+    private fun toOkiaMcpServers(servers: List<McpServerDefinition>): List<McpServer> {
+        return servers.mapNotNull { server ->
+            when (server) {
+                is McpServerDefinition.Http ->
+                    McpServer(
+                        name = server.name,
+                        transport = McpTransport.Http(server.url),
+                        headers = server.headers,
+                        enabled = server.enabled,
+                    )
+            }
+        }
+    }
+
+    /** 失败注入文案（internal 供单测）；格式对齐终端完成通知的元信息风格。 */
+    internal fun buildMcpFailureNotice(
+        failed: List<McpServerDiscoverySnapshot>,
+    ): String = buildString {
+        appendLine("[IMPORTANT: MCP discovery failed for the following servers; their tools are unavailable in this turn:")
+        failed.forEach { server ->
+            val reason = server.errorMessage?.lineSequence()?.firstOrNull()?.take(120) ?: "unknown error"
+            appendLine("- ${server.serverName}: $reason")
+        }
+        append(
+            "Do not attempt to call their tools. If the task depends on them, " +
+                "tell the user the MCP service is currently unavailable.]",
+        )
+    }
+
     /** 服务器配置签名：对 McpServerDefinition.Http（name/url/headers/enabled）确定性序列化。 */
     private fun mcpServersSignature(servers: List<McpServerDefinition>): String {
         return servers
@@ -594,19 +655,29 @@ object LLMController {
             }
     }
 
-    /** McpServerDefinition.Http → OKIA McpServer（字段一一对应，T2b）。 */
-    private fun toOkiaMcpServers(servers: List<McpServerDefinition>): List<McpServer> {
-        return servers.mapNotNull { server ->
-            when (server) {
-                is McpServerDefinition.Http ->
-                    McpServer(
-                        name = server.name,
-                        transport = McpTransport.Http(server.url),
-                        headers = server.headers,
-                        enabled = server.enabled,
-                    )
-            }
+    /**
+     * MCP 发现失败注入（#switch-refresh 配套）：send 前读发现快照，
+     * 仅 Failed 服务器注入说明（Discovering 是过程态、UsingStaleCache 旧
+     * 缓存工具仍可用，均不注）；按「失败集合 + 错误摘要」签名去重，同一
+     * 失败片段只注一次，恢复即重置。无 Failed 时顺带打一条状态摘要日志。
+     */
+    private suspend fun mcpFailureNotice(): String? {
+        val session = runtimeState?.okia ?: return null
+        val servers = session.getMcpDiscoverySnapshot().servers.values
+        Logger.i(
+            LOG_TAG,
+            "mcp discovery " + servers.sortedBy { it.serverName }
+                .joinToString(" ") { "${it.serverName}=${it.state}" },
+        )
+        val failed = servers.filter { it.state == McpDiscoveryState.Failed }.sortedBy { it.serverName }
+        if (failed.isEmpty()) {
+            mcpFailureSignature = null
+            return null
         }
+        val signature = failed.joinToString("|") { "${it.serverName}:${it.errorMessage.orEmpty()}" }
+        if (signature == mcpFailureSignature) return null
+        mcpFailureSignature = signature
+        return buildMcpFailureNotice(failed)
     }
 
     // 全局工具资源 kill 钩子：OKIA 停止流程的 kill 步骤（beforeStop 每回合

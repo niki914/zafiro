@@ -160,4 +160,41 @@ class McpRefreshSchedulerTest {
         runCurrent()
         assertEquals(2, okia.refreshCalls)
     }
+
+    @Test
+    fun forceSchedule_bypassesSignatureDedup() = runTest {
+        // 会话切换预热（#switch-refresh）：签名已成功也强制重刷；
+        // in-flight 去重仍生效（gate 挂住第二轮刷新验证不叠加）
+        var gate: CompletableDeferred<Unit>? = null
+        val okia = FakeOkia(
+            refreshResult = {
+                gate?.await()
+                McpRefreshResult(listOf("s1"), emptyList())
+            }
+        )
+        val scheduler = McpRefreshScheduler(backgroundScope)
+
+        scheduler.schedule(okia, "sig-A")
+        runCurrent()
+        assertEquals(1, okia.refreshCalls)
+
+        // 同签名不触发
+        scheduler.schedule(okia, "sig-A")
+        runCurrent()
+        assertEquals(1, okia.refreshCalls)
+
+        // force 跳过去重，重刷一次（gate 挂住保持 in-flight）
+        gate = CompletableDeferred()
+        scheduler.schedule(okia, "sig-A", force = true)
+        runCurrent()
+        assertEquals(2, okia.refreshCalls)
+
+        // 刷新进行中再 force：inFlight 去重，不叠加
+        scheduler.schedule(okia, "sig-A", force = true)
+        runCurrent()
+        assertEquals(2, okia.refreshCalls)
+
+        gate?.complete(Unit)
+        runCurrent()
+    }
 }

@@ -37,10 +37,11 @@ internal class McpRefreshScheduler(private val scope: CoroutineScope) {
 
     private val inFlight = AtomicBoolean(false)
 
-    /** 签名变化才起后台刷新（不 await，不阻塞回合）。见类注释。 */
-    fun schedule(session: Okia, signature: String) {
+    /** 签名变化才起后台刷新（不 await，不阻塞回合）；force = 跳过签名去重
+     *  强制刷一次（会话切换预热，#switch-refresh）。in-flight 仍去重。 */
+    fun schedule(session: Okia, signature: String, force: Boolean = false) {
         desiredSignature = signature
-        if (signature == successSignature) return
+        if (!force && signature == successSignature) return
         if (inFlight.get()) return
         launchRefresh(session, signature)
     }
