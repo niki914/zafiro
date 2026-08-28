@@ -17,6 +17,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -48,6 +49,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -106,21 +108,25 @@ fun LiquidScreen(
             }
         }
     }
-    // 导航（前进/后退）时重置：Pinned 页的滚动状态均为 remember（非 saveable），
-    // 重建后必在顶部；Collapsible 页不读这个布尔，由页面自报（snapshotFlow）。
+    val titleCollapseState = remember { TitleBarCollapseState() }
+    // 导航时重置事件通道与自报标记。Pinned 页若不自报（非 Saveable 滚动状态），
+    // 重建后必在顶部，重置后恒 false 即正确；可 saveable 恢复滚动位置的页（如 Home Chat）
+    // 应写入 collapse state 自报（hasReporter=true），返回时首帧立即纠正，不受重置影响。
     LaunchedEffect(state.title, state.titleDirection) {
         when (state.titleDirection) {
-            TitleDirection.Forward, TitleDirection.Back -> isContentScrolled = false
+            TitleDirection.Forward, TitleDirection.Back -> {
+                isContentScrolled = false
+                titleCollapseState.hasReporter = false
+            }
             TitleDirection.None -> {}
         }
     }
-    val titleCollapseState = remember { TitleBarCollapseState() }
     // 动画时长与 action bar 左右按钮显隐动画一致，页面切换时两页滚动状态
     // 不同也不会闪变：alpha 总是从当前值动画到目标值。
     val collapseAnimSpec = tween<Float>(durationMillis = 280, easing = LinearOutSlowInEasing)
     // 背景与小标题共用同一信号源，保证两者同步动画：
     // Collapsible 页由页面自报（与大标题同一阈值）；Pinned 页由嵌套滚动观测驱动。
-    val barTarget = if (state.isTitleCollapsible) {
+    val barTarget = if (state.isTitleCollapsible || titleCollapseState.hasReporter) {
         titleCollapseState.isCollapsed
     } else {
         isContentScrolled
@@ -214,6 +220,9 @@ fun LiquidScreen(
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .height(chromeHeight)
+                // 吞掉顶栏区域的点按，防止穿透到下层内容（如滚动到顶栏下方的列表行）。
+                // detectTapGestures 只消费 tap 不消费拖动，从顶栏起手的滚动仍能落到下层滚动容器。
+                .pointerInput(Unit) { detectTapGestures { } }
                 .padding(horizontal = 4.dp),
         ) {
             // Title — always centered in the full bar width
