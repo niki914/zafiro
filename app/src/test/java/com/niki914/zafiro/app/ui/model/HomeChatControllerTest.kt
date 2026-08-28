@@ -804,6 +804,92 @@ class HomeChatViewModelTest {
     }
 
     @Test
+    fun thinking_newBlockCollapsesPreviousAutoExpanded() = runTest {
+        val conversations = FakeHomeConversationStore()
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(
+                stream = {
+                    flow {
+                        emit(LlmStreamEvent.RoundStarted)
+                        emit(LlmStreamEvent.ThinkingStarted(0, "first"))
+                        delay(10)
+                        emit(LlmStreamEvent.ThinkingStarted(1, "second"))
+                        delay(10)
+                        emit(LlmStreamEvent.Completed)
+                    }
+                },
+            ),
+        )
+        viewModel.sendIntent(HomeChatIntent.InputChanged("q"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        runCurrent()
+        runCurrent()
+
+        // 首发：块 0 自动展开
+        var state = viewModel.uiStateFlow.value
+        assertTrue("0_0" in state.expandedThinking)
+        assertFalse("0_1" in state.expandedThinking)
+
+        // 新块到来：收起前面自动展开的块 0，展开块 1
+        advanceTimeBy(10)
+        runCurrent()
+        state = viewModel.uiStateFlow.value
+        assertTrue("0_1" in state.expandedThinking)
+        assertFalse("0_0" in state.expandedThinking)
+    }
+
+    @Test
+    fun thinking_userExpandedBlockSurvivesNewBlock() = runTest {
+        val conversations = FakeHomeConversationStore()
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(
+                stream = {
+                    flow {
+                        emit(LlmStreamEvent.RoundStarted)
+                        emit(LlmStreamEvent.ThinkingStarted(0, "first"))
+                        delay(10)
+                        emit(LlmStreamEvent.ThinkingStarted(1, "second"))
+                        delay(10)
+                        emit(LlmStreamEvent.ThinkingStarted(2, "third"))
+                        delay(10)
+                        emit(LlmStreamEvent.Completed)
+                    }
+                },
+            ),
+        )
+        viewModel.sendIntent(HomeChatIntent.InputChanged("q"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        runCurrent()
+        runCurrent()
+
+        // 块 1 自动展开（块 0 已被自动收起）
+        advanceTimeBy(10)
+        runCurrent()
+        var state = viewModel.uiStateFlow.value
+        assertTrue("0_1" in state.expandedThinking)
+        assertFalse("0_0" in state.expandedThinking)
+
+        // 用户手动展开块 0（接管）
+        viewModel.sendIntent(HomeChatIntent.ToggleThinking(0, 0))
+        runCurrent()
+        state = viewModel.uiStateFlow.value
+        assertTrue("0_0" in state.expandedThinking)
+        assertTrue("0_1" in state.expandedThinking)
+
+        // 块 2 到来：只收仍自动展开的块 1，用户展开的块 0 保留
+        advanceTimeBy(10)
+        runCurrent()
+        state = viewModel.uiStateFlow.value
+        assertTrue("0_2" in state.expandedThinking)
+        assertTrue("0_0" in state.expandedThinking)
+        assertFalse("0_1" in state.expandedThinking)
+    }
+
+    @Test
     fun loadConversation_clearsTransientThinkingAndActionState() = runTest {
         val conversations = FakeHomeConversationStore()
         conversations.createConversation("session-second", "second")
@@ -837,7 +923,7 @@ class HomeChatViewModelTest {
         runCurrent()
         val before = viewModel.uiStateFlow.value
         assertTrue("0_0" in before.expandedThinking)
-        assertTrue("0_t0" in before.autoExpandedThinking)
+        assertTrue("0_0" in before.autoExpandedThinking)
         assertEquals(0L, before.expandedActionTurnId)
 
         // 切换会话：全部瞬态清理，不跨会话复用（loadConversation 曾漏清 expandedThinking）

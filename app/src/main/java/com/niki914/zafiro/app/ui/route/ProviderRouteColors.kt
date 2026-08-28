@@ -19,6 +19,15 @@ internal fun providerButtonColors(spec: ProviderSpec): ProviderButtonColors {
     return spec.visualTokens.button.toProviderButtonColors()
 }
 
+/** 无显式品牌色（如 Gemini）时返回 null，调用方回退到中性圆底。 */
+@Composable
+internal fun providerButtonColorsOrNull(spec: ProviderSpec): ProviderButtonColors? {
+    val button = spec.visualTokens.button
+    val hasExplicitColors = button.darkContainerColorRes != null ||
+            button.lightContainerColorRes != null
+    return if (hasExplicitColors) button.toProviderButtonColors() else null
+}
+
 @Composable
 internal fun ProviderButtonTokens.toProviderButtonColors(): ProviderButtonColors {
     val colorScheme = MaterialTheme.colorScheme

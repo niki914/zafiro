@@ -21,7 +21,8 @@ import kotlinx.coroutines.launch
 
 class InteractiveHighlight(
     val animationScope: CoroutineScope,
-    val position: (size: Size, offset: Offset) -> Offset = { _, offset -> offset }
+    val position: (size: Size, offset: Offset) -> Offset = { _, offset -> offset },
+    private val isDragStartIgnored: (position: Offset) -> Boolean = { false }
 ) {
     private val pressProgressAnimationSpec =
         spring(0.5f, 300f, 0.001f)
@@ -94,6 +95,7 @@ half4 main(float2 coord) {
     val gestureModifier: Modifier =
         Modifier.pointerInput(animationScope) {
             inspectDragGestures(
+                isDragStartIgnored = { down -> isDragStartIgnored(down.position) },
                 onDragStart = { down ->
                     startPosition = down.position
                     animationScope.launch {

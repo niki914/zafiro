@@ -41,6 +41,10 @@ val LocalLiquidScreenContentContext: ProvidableCompositionLocal<LiquidScreenCont
 class TitleBarCollapseState {
     /** true = 内容已滚过大标题（小标题应浮现）；非滚动页恒为 false（顶栏全透明）。 */
     var isCollapsed: Boolean by mutableStateOf(false)
+
+    /** 是否有页面在本帧接管了回报。导航时由 LiquidScreen 清零，
+     * 防止上一页的 isCollapsed 残值泄漏给不自报的页面。 */
+    var hasReporter: Boolean by mutableStateOf(false)
 }
 
 // ponytail: 折叠信号有 Pinned（根部嵌套滚动观测）与 Collapsible（页面自报）两条通道；

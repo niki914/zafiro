@@ -16,11 +16,17 @@ suspend fun PointerInputScope.inspectDragGestures(
     onDragStart: (down: PointerInputChange) -> Unit = {},
     onDragEnd: (change: PointerInputChange) -> Unit = {},
     onDragCancel: () -> Unit = {},
+    isDragStartIgnored: (down: PointerInputChange) -> Boolean = { false },
     onDrag: (change: PointerInputChange, dragAmount: Offset) -> Unit
 ) {
     awaitEachGesture {
         val initialDown = awaitFirstDown(false, PointerEventPass.Initial)
         val down = awaitFirstDown(false)
+
+        // 落点属于内层液态控件（如按钮）时，外层容器不参与本次拖拽，避免双层位移。
+        if (isDragStartIgnored(down)) {
+            return@awaitEachGesture
+        }
 
         onDragStart(down)
         onDrag(initialDown, Offset.Zero)

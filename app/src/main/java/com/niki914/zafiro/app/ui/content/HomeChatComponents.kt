@@ -16,10 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -48,6 +47,7 @@ import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
 import com.niki914.zafiro.app.R
+import com.niki914.uikit.infra.ActionBarButton
 import com.niki914.uikit.infra.component.LiquidTextField
 import com.niki914.uikit.infra.shape.G2BubbleShape
 import com.niki914.uikit.infra.shape.G2CardShape
@@ -407,13 +407,13 @@ fun LiquidChatComposer(
         enabled = true,
         singleLine = false,
         maxLines = maxLines,
+        minHeight = 68.dp,
         modifier = modifier.fillMaxWidth(),
         trailingContent = {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
-                IconButton(
+                ActionBarButton(
                     onClick = if (isGenerating) onStopClick else onSendClick,
                     enabled = buttonEnabled,
-                    modifier = Modifier.size(40.dp),
                 ) {
                     if (isGenerating) {
                         LoadingIndicator(
@@ -426,7 +426,7 @@ fun LiquidChatComposer(
                         )
                     } else {
                         Icon(
-                            imageVector = Icons.Default.Send,
+                            painter = painterResource(R.drawable.ic_arrow_up),
                             contentDescription = stringResource(
                                 R.string.ui_home_send_content_description
                             ),

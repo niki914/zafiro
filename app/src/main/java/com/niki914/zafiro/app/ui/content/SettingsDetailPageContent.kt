@@ -70,7 +70,7 @@ fun SettingsDetailPageContent(
     }
 
     if (group == ZafiroSettingsGroup.GeneralSettings) {
-        GeneralSettingsContent()
+        GeneralSettingsContent(onPush = onPush)
         return
     }
 

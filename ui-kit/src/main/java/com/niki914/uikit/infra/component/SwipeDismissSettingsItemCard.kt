@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.niki914.uikit.infra.shape.G2CardShape
 import kotlin.math.abs
 import kotlin.math.absoluteValue
@@ -261,7 +262,7 @@ private fun SwipeDismissSettingsItemContent(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
                     color = contentColor,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -269,7 +270,7 @@ private fun SwipeDismissSettingsItemContent(
                 if (!summary.isNullOrBlank()) {
                     Text(
                         text = summary,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = summaryColor,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,

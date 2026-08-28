@@ -277,6 +277,29 @@ object XRepo {
         }
     }
 
+    suspend fun themeMode(): String {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).themeMode
+    }
+
+    suspend fun setThemeMode(mode: String) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(themeMode = mode))
+        }
+    }
+
+    suspend fun themeSeedColor(): String {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .themeSeedColor
+    }
+
+    suspend fun setThemeSeedColor(hex: String) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(themeSeedColor = hex))
+        }
+    }
+
     private val SCHEMA_WEB_SEARCH =
         """{"type":"object","properties":{"query":{"type":"string"},"engine":{"type":"string","enum":["all","baidu","sogou","ddg"],"description":"search engine; \"all\" (default) merges Baidu + Sogou + DuckDuckGo"},"max_results":{"type":"integer","description":"default: 8"}},"required":["query"]}"""
 

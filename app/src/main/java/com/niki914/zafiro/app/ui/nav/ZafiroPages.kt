@@ -121,6 +121,15 @@ data object ConversationHistoryPage : ZafiroPage {
     override val rightAction: TopBarActionSpec? = null
 }
 
+data object ThemeSettingsPage : ZafiroPage {
+    override val routeKey: String = "theme-settings"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_appearance)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}
+
 data object SettingsHomePage : ZafiroPage {
     override val routeKey: String = "settings-home"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_title)

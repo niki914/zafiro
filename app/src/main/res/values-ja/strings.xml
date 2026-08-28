@@ -377,4 +377,22 @@
     <string name="ui_settings_configure_name_placeholder">例：DeepSeek メイン</string>
     <string name="ui_settings_configure_protocol_label">プロトコル</string>
     <string name="ui_settings_configure_protocol_hint">プロトコル切り替え後、エンドポイントがプロトコルと一致しているか確認してください。</string>
+
+    <string name="ui_settings_appearance">外観</string>
+    <string name="ui_theme_mode_system">システムに従う</string>
+    <string name="ui_theme_mode_light">ライト</string>
+    <string name="ui_theme_mode_dark">ダーク</string>
+    <string name="ui_theme_color_dynamic">ダイナミックカラー（壁紙から）</string>
+    <string name="ui_theme_color_rose">ローズ</string>
+    <string name="ui_theme_color_blossom">桜</string>
+    <string name="ui_theme_color_lavender">ラベンダー</string>
+    <string name="ui_theme_color_blue">ブルー</string>
+    <string name="ui_theme_color_sky">スカイ</string>
+    <string name="ui_theme_color_cyan">シアン</string>
+    <string name="ui_theme_color_mint">ミント</string>
+    <string name="ui_theme_color_green">グリーン</string>
+    <string name="ui_theme_color_lime">ライム</string>
+    <string name="ui_theme_color_lemon">レモン</string>
+    <string name="ui_theme_color_amber">アンバー</string>
+    <string name="ui_theme_color_sunset">サンセット</string>
 </resources>

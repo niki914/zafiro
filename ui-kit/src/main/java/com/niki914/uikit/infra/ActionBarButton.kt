@@ -1,8 +1,8 @@
 package com.niki914.uikit.infra
 
+import com.niki914.uikit.base.LocalAppDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -39,7 +39,7 @@ import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun ActionBarButton(
+fun ActionBarButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     enabled: Boolean = true,
@@ -57,7 +57,7 @@ internal fun ActionBarButton(
         compositingStrategy = CompositingStrategy.Offscreen
     }
     val density = LocalDensity.current
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = LocalAppDarkTheme.current
     val interactionSource = remember { MutableInteractionSource() }
     val buttonShape = RoundedCornerShape(56.dp)
 

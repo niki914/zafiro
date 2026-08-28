@@ -18,6 +18,7 @@ import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsHomePage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
+import com.niki914.zafiro.app.ui.nav.ThemeSettingsPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
 import com.niki914.zafiro.app.ui.nav.CustomPyToolDetailPage
 import com.niki914.zafiro.app.ui.nav.CustomPyToolsPage
@@ -35,6 +36,7 @@ import com.niki914.zafiro.app.ui.route.SavedConfigDetailRoute
 import com.niki914.zafiro.app.ui.route.SettingsDetailPageRoute
 import com.niki914.zafiro.app.ui.route.SettingsHomePageRoute
 import com.niki914.zafiro.app.ui.route.SettingsProviderPickPageRoute
+import com.niki914.zafiro.app.ui.route.ThemeSettingsPageRoute
 import com.niki914.zafiro.app.ui.route.SkillDetailRoute
 import com.niki914.zafiro.app.ui.route.StartupPageRoute
 import com.niki914.zafiro.app.ui.route.TakeoverRuleDetailRoute
@@ -70,6 +72,8 @@ fun ZafiroPageContent(
         SettingsProviderPickPage -> SettingsProviderPickPageRoute(
             onPush = onPush,
         )
+
+        ThemeSettingsPage -> ThemeSettingsPageRoute()
 
         is ConfigurePage -> ConfigurePageRoute(
             page = page,

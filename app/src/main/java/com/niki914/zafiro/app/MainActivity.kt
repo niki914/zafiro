@@ -9,7 +9,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
-import com.niki914.uikit.base.BaseTheme
+import com.niki914.zafiro.app.ui.model.ThemeController
 import kotlinx.coroutines.runBlocking
 
 // tag:niki914 | tag:nexus-x-log | message:niki914 | message:nexus-x-log
@@ -37,17 +37,18 @@ class MainActivity : AppCompatActivity() {
         NotificationPermissionGate.init(notificationPermissionLauncher)
         val startupAssistantUi = resolveStartupAssistantUi()
         val launchDecision = runBlocking {
-            AppLaunchDecision.resolve(startupAssistantUi)
+            val decision = AppLaunchDecision.resolve(startupAssistantUi)
+            // 同步读主题偏好：深色模式冷启动首帧不能闪白
+            ThemeController.load()
+            decision
         }
         applyLanguageTag(launchDecision.languageTag)
 
         setContent {
-            BaseTheme {
-                ZafiroApp(
-                    startupAssistantUi = startupAssistantUi,
-                    launchDecision = launchDecision,
-                )
-            }
+            ZafiroApp(
+                startupAssistantUi = startupAssistantUi,
+                launchDecision = launchDecision,
+            )
         }
     }
 

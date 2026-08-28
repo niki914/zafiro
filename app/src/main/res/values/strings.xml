@@ -377,4 +377,22 @@
     <string name="ui_settings_configure_name_placeholder">例如：DeepSeek 主力</string>
     <string name="ui_settings_configure_protocol_label">协议</string>
     <string name="ui_settings_configure_protocol_hint">切换协议后，请确认端点与协议匹配。</string>
+
+    <string name="ui_settings_appearance">外观</string>
+    <string name="ui_theme_mode_system">跟随系统</string>
+    <string name="ui_theme_mode_light">浅色</string>
+    <string name="ui_theme_mode_dark">深色</string>
+    <string name="ui_theme_color_dynamic">动态色（壁纸取色）</string>
+    <string name="ui_theme_color_rose">玫瑰粉</string>
+    <string name="ui_theme_color_blossom">樱花粉</string>
+    <string name="ui_theme_color_lavender">薰衣草紫</string>
+    <string name="ui_theme_color_blue">远山蓝</string>
+    <string name="ui_theme_color_sky">天青</string>
+    <string name="ui_theme_color_cyan">青碧</string>
+    <string name="ui_theme_color_mint">薄荷绿</string>
+    <string name="ui_theme_color_green">草绿</string>
+    <string name="ui_theme_color_lime">嫩芽绿</string>
+    <string name="ui_theme_color_lemon">柠檬黄</string>
+    <string name="ui_theme_color_amber">琥珀</string>
+    <string name="ui_theme_color_sunset">落日橙</string>
 </resources>
