@@ -73,6 +73,9 @@ fun LiquidScreen(
     val isDarkTheme = LocalAppDarkTheme.current
     val density = LocalDensity.current
     val chromeBackdrop = rememberLayerBackdrop()
+    // 标题两侧预留 = ActionBarButton 占宽（12dp 内边距 ×2 + 48sp 按钮）。
+    // 随系统字体缩放同步放大，防止长标题压到左右按钮下方。
+    val titleHorizontalPadding = with(density) { 12.dp * 2 + 48.sp.toDp() }
     val dialogHostState = remember { LiquidDialogHostState() }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val titleBarHeight = 56.dp
@@ -219,7 +222,7 @@ fun LiquidScreen(
                     .fillMaxWidth()
                     .padding(top = topInset)
                     .fillMaxHeight()
-                    .padding(horizontal = 48.dp),
+                    .padding(horizontal = titleHorizontalPadding),
                 transitionSpec = {
                     val titleEasing = FastOutSlowInEasing
                     val enterForward = slideInHorizontally(
