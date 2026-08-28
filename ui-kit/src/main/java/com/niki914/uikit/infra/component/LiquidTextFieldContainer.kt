@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -68,13 +70,11 @@ internal fun LiquidTextFieldContainer(
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     moveCursorToEndOnFocus: Boolean = false,
     visualTransformation: VisualTransformation = VisualTransformation.None,
+    minHeight: Dp = 52.dp,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val backdrop = rememberLayerBackdrop()
     val animationScope = rememberCoroutineScope()
-    val interactiveHighlight = remember(animationScope) {
-        InteractiveHighlight(animationScope = animationScope)
-    }
     val focusManager = LocalFocusManager.current
     val density = LocalDensity.current
     val viewportAvoidanceController = LocalLiquidViewportAvoidanceController.current
@@ -82,6 +82,18 @@ internal fun LiquidTextFieldContainer(
     var isFocused by remember { mutableStateOf(false) }
     var imeWasVisibleWhileFocused by remember { mutableStateOf(false) }
     var boundsInRoot by remember { mutableStateOf<Rect?>(null) }
+    var trailingBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
+    val interactiveHighlight = remember(animationScope) {
+        InteractiveHighlight(
+            animationScope = animationScope,
+            isDragStartIgnored = { position ->
+                val trailing = trailingBoundsInRoot
+                val field = boundsInRoot
+                trailing != null && field != null &&
+                        Rect(trailing.topLeft - field.topLeft, trailing.size).contains(position)
+            },
+        )
+    }
     var textFieldValue by remember {
         mutableStateOf(
             TextFieldValue(
@@ -92,7 +104,7 @@ internal fun LiquidTextFieldContainer(
     }
     val interactiveEffectsEnabled = enabled && (!isFocused || textFieldValue.text.isEmpty())
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
-    val fieldShape = G2FieldShape(28.dp)
+    val fieldShape = G2FieldShape(36.dp)
 
     LaunchedEffect(value) {
         if (value != textFieldValue.text) {
@@ -175,7 +187,7 @@ internal fun LiquidTextFieldContainer(
         },
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
+            .heightIn(min = minHeight)
             .onFocusChanged { focusState ->
                 isFocused = focusState.isFocused
                 if (moveCursorToEndOnFocus && focusState.isFocused) {
@@ -260,7 +272,13 @@ internal fun LiquidTextFieldContainer(
 
                 if (trailingContent != null) {
                     CompositionLocalProvider(LocalContentColor provides trailingColor) {
-                        trailingContent()
+                        Box(
+                            modifier = Modifier.onGloballyPositioned { coordinates ->
+                                trailingBoundsInRoot = coordinates.boundsInRoot()
+                            },
+                        ) {
+                            trailingContent?.invoke(this@Row)
+                        }
                     }
                 }
             }

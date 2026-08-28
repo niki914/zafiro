@@ -39,7 +39,7 @@ import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun ActionBarButton(
+fun ActionBarButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     enabled: Boolean = true,
