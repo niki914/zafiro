@@ -123,9 +123,9 @@ data class HomeChatUiState(
     /** 当前正在流式产生的思考块 key；仅驱动 thinking 块内滚动跟随。 */
     val activeThinkingKey: String? = null,
     /**
-     * 已自动展开过的思考块身份（"${turnId}_t${thinkingId}"）。
-     * Mapper 对 Delta 续接也重发 ThinkingStarted（同 id），此集合区分「新块首发」与「续接回声」：
-     * 首发自动展开；回声不重复展开，用户手动收起后不被续接重新撑开。
+     * 仍处于「自动展开、未被用户干预」的思考块 key（"${turnId}_${blockIndex}"）。
+     * 新块首发时收起本集合中的旧块再展开新块；用户 toggle 过的块移出本集合，不再被自动收起。
+     * （首发与续接回声的区分改用 turns 中是否已存在同 id Thinking 块判断，见 applyEvent。）
      */
     val autoExpandedThinking: Set<String> = emptySet(),
 )
@@ -262,6 +262,8 @@ class HomeChatViewModel internal constructor(
                 } else {
                     expandedThinking + key
                 },
+                // 用户干预：移出自动展开跟踪，后续新块不再自动收起它
+                autoExpandedThinking = autoExpandedThinking - key,
             )
         }
     }
@@ -401,11 +403,13 @@ class HomeChatViewModel internal constructor(
             }
 
             is LlmStreamEvent.ThinkingStarted -> {
-                // 首发自动展开 + 置 active；续接回声（同块 Delta 重发同 id）不重复展开，
-                // 手动收起后不复活；块完成后保持展开不收起（见 withClearedTransient）
                 updateState {
                     val turnIndex = turns.indexOfFirst { it.id == turnId }
                     if (turnIndex == -1) return@updateState this
+                    // 回声 = 同 id 块已存在（Mapper 对 Delta 续接重发同 id）；首发 = 块不存在
+                    val isEcho = turns[turnIndex].blocks.any {
+                        it is HomeChatBlock.Thinking && it.id == event.id
+                    }
                     val updated = turns[turnIndex].upsertThinking(event.id, event.text)
                     val thinkingIndex = updated.blocks.indexOfLast {
                         it is HomeChatBlock.Thinking && it.id == event.id
@@ -416,15 +420,18 @@ class HomeChatViewModel internal constructor(
                             turns = turns.toMutableList().also { it[turnIndex] = updated },
                         )
                     }
-                    val blockId = "${turnId}_t${event.id}"
+                    if (isEcho) {
+                        // 续接回声：只更新文本，不碰展开态（手动收起后不被续接重新撑开）
+                        return@updateState copy(
+                            turns = turns.toMutableList().also { it[turnIndex] = updated },
+                        )
+                    }
+                    // 新块首发：自动展开，并收起所有仍自动展开的旧块（autoExpandedThinking
+                    // 只含未被用户干预的块，用户手动展开的保留）
                     copy(
                         turns = turns.toMutableList().also { it[turnIndex] = updated },
-                        expandedThinking = if (blockId in autoExpandedThinking) {
-                            expandedThinking
-                        } else {
-                            expandedThinking + key
-                        },
-                        autoExpandedThinking = autoExpandedThinking + blockId,
+                        expandedThinking = (expandedThinking - autoExpandedThinking) + key,
+                        autoExpandedThinking = autoExpandedThinking + key,
                         activeThinkingKey = key,
                     )
                 }

@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -123,9 +125,6 @@ fun HomePageContent(
     val effectiveImeBottom = if (isComposerFocused) imeBottom else 0.dp
     val composerBottomPadding = (effectiveImeBottom + 12.dp).coerceAtLeast(navigationBottom + 20.dp)
     val bottomThresholdPx = with(density) { 24.dp.roundToPx() }
-    val isUserDragging by listState.interactionSource.collectIsDraggedAsState()
-    var shouldFollowBottom by remember { mutableStateOf(true) }
-    var hasPendingUserScrollDecision by remember { mutableStateOf(false) }
     val lastTurn = uiState.turns.lastOrNull()
     val bottomContentVersion = remember(
         uiState.turns.size,
@@ -150,6 +149,11 @@ fun HomePageContent(
                     lastVisibleItem.offset + lastVisibleItem.size <= viewportEnd + bottomThresholdPx
         }
     }
+    var shouldFollowBottom by rememberScrollFollowState(
+        interactionSource = listState.interactionSource,
+        isScrollInProgress = { listState.isScrollInProgress },
+        isAtEnd = { isAtBottom },
+    )
     val dismissInputFocus = remember(focusManager, keyboardController) {
         {
             keyboardController?.hide()
@@ -157,21 +161,9 @@ fun HomePageContent(
         }
     }
 
-    LaunchedEffect(isUserDragging) {
-        if (isUserDragging) {
-            hasPendingUserScrollDecision = true
-        }
-    }
-    LaunchedEffect(listState, isAtBottom) {
-        snapshotFlow { listState.isScrollInProgress }
-            .collectLatest { isScrollInProgress ->
-                if (!isScrollInProgress && hasPendingUserScrollDecision) {
-                    shouldFollowBottom = isAtBottom
-                    hasPendingUserScrollDecision = false
-                }
-            }
-    }
-    LaunchedEffect(bottomContentVersion, shouldFollowBottom) {
+    // 只在内容事件（bottomContentVersion）变化时跳转：恢复跟随本身不触发滚动，
+    // 避免「小幅上滚停在阈值内 → 恢复跟随 → 无内容也被拉回底部」
+    LaunchedEffect(bottomContentVersion) {
         if (shouldFollowBottom) {
             listState.scrollToItem(uiState.turns.size)
         }
@@ -680,6 +672,40 @@ private fun HomeChatTurnItem(
             )
         }
     }
+}
+
+/**
+ * 手势信任的贴底跟随状态机（外层聊天列表与内层 thinking/工具结果文本共用）。
+ * 用户开始拖拽立即暂停跟随——流式新内容不再抢占滚动；
+ * 滚动完全停止后按 [isAtEnd] 判定是否恢复跟随。
+ * 返回 MutableState：发送消息等场景可主动置回 true 恢复跟随。
+ */
+@Composable
+internal fun rememberScrollFollowState(
+    interactionSource: InteractionSource,
+    isScrollInProgress: () -> Boolean,
+    isAtEnd: () -> Boolean,
+): MutableState<Boolean> {
+    val follow = remember { mutableStateOf(true) }
+    var hasPendingUserScrollDecision by remember { mutableStateOf(false) }
+    val isUserDragging by interactionSource.collectIsDraggedAsState()
+
+    LaunchedEffect(isUserDragging) {
+        if (isUserDragging) {
+            follow.value = false
+            hasPendingUserScrollDecision = true
+        }
+    }
+    LaunchedEffect(interactionSource) {
+        snapshotFlow { isScrollInProgress() }
+            .collectLatest { isScrollInProgress ->
+                if (!isScrollInProgress && hasPendingUserScrollDecision) {
+                    follow.value = isAtEnd()
+                    hasPendingUserScrollDecision = false
+                }
+            }
+    }
+    return follow
 }
 
 @Preview(
