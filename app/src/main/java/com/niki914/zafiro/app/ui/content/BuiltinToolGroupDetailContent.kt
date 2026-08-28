@@ -21,12 +21,17 @@ import com.niki914.zafiro.app.ui.model.BuiltinToolGroupDetailIntent
 import com.niki914.zafiro.app.ui.model.BuiltinToolGroupDetailUiState
 import com.niki914.zafiro.app.ui.model.BuiltinToolGroupDetailViewModel
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
+import com.niki914.zafiro.app.ui.nav.CustomPyToolsPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingItem
+
+private const val CUSTOM_PY_TOOLS_ENTRY_ROW_ID = "custom-py-tools-entry"
 
 @Composable
 fun BuiltinToolGroupDetailContent(
     page: BuiltinToolGroupDetailPage,
     onBack: () -> Unit,
+    onPush: (ZafiroPage) -> Unit,
 ) {
     val viewModel = pageViewModel<BuiltinToolGroupDetailViewModel>()
     val uiState by viewModel.uiStateFlow.collectAsState()
@@ -45,6 +50,11 @@ fun BuiltinToolGroupDetailContent(
                         value = action.checked,
                     )
                 )
+                is SettingsRowAction.Navigate -> {
+                    if (action.id == CUSTOM_PY_TOOLS_ENTRY_ROW_ID) {
+                        onPush(CustomPyToolsPage)
+                    }
+                }
                 else -> Unit
             }
         },
@@ -65,6 +75,16 @@ private fun builtinToolGroupDetailSpec(uiState: BuiltinToolGroupDetailUiState): 
                         checked = item.enabled,
                         enabled = !uiState.isSaving,
                     )
+                } + if (uiState.groupId == "dev_tools") {
+                    listOf(
+                        SettingsRowSpec.Navigation(
+                            id = CUSTOM_PY_TOOLS_ENTRY_ROW_ID,
+                            title = stringResource(R.string.builtin_tool_custom_py_tools_entry),
+                            summary = stringResource(R.string.builtin_tool_custom_py_tools_entry_summary),
+                        ),
+                    )
+                } else {
+                    emptyList()
                 },
             ),
         )

@@ -9,7 +9,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResultCodec
-import com.niki914.zafiro.chat.agentic.python.PyToolExecutor
+import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.okia.message.ToolCallOutcome
@@ -35,7 +35,7 @@ class LocalToolExecutorTest {
         ResolvedTools(builtinTools = tools.map { LocalTool.Builtin(it.name, it.name, it) })
 
     private fun pyResolved(tools: List<LocalTool.Py>): ResolvedTools =
-        ResolvedTools(pyTools = tools)
+        ResolvedTools(customPyTools = tools)
 
     @Test
     fun execute_builtinSuccess_mapsToSuccessOutcome() = runBlocking {
@@ -72,7 +72,7 @@ class LocalToolExecutorTest {
         val py = LocalTool.Py("py_a", "desc", "print('hi')", null)
         val pyExec = fakePyExecutor { _, _ -> "{\"ok\":true,\"stdout\":\"hi\"}" }
         val executor = LocalToolExecutor(
-            pyToolExecutor = pyExec,
+            customPyToolExecutor = pyExec,
             currentTools = { pyResolved(listOf(py)) },
         )
 
@@ -90,7 +90,7 @@ class LocalToolExecutorTest {
             ""
         }
         val executor = LocalToolExecutor(
-            pyToolExecutor = pyExec,
+            customPyToolExecutor = pyExec,
             currentTools = { pyResolved(listOf(py)) },
         )
 
@@ -208,7 +208,7 @@ class LocalToolExecutorTest {
     }
 
     @Test
-    fun pytoolsWrite_successAndEnabled_registersInlineAndInvokesCallback() = runBlocking {
+    fun custom_py_toolsWrite_successAndEnabled_registersInlineAndInvokesCallback() = runBlocking {
         val writeResult = BuiltinToolResult.success(
             message = "ok",
             data = kotlinx.serialization.json.buildJsonObject {
@@ -218,18 +218,18 @@ class LocalToolExecutorTest {
                 put("enabled", kotlinx.serialization.json.JsonPrimitive(true))
             },
         )
-        val manageTool = StaticBuiltinTool("pytools", writeResult)
+        val manageTool = StaticBuiltinTool("py_meta_tools", writeResult)
         var written: LocalTool.Py? = null
         val inline = mutableMapOf<String, LocalTool.Py>()
         val executor = LocalToolExecutor(
             builtinToolExecutor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(manageTool))),
             currentTools = { builtinResolved(manageTool) },
-            inlinePyTools = inline,
-            onPyToolWritten = { written = it },
+            inlineCustomPyTools = inline,
+            onCustomPyToolWritten = { written = it },
         )
         val args = """{"action":"write","name":"py_my_tool","code":"def main():\n    pass"}"""
 
-        executor.execute(call("pytools", args))
+        executor.execute(call("py_meta_tools", args))
 
         assertTrue(inline.containsKey("py_my_tool"))
         assertEquals("py_my_tool", written?.name)
@@ -237,7 +237,7 @@ class LocalToolExecutorTest {
     }
 
     @Test
-    fun pytoolsWrite_enabledFalse_doesNotRegister() = runBlocking {
+    fun custom_py_toolsWrite_enabledFalse_doesNotRegister() = runBlocking {
         val writeResult = BuiltinToolResult.success(
             message = "ok",
             data = kotlinx.serialization.json.buildJsonObject {
@@ -245,32 +245,32 @@ class LocalToolExecutorTest {
                 put("enabled", kotlinx.serialization.json.JsonPrimitive(false))
             },
         )
-        val manageTool = StaticBuiltinTool("pytools", writeResult)
+        val manageTool = StaticBuiltinTool("py_meta_tools", writeResult)
         var written: LocalTool.Py? = null
         val inline = mutableMapOf<String, LocalTool.Py>()
         val executor = LocalToolExecutor(
             builtinToolExecutor = BuiltinToolExecutor(BuiltinToolRegistry(listOf(manageTool))),
             currentTools = { builtinResolved(manageTool) },
-            inlinePyTools = inline,
-            onPyToolWritten = { written = it },
+            inlineCustomPyTools = inline,
+            onCustomPyToolWritten = { written = it },
         )
         val args = """{"action":"write","name":"py_off_tool","code":"def main():\n    pass","enabled":false}"""
 
-        executor.execute(call("pytools", args))
+        executor.execute(call("py_meta_tools", args))
 
         assertNull(inline["py_off_tool"])
         assertNull(written)
     }
 
     @Test
-    fun pytoolsWrite_inlineTool_executesViaInlineFallback() = runBlocking {
+    fun custom_py_toolsWrite_inlineTool_executesViaInlineFallback() = runBlocking {
         val inline = mutableMapOf<String, LocalTool.Py>()
         val pyExec = fakePyExecutor { _, _ -> "{\"ok\":true,\"stdout\":\"ran\"}" }
         val executor = LocalToolExecutor(
-            pyToolExecutor = pyExec,
+            customPyToolExecutor = pyExec,
             currentTools = { ResolvedTools() }, // snapshot 里没有该工具
-            inlinePyTools = inline,
-            onPyToolWritten = {},
+            inlineCustomPyTools = inline,
+            onCustomPyToolWritten = {},
         )
         inline["py_my_tool"] = LocalTool.Py("py_my_tool", "d", "print('ran')", null)
 
@@ -281,7 +281,7 @@ class LocalToolExecutorTest {
 
     private fun fakePyExecutor(
         fake: suspend (String, Long) -> String,
-    ): PyToolExecutor = PyToolExecutor(exec = fake)
+    ): CustomPyToolExecutor = CustomPyToolExecutor(exec = fake)
 
     private class StaticBuiltinTool(
         override val name: String,

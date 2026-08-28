@@ -89,17 +89,18 @@ class ConversationRepoTest {
     }
 
     @Test
-    fun getConversation_missingLeafIdFallsBackToLastEntry() = runTest {
+    fun getConversation_passesNullLeafIdThrough() = runTest {
         val id = ConversationRepo.createConversation("session-1", "hi")
         val entries = linearEntries(
             Message.User(listOf(ContentBlock.Text("q1"))),
             Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("a1")))),
         )
         ConversationRepo.insertEntries(id, entries)
-        // 不调用 updateLeafId：leaf_id 保持 null，读取时应回退到最后一条（D16 绕坑）
+        // 不调用 updateLeafId：leaf_id 保持 null，repo 透传；由 OKIA 恢复为最后一条（§5.3）
 
         val snapshot = ConversationRepo.getConversation(id)!!.snapshot
-        assertEquals(entries.last().id, snapshot.leafId)
+        assertNull(snapshot.leafId)
+        assertEquals(entries.size, snapshot.entries.size)
     }
 
     @Test

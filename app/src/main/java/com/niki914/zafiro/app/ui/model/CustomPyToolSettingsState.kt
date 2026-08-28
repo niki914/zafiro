@@ -9,83 +9,83 @@ import com.niki914.uikit.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import com.niki914.zafiro.settings.model.RuntimePyTool as PyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeToolValidation as ToolValidation
 
-data class PyToolItem(
+data class CustomPyToolItem(
     val name: String,
     val enabled: Boolean,
 )
 
-data class PyToolFormState(
+data class CustomPyToolFormState(
     val editingIndex: Int? = null,
     val previousName: String? = null,
     val name: String = "",
     val code: String = "",
     val enabled: Boolean = true,
-    val initialSnapshot: PyToolFormSnapshot? = null,
+    val initialSnapshot: CustomPyToolFormSnapshot? = null,
     @param:StringRes val nameErrorResId: Int? = null,
     @param:StringRes val codeErrorResId: Int? = null,
     val codeErrorMessage: String? = null,
 )
 
-data class PyToolFormSnapshot(
+data class CustomPyToolFormSnapshot(
     val name: String,
     val code: String,
     val enabled: Boolean,
 )
 
-val PyToolFormState.hasUnsavedChanges: Boolean
+val CustomPyToolFormState.hasUnsavedChanges: Boolean
     get() = initialSnapshot?.let { it != toSnapshot() } ?: false
 
-data class PyToolDeleteConfirmationState(
+data class CustomPyToolDeleteConfirmationState(
     val value: String,
 )
 
-data class PyToolSettingsUiState(
-    val items: List<PyToolItem> = emptyList(),
-    val formState: PyToolFormState = PyToolFormState(),
+data class CustomPyToolSettingsUiState(
+    val items: List<CustomPyToolItem> = emptyList(),
+    val formState: CustomPyToolFormState = CustomPyToolFormState(),
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
-    val inlineError: PyToolInlineError? = null,
-    val deleteConfirmation: PyToolDeleteConfirmationState? = null,
+    val inlineError: CustomPyToolInlineError? = null,
+    val deleteConfirmation: CustomPyToolDeleteConfirmationState? = null,
 )
 
-sealed interface PyToolSettingsIntent {
-    data object Load : PyToolSettingsIntent
-    data object StartCreate : PyToolSettingsIntent
-    data class StartEdit(val index: Int) : PyToolSettingsIntent
-    data class NameChanged(val value: String) : PyToolSettingsIntent
-    data class CodeChanged(val value: String) : PyToolSettingsIntent
-    data class EnabledChanged(val value: Boolean) : PyToolSettingsIntent
-    data object Save : PyToolSettingsIntent
-    data object RequestDelete : PyToolSettingsIntent
-    data object DismissDeleteConfirmation : PyToolSettingsIntent
-    data object ConfirmDelete : PyToolSettingsIntent
+sealed interface CustomPyToolSettingsIntent {
+    data object Load : CustomPyToolSettingsIntent
+    data object StartCreate : CustomPyToolSettingsIntent
+    data class StartEdit(val index: Int) : CustomPyToolSettingsIntent
+    data class NameChanged(val value: String) : CustomPyToolSettingsIntent
+    data class CodeChanged(val value: String) : CustomPyToolSettingsIntent
+    data class EnabledChanged(val value: Boolean) : CustomPyToolSettingsIntent
+    data object Save : CustomPyToolSettingsIntent
+    data object RequestDelete : CustomPyToolSettingsIntent
+    data object DismissDeleteConfirmation : CustomPyToolSettingsIntent
+    data object ConfirmDelete : CustomPyToolSettingsIntent
 }
 
-sealed interface PyToolInlineError {
+sealed interface CustomPyToolInlineError {
     data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) :
-        PyToolInlineError
+        CustomPyToolInlineError
 
     data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) :
-        PyToolInlineError
+        CustomPyToolInlineError
 
     data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) :
-        PyToolInlineError
+        CustomPyToolInlineError
 }
 
-sealed interface PyToolSettingsEffect {
-    data object ExitDetail : PyToolSettingsEffect
-    data object FocusName : PyToolSettingsEffect
-    data object FocusCode : PyToolSettingsEffect
+sealed interface CustomPyToolSettingsEffect {
+    data object ExitDetail : CustomPyToolSettingsEffect
+    data object FocusName : CustomPyToolSettingsEffect
+    data object FocusCode : CustomPyToolSettingsEffect
 }
 
-class PyToolSettingsViewModel :
+class CustomPyToolSettingsViewModel :
     ComposeMVIViewModel<
-            PyToolSettingsIntent,
-            PyToolSettingsUiState,
-            PyToolSettingsEffect,
+            CustomPyToolSettingsIntent,
+            CustomPyToolSettingsUiState,
+            CustomPyToolSettingsEffect,
             >() {
 
     init {
@@ -96,14 +96,14 @@ class PyToolSettingsViewModel :
         }
     }
 
-    override fun initUiState(): PyToolSettingsUiState = PyToolSettingsUiState()
+    override fun initUiState(): CustomPyToolSettingsUiState = CustomPyToolSettingsUiState()
 
-    override suspend fun handleIntent(intent: PyToolSettingsIntent) {
+    override suspend fun handleIntent(intent: CustomPyToolSettingsIntent) {
         when (intent) {
-            PyToolSettingsIntent.Load -> load()
-            PyToolSettingsIntent.StartCreate -> startCreate()
-            is PyToolSettingsIntent.StartEdit -> startEdit(intent.index)
-            is PyToolSettingsIntent.NameChanged -> updateState {
+            CustomPyToolSettingsIntent.Load -> load()
+            CustomPyToolSettingsIntent.StartCreate -> startCreate()
+            is CustomPyToolSettingsIntent.StartEdit -> startEdit(intent.index)
+            is CustomPyToolSettingsIntent.NameChanged -> updateState {
                 copy(
                     formState = formState.copy(
                         name = intent.value,
@@ -113,7 +113,7 @@ class PyToolSettingsViewModel :
                 )
             }
 
-            is PyToolSettingsIntent.CodeChanged -> updateState {
+            is CustomPyToolSettingsIntent.CodeChanged -> updateState {
                 copy(
                     formState = formState.copy(
                         code = intent.value,
@@ -124,20 +124,20 @@ class PyToolSettingsViewModel :
                 )
             }
 
-            is PyToolSettingsIntent.EnabledChanged -> updateState {
+            is CustomPyToolSettingsIntent.EnabledChanged -> updateState {
                 copy(
                     formState = formState.copy(enabled = intent.value),
                     inlineError = null,
                 )
             }
 
-            PyToolSettingsIntent.Save -> save()
-            PyToolSettingsIntent.RequestDelete -> requestDelete()
-            PyToolSettingsIntent.DismissDeleteConfirmation -> updateState {
+            CustomPyToolSettingsIntent.Save -> save()
+            CustomPyToolSettingsIntent.RequestDelete -> requestDelete()
+            CustomPyToolSettingsIntent.DismissDeleteConfirmation -> updateState {
                 copy(deleteConfirmation = null)
             }
 
-            PyToolSettingsIntent.ConfirmDelete -> confirmDelete()
+            CustomPyToolSettingsIntent.ConfirmDelete -> confirmDelete()
         }
     }
 
@@ -145,7 +145,7 @@ class PyToolSettingsViewModel :
         updateState { copy(isLoading = true) }
         val startedAtMs = System.currentTimeMillis()
         try {
-            val loadedItems = XRepo.pyTools.list().map { it.toItem() }
+            val loadedItems = XRepo.customPyTools.list().map { it.toItem() }
             Logger.d(
                 LOG_TAG,
                 "load tools=${loadedItems.size} " +
@@ -164,9 +164,9 @@ class PyToolSettingsViewModel :
             updateState {
                 copy(
                     isLoading = false,
-                    inlineError = PyToolInlineError.LoadFailed(
+                    inlineError = CustomPyToolInlineError.LoadFailed(
                         message = throwable.message,
-                        fallbackResId = R.string.error_py_tool_load_failed,
+                        fallbackResId = R.string.error_custom_py_tool_load_failed,
                     ),
                 )
             }
@@ -174,7 +174,7 @@ class PyToolSettingsViewModel :
     }
 
     private fun startCreate() {
-        val formState = PyToolFormState()
+        val formState = CustomPyToolFormState()
         updateState {
             copy(
                 formState = formState.withCurrentSnapshotAsInitial(),
@@ -186,7 +186,7 @@ class PyToolSettingsViewModel :
     private suspend fun startEdit(index: Int) {
         val item = currentState.items.getOrNull(index) ?: return
         val tool = try {
-            XRepo.pyTools.get(item.name)
+            XRepo.customPyTools.get(item.name)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             Logger.w(LOG_TAG, "startEdit load failed tool=${item.name} reason=${throwable.message}")
@@ -195,15 +195,15 @@ class PyToolSettingsViewModel :
         if (tool == null) {
             updateState {
                 copy(
-                    inlineError = PyToolInlineError.LoadFailed(
+                    inlineError = CustomPyToolInlineError.LoadFailed(
                         message = null,
-                        fallbackResId = R.string.error_py_tool_load_failed,
+                        fallbackResId = R.string.error_custom_py_tool_load_failed,
                     ),
                 )
             }
             return
         }
-        val formState = PyToolFormState(
+        val formState = CustomPyToolFormState(
             editingIndex = index,
             previousName = tool.name,
             name = tool.name,
@@ -246,16 +246,16 @@ class PyToolSettingsViewModel :
         }
         try {
             // timeoutMs 不在 UI 编辑：编辑时保留原值，新建用默认值
-            val previousTool = XRepo.pyTools.get(
+            val previousTool = XRepo.customPyTools.get(
                 normalizedFormState.previousName ?: normalizedFormState.name
             )
-            val nextTool = PyTool(
+            val nextTool = CustomPyTool(
                 name = normalizedFormState.name,
                 code = normalizedFormState.code,
                 enabled = normalizedFormState.enabled,
-                timeoutMs = previousTool?.timeoutMs ?: PyTool.DEFAULT_PY_TOOL_TIMEOUT_MS,
+                timeoutMs = previousTool?.timeoutMs ?: CustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS,
             )
-            val validation = XRepo.pyTools.saveIntrospected(nextTool)
+            val validation = XRepo.customPyTools.saveIntrospected(nextTool)
             if (validation != null) {
                 Logger.w(
                     LOG_TAG,
@@ -268,7 +268,7 @@ class PyToolSettingsViewModel :
             if (normalizedFormState.previousName != null &&
                 normalizedFormState.previousName != nextTool.name
             ) {
-                XRepo.pyTools.delete(normalizedFormState.previousName)
+                XRepo.customPyTools.delete(normalizedFormState.previousName)
             }
             Logger.i(LOG_TAG, "save succeeded tool=${nextTool.name}")
 
@@ -289,16 +289,16 @@ class PyToolSettingsViewModel :
                 )
             }
             notifySettingsChanged()
-            sendEffect(PyToolSettingsEffect.ExitDetail)
+            sendEffect(CustomPyToolSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             Logger.w(LOG_TAG, "save failed reason=${throwable.message}")
             updateState {
                 copy(
                     isSaving = false,
-                    inlineError = PyToolInlineError.SaveFailed(
+                    inlineError = CustomPyToolInlineError.SaveFailed(
                         message = throwable.message,
-                        fallbackResId = R.string.error_py_tool_save_failed,
+                        fallbackResId = R.string.error_custom_py_tool_save_failed,
                     ),
                 )
             }
@@ -310,7 +310,7 @@ class PyToolSettingsViewModel :
         val value = currentState.items.getOrNull(editingIndex)?.name ?: return
         updateState {
             copy(
-                deleteConfirmation = PyToolDeleteConfirmationState(value = value),
+                deleteConfirmation = CustomPyToolDeleteConfirmationState(value = value),
                 inlineError = null,
             )
         }
@@ -330,18 +330,18 @@ class PyToolSettingsViewModel :
             val updatedItems = currentState.items.filterIndexed { index, _ ->
                 index != editingIndex
             }
-            XRepo.pyTools.delete(currentItem.name)
+            XRepo.customPyTools.delete(currentItem.name)
             Logger.i(LOG_TAG, "deleteCurrent succeeded tool=${currentItem.name}")
             updateState {
                 copy(
                     items = updatedItems,
-                    formState = PyToolFormState(),
+                    formState = CustomPyToolFormState(),
                     isSaving = false,
                     inlineError = null,
                 )
             }
             notifySettingsChanged()
-            sendEffect(PyToolSettingsEffect.ExitDetail)
+            sendEffect(CustomPyToolSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             Logger.w(
@@ -351,9 +351,9 @@ class PyToolSettingsViewModel :
             updateState {
                 copy(
                     isSaving = false,
-                    inlineError = PyToolInlineError.DeleteFailed(
+                    inlineError = CustomPyToolInlineError.DeleteFailed(
                         message = throwable.message,
-                        fallbackResId = R.string.error_py_tool_delete_failed,
+                        fallbackResId = R.string.error_custom_py_tool_delete_failed,
                     ),
                 )
             }
@@ -361,7 +361,7 @@ class PyToolSettingsViewModel :
     }
 
     private fun handleValidationError(
-        formState: PyToolFormState,
+        formState: CustomPyToolFormState,
         validation: ToolValidation,
     ) {
         val errors = validationToFieldErrors(validation)
@@ -375,9 +375,9 @@ class PyToolSettingsViewModel :
                 copy(
                     formState = formState,
                     isSaving = false,
-                    inlineError = PyToolInlineError.SaveFailed(
+                    inlineError = CustomPyToolInlineError.SaveFailed(
                         validation.message,
-                        fallbackResId = R.string.error_py_tool_save_failed
+                        fallbackResId = R.string.error_custom_py_tool_save_failed
                     ),
                 )
             }
@@ -385,8 +385,8 @@ class PyToolSettingsViewModel :
     }
 
     private fun updateFormErrors(
-        formState: PyToolFormState,
-        errors: PyToolFieldErrors,
+        formState: CustomPyToolFormState,
+        errors: CustomPyToolFieldErrors,
     ) {
         updateState {
             copy(
@@ -403,8 +403,8 @@ class PyToolSettingsViewModel :
 
     private fun buildUpdatedItems(
         editingIndex: Int?,
-        nextItem: PyToolItem,
-    ): List<PyToolItem> {
+        nextItem: CustomPyToolItem,
+    ): List<CustomPyToolItem> {
         return currentState.items.toMutableList().also { mutableItems ->
             if (editingIndex == null || editingIndex !in mutableItems.indices) {
                 mutableItems += nextItem
@@ -419,12 +419,12 @@ class PyToolSettingsViewModel :
     }
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_PyToolSettingsViewModel"
+        private const val LOG_TAG = "niki914_nexus_CustomPyToolSettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }
 
-private data class PyToolFieldErrors(
+private data class CustomPyToolFieldErrors(
     @param:StringRes val nameErrorResId: Int? = null,
     @param:StringRes val codeErrorResId: Int? = null,
     val codeErrorMessage: String? = null,
@@ -435,56 +435,56 @@ private data class PyToolFieldErrors(
                 codeErrorMessage != null
 }
 
-private fun PyToolFormState.toSnapshot(): PyToolFormSnapshot {
-    return PyToolFormSnapshot(
+private fun CustomPyToolFormState.toSnapshot(): CustomPyToolFormSnapshot {
+    return CustomPyToolFormSnapshot(
         name = name.trim(),
         code = code.trim(),
         enabled = enabled,
     )
 }
 
-private fun PyToolFormState.withCurrentSnapshotAsInitial(): PyToolFormState {
+private fun CustomPyToolFormState.withCurrentSnapshotAsInitial(): CustomPyToolFormState {
     return copy(initialSnapshot = toSnapshot())
 }
 
-private fun requiredFieldErrors(formState: PyToolFormState): PyToolFieldErrors {
-    return PyToolFieldErrors(
+private fun requiredFieldErrors(formState: CustomPyToolFormState): CustomPyToolFieldErrors {
+    return CustomPyToolFieldErrors(
         nameErrorResId = if (formState.name.isBlank()) {
-            R.string.py_tool_error_name_required
+            R.string.custom_py_tool_error_name_required
         } else {
             null
         },
         codeErrorResId = if (formState.code.isBlank()) {
-            R.string.py_tool_error_code_required
+            R.string.custom_py_tool_error_code_required
         } else {
             null
         },
     )
 }
 
-private fun validationToFieldErrors(validation: ToolValidation): PyToolFieldErrors {
+private fun validationToFieldErrors(validation: ToolValidation): CustomPyToolFieldErrors {
     return when (validation.field) {
-        "name" -> PyToolFieldErrors(
+        "name" -> CustomPyToolFieldErrors(
             nameErrorResId = validation.nameErrorResId(),
         )
 
         "code" -> if (validation.message.contains("Required field", ignoreCase = true)) {
-            PyToolFieldErrors(codeErrorResId = R.string.py_tool_error_code_required)
+            CustomPyToolFieldErrors(codeErrorResId = R.string.custom_py_tool_error_code_required)
         } else {
             // 反射/安全策略的错误信息直接透传给用户（含行号与原因）
-            PyToolFieldErrors(codeErrorMessage = validation.message)
+            CustomPyToolFieldErrors(codeErrorMessage = validation.message)
         }
 
-        else -> PyToolFieldErrors()
+        else -> CustomPyToolFieldErrors()
     }
 }
 
 private fun firstInvalidFieldEffect(
-    errors: PyToolFieldErrors,
-): PyToolSettingsEffect? {
+    errors: CustomPyToolFieldErrors,
+): CustomPyToolSettingsEffect? {
     return when {
-        errors.nameErrorResId != null -> PyToolSettingsEffect.FocusName
-        errors.codeErrorResId != null || errors.codeErrorMessage != null -> PyToolSettingsEffect.FocusCode
+        errors.nameErrorResId != null -> CustomPyToolSettingsEffect.FocusName
+        errors.codeErrorResId != null || errors.codeErrorMessage != null -> CustomPyToolSettingsEffect.FocusCode
         else -> null
     }
 }
@@ -493,17 +493,17 @@ private fun firstInvalidFieldEffect(
 private fun ToolValidation.nameErrorResId(): Int {
     return when {
         message.contains("Already exists", ignoreCase = true) ->
-            R.string.py_tool_error_name_duplicate
+            R.string.custom_py_tool_error_name_duplicate
 
         message.contains("Reserved builtin tool name", ignoreCase = true) ->
-            R.string.py_tool_error_name_reserved
+            R.string.custom_py_tool_error_name_reserved
 
-        else -> R.string.py_tool_error_name_invalid
+        else -> R.string.custom_py_tool_error_name_invalid
     }
 }
 
-private fun PyTool.toItem(): PyToolItem {
-    return PyToolItem(
+private fun CustomPyTool.toItem(): CustomPyToolItem {
+    return CustomPyToolItem(
         name = name,
         enabled = enabled,
     )

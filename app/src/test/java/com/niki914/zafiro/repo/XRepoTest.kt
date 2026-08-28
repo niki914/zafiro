@@ -14,7 +14,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import com.niki914.zafiro.settings.MemoryMutationResult
-import com.niki914.zafiro.settings.model.RuntimePyTool as PyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
@@ -59,7 +59,7 @@ class XRepoTest {
         )
         assertEquals(
             listOf("py_web_search", "py_launch_wechat"),
-            ToolSettingsCodec.parsePyTools(store.jsonFor(StoreDescriptorRegistry.TOOLS_PY_ID))
+            ToolSettingsCodec.parseCustomPyTools(store.jsonFor(StoreDescriptorRegistry.TOOLS_PY_ID))
                 .map { it.name },
         )
         assertEquals(
@@ -391,13 +391,13 @@ class XRepoTest {
     }
 
     @Test
-    fun pyToolSave_rejectsUnsafeCode() = runTest {
+    fun customPyToolSave_rejectsUnsafeCode() = runTest {
         val store = installStore(
             FakeDomainSettingsStore(StoreDescriptorRegistry.RULES_EXECUTION_ID to unsafeRuleSettings())
         )
 
-        val validation = XRepo.pyTools.save(
-            PyTool(
+        val validation = XRepo.customPyTools.save(
+            CustomPyTool(
                 name = "py_wipe_data",
                 description = "Dangerous",
                 code = "import os\nos.popen('rm -rf /data/local/tmp/cache')",
@@ -410,11 +410,11 @@ class XRepoTest {
     }
 
     @Test
-    fun pyToolSave_rejectsInvalidName() = runTest {
+    fun customPyToolSave_rejectsInvalidName() = runTest {
         val store = installStore(FakeDomainSettingsStore())
 
-        val validation = XRepo.pyTools.save(
-            PyTool(name = "not_py_prefix", code = "def main():\n    pass")
+        val validation = XRepo.customPyTools.save(
+            CustomPyTool(name = "not_py_prefix", code = "def main():\n    pass")
         )
 
         assertNotNull(validation)
@@ -423,11 +423,11 @@ class XRepoTest {
     }
 
     @Test
-    fun pyToolSave_rejectsReservedName() = runTest {
+    fun customPyToolSave_rejectsReservedName() = runTest {
         val store = installStore(FakeDomainSettingsStore())
 
-        val validation = XRepo.pyTools.save(
-            PyTool(name = "py_terminal", code = "def main():\n    pass")
+        val validation = XRepo.customPyTools.save(
+            CustomPyTool(name = "py_terminal", code = "def main():\n    pass")
         )
 
         assertNotNull(validation)
@@ -436,48 +436,48 @@ class XRepoTest {
     }
 
     @Test
-    fun pyToolSave_rejectsDuplicateNameWhenNotOverwriting() = runTest {
-        val initialTools = listOf(PyTool(name = "py_existing", code = "def main():\n    pass"))
+    fun customPyToolSave_rejectsDuplicateNameWhenNotOverwriting() = runTest {
+        val initialTools = listOf(CustomPyTool(name = "py_existing", code = "def main():\n    pass"))
         val store = installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodePyTools(initialTools)
+                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodeCustomPyTools(initialTools)
             )
         )
 
-        val validation = XRepo.pyTools.save(
-            PyTool(name = "py_existing", code = "def main():\n    pass"),
+        val validation = XRepo.customPyTools.save(
+            CustomPyTool(name = "py_existing", code = "def main():\n    pass"),
             overwrite = false,
         )
 
         assertNotNull(validation)
         assertEquals("name", validation!!.field)
         assertEquals(0, store.writeCount)
-        assertEquals(initialTools, XRepo.pyTools.list())
+        assertEquals(initialTools, XRepo.customPyTools.list())
     }
 
     @Test
-    fun pyToolSave_overwriteReplacesEntry() = runTest {
+    fun customPyToolSave_overwriteReplacesEntry() = runTest {
         val initialTools = listOf(
-            PyTool(name = "py_a", code = "def main():\n    print('a')"),
-            PyTool(name = "py_b", code = "def main():\n    print('b')"),
+            CustomPyTool(name = "py_a", code = "def main():\n    print('a')"),
+            CustomPyTool(name = "py_b", code = "def main():\n    print('b')"),
         )
         val store = installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodePyTools(initialTools)
+                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodeCustomPyTools(initialTools)
             )
         )
 
-        val validation = XRepo.pyTools.save(
-            PyTool(name = "py_a", code = "def main():\n    print('a2')", enabled = false),
+        val validation = XRepo.customPyTools.save(
+            CustomPyTool(name = "py_a", code = "def main():\n    print('a2')", enabled = false),
         )
 
         assertNull(validation)
         assertEquals(1, store.writeCount)
         assertEquals(
             listOf("py_a", "py_b"),
-            XRepo.pyTools.list().map { it.name },
+            XRepo.customPyTools.list().map { it.name },
         )
-        assertFalse(XRepo.pyTools.list().single { it.name == "py_a" }.enabled)
+        assertFalse(XRepo.customPyTools.list().single { it.name == "py_a" }.enabled)
     }
 
     @Test
@@ -508,11 +508,11 @@ class XRepoTest {
     }
 
     @Test
-    fun pyToolSave_acceptsValidTool() = runTest {
+    fun customPyToolSave_acceptsValidTool() = runTest {
         val store = installStore(FakeDomainSettingsStore())
 
-        val validation = XRepo.pyTools.save(
-            PyTool(
+        val validation = XRepo.customPyTools.save(
+            CustomPyTool(
                 name = "py_battery",
                 description = "Battery status",
                 code = "def main():\n    print('ok')",
@@ -523,7 +523,7 @@ class XRepoTest {
         assertEquals(1, store.writeCount)
         assertEquals(
             listOf("py_battery"),
-            XRepo.pyTools.list().map { it.name },
+            XRepo.customPyTools.list().map { it.name },
         )
     }
 

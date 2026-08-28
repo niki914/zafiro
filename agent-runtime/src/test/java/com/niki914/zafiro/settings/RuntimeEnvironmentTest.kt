@@ -2,7 +2,7 @@ package com.niki914.zafiro.settings
 
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimePyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
@@ -87,16 +87,16 @@ private class FakeRuntimeSettingsGateway : RuntimeSettingsGateway {
     override suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult =
         MemoryMutationResult.Ok
 
-    override suspend fun listPyTools(): List<RuntimePyTool> = emptyList()
+    override suspend fun listCustomPyTools(): List<RuntimeCustomPyTool> = emptyList()
 
-    override suspend fun savePyTool(
-        tool: RuntimePyTool,
+    override suspend fun saveCustomPyTool(
+        tool: RuntimeCustomPyTool,
         overwrite: Boolean,
     ): RuntimeToolValidation? = null
 
-    override suspend fun deletePyTool(name: String) = Unit
+    override suspend fun deleteCustomPyTool(name: String) = Unit
 
-    override suspend fun setPyToolEnabled(name: String, enabled: Boolean) = Unit
+    override suspend fun setCustomPyToolEnabled(name: String, enabled: Boolean) = Unit
 
     override suspend fun listBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> = emptyList()
 

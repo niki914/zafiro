@@ -99,8 +99,7 @@
     <string name="ui_settings_builtin_tools_summary">Manage tools provided by Zafiro</string>
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">Manage local Skills</string>
-    <string name="ui_settings_py_tools">Python Tools</string>
-    <string name="ui_settings_py_tools_summary">Manage custom Python tools</string>
+    <string name="ui_settings_custom_py_tools_summary">Manage custom Python tools</string>
     <string name="skill_page_description">Turn local Skills on or off. Enabled Skills can be used by the Agent when needed.</string>
     <string name="skill_loading">Loading Skills...</string>
     <string name="skill_empty">No Skills are available right now.</string>
@@ -241,32 +240,33 @@
     <string name="builtin_tool_group_android_native_summary">System-native actions: open links, search and launch apps, send notifications</string>
     <string name="builtin_tool_group_screen_operation">Screen Operation</string>
     <string name="builtin_tool_group_screen_operation_summary">Read and operate the screen via accessibility service or shell</string>
-    <string name="builtin_tool_group_py_tools">Python tools</string>
-    <string name="builtin_tool_group_py_tools_summary">Parameterized Python tools the agent can create, modify, and test-run</string>
+    <string name="builtin_tool_custom_py_tools_entry">Custom Python tools</string>
+    <string name="builtin_tool_custom_py_tools_entry_summary">Parameterized custom Python tools the agent can create, modify, and test-run</string>
 
     <!-- Python Tool Module -->
-    <string name="py_tool_page_description">Manage your Python tools.</string>
-    <string name="py_tool_page_empty_description">Let your Agent create one, or tap the top right to add a new tool.</string>
-    <string name="py_tool_loading">Loading saved Python tools...</string>
-    <string name="py_tool_editor_title_create">New Python Tool</string>
-    <string name="py_tool_editor_description">Configure your Python tool. The description and parameter schema are derived from the main() docstring and type annotations. After saving, the Agent can call it when needed.</string>
-    <string name="py_tool_field_name">Tool Name</string>
-    <string name="py_tool_field_name_hint">For example: py_web_search</string>
-    <string name="py_tool_field_enabled">Enable Tool</string>
-    <string name="py_tool_field_code">Python Code</string>
-    <string name="py_tool_field_code_hint">Define an entry function with type annotations, e.g. main(query: str)</string>
-    <string name="py_tool_save_action">Save Python Tool</string>
-    <string name="py_tool_error_name_required">Please enter a tool name</string>
-    <string name="py_tool_error_code_required">Please enter the tool code</string>
-    <string name="py_tool_error_name_invalid">The name must match py_[a-z][a-z0-9_]</string>
-    <string name="py_tool_error_name_duplicate">This name already exists. Please choose another one and try again</string>
-    <string name="py_tool_error_name_reserved">This name is already used by a built-in tool</string>
-    <string name="py_tool_error_load_failed">Failed to load Python tools: %1$s</string>
-    <string name="py_tool_error_save_failed">Failed to save Python tool: %1$s</string>
-    <string name="py_tool_error_delete_failed">Failed to delete Python tool: %1$s</string>
-    <string name="py_tool_delete_dialog_title">Delete Python Tool</string>
-    <string name="py_tool_delete_dialog_text">Are you sure you want to delete the tool \"%1$s\"? This action cannot be undone.</string>
-    <string name="py_tool_save_failed">Failed to save: %1$s</string>
+    <string name="custom_py_tool_page_title">Python Meta Tools</string>
+    <string name="custom_py_tool_page_description">Manage your Custom Python tools.</string>
+    <string name="custom_py_tool_page_empty_description">Let your Agent create one, or tap the top right to add a new tool.</string>
+    <string name="custom_py_tool_loading">Loading saved Custom Python tools...</string>
+    <string name="custom_py_tool_editor_title_create">New Python Tool</string>
+    <string name="custom_py_tool_editor_description">Configure your Python tool. The description and parameter schema are derived from the main() docstring and type annotations. After saving, the Agent can call it when needed.</string>
+    <string name="custom_py_tool_field_name">Tool Name</string>
+    <string name="custom_py_tool_field_name_hint">For example: py_web_search</string>
+    <string name="custom_py_tool_field_enabled">Enable Tool</string>
+    <string name="custom_py_tool_field_code">Python Code</string>
+    <string name="custom_py_tool_field_code_hint">Define an entry function with type annotations, e.g. main(query: str)</string>
+    <string name="custom_py_tool_save_action">Save Python Tool</string>
+    <string name="custom_py_tool_error_name_required">Please enter a tool name</string>
+    <string name="custom_py_tool_error_code_required">Please enter the tool code</string>
+    <string name="custom_py_tool_error_name_invalid">The name must match py_[a-z][a-z0-9_]</string>
+    <string name="custom_py_tool_error_name_duplicate">This name already exists. Please choose another one and try again</string>
+    <string name="custom_py_tool_error_name_reserved">This name is already used by a built-in tool</string>
+    <string name="custom_py_tool_error_load_failed">Failed to load Custom Python tools: %1$s</string>
+    <string name="custom_py_tool_error_save_failed">Failed to save Python tool: %1$s</string>
+    <string name="custom_py_tool_error_delete_failed">Failed to delete Python tool: %1$s</string>
+    <string name="custom_py_tool_delete_dialog_title">Delete Python Tool</string>
+    <string name="custom_py_tool_delete_dialog_text">Are you sure you want to delete the tool \"%1$s\"? This action cannot be undone.</string>
+    <string name="custom_py_tool_save_failed">Failed to save: %1$s</string>
 
     <string name="mcp_page_description">Configure connection and authentication for MCP services. After saving, Zafiro will automatically discover available tools at runtime.</string>
     <string name="mcp_page_empty_description">Tap the top right to add your first server.</string>
@@ -327,9 +327,9 @@
     <string name="error_skill_import_failed">Failed to import skill</string>
     <string name="error_skill_delete_failed">Failed to delete skill</string>
 
-    <string name="error_py_tool_load_failed">Failed to load Python tools</string>
-    <string name="error_py_tool_save_failed">Failed to save Python tool</string>
-    <string name="error_py_tool_delete_failed">Failed to delete Python tool</string>
+    <string name="error_custom_py_tool_load_failed">Failed to load Custom Python tools</string>
+    <string name="error_custom_py_tool_save_failed">Failed to save Python tool</string>
+    <string name="error_custom_py_tool_delete_failed">Failed to delete Python tool</string>
 
     <string name="error_memory_load_failed">Failed to load memories</string>
     <string name="error_memory_save_failed">Failed to save memory</string>

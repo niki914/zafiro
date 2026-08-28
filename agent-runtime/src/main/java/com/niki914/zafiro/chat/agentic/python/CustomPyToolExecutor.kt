@@ -8,18 +8,18 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * PyTool 执行器：把 LLM 的参数 JSON 经 [PyToolHarness.buildRunner] 拼接后
+ * CustomPyTool 执行器：把 LLM 的参数 JSON 经 [CustomPyToolHarness.buildRunner] 拼接后
  * 交给 [PyRuntime.exec]（:python 进程）。输出即 stdout（runtime.py 已做
  * 50KB 截断）。结果用 {"ok":...} JSON 约定，与 BuiltinToolResult 对齐，
  * 由 LocalToolResultClassifier 拆 Success/Failure。
  */
-class PyToolExecutor(
+class CustomPyToolExecutor(
     private val exec: suspend (code: String, timeoutMs: Long) -> String = PyRuntime::exec,
 ) {
     suspend fun execute(tool: LocalTool.Py, argumentsJson: String): String {
         val args = parseArguments(argumentsJson)
         return try {
-            val output = exec(PyToolHarness.buildRunner(tool.code, args), tool.timeoutMs)
+            val output = exec(CustomPyToolHarness.buildRunner(tool.code, args), tool.timeoutMs)
             JsonObject(
                 mapOf(
                     "ok" to JsonPrimitive(true),

@@ -14,24 +14,24 @@ import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.nav.pageViewModel
-import com.niki914.zafiro.app.ui.model.PyToolDeleteConfirmationState
-import com.niki914.zafiro.app.ui.model.PyToolInlineError
-import com.niki914.zafiro.app.ui.model.PyToolSettingsEffect
-import com.niki914.zafiro.app.ui.model.PyToolSettingsIntent
-import com.niki914.zafiro.app.ui.model.PyToolSettingsUiState
-import com.niki914.zafiro.app.ui.model.PyToolSettingsViewModel
+import com.niki914.zafiro.app.ui.model.CustomPyToolDeleteConfirmationState
+import com.niki914.zafiro.app.ui.model.CustomPyToolInlineError
+import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsEffect
+import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsIntent
+import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsUiState
+import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
-import com.niki914.zafiro.app.ui.nav.PyToolDetailPage
+import com.niki914.zafiro.app.ui.nav.CustomPyToolDetailPage
 
 @Composable
-fun PyToolDetailContent(
-    page: PyToolDetailPage,
+fun CustomPyToolDetailContent(
+    page: CustomPyToolDetailPage,
     onBack: () -> Unit,
 ) {
-    val viewModel = pageViewModel<PyToolSettingsViewModel>()
+    val viewModel = pageViewModel<CustomPyToolSettingsViewModel>()
     val uiState by viewModel.uiStateFlow.collectAsState()
     var requestedFocusField by rememberSaveable {
-        mutableStateOf<PyToolEditableField?>(null)
+        mutableStateOf<CustomPyToolEditableField?>(null)
     }
 
     EditableSettingsDetailChrome(
@@ -40,71 +40,71 @@ fun PyToolDetailContent(
             uiState.formState.hasUnsavedChanges
         },
         onDelete = {
-            viewModel.sendIntent(PyToolSettingsIntent.RequestDelete)
+            viewModel.sendIntent(CustomPyToolSettingsIntent.RequestDelete)
         },
         onDiscardChanges = onBack,
         hasDeleteConfirmation = {
             uiState.deleteConfirmation != null
         },
         onDismissDeleteConfirmation = {
-            viewModel.sendIntent(PyToolSettingsIntent.DismissDeleteConfirmation)
+            viewModel.sendIntent(CustomPyToolSettingsIntent.DismissDeleteConfirmation)
         },
     ) {
-        PyToolDetailContentBody(
+        CustomPyToolDetailContentBody(
             uiState = uiState,
             requestedFocusField = requestedFocusField,
             onRequestedFocusHandled = {
                 requestedFocusField = null
             },
             onNameChange = { value ->
-                viewModel.sendIntent(PyToolSettingsIntent.NameChanged(value))
+                viewModel.sendIntent(CustomPyToolSettingsIntent.NameChanged(value))
             },
             onCodeChange = { value ->
-                viewModel.sendIntent(PyToolSettingsIntent.CodeChanged(value))
+                viewModel.sendIntent(CustomPyToolSettingsIntent.CodeChanged(value))
             },
             onEnabledChange = { value ->
-                viewModel.sendIntent(PyToolSettingsIntent.EnabledChanged(value))
+                viewModel.sendIntent(CustomPyToolSettingsIntent.EnabledChanged(value))
             },
             onSave = {
-                viewModel.sendIntent(PyToolSettingsIntent.Save)
+                viewModel.sendIntent(CustomPyToolSettingsIntent.Save)
             },
         )
 
-        PyToolDeleteConfirmationDialog(
+        CustomPyToolDeleteConfirmationDialog(
             state = uiState.deleteConfirmation,
             onDismissRequest = {
-                viewModel.sendIntent(PyToolSettingsIntent.DismissDeleteConfirmation)
+                viewModel.sendIntent(CustomPyToolSettingsIntent.DismissDeleteConfirmation)
             },
             onConfirmClick = {
-                viewModel.sendIntent(PyToolSettingsIntent.ConfirmDelete)
+                viewModel.sendIntent(CustomPyToolSettingsIntent.ConfirmDelete)
             },
         )
     }
 
     LaunchedEffect(page.routeKey) {
         if (page.isCreating) {
-            viewModel.sendIntent(PyToolSettingsIntent.StartCreate)
+            viewModel.sendIntent(CustomPyToolSettingsIntent.StartCreate)
         } else {
-            viewModel.sendIntent(PyToolSettingsIntent.Load)
+            viewModel.sendIntent(CustomPyToolSettingsIntent.Load)
         }
     }
 
     LaunchedEffect(page.routeKey, uiState.items.size, page.isCreating) {
         if (!page.isCreating && page.toolIndex in uiState.items.indices) {
-            viewModel.sendIntent(PyToolSettingsIntent.StartEdit(page.toolIndex))
+            viewModel.sendIntent(CustomPyToolSettingsIntent.StartEdit(page.toolIndex))
         }
     }
 
     LaunchedEffect(viewModel) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
-                PyToolSettingsEffect.ExitDetail -> onBack()
-                PyToolSettingsEffect.FocusName -> {
-                    requestedFocusField = PyToolEditableField.Name
+                CustomPyToolSettingsEffect.ExitDetail -> onBack()
+                CustomPyToolSettingsEffect.FocusName -> {
+                    requestedFocusField = CustomPyToolEditableField.Name
                 }
 
-                PyToolSettingsEffect.FocusCode -> {
-                    requestedFocusField = PyToolEditableField.Code
+                CustomPyToolSettingsEffect.FocusCode -> {
+                    requestedFocusField = CustomPyToolEditableField.Code
                 }
             }
         }
@@ -112,9 +112,9 @@ fun PyToolDetailContent(
 }
 
 @Composable
-private fun PyToolDetailContentBody(
-    uiState: PyToolSettingsUiState,
-    requestedFocusField: PyToolEditableField?,
+private fun CustomPyToolDetailContentBody(
+    uiState: CustomPyToolSettingsUiState,
+    requestedFocusField: CustomPyToolEditableField?,
     onRequestedFocusHandled: () -> Unit,
     onNameChange: (String) -> Unit,
     onCodeChange: (String) -> Unit,
@@ -122,15 +122,15 @@ private fun PyToolDetailContentBody(
     onSave: () -> Unit,
 ) {
     EditableSettingsDetailFormScaffold(
-        actionText = stringResource(R.string.py_tool_save_action),
+        actionText = stringResource(R.string.custom_py_tool_save_action),
         requestedFocusField = requestedFocusField,
         onRequestedFocusHandled = onRequestedFocusHandled,
         onActionClick = onSave,
-        description = stringResource(R.string.py_tool_editor_description),
-        inlineErrorText = pyToolInlineErrorText(uiState.inlineError),
+        description = stringResource(R.string.custom_py_tool_editor_description),
+        inlineErrorText = customPyToolInlineErrorText(uiState.inlineError),
         actionEnabled = !uiState.isSaving,
     ) { fieldController ->
-        PyToolIdentitySettingsBlock(
+        CustomPyToolIdentitySettingsBlock(
             uiState = uiState,
             fieldController = fieldController,
             onNameChange = onNameChange,
@@ -140,7 +140,7 @@ private fun PyToolDetailContentBody(
             },
         )
 
-        PyToolCodeSettingsBlock(
+        CustomPyToolCodeSettingsBlock(
             uiState = uiState,
             fieldController = fieldController,
             onCodeChange = onCodeChange,
@@ -148,34 +148,34 @@ private fun PyToolDetailContentBody(
     }
 }
 
-private enum class PyToolEditableField {
+private enum class CustomPyToolEditableField {
     Name,
     Code,
 }
 
 @Composable
-private fun PyToolIdentitySettingsBlock(
-    uiState: PyToolSettingsUiState,
-    fieldController: EditableDetailFieldController<PyToolEditableField>,
+private fun CustomPyToolIdentitySettingsBlock(
+    uiState: CustomPyToolSettingsUiState,
+    fieldController: EditableDetailFieldController<CustomPyToolEditableField>,
     onNameChange: (String) -> Unit,
     onEnabledChange: (Boolean) -> Unit,
 ) {
     SettingsGroupCard {
         SettingControlledExpandableTextItem(
-            field = PyToolEditableField.Name,
+            field = CustomPyToolEditableField.Name,
             controller = fieldController,
-            title = stringResource(R.string.py_tool_field_name),
+            title = stringResource(R.string.custom_py_tool_field_name),
             value = uiState.formState.name,
             onValueChange = onNameChange,
-            placeholder = stringResource(R.string.py_tool_field_name_hint),
-            description = pyToolFieldErrorText(uiState.formState.nameErrorResId),
+            placeholder = stringResource(R.string.custom_py_tool_field_name_hint),
+            description = customPyToolFieldErrorText(uiState.formState.nameErrorResId),
             enabled = !uiState.isSaving,
             minLines = 1,
             maxLines = 1,
         )
         SettingsItemDivider()
         SettingToggleItem(
-            title = stringResource(R.string.py_tool_field_enabled),
+            title = stringResource(R.string.custom_py_tool_field_enabled),
             checked = uiState.formState.enabled,
             enabled = !uiState.isSaving,
             onCheckedChange = onEnabledChange,
@@ -184,21 +184,21 @@ private fun PyToolIdentitySettingsBlock(
 }
 
 @Composable
-private fun PyToolCodeSettingsBlock(
-    uiState: PyToolSettingsUiState,
-    fieldController: EditableDetailFieldController<PyToolEditableField>,
+private fun CustomPyToolCodeSettingsBlock(
+    uiState: CustomPyToolSettingsUiState,
+    fieldController: EditableDetailFieldController<CustomPyToolEditableField>,
     onCodeChange: (String) -> Unit,
 ) {
     SettingsGroupCard {
         SettingControlledExpandableTextItem(
-            field = PyToolEditableField.Code,
+            field = CustomPyToolEditableField.Code,
             controller = fieldController,
-            title = stringResource(R.string.py_tool_field_code),
+            title = stringResource(R.string.custom_py_tool_field_code),
             value = uiState.formState.code,
             onValueChange = onCodeChange,
-            placeholder = stringResource(R.string.py_tool_field_code_hint),
+            placeholder = stringResource(R.string.custom_py_tool_field_code_hint),
             description = uiState.formState.codeErrorMessage
-                ?: pyToolFieldErrorText(uiState.formState.codeErrorResId),
+                ?: customPyToolFieldErrorText(uiState.formState.codeErrorResId),
             enabled = !uiState.isSaving,
             minLines = 6,
             maxLines = 16,
@@ -207,42 +207,42 @@ private fun PyToolCodeSettingsBlock(
 }
 
 @Composable
-private fun pyToolFieldErrorText(errorResId: Int?): String? {
+private fun customPyToolFieldErrorText(errorResId: Int?): String? {
     return errorResId?.let { stringResource(id = it) }
 }
 
 @Composable
-private fun pyToolInlineErrorText(error: PyToolInlineError?): String? {
+private fun customPyToolInlineErrorText(error: CustomPyToolInlineError?): String? {
     return when (error) {
         null -> null
-        is PyToolInlineError.LoadFailed -> stringResource(
-            R.string.py_tool_error_load_failed,
+        is CustomPyToolInlineError.LoadFailed -> stringResource(
+            R.string.custom_py_tool_error_load_failed,
             error.message ?: stringResource(error.fallbackResId),
         )
 
-        is PyToolInlineError.SaveFailed -> stringResource(
-            R.string.py_tool_error_save_failed,
+        is CustomPyToolInlineError.SaveFailed -> stringResource(
+            R.string.custom_py_tool_error_save_failed,
             error.message ?: stringResource(error.fallbackResId),
         )
 
-        is PyToolInlineError.DeleteFailed -> stringResource(
-            R.string.py_tool_error_delete_failed,
+        is CustomPyToolInlineError.DeleteFailed -> stringResource(
+            R.string.custom_py_tool_error_delete_failed,
             error.message ?: stringResource(error.fallbackResId),
         )
     }
 }
 
 @Composable
-private fun PyToolDeleteConfirmationDialog(
-    state: PyToolDeleteConfirmationState?,
+private fun CustomPyToolDeleteConfirmationDialog(
+    state: CustomPyToolDeleteConfirmationState?,
     onDismissRequest: () -> Unit,
     onConfirmClick: () -> Unit,
 ) {
     ConfirmationLiquidDialog(
         visible = state != null,
         onDismissRequest = onDismissRequest,
-        title = stringResource(R.string.py_tool_delete_dialog_title),
-        text = stringResource(R.string.py_tool_delete_dialog_text, state?.value.orEmpty()),
+        title = stringResource(R.string.custom_py_tool_delete_dialog_title),
+        text = stringResource(R.string.custom_py_tool_delete_dialog_text, state?.value.orEmpty()),
         negativeButtonText = stringResource(R.string.delete_dialog_cancel),
         positiveButtonText = stringResource(R.string.delete_dialog_confirm),
         onNegativeClick = onDismissRequest,

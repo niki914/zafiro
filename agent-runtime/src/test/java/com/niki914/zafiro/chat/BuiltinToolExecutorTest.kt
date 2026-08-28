@@ -49,7 +49,7 @@ class BuiltinToolExecutorTest {
         val json = Json.parseToJsonElement(resultJson).jsonObject
         assertEquals("LOCAL_TOOL_NOT_EXECUTABLE", json["code"]!!.jsonPrimitive.content)
         assertEquals(
-            "Check builtin_tool_flags or py tools configuration.",
+            "Check builtin_tool_flags or py_meta_tools configuration.",
             json["hint"]!!.jsonPrimitive.content,
         )
     }

@@ -62,8 +62,7 @@ object ConversationFormatter {
 
     /**
      * leaf 投影：沿 leafId 的 parent 链回溯再反转，得到根到 leaf 的线性列表。
-     * leafId 为 null 时按「恢复为最后一条」意图取 entries 最后一条
-     * （绕 OKIA RealConversation.project(null) 返回空的坑，D16）。
+     * leafId 为 null 时取 entries 最后一条（对齐 OKIA §5.3 恢复语义）。
      */
     fun projectLeaf(entries: List<ConversationEntry>, leafId: String?): List<ConversationEntry> {
         if (entries.isEmpty()) return emptyList()

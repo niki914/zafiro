@@ -33,7 +33,7 @@ object StoreDescriptorRegistry {
             "settings/tools/builtin_tools.json",
             """{"version":2,"enabled":{}}"""
         ),
-        StoreDescriptor(TOOLS_PY_ID, "settings/tools/py_tools.json", """{"tools":[]}"""),
+        StoreDescriptor(TOOLS_PY_ID, "settings/tools/custom_py_tools.json", """{"tools":[]}"""),
         StoreDescriptor(
             TOOLS_MCP_SERVERS_ID,
             "settings/tools/mcp/servers.json",

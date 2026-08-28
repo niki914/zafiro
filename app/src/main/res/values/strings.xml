@@ -98,8 +98,7 @@
     <string name="ui_settings_builtin_tools_summary">管理 Zafiro 提供的工具</string>
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">管理本地 Skills</string>
-    <string name="ui_settings_py_tools">Python 工具</string>
-    <string name="ui_settings_py_tools_summary">管理自定义 Python 工具</string>
+    <string name="ui_settings_custom_py_tools_summary">管理自定义 Python 工具</string>
     <string name="skill_page_description">开启或关闭本地 Skills。开启后，Agent 可在对话中按需使用。</string>
     <string name="skill_loading">正在读取 Skills...</string>
     <string name="skill_empty">当前没有可用的 Skill。</string>
@@ -240,32 +239,33 @@
     <string name="builtin_tool_group_android_native_summary">打开链接、搜索与启动应用、发送通知等系统原生操作</string>
     <string name="builtin_tool_group_screen_operation">屏幕操作</string>
     <string name="builtin_tool_group_screen_operation_summary">通过无障碍服务或 Shell 两种方式读取、操作屏幕</string>
-    <string name="builtin_tool_group_py_tools">Python 工具</string>
-    <string name="builtin_tool_group_py_tools_summary">Agent 可创建、修改与试运行的可传参 Python 工具</string>
+    <string name="builtin_tool_custom_py_tools_entry">自定义 Python 工具</string>
+    <string name="builtin_tool_custom_py_tools_entry_summary">Agent 可创建、修改与试运行的可传参 自定义 Python 工具</string>
 
     <!-- Python Tool Module -->
-    <string name="py_tool_page_description">管理你的 Python 工具。</string>
-    <string name="py_tool_page_empty_description">让你的 Agent 帮你创建，或点击右上方新增。</string>
-    <string name="py_tool_loading">正在读取已保存的 Python 工具...</string>
-    <string name="py_tool_editor_title_create">新增 Python 工具</string>
-    <string name="py_tool_editor_description">配置你的 Python 工具。工具描述与参数签名由代码中 main() 函数的 docstring 与类型标注自动提取。保存后，Agent 可以按需调用该工具。</string>
-    <string name="py_tool_field_name">工具名称</string>
-    <string name="py_tool_field_name_hint">例如：py_web_search</string>
-    <string name="py_tool_field_enabled">启用工具</string>
-    <string name="py_tool_field_code">Python 代码</string>
-    <string name="py_tool_field_code_hint">定义 main(query: str) 等带类型标注的入口函数</string>
-    <string name="py_tool_save_action">保存 Python 工具</string>
-    <string name="py_tool_error_name_required">请输入工具名称</string>
-    <string name="py_tool_error_code_required">请输入工具代码</string>
-    <string name="py_tool_error_name_invalid">名称需匹配 py_[a-z][a-z0-9_] 格式</string>
-    <string name="py_tool_error_name_duplicate">名称已存在，请更换后重试</string>
-    <string name="py_tool_error_name_reserved">该名称已被内置工具占用</string>
-    <string name="py_tool_error_load_failed">读取 Python 工具失败：%1$s</string>
-    <string name="py_tool_error_save_failed">保存 Python 工具失败：%1$s</string>
-    <string name="py_tool_error_delete_failed">删除 Python 工具失败：%1$s</string>
-    <string name="py_tool_delete_dialog_title">删除 Python 工具</string>
-    <string name="py_tool_delete_dialog_text">确定要删除工具「%1$s」吗？此操作不可撤销。</string>
-    <string name="py_tool_save_failed">保存失败：%1$s</string>
+    <string name="custom_py_tool_page_title">自定义 Python 工具</string>
+    <string name="custom_py_tool_page_description">管理你的 自定义 Python 工具。</string>
+    <string name="custom_py_tool_page_empty_description">让你的 Agent 帮你创建，或点击右上方新增。</string>
+    <string name="custom_py_tool_loading">正在读取已保存的 自定义 Python 工具...</string>
+    <string name="custom_py_tool_editor_title_create">新增 自定义 Python 工具</string>
+    <string name="custom_py_tool_editor_description">配置你的 自定义 Python 工具。工具描述与参数签名由代码中 main() 函数的 docstring 与类型标注自动提取。保存后，Agent 可以按需调用该工具。</string>
+    <string name="custom_py_tool_field_name">工具名称</string>
+    <string name="custom_py_tool_field_name_hint">例如：py_web_search</string>
+    <string name="custom_py_tool_field_enabled">启用工具</string>
+    <string name="custom_py_tool_field_code">Python 代码</string>
+    <string name="custom_py_tool_field_code_hint">定义 main(query: str) 等带类型标注的入口函数</string>
+    <string name="custom_py_tool_save_action">保存 自定义 Python 工具</string>
+    <string name="custom_py_tool_error_name_required">请输入工具名称</string>
+    <string name="custom_py_tool_error_code_required">请输入工具代码</string>
+    <string name="custom_py_tool_error_name_invalid">名称需匹配 py_[a-z][a-z0-9_] 格式</string>
+    <string name="custom_py_tool_error_name_duplicate">名称已存在，请更换后重试</string>
+    <string name="custom_py_tool_error_name_reserved">该名称已被内置工具占用</string>
+    <string name="custom_py_tool_error_load_failed">读取 自定义 Python 工具失败：%1$s</string>
+    <string name="custom_py_tool_error_save_failed">保存 自定义 Python 工具失败：%1$s</string>
+    <string name="custom_py_tool_error_delete_failed">删除 自定义 Python 工具失败：%1$s</string>
+    <string name="custom_py_tool_delete_dialog_title">删除 自定义 Python 工具</string>
+    <string name="custom_py_tool_delete_dialog_text">确定要删除工具「%1$s」吗？此操作不可撤销。</string>
+    <string name="custom_py_tool_save_failed">保存失败：%1$s</string>
 
     <string name="mcp_page_description">配置 MCP 服务的连接方式与鉴权信息。保存后，Zafiro 会在运行时自动发现可用工具。</string>
     <string name="mcp_page_empty_description">点击右上方，添加你的第一个服务器。</string>
@@ -315,9 +315,9 @@
     <string name="error_skill_import_failed">导入 Skill 失败</string>
     <string name="error_skill_delete_failed">删除 Skill 失败</string>
 
-    <string name="error_py_tool_load_failed">读取 Python 工具失败</string>
-    <string name="error_py_tool_save_failed">保存 Python 工具失败</string>
-    <string name="error_py_tool_delete_failed">删除 Python 工具失败</string>
+    <string name="error_custom_py_tool_load_failed">读取 自定义 Python 工具失败</string>
+    <string name="error_custom_py_tool_save_failed">保存 自定义 Python 工具失败</string>
+    <string name="error_custom_py_tool_delete_failed">删除 自定义 Python 工具失败</string>
 
     <string name="error_memory_load_failed">读取记忆失败</string>
     <string name="error_memory_save_failed">保存记忆失败</string>

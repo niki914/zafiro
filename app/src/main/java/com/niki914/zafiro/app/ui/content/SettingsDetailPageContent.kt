@@ -14,7 +14,6 @@ import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
-import com.niki914.zafiro.app.ui.nav.PyToolDetailPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
 
 @Composable
@@ -56,15 +55,6 @@ fun SettingsDetailPageContent(
         SkillsSettingsContent(
             onOpenSkillDetail = { id, title ->
                 onPush(SkillDetailPage(id, title))
-            },
-        )
-        return
-    }
-
-    if (group == ZafiroSettingsGroup.PyTools) {
-        PyToolsSettingsContent(
-            onOpenToolDetail = { name, index, isCreating ->
-                onPush(PyToolDetailPage(name, index, isCreating))
             },
         )
         return

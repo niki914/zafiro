@@ -9,7 +9,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.longOrNull
-import com.niki914.zafiro.settings.model.RuntimePyTool as PyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 
 internal object ToolSettingsCodec {
     // v2：一个工具一个布尔，缺失回退 defaultEnabled；未知工具名由调用方按 registry 过滤（读端忽略、写端 GC）。
@@ -31,7 +31,7 @@ internal object ToolSettingsCodec {
         ).toString()
     }
 
-    fun parsePyTools(json: String): List<PyTool> {
+    fun parseCustomPyTools(json: String): List<CustomPyTool> {
         return parseObject(json)
             .array(TOOLS_KEY)
             .orEmptyObjects()
@@ -39,19 +39,19 @@ internal object ToolSettingsCodec {
                 val name = obj.string(NAME_KEY).trim()
                 val code = obj.string(CODE_KEY)
                 if (name.isBlank() || code.isBlank()) return@mapNotNull null
-                PyTool(
+                CustomPyTool(
                     name = name,
                     code = code,
                     description = obj.string(DESCRIPTION_KEY),
                     schemaJson = obj.string(SCHEMA_KEY),
                     enabled = (obj[ENABLED_KEY] as? JsonPrimitive)?.booleanOrNull ?: true,
                     timeoutMs = (obj[TIMEOUT_KEY] as? JsonPrimitive)?.longOrNull
-                        ?: PyTool.DEFAULT_PY_TOOL_TIMEOUT_MS,
+                        ?: CustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS,
                 )
             }
     }
 
-    fun encodePyTools(tools: List<PyTool>): String {
+    fun encodeCustomPyTools(tools: List<CustomPyTool>): String {
         return JsonObject(
             mapOf(
                 TOOLS_KEY to JsonArray(

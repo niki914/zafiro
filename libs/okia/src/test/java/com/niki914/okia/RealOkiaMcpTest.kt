@@ -21,7 +21,7 @@ import org.junit.Test
 
 /**
  * 门面 MCP 集成测试（T9b-3）：refreshMcpTools / getMcpDiscoverySnapshot 的
- * 门面契约（活跃回合并发检查、closed 检查）、默认 registry 装配（config 未
+ * 门面契约（closed 检查、回合内刷新允许（issue #125））、默认 registry 装配（config 未
  * 注入时 MCP 工具注册进门面默认实例）、注入 registry 时注册进注入实例、
  * update 热更新后刷新对全部配置生效。
  */
@@ -109,7 +109,7 @@ class RealOkiaMcpTest {
     // ── 并发契约 ───────────────────────────────────────────────────────────
 
     @Test
-    fun refreshDuringActiveTurnThrows() = runTest {
+    fun refreshDuringActiveTurnSucceeds() = runTest {
         val gate = CompletableDeferred<Unit>()
         val agentLoop = FakeAgentLoop { _, _ ->
             gate.await()
@@ -122,12 +122,8 @@ class RealOkiaMcpTest {
         val sendJob = launch { okia.send("hi") {} }
         runCurrent()
 
-        try {
-            okia.refreshMcpTools()
-            throw AssertionError("should have thrown during active turn")
-        } catch (e: IllegalStateException) {
-            // expected：活跃回合并发契约
-        }
+        // 回合内刷新允许（issue #125）：发现状态与回合独立，不抛异常
+        okia.refreshMcpTools()
 
         gate.complete(Unit)
         sendJob.join()

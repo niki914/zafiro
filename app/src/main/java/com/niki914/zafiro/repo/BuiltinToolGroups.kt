@@ -31,7 +31,7 @@ object BuiltinToolGroups {
             titleRes = R.string.builtin_tool_group_dev_tools,
             summaryRes = R.string.builtin_tool_group_dev_tools_summary,
             mode = BuiltinToolGroupMode.PER_TOOL,
-            members = listOf("terminal", "execute_python"),
+            members = listOf("terminal", "execute_python", "py_meta_tools"),
         ),
         BuiltinToolGroup(
             id = "android_native",
@@ -49,13 +49,6 @@ object BuiltinToolGroups {
                 "screen_operation_accessibility",
                 "screen_operation_shell",
             ),
-        ),
-        BuiltinToolGroup(
-            id = "py_tools",
-            titleRes = R.string.builtin_tool_group_py_tools,
-            summaryRes = R.string.builtin_tool_group_py_tools_summary,
-            mode = BuiltinToolGroupMode.WHOLE,
-            members = listOf("pytools"),
         ),
     )
 

@@ -23,26 +23,26 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.RegisterPageChrome
-import com.niki914.zafiro.app.ui.model.PyToolItem
+import com.niki914.zafiro.app.ui.model.CustomPyToolItem
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.launch
 
-private const val PY_TOOL_ROW_ID_PREFIX = "py.tool."
+private const val CUSTOM_PY_TOOL_ROW_ID_PREFIX = "custom.py.tool."
 
 @Composable
-fun PyToolsSettingsContent(
+fun CustomPyToolsSettingsContent(
     onOpenToolDetail: (toolName: String, toolIndex: Int, isCreating: Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
-    var items by remember { mutableStateOf<List<PyToolItem>>(emptyList()) }
+    var items by remember { mutableStateOf<List<CustomPyToolItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
 
-    val saveFailedTemplate = stringResource(R.string.py_tool_save_failed)
-    val createTitle = stringResource(R.string.py_tool_editor_title_create)
+    val saveFailedTemplate = stringResource(R.string.custom_py_tool_save_failed)
+    val createTitle = stringResource(R.string.custom_py_tool_editor_title_create)
     val latestOnOpenToolDetail by rememberUpdatedState(onOpenToolDetail)
     val pageChromeContribution = remember(createTitle) {
         PageChromeContribution(
@@ -58,17 +58,17 @@ fun PyToolsSettingsContent(
     RegisterPageChrome(pageChromeContribution)
 
     LaunchedEffect(Unit) {
-        items = XRepo.pyTools.list().map { PyToolItem(name = it.name, enabled = it.enabled) }
+        items = XRepo.customPyTools.list().map { CustomPyToolItem(name = it.name, enabled = it.enabled) }
         isLoading = false
     }
     val pageDescription = when {
-        isLoading || items.isNotEmpty() -> stringResource(R.string.py_tool_page_description)
-        else -> stringResource(R.string.py_tool_page_empty_description)
+        isLoading || items.isNotEmpty() -> stringResource(R.string.custom_py_tool_page_description)
+        else -> stringResource(R.string.custom_py_tool_page_empty_description)
     }
-    val loadingText = stringResource(R.string.py_tool_loading)
+    val loadingText = stringResource(R.string.custom_py_tool_loading)
 
     SettingsSpecPageContent(
-        spec = pyToolsSettingsSpec(
+        spec = customPyToolsSettingsSpec(
             items = items,
             isLoading = isLoading,
             isSaving = isSaving,
@@ -87,13 +87,13 @@ fun PyToolsSettingsContent(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> {
-                    val index = pyToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
+                    val index = customPyToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
                     val item = items.getOrNull(index) ?: return@SettingsSpecPageContent
                     onOpenToolDetail(item.name, index, false)
                 }
 
                 is SettingsRowAction.ToggleChanged -> {
-                    val index = pyToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
+                    val index = customPyToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
                     val item = items.getOrNull(index) ?: return@SettingsSpecPageContent
                     val updatedItems = items.toMutableList().also { mutableItems ->
                         mutableItems[index] = item.copy(enabled = action.checked)
@@ -101,7 +101,7 @@ fun PyToolsSettingsContent(
                     scope.launch {
                         isSaving = true
                         runCatching {
-                            XRepo.pyTools.setEnabled(item.name, action.checked)
+                            XRepo.customPyTools.setEnabled(item.name, action.checked)
                         }.onSuccess {
                             items = updatedItems
                             statusMessage = null
@@ -120,8 +120,8 @@ fun PyToolsSettingsContent(
     )
 }
 
-private fun pyToolsSettingsSpec(
-    items: List<PyToolItem>,
+private fun customPyToolsSettingsSpec(
+    items: List<CustomPyToolItem>,
     isLoading: Boolean,
     isSaving: Boolean,
     pageDescription: String,
@@ -146,7 +146,7 @@ private fun pyToolsSettingsSpec(
                 layout = SettingsSectionLayout.CardList,
                 rows = items.mapIndexed { index, item ->
                     SettingsRowSpec.ToggleNavigation(
-                        id = pyToolRowId(index),
+                        id = customPyToolRowId(index),
                         title = item.name,
                         checked = item.enabled,
                         enabled = !isSaving,
@@ -164,9 +164,9 @@ private fun pyToolsSettingsSpec(
     )
 }
 
-private fun pyToolRowId(index: Int): String = "$PY_TOOL_ROW_ID_PREFIX$index"
+private fun customPyToolRowId(index: Int): String = "$CUSTOM_PY_TOOL_ROW_ID_PREFIX$index"
 
-private fun pyToolIndexFromRowId(id: String): Int? {
-    if (!id.startsWith(PY_TOOL_ROW_ID_PREFIX)) return null
-    return id.removePrefix(PY_TOOL_ROW_ID_PREFIX).toIntOrNull()
+private fun customPyToolIndexFromRowId(id: String): Int? {
+    if (!id.startsWith(CUSTOM_PY_TOOL_ROW_ID_PREFIX)) return null
+    return id.removePrefix(CUSTOM_PY_TOOL_ROW_ID_PREFIX).toIntOrNull()
 }

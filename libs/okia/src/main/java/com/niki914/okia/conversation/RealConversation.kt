@@ -116,12 +116,12 @@ internal class RealConversation(
         state = State(state.entries, state.byId, entryId)
     }
 
-    // leaf 到 root 的线性投影（构造校验 + append 只引用真实 leaf，链上必命中）
+    // leaf 到 root 的线性投影（构造校验 + append 只引用真实 leaf，链上必命中）。
+    // leafId null = 恢复为最后一条（docs/okia.md §5.3；issue #126 对齐实现与文档）
     private fun project(leafId: String?): List<ConversationEntry> {
-        if (leafId == null) return emptyList()
         val byId = state.byId
         val reversed = ArrayList<ConversationEntry>()
-        var cursor: String? = leafId
+        var cursor: String? = leafId ?: state.entries.lastOrNull()?.id
         while (cursor != null) {
             val entry = byId.getValue(cursor)
             reversed += entry

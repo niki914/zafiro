@@ -1,9 +1,9 @@
 package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
-import com.niki914.zafiro.chat.agentic.buildin.impl.ManagePyToolBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
 import com.niki914.zafiro.settings.RuntimeEnvironment
-import com.niki914.zafiro.settings.model.RuntimePyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -14,7 +14,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class ManagePyToolBuiltinTest {
+class PyMetaToolsBuiltinTest {
 
     @After
     fun tearDown() {
@@ -28,7 +28,7 @@ class ManagePyToolBuiltinTest {
 
     private fun gateway() = RuntimeEnvironment.requireBridge().settings as FakeRuntimeSettingsGateway
 
-    private fun newTool() = ManagePyToolBuiltin(
+    private fun newTool() = PyMetaToolsBuiltin(
         exec = exec,
         reservedNames = setOf("terminal"),
     )
@@ -38,11 +38,11 @@ class ManagePyToolBuiltinTest {
         installRuntimeSettingsGatewayForTest()
 
         val result = newTool().invoke(
-            BuiltinToolRequest("pytools", """{"action":"write","name":"web_search","code":"def main(query: str):\\n    print('x')"}""")
+            BuiltinToolRequest("py_meta_tools", """{"action":"write","name":"web_search","code":"def main(query: str):\\n    print('x')"}""")
         )
 
         assertTrue(result.ok)
-        val saved = gateway().pyTools.single()
+        val saved = gateway().customPyTools.single()
         assertEquals("py_web_search", saved.name)
         assertEquals("Search things.", saved.description)
         assertTrue(saved.schemaJson.contains("\"query\""))
@@ -53,7 +53,7 @@ class ManagePyToolBuiltinTest {
     fun write_rejectsIntrospectionFailureWithFixableError() = runTest {
         installRuntimeSettingsGatewayForTest(FakeRuntimeSettingsGateway())
 
-        val tool = ManagePyToolBuiltin(
+        val tool = PyMetaToolsBuiltin(
             exec = { code, _ ->
                 if (code.contains("inspect.signature")) {
                     """{"error":"UNANNOTATED_PARAMS","message":"Parameters need basic type annotations (str/int/float/bool): query"}"""
@@ -63,12 +63,12 @@ class ManagePyToolBuiltinTest {
         )
 
         val result = tool.invoke(
-            BuiltinToolRequest("pytools", """{"action":"write","name":"py_bad","code":"def main(query):\\n    pass"}""")
+            BuiltinToolRequest("py_meta_tools", """{"action":"write","name":"py_bad","code":"def main(query):\\n    pass"}""")
         )
 
         assertFalse(result.ok)
         assertEquals("UNANNOTATED_PARAMS", result.code)
-        assertTrue(gateway().pyTools.isEmpty())
+        assertTrue(gateway().customPyTools.isEmpty())
     }
 
     @Test
@@ -76,7 +76,7 @@ class ManagePyToolBuiltinTest {
         installRuntimeSettingsGatewayForTest(FakeRuntimeSettingsGateway())
 
         val result = newTool().invoke(
-            BuiltinToolRequest("pytools", """{"action":"write","name":"terminal","code":"def main():\\n    pass"}""")
+            BuiltinToolRequest("py_meta_tools", """{"action":"write","name":"terminal","code":"def main():\\n    pass"}""")
         )
 
         assertFalse(result.ok)
@@ -87,14 +87,14 @@ class ManagePyToolBuiltinTest {
     fun list_returnsEntriesWithoutCode() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
-                pyTools = listOf(
-                    RuntimePyTool(name = "py_a", code = "SECRET_CODE", description = "A"),
+                customPyTools = listOf(
+                    RuntimeCustomPyTool(name = "py_a", code = "SECRET_CODE", description = "A"),
                 )
             )
         )
 
         val result = newTool().invoke(
-            BuiltinToolRequest("pytools", """{"action":"list"}""")
+            BuiltinToolRequest("py_meta_tools", """{"action":"list"}""")
         )
 
         assertTrue(result.ok)
@@ -107,14 +107,14 @@ class ManagePyToolBuiltinTest {
     fun read_returnsFullCode() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
-                pyTools = listOf(
-                    RuntimePyTool(name = "py_a", code = "SECRET_CODE", description = "A"),
+                customPyTools = listOf(
+                    RuntimeCustomPyTool(name = "py_a", code = "SECRET_CODE", description = "A"),
                 )
             )
         )
 
         val result = newTool().invoke(
-            BuiltinToolRequest("pytools", """{"action":"read","name":"py_a"}""")
+            BuiltinToolRequest("py_meta_tools", """{"action":"read","name":"py_a"}""")
         )
 
         assertTrue(result.ok)
@@ -125,32 +125,32 @@ class ManagePyToolBuiltinTest {
     fun delete_removesEntry() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
-                pyTools = listOf(
-                    RuntimePyTool(name = "py_a", code = "x"),
+                customPyTools = listOf(
+                    RuntimeCustomPyTool(name = "py_a", code = "x"),
                 )
             )
         )
 
         val result = newTool().invoke(
-            BuiltinToolRequest("pytools", """{"action":"delete","name":"py_a"}""")
+            BuiltinToolRequest("py_meta_tools", """{"action":"delete","name":"py_a"}""")
         )
 
         assertTrue(result.ok)
-        assertTrue(gateway().pyTools.isEmpty())
+        assertTrue(gateway().customPyTools.isEmpty())
     }
 
     @Test
     fun test_runsExistingToolCodeThroughHarness() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
-                pyTools = listOf(
-                    RuntimePyTool(name = "py_a", code = "def main():\\n    print('hello')"),
+                customPyTools = listOf(
+                    RuntimeCustomPyTool(name = "py_a", code = "def main():\\n    print('hello')"),
                 )
             )
         )
 
         var ranCode = ""
-        val tool = ManagePyToolBuiltin(
+        val tool = PyMetaToolsBuiltin(
             exec = { code, _ ->
                 ranCode = code
                 "hello"
@@ -159,7 +159,7 @@ class ManagePyToolBuiltinTest {
         )
 
         val result = tool.invoke(
-            BuiltinToolRequest("pytools", """{"action":"test","name":"py_a","args":{}}""")
+            BuiltinToolRequest("py_meta_tools", """{"action":"test","name":"py_a","args":{}}""")
         )
 
         assertTrue(result.ok)
@@ -174,7 +174,7 @@ class ManagePyToolBuiltinTest {
 
         val result = newTool().invoke(
             BuiltinToolRequest(
-                "pytools",
+                "py_meta_tools",
                 """{"action":"test","name":"py_a","code":"def main():\\n    pass","args":{}}"""
             )
         )
@@ -187,17 +187,17 @@ class ManagePyToolBuiltinTest {
     fun write_preservesExistingEnabledWhenOmitted() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
-                pyTools = listOf(
-                    RuntimePyTool(name = "py_a", code = "old", enabled = false),
+                customPyTools = listOf(
+                    RuntimeCustomPyTool(name = "py_a", code = "old", enabled = false),
                 )
             )
         )
 
         newTool().invoke(
-            BuiltinToolRequest("pytools", """{"action":"write","name":"py_a","code":"def main():\\n    pass"}""")
+            BuiltinToolRequest("py_meta_tools", """{"action":"write","name":"py_a","code":"def main():\\n    pass"}""")
         )
 
-        assertFalse(gateway().pyTools.single { it.name == "py_a" }.enabled)
+        assertFalse(gateway().customPyTools.single { it.name == "py_a" }.enabled)
     }
 
     private companion object {

@@ -98,8 +98,7 @@
     <string name="ui_settings_builtin_tools_summary">Zafiro が提供するツールを管理</string>
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">ローカルの Skills を管理</string>
-    <string name="ui_settings_py_tools">Python ツール</string>
-    <string name="ui_settings_py_tools_summary">カスタム Python ツールを管理</string>
+    <string name="ui_settings_custom_py_tools_summary">カスタム Python ツールを管理</string>
     <string name="skill_page_description">ローカル Skills の有効化/無効化を切り替えます。有効にすると、Agent が会話中に必要に応じて使用します。</string>
     <string name="skill_loading">Skills を読み込み中...</string>
     <string name="skill_empty">利用可能な Skill はありません。</string>
@@ -240,32 +239,33 @@
     <string name="builtin_tool_group_android_native_summary">リンクを開く、アプリの検索と起動、通知の送信などのシステム操作</string>
     <string name="builtin_tool_group_screen_operation">画面操作</string>
     <string name="builtin_tool_group_screen_operation_summary">アクセシビリティサービスまたは Shell を使用した画面情報の読み取りと操作</string>
-    <string name="builtin_tool_group_py_tools">Python ツール</string>
-    <string name="builtin_tool_group_py_tools_summary">Agent が作成・変更・テスト実行できる引数付き Python ツール</string>
+    <string name="builtin_tool_custom_py_tools_entry">カスタム Python ツール</string>
+    <string name="builtin_tool_custom_py_tools_entry_summary">Agent が作成・変更・テスト実行できる引数付き カスタム Python ツール</string>
 
     <!-- Python Tool Module -->
-    <string name="py_tool_page_description">Python ツールを管理します。</string>
-    <string name="py_tool_page_empty_description">Agent に作成を依頼するか、右上をタップして新規追加してください。</string>
-    <string name="py_tool_loading">保存された Python ツールを読み込み中...</string>
-    <string name="py_tool_editor_title_create">新規 Python ツール</string>
-    <string name="py_tool_editor_description">Python ツールを設定します。ツールの説明とパラメータシグネチャは、コード内の main() 関数の docstring と型ヒントから自動的に抽出されます。保存後、Agent は必要に応じてこのツールを呼び出せます。</string>
-    <string name="py_tool_field_name">ツール名</string>
-    <string name="py_tool_field_name_hint">例：py_web_search</string>
-    <string name="py_tool_field_enabled">ツールを有効化</string>
-    <string name="py_tool_field_code">Python コード</string>
-    <string name="py_tool_field_code_hint">main(query: str) などの型ヒントを持つエントリーポイント関数を定義</string>
-    <string name="py_tool_save_action">Python ツールを保存</string>
-    <string name="py_tool_error_name_required">ツール名を入力してください</string>
-    <string name="py_tool_error_code_required">ツールコードを入力してください</string>
-    <string name="py_tool_error_name_invalid">名前は py_[a-z][a-z0-9_] の形式に一致する必要があります</string>
-    <string name="py_tool_error_name_duplicate">名前が既に存在します。変更して再試行してください</string>
-    <string name="py_tool_error_name_reserved">この名前は組み込みツールによって予約されています</string>
-    <string name="py_tool_error_load_failed">Python ツールの読み込みに失敗しました：%1$s</string>
-    <string name="py_tool_error_save_failed">Python ツールの保存に失敗しました：%1$s</string>
-    <string name="py_tool_error_delete_failed">Python ツールの削除に失敗しました：%1$s</string>
-    <string name="py_tool_delete_dialog_title">Python ツールの削除</string>
-    <string name="py_tool_delete_dialog_text">ツール「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
-    <string name="py_tool_save_failed">保存失敗：%1$s</string>
+    <string name="custom_py_tool_page_title">カスタム Python ツール</string>
+    <string name="custom_py_tool_page_description">カスタム Python ツールを管理します。</string>
+    <string name="custom_py_tool_page_empty_description">Agent に作成を依頼するか、右上をタップして新規追加してください。</string>
+    <string name="custom_py_tool_loading">保存された カスタム Python ツールを読み込み中...</string>
+    <string name="custom_py_tool_editor_title_create">新規 カスタム Python ツール</string>
+    <string name="custom_py_tool_editor_description">カスタム Python ツールを設定します。ツールの説明とパラメータシグネチャは、コード内の main() 関数の docstring と型ヒントから自動的に抽出されます。保存後、Agent は必要に応じてこのツールを呼び出せます。</string>
+    <string name="custom_py_tool_field_name">ツール名</string>
+    <string name="custom_py_tool_field_name_hint">例：py_web_search</string>
+    <string name="custom_py_tool_field_enabled">ツールを有効化</string>
+    <string name="custom_py_tool_field_code">Python コード</string>
+    <string name="custom_py_tool_field_code_hint">main(query: str) などの型ヒントを持つエントリーポイント関数を定義</string>
+    <string name="custom_py_tool_save_action">カスタム Python ツールを保存</string>
+    <string name="custom_py_tool_error_name_required">ツール名を入力してください</string>
+    <string name="custom_py_tool_error_code_required">ツールコードを入力してください</string>
+    <string name="custom_py_tool_error_name_invalid">名前は py_[a-z][a-z0-9_] の形式に一致する必要があります</string>
+    <string name="custom_py_tool_error_name_duplicate">名前が既に存在します。変更して再試行してください</string>
+    <string name="custom_py_tool_error_name_reserved">この名前は組み込みツールによって予約されています</string>
+    <string name="custom_py_tool_error_load_failed">カスタム Python ツールの読み込みに失敗しました：%1$s</string>
+    <string name="custom_py_tool_error_save_failed">カスタム Python ツールの保存に失敗しました：%1$s</string>
+    <string name="custom_py_tool_error_delete_failed">カスタム Python ツールの削除に失敗しました：%1$s</string>
+    <string name="custom_py_tool_delete_dialog_title">カスタム Python ツールの削除</string>
+    <string name="custom_py_tool_delete_dialog_text">ツール「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
+    <string name="custom_py_tool_save_failed">保存失敗：%1$s</string>
 
     <string name="mcp_page_description">MCP サービスの接続方法と認証情報を設定します。保存後、Zafiro は実行時に利用可能なツールを自動検出します。</string>
     <string name="mcp_page_empty_description">右上をタップして、最初のサーバーを追加してください。</string>
@@ -315,9 +315,9 @@
     <string name="error_skill_import_failed">Skill のインポートに失敗しました</string>
     <string name="error_skill_delete_failed">Skill の削除に失敗しました</string>
 
-    <string name="error_py_tool_load_failed">Python ツールの読み込みに失敗しました</string>
-    <string name="error_py_tool_save_failed">Python ツールの保存に失敗しました</string>
-    <string name="error_py_tool_delete_failed">Python ツールの削除に失敗しました</string>
+    <string name="error_custom_py_tool_load_failed">カスタム Python ツールの読み込みに失敗しました</string>
+    <string name="error_custom_py_tool_save_failed">カスタム Python ツールの保存に失敗しました</string>
+    <string name="error_custom_py_tool_delete_failed">カスタム Python ツールの削除に失敗しました</string>
 
     <string name="error_memory_load_failed">メモリの読み込みに失敗しました</string>
     <string name="error_memory_save_failed">メモリの保存に失敗しました</string>

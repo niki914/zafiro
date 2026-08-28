@@ -3,7 +3,7 @@ package com.niki914.zafiro.chat.agentic.python
 import java.util.Base64
 
 /**
- * PyTool 的两段代码拼接器：
+ * CustomPyTool 的两段代码拼接器：
  * - [buildRunner]：LLM 调用时的执行 harness——b64 解出参数 → 定义 main 的工具代码 → main(**args)。
  *   结果经 stdout 回传（runtime.py 的 OutputBudget 已做 50KB 截断）。
  * - [buildIntrospection]：write 校验时的签名反射——提取 main 的基本类型标注与 docstring，
@@ -11,7 +11,7 @@ import java.util.Base64
  *
  * 两段都用 Base64 嵌入内容，避免任何引号/三引号冲突。
  */
-object PyToolHarness {
+object CustomPyToolHarness {
 
     fun buildRunner(code: String, argumentsJson: String): String {
         val argsB64 = encode(argumentsJson.ifBlank { "{}" })

@@ -20,7 +20,9 @@ import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
+import com.niki914.okia.mcp.McpDiscoveryState
 import com.niki914.okia.mcp.McpServer
+import com.niki914.okia.mcp.McpServerDiscoverySnapshot
 import com.niki914.okia.mcp.McpTransport
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
@@ -73,14 +75,14 @@ object LLMController {
     // MCP 工具由 T2b McpDiscovery 注册进同一 registry。
     internal val toolRegistry: ToolRegistry = DefaultToolRegistry()
 
-    // 回合内写入的 py 工具（pytools write 成功回调，D20）：
+    // 回合内写入的 py 工具（py_meta_tools write 成功回调，D20）：
     // 持久化尚未被下一次 refresh 读取前的执行兜底 + 回合内注册数据源。
-    private val inlinePyTools = mutableMapOf<String, LocalTool.Py>()
+    private val inlineCustomPyTools = mutableMapOf<String, LocalTool.Py>()
 
     private val localToolExecutor = LocalToolExecutor(
         currentTools = { runtimeState?.snapshot?.tools },
-        inlinePyTools = inlinePyTools,
-        onPyToolWritten = { tool -> registerPyToolNow(tool) },
+        inlineCustomPyTools = inlineCustomPyTools,
+        onCustomPyToolWritten = { tool -> registerCustomPyToolNow(tool) },
     )
 
     private var runtimeState: RuntimeState? = null
@@ -108,10 +110,15 @@ object LLMController {
     //   序列化），变化才起后台刷新；无变化不刷（零网络开销）
     // - 调度状态机 + 失败退避收敛在 McpRefreshScheduler（问题 4 修复：
     //   失败/部分失败不记为成功，配置 in-flight 变化不吞）
-    // - 已知限制：OKIA refreshMcpTools 与 send 共用 RealOkia mutex，后台刷新
-    //   持锁期间发问会短排队——见 ISSUES_okia-integration.md OKIA-1（待提）
+    // - 已知限制解除：OKIA refreshMcpTools 已移出活跃回合互斥（#125），
+    //   后台刷新与 send 不再争锁，回合内刷新不抛异常
     private val mcpRefreshScheduler =
         McpRefreshScheduler(CoroutineScope(SupervisorJob() + Dispatchers.IO))
+
+    // MCP 失败注入去重（#switch-refresh 配套）：同一失败片段（服务器集合 +
+    // 错误摘要）只注入一次；恢复（无 Failed）即重置，新失败片段重新注入
+    @Volatile
+    private var mcpFailureSignature: String? = null
 
     // 测试注入点：T1 单测经 Okia.open(dependencies) 装配 fake loop/mapper。 <--- TODO Workaround???
     internal var okiaFactory: OkiaFactory = OkiaFactory { apiType, restore, config ->
@@ -127,8 +134,9 @@ object LLMController {
         sessionForwardJob = null
         conversationFlow.value = null
         toolRegistry.snapshot().forEach { toolRegistry.remove(it.descriptor.wireName) }
-        inlinePyTools.clear()
+        inlineCustomPyTools.clear()
         mcpRefreshScheduler.reset()
+        mcpFailureSignature = null
         okiaFactory = OkiaFactory { protocol, restore, config ->
             openOkiaWithDefaultProtocol(protocol, restore, config)
         }
@@ -155,18 +163,18 @@ object LLMController {
         )
         val protocol = LlmProtocol.fromWire(llmConfig.protocol)
         val runtimeMcpServers = gateway.listMcpServers()
-        val pyTools = gateway.listPyTools()
+        val customPyTools = gateway.listCustomPyTools()
         val builtinSettings = gateway.listBuiltinToolSettings()
         val enabledSkills = gateway.listEnabledSkills()
         val resolvedTools = toolManager.resolve(
-            pyTools = pyTools,
+            customPyTools = customPyTools,
             mcpServers = runtimeMcpServers,
             builtinSettings = builtinSettings,
         )
         Logger.i(
             LOG_TAG,
             "tools resolved builtin=${resolvedTools.builtinTools.size} " +
-                "py=${resolvedTools.pyTools.size} " +
+                "py=${resolvedTools.customPyTools.size} " +
                 "mcpServers=${resolvedTools.mcpServers.size}"
         )
         val configWithoutRuntimePrompt = ResolvedLlmConfig(
@@ -179,6 +187,7 @@ object LLMController {
         )
         // 会话实例按协议重建；协议切换 = close + 新实例，但树经 restore 延续
         // （P1 #3：export 当前树给新协议实例，会话 id + 历史跨 Provider 保留）
+        val previousSession = runtimeState?.okia
         val activeSession = obtainSession(protocol, configWithoutRuntimePrompt)
         activeSession.update {
             endpoint = configWithoutRuntimePrompt.endpoint
@@ -188,12 +197,18 @@ object LLMController {
             mcpServers = toOkiaMcpServers(resolvedTools.mcpServers)
         }
         // T2a：本地工具注册（enabled 集合全量重建；inline 回合内工具由
-        // registerPyToolNow 注册，随下次 refresh 由持久化版本接管）
+        // registerCustomPyToolNow 注册，随下次 refresh 由持久化版本接管）
         syncLocalTools(resolvedTools)
         // T2b：MCP 发现（方案 B，D-T2B-3）：签名变化才起后台刷新，不 await
         // （不阻塞回合）；初始化时签名 null → 首次天然触发（启动 eager）
         val mcpSignature = mcpServersSignature(resolvedTools.mcpServers)
-        mcpRefreshScheduler.schedule(activeSession, mcpSignature)
+        // 新实例（新对话/协议切换）预冷强制刷一次：签名去重会让新实例错过
+        // 首轮刷新，发消息时工具未就绪（#switch-refresh）；老实例仍按签名去重
+        mcpRefreshScheduler.schedule(
+            activeSession,
+            mcpSignature,
+            force = activeSession !== previousSession,
+        )
         // 工具描述进入提示词（技能/记忆段依赖它）；MCP 工具段已删除
         // （D-T2B-2：线缆名 mcp__server__tool 已表达服务器归属）
         val prompt = promptComposer.compose(
@@ -259,6 +274,16 @@ object LLMController {
             forceNew = true,
         )
         runtimeState = current.copy(okia = newSession)
+        // 会话切换预热（#switch-refresh）：restore 建的新实例不带 mcpServers
+        // 配置（只有 refresh 会写，discovery 读到空服务器），先补配置再强制
+        // 刷一次，抢出用户打字时间窗口，提高首条消息的 MCP 工具就绪率
+        val switchMcpServers = current.snapshot.tools.mcpServers
+        newSession.update { mcpServers = toOkiaMcpServers(switchMcpServers) }
+        mcpRefreshScheduler.schedule(
+            newSession,
+            mcpServersSignature(switchMcpServers),
+            force = true,
+        )
         Logger.i(
             LOG_TAG,
             "open session done id=${restore.id} " +
@@ -309,7 +334,7 @@ object LLMController {
                 LOG_TAG,
                 "refresh ok model=${state.snapshot.config.model} " +
                     "builtin=${state.snapshot.tools.builtinTools.size} " +
-                    "py=${state.snapshot.tools.pyTools.size} " +
+                    "py=${state.snapshot.tools.customPyTools.size} " +
                     "mcp=${state.snapshot.tools.mcpServers.size}"
             )
 
@@ -320,10 +345,16 @@ object LLMController {
             try {
                 Logger.i(LOG_TAG, "round started queryLength=${query.length} isUnlocked=${LockState.isUnlocked()}")
                 // 异步任务完成通知注入（PRD okia §5.10）：host 侧拼进 send 文本，
-                // 不进 hook、不进会话树（通知进树即污染历史）
+                // 不进 hook、不进会话树（通知进树即污染历史）；MCP 发现失败
+                // 说明同样前置（Failed 服务器工具不可用，模型需知）
                 val notifications = TerminalSessionPool.drainPendingNotifications()
-                val effectiveQuery = if (notifications.isNotEmpty()) {
-                    notifications.joinToString("\n\n") + "\n\n" + query
+                val mcpNotice = mcpFailureNotice()
+                val prefixes = buildList {
+                    mcpNotice?.let { add(it) }
+                    addAll(notifications)
+                }
+                val effectiveQuery = if (prefixes.isNotEmpty()) {
+                    prefixes.joinToString("\n\n") + "\n\n" + query
                 } else {
                     query
                 }
@@ -526,7 +557,7 @@ object LLMController {
 
     /**
      * 全量重建本地工具注册：registry 中所有 Local 工具先移除（含 inline 的，
-     * pytools write 成功后本轮会以持久化版本重新注册），再注册当前
+     * py_meta_tools write 成功后本轮会以持久化版本重新注册），再注册当前
      * resolved 的 enabled 工具。wireName 为 registry 键（默认
      * ToolWireName.forLocal(name)），同名覆盖无需特判。
      */
@@ -535,7 +566,7 @@ object LLMController {
             .map { it.descriptor }
             .filter { it.kind is ToolKind.Local }
             .forEach { toolRegistry.remove(it.wireName) }
-        (tools.builtinTools + tools.pyTools).forEach { tool ->
+        (tools.builtinTools + tools.customPyTools).forEach { tool ->
             val inputSchemaJson = when (tool) {
                 is LocalTool.Builtin -> tool.tool.inputSchemaJson
                 is LocalTool.Py -> tool.inputSchemaJson
@@ -550,15 +581,15 @@ object LLMController {
                 localToolExecutor,
             )
         }
-        inlinePyTools.clear()
+        inlineCustomPyTools.clear()
     }
 
     /**
-     * pytools write 成功且 enabled 的回合内注册（D20）：立即注册进
+     * py_meta_tools write 成功且 enabled 的回合内注册（D20）：立即注册进
      * registry，当前回合下一轮模型请求即可见（RealAgentLoop 每段现取
      * snapshot）。下次 refresh 以持久化版本重新注册（同名覆盖）。
      */
-    private fun registerPyToolNow(tool: LocalTool.Py) {
+    private fun registerCustomPyToolNow(tool: LocalTool.Py) {
         toolRegistry.register(
             ToolDescriptor(
                 name = tool.name,
@@ -570,11 +601,41 @@ object LLMController {
         )
         Logger.i(
             LOG_TAG,
-            "py tool registered in-turn name=${tool.name}"
+            "custom py tool registered in-turn name=${tool.name}"
         )
     }
 
     // ── T2b MCP 发现时序（方案 B，D-T2B-3，对齐 Codex eager + 标脏刷新） ────
+
+    /** McpServerDefinition.Http → OKIA McpServer（字段一一对应，T2b）。 */
+    private fun toOkiaMcpServers(servers: List<McpServerDefinition>): List<McpServer> {
+        return servers.mapNotNull { server ->
+            when (server) {
+                is McpServerDefinition.Http ->
+                    McpServer(
+                        name = server.name,
+                        transport = McpTransport.Http(server.url),
+                        headers = server.headers,
+                        enabled = server.enabled,
+                    )
+            }
+        }
+    }
+
+    /** 失败注入文案（internal 供单测）；格式对齐终端完成通知的元信息风格。 */
+    internal fun buildMcpFailureNotice(
+        failed: List<McpServerDiscoverySnapshot>,
+    ): String = buildString {
+        appendLine("[IMPORTANT: MCP discovery failed for the following servers; their tools are unavailable in this turn:")
+        failed.forEach { server ->
+            val reason = server.errorMessage?.lineSequence()?.firstOrNull()?.take(120) ?: "unknown error"
+            appendLine("- ${server.serverName}: $reason")
+        }
+        append(
+            "Do not attempt to call their tools. If the task depends on them, " +
+                "tell the user the MCP service is currently unavailable.]",
+        )
+    }
 
     /** 服务器配置签名：对 McpServerDefinition.Http（name/url/headers/enabled）确定性序列化。 */
     private fun mcpServersSignature(servers: List<McpServerDefinition>): String {
@@ -594,19 +655,29 @@ object LLMController {
             }
     }
 
-    /** McpServerDefinition.Http → OKIA McpServer（字段一一对应，T2b）。 */
-    private fun toOkiaMcpServers(servers: List<McpServerDefinition>): List<McpServer> {
-        return servers.mapNotNull { server ->
-            when (server) {
-                is McpServerDefinition.Http ->
-                    McpServer(
-                        name = server.name,
-                        transport = McpTransport.Http(server.url),
-                        headers = server.headers,
-                        enabled = server.enabled,
-                    )
-            }
+    /**
+     * MCP 发现失败注入（#switch-refresh 配套）：send 前读发现快照，
+     * 仅 Failed 服务器注入说明（Discovering 是过程态、UsingStaleCache 旧
+     * 缓存工具仍可用，均不注）；按「失败集合 + 错误摘要」签名去重，同一
+     * 失败片段只注一次，恢复即重置。无 Failed 时顺带打一条状态摘要日志。
+     */
+    private suspend fun mcpFailureNotice(): String? {
+        val session = runtimeState?.okia ?: return null
+        val servers = session.getMcpDiscoverySnapshot().servers.values
+        Logger.i(
+            LOG_TAG,
+            "mcp discovery " + servers.sortedBy { it.serverName }
+                .joinToString(" ") { "${it.serverName}=${it.state}" },
+        )
+        val failed = servers.filter { it.state == McpDiscoveryState.Failed }.sortedBy { it.serverName }
+        if (failed.isEmpty()) {
+            mcpFailureSignature = null
+            return null
         }
+        val signature = failed.joinToString("|") { "${it.serverName}:${it.errorMessage.orEmpty()}" }
+        if (signature == mcpFailureSignature) return null
+        mcpFailureSignature = signature
+        return buildMcpFailureNotice(failed)
     }
 
     // 全局工具资源 kill 钩子：OKIA 停止流程的 kill 步骤（beforeStop 每回合

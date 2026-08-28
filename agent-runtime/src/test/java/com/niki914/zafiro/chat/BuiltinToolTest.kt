@@ -53,7 +53,7 @@ class BuiltinToolTest {
                 "memory",
                 "notify",
                 "open_uri",
-                "pytools",
+                "py_meta_tools",
                 "screen_operation_accessibility",
                 "screen_operation_shell",
                 "search_apps",
@@ -66,7 +66,7 @@ class BuiltinToolTest {
         assertEquals("memory", registry.find("memory")?.name)
         assertEquals("notify", registry.find("notify")?.name)
         assertEquals("open_uri", registry.find("open_uri")?.name)
-        assertEquals("pytools", registry.find("pytools")?.name)
+        assertEquals("py_meta_tools", registry.find("py_meta_tools")?.name)
         assertEquals("screen_operation_accessibility", registry.find("screen_operation_accessibility")?.name)
         assertEquals("screen_operation_shell", registry.find("screen_operation_shell")?.name)
         assertEquals("search_apps", registry.find("search_apps")?.name)
@@ -81,7 +81,7 @@ class BuiltinToolTest {
             OpenUriBuiltin(),
             SearchAppsBuiltin(),
             TerminalBuiltin(),
-            com.niki914.zafiro.chat.agentic.buildin.impl.ManagePyToolBuiltin(),
+            com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin(),
         ).forEach { tool ->
             assertEquals(tool.name, tool.name.trim())
             assertTrue("description not blank: ${tool.name}", tool.description.isNotBlank())

@@ -219,13 +219,12 @@ internal class RealOkia(
     override suspend fun config(): OkiaConfig = config
 
     override suspend fun refreshMcpTools(): McpRefreshResult {
-        // 检查 + 刷新同一临界区（评审发现 5）：刷新含注册表变更，不能在活跃
-        // 回合中执行；锁内执行使并发 send 等待刷新完成，不出现竞态窗口
-        mutex.withLock {
-            check(!closed) { "Okia is closed" }
-            check(activeTurn == null) { "cannot refreshMcpTools during active turn" }
-            return mcpDiscovery.refresh()
-        }
+        // 不与 send 争门面锁（issue #125）：McpDiscovery 自带串行化（内部 mutex +
+        // @Volatile snapshot），发现状态与会话树/回合生命周期独立；注册表变更经
+        // effectiveRegistry 即时生效，agent loop 每请求现取 registry.snapshot()，
+        // 回合内刷新语义安全。
+        check(!closed) { "Okia is closed" }
+        return mcpDiscovery.refresh()
     }
 
     // 只读快照；活跃回合允许（并发契约 §8.7 #5 的列表不含本方法，读不与

@@ -5,7 +5,7 @@ import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimePyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.okia.Okia
 import com.niki914.okia.OkiaDependencies
@@ -93,9 +93,9 @@ class LLMControllerOkiaTest {
                     RuntimeBuiltinToolSetting("terminal", "t", enabled = true),
                     RuntimeBuiltinToolSetting("memory", "m", enabled = false),
                 ),
-                pyTools = listOf(
-                    RuntimePyTool(name = "py_x", code = "print('x')", description = "dx", enabled = true),
-                    RuntimePyTool(name = "py_y", code = "print('y')", description = "dy", enabled = false),
+                customPyTools = listOf(
+                    RuntimeCustomPyTool(name = "py_x", code = "print('x')", description = "dx", enabled = true),
+                    RuntimeCustomPyTool(name = "py_y", code = "print('y')", description = "dy", enabled = false),
                 ),
             )
         )
@@ -113,7 +113,7 @@ class LLMControllerOkiaTest {
     }
 
     @Test
-    fun refresh_enabledPyToolsAreRegisteredAsLocalWithSchema() = runTest {
+    fun refresh_enabledCustomPyToolsAreRegisteredAsLocalWithSchema() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
                 llmConfig = validLlmConfig(),

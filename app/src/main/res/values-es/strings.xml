@@ -99,8 +99,7 @@
     <string name="ui_settings_builtin_tools_summary">Gestionar las herramientas integradas de Zafiro</string>
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">Gestionar Skills locales</string>
-    <string name="ui_settings_py_tools">Herramientas de Python</string>
-    <string name="ui_settings_py_tools_summary">Gestionar herramientas personalizadas de Python</string>
+    <string name="ui_settings_custom_py_tools_summary">Gestionar herramientas personalizadas de Python</string>
     <string name="skill_page_description">Activar o desactivar Skills locales. Cuando están activadas, el agente puede usarlas según sea necesario durante las conversaciones.</string>
     <string name="skill_loading">Cargando Skills...</string>
     <string name="skill_empty">No hay Skills disponibles actualmente.</string>
@@ -241,32 +240,33 @@
     <string name="builtin_tool_group_android_native_summary">Operaciones nativas del sistema como abrir enlaces, buscar/abrir apps y enviar notificaciones</string>
     <string name="builtin_tool_group_screen_operation">Operaciones de pantalla</string>
     <string name="builtin_tool_group_screen_operation_summary">Leer y controlar la pantalla mediante Servicios de accesibilidad o Shell</string>
-    <string name="builtin_tool_group_py_tools">Herramientas de Python</string>
-    <string name="builtin_tool_group_py_tools_summary">Herramientas de Python parametrizadas que el agente puede crear, modificar y probar</string>
+    <string name="builtin_tool_custom_py_tools_entry">Herramientas personalizadas de Python</string>
+    <string name="builtin_tool_custom_py_tools_entry_summary">Herramientas personalizadas de Python parametrizadas que el agente puede crear, modificar y probar</string>
 
     <!-- Python Tool Module -->
-    <string name="py_tool_page_description">Gestione sus herramientas de Python.</string>
-    <string name="py_tool_page_empty_description">Deje que el agente las cree por usted o toque el botón superior derecho para añadir una nueva.</string>
-    <string name="py_tool_loading">Cargando herramientas de Python guardadas...</string>
-    <string name="py_tool_editor_title_create">Añadir herramienta de Python</string>
-    <string name="py_tool_editor_description">Configure su herramienta de Python. La descripción y la firma de parámetros se extraerán automáticamente de los docstrings y anotaciones de tipo de la función main(). Una vez guardada, el agente podrá llamarla según sea necesario.</string>
-    <string name="py_tool_field_name">Nombre de la herramienta</string>
-    <string name="py_tool_field_name_hint">Ejemplo: py_web_search</string>
-    <string name="py_tool_field_enabled">Activar herramienta</string>
-    <string name="py_tool_field_code">Código Python</string>
-    <string name="py_tool_field_code_hint">Defina una función de entrada con anotaciones de tipo, como main(query: str)</string>
-    <string name="py_tool_save_action">Guardar herramienta de Python</string>
-    <string name="py_tool_error_name_required">Introduzca un nombre para la herramienta</string>
-    <string name="py_tool_error_code_required">Introduzca el código de la herramienta</string>
-    <string name="py_tool_error_name_invalid">El nombre debe coincidir con el formato py_[a-z][a-z0-9_]</string>
-    <string name="py_tool_error_name_duplicate">El nombre ya existe. Elija otro nombre.</string>
-    <string name="py_tool_error_name_reserved">Este nombre está reservado por una herramienta integrada</string>
-    <string name="py_tool_error_load_failed">Error al cargar las herramientas de Python: %1$s</string>
-    <string name="py_tool_error_save_failed">Error al guardar la herramienta de Python: %1$s</string>
-    <string name="py_tool_error_delete_failed">Error al eliminar la herramienta de Python: %1$s</string>
-    <string name="py_tool_delete_dialog_title">Eliminar herramienta de Python</string>
-    <string name="py_tool_delete_dialog_text">¿Está seguro de que desea eliminar la herramienta «%1$s»? Esta acción no se puede deshacer.</string>
-    <string name="py_tool_save_failed">Error al guardar: %1$s</string>
+    <string name="custom_py_tool_page_title">Herramientas personalizadas de Python</string>
+    <string name="custom_py_tool_page_description">Gestione sus herramientas personalizadas de Python.</string>
+    <string name="custom_py_tool_page_empty_description">Deje que el agente las cree por usted o toque el botón superior derecho para añadir una nueva.</string>
+    <string name="custom_py_tool_loading">Cargando herramientas de Python guardadas...</string>
+    <string name="custom_py_tool_editor_title_create">Añadir herramienta de Python</string>
+    <string name="custom_py_tool_editor_description">Configure su herramienta de Python. La descripción y la firma de parámetros se extraerán automáticamente de los docstrings y anotaciones de tipo de la función main(). Una vez guardada, el agente podrá llamarla según sea necesario.</string>
+    <string name="custom_py_tool_field_name">Nombre de la herramienta</string>
+    <string name="custom_py_tool_field_name_hint">Ejemplo: py_web_search</string>
+    <string name="custom_py_tool_field_enabled">Activar herramienta</string>
+    <string name="custom_py_tool_field_code">Código Python</string>
+    <string name="custom_py_tool_field_code_hint">Defina una función de entrada con anotaciones de tipo, como main(query: str)</string>
+    <string name="custom_py_tool_save_action">Guardar herramienta de Python</string>
+    <string name="custom_py_tool_error_name_required">Introduzca un nombre para la herramienta</string>
+    <string name="custom_py_tool_error_code_required">Introduzca el código de la herramienta</string>
+    <string name="custom_py_tool_error_name_invalid">El nombre debe coincidir con el formato py_[a-z][a-z0-9_]</string>
+    <string name="custom_py_tool_error_name_duplicate">El nombre ya existe. Elija otro nombre.</string>
+    <string name="custom_py_tool_error_name_reserved">Este nombre está reservado por una herramienta integrada</string>
+    <string name="custom_py_tool_error_load_failed">Error al cargar las herramientas de Python: %1$s</string>
+    <string name="custom_py_tool_error_save_failed">Error al guardar la herramienta de Python: %1$s</string>
+    <string name="custom_py_tool_error_delete_failed">Error al eliminar la herramienta de Python: %1$s</string>
+    <string name="custom_py_tool_delete_dialog_title">Eliminar herramienta de Python</string>
+    <string name="custom_py_tool_delete_dialog_text">¿Está seguro de que desea eliminar la herramienta «%1$s»? Esta acción no se puede deshacer.</string>
+    <string name="custom_py_tool_save_failed">Error al guardar: %1$s</string>
 
     <string name="mcp_page_description">Configure los métodos de conexión y autenticación para servicios MCP. Tras guardar, Zafiro descubrirá automáticamente las herramientas disponibles en tiempo de ejecución.</string>
     <string name="mcp_page_empty_description">Toque en la esquina superior derecha para añadir su primer servidor.</string>
@@ -316,9 +316,9 @@
     <string name="error_skill_import_failed">Error al importar la Skill</string>
     <string name="error_skill_delete_failed">Error al eliminar la Skill</string>
 
-    <string name="error_py_tool_load_failed">Error al cargar las herramientas de Python</string>
-    <string name="error_py_tool_save_failed">Error al guardar la herramienta de Python</string>
-    <string name="error_py_tool_delete_failed">Error al eliminar la herramienta de Python</string>
+    <string name="error_custom_py_tool_load_failed">Error al cargar las herramientas de Python</string>
+    <string name="error_custom_py_tool_save_failed">Error al guardar la herramienta de Python</string>
+    <string name="error_custom_py_tool_delete_failed">Error al eliminar la herramienta de Python</string>
 
     <string name="error_memory_load_failed">Error al cargar las memorias</string>
     <string name="error_memory_save_failed">Error al guardar la memoria</string>

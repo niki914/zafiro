@@ -571,3 +571,9 @@ T9b 实现期契约回写。裁决来源：2026-08-17 讨论（Q1-Q7），实现
 6. **G5 快照整改落地（§8.17 #6 候选 B）**：`RealAgentLoop.runSegment` 每段尝试现取工具描述：SerializationHolder 构造处 `snapshot.copy(tools = registry.snapshot())`——请求体表达「每段发送时的工具集」而非 send 时固定值；`RealOkia.buildLoopRequest` 的 tools 退为初始值（send 时快照，loop 覆盖），TODO 注释清除。测试 `RealAgentLoopSnapshotTest`（afterToolCall hook 段间注册新工具 → 第二轮 buildRequest 的 tools 含新工具）锁定行为。
 7. **遮蔽坑修复（实现暴露，对齐 §8.10 #4 先例）**：`RealOkia` 构造参数 `config` 与属性 `config` 同名时，`by lazy` 块内嵌套 lambda（McpDiscovery 的 servers/registry 闭包）**捕获构造参数值快照而非属性**——update 热更新后 McpDiscovery 仍读旧 config（updateWithNewServers 测试暴露）。修复：构造参数改名 `initialConfig`。同款问题已在 §8.10 #4（RealConversation initialEntries）记录，写此处供后续避免。
 8. **测试**：`McpExecutorTest`（14：路由/工具名还原/参数透传/headers 透传/多块拼接/单块/空 content/isError 两态/协议异常/运行时异常/取消传播/服务器缺失/前缀不匹配/Local kind 拒绝/onInterrupt=Unknown）；`McpDiscoveryTest`（18：初始快照/刷新成功注册/消失移除/描述覆盖/幂等/fingerprint 稳定与变化/失败 Failed/失败 UsingStaleCache/失败保指纹/enabled=false/重复冲突/无冲突/并发三台/成败混合/取消传播/Discovering 中间态/config 删除服务器/空配置）；`RealOkiaMcpTest`（7：默认 registry 装配/注入 registry/活跃回合 refresh 抛/活跃回合快照可读/失败快照/update 新服务器生效/close 后抛）；`RealAgentLoopSnapshotTest`（1）。`FakeProtocolMapper` 补 builtSnapshots + beforeBuild 注入点。
+
+### 8.19 Issue 修复落地（#125 / #126 / #127，2026-06）
+
+1. **refreshMcpTools 移出活跃回合并发契约（issue #125）**：原实现刷新全程持门面 mutex + check(activeTurn == null)（§8.7 #5 / §8.18 #5 落地项），后台刷新进行中 send 排队等待网络往返（1-2s 级）。修正：refreshMcpTools 不再取门面 mutex、不再检查活跃回合，仅保留 closed 检查；依据 = ToolRegistry 支持回合内变更且 loop 每段现取 snapshot()（§8.18 #6），发现状态与会话树/回合生命周期独立，McpDiscovery 自带串行化（§8.18 #3）。Okia 接口 KDoc 同步。
+2. **project(null) 对齐文档（issue #126）**：RealConversation.project(null) 原返回空投影，与 §5.3「leafId null = 恢复为最后一条」不符；修正为回落 entries 最后一条。host（Zafiro ConversationRepo）侧的显式 lastOrNull 绕坑同步删除。
+3. **ToolRegistry 契约注释修正（issue #127）**：原注释「活跃回合不得直接变更 registry，须经 Okia.update」与实际数据流矛盾（注入对象即时生效、loop 每段现取 snapshot）。修正为：register / remove 即时生效，回合内允许；update 仅做配置热更新。§8.7 #5 历史记录不回改，以本条为准。

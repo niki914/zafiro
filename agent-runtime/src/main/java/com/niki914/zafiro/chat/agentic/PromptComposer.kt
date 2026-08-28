@@ -59,7 +59,7 @@ class PromptComposer {
     ): String? {
         val blocks = listOfNotNull(
             renderNameBlock("builtin_tools", tools.builtinTools.map { it.name }),
-            renderNameBlock("py_tools", tools.pyTools.map { it.name }),
+            renderNameBlock("custom_py_tools", tools.customPyTools.map { it.name }),
         )
         if (blocks.isEmpty()) return null
         return "## Tool Context\n\n${blocks.joinToString(separator = "\n\n")}"
@@ -123,7 +123,7 @@ class PromptComposer {
 
     private fun hasAnyTool(input: PromptComposerInput): Boolean {
         return input.tools.builtinTools.isNotEmpty() ||
-            input.tools.pyTools.isNotEmpty() ||
+            input.tools.customPyTools.isNotEmpty() ||
             input.tools.mcpServers.any { it.enabled }
     }
 

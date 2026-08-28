@@ -6,10 +6,10 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
-import com.niki914.zafiro.chat.agentic.python.PyToolHarness
+import com.niki914.zafiro.chat.agentic.python.CustomPyToolHarness
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.settings.RuntimeEnvironment
-import com.niki914.zafiro.settings.model.RuntimePyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -25,7 +25,7 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
 /**
- * pytools 元工具：PyTool 注册表的增删改查 + 试运行。
+ * py_meta_tools 元工具（用来创造工具的工具）：CustomPyTool 注册表的增删改查 + 试运行。
  *
  * - write 会先做签名反射（PyRuntime introspection）：提取 main 的基本类型标注
  *   与 docstring，作为 description/schemaJson 缓存进 store；失败即拒绝并回传
@@ -33,18 +33,19 @@ import kotlinx.serialization.json.put
  * - write 成功的条目由 LocalToolExecutor 回合内热注册（D20 同款机制）。
  * - test 用同一 harness 试跑草稿 code 或已存工具，write 前可先 test。
  */
-class ManagePyToolBuiltin(
+class PyMetaToolsBuiltin(
     private val exec: suspend (code: String, timeoutMs: Long) -> String = PyRuntime::exec,
     private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(),
     private val reservedNames: Set<String>? = null,
 ) : BuiltinTool() {
 
-    override val name: String = "pytools"
+    override val name: String = "py_meta_tools"
 
     override val description: String = """
-Manage persistent Python tools. Each tool is a Python source defining `main(**kwargs)`;
-parameters come from basic type annotations on main (str/int/float/bool), the docstring
-becomes the description. Actions:
+Meta-tool for creating Python tools: a tool used to build other tools. Each created
+tool is a Python source defining `main(**kwargs)`; parameters come from basic type
+annotations on main (str/int/float/bool), the docstring becomes the description.
+Actions:
 - list: show registered tools (name/description/schema/enabled)
 - read: return full code of one tool
 - write: create or replace a tool (validates syntax, main, and annotations)
@@ -79,10 +80,10 @@ Store the result of a run by printing from main; stdout is returned.
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
-            Logger.w(LOG_TAG, "pytools ${args.action} failed: ${throwable.message}")
+            Logger.w(LOG_TAG, "py_meta_tools ${args.action} failed: ${throwable.message}")
             BuiltinToolResult.failure(
-                code = "PYTOOLS_ERROR",
-                message = throwable.message ?: "pytools action failed.",
+                code = "PY_META_TOOLS_ERROR",
+                message = throwable.message ?: "py_meta_tools action failed.",
             )
         }
     }
@@ -90,7 +91,7 @@ Store the result of a run by printing from main; stdout is returned.
     // ── actions ──────────────────────────────────────────────────────────
 
     private suspend fun list(): BuiltinToolResult {
-        val tools = RuntimeEnvironment.awaitSettingsGateway().listPyTools()
+        val tools = RuntimeEnvironment.awaitSettingsGateway().listCustomPyTools()
         val items = tools.map { tool ->
             buildJsonObject {
                 put("name", tool.name)
@@ -101,7 +102,7 @@ Store the result of a run by printing from main; stdout is returned.
             }
         }
         return BuiltinToolResult.success(
-            message = "${items.size} py tool(s).",
+            message = "${items.size} custom py tool(s).",
             data = JsonObject(mapOf("tools" to JsonArray(items))),
         )
     }
@@ -154,13 +155,13 @@ Store the result of a run by printing from main; stdout is returned.
         }
 
         val gateway = RuntimeEnvironment.awaitSettingsGateway()
-        val existing = gateway.listPyTools().firstOrNull { it.name == name }
+        val existing = gateway.listCustomPyTools().firstOrNull { it.name == name }
         val enabled = args.enabled ?: existing?.enabled ?: true
         val timeoutMs = (args.timeoutMs ?: existing?.timeoutMs
-            ?: RuntimePyTool.DEFAULT_PY_TOOL_TIMEOUT_MS)
-            .coerceIn(1_000L, RuntimePyTool.MAX_PY_TOOL_TIMEOUT_MS)
+            ?: RuntimeCustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS)
+            .coerceIn(1_000L, RuntimeCustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS)
 
-        val tool = RuntimePyTool(
+        val tool = RuntimeCustomPyTool(
             name = name,
             code = code,
             description = introspection.description.orEmpty(),
@@ -168,14 +169,14 @@ Store the result of a run by printing from main; stdout is returned.
             enabled = enabled,
             timeoutMs = timeoutMs,
         )
-        gateway.savePyTool(tool, overwrite = true)?.let { validation ->
+        gateway.saveCustomPyTool(tool, overwrite = true)?.let { validation ->
             return BuiltinToolResult.failure(
                 code = "VALIDATION_FAILED",
                 message = "${validation.field}: ${validation.message}",
                 fieldErrors = mapOf(validation.field to validation.message),
             )
         }
-        Logger.i(LOG_TAG, "pytools write ok name=$name timeoutMs=$timeoutMs")
+        Logger.i(LOG_TAG, "py_meta_tools write ok name=$name timeoutMs=$timeoutMs")
         return BuiltinToolResult.success(
             message = if (existing == null) "Tool $name created." else "Tool $name updated.",
             hint = "The tool is callable now; run it with arguments matching its schema.",
@@ -185,7 +186,7 @@ Store the result of a run by printing from main; stdout is returned.
 
     private suspend fun delete(name: String?): BuiltinToolResult {
         val tool = requireTool(name) ?: return missingName()
-        RuntimeEnvironment.awaitSettingsGateway().deletePyTool(tool.name)
+        RuntimeEnvironment.awaitSettingsGateway().deleteCustomPyTool(tool.name)
         return BuiltinToolResult.success(message = "Tool ${tool.name} deleted.")
     }
 
@@ -207,17 +208,17 @@ Store the result of a run by printing from main; stdout is returned.
                 )
             }
             code = draftCode
-            timeoutMs = (args.timeoutMs ?: RuntimePyTool.DEFAULT_PY_TOOL_TIMEOUT_MS)
-                .coerceIn(1_000L, RuntimePyTool.MAX_PY_TOOL_TIMEOUT_MS)
+            timeoutMs = (args.timeoutMs ?: RuntimeCustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS)
+                .coerceIn(1_000L, RuntimeCustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS)
         } else {
             val tool = requireTool(args.name) ?: return missingName()
             code = tool.code
             timeoutMs = (args.timeoutMs ?: tool.timeoutMs)
-                .coerceIn(1_000L, RuntimePyTool.MAX_PY_TOOL_TIMEOUT_MS)
+                .coerceIn(1_000L, RuntimeCustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS)
         }
 
         return try {
-            val output = exec(PyToolHarness.buildRunner(code, args.argsJson), timeoutMs)
+            val output = exec(CustomPyToolHarness.buildRunner(code, args.argsJson), timeoutMs)
             BuiltinToolResult.success(
                 message = "Test run finished.",
                 data = buildJsonObject { put("stdout", output) },
@@ -249,7 +250,7 @@ Store the result of a run by printing from main; stdout is returned.
 
     private suspend fun introspect(code: String): Introspection {
         val output = try {
-            exec(PyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
+            exec(CustomPyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
             return Introspection(null, null, IntrospectionError("INTROSPECTION_TIMEOUT", "Signature check timed out."))
         } catch (e: CancellationException) {
@@ -278,15 +279,15 @@ Store the result of a run by printing from main; stdout is returned.
 
     // ── helpers ──────────────────────────────────────────────────────────
 
-    private suspend fun requireTool(name: String?): RuntimePyTool? {
+    private suspend fun requireTool(name: String?): RuntimeCustomPyTool? {
         val normalized = normalizeName(name) ?: return null
-        return RuntimeEnvironment.awaitSettingsGateway().listPyTools()
+        return RuntimeEnvironment.awaitSettingsGateway().listCustomPyTools()
             .firstOrNull { it.name == normalized }
     }
 
     private fun missingName(): BuiltinToolResult = BuiltinToolResult.failure(
         code = "TOOL_NOT_FOUND",
-        message = "No py tool found for the given 'name'. Use action=list to see registered tools.",
+        message = "No custom py tool found for the given 'name'. Use action=list to see registered tools.",
     )
 
     private fun normalizeName(raw: String?): String? {
@@ -296,7 +297,7 @@ Store the result of a run by printing from main; stdout is returned.
         return prefixed.takeIf { NAME_PATTERN.matches(it) }
     }
 
-    private fun toolJson(tool: RuntimePyTool, includeCode: Boolean): JsonObject {
+    private fun toolJson(tool: RuntimeCustomPyTool, includeCode: Boolean): JsonObject {
         return buildJsonObject {
             put("name", tool.name)
             put("description", tool.description)
@@ -308,14 +309,14 @@ Store the result of a run by printing from main; stdout is returned.
     }
 
     // 惰性解析：companion 常量会在类初始化时触发 BuiltinToolRegistry.default()
-    // → ManagePyToolBuiltin() 的循环构造，必须延迟到调用点
+    // → PyMetaToolsBuiltin() 的循环构造，必须延迟到调用点
     private fun effectiveReservedNames(): Set<String> {
         return reservedNames ?: BuiltinToolRegistry.default().all().map { it.name }.toSet()
     }
 
     private fun invalidArguments(message: String): BuiltinToolResult = BuiltinToolResult.failure(
         code = "INVALID_ARGUMENTS_JSON",
-        message = "pytools arguments must be a JSON object with an 'action' field. ($message)",
+        message = "py_meta_tools arguments must be a JSON object with an 'action' field. ($message)",
     )
 
     private fun parseArguments(argumentsJson: String): ParsedArgs {
@@ -348,7 +349,7 @@ Store the result of a run by printing from main; stdout is returned.
     )
 
     companion object {
-        private const val LOG_TAG = "niki914_nexus_ManagePyToolBuiltin"
+        private const val LOG_TAG = "niki914_nexus_PyMetaToolsBuiltin"
         private const val PREFIX = "py_"
         private const val INTROSPECTION_TIMEOUT_MS = 60_000L
         private val NAME_PATTERN = Regex("^[a-z][a-z0-9_]{0,63}$")

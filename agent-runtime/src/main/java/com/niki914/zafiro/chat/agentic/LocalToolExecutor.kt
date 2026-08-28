@@ -7,7 +7,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolExecutor
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResultCodec
-import com.niki914.zafiro.chat.agentic.python.PyToolExecutor
+import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
 import com.niki914.zafiro.chat.agentic.stream.LocalToolResultClassifier
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.tooling.ToolCallContext
@@ -23,32 +23,32 @@ import kotlinx.serialization.json.longOrNull
 /**
  * OKIA ToolExecutor 适配：把 Zafiro 本地工具（builtin + py）的执行接到
  * OKIA 工具循环。执行永不抛异常，总是产出 ToolCallOutcome（§5.5 契约）：
- * - 结果 JSON（BuiltinToolResult / PyToolExecutor 输出）按 "ok" 字段拆解
+ * - 结果 JSON（BuiltinToolResult / CustomPyToolExecutor 输出）按 "ok" 字段拆解
  *   Success / Failure；文本协议结果（TextResultBuiltinTool）经
  *   TextToolResultCodec 拆解
  * - onInterrupt：本地工具未被框架调用（okia §8.18 Q1），实现为 Interrupted
- * - pytools write 成功且 enabled 时：注册进 inline 表并回调 host
+ * - py_meta_tools write 成功且 enabled 时：注册进 inline 表并回调 host
  *   （D20 回合内注册：RealAgentLoop 每段现取 registry.snapshot()，同回合
  *   下一轮模型请求即可见新工具）
  * Design source: okia ToolExecutor 契约。
  */
 class LocalToolExecutor(
     private val builtinToolExecutor: BuiltinToolExecutor = BuiltinToolExecutor(),
-    private val pyToolExecutor: PyToolExecutor = PyToolExecutor(),
+    private val customPyToolExecutor: CustomPyToolExecutor = CustomPyToolExecutor(),
     private val currentTools: () -> ResolvedTools?,
-    private val inlinePyTools: MutableMap<String, LocalTool.Py> = mutableMapOf(),
-    private val onPyToolWritten: suspend (LocalTool.Py) -> Unit = {},
+    private val inlineCustomPyTools: MutableMap<String, LocalTool.Py> = mutableMapOf(),
+    private val onCustomPyToolWritten: suspend (LocalTool.Py) -> Unit = {},
 ) : ToolExecutor {
 
     private companion object {
         const val LOG_TAG = "niki914_nexus_LocalToolExecutor"
-        const val PYTOOLS_NAME = "pytools"
-        const val PY_TOOL_NAME_PATTERN = """^[a-z][a-z0-9_]{0,63}$"""
+        const val PY_META_TOOLS_NAME = "py_meta_tools"
+        const val CUSTOM_PY_TOOL_NAME_PATTERN = """^[a-z][a-z0-9_]{0,63}$"""
     }
 
     override suspend fun execute(call: ToolCallContext): ToolCallOutcome {
         val raw = executeLocal(name = call.name, argumentsJson = call.argumentsJson)
-        if (call.name == PYTOOLS_NAME) {
+        if (call.name == PY_META_TOOLS_NAME) {
             registerInlinePyIfWritten(call, raw)
         }
         return decodeOutcome(raw)
@@ -84,14 +84,14 @@ class LocalToolExecutor(
             }
         }
 
-        val pyTool = tools
-            ?.pyTools
+        val customPyTool = tools
+            ?.customPyTools
             .orEmpty()
             .filterIsInstance<LocalTool.Py>()
             .firstOrNull { it.name == name }
-            ?: inlinePyTools[name]
-        if (pyTool != null) {
-            return pyToolExecutor.execute(pyTool, argumentsJson).also { result ->
+            ?: inlineCustomPyTools[name]
+        if (customPyTool != null) {
+            return customPyToolExecutor.execute(customPyTool, argumentsJson).also { result ->
                 Logger.i(
                     LOG_TAG,
                     "local tool done name=$name kind=py resultLength=${result.length} " +
@@ -108,7 +108,7 @@ class LocalToolExecutor(
         return BuiltinToolResult.failure(
             code = "LOCAL_TOOL_NOT_EXECUTABLE",
             message = "Local tool '$name' is not executable in current runtime.",
-            hint = "Check builtin_tool_flags or py tools configuration.",
+            hint = "Check builtin_tool_flags or py_meta_tools configuration.",
         ).toJsonString()
     }
 
@@ -145,7 +145,7 @@ class LocalToolExecutor(
         return ToolCallOutcome.Success(content = raw)
     }
 
-    // ── pytools write 回合内注册（D20）────────────────────────────────
+    // ── py_meta_tools write 回合内注册（D20）────────────────────────────────
 
     private suspend fun registerInlinePyIfWritten(call: ToolCallContext, raw: String) {
         val result = try {
@@ -162,12 +162,12 @@ class LocalToolExecutor(
         }
         if (args["action"]?.jsonPrimitive?.contentOrNull != "write") return
         val name = data["name"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
-        if (!name.matches(Regex(PY_TOOL_NAME_PATTERN))) return
+        if (!name.matches(Regex(CUSTOM_PY_TOOL_NAME_PATTERN))) return
         val code = args["code"]?.jsonPrimitive?.contentOrNull.orEmpty()
         if (code.isBlank()) return
         val enabled = data["enabled"]?.jsonPrimitive?.booleanOrNull ?: true
         if (!enabled) {
-            inlinePyTools.remove(name)
+            inlineCustomPyTools.remove(name)
             return
         }
         val tool = LocalTool.Py(
@@ -177,15 +177,15 @@ class LocalToolExecutor(
             inputSchemaJson = data["schema_json"]?.jsonPrimitive?.contentOrNull,
             timeoutMs = data["timeout_ms"]?.jsonPrimitive?.longOrNull ?: 30_000L,
         )
-        inlinePyTools[name] = tool
+        inlineCustomPyTools[name] = tool
         // host 注册回调（LLMController → OkiaConfig.toolRegistry）
         try {
-            onPyToolWritten(tool)
+            onCustomPyToolWritten(tool)
         } catch (throwable: Throwable) {
             if (throwable is kotlinx.coroutines.CancellationException) throw throwable
             Logger.w(
                 LOG_TAG,
-                "onPyToolWritten failed name=$name error=${throwable.message}"
+                "onCustomPyToolWritten failed name=$name error=${throwable.message}"
             )
         }
     }

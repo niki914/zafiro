@@ -170,12 +170,20 @@ data class TakeoverRuleDetailPage(
         if (isCreating) null else TopBarActionSpec(Icons.Default.Delete)
 }
 
-data class PyToolDetailPage(
+data object CustomPyToolsPage : ZafiroPage {
+    override val routeKey: String = "custom-py-tools"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.custom_py_tool_page_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+}
+
+data class CustomPyToolDetailPage(
     val toolName: String,
     val toolIndex: Int,
     val isCreating: Boolean = false,
 ) : ZafiroPage {
-    override val routeKey: String = "py-tool-detail:$toolIndex:$toolName"
+    override val routeKey: String = "custom-py-tool-detail:$toolIndex:$toolName"
     override val titleSpec: PageTitleSpec = TextTitle(toolName)
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)

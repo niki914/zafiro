@@ -2,7 +2,8 @@ package com.niki914.zafiro.app.ui
 
 import androidx.compose.runtime.Composable
 import com.niki914.uikit.infra.nav.NavigationEntry
-import com.niki914.zafiro.app.ui.content.PyToolDetailContent
+import com.niki914.zafiro.app.ui.content.CustomPyToolDetailContent
+import com.niki914.zafiro.app.ui.content.CustomPyToolsSettingsContent
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.nav.ConfigurePage
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
@@ -18,7 +19,8 @@ import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsHomePage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
-import com.niki914.zafiro.app.ui.nav.PyToolDetailPage
+import com.niki914.zafiro.app.ui.nav.CustomPyToolDetailPage
+import com.niki914.zafiro.app.ui.nav.CustomPyToolsPage
 import com.niki914.zafiro.app.ui.nav.StartupPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
 import com.niki914.zafiro.app.ui.route.ConfigurePageRoute
@@ -133,7 +135,7 @@ fun ZafiroPageContent(
             onBack = onPop,
         )
 
-        is PyToolDetailPage -> PyToolDetailContent(
+        is CustomPyToolDetailPage -> CustomPyToolDetailContent(
             page = page,
             onBack = onPop,
         )
@@ -141,6 +143,13 @@ fun ZafiroPageContent(
         is BuiltinToolGroupDetailPage -> BuiltinToolGroupDetailRoute(
             page = page,
             onBack = onPop,
+            onPush = onPush,
+        )
+
+        CustomPyToolsPage -> CustomPyToolsSettingsContent(
+            onOpenToolDetail = { name, index, isCreating ->
+                onPush(CustomPyToolDetailPage(name, index, isCreating))
+            },
         )
     }
 }

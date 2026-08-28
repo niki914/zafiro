@@ -11,7 +11,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.niki914.zafiro.settings.model.RuntimePyTool as PyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
@@ -96,8 +96,8 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
-    fun pyToolsParseFieldsAndSkipInvalidEntries() {
-        val tools = ToolSettingsCodec.parsePyTools(
+    fun customPyToolsParseFieldsAndSkipInvalidEntries() {
+        val tools = ToolSettingsCodec.parseCustomPyTools(
             """
             {
               "tools": [
@@ -111,20 +111,20 @@ class SettingsDomainCodecsTest {
 
         assertEquals(
             listOf(
-                PyTool(name = "py_battery", code = "def main():\n    pass", description = "Battery",
+                CustomPyTool(name = "py_battery", code = "def main():\n    pass", description = "Battery",
                     schemaJson = "{\"type\":\"object\"}", enabled = true, timeoutMs = 45000),
-                PyTool(name = "py_disabled", code = "def main():\n    pass", enabled = false),
+                CustomPyTool(name = "py_disabled", code = "def main():\n    pass", enabled = false),
             ),
             tools,
         )
     }
 
     @Test
-    fun pyToolsEncodeRoundTrips() {
+    fun customPyToolsEncodeRoundTrips() {
         val tools = listOf(
-            PyTool(name = "py_battery", code = "def main():\n    pass", description = "Battery"),
+            CustomPyTool(name = "py_battery", code = "def main():\n    pass", description = "Battery"),
         )
-        assertEquals(tools, ToolSettingsCodec.parsePyTools(ToolSettingsCodec.encodePyTools(tools)))
+        assertEquals(tools, ToolSettingsCodec.parseCustomPyTools(ToolSettingsCodec.encodeCustomPyTools(tools)))
     }
 
     @Test
