@@ -5,6 +5,7 @@ import com.niki914.zafiro.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
+import com.niki914.zafiro.util.ToolOutputTruncator
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -58,7 +59,7 @@ Limits: timeout 30 s default, 120 s max; output capped at 50 KB.
     }
 
     private suspend fun execute(code: String, timeoutMs: Long): TextToolResult {
-        val decision = safetyPolicy.evaluate(code)
+        val decision = safetyPolicy.evaluate(code, toolName = name)
         if (!decision.allowed) {
             return TextToolResult.failure(
                 code = "COMMAND_BLOCKED",
@@ -91,13 +92,12 @@ Limits: timeout 30 s default, 120 s max; output capped at 50 KB.
         }
     }
 
-    private fun capOutput(output: String, maxBytes: Int = 50_000): String {
-        val bytes = output.encodeToByteArray()
-        if (bytes.size <= maxBytes) return output
-        val head = bytes.copyOf(maxBytes)
-        val suffix = "\n\n[output truncated at $maxBytes bytes]".encodeToByteArray()
-        return head.copyOf(maxBytes - suffix.size).decodeToString() +
-                suffix.decodeToString()
+    private fun capOutput(output: String, maxBytes: Int = ToolOutputTruncator.DEFAULT_MAX_BYTES): String {
+        val truncation = ToolOutputTruncator.truncateTail(output, maxBytes = maxBytes)
+        if (!truncation.truncated) return output
+        return truncation.content + "\n\n[Output truncated: showing last " +
+            truncation.content.count { it == '\n' } + " of " + truncation.totalLines +
+            " lines]"
     }
 
     private fun parseArgs(argumentsJson: String): ParseResult {

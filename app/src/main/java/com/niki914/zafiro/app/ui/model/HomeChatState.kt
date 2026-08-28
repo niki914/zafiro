@@ -170,7 +170,11 @@ internal interface HomeChatRuntime {
 
 private object LlmHomeChatRuntime : HomeChatRuntime {
     override fun stream(query: String): Flow<LlmStreamEvent> =
-        LLMController.stream(query, runBlocking { ContextProvider.await() })
+        LLMController.stream(
+            query = query,
+            context = runBlocking { ContextProvider.await() },
+            fromUserInterface = true,
+        )
 
     override suspend fun resetConversation() = LLMController.resetConversation()
     override suspend fun stopCurrentRound() =

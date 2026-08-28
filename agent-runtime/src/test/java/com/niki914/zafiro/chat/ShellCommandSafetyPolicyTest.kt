@@ -2,7 +2,11 @@ package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.settings.RuntimeEnvironment
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -23,7 +27,7 @@ class ShellCommandSafetyPolicyTest {
             FakeRuntimeSettingsGateway(executionRules = listOf(dangerousRule()))
         )
 
-        assertTrue(ShellCommandSafetyPolicy().evaluate("getprop ro.product.model").allowed)
+        assertTrue(ShellCommandSafetyPolicy().evaluate(command = "getprop ro.product.model", toolName = "terminal").allowed)
     }
 
     @Test
@@ -32,7 +36,7 @@ class ShellCommandSafetyPolicyTest {
             FakeRuntimeSettingsGateway(executionRules = listOf(dangerousRule()))
         )
 
-        val decision = ShellCommandSafetyPolicy().evaluate("rm -rf /data/local/tmp/cache")
+        val decision = ShellCommandSafetyPolicy().evaluate(command = "rm -rf /data/local/tmp/cache", toolName = "terminal")
 
         assertFalse(decision.allowed)
         assertEquals("RULE_BLOCKED", decision.code)
@@ -55,7 +59,7 @@ class ShellCommandSafetyPolicyTest {
             "rm -r --force /data/local/tmp/cache",
             "rm --recursive -f /data/local/tmp/cache",
         ).forEach { command ->
-            val decision = ShellCommandSafetyPolicy().evaluate(command)
+            val decision = ShellCommandSafetyPolicy().evaluate(command = command, toolName = "terminal")
 
             assertFalse(decision.allowed)
             assertEquals("RULE_BLOCKED", decision.code)
@@ -70,10 +74,10 @@ class ShellCommandSafetyPolicyTest {
         )
 
         assertFalse(
-            ShellCommandSafetyPolicy().evaluate("sh -c 'pm uninstall com.example.app'").allowed
+            ShellCommandSafetyPolicy().evaluate(command = "sh -c 'pm uninstall com.example.app'", toolName = "terminal").allowed
         )
         assertFalse(
-            ShellCommandSafetyPolicy().evaluate("eval 'cmd package uninstall com.example.app'").allowed
+            ShellCommandSafetyPolicy().evaluate(command = "eval 'cmd package uninstall com.example.app'", toolName = "terminal").allowed
         )
     }
 
@@ -89,12 +93,12 @@ class ShellCommandSafetyPolicyTest {
 
         assertTrue(
             ShellCommandSafetyPolicy(isUnlocked = { true })
-                .evaluate("rm -rf /data/local/tmp/cache")
+                .evaluate("rm -rf /data/local/tmp/cache", toolName = "terminal")
                 .allowed
         )
         assertFalse(
             ShellCommandSafetyPolicy(isUnlocked = { false })
-                .evaluate("rm -rf /data/local/tmp/cache")
+                .evaluate("rm -rf /data/local/tmp/cache", toolName = "terminal")
                 .allowed
         )
     }
@@ -114,7 +118,87 @@ class ShellCommandSafetyPolicyTest {
             )
         )
 
-        assertFalse(ShellCommandSafetyPolicy().evaluate("echo [broken").allowed)
+        assertFalse(ShellCommandSafetyPolicy().evaluate(command = "echo [broken", toolName = "terminal").allowed)
+    }
+
+    @Test
+    fun evaluate_confirmRuleDeniedWithoutUiChannel() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                executionRules = listOf(dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM))
+            )
+        )
+        ToolPermissionCoordinator.canRequestUserConfirmation = false
+
+        val decision = ShellCommandSafetyPolicy()
+            .evaluate("rm -rf /data/local/tmp/cache", toolName = "terminal")
+
+        assertFalse(decision.allowed)
+        assertEquals("CONFIRM_UNAVAILABLE", decision.code)
+        assertTrue(decision.reason.contains("cannot request permission"))
+    }
+
+    @Test
+    fun evaluate_confirmRuleDeniedByUser() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                executionRules = listOf(dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM))
+            )
+        )
+        ToolPermissionCoordinator.canRequestUserConfirmation = true
+
+        val evaluation = async {
+            ShellCommandSafetyPolicy().evaluate("rm -rf /data/local/tmp/cache", toolName = "terminal")
+        }
+        withTimeout(5_000) {
+            ToolPermissionCoordinator.pendingConfirmation.first { it != null }
+        }
+        ToolPermissionCoordinator.respond(
+            ToolPermissionCoordinator.pendingConfirmation.value?.id.orEmpty(),
+            allowed = false,
+        )
+
+        val decision = evaluation.await()
+        assertFalse(decision.allowed)
+        assertEquals("CONFIRM_DENIED", decision.code)
+        assertEquals("危险删改", decision.matchedRuleName)
+    }
+
+    @Test
+    fun evaluate_confirmRuleAllowedStillBlockedByLaterRule() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                executionRules = listOf(
+                    dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM),
+                    uninstallRule(),
+                )
+            )
+        )
+        ToolPermissionCoordinator.canRequestUserConfirmation = true
+
+        val evaluation = async {
+            ShellCommandSafetyPolicy().evaluate(
+                command = "rm -rf /data/local/tmp/cache; pm uninstall com.example.app",
+                toolName = "terminal",
+            )
+        }
+        withTimeout(5_000) {
+            ToolPermissionCoordinator.pendingConfirmation.first { it != null }
+        }
+        ToolPermissionCoordinator.respond(
+            ToolPermissionCoordinator.pendingConfirmation.value?.id.orEmpty(),
+            allowed = true,
+        )
+
+        val decision = evaluation.await()
+        assertFalse(decision.allowed)
+        assertEquals("RULE_BLOCKED", decision.code)
+        assertEquals("uninstall", decision.matchedRuleId)
+    }
+
+    @After
+    fun resetToolPermissionCoordinator() {
+        ToolPermissionCoordinator.canRequestUserConfirmation = false
     }
 
     private fun dangerousRule(

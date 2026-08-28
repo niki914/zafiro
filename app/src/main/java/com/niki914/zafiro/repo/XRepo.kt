@@ -1,6 +1,7 @@
 package com.niki914.zafiro.repo
 
 import android.content.Context
+import com.niki914.zafiro.app.R
 import com.niki914.logging.Logger
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
@@ -174,7 +175,7 @@ object XRepo {
                 context,
                 StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID,
                 MemorySettingsCodec.encodeMemories(
-                    LocalSettingsDefaults.defaultMemories,
+                    LocalSettingsDefaults.defaultMemories(context),
                     System.currentTimeMillis()
                 ),
             )
@@ -187,7 +188,10 @@ object XRepo {
                 context,
                 StoreDescriptorRegistry.TOOLS_PY_ID,
                 ToolSettingsCodec.encodeCustomPyTools(
-                    listOf(DEFAULT_WEB_SEARCH_TOOL, DEFAULT_LAUNCH_WECHAT_TOOL)
+                    listOf(
+                        seedWebSearchTool(context),
+                        seedLaunchWechatTool(context),
+                    )
                 ),
             )
             writeJsonLocked(
@@ -296,81 +300,27 @@ object XRepo {
         }
     }
 
-    // Seed custom py tool: web search via DuckDuckGo HTML endpoint. Code/schema are the
-    // reflection cache written by the same pipeline py_meta_tools write uses.
-    private val CODE_WEB_SEARCH = """
-        import json
-        import urllib.parse
-
-        import requests
-        from bs4 import BeautifulSoup
-
-
-        def main(query: str, max_results: int = 8):
-            '''Search the web with DuckDuckGo (HTML endpoint). Returns a list of {title, url, snippet}.'''
-            resp = requests.post(
-                "https://html.duckduckgo.com/html/",
-                data={"q": query},
-                headers={"User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36"},
-                timeout=15,
-            )
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "html.parser")
-            results = []
-            for item in soup.select("div.result.results_links")[: max_results]:
-                link = item.select_one("a.result__a")
-                if link is None:
-                    continue
-                title = link.get_text(strip=True)
-                url = _clean_url(link.get("href", ""))
-                snippet_el = item.select_one("td.result__snippet") or item.select_one(".result__snippet")
-                snippet = snippet_el.get_text(strip=True) if snippet_el else ""
-                if title and url:
-                    results.append({"title": title, "url": url, "snippet": snippet})
-            print(json.dumps(results, ensure_ascii=False))
-
-
-        def _clean_url(href: str) -> str:
-            if href.startswith("//duckduckgo.com/l/") or href.startswith("https://duckduckgo.com/l/"):
-                parsed = urllib.parse.urlparse(href if href.startswith("http") else "https:" + href)
-                target = urllib.parse.parse_qs(parsed.query).get("uddg", [""])[0]
-                return urllib.parse.unquote(target)
-            return href
-        """.trimIndent()
-
     private val SCHEMA_WEB_SEARCH =
-        """{"type":"object","properties":{"query":{"type":"string"},"max_results":{"type":"integer","description":"default: 8"}},"required":["query"]}"""
+        """{"type":"object","properties":{"query":{"type":"string"},"engine":{"type":"string","enum":["all","baidu","sogou","ddg"],"description":"search engine; \"all\" (default) merges Baidu + Sogou + DuckDuckGo"},"max_results":{"type":"integer","description":"default: 8"}},"required":["query"]}"""
 
-    private val DEFAULT_WEB_SEARCH_TOOL = CustomPyTool(
+    // Seed custom py tools: code lives in res/raw，此处只负责组装。
+    private fun seedWebSearchTool(context: Context) = CustomPyTool(
         name = "py_web_search",
-        description = "Search the web with DuckDuckGo. Returns a list of {title, url, snippet}.",
+        description = "Search the web (default: multi-engine merge of Baidu + Sogou + DuckDuckGo; or engine=baidu/sogou/ddg). Returns a list of {title, url, snippet}.",
         schemaJson = SCHEMA_WEB_SEARCH,
-        code = CODE_WEB_SEARCH,
+        code = readRawResource(context, R.raw.seed_py_web_search),
     )
 
-    // 复活自旧 CustomTool launch_wechat（am start -n com.tencent.mm/...）
-    private val CODE_LAUNCH_WECHAT = """
-        import subprocess
-
-
-        def main():
-            '''启动微信 (Launch WeChat).'''
-            result = subprocess.run(
-                ["am", "start", "-n", "com.tencent.mm/com.tencent.mm.ui.LauncherUI"],
-                capture_output=True, text=True, timeout=10,
-            )
-            if result.returncode != 0:
-                print(result.stderr.strip())
-                raise SystemExit(1)
-            print("WeChat launched.")
-        """.trimIndent()
-
-    private val DEFAULT_LAUNCH_WECHAT_TOOL = CustomPyTool(
+    private fun seedLaunchWechatTool(context: Context) = CustomPyTool(
         name = "py_launch_wechat",
         description = "启动微信 (Launch WeChat).",
         schemaJson = """{"type":"object","properties":{},"required":[]}""",
-        code = CODE_LAUNCH_WECHAT,
+        code = readRawResource(context, R.raw.seed_py_launch_wechat),
     )
+
+    private fun readRawResource(context: Context, rawId: Int): String {
+        return context.resources.openRawResource(rawId).bufferedReader().use { it.readText() }
+    }
 
     private fun defaultMainAgentProfile(nowMillis: Long): AgentProfile {
         return AgentProfile(
@@ -1060,7 +1010,7 @@ class CustomPyToolApi internal constructor(
         if (normalized.timeoutMs !in 1_000L..CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS) {
             return ToolValidation("timeout_ms", "Must be between 1000 and 120000.")
         }
-        val decision = safetyPolicy.evaluate(normalized.code)
+        val decision = safetyPolicy.evaluate(normalized.code, toolName = normalized.name)
         if (!decision.allowed) {
             return ToolValidation("code", decision.reason)
         }

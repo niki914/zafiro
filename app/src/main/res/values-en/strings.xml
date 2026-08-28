@@ -189,6 +189,14 @@
     <string name="execution_rules_enabled_mode_enabled">Always</string>
     <string name="execution_rules_enabled_mode_locked_only">When screen is locked</string>
     <string name="execution_rules_enabled_mode_disabled">Disabled</string>
+    <string name="execution_rules_enabled_mode_confirm">Ask me</string>
+    <string name="tool_permission_dialog_title">AI requests to run an operation</string>
+    <string name="tool_permission_request_intro">Tool "%1$s" wants to run the following command:</string>
+    <string name="tool_permission_matched_rule">Matched rule "%1$s"</string>
+    <string name="tool_permission_allow">Allow once</string>
+    <string name="tool_permission_deny">Deny</string>
+    <string name="tool_permission_notification_title">Zafiro is waiting for your confirmation</string>
+    <string name="tool_permission_notification_content">AI wants to run a blocked command: %1$s. Open the app to allow or deny.</string>
     <string name="execution_rules_field_patterns">Patterns</string>
     <string name="execution_rules_field_patterns_hint">For example: \brm\s+-rf\b</string>
     <string name="execution_rules_field_patterns_description">Enter one keyword or regular expression per line. The command is blocked as soon as any rule matches.</string>

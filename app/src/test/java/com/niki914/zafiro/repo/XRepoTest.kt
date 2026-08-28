@@ -1,7 +1,8 @@
 package com.niki914.zafiro.repo
 
+import android.app.Application
 import android.content.Context
-import android.content.ContextWrapper
+import androidx.test.core.app.ApplicationProvider
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.store.StoreDescriptorRegistry
 import kotlinx.coroutines.test.runTest
@@ -13,19 +14,22 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 
+@RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class)
 class XRepoTest {
     @get:Rule
     val silentLoggerRule = SilentLoggerRule()
 
-    private val context: Context = object : ContextWrapper(null) {
-        override fun getApplicationContext(): Context = this
-    }
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
     @After
     fun tearDown() {
@@ -54,7 +58,7 @@ class XRepoTest {
             LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID)),
         )
         assertEquals(
-            LocalSettingsDefaults.defaultMemories,
+            LocalSettingsDefaults.defaultMemories(context),
             MemorySettingsCodec.parseMemories(store.jsonFor(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)),
         )
         assertEquals(

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -93,6 +94,8 @@ private val BlockFlingScrollPropagation: NestedScrollConnection = object : Neste
 /** 命令型工具（精确匹配）：结果体为「命令单行 + 输出」上下分段样式。 */
 private val CommandToolNames = setOf("terminal", "execute_python")
 
+/** 结果文本型工具（精确匹配）：结果体为等宽结果文本（可选中、无复制按钮）。 */
+private val ResultTextToolNames = setOf("load_skill")
 /**
  * Stateless tool call list. Single-tool: renders one [CollapsibleBlock] directly.
  * Multi-tool: renders a header [CollapsibleBlock] (title = count) whose expansion
@@ -184,9 +187,10 @@ private fun SingleToolRow(
                     output = displayOutput(status).trim(),
                     isError = status.state == HomeToolState.Failed,
                 )
+            } else if (status.name in ResultTextToolNames && status.state != HomeToolState.Failed) {
+                ResultTextBody(text = displayOutput(status).trim())
             } else {
                 // 兕底：正文只显示本地化「成功 / 失败」，失败红色。
-                // load_skill 成功要展示文件路径，但路径未随结果链路传到 UI（待定），暂同兕底。
                 FallbackResultBody(isFailed = status.state == HomeToolState.Failed)
             }
         }
@@ -322,6 +326,31 @@ private fun FallbackResultBody(isFailed: Boolean) {
             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = BlockBodyAlpha)
         },
     )
+}
+
+/**
+ * 结果文本体：面板底色 + 等宽结果文本（如 load_skill 返回的 SKILL.md 内容，
+ * 超限截断时尾部含绝对路径提示）。复用 ToolResultText（已包 SelectionContainer，
+ * 文本可选中）；不带复制按钮。
+ */
+@Composable
+private fun ResultTextBody(text: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = CommandPanelPadX)
+            .padding(vertical = OutputPadY),
+    ) {
+        ToolResultText(
+            text = text,
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
 }
 
 /**

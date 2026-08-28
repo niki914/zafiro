@@ -97,7 +97,7 @@ class TerminalBuiltin(
     private suspend fun handleCommand(args: TerminalArgs): String {
         val command = args.requireCommand()
         val timeoutSec = args.resolveTimeout()
-        val decision = safetyPolicy.evaluate(command)
+        val decision = safetyPolicy.evaluate(command, toolName = name)
         if (!decision.allowed) {
             return TerminalToolResponse.policyBlocked(decision)
         }

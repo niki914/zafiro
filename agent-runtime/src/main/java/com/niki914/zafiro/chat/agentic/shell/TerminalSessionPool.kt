@@ -15,6 +15,7 @@ import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.logging.Logger
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stdoutText
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stderrText
+import com.niki914.zafiro.util.ToolOutputTruncator
 import com.niki914.xposed.api.util.ContextProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -923,7 +924,11 @@ object TerminalSessionPool {
     }
 
     private fun truncateOutput(text: String, maxBytes: Int): String {
-        return text.takeLast(maxBytes.coerceAtLeast(1))
+        val truncation = ToolOutputTruncator.truncateTail(text, maxBytes = maxBytes)
+        if (!truncation.truncated) return text
+        return truncation.content + "\n\n[Output truncated: showing last " +
+            truncation.content.count { it == '\n' } + " of " + truncation.totalLines +
+            " lines]"
     }
 
     private fun mergedOutput(result: CommandResult): String {
