@@ -15,6 +15,10 @@ android {
     namespace = "com.niki914.zafiro.app"
     compileSdk = 37
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     defaultConfig {
         applicationId = "com.niki914.zafiro"
         minSdk = 26
