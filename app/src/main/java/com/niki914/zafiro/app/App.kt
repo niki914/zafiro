@@ -51,6 +51,9 @@ class App : Application() {
             XRepo.skills.seedDefaults()
         }
         applicationScope.launch {
+            XRepo.seedPyTools()
+        }
+        applicationScope.launch {
             PyRuntime.warmUp()
         }
     }
