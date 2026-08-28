@@ -16,7 +16,7 @@ import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
-import com.niki914.uikit.infra.component.SettingsSegmentedSelector
+import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.ui.model.ExecutionRuleDeleteConfirmationState
 import com.niki914.zafiro.app.ui.model.ExecutionRuleFormState
@@ -132,6 +132,8 @@ private fun ExecutionRuleDetailContentBody(
     onPatternsInputChange: (String) -> Unit,
     onSave: () -> Unit,
 ) {
+    var showEnabledModeDialog by rememberSaveable { mutableStateOf(false) }
+
     EditableSettingsDetailFormScaffold(
         actionText = stringResource(R.string.execution_rules_save_action),
         requestedFocusField = requestedFocusField,
@@ -155,12 +157,12 @@ private fun ExecutionRuleDetailContentBody(
                 maxLines = 1,
             )
             SettingsItemDivider()
-            ExecutionRuleEnabledModeSection(
+            ExecutionRuleEnabledModeRow(
                 selectedMode = uiState.formState.enabledMode,
                 enabled = !uiState.isSaving,
-                onModeSelected = {
+                onClick = {
                     fieldController.clearActiveField()
-                    onEnabledModeChange(it)
+                    showEnabledModeDialog = true
                 },
             )
         }
@@ -181,21 +183,45 @@ private fun ExecutionRuleDetailContentBody(
             )
         }
     }
+
+    // 生效时机：单选弹窗（SplitButton 四选项文本放不下，回归 PRD §3）
+    val modeOptions = RuntimeExecutionRuleEnabledMode.entries.map { mode ->
+        ExecutionRuleModeOption(mode, stringResource(mode.labelRes()))
+    }
+    SingleChoiceLiquidDialog(
+        visible = showEnabledModeDialog,
+        onDismissRequest = { showEnabledModeDialog = false },
+        title = stringResource(R.string.execution_rules_field_enabled_mode),
+        options = modeOptions,
+        selectedId = uiState.formState.enabledMode.name,
+        optionId = ExecutionRuleModeOption::id,
+        optionLabel = ExecutionRuleModeOption::label,
+        onSelect = { option ->
+            showEnabledModeDialog = false
+            onEnabledModeChange(option.mode)
+        },
+    )
+}
+
+private data class ExecutionRuleModeOption(
+    val mode: RuntimeExecutionRuleEnabledMode,
+    val label: String,
+) {
+    val id: String get() = mode.name
 }
 
 @Composable
-private fun ExecutionRuleEnabledModeSection(
+private fun ExecutionRuleEnabledModeRow(
     selectedMode: RuntimeExecutionRuleEnabledMode,
-    onModeSelected: (RuntimeExecutionRuleEnabledMode) -> Unit,
+    onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
-    SettingsSegmentedSelector(
+    SettingsListItem(
         title = stringResource(R.string.execution_rules_field_enabled_mode),
-        options = RuntimeExecutionRuleEnabledMode.entries,
-        selected = selectedMode,
-        label = { option -> stringResource(option.labelRes()) },
-        onSelected = onModeSelected,
+        currentState = stringResource(selectedMode.labelRes()),
+        showChevron = true,
         enabled = enabled,
+        onClick = onClick,
     )
 }
 
@@ -224,6 +250,7 @@ private fun RuntimeExecutionRuleEnabledMode.labelRes(): Int {
         RuntimeExecutionRuleEnabledMode.ALWAYS -> R.string.execution_rules_enabled_mode_enabled
         RuntimeExecutionRuleEnabledMode.LOCKED_ONLY -> R.string.execution_rules_enabled_mode_locked_only
         RuntimeExecutionRuleEnabledMode.DISABLED -> R.string.execution_rules_enabled_mode_disabled
+        RuntimeExecutionRuleEnabledMode.CONFIRM -> R.string.execution_rules_enabled_mode_confirm
     }
 }
 

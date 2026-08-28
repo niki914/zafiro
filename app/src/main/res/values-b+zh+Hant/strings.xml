@@ -188,6 +188,14 @@
     <string name="execution_rules_enabled_mode_enabled">任何時候</string>
     <string name="execution_rules_enabled_mode_locked_only">鎖定畫面時</string>
     <string name="execution_rules_enabled_mode_disabled">停用</string>
+    <string name="execution_rules_enabled_mode_confirm">詢問我</string>
+    <string name="tool_permission_dialog_title">AI 請求執行操作</string>
+    <string name="tool_permission_request_intro">工具「%1$s」請求執行以下命令：</string>
+    <string name="tool_permission_matched_rule">命中規則「%1$s」</string>
+    <string name="tool_permission_allow">允許本次</string>
+    <string name="tool_permission_deny">拒絕</string>
+    <string name="tool_permission_notification_title">Zafiro 正在等待你的確認</string>
+    <string name="tool_permission_notification_content">AI 請求執行被攔截的命令：%1$s。開啟應用程式以允許或拒絕。</string>
     <string name="execution_rules_field_patterns">比對規則</string>
     <string name="execution_rules_field_patterns_hint">例如：\brm\s+-rf\b</string>
     <string name="execution_rules_field_patterns_description">每行輸入一個關鍵字或正則表達式，只要符合其中一項，便會攔截該指令。</string>

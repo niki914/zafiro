@@ -58,7 +58,7 @@ Limits: timeout 30 s default, 120 s max; output capped at 50 KB.
     }
 
     private suspend fun execute(code: String, timeoutMs: Long): TextToolResult {
-        val decision = safetyPolicy.evaluate(code)
+        val decision = safetyPolicy.evaluate(code, toolName = name)
         if (!decision.allowed) {
             return TextToolResult.failure(
                 code = "COMMAND_BLOCKED",

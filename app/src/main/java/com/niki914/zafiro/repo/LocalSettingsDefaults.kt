@@ -17,29 +17,26 @@ internal object LocalSettingsDefaults {
 
     val defaultExecutionRules = listOf(
         RuntimeExecutionRule(
-            id = "builtin-dangerous-delete",
-            name = "危险删改",
-            enabledMode = RuntimeExecutionRuleEnabledMode.LOCKED_ONLY,
+            id = "builtin-dangerous",
+            name = "高危操作",
+            enabledMode = RuntimeExecutionRuleEnabledMode.CONFIRM,
             patterns = listOf(
+                // 危险删改
                 "\\brm\\s+-rf\\b",
                 "\\brm\\s+-(?=[^\\s]*r)(?=[^\\s]*f)[^\\s]*\\b",
                 "\\brm\\s+-r\\s+-f\\b",
                 "\\brm\\s+(?=[^\\n]*--recursive\\b)(?=[^\\n]*--force\\b)[^\\n]*",
                 "\\brm\\s+(?=[^\\n]*-(?:[^\\s-]*r[^\\s-]*|-[^-\\s]*recursive)\\b)(?=[^\\n]*-(?:[^\\s-]*f[^\\s-]*|-[^-\\s]*force)\\b)[^\\n]*",
                 "\\bmkfs\\b",
+                // 卸载相关
+                "\\bpm\\s+uninstall\\b",
+                "\\bcmd\\s+package\\s+uninstall\\b",
+                // 高危提权
+                "\\bsu\\b",
+                "\\bsetprop\\b",
+                "\\bdd\\b",
+                "\\breboot\\b",
             ),
-        ),
-        RuntimeExecutionRule(
-            id = "builtin-uninstall",
-            name = "卸载相关",
-            enabledMode = RuntimeExecutionRuleEnabledMode.ALWAYS,
-            patterns = listOf("\\bpm\\s+uninstall\\b", "\\bcmd\\s+package\\s+uninstall\\b"),
-        ),
-        RuntimeExecutionRule(
-            id = "builtin-privileged",
-            name = "高危提权",
-            enabledMode = RuntimeExecutionRuleEnabledMode.ALWAYS,
-            patterns = listOf("\\bsu\\b", "\\bsetprop\\b", "\\bdd\\b", "\\breboot\\b"),
         ),
     )
 }

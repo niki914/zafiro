@@ -7,6 +7,7 @@ import com.niki914.zafiro.chat.agentic.LocalToolExecutor
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.chat.agentic.stream.LlmStreamEventMapper
 import com.niki914.zafiro.R
 import com.niki914.zafiro.settings.RuntimeEnvironment
@@ -297,7 +298,13 @@ object LLMController {
     suspend fun historySnapshot(): List<Message> =
         okia?.conversation?.value?.history?.map { it.message }.orEmpty()
 
-    fun stream(query: String, context: Context): Flow<LlmStreamEvent> = channelFlow {
+    fun stream(
+        query: String,
+        context: Context,
+        fromUserInterface: Boolean = false,
+    ): Flow<LlmStreamEvent> = channelFlow {
+        // 确认型执行规则按来源区分：UI 直连可弹窗；宿主路径默认拒绝（英文错误回给 Agent）
+        ToolPermissionCoordinator.canRequestUserConfirmation = fromUserInterface
         val defaultErrorMessage = context.getString(R.string.error_llm_request_failed)
         try {
             val state = try {

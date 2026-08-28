@@ -96,6 +96,9 @@ enum class RuntimeExecutionRuleEnabledMode {
     ALWAYS,
     LOCKED_ONLY,
     DISABLED,
+
+    /** 命中后挂起等待用户确认；无确认渠道（宿主路径）时拒绝。 */
+    CONFIRM,
 }
 
 data class RuntimeExecutionRule(

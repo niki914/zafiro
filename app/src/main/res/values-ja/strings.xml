@@ -188,6 +188,14 @@
     <string name="execution_rules_enabled_mode_enabled">常時</string>
     <string name="execution_rules_enabled_mode_locked_only">画面ロック時のみ</string>
     <string name="execution_rules_enabled_mode_disabled">無効</string>
+    <string name="execution_rules_enabled_mode_confirm">確認を求める</string>
+    <string name="tool_permission_dialog_title">AI が操作の実行を要求しています</string>
+    <string name="tool_permission_request_intro">ツール「%1$s」が次のコマンドの実行を要求しています：</string>
+    <string name="tool_permission_matched_rule">一致したルール「%1$s」</string>
+    <string name="tool_permission_allow">今回のみ許可</string>
+    <string name="tool_permission_deny">拒否</string>
+    <string name="tool_permission_notification_title">Zafiro が確認を待っています</string>
+    <string name="tool_permission_notification_content">AI がブロックされたコマンドの実行を要求しています：%1$s。アプリを開いて許可または拒否してください。</string>
     <string name="execution_rules_field_patterns">ルール</string>
     <string name="execution_rules_field_patterns_hint">例：\brm\s+-rf\b</string>
     <string name="execution_rules_field_patterns_description">1行につき1つのキーワードまたは正規表現を入力します。いずれかにマッチした場合、そのコマンドをブロックします。</string>

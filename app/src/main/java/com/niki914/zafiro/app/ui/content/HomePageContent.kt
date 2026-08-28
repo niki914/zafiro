@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -44,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -55,11 +57,16 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
+import com.niki914.uikit.infra.LiquidDialog
+import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.liquidScreenTopPadding
@@ -78,7 +85,9 @@ import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.repo.UpdateCheckHolder
+import com.niki914.store.XIpcBridge
 import com.niki914.uikit.base.BaseTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -308,6 +317,90 @@ fun HomePageContent(
         },
         onNegativeClick = { UpdateCheckHolder.dismiss() },
         dismissOnBackgroundTap = false,
+    )
+
+    ToolPermissionDialog()
+}
+
+/**
+ * CONFIRM 型执行规则的用户确认对话框（永不超时，PRD §3）。
+ * 后台时改为发一条纯通知（无决策入口），点通知回主 App 决策。
+ */
+@Composable
+private fun ToolPermissionDialog() {
+    val context = LocalContext.current
+    val pending by ToolPermissionCoordinator.pendingConfirmation.collectAsState()
+
+    // 纯通知：仅告知有请求在等待，决策必须在应用内完成
+    LaunchedEffect(pending?.id) {
+        val request = pending ?: return@LaunchedEffect
+        if (MainActivity.isResumed) return@LaunchedEffect
+        val command = request.command.let { if (it.length > 80) it.take(80) + "…" else it }
+        XIpcBridge.postNotification(
+            context = context,
+            title = context.getString(R.string.tool_permission_notification_title),
+            content = context.getString(R.string.tool_permission_notification_content, command),
+            uri = null,
+            client = null,
+        )
+    }
+
+    val request = pending ?: return
+    LiquidDialog(
+        visible = true,
+        onDismissRequest = { ToolPermissionCoordinator.respond(request.id, allowed = false) },
+        dismissOnBackgroundTap = false,
+        title = {
+            Text(
+                text = stringResource(R.string.tool_permission_dialog_title),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = stringResource(R.string.tool_permission_request_intro, request.toolName),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = request.command,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 10,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .padding(10.dp),
+                )
+                Text(
+                    text = stringResource(R.string.tool_permission_matched_rule, request.matchedRuleName),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        actions = {
+            MaterialTintLiquidButton(
+                text = stringResource(R.string.tool_permission_deny),
+                onClick = { ToolPermissionCoordinator.respond(request.id, allowed = false) },
+                modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            )
+            MaterialTintLiquidButton(
+                text = stringResource(R.string.tool_permission_allow),
+                onClick = { ToolPermissionCoordinator.respond(request.id, allowed = true) },
+                modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            )
+        },
     )
 }
 

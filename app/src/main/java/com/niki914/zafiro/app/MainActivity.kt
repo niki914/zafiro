@@ -51,4 +51,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        isResumed = true
+    }
+
+    override fun onPause() {
+        super.onPause()
+        isResumed = false
+    }
+
+    companion object {
+
+        /** 前后台标记：确认请求在后台时改为发通知（纯通知，无决策入口）。 */
+        @Volatile
+        var isResumed: Boolean = false
+            private set
+    }
 }

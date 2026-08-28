@@ -21,7 +21,7 @@ class ShellCommandSafetyPolicy(
     },
     private val isUnlocked: suspend () -> Boolean = { LockState.isUnlocked() },
 ) {
-    suspend fun evaluate(command: String): ShellCommandPolicyDecision {
+    suspend fun evaluate(command: String, toolName: String): ShellCommandPolicyDecision {
         val rules = listExecutionRules()
         if (rules.isEmpty()) {
             return ShellCommandPolicyDecision(allowed = true)
@@ -32,31 +32,59 @@ class ShellCommandSafetyPolicy(
             true
         }
         val candidates = command.matchCandidates()
-        rules.asSequence()
-            .filter { it.isActive(unlocked) }
-            .forEach { rule ->
-                rule.patterns.asSequence()
-                    .map(String::trim)
-                    .filter(String::isNotBlank)
-                    .forEach { pattern ->
-                        if (candidates.any { candidate ->
-                                TextPatternMatcher.matches(
-                                    candidate,
-                                    pattern
-                                )
-                            }) {
-                            return ShellCommandPolicyDecision(
-                                allowed = false,
-                                code = "RULE_BLOCKED",
-                                reason = "Command blocked by execution rule '${rule.name}' with pattern '$pattern'.",
-                                matchedRuleId = rule.id,
-                                matchedRuleName = rule.name,
-                                matchedPattern = pattern,
-                            )
-                        }
+        for (rule in rules.filter { it.isActive(unlocked) }) {
+            val pattern = rule.patterns.asSequence()
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .firstOrNull { pattern ->
+                    candidates.any { candidate ->
+                        TextPatternMatcher.matches(
+                            candidate,
+                            pattern
+                        )
                     }
+                }
+                ?: continue
+            val blocked = ShellCommandPolicyDecision(
+                allowed = false,
+                code = "RULE_BLOCKED",
+                reason = "Command blocked by execution rule '${rule.name}' with pattern '$pattern'.",
+                matchedRuleId = rule.id,
+                matchedRuleName = rule.name,
+                matchedPattern = pattern,
+            )
+            when (rule.enabledMode) {
+                ExecutionRuleEnabledMode.ALWAYS, ExecutionRuleEnabledMode.LOCKED_ONLY -> return blocked
+                ExecutionRuleEnabledMode.DISABLED -> {}
+                ExecutionRuleEnabledMode.CONFIRM -> when (
+                    ToolPermissionCoordinator.confirm(blocked.toConfirmationRequest(command, toolName))
+                ) {
+                    ToolPermissionResponse.ALLOWED -> continue
+                    ToolPermissionResponse.DENIED_BY_USER -> return blocked.copy(
+                        code = "CONFIRM_DENIED",
+                        reason = "The user denied this operation.",
+                    )
+                    ToolPermissionResponse.DENIED_UNAVAILABLE -> return blocked.copy(
+                        code = "CONFIRM_UNAVAILABLE",
+                        reason = "Tool execution requires user confirmation, but this session " +
+                            "cannot request permission from the user. The operation was denied.",
+                    )
+                }
             }
+        }
         return ShellCommandPolicyDecision(allowed = true)
+    }
+
+    private fun ShellCommandPolicyDecision.toConfirmationRequest(
+        command: String,
+        toolName: String,
+    ): ToolPermissionRequest {
+        return ToolPermissionRequest(
+            id = java.util.UUID.randomUUID().toString(),
+            toolName = toolName,
+            command = command,
+            matchedRuleName = matchedRuleName.orEmpty(),
+        )
     }
 
     private fun String.shellLikeTokens(): List<String> {
@@ -163,7 +191,7 @@ class ShellCommandSafetyPolicy(
 
     private fun ExecutionRule.isActive(unlocked: Boolean): Boolean {
         return when (enabledMode) {
-            ExecutionRuleEnabledMode.ALWAYS -> true
+            ExecutionRuleEnabledMode.ALWAYS, ExecutionRuleEnabledMode.CONFIRM -> true
             ExecutionRuleEnabledMode.LOCKED_ONLY -> !unlocked
             ExecutionRuleEnabledMode.DISABLED -> false
         }

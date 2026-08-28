@@ -189,6 +189,14 @@
     <string name="execution_rules_enabled_mode_enabled">Siempre</string>
     <string name="execution_rules_enabled_mode_locked_only">Solo con pantalla bloqueada</string>
     <string name="execution_rules_enabled_mode_disabled">Desactivado</string>
+    <string name="execution_rules_enabled_mode_confirm">Preguntarme</string>
+    <string name="tool_permission_dialog_title">La IA solicita ejecutar una operación</string>
+    <string name="tool_permission_request_intro">La herramienta "%1$s" solicita ejecutar el siguiente comando:</string>
+    <string name="tool_permission_matched_rule">Regla alcanzada: "%1$s"</string>
+    <string name="tool_permission_allow">Permitir una vez</string>
+    <string name="tool_permission_deny">Denegar</string>
+    <string name="tool_permission_notification_title">Zafiro espera tu confirmación</string>
+    <string name="tool_permission_notification_content">La IA solicita ejecutar un comando bloqueado: %1$s. Abre la aplicación para permitirlo o denegarlo.</string>
     <string name="execution_rules_field_patterns">Reglas</string>
     <string name="execution_rules_field_patterns_hint">Ejemplo: \brm\s+-rf\b</string>
     <string name="execution_rules_field_patterns_description">Introduzca una palabra clave o expresión regular por línea. El comando se interceptará si coincide con cualquiera de ellas.</string>

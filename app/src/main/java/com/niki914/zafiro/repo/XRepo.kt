@@ -987,7 +987,7 @@ class CustomPyToolApi internal constructor(
         if (normalized.timeoutMs !in 1_000L..CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS) {
             return ToolValidation("timeout_ms", "Must be between 1000 and 120000.")
         }
-        val decision = safetyPolicy.evaluate(normalized.code)
+        val decision = safetyPolicy.evaluate(normalized.code, toolName = normalized.name)
         if (!decision.allowed) {
             return ToolValidation("code", decision.reason)
         }

@@ -137,7 +137,7 @@ Store the result of a run by printing from main; stdout is returned.
                 fieldErrors = mapOf("name" to "reserved"),
             )
         }
-        safetyPolicy.evaluate(code).takeIf { !it.allowed }?.let { decision ->
+        safetyPolicy.evaluate(code, toolName = name).takeIf { !it.allowed }?.let { decision ->
             return BuiltinToolResult.failure(
                 code = "COMMAND_BLOCKED",
                 message = decision.reason.ifBlank { "Code blocked by safety policy." },
@@ -201,7 +201,7 @@ Store the result of a run by printing from main; stdout is returned.
                     message = "Provide either 'code' (draft test) or 'name' (existing tool), not both.",
                 )
             }
-            safetyPolicy.evaluate(draftCode).takeIf { !it.allowed }?.let { decision ->
+            safetyPolicy.evaluate(draftCode, toolName = name).takeIf { !it.allowed }?.let { decision ->
                 return BuiltinToolResult.failure(
                     code = "COMMAND_BLOCKED",
                     message = decision.reason.ifBlank { "Code blocked by safety policy." },
