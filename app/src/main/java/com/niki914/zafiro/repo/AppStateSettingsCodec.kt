@@ -14,11 +14,11 @@ internal data class AppStateSettings(
     /** BCP-47 tag；空串 = 跟随系统语言。 */
     val languageTag: String = "",
     /** 冷启动是否恢复上次会话；false = 默认进入新对话。 */
-    val loadLastConversationOnStartup: Boolean = false,
+    val loadLastConversationOnStartup: Boolean = true,
     /** 主题深浅色模式；system/light/dark。 */
-    val themeMode: String = "system",
+    val themeMode: String = "dark",
     /** 主题种子色 ARGB hex；空串 = 跟随壁纸动态色。 */
-    val themeSeedColor: String = "",
+    val themeSeedColor: String = "FF52DBC9",
 )
 
 internal object AppStateSettingsCodec {
@@ -32,10 +32,10 @@ internal object AppStateSettingsCodec {
             languageTag = root.string(LANGUAGE_TAG_KEY),
             loadLastConversationOnStartup = root.boolean(
                 LOAD_LAST_CONVERSATION_KEY,
-                default = false
+                default = true
             ),
-            themeMode = root.string(THEME_MODE_KEY).ifBlank { "system" },
-            themeSeedColor = root.string(THEME_SEED_COLOR_KEY),
+            themeMode = root.string(THEME_MODE_KEY).ifBlank { "dark" },
+            themeSeedColor = root.string(THEME_SEED_COLOR_KEY).ifBlank { "FF52DBC9" },
         )
     }
 

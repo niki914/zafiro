@@ -20,9 +20,9 @@ enum class ThemeMode(val storageKey: String) {
 
 /** 主题偏好：深浅色模式 + 种子色（空 = 跟随壁纸动态色）。 */
 data class ThemePrefs(
-    val mode: ThemeMode = ThemeMode.System,
+    val mode: ThemeMode = ThemeMode.Dark,
     /** ARGB int；null = 壁纸动态色。 */
-    val seedColor: Int? = null,
+    val seedColor: Int? = 0xFF52DBC9.toInt(),
 ) {
     fun resolveDarkTheme(systemDark: Boolean): Boolean = when (mode) {
         ThemeMode.System -> systemDark
