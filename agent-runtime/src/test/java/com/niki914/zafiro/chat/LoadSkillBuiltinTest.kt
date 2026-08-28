@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -34,6 +35,52 @@ class LoadSkillBuiltinTest {
 
         assertEquals(TextToolResult.Status.Success, result.status)
         assertEquals("Skill content A", result.payload)
+    }
+
+    @Test
+    fun invoke_overLineLimit_truncatesAndAppendsPath() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                loadedSkills = mapOf(
+                    "skill-a" to loadedSkill(
+                        "skill-a",
+                        content = (1..2500).joinToString("\n") { "line $it" },
+                    )
+                )
+            )
+        )
+
+        val result = invokeAndDecode("""{"id":"skill-a"}""")
+
+        assertEquals(TextToolResult.Status.Success, result.status)
+        assertTrue(result.payload.contains("/private/skill-a/SKILL.md"))
+        assertTrue(result.payload.contains("[Content truncated:"))
+        assertTrue(result.payload.contains("line 1"))
+        assertTrue(result.payload.contains("line 2000"))
+        assertFalse(result.payload.contains("line 2001"))
+    }
+
+    @Test
+    fun invoke_overByteLimit_truncatesAndAppendsPath() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                loadedSkills = mapOf(
+                    "skill-a" to loadedSkill(
+                        "skill-a",
+                        // 总字节 > 50KB（每行 300 字节 × 200 行），行数未超限
+                        content = (1..200).joinToString("\n") { "line $it " + "x".repeat(290) },
+                    )
+                )
+            )
+        )
+
+        val result = invokeAndDecode("""{"id":"skill-a"}""")
+
+        assertEquals(TextToolResult.Status.Success, result.status)
+        assertTrue(result.payload.contains("/private/skill-a/SKILL.md"))
+        assertTrue(result.payload.contains("[Content truncated:"))
+        assertTrue(result.payload.contains("line 1"))
+        assertFalse(result.payload.contains("line 200"))
     }
 
     @Test
@@ -120,6 +167,7 @@ class LoadSkillBuiltinTest {
     private fun loadedSkill(
         id: String,
         enabled: Boolean = true,
+        content: String = "Skill content A",
     ): RuntimeLoadedSkill {
         return RuntimeLoadedSkill(
             id = id,
@@ -128,7 +176,7 @@ class LoadSkillBuiltinTest {
             relativePath = "$id/SKILL.md",
             absolutePath = "/private/$id/SKILL.md",
             absoluteDir = "/private/$id",
-            content = "Skill content A",
+            content = content,
             enabled = enabled,
         )
     }

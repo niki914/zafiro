@@ -198,6 +198,9 @@ class PromptComposer {
                 "Load the skill even if you think you could handle the task with basic " +
                 "tools. Skills also encode the user's preferred approach, conventions, " +
                 "and quality standards — load them even for tasks you already know how " +
-                "to do, because the skill defines how it should be done here."
+                "to do, because the skill defines how it should be done here.\n" +
+                "load_skill returns the skill's SKILL.md content; if it exceeds the limit, " +
+                "the result ends with the absolute path to the file — use terminal to read " +
+                "the full content from there."
     }
 }

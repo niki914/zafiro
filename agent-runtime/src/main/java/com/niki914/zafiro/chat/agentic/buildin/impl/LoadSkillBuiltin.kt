@@ -5,6 +5,7 @@ import com.niki914.zafiro.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
+import com.niki914.zafiro.util.ToolOutputTruncator
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -16,7 +17,9 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
     override val name: String = "load_skill"
 
     override val description: String =
-        "Load a Zafiro skill by id when its full SKILL.md content is needed."
+        "Load a Zafiro skill by id. Returns the skill's SKILL.md content; if it exceeds " +
+            "the limit, the result ends with the absolute path to the file — use terminal " +
+            "to read the full content from there."
 
     override val defaultEnabled: Boolean = true
 
@@ -56,7 +59,9 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
                         "Use an enabled id from the available_skills prompt block.",
                 )
             }
-            TextToolResult.success(skill.content)
+            TextToolResult.success(
+                truncateSkillContent(skill.content, skill.absolutePath)
+            )
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {
                 throw throwable
@@ -85,6 +90,21 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
 
     private fun JsonObject.stringOrNull(key: String): String? {
         return (this[key] as? JsonPrimitive)?.contentOrNull
+    }
+
+    /**
+     * 双限制（2000 行 / 50KB）head 截断（对齐 ToolOutputTruncator），截断时
+     * 在内容尾部附绝对路径提示，模型可用 terminal 自取全量。
+     */
+    private fun truncateSkillContent(content: String, absolutePath: String): String {
+        val truncation = ToolOutputTruncator.truncateHead(content)
+        if (!truncation.truncated) return content
+        return buildString {
+            append(truncation.content)
+            append("\n\n[Content truncated: full SKILL.md is at ")
+            append(absolutePath)
+            append(" — use terminal to read it.]")
+        }
     }
 
     private sealed interface SkillIdParseResult {
