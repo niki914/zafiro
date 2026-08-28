@@ -297,8 +297,8 @@ fun LiquidScreen(
                         text = title,
                         modifier = Modifier.fillMaxWidth(),
                         style = TextStyle(
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = if (isDarkTheme) Color.White else Color.Black
                         ),
                         textAlign = TextAlign.Center,
