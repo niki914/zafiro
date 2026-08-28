@@ -2,10 +2,15 @@ package com.niki914.zafiro.app.ui.content
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -29,6 +34,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -58,6 +65,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,6 +94,7 @@ import com.niki914.zafiro.app.ui.model.HomeChatViewModel
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
+import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline
 import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
@@ -139,20 +148,31 @@ fun HomePageContent(
     val navigationBottom = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
     var isComposerFocused by remember { mutableStateOf(false) }
     val effectiveImeBottom = if (isComposerFocused) imeBottom else 0.dp
-    val composerBottomPadding = (effectiveImeBottom + 12.dp).coerceAtLeast(navigationBottom + 20.dp)
+    // 统一视觉底间距：键盘关闭时与 composer 底距一致，不随 ime 放大——键盘打开时
+    // 额外空间全部由 composerBottomPadding 提供，箭头/消息的呼吸空间保持固定
+    val composerGap = navigationBottom + 20.dp
+    val composerBottomPadding = (effectiveImeBottom + 12.dp).coerceAtLeast(composerGap)
+    // composer 实测高度（默认 68dp = LiquidChatComposer 的 minHeight），首帧布局后回填
+    val composerHeight = remember { mutableStateOf(68.dp) }
     val bottomThresholdPx = with(density) { 24.dp.roundToPx() }
     val lastTurn = uiState.turns.lastOrNull()
+    // 贴底由「滚动位置 + contentPadding」共同决定：composer 几何（ime 动画、多行输入
+    // 长高）变化时 padding 跟着变，也必须重新贴底，否则最后一条消息被 composer 遮住
     val bottomContentVersion = remember(
         uiState.turns.size,
         uiState.streamEventCount,
         lastTurn?.id,
         lastTurn?.blocks?.size,
+        composerBottomPadding,
+        composerHeight.value,
     ) {
         listOf(
             uiState.turns.size,
             uiState.streamEventCount,
             lastTurn?.id,
             lastTurn?.blocks?.size,
+            composerBottomPadding,
+            composerHeight.value,
         )
     }
     val isAtBottom by remember(listState, bottomThresholdPx) {
@@ -165,11 +185,12 @@ fun HomePageContent(
                     lastVisibleItem.offset + lastVisibleItem.size <= viewportEnd + bottomThresholdPx
         }
     }
-    var shouldFollowBottom by rememberScrollFollowState(
+    val shouldFollowBottomState = rememberScrollFollowState(
         interactionSource = listState.interactionSource,
         isScrollInProgress = { listState.isScrollInProgress },
         isAtEnd = { isAtBottom },
     )
+    var shouldFollowBottom by shouldFollowBottomState
     val dismissInputFocus = remember(focusManager, keyboardController) {
         {
             keyboardController?.hide()
@@ -256,7 +277,11 @@ fun HomePageContent(
         uiState = uiState,
         listState = listState,
         composerBottomPadding = composerBottomPadding,
+        composerGap = composerGap,
+        composerHeight = composerHeight,
         composerFocusRequester = composerFocusRequester,
+        followBottom = shouldFollowBottomState,
+        isAtBottom = isAtBottom,
         onContentTap = dismissInputFocus,
         onInputChange = { value ->
             viewModel.sendIntent(HomeChatIntent.InputChanged(value))
@@ -410,7 +435,11 @@ private fun HomePageContentBody(
     uiState: HomeChatUiState,
     listState: LazyListState,
     composerBottomPadding: Dp,
+    composerGap: Dp,
+    composerHeight: MutableState<Dp>,
     composerFocusRequester: FocusRequester,
+    followBottom: MutableState<Boolean>,
+    isAtBottom: Boolean,
     onContentTap: () -> Unit,
     onInputChange: (String) -> Unit,
     onSendClick: () -> Unit,
@@ -429,6 +458,23 @@ private fun HomePageContentBody(
     activeThinkingKey: String? = null,
     onToggleActionRow: (Long, ActionSource) -> Unit,
 ) {
+    // 流式打字机时钟：整个 Home 持有一个（同一时刻只有最后一条回答在流式），
+    // 进度提升到列表层，流式 item 滚出视口被销毁后滑回，打字进度不重播。
+    val revealTimeline = remember { RevealTimeline() }
+    val streamingReveal = if (uiState.isGenerating) revealTimeline else null
+    LaunchedEffect(revealTimeline) {
+        revealTimeline.run()
+    }
+    LaunchedEffect(uiState.isGenerating, uiState.turns.lastOrNull()?.id) {
+        if (uiState.isGenerating) revealTimeline.reset()
+    }
+
+    // 底部避让总高：composer 底距 + 实测高度 + 统一视觉间距。列表贴底留白与箭头
+    // 位置同源；键盘关闭时（composerBottomPadding == composerGap）即为
+    // composerBottomPadding*2 + composerHeight，composer 顶上方留一个视觉间距
+    val bottomClearance = composerBottomPadding + composerHeight.value + composerGap
+    val density = LocalDensity.current
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -446,7 +492,7 @@ private fun HomePageContentBody(
                 start = 20.dp,
                 top = liquidScreenTopPadding(24.dp),
                 end = 20.dp,
-                bottom = 128.dp,
+                bottom = bottomClearance,
             ),
         ) {
             itemsIndexed(
@@ -467,6 +513,7 @@ private fun HomePageContentBody(
                     turn = turn,
                     userBubblePosition = position,
                     isLastTurn = index == uiState.turns.lastIndex,
+                    streamingReveal = streamingReveal,
                     onContentTap = onContentTap,
                     onReGenerate = onReGenerate,
                     onFork = onFork,
@@ -511,8 +558,46 @@ private fun HomePageContentBody(
                         start = 20.dp,
                         end = 20.dp,
                         bottom = composerBottomPadding,
-                    ),
+                    )
+                    // 放在 padding 之后：只测 composer 本体高度，不含底边距
+                    .onSizeChanged { size ->
+                        composerHeight.value = with(density) { size.height.toDp() }
+                    },
             )
+        }
+
+        // 解除贴底锚定且不在底部时出现：点击恢复跟随并平滑滚回底部
+        val scrollToBottomScope = rememberCoroutineScope()
+        AnimatedVisibility(
+            visible = !followBottom.value && !isAtBottom,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = bottomClearance),
+            enter = fadeIn(tween(160)) + scaleIn(tween(180), initialScale = 0.82f),
+            exit = fadeOut(tween(100)) + scaleOut(tween(120), targetScale = 0.86f),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .clickable {
+                        followBottom.value = true
+                        scrollToBottomScope.launch {
+                            listState.animateScrollToItem(uiState.turns.size)
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_down),
+                    contentDescription = stringResource(
+                        R.string.ui_home_scroll_to_bottom_content_description,
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
 
         if (uiState.isLoadingConversation) {
@@ -558,6 +643,7 @@ private fun HomeChatTurnItem(
     turn: HomeChatTurn,
     userBubblePosition: UserBubblePosition,
     isLastTurn: Boolean,
+    streamingReveal: RevealTimeline?,
     onContentTap: () -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
@@ -700,6 +786,7 @@ private fun HomeChatTurnItem(
                                     ) {
                                         AssistantOutputText(
                                             text = block.text,
+                                            reveal = if (isLastTurn) streamingReveal else null,
                                         )
                                     }
                                 }
@@ -861,6 +948,10 @@ private fun HomePageContentPreview() {
                 ),
                 listState = rememberLazyListState(),
                 composerBottomPadding = 20.dp,
+                composerGap = 20.dp,
+                composerHeight = remember { mutableStateOf(68.dp) },
+                followBottom = remember { mutableStateOf(true) },
+                isAtBottom = true,
                 onContentTap = {},
                 onInputChange = {},
                 onSendClick = {},

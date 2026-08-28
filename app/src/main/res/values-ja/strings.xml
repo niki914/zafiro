@@ -54,6 +54,7 @@
     <item quantity="other">%d 個のツール</item>
     </plurals>
     <string name="ui_home_send_content_description">メッセージを送信</string>
+    <string name="ui_home_scroll_to_bottom_content_description">一番下へスクロール</string>
     <string name="ui_home_stop_content_description">生成を停止</string>
     <string name="ui_home_action_copy_content_description">コピー</string>
     <string name="ui_home_action_regenerate_content_description">再生成</string>

@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,16 +37,26 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mikepenz.markdown.annotator.annotatorSettings
+import com.mikepenz.markdown.annotator.buildMarkdownAnnotatedString
+import com.mikepenz.markdown.compose.components.MarkdownComponentModel
+import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.MarkdownText
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
+import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
+import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline
+import com.niki914.zafiro.app.ui.content.reveal.rememberStreamReveal
 import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ActionBarButton
 import com.niki914.uikit.infra.component.LiquidTextField
@@ -138,44 +149,38 @@ println(answer)
 fun AssistantOutputText(
     text: String,
     modifier: Modifier = Modifier,
+    reveal: RevealTimeline? = null,
 ) {
+    val markdownState = rememberMarkdownState(
+        content = text,
+        immediate = true,
+    )
+    val revealComponents = remember(reveal) { reveal?.let(::revealMarkdownComponents) }
+    val typography = assistantMarkdownTypography()
+
+    SelectionContainer(modifier = modifier.fillMaxWidth()) {
+        if (revealComponents == null) {
+            Markdown(
+                markdownState = markdownState,
+                modifier = Modifier.fillMaxWidth(),
+                typography = typography,
+            )
+        } else {
+            Markdown(
+                markdownState = markdownState,
+                modifier = Modifier.fillMaxWidth(),
+                typography = typography,
+                components = revealComponents,
+            )
+        }
+    }
+}
+
+@Composable
+private fun assistantMarkdownTypography(): MarkdownTypography {
     val bodyStyle = MaterialTheme.typography.bodyLarge.copy(
         fontSize = (MaterialTheme.typography.bodyLarge.fontSize.value + 1f).sp,
         lineHeight = (MaterialTheme.typography.bodyLarge.lineHeight.value + 2f).sp,
-    )
-    val h1Style = bodyStyle.copy(
-        fontSize = 18.sp,
-        lineHeight = 22.sp,
-        fontWeight = FontWeight.SemiBold,
-    )
-    val h2Style = bodyStyle.copy(
-        fontSize = 15.sp,
-        lineHeight = 20.sp,
-        fontWeight = FontWeight.SemiBold,
-    )
-    val h3Style = bodyStyle.copy(
-        fontSize = 14.sp,
-        lineHeight = 19.sp,
-        fontWeight = FontWeight.SemiBold,
-    )
-    val h4Style = bodyStyle.copy(
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
-        fontWeight = FontWeight.Medium,
-    )
-    val h5Style = bodyStyle.copy(
-        fontSize = 12.sp,
-        lineHeight = 17.sp,
-        fontWeight = FontWeight.Medium,
-    )
-    val h6Style = bodyStyle.copy(
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        fontWeight = FontWeight.Medium,
-    )
-    val tableStyle = bodyStyle.copy(
-        fontSize = 16.sp,
-        lineHeight = 22.sp,
     )
     val codeStyle = bodyStyle.copy(
         fontSize = 15.sp,
@@ -188,34 +193,64 @@ fun AssistantOutputText(
         fontStyle = FontStyle.Italic,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    val markdownState = rememberMarkdownState(
-        content = text,
-        immediate = true,
+    return markdownTypography(
+        h1 = bodyStyle.copy(fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
+        h2 = bodyStyle.copy(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
+        h3 = bodyStyle.copy(fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold),
+        h4 = bodyStyle.copy(fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium),
+        h5 = bodyStyle.copy(fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium),
+        h6 = bodyStyle.copy(fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
+        text = bodyStyle,
+        code = codeStyle,
+        inlineCode = codeStyle,
+        quote = quoteStyle,
+        paragraph = bodyStyle,
+        ordered = bodyStyle,
+        bullet = bodyStyle,
+        list = bodyStyle,
+        table = bodyStyle.copy(fontSize = 16.sp, lineHeight = 22.sp),
     )
+}
 
-    SelectionContainer(modifier = modifier.fillMaxWidth()) {
-        Markdown(
-            markdownState = markdownState,
-            modifier = Modifier.fillMaxWidth(),
-            typography = markdownTypography(
-                h1 = h1Style,
-                h2 = h2Style,
-                h3 = h3Style,
-                h4 = h4Style,
-                h5 = h5Style,
-                h6 = h6Style,
-                text = bodyStyle,
-                code = codeStyle,
-                inlineCode = codeStyle,
-                quote = quoteStyle,
-                paragraph = bodyStyle,
-                ordered = bodyStyle,
-                bullet = bodyStyle,
-                list = bodyStyle,
-                table = tableStyle,
-            ),
+/**
+ * 打字机显现的自定义块组件：段落/标题替换为带 reveal 修饰符的渲染，其余块走默认。
+ * 各块用自身源文偏移与时间轴对齐，块间显现顺序天然正确。
+ */
+private fun revealMarkdownComponents(timeline: RevealTimeline) = markdownComponents(
+    text = { RevealedBlockText(it, timeline, it.typography.text) },
+    paragraph = { RevealedBlockText(it, timeline, it.typography.paragraph) },
+    heading1 = { RevealedBlockText(it, timeline, it.typography.h1) },
+    heading2 = { RevealedBlockText(it, timeline, it.typography.h2) },
+    heading3 = { RevealedBlockText(it, timeline, it.typography.h3) },
+    heading4 = { RevealedBlockText(it, timeline, it.typography.h4) },
+    heading5 = { RevealedBlockText(it, timeline, it.typography.h5) },
+    heading6 = { RevealedBlockText(it, timeline, it.typography.h6) },
+    setextHeading1 = { RevealedBlockText(it, timeline, it.typography.h1) },
+    setextHeading2 = { RevealedBlockText(it, timeline, it.typography.h2) },
+)
+
+@Composable
+private fun RevealedBlockText(
+    model: MarkdownComponentModel,
+    timeline: RevealTimeline,
+    style: TextStyle,
+) {
+    val reveal = rememberStreamReveal(timeline = timeline, sourceStart = model.node.startOffset)
+    val annotator = annotatorSettings()
+    val annotated = remember(model.content, model.node, style, annotator) {
+        model.content.buildMarkdownAnnotatedString(
+            textNode = model.node,
+            style = style,
+            annotatorSettings = annotator,
         )
     }
+    reveal.sync(sourceEnd = model.node.endOffset, renderedText = annotated.text)
+    MarkdownText(
+        content = annotated,
+        modifier = reveal.modifier,
+        style = style.copy(textMotion = TextMotion.Animated),
+        onTextLayout = { layoutResult, _ -> reveal.onTextLayout(layoutResult) },
+    )
 }
 
 @Preview(
