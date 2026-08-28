@@ -143,7 +143,17 @@ object LlmStreamEventMapper {
                 null
             }
 
-            is TurnEvent.ToolCallStarted, is TurnEvent.ToolCallDelta, is TurnEvent.ToolCallReady,
+            // 工具意图阶段：名字已知、参数在途——透传为 ToolPending，UI 以 Running 占位（转圈、不可展开）。
+            // 身份取自事件字段：发起中的调用未进 partial.content，从 partial 里取不到。
+            // Delta 不透传（无需参数实时预览）；Ready 与 Running 几乎同时，走 Running 即可。
+            is TurnEvent.ToolCallStarted -> LlmStreamEvent.ToolPending(
+                ToolCallStatus(
+                    callId = event.callId.ifEmpty { null },
+                    name = event.toolName,
+                )
+            )
+
+            is TurnEvent.ToolCallDelta, is TurnEvent.ToolCallReady,
             is TurnEvent.RetryScheduled -> null
 
             // 用户停止：不映射为错误事件（停止由消费端 cancel 表达）；

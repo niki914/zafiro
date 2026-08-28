@@ -447,8 +447,14 @@ class HomeChatViewModel internal constructor(
                 updateState { copy(activeThinkingKey = null) }
             }
 
+            is LlmStreamEvent.ToolPending -> updateTurn(turnId) {
+                // 占位行：仅名字已知，Running 态转圈、不可展开；后续 ToolRunning 按 callId 原地更新
+                it.updateTool(event.call, HomeToolState.Running)
+            }
+
             is LlmStreamEvent.ToolRunning -> updateTurn(turnId) {
-                it.appendTool(event.call, HomeToolState.Running)
+                // updateTool 而非 appendTool：参数构建期可能已插入占位行，按 callId 原地更新
+                it.updateTool(event.call, HomeToolState.Running)
             }
 
             is LlmStreamEvent.ToolSucceeded -> updateTurn(turnId) {
@@ -847,12 +853,13 @@ class HomeChatViewModel internal constructor(
     }
 
     private fun HomeChatTurn.findToolBlockIndex(callId: String?, label: String): Int {
+        // 有 id 的调用只按 id 精确匹配：miss 即新调用（同名工具并发时不可互相覆盖），不落入无名兕底
         if (callId != null) {
-            val exactMatch = blocks.indexOfLast { block ->
+            return blocks.indexOfLast { block ->
                 block is HomeChatBlock.Tool && block.status.callId == callId
             }
-            if (exactMatch != -1) return exactMatch
         }
+        // 无 id 的调用才按「无名块 + 同名」匹配（不提供 callId 的接入路径）
         return blocks.indexOfLast { block ->
             block is HomeChatBlock.Tool && block.status.callId == null && block.status.name == label
         }
@@ -876,6 +883,7 @@ class HomeChatViewModel internal constructor(
         is LlmStreamEvent.ThinkingStarted -> "ThinkingStarted"
         is LlmStreamEvent.ThinkingEnded -> "ThinkingEnded"
         is LlmStreamEvent.ToolRunning -> "ToolRunning"
+        is LlmStreamEvent.ToolPending -> "ToolPending"
         is LlmStreamEvent.ToolSucceeded -> "ToolSucceeded"
         is LlmStreamEvent.ToolFailed -> "ToolFailed"
         is LlmStreamEvent.Error -> "Error"

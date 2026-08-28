@@ -40,8 +40,14 @@ sealed interface TurnEvent {
     /** contentIndex 处思考块完成。 */
     data class ThinkingEnded(val index: Int, val content: String, val partial: AssistantMessage) : TurnEvent
 
-    /** contentIndex 处工具调用块开始。 */
-    data class ToolCallStarted(val index: Int, val partial: AssistantMessage) : TurnEvent
+    /** contentIndex 处工具调用块开始。携带发起中的调用身份（参数在途，可能为空）。
+     *  注意：此时调用尚未进入 partial.content（仍为 pendingToolCalls），身份只能从事件字段取。 */
+    data class ToolCallStarted(
+        val index: Int,
+        val partial: AssistantMessage,
+        val callId: String = "",
+        val toolName: String = "",
+    ) : TurnEvent
 
     /** contentIndex 处工具调用参数 delta。 */
     data class ToolCallDelta(val index: Int, val delta: String, val partial: AssistantMessage) : TurnEvent

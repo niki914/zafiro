@@ -194,19 +194,28 @@ class LlmStreamEventMapperTest {
         assertEquals("failed", (result as LlmStreamEvent.ToolFailed).message)
     }
 
-    // ── 工具意图阶段不发射（无 UI 消费端） ────────────────────────────────────
+    // ── 工具意图阶段：Started 透传占位，Delta/Ready/Retry 丢弃 ────────────────
 
     @Test
-    fun `ToolCall intent and Retry events are dropped`() {
+    fun `ToolCallStarted maps to ToolPending and other intent events are dropped`() {
         val partial = AssistantMessage(emptyList())
         val call = ContentBlock.ToolCall("c", "t", "{}")
-        val events = listOf(
-            TurnEvent.ToolCallStarted(0, partial),
+
+        val started = LlmStreamEventMapper.map(
+            TurnEvent.ToolCallStarted(0, partial, callId = "c1", toolName = "terminal"),
+            0L,
+            "default error",
+        )
+        val pending = started as LlmStreamEvent.ToolPending
+        assertEquals("c1", pending.call.callId)
+        assertEquals("terminal", pending.call.name)
+
+        val dropped = listOf(
             TurnEvent.ToolCallDelta(0, "{}", partial),
             TurnEvent.ToolCallReady(0, call, partial),
             TurnEvent.RetryScheduled(1, 3, 100L, "rate limit"),
         )
-        events.forEach {
+        dropped.forEach {
             assertNull(LlmStreamEventMapper.map(it, 0L, "default error"))
         }
     }
