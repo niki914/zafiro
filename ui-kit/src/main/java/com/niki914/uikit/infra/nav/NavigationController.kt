@@ -19,7 +19,13 @@ data class NavigationEntry<P : Page>(
     val id: String,
     val page: P,
     override val viewModelStore: ViewModelStore = ViewModelStore(),
-) : ViewModelStoreOwner
+) : ViewModelStoreOwner {
+    /** 本页内容是否已滚离顶部（驱动 action bar 背景板渐显与小标题浮现）。
+     * 由页面自己写入（ReportTitleBarCollapsed）；状态归属条目：
+     * 条目在栈内存活期间保留，返回本页时 bar 首帧即取到离开前的状态，
+     * 过渡期退场页写的是自己的槽，bar 只读当前条目，无共享竞争。 */
+    var titleCollapsed: Boolean by mutableStateOf(false)
+}
 
 @Stable
 class NavigationController<P : Page>(

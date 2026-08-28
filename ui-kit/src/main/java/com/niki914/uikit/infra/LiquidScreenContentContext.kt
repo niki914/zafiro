@@ -2,16 +2,16 @@ package com.niki914.uikit.infra
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.infra.nav.LocalNavigationEntry
+import com.niki914.uikit.infra.nav.NavigationEntry
+import com.niki914.uikit.infra.nav.Page
 
 @Stable
 class LiquidScreenContentContext internal constructor(
@@ -24,6 +24,26 @@ class LiquidScreenContentContext internal constructor(
  * 业务页面应由 `LiquidScreen` 承载；Preview 或独立样例请使用
  * `ProvideLiquidScreenContentForPreview` 包裹。
  */
+/**
+ * 把页面自身的「内容是否已滚离顶部」写入当前导航条目（`LocalNavigationEntry`）。
+ *
+ * 折叠状态归属条目（`NavigationEntry.titleCollapsed`）：action bar 只拉取
+ * 当前条目的状态，因此过渡期退场页的写入不会干扰新页；条目在栈内存活期间
+ * 状态保留，返回本页时 bar 首帧即恢复离开前的状态（配合 alpha 动画平滑过渡）。
+ *
+ * 不可滚动的页面无需调用（条目默认 false = 背景板透明）。
+ */
+@Composable
+fun ReportTitleBarCollapsed(isCollapsed: () -> Boolean) {
+    val entry = LocalNavigationEntry.current
+    LaunchedEffect(entry) {
+        snapshotFlow(isCollapsed).collect { entry.titleCollapsed = it }
+    }
+}
+
+// ponytail: 折叠信号唯一来源是条目上的 titleCollapsed（bar 拉、页面推自己槽）；
+// 若再出现第二个信号通道，应先删掉旧的再考虑新的。
+
 val LocalLiquidScreenContentContext: ProvidableCompositionLocal<LiquidScreenContentContext> =
     compositionLocalOf {
         error(
@@ -32,30 +52,13 @@ val LocalLiquidScreenContentContext: ProvidableCompositionLocal<LiquidScreenCont
         )
     }
 
-/**
- * Collapsible 页（`ZafiroPage.titleMode == Collapsible`）向 `LiquidScreen` 回报
- * 「内容是否已滚离顶部」的通道：true = 大标题已滚走（小标题浮现、背景实色）。
- * 默认 false = 假定在顶部（大标题展示中）。Pinned 页不写此状态。
- */
-@Stable
-class TitleBarCollapseState {
-    /** true = 内容已滚过大标题（小标题应浮现）；非滚动页恒为 false（顶栏全透明）。 */
-    var isCollapsed: Boolean by mutableStateOf(false)
-
-    /** 是否有页面在本帧接管了回报。导航时由 LiquidScreen 清零，
-     * 防止上一页的 isCollapsed 残值泄漏给不自报的页面。 */
-    var hasReporter: Boolean by mutableStateOf(false)
-}
-
-// ponytail: 折叠信号有 Pinned（根部嵌套滚动观测）与 Collapsible（页面自报）两条通道；
-// 再出现第三个 Collapsible 容器时，应把大标题收敛进 LiquidScreen 统一渲染，删除双通道。
-
-val LocalTitleBarCollapseState: ProvidableCompositionLocal<TitleBarCollapseState> =
-    staticCompositionLocalOf { TitleBarCollapseState() }
-
 @Composable
 fun liquidScreenTopPadding(extra: Dp = 0.dp): Dp {
     return LocalLiquidScreenContentContext.current.topPadding + extra
+}
+
+private object PreviewPage : Page {
+    override val routeKey: String = "preview"
 }
 
 @Composable
@@ -67,7 +70,7 @@ fun ProvideLiquidScreenContentForPreview(
         LocalLiquidScreenContentContext provides LiquidScreenContentContext(
             topPadding = topPadding,
         ),
-        LocalTitleBarCollapseState provides TitleBarCollapseState(),
+        LocalNavigationEntry provides NavigationEntry(id = "preview", page = PreviewPage),
         content = content,
     )
 }

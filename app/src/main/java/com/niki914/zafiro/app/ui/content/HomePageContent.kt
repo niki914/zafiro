@@ -70,7 +70,7 @@ import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController
-import com.niki914.uikit.infra.LocalTitleBarCollapseState
+import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
@@ -130,16 +130,10 @@ fun HomePageContent(
     val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
 
-    // Home Chat 是可 saveable 恢复滚动位置的 Pinned 页：自报滚动状态给顶栏，
-    // 使返回时（scroll 恢复但不产生滚动事件）背景板能立即回到实色。
-    val titleBarCollapseState = LocalTitleBarCollapseState.current
-    LaunchedEffect(titleBarCollapseState, listState) {
-        snapshotFlow {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
-        }.collect { scrolled ->
-            titleBarCollapseState.hasReporter = true
-            titleBarCollapseState.isCollapsed = scrolled
-        }
+    // Home Chat 是可 saveable 恢复滚动位置的 Pinned 页：折叠状态写入当前条目，
+    // 返回时（scroll 恢复但不产生滚动事件）背景板由条目保留的状态立即动画恢复。
+    ReportTitleBarCollapsed {
+        listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
     }
     val imeBottom = with(density) { WindowInsets.ime.getBottom(this).toDp() }
     val navigationBottom = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
