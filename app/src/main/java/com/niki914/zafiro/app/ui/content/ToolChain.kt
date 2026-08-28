@@ -37,7 +37,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -371,18 +370,21 @@ internal fun ToolResultText(
     text: String,
     style: TextStyle,
     color: Color,
-    /** active 思考块流式更新时自动滚到底跟随；不锁手动滚动（不尊重用户位置，每次增长都回底）。 */
+    /** active 思考块流式更新时自动滚到底跟随；用户手动拖动后暂停，滚回底部后恢复。 */
     autoScrollToEnd: Boolean = false,
 ) {
     var overflow by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+    var shouldFollow by rememberScrollFollowState(
+        interactionSource = scrollState.interactionSource,
+        isScrollInProgress = { scrollState.isScrollInProgress },
+        isAtEnd = { !scrollState.canScrollForward },
+    )
 
     // maxValue 更新（内容增长/布局完成）即滚到底；autoScrollToEnd 置位瞬间先跟随当前尾部。
-    LaunchedEffect(autoScrollToEnd) {
-        if (autoScrollToEnd) {
-            snapshotFlow { scrollState.maxValue }
-                .distinctUntilChanged()
-                .collect { max -> scrollState.scrollTo(max) }
+    LaunchedEffect(autoScrollToEnd, shouldFollow, scrollState.maxValue) {
+        if (autoScrollToEnd && shouldFollow) {
+            scrollState.scrollTo(scrollState.maxValue)
         }
     }
 
