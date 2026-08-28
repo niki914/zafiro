@@ -15,6 +15,10 @@ internal data class AppStateSettings(
     val languageTag: String = "",
     /** 冷启动是否恢复上次会话；false = 默认进入新对话。 */
     val loadLastConversationOnStartup: Boolean = false,
+    /** 主题深浅色模式；system/light/dark。 */
+    val themeMode: String = "system",
+    /** 主题种子色 ARGB hex；空串 = 跟随壁纸动态色。 */
+    val themeSeedColor: String = "",
 )
 
 internal object AppStateSettingsCodec {
@@ -30,6 +34,8 @@ internal object AppStateSettingsCodec {
                 LOAD_LAST_CONVERSATION_KEY,
                 default = false
             ),
+            themeMode = root.string(THEME_MODE_KEY).ifBlank { "system" },
+            themeSeedColor = root.string(THEME_SEED_COLOR_KEY),
         )
     }
 
@@ -42,6 +48,8 @@ internal object AppStateSettingsCodec {
                 LAST_OPENED_CONVERSATION_ID_KEY to JsonPrimitive(state.lastOpenedConversationId),
                 LANGUAGE_TAG_KEY to JsonPrimitive(state.languageTag),
                 LOAD_LAST_CONVERSATION_KEY to JsonPrimitive(state.loadLastConversationOnStartup),
+                THEME_MODE_KEY to JsonPrimitive(state.themeMode),
+                THEME_SEED_COLOR_KEY to JsonPrimitive(state.themeSeedColor),
             )
         ).toString()
     }
@@ -52,4 +60,6 @@ internal object AppStateSettingsCodec {
     private const val LAST_OPENED_CONVERSATION_ID_KEY = "last_opened_conversation_id"
     private const val LANGUAGE_TAG_KEY = "language_tag"
     private const val LOAD_LAST_CONVERSATION_KEY = "load_last_conversation_on_startup"
+    private const val THEME_MODE_KEY = "theme_mode"
+    private const val THEME_SEED_COLOR_KEY = "theme_seed_color"
 }

@@ -354,4 +354,22 @@
     <string name="notif_unsupported_issue_title">[BUG] 宿主版本未適配</string>
     <string name="notif_unsupported_issue_body">## 問題描述\n當前%1$s版本還未被 Zafiro 支援\n宿主版本：%2$s\n\n## 復現步驟\n\n\n## 設備資訊\n- 助手：%1$s\n- 助手版本：%2$s\n- 模組版本：</string>
     <string name="feedback_bug_template">## 問題描述\n\n## 復現步驟\n\n## 預期行為\n\n## 實際行為\n\n## 設備資訊\n- Android 版本：\n- 助手（小布或其他）：\n- 模組版本：\n\n## 更多\n可以補充日誌、截圖錄屏等資訊，以便於我們理解</string>
+
+    <string name="ui_settings_appearance">外觀</string>
+    <string name="ui_theme_mode_system">跟隨系統</string>
+    <string name="ui_theme_mode_light">淺色</string>
+    <string name="ui_theme_mode_dark">深色</string>
+    <string name="ui_theme_color_dynamic">動態色（桌布取色）</string>
+    <string name="ui_theme_color_rose">玫瑰粉</string>
+    <string name="ui_theme_color_blossom">櫻花粉</string>
+    <string name="ui_theme_color_lavender">薰衣草紫</string>
+    <string name="ui_theme_color_blue">遠山藍</string>
+    <string name="ui_theme_color_sky">天青</string>
+    <string name="ui_theme_color_cyan">青碧</string>
+    <string name="ui_theme_color_mint">薄荷綠</string>
+    <string name="ui_theme_color_green">草綠</string>
+    <string name="ui_theme_color_lime">嫩芽綠</string>
+    <string name="ui_theme_color_lemon">檸檬黃</string>
+    <string name="ui_theme_color_amber">琥珀</string>
+    <string name="ui_theme_color_sunset">落日橙</string>
 </resources>

@@ -18,6 +18,10 @@ import com.niki914.uikit.infra.component.settings.SettingsRowSpec
 import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
+import com.niki914.zafiro.app.ui.model.ThemeController
+import com.niki914.zafiro.app.ui.model.ThemeMode
+import com.niki914.zafiro.app.ui.nav.ThemeSettingsPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -27,6 +31,7 @@ import kotlinx.coroutines.runBlocking
  * 容器与 About 同款（SettingsSpecPageContent + GroupedCard）。
  */
 private const val LANGUAGE_ROW_ID = "general.language"
+private const val APPEARANCE_ROW_ID = "general.appearance"
 private const val LOAD_LAST_ROW_ID = "general.load_last"
 
 private const val LANGUAGE_TAG_ZH_CN = "zh-CN"
@@ -55,7 +60,7 @@ private fun languageOptions(): List<LanguageOption> {
 }
 
 @Composable
-fun GeneralSettingsContent() {
+fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     var savedLanguageTag by rememberSaveable { mutableStateOf<String?>(null) }
     var loadLastConversation by rememberSaveable { mutableStateOf(false) }
@@ -86,6 +91,11 @@ fun GeneralSettingsContent() {
                         title = stringResource(R.string.ui_settings_general_language),
                         currentState = selectedLabel,
                     ),
+                    SettingsRowSpec.Navigation(
+                        id = APPEARANCE_ROW_ID,
+                        title = stringResource(R.string.ui_settings_appearance),
+                        currentState = appearanceSummary(),
+                    ),
                     SettingsRowSpec.Toggle(
                         id = LOAD_LAST_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_load_last_conversation),
@@ -103,6 +113,8 @@ fun GeneralSettingsContent() {
                 is SettingsRowAction.Navigate ->
                     if (action.id == LANGUAGE_ROW_ID) {
                         showLanguageDialog = true
+                    } else if (action.id == APPEARANCE_ROW_ID) {
+                        onPush(ThemeSettingsPage)
                     }
 
                 is SettingsRowAction.ToggleChanged ->
@@ -143,4 +155,19 @@ fun GeneralSettingsContent() {
                 )
             },
         )
+}
+
+@Composable
+private fun appearanceSummary(): String {
+    val prefs = ThemeController.prefs
+    val modeLabel = when (prefs.mode) {
+        ThemeMode.System -> stringResource(R.string.ui_theme_mode_system)
+        ThemeMode.Light -> stringResource(R.string.ui_theme_mode_light)
+        ThemeMode.Dark -> stringResource(R.string.ui_theme_mode_dark)
+    }
+    val colorLabel = prefs.seedColor
+        ?.let { seed -> ThemeSeedColors.indexOf(seed).takeIf { it >= 0 } }
+        ?.let { stringResource(ThemeColorLabelRes[it]) }
+        ?: stringResource(R.string.ui_theme_color_dynamic)
+    return "$modeLabel · $colorLabel"
 }

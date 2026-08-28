@@ -370,4 +370,22 @@
     <string name="ui_settings_configure_name_placeholder">Ejemplo: DeepSeek Principal</string>
     <string name="ui_settings_configure_protocol_label">Protocolo</string>
     <string name="ui_settings_configure_protocol_hint">Tras cambiar el protocolo, asegúrese de que el endpoint sea compatible con dicho protocolo.</string>
+
+    <string name="ui_settings_appearance">Apariencia</string>
+    <string name="ui_theme_mode_system">Según el sistema</string>
+    <string name="ui_theme_mode_light">Claro</string>
+    <string name="ui_theme_mode_dark">Oscuro</string>
+    <string name="ui_theme_color_dynamic">Dinámico (del fondo)</string>
+    <string name="ui_theme_color_rose">Rosa</string>
+    <string name="ui_theme_color_blossom">Flor</string>
+    <string name="ui_theme_color_lavender">Lavanda</string>
+    <string name="ui_theme_color_blue">Azul</string>
+    <string name="ui_theme_color_sky">Cielo</string>
+    <string name="ui_theme_color_cyan">Cian</string>
+    <string name="ui_theme_color_mint">Menta</string>
+    <string name="ui_theme_color_green">Verde</string>
+    <string name="ui_theme_color_lime">Lima</string>
+    <string name="ui_theme_color_lemon">Limón</string>
+    <string name="ui_theme_color_amber">Ámbar</string>
+    <string name="ui_theme_color_sunset">Atardecer</string>
 </resources>

@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.niki914.zafiro.animation.PointerCurveMath
 import com.niki914.zafiro.app.R
+import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -215,7 +216,7 @@ fun StartupPageContent(
     }
 
     val bgColor = MaterialTheme.colorScheme.background
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = LocalAppDarkTheme.current
 
     val letterGradientColors = if (isDarkTheme) {
         listOf(Color(0xFFE8ECF2), Color(0xFFB8BFC8), Color(0xFF6E747C))

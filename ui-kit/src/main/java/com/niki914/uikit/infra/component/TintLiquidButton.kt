@@ -1,7 +1,7 @@
 package com.niki914.uikit.infra.component
 
+import com.niki914.uikit.base.LocalAppDarkTheme
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -49,7 +49,7 @@ fun TintLiquidButton(
     buttonHeight: Dp = 48.dp,
     isLoading: Boolean = false,
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = LocalAppDarkTheme.current
     val backdrop = rememberLayerBackdrop()
     val disabledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
     val disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)

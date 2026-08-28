@@ -1,5 +1,6 @@
 package com.niki914.uikit.infra
 
+import com.niki914.uikit.base.LocalAppDarkTheme
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
@@ -16,7 +17,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -70,7 +70,7 @@ fun LiquidScreen(
     rightButton: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = LocalAppDarkTheme.current
     val density = LocalDensity.current
     val chromeBackdrop = rememberLayerBackdrop()
     val dialogHostState = remember { LiquidDialogHostState() }
