@@ -234,7 +234,7 @@ private fun CodeToolBody(
             Text(
                 text = command,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -267,7 +267,8 @@ private fun CodeToolBody(
                 color = if (isError) {
                     MaterialTheme.colorScheme.error
                 } else {
-                    MaterialTheme.colorScheme.onSurface
+                    // 块正文统一 onSurfaceVariant 满值（见 CollapsibleBlock.kt 色彩规则）
+                    MaterialTheme.colorScheme.onSurfaceVariant
                 },
                 maxLines = 6,
                 overflow = TextOverflow.Ellipsis,
@@ -322,8 +323,7 @@ private fun FallbackResultBody(isFailed: Boolean) {
         color = if (isFailed) {
             MaterialTheme.colorScheme.error
         } else {
-            // 与 Thinking 正文同款淡文本色（onSurface → onSurfaceVariant 降 alpha）
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = BlockBodyAlpha)
+            MaterialTheme.colorScheme.onSurfaceVariant
         },
     )
 }
@@ -348,7 +348,7 @@ private fun ResultTextBody(text: String) {
         ToolResultText(
             text = text,
             style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

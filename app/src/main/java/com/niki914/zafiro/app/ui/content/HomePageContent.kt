@@ -828,7 +828,7 @@ private fun HomeChatTurnItem(
                                         ToolResultText(
                                             text = block.text,
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = BlockBodyAlpha),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             // active 思考块展开时滚到底跟随；用户可手动滚动不锁
                                             autoScrollToEnd = isThinkingExpanded && thinkingKey == activeThinkingKey,
                                         )
