@@ -105,7 +105,7 @@ class PromptComposerTest {
 
     @Test
     fun compose_rendersOnlyPresentToolBlocks() {
-        val pyTool = LocalTool.Py(
+        val customPyTool = LocalTool.Py(
             name = "py_launch_wechat",
             description = "Launch WeChat",
             code = "def main():\n    pass",
@@ -114,11 +114,11 @@ class PromptComposerTest {
         val result = PromptComposer().compose(
             PromptComposerInput(
                 additionalInstructions = "",
-                tools = ResolvedTools(pyTools = listOf(pyTool)),
+                tools = ResolvedTools(customPyTools = listOf(customPyTool)),
             )
         )
 
-        assertTrue(result.finalSystemPrompt.contains("<py_tools>\n- py_launch_wechat\n</py_tools>"))
+        assertTrue(result.finalSystemPrompt.contains("<custom_py_tools>\n- py_launch_wechat\n</custom_py_tools>"))
         assertFalse(result.finalSystemPrompt.contains("<builtin_tools>"))
         assertFalse(result.finalSystemPrompt.contains("<mcp_servers>"))
     }
@@ -142,7 +142,7 @@ class PromptComposerTest {
 
         assertTrue(result.finalSystemPrompt.contains("<builtin_tools>\n- notify\n</builtin_tools>"))
         assertFalse(result.finalSystemPrompt.contains("Send a notification"))
-        assertFalse(result.finalSystemPrompt.contains("<py_tools>"))
+        assertFalse(result.finalSystemPrompt.contains("<custom_py_tools>"))
     }
 
     @Test

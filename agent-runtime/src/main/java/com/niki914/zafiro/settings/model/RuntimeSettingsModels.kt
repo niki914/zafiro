@@ -69,20 +69,20 @@ data class RuntimeMcpServer(
 )
 
 /**
- * 持久化 Python 工具（pytools）条目。
+ * 持久化 Python 工具（由 custom_py_tools 创建）条目。
  * code 是工具本体；description/schemaJson 是反射结果的缓存，代码变更后重算覆盖。
  */
-data class RuntimePyTool(
+data class RuntimeCustomPyTool(
     val name: String,
     val code: String,
     val description: String = "",
     val schemaJson: String = "",
     val enabled: Boolean = true,
-    val timeoutMs: Long = DEFAULT_PY_TOOL_TIMEOUT_MS,
+    val timeoutMs: Long = DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS,
 ) {
     companion object {
-        const val DEFAULT_PY_TOOL_TIMEOUT_MS: Long = 30_000L
-        const val MAX_PY_TOOL_TIMEOUT_MS: Long = 120_000L
+        const val DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS: Long = 30_000L
+        const val MAX_CUSTOM_PY_TOOL_TIMEOUT_MS: Long = 120_000L
     }
 }
 

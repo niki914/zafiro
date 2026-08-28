@@ -11,7 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimePyTool as PyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 
 class ToolManagerTest {
@@ -26,8 +26,8 @@ class ToolManagerTest {
                 listOf(FakeBuiltinTool(name = "time", description = "Read current time."))
             )
         ).resolve(
-            pyTools = listOf(
-                PyTool(
+            customPyTools = listOf(
+                CustomPyTool(
                     name = "py_current_time",
                     description = "Get current timestamp",
                     code = "def main():\n    import time\n    print(int(time.time()))",
@@ -50,10 +50,10 @@ class ToolManagerTest {
         assertTrue(resolved.builtinTools.single() is LocalTool.Builtin)
         assertEquals("Read current time.", resolved.builtinTools.single().description)
 
-        val pyTool = resolved.pyTools.filterIsInstance<LocalTool.Py>().single()
-        assertEquals("py_current_time", pyTool.name)
-        assertEquals("Get current timestamp", pyTool.description)
-        assertEquals("{\"type\":\"object\"}", pyTool.inputSchemaJson)
+        val customPyTool = resolved.customPyTools.filterIsInstance<LocalTool.Py>().single()
+        assertEquals("py_current_time", customPyTool.name)
+        assertEquals("Get current timestamp", customPyTool.description)
+        assertEquals("{\"type\":\"object\"}", customPyTool.inputSchemaJson)
         assertEquals(listOf("aslocate"), resolved.mcpServers.map { it.name })
         val mcpServer = resolved.mcpServers.single() as McpServerDefinition.Http
         assertEquals("http://127.0.0.1:51338/mcp", mcpServer.url)
@@ -67,8 +67,8 @@ class ToolManagerTest {
                 listOf(FakeBuiltinTool(name = "time", description = "Read current time."))
             )
         ).resolve(
-            pyTools = listOf(
-                PyTool(
+            customPyTools = listOf(
+                CustomPyTool(
                     name = "py_current_time",
                     description = "Get current timestamp",
                     code = "def main():\n    import time\n    print(int(time.time()))",
@@ -93,7 +93,7 @@ class ToolManagerTest {
         )
 
         assertEquals(listOf("time"), resolved.builtinTools.map { it.name })
-        assertEquals(listOf("py_current_time"), resolved.pyTools.map { it.name })
+        assertEquals(listOf("py_current_time"), resolved.customPyTools.map { it.name })
         val mcpServer = resolved.mcpServers.single() as McpServerDefinition.Http
         assertEquals(mapOf("Authorization" to "Bearer token"), mcpServer.headers)
         assertTrue(resolved.allLocalTools().all { it.name in setOf("time", "py_current_time") })

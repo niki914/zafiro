@@ -35,7 +35,6 @@ class SettingsViewModelTest {
             listOf(
                 ZafiroSettingsGroup.BuiltinTools,
                 ZafiroSettingsGroup.Skills,
-                ZafiroSettingsGroup.PyTools,
             ),
             state.sections[2].groups,
         )
@@ -57,7 +56,6 @@ class SettingsViewModelTest {
         assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Memory))
         assertTrue(state.isGroupVisible(ZafiroSettingsGroup.BuiltinTools))
         assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Skills))
-        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.PyTools))
         assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Mcp))
         assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Takeover))
         assertTrue(state.isGroupVisible(ZafiroSettingsGroup.ExecutionRules))

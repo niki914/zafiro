@@ -7,7 +7,7 @@ import com.niki914.zafiro.chat.ResolvedTools
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import kotlinx.serialization.json.JsonObject
-import com.niki914.zafiro.settings.model.RuntimePyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 
@@ -19,25 +19,25 @@ class ToolManager(
     }
 
     fun resolve(
-        pyTools: List<RuntimePyTool>,
+        customPyTools: List<RuntimeCustomPyTool>,
         mcpServers: List<McpServer>,
         builtinSettings: List<BuiltinToolSetting>,
     ): ResolvedTools {
         val builtinTools = buildBuiltinTools(builtinSettings)
-        val pyRuntimeTools = buildPyTools(pyTools)
+        val pyRuntimeTools = buildCustomPyTools(customPyTools)
         val mcpRuntimeServers = buildMcpServers(servers = mcpServers)
 
         Logger.d(
             LOG_TAG,
             "tools resolve builtin=${builtinTools.size} py=${pyRuntimeTools.size} " +
                 "mcp=${mcpRuntimeServers.size} " +
-                "input builtinSettings=${builtinSettings.size} pyTools=${pyTools.size} " +
+                "input builtinSettings=${builtinSettings.size} customPyTools=${customPyTools.size} " +
                 "mcpServers=${mcpServers.size}"
         )
 
         return ResolvedTools(
             builtinTools = builtinTools,
-            pyTools = pyRuntimeTools,
+            customPyTools = pyRuntimeTools,
             mcpServers = mcpRuntimeServers,
         )
     }
@@ -61,7 +61,7 @@ class ToolManager(
             ?: builtinToolRegistry.all().firstOrNull { it::class.simpleName == name }
     }
 
-    private fun buildPyTools(tools: List<RuntimePyTool>): List<LocalTool.Py> {
+    private fun buildCustomPyTools(tools: List<RuntimeCustomPyTool>): List<LocalTool.Py> {
         return tools
             .filter { it.enabled }
             .map { tool ->

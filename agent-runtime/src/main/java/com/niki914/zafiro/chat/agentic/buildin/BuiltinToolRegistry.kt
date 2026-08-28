@@ -3,7 +3,7 @@ package com.niki914.zafiro.chat.agentic.buildin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExecutePythonBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LoadSkillBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.ManagePyToolBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.NotifyBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
@@ -26,7 +26,7 @@ class BuiltinToolRegistry(
             listOf(
                 ExecutePythonBuiltin(),
                 LaunchAppBuiltin(),
-                ManagePyToolBuiltin(),
+                PyMetaToolsBuiltin(),
                 MemoryBuiltin(),
                 NotifyBuiltin(),
                 OpenUriBuiltin(),

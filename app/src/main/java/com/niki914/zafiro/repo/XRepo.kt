@@ -4,7 +4,7 @@ import android.content.Context
 import com.niki914.logging.Logger
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
-import com.niki914.zafiro.chat.agentic.python.PyToolHarness
+import com.niki914.zafiro.chat.agentic.python.CustomPyToolHarness
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
@@ -24,7 +24,7 @@ import com.niki914.zafiro.settings.model.RuntimeAgentMemoryMode as AgentMemoryMo
 import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.zafiro.settings.model.RuntimeAgentValidation as AgentValidation
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimePyTool as PyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeToolValidation as ToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
@@ -37,7 +37,7 @@ object XRepo {
     private const val LOG_TAG = "niki914_nexus_XRepo"
 
     val mcp: McpApi = McpApi(this)
-    val pyTools: PyToolApi = PyToolApi(this)
+    val customPyTools: CustomPyToolApi = CustomPyToolApi(this)
     val builtinTools: BuiltinToolApi = BuiltinToolApi(this)
     val memory: MemoryApi = MemoryApi(this)
     val web: WebSettingsApi = WebSettingsApi(this)
@@ -186,7 +186,7 @@ object XRepo {
             writeJsonLocked(
                 context,
                 StoreDescriptorRegistry.TOOLS_PY_ID,
-                ToolSettingsCodec.encodePyTools(
+                ToolSettingsCodec.encodeCustomPyTools(
                     listOf(DEFAULT_WEB_SEARCH_TOOL, DEFAULT_LAUNCH_WECHAT_TOOL)
                 ),
             )
@@ -273,8 +273,8 @@ object XRepo {
         }
     }
 
-    // Seed py tool: web search via DuckDuckGo HTML endpoint. Code/schema are the
-    // reflection cache written by the same pipeline pytools write uses.
+    // Seed custom py tool: web search via DuckDuckGo HTML endpoint. Code/schema are the
+    // reflection cache written by the same pipeline py_meta_tools write uses.
     private val CODE_WEB_SEARCH = """
         import json
         import urllib.parse
@@ -318,7 +318,7 @@ object XRepo {
     private val SCHEMA_WEB_SEARCH =
         """{"type":"object","properties":{"query":{"type":"string"},"max_results":{"type":"integer","description":"default: 8"}},"required":["query"]}"""
 
-    private val DEFAULT_WEB_SEARCH_TOOL = PyTool(
+    private val DEFAULT_WEB_SEARCH_TOOL = CustomPyTool(
         name = "py_web_search",
         description = "Search the web with DuckDuckGo. Returns a list of {title, url, snippet}.",
         schemaJson = SCHEMA_WEB_SEARCH,
@@ -342,7 +342,7 @@ object XRepo {
             print("WeChat launched.")
         """.trimIndent()
 
-    private val DEFAULT_LAUNCH_WECHAT_TOOL = PyTool(
+    private val DEFAULT_LAUNCH_WECHAT_TOOL = CustomPyTool(
         name = "py_launch_wechat",
         description = "启动微信 (Launch WeChat).",
         schemaJson = """{"type":"object","properties":{},"required":[]}""",
@@ -931,47 +931,47 @@ class McpApi internal constructor(
     }
 }
 
-class PyToolApi internal constructor(
+class CustomPyToolApi internal constructor(
     private val repo: XRepo,
     private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(
         listExecutionRules = { repo.executionRules.list() },
     ),
     private val builtinToolRegistry: BuiltinToolRegistry = BuiltinToolRegistry.default(),
 ) {
-    suspend fun list(): List<PyTool> {
-        return ToolSettingsCodec.parsePyTools(repo.readJson(StoreDescriptorRegistry.TOOLS_PY_ID))
+    suspend fun list(): List<CustomPyTool> {
+        return ToolSettingsCodec.parseCustomPyTools(repo.readJson(StoreDescriptorRegistry.TOOLS_PY_ID))
     }
 
-    suspend fun get(name: String): PyTool? {
+    suspend fun get(name: String): CustomPyTool? {
         return list().firstOrNull { it.name == name }
     }
 
-    suspend fun save(tool: PyTool, overwrite: Boolean = true): ToolValidation? {
+    suspend fun save(tool: CustomPyTool, overwrite: Boolean = true): ToolValidation? {
         validate(tool, overwrite)?.let { return it }
         val normalized = tool.normalized()
         repo.updateJson(StoreDescriptorRegistry.TOOLS_PY_ID) { json ->
-            val tools = ToolSettingsCodec.parsePyTools(json)
+            val tools = ToolSettingsCodec.parseCustomPyTools(json)
             val updated = if (tools.any { it.name == normalized.name }) {
                 tools.map { if (it.name == normalized.name) normalized else it }
             } else {
                 tools + normalized
             }
-            ToolSettingsCodec.encodePyTools(updated)
+            ToolSettingsCodec.encodeCustomPyTools(updated)
         }
         return null
     }
 
     suspend fun delete(name: String) {
         repo.updateJson(StoreDescriptorRegistry.TOOLS_PY_ID) { json ->
-            ToolSettingsCodec.encodePyTools(
-                ToolSettingsCodec.parsePyTools(json).filterNot { it.name == name })
+            ToolSettingsCodec.encodeCustomPyTools(
+                ToolSettingsCodec.parseCustomPyTools(json).filterNot { it.name == name })
         }
     }
 
     suspend fun setEnabled(name: String, enabled: Boolean) {
         repo.updateJson(StoreDescriptorRegistry.TOOLS_PY_ID) { json ->
-            ToolSettingsCodec.encodePyTools(
-                ToolSettingsCodec.parsePyTools(json).map { tool ->
+            ToolSettingsCodec.encodeCustomPyTools(
+                ToolSettingsCodec.parseCustomPyTools(json).map { tool ->
                     if (tool.name == name) tool.copy(enabled = enabled) else tool
                 },
             )
@@ -979,11 +979,11 @@ class PyToolApi internal constructor(
     }
 
     /**
-     * UI 保存入口：与 pytools write 同管线，先对 code 做签名反射，
+     * UI 保存入口：与 py_meta_tools write 同管线，先对 code 做签名反射，
      * 用结果回填 description/schemaJson 缓存，再走 validate/save。
      * 反射失败（语法错误、缺 main、注解缺失等）返回 field="code" 的 validation。
      */
-    suspend fun saveIntrospected(tool: PyTool): ToolValidation? {
+    suspend fun saveIntrospected(tool: CustomPyTool): ToolValidation? {
         val introspection = introspectMain(tool.code)
         introspection.error?.let { error -> return ToolValidation("code", error) }
         return save(
@@ -996,7 +996,7 @@ class PyToolApi internal constructor(
 
     private suspend fun introspectMain(code: String): PyIntrospection {
         val output = try {
-            PyRuntime.exec(PyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
+            PyRuntime.exec(CustomPyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
@@ -1018,7 +1018,7 @@ class PyToolApi internal constructor(
         )
     }
 
-    suspend fun validate(tool: PyTool, overwrite: Boolean = true): ToolValidation? {
+    suspend fun validate(tool: CustomPyTool, overwrite: Boolean = true): ToolValidation? {
         val normalized = tool.normalized()
         if (!NAME_PATTERN.matches(normalized.name)) {
             return ToolValidation(
@@ -1034,7 +1034,7 @@ class PyToolApi internal constructor(
         if (normalized.code.isBlank()) {
             return ToolValidation("code", "Required field 'code' is missing.")
         }
-        if (normalized.timeoutMs !in 1_000L..PyTool.MAX_PY_TOOL_TIMEOUT_MS) {
+        if (normalized.timeoutMs !in 1_000L..CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS) {
             return ToolValidation("timeout_ms", "Must be between 1000 and 120000.")
         }
         val decision = safetyPolicy.evaluate(normalized.code)
@@ -1042,12 +1042,12 @@ class PyToolApi internal constructor(
             return ToolValidation("code", decision.reason)
         }
         if (!overwrite && list().any { it.name == normalized.name }) {
-            return ToolValidation("name", "Already exists in py_tools.")
+            return ToolValidation("name", "Already exists in custom_py_tools.")
         }
         return null
     }
 
-    private fun PyTool.normalized(): PyTool {
+    private fun CustomPyTool.normalized(): CustomPyTool {
         return copy(
             name = name.trim(),
             code = code.trim(),

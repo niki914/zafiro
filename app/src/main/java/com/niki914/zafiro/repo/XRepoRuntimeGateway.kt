@@ -3,7 +3,7 @@ package com.niki914.zafiro.repo
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.RuntimeSettingsGateway
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimePyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
@@ -52,21 +52,21 @@ class XRepoRuntimeGateway(
         return repo.memory.replaceByText(oldText, content)
     }
 
-    override suspend fun listPyTools(): List<RuntimePyTool> = repo.pyTools.list()
+    override suspend fun listCustomPyTools(): List<RuntimeCustomPyTool> = repo.customPyTools.list()
 
-    override suspend fun savePyTool(
-        tool: RuntimePyTool,
+    override suspend fun saveCustomPyTool(
+        tool: RuntimeCustomPyTool,
         overwrite: Boolean,
     ): RuntimeToolValidation? {
-        return repo.pyTools.save(tool, overwrite)
+        return repo.customPyTools.save(tool, overwrite)
     }
 
-    override suspend fun deletePyTool(name: String) {
-        repo.pyTools.delete(name)
+    override suspend fun deleteCustomPyTool(name: String) {
+        repo.customPyTools.delete(name)
     }
 
-    override suspend fun setPyToolEnabled(name: String, enabled: Boolean) {
-        repo.pyTools.setEnabled(name, enabled)
+    override suspend fun setCustomPyToolEnabled(name: String, enabled: Boolean) {
+        repo.customPyTools.setEnabled(name, enabled)
     }
 
     override suspend fun listBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> {

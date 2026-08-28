@@ -5,7 +5,7 @@ import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
 import com.niki914.zafiro.settings.model.RuntimeMcpServer
-import com.niki914.zafiro.settings.model.RuntimePyTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 import com.niki914.zafiro.settings.model.RuntimeToolValidation
 
@@ -24,16 +24,16 @@ interface RuntimeSettingsGateway {
 
     suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult
 
-    suspend fun listPyTools(): List<RuntimePyTool>
+    suspend fun listCustomPyTools(): List<RuntimeCustomPyTool>
 
-    suspend fun savePyTool(
-        tool: RuntimePyTool,
+    suspend fun saveCustomPyTool(
+        tool: RuntimeCustomPyTool,
         overwrite: Boolean = true,
     ): RuntimeToolValidation?
 
-    suspend fun deletePyTool(name: String)
+    suspend fun deleteCustomPyTool(name: String)
 
-    suspend fun setPyToolEnabled(name: String, enabled: Boolean)
+    suspend fun setCustomPyToolEnabled(name: String, enabled: Boolean)
 
     suspend fun listBuiltinToolSettings(): List<RuntimeBuiltinToolSetting>
 

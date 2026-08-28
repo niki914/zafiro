@@ -1,6 +1,6 @@
 package com.niki914.zafiro.chat
 
-import com.niki914.zafiro.chat.agentic.python.PyToolExecutor
+import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -12,7 +12,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class PyToolExecutorTest {
+class CustomPyToolExecutorTest {
 
     private val tool = com.niki914.zafiro.chat.LocalTool.Py(
         name = "py_echo",
@@ -23,7 +23,7 @@ class PyToolExecutorTest {
 
     @Test
     fun execute_wrapsStdoutInOkJson() = runTest {
-        val executor = PyToolExecutor(exec = { code, _ ->
+        val executor = CustomPyToolExecutor(exec = { code, _ ->
             assertTrue(code.contains("main(**_args)"))
             "hello"
         })
@@ -37,7 +37,7 @@ class PyToolExecutorTest {
 
     @Test
     fun execute_blankArgumentsTreatedAsEmptyObject() = runTest {
-        val executor = PyToolExecutor(exec = { _, _ -> "ok" })
+        val executor = CustomPyToolExecutor(exec = { _, _ -> "ok" })
 
         val json = Json.parseToJsonElement(executor.execute(tool, "")).jsonObject
 
@@ -46,7 +46,7 @@ class PyToolExecutorTest {
 
     @Test
     fun execute_runtimeError_mapsToPythonErrorFailure() = runTest {
-        val executor = PyToolExecutor(exec = { _, _ -> throw IllegalStateException("boom") })
+        val executor = CustomPyToolExecutor(exec = { _, _ -> throw IllegalStateException("boom") })
 
         val json = Json.parseToJsonElement(executor.execute(tool, "{}")).jsonObject
 
@@ -57,7 +57,7 @@ class PyToolExecutorTest {
 
     @Test
     fun execute_timeout_mapsToTimeoutFailure() = runTest {
-        val executor = PyToolExecutor(exec = { _, _ ->
+        val executor = CustomPyToolExecutor(exec = { _, _ ->
             withTimeout(1) { kotlinx.coroutines.delay(5_000) }
             ""
         })
@@ -71,7 +71,7 @@ class PyToolExecutorTest {
     @Test
     fun execute_invalidArgumentsJsonFallsBackToEmptyObject() = runTest {
         var received = ""
-        val spyExecutor = PyToolExecutor(exec = { code, _ ->
+        val spyExecutor = CustomPyToolExecutor(exec = { code, _ ->
             received = code
             "ok"
         })

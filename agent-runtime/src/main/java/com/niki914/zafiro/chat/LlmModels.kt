@@ -20,7 +20,7 @@ data class ResolvedLlmConfig(
 
 data class ResolvedTools(
     val builtinTools: List<LocalTool> = emptyList(),
-    val pyTools: List<LocalTool> = emptyList(),
+    val customPyTools: List<LocalTool> = emptyList(),
     val mcpServers: List<McpServerDefinition> = emptyList(),
 )
 
@@ -63,7 +63,7 @@ enum class ToolParameterType {
 }
 
 fun ResolvedTools.allLocalTools(): List<LocalTool> {
-    return builtinTools + pyTools
+    return builtinTools + customPyTools
 }
 
 fun ResolvedTools.allLocalToolNames(): List<String> {
