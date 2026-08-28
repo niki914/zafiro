@@ -1,11 +1,5 @@
 package com.niki914.zafiro.app.ui.content
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
@@ -20,10 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
-import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
 import com.niki914.uikit.infra.component.SettingsGroupCard
+import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.component.SettingExpandableTextItem
-import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureIntent
@@ -78,18 +71,7 @@ fun ModelConfigSettingsContent(
             onClick = onOpenProviderPick,
         ),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = SettingsDetailPageDefaults.HorizontalPadding)
-                .padding(
-                    top = liquidScreenTopPadding(SettingsDetailPageDefaults.VerticalPadding),
-                    bottom = SettingsDetailPageDefaults.VerticalPadding +
-                            SettingsDetailPageDefaults.RootVerticalSpacing,
-                ),
-            verticalArrangement = Arrangement.spacedBy(SettingsDetailPageDefaults.ContentVerticalSpacing),
-        ) {
+        SettingsListPageContent {
             SettingsGroupCard {
                 var promptExpanded by rememberSaveable { mutableStateOf(false) }
                 SettingExpandableTextItem(

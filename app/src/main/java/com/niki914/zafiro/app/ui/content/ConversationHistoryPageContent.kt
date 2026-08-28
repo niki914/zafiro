@@ -28,7 +28,6 @@ import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SwipeDismissSettingsItemCard
-import com.niki914.uikit.infra.liquidScreenHazeSource
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.base.BaseTheme
 
@@ -106,8 +105,7 @@ private fun ConversationHistoryListContent(
 
     LazyColumn(
         modifier = modifier
-            .fillMaxSize()
-            .liquidScreenHazeSource(),
+            .fillMaxSize(),
         contentPadding = PaddingValues(
             start = 20.dp,
             top = liquidScreenTopPadding(24.dp),
@@ -154,7 +152,6 @@ private fun ConversationHistoryMessageContent(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .liquidScreenHazeSource()
             .padding(horizontal = 20.dp)
             .padding(top = liquidScreenTopPadding(24.dp), bottom = 24.dp),
         contentAlignment = Alignment.TopCenter,

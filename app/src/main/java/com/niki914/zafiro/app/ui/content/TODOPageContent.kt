@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.R
-import com.niki914.uikit.infra.liquidScreenHazeSource
 import com.niki914.uikit.infra.liquidScreenTopPadding
 
 @Composable
@@ -23,7 +22,6 @@ fun TODOPageContent() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .liquidScreenHazeSource()
             .padding(top = liquidScreenTopPadding())
             .padding(horizontal = 24.dp, vertical = 24.dp),
         contentAlignment = Alignment.Center,

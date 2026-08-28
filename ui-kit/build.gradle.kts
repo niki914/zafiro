@@ -36,7 +36,6 @@ dependencies {
     // UI infra
     implementation("com.github.Kyant0:Capsule:2.1.0")
     implementation("io.github.kyant0:backdrop:2.0.0-alpha03")
-    implementation("dev.chrisbanes.haze:haze:1.7.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
     // Material & AndroidX

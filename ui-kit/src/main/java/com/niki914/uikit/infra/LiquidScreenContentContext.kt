@@ -5,17 +5,17 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 
 @Stable
 class LiquidScreenContentContext internal constructor(
     val topPadding: Dp,
-    val hazeState: HazeState,
 )
 
 /**
@@ -32,14 +32,23 @@ val LocalLiquidScreenContentContext: ProvidableCompositionLocal<LiquidScreenCont
         )
     }
 
+/**
+ * Collapsible 页（`ZafiroPage.titleMode == Collapsible`）向 `LiquidScreen` 回报
+ * 「内容是否已滚离顶部」的通道：true = 大标题已滚走（小标题浮现、背景实色）。
+ * 默认 false = 假定在顶部（大标题展示中）。Pinned 页不写此状态。
+ */
+@Stable
+class TitleBarCollapseState {
+    /** true = 内容已滚过大标题（小标题应浮现）；非滚动页恒为 false（顶栏全透明）。 */
+    var isCollapsed: Boolean by mutableStateOf(false)
+}
+
+val LocalTitleBarCollapseState: ProvidableCompositionLocal<TitleBarCollapseState> =
+    staticCompositionLocalOf { TitleBarCollapseState() }
+
 @Composable
 fun liquidScreenTopPadding(extra: Dp = 0.dp): Dp {
     return LocalLiquidScreenContentContext.current.topPadding + extra
-}
-
-@Composable
-fun Modifier.liquidScreenHazeSource(): Modifier {
-    return hazeSource(LocalLiquidScreenContentContext.current.hazeState)
 }
 
 @Composable
@@ -47,12 +56,11 @@ fun ProvideLiquidScreenContentForPreview(
     topPadding: Dp = 0.dp,
     content: @Composable () -> Unit,
 ) {
-    val hazeState = rememberHazeState(blurEnabled = true)
     CompositionLocalProvider(
         LocalLiquidScreenContentContext provides LiquidScreenContentContext(
             topPadding = topPadding,
-            hazeState = hazeState,
         ),
+        LocalTitleBarCollapseState provides TitleBarCollapseState(),
         content = content,
     )
 }

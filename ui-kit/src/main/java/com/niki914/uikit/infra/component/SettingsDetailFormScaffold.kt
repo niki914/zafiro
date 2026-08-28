@@ -7,16 +7,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import com.niki914.uikit.infra.liquidScreenHazeSource
 import com.niki914.uikit.infra.liquidScreenTopPadding
 
 /**
@@ -39,7 +39,7 @@ fun SettingsDetailFormScaffold(
     actionButtonLightContentColor: Color = Color.Unspecified,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val scrollState = rememberScrollState()
+    val scrollState = rememberSaveable(saver = ScrollState.Saver, init = { ScrollState(initial = 0) })
     val contentModifier = if (onBackgroundTap != null) {
         Modifier.pointerInput(onBackgroundTap) {
             detectTapGestures(onTap = { onBackgroundTap() })
@@ -50,8 +50,7 @@ fun SettingsDetailFormScaffold(
 
     Box(
         modifier = modifier
-            .fillMaxSize()
-            .liquidScreenHazeSource(),
+            .fillMaxSize(),
     ) {
         Column(
             modifier = contentModifier

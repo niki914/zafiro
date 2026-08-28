@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.component.TintLiquidButton
-import com.niki914.uikit.infra.liquidScreenHazeSource
 import com.niki914.uikit.infra.liquidScreenTopPadding
 
 data class SelectionOption(
@@ -42,7 +41,6 @@ fun SelectionPageContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .liquidScreenHazeSource()
             .verticalScroll(rememberScrollState())
             .padding(top = liquidScreenTopPadding())
             .padding(horizontal = 20.dp, vertical = 24.dp),
