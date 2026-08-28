@@ -36,11 +36,8 @@ fun SettingsListItem(
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    val contentPadding = if (leadingContent != null) {
-        PaddingValues(start = 20.dp, top = 20.dp, end = 16.dp, bottom = 20.dp)
-    } else {
-        PaddingValues(horizontal = 16.dp, vertical = 20.dp)
-    }
+    // 无图标行的文字起点与有图标行的圆底左缘齐平（20dp），竖向视觉对齐。
+    val contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 16.dp, bottom = 20.dp)
 
     SettingsItemSurface(
         modifier = modifier,
