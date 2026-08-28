@@ -3,9 +3,10 @@ package com.niki914.okia.tooling
 /**
  * 可用工具注册表。host 注册 descriptor + executor；
  * loop 通过它解析模型工具调用。
- * host 契约：活跃回合期间不得直接变更 registry（remove / register），
- * 变更须经 Okia.update；直接改注入对象会绕过门面的活跃回合检查，
- * 导致请求里的工具描述与执行器不再一致。
+ * 契约（issue #127 修正）：registry 是 host 持有并注入的同一对象引用，
+ * register / remove 即时生效，活跃回合内允许变更——loop 每段请求前现取
+ * snapshot()，新工具对下一轮模型请求可见。Okia.update 仅做配置热更新，
+ * 不承担 registry 变更通道。
  * Design source: okia 骨架 ToolRegistry。
  */
 interface ToolRegistry {

@@ -251,15 +251,14 @@ object ConversationRepo {
         }.conversationDao()
     }
 
-    /** Room 行 → OKIA 会话树快照（leafId 缺省时显式取最后一条，绕 OKIA project(null) 坑 D16）。 */
+    /** Room 行 → OKIA 会话树快照（leafId null 由 OKIA 恢复为最后一条，§5.3）。 */
     private suspend fun readSnapshot(id: String, storedLeafId: String?): SessionSnapshot {
         val entries = dao().listEntries(id).mapNotNull { entity ->
             entity.toConversationEntry()
         }
-        val leafId = storedLeafId ?: entries.lastOrNull()?.id
         return SessionSnapshot(
             id = id,
-            leafId = leafId,
+            leafId = storedLeafId,
             version = SNAPSHOT_VERSION,
             entries = entries,
         )

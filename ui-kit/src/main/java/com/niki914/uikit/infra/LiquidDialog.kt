@@ -40,6 +40,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.unit.dp
@@ -151,6 +152,14 @@ private fun LiquidDialogSurface(
     LaunchedEffect(Unit) {
         withFrameNanos { }
         dialogMounted = true
+    }
+
+    // 弹窗可见时消费系统返回键（issue：语言/协议弹窗按返回直接弹页）。
+    // LiquidDialog 是 portal overlay 而非 Dialog，返回不会自动落在弹窗上；
+    // 这里后于页面级 BackHandler 注册（弹窗内容组合在后），可见时优先接管，
+    // 隐藏后随 AnimatedVisibility 自动注销。
+    BackHandler(enabled = effectiveVisible) {
+        onDismissRequest()
     }
 
     AnimatedVisibility(

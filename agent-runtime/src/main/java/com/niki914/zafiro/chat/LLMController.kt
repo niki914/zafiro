@@ -108,8 +108,8 @@ object LLMController {
     //   序列化），变化才起后台刷新；无变化不刷（零网络开销）
     // - 调度状态机 + 失败退避收敛在 McpRefreshScheduler（问题 4 修复：
     //   失败/部分失败不记为成功，配置 in-flight 变化不吞）
-    // - 已知限制：OKIA refreshMcpTools 与 send 共用 RealOkia mutex，后台刷新
-    //   持锁期间发问会短排队——见 ISSUES_okia-integration.md OKIA-1（待提）
+    // - 已知限制解除：OKIA refreshMcpTools 已移出活跃回合互斥（#125），
+    //   后台刷新与 send 不再争锁，回合内刷新不抛异常
     private val mcpRefreshScheduler =
         McpRefreshScheduler(CoroutineScope(SupervisorJob() + Dispatchers.IO))
 

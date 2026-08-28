@@ -24,7 +24,8 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * 库门面：一次对话一个实例，至多一个活跃回合。send 启动回合；stop 取消回合。
  * 并发契约：活跃回合存在时，send 与任何改变会话状态的操作（rewind /
- * update / refreshMcpTools / close）都抛异常；stop 是唯一例外（取消路径）。
+ * update / close）都抛异常；stop 是唯一例外（取消路径）。refreshMcpTools
+ * 不受限（发现状态与会话树/回合独立，issue #125）。
  * 无 fork：分支由下游 export() + open(restore) 自行实现，库只维护单棵对话树。
  * Replace 由 stop() + send() 组合表达。
  * Design source: independent facade design, surface from pi session-manager.

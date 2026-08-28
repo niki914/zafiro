@@ -45,6 +45,18 @@ class RealConversationTest {
         assertNull(snapshot.live)
     }
 
+    // leafId null = 恢复为最后一条（issue #126 对齐 docs/okia.md §5.3）
+    @Test
+    fun nullLeafProjectsToLastEntry() {
+        val entries = listOf(
+            ConversationEntry("e1", null, 1L, user("hi")),
+            ConversationEntry("e2", "e1", 2L, assistant("hello")),
+        )
+        val tree = RealConversation("s1", entries, null)
+        assertEquals(listOf(user("hi"), assistant("hello")), tree.history)
+        assertEquals("e2", tree.toSnapshot().history.lastOrNull()?.id)
+    }
+
     @Test
     fun initialStateRejectsDanglingLeafId() {
         val entry = ConversationEntry("e1", null, 1L, user("hi"))
