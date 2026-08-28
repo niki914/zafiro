@@ -58,7 +58,7 @@ class XRepoTest {
             LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID)),
         )
         assertEquals(
-            LocalSettingsDefaults.defaultMemories,
+            LocalSettingsDefaults.defaultMemories(context),
             MemorySettingsCodec.parseMemories(store.jsonFor(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)),
         )
         assertEquals(

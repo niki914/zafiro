@@ -1,0 +1,3 @@
+Zafiro's settings root is /data/user/0/com.niki914.zafiro/files/settings/.
+Zafiro's package name is com.niki914.zafiro; GitHub repo: https://github.com/niki914/zafiro.
+Custom Python tools are programmable and self-repairable: a broken tool (e.g. a web-search parser after an engine redesign) can be diagnosed with py_meta_tools read, fixed via test, and replaced via write; tools may call external HTTP APIs with requests.

@@ -175,7 +175,7 @@ object XRepo {
                 context,
                 StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID,
                 MemorySettingsCodec.encodeMemories(
-                    LocalSettingsDefaults.defaultMemories,
+                    LocalSettingsDefaults.defaultMemories(context),
                     System.currentTimeMillis()
                 ),
             )
