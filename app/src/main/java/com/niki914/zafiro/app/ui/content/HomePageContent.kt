@@ -238,8 +238,9 @@ fun HomePageContent(
     RegisterPageChrome(pageChromeContribution)
 
     // 冷启动键盘焦点：仅进程内首次进入 Home、无草稿输入且不在加载中时抢焦点。
-    // 标志在成功/耗尽后才置位：若 effect 在重试期间被组合销毁取消，
-    // 下次进入 Home 会重新尝试（否则会像日志里那样 begin 后无 attempt 直接丢失）。
+    // 标志在首次 effect 执行后即置位：无论聚焦成功、attempts 耗尽还是条件不满足
+    // （有草稿/正在生成），都不再重试 —— 否则回答完成时 isGenerating 翻转会重启
+    // 本 effect，导致"回答完成后自动弹键盘"（冷启动时未成功聚焦过的场景）。
     if (!composerAutoFocusDone && !uiState.isLoadingConversation) {
         LaunchedEffect(uiState.input.isBlank(), uiState.isGenerating) {
             if (uiState.input.isBlank() && !uiState.isGenerating) {
@@ -252,8 +253,8 @@ fun HomePageContent(
                         return@LaunchedEffect
                     }
                 }
-                composerAutoFocusDone = true
             }
+            composerAutoFocusDone = true
         }
     }
 
