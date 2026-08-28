@@ -21,7 +21,6 @@ import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.component.PageDescriptionText
 import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
 import com.niki914.uikit.infra.component.TintLiquidButton
-import com.niki914.uikit.infra.liquidScreenHazeSource
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.ui.model.SkillDeleteConfirmationState
@@ -109,7 +108,6 @@ private fun SkillDetailContentBody(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .liquidScreenHazeSource(),
     ) {
         Column(
             modifier = Modifier

@@ -92,7 +92,6 @@ dependencies {
     compileOnly("de.robv.android.xposed:api:82")
 
     // Third-party UI
-    implementation("dev.chrisbanes.haze:haze:1.7.2")
     implementation("com.mikepenz:multiplatform-markdown-renderer-m3:0.37.0")
 
     // Material & AndroidX

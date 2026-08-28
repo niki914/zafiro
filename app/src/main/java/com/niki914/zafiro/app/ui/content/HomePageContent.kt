@@ -62,7 +62,6 @@ import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
-import com.niki914.uikit.infra.liquidScreenHazeSource
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.ui.PageChromeContribution
@@ -340,7 +339,6 @@ private fun HomePageContentBody(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .liquidScreenHazeSource(),
     ) {
         LazyColumn(
             state = listState,

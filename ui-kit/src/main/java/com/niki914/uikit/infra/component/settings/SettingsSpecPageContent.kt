@@ -190,14 +190,14 @@ private fun SettingsRowLeadingIconContent(icon: SettingsRowLeadingIcon) {
             imageVector = icon.imageVector,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(28.dp),
         )
 
         is SettingsRowLeadingIcon.PainterResource -> Icon(
             painter = painterResource(id = icon.drawableResId),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(28.dp),
         )
     }
 }

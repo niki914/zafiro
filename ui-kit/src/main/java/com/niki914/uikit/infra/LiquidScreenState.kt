@@ -15,6 +15,7 @@ enum class TitleDirection { Forward, Back, None }
 @Stable
 class LiquidScreenState(
     initialTitle: String = "",
+    initialIsTitleCollapsible: Boolean = false,
     initialShowLeftButton: Boolean = true,
     initialShowRightButton: Boolean = true,
     initialShowBlurLayer: Boolean = true,
@@ -26,6 +27,7 @@ class LiquidScreenState(
     val viewportAvoidanceController = LiquidViewportAvoidanceController()
 
     internal var title by mutableStateOf(initialTitle)
+    internal var isTitleCollapsible by mutableStateOf(initialIsTitleCollapsible)
     internal var showLeftButton by mutableStateOf(initialShowLeftButton)
     internal var showRightButton by mutableStateOf(initialShowRightButton)
     internal var showBlurLayer by mutableStateOf(initialShowBlurLayer)
@@ -41,6 +43,7 @@ class LiquidScreenState(
 
     fun navigateForward(
         title: String,
+        isTitleCollapsible: Boolean = this.isTitleCollapsible,
         showLeftButton: Boolean = this.showLeftButton,
         showRightButton: Boolean = this.showRightButton,
         showBlurLayer: Boolean = this.showBlurLayer,
@@ -48,11 +51,12 @@ class LiquidScreenState(
         onRightClick: (() -> Unit)? = this.onRightClick,
     ) {
         titleDirection = TitleDirection.Forward
-        apply(title, showLeftButton, showRightButton, showBlurLayer, onLeftClick, onRightClick)
+        apply(title, isTitleCollapsible, showLeftButton, showRightButton, showBlurLayer, onLeftClick, onRightClick)
     }
 
     fun navigateBack(
         title: String,
+        isTitleCollapsible: Boolean = this.isTitleCollapsible,
         showLeftButton: Boolean = this.showLeftButton,
         showRightButton: Boolean = this.showRightButton,
         showBlurLayer: Boolean = this.showBlurLayer,
@@ -60,11 +64,12 @@ class LiquidScreenState(
         onRightClick: (() -> Unit)? = this.onRightClick,
     ) {
         titleDirection = TitleDirection.Back
-        apply(title, showLeftButton, showRightButton, showBlurLayer, onLeftClick, onRightClick)
+        apply(title, isTitleCollapsible, showLeftButton, showRightButton, showBlurLayer, onLeftClick, onRightClick)
     }
 
     fun update(
         title: String,
+        isTitleCollapsible: Boolean = this.isTitleCollapsible,
         showLeftButton: Boolean = this.showLeftButton,
         showRightButton: Boolean = this.showRightButton,
         showBlurLayer: Boolean = this.showBlurLayer,
@@ -72,11 +77,12 @@ class LiquidScreenState(
         onRightClick: (() -> Unit)? = this.onRightClick,
     ) {
         titleDirection = TitleDirection.None
-        apply(title, showLeftButton, showRightButton, showBlurLayer, onLeftClick, onRightClick)
+        apply(title, isTitleCollapsible, showLeftButton, showRightButton, showBlurLayer, onLeftClick, onRightClick)
     }
 
     private fun apply(
         title: String,
+        isTitleCollapsible: Boolean,
         showLeftButton: Boolean,
         showRightButton: Boolean,
         showBlurLayer: Boolean,
@@ -84,6 +90,7 @@ class LiquidScreenState(
         onRightClick: (() -> Unit)?,
     ) {
         this.title = title
+        this.isTitleCollapsible = isTitleCollapsible
         this.showLeftButton = showLeftButton
         this.showRightButton = showRightButton
         this.showBlurLayer = showBlurLayer
@@ -95,6 +102,7 @@ class LiquidScreenState(
 @Composable
 fun rememberLiquidScreenState(
     title: String = "",
+    isTitleCollapsible: Boolean = false,
     showLeftButton: Boolean = true,
     showRightButton: Boolean = true,
     showBlurLayer: Boolean = true,
@@ -104,6 +112,7 @@ fun rememberLiquidScreenState(
     return remember {
         LiquidScreenState(
             initialTitle = title,
+            initialIsTitleCollapsible = isTitleCollapsible,
             initialShowLeftButton = showLeftButton,
             initialShowRightButton = showRightButton,
             initialShowBlurLayer = showBlurLayer,

@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.component.TintLiquidButton
-import com.niki914.uikit.infra.liquidScreenHazeSource
 import com.niki914.uikit.infra.liquidScreenTopPadding
 
 @Composable
@@ -30,7 +29,6 @@ fun DonePageContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .liquidScreenHazeSource()
             .padding(top = liquidScreenTopPadding())
             .padding(horizontal = 24.dp, vertical = 24.dp),
     ) {

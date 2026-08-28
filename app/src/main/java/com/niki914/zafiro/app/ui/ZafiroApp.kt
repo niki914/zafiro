@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,7 @@ import com.niki914.uikit.infra.LiquidScreen
 import com.niki914.uikit.infra.LiquidScreenSwipeContent
 import com.niki914.uikit.infra.TitleDirection
 import com.niki914.uikit.infra.nav.LocalNavigationEntry
+import com.niki914.uikit.infra.nav.LocalPageTitle
 import com.niki914.uikit.infra.nav.rememberNavigationController
 import com.niki914.uikit.infra.rememberLiquidScreenState
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
@@ -58,6 +60,7 @@ import com.niki914.zafiro.app.ui.nav.NoTitle
 import com.niki914.zafiro.app.ui.nav.PageTitleSpec
 import com.niki914.zafiro.app.ui.nav.ResTitle
 import com.niki914.zafiro.app.ui.nav.TextTitle
+import com.niki914.zafiro.app.ui.nav.TitleBarMode
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 
 @Composable
@@ -81,6 +84,7 @@ fun ZafiroApp(
     val initialPage = launchDecision.initialPage
     val controller = rememberNavigationController<ZafiroPage>(initialPage = initialPage)
     val navigator = controller.navigator
+    val saveableStateHolder = rememberSaveableStateHolder()
     val currentEntry = controller.currentEntry
     val currentPage = currentEntry.page
     val currentChrome = pageChromeHost.stateFor(currentEntry.id)
@@ -105,8 +109,10 @@ fun ZafiroApp(
         currentLeftAction != null && (currentLeftAction.onClick != null || controller.canGoBack)
     val showRightButton = currentRightAction != null
     val currentTitle = resolveTitle(currentChrome.titleSpec ?: currentPage.titleSpec)
+    val isTitleCollapsible = currentPage.titleMode == TitleBarMode.Collapsible
     val screenState = rememberLiquidScreenState(
         title = currentTitle,
+        isTitleCollapsible = isTitleCollapsible,
         showLeftButton = showLeftButton,
         showRightButton = showRightButton,
         showBlurLayer = currentPage.showBlurLayer,
@@ -195,6 +201,7 @@ fun ZafiroApp(
         when (controller.lastDirection) {
             TitleDirection.Forward -> screenState.navigateForward(
                 title = currentTitle,
+                isTitleCollapsible = isTitleCollapsible,
                 showLeftButton = showLeftButton,
                 showRightButton = showRightButton,
                 showBlurLayer = currentPage.showBlurLayer,
@@ -204,6 +211,7 @@ fun ZafiroApp(
 
             TitleDirection.Back -> screenState.navigateBack(
                 title = currentTitle,
+                isTitleCollapsible = isTitleCollapsible,
                 showLeftButton = showLeftButton,
                 showRightButton = showRightButton,
                 showBlurLayer = currentPage.showBlurLayer,
@@ -213,6 +221,7 @@ fun ZafiroApp(
 
             TitleDirection.None -> screenState.update(
                 title = currentTitle,
+                isTitleCollapsible = isTitleCollapsible,
                 showLeftButton = showLeftButton,
                 showRightButton = showRightButton,
                 showBlurLayer = currentPage.showBlurLayer,
@@ -298,35 +307,38 @@ fun ZafiroApp(
                     CompositionLocalProvider(
                         LocalNavigationEntry provides entry,
                         LocalPageChrome provides pageChromeRegistrar,
+                        LocalPageTitle provides resolveTitle(entry.page.titleSpec),
                     ) {
-                        ZafiroPageContent(
-                            entry = entry,
-                            startupAssistantUi = startupAssistantUi,
-                            onPush = ::push,
-                            onPushFromLeft = ::pushFromLeft,
-                            onPop = { navigator.pop() },
-                            onPopMultiple = { navigator.popMultiple(it) },
-                            onPopToRight = ::popToRight,
-                            onResetTo = ::resetTo,
-                            selectedConversationId = selectedConversationId,
-                            onConversationSelected = { id ->
-                                selectedConversationId = id
-                            },
-                            onConversationSelectionConsumed = { id ->
-                                if (selectedConversationId == id) {
-                                    selectedConversationId = null
-                                }
-                            },
-                            activeConversationId = activeConversationId,
-                            activeConversationTitle = activeConversationTitle,
-                            onActiveConversationChanged = { id, title ->
-                                activeConversationId = id
-                                activeConversationTitle = title
-                            },
-                            onCurrentConversationDeleted = { id ->
-                                deleteActiveConversation(id)
-                            },
-                        )
+                        saveableStateHolder.SaveableStateProvider(entry.id) {
+                            ZafiroPageContent(
+                                entry = entry,
+                                startupAssistantUi = startupAssistantUi,
+                                onPush = ::push,
+                                onPushFromLeft = ::pushFromLeft,
+                                onPop = { navigator.pop() },
+                                onPopMultiple = { navigator.popMultiple(it) },
+                                onPopToRight = ::popToRight,
+                                onResetTo = ::resetTo,
+                                selectedConversationId = selectedConversationId,
+                                onConversationSelected = { id ->
+                                    selectedConversationId = id
+                                },
+                                onConversationSelectionConsumed = { id ->
+                                    if (selectedConversationId == id) {
+                                        selectedConversationId = null
+                                    }
+                                },
+                                activeConversationId = activeConversationId,
+                                activeConversationTitle = activeConversationTitle,
+                                onActiveConversationChanged = { id, title ->
+                                    activeConversationId = id
+                                    activeConversationTitle = title
+                                },
+                                onCurrentConversationDeleted = { id ->
+                                    deleteActiveConversation(id)
+                                },
+                            )
+                        }
                     }
                 }
 

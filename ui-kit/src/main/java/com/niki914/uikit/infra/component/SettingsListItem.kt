@@ -36,9 +36,9 @@ fun SettingsListItem(
     onClick: (() -> Unit)? = null,
 ) {
     val contentPadding = if (leadingContent != null) {
-        PaddingValues(start = 20.dp, top = 14.dp, end = 16.dp, bottom = 14.dp)
+        PaddingValues(start = 20.dp, top = 20.dp, end = 16.dp, bottom = 20.dp)
     } else {
-        PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+        PaddingValues(horizontal = 16.dp, vertical = 20.dp)
     }
 
     SettingsItemSurface(
@@ -56,7 +56,7 @@ fun SettingsListItem(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (leadingContent != null) {
                     leadingContent()
@@ -109,7 +109,7 @@ fun SettingsListItem(
                             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(24.dp),
                         )
                     }
                 }

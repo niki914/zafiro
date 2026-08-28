@@ -37,7 +37,7 @@ fun SettingsItemSurface(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     minHeight: Dp = 64.dp,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
     hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.ContextClick,
     highlightPulseKey: Any? = null,
     highlightPulseDurationMillis: Int = 500,

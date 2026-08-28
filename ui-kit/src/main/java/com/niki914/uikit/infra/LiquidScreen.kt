@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -39,8 +41,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -52,10 +59,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import dev.chrisbanes.haze.HazeProgressive
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 
 @Composable
@@ -69,7 +72,6 @@ fun LiquidScreen(
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     val density = LocalDensity.current
-    val hazeState = rememberHazeState(blurEnabled = true)
     val chromeBackdrop = rememberLayerBackdrop()
     val dialogHostState = remember { LiquidDialogHostState() }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -81,6 +83,63 @@ fun LiquidScreen(
     val imeBottomPx = WindowInsets.ime.getBottom(density)
     val navigationBottomPx = WindowInsets.navigationBars.getBottom(density)
     var screenHeightPx by remember { mutableStateOf(0) }
+
+    // 内容滚动观测：被动判定内容是否离开顶部。
+    // 用于顶栏背景色/小标题的布尔动画：离开顶部 → 渐显，回到顶部 → 渐隐。
+    // 不可滚动页面不会产生任何滚动事件，恒为 false（顶栏全透明）。
+    var isContentScrolled by remember { mutableStateOf(false) }
+    val scrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (available.y > 0f) {
+                    // 内容已在顶部仍继续下拉（顶部过滚动）：已回到顶部。
+                    isContentScrolled = false
+                } else if (consumed.y < 0f) {
+                    // finger 上滑、内容向下滚：已离开顶部。
+                    isContentScrolled = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+    // 导航（前进/后退）时重置：Pinned 页的滚动状态均为 remember（非 saveable），
+    // 重建后必在顶部；Collapsible 页不读这个布尔，由页面自报（snapshotFlow）。
+    LaunchedEffect(state.title, state.titleDirection) {
+        when (state.titleDirection) {
+            TitleDirection.Forward, TitleDirection.Back -> isContentScrolled = false
+            TitleDirection.None -> {}
+        }
+    }
+    val titleCollapseState = remember { TitleBarCollapseState() }
+    // 动画时长与 action bar 左右按钮显隐动画一致，页面切换时两页滚动状态
+    // 不同也不会闪变：alpha 总是从当前值动画到目标值。
+    val collapseAnimSpec = tween<Float>(durationMillis = 280, easing = LinearOutSlowInEasing)
+    // 背景与小标题共用同一信号源，保证两者同步动画：
+    // Collapsible 页由页面自报（与大标题同一阈值）；Pinned 页由嵌套滚动观测驱动。
+    val barTarget = if (state.isTitleCollapsible) {
+        titleCollapseState.isCollapsed
+    } else {
+        isContentScrolled
+    }
+    val titleTarget = if (state.isTitleCollapsible) {
+        titleCollapseState.isCollapsed
+    } else {
+        true
+    }
+    val barAlpha by animateFloatAsState(
+        targetValue = if (barTarget) 1f else 0f,
+        animationSpec = collapseAnimSpec,
+        label = "topBarAlpha",
+    )
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (titleTarget) 1f else 0f,
+        animationSpec = collapseAnimSpec,
+        label = "topBarTitleAlpha",
+    )
     val targetAvoidanceOffsetPx = with(density) {
         calculateLiquidViewportAvoidanceOffsetPx(
             screenHeightPx = screenHeightPx.toFloat(),
@@ -107,18 +166,19 @@ fun LiquidScreen(
             .fillMaxSize()
             .onSizeChanged { size -> screenHeightPx = size.height },
     ) {
-        // Layer 1: page content owns the haze source placement.
+        // Layer 1: page content.
         CompositionLocalProvider(
             LocalLiquidScreenContentContext provides LiquidScreenContentContext(
                 topPadding = actionBarHeight,
-                hazeState = hazeState,
             ),
+            LocalTitleBarCollapseState provides titleCollapseState,
             LocalLiquidViewportAvoidanceController provides state.viewportAvoidanceController,
             LocalLiquidDialogHostState provides dialogHostState,
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .nestedScroll(scrollConnection)
                     .graphicsLayer {
                         translationY = avoidanceOffsetPx
                     },
@@ -127,7 +187,7 @@ fun LiquidScreen(
             }
         }
 
-        // Layer 2: action bar progressive blur background
+        // Layer 2: action bar background，颜色随内容滚动渐显。
         AnimatedVisibility(
             visible = state.showBlurLayer,
             modifier = Modifier
@@ -141,17 +201,9 @@ fun LiquidScreen(
                     .fillMaxWidth()
                     .height(chromeHeight)
                     .layerBackdrop(chromeBackdrop)
-                    .hazeEffect(state = hazeState) {
-                        tints = listOf(
-                            HazeTint(
-                                if (isDarkTheme) Color.Black else Color.White
-                            )
-                        )
-                        progressive = HazeProgressive.verticalGradient(
-                            startIntensity = 1f,
-                            endIntensity = 0f
-                        )
-                    }
+                    .background(
+                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = barAlpha)
+                    ),
             )
         }
 
@@ -236,7 +288,9 @@ fun LiquidScreen(
                 label = "title",
             ) { title ->
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(titleAlpha),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(

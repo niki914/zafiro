@@ -34,7 +34,16 @@ sealed interface ZafiroPage : Page {
     val rightAction: TopBarActionSpec?
     val showBlurLayer: Boolean
         get() = true
+
+    /**
+     * 顶栏标题模式：Pinned = 小标题常驻（到顶时背景透明但标题照常显示）；
+     * Collapsible = 大标题在内容顶部，随滚动切换为小标题（设置 spec 页）。
+     */
+    val titleMode: TitleBarMode
+        get() = TitleBarMode.Pinned
 }
+
+enum class TitleBarMode { Pinned, Collapsible }
 
 data object StartupPage : ZafiroPage {
     override val routeKey: String = "startup"
@@ -118,6 +127,7 @@ data object SettingsHomePage : ZafiroPage {
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
     override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
 }
 
 data class SettingsDetailPage(
@@ -129,6 +139,9 @@ data class SettingsDetailPage(
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
     override val rightAction: TopBarActionSpec? = null
+
+    // 全部组均渲染大标题页（ModelConfig 已迁移到 SettingsListPageContent）。
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
 }
 
 data class McpServerDetailPage(
@@ -213,4 +226,5 @@ data class BuiltinToolGroupDetailPage(
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
     override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
 }

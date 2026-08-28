@@ -60,7 +60,7 @@ private fun SettingsToggleListItemRow(
         SettingsItemSurface(
             modifier = Modifier.weight(1f),
             enabled = enabled,
-            contentPadding = PaddingValues(start = 16.dp, top = 14.dp, end = 0.dp, bottom = 14.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 20.dp, end = 0.dp, bottom = 20.dp),
             onClick = onClick,
         ) {
             Column(
