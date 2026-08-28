@@ -24,7 +24,7 @@ private fun ConfirmationLiquidDialogPreviewContent() {
         showBlurLayer = false,
     )
 
-    LiquidScreen(state = screenState) {
+    LiquidScreen(state = screenState, collapsed = false) {
         Box(
             modifier = Modifier
                 .fillMaxSize()

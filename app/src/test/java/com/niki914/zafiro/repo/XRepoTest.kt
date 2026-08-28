@@ -15,6 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONObject
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import com.niki914.zafiro.settings.MemoryMutationResult
@@ -62,7 +63,7 @@ class XRepoTest {
             MemorySettingsCodec.parseMemories(store.jsonFor(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID)),
         )
         assertEquals(
-            listOf("py_web_search", "py_launch_wechat"),
+            XRepo.seedPyToolDefaults(context).map { it.name },
             ToolSettingsCodec.parseCustomPyTools(store.jsonFor(StoreDescriptorRegistry.TOOLS_PY_ID))
                 .map { it.name },
         )
@@ -86,6 +87,69 @@ class XRepoTest {
 
         assertFalse(updated)
         assertEquals(0, store.writeCount)
+    }
+
+    @Test
+    fun seedPyTools_addsMissingSeedToolsAndIsIdempotent() = runTest {
+        val store = installStore(FakeDomainSettingsStore())
+
+        XRepo.seedPyTools()
+        assertEquals(
+            XRepo.seedPyToolDefaults(context).map { it.name },
+            ToolSettingsCodec.parseCustomPyTools(store.jsonFor(StoreDescriptorRegistry.TOOLS_PY_ID))
+                .map { it.name },
+        )
+
+        // 幂等：已补齐后不再写
+        val writesAfterFirst = store.writeCount
+        XRepo.seedPyTools()
+        assertEquals(writesAfterFirst, store.writeCount)
+    }
+
+    @Test
+    fun seedPyTools_keepsUserToolsAndDoesNotOverwriteUserEdits() = runTest {
+        val seedNames = XRepo.seedPyToolDefaults(context).map { it.name }
+        val userEditedSeed = seedNames.first()
+        val store = installStore(
+            FakeDomainSettingsStore(
+                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodeCustomPyTools(
+                    listOf(
+                        CustomPyTool(name = userEditedSeed, code = "user-modified"),
+                        CustomPyTool(name = "py_custom_user", code = "print(1)"),
+                    )
+                ),
+            )
+        )
+
+        XRepo.seedPyTools()
+
+        val tools = ToolSettingsCodec.parseCustomPyTools(store.jsonFor(StoreDescriptorRegistry.TOOLS_PY_ID))
+        // 用户改过的同名 seed 不被覆盖
+        assertEquals("user-modified", tools.first { it.name == userEditedSeed }.code)
+        // 用户自定义工具保留，缺失 seed 全部补上
+        assertEquals(seedNames.toSet() + setOf("py_custom_user"), tools.map { it.name }.toSet())
+    }
+
+    @Test
+    fun allSeedTools_areValid() = runTest {
+        val seeds = XRepo.seedPyToolDefaults(context)
+        val namePattern = Regex("^py_[a-z][a-z0-9_]{0,63}$")
+        assertTrue(seeds.isNotEmpty())
+        for (seed in seeds) {
+            assertTrue("bad name: ${seed.name}", namePattern.matches(seed.name))
+            assertTrue("empty code: ${seed.name}", seed.code.isNotBlank())
+            assertTrue("missing main entry: ${seed.name}", "def main(" in seed.code)
+            assertTrue(
+                "invalid schema: ${seed.name}",
+                runCatching { JSONObject(seed.schemaJson) }.isSuccess,
+            )
+            assertTrue(
+                "timeout out of range: ${seed.name}",
+                seed.timeoutMs in 1_000L..CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS,
+            )
+        }
+        // 名字唯一
+        assertEquals(seeds.size, seeds.map { it.name }.toSet().size)
     }
 
     @Test

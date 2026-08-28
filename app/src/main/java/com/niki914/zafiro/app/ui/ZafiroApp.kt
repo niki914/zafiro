@@ -245,6 +245,9 @@ fun ZafiroApp(
         ) {
             LiquidScreen(
                 state = screenState,
+                // 折叠状态拉取自当前导航条目：页面经 ReportTitleBarCollapsed 写入，
+                // 条目存活期保留，导航切页同帧生效，返回时首帧恢复离开前状态。
+                collapsed = currentEntry.titleCollapsed,
                 actionsEnabled = !isPageTransitioning,
                 leftButton = currentLeftAction?.let { action ->
                     {

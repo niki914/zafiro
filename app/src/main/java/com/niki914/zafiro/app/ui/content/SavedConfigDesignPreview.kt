@@ -353,7 +353,7 @@ private fun SingleChoiceDialogPreview() {
             showBlurLayer = false,
         )
         var selectedProtocol by remember { mutableStateOf("openai-responses") }
-        LiquidScreen(state = screenState) {
+        LiquidScreen(state = screenState, collapsed = false) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

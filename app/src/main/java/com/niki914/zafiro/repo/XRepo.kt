@@ -187,12 +187,7 @@ object XRepo {
             writeJsonLocked(
                 context,
                 StoreDescriptorRegistry.TOOLS_PY_ID,
-                ToolSettingsCodec.encodeCustomPyTools(
-                    listOf(
-                        seedWebSearchTool(context),
-                        seedLaunchWechatTool(context),
-                    )
-                ),
+                ToolSettingsCodec.encodeCustomPyTools(seedPyToolDefaults(context)),
             )
             writeJsonLocked(
                 context,
@@ -208,6 +203,26 @@ object XRepo {
                 "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return result
+    }
+
+    /**
+     * 启动时补齐缺失的 seed py tools（按 name 判缺）。
+     *
+     * 只追加用户列表里没有的工具，不覆盖用户对同名工具的修改；
+     * 用户已删除的 seed 会被复活（tools 无删除墓碑，无法区分"未装过"与"删过"）。
+     */
+    suspend fun seedPyTools() {
+        val context = context()
+        updateJsonOrFalse(StoreDescriptorRegistry.TOOLS_PY_ID) { json ->
+            val existing = ToolSettingsCodec.parseCustomPyTools(json)
+            val existingNames = existing.map { it.name }.toSet()
+            val missing = seedPyToolDefaults(context).filter { it.name !in existingNames }
+            if (missing.isEmpty()) {
+                null
+            } else {
+                ToolSettingsCodec.encodeCustomPyTools(existing + missing)
+            }
+        }
     }
 
     suspend fun onboardingCompleted(): Boolean {
@@ -303,6 +318,15 @@ object XRepo {
     private val SCHEMA_WEB_SEARCH =
         """{"type":"object","properties":{"query":{"type":"string"},"engine":{"type":"string","enum":["all","baidu","sogou","ddg"],"description":"search engine; \"all\" (default) merges Baidu + Sogou + DuckDuckGo"},"max_results":{"type":"integer","description":"default: 8"}},"required":["query"]}"""
 
+    // Seed custom py tools 全量列表：新增 seed 时在此追加，
+    // seedPyTools() 每次启动补齐缺失，老用户升级后自动获得新工具。
+    internal fun seedPyToolDefaults(context: Context): List<CustomPyTool> =
+        listOf(
+            seedWebSearchTool(context),
+            seedLaunchWechatTool(context),
+            seedInstallApkTool(context),
+        )
+
     // Seed custom py tools: code lives in res/raw，此处只负责组装。
     private fun seedWebSearchTool(context: Context) = CustomPyTool(
         name = "py_web_search",
@@ -316,6 +340,18 @@ object XRepo {
         description = "启动微信 (Launch WeChat).",
         schemaJson = """{"type":"object","properties":{},"required":[]}""",
         code = readRawResource(context, R.raw.seed_py_launch_wechat),
+    )
+
+    private val SCHEMA_INSTALL_APK =
+        """{"type":"object","properties":{"url":{"type":"string","description":"APK 直链 URL"},"force":{"type":"boolean","description":"覆盖安装；默认已安装则跳过"}},"required":["url"]}"""
+
+    // 下载+安装大 APK 可能超过默认 30s，直接设到上限 120s。
+    private fun seedInstallApkTool(context: Context) = CustomPyTool(
+        name = "py_install_apk",
+        description = "Download an APK from a URL and install it via su. Non-force by default: skips if the app is already installed; set force=true to overwrite.",
+        schemaJson = SCHEMA_INSTALL_APK,
+        code = readRawResource(context, R.raw.seed_py_install_apk),
+        timeoutMs = CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS,
     )
 
     private fun readRawResource(context: Context, rawId: Int): String {

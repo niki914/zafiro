@@ -45,10 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -66,6 +63,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun LiquidScreen(
     state: LiquidScreenState,
+    collapsed: Boolean,
     modifier: Modifier = Modifier,
     actionsEnabled: Boolean = true,
     leftButton: (@Composable () -> Unit)? = null,
@@ -75,6 +73,9 @@ fun LiquidScreen(
     val isDarkTheme = LocalAppDarkTheme.current
     val density = LocalDensity.current
     val chromeBackdrop = rememberLayerBackdrop()
+    // 标题两侧预留 = ActionBarButton 占宽（12dp 内边距 ×2 + 48sp 按钮）。
+    // 随系统字体缩放同步放大，防止长标题压到左右按钮下方。
+    val titleHorizontalPadding = with(density) { 12.dp * 2 + 48.sp.toDp() }
     val dialogHostState = remember { LiquidDialogHostState() }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val titleBarHeight = 56.dp
@@ -86,56 +87,17 @@ fun LiquidScreen(
     val navigationBottomPx = WindowInsets.navigationBars.getBottom(density)
     var screenHeightPx by remember { mutableStateOf(0) }
 
-    // 内容滚动观测：被动判定内容是否离开顶部。
-    // 用于顶栏背景色/小标题的布尔动画：离开顶部 → 渐显，回到顶部 → 渐隐。
-    // 不可滚动页面不会产生任何滚动事件，恒为 false（顶栏全透明）。
-    var isContentScrolled by remember { mutableStateOf(false) }
-    val scrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                if (available.y > 0f) {
-                    // 内容已在顶部仍继续下拉（顶部过滚动）：已回到顶部。
-                    isContentScrolled = false
-                } else if (consumed.y < 0f) {
-                    // finger 上滑、内容向下滚：已离开顶部。
-                    isContentScrolled = true
-                }
-                return Offset.Zero
-            }
-        }
-    }
-    val titleCollapseState = remember { TitleBarCollapseState() }
-    // 导航时重置事件通道与自报标记。Pinned 页若不自报（非 Saveable 滚动状态），
-    // 重建后必在顶部，重置后恒 false 即正确；可 saveable 恢复滚动位置的页（如 Home Chat）
-    // 应写入 collapse state 自报（hasReporter=true），返回时首帧立即纠正，不受重置影响。
-    LaunchedEffect(state.title, state.titleDirection) {
-        when (state.titleDirection) {
-            TitleDirection.Forward, TitleDirection.Back -> {
-                isContentScrolled = false
-                titleCollapseState.hasReporter = false
-            }
-            TitleDirection.None -> {}
-        }
-    }
+    // 背景板/小标题折叠状态唯一来源：当前导航条目的 titleCollapsed
+    // （页面经 ReportTitleBarCollapsed 写入）。bar 拉取，无导航清零、
+    // 无共享状态、无退场页竞争；条目存活期状态保留，返回时首帧恢复。
+
     // 动画时长与 action bar 左右按钮显隐动画一致，页面切换时两页滚动状态
     // 不同也不会闪变：alpha 总是从当前值动画到目标值。
     val collapseAnimSpec = tween<Float>(durationMillis = 280, easing = LinearOutSlowInEasing)
-    // 背景与小标题共用同一信号源，保证两者同步动画：
-    // Collapsible 页由页面自报（与大标题同一阈值）；Pinned 页由嵌套滚动观测驱动。
-    val barTarget = if (state.isTitleCollapsible || titleCollapseState.hasReporter) {
-        titleCollapseState.isCollapsed
-    } else {
-        isContentScrolled
-    }
-    val titleTarget = if (state.isTitleCollapsible) {
-        titleCollapseState.isCollapsed
-    } else {
-        true
-    }
+    // 背景与小标题共用同一信号源，保证两者同步动画；
+    // 小标题仅在 Collapsible 页随折叠浮现，Pinned 页常驻。
+    val barTarget = collapsed
+    val titleTarget = if (state.isTitleCollapsible) collapsed else true
     val barAlpha by animateFloatAsState(
         targetValue = if (barTarget) 1f else 0f,
         animationSpec = collapseAnimSpec,
@@ -177,14 +139,12 @@ fun LiquidScreen(
             LocalLiquidScreenContentContext provides LiquidScreenContentContext(
                 topPadding = actionBarHeight,
             ),
-            LocalTitleBarCollapseState provides titleCollapseState,
             LocalLiquidViewportAvoidanceController provides state.viewportAvoidanceController,
             LocalLiquidDialogHostState provides dialogHostState,
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(scrollConnection)
                     .graphicsLayer {
                         translationY = avoidanceOffsetPx
                     },
@@ -262,7 +222,7 @@ fun LiquidScreen(
                     .fillMaxWidth()
                     .padding(top = topInset)
                     .fillMaxHeight()
-                    .padding(horizontal = 48.dp),
+                    .padding(horizontal = titleHorizontalPadding),
                 transitionSpec = {
                     val titleEasing = FastOutSlowInEasing
                     val enterForward = slideInHorizontally(
