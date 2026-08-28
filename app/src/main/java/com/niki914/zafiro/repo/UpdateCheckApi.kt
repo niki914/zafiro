@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -48,6 +49,8 @@ private object UpdateCheckApi {
 
     private const val GITHUB_API_LATEST =
         "https://api.github.com/repos/niki914/zafiro/releases/latest"
+    private const val GITHUB_API_LATEST_ANY =
+        "https://api.github.com/repos/niki914/zafiro/releases?per_page=1"
 
     private val semverRe = Regex("""(\d+\.\d+\.\d+)""")
 
@@ -58,16 +61,33 @@ private object UpdateCheckApi {
     }
 
     private fun resolveUpdateOrNull(currentVersion: String): UpdateCheckResult {
-        val body = fetchLatestRelease() ?: return noUpdate()
-        val obj = json.parseToJsonElement(body) as? JsonObject ?: return noUpdate()
+        // 先看最新 stable release；无更新时兜底看最新 release（含 prerelease，
+        // preview 分发线靠它才能被检测到）
+        return checkRelease(fetchLatestRelease(), currentVersion, includePrerelease = false)
+            ?: checkRelease(fetchLatestReleaseAny(), currentVersion, includePrerelease = true)
+            ?: noUpdate()
+    }
 
-        if (obj["draft"]?.jsonPrimitive?.booleanOrNull == true) return noUpdate()
-        if (obj["prerelease"]?.jsonPrimitive?.booleanOrNull == true) return noUpdate()
+    private fun checkRelease(
+        body: String?,
+        currentVersion: String,
+        includePrerelease: Boolean,
+    ): UpdateCheckResult? {
+        if (body == null) return null
+        val element = json.parseToJsonElement(body)
+        val obj = when (element) {
+            is JsonObject -> element
+            is JsonArray -> element.firstOrNull() as? JsonObject
+            else -> null
+        } ?: return null
 
-        val tagName = obj["tag_name"]?.jsonPrimitive?.content ?: return noUpdate()
-        val remoteVersion = semverRe.find(tagName)?.groupValues?.get(1) ?: return noUpdate()
+        if (obj["draft"]?.jsonPrimitive?.booleanOrNull == true) return null
+        if (!includePrerelease && obj["prerelease"]?.jsonPrimitive?.booleanOrNull == true) return null
 
-        if (!isNewer(remoteVersion, currentVersion)) return noUpdate()
+        val tagName = obj["tag_name"]?.jsonPrimitive?.content ?: return null
+        val remoteVersion = semverRe.find(tagName)?.groupValues?.get(1) ?: return null
+
+        if (!isNewer(remoteVersion, currentVersion)) return null
 
         val releaseUrl = obj["html_url"]?.jsonPrimitive?.content.orEmpty()
         return UpdateCheckResult(
@@ -77,8 +97,12 @@ private object UpdateCheckApi {
         )
     }
 
-    private fun fetchLatestRelease(): String? {
-        val request = Request.Builder().url(GITHUB_API_LATEST).build()
+    private fun fetchLatestRelease(): String? = fetch(GITHUB_API_LATEST)
+
+    private fun fetchLatestReleaseAny(): String? = fetch(GITHUB_API_LATEST_ANY)
+
+    private fun fetch(url: String): String? {
+        val request = Request.Builder().url(url).build()
         return xTry {
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful && response.body != null) {
