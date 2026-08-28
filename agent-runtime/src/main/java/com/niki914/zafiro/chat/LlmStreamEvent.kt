@@ -26,6 +26,12 @@ sealed interface LlmStreamEvent {
         val call: ToolCallStatus,
     ) : LlmStreamEvent
 
+    /** 工具调用参数流式构建中：仅名字已知、参数未完整。UI 以 Running 占位（转圈、不可展开），
+     *  后续 [ToolRunning] 按 callId 原地更新为完整信息。 */
+    data class ToolPending(
+        val call: ToolCallStatus,
+    ) : LlmStreamEvent
+
     data class ToolSucceeded(
         val call: ToolCallStatus,
         val outputText: String? = null,

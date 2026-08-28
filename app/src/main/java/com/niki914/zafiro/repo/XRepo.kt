@@ -323,6 +323,7 @@ object XRepo {
     internal fun seedPyToolDefaults(context: Context): List<CustomPyTool> =
         listOf(
             seedWebSearchTool(context),
+            seedWebReadTool(context),
             seedLaunchWechatTool(context),
             seedInstallApkTool(context),
         )
@@ -333,6 +334,17 @@ object XRepo {
         description = "Search the web (default: multi-engine merge of Baidu + Sogou + DuckDuckGo; or engine=baidu/sogou/ddg). Returns a list of {title, url, snippet}.",
         schemaJson = SCHEMA_WEB_SEARCH,
         code = readRawResource(context, R.raw.seed_py_web_search),
+    )
+
+    private val SCHEMA_WEB_READ =
+        """{"type":"object","properties":{"url":{"type":"string","description":"Page URL"},"keyword":{"type":"string","description":"Return only the section around this keyword"},"max_chars":{"type":"integer","description":"Max characters to return (default 6000)"},"timeout":{"type":"integer","description":"HTTP timeout seconds (default 25)"}},"required":["url"]}"""
+
+    // 抓取网页正文：与 py_web_search 配套，搜索只给摘要时读全文。
+    private fun seedWebReadTool(context: Context) = CustomPyTool(
+        name = "py_web_read",
+        description = "Fetch a URL and extract readable article text. Optional keyword returns only the section around it. Companion to py_web_search when snippets are not enough.",
+        schemaJson = SCHEMA_WEB_READ,
+        code = readRawResource(context, R.raw.seed_py_web_read),
     )
 
     private fun seedLaunchWechatTool(context: Context) = CustomPyTool(

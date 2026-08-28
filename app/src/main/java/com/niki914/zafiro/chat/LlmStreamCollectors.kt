@@ -121,6 +121,8 @@ private class FullTextProjector(
                 listOf(LlmTextFrame(renderSegments(), isFirst = false, isFinal = false))
             }
 
+            is LlmStreamEvent.ToolPending -> listOf()
+
             is LlmStreamEvent.ToolRunning -> {
                 upsertTool(event.call, labels.called)
                 val calledFrame = LlmTextFrame(renderSegments(), isFirst = false, isFinal = false)
@@ -223,6 +225,8 @@ private class ChunkTextProjector(
                 }
                 listOf(LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false))
             }
+
+            is LlmStreamEvent.ToolPending -> listOf()
 
             is LlmStreamEvent.ToolRunning -> {
                 appendToolLine(event.call, labels.called)

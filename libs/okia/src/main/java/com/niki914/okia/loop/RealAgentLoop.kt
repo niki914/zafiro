@@ -454,7 +454,9 @@ internal class RealAgentLoop : AgentLoop {
                 onEvent(
                     TurnEvent.ToolCallStarted(
                         toolCallIndex(state, state.pendingToolCalls.lastIndex),
-                        state.partialMessage()
+                        state.partialMessage(),
+                        callId = event.callId,
+                        toolName = event.toolName,
                     )
                 )
             }

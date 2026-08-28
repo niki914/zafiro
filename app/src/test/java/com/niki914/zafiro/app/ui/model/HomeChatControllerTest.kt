@@ -495,6 +495,48 @@ class HomeChatViewModelTest {
     }
 
     @Test
+    fun toolPending_insertsPlaceholderAndToolRunningUpdatesInPlace() = runTest {
+        val conversations = FakeHomeConversationStore()
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(stream = {
+                flowOf(
+                    LlmStreamEvent.RoundStarted,
+                    LlmStreamEvent.ToolPending(
+                        ToolCallStatus(callId = "c1", name = "terminal", label = "terminal")
+                    ),
+                    LlmStreamEvent.ToolRunning(
+                        ToolCallStatus(
+                            callId = "c1",
+                            name = "terminal",
+                            label = "terminal",
+                            argumentsJson = """{"command":"ls"}""",
+                        )
+                    ),
+                    LlmStreamEvent.Completed,
+                )
+            }),
+        )
+
+        viewModel.sendIntent(HomeChatIntent.InputChanged("hello"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        // 占位行被 ToolRunning 原地更新，不产生重复块
+        val toolBlocks =
+            viewModel.uiStateFlow.value.turns.single().blocks.filterIsInstance<HomeChatBlock.Tool>()
+        assertEquals(1, toolBlocks.size)
+        assertEquals("c1", toolBlocks.single().status.callId)
+        assertEquals(HomeToolState.Running, toolBlocks.single().status.state)
+        // inputText 经 ToolPresentation.inputOf 提取：terminal 取 command 字段
+        assertEquals("ls", toolBlocks.single().status.inputText)
+
+        viewModel.sendIntent(HomeChatIntent.NewConversation)
+        advanceUntilIdle()
+    }
+
+    @Test
     fun completed_keepsConversationAndLastOpenedId() = runTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
