@@ -92,6 +92,36 @@ class PromptComposerTest {
     // --- Tool context (stable tier) ---
 
     @Test
+    fun compose_injectsExecutionRulesGuidanceWhenToolsExist() {
+        val customPyTool = LocalTool.Py(
+            name = "py_launch_wechat",
+            description = "Launch WeChat",
+            code = "def main():\n    pass",
+            inputSchemaJson = null,
+        )
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "",
+                tools = ResolvedTools(customPyTools = listOf(customPyTool)),
+            )
+        )
+
+        assertTrue(result.finalSystemPrompt.contains(PromptComposer.EXECUTION_RULES_GUIDANCE))
+    }
+
+    @Test
+    fun compose_omitsExecutionRulesGuidanceWhenNoTools() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "base",
+                tools = ResolvedTools(),
+            )
+        )
+
+        assertFalse(result.finalSystemPrompt.contains(PromptComposer.EXECUTION_RULES_GUIDANCE))
+    }
+
+    @Test
     fun compose_omitsToolContextWhenNoToolsOrMcpServers() {
         val result = PromptComposer().compose(
             PromptComposerInput(

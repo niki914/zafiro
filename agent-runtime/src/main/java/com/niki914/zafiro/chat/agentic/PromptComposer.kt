@@ -37,6 +37,7 @@ class PromptComposer {
                 .takeIf { hasBuiltinTool(input, "load_skill") },
             TASK_COMPLETION_GUIDANCE.takeIf { hasAnyTool(input) },
             TOOL_USE_ENFORCEMENT_GUIDANCE.takeIf { hasAnyTool(input) },
+            EXECUTION_RULES_GUIDANCE.takeIf { hasAnyTool(input) },
             MEMORY_GUIDANCE.takeIf { hasBuiltinTool(input, "memory") },
             SKILLS_GUIDANCE.takeIf { hasBuiltinTool(input, "load_skill") },
         ).joinToString(separator = "\n\n")
@@ -160,6 +161,13 @@ class PromptComposer {
                 "your turn with a promise of future action — execute it now.\n" +
                 "Every response should either (a) contain tool calls that make progress, or " +
                 "(b) deliver a final result to the user."
+
+        internal const val EXECUTION_RULES_GUIDANCE =
+            "# Execution rules\n" +
+                "Tool actions may be blocked by Zafiro's app-level execution rules, which are " +
+                "user-configurable in Zafiro settings — not system restrictions. A block means " +
+                "the user declined the action or the rule is too strict; the user can adjust " +
+                "the rule in Zafiro settings. Do not describe blocks as system policy."
 
         internal const val MEMORY_GUIDANCE =
             "You have persistent memory across sessions. Save durable facts using the memory " +
