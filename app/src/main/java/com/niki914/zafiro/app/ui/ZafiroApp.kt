@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.niki914.zafiro.app.R
+import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.LiquidScreen
 import com.niki914.uikit.infra.LiquidScreenSwipeContent
 import com.niki914.uikit.infra.TitleDirection
@@ -57,6 +58,7 @@ import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.NoTitle
+import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.app.ui.nav.PageTitleSpec
 import com.niki914.zafiro.app.ui.nav.ResTitle
 import com.niki914.zafiro.app.ui.nav.TextTitle
@@ -70,7 +72,9 @@ fun ZafiroApp(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
-    val isDarkTheme = isSystemInDarkTheme()
+    val systemDarkTheme = isSystemInDarkTheme()
+    val themePrefs = ThemeController.prefs
+    val isDarkTheme = themePrefs.resolveDarkTheme(systemDarkTheme)
     val actionIconTint = if (isDarkTheme) Color.White else Color.Black
     val rootBackToHomeWindowMillis = 2_000L
     val rootBackToHomeHint = stringResource(R.string.ui_root_back_to_home_hint)
@@ -231,140 +235,148 @@ fun ZafiroApp(
         }
     }
 
+    val seedColor = themePrefs.seedColor?.let { Color(it) }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        LiquidScreen(
-            state = screenState,
-            actionsEnabled = !isPageTransitioning,
-            leftButton = currentLeftAction?.let { action ->
-                {
-                    AnimatedContent(
-                        targetState = action.icon,
-                        transitionSpec = {
-                            val iconAnimationSpec = tween<Float>(
-                                durationMillis = 280,
-                                easing = FastOutSlowInEasing,
-                            )
-                            (scaleIn(
-                                initialScale = 1.18f,
-                                animationSpec = iconAnimationSpec,
-                            ) + fadeIn(animationSpec = iconAnimationSpec)).togetherWith(
-                                scaleOut(
-                                    targetScale = 0.78f,
-                                    animationSpec = iconAnimationSpec,
-                                ) + fadeOut(animationSpec = iconAnimationSpec)
-                            )
-                        },
-                        label = "leftActionIcon",
-                    ) { imageVector ->
-                        ActionBarVectorIcon(
-                            imageVector = imageVector,
-                            tint = actionIconTint,
-                        )
-                    }
-                }
-            },
-            rightButton = currentRightAction?.let { action ->
-                {
-                    AnimatedContent(
-                        targetState = action.icon,
-                        transitionSpec = {
-                            val iconAnimationSpec = tween<Float>(
-                                durationMillis = 280,
-                                easing = FastOutSlowInEasing,
-                            )
-                            (scaleIn(
-                                initialScale = 1.18f,
-                                animationSpec = iconAnimationSpec,
-                            ) + fadeIn(animationSpec = iconAnimationSpec)).togetherWith(
-                                scaleOut(
-                                    targetScale = 0.78f,
-                                    animationSpec = iconAnimationSpec,
-                                ) + fadeOut(animationSpec = iconAnimationSpec)
-                            )
-                        },
-                        label = "rightActionIcon",
-                    ) { imageVector ->
-                        ActionBarVectorIcon(
-                            imageVector = imageVector,
-                            tint = actionIconTint,
-                        )
-                    }
-                }
-            },
+        BaseTheme(
+            darkTheme = isDarkTheme,
+            dynamicColor = themePrefs.seedColor == null,
+            seedColor = seedColor,
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                LiquidScreenSwipeContent(
-                    targetState = currentEntry,
-                    direction = controller.lastDirection,
-                    modifier = Modifier.fillMaxSize(),
-                    onTransitionActiveChanged = { active ->
-                        isPageTransitioning = active
-                    },
-                ) { entry ->
-                    val pageChromeRegistrar = remember(entry.id, pageChromeHost) {
-                        pageChromeHost.registrarFor(entry.id)
-                    }
-                    CompositionLocalProvider(
-                        LocalNavigationEntry provides entry,
-                        LocalPageChrome provides pageChromeRegistrar,
-                        LocalPageTitle provides resolveTitle(entry.page.titleSpec),
-                    ) {
-                        saveableStateHolder.SaveableStateProvider(entry.id) {
-                            ZafiroPageContent(
-                                entry = entry,
-                                startupAssistantUi = startupAssistantUi,
-                                onPush = ::push,
-                                onPushFromLeft = ::pushFromLeft,
-                                onPop = { navigator.pop() },
-                                onPopMultiple = { navigator.popMultiple(it) },
-                                onPopToRight = ::popToRight,
-                                onResetTo = ::resetTo,
-                                selectedConversationId = selectedConversationId,
-                                onConversationSelected = { id ->
-                                    selectedConversationId = id
-                                },
-                                onConversationSelectionConsumed = { id ->
-                                    if (selectedConversationId == id) {
-                                        selectedConversationId = null
-                                    }
-                                },
-                                activeConversationId = activeConversationId,
-                                activeConversationTitle = activeConversationTitle,
-                                onActiveConversationChanged = { id, title ->
-                                    activeConversationId = id
-                                    activeConversationTitle = title
-                                },
-                                onCurrentConversationDeleted = { id ->
-                                    deleteActiveConversation(id)
-                                },
+            LiquidScreen(
+                state = screenState,
+                actionsEnabled = !isPageTransitioning,
+                leftButton = currentLeftAction?.let { action ->
+                    {
+                        AnimatedContent(
+                            targetState = action.icon,
+                            transitionSpec = {
+                                val iconAnimationSpec = tween<Float>(
+                                    durationMillis = 280,
+                                    easing = FastOutSlowInEasing,
+                                )
+                                (scaleIn(
+                                    initialScale = 1.18f,
+                                    animationSpec = iconAnimationSpec,
+                                ) + fadeIn(animationSpec = iconAnimationSpec)).togetherWith(
+                                    scaleOut(
+                                        targetScale = 0.78f,
+                                        animationSpec = iconAnimationSpec,
+                                    ) + fadeOut(animationSpec = iconAnimationSpec)
+                                )
+                            },
+                            label = "leftActionIcon",
+                        ) { imageVector ->
+                            ActionBarVectorIcon(
+                                imageVector = imageVector,
+                                tint = actionIconTint,
                             )
                         }
                     }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = screenState.actionBarHeight.value, end = 12.dp),
-                ) {
-                    DropdownMenu(
-                        expanded = chromeMenuExpanded && currentChrome.menuItems.isNotEmpty(),
-                        onDismissRequest = ::closeChromeMenu,
-                    ) {
-                        currentChrome.menuItems.forEach { item ->
-                            DropdownMenuItem(
-                                text = { Text(item.title) },
-                                onClick = {
-                                    closeChromeMenu()
-                                    item.onClick()
-                                },
+                },
+                rightButton = currentRightAction?.let { action ->
+                    {
+                        AnimatedContent(
+                            targetState = action.icon,
+                            transitionSpec = {
+                                val iconAnimationSpec = tween<Float>(
+                                    durationMillis = 280,
+                                    easing = FastOutSlowInEasing,
+                                )
+                                (scaleIn(
+                                    initialScale = 1.18f,
+                                    animationSpec = iconAnimationSpec,
+                                ) + fadeIn(animationSpec = iconAnimationSpec)).togetherWith(
+                                    scaleOut(
+                                        targetScale = 0.78f,
+                                        animationSpec = iconAnimationSpec,
+                                    ) + fadeOut(animationSpec = iconAnimationSpec)
+                                )
+                            },
+                            label = "rightActionIcon",
+                        ) { imageVector ->
+                            ActionBarVectorIcon(
+                                imageVector = imageVector,
+                                tint = actionIconTint,
                             )
+                        }
+                    }
+                },
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LiquidScreenSwipeContent(
+                        targetState = currentEntry,
+                        direction = controller.lastDirection,
+                        modifier = Modifier.fillMaxSize(),
+                        onTransitionActiveChanged = { active ->
+                            isPageTransitioning = active
+                        },
+                    ) { entry ->
+                        val pageChromeRegistrar = remember(entry.id, pageChromeHost) {
+                            pageChromeHost.registrarFor(entry.id)
+                        }
+                        CompositionLocalProvider(
+                            LocalNavigationEntry provides entry,
+                            LocalPageChrome provides pageChromeRegistrar,
+                            LocalPageTitle provides resolveTitle(entry.page.titleSpec),
+                        ) {
+                            saveableStateHolder.SaveableStateProvider(entry.id) {
+                                ZafiroPageContent(
+                                    entry = entry,
+                                    startupAssistantUi = startupAssistantUi,
+                                    onPush = ::push,
+                                    onPushFromLeft = ::pushFromLeft,
+                                    onPop = { navigator.pop() },
+                                    onPopMultiple = { navigator.popMultiple(it) },
+                                    onPopToRight = ::popToRight,
+                                    onResetTo = ::resetTo,
+                                    selectedConversationId = selectedConversationId,
+                                    onConversationSelected = { id ->
+                                        selectedConversationId = id
+                                    },
+                                    onConversationSelectionConsumed = { id ->
+                                        if (selectedConversationId == id) {
+                                            selectedConversationId = null
+                                        }
+                                    },
+                                    activeConversationId = activeConversationId,
+                                    activeConversationTitle = activeConversationTitle,
+                                    onActiveConversationChanged = { id, title ->
+                                        activeConversationId = id
+                                        activeConversationTitle = title
+                                    },
+                                    onCurrentConversationDeleted = { id ->
+                                        deleteActiveConversation(id)
+                                    },
+                                )
+                            }
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = screenState.actionBarHeight.value, end = 12.dp),
+                    ) {
+                        DropdownMenu(
+                            expanded = chromeMenuExpanded && currentChrome.menuItems.isNotEmpty(),
+                            onDismissRequest = ::closeChromeMenu,
+                        ) {
+                            currentChrome.menuItems.forEach { item ->
+                                DropdownMenuItem(
+                                    text = { Text(item.title) },
+                                    onClick = {
+                                        closeChromeMenu()
+                                        item.onClick()
+                                    },
+                                )
+                            }
                         }
                     }
                 }
             }
+            currentChrome.overlay?.invoke()
         }
-        currentChrome.overlay?.invoke()
     }
 }
 

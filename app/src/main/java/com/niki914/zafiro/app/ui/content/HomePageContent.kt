@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController
+import com.niki914.uikit.infra.LocalTitleBarCollapseState
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
@@ -117,6 +118,18 @@ fun HomePageContent(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
+
+    // Home Chat 是可 saveable 恢复滚动位置的 Pinned 页：自报滚动状态给顶栏，
+    // 使返回时（scroll 恢复但不产生滚动事件）背景板能立即回到实色。
+    val titleBarCollapseState = LocalTitleBarCollapseState.current
+    LaunchedEffect(titleBarCollapseState, listState) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        }.collect { scrolled ->
+            titleBarCollapseState.hasReporter = true
+            titleBarCollapseState.isCollapsed = scrolled
+        }
+    }
     val imeBottom = with(density) { WindowInsets.ime.getBottom(this).toDp() }
     val navigationBottom = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
     var isComposerFocused by remember { mutableStateOf(false) }

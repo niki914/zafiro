@@ -273,6 +273,29 @@ object XRepo {
         }
     }
 
+    suspend fun themeMode(): String {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).themeMode
+    }
+
+    suspend fun setThemeMode(mode: String) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(themeMode = mode))
+        }
+    }
+
+    suspend fun themeSeedColor(): String {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .themeSeedColor
+    }
+
+    suspend fun setThemeSeedColor(hex: String) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(themeSeedColor = hex))
+        }
+    }
+
     // Seed custom py tool: web search via DuckDuckGo HTML endpoint. Code/schema are the
     // reflection cache written by the same pipeline py_meta_tools write uses.
     private val CODE_WEB_SEARCH = """

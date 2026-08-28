@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun SettingsListItem(
@@ -35,11 +36,8 @@ fun SettingsListItem(
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    val contentPadding = if (leadingContent != null) {
-        PaddingValues(start = 20.dp, top = 20.dp, end = 16.dp, bottom = 20.dp)
-    } else {
-        PaddingValues(horizontal = 16.dp, vertical = 20.dp)
-    }
+    // 无图标行的文字起点与有图标行的圆底左缘齐平（20dp），竖向视觉对齐。
+    val contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 16.dp, bottom = 20.dp)
 
     SettingsItemSurface(
         modifier = modifier,
@@ -68,7 +66,7 @@ fun SettingsListItem(
                 ) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -76,7 +74,7 @@ fun SettingsListItem(
                     if (!summary.isNullOrBlank()) {
                         Text(
                             text = summary,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,

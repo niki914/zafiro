@@ -3,6 +3,8 @@ package com.niki914.uikit.infra.component
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun LiquidTextField(
@@ -15,6 +17,7 @@ fun LiquidTextField(
     minLines: Int = 1,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     moveCursorToEndOnFocus: Boolean = false,
+    minHeight: Dp = 52.dp,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
     LiquidTextFieldContainer(
@@ -27,6 +30,7 @@ fun LiquidTextField(
         minLines = minLines,
         maxLines = maxLines,
         moveCursorToEndOnFocus = moveCursorToEndOnFocus,
+        minHeight = minHeight,
         trailingContent = trailingContent,
     )
 }

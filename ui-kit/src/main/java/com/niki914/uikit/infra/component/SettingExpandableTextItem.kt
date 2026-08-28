@@ -34,6 +34,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun SettingExpandableTextItem(
@@ -159,7 +160,7 @@ internal fun SettingExpandableTextItemContent(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
                 color = titleColor,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -181,7 +182,7 @@ internal fun SettingExpandableTextItemContent(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = description,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = secondaryTextColor,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

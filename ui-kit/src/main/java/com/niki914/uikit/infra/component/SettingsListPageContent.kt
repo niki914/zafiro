@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.ScrollState
 import com.niki914.uikit.infra.nav.LocalPageTitle
 import com.niki914.uikit.infra.LocalTitleBarCollapseState
@@ -60,14 +61,14 @@ fun SettingsListPageContent(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(top = liquidScreenTopPadding())
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .padding(horizontal = 16.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         val pageTitle = LocalPageTitle.current
         if (pageTitle.isNotBlank()) {
             Text(
                 text = pageTitle,
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier

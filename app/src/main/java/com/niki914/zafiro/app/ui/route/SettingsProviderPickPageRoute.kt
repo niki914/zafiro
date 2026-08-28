@@ -6,7 +6,6 @@ import com.niki914.zafiro.app.ui.content.SelectionPageContent
 import com.niki914.zafiro.app.ui.model.ProviderSpecs
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
-import com.niki914.zafiro.app.ui.nav.TextTitle
 
 @Composable
 internal fun SettingsProviderPickPageRoute(
@@ -14,16 +13,16 @@ internal fun SettingsProviderPickPageRoute(
 ) {
     SelectionPageContent(
         options = ProviderSpecs.all.map { spec ->
-            val colors = providerButtonColors(spec)
+            val colors = providerButtonColorsOrNull(spec)
             SelectionOption(
                 id = spec.id,
                 title = spec.brandName,
                 leadingIconRes = spec.iconRes,
                 tintLeadingIcon = spec.tintIcon,
-                darkContainerColor = colors.darkContainerColor,
-                lightContainerColor = colors.lightContainerColor,
-                darkContentColor = colors.darkContentColor,
-                lightContentColor = colors.lightContentColor,
+                darkContainerColor = colors?.darkContainerColor,
+                lightContainerColor = colors?.lightContainerColor,
+                darkContentColor = colors?.darkContentColor,
+                lightContentColor = colors?.lightContentColor,
                 onClick = {
                     onPush(
                         SavedConfigDetailPage(

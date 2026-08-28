@@ -107,9 +107,9 @@ private fun ConversationHistoryListContent(
         modifier = modifier
             .fillMaxSize(),
         contentPadding = PaddingValues(
-            start = 20.dp,
+            start = 16.dp,
             top = liquidScreenTopPadding(24.dp),
-            end = 20.dp,
+            end = 16.dp,
             bottom = 24.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -152,7 +152,7 @@ private fun ConversationHistoryMessageContent(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = 16.dp)
             .padding(top = liquidScreenTopPadding(24.dp), bottom = 24.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
