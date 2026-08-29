@@ -343,8 +343,6 @@
     <string name="fallback_assistant_name">Asistente</string>
     <string name="notif_unsupported_version_title">Versión de la app host no compatible</string>
     <string name="notif_unsupported_version_body">La versión actual de %1$s aún no es compatible con Zafiro\nVersión de la app host: %2$s</string>
-    <string name="notif_unsupported_issue_title">[BUG] Versión de la app host no compatible</string>
-    <string name="notif_unsupported_issue_body">## Descripción del problema\nLa versión actual de %1$s aún no es compatible con Zafiro\nVersión de la app host: %2$s\n\n## Pasos para reproducir\n\n\n## Información del dispositivo\n- Asistente: %1$s\n- Versión del asistente: %2$s\n- Versión del módulo:</string>
 
     <string name="feedback_bug_template">## Descripción del problema\n\n## Pasos para reproducir\n\n## Comportamiento esperado\n\n## Comportamiento real\n\n## Información del dispositivo\n- Versión de Android:\n- Asistente (Breeno u otro):\n- Versión del módulo:\n\n## Información adicional\nPuede adjuntar registros, capturas o grabaciones de pantalla para ayudarnos a entender el problema.</string>
     <string name="conversation_fork_title">Fork · %1$s</string>

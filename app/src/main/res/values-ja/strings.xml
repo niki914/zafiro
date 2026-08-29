@@ -342,8 +342,6 @@
     <string name="fallback_assistant_name">アシスタント</string>
     <string name="notif_unsupported_version_title">ホストバージョン未対応</string>
     <string name="notif_unsupported_version_body">現在の%1$sバージョンはまだ Zafiro に対応していません\nホストバージョン：%2$s</string>
-    <string name="notif_unsupported_issue_title">[BUG] ホストバージョン未対応</string>
-    <string name="notif_unsupported_issue_body">## 問題の説明\n現在の%1$sバージョンはまだ Zafiro に対応していません\nホストバージョン：%2$s\n\n## 再現手順\n\n\n## デバイス情報\n- アシスタント：%1$s\n- アシスタントのバージョン：%2$s\n- モジュールのバージョン：</string>
 
     <string name="feedback_bug_template">## 問題の説明\n\n## 再現手順\n\n## 期待される動作\n\n## 実際の動作\n\n## デバイス情報\n- Android バージョン：\n- アシスタント（Breeno またはその他）：\n- モジュールのバージョン：\n\n## その他\n理解を深めるため、ログやスクリーンショット、画面録画などを添付できます</string>
     <string name="conversation_fork_title">Fork · %1$s</string>

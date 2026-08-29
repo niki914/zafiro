@@ -9,7 +9,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.DeadObjectException
@@ -27,6 +26,7 @@ import com.niki914.zafiro.runtime.ipc.IAgentStoreService
 import com.niki914.zafiro.runtime.ipc.IRenderFrameCallback
 import com.niki914.zafiro.runtime.ipc.RenderFrame
 import com.niki914.store.HostApp
+import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.store.XIpcStoreRepository
 import com.niki914.store.displayNameFor
 import kotlinx.coroutines.CancellationException
@@ -39,6 +39,8 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicReference
+import org.json.JSONObject
+import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.R as AppR
 
 class AgentRuntimeService : Service() {
@@ -77,6 +79,7 @@ class AgentRuntimeService : Service() {
         private const val MAX_QUERY_LENGTH = 8192
         private const val STORE_CHANNEL_ID = "nexus_xservice_default_channel"
         private const val STORE_CHANNEL_NAME = "Zafiro"
+        private const val UNSUPPORTED_NOTIFIED_FIELD = "unsupported_version_notified"
     }
 
     private fun createNotificationChannel() {
@@ -239,7 +242,7 @@ class AgentRuntimeService : Service() {
             if (!validateCaller()) return
             val t = title ?: return
             val c = content ?: return
-            postNotificationImpl(t, c, uri)
+            postNotificationImpl(t, c, createContentIntent(uri))
         }
 
         override fun postNetworkErrorNotification() {
@@ -258,32 +261,69 @@ class AgentRuntimeService : Service() {
         ) {
             if (!validateCaller()) return
             val ctx = this@AgentRuntimeService
+            val dedupKey = "${hostPackageName.orEmpty()}:${hostVersion.orEmpty()}"
+            if (isUnsupportedVersionNotified(dedupKey)) {
+                Logger.d(LOG_TAG, "unsupported notification suppressed key=$dedupKey")
+                return
+            }
             val hostApp = HostApp.fromPackageName(hostPackageName)
             val hostName = hostApp?.let { ctx.displayNameFor(it) }
                 ?: ctx.getString(AppR.string.fallback_assistant_name)
             val version = hostVersion ?: ""
-            val issueUri = Uri.Builder()
-                .scheme("https")
-                .authority("github.com")
-                .path("/niki914/zafiro/issues/new")
-                .appendQueryParameter(
-                    "title",
-                    ctx.getString(AppR.string.notif_unsupported_issue_title)
-                )
-                .appendQueryParameter(
-                    "body",
-                    ctx.getString(AppR.string.notif_unsupported_issue_body, hostName, version)
-                )
-                .build()
-                .toString()
             postNotificationImpl(
                 ctx.getString(AppR.string.notif_unsupported_version_title),
                 ctx.getString(AppR.string.notif_unsupported_version_body, hostName, version),
-                issueUri
+                createAppLaunchPendingIntent()
             )
+            markUnsupportedVersionNotified(dedupKey)
         }
 
-        private fun postNotificationImpl(title: String, content: String, uri: String?) {
+        private fun isUnsupportedVersionNotified(key: String): Boolean {
+            val root = runCatching {
+                JSONObject(
+                    runBlocking {
+                        XIpcStoreRepository.readJson(
+                            this@AgentRuntimeService,
+                            StoreDescriptorRegistry.APP_STATE_ID
+                        )
+                    }
+                )
+            }.getOrNull() ?: return false
+            return root.optJSONObject(UNSUPPORTED_NOTIFIED_FIELD)?.optBoolean(key) == true
+        }
+
+        // ponytail: read-modify-write on app.state is not atomic across calls; a
+        // simultaneous Breeno+XiaoAi notify could drop one marker, which self-heals
+        // by re-notifying on the next host load
+        private fun markUnsupportedVersionNotified(key: String) {
+            runCatching {
+                runBlocking {
+                    val root = JSONObject(
+                        XIpcStoreRepository.readJson(
+                            this@AgentRuntimeService,
+                            StoreDescriptorRegistry.APP_STATE_ID
+                        )
+                    )
+                    val notified = root.optJSONObject(UNSUPPORTED_NOTIFIED_FIELD) ?: JSONObject().also {
+                        root.put(UNSUPPORTED_NOTIFIED_FIELD, it)
+                    }
+                    notified.put(key, true)
+                    XIpcStoreRepository.writeJson(
+                        this@AgentRuntimeService,
+                        StoreDescriptorRegistry.APP_STATE_ID,
+                        root.toString()
+                    )
+                }
+            }.onFailure { t ->
+                Logger.w(LOG_TAG, "mark unsupported notified failed key=$key error=$t")
+            }
+        }
+
+        private fun postNotificationImpl(
+            title: String,
+            content: String,
+            contentIntent: PendingIntent?
+        ) {
             fun hasPermission(): Boolean {
                 return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || ContextCompat.checkSelfPermission(
                     this@AgentRuntimeService,
@@ -301,11 +341,9 @@ class AgentRuntimeService : Service() {
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setAutoCancel(true)
 
-            createContentIntent(uri)?.let { contentIntent ->
-                builder.setContentIntent(contentIntent)
-            }
+            contentIntent?.let { builder.setContentIntent(it) }
             NotificationManagerCompat.from(this@AgentRuntimeService).notify(
-                notificationId(title, content, uri),
+                notificationId(title, content),
                 builder.build()
             )
         }
@@ -319,6 +357,19 @@ class AgentRuntimeService : Service() {
                 NotificationManager.IMPORTANCE_DEFAULT
             )
             manager.createNotificationChannel(channel)
+        }
+
+        // MainActivity is launchMode=singleTask; NEW_TASK reuses the existing task
+        // and routes through onNewIntent, so no duplicate activity is created
+        private fun createAppLaunchPendingIntent(): PendingIntent? {
+            val intent = Intent(this@AgentRuntimeService, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            return PendingIntent.getActivity(
+                this@AgentRuntimeService,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
         }
 
         private fun createContentIntent(uri: String?): PendingIntent? {
@@ -345,10 +396,9 @@ class AgentRuntimeService : Service() {
                 ?: android.R.drawable.ic_dialog_info
         }
 
-        private fun notificationId(title: String, content: String, uri: String?): Int {
+        private fun notificationId(title: String, content: String): Int {
             var result = title.hashCode()
             result = 31 * result + content.hashCode()
-            result = 31 * result + (uri?.hashCode() ?: 0)
             return result
         }
     }
