@@ -81,7 +81,7 @@ class LaunchAppBuiltin : BuiltinTool() {
             AppMatchResult.NotFound -> BuiltinToolResult.failure(
                 code = "APP_NOT_FOUND",
                 message = "No installed app matches '$appName'.",
-                hint = "Try search_apps with a broader query.",
+                hint = "The app may be installed under a different name. Retry with an alternative name, or ask the user which app to open.",
                 data = JsonObject(mapOf("app_name" to JsonPrimitive(appName))),
             )
         }

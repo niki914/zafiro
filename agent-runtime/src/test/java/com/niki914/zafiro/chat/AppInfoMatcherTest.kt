@@ -24,20 +24,64 @@ class AppInfoMatcherTest {
     }
 
     @Test
-    fun matchByName_returnsFoundForSingleFuzzyMatch() {
-        val result = AppInfoMatcher.matchByName(apps, "设置")
+    fun matchByName_returnsFoundForExactNameInAnyLocale() {
+        // 英文系统场景：appName 是英文标签，中文查询经多语言标签精确命中
+        val wechat = AppInfo(
+            packageName = "com.tencent.mm",
+            appName = "WeChat",
+            isSystemApp = false,
+            labels = setOf("WeChat", "微信"),
+        )
+        val wetype = AppInfo(
+            packageName = "com.tencent.wetype",
+            appName = "微信输入法",
+            isSystemApp = false,
+            labels = setOf("微信输入法"),
+        )
 
-        assertEquals(AppMatchResult.Found(apps[2]), result)
+        val result = AppInfoMatcher.matchByName(listOf(wechat, wetype), "微信")
+
+        assertEquals(AppMatchResult.Found(wechat), result)
     }
 
     @Test
-    fun matchByName_returnsCandidatesWhenFuzzyMatchIsAmbiguous() {
-        val result = AppInfoMatcher.matchByName(apps, "音乐")
+    fun matchByName_returnsFoundForSinglePrefixMatch() {
+        val result = AppInfoMatcher.matchByName(apps, "音乐播")
+
+        assertEquals(AppMatchResult.Found(apps[3]), result)
+    }
+
+    @Test
+    fun matchByName_returnsCandidatesWhenPrefixMatchIsAmbiguous() {
+        val music = AppInfo(packageName = "com.example.music", appName = "音乐播放器", isSystemApp = false)
+        val musicPro = AppInfo(packageName = "com.example.music.pro", appName = "音乐专业版", isSystemApp = false)
+
+        val result = AppInfoMatcher.matchByName(listOf(music, musicPro), "音乐")
 
         assertTrue(result is AppMatchResult.Candidates)
-        assertEquals(
-            listOf(apps[3], apps[4]),
-            (result as AppMatchResult.Candidates).apps,
-        )
+    }
+
+    @Test
+    fun matchByName_returnsCandidatesForSingleContainsOnlyMatch() {
+        // 产品族子串：仅包含命中（非精确/前缀）时唯一候选也不直接启动，交由模型裁决
+        val wetype = AppInfo(packageName = "com.tencent.wetype", appName = "微信输入法", isSystemApp = false)
+
+        val result = AppInfoMatcher.matchByName(listOf(wetype), "信输入")
+
+        assertEquals(AppMatchResult.Candidates(listOf(wetype)), result)
+    }
+
+    @Test
+    fun matchByName_prefersExactOverWeakerTiers() {
+        val result = AppInfoMatcher.matchByName(apps, "QQ")
+
+        assertEquals(AppMatchResult.Found(apps[1]), result)
+    }
+
+    @Test
+    fun matchByName_returnsNotFoundWhenNoLabelMatches() {
+        val result = AppInfoMatcher.matchByName(apps, "邮箱")
+
+        assertEquals(AppMatchResult.NotFound, result)
     }
 }

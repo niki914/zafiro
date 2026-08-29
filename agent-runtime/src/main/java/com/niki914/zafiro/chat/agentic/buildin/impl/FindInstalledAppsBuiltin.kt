@@ -16,15 +16,15 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
-class SearchAppsBuiltin : BuiltinTool() {
-    override val name: String = "search_apps"
+class FindInstalledAppsBuiltin : BuiltinTool() {
+    override val name: String = "find_installed_apps"
 
     override val description: String =
-        "Search installed Android apps by app name or package name. Use this before launch_app when the requested app name may be ambiguous."
+        "Find installed apps on this device by app name or package name. Serves opening apps only: use it to resolve which app to open. Not a general search tool."
 
     override val defaultEnabled: Boolean = true
 
-    override val inputSchemaJson: String? get() = SEARCH_APPS_SCHEMA
+    override val inputSchemaJson: String? get() = FIND_INSTALLED_APPS_SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         val args = try {
@@ -35,7 +35,7 @@ class SearchAppsBuiltin : BuiltinTool() {
             }
             return BuiltinToolResult.failure(
                 code = "INVALID_ARGUMENTS_JSON",
-                message = "search_apps arguments must be a JSON object with a query field.",
+                message = "find_installed_apps arguments must be a JSON object with a query field.",
                 hint = """Example: {"query":"微信","include_system":false,"limit":10}""",
                 fieldErrors = mapOf(
                     "argumentsJson" to (throwable.message ?: "Invalid JSON object.")
@@ -46,7 +46,7 @@ class SearchAppsBuiltin : BuiltinTool() {
         if (args.query.isBlank()) {
             return BuiltinToolResult.failure(
                 code = "MISSING_REQUIRED_FIELD",
-                message = "search_apps requires a non-blank query.",
+                message = "find_installed_apps requires a non-blank query.",
                 fieldErrors = mapOf("query" to "Field 'query' must not be blank."),
             )
         }
@@ -68,7 +68,7 @@ class SearchAppsBuiltin : BuiltinTool() {
         )
     }
 
-    private fun parseArguments(argumentsJson: String): SearchAppsArguments {
+    private fun parseArguments(argumentsJson: String): FindInstalledAppsArguments {
         val element = try {
             Json.parseToJsonElement(argumentsJson)
         } catch (throwable: SerializationException) {
@@ -78,7 +78,7 @@ class SearchAppsBuiltin : BuiltinTool() {
         }
         val obj = element as? JsonObject
             ?: throw IllegalArgumentException("argumentsJson must be a JSON object.")
-        return SearchAppsArguments(
+        return FindInstalledAppsArguments(
             query = obj.string("query").trim(),
             includeSystem = obj["include_system"]?.jsonPrimitive?.booleanOrNull ?: false,
             limit = obj["limit"]?.jsonPrimitive?.intOrNull ?: DEFAULT_LIMIT,
@@ -103,7 +103,7 @@ class SearchAppsBuiltin : BuiltinTool() {
         return this[key]?.jsonPrimitive?.contentOrNull.orEmpty()
     }
 
-    private data class SearchAppsArguments(
+    private data class FindInstalledAppsArguments(
         val query: String,
         val includeSystem: Boolean,
         val limit: Int,
@@ -111,13 +111,13 @@ class SearchAppsBuiltin : BuiltinTool() {
 
     companion object {
         private const val DEFAULT_LIMIT = 10
-        private const val SEARCH_APPS_SCHEMA = """
+        private const val FIND_INSTALLED_APPS_SCHEMA = """
             {
               "type": "object",
               "properties": {
                 "query": {
                   "type": "string",
-                  "description": "App name or package name fragment to search."
+                  "description": "App name or package name fragment to resolve."
                 },
                 "include_system": {
                   "type": "boolean",

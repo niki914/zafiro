@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic.buildin
 
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExecutePythonBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.FindInstalledAppsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
@@ -9,7 +10,6 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.NotifyBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationAccessibilityBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationShellBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.SearchAppsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.TerminalBuiltin
 
 class BuiltinToolRegistry(
@@ -32,7 +32,7 @@ class BuiltinToolRegistry(
                 OpenUriBuiltin(),
                 LoadSkillBuiltin(),
                 TerminalBuiltin(),
-                SearchAppsBuiltin(),
+                FindInstalledAppsBuiltin(),
                 ScreenOperationAccessibilityBuiltin(),
                 ScreenOperationShellBuiltin(),
             )

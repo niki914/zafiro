@@ -359,7 +359,7 @@
     <string name="ui_tool_display_notify">Notify</string>
     <string name="ui_tool_display_open_uri">Open URI</string>
     <string name="ui_tool_display_read_custom_tool">Read Custom Tool</string>
-    <string name="ui_tool_display_search_apps">Search Apps</string>
+    <string name="ui_tool_display_find_installed_apps">Find installed apps</string>
     <string name="ui_tool_display_screen_operation_accessibility">Screen Operation</string>
     <string name="ui_tool_display_screen_operation_shell">Screen Operation</string>
     <string name="dialog_cancel">Cancel</string>
