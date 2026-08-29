@@ -1,6 +1,8 @@
 package com.niki914.zafiro.app.ui.content
 
+import android.content.Context
 import android.content.res.Configuration
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Feedback
@@ -14,6 +16,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.os.LocaleListCompat
 import com.niki914.zafiro.app.BuildConfig
 import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
@@ -48,7 +51,7 @@ fun AboutSettingsContent() {
             when (effect) {
                 is AboutSettingsEffect.OpenUri -> uriHandler.openUri(effect.uri)
                 is AboutSettingsEffect.OpenFeedbackIssue -> {
-                    val body = context.resources.getString(effect.bodyTemplateRes)
+                    val body = context.localizedString(effect.bodyTemplateRes, effect.languageTag)
                     uriHandler.openUri(buildIssueUri(effect.title, body))
                 }
             }
@@ -128,6 +131,14 @@ private fun aboutSettingsSpec(
     )
 }
 
+// 用应用内语言设置解析字符串；空 tag 跟随系统默认解析
+private fun Context.localizedString(@StringRes res: Int, tag: String): String {
+    if (tag.isBlank()) return resources.getString(res)
+    val config = Configuration(resources.configuration)
+    config.setLocale(LocaleListCompat.forLanguageTags(tag).get(0))
+    return createConfigurationContext(config).getString(res)
+}
+
 private fun aboutSettingsRowId(id: AboutSettingsItemId): String =
     "$ABOUT_SETTINGS_ROW_ID_PREFIX${id.name}"
 
@@ -191,7 +202,7 @@ private fun previewAboutSettingsUiState(): AboutSettingsUiState {
             AboutSettingsItemUiState(
                 id = AboutSettingsItemId.AuthorHomepage,
                 titleRes = R.string.ui_settings_about_author_homepage,
-                uri = "https://github.com/niki914",
+                uri = "https://niki914.github.io/",
             ),
             AboutSettingsItemUiState(
                 id = AboutSettingsItemId.Github,

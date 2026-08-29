@@ -2,8 +2,10 @@ package com.niki914.zafiro.app.ui.model
 
 import android.net.Uri
 import androidx.annotation.StringRes
+import androidx.core.os.LocaleListCompat
 import com.niki914.zafiro.app.R
 import com.niki914.uikit.base.ComposeMVIViewModel
+import com.niki914.zafiro.repo.XRepo
 
 enum class AboutSettingsItemId {
     AuthorHomepage,
@@ -38,6 +40,7 @@ sealed interface AboutSettingsEffect {
     data class OpenFeedbackIssue(
         val title: String,
         @StringRes val bodyTemplateRes: Int,
+        val languageTag: String,
     ) : AboutSettingsEffect
 }
 
@@ -54,7 +57,7 @@ class AboutSettingsViewModel :
         }
     }
 
-    private fun openItem(id: AboutSettingsItemId) {
+    private suspend fun openItem(id: AboutSettingsItemId) {
         val item = currentState.items.firstOrNull { it.id == id } ?: return
         when {
             item.uri != null -> sendEffect(AboutSettingsEffect.OpenUri(item.uri))
@@ -62,7 +65,8 @@ class AboutSettingsViewModel :
                 sendEffect(
                     AboutSettingsEffect.OpenFeedbackIssue(
                         item.feedbackTitle,
-                        item.bodyTemplateRes
+                        item.bodyTemplateRes,
+                        XRepo.languageTag()
                     )
                 )
         }
@@ -74,7 +78,7 @@ private fun aboutSettingsItems(): List<AboutSettingsItemUiState> {
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.AuthorHomepage,
             titleRes = R.string.ui_settings_about_author_homepage,
-            uri = "https://github.com/niki914",
+            uri = "https://niki914.github.io/",
         ),
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.Github,
