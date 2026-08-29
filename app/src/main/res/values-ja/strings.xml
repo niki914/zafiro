@@ -358,7 +358,7 @@
     <string name="ui_tool_display_notify">通知</string>
     <string name="ui_tool_display_open_uri">リンクを開く</string>
     <string name="ui_tool_display_read_custom_tool">カスタムツール読み込み</string>
-    <string name="ui_tool_display_search_apps">アプリ検索</string>
+    <string name="ui_tool_display_find_installed_apps">アプリを探す</string>
     <string name="ui_tool_display_screen_operation_accessibility">画面操作</string>
     <string name="ui_tool_display_screen_operation_shell">画面操作</string>
     <string name="dialog_cancel">キャンセル</string>

@@ -2,10 +2,10 @@ package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
+import com.niki914.zafiro.chat.agentic.buildin.impl.FindInstalledAppsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.SearchAppsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.TerminalBuiltin
 import com.niki914.okia.tooling.ToolWireName
 import kotlinx.serialization.SerializationException
@@ -48,6 +48,7 @@ class BuiltinToolTest {
         assertEquals(
             listOf(
                 "execute_python",
+                "find_installed_apps",
                 "launch_app",
                 "load_skill",
                 "memory",
@@ -56,7 +57,6 @@ class BuiltinToolTest {
                 "py_meta_tools",
                 "screen_operation_accessibility",
                 "screen_operation_shell",
-                "search_apps",
                 "terminal",
             ),
             registry.all().map { it.name }.sorted()
@@ -69,7 +69,7 @@ class BuiltinToolTest {
         assertEquals("py_meta_tools", registry.find("py_meta_tools")?.name)
         assertEquals("screen_operation_accessibility", registry.find("screen_operation_accessibility")?.name)
         assertEquals("screen_operation_shell", registry.find("screen_operation_shell")?.name)
-        assertEquals("search_apps", registry.find("search_apps")?.name)
+        assertEquals("find_installed_apps", registry.find("find_installed_apps")?.name)
         assertEquals("terminal", registry.find("terminal")?.name)
     }
 
@@ -79,7 +79,7 @@ class BuiltinToolTest {
             LaunchAppBuiltin(),
             MemoryBuiltin(),
             OpenUriBuiltin(),
-            SearchAppsBuiltin(),
+            FindInstalledAppsBuiltin(),
             TerminalBuiltin(),
             com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin(),
         ).forEach { tool ->

@@ -5,17 +5,25 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
+import android.content.res.Configuration
 import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 data class AppInfo(
     val packageName: String,
     val appName: String,
     val isSystemApp: Boolean,
+
+    /**
+     * 多语言标签全集（系统默认 + zh-CN/zh-TW/en/ja/es），匹配层用；
+     * appName 仍是系统语言标签，用于展示与排序。
+     */
+    val labels: Set<String> = setOf(appName),
 )
 
 sealed interface AppMatchResult {
@@ -34,7 +42,7 @@ object AppInfoMatcher {
             return AppMatchResult.NotFound
         }
 
-        val exactMatches = apps.filter { it.appName.lowercase() == query }
+        val exactMatches = apps.filter { it.matches { label -> label == query } }
         if (exactMatches.isNotEmpty()) {
             return when (exactMatches.size) {
                 1 -> AppMatchResult.Found(exactMatches.first())
@@ -42,12 +50,24 @@ object AppInfoMatcher {
             }
         }
 
-        val candidates = apps.filter { it.appName.lowercase().contains(query) }
+        val prefixMatches = apps.filter { it.matches { label -> label.startsWith(query) } }
+        if (prefixMatches.isNotEmpty()) {
+            return when (prefixMatches.size) {
+                1 -> AppMatchResult.Found(prefixMatches.first())
+                else -> AppMatchResult.Candidates(prefixMatches)
+            }
+        }
+
+        // 仅包含命中属于弱匹配：即使唯一也返回候选，由模型裁决，避免“微信”误启动“微信输入法”类产品族子串。
+        val candidates = apps.filter { it.matches { label -> label.contains(query) } }
         return when (candidates.size) {
             0 -> AppMatchResult.NotFound
-            1 -> AppMatchResult.Found(candidates.first())
             else -> AppMatchResult.Candidates(candidates)
         }
+    }
+
+    private fun AppInfo.matches(predicate: (String) -> Boolean): Boolean {
+        return labels.any { predicate(it.lowercase()) }
     }
 }
 
@@ -85,7 +105,7 @@ class AppInfoCache(
             .asSequence()
             .filter { includeSystem || !it.isSystemApp }
             .filter {
-                it.appName.lowercase().contains(normalizedQuery) ||
+                it.labels.any { label -> label.lowercase().contains(normalizedQuery) } ||
                         it.packageName.lowercase().contains(normalizedQuery)
             }
             .sortedWith(compareBy<AppInfo> { it.isSystemApp }.thenBy { it.appName.lowercase() })
@@ -143,13 +163,47 @@ class AppInfoCache(
                 packageName = appInfo.packageName,
                 appName = loadLabel(packageManager).toString(),
                 isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+                labels = loadLabels(appInfo),
             )
         } catch (_: Throwable) {
             null
         }
     }
 
+    /** 按固定语言槽位加载标签；无对应语言资源时回退该应用默认语言的字符串，去重后入集。 */
+    private fun loadLabels(appInfo: ApplicationInfo): Set<String> {
+        val labels = LinkedHashSet<String>()
+        appInfo.nonLocalizedLabel?.let { labels += it.toString() }
+        if (appInfo.labelRes == 0) {
+            return labels
+        }
+        val pkgContext = try {
+            appContext.createPackageContext(appInfo.packageName, Context.CONTEXT_IGNORE_SECURITY)
+        } catch (_: Throwable) {
+            return labels
+        }
+        LABEL_LOCALES.distinctBy { it.toLanguageTag() }.forEach { locale ->
+            try {
+                val config = Configuration().apply { setLocale(locale) }
+                labels += pkgContext.createConfigurationContext(config).getString(appInfo.labelRes)
+            } catch (_: Throwable) {
+                // 单个语言资源异常不影响其余槽位
+            }
+        }
+        return labels
+    }
+
     companion object {
         private const val MAX_SEARCH_LIMIT = 20
+
+        // 中文（简/繁）、英文、日语、西语覆盖主流应用命名语言；系统默认语言始终参与。
+        private val LABEL_LOCALES = listOf(
+            Locale.getDefault(),
+            Locale.SIMPLIFIED_CHINESE,
+            Locale.TRADITIONAL_CHINESE,
+            Locale.ENGLISH,
+            Locale.JAPAN,
+            Locale("es"),
+        )
     }
 }

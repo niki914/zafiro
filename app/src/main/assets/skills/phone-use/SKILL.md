@@ -25,7 +25,7 @@ Two auxiliary tools for app discovery and launching:
 
 | Tool | Purpose |
 |:-----|:--------|
-| `search_apps` | Search installed apps by name or package name |
+| `find_installed_apps` | Find installed apps by name or package name |
 | `launch_app` | Launch an app by package name or fuzzy app name |
 
 ## Tool Reference
@@ -42,9 +42,9 @@ Primary tool for reading the screen and interacting with labeled UI nodes. The Y
 
 **FALLBACK** — prefer `screen_operation_accessibility` when possible. All operations use screen-pixel coordinates via shell (`input tap/swipe/keyevent`). Coordinates MUST come from the most recently returned screen tree — never hallucinate coordinates. Every successful write operation auto-returns the updated YAML tree.
 
-### launch_app / search_apps
+### launch_app / find_installed_apps
 
-Launch by exact `package_name` or fuzzy `app_name`. If `app_name` matches multiple apps, the tool returns a candidate list — pick one `package_name` and call again. Use `search_apps` first when the target app name is ambiguous.
+Launch by exact `package_name` or fuzzy `app_name`. If `app_name` matches multiple apps, the tool returns a candidate list — pick one `package_name` and call again. Use `find_installed_apps` first when the target app name is ambiguous.
 
 ## Workflow
 
@@ -57,7 +57,7 @@ launch_app(app_name: "Settings")
 If ambiguous, search first then launch by package name:
 
 ```
-search_apps(query: "settings")
+find_installed_apps(query: "settings")
 launch_app(package_name: "com.android.settings")
 ```
 

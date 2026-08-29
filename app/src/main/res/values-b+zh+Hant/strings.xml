@@ -314,7 +314,7 @@
     <string name="ui_tool_display_notify">通知</string>
     <string name="ui_tool_display_open_uri">開啟連結</string>
     <string name="ui_tool_display_read_custom_tool">讀取自訂工具</string>
-    <string name="ui_tool_display_search_apps">搜尋應用</string>
+    <string name="ui_tool_display_find_installed_apps">尋找應用程式</string>
     <string name="ui_tool_display_screen_operation_accessibility">螢幕操作</string>
     <string name="ui_tool_display_screen_operation_shell">螢幕操作</string>
     <string name="dialog_cancel">取消</string>

@@ -57,7 +57,7 @@ object ToolPresentation {
         "notify" -> R.string.ui_tool_display_notify
         "open_uri" -> R.string.ui_tool_display_open_uri
         "read_custom_tool" -> R.string.ui_tool_display_read_custom_tool
-        "search_apps" -> R.string.ui_tool_display_search_apps
+        "find_installed_apps" -> R.string.ui_tool_display_find_installed_apps
         "screen_operation_accessibility" -> R.string.ui_tool_display_screen_operation_accessibility
         "screen_operation_shell" -> R.string.ui_tool_display_screen_operation_shell
         else -> null

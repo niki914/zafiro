@@ -38,7 +38,7 @@ object BuiltinToolGroups {
             titleRes = R.string.builtin_tool_group_android_native,
             summaryRes = R.string.builtin_tool_group_android_native_summary,
             mode = BuiltinToolGroupMode.PER_TOOL,
-            members = listOf("open_uri", "launch_app", "search_apps", "notify"),
+            members = listOf("open_uri", "launch_app", "find_installed_apps", "notify"),
         ),
         BuiltinToolGroup(
             id = "screen_operation",
