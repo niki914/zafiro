@@ -38,12 +38,11 @@ internal fun StartupPageRoute(
     startupAssistantUi: StartupAssistantUi,
     onPush: (ZafiroPage) -> Unit,
     loadWebSettings: WebSettingsLoader = defaultWebSettingsLoader(),
-    initialLoading: Boolean = false,
     initialDialog: StartupWebSettingsDialog? = debugStartupWebSettingsInitialDialog(),
 ) {
     val scope = rememberCoroutineScope()
     var isCheckingWebSettings by rememberSaveable {
-        mutableStateOf(initialLoading)
+        mutableStateOf(false)
     }
     var webSettingsDialog by rememberSaveable {
         mutableStateOf(initialDialog)
@@ -72,33 +71,27 @@ internal fun StartupPageRoute(
         onPush(ProviderPickPage)
     }
 
+    // 结果只用于弹提示框，不再驱动导航；成功且无提示时静默等待用户点击。
     fun handleWebSettingsResult(result: WebSettingsResult) {
         isCheckingWebSettings = false
-        when (result) {
-            is WebSettingsResult.Success -> {
-                webSettingsDialog = when {
-                    result.isFallbackVersion -> StartupWebSettingsDialog.UnsupportedVersion
-                    result.settings.isBeta -> StartupWebSettingsDialog.Beta
-                    else -> null
-                }
-                if (webSettingsDialog == null) {
-                    enterNextPage()
-                }
+        webSettingsDialog = when (result) {
+            is WebSettingsResult.Success -> when {
+                result.isFallbackVersion -> StartupWebSettingsDialog.UnsupportedVersion
+                result.settings.isBeta -> StartupWebSettingsDialog.Beta
+                else -> null
             }
 
-            is WebSettingsResult.RequestFailed -> {
-                webSettingsDialog = when (result.reason) {
-                    WebSettingsFailureReason.NetworkUnavailable -> StartupWebSettingsDialog.NetworkError
-                    WebSettingsFailureReason.ServerError,
-                    WebSettingsFailureReason.UnsupportedVersion,
-                    WebSettingsFailureReason.InvalidConfig -> StartupWebSettingsDialog.FetchFailed
+            is WebSettingsResult.RequestFailed -> when (result.reason) {
+                WebSettingsFailureReason.NetworkUnavailable -> StartupWebSettingsDialog.NetworkError
+                WebSettingsFailureReason.ServerError,
+                WebSettingsFailureReason.UnsupportedVersion,
+                WebSettingsFailureReason.InvalidConfig -> StartupWebSettingsDialog.FetchFailed
 
-                    WebSettingsFailureReason.IpcUnreachable -> StartupWebSettingsDialog.NetworkError
-                }
+                WebSettingsFailureReason.IpcUnreachable -> StartupWebSettingsDialog.NetworkError
             }
 
             is WebSettingsResult.IpcUnreachable -> {
-                webSettingsDialog = StartupWebSettingsDialog.NetworkError
+                StartupWebSettingsDialog.NetworkError
             }
         }
     }
@@ -110,19 +103,21 @@ internal fun StartupPageRoute(
         isCheckingWebSettings = true
         webSettingsDialog = null
         scope.launch {
-            val result = loadWebSettings(forceRetry)
-            handleWebSettingsResult(result)
+            handleWebSettingsResult(loadWebSettings(forceRetry))
         }
     }
 
+    // 进页面即异步拉取（App.onCreate 已并发预热同一请求）；
+    // 离开页面时协程随之取消，迟到的结果直接丢弃，点击永不阻塞。
+    LaunchedEffect(startupAssistantUi) {
+        if (startupAssistantUi == StartupAssistantUi.ChatOnly) return@LaunchedEffect
+        if (hasAutoCheckedWebSettings) return@LaunchedEffect
+        hasAutoCheckedWebSettings = true
+        handleWebSettingsResult(loadWebSettings(false))
+    }
+
     StartupPageContent(
-        onDemoComplete = {
-            if (startupAssistantUi == StartupAssistantUi.ChatOnly) {
-                enterNextPage()
-            } else {
-                requestWebSettings(forceRetry = false)
-            }
-        },
+        onDemoComplete = { enterNextPage() },
     )
 
     retainedWebSettingsDialog?.let { dialog ->
@@ -218,6 +213,9 @@ private enum class StartupWebSettingsMockCase {
 // 调首屏弹窗时只在 Debug 包启用；改成 null 即恢复真实 WebSettings 请求。
 private val DEBUG_STARTUP_WEB_SETTINGS_MOCK_CASE: StartupWebSettingsMockCase? =
     null // TODO P1 这个后面要删掉，之前都不记得有做了这个东西，结果调试包查了半天，才发现是这个问题
+
+// 自动拉取每进程只跑一次；返回本页不再重新请求、不再弹窗（手动重试除外）
+private var hasAutoCheckedWebSettings = false
 
 private fun defaultWebSettingsLoader(): WebSettingsLoader {
     val mockCase = DEBUG_STARTUP_WEB_SETTINGS_MOCK_CASE
