@@ -5,7 +5,7 @@
 </div>
 
 <p align="center">
-  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_settings_screen.png?raw=true" alt="zafiro"/>
+  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro.svg?raw=true" alt="zafiro"/>
 </p>
 
 <p align="center">
