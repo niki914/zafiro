@@ -4,17 +4,9 @@
 
 </div>
 
-<div align="center"><pre>
-                  ▄█▀█▄ ▄▀▀▄                  
-                 █▓▌  █▌▌■▀▐▌                 
-▄██▄▄    ▄██▄   ▐▓▓▄  ▀ ▀■▓▀  ▀░▄▄     ▄▓██▄  
-▀▀  ▓▓  ▀  ▀█▌   ▒▒▌▀█▄  ▄▄▓▀  ▓▓▌▄▄  ▓▓▀  ▀▓ 
- ▄▀▀▀    ▄▄█▓█  ▐░░  ░   ▐▓▓  ▐▒▒▀▄▓█▐▒▌   ▐▓▌
-░█░  ▐█▌██▀ ▀▓▌ ██▌       ▒▒▌ ░░▌ ▀░▀▐░░▄ ▄▒▒ 
- ▀██▄░█ ▓█▄▄▒▒ ▀░█       ▐░░ ▀██      ▀█░█░▀  
-   ░▀▀   ▀▀▀▀     ▀      ██▀    ▀        ▀    
-                         ▀▄                   
-</pre></div>
+<p align="center">
+  <img src="https://socialify.git.ci/niki914/zafiro/image?font=Raleway&language=1&logo=https%3A%2F%2Fgithub.com%2Fniki914%2Fzafiro%2Fblob%2Fmain%2Fres%2Ficon.svg&name=1&owner=1&pattern=Formal+Invitation&theme=Dark" alt="zafiro"/>
+</p>
 
 <p align="center">
   <a href="https://github.com/niki914/zafiro"><img src="https://img.shields.io/github/stars/niki914/zafiro?label=stars" alt="stars"/></a>
@@ -26,62 +18,66 @@
 Android Native Agent · Phone-Use · Skills · MCP
 </p>
 
-Zafiro runs an intelligent agent on your Android phone. It sees your screen, controls your device, and carries out tasks across apps on your behalf — with memory, MCP, Skills, and the ability to collaborate with a Coding Agent on your remote dev machine via SSH.
+## What is Zafiro?
 
-<p align="center">
-  <img src="https://github.com/niki914/zafiro/blob/main/res/nexus_demo.gif?raw=true" alt="Zafiro device control demo" width="200"/>
-</p>
+Zafiro is an intelligent agent running on your Android phone. We provide the Zafiro Agent with a full set of scaffolding so it can understand your screen, control your device, and carry out operations across apps. It can wrap tools on its own with Python to perform tasks such as web search, file downloads, and more. Zafiro supports memory, MCP, and Skills, and can also connect to a remote dev machine via SSH.
 
-> The demo is an edited version. Actual operation time depends on prompt precision and model response speed.
+<table align="center">
+<tr>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_phone_use.gif?raw=true" alt="Zafiro device control demo" width="200"/><br/>Device Control</td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_net_research.gif?raw=true" alt="Zafiro web research demo" width="200"/><br/>Research</td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_native.gif?raw=true" alt="Zafiro app installation demo" width="200"/><br/>Install Apps from the Web</td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_settings_screen.png?raw=true" alt="Zafiro settings screen" width="200"/><br/>Settings</td>
+</tr>
+</table>
 
 > [!IMPORTANT]
-> Zafiro is still in Beta — functionality, compatibility, and stability are being continuously improved.
+> Zafiro is still in Beta — functionality and experience are being continuously improved.
 >
-> The source is now open. You can download a release from [Releases](https://github.com/niki914/zafiro/releases/latest), or build from source.
+> You can download a release from [Releases](https://github.com/niki914/zafiro/releases/latest), or build from source.
+
+## Core Capabilities
+
+### Modern UI Design Language
+
+- **[MD3E](https://m3.material.io/) & Apple Liquid Glass** - a modern, polished interface
+- **Dynamic Theming** - multiple accent colors with dark / light mode switching
+- **Multilingual Support** - Chinese, English, Japanese, Spanish, and more
+
+### Device Control
+
+- **Screen Interaction** - open apps, fill forms, and switch pages in one go
+- **Fully Visible** - an on-screen pointer animation shows every step the Agent takes
+
+### Agent System
+
+- **Out of the Box** - built-in Skills, MCP, memory, and takeover rules, no configuration needed
+- **Extend as Needed** - supports custom tools, extend it your way
+- **Permission Management** - every command that runs is under control
+
+### Python Tools
+
+- **Run Code Directly** - run Python natively on the device
+- **Meta-Tooling** - wrap your own Python tools
+- **Built-in Scenarios** - web search, web page reading, and APK installation work out of the box
+
+### Remote Environments
+
+- **[Termux](https://github.com/termux/termux-app)** - use Linux commands and tools on your Android device
+- **SSH** - connect to a dev machine or server to execute remote tasks
+- **[Claude Code](https://github.com/anthropics/claude-code)** - issue dev tasks from your phone, executed by a remote Coding Agent
+
+## Voice Assistant Takeover
+
+Through the [LSPosed](https://github.com/lsposed/lsposed) framework, Zafiro can take over your system voice assistant — wake Breeno or XiaoAi, and the one actually answering is your own Agent. You can decide, based on keywords, which requests go to Zafiro and which pass through to the native assistant. After takeover, the assistant retains full Agent capabilities including device control.
 
 > [!NOTE]
-> Taking over the system voice assistant requires **Root + [LSPosed](https://github.com/lsposed/lsposed)**, and currently supports:
+> Taking over the system voice assistant requires **Root + LSPosed**, and currently supports:
 >
 > - OPPO / OnePlus / Realme | Breeno Assistant
 > - ~~Xiaomi | XiaoAi~~ (no longer maintained — community contributors welcome)
 >
 > Voice takeover availability may be affected by phone model, system version, voice assistant version, and vendor system restrictions. When your device does not yet support system assistant takeover, you can still use Zafiro's chat interface with all Agent capabilities.
-
-## Core Capabilities
-
-### Device Control
-
-Powered by Android Accessibility Service and root privileges, Zafiro reads your current screen and operates apps on your behalf — from opening apps and filling forms to switching pages. A pointer animation plays on screen throughout, so every step is visible.
-
-### Agent System
-
-Zafiro has a built-in Agent runtime — with support for Skills, MCP, memory, and takeover rules. Extend it as needed, or use it out of the box with zero configuration.
-
-### Connecting to Remote Environments
-
-Zafiro can connect to local or remote terminal environments, letting the Agent execute tasks on the command line.
-
-- Connect to [Termux](https://github.com/termux/termux-app) to use Linux commands and tools on your Android device
-- Connect to a dev machine or server via SSH to execute remote tasks
-- Connect to [Claude Code](https://github.com/anthropics/claude-code) — issue dev tasks by voice from your phone, and the remote Coding Agent executes them and returns results
-
-You don't need to write every terminal command by hand — describe the goal, and the Agent plans and completes the corresponding operations.
-
-<details>
-<summary>Demos</summary>
-
-<table align="center">
-<tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/agentic/termux_long_en.jpg?raw=true" alt="Executing tasks via Termux" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/agentic/headless_cc_en.jpg?raw=true" alt="Calling Claude Code remotely" width="200"/></td>
-</tr>
-</table>
-
-</details>
-
-### Voice Assistant Takeover
-
-Through the LSPosed framework, Zafiro can take over your system voice assistant — wake Breeno or XiaoAi, and your own Agent responds instead. You can decide which requests go to Zafiro vs. the native assistant based on keywords. After takeover, the assistant retains full Agent capabilities including device control.
 
 <details>
 <summary>Demos</summary>
@@ -96,24 +92,34 @@ Through the LSPosed framework, Zafiro can take over your system voice assistant 
 
 </details>
 
-## Installation
+## Tech Stack
 
-Go to [Releases](https://github.com/niki914/zafiro/releases/latest) to download the latest version. Before use, you'll need: a compatible Android device, at least one API key for a supported model service, and optionally Shizuku / Root / Termux / SSH as needed. Refer to the in-app instructions for specific configuration details.
+| Category         | Technology                                                                   |
+|------------|----------------------------------------------------------------------|
+| Language         | [Kotlin](https://kotlinlang.org/)                                    |
+| UI Framework      | [Jetpack Compose](https://developer.android.com/jetpack/compose)     |
+| Design Language       | [Material Design 3 Expressive](https://m3.material.io/)              |
+| Liquid Glass       | [Android Liquid Glass](https://github.com/Kyant0/AndroidLiquidGlass) |
+| Agent Runtime  | [Okia](https://github.com/niki914/okia)                              |
+| Python Runtime | [Chaquopy](https://chaquo.com/chaquopy/)                             |
+| System Takeover       | [LSPosed](https://github.com/lsposed/lsposed) + Xposed API           |
+| Terminal / SSH   | [libterm](https://github.com/niki914/libterm)                        |
 
-To build from source:
+## Getting Started
+
+### Build from Source
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-To compile the okia skeleton together with its usage demo (`OkiaUsageDemo.kt` lives in `src/test`, so it needs the unit-test compile task, not `compileDebugKotlin`):
+### Requirements
 
-```bash
-./gradlew :libs:okia:compileDebugUnitTestKotlin
-```
+- Android Studio (or Android SDK + JDK 17)
+- An Android 11 or above device
 
 <details>
-<summary>Release signing</summary>
+<summary>Release Signing</summary>
 
 To build a Release version yourself, use your own signing key:
 
@@ -130,6 +136,37 @@ keytool -genkeypair -v -keystore my-release.jks \
 
 </details>
 
+## Project Structure
+
+```
+agentic-nexus/
+├── app/                 # Main app: settings UI, AgentRuntimeService, Xposed hooks
+├── agent-runtime/       # Agent runtime: LLM calls, tool/Skill/MCP execution, Python runtime
+├── xposed-api/          # Xposed event types, shared constants (shared by main app and host process)
+├── xposed-runtime/      # Xposed runtime, hook base classes
+├── store/               # Store persistence, IPC bridge (XIpcBridge)
+├── ui-kit/              # Shared Compose components, LiquidScreen shell, navigation
+└── libs/
+    ├── logging/         # Logging library
+    ├── okia/            # Okia Agent runtime base library
+    └── libterm/         # Terminal library (with multiple backends)
+        ├── libterm-core
+        ├── libterm-runtime
+        ├── libterm-backend-libsu
+        ├── libterm-backend-shizuku
+        └── libterm-backend-ssh
+```
+
+## Contributing
+
+Pull requests are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
+
+1. Fork this project
+2. Create a feature branch (`git checkout -b feat/your-feature`)
+3. Commit your changes (`git commit -m 'feat: add your feature'`, following [Conventional Commits](https://www.conventionalcommits.org/en/))
+4. Push to the branch (`git push origin feat/your-feature`)
+5. Open a Pull Request
+
 ## Community
 
 - [Telegram](https://t.me/+ZPX2xtSl6RwyZGNl) — discuss, ask questions, give feedback
@@ -141,4 +178,6 @@ When reporting an issue, please include as much detail as possible: phone model 
 
 MIT — see [LICENSE](LICENSE).
 
-Built by [niki914](https://github.com/niki914)
+<p align="center">
+  Made with ✨️ by <a href="https://github.com/niki914">niki914</a>
+</p>

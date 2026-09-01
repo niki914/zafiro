@@ -5,7 +5,7 @@
 </div>
 
 <p align="center">
-  <img src="https://socialify.git.ci/niki914/zafiro/image?font=Raleway&forks=1&issues=1&language=1&logo=https%3A%2F%2Fgithub.com%2Fniki914%2Fzafiro%2Fblob%2Fmain%2Fres%2Ficon.svg&name=1&owner=1&pattern=Formal+Invitation&stargazers=1&theme=Dark" alt="zafiro"/>
+  <img src="https://socialify.git.ci/niki914/zafiro/image?font=Raleway&language=1&logo=https%3A%2F%2Fgithub.com%2Fniki914%2Fzafiro%2Fblob%2Fmain%2Fres%2Ficon.svg&name=1&owner=1&pattern=Formal+Invitation&theme=Dark" alt="zafiro"/>
 </p>
 
 <p align="center">
@@ -22,12 +22,14 @@ Android Native Agent · Phone-Use · Skills · MCP
 
 Zafiro 是你的 Android 手机上运行一个智能代理。我们为 Zafiro Agent 提供了充分的脚手架，使得它能看懂你的屏幕，操控你的设备，完成各种 App 操作。它能自行用 Python 封装各种工具来完成：网络搜索、下载文件或其他功能。Zafiro 支持记忆、MCP、Skills，也能通过 SSH 对接远程开发机
 
-<p align="center">
-  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_phone_use.gif?raw=true" alt="Zafiro 手机操控演示" width="200"/>
-  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_net_research.gif?raw=true" alt="Zafiro 网络研究演示" width="200"/>
-  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_native.gif?raw=true" alt="Zafiro 应用安装演示" width="200"/>
-  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_settings_screen.png?raw=true" alt="Zafiro 设置界面" width="200"/>
-</p>
+<table align="center">
+<tr>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_phone_use.gif?raw=true" alt="Zafiro 手机操控演示" width="200"/><br/>手机操控</td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_net_research.gif?raw=true" alt="Zafiro 网络研究演示" width="200"/><br/>Research</td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_native.gif?raw=true" alt="Zafiro 应用安装演示" width="200"/><br/>从网络安装应用</td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_settings_screen.png?raw=true" alt="Zafiro 设置界面" width="200"/><br/>设置页</td>
+</tr>
+</table>
 
 > [!IMPORTANT]
 > Zafiro 当前仍处于 Beta 阶段，功能和体验仍在持续改进。
@@ -64,6 +66,31 @@ Zafiro 是你的 Android 手机上运行一个智能代理。我们为 Zafiro Ag
 - **[Termux](https://github.com/termux/termux-app)** - 在 Android 设备上使用 Linux 命令与工具
 - **SSH** - 连接开发机或服务器执行远程任务
 - **[Claude Code](https://github.com/anthropics/claude-code)** - 用手机下达开发任务，由远端 Coding Agent 执行
+
+## 语音助手接管
+
+通过 [LSPosed](https://github.com/lsposed/lsposed) 框架，Zafiro 可以接管系统语音助手——唤醒小布或小爱，实际应答你的是你自己的 Agent。支持根据关键词决定哪些请求交给 Zafiro、哪些放行给原生助手。接管后的助手保留包括设备操控在内的全部 Agent 能力。
+
+> [!NOTE]
+> 接管系统语音助手需要 **Root + LSPosed**，目前支持：
+>
+> - OPPO / OnePlus / Realme | 小布助手
+> - ~~小米 | 小爱同学~~（已停止维护，欢迎社区贡献者接手）
+>
+> 接管可用性可能受机型、系统版本、语音助手版本及厂商系统限制影响。当你的设备暂不支持系统助手接管时，仍可使用 Zafiro 的聊天界面使用全部 Agent 能力。
+
+<details>
+<summary>查看演示</summary>
+
+<table align="center">
+<tr>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno_github_mcp.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/hyper_intro.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno_magisk.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
+</tr>
+</table>
+
+</details>
 
 ## 技术栈
 
@@ -135,9 +162,9 @@ agentic-nexus/
 欢迎提交 Pull Request！贡献前请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 1. Fork 本项目
-2. 创建功能分支（`git checkout -b feature/AmazingFeature`）
-3. 提交你的改动（`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支（`git push origin feature/AmazingFeature`）
+2. 创建功能分支（`git checkout -b feat/your-feature`）
+3. 提交你的改动（`git commit -m 'feat: add your feature'`，遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/)）
+4. 推送到分支（`git push origin feat/your-feature`）
 5. 打开一个 Pull Request
 
 ## 社区
