@@ -4,17 +4,9 @@
 
 </div>
 
-<div align="center"><pre>
-                  ▄█▀█▄ ▄▀▀▄                  
-                 █▓▌  █▌▌■▀▐▌                 
-▄██▄▄    ▄██▄   ▐▓▓▄  ▀ ▀■▓▀  ▀░▄▄     ▄▓██▄  
-▀▀  ▓▓  ▀  ▀█▌   ▒▒▌▀█▄  ▄▄▓▀  ▓▓▌▄▄  ▓▓▀  ▀▓ 
- ▄▀▀▀    ▄▄█▓█  ▐░░  ░   ▐▓▓  ▐▒▒▀▄▓█▐▒▌   ▐▓▌
-░█░  ▐█▌██▀ ▀▓▌ ██▌       ▒▒▌ ░░▌ ▀░▀▐░░▄ ▄▒▒ 
- ▀██▄░█ ▓█▄▄▒▒ ▀░█       ▐░░ ▀██      ▀█░█░▀  
-   ░▀▀   ▀▀▀▀     ▀      ██▀    ▀        ▀    
-                         ▀▄                   
-</pre></div>
+<p align="center">
+  <img src="https://socialify.git.ci/niki914/zafiro/image?font=Raleway&forks=1&issues=1&language=1&logo=https%3A%2F%2Fgithub.com%2Fniki914%2Fzafiro%2Fblob%2Fmain%2Fres%2Ficon.svg&name=1&owner=1&pattern=Formal+Invitation&stargazers=1&theme=Dark" alt="zafiro"/>
+</p>
 
 <p align="center">
   <a href="https://github.com/niki914/zafiro"><img src="https://img.shields.io/github/stars/niki914/zafiro?label=stars" alt="stars"/></a>
@@ -26,85 +18,78 @@
 Android Native Agent · Phone-Use · Skills · MCP
 </p>
 
-Zafiro 是你的 Android 手机上运行一个智能代理。它能看懂你的屏幕，操控你的设备，代你完成各种 App 操作，它有记忆、MCP、Skills，也能通过 SSH 对接你远程开发机上的 Coding Agent 进行协作
+## 什么是 Zafiro?
+
+Zafiro 是你的 Android 手机上运行一个智能代理。我们为 Zafiro Agent 提供了充分的脚手架，使得它能看懂你的屏幕，操控你的设备，完成各种 App 操作。它能自行用 Python 封装各种工具来完成：网络搜索、下载文件或其他功能。Zafiro 支持记忆、MCP、Skills，也能通过 SSH 对接远程开发机
 
 <p align="center">
-  <img src="https://github.com/niki914/zafiro/blob/main/res/nexus_demo.gif?raw=true" alt="Zafiro 手机操控演示" width="200"/>
+  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_phone_use.gif?raw=true" alt="Zafiro 手机操控演示" width="200"/>
+  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_net_research.gif?raw=true" alt="Zafiro 网络研究演示" width="200"/>
+  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_native.gif?raw=true" alt="Zafiro 应用安装演示" width="200"/>
+  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_settings_screen.png?raw=true" alt="Zafiro 设置界面" width="200"/>
 </p>
 
-> 演示为剪辑版本。实际操作耗时取决于指令精准度与模型的响应速度
-
 > [!IMPORTANT]
-> Zafiro 当前仍处于 Beta 阶段，功能、兼容性与稳定性仍在持续改进。
+> Zafiro 当前仍处于 Beta 阶段，功能和体验仍在持续改进。
 >
-> 项目源码已开放，你可以前往 [Releases](https://github.com/niki914/zafiro/releases/latest) 下载发布版本，或从源码构建。
-
-> [!NOTE]
-> 接管系统语音助手入口需要 **Root + [LSPosed](https://github.com/lsposed/lsposed)**，目前适配：
->
-> - 欧加真 | 小布助手
-> - ~~小米 | 小爱同学~~（暂不维护，欢迎社区贡献者协助适配）
->
-> 语音接管实际可用性可能受手机型号、系统版本、语音助手版本及厂商系统限制的影响。当设备暂不支持系统助手接管时，仍可使用 Zafiro 的对话界面与全部 Agent 能力。
+> 可以前往 [Releases](https://github.com/niki914/zafiro/releases/latest) 下载发布版本，或从源码构建。
 
 ## 核心能力
 
+### 现代的 UI 设计语言
+
+- **[MD3E](https://m3.material.io/) & Apple Liquid Glass** - 现代、精美的界面
+- **动态主题** - 多种主体色与深色 / 浅色模式切换
+- **多语言支持** - 中文、英文、日文、西班牙语等
+
 ### 手机操控
 
-基于 Android 无障碍服务与 Root 权限，Zafiro 能读懂当前屏幕内容，并代替你完成各种 App 操作——从打开应用、填写表单到切换页面，全程屏幕上会显示指针动画，每一步都清晰可见。
+- **屏幕交互** - 打开应用、填写表单、切换页面，一步到位
+- **全程可见** - 屏幕上的指针动画展示 Agent 的每一步操作
 
 ### Agent 系统
 
-Zafiro 内置 Agent 运行时——支持 Skills、MCP、记忆与接管规则。你可以按需扩展，也可以什么都不配，开箱即用。
+- **开箱即用** - 内置 Skills、MCP、记忆与接管规则，无需配置
+- **按需扩展** - 支持自定义工具，按你的方式扩展
+- **权限管理** - 每一条运行的命令都受控
 
-### 连接远程环境
+### Python 工具
 
-Zafiro 可以连接本地或远程终端环境，让 Agent 在命令行中执行任务。
+- **直接运行代码** - 在设备上原生运行 Python
+- **元工具** - 支持封装自定义 Python 工具
+- **内置场景** - 网络搜索、网页内容读取、APK 安装开箱即用
 
-- 连接 [Termux](https://github.com/termux/termux-app)，在 Android 设备上使用 Linux 命令和工具
-- 通过 SSH 连接开发机或服务器，执行远程任务
-- 连接 [Claude Code](https://github.com/anthropics/claude-code)，用手机下达开发任务，由远端 Coding Agent 执行并返回结果
+### 远程环境
 
-你不需要手动编写每一条终端命令——描述目标，由 Agent 规划并完成操作。
+- **[Termux](https://github.com/termux/termux-app)** - 在 Android 设备上使用 Linux 命令与工具
+- **SSH** - 连接开发机或服务器执行远程任务
+- **[Claude Code](https://github.com/anthropics/claude-code)** - 用手机下达开发任务，由远端 Coding Agent 执行
 
-<details>
-<summary>查看演示</summary>
+## 技术栈
 
-<table align="center">
-<tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/agentic/termux_long_cn.jpg?raw=true" alt="通过 Termux 执行任务" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/agentic/headless_cc_cn.jpg?raw=true" alt="远程调用 Claude Code" width="200"/></td>
-</tr>
-</table>
+| 类别         | 技术                                                                   |
+|------------|----------------------------------------------------------------------|
+| 语言         | [Kotlin](https://kotlinlang.org/)                                    |
+| UI 框架      | [Jetpack Compose](https://developer.android.com/jetpack/compose)     |
+| 设计语言       | [Material Design 3 Expressive](https://m3.material.io/)              |
+| 液态玻璃       | [Android Liquid Glass](https://github.com/Kyant0/AndroidLiquidGlass) |
+| Agent 运行时  | [Okia](https://github.com/niki914/okia)                              |
+| Python 运行时 | [Chaquopy](https://chaquo.com/chaquopy/)                             |
+| 系统接管       | [LSPosed](https://github.com/lsposed/lsposed) + Xposed API           |
+| 终端 / SSH   | [libterm](https://github.com/niki914/libterm)                        |
 
-</details>
+## 快速开始
 
-### 语音助手接管
-
-通过 LSPosed 框架，Zafiro 可以接管系统语音助手——唤醒小布或小爱，实际应答你的是你自己的 Agent。支持根据关键词决定使用 Zafiro 或原生助手，接管后的助手同样可以使用 phone-use 等全部 Agent 能力。
-
-<details>
-<summary>查看演示</summary>
-
-<table align="center">
-<tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno_github_mcp.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/hyper_intro.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno_magisk.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
-</tr>
-</table>
-
-</details>
-
-## 安装
-
-前往 [Releases](https://github.com/niki914/zafiro/releases/latest) 下载最新版本。使用前需准备：一台兼容的 Android 设备、至少一个模型服务的 API Key，以及按需配置的 Shizuku / Root / Termux / SSH。具体配置以应用内说明为准。
-
-如需从源码构建：
+### 从源码构建
 
 ```bash
 ./gradlew assembleDebug
 ```
+
+### 运行要求
+
+- Android Studio（或 Android SDK + JDK 17）
+- Android 11 及以上设备
 
 <details>
 <summary>Release 签名</summary>
@@ -124,6 +109,37 @@ keytool -genkeypair -v -keystore my-release.jks \
 
 </details>
 
+## 项目结构
+
+```
+agentic-nexus/
+├── app/                 # 主应用：设置 UI、AgentRuntimeService、Xposed 钩子
+├── agent-runtime/       # Agent 运行时：LLM 调用、工具/Skill/MCP 执行、Python 运行时
+├── xposed-api/          # Xposed 事件类型、共享常量（主应用与宿主进程共享）
+├── xposed-runtime/      # Xposed 运行时、Hook 基类
+├── store/               # Store 持久化、IPC 桥（XIpcBridge）
+├── ui-kit/              # 共享 Compose 组件、LiquidScreen 壳、导航
+└── libs/
+    ├── logging/         # 日志库
+    ├── okia/            # Okia Agent 运行时基础库
+    └── libterm/         # 终端库（含多个后端）
+        ├── libterm-core
+        ├── libterm-runtime
+        ├── libterm-backend-libsu
+        ├── libterm-backend-shizuku
+        └── libterm-backend-ssh
+```
+
+## 贡献
+
+欢迎提交 Pull Request！贡献前请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+1. Fork 本项目
+2. 创建功能分支（`git checkout -b feature/AmazingFeature`）
+3. 提交你的改动（`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支（`git push origin feature/AmazingFeature`）
+5. 打开一个 Pull Request
+
 ## 社区
 
 - [Telegram](https://t.me/+ZPX2xtSl6RwyZGNl) — 交流、提问、反馈问题
@@ -135,4 +151,6 @@ keytool -genkeypair -v -keystore my-release.jks \
 
 MIT — 详见 [LICENSE](LICENSE)。
 
-由 [niki914](https://github.com/niki914) 构建
+<p align="center">
+  Made with ✨️ by <a href="https://github.com/niki914">niki914</a>
+</p>
