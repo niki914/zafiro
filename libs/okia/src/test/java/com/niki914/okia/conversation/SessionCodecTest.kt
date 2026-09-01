@@ -20,7 +20,12 @@ class SessionCodecTest {
     private fun user(text: String) = Message.User(listOf(ContentBlock.Text(text)))
 
     private fun assistant(text: String) =
-        Message.Assistant(AssistantMessage(listOf(ContentBlock.Text(text)), stopReason = StopReason.Stop))
+        Message.Assistant(
+            AssistantMessage(
+                listOf(ContentBlock.Text(text)),
+                stopReason = StopReason.Stop
+            )
+        )
 
     private fun toolResult(callId: String) =
         Message.ToolResult(callId, "calculator", ToolCallOutcome.Success("42"))
@@ -121,7 +126,8 @@ class SessionCodecTest {
         original.append(user("q2"))
         original.rewind(first.id) // 停在中间
 
-        val snapshot = SessionSnapshot(original.id, original.leafId, version = 1, entries = original.entries)
+        val snapshot =
+            SessionSnapshot(original.id, original.leafId, version = 1, entries = original.entries)
         val decoded = codec.decode(codec.encode(snapshot))
         val restored = RealConversation(decoded.id, decoded.entries, decoded.leafId)
 

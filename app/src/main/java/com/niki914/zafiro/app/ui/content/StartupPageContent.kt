@@ -2,7 +2,6 @@ package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -36,8 +35,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -48,16 +47,15 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.niki914.zafiro.animation.PointerCurveMath
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.zafiro.animation.PointerCurveMath
+import com.niki914.zafiro.app.R
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-import kotlin.text.iterator
 
 private const val LETTERS = "ZAFIRO"
 private val LetterFontSize = 96.sp
@@ -150,7 +148,8 @@ fun StartupPageContent(
             delay(300)
 
             // Phase 2: cursor flies down to lower area (organic curve)
-            val cw = containerWidthPx.toInt(); val ch = containerHeightPx.toInt()
+            val cw = containerWidthPx.toInt();
+            val ch = containerHeightPx.toInt()
             animateAlong(
                 PointerCurveMath.buildTrajectory(
                     cursorPosX, cursorPosY, cursorHeading,

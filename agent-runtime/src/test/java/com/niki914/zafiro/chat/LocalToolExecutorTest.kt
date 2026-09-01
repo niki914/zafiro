@@ -1,5 +1,9 @@
 package com.niki914.zafiro.chat
 
+import com.niki914.okia.message.ToolCallOutcome
+import com.niki914.okia.tooling.ToolCallContext
+import com.niki914.okia.tooling.ToolDescriptor
+import com.niki914.okia.tooling.ToolKind
 import com.niki914.zafiro.chat.agentic.LocalToolExecutor
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolExecutor
@@ -10,12 +14,7 @@ import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResultCodec
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
-import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.chat.util.SilentLoggerRule
-import com.niki914.okia.message.ToolCallOutcome
-import com.niki914.okia.tooling.ToolCallContext
-import com.niki914.okia.tooling.ToolDescriptor
-import com.niki914.okia.tooling.ToolKind
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -214,7 +213,10 @@ class LocalToolExecutorTest {
             data = kotlinx.serialization.json.buildJsonObject {
                 put("name", kotlinx.serialization.json.JsonPrimitive("py_my_tool"))
                 put("description", kotlinx.serialization.json.JsonPrimitive("d"))
-                put("schema_json", kotlinx.serialization.json.JsonPrimitive("{\"type\":\"object\"}"))
+                put(
+                    "schema_json",
+                    kotlinx.serialization.json.JsonPrimitive("{\"type\":\"object\"}")
+                )
                 put("enabled", kotlinx.serialization.json.JsonPrimitive(true))
             },
         )
@@ -254,7 +256,8 @@ class LocalToolExecutorTest {
             inlineCustomPyTools = inline,
             onCustomPyToolWritten = { written = it },
         )
-        val args = """{"action":"write","name":"py_off_tool","code":"def main():\n    pass","enabled":false}"""
+        val args =
+            """{"action":"write","name":"py_off_tool","code":"def main():\n    pass","enabled":false}"""
 
         executor.execute(call("py_meta_tools", args))
 

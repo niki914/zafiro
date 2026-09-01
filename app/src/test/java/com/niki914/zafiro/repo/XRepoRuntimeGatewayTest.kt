@@ -11,7 +11,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 
 class XRepoRuntimeGatewayTest {
 

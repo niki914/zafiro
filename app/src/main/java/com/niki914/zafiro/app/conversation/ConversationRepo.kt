@@ -2,12 +2,12 @@ package com.niki914.zafiro.app.conversation
 
 import android.content.Context
 import com.niki914.logging.Logger
-import com.niki914.zafiro.app.R
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.Message
-import java.util.UUID
+import com.niki914.zafiro.app.R
 import kotlinx.serialization.json.Json
+import java.util.UUID
 
 /** fork / regenerate 派生会话的命名前缀（D3-11）。 */
 enum class ForkKind {
@@ -29,6 +29,7 @@ object ConversationRepo {
 
     @Volatile
     private var forkTitleFormat = "Fork · %1\$s"
+
     @Volatile
     private var regenerateTitleFormat = "Regenerate · %1\$s"
 
@@ -55,7 +56,7 @@ object ConversationRepo {
             Logger.i(
                 LOG_TAG,
                 "list conversations count=${summaries.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }
     }
@@ -67,7 +68,7 @@ object ConversationRepo {
             Logger.d(
                 LOG_TAG,
                 "get conversation id=$id notFound " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             return null
         }
@@ -80,7 +81,7 @@ object ConversationRepo {
             Logger.i(
                 LOG_TAG,
                 "get conversation id=$id entries=${snapshot.entries.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }
     }
@@ -110,7 +111,7 @@ object ConversationRepo {
         Logger.i(
             LOG_TAG,
             "conversation created id=$id " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return id
     }
@@ -161,8 +162,8 @@ object ConversationRepo {
         Logger.i(
             LOG_TAG,
             "fork done sourceId=$sourceId kind=$kind keepEntryCount=$keepEntryCount " +
-                "newId=$newId entries=${truncated.size} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "newId=$newId entries=${truncated.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return newId
     }

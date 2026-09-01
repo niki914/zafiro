@@ -31,7 +31,8 @@ class HooksHolderTest {
         tools = emptyList()
     )
 
-    private fun history(text: String) = listOf<Message>(Message.User(listOf(ContentBlock.Text(text))))
+    private fun history(text: String) =
+        listOf<Message>(Message.User(listOf(ContentBlock.Text(text))))
 
     private fun request(url: String = "https://api.test/v1") = HttpRequest(
         url = url,

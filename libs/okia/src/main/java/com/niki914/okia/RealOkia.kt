@@ -18,14 +18,12 @@ import com.niki914.okia.message.Message
 import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolRegistry
-import com.niki914.okia.transport.HttpEngine
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.OkHttpEngine
-import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -38,6 +36,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.concurrent.Volatile
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -101,7 +100,8 @@ internal class RealOkia(
     private val defaultRegistry = DefaultToolRegistry()
 
     // 当前生效注册表：config 注入的或默认实例（单一注册表来源，§8.7 #7）
-    private fun effectiveRegistry(cfg: OkiaConfig): ToolRegistry = cfg.toolRegistry ?: defaultRegistry
+    private fun effectiveRegistry(cfg: OkiaConfig): ToolRegistry =
+        cfg.toolRegistry ?: defaultRegistry
 
     // MCP 发现管理：servers / registry 闭包读最新 config（update 热更新可见）
     private val mcpDiscovery by lazy {
@@ -204,7 +204,12 @@ internal class RealOkia(
         mutex.withLock {
             check(!closed) { "Okia is closed" }
             check(activeTurn == null) { "cannot export during active turn" }
-            return SessionSnapshot(id = tree.id, leafId = tree.leafId, version = 1, entries = tree.entries)
+            return SessionSnapshot(
+                id = tree.id,
+                leafId = tree.leafId,
+                version = 1,
+                entries = tree.entries
+            )
         }
     }
 

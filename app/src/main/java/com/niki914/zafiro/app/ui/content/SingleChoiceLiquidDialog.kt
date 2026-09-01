@@ -19,9 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.zafiro.app.R
 
 /**
  * 单选弹窗（Protocol / Language 共用）。

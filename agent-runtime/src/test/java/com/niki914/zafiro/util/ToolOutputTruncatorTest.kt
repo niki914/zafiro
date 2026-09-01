@@ -21,7 +21,10 @@ class ToolOutputTruncatorTest {
 
         assertTrue(result.truncated)
         assertEquals(2500, result.totalLines)
-        assertEquals("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10", result.content)
+        assertEquals(
+            "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10",
+            result.content
+        )
     }
 
     @Test

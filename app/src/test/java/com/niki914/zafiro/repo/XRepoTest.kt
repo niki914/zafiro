@@ -3,9 +3,11 @@ package com.niki914.zafiro.repo
 import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.store.StoreDescriptorRegistry
+import com.niki914.zafiro.app.util.SilentLoggerRule
+import com.niki914.zafiro.settings.MemoryMutationResult
 import kotlinx.coroutines.test.runTest
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -15,10 +17,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.json.JSONObject
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
@@ -123,7 +123,8 @@ class XRepoTest {
 
         XRepo.seedPyTools()
 
-        val tools = ToolSettingsCodec.parseCustomPyTools(store.jsonFor(StoreDescriptorRegistry.TOOLS_PY_ID))
+        val tools =
+            ToolSettingsCodec.parseCustomPyTools(store.jsonFor(StoreDescriptorRegistry.TOOLS_PY_ID))
         // 用户改过的同名 seed 不被覆盖
         assertEquals("user-modified", tools.first { it.name == userEditedSeed }.code)
         // 用户自定义工具保留，缺失 seed 全部补上
@@ -168,22 +169,27 @@ class XRepoTest {
 
         val firstId = "cfg-first"
         assertNull(XRepo.llmConfigs.upsert(savedConfig(id = firstId)))
-        var document = LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+        var document =
+            LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
         assertEquals(firstId, document.activeId)
 
         // 编辑非 active 的第二份，active 不变
         val secondId = "cfg-second"
         XRepo.llmConfigs.upsert(savedConfig(id = secondId))
-        document = LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+        document =
+            LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
         assertEquals(secondId, document.activeId)
-        document = LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+        document =
+            LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
         XRepo.llmConfigs.setActive(firstId)
-        document = LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+        document =
+            LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
         assertEquals(firstId, document.activeId)
         XRepo.llmConfigs.upsert(
             savedConfig(id = secondId).copy(model = "edited-model")
         )
-        document = LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
+        document =
+            LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID))
         assertEquals(firstId, document.activeId)
         assertEquals("edited-model", document.configs.first { it.id == secondId }.model)
     }
@@ -191,7 +197,8 @@ class XRepoTest {
     @Test
     fun llmConfigs_upsertEditPreservesCreatedAt() = runTest {
         val store = installStore(FakeDomainSettingsStore())
-        val storeJson = { LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID)) }
+        val storeJson =
+            { LlmConfigsSettingsCodec.parse(store.jsonFor(StoreDescriptorRegistry.LLM_CONFIGS_ID)) }
 
         XRepo.llmConfigs.upsert(savedConfig(id = "cfg-a"))
         val createdAt = storeJson().configs.first { it.id == "cfg-a" }.createdAt
@@ -367,7 +374,7 @@ class XRepoTest {
         val store = installStore(
             FakeDomainSettingsStore(
                 StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID to
-                    MemorySettingsCodec.encodeMemories(listOf("old"), 0L),
+                        MemorySettingsCodec.encodeMemories(listOf("old"), 0L),
                 ownerWriteSucceeds = false,
             )
         )
@@ -505,10 +512,13 @@ class XRepoTest {
 
     @Test
     fun customPyToolSave_rejectsDuplicateNameWhenNotOverwriting() = runTest {
-        val initialTools = listOf(CustomPyTool(name = "py_existing", code = "def main():\n    pass"))
+        val initialTools =
+            listOf(CustomPyTool(name = "py_existing", code = "def main():\n    pass"))
         val store = installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodeCustomPyTools(initialTools)
+                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodeCustomPyTools(
+                    initialTools
+                )
             )
         )
 
@@ -531,7 +541,9 @@ class XRepoTest {
         )
         val store = installStore(
             FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodeCustomPyTools(initialTools)
+                StoreDescriptorRegistry.TOOLS_PY_ID to ToolSettingsCodec.encodeCustomPyTools(
+                    initialTools
+                )
             )
         )
 

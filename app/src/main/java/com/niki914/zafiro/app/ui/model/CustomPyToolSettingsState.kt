@@ -3,9 +3,9 @@ package com.niki914.zafiro.app.ui.model
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
+import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.uikit.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -149,7 +149,7 @@ class CustomPyToolSettingsViewModel :
             Logger.d(
                 LOG_TAG,
                 "load tools=${loadedItems.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             updateState {
                 copy(
@@ -253,14 +253,15 @@ class CustomPyToolSettingsViewModel :
                 name = normalizedFormState.name,
                 code = normalizedFormState.code,
                 enabled = normalizedFormState.enabled,
-                timeoutMs = previousTool?.timeoutMs ?: CustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS,
+                timeoutMs = previousTool?.timeoutMs
+                    ?: CustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS,
             )
             val validation = XRepo.customPyTools.saveIntrospected(nextTool)
             if (validation != null) {
                 Logger.w(
                     LOG_TAG,
                     "save rejected tool=${nextTool.name} " +
-                        "validation=${validation.field}:${validation.message}"
+                            "validation=${validation.field}:${validation.message}"
                 )
                 handleValidationError(normalizedFormState, validation)
                 return

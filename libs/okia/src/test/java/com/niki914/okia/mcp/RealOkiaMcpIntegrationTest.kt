@@ -7,7 +7,6 @@ import com.niki914.okia.fake.FakeProtocolMapper
 import com.niki914.okia.loop.CompletionReason
 import com.niki914.okia.loop.RealAgentLoop
 import com.niki914.okia.loop.TurnResult
-import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
@@ -15,7 +14,6 @@ import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.tooling.DefaultToolRegistry
-import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.OkHttpEngine
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -102,10 +100,14 @@ class RealOkiaMcpIntegrationTest {
             assertEquals("一个服务器刷新成功", listOf("everything"), result.refreshedServers)
 
             val names = registry.snapshot().map { it.descriptor.wireName }
-            assertTrue("注册表含 mcp__everything__echo: $names",
-                names.contains("mcp__everything__echo"))
-            assertTrue("注册表含 mcp__everything__get-sum",
-                names.contains("mcp__everything__get-sum"))
+            assertTrue(
+                "注册表含 mcp__everything__echo: $names",
+                names.contains("mcp__everything__echo")
+            )
+            assertTrue(
+                "注册表含 mcp__everything__get-sum",
+                names.contains("mcp__everything__get-sum")
+            )
 
             val snapshot = okia.getMcpDiscoverySnapshot()
             val st = snapshot.servers["everything"]
@@ -134,14 +136,17 @@ class RealOkiaMcpIntegrationTest {
         }
         try {
             okia.refreshMcpTools()
-            assertEquals("注册表含 mcp__everything__get-sum", true,
+            assertEquals(
+                "注册表含 mcp__everything__get-sum", true,
                 registry.snapshot().any { it.descriptor.wireName == "mcp__everything__get-sum" })
 
             val events = mutableListOf<com.niki914.okia.event.TurnEvent>()
             val result = okia.send("40 加 2 等于多少（用工具）") { events += it }
 
-            assertTrue("回合 Completed(Stop): $result",
-                result is TurnResult.Completed && result.reason == CompletionReason.Stop)
+            assertTrue(
+                "回合 Completed(Stop): $result",
+                result is TurnResult.Completed && result.reason == CompletionReason.Stop
+            )
 
             // 历史链：User → Assistant(ToolCall) → ToolResult → Assistant(最终文本)
             val history = okia.conversation.value.history
@@ -150,25 +155,35 @@ class RealOkiaMcpIntegrationTest {
             val call = assistant1.message.content.filterIsInstance<ContentBlock.ToolCall>().first()
             assertEquals("mcp__everything__get-sum", call.name)
             val toolResult = history[2].message as Message.ToolResult
-            assertTrue("工具结果 Success: $toolResult",
-                toolResult.outcome is ToolCallOutcome.Success)
+            assertTrue(
+                "工具结果 Success: $toolResult",
+                toolResult.outcome is ToolCallOutcome.Success
+            )
             // 真实 server-everything 返回原文（非翻译）——链路真实性的证据
-            assertEquals("The sum of 40 and 2 is 42.",
-                (toolResult.outcome as ToolCallOutcome.Success).content)
+            assertEquals(
+                "The sum of 40 and 2 is 42.",
+                (toolResult.outcome as ToolCallOutcome.Success).content
+            )
             val assistant2 = history[3].message as Message.Assistant
             val finalText = assistant2.message.content.filterIsInstance<ContentBlock.Text>()
-                .joinToString("",) { it.text }
+                .joinToString("") { it.text }
             // 最终文本来自 fake mapper 第二轮（工具结果回喂后的模型总结）
             assertEquals("最终文本", "40 加 2 等于 42", finalText)
 
             // 第二段请求的历史含 ToolResult（结果真实回喂）
             val secondHistory = mapper.builtHistories[1]
-            assertTrue("第二段历史含 ToolResult",
-                secondHistory.last() is Message.ToolResult)
+            assertTrue(
+                "第二段历史含 ToolResult",
+                secondHistory.last() is Message.ToolResult
+            )
 
             // 事件链含真实执行路径
-            assertTrue("出现 ToolRunning", events.any { it is com.niki914.okia.event.TurnEvent.ToolRunning })
-            assertTrue("出现 ToolSucceeded", events.any { it is com.niki914.okia.event.TurnEvent.ToolSucceeded })
+            assertTrue(
+                "出现 ToolRunning",
+                events.any { it is com.niki914.okia.event.TurnEvent.ToolRunning })
+            assertTrue(
+                "出现 ToolSucceeded",
+                events.any { it is com.niki914.okia.event.TurnEvent.ToolSucceeded })
         } finally {
             okia.close()
         }
@@ -190,10 +205,16 @@ class RealOkiaMcpIntegrationTest {
             assertEquals("dead 失败", listOf("dead"), result.failedServers)
 
             val snapshot = okia.getMcpDiscoverySnapshot()
-            assertEquals("dead 状态 Failed", McpDiscoveryState.Failed, snapshot.servers["dead"]?.state)
+            assertEquals(
+                "dead 状态 Failed",
+                McpDiscoveryState.Failed,
+                snapshot.servers["dead"]?.state
+            )
             assertNotNull("dead 有错误信息", snapshot.servers["dead"]?.errorMessage)
-            assertEquals("everything 状态 Available", McpDiscoveryState.Available,
-                snapshot.servers["everything"]?.state)
+            assertEquals(
+                "everything 状态 Available", McpDiscoveryState.Available,
+                snapshot.servers["everything"]?.state
+            )
         } finally {
             okia.close()
         }

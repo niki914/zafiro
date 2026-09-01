@@ -2,7 +2,6 @@ package com.niki914.zafiro.chat
 
 import com.niki914.okia.mcp.McpDiscoveryState
 import com.niki914.okia.mcp.McpServerDiscoverySnapshot
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

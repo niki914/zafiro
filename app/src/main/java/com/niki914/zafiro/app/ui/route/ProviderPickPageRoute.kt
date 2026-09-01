@@ -5,8 +5,8 @@ import com.niki914.zafiro.app.ui.content.SelectionOption
 import com.niki914.zafiro.app.ui.content.SelectionPageContent
 import com.niki914.zafiro.app.ui.model.ProviderSpecs
 import com.niki914.zafiro.app.ui.nav.ConfigurePage
-import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.TextTitle
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 
 @Composable
 internal fun ProviderPickPageRoute(

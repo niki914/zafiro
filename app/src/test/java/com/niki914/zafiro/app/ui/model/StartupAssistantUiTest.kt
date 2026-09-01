@@ -1,7 +1,6 @@
 package com.niki914.zafiro.app.ui.model
 
 import com.niki914.xposed.api.util.OsFamily
-import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

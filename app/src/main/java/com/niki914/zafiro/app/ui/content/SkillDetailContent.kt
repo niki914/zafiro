@@ -16,13 +16,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.component.PageDescriptionText
 import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
 import com.niki914.uikit.infra.component.TintLiquidButton
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.SkillDeleteConfirmationState
 import com.niki914.zafiro.app.ui.model.SkillInlineError
 import com.niki914.zafiro.app.ui.model.SkillSettingsEffect

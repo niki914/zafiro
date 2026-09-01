@@ -1,16 +1,16 @@
 package com.niki914.zafiro.app.conversation
 
 import com.niki914.logging.Logger
-import com.niki914.zafiro.app.ui.model.HomeChatBlock
-import com.niki914.zafiro.app.ui.model.HomeChatTurn
-import com.niki914.zafiro.app.ui.model.HomeToolState
-import com.niki914.zafiro.app.ui.model.HomeToolStatus
-import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
+import com.niki914.zafiro.app.ui.model.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.HomeChatTurn
+import com.niki914.zafiro.app.ui.model.HomeToolState
+import com.niki914.zafiro.app.ui.model.HomeToolStatus
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 
 /**
  * T3 重写：消费 OKIA 会话树快照（SessionSnapshot）而非 Kai 时代 ChatTurn。
@@ -87,7 +87,10 @@ object ConversationFormatter {
         history.forEach { entry ->
             when (val message = entry.message) {
                 is Message.User -> {
-                    turns += HomeChatTurn(id = nextId++, userText = message.textBlocks().joinToString("\n"))
+                    turns += HomeChatTurn(
+                        id = nextId++,
+                        userText = message.textBlocks().joinToString("\n")
+                    )
                 }
 
                 is Message.Assistant -> {
@@ -118,7 +121,7 @@ object ConversationFormatter {
             Logger.i(
                 LOG_TAG,
                 "format history entries=${history.size} turns=${it.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }
     }
@@ -141,7 +144,12 @@ object ConversationFormatter {
         if (thoughts.isEmpty()) return this
         // 恢复后不再流式，index 仅需块内唯一（按出现顺序编号）
         val thinkingBlocks =
-            thoughts.mapIndexed { i, thought -> HomeChatBlock.Thinking(id = i, text = thought.text) }
+            thoughts.mapIndexed { i, thought ->
+                HomeChatBlock.Thinking(
+                    id = i,
+                    text = thought.text
+                )
+            }
         return copy(blocks = blocks + thinkingBlocks)
     }
 
@@ -202,6 +210,7 @@ object ConversationFormatter {
             } else {
                 Triple(HomeToolState.Succeeded, content, null)
             }
+
             is ToolCallOutcome.Interrupted -> Triple(HomeToolState.Failed, content, "Interrupted")
             is ToolCallOutcome.Unknown -> Triple(HomeToolState.Failed, content, message)
         }

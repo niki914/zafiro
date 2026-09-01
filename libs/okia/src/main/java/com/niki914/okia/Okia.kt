@@ -12,7 +12,6 @@ import com.niki914.okia.mcp.LegacyStreamableHttpMcpClient
 import com.niki914.okia.mcp.McpClient
 import com.niki914.okia.mcp.McpDiscoverySnapshot
 import com.niki914.okia.mcp.McpRefreshResult
-import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.protocol.ChatProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
 import com.niki914.okia.protocol.ProtocolCompatMapper
@@ -119,7 +118,7 @@ interface Okia {
                 if (b.endpoint.isBlank()) {
                     b.endpoint = protocol.defaultEndpoint ?: throw IllegalArgumentException(
                         "endpoint is required: protocol '${protocol.id}' declares no defaultEndpoint " +
-                            "and builder.endpoint is empty"
+                                "and builder.endpoint is empty"
                     )
                 }
                 b.build()

@@ -55,28 +55,28 @@ internal object JschFailureMapper {
 
     private fun Throwable.isAuthenticationFailure(): Boolean {
         return message.orEmpty().contains("Auth fail", ignoreCase = true) ||
-            message.orEmpty().contains("authentication", ignoreCase = true)
+                message.orEmpty().contains("authentication", ignoreCase = true)
     }
 
     private fun Throwable.isHostKeyFailure(): Boolean {
         val text = message.orEmpty()
         return text.contains("reject HostKey", ignoreCase = true) ||
-            text.contains("HostKey has been changed", ignoreCase = true) ||
-            text.contains("UnknownHostKey", ignoreCase = true)
+                text.contains("HostKey has been changed", ignoreCase = true) ||
+                text.contains("UnknownHostKey", ignoreCase = true)
     }
 
     private fun Throwable.isConnectionFailure(): Boolean {
         return this is SocketTimeoutException ||
-            this is ConnectException ||
-            this is UnknownHostException ||
-            this is NoRouteToHostException ||
-            hasCause<SocketTimeoutException>() ||
-            hasCause<ConnectException>() ||
-            hasCause<UnknownHostException>() ||
-            hasCause<NoRouteToHostException>() ||
-            message.orEmpty().contains("timeout", ignoreCase = true) ||
-            message.orEmpty().contains("Connection refused", ignoreCase = true) ||
-            message.orEmpty().contains("UnknownHost", ignoreCase = true)
+                this is ConnectException ||
+                this is UnknownHostException ||
+                this is NoRouteToHostException ||
+                hasCause<SocketTimeoutException>() ||
+                hasCause<ConnectException>() ||
+                hasCause<UnknownHostException>() ||
+                hasCause<NoRouteToHostException>() ||
+                message.orEmpty().contains("timeout", ignoreCase = true) ||
+                message.orEmpty().contains("Connection refused", ignoreCase = true) ||
+                message.orEmpty().contains("UnknownHost", ignoreCase = true)
     }
 
     private inline fun <reified T : Throwable> Throwable.hasCause(): Boolean {

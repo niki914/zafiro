@@ -10,10 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidScreen
 import com.niki914.uikit.infra.rememberLiquidScreenState
-import com.niki914.uikit.base.BaseTheme
 
 @Composable
 private fun ConfirmationLiquidDialogPreviewContent() {

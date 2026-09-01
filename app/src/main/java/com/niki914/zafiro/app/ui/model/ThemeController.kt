@@ -4,6 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.niki914.logging.Logger
+import com.niki914.zafiro.app.ui.model.ThemeController.load
+import com.niki914.zafiro.app.ui.model.ThemeController.setMode
+import com.niki914.zafiro.app.ui.model.ThemeController.setSeedColor
 import com.niki914.zafiro.repo.XRepo
 
 /** 深浅色模式。 */
@@ -43,7 +46,8 @@ object ThemeController {
         runCatching {
             prefs = ThemePrefs(
                 mode = ThemeMode.fromStorageKey(XRepo.themeMode()),
-                seedColor = XRepo.themeSeedColor().takeIf { it.isNotBlank() }?.toLongOrNull(16)?.toInt(),
+                seedColor = XRepo.themeSeedColor().takeIf { it.isNotBlank() }?.toLongOrNull(16)
+                    ?.toInt(),
             )
         }.onFailure {
             Logger.w("niki914_nexus_ThemeController", "load failed ${it.message}")
@@ -53,13 +57,23 @@ object ThemeController {
     suspend fun setMode(mode: ThemeMode) {
         prefs = prefs.copy(mode = mode)
         runCatching { XRepo.setThemeMode(mode.storageKey) }
-            .onFailure { Logger.w("niki914_nexus_ThemeController", "persist mode failed ${it.message}") }
+            .onFailure {
+                Logger.w(
+                    "niki914_nexus_ThemeController",
+                    "persist mode failed ${it.message}"
+                )
+            }
     }
 
     suspend fun setSeedColor(argb: Int?) {
         prefs = prefs.copy(seedColor = argb)
         val hex = argb?.let { "%08X".format(it) } ?: ""
         runCatching { XRepo.setThemeSeedColor(hex) }
-            .onFailure { Logger.w("niki914_nexus_ThemeController", "persist seed failed ${it.message}") }
+            .onFailure {
+                Logger.w(
+                    "niki914_nexus_ThemeController",
+                    "persist seed failed ${it.message}"
+                )
+            }
     }
 }

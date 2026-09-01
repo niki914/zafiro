@@ -1,6 +1,5 @@
 package com.niki914.okia.loop
 
-import com.niki914.okia.error.LLMErrorCode
 import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.fake.FakeHttpEngine
@@ -20,12 +19,12 @@ import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.SseLine
 import com.niki914.okia.transport.StreamResponse
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.async
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -208,7 +207,10 @@ class RealAgentLoopIdleTest {
         registry.register(localTool("t1"), executor)
         val mapper = FakeProtocolMapper(
             listOf(
-                listOf(ProtocolEvent.ToolCallReady("c1", "t1", "{}"), completed(StopReason.ToolUse)),
+                listOf(
+                    ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                    completed(StopReason.ToolUse)
+                ),
                 listOf(ProtocolEvent.TextDelta("after"), completed())
             )
         )

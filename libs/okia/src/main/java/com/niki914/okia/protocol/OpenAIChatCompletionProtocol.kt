@@ -11,7 +11,6 @@ import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -59,7 +58,10 @@ class OpenAIChatCompletionProtocol(
             url = snapshot.endpoint,
             method = "POST",
             headers = snapshot.headers + useApiKey(snapshot.apiKey),
-            body = codec.encodeToString(JsonObject.serializer(), buildRequestBody(snapshot, history)),
+            body = codec.encodeToString(
+                JsonObject.serializer(),
+                buildRequestBody(snapshot, history)
+            ),
             timeouts = snapshot.timeouts,
             sensitiveHeaderNames = compat.sensitiveHeaderNames
         )
@@ -89,23 +91,27 @@ class OpenAIChatCompletionProtocol(
                 if (state.responseModel == null) state.responseModel = it
             }
 
-            val choice = (chunk["choices"] as? JsonArray)?.firstOrNull() as? JsonObject ?: return@collect
-            (choice["finish_reason"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
-                state.finishReason = it
-            }
+            val choice =
+                (chunk["choices"] as? JsonArray)?.firstOrNull() as? JsonObject ?: return@collect
+            (choice["finish_reason"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
+                ?.let {
+                    state.finishReason = it
+                }
             val delta = choice["delta"] as? JsonObject ?: return@collect
             (delta["content"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
                 emit(ProtocolEvent.TextDelta(it))
             }
             // DeepSeek 私有思考字段
-            (delta["reasoning_content"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
-                emit(ProtocolEvent.ThinkingDelta(it))
-            }
-            // OpenAI 官方：delta.reasoning 对象（content 明文；encrypted_content 不可读，忽略）
-            (delta["reasoning"] as? JsonObject)?.let { reasoning ->
-                (reasoning["content"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
+            (delta["reasoning_content"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
+                ?.let {
                     emit(ProtocolEvent.ThinkingDelta(it))
                 }
+            // OpenAI 官方：delta.reasoning 对象（content 明文；encrypted_content 不可读，忽略）
+            (delta["reasoning"] as? JsonObject)?.let { reasoning ->
+                (reasoning["content"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
+                    ?.let {
+                        emit(ProtocolEvent.ThinkingDelta(it))
+                    }
             }
             (delta["tool_calls"] as? JsonArray)?.forEach { tc ->
                 (tc as? JsonObject)?.let { handleToolCallDelta(it, state, ::emit) }
@@ -152,6 +158,7 @@ class OpenAIChatCompletionProtocol(
             put("role", "user")
             put("content", userContent(message.content))
         }
+
         is Message.Assistant -> convertAssistant(message.message)
         is Message.ToolResult -> buildJsonObject {
             put("role", "tool")
@@ -195,7 +202,10 @@ class OpenAIChatCompletionProtocol(
             }
             if (content.isEmpty()) put("content", JsonNull) else put("content", content)
             if (compat.requiresReasoningContentOnAssistantMessages) {
-                if (thinkingText.isEmpty()) put("reasoning_content", "") else put("reasoning_content", thinkingText)
+                if (thinkingText.isEmpty()) put(
+                    "reasoning_content",
+                    ""
+                ) else put("reasoning_content", thinkingText)
             }
             if (toolCalls.isNotEmpty()) {
                 put("tool_calls", buildJsonArray {
@@ -230,10 +240,13 @@ class OpenAIChatCompletionProtocol(
         val promptTokens = (usage["prompt_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
         val completionTokens = (usage["completion_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
         val promptDetails = usage["prompt_tokens_details"] as? JsonObject
-        val cacheRead = promptDetails?.let { (it["cached_tokens"] as? JsonPrimitive)?.longOrNull } ?: 0
-        val cacheWrite = promptDetails?.let { (it["cache_write_tokens"] as? JsonPrimitive)?.longOrNull } ?: 0
+        val cacheRead =
+            promptDetails?.let { (it["cached_tokens"] as? JsonPrimitive)?.longOrNull } ?: 0
+        val cacheWrite =
+            promptDetails?.let { (it["cache_write_tokens"] as? JsonPrimitive)?.longOrNull } ?: 0
         val completionDetails = usage["completion_tokens_details"] as? JsonObject
-        val reasoningTokens = completionDetails?.let { (it["reasoning_tokens"] as? JsonPrimitive)?.longOrNull } ?: 0
+        val reasoningTokens =
+            completionDetails?.let { (it["reasoning_tokens"] as? JsonPrimitive)?.longOrNull } ?: 0
         // pi 语义：input = prompt − cacheRead − cacheWrite（cached 计入 cacheRead）
         val input = (promptTokens - cacheRead - cacheWrite).coerceAtLeast(0)
         return Usage(
@@ -257,7 +270,14 @@ class OpenAIChatCompletionProtocol(
         val args = function?.let { (it["arguments"] as? JsonPrimitive)?.contentOrNull }
 
         val call = state.toolCalls.getOrPut(index) {
-            PartialToolCall(index).also { emit(ProtocolEvent.ToolCallStarted(id ?: "", name ?: "")) }
+            PartialToolCall(index).also {
+                emit(
+                    ProtocolEvent.ToolCallStarted(
+                        id ?: "",
+                        name ?: ""
+                    )
+                )
+            }
         }
         if (id != null && call.id.isEmpty()) call.id = id
         if (name != null && call.name.isEmpty()) call.name = name
@@ -271,14 +291,29 @@ class OpenAIChatCompletionProtocol(
     private suspend fun finishStream(state: StreamState, emit: suspend (ProtocolEvent) -> Unit) {
         when (state.finishReason) {
             null -> emit(ProtocolEvent.Error(IllegalStateException("stream ended without finish_reason")))
-            "stop", "end" -> emit(ProtocolEvent.Completed(state.usage, state.responseModel, StopReason.Stop))
-            "length" -> emit(ProtocolEvent.Completed(state.usage, state.responseModel, StopReason.Length))
+            "stop", "end" -> emit(
+                ProtocolEvent.Completed(
+                    state.usage,
+                    state.responseModel,
+                    StopReason.Stop
+                )
+            )
+
+            "length" -> emit(
+                ProtocolEvent.Completed(
+                    state.usage,
+                    state.responseModel,
+                    StopReason.Length
+                )
+            )
+
             "function_call", "tool_calls" -> {
                 state.toolCalls.values.forEach { call ->
                     emit(ProtocolEvent.ToolCallReady(call.id, call.name, call.arguments.toString()))
                 }
                 emit(ProtocolEvent.Completed(state.usage, state.responseModel, StopReason.ToolUse))
             }
+
             else -> emit(
                 ProtocolEvent.Error(IllegalStateException("unsupported finish_reason: ${state.finishReason}"))
             )

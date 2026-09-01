@@ -7,12 +7,12 @@ import com.niki914.zafiro.settings.RuntimeHostGateway
 import com.niki914.zafiro.settings.RuntimeSettingsGateway
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
-import com.niki914.zafiro.settings.model.RuntimeToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
 import com.niki914.zafiro.settings.model.RuntimeMcpServer
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
+import com.niki914.zafiro.settings.model.RuntimeToolValidation
 
 internal fun installRuntimeSettingsGatewayForTest(
     gateway: FakeRuntimeSettingsGateway = FakeRuntimeSettingsGateway(),
@@ -88,6 +88,7 @@ internal class FakeRuntimeSettingsGateway(
             matches.isEmpty() -> MemoryMutationResult.NotFound
             matches.size > 1 && matches.map { it.second }.distinct().size > 1 ->
                 MemoryMutationResult.Ambiguous
+
             else -> {
                 recordWrite()
                 memories.removeAt(matches.first().first)
@@ -104,6 +105,7 @@ internal class FakeRuntimeSettingsGateway(
             matches.isEmpty() -> MemoryMutationResult.NotFound
             matches.size > 1 && matches.map { it.second }.distinct().size > 1 ->
                 MemoryMutationResult.Ambiguous
+
             else -> {
                 recordWrite()
                 memories[matches.first().first] = content
@@ -191,7 +193,11 @@ private object FakeRuntimeHostGateway : RuntimeHostGateway {
 
 private fun defaultBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> {
     return listOf(
-        RuntimeBuiltinToolSetting("py_meta_tools", "Manage persistent Python tools.", enabled = true),
+        RuntimeBuiltinToolSetting(
+            "py_meta_tools",
+            "Manage persistent Python tools.",
+            enabled = true
+        ),
         RuntimeBuiltinToolSetting("load_skill", "Load a skill by id.", enabled = true),
         RuntimeBuiltinToolSetting("memory", "Add a memory item.", enabled = true),
         RuntimeBuiltinToolSetting("notify", "Post host notifications.", enabled = true),

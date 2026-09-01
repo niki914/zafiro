@@ -2,29 +2,18 @@ package com.niki914.zafiro.chat
 
 import android.content.Context
 import com.niki914.logging.Logger
-import com.niki914.zafiro.chat.agentic.PromptComposerInput
-import com.niki914.zafiro.chat.agentic.LocalToolExecutor
-import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
-import com.niki914.zafiro.chat.agentic.python.PyRuntime
-import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
-import com.niki914.zafiro.chat.agentic.stream.LlmStreamEventMapper
-import com.niki914.zafiro.R
-import com.niki914.zafiro.settings.RuntimeEnvironment
-import com.niki914.zafiro.settings.model.LlmProtocol
-import com.niki914.xposed.api.util.LockState
 import com.niki914.okia.Okia
 import com.niki914.okia.TurnOptions
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.loop.TurnResult
-import com.niki914.okia.message.ContentBlock
-import com.niki914.okia.message.Message
 import com.niki914.okia.mcp.McpDiscoveryState
 import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.mcp.McpServerDiscoverySnapshot
 import com.niki914.okia.mcp.McpTransport
+import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
@@ -33,6 +22,19 @@ import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.xposed.api.util.LockState
+import com.niki914.zafiro.R
+import com.niki914.zafiro.chat.agentic.LocalToolExecutor
+import com.niki914.zafiro.chat.agentic.PromptComposer
+import com.niki914.zafiro.chat.agentic.PromptComposerInput
+import com.niki914.zafiro.chat.agentic.ToolManager
+import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
+import com.niki914.zafiro.chat.agentic.python.PyRuntime
+import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
+import com.niki914.zafiro.chat.agentic.stream.LlmStreamEventMapper
+import com.niki914.zafiro.settings.RuntimeEnvironment
+import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,8 +49,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
-import com.niki914.zafiro.chat.agentic.PromptComposer
-import com.niki914.zafiro.chat.agentic.ToolManager
 
 /**
  * Zafiro 的 LLM 回合执行入口。OKIA 接入 T1 重写：
@@ -160,7 +160,7 @@ object LLMController {
         Logger.i(
             LOG_TAG,
             "config read provider=${llmConfig.provider} model=${llmConfig.model} " +
-                "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
+                    "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
         )
         val protocol = LlmProtocol.fromWire(llmConfig.protocol)
         val runtimeMcpServers = gateway.listMcpServers()
@@ -175,8 +175,8 @@ object LLMController {
         Logger.i(
             LOG_TAG,
             "tools resolved builtin=${resolvedTools.builtinTools.size} " +
-                "py=${resolvedTools.customPyTools.size} " +
-                "mcpServers=${resolvedTools.mcpServers.size}"
+                    "py=${resolvedTools.customPyTools.size} " +
+                    "mcpServers=${resolvedTools.mcpServers.size}"
         )
         val configWithoutRuntimePrompt = ResolvedLlmConfig(
             endpoint = llmConfig.endpoint,
@@ -232,7 +232,7 @@ object LLMController {
             Logger.i(
                 LOG_TAG,
                 "refresh done elapsedMs=${System.currentTimeMillis() - refreshStartedAtMs} " +
-                    "model=${snapshot.config.model}"
+                        "model=${snapshot.config.model}"
             )
         }
     }
@@ -288,7 +288,7 @@ object LLMController {
         Logger.i(
             LOG_TAG,
             "open session done id=${restore.id} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
     }
 
@@ -322,7 +322,10 @@ object LLMController {
                     } else {
                         throwable.toUserErrorMessage(defaultErrorMessage)
                     }
-                    Logger.e(LOG_TAG, "refresh failed errorType=${throwable.eventTypeName()} message=$message")
+                    Logger.e(
+                        LOG_TAG,
+                        "refresh failed errorType=${throwable.eventTypeName()} message=$message"
+                    )
                     send(
                         LlmStreamEvent.Error(
                             message = message,
@@ -340,9 +343,9 @@ object LLMController {
             Logger.i(
                 LOG_TAG,
                 "refresh ok model=${state.snapshot.config.model} " +
-                    "builtin=${state.snapshot.tools.builtinTools.size} " +
-                    "py=${state.snapshot.tools.customPyTools.size} " +
-                    "mcp=${state.snapshot.tools.mcpServers.size}"
+                        "builtin=${state.snapshot.tools.builtinTools.size} " +
+                        "py=${state.snapshot.tools.customPyTools.size} " +
+                        "mcp=${state.snapshot.tools.mcpServers.size}"
             )
 
             val startedAtMs = System.currentTimeMillis()
@@ -350,7 +353,10 @@ object LLMController {
             var firstFrameLogged = false
             val sink: SendChannel<LlmStreamEvent> = this
             try {
-                Logger.i(LOG_TAG, "round started queryLength=${query.length} isUnlocked=${LockState.isUnlocked()}")
+                Logger.i(
+                    LOG_TAG,
+                    "round started queryLength=${query.length} isUnlocked=${LockState.isUnlocked()}"
+                )
                 // 异步任务完成通知注入（PRD okia §5.10）：host 侧拼进 send 文本，
                 // 不进 hook、不进会话树（通知进树即污染历史）；MCP 发现失败
                 // 说明同样前置（Failed 服务器工具不可用，模型需知）
@@ -371,14 +377,15 @@ object LLMController {
                         text = effectiveQuery,
                         options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt),
                     ) { event ->
-                        val mapped = LlmStreamEventMapper.map(event, startedAtMs, defaultErrorMessage)
+                        val mapped =
+                            LlmStreamEventMapper.map(event, startedAtMs, defaultErrorMessage)
                         mapped?.let {
                             if (!firstFrameLogged && it is LlmStreamEvent.TextDelta) {
                                 firstFrameLogged = true
                                 Logger.i(
                                     LOG_TAG,
                                     "first frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                        "charsPerSecond=${it.charsPerSecond}"
+                                            "charsPerSecond=${it.charsPerSecond}"
                                 )
                             }
                             if (it is LlmStreamEvent.Error && !streamErrorReported) {
@@ -386,9 +393,9 @@ object LLMController {
                                 Logger.e(
                                     LOG_TAG,
                                     "stream error stage=session_event code=${it.code} " +
-                                        "errorType=${it.throwable?.eventTypeName() ?: "OkiaEvent"} " +
-                                        "message=${it.message} " +
-                                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                                            "errorType=${it.throwable?.eventTypeName() ?: "OkiaEvent"} " +
+                                            "message=${it.message} " +
+                                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                                 )
                             }
                             sink.send(it)
@@ -404,9 +411,9 @@ object LLMController {
                         Logger.e(
                             LOG_TAG,
                             "stream error stage=send code=${throwable.toUserErrorCode()} " +
-                                "errorType=${throwable.eventTypeName()} " +
-                                "message=${throwable.toUserErrorMessage(defaultErrorMessage)} " +
-                                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                                    "errorType=${throwable.eventTypeName()} " +
+                                    "message=${throwable.toUserErrorMessage(defaultErrorMessage)} " +
+                                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                         )
                         send(
                             LlmStreamEvent.Error(
@@ -425,8 +432,8 @@ object LLMController {
                     Logger.e(
                         LOG_TAG,
                         "stream failed by TurnResult code=${error.code} " +
-                            "message=${error.message} " +
-                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                                "message=${error.message} " +
+                                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                     )
                     send(
                         LlmStreamEvent.Error(
@@ -449,9 +456,9 @@ object LLMController {
                 Logger.e(
                     LOG_TAG,
                     "stream error stage=send code=${throwable.toUserErrorCode()} " +
-                        "errorType=${throwable.eventTypeName()} " +
-                        "message=${throwable.toUserErrorMessage(defaultErrorMessage)} " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                            "errorType=${throwable.eventTypeName()} " +
+                            "message=${throwable.toUserErrorMessage(defaultErrorMessage)} " +
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
                 send(
                     LlmStreamEvent.Error(
@@ -635,12 +642,13 @@ object LLMController {
     ): String = buildString {
         appendLine("[IMPORTANT: MCP discovery failed for the following servers; their tools are unavailable in this turn:")
         failed.forEach { server ->
-            val reason = server.errorMessage?.lineSequence()?.firstOrNull()?.take(120) ?: "unknown error"
+            val reason =
+                server.errorMessage?.lineSequence()?.firstOrNull()?.take(120) ?: "unknown error"
             appendLine("- ${server.serverName}: $reason")
         }
         append(
             "Do not attempt to call their tools. If the task depends on them, " +
-                "tell the user the MCP service is currently unavailable.]",
+                    "tell the user the MCP service is currently unavailable.]",
         )
     }
 
@@ -676,7 +684,8 @@ object LLMController {
             "mcp discovery " + servers.sortedBy { it.serverName }
                 .joinToString(" ") { "${it.serverName}=${it.state}" },
         )
-        val failed = servers.filter { it.state == McpDiscoveryState.Failed }.sortedBy { it.serverName }
+        val failed =
+            servers.filter { it.state == McpDiscoveryState.Failed }.sortedBy { it.serverName }
         if (failed.isEmpty()) {
             mcpFailureSignature = null
             return null

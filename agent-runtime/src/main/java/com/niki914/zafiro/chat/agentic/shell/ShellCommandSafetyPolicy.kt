@@ -1,8 +1,8 @@
 package com.niki914.zafiro.chat.agentic.shell
 
+import com.niki914.xposed.api.util.LockState
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.util.TextPatternMatcher
-import com.niki914.xposed.api.util.LockState
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
@@ -57,17 +57,23 @@ class ShellCommandSafetyPolicy(
                 ExecutionRuleEnabledMode.ALWAYS, ExecutionRuleEnabledMode.LOCKED_ONLY -> return blocked
                 ExecutionRuleEnabledMode.DISABLED -> {}
                 ExecutionRuleEnabledMode.CONFIRM -> when (
-                    ToolPermissionCoordinator.confirm(blocked.toConfirmationRequest(command, toolName))
+                    ToolPermissionCoordinator.confirm(
+                        blocked.toConfirmationRequest(
+                            command,
+                            toolName
+                        )
+                    )
                 ) {
                     ToolPermissionResponse.ALLOWED -> continue
                     ToolPermissionResponse.DENIED_BY_USER -> return blocked.copy(
                         code = "CONFIRM_DENIED",
                         reason = "The user denied this operation.",
                     )
+
                     ToolPermissionResponse.DENIED_UNAVAILABLE -> return blocked.copy(
                         code = "CONFIRM_UNAVAILABLE",
                         reason = "Tool execution requires user confirmation, but this session " +
-                            "cannot request permission from the user. The operation was denied.",
+                                "cannot request permission from the user. The operation was denied.",
                     )
                 }
             }

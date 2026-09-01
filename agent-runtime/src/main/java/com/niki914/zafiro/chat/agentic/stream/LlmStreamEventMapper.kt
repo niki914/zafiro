@@ -1,15 +1,15 @@
 package com.niki914.zafiro.chat.agentic.stream
 
 import com.niki914.logging.Logger
+import com.niki914.okia.event.TurnEvent
+import com.niki914.okia.message.AssistantMessage
+import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.ToolCallKind
 import com.niki914.zafiro.chat.ToolCallStatus
 import com.niki914.okia.error.LLMErrorCode as OkiaLLMErrorCode
-import com.niki914.okia.event.TurnEvent
-import com.niki914.okia.message.AssistantMessage
-import com.niki914.okia.message.ContentBlock
-import com.niki914.okia.message.ToolCallOutcome
 
 /**
  * TurnEvent → LlmStreamEvent 映射器（OKIA 接入 T1 重写）。
@@ -123,7 +123,10 @@ object LlmStreamEventMapper {
                 }
             }
 
-            is TurnEvent.ThinkingDelta -> thinkingInProgress(event.index, event.partial.thinkingContent())
+            is TurnEvent.ThinkingDelta -> thinkingInProgress(
+                event.index,
+                event.partial.thinkingContent()
+            )
 
             is TurnEvent.ThinkingEnded -> {
                 if (activeThinkingIndex != event.index) {
@@ -133,7 +136,8 @@ object LlmStreamEventMapper {
                     val content = event.content
                     val id = activeThinkingId
                     clearActiveThinking()
-                    content.takeIf { it.isNotBlank() }?.let { LlmStreamEvent.ThinkingEnded(id!!, it) }
+                    content.takeIf { it.isNotBlank() }
+                        ?.let { LlmStreamEvent.ThinkingEnded(id!!, it) }
                 }
             }
 
@@ -167,7 +171,7 @@ object LlmStreamEventMapper {
             Logger.d(
                 LOG_TAG,
                 "mapped turnEvent=${event::class.simpleName} " +
-                    "-> ${mapped?.let { it::class.simpleName } ?: "null"}"
+                        "-> ${mapped?.let { it::class.simpleName } ?: "null"}"
             )
         }
         return mapped
@@ -211,8 +215,13 @@ object LlmStreamEventMapper {
         return when (outcome) {
             is ToolCallOutcome.Success -> LlmStreamEvent.ToolSucceeded(call, outcome.content)
             is ToolCallOutcome.Intercepted ->
-                if (outcome.isError) LlmStreamEvent.ToolFailed(call, outcome.reason, outcome.content)
+                if (outcome.isError) LlmStreamEvent.ToolFailed(
+                    call,
+                    outcome.reason,
+                    outcome.content
+                )
                 else LlmStreamEvent.ToolSucceeded(call, outcome.content)
+
             else -> LlmStreamEvent.ToolFailed(call, outcome.messageTextOf(), outcome.contentText())
         }
     }
@@ -264,6 +273,7 @@ object LlmStreamEventMapper {
 
     private fun AssistantMessage.thinkingContent(): String =
         content.filterIsInstance<ContentBlock.Thinking>().joinToString("") { it.text }
+
     private fun charsPerSecond(fullText: String, startedAtMs: Long): Float {
         val elapsedMs = (System.currentTimeMillis() - startedAtMs).coerceAtLeast(1)
         return fullText.length * 1000f / elapsedMs

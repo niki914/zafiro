@@ -9,7 +9,6 @@ import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.hooks.InputHolder
 import com.niki914.okia.hooks.ToolCallHolder
 import com.niki914.okia.hooks.ToolResultHolder
-import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
@@ -19,7 +18,6 @@ import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolRegistry
-import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.HttpTimeouts
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -106,7 +104,13 @@ class RealAgentLoopToolingTest {
             )
         )
 
-        runLoop(loopRequest(emptyList(), toolRegistry = registry, hooks = hooks).copy(protocolMapper = mapper))
+        runLoop(
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry,
+                hooks = hooks
+            ).copy(protocolMapper = mapper)
+        )
 
         // executor 收到改写参数；lastWriter 记录
         assertEquals("{\"q\":\"rewritten\"}", executor.calls.single().argumentsJson)
@@ -147,7 +151,9 @@ class RealAgentLoopToolingTest {
                 }
             },
             object : Hooks {
-                override suspend fun beforeToolCall(call: ToolCallHolder) { calls += "h2" }
+                override suspend fun beforeToolCall(call: ToolCallHolder) {
+                    calls += "h2"
+                }
             }
         )
         val mapper = FakeProtocolMapper(
@@ -160,7 +166,13 @@ class RealAgentLoopToolingTest {
             )
         )
 
-        runLoop(loopRequest(emptyList(), toolRegistry = registry, hooks = hooks).copy(protocolMapper = mapper))
+        runLoop(
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry,
+                hooks = hooks
+            ).copy(protocolMapper = mapper)
+        )
 
         // 阻断：executor 不执行；后续 hook 不执行；拦截结果回喂模型
         assertTrue(executor.calls.isEmpty())
@@ -181,7 +193,10 @@ class RealAgentLoopToolingTest {
             override suspend fun beforeToolCall(call: ToolCallHolder) {
                 call.writeOutcome(ToolCallOutcome.Intercepted("blocked"), "h1")
             }
-            override suspend fun afterToolCall(call: ToolCallHolder, result: ToolResultHolder) { afterCalls++ }
+
+            override suspend fun afterToolCall(call: ToolCallHolder, result: ToolResultHolder) {
+                afterCalls++
+            }
         })
         val mapper = FakeProtocolMapper(
             listOf(
@@ -193,7 +208,13 @@ class RealAgentLoopToolingTest {
             )
         )
 
-        runLoop(loopRequest(emptyList(), toolRegistry = registry, hooks = hooks).copy(protocolMapper = mapper))
+        runLoop(
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry,
+                hooks = hooks
+            ).copy(protocolMapper = mapper)
+        )
 
         assertEquals(0, afterCalls)
     }
@@ -217,7 +238,13 @@ class RealAgentLoopToolingTest {
             )
         )
 
-        val result = runLoop(loopRequest(emptyList(), toolRegistry = registry, hooks = hooks).copy(protocolMapper = mapper))
+        val result = runLoop(
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry,
+                hooks = hooks
+            ).copy(protocolMapper = mapper)
+        )
 
         // 回合不失败：该工具以 Failure outcome 回喂（§8.4 #13），回合继续到 Stop
         assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
@@ -231,7 +258,8 @@ class RealAgentLoopToolingTest {
 
     @Test
     fun afterToolCallRewriteOutcomeReachesEncode() = runTest {
-        val executor = RecordingToolExecutor().apply { outcome = ToolCallOutcome.Success("original") }
+        val executor =
+            RecordingToolExecutor().apply { outcome = ToolCallOutcome.Success("original") }
         val registry = DefaultToolRegistry().apply { register(localTool("tool"), executor) }
         val hooks = listOf(object : Hooks {
             override suspend fun afterToolCall(call: ToolCallHolder, result: ToolResultHolder) {
@@ -248,7 +276,13 @@ class RealAgentLoopToolingTest {
             )
         )
 
-        runLoop(loopRequest(emptyList(), toolRegistry = registry, hooks = hooks).copy(protocolMapper = mapper))
+        runLoop(
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry,
+                hooks = hooks
+            ).copy(protocolMapper = mapper)
+        )
 
         val toolResult = mapper.builtHistories.last().last() as Message.ToolResult
         assertEquals(ToolCallOutcome.Success("replaced"), toolResult.outcome)
@@ -273,7 +307,13 @@ class RealAgentLoopToolingTest {
             )
         )
 
-        val result = runLoop(loopRequest(emptyList(), toolRegistry = registry, hooks = hooks).copy(protocolMapper = mapper))
+        val result = runLoop(
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry,
+                hooks = hooks
+            ).copy(protocolMapper = mapper)
+        )
 
         assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
         val toolResult = mapper.builtHistories.last().last() as Message.ToolResult
@@ -295,7 +335,10 @@ class RealAgentLoopToolingTest {
             )
         )
         val emitted = mutableListOf<TurnEvent>()
-        runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper), emitted)
+        runLoop(
+            loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper),
+            emitted
+        )
         return emitted
     }
 
@@ -449,7 +492,10 @@ class RealAgentLoopToolingTest {
         )
 
         runLoop(
-            loopRequest(emptyList(), toolRegistry = registry) { commits += it }.copy(protocolMapper = mapper),
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry
+            ) { commits += it }.copy(protocolMapper = mapper),
             emitted
         )
 
@@ -473,7 +519,8 @@ class RealAgentLoopToolingTest {
             listOf("think-a", "think-b"),
             emitted.filterIsInstance<TurnEvent.ThinkingEnded>().map { it.content }
         )
-        val thinkingEndedIndex = emitted.indexOfFirst { it is TurnEvent.ThinkingEnded && it.content == "think-a" }
+        val thinkingEndedIndex =
+            emitted.indexOfFirst { it is TurnEvent.ThinkingEnded && it.content == "think-a" }
         val toolCallReadyIndex = emitted.indexOfFirst { it is TurnEvent.ToolCallReady }
         assertTrue(thinkingEndedIndex < toolCallReadyIndex)
     }
@@ -618,7 +665,10 @@ class RealAgentLoopToolingTest {
         )
 
         runLoop(
-            loopRequest(emptyList(), toolRegistry = registry) { commits += it }.copy(protocolMapper = mapper),
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry
+            ) { commits += it }.copy(protocolMapper = mapper),
             emitted
         )
 
@@ -648,7 +698,10 @@ class RealAgentLoopToolingTest {
             )
         )
 
-        runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper), emitted)
+        runLoop(
+            loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper),
+            emitted
+        )
 
         // Started / Delta 的 partial 不含 ToolCall 块（Ready 前不占位，§5.4）
         val started = emitted.filterIsInstance<TurnEvent.ToolCallStarted>().single()
@@ -679,10 +732,18 @@ class RealAgentLoopToolingTest {
             )
         )
         val hooks = listOf(object : Hooks {
-            override suspend fun beforeInput(input: InputHolder) { input.write("rewritten", "h1") }
+            override suspend fun beforeInput(input: InputHolder) {
+                input.write("rewritten", "h1")
+            }
         })
 
-        runLoop(loopRequest(emptyList(), toolRegistry = registry, hooks = hooks).copy(protocolMapper = mapper))
+        runLoop(
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry,
+                hooks = hooks
+            ).copy(protocolMapper = mapper)
+        )
 
         // 第一轮：末尾 User 文本 = 改写值
         val firstUser = mapper.builtHistories[0].last() as Message.User

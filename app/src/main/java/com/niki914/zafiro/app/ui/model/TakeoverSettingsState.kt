@@ -3,13 +3,13 @@ package com.niki914.zafiro.app.ui.model
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
+import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_PATTERNS
-import com.niki914.uikit.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -174,7 +174,7 @@ class TakeoverSettingsViewModel :
             Logger.d(
                 LOG_TAG,
                 "load rules=${loadedItems.size} defaultTarget=$defaultTarget " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             updateState {
                 copy(
@@ -254,7 +254,10 @@ class TakeoverSettingsViewModel :
             notifySettingsChanged()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
-            Logger.w(LOG_TAG, "toggleItemEnabled failed ruleId=${currentItem.id} reason=${throwable.message}")
+            Logger.w(
+                LOG_TAG,
+                "toggleItemEnabled failed ruleId=${currentItem.id} reason=${throwable.message}"
+            )
             updateState {
                 copy(
                     items = previousItems,
@@ -291,7 +294,7 @@ class TakeoverSettingsViewModel :
             Logger.w(
                 LOG_TAG,
                 "save rejected validation=" +
-                    validationErrors.joinToString { "${it.field}:${it.message}" }
+                        validationErrors.joinToString { "${it.field}:${it.message}" }
             )
             val invalidFields = validationErrors.map { error -> error.field }.toSet()
             val nameInvalid = TAKEOVER_FIELD_NAME in invalidFields

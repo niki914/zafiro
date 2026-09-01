@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic.buildin
 
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult.Status
+import com.niki914.zafiro.chat.agentic.buildin.TextToolResultCodec.MAX_HEADER_BYTES
 import java.nio.charset.StandardCharsets
 
 object TextToolResultCodec {
@@ -137,7 +138,9 @@ object TextToolResultCodec {
         // First try without truncation (no ellipsis when the full message fits)
         val fullLine = "#!message: $message"
         val testLines = prefixLines + fullLine
-        if (testLines.joinToString("\n").toByteArray(StandardCharsets.UTF_8).size <= MAX_HEADER_BYTES) {
+        if (testLines.joinToString("\n")
+                .toByteArray(StandardCharsets.UTF_8).size <= MAX_HEADER_BYTES
+        ) {
             return fullLine
         }
 
@@ -150,7 +153,9 @@ object TextToolResultCodec {
             val displayMsg = "$truncated$ellipsis"
             val line = "#!message: $displayMsg"
             val test = prefixLines + line
-            if (test.joinToString("\n").toByteArray(StandardCharsets.UTF_8).size <= MAX_HEADER_BYTES) {
+            if (test.joinToString("\n")
+                    .toByteArray(StandardCharsets.UTF_8).size <= MAX_HEADER_BYTES
+            ) {
                 return line
             }
         }

@@ -32,7 +32,7 @@ class CaptureResponseTargetHook(
         Logger.i(
             LOG_TAG,
             "response target captured targetClass=${param.thisObject?.javaClass?.name} " +
-                "dialogId=$dialogId"
+                    "dialogId=$dialogId"
         )
     }
 }

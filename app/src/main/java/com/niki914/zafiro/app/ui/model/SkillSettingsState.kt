@@ -2,10 +2,10 @@ package com.niki914.zafiro.app.ui.model
 
 import androidx.annotation.StringRes
 import com.niki914.logging.Logger
+import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.SkillImportResult
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.uikit.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
 import java.io.File
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill as LoadedSkill
@@ -208,7 +208,7 @@ class SkillSettingsViewModel(
                 Logger.w(
                     LOG_TAG,
                     "toggleEnabled rejected skillId=${targetItem.id} " +
-                        "reason=${validationMessage(validation)}"
+                            "reason=${validationMessage(validation)}"
                 )
                 updateState {
                     copy(
@@ -274,7 +274,7 @@ class SkillSettingsViewModel(
             Logger.d(
                 LOG_TAG,
                 "loadDetail succeeded skillId=$id contentLength=${loadedSkill.content.length} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             val title = loadedSkill.name.ifBlank { fallbackTitle.ifBlank { loadedSkill.id } }
             updateState {
@@ -327,7 +327,7 @@ class SkillSettingsViewModel(
                 Logger.w(
                     LOG_TAG,
                     "save rejected skillId=${formState.skillId} " +
-                        "reason=${validationMessage(validation)}"
+                            "reason=${validationMessage(validation)}"
                 )
                 updateState {
                     copy(
@@ -343,7 +343,7 @@ class SkillSettingsViewModel(
             Logger.i(
                 LOG_TAG,
                 "save succeeded skillId=${formState.skillId} " +
-                    "contentLength=${formState.content.length}"
+                        "contentLength=${formState.content.length}"
             )
             updateState {
                 copy(
@@ -399,7 +399,7 @@ class SkillSettingsViewModel(
                 Logger.w(
                     LOG_TAG,
                     "confirmDelete rejected skillId=${confirmation.skillId} " +
-                        "reason=${validationMessage(validation)}"
+                            "reason=${validationMessage(validation)}"
                 )
                 updateState {
                     copy(
@@ -468,7 +468,10 @@ class SkillSettingsViewModel(
                 }
 
                 is SkillImportResult.Error -> {
-                    Logger.w(LOG_TAG, "importSkill error dir=${sourceDir.name} reason=${result.message}")
+                    Logger.w(
+                        LOG_TAG,
+                        "importSkill error dir=${sourceDir.name} reason=${result.message}"
+                    )
                     updateState { copy(isImporting = false) }
                     sendEffect(
                         SkillSettingsEffect.ShowImportErrorToast(
@@ -480,7 +483,10 @@ class SkillSettingsViewModel(
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
-            Logger.w(LOG_TAG, "importSkill failed dir=${sourceDir.name} reason=${throwable.message}")
+            Logger.w(
+                LOG_TAG,
+                "importSkill failed dir=${sourceDir.name} reason=${throwable.message}"
+            )
             updateState { copy(isImporting = false) }
             sendEffect(
                 SkillSettingsEffect.ShowImportErrorToast(

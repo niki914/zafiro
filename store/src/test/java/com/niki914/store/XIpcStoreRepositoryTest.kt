@@ -92,7 +92,8 @@ class XIpcStoreRepositoryTest {
         assertEquals(
             true, JSONObject(updated)
                 .getJSONObject("enabled")
-                .getBoolean("launch_app"))
+                .getBoolean("launch_app")
+        )
         assertEquals("""{"tools":[]}""", otherFile.readText())
     }
 

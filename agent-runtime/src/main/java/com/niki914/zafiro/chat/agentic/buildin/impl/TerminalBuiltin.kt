@@ -3,6 +3,7 @@ package com.niki914.zafiro.chat.agentic.buildin.impl
 import com.niki914.libterm.SshAuth
 import com.niki914.libterm.SshHostKeyPolicy
 import com.niki914.libterm.SshOpenOptions
+import com.niki914.libterm.runtime.CommandResult
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
@@ -17,10 +18,9 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalReadMode
 import com.niki914.zafiro.chat.agentic.shell.TerminalReadOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
-import com.niki914.libterm.runtime.CommandResult
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse
-import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stdoutText
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stderrText
+import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stdoutText
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -108,8 +108,8 @@ class TerminalBuiltin(
                 if (!args.background) {
                     return TerminalToolResponse.invalidRequest(
                         "SSH backend requires background=true. SSH sessions cannot " +
-                            "reliably detect command completion in foreground mode. " +
-                            "Use background=true and action=\"read\" to check results."
+                                "reliably detect command completion in foreground mode. " +
+                                "Use background=true and action=\"read\" to check results."
                     )
                 }
                 handleSshCommand(args, command, timeoutSec)
@@ -200,7 +200,8 @@ class TerminalBuiltin(
         notifyOnComplete: Boolean,
     ): String {
         // Open a session first, then start async
-        return when (val openOutcome = TerminalSessionPool.open(identity = identity, cwd = workdir)) {
+        return when (val openOutcome =
+            TerminalSessionPool.open(identity = identity, cwd = workdir)) {
             is TerminalOpenOutcome.Success -> {
                 when (val asyncOutcome = TerminalSessionPool.startAsync(
                     session = openOutcome.session,
@@ -498,7 +499,11 @@ class TerminalBuiltin(
                     )
 
                     is TerminalReadOutcome.Exited -> TerminalToolResponse.readResult(
-                        sessionId, "exited", outcome.output, outcome.exitCode, outcome.elapsedSeconds
+                        sessionId,
+                        "exited",
+                        outcome.output,
+                        outcome.exitCode,
+                        outcome.elapsedSeconds
                     )
 
                     is TerminalReadOutcome.TimedOut -> TerminalToolResponse.readResult(
@@ -632,8 +637,10 @@ class TerminalBuiltin(
             username = username,
             auth = SshAuth.Password(password),
             hostKeyPolicy = SshHostKeyPolicy.AcceptAny,
-            connectTimeoutMillis = (connectTimeout ?: SshOpenOptions.DEFAULT_CONNECT_TIMEOUT_MILLIS / 1000) * 1000,
-            serverAliveIntervalMillis = (serverAliveInterval ?: SshOpenOptions.DEFAULT_SERVER_ALIVE_INTERVAL_MILLIS / 1000) * 1000,
+            connectTimeoutMillis = (connectTimeout
+                ?: SshOpenOptions.DEFAULT_CONNECT_TIMEOUT_MILLIS / 1000) * 1000,
+            serverAliveIntervalMillis = (serverAliveInterval
+                ?: SshOpenOptions.DEFAULT_SERVER_ALIVE_INTERVAL_MILLIS / 1000) * 1000,
         )
     }
 

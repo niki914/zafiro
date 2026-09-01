@@ -1,9 +1,9 @@
 package com.niki914.zafiro.app.conversation
 
 import com.niki914.logging.Logger
-import com.niki914.zafiro.chat.LLMController
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.ConversationEntry
+import com.niki914.zafiro.chat.LLMController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -31,7 +31,10 @@ object ConversationPersister {
     /** 已持久化条数（按会话 id 隔离）。内存态，重启后按 Room 现有条数重建。 */
     private val persistedCountBySession = mutableMapOf<String, Int>()
 
-    fun start(scope: CoroutineScope, source: Flow<Conversation?> = LLMController.currentConversation) {
+    fun start(
+        scope: CoroutineScope,
+        source: Flow<Conversation?> = LLMController.currentConversation
+    ) {
         scope.launch {
             source.collect { snapshot ->
                 snapshot?.let {
@@ -46,7 +49,7 @@ object ConversationPersister {
                         Logger.e(
                             LOG_TAG,
                             "persist failed sessionId=${it.id} " +
-                                "errorType=${e::class.simpleName} message=${e.message}"
+                                    "errorType=${e::class.simpleName} message=${e.message}"
                         )
                         persistedCountBySession.remove(it.id)
                     }
@@ -91,7 +94,7 @@ object ConversationPersister {
         Logger.d(
             LOG_TAG,
             "persisted sessionId=$sessionId persisted=$persisted -> ${history.size} " +
-                "new=${newEntries.size}"
+                    "new=${newEntries.size}"
         )
     }
 }

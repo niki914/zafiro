@@ -1,6 +1,5 @@
 package com.niki914.uikit.infra.component
 
-import com.niki914.uikit.base.LocalAppDarkTheme
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.niki914.uikit.base.LocalAppDarkTheme
 
 @Composable
 fun TintLiquidButton(

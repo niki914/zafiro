@@ -11,7 +11,6 @@ import com.niki914.libterm.TerminalBytes
 import com.niki914.libterm.TerminalFailure
 import com.niki914.libterm.TerminalIdentity
 import com.niki914.libterm.TerminalOpenOptions
-import java.net.ConnectException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -24,6 +23,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import java.net.ConnectException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs

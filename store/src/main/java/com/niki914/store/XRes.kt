@@ -1,7 +1,6 @@
 package com.niki914.store
 
 import android.content.Context
-import com.niki914.store.R
 
 enum class HostApp(val packageName: String, val displayNameRes: Int) {
     Breeno("com.heytap.speechassist", R.string.host_breeno_display_name),

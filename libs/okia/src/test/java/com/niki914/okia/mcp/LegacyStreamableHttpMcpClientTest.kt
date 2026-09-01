@@ -56,10 +56,12 @@ class LegacyStreamableHttpMcpClientTest {
     // ── 服务器构造 helpers（按方法分发；id 一律回显请求 id）──────────────
 
     private fun sseResponse(body: String) =
-        MockResponse().setResponseCode(200).setHeader("Content-Type", "text/event-stream").setBody(body)
+        MockResponse().setResponseCode(200).setHeader("Content-Type", "text/event-stream")
+            .setBody(body)
 
     private fun jsonResponse(body: String) =
-        MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody(body)
+        MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json")
+            .setBody(body)
 
     private fun rpcResult(body: JsonObject, result: String): MockResponse {
         val id = body["id"]?.jsonPrimitive?.content ?: "null"
@@ -70,7 +72,7 @@ class LegacyStreamableHttpMcpClientTest {
         val id = body["id"]?.jsonPrimitive?.content ?: "null"
         return sseResponse(
             "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":$id," +
-                "\"error\":{\"code\":$code,\"message\":\"$message\"}}\n\n"
+                    "\"error\":{\"code\":$code,\"message\":\"$message\"}}\n\n"
         )
     }
 
@@ -83,7 +85,12 @@ class LegacyStreamableHttpMcpClientTest {
         init: (JsonObject) -> MockResponse = { b -> rpcResult(b, DEFAULT_INIT_RESULT) },
         notify: (JsonObject) -> MockResponse = { MockResponse().setResponseCode(202) },
         list: (JsonObject) -> MockResponse = { b -> rpcResult(b, """{"tools":[$DEFAULT_TOOL]}""") },
-        call: (JsonObject) -> MockResponse = { b -> rpcResult(b, """{"content":[{"type":"text","text":"ok"}]}""") }
+        call: (JsonObject) -> MockResponse = { b ->
+            rpcResult(
+                b,
+                """{"content":[{"type":"text","text":"ok"}]}"""
+            )
+        }
     ): Dispatcher = object : Dispatcher() {
         override fun dispatch(request: RecordedRequest): MockResponse {
             // peek：dispatch 与测试后续断言共读同一 body（Buffer 只能消费一次）
@@ -172,8 +179,10 @@ class LegacyStreamableHttpMcpClientTest {
     fun `non-message sse events are filtered out`() = runBlocking {
         val mixed: (JsonObject) -> MockResponse = { body ->
             val id = body["id"]?.jsonPrimitive?.content ?: "null"
-            sseResponse("event: ping\ndata: {\"ignored\":true}\n\n" +
-                "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":$DEFAULT_INIT_RESULT}\n\n")
+            sseResponse(
+                "event: ping\ndata: {\"ignored\":true}\n\n" +
+                        "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":$DEFAULT_INIT_RESULT}\n\n"
+            )
         }
         server.dispatcher = serverWith(init = mixed)
         val tools = client.discoverTools(mcpServer())
@@ -183,7 +192,11 @@ class LegacyStreamableHttpMcpClientTest {
     @Test
     fun `initialize json rpc error surfaces code and message`() = runBlocking {
         server.dispatcher = serverWith(init = { b -> rpcError(b, -32602, "bad params") })
-        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            client.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
         assertEquals(-32602, e!!.jsonRpcCode)
     }
@@ -193,14 +206,23 @@ class LegacyStreamableHttpMcpClientTest {
         server.dispatcher = serverWith(
             init = { sseResponse("event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":999,\"result\":\"x\"}\n\n") }
         )
-        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            client.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
     }
 
     @Test
     fun `http non-2xx surfaces status code`() = runBlocking {
-        server.dispatcher = serverWith(init = { MockResponse().setResponseCode(503).setBody("down") })
-        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        server.dispatcher =
+            serverWith(init = { MockResponse().setResponseCode(503).setBody("down") })
+        val e = try {
+            client.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
         assertEquals(503, e!!.statusCode)
     }
@@ -208,14 +230,23 @@ class LegacyStreamableHttpMcpClientTest {
     @Test
     fun `http 2xx with empty body is a protocol error`() = runBlocking {
         server.dispatcher = serverWith(init = { MockResponse().setResponseCode(200) })
-        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            client.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
     }
 
     @Test
     fun `non-json body is a protocol error`() = runBlocking {
-        server.dispatcher = serverWith(init = { MockResponse().setResponseCode(200).setBody("<html>") })
-        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        server.dispatcher =
+            serverWith(init = { MockResponse().setResponseCode(200).setBody("<html>") })
+        val e = try {
+            client.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
     }
 
@@ -237,7 +268,8 @@ class LegacyStreamableHttpMcpClientTest {
             override fun dispatch(request: RecordedRequest): MockResponse =
                 MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE)
         }
-        val slowClient = LegacyStreamableHttpMcpClient(OkHttpEngine(), HttpTimeouts(1000, 500, 1000))
+        val slowClient =
+            LegacyStreamableHttpMcpClient(OkHttpEngine(), HttpTimeouts(1000, 500, 1000))
         try {
             slowClient.discoverTools(mcpServer())
             fail("expected timeout")
@@ -268,7 +300,11 @@ class LegacyStreamableHttpMcpClientTest {
     @Test
     fun `initialized notification failing with non-2xx fails discovery`() = runBlocking {
         server.dispatcher = serverWith(notify = { MockResponse().setResponseCode(500) })
-        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            client.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
         assertEquals(500, e!!.statusCode)
     }
@@ -278,7 +314,12 @@ class LegacyStreamableHttpMcpClientTest {
     @Test
     fun `session id from initialize response is attached to subsequent requests`() = runBlocking {
         server.dispatcher = serverWith(
-            init = { b -> rpcResult(b, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "sess-123") }
+            init = { b ->
+                rpcResult(b, DEFAULT_INIT_RESULT).setHeader(
+                    "mcp-session-id",
+                    "sess-123"
+                )
+            }
         )
         client.discoverTools(mcpServer())
         assertEquals("sess-123", awaitRequests(3)[2].getHeader("mcp-session-id"))
@@ -308,7 +349,12 @@ class LegacyStreamableHttpMcpClientTest {
     @Test
     fun `session id header name matching is case insensitive`() = runBlocking {
         server.dispatcher = serverWith(
-            init = { b -> rpcResult(b, DEFAULT_INIT_RESULT).setHeader("MCP-Session-Id", "sess-upper") }
+            init = { b ->
+                rpcResult(b, DEFAULT_INIT_RESULT).setHeader(
+                    "MCP-Session-Id",
+                    "sess-upper"
+                )
+            }
         )
         client.discoverTools(mcpServer())
         assertEquals("sess-upper", awaitRequests(3)[2].getHeader("mcp-session-id"))
@@ -325,10 +371,10 @@ class LegacyStreamableHttpMcpClientTest {
                 val id = b["id"]?.jsonPrimitive?.content ?: "null"
                 sseResponse(
                     "event: message\n" +
-                        "data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\"," +
-                        "\"params\":{\"level\":\"warning\",\"data\":\"hi\"}}\n\n" +
-                        "event: message\n" +
-                        "data: {\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":$DEFAULT_INIT_RESULT}\n\n"
+                            "data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\"," +
+                            "\"params\":{\"level\":\"warning\",\"data\":\"hi\"}}\n\n" +
+                            "event: message\n" +
+                            "data: {\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":$DEFAULT_INIT_RESULT}\n\n"
                 )
             }
         )
@@ -342,14 +388,18 @@ class LegacyStreamableHttpMcpClientTest {
             init = {
                 sseResponse(
                     "event: message\n" +
-                        "data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\"," +
-                        "\"params\":{\"level\":\"warning\",\"data\":\"hi\"}}\n\n" +
-                        "event: message\n" +
-                        "data: {\"jsonrpc\":\"2.0\",\"id\":100,\"method\":\"ping\"}\n\n"
+                            "data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\"," +
+                            "\"params\":{\"level\":\"warning\",\"data\":\"hi\"}}\n\n" +
+                            "event: message\n" +
+                            "data: {\"jsonrpc\":\"2.0\",\"id\":100,\"method\":\"ping\"}\n\n"
                 )
             }
         )
-        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            client.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
         assertTrue(e!!.message!!.contains("no JSON-RPC response with id 1"))
     }
@@ -385,38 +435,55 @@ class LegacyStreamableHttpMcpClientTest {
     // ── 会话终止自愈（2025-06-18 §Session Management） ────────────────────
 
     @Test
-    fun `discover re-initializes without stale session after 404 session termination`() = runBlocking {
-        // 规范路径：服务器 404 终止会话 → 客户端丢弃旧会话、以不带旧会话的
-        // initialize 重建（MUST），无需重建整个 Okia 实例。
-        var i = 0
-        server.dispatcher = object : Dispatcher() {
-            override fun dispatch(request: RecordedRequest): MockResponse {
-                i++
-                val body = Json.parseToJsonElement(request.body.peek().readUtf8()).jsonObject
-                return when (body["method"]?.jsonPrimitive?.content) {
-                    "initialize" ->
-                        if (i == 1) rpcResult(body, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s1")
-                        else rpcResult(body, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s2")
-                    "notifications/initialized" -> MockResponse().setResponseCode(202)
-                    "tools/list" ->
-                        if (i == 3) MockResponse().setResponseCode(404).setBody("session terminated")
-                        else if (i == 6) rpcResult(body, """{"tools":[$DEFAULT_TOOL]}""")
-                        else MockResponse().setResponseCode(404).setBody("unexpected")
-                    else -> MockResponse().setResponseCode(400).setBody("unknown method")
+    fun `discover re-initializes without stale session after 404 session termination`() =
+        runBlocking {
+            // 规范路径：服务器 404 终止会话 → 客户端丢弃旧会话、以不带旧会话的
+            // initialize 重建（MUST），无需重建整个 Okia 实例。
+            var i = 0
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    i++
+                    val body = Json.parseToJsonElement(request.body.peek().readUtf8()).jsonObject
+                    return when (body["method"]?.jsonPrimitive?.content) {
+                        "initialize" ->
+                            if (i == 1) rpcResult(
+                                body,
+                                DEFAULT_INIT_RESULT
+                            ).setHeader("mcp-session-id", "s1")
+                            else rpcResult(body, DEFAULT_INIT_RESULT).setHeader(
+                                "mcp-session-id",
+                                "s2"
+                            )
+
+                        "notifications/initialized" -> MockResponse().setResponseCode(202)
+                        "tools/list" ->
+                            if (i == 3) MockResponse().setResponseCode(404)
+                                .setBody("session terminated")
+                            else if (i == 6) rpcResult(body, """{"tools":[$DEFAULT_TOOL]}""")
+                            else MockResponse().setResponseCode(404).setBody("unexpected")
+
+                        else -> MockResponse().setResponseCode(400).setBody("unknown method")
+                    }
                 }
             }
+            val tools = client.discoverTools(mcpServer())
+            assertEquals("echo", tools.single().name)
+            val requests = awaitRequests(6)
+            assertEquals(
+                listOf(
+                    "initialize",
+                    "notifications/initialized",
+                    "tools/list",
+                    "initialize",
+                    "notifications/initialized",
+                    "tools/list"
+                ),
+                requests.map { parseJson(it)["method"]?.jsonPrimitive?.content }
+            )
+            // 重建的 initialize 不带旧会话（规范 MUST）；tools/list 用新会话
+            assertNull(requests[3].getHeader("mcp-session-id"))
+            assertEquals("s2", requests[5].getHeader("mcp-session-id"))
         }
-        val tools = client.discoverTools(mcpServer())
-        assertEquals("echo", tools.single().name)
-        val requests = awaitRequests(6)
-        assertEquals(
-            listOf("initialize", "notifications/initialized", "tools/list", "initialize", "notifications/initialized", "tools/list"),
-            requests.map { parseJson(it)["method"]?.jsonPrimitive?.content }
-        )
-        // 重建的 initialize 不带旧会话（规范 MUST）；tools/list 用新会话
-        assertNull(requests[3].getHeader("mcp-session-id"))
-        assertEquals("s2", requests[5].getHeader("mcp-session-id"))
-    }
 
     @Test
     fun `discover recovers from stale session -32000 error like real servers`() = runBlocking {
@@ -429,8 +496,12 @@ class LegacyStreamableHttpMcpClientTest {
                 val body = Json.parseToJsonElement(request.body.peek().readUtf8()).jsonObject
                 return when (body["method"]?.jsonPrimitive?.content) {
                     "initialize" ->
-                        if (i == 1) rpcResult(body, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s1")
+                        if (i == 1) rpcResult(body, DEFAULT_INIT_RESULT).setHeader(
+                            "mcp-session-id",
+                            "s1"
+                        )
                         else rpcResult(body, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s2")
+
                     "notifications/initialized" -> MockResponse().setResponseCode(202)
                     "tools/list" ->
                         if (i == 3) {
@@ -439,6 +510,7 @@ class LegacyStreamableHttpMcpClientTest {
                             )
                         } else if (i == 6) rpcResult(body, """{"tools":[$DEFAULT_TOOL]}""")
                         else MockResponse().setResponseCode(400).setBody("unexpected")
+
                     else -> MockResponse().setResponseCode(400).setBody("unknown method")
                 }
             }
@@ -454,7 +526,12 @@ class LegacyStreamableHttpMcpClientTest {
     fun `callTool re-establishes session and retries after session termination`() = runBlocking {
         // 回合中途服务器重启：callTool 第一个请求 -32000 → 丢弃旧会话、重新握手
         // （initialize + initialized）、重试成功——host 无需重建实例。
-        server.dispatcher = serverWith(init = { b -> rpcResult(b, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s1") })
+        server.dispatcher = serverWith(init = { b ->
+            rpcResult(b, DEFAULT_INIT_RESULT).setHeader(
+                "mcp-session-id",
+                "s1"
+            )
+        })
         client.discoverTools(mcpServer())
         awaitRequests(3)
 
@@ -464,7 +541,11 @@ class LegacyStreamableHttpMcpClientTest {
                 i++
                 val body = Json.parseToJsonElement(request.body.peek().readUtf8()).jsonObject
                 return when (body["method"]?.jsonPrimitive?.content) {
-                    "initialize" -> rpcResult(body, DEFAULT_INIT_RESULT).setHeader("mcp-session-id", "s2")
+                    "initialize" -> rpcResult(body, DEFAULT_INIT_RESULT).setHeader(
+                        "mcp-session-id",
+                        "s2"
+                    )
+
                     "notifications/initialized" -> MockResponse().setResponseCode(202)
                     "tools/call" ->
                         if (i == 1) {
@@ -472,6 +553,7 @@ class LegacyStreamableHttpMcpClientTest {
                                 """{"jsonrpc":"2.0","error":{"code":-32000,"message":"Bad Request: No valid session ID provided"}}"""
                             )
                         } else rpcResult(body, """{"content":[{"type":"text","text":"ok"}]}""")
+
                     else -> MockResponse().setResponseCode(400).setBody("unknown method")
                 }
             }
@@ -492,7 +574,8 @@ class LegacyStreamableHttpMcpClientTest {
 
     @Test
     fun `tool description and schema can be absent`() = runBlocking {
-        server.dispatcher = serverWith(list = { b -> rpcResult(b, """{"tools":[{"name":"bare"}]}""") })
+        server.dispatcher =
+            serverWith(list = { b -> rpcResult(b, """{"tools":[{"name":"bare"}]}""") })
         val tools = client.discoverTools(mcpServer())
         assertEquals(listOf("bare"), tools.map { it.name })
         assertNull(tools[0].description)
@@ -501,8 +584,13 @@ class LegacyStreamableHttpMcpClientTest {
 
     @Test
     fun `tool missing name is a protocol error`() = runBlocking {
-        server.dispatcher = serverWith(list = { b -> rpcResult(b, """{"tools":[{"description":"x"}]}""") })
-        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        server.dispatcher =
+            serverWith(list = { b -> rpcResult(b, """{"tools":[{"description":"x"}]}""") })
+        val e = try {
+            client.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
     }
 
@@ -534,7 +622,11 @@ class LegacyStreamableHttpMcpClientTest {
     @Test
     fun `tools list json rpc error fails discovery`() = runBlocking {
         server.dispatcher = serverWith(list = { b -> rpcError(b, -32603, "internal error") })
-        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            client.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
         assertEquals(-32603, e!!.jsonRpcCode)
     }
@@ -542,8 +634,13 @@ class LegacyStreamableHttpMcpClientTest {
     @Test
     fun `pagination loop is bounded`() = runBlocking {
         // 服务器永远给 nextCursor → 第 51 页时客户端拒绝（明确失败）
-        server.dispatcher = serverWith(list = { b -> rpcResult(b, """{"tools":[],"nextCursor":"again"}""") })
-        val e = try { client.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        server.dispatcher =
+            serverWith(list = { b -> rpcResult(b, """{"tools":[],"nextCursor":"again"}""") })
+        val e = try {
+            client.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
     }
 
@@ -567,7 +664,12 @@ class LegacyStreamableHttpMcpClientTest {
     @Test
     fun `call result with isError true is preserved`() = runBlocking {
         server.dispatcher = serverWith(
-            call = { b -> rpcResult(b, """{"content":[{"type":"text","text":"nope"}],"isError":true}""") }
+            call = { b ->
+                rpcResult(
+                    b,
+                    """{"content":[{"type":"text","text":"nope"}],"isError":true}"""
+                )
+            }
         )
         val result = client.callTool(mcpServer(), "t", "{}")
         assertTrue(result.isError)
@@ -578,7 +680,10 @@ class LegacyStreamableHttpMcpClientTest {
     fun `multiple text blocks are all preserved`() = runBlocking {
         server.dispatcher = serverWith(
             call = { b ->
-                rpcResult(b, """{"content":[{"type":"text","text":"a"},{"type":"text","text":"b"}]}""")
+                rpcResult(
+                    b,
+                    """{"content":[{"type":"text","text":"a"},{"type":"text","text":"b"}]}"""
+                )
             }
         )
         val result = client.callTool(mcpServer(), "t", "{}")
@@ -589,10 +694,17 @@ class LegacyStreamableHttpMcpClientTest {
     fun `non-text content block is a protocol error`() = runBlocking {
         server.dispatcher = serverWith(
             call = { b ->
-                rpcResult(b, """{"content":[{"type":"image","data":"AAAA","mimeType":"image/png"}]}""")
+                rpcResult(
+                    b,
+                    """{"content":[{"type":"image","data":"AAAA","mimeType":"image/png"}]}"""
+                )
             }
         )
-        val e = try { client.callTool(mcpServer(), "t", "{}"); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            client.callTool(mcpServer(), "t", "{}"); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
     }
 
@@ -610,7 +722,11 @@ class LegacyStreamableHttpMcpClientTest {
     @Test
     fun `call json rpc error surfaces code`() = runBlocking {
         server.dispatcher = serverWith(call = { b -> rpcError(b, -32602, "invalid params") })
-        val e = try { client.callTool(mcpServer(), "t", "{}"); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            client.callTool(mcpServer(), "t", "{}"); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
         assertEquals(-32602, e!!.jsonRpcCode)
     }
@@ -621,7 +737,8 @@ class LegacyStreamableHttpMcpClientTest {
             override fun dispatch(request: RecordedRequest): MockResponse =
                 MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE)
         }
-        val slowClient = LegacyStreamableHttpMcpClient(OkHttpEngine(), HttpTimeouts(1000, 500, 1000))
+        val slowClient =
+            LegacyStreamableHttpMcpClient(OkHttpEngine(), HttpTimeouts(1000, 500, 1000))
         try {
             slowClient.callTool(mcpServer(), "t", "{}")
             fail("expected timeout")

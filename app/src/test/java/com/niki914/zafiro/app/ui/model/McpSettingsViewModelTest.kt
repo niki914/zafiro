@@ -2,16 +2,12 @@ package com.niki914.zafiro.app.ui.model
 
 import android.content.Context
 import android.content.ContextWrapper
+import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.util.SilentLoggerRule
-import com.niki914.zafiro.repo.McpSettingsCodec
 import com.niki914.zafiro.repo.FakeDomainSettingsStore
+import com.niki914.zafiro.repo.McpSettingsCodec
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.store.StoreDescriptorRegistry
-import com.niki914.zafiro.app.ui.model.McpSettingsEffect
-import com.niki914.zafiro.app.ui.model.McpSettingsIntent
-import com.niki914.zafiro.app.ui.model.McpSettingsViewModel
-import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList

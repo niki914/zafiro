@@ -14,8 +14,8 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.component.SwipeDismissSettingsItemCard
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.SavedConfigSummary
 
 /**

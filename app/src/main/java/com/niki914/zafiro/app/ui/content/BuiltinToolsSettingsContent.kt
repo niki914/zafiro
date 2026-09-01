@@ -8,7 +8,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
@@ -17,6 +16,7 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.BuiltinToolGroupUiItem
 import com.niki914.zafiro.app.ui.model.BuiltinToolSettingsIntent
 import com.niki914.zafiro.app.ui.model.BuiltinToolSettingsUiState
@@ -77,12 +77,14 @@ private fun BuiltinToolsSettingsContentBody(
                         onItemEnabledChange(action.id, action.checked)
                     }
                 }
+
                 is SettingsRowAction.Navigate -> {
                     val groupId = action.id.removePrefix(GROUP_ID_PREFIX)
                     if (action.id.startsWith(GROUP_ID_PREFIX)) {
                         onOpenGroupDetail(groupId)
                     }
                 }
+
                 is SettingsRowAction.Click -> Unit
             }
         },
@@ -119,7 +121,8 @@ private fun builtinToolsSettingsSpec(uiState: BuiltinToolSettingsUiState): Setti
 }
 
 @Composable
-private fun BuiltinToolGroupUiItem.toRow(enabled: Boolean): SettingsRowSpec {    return when (mode) {
+private fun BuiltinToolGroupUiItem.toRow(enabled: Boolean): SettingsRowSpec {
+    return when (mode) {
         // 绑定式：与单独工具同款 Switch，点击写穿全组成员，无二级页
         BuiltinToolGroupMode.WHOLE -> SettingsRowSpec.Toggle(
             id = "$GROUP_ID_PREFIX$id",

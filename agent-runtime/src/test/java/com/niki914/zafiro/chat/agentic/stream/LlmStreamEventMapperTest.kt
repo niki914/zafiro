@@ -1,20 +1,20 @@
 package com.niki914.zafiro.chat.agentic.stream
 
-import com.niki914.zafiro.chat.LlmErrorCode
-import com.niki914.zafiro.chat.LlmStreamEvent
-import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.okia.error.LLMError
-import com.niki914.okia.error.LLMErrorCode as OkiaLLMErrorCode
 import com.niki914.okia.event.StopCause
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.ToolCallOutcome
+import com.niki914.zafiro.chat.LlmErrorCode
+import com.niki914.zafiro.chat.LlmStreamEvent
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import com.niki914.okia.error.LLMErrorCode as OkiaLLMErrorCode
 
 class LlmStreamEventMapperTest {
 
@@ -68,7 +68,11 @@ class LlmStreamEventMapperTest {
 
         // 后续 TextDelta：delta = partial - 已累积（增量），fullText = 累积
         val next = LlmStreamEventMapper.map(
-            TurnEvent.TextDelta(0, "！有什么", AssistantMessage(listOf(ContentBlock.Text("你好！有什么")))),
+            TurnEvent.TextDelta(
+                0,
+                "！有什么",
+                AssistantMessage(listOf(ContentBlock.Text("你好！有什么")))
+            ),
             0L,
             "default error",
         ) as LlmStreamEvent.TextDelta
@@ -87,7 +91,15 @@ class LlmStreamEventMapperTest {
             0L,
             "default error",
         )
-        assertNull(LlmStreamEventMapper.map(TurnEvent.TextEnded(0, "first", AssistantMessage(emptyList())), 0L, "default error"))
+        assertNull(
+            LlmStreamEventMapper.map(
+                TurnEvent.TextEnded(
+                    0,
+                    "first",
+                    AssistantMessage(emptyList())
+                ), 0L, "default error"
+            )
+        )
 
         // 下一块从新基线开始：TextStarted 全量，不带上一块残留
         val next = LlmStreamEventMapper.map(
@@ -139,7 +151,12 @@ class LlmStreamEventMapperTest {
     fun `ToolSucceeded outcome Success maps to ToolSucceeded`() {
         val call = ContentBlock.ToolCall(id = "c1", name = "search", argumentsJson = "{}")
         val result = LlmStreamEventMapper.map(
-            TurnEvent.ToolSucceeded(0, call, ToolCallOutcome.Success("payload"), AssistantMessage(emptyList())),
+            TurnEvent.ToolSucceeded(
+                0,
+                call,
+                ToolCallOutcome.Success("payload"),
+                AssistantMessage(emptyList())
+            ),
             0L,
             "default error",
         )
@@ -151,7 +168,12 @@ class LlmStreamEventMapperTest {
     fun `ToolSucceeded outcome Intercepted without error maps to ToolSucceeded`() {
         val call = ContentBlock.ToolCall(id = "c1", name = "search", argumentsJson = "{}")
         val result = LlmStreamEventMapper.map(
-            TurnEvent.ToolSucceeded(0, call, ToolCallOutcome.Intercepted("cached", "payload"), AssistantMessage(emptyList())),
+            TurnEvent.ToolSucceeded(
+                0,
+                call,
+                ToolCallOutcome.Intercepted("cached", "payload"),
+                AssistantMessage(emptyList())
+            ),
             0L,
             "default error",
         )
@@ -162,7 +184,12 @@ class LlmStreamEventMapperTest {
     fun `ToolSucceeded outcome Intercepted with error maps to ToolFailed`() {
         val call = ContentBlock.ToolCall(id = "c1", name = "search", argumentsJson = "{}")
         val result = LlmStreamEventMapper.map(
-            TurnEvent.ToolSucceeded(0, call, ToolCallOutcome.Intercepted("denied", isError = true), AssistantMessage(emptyList())),
+            TurnEvent.ToolSucceeded(
+                0,
+                call,
+                ToolCallOutcome.Intercepted("denied", isError = true),
+                AssistantMessage(emptyList())
+            ),
             0L,
             "default error",
         )
@@ -174,7 +201,12 @@ class LlmStreamEventMapperTest {
     fun `ToolSucceeded outcome Failure maps to ToolFailed`() {
         val call = ContentBlock.ToolCall(id = "c1", name = "search", argumentsJson = "{}")
         val result = LlmStreamEventMapper.map(
-            TurnEvent.ToolSucceeded(0, call, ToolCallOutcome.Failure("boom", "detail"), AssistantMessage(emptyList())),
+            TurnEvent.ToolSucceeded(
+                0,
+                call,
+                ToolCallOutcome.Failure("boom", "detail"),
+                AssistantMessage(emptyList())
+            ),
             0L,
             "default error",
         )
@@ -187,7 +219,12 @@ class LlmStreamEventMapperTest {
     fun `ToolFailed maps message from outcome`() {
         val call = ContentBlock.ToolCall(id = "c1", name = "search", argumentsJson = "{}")
         val result = LlmStreamEventMapper.map(
-            TurnEvent.ToolFailed(0, call, ToolCallOutcome.Failure("failed"), AssistantMessage(emptyList())),
+            TurnEvent.ToolFailed(
+                0,
+                call,
+                ToolCallOutcome.Failure("failed"),
+                AssistantMessage(emptyList())
+            ),
             0L,
             "default error",
         )

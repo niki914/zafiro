@@ -2,6 +2,12 @@ package com.niki914.zafiro.app.ui.model
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.niki914.okia.conversation.ConversationEntry
+import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.message.AssistantMessage
+import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
+import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationRepo
@@ -13,19 +19,6 @@ import com.niki914.zafiro.repo.AppStateSettings
 import com.niki914.zafiro.repo.AppStateSettingsCodec
 import com.niki914.zafiro.repo.DomainSettingsStore
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.store.StoreDescriptorRegistry
-import com.niki914.okia.conversation.ConversationEntry
-import com.niki914.okia.conversation.SessionSnapshot
-import com.niki914.okia.message.AssistantMessage
-import com.niki914.okia.message.ContentBlock
-import com.niki914.okia.message.Message
-import com.niki914.zafiro.app.ui.model.HomeChatBlock
-import com.niki914.zafiro.app.ui.model.HomeChatIntent
-import com.niki914.zafiro.app.ui.model.HomeChatRuntime
-import com.niki914.zafiro.app.ui.model.HomeChatViewModel
-import com.niki914.zafiro.app.ui.model.HomeConversationStore
-import com.niki914.zafiro.app.ui.model.HomeToolState
-import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -709,8 +702,10 @@ class HomeChatViewModelTest {
         val newSnapshot = opened.last()
         // fork 在第一个 User 后分支：保留第一条 User + 其回答（2 条），标题加 Fork 前缀
         assertEquals(2, newSnapshot.entries.size)
-        assertEquals("first", (newSnapshot.entries.first().message as Message.User)
-            .content.filterIsInstance<ContentBlock.Text>().map { it.text }.joinToString("\n"))
+        assertEquals(
+            "first", (newSnapshot.entries.first().message as Message.User)
+            .content.filterIsInstance<ContentBlock.Text>().map { it.text }.joinToString("\n")
+        )
         val newRecord = conversations.getConversation(newSnapshot.id)!!
         assertTrue(newRecord.summary.title.startsWith("Fork ·"))
         assertEquals(newSnapshot.id, conversations.lastOpenedConversationId())
@@ -792,6 +787,7 @@ class HomeChatViewModelTest {
         assertEquals(null, state.currentConversationId)
         assertEquals(null, state.currentConversationTitle)
     }
+
     @Test
     fun thinking_autoExpandsWhileActive_manualCollapseSurvivesEchoEndKeepsState() = runTest {
         val conversations = FakeHomeConversationStore()
@@ -1005,6 +1001,7 @@ private open class FakeHomeConversationStore : HomeConversationStore {
 
     override suspend fun loadLastConversationOnStartup(): Boolean =
         shouldLoadLastConversationOnStartup
+
     private val records = linkedMapOf<String, ConversationRecord>()
     private var lastOpenedId = ""
 
@@ -1133,12 +1130,21 @@ private class FakeDomainSettingsStore : DomainSettingsStore {
             ?: "{}"
     }
 
-    override suspend fun writeJsonFromOwner(context: Context, storeId: String, json: String): Boolean {
+    override suspend fun writeJsonFromOwner(
+        context: Context,
+        storeId: String,
+        json: String
+    ): Boolean {
         values[storeId] = json
         return true
     }
 
-    override suspend fun mutateJson(context: Context, storeId: String, path: String, value: Any?): Boolean {
+    override suspend fun mutateJson(
+        context: Context,
+        storeId: String,
+        path: String,
+        value: Any?
+    ): Boolean {
         return true
     }
 }

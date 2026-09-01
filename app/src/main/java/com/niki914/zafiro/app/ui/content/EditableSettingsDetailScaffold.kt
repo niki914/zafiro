@@ -12,10 +12,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingsDetailFormScaffold
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageBackHandler
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.RegisterPageChrome

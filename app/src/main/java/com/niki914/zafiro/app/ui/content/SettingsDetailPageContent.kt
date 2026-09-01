@@ -9,12 +9,12 @@ import com.niki914.zafiro.app.ui.model.SettingsViewModel
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
-import com.niki914.zafiro.app.ui.nav.ZafiroPage
-import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
+import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 
 @Composable
 fun SettingsDetailPageContent(

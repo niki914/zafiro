@@ -26,7 +26,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
@@ -36,6 +35,7 @@ import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.component.SwipeDismissSettingsItemCard
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageBackHandler
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.RegisterPageChrome

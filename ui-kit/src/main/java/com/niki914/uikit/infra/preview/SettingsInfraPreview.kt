@@ -19,13 +19,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.component.SettingExpandableTextCard
 import com.niki914.uikit.infra.component.SettingNavigationItem
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
-import com.niki914.uikit.base.BaseTheme
 
 @Composable
 private fun SettingsInfraPreviewContent() {

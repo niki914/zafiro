@@ -2,12 +2,12 @@ package com.niki914.zafiro.chat
 
 import com.niki914.logging.Logger
 import com.niki914.okia.Okia
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.Volatile
 
 /**
  * MCP 后台刷新调度（问题 4 修复）：签名状态机 + 失败退避重试。
@@ -69,8 +69,8 @@ internal class McpRefreshScheduler(private val scope: CoroutineScope) {
                         Logger.e(
                             logTag,
                             "mcp refresh failed attempt=$attempt " +
-                                "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                "errorType=${throwable::class.simpleName} message=${throwable.message}"
+                                    "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                                    "errorType=${throwable::class.simpleName} message=${throwable.message}"
                         )
                         val backoffMs = backoffMs(attempt, throwable)
                         if (backoffMs == null) break // 达上限 / 不可恢复：等下次 schedule 重试
@@ -83,7 +83,7 @@ internal class McpRefreshScheduler(private val scope: CoroutineScope) {
                             Logger.i(
                                 logTag,
                                 "mcp refresh done elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                    "refreshed=${result.refreshedServers.joinToString(",") { "\"$it\"" }}"
+                                        "refreshed=${result.refreshedServers.joinToString(",") { "\"$it\"" }}"
                             )
                             attempt = 0
                         } else {
@@ -93,8 +93,8 @@ internal class McpRefreshScheduler(private val scope: CoroutineScope) {
                             Logger.e(
                                 logTag,
                                 "mcp refresh partial failed attempt=$attempt " +
-                                    "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                    "failed=${result.failedServers.joinToString(",") { "\"$it\"" }}"
+                                        "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                                        "failed=${result.failedServers.joinToString(",") { "\"$it\"" }}"
                             )
                             val backoffMs = backoffMs(attempt, null)
                             if (backoffMs == null) break
@@ -123,6 +123,7 @@ internal class McpRefreshScheduler(private val scope: CoroutineScope) {
                 3 -> 1_000L
                 else -> null
             }
+
             else -> when (attempt) {
                 1 -> 1_000L
                 2 -> 3_000L

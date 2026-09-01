@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -89,12 +88,24 @@ class AnthropicMessagesProtocolTest {
 
     // 完整文本回合的流序列（实测形态）
     private fun textTurnStream(text: String): List<Pair<String, String>> = listOf(
-        ev("message_start", """{"type":"message_start","message":{"id":"m1","type":"message","role":"assistant","model":"deepseek-v4-flash","content":[],"stop_reason":null,"usage":{"input_tokens":6,"cache_creation_input_tokens":2,"cache_read_input_tokens":1,"output_tokens":0}}}"""),
-        ev("content_block_start", """{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}"""),
+        ev(
+            "message_start",
+            """{"type":"message_start","message":{"id":"m1","type":"message","role":"assistant","model":"deepseek-v4-flash","content":[],"stop_reason":null,"usage":{"input_tokens":6,"cache_creation_input_tokens":2,"cache_read_input_tokens":1,"output_tokens":0}}}"""
+        ),
+        ev(
+            "content_block_start",
+            """{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}"""
+        ),
         ev("ping", """{"type":"ping"}"""),
-        ev("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"$text"}}"""),
+        ev(
+            "content_block_delta",
+            """{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"$text"}}"""
+        ),
         ev("content_block_stop", """{"type":"content_block_stop","index":0}"""),
-        ev("message_delta", """{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":6,"cache_creation_input_tokens":2,"cache_read_input_tokens":1,"output_tokens":12}}"""),
+        ev(
+            "message_delta",
+            """{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":6,"cache_creation_input_tokens":2,"cache_read_input_tokens":1,"output_tokens":12}}"""
+        ),
         ev("message_stop", """{"type":"message_stop"}""")
     )
 
@@ -141,10 +152,14 @@ class AnthropicMessagesProtocolTest {
     fun assistantWithThinkingAndSignatureMapsToThinkingBlock() {
         val request = protocol.buildRequest(
             snapshot(),
-            listOf(assistant(listOf(
-                ContentBlock.Thinking("推导", signature = "sig_1"),
-                ContentBlock.Text("答案")
-            )))
+            listOf(
+                assistant(
+                    listOf(
+                        ContentBlock.Thinking("推导", signature = "sig_1"),
+                        ContentBlock.Text("答案")
+                    )
+                )
+            )
         )
         val msg = messagesOf(request).single()
         assertEquals("assistant", msg["role"]!!.jsonPrimitive.content)
@@ -170,7 +185,17 @@ class AnthropicMessagesProtocolTest {
     fun toolUseMapsWithParsedInput() {
         val request = protocol.buildRequest(
             snapshot(),
-            listOf(assistant(listOf(ContentBlock.ToolCall("toolu_1", "get_weather", """{"city":"北京"}"""))))
+            listOf(
+                assistant(
+                    listOf(
+                        ContentBlock.ToolCall(
+                            "toolu_1",
+                            "get_weather",
+                            """{"city":"北京"}"""
+                        )
+                    )
+                )
+            )
         )
         val block = messagesOf(request).single()["content"]!!.jsonArray[0].jsonObject
         assertEquals("tool_use", block["type"]!!.jsonPrimitive.content)
@@ -219,7 +244,9 @@ class AnthropicMessagesProtocolTest {
         val messages = messagesOf(request)
         assertEquals(2, messages.size)
         val blocks = messages[1]["content"]!!.jsonArray.map { it.jsonObject }
-        assertEquals(listOf("tool_result", "text"), blocks.map { it["type"]!!.jsonPrimitive.content })
+        assertEquals(
+            listOf("tool_result", "text"),
+            blocks.map { it["type"]!!.jsonPrimitive.content })
     }
 
     @Test
@@ -278,11 +305,23 @@ class AnthropicMessagesProtocolTest {
         // state.usage，prompt caching 下 cacheRead/cacheWrite 每轮清零。delta 明确
         // 携带新值（含 0）时以新值覆盖（textTurnStream fixture 断言覆盖）。
         val events = parse(
-            ev("message_start", """{"type":"message_start","message":{"model":"m","usage":{"input_tokens":100,"cache_read_input_tokens":5000,"cache_creation_input_tokens":300,"output_tokens":0}}}"""),
-            ev("content_block_start", """{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}"""),
-            ev("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hi"}}"""),
+            ev(
+                "message_start",
+                """{"type":"message_start","message":{"model":"m","usage":{"input_tokens":100,"cache_read_input_tokens":5000,"cache_creation_input_tokens":300,"output_tokens":0}}}"""
+            ),
+            ev(
+                "content_block_start",
+                """{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}"""
+            ),
+            ev(
+                "content_block_delta",
+                """{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hi"}}"""
+            ),
             ev("content_block_stop", """{"type":"content_block_stop","index":0}"""),
-            ev("message_delta", """{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":80}}"""),
+            ev(
+                "message_delta",
+                """{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":80}}"""
+            ),
             ev("message_stop", """{"type":"message_stop"}""")
         )
         val completed = events.filterIsInstance<ProtocolEvent.Completed>().single()
@@ -301,16 +340,40 @@ class AnthropicMessagesProtocolTest {
     @Test
     fun thinkingBlockEmitsThinkingAndSignature() = runTest {
         val events = parse(
-            ev("message_start", """{"type":"message_start","message":{"model":"m","usage":{"input_tokens":5}}}"""),
-            ev("content_block_start", """{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}}"""),
-            ev("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"推导"}}"""),
-            ev("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"过程"}}"""),
-            ev("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"sig_1"}}"""),
+            ev(
+                "message_start",
+                """{"type":"message_start","message":{"model":"m","usage":{"input_tokens":5}}}"""
+            ),
+            ev(
+                "content_block_start",
+                """{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}}"""
+            ),
+            ev(
+                "content_block_delta",
+                """{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"推导"}}"""
+            ),
+            ev(
+                "content_block_delta",
+                """{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"过程"}}"""
+            ),
+            ev(
+                "content_block_delta",
+                """{"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"sig_1"}}"""
+            ),
             ev("content_block_stop", """{"type":"content_block_stop","index":0}"""),
-            ev("content_block_start", """{"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}"""),
-            ev("content_block_delta", """{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"答案"}}"""),
+            ev(
+                "content_block_start",
+                """{"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}"""
+            ),
+            ev(
+                "content_block_delta",
+                """{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"答案"}}"""
+            ),
             ev("content_block_stop", """{"type":"content_block_stop","index":1}"""),
-            ev("message_delta", """{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":9}}"""),
+            ev(
+                "message_delta",
+                """{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":9}}"""
+            ),
             ev("message_stop", """{"type":"message_stop"}""")
         )
         assertEquals(
@@ -328,12 +391,27 @@ class AnthropicMessagesProtocolTest {
     @Test
     fun toolUseBlockEmitsLifecycleAndToolUseStop() = runTest {
         val events = parse(
-            ev("message_start", """{"type":"message_start","message":{"model":"m","usage":{"input_tokens":5}}}"""),
-            ev("content_block_start", """{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"get_weather","input":{}}}"""),
-            ev("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"city\":"}}"""),
-            ev("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"\"北京\"}"}}"""),
+            ev(
+                "message_start",
+                """{"type":"message_start","message":{"model":"m","usage":{"input_tokens":5}}}"""
+            ),
+            ev(
+                "content_block_start",
+                """{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"get_weather","input":{}}}"""
+            ),
+            ev(
+                "content_block_delta",
+                """{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"city\":"}}"""
+            ),
+            ev(
+                "content_block_delta",
+                """{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"\"北京\"}"}}"""
+            ),
             ev("content_block_stop", """{"type":"content_block_stop","index":0}"""),
-            ev("message_delta", """{"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":8}}"""),
+            ev(
+                "message_delta",
+                """{"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":8}}"""
+            ),
             ev("message_stop", """{"type":"message_stop"}""")
         )
         assertEquals(
@@ -354,10 +432,19 @@ class AnthropicMessagesProtocolTest {
     fun maxTokensStopMapsToLength() = runTest {
         val events = parse(
             ev("message_start", """{"type":"message_start","message":{"model":"m"}}"""),
-            ev("content_block_start", """{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}"""),
-            ev("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"截断"}}"""),
+            ev(
+                "content_block_start",
+                """{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}"""
+            ),
+            ev(
+                "content_block_delta",
+                """{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"截断"}}"""
+            ),
             ev("content_block_stop", """{"type":"content_block_stop","index":0}"""),
-            ev("message_delta", """{"type":"message_delta","delta":{"stop_reason":"max_tokens"}}"""),
+            ev(
+                "message_delta",
+                """{"type":"message_delta","delta":{"stop_reason":"max_tokens"}}"""
+            ),
             ev("message_stop", """{"type":"message_stop"}""")
         )
         assertEquals(ProtocolEvent.Completed(null, "m", StopReason.Length), events.lastOrNull())
@@ -366,7 +453,10 @@ class AnthropicMessagesProtocolTest {
     @Test
     fun streamErrorEventEmitsError() = runTest {
         val events = parse(
-            ev("error", """{"type":"error","error":{"type":"overloaded_error","message":"overloaded"}}""")
+            ev(
+                "error",
+                """{"type":"error","error":{"type":"overloaded_error","message":"overloaded"}}"""
+            )
         )
         val error = events.single()
         assertTrue(error is ProtocolEvent.Error)
@@ -378,7 +468,10 @@ class AnthropicMessagesProtocolTest {
         // Anthropic 官方临时错误（overloaded 对应 529）：HTTP 200 后 SSE error event
         // 仍可达，retryable 标志让 loop 走可重试分类（问题 2）
         val events = parse(
-            ev("error", """{"type":"error","error":{"type":"overloaded_error","message":"overloaded"}}""")
+            ev(
+                "error",
+                """{"type":"error","error":{"type":"overloaded_error","message":"overloaded"}}"""
+            )
         )
         val error = events.single() as ProtocolEvent.Error
         assertTrue(error.retryable)
@@ -388,7 +481,10 @@ class AnthropicMessagesProtocolTest {
     fun clientStreamErrorIsNotRetryable() = runTest {
         // 客户端错误类型（invalid_request_error）：不可重试；message 从嵌套 error 对象解析
         val events = parse(
-            ev("error", """{"type":"error","error":{"type":"invalid_request_error","message":"bad request"}}""")
+            ev(
+                "error",
+                """{"type":"error","error":{"type":"invalid_request_error","message":"bad request"}}"""
+            )
         )
         val error = events.single() as ProtocolEvent.Error
         assertTrue(!error.retryable)

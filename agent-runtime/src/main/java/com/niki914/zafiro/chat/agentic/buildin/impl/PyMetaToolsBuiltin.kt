@@ -1,12 +1,12 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
 import com.niki914.logging.Logger
-import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
+import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolHarness
+import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
@@ -14,11 +14,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -158,7 +156,7 @@ Store the result of a run by printing from main; stdout is returned.
         val existing = gateway.listCustomPyTools().firstOrNull { it.name == name }
         val enabled = args.enabled ?: existing?.enabled ?: true
         val timeoutMs = (args.timeoutMs ?: existing?.timeoutMs
-            ?: RuntimeCustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS)
+        ?: RuntimeCustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS)
             .coerceIn(1_000L, RuntimeCustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS)
 
         val tool = RuntimeCustomPyTool(
@@ -201,12 +199,13 @@ Store the result of a run by printing from main; stdout is returned.
                     message = "Provide either 'code' (draft test) or 'name' (existing tool), not both.",
                 )
             }
-            safetyPolicy.evaluate(draftCode, toolName = name).takeIf { !it.allowed }?.let { decision ->
-                return BuiltinToolResult.failure(
-                    code = "COMMAND_BLOCKED",
-                    message = decision.reason.ifBlank { "Code blocked by safety policy." },
-                )
-            }
+            safetyPolicy.evaluate(draftCode, toolName = name).takeIf { !it.allowed }
+                ?.let { decision ->
+                    return BuiltinToolResult.failure(
+                        code = "COMMAND_BLOCKED",
+                        message = decision.reason.ifBlank { "Code blocked by safety policy." },
+                    )
+                }
             code = draftCode
             timeoutMs = (args.timeoutMs ?: RuntimeCustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS)
                 .coerceIn(1_000L, RuntimeCustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS)
@@ -252,16 +251,31 @@ Store the result of a run by printing from main; stdout is returned.
         val output = try {
             exec(CustomPyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-            return Introspection(null, null, IntrospectionError("INTROSPECTION_TIMEOUT", "Signature check timed out."))
+            return Introspection(
+                null,
+                null,
+                IntrospectionError("INTROSPECTION_TIMEOUT", "Signature check timed out.")
+            )
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
-            return Introspection(null, null, IntrospectionError("INTROSPECTION_FAILED", t.message ?: "Signature check failed."))
+            return Introspection(
+                null,
+                null,
+                IntrospectionError("INTROSPECTION_FAILED", t.message ?: "Signature check failed.")
+            )
         }
         val json = try {
             Json.parseToJsonElement(output.trim()).jsonObject
         } catch (_: Exception) {
-            return Introspection(null, null, IntrospectionError("INTROSPECTION_FAILED", "Unexpected checker output: ${output.take(200)}"))
+            return Introspection(
+                null,
+                null,
+                IntrospectionError(
+                    "INTROSPECTION_FAILED",
+                    "Unexpected checker output: ${output.take(200)}"
+                )
+            )
         }
         if (json["error"] != null) {
             val code = json["error"]!!.jsonPrimitive.contentOrNull ?: "INVALID_CODE"

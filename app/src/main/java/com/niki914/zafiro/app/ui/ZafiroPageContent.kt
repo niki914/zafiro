@@ -5,27 +5,27 @@ import com.niki914.uikit.infra.nav.NavigationEntry
 import com.niki914.zafiro.app.ui.content.CustomPyToolDetailContent
 import com.niki914.zafiro.app.ui.content.CustomPyToolsSettingsContent
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
-import com.niki914.zafiro.app.ui.nav.ConfigurePage
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
+import com.niki914.zafiro.app.ui.nav.ConfigurePage
 import com.niki914.zafiro.app.ui.nav.ConversationHistoryPage
+import com.niki914.zafiro.app.ui.nav.CustomPyToolDetailPage
+import com.niki914.zafiro.app.ui.nav.CustomPyToolsPage
 import com.niki914.zafiro.app.ui.nav.DonePage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
-import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsHomePage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
-import com.niki914.zafiro.app.ui.nav.ThemeSettingsPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
-import com.niki914.zafiro.app.ui.nav.CustomPyToolDetailPage
-import com.niki914.zafiro.app.ui.nav.CustomPyToolsPage
 import com.niki914.zafiro.app.ui.nav.StartupPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
-import com.niki914.zafiro.app.ui.route.ConfigurePageRoute
+import com.niki914.zafiro.app.ui.nav.ThemeSettingsPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.route.BuiltinToolGroupDetailRoute
+import com.niki914.zafiro.app.ui.route.ConfigurePageRoute
 import com.niki914.zafiro.app.ui.route.ConversationHistoryPageRoute
 import com.niki914.zafiro.app.ui.route.DonePageRoute
 import com.niki914.zafiro.app.ui.route.ExecutionRuleDetailRoute
@@ -36,10 +36,10 @@ import com.niki914.zafiro.app.ui.route.SavedConfigDetailRoute
 import com.niki914.zafiro.app.ui.route.SettingsDetailPageRoute
 import com.niki914.zafiro.app.ui.route.SettingsHomePageRoute
 import com.niki914.zafiro.app.ui.route.SettingsProviderPickPageRoute
-import com.niki914.zafiro.app.ui.route.ThemeSettingsPageRoute
 import com.niki914.zafiro.app.ui.route.SkillDetailRoute
 import com.niki914.zafiro.app.ui.route.StartupPageRoute
 import com.niki914.zafiro.app.ui.route.TakeoverRuleDetailRoute
+import com.niki914.zafiro.app.ui.route.ThemeSettingsPageRoute
 
 @Composable
 fun ZafiroPageContent(

@@ -7,6 +7,7 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICAT
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
 import android.content.Intent
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK
@@ -14,13 +15,16 @@ import android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT
+import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.currentVersion
+import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.ensureService
+import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.nodeCache
+import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.refreshNodeCache
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.buildin.ScreenOperationError
 import com.niki914.zafiro.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
-import com.niki914.xposed.api.util.ContextProvider
-import android.os.SystemClock
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -159,6 +163,7 @@ object AccessibilityController {
                     }
                     return shellIdentity
                 }
+
                 else -> continue
             }
         }
@@ -218,7 +223,9 @@ object AccessibilityController {
                 "settings put secure enabled_accessibility_services $newValue",
                 10_000L,
             )
-            if (putServices !is TerminalCommandOutcome.Success || (putServices.result.exitCode ?: -1) != 0) {
+            if (putServices !is TerminalCommandOutcome.Success || (putServices.result.exitCode
+                    ?: -1) != 0
+            ) {
                 TerminalSessionPool.close(openOutcome.session)
                 continue
             }
@@ -228,7 +235,9 @@ object AccessibilityController {
                 "settings put secure accessibility_enabled 1",
                 10_000L,
             )
-            if (putEnabled !is TerminalCommandOutcome.Success || (putEnabled.result.exitCode ?: -1) != 0) {
+            if (putEnabled !is TerminalCommandOutcome.Success || (putEnabled.result.exitCode
+                    ?: -1) != 0
+            ) {
                 TerminalSessionPool.close(openOutcome.session)
                 continue
             }
@@ -267,15 +276,18 @@ object AccessibilityController {
                             android.net.Uri.parse("package:${ctx.packageName}")
                         ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     )
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                }
             }
 
-            return Result.failure(RuntimeException(
-                "Zafiro cannot control this device because the Accessibility Service is not enabled, " +
-                        "and neither root nor Shizuku is available to enable it automatically. " +
-                        "Tell the user to open Settings > Accessibility and turn on 'Zafiro' manually, " +
-                        "then grant 'Display over other apps' permission."
-            ))
+            return Result.failure(
+                RuntimeException(
+                    "Zafiro cannot control this device because the Accessibility Service is not enabled, " +
+                            "and neither root nor Shizuku is available to enable it automatically. " +
+                            "Tell the user to open Settings > Accessibility and turn on 'Zafiro' manually, " +
+                            "then grant 'Display over other apps' permission."
+                )
+            )
         }
 
         // Give the system a moment to bind the service
@@ -313,7 +325,13 @@ object AccessibilityController {
 
         ensurePointerShown()
 
-        val yaml = TreeFormatter.format(ctx.root, ctx.widthPixels, ctx.heightPixels, ctx.appPackage, currentVersion)
+        val yaml = TreeFormatter.format(
+            ctx.root,
+            ctx.widthPixels,
+            ctx.heightPixels,
+            ctx.appPackage,
+            currentVersion
+        )
 
         if (nodeCache.size <= 1) {
             return Result.failure(
@@ -603,9 +621,9 @@ object AccessibilityController {
             return BuiltinToolResult.failure(
                 "INVALID_ARGUMENTS",
                 "Invalid token format: '$token'. " +
-                    "Token must be assembled as {version}_{i} — join the snapshot version " +
-                    "(from the YAML header) with the node's index (i field), separated by underscore. " +
-                    "Example: version \"a3f2c91e7b40\" + node {i: 42, ...} → token \"a3f2c91e7b40_42\"."
+                        "Token must be assembled as {version}_{i} — join the snapshot version " +
+                        "(from the YAML header) with the node's index (i field), separated by underscore. " +
+                        "Example: version \"a3f2c91e7b40\" + node {i: 42, ...} → token \"a3f2c91e7b40_42\"."
             )
         }
 
@@ -933,7 +951,12 @@ object AccessibilityController {
         val identity = ensureShellSession()
         val handle = shellSessionHandle
         if (identity == ShellIdentity.NONE || handle == null) {
-            return ShellResult(-1, "", "No shell available (root, shizuku, and user all failed)", shellAvailable = false)
+            return ShellResult(
+                -1,
+                "",
+                "No shell available (root, shizuku, and user all failed)",
+                shellAvailable = false
+            )
         }
 
         return when (val outcome = TerminalSessionPool.executeBlocking(handle, command, 15_000L)) {
@@ -944,6 +967,7 @@ object AccessibilityController {
                     outcome.result.stderr.toByteArray().decodeToString().trim(),
                 )
             }
+
             is TerminalCommandOutcome.Timeout -> {
                 ShellResult(
                     -1,
@@ -952,10 +976,12 @@ object AccessibilityController {
                     errorCode = ScreenOperationError.SHELL_TIMEOUT.code,
                 )
             }
+
             is TerminalCommandOutcome.Failure -> {
                 resetShellSession()
                 ShellResult(-1, "", outcome.failure.message ?: "Shell command failed")
             }
+
             is TerminalCommandOutcome.SessionNotFound -> {
                 resetShellSession()
                 ShellResult(
@@ -963,9 +989,11 @@ object AccessibilityController {
                     errorCode = ScreenOperationError.SHELL_SESSION_LOST.code,
                 )
             }
+
             is TerminalCommandOutcome.Busy -> {
                 ShellResult(-1, "", "Shell session busy")
             }
+
             is TerminalCommandOutcome.UnexpectedError -> {
                 ShellResult(-1, "", outcome.throwable.message ?: "Unexpected shell error")
             }

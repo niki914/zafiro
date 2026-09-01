@@ -14,13 +14,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
 import com.niki914.uikit.infra.component.settings.SettingsRowSpec
 import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.RegisterPageChrome
 import com.niki914.zafiro.app.ui.model.CustomPyToolItem
@@ -58,7 +58,8 @@ fun CustomPyToolsSettingsContent(
     RegisterPageChrome(pageChromeContribution)
 
     LaunchedEffect(Unit) {
-        items = XRepo.customPyTools.list().map { CustomPyToolItem(name = it.name, enabled = it.enabled) }
+        items = XRepo.customPyTools.list()
+            .map { CustomPyToolItem(name = it.name, enabled = it.enabled) }
         isLoading = false
     }
     val pageDescription = when {
@@ -87,13 +88,15 @@ fun CustomPyToolsSettingsContent(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> {
-                    val index = customPyToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
+                    val index =
+                        customPyToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
                     val item = items.getOrNull(index) ?: return@SettingsSpecPageContent
                     onOpenToolDetail(item.name, index, false)
                 }
 
                 is SettingsRowAction.ToggleChanged -> {
-                    val index = customPyToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
+                    val index =
+                        customPyToolIndexFromRowId(action.id) ?: return@SettingsSpecPageContent
                     val item = items.getOrNull(index) ?: return@SettingsSpecPageContent
                     val updatedItems = items.toMutableList().also { mutableItems ->
                         mutableItems[index] = item.copy(enabled = action.checked)

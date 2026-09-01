@@ -1,6 +1,5 @@
 package com.niki914.okia.protocol
 
-import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
@@ -12,7 +11,6 @@ import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -65,7 +63,10 @@ class OpenAIResponsesProtocol(
             url = snapshot.endpoint,
             method = "POST",
             headers = snapshot.headers + useApiKey(snapshot.apiKey),
-            body = codec.encodeToString(JsonObject.serializer(), buildRequestBody(snapshot, history)),
+            body = codec.encodeToString(
+                JsonObject.serializer(),
+                buildRequestBody(snapshot, history)
+            ),
             timeouts = snapshot.timeouts,
             sensitiveHeaderNames = compat.sensitiveHeaderNames
         )
@@ -83,10 +84,14 @@ class OpenAIResponsesProtocol(
                     // OpenAI 官方 reasoning_summary_text 摘要）→ ThinkingDelta
                     "response.output_text.delta" -> handleTextDelta(event.data, ::emit)
                     "response.reasoning_text.delta" -> handleThinkingDelta(event.data, ::emit)
-                    "response.reasoning_summary_text.delta" -> handleThinkingDelta(event.data, ::emit)
+                    "response.reasoning_summary_text.delta" -> handleThinkingDelta(
+                        event.data,
+                        ::emit
+                    )
                     // 工具参数增量
                     "response.function_call_arguments.delta" ->
                         handleArgsDelta(event.data, state, ::emit)
+
                     "response.function_call_arguments.done" ->
                         handleArgsDone(event.data, state, ::emit)
                     // 工具调用完成：item 携带完整 arguments
@@ -97,13 +102,35 @@ class OpenAIResponsesProtocol(
                     // response.incomplete，reason=max_tokens；不是 completed 的变体）
                     "response.incomplete" -> handleIncomplete(event.data, state, ::emit)
                     "response.failed" -> {
-                        emit(ProtocolEvent.Error(IllegalStateException("response.failed: ${errorMessage(event.data)}")))
+                        emit(
+                            ProtocolEvent.Error(
+                                IllegalStateException(
+                                    "response.failed: ${
+                                        errorMessage(
+                                            event.data
+                                        )
+                                    }"
+                                )
+                            )
+                        )
                         failed = true
                     }
+
                     "error" -> {
-                        emit(ProtocolEvent.Error(IllegalStateException("responses stream error: ${errorMessage(event.data)}")))
+                        emit(
+                            ProtocolEvent.Error(
+                                IllegalStateException(
+                                    "responses stream error: ${
+                                        errorMessage(
+                                            event.data
+                                        )
+                                    }"
+                                )
+                            )
+                        )
                         failed = true
                     }
+
                     else -> Unit  // created / in_progress / content_part.* / output_text.done 等忽略
                 }
             } catch (e: CancellationException) {
@@ -156,6 +183,7 @@ class OpenAIResponsesProtocol(
             put("role", "user")
             put("content", userContent(message.content))
         })
+
         is Message.Assistant -> {
             val items = mutableListOf<JsonObject>()
             val textBlocks = message.message.content.filterIsInstance<ContentBlock.Text>()
@@ -191,6 +219,7 @@ class OpenAIResponsesProtocol(
             }
             items
         }
+
         is Message.ToolResult -> listOf(buildJsonObject {
             put("type", "function_call_output")
             put("call_id", message.callId)
@@ -386,6 +415,7 @@ class OpenAIResponsesProtocol(
                     )
                 )
             }
+
             "incomplete" -> {
                 val reason = (response["incomplete_details"] as? JsonObject)
                     ?.get("reason")?.let { (it as? JsonPrimitive)?.contentOrNull }
@@ -396,9 +426,11 @@ class OpenAIResponsesProtocol(
                         emitReasoningEnvelope(state, emit)
                         emit(ProtocolEvent.Completed(usage, state.responseModel, StopReason.Length))
                     }
+
                     else -> throw IllegalStateException("response incomplete, reason: $reason")
                 }
             }
+
             else -> throw IllegalStateException("unexpected response status: $status")
         }
     }
@@ -425,6 +457,7 @@ class OpenAIResponsesProtocol(
                 emitReasoningEnvelope(state, emit)
                 emit(ProtocolEvent.Completed(usage, state.responseModel, StopReason.Length))
             }
+
             else -> throw IllegalStateException("response incomplete, reason: $reason")
         }
     }
@@ -433,9 +466,11 @@ class OpenAIResponsesProtocol(
         val inputTokens = (usage["input_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
         val outputTokens = (usage["output_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
         val inputDetails = usage["input_tokens_details"] as? JsonObject
-        val cacheRead = inputDetails?.let { (it["cached_tokens"] as? JsonPrimitive)?.longOrNull } ?: 0
+        val cacheRead =
+            inputDetails?.let { (it["cached_tokens"] as? JsonPrimitive)?.longOrNull } ?: 0
         val outputDetails = usage["output_tokens_details"] as? JsonObject
-        val reasoning = outputDetails?.let { (it["reasoning_tokens"] as? JsonPrimitive)?.longOrNull } ?: 0
+        val reasoning =
+            outputDetails?.let { (it["reasoning_tokens"] as? JsonPrimitive)?.longOrNull } ?: 0
         return Usage(
             inputTokens = (inputTokens - cacheRead).coerceAtLeast(0),
             outputTokens = outputTokens,
@@ -446,7 +481,8 @@ class OpenAIResponsesProtocol(
     }
 
     private fun errorMessage(data: String): String {
-        val response = (codec.parseToJsonElement(data) as? JsonObject)?.get("response") as? JsonObject
+        val response =
+            (codec.parseToJsonElement(data) as? JsonObject)?.get("response") as? JsonObject
         val err = response?.get("error")
         return if (err is JsonObject) {
             (err["message"] as? JsonPrimitive)?.contentOrNull ?: response.toString()
@@ -461,8 +497,10 @@ class OpenAIResponsesProtocol(
         // item.id → (itemId, callId)：arguments delta / done 用 item_id 关联，
         // 但工具结果引用 call_id，需要映射
         val itemToCall = mutableMapOf<String, Pair<String, String>>()
+
         // item.id → 已累积参数（append 顺序 = 字节序；可能首次 delta 就有全量）
         val toolArgs = mutableMapOf<String, StringBuilder>()
+
         // 本段已完成的 reasoning item JSON（原样保存，阶段边界/终态统一封装）
         val reasoningItems = mutableListOf<String>()
         var responseModel: String? = null

@@ -2,12 +2,12 @@ package com.niki914.zafiro.app.conversation
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.MessageEntry
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
+import com.niki914.zafiro.app.util.SilentLoggerRule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,6 +38,7 @@ class ConversationPersisterTest {
     val silentLogger = SilentLoggerRule()
 
     private lateinit var context: Context
+
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
@@ -121,7 +122,10 @@ class ConversationPersisterTest {
         val snapshot = ConversationRepo.getConversation(sessionId)!!.snapshot
         assertEquals(2, snapshot.entries.size)
         val last = snapshot.entries.last().message
-        assertEquals(Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("partial")))), last)
+        assertEquals(
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("partial")))),
+            last
+        )
     }
 
     @Test

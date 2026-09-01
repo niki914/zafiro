@@ -17,8 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
-import com.niki914.zafiro.app.BuildConfig
-import com.niki914.zafiro.app.R
+import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
@@ -28,6 +27,8 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.BuildConfig
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.AboutSettingsEffect
 import com.niki914.zafiro.app.ui.model.AboutSettingsIntent
 import com.niki914.zafiro.app.ui.model.AboutSettingsItemId
@@ -35,7 +36,6 @@ import com.niki914.zafiro.app.ui.model.AboutSettingsItemUiState
 import com.niki914.zafiro.app.ui.model.AboutSettingsUiState
 import com.niki914.zafiro.app.ui.model.AboutSettingsViewModel
 import com.niki914.zafiro.app.ui.model.buildIssueUri
-import com.niki914.uikit.base.BaseTheme
 
 private const val ABOUT_SETTINGS_ROW_ID_PREFIX = "about.item."
 

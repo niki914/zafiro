@@ -20,6 +20,7 @@ import org.json.JSONObject
 object XIpcBridge {
 
     private const val LOG_TAG = "niki914_nexus_XIpcBridge"
+
     interface StoreClient {
         fun readStore(storeId: String): String?
         fun writeStore(storeId: String, json: String): Boolean
@@ -85,7 +86,7 @@ object XIpcBridge {
         Logger.d(
             LOG_TAG,
             "readStoreJson storeId=$storeId result=${result.summary()} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return result
     }
@@ -117,7 +118,7 @@ object XIpcBridge {
         Logger.i(
             LOG_TAG,
             "writeStoreJsonFromOwner storeId=$storeId result=${result.summary()} " +
-                "jsonLength=${json.length} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "jsonLength=${json.length} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return result
     }
@@ -158,7 +159,7 @@ object XIpcBridge {
         Logger.i(
             LOG_TAG,
             "mutateStoreJson storeId=$storeId path=$path result=${result.writeResult.summary()} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return result
     }

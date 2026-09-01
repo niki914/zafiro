@@ -46,9 +46,11 @@ import com.niki914.uikit.infra.shape.G2FieldShape
 // ── 块 UI 密度参数表（折叠块 + 命令型工具正文 + turn 分隔共用）────────────────
 // 调视觉密度只改这一处；使用处按名引用或组合计算（如 TurnSeparator - BlockSpacing），
 // 不要散落魔法数字。
-internal val TurnSeparator = 42.dp    // turn 分隔总间距：UserMsg→agent 内容（补差 TurnSeparator - BlockSpacing）与 跨 turn（上一 turn 末尾→下一 UserMsg，LazyColumn item 顶距）共用
+internal val TurnSeparator =
+    42.dp    // turn 分隔总间距：UserMsg→agent 内容（补差 TurnSeparator - BlockSpacing）与 跨 turn（上一 turn 末尾→下一 UserMsg，LazyColumn item 顶距）共用
 internal val BlockSpacing = 12.dp      // 统一块间距：turn 内块间、头部↔展开内容、多工具链行间、命令↔输出缝隙
 internal val UserBubbleGap = 3.dp      // 连续 User 气泡组内间隙（纯 User turn 间 LazyColumn item 顶距）
+
 // ======
 internal val BlockHeaderInsetCollapsed = 16.dp // 呼吸：收起态 header 水平内收（收得深）
 internal val BlockHeaderInsetExpanded = 12.dp  // 呼吸：展开态 header 水平放开；header 左右 padding 下限 12dp
@@ -88,7 +90,8 @@ private val BlockRadiusPressed = 30.dp
 /** 展开圆角：容器变大后取更平的圆角，呈现「内容住进容器」。 */
 private val BlockRadiusExpanded = 18.dp
 
-private val BlockExpandSpring = spring<IntSize>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
+private val BlockExpandSpring =
+    spring<IntSize>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
 
 /**
  * THINKING / TOOLING 共用折叠块（M3 Expressive）：
@@ -234,9 +237,9 @@ fun CollapsibleBlock(
         AnimatedVisibility(
             visible = isExpanded,
             enter = expandVertically(BlockExpandSpring) +
-                fadeIn(spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)),
+                    fadeIn(spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)),
             exit = shrinkVertically(BlockExpandSpring) +
-                fadeOut(spring(dampingRatio = 1f, stiffness = Spring.StiffnessMedium)),
+                    fadeOut(spring(dampingRatio = 1f, stiffness = Spring.StiffnessMedium)),
         ) {
             Column(
                 modifier = Modifier

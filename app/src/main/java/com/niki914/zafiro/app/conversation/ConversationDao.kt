@@ -22,7 +22,7 @@ interface ConversationDao {
             Logger.i(
                 LOG_TAG,
                 "query listConversations rows=${rows.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }
     }
@@ -36,7 +36,7 @@ interface ConversationDao {
             Logger.d(
                 LOG_TAG,
                 "query getConversation id=$id found=${row != null} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }
     }
@@ -58,7 +58,7 @@ interface ConversationDao {
             Logger.d(
                 LOG_TAG,
                 "query listEntries conversationId=$conversationId rows=${rows.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }
     }

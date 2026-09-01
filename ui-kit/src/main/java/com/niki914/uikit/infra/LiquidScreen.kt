@@ -1,6 +1,5 @@
 package com.niki914.uikit.infra
 
-import com.niki914.uikit.base.LocalAppDarkTheme
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
@@ -45,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -58,6 +56,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.niki914.uikit.base.LocalAppDarkTheme
 import kotlinx.coroutines.delay
 
 @Composable

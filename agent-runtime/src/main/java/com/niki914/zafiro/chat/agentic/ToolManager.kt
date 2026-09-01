@@ -6,7 +6,6 @@ import com.niki914.zafiro.chat.McpServerDefinition
 import com.niki914.zafiro.chat.ResolvedTools
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
-import kotlinx.serialization.json.JsonObject
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
@@ -30,9 +29,9 @@ class ToolManager(
         Logger.d(
             LOG_TAG,
             "tools resolve builtin=${builtinTools.size} py=${pyRuntimeTools.size} " +
-                "mcp=${mcpRuntimeServers.size} " +
-                "input builtinSettings=${builtinSettings.size} customPyTools=${customPyTools.size} " +
-                "mcpServers=${mcpServers.size}"
+                    "mcp=${mcpRuntimeServers.size} " +
+                    "input builtinSettings=${builtinSettings.size} customPyTools=${customPyTools.size} " +
+                    "mcpServers=${mcpServers.size}"
         )
 
         return ResolvedTools(

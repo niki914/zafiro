@@ -1,6 +1,9 @@
 package com.niki914.zafiro.chat.agentic.shell
 
 import com.niki914.logging.Logger
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator.canRequestUserConfirmation
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator.pendingConfirmation
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator.respond
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

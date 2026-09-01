@@ -43,7 +43,16 @@ class SettingsDomainCodecsTest {
                     createdAt = 1L,
                     updatedAt = 2L,
                 ),
-                SavedLlmConfig(id = "cfg-b", name = "Backup", provider = "anthropic", endpoint = "", apiKey = "", model = "", protocol = "", proxy = ""),
+                SavedLlmConfig(
+                    id = "cfg-b",
+                    name = "Backup",
+                    provider = "anthropic",
+                    endpoint = "",
+                    apiKey = "",
+                    model = "",
+                    protocol = "",
+                    proxy = ""
+                ),
             ),
         )
 
@@ -111,8 +120,10 @@ class SettingsDomainCodecsTest {
 
         assertEquals(
             listOf(
-                CustomPyTool(name = "py_battery", code = "def main():\n    pass", description = "Battery",
-                    schemaJson = "{\"type\":\"object\"}", enabled = true, timeoutMs = 45000),
+                CustomPyTool(
+                    name = "py_battery", code = "def main():\n    pass", description = "Battery",
+                    schemaJson = "{\"type\":\"object\"}", enabled = true, timeoutMs = 45000
+                ),
                 CustomPyTool(name = "py_disabled", code = "def main():\n    pass", enabled = false),
             ),
             tools,
@@ -122,9 +133,16 @@ class SettingsDomainCodecsTest {
     @Test
     fun customPyToolsEncodeRoundTrips() {
         val tools = listOf(
-            CustomPyTool(name = "py_battery", code = "def main():\n    pass", description = "Battery"),
+            CustomPyTool(
+                name = "py_battery",
+                code = "def main():\n    pass",
+                description = "Battery"
+            ),
         )
-        assertEquals(tools, ToolSettingsCodec.parseCustomPyTools(ToolSettingsCodec.encodeCustomPyTools(tools)))
+        assertEquals(
+            tools,
+            ToolSettingsCodec.parseCustomPyTools(ToolSettingsCodec.encodeCustomPyTools(tools))
+        )
     }
 
     @Test

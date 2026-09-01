@@ -18,7 +18,7 @@ data class McpServer(
     // headers 敏感值脱敏（如 MCP 服务器认证头）
     override fun toString(): String =
         "McpServer(name=$name, transport=$transport, headers=${redactHeaders(headers)}, " +
-            "enabled=$enabled)"
+                "enabled=$enabled)"
 }
 
 /** 客户端如何到达一台 MCP 服务器。 */

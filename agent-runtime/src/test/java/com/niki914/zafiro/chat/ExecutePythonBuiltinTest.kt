@@ -2,14 +2,13 @@ package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExecutePythonBuiltin
-import com.niki914.zafiro.chat.agentic.shell.ShellCommandPolicyDecision
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
+import com.niki914.zafiro.settings.model.RuntimeExecutionRule
+import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.niki914.zafiro.settings.model.RuntimeExecutionRule
-import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
 
 class ExecutePythonBuiltinTest {
 

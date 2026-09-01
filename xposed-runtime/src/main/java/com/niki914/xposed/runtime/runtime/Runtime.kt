@@ -41,7 +41,7 @@ class Runtime(
             Logger.i(
                 LOG_TAG,
                 "sync hook ${hook.name} ok=${ok != null} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }
 
@@ -63,7 +63,7 @@ class Runtime(
                                 Logger.i(
                                     LOG_TAG,
                                     "dexkit hook ${hook.name} ok=${ok != null} " +
-                                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                                 )
                             }
                         }

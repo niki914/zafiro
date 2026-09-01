@@ -2,11 +2,11 @@ package com.niki914.zafiro.app.ui.model
 
 import androidx.annotation.StringRes
 import com.niki914.logging.Logger
+import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.CancellationException
 import java.net.URI
@@ -99,6 +99,7 @@ sealed interface ConfigureIntent {
     data class UpdateApiKey(val value: String) : ConfigureIntent
     data class SelectProtocol(val wireId: String) : ConfigureIntent
     data class UpdatePrompt(val value: String) : ConfigureIntent
+
     /** 仅持久化全局 prompt（列表页防抖自动保存）。 */
     data object SavePrompt : ConfigureIntent
     data class UpdateProxy(val value: String) : ConfigureIntent
@@ -116,6 +117,7 @@ sealed interface ConfigureEffect {
     data object FocusApiKey : ConfigureEffect
     data object FocusEndpoint : ConfigureEffect
     data object FocusProxy : ConfigureEffect
+
     /** 配置删除成功，详情页应退出。 */
     data object ConfigDeleted : ConfigureEffect
 }
@@ -220,7 +222,11 @@ class ConfigureViewModel internal constructor(
             Logger.w(LOG_TAG, "initialize failed scene=$scene reason=$message")
             val reason = ConfigureErrorReason.LoadSettingsFailed(message)
             updateState {
-                copy(scene = scene, isSaving = false, inlineError = ConfigureInlineError.LoadFailed(reason))
+                copy(
+                    scene = scene,
+                    isSaving = false,
+                    inlineError = ConfigureInlineError.LoadFailed(reason)
+                )
             }
         }
     }
@@ -474,7 +480,7 @@ class ConfigureViewModel internal constructor(
                 ConfigureScene.Onboarding -> sendEffect(ConfigureEffect.OnboardingSaveSucceeded)
                 ConfigureScene.SettingsNew,
                 ConfigureScene.SettingsEdit,
-                -> sendEffect(ConfigureEffect.SettingsSaveSucceeded)
+                    -> sendEffect(ConfigureEffect.SettingsSaveSucceeded)
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable

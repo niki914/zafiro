@@ -37,7 +37,8 @@ class RealAgentLoopHooksTest {
     private fun textOfUser(message: Message): String =
         ((message as Message.User).content.single() as ContentBlock.Text).text
 
-    private fun completed() = ProtocolEvent.Completed(stopReason = com.niki914.okia.message.StopReason.Stop)
+    private fun completed() =
+        ProtocolEvent.Completed(stopReason = com.niki914.okia.message.StopReason.Stop)
 
     private fun loopRequest(
         events: List<ProtocolEvent>,
@@ -80,14 +81,32 @@ class RealAgentLoopHooksTest {
         private val calls: MutableList<String>,
         private val tag: String = "h"
     ) : Hooks {
-        override suspend fun beforeInput(input: InputHolder) { calls += "$tag:beforeInput" }
-        override suspend fun afterInput(input: InputHolder) { calls += "$tag:afterInput" }
-        override suspend fun beforeSerialization(request: SerializationHolder) { calls += "$tag:beforeSerialization" }
-        override suspend fun afterSerialization(request: SerializationHolder, httpRequest: HttpRequest) {
+        override suspend fun beforeInput(input: InputHolder) {
+            calls += "$tag:beforeInput"
+        }
+
+        override suspend fun afterInput(input: InputHolder) {
+            calls += "$tag:afterInput"
+        }
+
+        override suspend fun beforeSerialization(request: SerializationHolder) {
+            calls += "$tag:beforeSerialization"
+        }
+
+        override suspend fun afterSerialization(
+            request: SerializationHolder,
+            httpRequest: HttpRequest
+        ) {
             calls += "$tag:afterSerialization"
         }
-        override suspend fun beforeRequest(request: HttpRequestHolder) { calls += "$tag:beforeRequest" }
-        override suspend fun afterRequest(request: HttpRequest) { calls += "$tag:afterRequest" }
+
+        override suspend fun beforeRequest(request: HttpRequestHolder) {
+            calls += "$tag:beforeRequest"
+        }
+
+        override suspend fun afterRequest(request: HttpRequest) {
+            calls += "$tag:afterRequest"
+        }
     }
 
     // ── 时机触发与顺序 ─────────────────────────────────────────────────────
@@ -116,7 +135,12 @@ class RealAgentLoopHooksTest {
     @Test
     fun chainRunsInRegistrationOrder() = runTest {
         val calls = mutableListOf<String>()
-        runLoop(loopRequest(listOf(completed()), listOf(RecordingHooks(calls, "a"), RecordingHooks(calls, "b"))))
+        runLoop(
+            loopRequest(
+                listOf(completed()),
+                listOf(RecordingHooks(calls, "a"), RecordingHooks(calls, "b"))
+            )
+        )
 
         assertEquals(
             listOf(
@@ -137,7 +161,9 @@ class RealAgentLoopHooksTest {
     fun beforeInputReceivesOriginalInput() = runTest {
         val seen = mutableListOf<String>()
         val hooks = listOf(object : Hooks {
-            override suspend fun beforeInput(input: InputHolder) { seen += input.text }
+            override suspend fun beforeInput(input: InputHolder) {
+                seen += input.text
+            }
         })
         runLoop(loopRequest(listOf(completed()), hooks))
         assertEquals(listOf("hi"), seen)
@@ -148,10 +174,13 @@ class RealAgentLoopHooksTest {
         val mapper = FakeProtocolMapper(listOf(completed()))
         val emitted = mutableListOf<TurnEvent>()
         val hooks = listOf(object : Hooks {
-            override suspend fun beforeInput(input: InputHolder) { input.write("rewritten", "h1") }
+            override suspend fun beforeInput(input: InputHolder) {
+                input.write("rewritten", "h1")
+            }
         })
 
-        val result = runLoop(loopRequest(listOf(completed()), hooks).copy(protocolMapper = mapper), emitted)
+        val result =
+            runLoop(loopRequest(listOf(completed()), hooks).copy(protocolMapper = mapper), emitted)
 
         assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
         // 落点：buildRequest 收到改写版历史（模型看到改写文本）
@@ -163,7 +192,11 @@ class RealAgentLoopHooksTest {
     @Test
     fun beforeInputWithoutRewritePassesOriginalHistory() = runTest {
         val mapper = FakeProtocolMapper(listOf(completed()))
-        runLoop(loopRequest(listOf(completed()), listOf(RecordingHooks(mutableListOf()))).copy(protocolMapper = mapper))
+        runLoop(
+            loopRequest(listOf(completed()), listOf(RecordingHooks(mutableListOf()))).copy(
+                protocolMapper = mapper
+            )
+        )
         assertEquals("hi", textOfUser(mapper.builtHistories.single().last()))
     }
 
@@ -171,8 +204,13 @@ class RealAgentLoopHooksTest {
     fun afterInputSeesRewrittenValueAndWriter() = runTest {
         val seen = mutableListOf<Pair<String, String?>>()
         val hooks = listOf(object : Hooks {
-            override suspend fun beforeInput(input: InputHolder) { input.write("rewritten", "h1") }
-            override suspend fun afterInput(input: InputHolder) { seen += input.text to input.lastWriter }
+            override suspend fun beforeInput(input: InputHolder) {
+                input.write("rewritten", "h1")
+            }
+
+            override suspend fun afterInput(input: InputHolder) {
+                seen += input.text to input.lastWriter
+            }
         })
         runLoop(loopRequest(listOf(completed()), hooks))
         assertEquals(listOf("rewritten" to "h1"), seen)
@@ -197,7 +235,11 @@ class RealAgentLoopHooksTest {
         val mapper = FakeProtocolMapper(listOf(completed()))
         val hooks = listOf(object : Hooks {
             override suspend fun beforeSerialization(request: SerializationHolder) {
-                request.write(request.snapshot.copy(endpoint = "https://redacted.test/v1"), request.history, "h1")
+                request.write(
+                    request.snapshot.copy(endpoint = "https://redacted.test/v1"),
+                    request.history,
+                    "h1"
+                )
             }
         })
         runLoop(loopRequest(listOf(completed()), hooks).copy(protocolMapper = mapper))
@@ -208,7 +250,10 @@ class RealAgentLoopHooksTest {
     fun afterSerializationReceivesBuiltRequest() = runTest {
         val seen = mutableListOf<String>()
         val hooks = listOf(object : Hooks {
-            override suspend fun afterSerialization(request: SerializationHolder, httpRequest: HttpRequest) {
+            override suspend fun afterSerialization(
+                request: SerializationHolder,
+                httpRequest: HttpRequest
+            ) {
                 seen += httpRequest.url
             }
         })
@@ -260,7 +305,9 @@ class RealAgentLoopHooksTest {
                 }
             },
             object : Hooks {
-                override suspend fun afterRequest(request: HttpRequest) { seen += request.url }
+                override suspend fun afterRequest(request: HttpRequest) {
+                    seen += request.url
+                }
             }
         )
         runLoop(loopRequest(listOf(completed()), hooks, engine = engine))
@@ -272,7 +319,9 @@ class RealAgentLoopHooksTest {
     @Test
     fun beforeInputFailureFailsTurn() = runTest {
         val hooks = listOf(object : Hooks {
-            override suspend fun beforeInput(input: InputHolder) { throw RuntimeException("boom") }
+            override suspend fun beforeInput(input: InputHolder) {
+                throw RuntimeException("boom")
+            }
         })
         val result = runLoop(loopRequest(listOf(completed()), hooks))
         assertEquals(LLMErrorCode.HookFailed, (result as TurnResult.Failed).error.code)
@@ -281,7 +330,9 @@ class RealAgentLoopHooksTest {
     @Test
     fun beforeSerializationFailureFailsTurn() = runTest {
         val hooks = listOf(object : Hooks {
-            override suspend fun beforeSerialization(request: SerializationHolder) { throw RuntimeException("boom") }
+            override suspend fun beforeSerialization(request: SerializationHolder) {
+                throw RuntimeException("boom")
+            }
         })
         val result = runLoop(loopRequest(listOf(completed()), hooks))
         assertEquals(LLMErrorCode.HookFailed, (result as TurnResult.Failed).error.code)
@@ -290,7 +341,10 @@ class RealAgentLoopHooksTest {
     @Test
     fun afterSerializationFailureFailsTurn() = runTest {
         val hooks = listOf(object : Hooks {
-            override suspend fun afterSerialization(request: SerializationHolder, httpRequest: HttpRequest) {
+            override suspend fun afterSerialization(
+                request: SerializationHolder,
+                httpRequest: HttpRequest
+            ) {
                 throw RuntimeException("boom")
             }
         })
@@ -301,7 +355,9 @@ class RealAgentLoopHooksTest {
     @Test
     fun beforeRequestFailureFailsTurn() = runTest {
         val hooks = listOf(object : Hooks {
-            override suspend fun beforeRequest(request: HttpRequestHolder) { throw RuntimeException("boom") }
+            override suspend fun beforeRequest(request: HttpRequestHolder) {
+                throw RuntimeException("boom")
+            }
         })
         val result = runLoop(loopRequest(listOf(completed()), hooks))
         assertEquals(LLMErrorCode.HookFailed, (result as TurnResult.Failed).error.code)
@@ -310,7 +366,9 @@ class RealAgentLoopHooksTest {
     @Test
     fun afterRequestFailureFailsTurn() = runTest {
         val hooks = listOf(object : Hooks {
-            override suspend fun afterRequest(request: HttpRequest) { throw RuntimeException("boom") }
+            override suspend fun afterRequest(request: HttpRequest) {
+                throw RuntimeException("boom")
+            }
         })
         val result = runLoop(loopRequest(listOf(completed()), hooks))
         assertEquals(LLMErrorCode.HookFailed, (result as TurnResult.Failed).error.code)
@@ -320,7 +378,9 @@ class RealAgentLoopHooksTest {
     fun hookFailureEmitsTurnFailed() = runTest {
         val emitted = mutableListOf<TurnEvent>()
         val hooks = listOf(object : Hooks {
-            override suspend fun beforeSerialization(request: SerializationHolder) { throw RuntimeException("boom") }
+            override suspend fun beforeSerialization(request: SerializationHolder) {
+                throw RuntimeException("boom")
+            }
         })
         runLoop(loopRequest(listOf(completed()), hooks), emitted)
         assertTrue(emitted.any { it is TurnEvent.TurnFailed })
@@ -333,7 +393,9 @@ class RealAgentLoopHooksTest {
         val engine = FakeHttpEngine().apply { streamError = RuntimeException("network down") }
         val afterRequestCalls = mutableListOf<String>()
         val hooks = listOf(object : Hooks {
-            override suspend fun afterRequest(request: HttpRequest) { afterRequestCalls += request.url }
+            override suspend fun afterRequest(request: HttpRequest) {
+                afterRequestCalls += request.url
+            }
         })
         val result = runLoop(loopRequest(listOf(completed()), hooks, engine = engine))
         assertEquals(LLMErrorCode.Transport, (result as TurnResult.Failed).error.code)

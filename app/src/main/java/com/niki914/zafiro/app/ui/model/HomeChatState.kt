@@ -1,21 +1,21 @@
 package com.niki914.zafiro.app.ui.model
 
 import androidx.lifecycle.viewModelScope
+import com.niki914.logging.Logger
+import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
+import com.niki914.uikit.base.ComposeMVIViewModel
+import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.conversation.ForkKind
-import com.niki914.logging.Logger
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.ToolCallStatus
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.uikit.base.ComposeMVIViewModel
-import com.niki914.xposed.api.util.ContextProvider
-import com.niki914.okia.conversation.SessionSnapshot
-import com.niki914.okia.message.ContentBlock
-import com.niki914.okia.message.Message
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
@@ -152,7 +152,9 @@ sealed interface HomeChatIntent {
     data class LoadConversation(val id: String) : HomeChatIntent
     data class DeleteConversation(val id: String) : HomeChatIntent
     data class ToggleToolRun(val turnId: Long, val runStartIndex: Int) : HomeChatIntent
-    data class ToggleToolResult(val turnId: Long, val runStartIndex: Int, val toolIndex: Int) : HomeChatIntent
+    data class ToggleToolResult(val turnId: Long, val runStartIndex: Int, val toolIndex: Int) :
+        HomeChatIntent
+
     data class ToggleThinking(val turnId: Long, val blockIndex: Int) : HomeChatIntent
     data class ToggleActionRow(val turnId: Long, val source: ActionSource) : HomeChatIntent
     data class ReGenerateAt(val turnId: Long) : HomeChatIntent
@@ -216,6 +218,7 @@ class HomeChatViewModel internal constructor(
             is HomeChatIntent.ToggleToolRun -> toggleToolRun(
                 intent.turnId, intent.runStartIndex,
             )
+
             is HomeChatIntent.ToggleToolResult -> toggleToolResult(
                 intent.turnId, intent.runStartIndex, intent.toolIndex,
             )
@@ -334,7 +337,7 @@ class HomeChatViewModel internal constructor(
                 Logger.e(
                     LOG_TAG,
                     "send turn failed turnId=$turnId errorType=${throwable::class.simpleName} " +
-                        "message=${throwable.message}"
+                            "message=${throwable.message}"
                 )
                 throwable.message?.let { message ->
                     applyError(turnId = turnId, message = message, code = null)
@@ -377,7 +380,7 @@ class HomeChatViewModel internal constructor(
                 Logger.i(
                     LOG_TAG,
                     "new conversation done " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
@@ -541,7 +544,7 @@ class HomeChatViewModel internal constructor(
                 Logger.i(
                     LOG_TAG,
                     "restore done id=$conversationId turnCount=${restoredTurns.size} " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
@@ -594,7 +597,7 @@ class HomeChatViewModel internal constructor(
                 Logger.w(
                     LOG_TAG,
                     "load conversation id=$id notFound " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
                 return
             }
@@ -621,7 +624,7 @@ class HomeChatViewModel internal constructor(
             Logger.i(
                 LOG_TAG,
                 "load conversation done id=$id turnCount=${restoredTurns.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         } finally {
             updateState { copy(isLoadingConversation = false) }
@@ -733,7 +736,7 @@ class HomeChatViewModel internal constructor(
         Logger.i(
             LOG_TAG,
             "delete conversation done id=$id " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
     }
 
@@ -783,7 +786,8 @@ class HomeChatViewModel internal constructor(
         return if (found != -1) {
             copy(
                 blocks = blocks.toMutableList().also { mutableBlocks ->
-                    mutableBlocks[found] = (mutableBlocks[found] as HomeChatBlock.Thinking).copy(text = text)
+                    mutableBlocks[found] =
+                        (mutableBlocks[found] as HomeChatBlock.Thinking).copy(text = text)
                 },
             )
         } else {

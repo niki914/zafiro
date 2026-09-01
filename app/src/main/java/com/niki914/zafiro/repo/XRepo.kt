@@ -1,38 +1,37 @@
 package com.niki914.zafiro.repo
 
 import android.content.Context
-import com.niki914.zafiro.app.R
 import com.niki914.logging.Logger
+import com.niki914.store.StoreDescriptorRegistry
+import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
-import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolHarness
+import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
+import com.niki914.zafiro.settings.MemoryMutationResult
+import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
+import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
+import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_PATTERNS
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
-import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
-import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
-import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_PATTERNS
-import com.niki914.store.StoreDescriptorRegistry
-import com.niki914.xposed.api.util.ContextProvider
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
 import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.zafiro.settings.model.RuntimeAgentValidation as AgentValidation
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToolSetting
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
-import com.niki914.zafiro.settings.model.RuntimeToolValidation as ToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRuleValidation as TakeoverRuleValidation
+import com.niki914.zafiro.settings.model.RuntimeToolValidation as ToolValidation
 
 object XRepo {
     private const val LOG_TAG = "niki914_nexus_XRepo"
@@ -90,7 +89,7 @@ object XRepo {
         Logger.d(
             LOG_TAG,
             "readJson storeId=$storeId jsonLength=${json.length} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return json
     }
@@ -103,7 +102,7 @@ object XRepo {
         Logger.i(
             LOG_TAG,
             "writeJson storeId=$storeId result=$result jsonLength=${json.length} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return result
     }
@@ -118,7 +117,7 @@ object XRepo {
         Logger.d(
             LOG_TAG,
             "updateJson storeId=$storeId result=$result " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return result
     }
@@ -137,7 +136,7 @@ object XRepo {
         Logger.d(
             LOG_TAG,
             "updateJsonOrFalse storeId=$storeId result=$result " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return result
     }
@@ -199,8 +198,8 @@ object XRepo {
         Logger.i(
             LOG_TAG,
             "tryPutDefaultSettings result=$result " +
-                "reason=${if (result) "initialized" else "alreadyOnboarded"} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "reason=${if (result) "initialized" else "alreadyOnboarded"} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return result
     }
@@ -238,7 +237,7 @@ object XRepo {
         Logger.i(
             LOG_TAG,
             "setOnboardingCompleted value=$value " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
     }
 
@@ -250,7 +249,7 @@ object XRepo {
                 Logger.d(
                     LOG_TAG,
                     "lastOpenedConversationId value=$id " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
             }
     }
@@ -265,7 +264,7 @@ object XRepo {
         Logger.d(
             LOG_TAG,
             "setLastOpenedConversationId value=$trimmed " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
     }
 
@@ -552,7 +551,12 @@ class LlmConfigsApi internal constructor(
                 doc.configs.none { it.id == doc.activeId } -> normalizedId
                 else -> doc.activeId
             }
-            LlmConfigsSettingsCodec.encode(doc.copy(configs = updatedConfigs, activeId = nextActiveId))
+            LlmConfigsSettingsCodec.encode(
+                doc.copy(
+                    configs = updatedConfigs,
+                    activeId = nextActiveId
+                )
+            )
         }
         return null
     }
@@ -605,7 +609,10 @@ class MemoryApi internal constructor(
         repo.updateJsonOrFalse(StoreDescriptorRegistry.AGENT_MAIN_MEMORY_ID) { json ->
             val current = MemorySettingsCodec.parseMemories(json)
             if (normalizedValue in current) return@updateJsonOrFalse null
-            MemorySettingsCodec.encodeMemories(current + normalizedValue, System.currentTimeMillis())
+            MemorySettingsCodec.encodeMemories(
+                current + normalizedValue,
+                System.currentTimeMillis()
+            )
         }
     }
 
@@ -644,10 +651,12 @@ class MemoryApi internal constructor(
                     result = MemoryMutationResult.NotFound
                     null
                 }
+
                 hasMultipleDistinct(matches) -> {
                     result = MemoryMutationResult.Ambiguous
                     null
                 }
+
                 else -> {
                     result = MemoryMutationResult.Ok
                     MemorySettingsCodec.encodeMemories(
@@ -672,10 +681,12 @@ class MemoryApi internal constructor(
                     result = MemoryMutationResult.NotFound
                     null
                 }
+
                 hasMultipleDistinct(matches) -> {
                     result = MemoryMutationResult.Ambiguous
                     null
                 }
+
                 else -> {
                     result = MemoryMutationResult.Ok
                     val matchedIndex = matches.first().index
@@ -808,7 +819,7 @@ class TakeoverRulesApi internal constructor(
             Logger.d(
                 LOG_TAG,
                 "list count=${rules.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }
     }

@@ -17,7 +17,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -107,7 +106,12 @@ class GeminiProtocolTest {
                 ProtocolEvent.ThinkingSignature("c2ln"),
                 ProtocolEvent.ToolCallStarted("call_1", "get_weather"),
                 ProtocolEvent.ToolCallDelta("call_1", "get_weather", """{"city":"北京"}"""),
-                ProtocolEvent.ToolCallReady("call_1", "get_weather", """{"city":"北京"}""", signature = "c2ln"),
+                ProtocolEvent.ToolCallReady(
+                    "call_1",
+                    "get_weather",
+                    """{"city":"北京"}""",
+                    signature = "c2ln"
+                ),
                 ProtocolEvent.Completed(Usage(10, 5, 0, 0, 0), null, StopReason.ToolUse)
             ),
             events
@@ -145,7 +149,14 @@ class GeminiProtocolTest {
                 Message.User(listOf(ContentBlock.Text("hi"))),
                 Message.Assistant(
                     AssistantMessage(
-                        listOf(ContentBlock.ToolCall("call_1", "get_weather", "{}", signature = "c2ln"))
+                        listOf(
+                            ContentBlock.ToolCall(
+                                "call_1",
+                                "get_weather",
+                                "{}",
+                                signature = "c2ln"
+                            )
+                        )
                     )
                 )
             )

@@ -2,7 +2,6 @@ package com.niki914.libterm.runtime
 
 import com.niki914.libterm.SshAuth
 import com.niki914.libterm.SshHostKeyPolicy
-import com.niki914.libterm.SshOpenOptions
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

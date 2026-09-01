@@ -23,7 +23,6 @@ import com.niki914.zafiro.app.ui.model.BuiltinToolGroupDetailViewModel
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
 import com.niki914.zafiro.app.ui.nav.CustomPyToolsPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
-import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingItem
 
 private const val CUSTOM_PY_TOOLS_ENTRY_ROW_ID = "custom-py-tools-entry"
 
@@ -50,11 +49,13 @@ fun BuiltinToolGroupDetailContent(
                         value = action.checked,
                     )
                 )
+
                 is SettingsRowAction.Navigate -> {
                     if (action.id == CUSTOM_PY_TOOLS_ENTRY_ROW_ID) {
                         onPush(CustomPyToolsPage)
                     }
                 }
+
                 else -> Unit
             }
         },

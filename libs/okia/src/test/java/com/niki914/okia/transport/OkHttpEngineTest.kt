@@ -1,6 +1,5 @@
 package com.niki914.okia.transport
 
-import com.niki914.okia.transport.HttpTimeouts
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
@@ -19,7 +18,6 @@ import org.junit.Before
 import org.junit.Test
 import java.io.IOException
 import java.net.SocketTimeoutException
-import java.util.concurrent.TimeUnit
 
 /**
  * 默认 HttpEngine（OkHttp 4）的 JVM 测试：本地 HTTP server 验证真实请求构建、
@@ -58,7 +56,15 @@ class OkHttpEngineTest {
                 .setBody("data: {\"a\":1}\n\ndata: [DONE]\n")
         )
 
-        val response = engine.stream(HttpRequest("${server.url("/v1/chat")}", "POST", emptyMap(), null, defaultTimeouts))
+        val response = engine.stream(
+            HttpRequest(
+                "${server.url("/v1/chat")}",
+                "POST",
+                emptyMap(),
+                null,
+                defaultTimeouts
+            )
+        )
 
         assertTrue(response is StreamResponse.Ok)
         val ok = response as StreamResponse.Ok
@@ -82,7 +88,15 @@ class OkHttpEngineTest {
                 .setBody(": keep-alive\n\n: ping\n")
         )
 
-        val response = engine.stream(HttpRequest("${server.url("/v1/chat")}", "POST", emptyMap(), null, defaultTimeouts)) as StreamResponse.Ok
+        val response = engine.stream(
+            HttpRequest(
+                "${server.url("/v1/chat")}",
+                "POST",
+                emptyMap(),
+                null,
+                defaultTimeouts
+            )
+        ) as StreamResponse.Ok
         val lines = response.lines.toList()
 
         assertEquals(listOf(null, "", null), lines.map { it.data })
@@ -97,7 +111,15 @@ class OkHttpEngineTest {
                 .setBody("{\"error\":{\"message\":\"rate limited\"}}")
         )
 
-        val response = engine.stream(HttpRequest("${server.url("/v1/chat")}", "POST", emptyMap(), null, defaultTimeouts))
+        val response = engine.stream(
+            HttpRequest(
+                "${server.url("/v1/chat")}",
+                "POST",
+                emptyMap(),
+                null,
+                defaultTimeouts
+            )
+        )
 
         assertTrue(response is StreamResponse.Error)
         val error = response as StreamResponse.Error
@@ -108,7 +130,8 @@ class OkHttpEngineTest {
     @Test
     fun `stream connection refused throws IOException`() = runBlocking {
         // 直接用已关闭的端口：connect refused
-        val refused = HttpRequest("http://127.0.0.1:1/v1/chat", "POST", emptyMap(), null, defaultTimeouts)
+        val refused =
+            HttpRequest("http://127.0.0.1:1/v1/chat", "POST", emptyMap(), null, defaultTimeouts)
         try {
             engine.stream(refused)
             fail("expected IOException on connection refused")
@@ -122,7 +145,8 @@ class OkHttpEngineTest {
         // 服务端接受连接但不发数据 → 读间隔超时
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
 
-        val request = HttpRequest("${server.url("/v1/chat")}", "POST", emptyMap(), null, shortReadTimeout)
+        val request =
+            HttpRequest("${server.url("/v1/chat")}", "POST", emptyMap(), null, shortReadTimeout)
         try {
             engine.stream(request)
             fail("expected SocketTimeoutException")
@@ -135,7 +159,8 @@ class OkHttpEngineTest {
     fun `stream cancellation interrupts blocked read quickly`() = runBlocking {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
 
-        val request = HttpRequest("${server.url("/v1/chat")}", "POST", emptyMap(), null, defaultTimeouts)
+        val request =
+            HttpRequest("${server.url("/v1/chat")}", "POST", emptyMap(), null, defaultTimeouts)
         val job = launch {
             val response = engine.stream(request) as StreamResponse.Ok
             response.lines.toList() // 永远阻塞（服务端不发数据）
@@ -186,7 +211,13 @@ class OkHttpEngineTest {
                 .setBody("data: x\n")
         )
 
-        val request = HttpRequest("${server.url("/v1/chat")}", "POST", emptyMap(), body = null, timeouts = defaultTimeouts)
+        val request = HttpRequest(
+            "${server.url("/v1/chat")}",
+            "POST",
+            emptyMap(),
+            body = null,
+            timeouts = defaultTimeouts
+        )
         engine.stream(request)
 
         val received = server.takeRequest()
@@ -200,7 +231,13 @@ class OkHttpEngineTest {
             MockResponse().setResponseCode(200).setBody("ok")
         )
 
-        val request = HttpRequest("${server.url("/ping")}", "GET", emptyMap(), body = null, timeouts = defaultTimeouts)
+        val request = HttpRequest(
+            "${server.url("/ping")}",
+            "GET",
+            emptyMap(),
+            body = null,
+            timeouts = defaultTimeouts
+        )
         engine.stream(request)
 
         val received = server.takeRequest()
@@ -220,7 +257,15 @@ class OkHttpEngineTest {
                 .setBody("{\"ok\":true}")
         )
 
-        val response = engine.unary(HttpRequest("${server.url("/rpc")}", "POST", emptyMap(), "{}", defaultTimeouts))
+        val response = engine.unary(
+            HttpRequest(
+                "${server.url("/rpc")}",
+                "POST",
+                emptyMap(),
+                "{}",
+                defaultTimeouts
+            )
+        )
 
         assertEquals(200, response.statusCode)
         assertEquals("application/json", response.headers["Content-Type"])
@@ -233,7 +278,15 @@ class OkHttpEngineTest {
             MockResponse().setResponseCode(500).setBody("boom")
         )
 
-        val response = engine.unary(HttpRequest("${server.url("/rpc")}", "POST", emptyMap(), "{}", defaultTimeouts))
+        val response = engine.unary(
+            HttpRequest(
+                "${server.url("/rpc")}",
+                "POST",
+                emptyMap(),
+                "{}",
+                defaultTimeouts
+            )
+        )
 
         assertEquals(500, response.statusCode)
         assertEquals("boom", response.body?.toString(Charsets.UTF_8))
@@ -241,7 +294,8 @@ class OkHttpEngineTest {
 
     @Test
     fun `unary network failure returns null status and body`() = runBlocking {
-        val refused = HttpRequest("http://127.0.0.1:1/rpc", "POST", emptyMap(), "{}", defaultTimeouts)
+        val refused =
+            HttpRequest("http://127.0.0.1:1/rpc", "POST", emptyMap(), "{}", defaultTimeouts)
 
         val response = engine.unary(refused)
 
@@ -254,7 +308,15 @@ class OkHttpEngineTest {
     fun `unary empty body returns null body`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(204).setBody(""))
 
-        val response = engine.unary(HttpRequest("${server.url("/ping")}", "POST", emptyMap(), null, defaultTimeouts))
+        val response = engine.unary(
+            HttpRequest(
+                "${server.url("/ping")}",
+                "POST",
+                emptyMap(),
+                null,
+                defaultTimeouts
+            )
+        )
 
         assertEquals(204, response.statusCode)
         // 204 无内容：okhttp 给出 size=0 的 body（非 null）
@@ -295,7 +357,13 @@ class OkHttpEngineTest {
         val customEngine = OkHttpEngine(injected)
 
         val response = customEngine.unary(
-            HttpRequest(server.url("/injected").toString(), "GET", emptyMap(), null, defaultTimeouts)
+            HttpRequest(
+                server.url("/injected").toString(),
+                "GET",
+                emptyMap(),
+                null,
+                defaultTimeouts
+            )
         )
 
         assertEquals(200, response.statusCode)

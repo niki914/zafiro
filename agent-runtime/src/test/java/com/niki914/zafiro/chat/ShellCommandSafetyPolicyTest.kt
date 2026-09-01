@@ -1,8 +1,8 @@
 package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
-import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
+import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -27,7 +27,12 @@ class ShellCommandSafetyPolicyTest {
             FakeRuntimeSettingsGateway(executionRules = listOf(dangerousRule()))
         )
 
-        assertTrue(ShellCommandSafetyPolicy().evaluate(command = "getprop ro.product.model", toolName = "terminal").allowed)
+        assertTrue(
+            ShellCommandSafetyPolicy().evaluate(
+                command = "getprop ro.product.model",
+                toolName = "terminal"
+            ).allowed
+        )
     }
 
     @Test
@@ -36,7 +41,10 @@ class ShellCommandSafetyPolicyTest {
             FakeRuntimeSettingsGateway(executionRules = listOf(dangerousRule()))
         )
 
-        val decision = ShellCommandSafetyPolicy().evaluate(command = "rm -rf /data/local/tmp/cache", toolName = "terminal")
+        val decision = ShellCommandSafetyPolicy().evaluate(
+            command = "rm -rf /data/local/tmp/cache",
+            toolName = "terminal"
+        )
 
         assertFalse(decision.allowed)
         assertEquals("RULE_BLOCKED", decision.code)
@@ -59,7 +67,8 @@ class ShellCommandSafetyPolicyTest {
             "rm -r --force /data/local/tmp/cache",
             "rm --recursive -f /data/local/tmp/cache",
         ).forEach { command ->
-            val decision = ShellCommandSafetyPolicy().evaluate(command = command, toolName = "terminal")
+            val decision =
+                ShellCommandSafetyPolicy().evaluate(command = command, toolName = "terminal")
 
             assertFalse(decision.allowed)
             assertEquals("RULE_BLOCKED", decision.code)
@@ -74,10 +83,16 @@ class ShellCommandSafetyPolicyTest {
         )
 
         assertFalse(
-            ShellCommandSafetyPolicy().evaluate(command = "sh -c 'pm uninstall com.example.app'", toolName = "terminal").allowed
+            ShellCommandSafetyPolicy().evaluate(
+                command = "sh -c 'pm uninstall com.example.app'",
+                toolName = "terminal"
+            ).allowed
         )
         assertFalse(
-            ShellCommandSafetyPolicy().evaluate(command = "eval 'cmd package uninstall com.example.app'", toolName = "terminal").allowed
+            ShellCommandSafetyPolicy().evaluate(
+                command = "eval 'cmd package uninstall com.example.app'",
+                toolName = "terminal"
+            ).allowed
         )
     }
 
@@ -118,7 +133,12 @@ class ShellCommandSafetyPolicyTest {
             )
         )
 
-        assertFalse(ShellCommandSafetyPolicy().evaluate(command = "echo [broken", toolName = "terminal").allowed)
+        assertFalse(
+            ShellCommandSafetyPolicy().evaluate(
+                command = "echo [broken",
+                toolName = "terminal"
+            ).allowed
+        )
     }
 
     @Test
@@ -148,7 +168,10 @@ class ShellCommandSafetyPolicyTest {
         ToolPermissionCoordinator.canRequestUserConfirmation = true
 
         val evaluation = async {
-            ShellCommandSafetyPolicy().evaluate("rm -rf /data/local/tmp/cache", toolName = "terminal")
+            ShellCommandSafetyPolicy().evaluate(
+                "rm -rf /data/local/tmp/cache",
+                toolName = "terminal"
+            )
         }
         withTimeout(5_000) {
             ToolPermissionCoordinator.pendingConfirmation.first { it != null }

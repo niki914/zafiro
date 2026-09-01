@@ -28,7 +28,11 @@ class CustomPyToolExecutor(
                 )
             ).toString()
         } catch (e: TimeoutCancellationException) {
-            failureJson(tool.name, "TIMEOUT", "Execution timed out after ${tool.timeoutMs / 1000}s.")
+            failureJson(
+                tool.name,
+                "TIMEOUT",
+                "Execution timed out after ${tool.timeoutMs / 1000}s."
+            )
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {

@@ -1,14 +1,9 @@
 package com.niki914.zafiro.chat
 
 import android.content.Context
-import com.niki914.okia.conversation.ConversationEntry
-import com.niki914.zafiro.chat.util.SilentLoggerRule
-import com.niki914.zafiro.settings.model.LlmProtocol
-import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.okia.Okia
 import com.niki914.okia.OkiaDependencies
+import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.AgentLoop
@@ -17,7 +12,6 @@ import com.niki914.okia.loop.LoopRequest
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.mcp.McpCallResult
 import com.niki914.okia.mcp.McpClient
-import com.niki914.okia.mcp.McpContentBlock
 import com.niki914.okia.mcp.McpDiscoveredTool
 import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.message.AssistantMessage
@@ -30,6 +24,11 @@ import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.SseLine
+import com.niki914.zafiro.chat.util.SilentLoggerRule
+import com.niki914.zafiro.settings.model.LlmProtocol
+import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
+import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -43,8 +42,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 
 class LLMControllerOkiaTest {
 
@@ -94,8 +93,18 @@ class LLMControllerOkiaTest {
                     RuntimeBuiltinToolSetting("memory", "m", enabled = false),
                 ),
                 customPyTools = listOf(
-                    RuntimeCustomPyTool(name = "py_x", code = "print('x')", description = "dx", enabled = true),
-                    RuntimeCustomPyTool(name = "py_y", code = "print('y')", description = "dy", enabled = false),
+                    RuntimeCustomPyTool(
+                        name = "py_x",
+                        code = "print('x')",
+                        description = "dx",
+                        enabled = true
+                    ),
+                    RuntimeCustomPyTool(
+                        name = "py_y",
+                        code = "print('y')",
+                        description = "dy",
+                        enabled = false
+                    ),
                 ),
             )
         )
@@ -151,7 +160,8 @@ class LLMControllerOkiaTest {
             ),
             result = TurnResult.Completed(CompletionReason.Stop),
         )
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
+        LLMController.okiaFactory =
+            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
         val events = LLMController.stream("hello", mockContext()).toList()
 
@@ -168,11 +178,23 @@ class LLMControllerOkiaTest {
         val loop = stubLoop(
             events = listOf(
                 TurnEvent.TurnStarted("q"),
-                TurnEvent.TurnFailed(AssistantMessage(emptyList()), com.niki914.okia.error.LLMError(com.niki914.okia.error.LLMErrorCode.Transport, "boom")),
+                TurnEvent.TurnFailed(
+                    AssistantMessage(emptyList()),
+                    com.niki914.okia.error.LLMError(
+                        com.niki914.okia.error.LLMErrorCode.Transport,
+                        "boom"
+                    )
+                ),
             ),
-            result = TurnResult.Failed(com.niki914.okia.error.LLMError(com.niki914.okia.error.LLMErrorCode.Transport, "boom")),
+            result = TurnResult.Failed(
+                com.niki914.okia.error.LLMError(
+                    com.niki914.okia.error.LLMErrorCode.Transport,
+                    "boom"
+                )
+            ),
         )
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
+        LLMController.okiaFactory =
+            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
         val events = LLMController.stream("hello", mockContext()).toList()
 
@@ -187,13 +209,17 @@ class LLMControllerOkiaTest {
         )
         val capturedSnapshots = mutableListOf<com.niki914.okia.protocol.RequestSnapshot>()
         val loop = object : AgentLoop {
-            override suspend fun run(request: LoopRequest, onEvent: suspend (TurnEvent) -> Unit): TurnResult {
+            override suspend fun run(
+                request: LoopRequest,
+                onEvent: suspend (TurnEvent) -> Unit
+            ): TurnResult {
                 capturedSnapshots += request.snapshot
                 onEvent(TurnEvent.TurnCompleted(AssistantMessage(listOf(ContentBlock.Text("ok")))))
                 return TurnResult.Completed(CompletionReason.Stop)
             }
         }
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
+        LLMController.okiaFactory =
+            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
         LLMController.stream("hello", mockContext()).toList()
 
@@ -211,13 +237,17 @@ class LLMControllerOkiaTest {
         val gate = CompletableDeferred<Unit>()
         val entered = CompletableDeferred<Unit>()
         val blockingLoop = object : AgentLoop {
-            override suspend fun run(request: LoopRequest, onEvent: suspend (TurnEvent) -> Unit): TurnResult {
+            override suspend fun run(
+                request: LoopRequest,
+                onEvent: suspend (TurnEvent) -> Unit
+            ): TurnResult {
                 entered.complete(Unit)
                 gate.await()
                 return TurnResult.Completed(CompletionReason.Stop)
             }
         }
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(blockingLoop) }
+        LLMController.okiaFactory =
+            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(blockingLoop) }
 
         val firstJob = launch { LLMController.stream("q1", mockContext()).toList() }
         entered.await()
@@ -238,7 +268,10 @@ class LLMControllerOkiaTest {
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
         LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
-            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)), restore)
+            openOkiaWithStubLoop(
+                stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)),
+                restore
+            )
         }
 
         val id = LLMController.ensureSession()
@@ -253,7 +286,10 @@ class LLMControllerOkiaTest {
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
         LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
-            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)), restore)
+            openOkiaWithStubLoop(
+                stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)),
+                restore
+            )
         }
         LLMController.refresh()
         val snapshot = SessionSnapshot(
@@ -283,8 +319,10 @@ class LLMControllerOkiaTest {
             when (message) {
                 is Message.User -> message.content
                     .filterIsInstance<ContentBlock.Text>().map { it.text }.joinToString("\n")
+
                 is Message.Assistant -> message.message.content
                     .filterIsInstance<ContentBlock.Text>().map { it.text }.joinToString("\n")
+
                 is Message.ToolResult -> ""
             }
         }
@@ -344,7 +382,10 @@ class LLMControllerOkiaTest {
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
         LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
-            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)), restore)
+            openOkiaWithStubLoop(
+                stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)),
+                restore
+            )
         }
         LLMController.refresh()
         assertTrue(LLMController.currentConversation.value != null)
@@ -379,7 +420,10 @@ class LLMControllerOkiaTest {
         events: List<TurnEvent>,
         result: TurnResult,
     ): AgentLoop = object : AgentLoop {
-        override suspend fun run(request: LoopRequest, onEvent: suspend (TurnEvent) -> Unit): TurnResult {
+        override suspend fun run(
+            request: LoopRequest,
+            onEvent: suspend (TurnEvent) -> Unit
+        ): TurnResult {
             events.forEach { onEvent(it) }
             return result
         }
@@ -415,7 +459,10 @@ class LLMControllerOkiaTest {
             timeouts = HttpTimeouts(connectMs = 1000, readMs = 1000, writeMs = 1000),
         )
 
-        override suspend fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message =
+        override suspend fun encodeToolResult(
+            call: ContentBlock.ToolCall,
+            outcome: ToolCallOutcome
+        ): Message =
             Message.ToolResult(call.id, call.name, outcome)
 
         override fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent> = emptyFlow()

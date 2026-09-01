@@ -25,7 +25,8 @@ class TextToolResultCodecTest {
     fun `encode failure with code and message`() {
         val result = TextToolResult.failure("VERSION_MISMATCH", "Token is stale")
         val encoded = TextToolResultCodec.encode(result)
-        val expected = "#!tool-result\n#!status: failure\n#!code: VERSION_MISMATCH\n#!message: Token is stale\n\n"
+        val expected =
+            "#!tool-result\n#!status: failure\n#!code: VERSION_MISMATCH\n#!message: Token is stale\n\n"
         assertEquals(expected, encoded)
     }
 
@@ -41,7 +42,8 @@ class TextToolResultCodecTest {
     fun `encode message folding for newlines carriage returns and tabs`() {
         val result = TextToolResult.failure("ERR", "line1\nline2\rtab\there")
         val encoded = TextToolResultCodec.encode(result)
-        val expected = "#!tool-result\n#!status: failure\n#!code: ERR\n#!message: line1 line2 tab here\n\n"
+        val expected =
+            "#!tool-result\n#!status: failure\n#!code: ERR\n#!message: line1 line2 tab here\n\n"
         assertEquals(expected, encoded)
     }
 
@@ -83,7 +85,8 @@ class TextToolResultCodecTest {
 
     @Test
     fun `decode failure with code message and yaml`() {
-        val raw = "#!tool-result\n#!status: failure\n#!code: VERSION_MISMATCH\n#!message: Token stale\n\nyaml: content"
+        val raw =
+            "#!tool-result\n#!status: failure\n#!code: VERSION_MISMATCH\n#!message: Token stale\n\nyaml: content"
         val decoded = TextToolResultCodec.decode(raw)
         assertNotNull(decoded)
         assertEquals(TextToolResult.Status.Failure, decoded!!.status)

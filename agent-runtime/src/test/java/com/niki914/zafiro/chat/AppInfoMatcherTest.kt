@@ -53,8 +53,13 @@ class AppInfoMatcherTest {
 
     @Test
     fun matchByName_returnsCandidatesWhenPrefixMatchIsAmbiguous() {
-        val music = AppInfo(packageName = "com.example.music", appName = "音乐播放器", isSystemApp = false)
-        val musicPro = AppInfo(packageName = "com.example.music.pro", appName = "音乐专业版", isSystemApp = false)
+        val music =
+            AppInfo(packageName = "com.example.music", appName = "音乐播放器", isSystemApp = false)
+        val musicPro = AppInfo(
+            packageName = "com.example.music.pro",
+            appName = "音乐专业版",
+            isSystemApp = false
+        )
 
         val result = AppInfoMatcher.matchByName(listOf(music, musicPro), "音乐")
 
@@ -64,7 +69,8 @@ class AppInfoMatcherTest {
     @Test
     fun matchByName_returnsCandidatesForSingleContainsOnlyMatch() {
         // 产品族子串：仅包含命中（非精确/前缀）时唯一候选也不直接启动，交由模型裁决
-        val wetype = AppInfo(packageName = "com.tencent.wetype", appName = "微信输入法", isSystemApp = false)
+        val wetype =
+            AppInfo(packageName = "com.tencent.wetype", appName = "微信输入法", isSystemApp = false)
 
         val result = AppInfoMatcher.matchByName(listOf(wetype), "信输入")
 

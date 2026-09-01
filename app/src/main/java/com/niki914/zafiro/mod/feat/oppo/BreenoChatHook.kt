@@ -1,6 +1,8 @@
 package com.niki914.zafiro.mod.feat.oppo
 
 import com.niki914.logging.Logger
+import com.niki914.xposed.runtime.util.call
+import com.niki914.xposed.runtime.util.findClass
 import com.niki914.zafiro.chat.ActiveTurnStore
 import com.niki914.zafiro.chat.ConversationTurnState
 import com.niki914.zafiro.chat.TurnMode
@@ -10,8 +12,6 @@ import com.niki914.zafiro.mod.feat.oppo.subhooks.CaptureInputHook
 import com.niki914.zafiro.mod.feat.oppo.subhooks.ResetConversationSignalHook
 import com.niki914.zafiro.mod.feat.oppo.subhooks.SuppressCleanupHook
 import com.niki914.zafiro.runtime.client.AssistantTextSource
-import com.niki914.xposed.runtime.util.call
-import com.niki914.xposed.runtime.util.findClass
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -138,8 +138,8 @@ class BreenoChatHook(
                 Logger.i(
                     LOG_TAG,
                     "first frame turnId=$turnId " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                        "chunkLength=${chunk.length}"
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                            "chunkLength=${chunk.length}"
                 )
             }
             val bean = beanClass.newInstance()
@@ -176,8 +176,8 @@ class BreenoChatHook(
             Logger.i(
                 LOG_TAG,
                 "render finalized turnId=$turnId " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                    "chunkLength=${chunk.length}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                        "chunkLength=${chunk.length}"
             )
             mockBeanLocalDataUnit.firstOrNull { (key, _) -> key == hideFeedbackViewLocalDataKey }
                 ?.let {

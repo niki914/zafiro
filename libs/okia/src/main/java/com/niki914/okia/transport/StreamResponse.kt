@@ -22,7 +22,7 @@ sealed interface StreamResponse {
         // 响应 headers 脱敏；lines 是冷流，只输出类型，不消费
         override fun toString(): String =
             "StreamResponse.Ok(statusCode=$statusCode, headers=${redactHeaders(headers)}, " +
-                "lines=Flow<SseLine>)"
+                    "lines=Flow<SseLine>)"
     }
 
     /** 非 2xx：错误 body 全文文本（HttpEngine 预读，非流式） */
@@ -34,6 +34,6 @@ sealed interface StreamResponse {
         // body 可能含敏感信息（错误详情 / HTML），脱敏不输出内容
         override fun toString(): String =
             "StreamResponse.Error(statusCode=$statusCode, headers=${redactHeaders(headers)}, " +
-                "body=██)"
+                    "body=██)"
     }
 }

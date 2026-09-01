@@ -2,11 +2,11 @@ package com.niki914.zafiro.app.ui.model
 
 import androidx.annotation.StringRes
 import com.niki914.logging.Logger
+import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingItem
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingsManager
-import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.repo.BuiltinToolGroupMode
 import com.niki914.zafiro.repo.BuiltinToolGroups
 import kotlinx.coroutines.CancellationException
@@ -70,6 +70,7 @@ class BuiltinToolSettingsViewModel :
                 name = intent.name,
                 enabled = intent.value,
             )
+
             is BuiltinToolSettingsIntent.GroupToggled -> setGroupEnabled(
                 groupId = intent.groupId,
                 enabled = intent.value,
@@ -117,7 +118,12 @@ class BuiltinToolSettingsViewModel :
         persist(
             fallback = fallback.copy(standaloneTools = updatedTools),
             write = { manager.setEnabled(name, enabled) },
-            failLog = { reason -> Logger.w(LOG_TAG, "setEnabled failed tool=$name reason=$reason") },
+            failLog = { reason ->
+                Logger.w(
+                    LOG_TAG,
+                    "setEnabled failed tool=$name reason=$reason"
+                )
+            },
         )
     }
 
@@ -221,6 +227,7 @@ class BuiltinToolSettingsViewModel :
             byName != null -> byName.values
                 .filter { it.name !in groupedNames }
                 .sortedBy { it.name }
+
             else -> baseState.standaloneTools
         }
         val isEmpty = groups.isEmpty() && standalone.isEmpty()

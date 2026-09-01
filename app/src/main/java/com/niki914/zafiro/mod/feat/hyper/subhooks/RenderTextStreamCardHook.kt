@@ -1,11 +1,11 @@
 package com.niki914.zafiro.mod.feat.hyper.subhooks
 
 import com.niki914.logging.Logger
+import com.niki914.xposed.runtime.util.call
+import com.niki914.xposed.runtime.util.setTag
 import com.niki914.zafiro.mod.feat.SubHook
 import com.niki914.zafiro.mod.feat.hyper.XiaoaiConfigProvider
 import com.niki914.zafiro.mod.feat.hyper.XiaoaiRenderSession
-import com.niki914.xposed.runtime.util.call
-import com.niki914.xposed.runtime.util.setTag
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicLong

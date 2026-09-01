@@ -298,7 +298,8 @@ class PointerOverlay : IPointerOverlay {
         p.y = y.toInt() - half
         // Drawable tip naturally points top-left; subtract IDLE_HEADING_RAD to
         // convert absolute screen heading to a rotation relative to default.
-        view?.rotation = Math.toDegrees((headingRad - PointerCurveMath.IDLE_HEADING_RAD).toDouble()).toFloat()
+        view?.rotation =
+            Math.toDegrees((headingRad - PointerCurveMath.IDLE_HEADING_RAD).toDouble()).toFloat()
         try {
             if (attached) wm?.updateViewLayout(view, p)
         } catch (_: Exception) {

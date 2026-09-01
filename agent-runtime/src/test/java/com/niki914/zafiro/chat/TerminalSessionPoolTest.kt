@@ -16,6 +16,7 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalReadOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalRuntimePort
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPort
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -25,7 +26,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import com.niki914.zafiro.chat.util.SilentLoggerRule
 
 class TerminalSessionPoolTest {
 
@@ -120,7 +120,10 @@ class TerminalSessionPoolTest {
                 Thread.sleep(20)
 
                 TerminalSessionPool.closeAll()
-                assertTrue("Notifications cleared by closeAll", TerminalSessionPool.drainPendingNotifications().isEmpty())
+                assertTrue(
+                    "Notifications cleared by closeAll",
+                    TerminalSessionPool.drainPendingNotifications().isEmpty()
+                )
             }
         }
     }
@@ -340,7 +343,10 @@ class TerminalSessionPoolTest {
                     )
                     if (result is TerminalCommandOutcome.Success) return@repeat
                 }
-                assertTrue("Mutex released for blocking: $result", result is TerminalCommandOutcome.Success)
+                assertTrue(
+                    "Mutex released for blocking: $result",
+                    result is TerminalCommandOutcome.Success
+                )
             }
         }
     }
@@ -510,7 +516,9 @@ class TerminalSessionPoolTest {
                 is TerminalReadOutcome.Exited -> return
                 is TerminalReadOutcome.TimedOut -> return
                 is TerminalReadOutcome.Crashed -> return
-                is TerminalReadOutcome.Running -> { /* IO thread still working, retry */ }
+                is TerminalReadOutcome.Running -> { /* IO thread still working, retry */
+                }
+
                 else -> throw AssertionError("Unexpected read outcome: $outcome")
             }
         }

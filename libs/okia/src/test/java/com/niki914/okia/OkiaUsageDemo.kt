@@ -3,11 +3,11 @@ package com.niki914.okia
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.MessageEntry
 import com.niki914.okia.conversation.SessionSnapshot
-import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.hooks.ToolCallHolder
 import com.niki914.okia.hooks.ToolResultHolder
+import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -17,8 +17,6 @@ import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolExecutor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
@@ -67,7 +65,8 @@ fun main() = runBlocking {
     // ── 多轮对话 ──────────────────────────────────────────────────────────
     // 第一轮：工具循环回合（模型 → 工具调用 → 工具结果 → 模型总结）
     // 回合结局由 sealed TurnResult 承载：Completed / Failed / Aborted / IdleTimeout
-    val firstTurn: TurnResult = okia.send("帮我计算 (1+2)*3，再搜索一下今天北京的天气") { /* 事件已走 events 流 */ }
+    val firstTurn: TurnResult =
+        okia.send("帮我计算 (1+2)*3，再搜索一下今天北京的天气") { /* 事件已走 events 流 */ }
 
     // 第二轮：历史已累积第一轮全部消息（User / Assistant / ToolResult），
     // 库把整个历史喂给模型，UI 直接渲染 history 即可
@@ -133,6 +132,7 @@ private fun renderEntry(entry: MessageEntry, history: List<MessageEntry>) {
                         println("🔧 [${block.name}] ${renderOutcome(outcome)}")  // Outcome
                     }
                 }
+
                 is ContentBlock.Image -> println("[图片 ${block.mimeType}]")
             }
         }
@@ -223,7 +223,8 @@ class AuditHook : Hooks {
 
     override suspend fun beforeToolCall(call: ToolCallHolder): Unit = TODO()
 
-    override suspend fun afterToolCall(call: ToolCallHolder, result: ToolResultHolder): Unit = TODO()
+    override suspend fun afterToolCall(call: ToolCallHolder, result: ToolResultHolder): Unit =
+        TODO()
 }
 
 // 清屏：ANSI 控制序列（跨平台终端）

@@ -52,7 +52,7 @@ class SuppressCleanupHook : SubHook() {
         Logger.i(
             LOG_TAG,
             "cleanup suppressed host=breeno source=$name " +
-                "cleanOperation=$cleanOperationClass"
+                    "cleanOperation=$cleanOperationClass"
         )
     }
 }

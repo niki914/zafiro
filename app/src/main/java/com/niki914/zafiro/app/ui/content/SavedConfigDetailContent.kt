@@ -11,10 +11,6 @@ import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.content.EditableSettingsDetailChrome
-import com.niki914.zafiro.app.ui.content.EditableSettingsDetailFormScaffold
-import com.niki914.zafiro.app.ui.content.ProviderAccessSettingsBlock
-import com.niki914.zafiro.app.ui.content.configureInlineErrorText
 import com.niki914.zafiro.app.ui.model.ConfigureEffect
 import com.niki914.zafiro.app.ui.model.ConfigureIntent
 import com.niki914.zafiro.app.ui.model.ConfigureScene
@@ -71,7 +67,7 @@ fun SavedConfigDetailContent(
 
                 ConfigureEffect.OnboardingSaveSucceeded,
                 is ConfigureEffect.SaveFailed,
-                -> Unit
+                    -> Unit
             }
         }
     }

@@ -21,14 +21,12 @@ import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.HttpTimeouts
-import com.niki914.okia.transport.SseLine
 import com.niki914.okia.transport.StreamResponse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -89,7 +87,11 @@ class RealAgentLoopRetryTest {
         onCommit: suspend (List<Message>) -> Unit = {}
     ): LoopRequest = loopRequest(events.asFlow(), engine = engine, onCommit = onCommit)
 
-    private fun errorResponse(status: Int, body: String = "boom", headers: Map<String, String> = emptyMap()) =
+    private fun errorResponse(
+        status: Int,
+        body: String = "boom",
+        headers: Map<String, String> = emptyMap()
+    ) =
         StreamResponse.Error(status, headers, body)
 
     private fun okResponse() =
@@ -102,14 +104,32 @@ class RealAgentLoopRetryTest {
 
     // hook 调用记录（A10：重试时每轮请求 hooks 重跑）
     private class RecordingHooks(private val calls: MutableList<String>) : Hooks {
-        override suspend fun beforeInput(input: com.niki914.okia.hooks.InputHolder) { calls += "beforeInput" }
-        override suspend fun afterInput(input: com.niki914.okia.hooks.InputHolder) { calls += "afterInput" }
-        override suspend fun beforeSerialization(request: SerializationHolder) { calls += "beforeSerialization" }
-        override suspend fun afterSerialization(request: SerializationHolder, httpRequest: HttpRequest) {
+        override suspend fun beforeInput(input: com.niki914.okia.hooks.InputHolder) {
+            calls += "beforeInput"
+        }
+
+        override suspend fun afterInput(input: com.niki914.okia.hooks.InputHolder) {
+            calls += "afterInput"
+        }
+
+        override suspend fun beforeSerialization(request: SerializationHolder) {
+            calls += "beforeSerialization"
+        }
+
+        override suspend fun afterSerialization(
+            request: SerializationHolder,
+            httpRequest: HttpRequest
+        ) {
             calls += "afterSerialization"
         }
-        override suspend fun beforeRequest(request: HttpRequestHolder) { calls += "beforeRequest" }
-        override suspend fun afterRequest(request: HttpRequest) { calls += "afterRequest" }
+
+        override suspend fun beforeRequest(request: HttpRequestHolder) {
+            calls += "beforeRequest"
+        }
+
+        override suspend fun afterRequest(request: HttpRequest) {
+            calls += "afterRequest"
+        }
     }
 
     // ── A. 传输层重试（发送阶段） ──────────────────────────────────────────
@@ -156,7 +176,10 @@ class RealAgentLoopRetryTest {
         val engine = FakeHttpEngine()
         var call = 0
         engine.streamResult = {
-            if (call++ == 0) errorResponse(429, headers = mapOf("Retry-After" to "10")) else okResponse()
+            if (call++ == 0) errorResponse(
+                429,
+                headers = mapOf("Retry-After" to "10")
+            ) else okResponse()
         }
         val emitted = mutableListOf<TurnEvent>()
         val result = runLoop(loopRequest(listOf(completed()), engine = engine), emitted)
@@ -173,7 +196,10 @@ class RealAgentLoopRetryTest {
         var call = 0
         engine.streamResult = {
             if (call++ == 0) {
-                errorResponse(429, headers = mapOf("retry-after-ms" to "250", "Retry-After" to "10"))
+                errorResponse(
+                    429,
+                    headers = mapOf("retry-after-ms" to "250", "Retry-After" to "10")
+                )
             } else okResponse()
         }
         val emitted = mutableListOf<TurnEvent>()
@@ -283,7 +309,11 @@ class RealAgentLoopRetryTest {
         val engine = FakeHttpEngine()
         var call = 0
         engine.streamResult = { if (call++ < 2) errorResponse(503) else okResponse() }
-        val request = loopRequest(listOf(completed()), engine = engine).copy(hooks = listOf(RecordingHooks(calls)))
+        val request = loopRequest(listOf(completed()), engine = engine).copy(
+            hooks = listOf(
+                RecordingHooks(calls)
+            )
+        )
 
         val result = runLoop(request)
         assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
@@ -336,7 +366,8 @@ class RealAgentLoopRetryTest {
             interruptAfterEvents = 1
         }
         val commits = mutableListOf<List<Message>>()
-        val request = loopRequest(emptyFlow(), onCommit = { commits += it }).copy(protocolMapper = mapper)
+        val request =
+            loopRequest(emptyFlow(), onCommit = { commits += it }).copy(protocolMapper = mapper)
 
         val result = runLoop(request)
         val failed = result as TurnResult.Failed
@@ -355,8 +386,14 @@ class RealAgentLoopRetryTest {
         registry.register(localTool("t1"), executor)
         val mapper = FakeProtocolMapper(
             listOf(
-                listOf(ProtocolEvent.ToolCallReady("c1", "t1", "{}"), completed(StopReason.ToolUse)),
-                listOf(ProtocolEvent.ToolCallReady("c2", "t1", "{}"), completed(StopReason.ToolUse)),
+                listOf(
+                    ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                    completed(StopReason.ToolUse)
+                ),
+                listOf(
+                    ProtocolEvent.ToolCallReady("c2", "t1", "{}"),
+                    completed(StopReason.ToolUse)
+                ),
                 listOf(ProtocolEvent.TextDelta("half")), // round2 中断
                 listOf(ProtocolEvent.TextDelta("final"), completed()) // round3 重试成功
             )
@@ -441,7 +478,10 @@ class RealAgentLoopRetryTest {
         registry.register(localTool("t1"), executor)
         val mapper = FakeProtocolMapper(
             listOf(
-                listOf(ProtocolEvent.ToolCallReady("c1", "t1", "{}"), completed(StopReason.ToolUse)),
+                listOf(
+                    ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                    completed(StopReason.ToolUse)
+                ),
                 listOf(ProtocolEvent.TextDelta("after"), completed())
             )
         )
@@ -536,7 +576,9 @@ class RealAgentLoopRetryTest {
         assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
         assertEquals(2, engine.streamedRequests.size) // 初始 + 1 次段首重试
         assertEquals(1, emitted.count { it is TurnEvent.RetryScheduled })
-        assertTrue(emitted.filterIsInstance<TurnEvent.RetryScheduled>().single().reason.contains("stream"))
+        assertTrue(
+            emitted.filterIsInstance<TurnEvent.RetryScheduled>().single().reason.contains("stream")
+        )
     }
 
     @Test

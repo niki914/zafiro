@@ -1,5 +1,6 @@
 package com.niki914.zafiro.app.ui.content
 
+import android.content.ClipData
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -10,12 +11,11 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -72,19 +73,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.MainActivity
-import com.niki914.zafiro.app.R
+import com.niki914.store.XIpcBridge
+import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController
-import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
+import com.niki914.uikit.infra.ReportTitleBarCollapsed
+import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.MainActivity
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.PageChromeMenuItem
 import com.niki914.zafiro.app.ui.RegisterPageChrome
+import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline
 import com.niki914.zafiro.app.ui.model.ActionSource
 import com.niki914.zafiro.app.ui.model.HomeChatBlock
 import com.niki914.zafiro.app.ui.model.HomeChatIntent
@@ -94,17 +98,13 @@ import com.niki914.zafiro.app.ui.model.HomeChatViewModel
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
-import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline
 import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.repo.UpdateCheckHolder
-import com.niki914.store.XIpcBridge
-import com.niki914.uikit.base.BaseTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import android.content.ClipData
 
 /**
  * 冷启动后仅首次进入 Home 时抢焦点弹键盘；进程内不再重复
@@ -404,7 +404,10 @@ private fun ToolPermissionDialog() {
                         .padding(10.dp),
                 )
                 Text(
-                    text = stringResource(R.string.tool_permission_matched_rule, request.matchedRuleName),
+                    text = stringResource(
+                        R.string.tool_permission_matched_rule,
+                        request.matchedRuleName
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -779,7 +782,10 @@ private fun HomeChatTurnItem(
                                                 onClick = {
                                                     onContentTap()
                                                     if (canToggleAction) {
-                                                        onToggleActionRow(turn.id, ActionSource.Agent)
+                                                        onToggleActionRow(
+                                                            turn.id,
+                                                            ActionSource.Agent
+                                                        )
                                                     }
                                                 },
                                             ),
@@ -791,12 +797,14 @@ private fun HomeChatTurnItem(
                                     }
                                 }
                             }
+
                             is HomeChatBlock.Error -> {
                                 AssistantErrorBlock(
                                     message = block.message,
                                     code = block.code,
                                 )
                             }
+
                             is HomeChatBlock.Thinking -> {
                                 // blockIndex 是 var，lambda 捕获按引用；先快照成 val 再进 lambda
                                 val blockIndexNow = blockIndex
@@ -820,7 +828,10 @@ private fun HomeChatTurnItem(
                                                 onClick = {
                                                     onContentTap()
                                                     if (canToggleAction) {
-                                                        onToggleActionRow(turn.id, ActionSource.Agent)
+                                                        onToggleActionRow(
+                                                            turn.id,
+                                                            ActionSource.Agent
+                                                        )
                                                     }
                                                 },
                                             ),
@@ -835,6 +846,7 @@ private fun HomeChatTurnItem(
                                     }
                                 }
                             }
+
                             is HomeChatBlock.Tool -> {} // handled above
                         }
                         blockIndex++

@@ -51,6 +51,7 @@ Limits: timeout 30 s default, 120 s max; output capped at 50 KB.
                 code = "INVALID_ARGUMENTS_JSON",
                 message = args.message,
             )
+
             is ParseResult.MissingCode -> TextToolResult.failure(
                 code = "MISSING_CODE",
                 message = "Field 'code' is required.",
@@ -92,12 +93,15 @@ Limits: timeout 30 s default, 120 s max; output capped at 50 KB.
         }
     }
 
-    private fun capOutput(output: String, maxBytes: Int = ToolOutputTruncator.DEFAULT_MAX_BYTES): String {
+    private fun capOutput(
+        output: String,
+        maxBytes: Int = ToolOutputTruncator.DEFAULT_MAX_BYTES
+    ): String {
         val truncation = ToolOutputTruncator.truncateTail(output, maxBytes = maxBytes)
         if (!truncation.truncated) return output
         return truncation.content + "\n\n[Output truncated: showing last " +
-            truncation.content.count { it == '\n' } + " of " + truncation.totalLines +
-            " lines]"
+                truncation.content.count { it == '\n' } + " of " + truncation.totalLines +
+                " lines]"
     }
 
     private fun parseArgs(argumentsJson: String): ParseResult {

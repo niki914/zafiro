@@ -18,7 +18,6 @@ import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpTimeouts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
@@ -41,7 +40,10 @@ class RealAgentLoopToolLoopTest {
     private fun toolCall(id: String = "call1", name: String = "tool", args: String = "{}") =
         ContentBlock.ToolCall(id, name, args)
 
-    private fun assistant(text: String? = null, vararg calls: ContentBlock.ToolCall): Message.Assistant =
+    private fun assistant(
+        text: String? = null,
+        vararg calls: ContentBlock.ToolCall
+    ): Message.Assistant =
         Message.Assistant(
             AssistantMessage(
                 content = buildList {
@@ -144,7 +146,10 @@ class RealAgentLoopToolLoopTest {
         )
 
         val result = runLoop(
-            loopRequest(emptyList(), toolRegistry = registry) { commits += it }.copy(protocolMapper = mapper),
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry
+            ) { commits += it }.copy(protocolMapper = mapper),
             emitted
         )
 
@@ -156,7 +161,9 @@ class RealAgentLoopToolLoopTest {
         assertEquals(3, commits.size)
         val assistant1 = commits[0].single() as Message.Assistant
         assertEquals(StopReason.ToolUse, assistant1.message.stopReason)
-        assertEquals(listOf("tool"), assistant1.message.content.filterIsInstance<ContentBlock.ToolCall>().map { it.name })
+        assertEquals(
+            listOf("tool"),
+            assistant1.message.content.filterIsInstance<ContentBlock.ToolCall>().map { it.name })
         val toolResult = toolResultOf(commits[1].single())
         assertEquals("call1", toolResult.callId)
         assertEquals(ToolCallOutcome.Success("ok"), toolResult.outcome)
@@ -207,7 +214,10 @@ class RealAgentLoopToolLoopTest {
             )
         )
 
-        runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper), emitted)
+        runLoop(
+            loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper),
+            emitted
+        )
 
         assertEquals(
             listOf(
@@ -246,7 +256,10 @@ class RealAgentLoopToolLoopTest {
         )
 
         runLoop(
-            loopRequest(emptyList(), toolRegistry = registry) { commits += it }.copy(protocolMapper = mapper),
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry
+            ) { commits += it }.copy(protocolMapper = mapper),
             emitted
         )
 
@@ -287,7 +300,8 @@ class RealAgentLoopToolLoopTest {
             )
         )
 
-        val result = runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper))
+        val result =
+            runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper))
 
         assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
         assertEquals(2, executor.calls.size)
@@ -309,7 +323,8 @@ class RealAgentLoopToolLoopTest {
             )
         )
 
-        val result = runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper))
+        val result =
+            runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper))
 
         assertEquals(TurnResult.Completed(CompletionReason.Length), result)
     }
@@ -337,7 +352,10 @@ class RealAgentLoopToolLoopTest {
         )
 
         val result = runLoop(
-            loopRequest(emptyList(), toolRegistry = registry) { commits += it }.copy(protocolMapper = mapper),
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry
+            ) { commits += it }.copy(protocolMapper = mapper),
             emitted
         )
 
@@ -379,7 +397,8 @@ class RealAgentLoopToolLoopTest {
 
     @Test
     fun executorExceptionFailsTurnWithToolExecutionFailed() = runTest {
-        val executor = RecordingToolExecutor().apply { executeError = RuntimeException("executor bug") }
+        val executor =
+            RecordingToolExecutor().apply { executeError = RuntimeException("executor bug") }
         val registry = DefaultToolRegistry().apply { register(localTool("tool"), executor) }
         val mapper = FakeProtocolMapper(
             listOf(
@@ -388,7 +407,8 @@ class RealAgentLoopToolLoopTest {
             )
         )
 
-        val result = runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper))
+        val result =
+            runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper))
 
         val failed = result as TurnResult.Failed
         assertEquals(LLMErrorCode.ToolExecutionFailed, failed.error.code)
@@ -470,7 +490,11 @@ class RealAgentLoopToolLoopTest {
         var caught: CancellationException? = null
         val job = launch {
             try {
-                RealAgentLoop().run(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = events)) {}
+                RealAgentLoop().run(
+                    loopRequest(emptyList(), toolRegistry = registry).copy(
+                        protocolMapper = events
+                    )
+                ) {}
             } catch (e: CancellationException) {
                 caught = e
             }

@@ -12,7 +12,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
@@ -21,6 +20,7 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.RegisterPageChrome
 import com.niki914.zafiro.app.ui.model.ExecutionRuleItem

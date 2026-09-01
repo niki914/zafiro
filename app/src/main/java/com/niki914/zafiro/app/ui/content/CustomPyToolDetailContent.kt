@@ -8,12 +8,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.CustomPyToolDeleteConfirmationState
 import com.niki914.zafiro.app.ui.model.CustomPyToolInlineError
 import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsEffect

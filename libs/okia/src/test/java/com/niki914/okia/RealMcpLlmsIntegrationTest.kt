@@ -58,13 +58,22 @@ class RealMcpLlmsIntegrationTest {
     private fun mockSnapshotWithEchoPrecedent(): SessionSnapshot {
         val callId = "precedent-call"
         val entries = listOf(
-            ConversationEntry("p-u", null, 1, Message.User(listOf(ContentBlock.Text("请回显 'hello'")))),
+            ConversationEntry(
+                "p-u",
+                null,
+                1,
+                Message.User(listOf(ContentBlock.Text("请回显 'hello'")))
+            ),
             ConversationEntry(
                 "p-a", "p-u", 2,
                 Message.Assistant(
                     AssistantMessage(
                         content = listOf(
-                            ContentBlock.ToolCall(callId, "mcp__everything__echo", """{"message":"hello"}""")
+                            ContentBlock.ToolCall(
+                                callId,
+                                "mcp__everything__echo",
+                                """{"message":"hello"}"""
+                            )
                         ),
                         stopReason = StopReason.ToolUse
                     )
@@ -72,7 +81,11 @@ class RealMcpLlmsIntegrationTest {
             ),
             ConversationEntry(
                 "p-t", "p-a", 3,
-                Message.ToolResult(callId, "mcp__everything__echo", ToolCallOutcome.Success("Echoed: hello"))
+                Message.ToolResult(
+                    callId,
+                    "mcp__everything__echo",
+                    ToolCallOutcome.Success("Echoed: hello")
+                )
             ),
             ConversationEntry(
                 "p-s", "p-t", 4,
@@ -118,8 +131,10 @@ class RealMcpLlmsIntegrationTest {
                 )
             ) {}
 
-            assertTrue("回合 Completed(Stop): $result",
-                result is TurnResult.Completed && result.reason == CompletionReason.Stop)
+            assertTrue(
+                "回合 Completed(Stop): $result",
+                result is TurnResult.Completed && result.reason == CompletionReason.Stop
+            )
 
             val history = okia.conversation.value.history
             // restore 4 条 + 本轮 User + Assistant(ToolCall) + ToolResult + Assistant
@@ -132,11 +147,18 @@ class RealMcpLlmsIntegrationTest {
             val user = history[4].message
             assertTrue("本轮开头是 User: $user", user is Message.User)
             val assistantCall = history[5].message as Message.Assistant
-            val call = assistantCall.message.content.filterIsInstance<ContentBlock.ToolCall>().firstOrNull()
-            assertTrue("模型自主调用 mcp__everything__echo: ${assistantCall.message.content}", call != null)
+            val call = assistantCall.message.content.filterIsInstance<ContentBlock.ToolCall>()
+                .firstOrNull()
+            assertTrue(
+                "模型自主调用 mcp__everything__echo: ${assistantCall.message.content}",
+                call != null
+            )
             assertEquals("mcp__everything__echo", call?.name)
             val toolResult = history[6].message as Message.ToolResult
-            assertTrue("工具真实执行成功: $toolResult", toolResult.outcome is ToolCallOutcome.Success)
+            assertTrue(
+                "工具真实执行成功: $toolResult",
+                toolResult.outcome is ToolCallOutcome.Success
+            )
             assertTrue(
                 "回显内容在结果中: ${(toolResult.outcome as ToolCallOutcome.Success).content}",
                 (toolResult.outcome as ToolCallOutcome.Success).content.contains("okia 集成测试")

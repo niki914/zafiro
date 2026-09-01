@@ -1,6 +1,5 @@
 package com.niki914.zafiro.chat.agentic.shell
 
-import com.niki914.libterm.TerminalBytes
 import com.niki914.libterm.TerminalFailure
 import com.niki914.libterm.TerminalIdentity
 import com.niki914.libterm.runtime.CommandResult

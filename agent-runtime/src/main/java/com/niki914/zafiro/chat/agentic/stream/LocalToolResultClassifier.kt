@@ -2,6 +2,8 @@ package com.niki914.zafiro.chat.agentic.stream
 
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResultCodec
+import com.niki914.zafiro.chat.agentic.stream.LocalToolResultClassifier.failureMessage
+import com.niki914.zafiro.chat.agentic.stream.ParsedToolResult.Companion.TEXT_RESULT_TOOL_NAMES
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull

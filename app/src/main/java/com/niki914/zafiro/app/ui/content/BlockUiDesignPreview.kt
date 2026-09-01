@@ -18,9 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.shape.G2BubbleShape
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 
 /** 思考块内容：正文区，展开后左右比头部再多一点内缩（兜底样式的参照）。 */
 private val ThinkingBody = """
@@ -116,7 +116,7 @@ private fun BlockUiDesignPreview() {
             CollapsibleBlock(
                 icon = ToolPresentation.forTool("terminal"),
                 title = "Terminal · python3 -m pip install --upgrade torch torchvision torchaudio " +
-                    "--index-url https://download.pytorch.org/whl/cu121 --no-cache-dir",
+                        "--index-url https://download.pytorch.org/whl/cu121 --no-cache-dir",
                 isExpanded = longTitleOpen,
                 onToggle = { longTitleOpen = !longTitleOpen },
             ) {

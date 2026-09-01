@@ -7,7 +7,6 @@ import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -48,8 +47,10 @@ class AnthropicApiIntegrationTest {
             val events = mutableListOf<TurnEvent>()
             val result = okia.send("用一句话解释什么是 JSON。") { events += it }
 
-            assertTrue("回合 Completed(Stop): $result",
-                result is TurnResult.Completed && result.reason == CompletionReason.Stop)
+            assertTrue(
+                "回合 Completed(Stop): $result",
+                result is TurnResult.Completed && result.reason == CompletionReason.Stop
+            )
 
             val history = okia.conversation.value.history
             val last = history.last().message
@@ -69,7 +70,10 @@ class AnthropicApiIntegrationTest {
             assertNotNull("观测到 TurnCompleted 事件", completed)
             val usage = completed?.message?.usage
             assertNotNull("Completed 消息带 usage", usage)
-            assertTrue("outputTokens ≥ 1（实际 ${usage?.outputTokens}）", (usage?.outputTokens ?: 0) >= 1)
+            assertTrue(
+                "outputTokens ≥ 1（实际 ${usage?.outputTokens}）",
+                (usage?.outputTokens ?: 0) >= 1
+            )
         } finally {
             okia.close()
         }

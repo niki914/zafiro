@@ -1,6 +1,9 @@
 package com.niki914.zafiro.chat.agentic
 
 import com.niki914.logging.Logger
+import com.niki914.okia.message.ToolCallOutcome
+import com.niki914.okia.tooling.ToolCallContext
+import com.niki914.okia.tooling.ToolExecutor
 import com.niki914.zafiro.chat.LocalTool
 import com.niki914.zafiro.chat.ResolvedTools
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolExecutor
@@ -9,9 +12,6 @@ import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResultCodec
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
 import com.niki914.zafiro.chat.agentic.stream.LocalToolResultClassifier
-import com.niki914.okia.message.ToolCallOutcome
-import com.niki914.okia.tooling.ToolCallContext
-import com.niki914.okia.tooling.ToolExecutor
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
@@ -79,7 +79,7 @@ class LocalToolExecutor(
                 Logger.i(
                     LOG_TAG,
                     "local tool done name=$name kind=builtin resultLength=${result.length} " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
             }
         }
@@ -95,7 +95,7 @@ class LocalToolExecutor(
                 Logger.i(
                     LOG_TAG,
                     "local tool done name=$name kind=py resultLength=${result.length} " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
             }
         }
@@ -103,7 +103,7 @@ class LocalToolExecutor(
         Logger.w(
             LOG_TAG,
             "local tool not executable name=$name " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return BuiltinToolResult.failure(
             code = "LOCAL_TOOL_NOT_EXECUTABLE",

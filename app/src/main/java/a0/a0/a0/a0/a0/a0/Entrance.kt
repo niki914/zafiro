@@ -1,6 +1,15 @@
 package a0.a0.a0.a0.a0.a0
 
 import com.niki914.logging.Logger
+import com.niki914.store.HostApp
+import com.niki914.store.XValues
+import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.xposed.runtime.IXposed
+import com.niki914.xposed.runtime.runtime.Hook
+import com.niki914.xposed.runtime.runtime.Runtime
+import com.niki914.xposed.runtime.runtime.RuntimeBootstrap
+import com.niki914.xposed.runtime.util.ContextHook
+import com.niki914.xposed.runtime.util.HookSideLoader
 import com.niki914.zafiro.app.BuildConfig
 import com.niki914.zafiro.app.getInstalledPackageVersion
 import com.niki914.zafiro.mod.HookLocalSettings
@@ -12,15 +21,6 @@ import com.niki914.zafiro.repo.WebSettingsResult
 import com.niki914.zafiro.repo.XIpcDomainSettingsStore
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.runtime.client.AgentRuntimeClient
-import com.niki914.store.HostApp
-import com.niki914.store.XValues
-import com.niki914.xposed.api.util.ContextProvider
-import com.niki914.xposed.runtime.IXposed
-import com.niki914.xposed.runtime.runtime.Hook
-import com.niki914.xposed.runtime.runtime.Runtime
-import com.niki914.xposed.runtime.runtime.RuntimeBootstrap
-import com.niki914.xposed.runtime.util.ContextHook
-import com.niki914.xposed.runtime.util.HookSideLoader
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +82,10 @@ class Entrance : IXposed() {
                 }
 
                 isNoSupportedVersion -> {
-                    Logger.w(LOG_TAG, "unsupported version host=$targetPkg, post unsupported notification")
+                    Logger.w(
+                        LOG_TAG,
+                        "unsupported version host=$targetPkg, post unsupported notification"
+                    )
                     XService.postUnsupportedVersionNotification(
                         hostApp = HostApp.fromPackageName(targetPkg),
                         hostVersion = targetPkg?.let {
@@ -116,7 +119,7 @@ class Entrance : IXposed() {
         Logger.i(
             LOG_TAG,
             "hook route hostApp=${hostApp?.name ?: "unknown"} " +
-                "targetPkg=$targetPkg hook=${hookInstance?.name ?: "none"}"
+                    "targetPkg=$targetPkg hook=${hookInstance?.name ?: "none"}"
         )
 
         hookInstance ?: return

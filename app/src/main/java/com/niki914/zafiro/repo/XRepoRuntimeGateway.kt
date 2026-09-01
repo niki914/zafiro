@@ -4,12 +4,12 @@ import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.RuntimeSettingsGateway
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
-import com.niki914.zafiro.settings.model.RuntimeToolValidation
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
 import com.niki914.zafiro.settings.model.RuntimeMcpServer
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
+import com.niki914.zafiro.settings.model.RuntimeToolValidation
 
 class XRepoRuntimeGateway(
     private val repo: XRepo = XRepo,

@@ -4,7 +4,6 @@ import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.accessibility.NodeAction
 import com.niki914.zafiro.chat.agentic.accessibility.ScreenSnapshot
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
-import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.buildin.ScreenOperationError
 import com.niki914.zafiro.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
@@ -50,7 +49,8 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
 
         val args = parseArguments(request.argumentsJson).getOrElse { error ->
             val msg = error.message ?: "Invalid arguments JSON"
-            val code = if (msg.startsWith("Unknown operation")) ScreenOperationError.INVALID_OPERATION.code else ScreenOperationError.INVALID_ARGUMENTS_JSON.code
+            val code =
+                if (msg.startsWith("Unknown operation")) ScreenOperationError.INVALID_OPERATION.code else ScreenOperationError.INVALID_ARGUMENTS_JSON.code
             return TextToolResult.failure(code, msg)
         }
 
@@ -106,8 +106,8 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
             else -> TextToolResult.failure(
                 code = ScreenOperationError.INVALID_OPERATION.code,
                 message = "Operation '${op::class.simpleName}' not supported by " +
-                    "screen_operation_accessibility. Use screen_operation_shell for " +
-                    "shell-based operations.",
+                        "screen_operation_accessibility. Use screen_operation_shell for " +
+                        "shell-based operations.",
             )
         }
     }
@@ -144,8 +144,8 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
                 TextToolResult.failure(
                     code = ScreenOperationError.CAPTURE_FAILED_AFTER_ACTION.code,
                     message = "The action may have succeeded, but the updated screen tree " +
-                        "could not be captured. Read the screen before deciding whether to " +
-                        "retry the action.",
+                            "could not be captured. Read the screen before deciding whether to " +
+                            "retry the action.",
                 )
             },
         )

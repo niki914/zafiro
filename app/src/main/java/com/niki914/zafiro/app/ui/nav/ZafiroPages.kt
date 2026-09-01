@@ -6,8 +6,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.nav.Page
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.BuiltinToolGroups
 
 sealed interface PageTitleSpec
@@ -56,6 +56,7 @@ data object StartupPage : ZafiroPage {
 data object ProviderPickPage : ZafiroPage {
     override val routeKey: String = "provider-pick"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_onboard_provider_pick_title)
+
     // onboarding 首次流程不可返回 StartupPage
     override val leftAction: TopBarActionSpec? = null
     override val rightAction: TopBarActionSpec? = null
@@ -93,6 +94,7 @@ data class SavedConfigDetailPage(
     override val titleSpec: PageTitleSpec = TextTitle(configName)
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+
     // Delete 由内容层 PageChrome 提供（生效中的配置不提供删除）
     override val rightAction: TopBarActionSpec? = null
 }

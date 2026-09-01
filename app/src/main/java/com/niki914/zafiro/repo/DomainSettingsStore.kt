@@ -35,7 +35,7 @@ internal class XIpcDomainSettingsStore(
         Logger.d(
             LOG_TAG,
             "readJson storeId=$storeId jsonLength=${json.length} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return json
     }
@@ -55,7 +55,7 @@ internal class XIpcDomainSettingsStore(
         Logger.i(
             LOG_TAG,
             "writeJsonFromOwner storeId=$storeId result=$result jsonLength=${json.length} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return result
     }
@@ -77,7 +77,7 @@ internal class XIpcDomainSettingsStore(
         Logger.i(
             LOG_TAG,
             "mutateJson storeId=$storeId path=$path result=$result " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return result
     }

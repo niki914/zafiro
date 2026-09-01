@@ -18,8 +18,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
@@ -120,7 +120,9 @@ class RealAgentLoopTest {
         val turnCompleted = emitted[4] as TurnEvent.TurnCompleted
         assertEquals(StopReason.Stop, turnCompleted.message.stopReason)
 
-        assertEquals(listOf("hello"), commits.single().map { (it as Message.Assistant).message }.map { textOf(it) })
+        assertEquals(
+            listOf("hello"),
+            commits.single().map { (it as Message.Assistant).message }.map { textOf(it) })
     }
 
     @Test
@@ -156,7 +158,10 @@ class RealAgentLoopTest {
         val emitted = mutableListOf<TurnEvent>()
         val result = runLoop(
             loopRequest(
-                listOf(ProtocolEvent.TextDelta("par"), ProtocolEvent.Error(RuntimeException("boom")))
+                listOf(
+                    ProtocolEvent.TextDelta("par"),
+                    ProtocolEvent.Error(RuntimeException("boom"))
+                )
             ) { commits += it },
             emitted
         )
@@ -244,7 +249,10 @@ class RealAgentLoopTest {
         )
 
     private fun okResponse(contentType: String? = null, lines: Flow<SseLine> = emptyFlow()) =
-        StreamResponse.Ok(200, contentType?.let { mapOf("Content-Type" to it) } ?: emptyMap(), lines)
+        StreamResponse.Ok(
+            200,
+            contentType?.let { mapOf("Content-Type" to it) } ?: emptyMap(),
+            lines)
 
     @Test
     fun non2xx429MapsToRateLimit() = runTest {
@@ -293,7 +301,8 @@ class RealAgentLoopTest {
     @Test
     fun non2xxBodyAndStatusInError() = runTest {
         val engine = FakeHttpEngine().apply {
-            streamResult = { errorResponse(429, body = "{\"error\": {\"message\": \"rate limited\"}}") }
+            streamResult =
+                { errorResponse(429, body = "{\"error\": {\"message\": \"rate limited\"}}") }
         }
         val result = runLoop(loopRequest(listOf(completed()), engine = engine))
         val failed = result as TurnResult.Failed
@@ -321,9 +330,15 @@ class RealAgentLoopTest {
     fun htmlContentTypeFailsParse() = runTest {
         val mapper = FakeProtocolMapper(listOf(completed()))
         val engine = FakeHttpEngine().apply {
-            streamResult = { okResponse(contentType = "text/html; charset=utf-8", lines = flowOf(SseLine("<html>"))) }
+            streamResult = {
+                okResponse(
+                    contentType = "text/html; charset=utf-8",
+                    lines = flowOf(SseLine("<html>"))
+                )
+            }
         }
-        val result = runLoop(loopRequest(emptyFlow(), engine = engine).copy(protocolMapper = mapper))
+        val result =
+            runLoop(loopRequest(emptyFlow(), engine = engine).copy(protocolMapper = mapper))
         assertEquals(LLMErrorCode.Parse, (result as TurnResult.Failed).error.code)
         assertEquals(0, mapper.parseStreamCalls)
     }
@@ -340,7 +355,12 @@ class RealAgentLoopTest {
     @Test
     fun eventStreamContentTypePasses() = runTest {
         val engine = FakeHttpEngine().apply {
-            streamResult = { okResponse(contentType = "text/event-stream", lines = flowOf(SseLine("data: x"))) }
+            streamResult = {
+                okResponse(
+                    contentType = "text/event-stream",
+                    lines = flowOf(SseLine("data: x"))
+                )
+            }
         }
         val result = runLoop(loopRequest(listOf(completed()), engine = engine))
         assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
@@ -349,7 +369,8 @@ class RealAgentLoopTest {
     @Test
     fun jsonContentTypePasses() = runTest {
         val engine = FakeHttpEngine().apply {
-            streamResult = { okResponse(contentType = "application/json", lines = flowOf(SseLine("data: x"))) }
+            streamResult =
+                { okResponse(contentType = "application/json", lines = flowOf(SseLine("data: x"))) }
         }
         val result = runLoop(loopRequest(listOf(completed()), engine = engine))
         assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
@@ -357,7 +378,9 @@ class RealAgentLoopTest {
 
     @Test
     fun missingContentTypePasses() = runTest {
-        val engine = FakeHttpEngine().apply { streamResult = { okResponse(lines = flowOf(SseLine("data: x"))) } }
+        val engine = FakeHttpEngine().apply {
+            streamResult = { okResponse(lines = flowOf(SseLine("data: x"))) }
+        }
         val result = runLoop(loopRequest(listOf(completed()), engine = engine))
         assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
     }
@@ -365,7 +388,8 @@ class RealAgentLoopTest {
     @Test
     fun headerLookupIgnoresCase() = runTest {
         val engine = FakeHttpEngine().apply {
-            streamResult = { StreamResponse.Ok(200, mapOf("content-type" to "text/html"), emptyFlow()) }
+            streamResult =
+                { StreamResponse.Ok(200, mapOf("content-type" to "text/html"), emptyFlow()) }
         }
         val result = runLoop(loopRequest(listOf(completed()), engine = engine))
         assertEquals(LLMErrorCode.Parse, (result as TurnResult.Failed).error.code)

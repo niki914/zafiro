@@ -58,7 +58,9 @@ class McpExecutor(
                 }
             }
             if (result.isError) {
-                ToolCallOutcome.Failure("tool returned isError=true", content = content.ifEmpty { null })
+                ToolCallOutcome.Failure(
+                    "tool returned isError=true",
+                    content = content.ifEmpty { null })
             } else {
                 ToolCallOutcome.Success(content)
             }

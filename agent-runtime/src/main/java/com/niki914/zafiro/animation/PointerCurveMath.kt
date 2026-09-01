@@ -1,5 +1,9 @@
 package com.niki914.zafiro.animation
 
+import com.niki914.zafiro.animation.PointerCurveMath.CANDIDATE_SAMPLES
+import com.niki914.zafiro.animation.PointerCurveMath.IDLE_HEADING_RAD
+import com.niki914.zafiro.animation.PointerCurveMath.buildTrajectory
+import com.niki914.zafiro.animation.PointerCurveMath.bump
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -30,6 +34,7 @@ object PointerCurveMath {
     enum class MovementMode {
         /** Straight line, constant [IDLE_HEADING_RAD], uniform speed. */
         TRANSLATE,
+
         /** Quintic Hermite organic curve, tangent-following, easeInOutSine. */
         FLY,
     }
@@ -71,6 +76,7 @@ object PointerCurveMath {
                         headingRad = IDLE_HEADING_RAD,
                     )
                 }
+
                 MovementMode.FLY -> {
                     val c = coeffs
                     if (c == null) { // tiny-dist fallback
@@ -395,25 +401,35 @@ object PointerCurveMath {
     //    P'(t)  = V0 + 3A·t² + 4B·t³ + 5C·t⁴ + normal·bend·bump'(t)
 
     private fun positionAt(c: FlyCoeffs, t: Float): Float {
-        val t2 = t * t; val t3 = t2 * t; val t4 = t3 * t; val t5 = t4 * t
+        val t2 = t * t;
+        val t3 = t2 * t;
+        val t4 = t3 * t;
+        val t5 = t4 * t
         return c.sx + c.v0x * t + c.ax * t3 + c.bx * t4 + c.cx * t5 +
                 c.nx * c.bend * bump(t)
     }
 
     private fun positionAtY(c: FlyCoeffs, t: Float): Float {
-        val t2 = t * t; val t3 = t2 * t; val t4 = t3 * t; val t5 = t4 * t
+        val t2 = t * t;
+        val t3 = t2 * t;
+        val t4 = t3 * t;
+        val t5 = t4 * t
         return c.sy + c.v0y * t + c.ay * t3 + c.by * t4 + c.cy * t5 +
                 c.ny * c.bend * bump(t)
     }
 
     private fun derivativeAt(c: FlyCoeffs, t: Float): Float {
-        val t2 = t * t; val t3 = t2 * t; val t4 = t3 * t
+        val t2 = t * t;
+        val t3 = t2 * t;
+        val t4 = t3 * t
         return c.v0x + 3f * c.ax * t2 + 4f * c.bx * t3 + 5f * c.cx * t4 +
                 c.nx * c.bend * bumpDerivative(t)
     }
 
     private fun derivativeAtY(c: FlyCoeffs, t: Float): Float {
-        val t2 = t * t; val t3 = t2 * t; val t4 = t3 * t
+        val t2 = t * t;
+        val t3 = t2 * t;
+        val t4 = t3 * t
         return c.v0y + 3f * c.ay * t2 + 4f * c.by * t3 + 5f * c.cy * t4 +
                 c.ny * c.bend * bumpDerivative(t)
     }

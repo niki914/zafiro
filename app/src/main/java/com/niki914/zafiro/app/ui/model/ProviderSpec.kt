@@ -10,6 +10,7 @@ sealed interface ProviderSpec {
     val officialEndpoint: String
     val exampleModelId: String
     val showEndpointConfigInOnboarding: Boolean
+
     /** 新建配置时预填的协议（LlmProtocol.wireId）。 */
     val defaultProtocol: String
 
@@ -51,6 +52,7 @@ private data object DeepSeekSpec : ProviderSpec {
     override val officialEndpoint: String = "https://api.deepseek.com/responses"
     override val exampleModelId: String = "deepseek-v4-pro"
     override val showEndpointConfigInOnboarding: Boolean = false
+
     // DeepSeek 官方 /responses 网关兼容 OpenAI Responses 协议（实测可用，2026-02）
     override val defaultProtocol: String = "openai-responses"
     override val iconRes: Int = R.drawable.deepseek
@@ -110,6 +112,7 @@ private data object GoogleSpec : ProviderSpec {
         "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
     override val exampleModelId: String = "gemini-3.5-flash"
     override val showEndpointConfigInOnboarding: Boolean = true
+
     // Google 品牌走官方 OpenAI 兼容端点，如实展示 openai 协议（不提供 gemini-native）
     override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.gemini

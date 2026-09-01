@@ -4,9 +4,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 sealed class ScreenOp {
     data object Read : ScreenOp()
@@ -20,6 +19,7 @@ sealed class ScreenOp {
         val matchMode: String = "any",
         val limit: Int = 10,
     ) : ScreenOp()
+
     // shell ops
     data class ShellTap(val x: Int, val y: Int) : ScreenOp()
     data class ShellLongClick(val x: Int, val y: Int) : ScreenOp()
@@ -30,6 +30,7 @@ sealed class ScreenOp {
         val endY: Int,
         val duration: Long = 300,
     ) : ScreenOp()
+
     data class ShellKey(val code: Int) : ScreenOp()
 }
 
@@ -78,6 +79,7 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
             )
             parsed
         }
+
         delayMsField != null -> {
             val parsed = delayMsField.toDoubleOrNull()?.toLong()
             if (parsed == null) return Result.failure(
@@ -85,6 +87,7 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
             )
             parsed
         }
+
         else -> null
     }
 
@@ -123,6 +126,7 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
                 ScreenOp.ShellTap(x, y)
             }
         }
+
         "long_click" -> {
             val token = obj["token"]?.jsonPrimitive?.contentOrNull
             if (token != null) {
@@ -139,6 +143,7 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
                 ScreenOp.ShellLongClick(x, y)
             }
         }
+
         "scroll_forward" -> {
             val token = obj["token"]?.jsonPrimitive?.contentOrNull
                 ?: return Result.failure(
@@ -146,6 +151,7 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
                 )
             ScreenOp.ScrollForward(token)
         }
+
         "scroll_backward" -> {
             val token = obj["token"]?.jsonPrimitive?.contentOrNull
                 ?: return Result.failure(
@@ -153,6 +159,7 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
                 )
             ScreenOp.ScrollBackward(token)
         }
+
         "set_text" -> {
             val token = obj["token"]?.jsonPrimitive?.contentOrNull
                 ?: return Result.failure(
@@ -164,6 +171,7 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
                 )
             ScreenOp.SetText(token, text)
         }
+
         "search" -> {
             val keywordsElement = obj["keywords"]
                 ?: return Result.failure(
@@ -185,6 +193,7 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
             val limit = obj["limit"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt() ?: 10
             ScreenOp.Search(keywords, matchMode, limit)
         }
+
         "swipe" -> {
             val startX = obj["start_x"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                 ?: return Result.failure(
@@ -202,9 +211,11 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
                 ?: return Result.failure(
                     IllegalArgumentException("Missing or invalid required field: end_y for operation 'swipe'.")
                 )
-            val duration = obj["duration"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toLong() ?: 300L
+            val duration =
+                obj["duration"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toLong() ?: 300L
             ScreenOp.ShellSwipe(startX, startY, endX, endY, duration)
         }
+
         "key" -> {
             val code = obj["code"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.toInt()
                 ?: return Result.failure(
@@ -212,6 +223,7 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
                 )
             ScreenOp.ShellKey(code)
         }
+
         else -> return Result.failure(
             IllegalArgumentException("Unknown operation: '$operationName'.")
         )

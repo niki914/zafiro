@@ -9,7 +9,10 @@ import android.os.IBinder
 import android.os.RemoteException
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
-import java.util.concurrent.atomic.AtomicInteger
+import com.niki914.zafiro.chat.agentic.python.PyRuntime.connection
+import com.niki914.zafiro.chat.agentic.python.PyRuntime.exec
+import com.niki914.zafiro.chat.agentic.python.PyRuntime.kill
+import com.niki914.zafiro.chat.agentic.python.PyRuntime.warmUp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +23,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicInteger
 
 class PythonWorkerUnavailableException :
     IllegalStateException("Python worker is not connected")
@@ -150,7 +154,7 @@ object PyRuntime {
                 Logger.i(
                     LOG_TAG,
                     "python exec done codeLength=${code.length} resultLength=${result.length} " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
             }
         } catch (error: CancellationException) {
@@ -159,8 +163,8 @@ object PyRuntime {
             Logger.w(
                 LOG_TAG,
                 "python exec failed codeLength=${code.length} " +
-                    "errorType=${error::class.simpleName} message=${error.message} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "errorType=${error::class.simpleName} message=${error.message} " +
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             throw error
         } finally {

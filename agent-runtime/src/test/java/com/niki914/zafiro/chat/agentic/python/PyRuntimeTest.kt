@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic.python
 
 import android.os.IBinder
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -9,7 +10,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import com.niki914.zafiro.chat.util.SilentLoggerRule
 
 /**
  * 用 runBlocking（真实时间）而不是 runTest（虚拟时钟）：

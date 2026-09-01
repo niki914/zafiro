@@ -1,7 +1,7 @@
 package com.niki914.zafiro.mod.feat.hyper.subhooks
 
-import com.niki914.zafiro.mod.feat.hyper.XiaoaiConfigProvider
 import com.niki914.xposed.runtime.util.call
+import com.niki914.zafiro.mod.feat.hyper.XiaoaiConfigProvider
 
 fun injectedFlagKey(): String = XiaoaiConfigProvider.RenderTextStreamCard.injectedFlagKey
 

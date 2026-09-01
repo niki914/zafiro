@@ -1,6 +1,7 @@
 package com.niki914.zafiro.mod.feat
 
 import com.niki914.logging.Logger
+import com.niki914.xposed.runtime.runtime.Hook
 import com.niki914.zafiro.chat.ActiveTurnStore
 import com.niki914.zafiro.chat.ConversationTurnState
 import com.niki914.zafiro.chat.TurnMode
@@ -9,7 +10,6 @@ import com.niki914.zafiro.runtime.client.AssistantTextSource
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
 import com.niki914.zafiro.takeover.TakeoverDecision
 import com.niki914.zafiro.takeover.TakeoverResolver
-import com.niki914.xposed.runtime.runtime.Hook
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -72,9 +72,9 @@ abstract class AbstractAssistantHook(
         Logger.i(
             LOG_TAG,
             "turn decided mode=${nextTurnState.mode.eventName()} " +
-                "takeoverTarget=${takeoverDecision.target.name} " +
-                "matchedRuleId=${takeoverDecision.matchedRuleId.orEmpty()} " +
-                "matchedRuleName=${takeoverDecision.matchedRuleName.orEmpty()}"
+                    "takeoverTarget=${takeoverDecision.target.name} " +
+                    "matchedRuleId=${takeoverDecision.matchedRuleId.orEmpty()} " +
+                    "matchedRuleName=${takeoverDecision.matchedRuleName.orEmpty()}"
         )
         onTurnStateChanged(nextTurnState)
 
@@ -98,7 +98,7 @@ abstract class AbstractAssistantHook(
         Logger.d(
             LOG_TAG,
             "resolve takeover rules=${rules.size} defaultTarget=$defaultTarget " +
-                "queryLength=${query.length}"
+                    "queryLength=${query.length}"
         )
         return TakeoverResolver.resolve(query, rules, defaultTarget)
     }
@@ -133,15 +133,15 @@ abstract class AbstractAssistantHook(
                     Logger.i(
                         LOG_TAG,
                         "dispatch first frame turnId=$turnId " +
-                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                     )
                 }
                 if (frame.isFinal) {
                     Logger.i(
                         LOG_TAG,
                         "dispatch final frame turnId=$turnId " +
-                            "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                            "textLength=${frame.text.length}"
+                                "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                                "textLength=${frame.text.length}"
                     )
                 }
                 renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
@@ -154,7 +154,7 @@ abstract class AbstractAssistantHook(
             Logger.e(
                 LOG_TAG,
                 "dispatch failed turnId=$turnId errorType=${e::class.simpleName} " +
-                    "message=${e.message} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "message=${e.message} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             renderStreamCard(
                 turnId, roomId,

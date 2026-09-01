@@ -53,6 +53,7 @@ internal class ShizukuUserServiceClient(
     private var service: ILibTermShizukuShellService? = null
     private var sessionId: Long? = null
     private var bound: Boolean = false
+
     @Volatile
     private var pendingCwd: String = ""
     private val pendingOutputEvents = mutableListOf<PendingOutputEvent>()

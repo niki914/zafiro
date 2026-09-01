@@ -4,7 +4,6 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.settings.RuntimeEnvironment
-import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
 import com.niki914.zafiro.util.ToolOutputTruncator
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
@@ -18,8 +17,8 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
 
     override val description: String =
         "Load a Zafiro skill by id. Returns the skill's SKILL.md content; if it exceeds " +
-            "the limit, the result ends with the absolute path to the file — use terminal " +
-            "to read the full content from there."
+                "the limit, the result ends with the absolute path to the file — use terminal " +
+                "to read the full content from there."
 
     override val defaultEnabled: Boolean = true
 
@@ -32,7 +31,7 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
                 return TextToolResult.failure(
                     code = "INVALID_ARGUMENTS_JSON",
                     message = "load_skill arguments must be a JSON object with an id field. " +
-                        "Example: {\"id\":\"skill-a\"} (${result.message})",
+                            "Example: {\"id\":\"skill-a\"} (${result.message})",
                 )
             }
 
@@ -40,7 +39,7 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
                 return TextToolResult.failure(
                     code = "MISSING_SKILL_ID",
                     message = "load_skill requires a non-blank skill id. " +
-                        "Use an id from the available_skills prompt block.",
+                            "Use an id from the available_skills prompt block.",
                 )
             }
         }
@@ -50,13 +49,13 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
                 ?: return TextToolResult.failure(
                     code = "SKILL_NOT_FOUND",
                     message = "Skill '$skillId' was not found. " +
-                        "Use an id from the available_skills prompt block.",
+                            "Use an id from the available_skills prompt block.",
                 )
             if (!skill.enabled) {
                 return TextToolResult.failure(
                     code = "SKILL_DISABLED",
                     message = "Skill '$skillId' is disabled. " +
-                        "Use an enabled id from the available_skills prompt block.",
+                            "Use an enabled id from the available_skills prompt block.",
                 )
             }
             TextToolResult.success(
@@ -69,7 +68,7 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
             TextToolResult.failure(
                 code = "SETTINGS_READ_FAILED",
                 message = "Failed to load skill: ${throwable.message ?: throwable::class.java.simpleName}. " +
-                    "Retry after confirming the settings provider is available.",
+                        "Retry after confirming the settings provider is available.",
             )
         }
     }

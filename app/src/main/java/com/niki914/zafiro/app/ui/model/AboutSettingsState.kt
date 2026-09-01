@@ -2,9 +2,8 @@ package com.niki914.zafiro.app.ui.model
 
 import android.net.Uri
 import androidx.annotation.StringRes
-import androidx.core.os.LocaleListCompat
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.base.ComposeMVIViewModel
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.XRepo
 
 enum class AboutSettingsItemId {

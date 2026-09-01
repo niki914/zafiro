@@ -22,14 +22,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.conversation.ConversationSummary
+import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SwipeDismissSettingsItemCard
 import com.niki914.uikit.infra.liquidScreenTopPadding
-import com.niki914.uikit.base.BaseTheme
+import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.conversation.ConversationSummary
 
 internal data class ConversationHistoryUiState(
     val isLoading: Boolean = false,

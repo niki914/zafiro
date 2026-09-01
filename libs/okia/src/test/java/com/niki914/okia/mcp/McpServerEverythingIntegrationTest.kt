@@ -3,7 +3,6 @@ package com.niki914.okia.mcp
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.OkHttpEngine
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -30,8 +29,9 @@ class McpServerEverythingIntegrationTest {
 
     @Before
     fun requireServer() {
-        assumeTrue("server-everything 未启动（npm 安装后运行 " +
-            "node node_modules/@modelcontextprotocol/server-everything/dist/index.js streamableHttp）",
+        assumeTrue(
+            "server-everything 未启动（npm 安装后运行 " +
+                    "node node_modules/@modelcontextprotocol/server-everything/dist/index.js streamableHttp）",
             isServerUp()
         )
     }
@@ -50,7 +50,8 @@ class McpServerEverythingIntegrationTest {
         enabled = true
     )
 
-    private fun client() = LegacyStreamableHttpMcpClient(OkHttpEngine(), HttpTimeouts(5000, 5000, 5000))
+    private fun client() =
+        LegacyStreamableHttpMcpClient(OkHttpEngine(), HttpTimeouts(5000, 5000, 5000))
 
     @Test
     fun `discovers real tools including echo`() = runBlocking {
@@ -77,7 +78,10 @@ class McpServerEverythingIntegrationTest {
     fun `auto detect falls back to legacy on the everything server`() = runBlocking {
         val auto = AutoDetectMcpClient(
             legacy = LegacyStreamableHttpMcpClient(OkHttpEngine(), HttpTimeouts(5000, 5000, 5000)),
-            discovery = DiscoveryStreamableHttpMcpClient(OkHttpEngine(), HttpTimeouts(5000, 5000, 5000))
+            discovery = DiscoveryStreamableHttpMcpClient(
+                OkHttpEngine(),
+                HttpTimeouts(5000, 5000, 5000)
+            )
         )
         val tools = auto.discoverTools(server())
         assertTrue("AutoDetect 发现工具", tools.any { it.name == "echo" })

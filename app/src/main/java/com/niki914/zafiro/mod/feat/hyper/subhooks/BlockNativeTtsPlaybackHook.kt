@@ -23,11 +23,17 @@ class BlockNativeTtsPlaybackHook : SubHook() {
         when (activeTurn?.mode) {
             TurnMode.InjectedLLM -> {
                 param.result = true
-                Logger.i(LOG_TAG, "native response blocked host=xiaoai source=$name kind=tts reason=tts_blocked")
+                Logger.i(
+                    LOG_TAG,
+                    "native response blocked host=xiaoai source=$name kind=tts reason=tts_blocked"
+                )
             }
 
             TurnMode.NativeTakeover, null -> {
-                Logger.d(LOG_TAG, "native tts pass host=xiaoai source=$name reason=takeover_${activeTurn?.mode}")
+                Logger.d(
+                    LOG_TAG,
+                    "native tts pass host=xiaoai source=$name reason=takeover_${activeTurn?.mode}"
+                )
             }
         }
     }

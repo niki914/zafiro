@@ -9,15 +9,12 @@ import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
 import com.niki914.okia.protocol.ProtocolEvent
-import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * TOCTOU 回归测试（评审发现 5）：rewind 的 check（mutex 内）与 tree.rewind

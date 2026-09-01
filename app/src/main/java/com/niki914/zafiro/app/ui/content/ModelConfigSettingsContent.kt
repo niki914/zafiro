@@ -10,13 +10,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
+import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsListPageContent
-import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureIntent

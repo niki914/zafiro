@@ -1,5 +1,8 @@
 package com.niki914.logging
 
+import com.niki914.logging.Logger.enableScope
+import com.niki914.logging.Logger.install
+import com.niki914.logging.Logger.level
 import java.util.concurrent.CopyOnWriteArraySet
 
 /**

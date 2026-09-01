@@ -1,7 +1,6 @@
 package com.niki914.okia.transport
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 
 /**
@@ -48,8 +47,11 @@ class SseLineParser {
                     '\n' -> {
                         // 跨块 \r\n 的尾巴（\r 已触发行结束），不产生新行
                         if (pendingCR) pendingCR = false
-                        else { emitLine(buffer.toString()); buffer.clear() }
+                        else {
+                            emitLine(buffer.toString()); buffer.clear()
+                        }
                     }
+
                     '\r' -> {
                         emitLine(buffer.toString())
                         buffer.clear()
@@ -59,6 +61,7 @@ class SseLineParser {
                             pendingCR = true  // 跨块：\r 结尾，等下一块开头
                         }
                     }
+
                     else -> {
                         pendingCR = false  // 非 \n 字符：\r 已单独作分隔符处理
                         buffer.append(c)

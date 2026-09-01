@@ -51,7 +51,15 @@ class LiquidScreenState(
         onRightClick: (() -> Unit)? = this.onRightClick,
     ) {
         titleDirection = TitleDirection.Forward
-        apply(title, isTitleCollapsible, showLeftButton, showRightButton, showBlurLayer, onLeftClick, onRightClick)
+        apply(
+            title,
+            isTitleCollapsible,
+            showLeftButton,
+            showRightButton,
+            showBlurLayer,
+            onLeftClick,
+            onRightClick
+        )
     }
 
     fun navigateBack(
@@ -64,7 +72,15 @@ class LiquidScreenState(
         onRightClick: (() -> Unit)? = this.onRightClick,
     ) {
         titleDirection = TitleDirection.Back
-        apply(title, isTitleCollapsible, showLeftButton, showRightButton, showBlurLayer, onLeftClick, onRightClick)
+        apply(
+            title,
+            isTitleCollapsible,
+            showLeftButton,
+            showRightButton,
+            showBlurLayer,
+            onLeftClick,
+            onRightClick
+        )
     }
 
     fun update(
@@ -77,7 +93,15 @@ class LiquidScreenState(
         onRightClick: (() -> Unit)? = this.onRightClick,
     ) {
         titleDirection = TitleDirection.None
-        apply(title, isTitleCollapsible, showLeftButton, showRightButton, showBlurLayer, onLeftClick, onRightClick)
+        apply(
+            title,
+            isTitleCollapsible,
+            showLeftButton,
+            showRightButton,
+            showBlurLayer,
+            onLeftClick,
+            onRightClick
+        )
     }
 
     private fun apply(

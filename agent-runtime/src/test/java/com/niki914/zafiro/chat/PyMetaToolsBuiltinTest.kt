@@ -5,7 +5,6 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -26,7 +25,8 @@ class PyMetaToolsBuiltinTest {
         if (code.contains("inspect.signature")) INTROSPECTION_OK else "hello"
     }
 
-    private fun gateway() = RuntimeEnvironment.requireBridge().settings as FakeRuntimeSettingsGateway
+    private fun gateway() =
+        RuntimeEnvironment.requireBridge().settings as FakeRuntimeSettingsGateway
 
     private fun newTool() = PyMetaToolsBuiltin(
         exec = exec,
@@ -38,7 +38,10 @@ class PyMetaToolsBuiltinTest {
         installRuntimeSettingsGatewayForTest()
 
         val result = newTool().invoke(
-            BuiltinToolRequest("py_meta_tools", """{"action":"write","name":"web_search","code":"def main(query: str):\\n    print('x')"}""")
+            BuiltinToolRequest(
+                "py_meta_tools",
+                """{"action":"write","name":"web_search","code":"def main(query: str):\\n    print('x')"}"""
+            )
         )
 
         assertTrue(result.ok)
@@ -63,7 +66,10 @@ class PyMetaToolsBuiltinTest {
         )
 
         val result = tool.invoke(
-            BuiltinToolRequest("py_meta_tools", """{"action":"write","name":"py_bad","code":"def main(query):\\n    pass"}""")
+            BuiltinToolRequest(
+                "py_meta_tools",
+                """{"action":"write","name":"py_bad","code":"def main(query):\\n    pass"}"""
+            )
         )
 
         assertFalse(result.ok)
@@ -76,7 +82,10 @@ class PyMetaToolsBuiltinTest {
         installRuntimeSettingsGatewayForTest(FakeRuntimeSettingsGateway())
 
         val result = newTool().invoke(
-            BuiltinToolRequest("py_meta_tools", """{"action":"write","name":"terminal","code":"def main():\\n    pass"}""")
+            BuiltinToolRequest(
+                "py_meta_tools",
+                """{"action":"write","name":"terminal","code":"def main():\\n    pass"}"""
+            )
         )
 
         assertFalse(result.ok)
@@ -194,13 +203,17 @@ class PyMetaToolsBuiltinTest {
         )
 
         newTool().invoke(
-            BuiltinToolRequest("py_meta_tools", """{"action":"write","name":"py_a","code":"def main():\\n    pass"}""")
+            BuiltinToolRequest(
+                "py_meta_tools",
+                """{"action":"write","name":"py_a","code":"def main():\\n    pass"}"""
+            )
         )
 
         assertFalse(gateway().customPyTools.single { it.name == "py_a" }.enabled)
     }
 
     private companion object {
-        val INTROSPECTION_OK = """{"description":"Search things.","schema":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}}"""
+        val INTROSPECTION_OK =
+            """{"description":"Search things.","schema":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}}"""
     }
 }

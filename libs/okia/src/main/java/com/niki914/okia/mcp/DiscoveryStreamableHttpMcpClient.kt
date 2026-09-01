@@ -71,8 +71,8 @@ internal class DiscoveryStreamableHttpMcpClient(
         if (DISCOVERY_VERSION !in supported) {
             throw McpProtocolException(
                 "MCP server advertised supportedVersions=${supported.ifEmpty { "none" }}; " +
-                    "it does not support $DISCOVERY_VERSION. (A server that accepts server/discover " +
-                    "must list its supported versions; this shape is a protocol violation.)"
+                        "it does not support $DISCOVERY_VERSION. (A server that accepts server/discover " +
+                        "must list its supported versions; this shape is a protocol violation.)"
             )
         }
         return true

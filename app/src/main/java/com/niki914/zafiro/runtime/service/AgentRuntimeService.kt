@@ -18,6 +18,11 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.niki914.logging.Logger
+import com.niki914.store.HostApp
+import com.niki914.store.StoreDescriptorRegistry
+import com.niki914.store.XIpcStoreRepository
+import com.niki914.store.displayNameFor
+import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.ToolStatusLabels
 import com.niki914.zafiro.chat.collectAsFull
@@ -25,10 +30,6 @@ import com.niki914.zafiro.runtime.ipc.IAgentRuntimeService
 import com.niki914.zafiro.runtime.ipc.IAgentStoreService
 import com.niki914.zafiro.runtime.ipc.IRenderFrameCallback
 import com.niki914.zafiro.runtime.ipc.RenderFrame
-import com.niki914.store.HostApp
-import com.niki914.store.StoreDescriptorRegistry
-import com.niki914.store.XIpcStoreRepository
-import com.niki914.store.displayNameFor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,9 +39,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.util.concurrent.atomic.AtomicReference
 import org.json.JSONObject
-import com.niki914.zafiro.app.MainActivity
+import java.util.concurrent.atomic.AtomicReference
 import com.niki914.zafiro.app.R as AppR
 
 class AgentRuntimeService : Service() {
@@ -129,7 +129,7 @@ class AgentRuntimeService : Service() {
                 Logger.w(
                     LOG_TAG,
                     "submit rejected queryLength=${q.length} maxLength=$MAX_QUERY_LENGTH " +
-                        "reason=${if (q.isBlank()) "blank" else "tooLong"}"
+                            "reason=${if (q.isBlank()) "blank" else "tooLong"}"
                 )
                 sendError(
                     cb, "Query is blank or exceeds maximum length of $MAX_QUERY_LENGTH characters",
@@ -201,7 +201,7 @@ class AgentRuntimeService : Service() {
             Logger.d(
                 LOG_TAG,
                 "StoreStub.readStore storeId=$id result=${json != null} " +
-                    "jsonLength=${json?.length ?: 0} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "jsonLength=${json?.length ?: 0} elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             return json
         }
@@ -217,7 +217,7 @@ class AgentRuntimeService : Service() {
             Logger.i(
                 LOG_TAG,
                 "StoreStub.writeStore storeId=$id jsonLength=${j.length} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }
 
@@ -233,7 +233,7 @@ class AgentRuntimeService : Service() {
             Logger.i(
                 LOG_TAG,
                 "StoreStub.mutateStore storeId=$id path=$p result=${updatedJson != null} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             return updatedJson
         }
@@ -304,9 +304,10 @@ class AgentRuntimeService : Service() {
                             StoreDescriptorRegistry.APP_STATE_ID
                         )
                     )
-                    val notified = root.optJSONObject(UNSUPPORTED_NOTIFIED_FIELD) ?: JSONObject().also {
-                        root.put(UNSUPPORTED_NOTIFIED_FIELD, it)
-                    }
+                    val notified =
+                        root.optJSONObject(UNSUPPORTED_NOTIFIED_FIELD) ?: JSONObject().also {
+                            root.put(UNSUPPORTED_NOTIFIED_FIELD, it)
+                        }
                     notified.put(key, true)
                     XIpcStoreRepository.writeJson(
                         this@AgentRuntimeService,
@@ -422,14 +423,14 @@ class AgentRuntimeService : Service() {
                     Logger.i(
                         LOG_TAG,
                         "first render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                            "textLength=${frame.text.length}"
+                                "textLength=${frame.text.length}"
                     )
                 }
                 if (frame.isFinal) {
                     Logger.i(
                         LOG_TAG,
                         "final render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                            "textLength=${frame.text.length}"
+                                "textLength=${frame.text.length}"
                     )
                 }
                 sendFrame(
@@ -441,19 +442,29 @@ class AgentRuntimeService : Service() {
                     ),
                 )
             }
-            Logger.i(LOG_TAG, "turn completed elapsedMs=${System.currentTimeMillis() - startedAtMs}")
+            Logger.i(
+                LOG_TAG,
+                "turn completed elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
         } catch (e: CancellationException) {
-            Logger.i(LOG_TAG, "turn cancelled elapsedMs=${System.currentTimeMillis() - startedAtMs}")
+            Logger.i(
+                LOG_TAG,
+                "turn cancelled elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
             throw e
         } catch (e: Exception) {
             Logger.e(
                 LOG_TAG,
                 "turn failed elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                    "errorType=${e::class.simpleName} message=${e.message}"
+                        "errorType=${e::class.simpleName} message=${e.message}"
             )
             sendFrame(
                 callback,
-                RenderFrame(text = e.message ?: getString(AppR.string.runtime_error_internal), isFirst = true, isFinal = true),
+                RenderFrame(
+                    text = e.message ?: getString(AppR.string.runtime_error_internal),
+                    isFirst = true,
+                    isFinal = true
+                ),
             )
         } finally {
             try {

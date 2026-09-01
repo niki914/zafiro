@@ -195,7 +195,9 @@ class LibTermRuntimeTest {
                                 return listOf(
                                     TerminalTextChunk(
                                         stream = chunk.stream,
-                                        text = "#$chunkCount:${chunk.bytes.toByteArray().decodeToString()}",
+                                        text = "#$chunkCount:${
+                                            chunk.bytes.toByteArray().decodeToString()
+                                        }",
                                         timestampMillis = chunk.timestampMillis,
                                     ),
                                 )
@@ -235,31 +237,32 @@ class LibTermRuntimeTest {
     }
 
     @Test
-    fun `session latest includes startup output emitted before wrapper pipeline attachment`() = runTest {
-        val backend = StreamingBackend(TerminalIdentity.User).also { streamingBackend ->
-            streamingBackend.onStart = {
-                streamingBackend.emitStdout("banner")
+    fun `session latest includes startup output emitted before wrapper pipeline attachment`() =
+        runTest {
+            val backend = StreamingBackend(TerminalIdentity.User).also { streamingBackend ->
+                streamingBackend.onStart = {
+                    streamingBackend.emitStdout("banner")
+                }
             }
-        }
-        val runtime = LibTermRuntime(createManager(backend))
+            val runtime = LibTermRuntime(createManager(backend))
 
-        val opened = assertIs<OpenResult.Success<LibTermSession>>(
-            runtime.open { identity = TerminalIdentity.User },
-        )
-        runCurrent()
+            val opened = assertIs<OpenResult.Success<LibTermSession>>(
+                runtime.open { identity = TerminalIdentity.User },
+            )
+            runCurrent()
 
-        assertEquals(
-            listOf(
-                TerminalTextChunk(
-                    stream = OutputStream.STDOUT,
-                    text = "banner",
-                    timestampMillis = 100L,
+            assertEquals(
+                listOf(
+                    TerminalTextChunk(
+                        stream = OutputStream.STDOUT,
+                        text = "banner",
+                        timestampMillis = 100L,
+                    ),
                 ),
-            ),
-            opened.value.latest(10),
-        )
-        runtime.closeAll()
-    }
+                opened.value.latest(10),
+            )
+            runtime.closeAll()
+        }
 
     @Test
     fun `session latest trims decoded buffer to bounded window`() = runTest {

@@ -1,7 +1,6 @@
 package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json

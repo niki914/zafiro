@@ -16,11 +16,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.LiquidScreen
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.rememberLiquidScreenState
-import com.niki914.uikit.base.BaseTheme
 import kotlinx.coroutines.delay
 
 @Composable

@@ -2,8 +2,8 @@ package com.niki914.okia.mcp
 
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolKind
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest

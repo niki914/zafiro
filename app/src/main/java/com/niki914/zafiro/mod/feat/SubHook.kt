@@ -33,8 +33,8 @@ abstract class SubHook : Hook {
             Logger.w(
                 LOG_TAG,
                 "onHook paramTypes resolve failed name=$name " +
-                    "target=${target.ownerClass}#${target.methodName} " +
-                    "params=${target.methodParams}"
+                        "target=${target.ownerClass}#${target.methodName} " +
+                        "params=${target.methodParams}"
             )
             return
         }
@@ -44,8 +44,8 @@ abstract class SubHook : Hook {
                 Logger.d(
                     LOG_TAG,
                     "onHook install name=$name " +
-                        "target=${target.ownerClass}#${target.methodName} " +
-                        "timing=${target.hookTiming}"
+                            "target=${target.ownerClass}#${target.methodName} " +
+                            "timing=${target.hookTiming}"
                 )
                 lpparam.hookMethod(
                     className = target.ownerClass,

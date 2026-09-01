@@ -1,7 +1,5 @@
 package com.niki914.zafiro.app.ui.model
 
-import androidx.annotation.StringRes
-import com.niki914.logging.Logger
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.zafiro.repo.LlmConfigsDocument
@@ -117,7 +115,12 @@ class ConfigureViewModelTest {
         val deps = RecordingDeps()
         val viewModel = ConfigureViewModel(deps.toDependencies())
 
-        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit, configId = "ghost"))
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.SettingsEdit,
+                configId = "ghost"
+            )
+        )
         advanceUntilIdle()
 
         assertNull(viewModel.uiStateFlow.value.editingConfigId)
@@ -162,7 +165,12 @@ class ConfigureViewModelTest {
         )
         val viewModel = ConfigureViewModel(deps.toDependencies())
         // cfg-b 非 active：初始化即建立"编辑非生效配置"场景
-        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit, configId = "cfg-b"))
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.SettingsEdit,
+                configId = "cfg-b"
+            )
+        )
         advanceUntilIdle()
 
         viewModel.sendIntent(ConfigureIntent.Save)
@@ -246,11 +254,21 @@ class ConfigureViewModelTest {
         val deps = RecordingDeps()
         val viewModel = ConfigureViewModel(deps.toDependencies())
 
-        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew, providerId = "deepseek"))
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.SettingsNew,
+                providerId = "deepseek"
+            )
+        )
         advanceUntilIdle()
         assertEquals("DeepSeek", viewModel.uiStateFlow.value.configNameInput)
 
-        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.Onboarding, providerId = "deepseek"))
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.Onboarding,
+                providerId = "deepseek"
+            )
+        )
         advanceUntilIdle()
         assertEquals("DeepSeek", viewModel.uiStateFlow.value.configNameInput)
     }
@@ -285,7 +303,12 @@ class ConfigureViewModelTest {
             configs = listOf(savedLlmConfig("cfg-a").copy(name = "Same")),
         )
         val viewModel = ConfigureViewModel(deps.toDependencies())
-        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit, configId = "cfg-a"))
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.SettingsEdit,
+                configId = "cfg-a"
+            )
+        )
         advanceUntilIdle()
 
         viewModel.sendIntent(ConfigureIntent.Save)

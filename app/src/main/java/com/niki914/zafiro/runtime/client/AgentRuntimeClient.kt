@@ -10,11 +10,11 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.RemoteException
 import com.niki914.logging.Logger
+import com.niki914.store.XIpcBridge
 import com.niki914.zafiro.runtime.ipc.IAgentRuntimeService
 import com.niki914.zafiro.runtime.ipc.IAgentStoreService
 import com.niki914.zafiro.runtime.ipc.IRenderFrameCallback
 import com.niki914.zafiro.runtime.ipc.RenderFrame
-import com.niki914.store.XIpcBridge
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -104,7 +104,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         Logger.i(
             LOG_TAG,
             "connectAndAwait connected=$connected state=${state?.name ?: "timeout"} " +
-                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
         return connected
     }
@@ -180,7 +180,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
             Logger.d(
                 LOG_TAG,
                 "readStore storeId=$storeId result=${json != null} " +
-                    "jsonLength=${json?.length ?: 0}"
+                        "jsonLength=${json?.length ?: 0}"
             )
             json
         } catch (_: DeadObjectException) {
@@ -337,7 +337,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
             Logger.i(
                 LOG_TAG,
                 "onServiceConnected connected=$connected runtime=${svc != null} " +
-                    "store=${storeService != null}"
+                        "store=${storeService != null}"
             )
             _connectionState.value = if (connected) {
                 ConnectionState.Connected
@@ -363,7 +363,10 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
             _connectionState.value = ConnectionState.Unavailable
             return
         }
-        Logger.d(LOG_TAG, "scheduleReconnect retry=$retryCount/$MAX_RETRIES delayMs=$RETRY_DELAY_MS")
+        Logger.d(
+            LOG_TAG,
+            "scheduleReconnect retry=$retryCount/$MAX_RETRIES delayMs=$RETRY_DELAY_MS"
+        )
         _connectionState.value = ConnectionState.Reconnecting
         mainHandler.postDelayed(
             {

@@ -41,7 +41,15 @@ object TreeFormatter {
             children = nodes,
             moreSummary = emptyList(),
         )
-        return toYaml(rootNode, screenWidth, screenHeight, appPackage, version, nodeCounter, depthExceeded)
+        return toYaml(
+            rootNode,
+            screenWidth,
+            screenHeight,
+            appPackage,
+            version,
+            nodeCounter,
+            depthExceeded
+        )
     }
 
     private fun buildTree(
@@ -150,7 +158,17 @@ object TreeFormatter {
         sb.append("version: \"$version\"\n")
         sb.append("tree:\n")
         for (child in node.children) {
-            sb.append("  - ${nodeToYamlLine(child, indent = 2, screenWidth, screenHeight, version)}\n")
+            sb.append(
+                "  - ${
+                    nodeToYamlLine(
+                        child,
+                        indent = 2,
+                        screenWidth,
+                        screenHeight,
+                        version
+                    )
+                }\n"
+            )
         }
         if (nodeCounter.get() >= 200) {
             sb.append("# truncated: max_nodes(200)\n")
@@ -198,7 +216,17 @@ object TreeFormatter {
             sb.append(", ch: [\n")
             for ((index, child) in children.withIndex()) {
                 sb.append(" ".repeat(indent + 2))
-                sb.append("- ${nodeToYamlLine(child, indent + 2, screenWidth, screenHeight, version)}")
+                sb.append(
+                    "- ${
+                        nodeToYamlLine(
+                            child,
+                            indent + 2,
+                            screenWidth,
+                            screenHeight,
+                            version
+                        )
+                    }"
+                )
                 if (index == children.lastIndex) {
                     sb.append("]")
                 } else {

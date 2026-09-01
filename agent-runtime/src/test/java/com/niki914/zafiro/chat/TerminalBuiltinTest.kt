@@ -12,6 +12,7 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.TerminalBuiltin
 import com.niki914.zafiro.chat.agentic.shell.TerminalRuntimePort
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPort
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
@@ -30,7 +31,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
@@ -212,7 +212,10 @@ class TerminalBuiltinTest {
         installFakeRuntime(fakeRuntime).use {
             installHandles("a0a1").use {
                 val rawResponse = TerminalBuiltin().invokeRawJson(
-                    BuiltinToolRequest(name = "terminal", argumentsJson = """{"command":"sleep 999","timeout":1}""")
+                    BuiltinToolRequest(
+                        name = "terminal",
+                        argumentsJson = """{"command":"sleep 999","timeout":1}"""
+                    )
                 )
                 val json = Json.parseToJsonElement(rawResponse).jsonObject
 

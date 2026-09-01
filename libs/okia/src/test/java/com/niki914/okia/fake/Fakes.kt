@@ -49,8 +49,10 @@ class FakeProtocolMapper(
 
     val builtRequests = mutableListOf<HttpRequest>()
     val builtHistories = mutableListOf<List<Message>>()
+
     // G5 快照测试：每次 buildRequest 收到的请求快照（断言工具描述现取）
     val builtSnapshots = mutableListOf<RequestSnapshot>()
+
     // G5 快照测试：每次 buildRequest 前执行（模拟段间注册表变化）
     var beforeBuild: (suspend () -> Unit)? = null
     var buildRequestError: Throwable? = null
@@ -66,7 +68,10 @@ class FakeProtocolMapper(
     var parseStreamCalls = 0
     private var roundIndex = 0
 
-    override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest {
+    override suspend fun buildRequest(
+        snapshot: RequestSnapshot,
+        history: List<Message>
+    ): HttpRequest {
         beforeBuild?.invoke()
         builtRequests += requestOf(snapshot)
         builtHistories += history
@@ -75,7 +80,10 @@ class FakeProtocolMapper(
         return requestOf(snapshot)
     }
 
-    override suspend fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message =
+    override suspend fun encodeToolResult(
+        call: ContentBlock.ToolCall,
+        outcome: ToolCallOutcome
+    ): Message =
         Message.ToolResult(call.id, call.name, outcome)
 
     override fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent> {
@@ -123,7 +131,8 @@ class FakeHttpEngine : HttpEngine {
         return streamResult()
     }
 
-    override suspend fun unary(request: HttpRequest): HttpResponse = TODO("MCP transport lands in T8")
+    override suspend fun unary(request: HttpRequest): HttpResponse =
+        TODO("MCP transport lands in T8")
 
     override fun close(): Unit = Unit
 }
@@ -133,14 +142,21 @@ class FakeAgentLoop(
     var behavior: suspend (LoopRequest, suspend (TurnEvent) -> Unit) -> TurnResult =
         { _, _ -> TurnResult.Completed(CompletionReason.Stop) }
 ) : AgentLoop {
-    override suspend fun run(request: LoopRequest, onEvent: suspend (TurnEvent) -> Unit): TurnResult =
+    override suspend fun run(
+        request: LoopRequest,
+        onEvent: suspend (TurnEvent) -> Unit
+    ): TurnResult =
         behavior(request, onEvent)
 }
 
 /** MCP 客户端 stub：T2 门面不消费，仅满足依赖装配。 */
 object StubMcpClient : McpClient {
     override suspend fun discoverTools(server: McpServer): List<McpDiscoveredTool> = emptyList()
-    override suspend fun callTool(server: McpServer, toolName: String, argumentsJson: String): McpCallResult =
+    override suspend fun callTool(
+        server: McpServer,
+        toolName: String,
+        argumentsJson: String
+    ): McpCallResult =
         McpCallResult(false, emptyList())
 }
 

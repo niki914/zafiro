@@ -55,17 +55,17 @@ import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
-import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline
-import com.niki914.zafiro.app.ui.content.reveal.rememberStreamReveal
-import com.niki914.zafiro.app.R
+import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ActionBarButton
 import com.niki914.uikit.infra.component.LiquidTextField
 import com.niki914.uikit.infra.shape.G2BubbleShape
 import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.uikit.infra.shape.G2FieldShape
+import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline
+import com.niki914.zafiro.app.ui.content.reveal.rememberStreamReveal
 import com.niki914.zafiro.app.ui.model.ActionSource
 import com.niki914.zafiro.chat.LlmErrorCode
-import com.niki914.uikit.base.BaseTheme
 
 internal data class AssistantErrorUi(
     val titleRes: Int,
@@ -87,7 +87,7 @@ internal fun toAssistantErrorUi(message: String, code: LlmErrorCode?): Assistant
         LlmErrorCode.Auth, LlmErrorCode.Quota, LlmErrorCode.RateLimit,
         LlmErrorCode.Overloaded, LlmErrorCode.Transport, LlmErrorCode.Parse,
         LlmErrorCode.RetryExhausted,
-        -> AssistantErrorUi(
+            -> AssistantErrorUi(
             titleRes = R.string.ui_home_error_network_title,
             body = message.trim().ifEmpty { null },
         )
@@ -95,7 +95,7 @@ internal fun toAssistantErrorUi(message: String, code: LlmErrorCode?): Assistant
         // 内部错误（我们的问题 / 未知）：标题分类 + 原始 message 透传，空则兜底
         LlmErrorCode.TurnConflict, LlmErrorCode.HookFailed,
         LlmErrorCode.ToolExecutionFailed, null,
-        -> {
+            -> {
             val normalized = message.trim()
             if (normalized.isEmpty()) {
                 AssistantErrorUi(

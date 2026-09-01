@@ -96,6 +96,7 @@ class DeepSeekCompat : Compat {
     override val requiresToolResultName: Boolean = false
     override val supportsUsageInStreaming: Boolean = true
     override val supportsFinishReason: Boolean = true
+
     // 约定俗成集合（G4 裁决，对照 pi provider-retry / codex retry）：
     // 408 / 409 / 429 + 全部 5xx。其余 4xx（400/401/403/402/404 等）不可重试。
     override val retryableStatusCodes: Set<Int> = setOf(408, 409, 429) + (500..599).toSet()
@@ -125,6 +126,7 @@ class OpenAIChatCompletionCompat : Compat {
 class OpenAIResponsesCompat : Compat {
     override val id: String = "openai-responses"
     override val defaultEndpoint: String? = "https://api.openai.com/v1/responses"
+
     // Responses 请求体字段为 max_output_tokens，语义 = 输出 token 上限
     override val maxTokensField: MaxTokensField = MaxTokensField.MaxCompletionTokens
     override val thinkingFormat: ThinkingFormat = ThinkingFormat.ReasoningEffort
@@ -161,6 +163,7 @@ class AnthropicMessagesCompat : Compat {
 /** Google Gemini（Generative Language API）兼容配置。 */
 class GeminiCompat : Compat {
     override val id: String = "gemini"
+
     // 端点含 {model} 占位符：Gemini 的模型在 URL 路径中，协议 buildRequest 时替换
     override val defaultEndpoint: String? =
         "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse"

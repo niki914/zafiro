@@ -19,8 +19,8 @@ data class HttpRequest(
     // 敏感 header 值与 URL query 值脱敏；body 不输出内容，只保留有无信息
     override fun toString(): String =
         "HttpRequest(url=${redactUrl(url)}, method=$method, " +
-            "headers=${redactHeaders(headers, sensitiveHeaderNames)}, " +
-            "body=${if (body == null) "null" else "██"}, timeouts=$timeouts)"
+                "headers=${redactHeaders(headers, sensitiveHeaderNames)}, " +
+                "body=${if (body == null) "null" else "██"}, timeouts=$timeouts)"
 }
 
 /** 精确匹配的敏感 header 名（忽略大小写）。 */
@@ -41,7 +41,7 @@ private val SENSITIVE_HEADER_FRAGMENTS = listOf(
 fun isSensitiveHeader(name: String): Boolean {
     val lower = name.lowercase()
     return lower in EXACT_SENSITIVE_HEADERS ||
-        SENSITIVE_HEADER_FRAGMENTS.any { lower.contains(it) }
+            SENSITIVE_HEADER_FRAGMENTS.any { lower.contains(it) }
 }
 
 /**
@@ -51,7 +51,7 @@ fun isSensitiveHeader(name: String): Boolean {
 fun redactHeaders(headers: Map<String, String>, extraSensitive: Set<String> = emptySet()): String =
     headers.entries.joinToString(prefix = "{", postfix = "}") { (name, value) ->
         val sensitive = isSensitiveHeader(name) ||
-            extraSensitive.any { name.equals(it, ignoreCase = true) }
+                extraSensitive.any { name.equals(it, ignoreCase = true) }
         "$name=${if (sensitive) "██" else value}"
     }
 

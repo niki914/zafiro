@@ -23,7 +23,12 @@ class RealConversationTest {
     private fun user(text: String) = Message.User(listOf(ContentBlock.Text(text)))
 
     private fun assistant(text: String) =
-        Message.Assistant(AssistantMessage(listOf(ContentBlock.Text(text)), stopReason = StopReason.Stop))
+        Message.Assistant(
+            AssistantMessage(
+                listOf(ContentBlock.Text(text)),
+                stopReason = StopReason.Stop
+            )
+        )
 
     private fun toolResult(callId: String) =
         Message.ToolResult(callId, "calculator", ToolCallOutcome.Success("42"))
@@ -246,7 +251,8 @@ class RealConversationTest {
     fun snapshotCarriesLive() = runBlocking {
         val tree = newTree()
         tree.append(user("q1"))
-        val live = AssistantMessage(listOf(ContentBlock.Text("partial")), stopReason = StopReason.Pending)
+        val live =
+            AssistantMessage(listOf(ContentBlock.Text("partial")), stopReason = StopReason.Pending)
 
         val snapshot = tree.toSnapshot(live)
 
@@ -335,11 +341,13 @@ class RealConversationTest {
                     val entry = tree.append(message)
                     model.append(entry) // 共享 tree 的真实 id
                 }
+
                 in 5..7 -> {
                     val messages = List(random.nextInt(1, 4)) { randomMessage(random) }
                     val entries = tree.appendAll(messages)
                     entries.forEach { model.append(it) }
                 }
+
                 else -> {
                     if (model.entries.isNotEmpty()) {
                         val target = model.entries[random.nextInt(model.entries.size)].id

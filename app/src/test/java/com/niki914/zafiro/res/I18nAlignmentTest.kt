@@ -58,7 +58,7 @@ class I18nAlignmentTest {
             }
             error(
                 "app/src/main/res not found upward from " +
-                    System.getProperty("user.dir"),
+                        System.getProperty("user.dir"),
             )
         }
     }

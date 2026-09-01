@@ -20,17 +20,18 @@ class TerminalManager(
         authorizationMode: AuthorizationMode = AuthorizationMode.REQUEST_IF_NEEDED,
         openOptions: TerminalOpenOptions = TerminalOpenOptions(),
     ): OpenResult<TerminalSession> {
-        val normalizedOpenOptions = when (val result = normalizeOpenOptions(identity, openOptions)) {
-            is NormalizeOpenOptionsResult.Valid -> result.openOptions
-            is NormalizeOpenOptionsResult.Invalid -> {
-                return OpenResult.Failure(
-                    TerminalFailure.InvalidOpenOptions(
-                        identity = identity,
-                        message = result.message,
-                    ),
-                )
+        val normalizedOpenOptions =
+            when (val result = normalizeOpenOptions(identity, openOptions)) {
+                is NormalizeOpenOptionsResult.Valid -> result.openOptions
+                is NormalizeOpenOptionsResult.Invalid -> {
+                    return OpenResult.Failure(
+                        TerminalFailure.InvalidOpenOptions(
+                            identity = identity,
+                            message = result.message,
+                        ),
+                    )
+                }
             }
-        }
 
         return when (val availability = privilegeProvider.getAvailability(identity)) {
             is BackendAvailability.Unavailable -> OpenResult.Failure(availability.failure)

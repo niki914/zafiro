@@ -57,7 +57,8 @@ object ToolOutputTruncator {
         var keptBytes = 0
         for (index in lines.indices.reversed()) {
             if (kept.size >= maxLines) break
-            val lineBytes = lines[index].toByteArray(Charsets.UTF_8).size + if (kept.isNotEmpty()) 1 else 0
+            val lineBytes =
+                lines[index].toByteArray(Charsets.UTF_8).size + if (kept.isNotEmpty()) 1 else 0
             if (keptBytes + lineBytes > maxBytes) {
                 // 一个行都放不下时取该行尾部（UTF-8 安全，允许部分行）
                 if (kept.isEmpty()) {

@@ -36,11 +36,11 @@ data class OkiaConfig(
     // apiKey 与敏感 header 值脱敏；mcpServers 内 header 由 McpServer.toString 自行脱敏
     override fun toString(): String =
         "OkiaConfig(endpoint=$endpoint, apiKey=██, model=$model, temperature=$temperature, " +
-            "maxTokens=$maxTokens, connectTimeoutSeconds=$connectTimeoutSeconds, " +
-            "readTimeoutSeconds=$readTimeoutSeconds, writeTimeoutSeconds=$writeTimeoutSeconds, " +
-            "idleTimeoutSeconds=$idleTimeoutSeconds, headers=${redactHeaders(headers)}, " +
-            "retryPolicy=$retryPolicy, mcpServers=$mcpServers, hooks=$hooks, " +
-            "toolRegistry=$toolRegistry, httpEngine=$httpEngine)"
+                "maxTokens=$maxTokens, connectTimeoutSeconds=$connectTimeoutSeconds, " +
+                "readTimeoutSeconds=$readTimeoutSeconds, writeTimeoutSeconds=$writeTimeoutSeconds, " +
+                "idleTimeoutSeconds=$idleTimeoutSeconds, headers=${redactHeaders(headers)}, " +
+                "retryPolicy=$retryPolicy, mcpServers=$mcpServers, hooks=$hooks, " +
+                "toolRegistry=$toolRegistry, httpEngine=$httpEngine)"
 
     /** 可变构建器。build() 之后配置不可变。 */
     class Builder {

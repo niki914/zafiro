@@ -6,14 +6,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import com.niki914.zafiro.app.R
-import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
+import com.niki914.zafiro.settings.model.LlmProtocol
 
 @Composable
 internal fun ProviderAccessSettingsBlock(

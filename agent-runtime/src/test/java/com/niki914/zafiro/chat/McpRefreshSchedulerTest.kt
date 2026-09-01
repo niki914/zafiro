@@ -1,6 +1,5 @@
 package com.niki914.zafiro.chat
 
-import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.okia.Okia
 import com.niki914.okia.OkiaConfig
 import com.niki914.okia.TurnOptions
@@ -10,6 +9,7 @@ import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.mcp.McpDiscoverySnapshot
 import com.niki914.okia.mcp.McpRefreshResult
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -65,7 +65,8 @@ class McpRefreshSchedulerTest {
         override suspend fun close() = error("not used")
     }
 
-    private fun ok(result: McpRefreshResult) = McpRefreshResult(result.refreshedServers, result.failedServers)
+    private fun ok(result: McpRefreshResult) =
+        McpRefreshResult(result.refreshedServers, result.failedServers)
 
     @Test
     fun failureThenSuccess_retriesWithBackoff() = runTest {

@@ -29,7 +29,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.onTimeout
 import kotlinx.coroutines.selects.select
@@ -168,7 +167,8 @@ internal class RealAgentLoop : AgentLoop {
                 // 发送时的工具集」而非 send 时固定值；合法变更（MCP 刷新 /
                 // Okia.update）走回合外，段间可见。
                 val serializationHolder = SerializationHolder(
-                    request.snapshot.copy(tools = request.toolRegistry.snapshot().map { it.descriptor }),
+                    request.snapshot.copy(
+                        tools = request.toolRegistry.snapshot().map { it.descriptor }),
                     history
                 )
                 hookStep(request, onEvent, "beforeSerialization") {
@@ -188,7 +188,12 @@ internal class RealAgentLoop : AgentLoop {
                 throw e
             } catch (e: Exception) {
                 return SegmentOutcome.Finished(
-                    fail(request, onEvent, state, LLMError(LLMErrorCode.Parse, "request build failed", e))
+                    fail(
+                        request,
+                        onEvent,
+                        state,
+                        LLMError(LLMErrorCode.Parse, "request build failed", e)
+                    )
                 )
             }
 
@@ -212,9 +217,15 @@ internal class RealAgentLoop : AgentLoop {
                         continue
                     }
                     return SegmentOutcome.Finished(
-                        fail(request, onEvent, state, exhaustedError(send.error, turnPolicy != null))
+                        fail(
+                            request,
+                            onEvent,
+                            state,
+                            exhaustedError(send.error, turnPolicy != null)
+                        )
                     )
                 }
+
                 is SendResult.Ok -> {
                     // 4. 流收集（idle 检测内嵌）
                     try {
@@ -233,7 +244,12 @@ internal class RealAgentLoop : AgentLoop {
                             continue
                         }
                         return SegmentOutcome.Finished(
-                            fail(request, onEvent, state, exhaustedError(e.error, turnPolicy != null))
+                            fail(
+                                request,
+                                onEvent,
+                                state,
+                                exhaustedError(e.error, turnPolicy != null)
+                            )
                         )
                     } catch (e: StreamIdleTimedOut) {
                         // 事件 + partial commit 已在收集内完成；独立终态，不重试
@@ -261,7 +277,11 @@ internal class RealAgentLoop : AgentLoop {
         while (true) {
             val failure = try {
                 val requestHolder = HttpRequestHolder(httpRequest)
-                hookStep(request, onEvent, "beforeRequest") { it.beforeRequest(requestHolder) }?.let {
+                hookStep(
+                    request,
+                    onEvent,
+                    "beforeRequest"
+                ) { it.beforeRequest(requestHolder) }?.let {
                     return SendResult.Failed(
                         LLMError(LLMErrorCode.HookFailed, "beforeRequest hook failed"),
                         finalized = true
@@ -283,6 +303,7 @@ internal class RealAgentLoop : AgentLoop {
                         statusCode = resp.statusCode,
                         retryDelayMs = parseRetryAfter(resp.headers)
                     )
+
                     is StreamResponse.Ok -> {
                         val contentType = resp.headers.entries
                             .firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }?.value
@@ -391,6 +412,7 @@ internal class RealAgentLoop : AgentLoop {
                 is StreamSignal.Closed -> throw StreamTerminated(
                     LLMError(LLMErrorCode.Parse, "stream ended without Completed")
                 )
+
                 is StreamSignal.Idle -> {
                     // 超时也写入（G7 裁决）：partial 消息 commit 进历史，不丢弃
                     val partial = state.partialMessage()
@@ -422,9 +444,16 @@ internal class RealAgentLoop : AgentLoop {
                     onEvent(TurnEvent.TextStarted(state.blocks.size, state.partialMessage()))
                 } else {
                     state.text.append(event.text)
-                    onEvent(TurnEvent.TextDelta(state.blocks.size, event.text, state.partialMessage()))
+                    onEvent(
+                        TurnEvent.TextDelta(
+                            state.blocks.size,
+                            event.text,
+                            state.partialMessage()
+                        )
+                    )
                 }
             }
+
             is ProtocolEvent.ThinkingDelta -> {
                 flushText(state, onEvent)
                 if (!state.thinkingStarted) {
@@ -433,9 +462,16 @@ internal class RealAgentLoop : AgentLoop {
                     onEvent(TurnEvent.ThinkingStarted(state.blocks.size, state.partialMessage()))
                 } else {
                     state.thinking.append(event.text)
-                    onEvent(TurnEvent.ThinkingDelta(state.blocks.size, event.text, state.partialMessage()))
+                    onEvent(
+                        TurnEvent.ThinkingDelta(
+                            state.blocks.size,
+                            event.text,
+                            state.partialMessage()
+                        )
+                    )
                 }
             }
+
             is ProtocolEvent.ThinkingSignature -> {
                 state.reasoningSignature = event.signature
                 // 块级签名（评审发现）：签名绑定到当前进行中的块（Anthropic 思考块 /
@@ -460,10 +496,14 @@ internal class RealAgentLoop : AgentLoop {
                     )
                 )
             }
+
             is ProtocolEvent.ToolCallDelta -> {
                 // 完整响应 API 可能无 Started 直接发 Delta / Ready，找不到时创建
                 val pending = findPending(state, event.callId)
-                    ?: PendingToolCall(event.callId, event.toolName).also { state.pendingToolCalls += it }
+                    ?: PendingToolCall(
+                        event.callId,
+                        event.toolName
+                    ).also { state.pendingToolCalls += it }
                 if (pending.id.isEmpty()) pending.id = event.callId
                 if (pending.name.isEmpty()) pending.name = event.toolName
                 pending.arguments.append(event.delta)
@@ -475,10 +515,14 @@ internal class RealAgentLoop : AgentLoop {
                     )
                 )
             }
+
             is ProtocolEvent.ToolCallReady -> {
                 // 完整响应 API 直接 Ready（无 Started）：pending 不存在时创建
                 val pending = findPending(state, event.callId)
-                    ?: PendingToolCall(event.callId, event.toolName).also { state.pendingToolCalls += it }
+                    ?: PendingToolCall(
+                        event.callId,
+                        event.toolName
+                    ).also { state.pendingToolCalls += it }
                 val call = ContentBlock.ToolCall(
                     id = pending.id.ifEmpty { event.callId },
                     name = pending.name.ifEmpty { event.toolName },
@@ -503,6 +547,7 @@ internal class RealAgentLoop : AgentLoop {
                     )
                 )
             }
+
             is ProtocolEvent.Completed -> {
                 state.usage = event.usage
                 state.responseModel = event.responseModel
@@ -512,13 +557,16 @@ internal class RealAgentLoop : AgentLoop {
                         flushBlocks(state, onEvent)
                         throw StreamCompleted(buildFinalAssistant(state))
                     }
+
                     else -> throw StreamTerminated(
                         LLMError(
-                            LLMErrorCode.Parse, "abnormal completion stopReason: ${event.stopReason}"
+                            LLMErrorCode.Parse,
+                            "abnormal completion stopReason: ${event.stopReason}"
                         )
                     )
                 }
             }
+
             is ProtocolEvent.Error -> throw StreamTerminated(
                 LLMError(
                     // retryable（协议层判定的临时错误，如 Anthropic overloaded_error）→
@@ -563,7 +611,8 @@ internal class RealAgentLoop : AgentLoop {
                 )
                 continue
             }
-            val holder = ToolCallHolder(call.id, call.name, call.argumentsJson, registered.descriptor)
+            val holder =
+                ToolCallHolder(call.id, call.name, call.argumentsJson, registered.descriptor)
             var hookFailed: ToolCallOutcome? = null
             try {
                 for (hook in request.hooks) {
@@ -581,7 +630,12 @@ internal class RealAgentLoop : AgentLoop {
                 holder.outcome != null -> plans += Plan(call, holder, null, null, holder.outcome)
                 else -> plans += Plan(
                     call, holder, registered.executor,
-                    ToolCallContext(call.id, call.name, registered.descriptor, holder.argumentsJson),
+                    ToolCallContext(
+                        call.id,
+                        call.name,
+                        registered.descriptor,
+                        holder.argumentsJson
+                    ),
                     null
                 )
             }
@@ -624,7 +678,11 @@ internal class RealAgentLoop : AgentLoop {
             return ToolExecutionOutcome.Failure(
                 failTurn(
                     onEvent, assistant,
-                    LLMError(LLMErrorCode.ToolExecutionFailed, "tool ${e.toolCall.name} execution failed", e.failure)
+                    LLMError(
+                        LLMErrorCode.ToolExecutionFailed,
+                        "tool ${e.toolCall.name} execution failed",
+                        e.failure
+                    )
                 )
             )
         } catch (e: CancellationException) {
@@ -650,7 +708,8 @@ internal class RealAgentLoop : AgentLoop {
         // Phase 3（顺序，保序）：执行过的调用走 afterToolCall（可替换结果，
         // 异常 → Failure outcome）→ encodeToolResult → 批量 commit + 事件。
         // 已定 outcome（阻断 / hook 失败）的调用不执行也不走 afterToolCall。
-        val resultMessages = commitToolOutcomes(request, onEvent, assistant, plans, executedOutcomes)
+        val resultMessages =
+            commitToolOutcomes(request, onEvent, assistant, plans, executedOutcomes)
         return ToolExecutionOutcome.Success(resultMessages)
     }
 
@@ -705,12 +764,25 @@ internal class RealAgentLoop : AgentLoop {
     ): TurnEvent {
         val index = assistant.content.indexOf(toolCall)
         return when (outcome) {
-            is ToolCallOutcome.Success -> TurnEvent.ToolSucceeded(index, toolCall, outcome, assistant)
+            is ToolCallOutcome.Success -> TurnEvent.ToolSucceeded(
+                index,
+                toolCall,
+                outcome,
+                assistant
+            )
+
             is ToolCallOutcome.Failure -> TurnEvent.ToolFailed(index, toolCall, outcome, assistant)
             is ToolCallOutcome.Intercepted ->
                 if (outcome.isError) TurnEvent.ToolFailed(index, toolCall, outcome, assistant)
                 else TurnEvent.ToolSucceeded(index, toolCall, outcome, assistant)
-            is ToolCallOutcome.Interrupted -> TurnEvent.ToolFailed(index, toolCall, outcome, assistant)
+
+            is ToolCallOutcome.Interrupted -> TurnEvent.ToolFailed(
+                index,
+                toolCall,
+                outcome,
+                assistant
+            )
+
             is ToolCallOutcome.Unknown -> TurnEvent.ToolFailed(index, toolCall, outcome, assistant)
         }
     }
@@ -764,7 +836,12 @@ internal class RealAgentLoop : AgentLoop {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            return fail(request, onEvent, StreamState(), LLMError(LLMErrorCode.HookFailed, "$phase hook failed", e))
+            return fail(
+                request,
+                onEvent,
+                StreamState(),
+                LLMError(LLMErrorCode.HookFailed, "$phase hook failed", e)
+            )
         }
     }
 
@@ -918,8 +995,10 @@ private class StreamState {
     var responseModel: String? = null
     var stopReason: StopReason? = null
     var reasoningSignature: String? = null
+
     // 待绑定到下一块 flush 的签名（ThinkingSignature 事件绑定到进行中的块）
     var pendingBlockSignature: String? = null
+
     // 待绑定到下一思考块 flush 的 opaque payload（ThinkingOpaquePayload 事件，
     // 协议私有、loop 不解析；即使无思考文本也落块）
     val pendingThinkingPayloads = mutableListOf<String>()
@@ -963,7 +1042,8 @@ private class StreamTerminated(val error: LLMError) : Exception()
 private object StreamIdleTimedOut : Exception()
 
 /** executor 违反「永不抛异常」契约的哨兵：Phase 2 并发中传播，外层转 Failed。 */
-private class ToolExecutionException(val toolCall: ContentBlock.ToolCall, val failure: Throwable) : Exception()
+private class ToolExecutionException(val toolCall: ContentBlock.ToolCall, val failure: Throwable) :
+    Exception()
 
 /** 单条工具调用执行计划（Phase 1 解析产物；outcome 空 = 待执行）。 */
 private data class Plan(

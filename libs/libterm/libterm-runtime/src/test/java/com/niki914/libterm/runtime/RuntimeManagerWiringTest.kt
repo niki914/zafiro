@@ -69,7 +69,10 @@ class RuntimeManagerWiringTest {
         assertEquals(1, factory.createCount(TerminalIdentity.Shizuku))
         assertEquals(0, factory.createCount(TerminalIdentity.User))
         assertEquals(0, factory.createCount(TerminalIdentity.Su))
-        assertEquals(listOf(TerminalOpenOptions()), factory.startedOptions(TerminalIdentity.Shizuku))
+        assertEquals(
+            listOf(TerminalOpenOptions()),
+            factory.startedOptions(TerminalIdentity.Shizuku)
+        )
         assertTrue(manager.list().isEmpty())
     }
 
@@ -106,7 +109,8 @@ class RuntimeManagerWiringTest {
         private val startupFailure: TerminalFailure,
     ) {
         val createCounts = mutableMapOf<TerminalIdentity, Int>()
-        private val startedOptions = mutableMapOf<TerminalIdentity, MutableList<TerminalOpenOptions>>()
+        private val startedOptions =
+            mutableMapOf<TerminalIdentity, MutableList<TerminalOpenOptions>>()
 
         fun createCount(identity: TerminalIdentity): Int {
             return createCounts[identity] ?: 0

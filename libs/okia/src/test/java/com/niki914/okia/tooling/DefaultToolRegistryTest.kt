@@ -4,7 +4,6 @@ import com.niki914.okia.fake.RecordingToolExecutor
 import com.niki914.okia.fake.localTool
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**

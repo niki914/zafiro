@@ -2,9 +2,9 @@ package com.niki914.zafiro.app.ui.model
 
 import androidx.annotation.StringRes
 import com.niki914.logging.Logger
+import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
-import com.niki914.uikit.base.ComposeMVIViewModel
 
 data class SettingsSectionUiState(
     @StringRes val titleRes: Int,
@@ -26,7 +26,7 @@ class SettingsViewModel : ComposeMVIViewModel<SettingsIntent, SettingsUiState, S
         Logger.d(
             LOG_TAG,
             "initUiState sections=${state.sections.size} " +
-                "groups=${state.sections.sumOf { it.groups.size }}"
+                    "groups=${state.sections.sumOf { it.groups.size }}"
         )
         return state
     }

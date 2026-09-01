@@ -2,7 +2,6 @@ package com.niki914.zafiro.app.ui.content
 
 import android.content.ClipData
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -54,16 +53,14 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
-import com.niki914.uikit.infra.shape.G2FieldShape
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -71,7 +68,8 @@ import kotlinx.serialization.json.jsonPrimitive
 // ── shared animation specs ─────────────────────────────────────────────────
 
 private val StaggerFadeSpring = spring<Float>(dampingRatio = 1f, stiffness = 300f)
-private val StaggerSlideSpring = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.8f, stiffness = 300f)
+private val StaggerSlideSpring =
+    spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.8f, stiffness = 300f)
 
 // ── nested scroll: pass through user drag, block fling inertia ─────────────
 
@@ -96,6 +94,7 @@ private val CommandToolNames = setOf("terminal", "execute_python")
 
 /** 结果文本型工具（精确匹配）：结果体为等宽结果文本（可选中、无复制按钮）。 */
 private val ResultTextToolNames = setOf("load_skill")
+
 /**
  * Stateless tool call list. Single-tool: renders one [CollapsibleBlock] directly.
  * Multi-tool: renders a header [CollapsibleBlock] (title = count) whose expansion
@@ -179,7 +178,9 @@ private fun SingleToolRow(
         } else {
             Modifier
         }
-        Box(modifier = Modifier.fillMaxWidth().then(contentModifier)) {
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .then(contentModifier)) {
             if (useCommandBody) {
                 CodeToolBody(
                     command = inputPreview.orEmpty(),
@@ -274,16 +275,23 @@ private fun CodeToolBody(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = CommandPanelPadX, end = if (singleLine) CommandPanelPadX else OutputBtnInset)
+                    .padding(
+                        start = CommandPanelPadX,
+                        end = if (singleLine) CommandPanelPadX else OutputBtnInset
+                    )
                     .padding(vertical = OutputPadY),
                 onTextLayout = { singleLine = it.lineCount == 1 },
             )
             MiniCopyButton(
                 text = output,
                 modifier = if (singleLine) {
-                    Modifier.align(Alignment.CenterEnd).padding(end = CopyBtnGap)
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = CopyBtnGap)
                 } else {
-                    Modifier.align(Alignment.TopEnd).padding(top = CopyBtnGap, end = CopyBtnGap)
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = CopyBtnGap, end = CopyBtnGap)
                 },
             )
         }
@@ -423,7 +431,9 @@ internal fun ToolResultText(
             .heightIn(max = ResultScrollMaxHeight)
             .let {
                 if (overflow) {
-                    it.nestedScroll(BlockFlingScrollPropagation).verticalScroll(scrollState)
+                    it
+                        .nestedScroll(BlockFlingScrollPropagation)
+                        .verticalScroll(scrollState)
                 } else {
                     it
                 }

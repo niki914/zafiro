@@ -47,7 +47,8 @@ class RealOkiaMcpTest {
     private fun deps(client: McpClient, agentLoop: FakeAgentLoop): OkiaDependencies =
         object : OkiaDependencies {
             override val agentLoop = agentLoop
-            override val protocolMapper = FakeProtocolMapper(emptyList<com.niki914.okia.protocol.ProtocolEvent>())
+            override val protocolMapper =
+                FakeProtocolMapper(emptyList<com.niki914.okia.protocol.ProtocolEvent>())
             override val mcpClient = client
         }
 

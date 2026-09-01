@@ -24,6 +24,6 @@ data class RequestSnapshot(
     // apiKey 与敏感 header 值脱敏（systemPrompt 非凭据，保留）
     override fun toString(): String =
         "RequestSnapshot(endpoint=$endpoint, apiKey=██, model=$model, " +
-            "systemPrompt=$systemPrompt, temperature=$temperature, maxTokens=$maxTokens, " +
-            "headers=${redactHeaders(headers)}, timeouts=$timeouts, tools=$tools)"
+                "systemPrompt=$systemPrompt, temperature=$temperature, maxTokens=$maxTokens, " +
+                "headers=${redactHeaders(headers)}, timeouts=$timeouts, tools=$tools)"
 }

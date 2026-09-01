@@ -185,7 +185,10 @@ class PromptComposerTest {
                 tools = ResolvedTools(
                     mcpServers = listOf(
                         McpServerDefinition.Http(name = "docs", url = "https://example.com/docs"),
-                        McpServerDefinition.Http(name = "broken", url = "https://example.com/broken"),
+                        McpServerDefinition.Http(
+                            name = "broken",
+                            url = "https://example.com/broken"
+                        ),
                     )
                 ),
             )
@@ -272,7 +275,11 @@ class PromptComposerTest {
                 additionalInstructions = "",
                 enabledSkills = listOf(
                     skill(id = "skill-b", name = "Skill B", description = "Description B"),
-                    skill(id = "group-a/skill-a", name = "Group Skill", description = "Group description"),
+                    skill(
+                        id = "group-a/skill-a",
+                        name = "Group Skill",
+                        description = "Group description"
+                    ),
                 ),
                 tools = ResolvedTools(
                     builtinTools = listOf(loadSkillBuiltin()),

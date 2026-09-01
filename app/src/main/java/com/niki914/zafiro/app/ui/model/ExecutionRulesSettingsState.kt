@@ -3,9 +3,9 @@ package com.niki914.zafiro.app.ui.model
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
+import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.uikit.base.ComposeMVIViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -159,7 +159,7 @@ class ExecutionRulesSettingsViewModel :
             Logger.d(
                 LOG_TAG,
                 "load rules=${loadedItems.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             updateState {
                 copy(
@@ -272,7 +272,7 @@ class ExecutionRulesSettingsViewModel :
             Logger.w(
                 LOG_TAG,
                 "save rejected nameError=${normalizedName.isBlank()} " +
-                    "patternsError=${normalizedPatterns.isEmpty()}"
+                        "patternsError=${normalizedPatterns.isEmpty()}"
             )
             val nameErrorResId = if (normalizedName.isBlank()) {
                 R.string.execution_rules_error_name_required

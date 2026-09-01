@@ -2,8 +2,8 @@ package com.niki914.zafiro.repo
 
 import android.content.Context
 import android.content.ContextWrapper
-import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.store.StoreDescriptorRegistry
+import com.niki914.zafiro.app.util.SilentLoggerRule
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -15,7 +15,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

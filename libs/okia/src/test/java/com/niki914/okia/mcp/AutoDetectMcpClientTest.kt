@@ -33,7 +33,10 @@ class AutoDetectMcpClientTest {
         server.start()
         auto = AutoDetectMcpClient(
             legacy = LegacyStreamableHttpMcpClient(OkHttpEngine(), HttpTimeouts(3000, 3000, 3000)),
-            discovery = DiscoveryStreamableHttpMcpClient(OkHttpEngine(), HttpTimeouts(3000, 3000, 3000))
+            discovery = DiscoveryStreamableHttpMcpClient(
+                OkHttpEngine(),
+                HttpTimeouts(3000, 3000, 3000)
+            )
         )
     }
 
@@ -50,7 +53,8 @@ class AutoDetectMcpClientTest {
     )
 
     private fun sse(body: String) =
-        MockResponse().setResponseCode(200).setHeader("Content-Type", "text/event-stream").setBody(body)
+        MockResponse().setResponseCode(200).setHeader("Content-Type", "text/event-stream")
+            .setBody(body)
 
     private fun rpcResult(b: JsonObject, result: String): MockResponse {
         val id = b["id"]?.jsonPrimitive?.content ?: "null"
@@ -61,7 +65,7 @@ class AutoDetectMcpClientTest {
         val id = b["id"]?.jsonPrimitive?.content ?: "null"
         return sse(
             "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":$id," +
-                "\"error\":{\"code\":$code,\"message\":\"$message\"}}\n\n"
+                    "\"error\":{\"code\":$code,\"message\":\"$message\"}}\n\n"
         )
     }
 
@@ -87,7 +91,9 @@ class AutoDetectMcpClientTest {
     }
 
     private fun methodsOf(requests: List<RecordedRequest>): List<String> = requests.map {
-        Json.parseToJsonElement(it.body.peek().readUtf8()).jsonObject["method"]?.jsonPrimitive?.content!!
+        Json.parseToJsonElement(
+            it.body.peek().readUtf8()
+        ).jsonObject["method"]?.jsonPrimitive?.content!!
     }
 
     private fun awaitRequests(count: Int): List<RecordedRequest> {
@@ -157,7 +163,11 @@ class AutoDetectMcpClientTest {
             onDiscover = { b -> rpcError(b, -32602, "bad params") },
             onLegacy = { b -> rpcResult(b, """{"tools":[]}""") }
         )
-        val e = try { auto.discoverTools(mcpServer()); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            auto.discoverTools(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
     }
 

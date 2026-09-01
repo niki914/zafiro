@@ -10,6 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.model.ToolPresentation.inputOf
+import com.niki914.zafiro.app.ui.model.ToolPresentation.previewOf
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -40,7 +42,11 @@ object ToolPresentation {
         val python = ImageVector.vectorResource(R.drawable.python_logo)
         return when {
             name.contains("python", ignoreCase = true) -> python
-            name.contains("terminal", ignoreCase = true) || name.contains("shell", ignoreCase = true) -> TerminalIcon
+            name.contains("terminal", ignoreCase = true) || name.contains(
+                "shell",
+                ignoreCase = true
+            ) -> TerminalIcon
+
             name.contains("skill", ignoreCase = true) -> Skill
             else -> Default
         }

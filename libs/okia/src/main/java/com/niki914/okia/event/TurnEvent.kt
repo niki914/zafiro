@@ -26,19 +26,23 @@ sealed interface TurnEvent {
     data class TextStarted(val index: Int, val partial: AssistantMessage) : TurnEvent
 
     /** contentIndex 处文本块追加 delta。 */
-    data class TextDelta(val index: Int, val delta: String, val partial: AssistantMessage) : TurnEvent
+    data class TextDelta(val index: Int, val delta: String, val partial: AssistantMessage) :
+        TurnEvent
 
     /** contentIndex 处文本块完成。 */
-    data class TextEnded(val index: Int, val content: String, val partial: AssistantMessage) : TurnEvent
+    data class TextEnded(val index: Int, val content: String, val partial: AssistantMessage) :
+        TurnEvent
 
     /** contentIndex 处思考块开始。 */
     data class ThinkingStarted(val index: Int, val partial: AssistantMessage) : TurnEvent
 
     /** contentIndex 处思考块追加 delta。 */
-    data class ThinkingDelta(val index: Int, val delta: String, val partial: AssistantMessage) : TurnEvent
+    data class ThinkingDelta(val index: Int, val delta: String, val partial: AssistantMessage) :
+        TurnEvent
 
     /** contentIndex 处思考块完成。 */
-    data class ThinkingEnded(val index: Int, val content: String, val partial: AssistantMessage) : TurnEvent
+    data class ThinkingEnded(val index: Int, val content: String, val partial: AssistantMessage) :
+        TurnEvent
 
     /** contentIndex 处工具调用块开始。携带发起中的调用身份（参数在途，可能为空）。
      *  注意：此时调用尚未进入 partial.content（仍为 pendingToolCalls），身份只能从事件字段取。 */
@@ -50,19 +54,38 @@ sealed interface TurnEvent {
     ) : TurnEvent
 
     /** contentIndex 处工具调用参数 delta。 */
-    data class ToolCallDelta(val index: Int, val delta: String, val partial: AssistantMessage) : TurnEvent
+    data class ToolCallDelta(val index: Int, val delta: String, val partial: AssistantMessage) :
+        TurnEvent
 
     /** contentIndex 处工具调用参数组装完成，带最终参数；之后进入执行阶段。 */
-    data class ToolCallReady(val index: Int, val toolCall: ContentBlock.ToolCall, val partial: AssistantMessage) : TurnEvent
+    data class ToolCallReady(
+        val index: Int,
+        val toolCall: ContentBlock.ToolCall,
+        val partial: AssistantMessage
+    ) : TurnEvent
 
     /** contentIndex 处工具调用开始执行。 */
-    data class ToolRunning(val index: Int, val toolCall: ContentBlock.ToolCall, val partial: AssistantMessage) : TurnEvent
+    data class ToolRunning(
+        val index: Int,
+        val toolCall: ContentBlock.ToolCall,
+        val partial: AssistantMessage
+    ) : TurnEvent
 
     /** contentIndex 处工具调用执行成功。 */
-    data class ToolSucceeded(val index: Int, val toolCall: ContentBlock.ToolCall, val outcome: ToolCallOutcome, val partial: AssistantMessage) : TurnEvent
+    data class ToolSucceeded(
+        val index: Int,
+        val toolCall: ContentBlock.ToolCall,
+        val outcome: ToolCallOutcome,
+        val partial: AssistantMessage
+    ) : TurnEvent
 
     /** contentIndex 处工具调用执行失败。 */
-    data class ToolFailed(val index: Int, val toolCall: ContentBlock.ToolCall, val outcome: ToolCallOutcome, val partial: AssistantMessage) : TurnEvent
+    data class ToolFailed(
+        val index: Int,
+        val toolCall: ContentBlock.ToolCall,
+        val outcome: ToolCallOutcome,
+        val partial: AssistantMessage
+    ) : TurnEvent
 
     /** 一次重试已排定；attempt 从 1 起。 */
     data class RetryScheduled(

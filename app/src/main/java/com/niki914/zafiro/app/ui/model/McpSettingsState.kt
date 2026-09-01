@@ -3,10 +3,10 @@ package com.niki914.zafiro.app.ui.model
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
-import com.niki914.zafiro.app.R
-import com.niki914.zafiro.repo.XRepo
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.xposed.api.util.xTry
+import com.niki914.zafiro.app.R
+import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -158,7 +158,7 @@ class McpSettingsViewModel :
             Logger.d(
                 LOG_TAG,
                 "load servers=${loadedItems.size} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
             updateState {
                 copy(
@@ -250,7 +250,10 @@ class McpSettingsViewModel :
             notifySettingsChanged()
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
-            Logger.w(LOG_TAG, "toggleItemEnabled failed server=${currentItem.name} reason=${throwable.message}")
+            Logger.w(
+                LOG_TAG,
+                "toggleItemEnabled failed server=${currentItem.name} reason=${throwable.message}"
+            )
             updateState {
                 copy(
                     items = previousItems,
@@ -290,7 +293,7 @@ class McpSettingsViewModel :
             Logger.w(
                 LOG_TAG,
                 "save rejected nameError=${nameErrorResId != null} " +
-                    "urlError=${urlErrorResId != null} headersError=${headersErrorResId != null}"
+                        "urlError=${urlErrorResId != null} headersError=${headersErrorResId != null}"
             )
             updateState {
                 copy(
@@ -422,7 +425,10 @@ class McpSettingsViewModel :
             sendEffect(McpSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
-            Logger.w(LOG_TAG, "deleteCurrent failed server=${currentItem.name} reason=${throwable.message}")
+            Logger.w(
+                LOG_TAG,
+                "deleteCurrent failed server=${currentItem.name} reason=${throwable.message}"
+            )
             updateState {
                 copy(
                     isSaving = false,

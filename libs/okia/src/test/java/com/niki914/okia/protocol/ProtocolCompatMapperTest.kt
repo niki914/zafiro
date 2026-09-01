@@ -36,18 +36,25 @@ class ProtocolCompatMapperTest {
             useApiKeyCalls++
             return if (apiKey.isEmpty()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
         }
+
         override fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest {
             buildRequestCalls++
             return HttpRequest(snapshot.endpoint, "POST", emptyMap(), null, snapshot.timeouts)
         }
+
         override fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent> {
             parseStreamCalls++
             return emptyFlow()
         }
-        override fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message {
+
+        override fun encodeToolResult(
+            call: ContentBlock.ToolCall,
+            outcome: ToolCallOutcome
+        ): Message {
             encodeToolResultCalls++
             return Message.ToolResult(call.id, call.name, outcome)
         }
+
         override val compat: Compat get() = deepSeekCompat
     }
 

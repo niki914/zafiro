@@ -5,14 +5,14 @@ import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
-import com.niki914.zafiro.chat.agentic.python.PyRuntime
+import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
+import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.runtime.createAppRuntimeBridge
 import com.niki914.zafiro.settings.RuntimeEnvironment
-import com.niki914.xposed.api.util.ContextProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

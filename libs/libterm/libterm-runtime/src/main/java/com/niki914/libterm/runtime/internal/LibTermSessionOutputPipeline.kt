@@ -38,6 +38,7 @@ internal class LibTermSessionOutputPipeline(
             }
         }
     }
+
     val stream: Flow<TerminalTextChunk> = outputEvents.asSharedFlow()
 
     fun latest(limit: Int): List<TerminalTextChunk> {

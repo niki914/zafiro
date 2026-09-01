@@ -1,10 +1,10 @@
 package com.niki914.okia
 
 import com.niki914.okia.conversation.JsonSessionCodec
-import com.niki914.okia.event.StopCause
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.error.LLMErrorCode
 import com.niki914.okia.error.RetryPolicy
+import com.niki914.okia.event.StopCause
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.fake.FakeAgentLoop
 import com.niki914.okia.fake.FakeHttpEngine
@@ -30,10 +30,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -151,7 +149,13 @@ class RealOkiaTest {
     @Test
     fun sendEmitsFullEventSequence() = runTest {
         val okia = openOkia(
-            FakeProtocolMapper(listOf(ProtocolEvent.TextDelta("hel"), ProtocolEvent.TextDelta("lo"), completed())),
+            FakeProtocolMapper(
+                listOf(
+                    ProtocolEvent.TextDelta("hel"),
+                    ProtocolEvent.TextDelta("lo"),
+                    completed()
+                )
+            ),
             scope = testScope(testScheduler)
         )
         val emitted = mutableListOf<TurnEvent>()
@@ -168,7 +172,13 @@ class RealOkiaTest {
     @Test
     fun eventsFlowDeliversEvents() = runTest {
         val okia = openOkia(
-            FakeProtocolMapper(listOf(ProtocolEvent.TextDelta("hel"), ProtocolEvent.TextDelta("lo"), completed())),
+            FakeProtocolMapper(
+                listOf(
+                    ProtocolEvent.TextDelta("hel"),
+                    ProtocolEvent.TextDelta("lo"),
+                    completed()
+                )
+            ),
             scope = testScope(testScheduler)
         )
         val received = mutableListOf<TurnEvent>()
@@ -228,7 +238,12 @@ class RealOkiaTest {
     @Test
     fun sendFailedWithPartialCommitsPartial() = runTest {
         val okia = openOkia(
-            FakeProtocolMapper(listOf(ProtocolEvent.TextDelta("par"), ProtocolEvent.Error(RuntimeException("boom")))),
+            FakeProtocolMapper(
+                listOf(
+                    ProtocolEvent.TextDelta("par"),
+                    ProtocolEvent.Error(RuntimeException("boom"))
+                )
+            ),
             scope = testScope(testScheduler)
         )
         val result = okia.send("hi") { }
@@ -335,10 +350,34 @@ class RealOkiaTest {
         val first = launch { okia.send("one") { } }
         runCurrent()
 
-        assertNotNull(try { okia.rewind("x"); null } catch (e: IllegalStateException) { e })
-        assertNotNull(try { okia.update { }; null } catch (e: IllegalStateException) { e })
-        assertNotNull(try { okia.export(); null } catch (e: IllegalStateException) { e })
-        assertNotNull(try { okia.close(); null } catch (e: IllegalStateException) { e })
+        assertNotNull(
+            try {
+                okia.rewind("x"); null
+            } catch (e: IllegalStateException) {
+                e
+            }
+        )
+        assertNotNull(
+            try {
+                okia.update { }; null
+            } catch (e: IllegalStateException) {
+                e
+            }
+        )
+        assertNotNull(
+            try {
+                okia.export(); null
+            } catch (e: IllegalStateException) {
+                e
+            }
+        )
+        assertNotNull(
+            try {
+                okia.close(); null
+            } catch (e: IllegalStateException) {
+                e
+            }
+        )
 
         first.cancel()
         runCurrent() // 让 turn job 清理 activeTurn
@@ -380,7 +419,10 @@ class RealOkiaTest {
 
     @Test
     fun stopWithoutActiveTurnIsNoop() = runTest {
-        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), scope = testScope(testScheduler))
+        val okia = openOkia(
+            FakeProtocolMapper(emptyList<ProtocolEvent>()),
+            scope = testScope(testScheduler)
+        )
         okia.stop()
         okia.close()
     }
@@ -432,7 +474,13 @@ class RealOkiaTest {
         okia.rewind(userEntry.id)
         assertEquals(listOf(user("hi")), okia.conversation.value.history.map { it.message })
 
-        assertNotNull(try { okia.rewind("missing"); null } catch (e: IllegalArgumentException) { e })
+        assertNotNull(
+            try {
+                okia.rewind("missing"); null
+            } catch (e: IllegalArgumentException) {
+                e
+            }
+        )
         okia.close()
     }
 
@@ -462,7 +510,10 @@ class RealOkiaTest {
 
     @Test
     fun updateReplacesConfigSnapshot() = runTest {
-        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), scope = testScope(testScheduler))
+        val okia = openOkia(
+            FakeProtocolMapper(emptyList<ProtocolEvent>()),
+            scope = testScope(testScheduler)
+        )
         val before = okia.config()
         val hook = object : com.niki914.okia.hooks.Hooks {}
 
@@ -481,14 +532,47 @@ class RealOkiaTest {
 
     @Test
     fun closeThenAllOperationsThrow() = runTest {
-        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), scope = testScope(testScheduler))
+        val okia = openOkia(
+            FakeProtocolMapper(emptyList<ProtocolEvent>()),
+            scope = testScope(testScheduler)
+        )
         okia.close()
 
-        assertNotNull(try { okia.send("hi") { }; null } catch (e: IllegalStateException) { e })
-        assertNotNull(try { okia.rewind("x"); null } catch (e: IllegalStateException) { e })
-        assertNotNull(try { okia.update { }; null } catch (e: IllegalStateException) { e })
-        assertNotNull(try { okia.export(); null } catch (e: IllegalStateException) { e })
-        assertNotNull(try { okia.close(); null } catch (e: IllegalStateException) { e })
+        assertNotNull(
+            try {
+                okia.send("hi") { }; null
+            } catch (e: IllegalStateException) {
+                e
+            }
+        )
+        assertNotNull(
+            try {
+                okia.rewind("x"); null
+            } catch (e: IllegalStateException) {
+                e
+            }
+        )
+        assertNotNull(
+            try {
+                okia.update { }; null
+            } catch (e: IllegalStateException) {
+                e
+            }
+        )
+        assertNotNull(
+            try {
+                okia.export(); null
+            } catch (e: IllegalStateException) {
+                e
+            }
+        )
+        assertNotNull(
+            try {
+                okia.close(); null
+            } catch (e: IllegalStateException) {
+                e
+            }
+        )
     }
 
     @Test

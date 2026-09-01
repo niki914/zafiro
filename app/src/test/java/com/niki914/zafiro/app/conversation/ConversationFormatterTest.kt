@@ -1,14 +1,14 @@
 package com.niki914.zafiro.app.conversation
 
-import com.niki914.zafiro.app.ui.model.HomeChatBlock
-import com.niki914.zafiro.app.ui.model.HomeToolState
-import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
+import com.niki914.zafiro.app.ui.model.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.HomeToolState
+import com.niki914.zafiro.app.util.SilentLoggerRule
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -175,7 +175,12 @@ class ConversationFormatterTest {
     fun previewFromEntries_usesLatestNonEmptyMessage() {
         val entries = listOf(
             ConversationEntry("e0", null, 0L, Message.User(listOf(ContentBlock.Text("q")))),
-            ConversationEntry("e1", "e0", 1L, Message.ToolResult("c1", "t", ToolCallOutcome.Success("r"))),
+            ConversationEntry(
+                "e1",
+                "e0",
+                1L,
+                Message.ToolResult("c1", "t", ToolCallOutcome.Success("r"))
+            ),
         )
 
         assertEquals("q", ConversationFormatter.previewFromEntries(entries))

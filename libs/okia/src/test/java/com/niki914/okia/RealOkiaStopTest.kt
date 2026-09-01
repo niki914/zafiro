@@ -1,8 +1,6 @@
 package com.niki914.okia
 
-import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.event.StopCause
-import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.fake.FakeAgentLoop
 import com.niki914.okia.fake.FakeHttpEngine
 import com.niki914.okia.fake.FakeProtocolMapper
@@ -14,7 +12,6 @@ import com.niki914.okia.loop.AgentLoop
 import com.niki914.okia.loop.CompletionReason
 import com.niki914.okia.loop.RealAgentLoop
 import com.niki914.okia.loop.TurnResult
-import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
@@ -24,7 +21,6 @@ import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpEngine
-import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -32,8 +28,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -43,6 +39,7 @@ import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * T7 kill-then-stop 门面测试（G1/G2/G3 裁决 + §5.11）：
@@ -117,7 +114,12 @@ class RealOkiaStopTest {
         val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
         val okia = openOkia(
             FakeProtocolMapper(
-                listOf(listOf(ProtocolEvent.ToolCallReady("c1", "t1", "{}"), completed(StopReason.ToolUse)))
+                listOf(
+                    listOf(
+                        ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                        completed(StopReason.ToolUse)
+                    )
+                )
             ),
             registry = registry,
             hooks = listOf(StopRecordingHooks(stopCalls)),
@@ -152,8 +154,14 @@ class RealOkiaStopTest {
         val okia = openOkia(
             FakeProtocolMapper(
                 listOf(
-                    listOf(ProtocolEvent.ToolCallReady("c1", "t1", "{}"), completed(StopReason.ToolUse)),
-                    listOf(ProtocolEvent.ToolCallReady("c2", "t1", "{}"), completed(StopReason.ToolUse)),
+                    listOf(
+                        ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                        completed(StopReason.ToolUse)
+                    ),
+                    listOf(
+                        ProtocolEvent.ToolCallReady("c2", "t1", "{}"),
+                        completed(StopReason.ToolUse)
+                    ),
                     listOf(completed())
                 )
             ),
@@ -245,7 +253,12 @@ class RealOkiaStopTest {
         val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
         val okia = openOkia(
             FakeProtocolMapper(
-                listOf(listOf(ProtocolEvent.ToolCallReady("c1", "t1", "{}"), completed(StopReason.ToolUse)))
+                listOf(
+                    listOf(
+                        ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                        completed(StopReason.ToolUse)
+                    )
+                )
             ),
             registry = registry,
             hooks = listOf(StopRecordingHooks(stopCalls)),
@@ -293,7 +306,8 @@ class RealOkiaStopTest {
 
     @Test
     fun stopWithNoActiveTurnIsNoOp() = runTest {
-        val okia = openOkia(FakeProtocolMapper(listOf(completed())), scope = testScope(testScheduler))
+        val okia =
+            openOkia(FakeProtocolMapper(listOf(completed())), scope = testScope(testScheduler))
         // 无活跃回合时 stop() 直接返回，无副作用
         okia.stop()
         okia.close()
@@ -329,7 +343,10 @@ class RealOkiaStopTest {
         registry.register(localTool("t1"), executor)
         val mapper = FakeProtocolMapper(
             listOf(
-                listOf(ProtocolEvent.ToolCallReady("c1", "t1", "{}"), completed(StopReason.ToolUse)),
+                listOf(
+                    ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                    completed(StopReason.ToolUse)
+                ),
                 listOf(completed())
             )
         )
@@ -362,7 +379,11 @@ class RealOkiaStopTest {
     @Test
     fun idleTimeoutLeavesPartialInHistoryAndClearsLive() = runTest {
         val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
-        val okia = openOkia(FakeProtocolMapper(events), idleTimeoutSeconds = 1, scope = testScope(testScheduler))
+        val okia = openOkia(
+            FakeProtocolMapper(events),
+            idleTimeoutSeconds = 1,
+            scope = testScope(testScheduler)
+        )
         val sendJob = async {
             okia.send(
                 "hi",
@@ -401,7 +422,11 @@ class RealOkiaStopTest {
             withContext(NonCancellable) { gateA.await() }
             TurnResult.Completed(CompletionReason.Stop)
         }
-        val okia = openOkia(FakeProtocolMapper(listOf(completed())), loop = loop, scope = testScope(testScheduler))
+        val okia = openOkia(
+            FakeProtocolMapper(listOf(completed())),
+            loop = loop,
+            scope = testScope(testScheduler)
+        )
         val sendJob = launch { runCatching { okia.send("first") {} } }
         runCurrent() // 回合 A 挂起在 gateA（清理中）
 
@@ -433,7 +458,11 @@ class RealOkiaStopTest {
             gate.get().await()
             TurnResult.Completed(CompletionReason.Stop)
         }
-        val okia = openOkia(FakeProtocolMapper(listOf(completed())), loop = loop, scope = testScope(testScheduler))
+        val okia = openOkia(
+            FakeProtocolMapper(listOf(completed())),
+            loop = loop,
+            scope = testScope(testScheduler)
+        )
 
         // 回合 A：gate 已完成 → 正常完成（不经过取消清理路径）
         val a = async { okia.send("first") {} }

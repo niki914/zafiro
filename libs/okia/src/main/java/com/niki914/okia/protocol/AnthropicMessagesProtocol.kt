@@ -12,7 +12,6 @@ import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -57,7 +56,10 @@ class AnthropicMessagesProtocol(
             url = snapshot.endpoint,
             method = "POST",
             headers = snapshot.headers + ANTHROPIC_HEADERS + useApiKey(snapshot.apiKey),
-            body = codec.encodeToString(JsonObject.serializer(), buildRequestBody(snapshot, history)),
+            body = codec.encodeToString(
+                JsonObject.serializer(),
+                buildRequestBody(snapshot, history)
+            ),
             timeouts = snapshot.timeouts,
             sensitiveHeaderNames = compat.sensitiveHeaderNames
         )
@@ -82,6 +84,7 @@ class AnthropicMessagesProtocol(
                         emit(ProtocolEvent.Error(error.cause, error.retryable))
                         failed = true
                     }
+
                     else -> Unit  // 未知事件（citations 等）忽略
                 }
             } catch (e: CancellationException) {
@@ -174,6 +177,7 @@ class AnthropicMessagesProtocol(
                     put("type", "text")
                     put("text", block.text)
                 }
+
                 is ContentBlock.Thinking ->
                     // 思考回带必须带 signature（Anthropic 规则）；无 signature（非
                     // Anthropic 来源 / 网关空签名）转文本，避免伪造签名被 API 拒绝
@@ -185,12 +189,14 @@ class AnthropicMessagesProtocol(
                         put("type", "text")
                         put("text", block.text)
                     }
+
                 is ContentBlock.ToolCall -> buildJsonObject {
                     put("type", "tool_use")
                     put("id", block.id)
                     put("name", block.name)
                     put("input", parseArguments(block.argumentsJson))
                 }
+
                 is ContentBlock.Image -> null  // M2 前不支持，user 侧已先行抛错；此处防御忽略
             }
         }
@@ -229,7 +235,8 @@ class AnthropicMessagesProtocol(
         (message?.get("usage") as? JsonObject)?.let { usage ->
             val input = (usage["input_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
             val cacheRead = (usage["cache_read_input_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
-            val cacheWrite = (usage["cache_creation_input_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
+            val cacheWrite =
+                (usage["cache_creation_input_tokens"] as? JsonPrimitive)?.longOrNull ?: 0
             // Anthropic 语义：input_tokens 已为「非缓存输入」，总输入 =
             // input_tokens + cache_creation_input_tokens + cache_read_input_tokens
             // （官方 Usage 定义，区别于 OpenAI 的 input_tokens 含缓存）。直接取，
@@ -262,12 +269,14 @@ class AnthropicMessagesProtocol(
                 if (!signature.isNullOrEmpty()) emit(ProtocolEvent.ThinkingSignature(signature))
                 state.blocks[index] = ThinkingBlock(signature = signature)
             }
+
             "tool_use" -> {
                 val id = (block["id"] as? JsonPrimitive)?.contentOrNull ?: ""
                 val name = (block["name"] as? JsonPrimitive)?.contentOrNull ?: ""
                 state.blocks[index] = ToolBlock(id, name)
                 emit(ProtocolEvent.ToolCallStarted(id, name))
             }
+
             else -> Unit  // 未知块类型忽略
         }
 
@@ -291,6 +300,7 @@ class AnthropicMessagesProtocol(
                     emit(ProtocolEvent.TextDelta(text))
                 }
             }
+
             "thinking_delta" -> {
                 val text = (delta["thinking"] as? JsonPrimitive)?.contentOrNull
                 if (!text.isNullOrEmpty()) {
@@ -298,6 +308,7 @@ class AnthropicMessagesProtocol(
                     emit(ProtocolEvent.ThinkingDelta(text))
                 }
             }
+
             "signature_delta" -> {
                 val signature = (delta["signature"] as? JsonPrimitive)?.contentOrNull
                 if (!signature.isNullOrEmpty()) {
@@ -305,6 +316,7 @@ class AnthropicMessagesProtocol(
                     emit(ProtocolEvent.ThinkingSignature(signature))
                 }
             }
+
             "input_json_delta" -> {
                 val partial = (delta["partial_json"] as? JsonPrimitive)?.contentOrNull
                 if (!partial.isNullOrEmpty()) {
@@ -315,6 +327,7 @@ class AnthropicMessagesProtocol(
                     emit(ProtocolEvent.ToolCallDelta(tool.id, tool.name, partial))
                 }
             }
+
             else -> Unit  // citations_delta 等忽略
         }
     }
@@ -418,6 +431,7 @@ class AnthropicMessagesProtocol(
         val text: StringBuilder = StringBuilder(),
         var signature: String? = null
     ) : Block
+
     private class ToolBlock(
         val id: String,
         val name: String,

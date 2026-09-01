@@ -5,8 +5,8 @@ import com.niki914.libterm.SendResult
 import com.niki914.libterm.SessionState
 import com.niki914.libterm.TerminalBytes
 import com.niki914.libterm.TerminalSession
-import com.niki914.libterm.runtime.CommandTerminationReason
 import com.niki914.libterm.runtime.CommandResult
+import com.niki914.libterm.runtime.CommandTerminationReason
 import com.niki914.libterm.runtime.Term
 import com.niki914.libterm.runtime.TermResult
 import kotlinx.coroutines.CompletableDeferred
@@ -73,7 +73,8 @@ internal object TerminalCommandExecutor {
                 }
             }
 
-            when (val sendResult = session.send(buildExecPayload(command, execId).encodeToByteArray())) {
+            when (val sendResult =
+                session.send(buildExecPayload(command, execId).encodeToByteArray())) {
                 SendResult.Sent -> Unit
                 is SendResult.Failed -> {
                     sessionEnded.cancel()
@@ -108,6 +109,7 @@ internal object TerminalCommandExecutor {
                         outputLock = outputLock,
                         terminationReason = CommandTerminationReason.SESSION_TERMINATED,
                     )
+
                     ExecCompletion.TimedOut -> snapshotResult(
                         command = command,
                         stdout = stdout,

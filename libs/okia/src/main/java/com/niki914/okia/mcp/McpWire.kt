@@ -18,7 +18,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 
@@ -89,7 +88,12 @@ internal class McpWire(
      * 发送 JSON-RPC 请求并返回 result 对象。JSON-RPC error → 抛（带
      * jsonRpcCode）；传输失败 / 非 2xx / 畸形响应 / id 不匹配 → 抛。
      */
-    suspend fun request(server: McpServer, method: String, params: JsonObject?, id: Long): JsonObject {
+    suspend fun request(
+        server: McpServer,
+        method: String,
+        params: JsonObject?,
+        id: Long
+    ): JsonObject {
         val body = buildJsonObject {
             put("jsonrpc", "2.0")
             put("id", id)
@@ -130,7 +134,7 @@ internal class McpWire(
             if (++pages > MAX_TOOL_LIST_PAGES) {
                 throw McpProtocolException(
                     "tools/list exceeded $MAX_TOOL_LIST_PAGES pages; " +
-                        "server keeps returning nextCursor (server bug)"
+                            "server keeps returning nextCursor (server bug)"
                 )
             }
             val params = buildJsonObject {
@@ -185,7 +189,7 @@ internal class McpWire(
             if (type != "text") {
                 throw McpProtocolException(
                     "MCP tool result contains non-text block type '${type ?: "unknown"}'; " +
-                        "only text blocks are supported"
+                            "only text blocks are supported"
                 )
             }
             val text = block["text"]?.let { it as? JsonPrimitive }?.contentOrNull
@@ -253,7 +257,8 @@ internal class McpWire(
             }
             (envelope["error"] as? JsonObject)?.let { error ->
                 val code = error["code"]?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() }
-                val message = error["message"]?.let { (it as? JsonPrimitive)?.contentOrNull } ?: "unknown error"
+                val message = error["message"]?.let { (it as? JsonPrimitive)?.contentOrNull }
+                    ?: "unknown error"
                 throw McpProtocolException("MCP JSON-RPC error: $message", jsonRpcCode = code)
             }
             envelope["result"] as? JsonObject
@@ -263,7 +268,8 @@ internal class McpWire(
 
     private suspend fun parseEnvelope(response: HttpResponse, expectedId: Long): JsonObject {
         val body = response.body ?: throw McpProtocolException(
-            "MCP response had empty body (HTTP ${response.statusCode})", statusCode = response.statusCode
+            "MCP response had empty body (HTTP ${response.statusCode})",
+            statusCode = response.statusCode
         )
         val text = body.decodeToString()  // UTF-8（KMP stdlib）
         val isSse = response.headers.any { (name, value) ->
@@ -296,11 +302,23 @@ internal class McpWire(
             .map { ev ->
                 try {
                     json.parseToJsonElement(ev.data) as? JsonObject
-                        ?: throw McpProtocolException("MCP SSE event data is not a JSON object: ${ev.data.take(200)}")
+                        ?: throw McpProtocolException(
+                            "MCP SSE event data is not a JSON object: ${
+                                ev.data.take(
+                                    200
+                                )
+                            }"
+                        )
                 } catch (e: McpProtocolException) {
                     throw e
                 } catch (e: Exception) {
-                    throw McpProtocolException("MCP SSE event data is not valid JSON: ${ev.data.take(200)}", cause = e)
+                    throw McpProtocolException(
+                        "MCP SSE event data is not valid JSON: ${
+                            ev.data.take(
+                                200
+                            )
+                        }", cause = e
+                    )
                 }
             }
         val idOf = { envelope: JsonObject ->
@@ -312,8 +330,8 @@ internal class McpWire(
             "MCP SSE response contained no message events"
         } else {
             "MCP SSE stream contained ${envelopes.size} message(s) but no JSON-RPC response " +
-                "with id $expectedId (server request/notification messages are not supported); " +
-                "first: ${envelopes.first().toString().take(200)}"
+                    "with id $expectedId (server request/notification messages are not supported); " +
+                    "first: ${envelopes.first().toString().take(200)}"
         }
         throw McpProtocolException(reason)
     }
@@ -327,14 +345,15 @@ internal class McpWire(
         if (status in 200..299) return false
         val detail = response.body?.decodeToString() ?: return false
         return try {
-            val error = (json.parseToJsonElement(detail) as? JsonObject)?.get("error") as? JsonObject
-                ?: return false
+            val error =
+                (json.parseToJsonElement(detail) as? JsonObject)?.get("error") as? JsonObject
+                    ?: return false
             val code = (error["code"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return false
             code == SESSION_INVALID_CODE &&
-                (error["message"] as? JsonPrimitive)?.contentOrNull.orEmpty().let { message ->
-                    message.contains("session", ignoreCase = true) ||
-                        message.contains("not initialized", ignoreCase = true)
-                }
+                    (error["message"] as? JsonPrimitive)?.contentOrNull.orEmpty().let { message ->
+                        message.contains("session", ignoreCase = true) ||
+                                message.contains("not initialized", ignoreCase = true)
+                    }
         } catch (e: Exception) {
             false
         }
@@ -379,15 +398,17 @@ internal class McpWire(
          * server/discover 无意义，probe 已有 legacy 回退路径处理它。
          */
         fun isSessionTerminated(e: McpProtocolException): Boolean =
-            e.statusCode == 404 || (e.jsonRpcCode == SESSION_INVALID_CODE && e.message.orEmpty().let { message ->
-                message.contains("session", ignoreCase = true)
-            })
+            e.statusCode == 404 || (e.jsonRpcCode == SESSION_INVALID_CODE && e.message.orEmpty()
+                .let { message ->
+                    message.contains("session", ignoreCase = true)
+                })
 
         /** 防服务器死循环返回 nextCursor 的页数上限（明确失败优于无限循环）。 */
         const val MAX_TOOL_LIST_PAGES = 50
 
         /** 默认超时与 M0 默认配置一致（30s 连接 / 60s 读 / 30s 写）。 */
-        val DEFAULT_MCP_TIMEOUTS = HttpTimeouts(connectMs = 30_000, readMs = 60_000, writeMs = 30_000)
+        val DEFAULT_MCP_TIMEOUTS =
+            HttpTimeouts(connectMs = 30_000, readMs = 60_000, writeMs = 30_000)
 
         val DEFAULT_HEADERS = mapOf(
             "Content-Type" to "application/json; charset=utf-8",

@@ -1,12 +1,12 @@
 package com.niki914.uikit.infra.component
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,10 +21,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.ScrollState
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
-import com.niki914.uikit.infra.nav.LocalPageTitle
 import com.niki914.uikit.infra.liquidScreenTopPadding
+import com.niki914.uikit.infra.nav.LocalPageTitle
 
 /**
  * 设置列表页容器，必须运行在 `LiquidScreen` 内容树内。
@@ -41,7 +40,8 @@ fun SettingsListPageContent(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val scrollState = rememberSaveable(saver = ScrollState.Saver, init = { ScrollState(initial = 0) })
+    val scrollState =
+        rememberSaveable(saver = ScrollState.Saver, init = { ScrollState(initial = 0) })
     val collapseRangePx = with(LocalDensity.current) { 96.dp.toPx() }
     // 大标题完全滚离的布尔判定；derivedStateOf 避免逐帧重组。
     val isCollapsed by remember { derivedStateOf { scrollState.value > collapseRangePx } }

@@ -21,7 +21,12 @@ class SilentLoggerRule : TestRule {
         object : Statement() {
             override fun evaluate() {
                 Logger.install(object : Backend {
-                    override fun emit(level: Level, tag: String, msg: String, throwable: Throwable?) {
+                    override fun emit(
+                        level: Level,
+                        tag: String,
+                        msg: String,
+                        throwable: Throwable?
+                    ) {
                         // no-op
                     }
                 })

@@ -1,12 +1,12 @@
 package com.niki914.zafiro.mod.feat.oppo.subhooks
 
 import com.niki914.logging.Logger
+import com.niki914.xposed.runtime.util.call
 import com.niki914.zafiro.chat.ActiveTurnStore
 import com.niki914.zafiro.chat.TurnMode
 import com.niki914.zafiro.mod.feat.HookTarget
 import com.niki914.zafiro.mod.feat.SubHook
 import com.niki914.zafiro.mod.feat.oppo.BreenoConfigProvider
-import com.niki914.xposed.runtime.util.call
 import de.robv.android.xposed.XC_MethodHook
 
 /**
@@ -39,7 +39,10 @@ class BlockNativeCardHook(
                 ?: return
         val typeAnswer = BreenoConfigProvider.CaptureResponseTarget.chatTypeAnswer
         if (chatType != typeAnswer) {
-            Logger.d(LOG_TAG, "native card pass host=breeno source=$name reason=not_answer chatType=$chatType")
+            Logger.d(
+                LOG_TAG,
+                "native card pass host=breeno source=$name reason=not_answer chatType=$chatType"
+            )
             return
         }
 
@@ -56,11 +59,17 @@ class BlockNativeCardHook(
         when (activeTurn?.mode) {
             TurnMode.InjectedLLM -> {
                 param.result = null
-                Logger.i(LOG_TAG, "native response blocked host=breeno source=$name reason=answer_card_blocked")
+                Logger.i(
+                    LOG_TAG,
+                    "native response blocked host=breeno source=$name reason=answer_card_blocked"
+                )
             }
 
             TurnMode.NativeTakeover, null -> {
-                Logger.d(LOG_TAG, "native card pass host=breeno source=$name reason=takeover_${activeTurn?.mode}")
+                Logger.d(
+                    LOG_TAG,
+                    "native card pass host=breeno source=$name reason=takeover_${activeTurn?.mode}"
+                )
             }
         }
     }

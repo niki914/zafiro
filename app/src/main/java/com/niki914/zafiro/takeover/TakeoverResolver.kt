@@ -26,7 +26,7 @@ object TakeoverResolver {
             Logger.d(
                 LOG_TAG,
                 "takeover default target=$defaultTarget rulesCount=${rules.size} " +
-                    "queryLength=${query.length}"
+                        "queryLength=${query.length}"
             )
             return TakeoverDecision(defaultTarget)
         }
@@ -34,7 +34,7 @@ object TakeoverResolver {
         Logger.i(
             LOG_TAG,
             "takeover matched ruleId=${matchedRule.id} ruleName=${matchedRule.name} " +
-                "target=${matchedRule.target} rulesCount=${rules.size} queryLength=${query.length}"
+                    "target=${matchedRule.target} rulesCount=${rules.size} queryLength=${query.length}"
         )
         return TakeoverDecision(
             target = matchedRule.target,

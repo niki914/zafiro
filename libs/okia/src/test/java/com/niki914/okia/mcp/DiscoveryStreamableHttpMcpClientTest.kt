@@ -49,7 +49,8 @@ class DiscoveryStreamableHttpMcpClientTest {
     )
 
     private fun sse(body: String) =
-        MockResponse().setResponseCode(200).setHeader("Content-Type", "text/event-stream").setBody(body)
+        MockResponse().setResponseCode(200).setHeader("Content-Type", "text/event-stream")
+            .setBody(body)
 
     private fun rpcResult(b: JsonObject, result: String): MockResponse {
         val id = b["id"]?.jsonPrimitive?.content ?: "null"
@@ -60,7 +61,7 @@ class DiscoveryStreamableHttpMcpClientTest {
         val id = b["id"]?.jsonPrimitive?.content ?: "null"
         return sse(
             "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":$id," +
-                "\"error\":{\"code\":$code,\"message\":\"$message\"}}\n\n"
+                    "\"error\":{\"code\":$code,\"message\":\"$message\"}}\n\n"
         )
     }
 
@@ -92,7 +93,7 @@ class DiscoveryStreamableHttpMcpClientTest {
     companion object {
         const val DEFAULT_DISCOVER_RESULT =
             """{"resultType":"complete","supportedVersions":["2026-07-28"],""" +
-                """"capabilities":{"tools":{}},"ttlMs":0,"cacheScope":"private"}"""
+                    """"capabilities":{"tools":{}},"ttlMs":0,"cacheScope":"private"}"""
     }
 
     // ── server/discover 形态 ─────────────────────────────────────────────
@@ -152,12 +153,13 @@ class DiscoveryStreamableHttpMcpClientTest {
     }
 
     @Test
-    fun `probe returns true when server advertises multiple versions including ours`() = runBlocking {
-        server.dispatcher = discoverServer(
-            """{"supportedVersions":["2026-07-28","2026-01-01"],"capabilities":{}}"""
-        )
-        assertTrue(client.probe(mcpServer()))
-    }
+    fun `probe returns true when server advertises multiple versions including ours`() =
+        runBlocking {
+            server.dispatcher = discoverServer(
+                """{"supportedVersions":["2026-07-28","2026-01-01"],"capabilities":{}}"""
+            )
+            assertTrue(client.probe(mcpServer()))
+        }
 
     @Test
     fun `probe returns false on method-not-found`() = runBlocking {
@@ -186,15 +188,24 @@ class DiscoveryStreamableHttpMcpClientTest {
 
     @Test
     fun `probe throws when advertised versions do not include ours`() = runBlocking {
-        server.dispatcher = discoverServer("""{"supportedVersions":["2026-01-01"],"capabilities":{}}""")
-        val e = try { client.probe(mcpServer()); null } catch (x: McpProtocolException) { x }
+        server.dispatcher =
+            discoverServer("""{"supportedVersions":["2026-01-01"],"capabilities":{}}""")
+        val e = try {
+            client.probe(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
     }
 
     @Test
     fun `probe throws when supportedVersions missing`() = runBlocking {
         server.dispatcher = discoverServer("""{"capabilities":{}}""")
-        val e = try { client.probe(mcpServer()); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            client.probe(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
     }
 
@@ -228,7 +239,11 @@ class DiscoveryStreamableHttpMcpClientTest {
                 return rpcError(body, -32602, "invalid params")
             }
         }
-        val e = try { client.probe(mcpServer()); null } catch (x: McpProtocolException) { x }
+        val e = try {
+            client.probe(mcpServer()); null
+        } catch (x: McpProtocolException) {
+            x
+        }
         assertNotNull(e)
         assertEquals(-32602, e!!.jsonRpcCode)
     }
@@ -246,7 +261,9 @@ class DiscoveryStreamableHttpMcpClientTest {
         val params = body["params"]!!.jsonObject
         assertNotNull(params["_meta"])
         assertEquals("t", params["name"]?.jsonPrimitive?.content)
-        assertEquals(1, params["arguments"]!!.jsonObject["k"]?.jsonPrimitive?.let { it.content.toIntOrNull() })
+        assertEquals(
+            1,
+            params["arguments"]!!.jsonObject["k"]?.jsonPrimitive?.let { it.content.toIntOrNull() })
     }
 
     @Test

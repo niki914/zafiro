@@ -1,9 +1,5 @@
 package com.niki914.zafiro.chat
 
-import com.niki914.zafiro.chat.util.SilentLoggerRule
-import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig
-import com.niki914.zafiro.settings.model.RuntimeMcpServer
 import com.niki914.okia.Okia
 import com.niki914.okia.OkiaDependencies
 import com.niki914.okia.event.TurnEvent
@@ -25,13 +21,17 @@ import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.SseLine
+import com.niki914.zafiro.chat.util.SilentLoggerRule
+import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
+import com.niki914.zafiro.settings.model.RuntimeLlmConfig
+import com.niki914.zafiro.settings.model.RuntimeMcpServer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -109,10 +109,16 @@ class LLMControllerMcpTest {
         recording.awaitDiscoveryCalls(1)
 
         // 服务器变化（新增 server2）→ 签名变化 → 重新发现
-        installGateway(server("server1", "http://127.0.0.1:3001/mcp"), server("server2", "http://127.0.0.1:3002/mcp"))
+        installGateway(
+            server("server1", "http://127.0.0.1:3001/mcp"),
+            server("server2", "http://127.0.0.1:3002/mcp")
+        )
         LLMController.refresh()
         recording.awaitDiscoveryCalls(2)
-        assertEquals(setOf("server1", "server2"), recording.discoveredServers.map { it.name }.toSet())
+        assertEquals(
+            setOf("server1", "server2"),
+            recording.discoveredServers.map { it.name }.toSet()
+        )
     }
 
     @Test
@@ -230,7 +236,10 @@ class LLMControllerMcpTest {
     }
 
     private fun stubLoop(): AgentLoop = object : AgentLoop {
-        override suspend fun run(request: LoopRequest, onEvent: suspend (TurnEvent) -> Unit): TurnResult {
+        override suspend fun run(
+            request: LoopRequest,
+            onEvent: suspend (TurnEvent) -> Unit
+        ): TurnResult {
             return TurnResult.Completed(CompletionReason.Stop)
         }
     }
@@ -249,7 +258,10 @@ class LLMControllerMcpTest {
             timeouts = HttpTimeouts(connectMs = 1000, readMs = 1000, writeMs = 1000),
         )
 
-        override suspend fun encodeToolResult(call: ContentBlock.ToolCall, outcome: ToolCallOutcome): Message =
+        override suspend fun encodeToolResult(
+            call: ContentBlock.ToolCall,
+            outcome: ToolCallOutcome
+        ): Message =
             Message.ToolResult(call.id, call.name, outcome)
 
         override fun parseStream(rawSseLines: Flow<SseLine>): Flow<ProtocolEvent> = emptyFlow()

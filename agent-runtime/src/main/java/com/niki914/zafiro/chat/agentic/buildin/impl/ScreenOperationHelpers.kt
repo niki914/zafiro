@@ -29,15 +29,16 @@ internal fun assembleActionResult(
                 ScreenOperationError.SHELL_TIMEOUT.code,
                 ScreenOperationError.SHELL_SESSION_LOST.code ->
                     "inspect the tree to determine whether the action took effect. " +
-                        "Do NOT retry the same action unless the screen confirms " +
-                        "it did not execute."
+                            "Do NOT retry the same action unless the screen confirms " +
+                            "it did not execute."
+
                 else ->
                     "inspect the included tree and retry without calling read."
             }
             TextToolResult.failure(
                 code = actionResult.code,
                 message = "The action failed: ${actionResult.message}. " +
-                    "A fresh screen tree is included below — $retryHint",
+                        "A fresh screen tree is included below — $retryHint",
                 payload = snapshot.yaml,
             )
         },

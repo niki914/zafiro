@@ -22,15 +22,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 
 // ── 多工具链头部图标候选 ─────────────────────────────────────────────────────
 

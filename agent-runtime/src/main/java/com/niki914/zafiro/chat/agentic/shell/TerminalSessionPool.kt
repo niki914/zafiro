@@ -13,10 +13,12 @@ import com.niki914.libterm.runtime.LibTermSession
 import com.niki914.libterm.runtime.TermResult
 import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.logging.Logger
-import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stdoutText
-import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stderrText
-import com.niki914.zafiro.util.ToolOutputTruncator
 import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool.completeAsync
+import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool.readSession
+import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stderrText
+import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stdoutText
+import com.niki914.zafiro.util.ToolOutputTruncator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -266,8 +268,8 @@ object TerminalSessionPool {
                     Logger.i(
                         LOG_TAG,
                         "session opened handle=${entry.handle} identity=${entry.identity} " +
-                            "libTermSessionId=${entry.libTermSessionId} " +
-                            "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                                "libTermSessionId=${entry.libTermSessionId} " +
+                                "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
                     )
                     TerminalOpenOutcome.Success(
                         session = entry.handle,
@@ -280,7 +282,7 @@ object TerminalSessionPool {
                 Logger.w(
                     LOG_TAG,
                     "session open failed identity=$publicIdentity failure=${result.failure} " +
-                        "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                            "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
                 )
                 TerminalOpenOutcome.Failure(
                     failure = result.failure,
@@ -428,7 +430,7 @@ object TerminalSessionPool {
                         Logger.i(
                             LOG_TAG,
                             "command timed out session=$session " +
-                                "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                                    "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
                         )
                         TerminalCommandOutcome.Timeout(
                             session = entry.handle,
@@ -440,7 +442,7 @@ object TerminalSessionPool {
                         Logger.i(
                             LOG_TAG,
                             "command done session=$session exitCode=${result.value.exitCode} " +
-                                "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                                    "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
                         )
                         TerminalCommandOutcome.Success(
                             session = entry.handle,
@@ -455,7 +457,7 @@ object TerminalSessionPool {
                     Logger.w(
                         LOG_TAG,
                         "command failed session=$session failure=${result.failure} " +
-                            "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                                "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
                     )
                     TerminalCommandOutcome.Failure(
                         session = entry.handle,
@@ -471,8 +473,8 @@ object TerminalSessionPool {
             Logger.w(
                 LOG_TAG,
                 "command unexpected error session=$session " +
-                    "errorType=${error::class.simpleName} message=${error.message} " +
-                    "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                        "errorType=${error::class.simpleName} message=${error.message} " +
+                        "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
             )
             TerminalCommandOutcome.UnexpectedError(
                 session = entry.handle,
@@ -637,12 +639,15 @@ object TerminalSessionPool {
             val output = synchronized(asyncState.lock) {
                 when (mode) {
                     TerminalReadMode.DELTA -> {
-                        val stdoutDelta = asyncState.stdoutPartial.substring(asyncState.stdoutDeltaOffset)
-                        val stderrDelta = asyncState.stderrPartial.substring(asyncState.stderrDeltaOffset)
+                        val stdoutDelta =
+                            asyncState.stdoutPartial.substring(asyncState.stdoutDeltaOffset)
+                        val stderrDelta =
+                            asyncState.stderrPartial.substring(asyncState.stderrDeltaOffset)
                         asyncState.stdoutDeltaOffset = asyncState.stdoutPartial.length
                         asyncState.stderrDeltaOffset = asyncState.stderrPartial.length
                         stdoutDelta + stderrDelta
                     }
+
                     TerminalReadMode.SNAPSHOT -> asyncState.stdoutPartial.toString() + asyncState.stderrPartial.toString()
                 }
             }
@@ -695,7 +700,7 @@ object TerminalSessionPool {
             Logger.w(
                 LOG_TAG,
                 "session close failed handle=$session errorType=${error::class.simpleName} " +
-                    "message=${error.message}"
+                        "message=${error.message}"
             )
             TerminalCloseOutcome.UnexpectedError(error)
         }
@@ -736,7 +741,7 @@ object TerminalSessionPool {
         Logger.i(
             LOG_TAG,
             "close all sessions closedCount=${outcome.closedCount} " +
-                "sessionCount=${removed.sessionCount} runtimeClosed=$runtimeClosedCount"
+                    "sessionCount=${removed.sessionCount} runtimeClosed=$runtimeClosedCount"
         )
         return outcome
     }
@@ -913,12 +918,15 @@ object TerminalSessionPool {
                 val output = mergedOutput(result).takeLast(2000)
                 "$prefix completed$timedOutNote. Exit code: $exitCode.\nCommand: <background task>\nOutput (last 2000 chars):\n$output]"
             }
+
             failure != null -> {
                 "$prefix failed. Error: ${failure.message}]"
             }
+
             entry.completedUnexpectedError != null -> {
                 "$prefix failed. Error: ${entry.completedUnexpectedError?.message}]"
             }
+
             else -> "$prefix exited with unknown status.]"
         }
     }
@@ -927,8 +935,8 @@ object TerminalSessionPool {
         val truncation = ToolOutputTruncator.truncateTail(text, maxBytes = maxBytes)
         if (!truncation.truncated) return text
         return truncation.content + "\n\n[Output truncated: showing last " +
-            truncation.content.count { it == '\n' } + " of " + truncation.totalLines +
-            " lines]"
+                truncation.content.count { it == '\n' } + " of " + truncation.totalLines +
+                " lines]"
     }
 
     private fun mergedOutput(result: CommandResult): String {

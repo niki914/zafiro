@@ -1,6 +1,10 @@
 package com.niki914.zafiro.app.ui.content.reveal
 
 import androidx.compose.runtime.withFrameNanos
+import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline.Companion.BASE_CHARS_PER_SECOND
+import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline.Companion.CATCH_UP_SECONDS
+import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline.Companion.MAX_CHARS_PER_SECOND
+import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline.Companion.STALL_SNAP_SECONDS
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive

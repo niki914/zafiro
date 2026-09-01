@@ -94,7 +94,8 @@ class McpExecutorTest {
     @Test
     fun passesServerHeadersThrough() = runTest {
         val client = FakeClient()
-        val servers = mapOf("docs" to server("docs", headers = mapOf("Authorization" to "Bearer t")))
+        val servers =
+            mapOf("docs" to server("docs", headers = mapOf("Authorization" to "Bearer t")))
         val exec = executor(client, servers)
 
         exec.execute(mcpCall())

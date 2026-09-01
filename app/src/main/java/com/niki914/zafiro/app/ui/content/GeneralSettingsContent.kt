@@ -11,13 +11,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.core.os.LocaleListCompat
 import com.niki914.logging.Logger
-import com.niki914.zafiro.app.R
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
 import com.niki914.uikit.infra.component.settings.SettingsRowSpec
 import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.app.ui.model.ThemeMode
 import com.niki914.zafiro.app.ui.nav.ThemeSettingsPage
@@ -50,7 +50,10 @@ data class LanguageOption(
 @Composable
 private fun languageOptions(): List<LanguageOption> {
     return listOf(
-        LanguageOption(tag = "", label = stringResource(R.string.ui_settings_general_language_follow_system)),
+        LanguageOption(
+            tag = "",
+            label = stringResource(R.string.ui_settings_general_language_follow_system)
+        ),
         LanguageOption(tag = LANGUAGE_TAG_ZH_CN, label = "简体中文"),
         LanguageOption(tag = LANGUAGE_TAG_ZH_TW, label = "繁體中文"),
         LanguageOption(tag = LANGUAGE_TAG_EN, label = "English"),
@@ -140,21 +143,21 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
         optionId = LanguageOption::tag,
         optionLabel = LanguageOption::label,
         onSelect = { option ->
-                savedLanguageTag = option.tag
-                showLanguageDialog = false
-                // 必须同步落盘：setApplicationLocales 触发 recreate 会取消协程作用域
-                runBlocking {
-                    XRepo.setLanguageTag(option.tag)
-                }
-                AppCompatDelegate.setApplicationLocales(
-                    if (option.tag.isBlank()) {
-                        LocaleListCompat.getEmptyLocaleList()
-                    } else {
-                        LocaleListCompat.forLanguageTags(option.tag)
-                    },
-                )
-            },
-        )
+            savedLanguageTag = option.tag
+            showLanguageDialog = false
+            // 必须同步落盘：setApplicationLocales 触发 recreate 会取消协程作用域
+            runBlocking {
+                XRepo.setLanguageTag(option.tag)
+            }
+            AppCompatDelegate.setApplicationLocales(
+                if (option.tag.isBlank()) {
+                    LocaleListCompat.getEmptyLocaleList()
+                } else {
+                    LocaleListCompat.forLanguageTags(option.tag)
+                },
+            )
+        },
+    )
 }
 
 @Composable

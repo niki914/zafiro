@@ -3,22 +3,18 @@ package com.niki914.zafiro.app.ui.content
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.R
-import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.SettingsDetailFormScaffold
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureInlineError
 import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
 import com.niki914.zafiro.app.ui.model.ProviderSpecs
+import com.niki914.zafiro.settings.model.LlmProtocol
 
 @Composable
 fun ConfigurePageContent(

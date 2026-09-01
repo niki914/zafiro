@@ -45,7 +45,10 @@ class ToolWireNameTest {
 
     @Test
     fun forMcpSanitizesServerAndToolSegments() {
-        assertEquals("mcp__my_server__admin_tools_list", ToolWireName.forMcp("my server", "admin.tools.list"))
+        assertEquals(
+            "mcp__my_server__admin_tools_list",
+            ToolWireName.forMcp("my server", "admin.tools.list")
+        )
         assertEquals("mcp__srv-a__get-sum", ToolWireName.forMcp("srv-a", "get-sum"))
     }
 
@@ -70,7 +73,10 @@ class ToolWireNameTest {
     @Test
     fun disambiguateReturnsBaseWhenUnused() {
         val used = setOf("mcp__docs__other")
-        assertEquals("mcp__docs__search", ToolWireName.disambiguate("mcp__docs__search", "docs\u0000search", used))
+        assertEquals(
+            "mcp__docs__search",
+            ToolWireName.disambiguate("mcp__docs__search", "docs\u0000search", used)
+        )
     }
 
     @Test

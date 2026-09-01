@@ -18,10 +18,10 @@ class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
 
     override val description: String =
         "Save durable facts to persistent memory that is injected into every future turn. " +
-            "Keep entries compact and high-signal.\n\n" +
-            "Actions: add (save a new fact), replace (update an existing entry), remove (delete " +
-            "an entry). Use old_text — a short unique substring of the target entry — to identify " +
-            "it for replace and remove."
+                "Keep entries compact and high-signal.\n\n" +
+                "Actions: add (save a new fact), replace (update an existing entry), remove (delete " +
+                "an entry). Use old_text — a short unique substring of the target entry — to identify " +
+                "it for replace and remove."
 
     override val defaultEnabled: Boolean = true
 
@@ -60,6 +60,7 @@ class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                     gateway.addMemory(args.content!!)
                     """{"ok":true,"action":"add"}"""
                 }
+
                 Action.REMOVE -> {
                     when (gateway.removeMemory(args.oldText!!)) {
                         MemoryMutationResult.Ok -> """{"ok":true,"action":"remove"}"""
@@ -68,12 +69,14 @@ class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                             message = "No entry matched '${args.oldText}'.",
                             hint = "Check the exact text of the entry you want to remove.",
                         ).toJsonString()
+
                         MemoryMutationResult.Ambiguous -> BuiltinToolResult.failure(
                             code = "AMBIGUOUS_MATCH",
                             message = "Multiple entries matched '${args.oldText}'. Be more specific.",
                         ).toJsonString()
                     }
                 }
+
                 Action.REPLACE -> {
                     when (gateway.replaceMemory(args.oldText!!, args.content!!)) {
                         MemoryMutationResult.Ok -> """{"ok":true,"action":"replace"}"""
@@ -82,6 +85,7 @@ class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                             message = "No entry matched '${args.oldText}'.",
                             hint = "Check the exact text of the entry you want to replace.",
                         ).toJsonString()
+
                         MemoryMutationResult.Ambiguous -> BuiltinToolResult.failure(
                             code = "AMBIGUOUS_MATCH",
                             message = "Multiple entries matched '${args.oldText}'. Be more specific.",
@@ -129,6 +133,7 @@ class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                     )
                 } else null
             }
+
             Action.REMOVE -> {
                 if (args.oldText.isNullOrBlank()) {
                     BuiltinToolResult.failure(
@@ -138,6 +143,7 @@ class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                     )
                 } else null
             }
+
             Action.REPLACE -> {
                 when {
                     args.oldText.isNullOrBlank() -> BuiltinToolResult.failure(
@@ -145,11 +151,13 @@ class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                         message = "Field 'old_text' is required for replace action.",
                         hint = """Example: {"action":"replace","old_text":"User prefers","content":"User prefers short answers."}""",
                     )
+
                     args.content.isNullOrBlank() -> BuiltinToolResult.failure(
                         code = "INVALID_ARGUMENTS",
                         message = "Field 'content' is required for replace action.",
                         hint = """Example: {"action":"replace","old_text":"User prefers","content":"User prefers short answers."}""",
                     )
+
                     else -> null
                 }
             }
@@ -166,7 +174,9 @@ class MemoryBuiltin : BuiltinTool(), RawJsonBuiltinTool {
                     "remove" -> REMOVE
                     "replace" -> REPLACE
                     else -> throw IllegalArgumentException(
-                        "Unknown action '${wire?.trim().orEmpty()}'. Expected add, replace, or remove."
+                        "Unknown action '${
+                            wire?.trim().orEmpty()
+                        }'. Expected add, replace, or remove."
                     )
                 }
             }

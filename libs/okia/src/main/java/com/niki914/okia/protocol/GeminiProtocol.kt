@@ -12,16 +12,15 @@ import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
@@ -65,7 +64,10 @@ class GeminiProtocol(
             url = snapshot.endpoint.replace(MODEL_PLACEHOLDER, snapshot.model),
             method = "POST",
             headers = snapshot.headers + useApiKey(snapshot.apiKey),
-            body = codec.encodeToString(JsonObject.serializer(), buildRequestBody(snapshot, history)),
+            body = codec.encodeToString(
+                JsonObject.serializer(),
+                buildRequestBody(snapshot, history)
+            ),
             timeouts = snapshot.timeouts,
             sensitiveHeaderNames = compat.sensitiveHeaderNames
         )
@@ -178,11 +180,13 @@ class GeminiProtocol(
                     put("text", block.text)
                     block.signature?.let { put("thoughtSignature", it) }
                 }
+
                 is ContentBlock.Thinking -> buildJsonObject {
                     put("thought", true)
                     put("text", block.text)
                     block.signature?.let { put("thoughtSignature", it) }
                 }
+
                 is ContentBlock.ToolCall -> buildJsonObject {
                     put("functionCall", buildJsonObject {
                         put("name", block.name)
@@ -193,6 +197,7 @@ class GeminiProtocol(
                     // （pi 语义，否则下一步返回 400）
                     block.signature?.let { put("thoughtSignature", it) }
                 }
+
                 is ContentBlock.Image -> null  // M2 前不支持（user 侧已抛错），防御忽略
             }
         }
@@ -242,9 +247,10 @@ class GeminiProtocol(
         }
 
         val candidate = (chunk["candidates"] as? JsonArray)?.firstOrNull() as? JsonObject ?: return
-        (candidate["finishReason"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
-            state.finishReason = it
-        }
+        (candidate["finishReason"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
+            ?.let {
+                state.finishReason = it
+            }
         val parts = candidate["content"]?.let { (it as? JsonObject)?.get("parts") as? JsonArray }
             ?: return
         parts.forEach { partElement ->
@@ -265,6 +271,7 @@ class GeminiProtocol(
                     if (hasText) handleTextPart(part, state, emit)
                     handleFunctionCallPart(part, state, emit)
                 }
+
                 else -> handleTextPart(part, state, emit)
             }
         }
@@ -281,9 +288,10 @@ class GeminiProtocol(
         // SDK 增量语义）；空文本跳过
         emit(ProtocolEvent.TextDelta(text))
         // 文本块可携带思考签名（回答块带 thoughtSignature，pi 语义：透传）
-        (part["thoughtSignature"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
-            emit(ProtocolEvent.ThinkingSignature(it))
-        }
+        (part["thoughtSignature"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
+            ?.let {
+                emit(ProtocolEvent.ThinkingSignature(it))
+            }
     }
 
     private suspend fun handleThinkingPart(
@@ -293,9 +301,10 @@ class GeminiProtocol(
     ) {
         val text = (part["text"] as? JsonPrimitive)?.contentOrNull ?: ""
         if (text.isNotEmpty()) emit(ProtocolEvent.ThinkingDelta(text))
-        (part["thoughtSignature"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
-            emit(ProtocolEvent.ThinkingSignature(it))
-        }
+        (part["thoughtSignature"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
+            ?.let {
+                emit(ProtocolEvent.ThinkingSignature(it))
+            }
     }
 
     private suspend fun handleFunctionCallPart(
@@ -337,7 +346,15 @@ class GeminiProtocol(
                     if (state.sawFunctionCall) StopReason.ToolUse else StopReason.Stop
                 )
             )
-            "MAX_TOKENS" -> emit(ProtocolEvent.Completed(state.usage, state.responseModel, StopReason.Length))
+
+            "MAX_TOKENS" -> emit(
+                ProtocolEvent.Completed(
+                    state.usage,
+                    state.responseModel,
+                    StopReason.Length
+                )
+            )
+
             else -> emit(
                 ProtocolEvent.Error(
                     IllegalStateException("unsupported finishReason: ${state.finishReason}")
@@ -367,6 +384,7 @@ class GeminiProtocol(
         var usage: Usage? = null
         var responseModel: String? = null
         var finishReason: String? = null
+
         // 本段是否出现过 functionCall（finishReason=STOP 时据此映射 ToolUse，pi 语义）
         var sawFunctionCall = false
     }

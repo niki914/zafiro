@@ -29,14 +29,14 @@ class FloatScreenResetDetector(
             Logger.w(
                 LOG_TAG,
                 "install skipped detach=${detachTarget?.desc() ?: "null"} " +
-                    "resume=${resumeTarget?.desc() ?: "null"}"
+                        "resume=${resumeTarget?.desc() ?: "null"}"
             )
             return
         }
         Logger.i(
             LOG_TAG,
             "install detach=${detachTarget.desc()} resume=${resumeTarget.desc()} " +
-                "graceMs=$graceWindowMs"
+                    "graceMs=$graceWindowMs"
         )
 
         installHookTargetObserver(

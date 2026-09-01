@@ -1,7 +1,6 @@
 package com.niki914.okia.transport
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 
 /**
@@ -61,6 +60,7 @@ class SseEventParser {
                 if (dataBuffer.isNotEmpty()) dataBuffer.append('\n')
                 dataBuffer.append(value)
             }
+
             "event" -> setEventType(value)
             else -> Unit  // id / retry / 未知字段忽略
         }

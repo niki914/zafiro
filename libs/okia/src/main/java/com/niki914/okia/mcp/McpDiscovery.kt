@@ -4,15 +4,15 @@ import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.tooling.ToolWireName
-import kotlin.concurrent.Volatile
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.concurrent.Volatile
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * MCP 发现管理（internal）：refreshMcpTools 的执行者 + 发现快照的来源。
@@ -133,6 +133,7 @@ internal class McpDiscovery(
                         conflict?.let { conflicts += it }
                         refreshed += outcome.server.name
                     }
+
                     is RefreshOutcome.Err -> {
                         val old = working[outcome.server.name]
                         val hasCache = registeredNames[outcome.server.name]?.isNotEmpty() == true
@@ -189,16 +190,17 @@ internal class McpDiscovery(
         registeredNames[server.name] = newNames
     }
 
-    private fun successState(server: McpServer, tools: List<McpDiscoveredTool>) = McpServerDiscoverySnapshot(
-        serverName = server.name,
-        enabled = true,
-        fingerprint = fingerprintOf(tools),
-        state = McpDiscoveryState.Available,
-        errorMessage = null,
-        lastSuccessAtMillis = Clock.System.now().toEpochMilliseconds(),
-        discoveredToolCount = tools.size,
-        tools = tools
-    )
+    private fun successState(server: McpServer, tools: List<McpDiscoveredTool>) =
+        McpServerDiscoverySnapshot(
+            serverName = server.name,
+            enabled = true,
+            fingerprint = fingerprintOf(tools),
+            state = McpDiscoveryState.Available,
+            errorMessage = null,
+            lastSuccessAtMillis = Clock.System.now().toEpochMilliseconds(),
+            discoveredToolCount = tools.size,
+            tools = tools
+        )
 
     private fun initialState(server: McpServer) = McpServerDiscoverySnapshot(
         serverName = server.name,
@@ -231,7 +233,11 @@ internal class McpDiscovery(
             }
         }
         val conflict = duplicatedRegisteredName?.let { name ->
-            ToolConflict(name = name, reason = ToolConflictReason.DuplicateInServer, candidates = listOf(name))
+            ToolConflict(
+                name = name,
+                reason = ToolConflictReason.DuplicateInServer,
+                candidates = listOf(name)
+            )
         }
         return kept to conflict
     }

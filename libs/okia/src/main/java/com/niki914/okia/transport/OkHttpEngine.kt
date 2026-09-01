@@ -1,12 +1,12 @@
 package com.niki914.okia.transport
 
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -15,8 +15,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import okhttp3.Response
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import okio.BufferedSink
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -66,7 +66,13 @@ class OkHttpEngine(
                     try {
                         val headers = response.headersMap()
                         if (response.isSuccessful) {
-                            cont.resume(StreamResponse.Ok(response.code, headers, lines(call, response)))
+                            cont.resume(
+                                StreamResponse.Ok(
+                                    response.code,
+                                    headers,
+                                    lines(call, response)
+                                )
+                            )
                         } else {
                             val body = response.body?.string() ?: ""
                             response.close()

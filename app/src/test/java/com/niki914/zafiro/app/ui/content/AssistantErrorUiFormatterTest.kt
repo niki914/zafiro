@@ -1,8 +1,6 @@
 package com.niki914.zafiro.app.ui.content
 
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.content.AssistantErrorUi
-import com.niki914.zafiro.app.ui.content.toAssistantErrorUi
 import com.niki914.zafiro.chat.LlmErrorCode
 import org.junit.Assert.assertEquals
 import org.junit.Test

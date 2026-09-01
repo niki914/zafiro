@@ -1,9 +1,5 @@
 package com.niki914.zafiro.app.ui.model
 
-import com.niki914.zafiro.app.ui.model.AboutSettingsEffect
-import com.niki914.zafiro.app.ui.model.AboutSettingsIntent
-import com.niki914.zafiro.app.ui.model.AboutSettingsItemId
-import com.niki914.zafiro.app.ui.model.AboutSettingsViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first

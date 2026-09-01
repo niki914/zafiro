@@ -38,7 +38,8 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
 
         val args = parseArguments(request.argumentsJson).getOrElse { error ->
             val msg = error.message ?: "Invalid arguments JSON"
-            val code = if (msg.startsWith("Unknown operation")) ScreenOperationError.INVALID_OPERATION.code else ScreenOperationError.INVALID_ARGUMENTS_JSON.code
+            val code =
+                if (msg.startsWith("Unknown operation")) ScreenOperationError.INVALID_OPERATION.code else ScreenOperationError.INVALID_ARGUMENTS_JSON.code
             return TextToolResult.failure(code, msg)
         }
 
@@ -64,8 +65,8 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
             else -> TextToolResult.failure(
                 code = ScreenOperationError.INVALID_OPERATION.code,
                 message = "Operation '${op::class.simpleName}' not supported by " +
-                    "screen_operation_shell. Use screen_operation_accessibility for " +
-                    "node-based operations.",
+                        "screen_operation_shell. Use screen_operation_accessibility for " +
+                        "node-based operations.",
             )
         }
     }
@@ -93,10 +94,11 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
                 ScreenOperationError.SHELL_SESSION_LOST.code -> {
                     result.copy(
                         message = "The shell command may have partially executed before the " +
-                            "timeout/session loss. Inspect the included tree to determine the " +
-                            "actual state before deciding whether to retry.",
+                                "timeout/session loss. Inspect the included tree to determine the " +
+                                "actual state before deciding whether to retry.",
                     )
                 }
+
                 else -> result
             }
             return assembleActionResult(enhanced, captureResult)
@@ -112,8 +114,8 @@ class ScreenOperationShellBuiltin : TextResultBuiltinTool() {
                 TextToolResult.failure(
                     code = ScreenOperationError.CAPTURE_FAILED_AFTER_ACTION.code,
                     message = "The shell action may have succeeded, but the updated screen " +
-                        "tree could not be captured. Read the screen before deciding whether " +
-                        "to retry the action.",
+                            "tree could not be captured. Read the screen before deciding whether " +
+                            "to retry the action.",
                 )
             },
         )
