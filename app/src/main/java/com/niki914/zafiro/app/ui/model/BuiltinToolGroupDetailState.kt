@@ -5,6 +5,7 @@ import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingItem
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingsManager
+import com.niki914.zafiro.repo.BuiltinToolGroups
 import kotlinx.coroutines.CancellationException
 
 data class BuiltinToolGroupDetailUiState(
@@ -52,7 +53,7 @@ class BuiltinToolGroupDetailViewModel :
 
     private suspend fun load(groupId: String) {
         val group =
-            runCatching { com.niki914.zafiro.repo.BuiltinToolGroups.find(groupId) }.getOrNull()
+            runCatching { BuiltinToolGroups.find(groupId) }.getOrNull()
         if (group == null) {
             Logger.w(LOG_TAG, "load failed unknown group=$groupId")
             updateState { copy(isLoading = false) }

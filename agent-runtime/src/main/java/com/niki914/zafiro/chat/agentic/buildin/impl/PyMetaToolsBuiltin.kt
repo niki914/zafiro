@@ -11,6 +11,7 @@ import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -222,7 +223,7 @@ Store the result of a run by printing from main; stdout is returned.
                 message = "Test run finished.",
                 data = buildJsonObject { put("stdout", output) },
             )
-        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+        } catch (e: TimeoutCancellationException) {
             BuiltinToolResult.failure(
                 code = "TIMEOUT",
                 message = "Test run timed out after ${timeoutMs / 1000}s.",
@@ -250,7 +251,7 @@ Store the result of a run by printing from main; stdout is returned.
     private suspend fun introspect(code: String): Introspection {
         val output = try {
             exec(CustomPyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
-        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+        } catch (e: TimeoutCancellationException) {
             return Introspection(
                 null,
                 null,

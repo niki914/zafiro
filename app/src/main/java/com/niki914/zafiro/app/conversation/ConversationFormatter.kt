@@ -2,7 +2,9 @@ package com.niki914.zafiro.app.conversation
 
 import com.niki914.logging.Logger
 import com.niki914.okia.conversation.ConversationEntry
+import com.niki914.okia.conversation.MessageEntry
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
@@ -44,7 +46,7 @@ object ConversationFormatter {
     }
 
     /** 基于 leaf 投影消息（MessageEntry）取预览：持久化器增量写入时用完整 history 而非仅新条目。 */
-    fun previewFromMessages(messages: List<com.niki914.okia.conversation.MessageEntry>): String {
+    fun previewFromMessages(messages: List<MessageEntry>): String {
         val text = messages.asReversed().firstNotNullOfOrNull { entry ->
             previewTextOf(entry.message).takeIf { it.isNotEmpty() }
         }.orEmpty()
@@ -131,7 +133,7 @@ object ConversationFormatter {
     private fun Message.User.textBlocks(): List<String> =
         content.filterIsInstance<ContentBlock.Text>().map { it.text }
 
-    private fun com.niki914.okia.message.AssistantMessage.textBlocks(): List<String> =
+    private fun AssistantMessage.textBlocks(): List<String> =
         content.filterIsInstance<ContentBlock.Text>().map { it.text }
 
     private fun HomeChatTurn.appendTextBlock(text: String): HomeChatTurn {
@@ -139,7 +141,7 @@ object ConversationFormatter {
         return copy(blocks = blocks + HomeChatBlock.Text(text))
     }
 
-    private fun HomeChatTurn.appendThinkingBlocks(assistant: com.niki914.okia.message.AssistantMessage): HomeChatTurn {
+    private fun HomeChatTurn.appendThinkingBlocks(assistant: AssistantMessage): HomeChatTurn {
         val thoughts = assistant.content.filterIsInstance<ContentBlock.Thinking>()
         if (thoughts.isEmpty()) return this
         // 恢复后不再流式，index 仅需块内唯一（按出现顺序编号）
@@ -153,7 +155,7 @@ object ConversationFormatter {
         return copy(blocks = blocks + thinkingBlocks)
     }
 
-    private fun HomeChatTurn.appendToolBlocks(assistant: com.niki914.okia.message.AssistantMessage): HomeChatTurn {
+    private fun HomeChatTurn.appendToolBlocks(assistant: AssistantMessage): HomeChatTurn {
         val toolCalls = assistant.content.filterIsInstance<ContentBlock.ToolCall>()
         if (toolCalls.isEmpty()) return this
         val toolBlocks = toolCalls.map { toolCall ->

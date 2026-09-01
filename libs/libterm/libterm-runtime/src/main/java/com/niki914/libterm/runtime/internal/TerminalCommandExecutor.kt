@@ -11,6 +11,7 @@ import com.niki914.libterm.runtime.Term
 import com.niki914.libterm.runtime.TermResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
@@ -167,7 +168,7 @@ internal object TerminalCommandExecutor {
 
     private suspend fun awaitCompletion(
         completed: CompletableDeferred<CommandResult>,
-        sessionEnded: kotlinx.coroutines.Deferred<*>,
+        sessionEnded: Deferred<*>,
     ): ExecCompletion {
         return select {
             completed.onAwait { ExecCompletion.Completed(it) }

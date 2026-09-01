@@ -19,6 +19,7 @@ import com.niki914.okia.message.Usage
 import com.niki914.okia.protocol.ProtocolEvent
 import com.niki914.okia.tooling.ToolCallContext
 import com.niki914.okia.tooling.ToolExecutor
+import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseLine
 import com.niki914.okia.transport.StreamResponse
 import kotlinx.coroutines.CancellationException
@@ -269,7 +270,7 @@ internal class RealAgentLoop : AgentLoop {
     private suspend fun sendWithTransportRetry(
         request: LoopRequest,
         onEvent: suspend (TurnEvent) -> Unit,
-        httpRequest: com.niki914.okia.transport.HttpRequest
+        httpRequest: HttpRequest
     ): SendResult {
         val policy = request.retryPolicy
         val max = policy.maxAttempts

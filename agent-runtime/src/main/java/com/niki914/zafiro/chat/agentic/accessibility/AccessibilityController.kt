@@ -7,6 +7,7 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICAT
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
 import android.content.Intent
+import android.net.Uri
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.accessibility.AccessibilityNodeInfo
@@ -25,9 +26,12 @@ import com.niki914.zafiro.chat.agentic.buildin.ScreenOperationError
 import com.niki914.zafiro.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import android.graphics.Rect as AndroidRect
 
 /**
  * Accessibility service interaction controller.
@@ -103,7 +107,7 @@ object AccessibilityController {
         }
     }
 
-    private val versionRng = java.security.SecureRandom()
+    private val versionRng = SecureRandom()
 
     /** Generates a random 12-character hex version string for screen snapshot tracking. */
     private fun nextVersion(): String {
@@ -273,7 +277,7 @@ object AccessibilityController {
                     ctx.startActivity(
                         Intent(
                             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            android.net.Uri.parse("package:${ctx.packageName}")
+                            Uri.parse("package:${ctx.packageName}")
                         ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     )
                 } catch (_: Exception) {
@@ -319,7 +323,7 @@ object AccessibilityController {
         val ctx = try {
             refreshNodeCache()
         } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
+            if (e is CancellationException) throw e
             return Result.failure(e)
         }
 
@@ -429,7 +433,7 @@ object AccessibilityController {
             hash = 31 * hash + node.isEditable.hashCode()
             hash = 31 * hash + node.isScrollable.hashCode()
             hash = 31 * hash + node.isVisibleToUser.hashCode()
-            val rect = android.graphics.Rect()
+            val rect = AndroidRect()
             node.getBoundsInScreen(rect)
             hash = 31 * hash + rect.left
             hash = 31 * hash + rect.top
@@ -507,7 +511,7 @@ object AccessibilityController {
         try {
             ensureService().getOrElse { return Result.failure(it) }
         } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
+            if (e is CancellationException) throw e
             return Result.failure(e)
         }
 
@@ -516,7 +520,7 @@ object AccessibilityController {
         try {
             refreshNodeCache()
         } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
+            if (e is CancellationException) throw e
             return Result.failure(e)
         }
 
@@ -570,7 +574,7 @@ object AccessibilityController {
         val text = PruningRules.normalizeText(node.text?.toString() ?: "")
         val desc = PruningRules.normalizeText(node.contentDescription?.toString() ?: "")
 
-        val androidRect = android.graphics.Rect()
+        val androidRect = AndroidRect()
         node.getBoundsInScreen(androidRect)
         val bounds = Rect(androidRect.left, androidRect.top, androidRect.right, androidRect.bottom)
         val pos = PruningRules.posOf(bounds, screenW, screenH)
@@ -643,7 +647,7 @@ object AccessibilityController {
             )
 
         // Fly pointer to node centre before acting
-        val nodeRect = android.graphics.Rect()
+        val nodeRect = AndroidRect()
         node.getBoundsInScreen(nodeRect)
         pointerOverlay?.animateTo(nodeRect.centerX().toFloat(), nodeRect.centerY().toFloat())
 
@@ -655,7 +659,7 @@ object AccessibilityController {
         index: Int,
         action: NodeAction,
     ): BuiltinToolResult {
-        val rect = android.graphics.Rect()
+        val rect = AndroidRect()
         node.getBoundsInScreen(rect)
         val cx = rect.centerX()
         val cy = rect.centerY()
@@ -676,7 +680,7 @@ object AccessibilityController {
                     )
                 }
 
-                val newRect = android.graphics.Rect()
+                val newRect = AndroidRect()
                 node.getBoundsInScreen(newRect)
                 val newCx = newRect.centerX()
                 val newCy = newRect.centerY()

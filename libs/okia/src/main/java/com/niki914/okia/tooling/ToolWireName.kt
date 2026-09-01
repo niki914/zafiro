@@ -1,5 +1,9 @@
 package com.niki914.okia.tooling
 
+import java.lang.Long
+import kotlin.Int
+import kotlin.String
+
 /**
  * 工具线缆名（provider 可见工具名）的派生与消歧。
  *
@@ -86,6 +90,6 @@ object ToolWireName {
             hash = hash xor (b.toLong() and 0xffL)
             hash = hash * 1099511628211L // FNV-1a prime
         }
-        return java.lang.Long.toHexString(hash)
+        return Long.toHexString(hash)
     }
 }

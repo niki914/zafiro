@@ -7,6 +7,7 @@ import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.util.ToolOutputTruncator
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -76,7 +77,7 @@ Limits: timeout 30 s default, 120 s max; output capped at 50 KB.
             val output = executor(code, timeoutMs)
             val capped = capOutput(output)
             TextToolResult.success(capped)
-        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+        } catch (e: TimeoutCancellationException) {
             TextToolResult.failure(
                 code = "TIMEOUT",
                 message = "Python execution timed out after ${timeoutMs / 1000}s.",

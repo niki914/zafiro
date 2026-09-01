@@ -4,6 +4,7 @@ import com.niki914.zafiro.repo.SettingsJsonCodecUtils.array
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.orEmptyObjects
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -56,7 +57,7 @@ internal object LlmConfigsSettingsCodec {
             mapOf(
                 ACTIVE_ID_KEY to JsonPrimitive(document.activeId.orEmpty()),
                 PROMPT_KEY to JsonPrimitive(document.prompt),
-                CONFIGS_KEY to kotlinx.serialization.json.JsonArray(
+                CONFIGS_KEY to JsonArray(
                     document.configs.map(::encodeConfig)
                 ),
             )

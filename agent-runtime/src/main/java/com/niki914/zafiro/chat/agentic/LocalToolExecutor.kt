@@ -12,6 +12,7 @@ import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResultCodec
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
 import com.niki914.zafiro.chat.agentic.stream.LocalToolResultClassifier
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
@@ -182,7 +183,7 @@ class LocalToolExecutor(
         try {
             onCustomPyToolWritten(tool)
         } catch (throwable: Throwable) {
-            if (throwable is kotlinx.coroutines.CancellationException) throw throwable
+            if (throwable is CancellationException) throw throwable
             Logger.w(
                 LOG_TAG,
                 "onCustomPyToolWritten failed name=$name error=${throwable.message}"

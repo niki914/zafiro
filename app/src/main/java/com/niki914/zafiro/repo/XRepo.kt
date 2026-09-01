@@ -21,6 +21,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import java.util.UUID
 import com.niki914.zafiro.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
 import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.zafiro.settings.model.RuntimeAgentValidation as AgentValidation
@@ -587,7 +588,7 @@ class LlmConfigsApi internal constructor(
         private const val LOG_TAG = "niki914_nexus_LlmConfigs"
 
         fun newConfigId(): String {
-            return "cfg-" + java.util.UUID.randomUUID().toString().replace("-", "").take(12)
+            return "cfg-" + UUID.randomUUID().toString().replace("-", "").take(12)
         }
     }
 }

@@ -3,6 +3,7 @@ package com.niki914.zafiro.chat.agentic.shell
 import com.niki914.xposed.api.util.LockState
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.util.TextPatternMatcher
+import java.util.UUID
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
@@ -86,7 +87,7 @@ class ShellCommandSafetyPolicy(
         toolName: String,
     ): ToolPermissionRequest {
         return ToolPermissionRequest(
-            id = java.util.UUID.randomUUID().toString(),
+            id = UUID.randomUUID().toString(),
             toolName = toolName,
             command = command,
             matchedRuleName = matchedRuleName.orEmpty(),

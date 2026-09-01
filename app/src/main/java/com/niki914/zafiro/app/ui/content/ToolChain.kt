@@ -51,6 +51,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.shape.G2FieldShape
@@ -69,7 +70,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 private val StaggerFadeSpring = spring<Float>(dampingRatio = 1f, stiffness = 300f)
 private val StaggerSlideSpring =
-    spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.8f, stiffness = 300f)
+    spring<IntOffset>(dampingRatio = 0.8f, stiffness = 300f)
 
 // ── nested scroll: pass through user drag, block fling inertia ─────────────
 
@@ -178,9 +179,11 @@ private fun SingleToolRow(
         } else {
             Modifier
         }
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .then(contentModifier)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(contentModifier)
+        ) {
             if (useCommandBody) {
                 CodeToolBody(
                     command = inputPreview.orEmpty(),
