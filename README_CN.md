@@ -5,7 +5,7 @@
 </div>
 
 <p align="center">
-  <img src="https://socialify.git.ci/niki914/zafiro/image?font=Raleway&language=1&logo=https%3A%2F%2Fgithub.com%2Fniki914%2Fzafiro%2Fblob%2Fmain%2Fres%2Ficon.svg&name=1&owner=1&pattern=Formal+Invitation&theme=Dark" alt="zafiro"/>
+  <img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_settings_screen.png?raw=true" alt="zafiro"/>
 </p>
 
 <p align="center">
@@ -24,10 +24,18 @@ Zafiro 是你的 Android 手机上运行一个智能代理。我们为 Zafiro Ag
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_phone_use.gif?raw=true" alt="Zafiro 手机操控演示" width="200"/><br/>手机操控</td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_net_research.gif?raw=true" alt="Zafiro 网络研究演示" width="200"/><br/>Research</td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_native.gif?raw=true" alt="Zafiro 应用安装演示" width="200"/><br/>从网络安装应用</td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_settings_screen.png?raw=true" alt="Zafiro 设置界面" width="200"/><br/>设置页</td>
+<tr>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_phone_use.gif?raw=true" alt="Zafiro 手机操控演示" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_net_research.gif?raw=true" alt="Zafiro 网络研究演示" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_native.gif?raw=true" alt="Zafiro 应用安装演示" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_settings_screen.png?raw=true" alt="Zafiro 设置界面" width="142" height="300"/></td>
+</tr>
+<tr>
+<td align="center">手机操控</td>
+<td align="center">Research</td>
+<td align="center">从网络安装应用</td>
+<td align="center">设置页</td>
+</tr>
 </tr>
 </table>
 
