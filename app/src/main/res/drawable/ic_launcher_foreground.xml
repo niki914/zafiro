@@ -5,82 +5,49 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Central Node -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    <!-- 注意：启动器只显示 108dp 画布中央 72dp，图形按可见区 72dp 的 60%（≈42dp）设计 -->
 
-    <!-- Top Node -->
+    <!-- 左侧外轮廓线 -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,30 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" />
-
-    <!-- Bottom Right Node -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M74,65 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" />
-
-    <!-- Bottom Left Node -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M34,65 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" />
-
-    <!-- Top Left Node -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M34,43 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
-
-    <!-- Top Right Node -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M74,43 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
-
-    <!-- Connecting Lines -->
-    <path
-        android:pathData="M54,48 L54,34.5"
-        android:strokeWidth="3"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M59.2,57 L70.1,62.7"
-        android:strokeWidth="3"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M48.8,57 L37.9,62.7"
-        android:strokeWidth="3"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M34,60.5 L34,46.5"
-        android:strokeWidth="3"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M74,60.5 L74,46.5"
-        android:strokeWidth="3"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M37.5,41 L50,32"
-        android:strokeWidth="3"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M70.5,41 L58,32"
-        android:strokeWidth="3"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M48.8,51 L38,45.5"
+        android:pathData="M54,34 L44,52.3 C45.4,53.7 45.4,55.3 44,56.7 L54,74"
         android:strokeWidth="2"
-        android:strokeAlpha="0.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 左侧内棱线 -->
+    <path
+        android:pathData="M54,34 L49,52.3 C49.4,53.7 49.4,55.3 49,56.7 L54,74"
+        android:strokeWidth="1.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 右侧内棱线 -->
+    <path
+        android:pathData="M54,34 L59,52.3 C58.6,53.7 58.6,55.3 59,56.7 L54,74"
+        android:strokeWidth="1.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 右侧外轮廓线 -->
+    <path
+        android:pathData="M54,34 L64,52.3 C62.6,53.7 62.6,55.3 64,56.7 L54,74"
+        android:strokeWidth="2"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 凹陷层上下界面的水平横线 -->
+    <path
+        android:pathData="M44,52.3 L64,52.3"
+        android:strokeWidth="1.5"
         android:strokeColor="#FFFFFF"
         android:strokeLineCap="round" />
     <path
-        android:pathData="M59.2,51 L70,45.5"
-        android:strokeWidth="2"
-        android:strokeAlpha="0.5"
+        android:pathData="M44,56.7 L64,56.7"
+        android:strokeWidth="1.5"
         android:strokeColor="#FFFFFF"
         android:strokeLineCap="round" />
 </vector>

@@ -56,8 +56,8 @@ data object StartupPage : ZafiroPage {
 data object ProviderPickPage : ZafiroPage {
     override val routeKey: String = "provider-pick"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_onboard_provider_pick_title)
-    override val leftAction: TopBarActionSpec =
-        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    // onboarding 首次流程不可返回 StartupPage
+    override val leftAction: TopBarActionSpec? = null
     override val rightAction: TopBarActionSpec? = null
 }
 
