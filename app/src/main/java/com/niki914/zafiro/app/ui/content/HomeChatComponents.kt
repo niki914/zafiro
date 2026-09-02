@@ -37,20 +37,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mikepenz.markdown.annotator.annotatorSettings
-import com.mikepenz.markdown.annotator.buildMarkdownAnnotatedString
-import com.mikepenz.markdown.compose.components.MarkdownComponentModel
-import com.mikepenz.markdown.compose.components.markdownComponents
-import com.mikepenz.markdown.compose.elements.MarkdownText
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.MarkdownTypography
@@ -62,8 +55,6 @@ import com.niki914.uikit.infra.shape.G2BubbleShape
 import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline
-import com.niki914.zafiro.app.ui.content.reveal.rememberStreamReveal
 import com.niki914.zafiro.app.ui.model.ActionSource
 import com.niki914.zafiro.chat.LlmErrorCode
 
@@ -149,30 +140,18 @@ println(answer)
 fun AssistantOutputText(
     text: String,
     modifier: Modifier = Modifier,
-    reveal: RevealTimeline? = null,
 ) {
     val markdownState = rememberMarkdownState(
         content = text,
         immediate = true,
     )
-    val revealComponents = remember(reveal) { reveal?.let(::revealMarkdownComponents) }
-    val typography = assistantMarkdownTypography()
 
     SelectionContainer(modifier = modifier.fillMaxWidth()) {
-        if (revealComponents == null) {
-            Markdown(
-                markdownState = markdownState,
-                modifier = Modifier.fillMaxWidth(),
-                typography = typography,
-            )
-        } else {
-            Markdown(
-                markdownState = markdownState,
-                modifier = Modifier.fillMaxWidth(),
-                typography = typography,
-                components = revealComponents,
-            )
-        }
+        Markdown(
+            markdownState = markdownState,
+            modifier = Modifier.fillMaxWidth(),
+            typography = assistantMarkdownTypography(),
+        )
     }
 }
 
@@ -209,47 +188,6 @@ private fun assistantMarkdownTypography(): MarkdownTypography {
         bullet = bodyStyle,
         list = bodyStyle,
         table = bodyStyle.copy(fontSize = 16.sp, lineHeight = 22.sp),
-    )
-}
-
-/**
- * 打字机显现的自定义块组件：段落/标题替换为带 reveal 修饰符的渲染，其余块走默认。
- * 各块用自身源文偏移与时间轴对齐，块间显现顺序天然正确。
- */
-private fun revealMarkdownComponents(timeline: RevealTimeline) = markdownComponents(
-    text = { RevealedBlockText(it, timeline, it.typography.text) },
-    paragraph = { RevealedBlockText(it, timeline, it.typography.paragraph) },
-    heading1 = { RevealedBlockText(it, timeline, it.typography.h1) },
-    heading2 = { RevealedBlockText(it, timeline, it.typography.h2) },
-    heading3 = { RevealedBlockText(it, timeline, it.typography.h3) },
-    heading4 = { RevealedBlockText(it, timeline, it.typography.h4) },
-    heading5 = { RevealedBlockText(it, timeline, it.typography.h5) },
-    heading6 = { RevealedBlockText(it, timeline, it.typography.h6) },
-    setextHeading1 = { RevealedBlockText(it, timeline, it.typography.h1) },
-    setextHeading2 = { RevealedBlockText(it, timeline, it.typography.h2) },
-)
-
-@Composable
-private fun RevealedBlockText(
-    model: MarkdownComponentModel,
-    timeline: RevealTimeline,
-    style: TextStyle,
-) {
-    val reveal = rememberStreamReveal(timeline = timeline, sourceStart = model.node.startOffset)
-    val annotator = annotatorSettings()
-    val annotated = remember(model.content, model.node, style, annotator) {
-        model.content.buildMarkdownAnnotatedString(
-            textNode = model.node,
-            style = style,
-            annotatorSettings = annotator,
-        )
-    }
-    reveal.sync(sourceEnd = model.node.endOffset, renderedText = annotated.text)
-    MarkdownText(
-        content = annotated,
-        modifier = reveal.modifier,
-        style = style.copy(textMotion = TextMotion.Animated),
-        onTextLayout = { layoutResult, _ -> reveal.onTextLayout(layoutResult) },
     )
 }
 

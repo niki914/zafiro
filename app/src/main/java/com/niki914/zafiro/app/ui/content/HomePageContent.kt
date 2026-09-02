@@ -88,7 +88,6 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.PageChromeMenuItem
 import com.niki914.zafiro.app.ui.RegisterPageChrome
-import com.niki914.zafiro.app.ui.content.reveal.RevealTimeline
 import com.niki914.zafiro.app.ui.model.ActionSource
 import com.niki914.zafiro.app.ui.model.HomeChatBlock
 import com.niki914.zafiro.app.ui.model.HomeChatIntent
@@ -461,16 +460,6 @@ private fun HomePageContentBody(
     activeThinkingKey: String? = null,
     onToggleActionRow: (Long, ActionSource) -> Unit,
 ) {
-    // 流式打字机时钟：整个 Home 持有一个（同一时刻只有最后一条回答在流式），
-    // 进度提升到列表层，流式 item 滚出视口被销毁后滑回，打字进度不重播。
-    val revealTimeline = remember { RevealTimeline() }
-    val streamingReveal = if (uiState.isGenerating) revealTimeline else null
-    LaunchedEffect(revealTimeline) {
-        revealTimeline.run()
-    }
-    LaunchedEffect(uiState.isGenerating, uiState.turns.lastOrNull()?.id) {
-        if (uiState.isGenerating) revealTimeline.reset()
-    }
 
     // 底部避让总高：composer 底距 + 实测高度 + 统一视觉间距。列表贴底留白与箭头
     // 位置同源；键盘关闭时（composerBottomPadding == composerGap）即为
@@ -516,7 +505,6 @@ private fun HomePageContentBody(
                     turn = turn,
                     userBubblePosition = position,
                     isLastTurn = index == uiState.turns.lastIndex,
-                    streamingReveal = streamingReveal,
                     onContentTap = onContentTap,
                     onReGenerate = onReGenerate,
                     onFork = onFork,
@@ -646,7 +634,6 @@ private fun HomeChatTurnItem(
     turn: HomeChatTurn,
     userBubblePosition: UserBubblePosition,
     isLastTurn: Boolean,
-    streamingReveal: RevealTimeline?,
     onContentTap: () -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
@@ -792,7 +779,6 @@ private fun HomeChatTurnItem(
                                     ) {
                                         AssistantOutputText(
                                             text = block.text,
-                                            reveal = if (isLastTurn) streamingReveal else null,
                                         )
                                     }
                                 }
