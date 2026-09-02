@@ -196,6 +196,7 @@ class HomeChatViewModel internal constructor(
     private var nextTurnId = 0L
     private var streamJob: Job? = null
     private var draftSaveJob: Job? = null
+    private val textPacer = TextPacer()
     private var currentConversationId: String? = null
     private var startupRestoreAttempted = false
 
@@ -389,6 +390,7 @@ class HomeChatViewModel internal constructor(
     }
 
     private suspend fun collectLlmStream(turnId: Long, query: String) {
+        textPacer.reset()
         runtime.stream(query).collect { event ->
             val eventName = eventName(event)
             val eventCount = currentState.streamEventCount + 1
@@ -398,7 +400,44 @@ class HomeChatViewModel internal constructor(
                     streamEventCount = eventCount,
                 )
             }
-            applyEvent(turnId = turnId, event = event)
+            if (event is LlmStreamEvent.TextDelta) {
+                paceTextDelta(turnId, event)
+            } else {
+                applyEvent(turnId = turnId, event = event)
+            }
+        }
+    }
+
+    /**
+     * 按 [TextPacer] 节奏放出当前文本段的增量。fullText 是累积全量（跨块只在
+     * TextEnded 重置），released 保持同一坐标系，切出 [from, to) 的增量。
+     * 流被取消（停止/新会话）时在 finally 里立即追平，避免丢尾部文本。
+     */
+    private suspend fun paceTextDelta(turnId: Long, event: LlmStreamEvent.TextDelta) {
+        val fullText = event.fullText
+        try {
+            textPacer.pace(fullText.length) { from, to ->
+                applyEvent(
+                    turnId = turnId,
+                    event = event.copy(
+                        delta = fullText.substring(from, to),
+                        fullText = fullText.take(to),
+                    ),
+                )
+            }
+        } catch (e: CancellationException) {
+            val from = textPacer.released
+            if (from < fullText.length) {
+                textPacer.syncReleased(fullText.length)
+                applyEvent(
+                    turnId = turnId,
+                    event = event.copy(
+                        delta = fullText.substring(from),
+                        fullText = fullText,
+                    ),
+                )
+            }
+            throw e
         }
     }
 
