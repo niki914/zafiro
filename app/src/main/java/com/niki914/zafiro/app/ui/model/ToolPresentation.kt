@@ -2,7 +2,6 @@ package com.niki914.zafiro.app.ui.model
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Terminal
@@ -25,8 +24,9 @@ import kotlinx.serialization.json.jsonPrimitive
  * 预留演进：后续可改为 agent 传的意图字段，直接展示"这个操作是要干啥"（如"罗列文件"），不再依赖参数猜。
  */
 object ToolPresentation {
-    /** Thinking 图标（用户待定，暂用四角星星）。 */
-    val Thinking = Icons.Filled.AutoAwesome
+    /** Thinking 图标：自绘 spark drawable（ic_thinking）。 */
+    val Thinking: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_thinking)
 
     private val TerminalIcon = Icons.Filled.Terminal
     private val Skill = Icons.AutoMirrored.Filled.MenuBook

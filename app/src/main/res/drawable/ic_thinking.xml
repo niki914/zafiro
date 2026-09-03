@@ -1,46 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?><!-- Thinking spark icon. Glyph bbox 28.28x28.28 (39.86..68.14) at 80% of canvas:
+     viewport 35.35x35.35, translate (-3.535, -3.535) centers the glyph. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-  <path
-      android:pathData="M68.14,39.86L48.13,45.73C48.13,47.71 47,48.84 45.02,48.84L39.86,68.14"
-      android:strokeLineJoin="round"
-      android:strokeWidth="2"
-      android:fillColor="#00000000"
-      android:strokeColor="#FFFFFF"
-      android:strokeLineCap="round"/>
-  <path
-      android:pathData="M68.14,39.86L51.67,49.26C50.96,50.54 49.83,51.67 48.56,52.37L39.86,68.14"
-      android:strokeLineJoin="round"
-      android:strokeWidth="1.5"
-      android:fillColor="#00000000"
-      android:strokeColor="#FFFFFF"
-      android:strokeLineCap="round"/>
-  <path
-      android:pathData="M68.14,39.86L58.74,56.33C57.46,57.04 56.33,58.17 55.63,59.44L39.86,68.14"
-      android:strokeLineJoin="round"
-      android:strokeWidth="1.5"
-      android:fillColor="#00000000"
-      android:strokeColor="#FFFFFF"
-      android:strokeLineCap="round"/>
-  <path
-      android:pathData="M68.14,39.86L62.27,59.87C60.29,59.87 59.16,61 59.16,62.98L39.86,68.14"
-      android:strokeLineJoin="round"
-      android:strokeWidth="2"
-      android:fillColor="#00000000"
-      android:strokeColor="#FFFFFF"
-      android:strokeLineCap="round"/>
-  <path
-      android:pathData="M48.13,45.73L62.27,59.87"
-      android:strokeWidth="1.5"
-      android:fillColor="#00000000"
-      android:strokeColor="#FFFFFF"
-      android:strokeLineCap="round"/>
-  <path
-      android:pathData="M45.02,48.84L59.16,62.98"
-      android:strokeWidth="1.5"
-      android:fillColor="#00000000"
-      android:strokeColor="#FFFFFF"
-      android:strokeLineCap="round"/>
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="35.35"
+    android:viewportHeight="35.35">
+    <group
+        android:translateX="-36.325"
+        android:translateY="-36.325">
+        <path
+            android:pathData="M68.14,39.86L48.13,45.73C48.13,47.71 47,48.84 45.02,48.84L39.86,68.14"
+            android:strokeLineJoin="round"
+            android:strokeWidth="2"
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M68.14,39.86L51.67,49.26C50.96,50.54 49.83,51.67 48.56,52.37L39.86,68.14"
+            android:strokeLineJoin="round"
+            android:strokeWidth="1.5"
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M68.14,39.86L58.74,56.33C57.46,57.04 56.33,58.17 55.63,59.44L39.86,68.14"
+            android:strokeLineJoin="round"
+            android:strokeWidth="1.5"
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M68.14,39.86L62.27,59.87C60.29,59.87 59.16,61 59.16,62.98L39.86,68.14"
+            android:strokeLineJoin="round"
+            android:strokeWidth="2"
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M48.13,45.73L62.27,59.87"
+            android:strokeWidth="1.5"
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M45.02,48.84L59.16,62.98"
+            android:strokeWidth="1.5"
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+    </group>
 </vector>
