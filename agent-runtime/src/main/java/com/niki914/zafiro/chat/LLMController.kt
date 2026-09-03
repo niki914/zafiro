@@ -1,11 +1,11 @@
 package com.niki914.zafiro.chat
 
-import android.content.Context
 import com.niki914.logging.Logger
 import com.niki914.okia.Okia
 import com.niki914.okia.TurnOptions
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.mcp.McpDiscoveryState
@@ -23,7 +23,6 @@ import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.xposed.api.util.LockState
-import com.niki914.zafiro.R
 import com.niki914.zafiro.chat.agentic.LocalToolExecutor
 import com.niki914.zafiro.chat.agentic.PromptComposer
 import com.niki914.zafiro.chat.agentic.PromptComposerInput
@@ -64,7 +63,7 @@ import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 object LLMController {
     private const val LOG_TAG = "niki914_nexus_LLMController"
     internal const val CONFIG_REQUIRED_MESSAGE = "请先填写配置" // <--- TODO res
-    private const val LLM_IDLE_TIMEOUT_SECONDS = 30L
+    internal const val NO_IDLE_TIMEOUT_SECONDS = Long.MAX_VALUE / 1000
 
     private val promptComposer =
         PromptComposer()
@@ -185,6 +184,8 @@ object LLMController {
             baseSystemPrompt = llmConfig.prompt,
             finalSystemPrompt = llmConfig.prompt,
             proxy = llmConfig.proxy,
+            idleTimeoutSeconds = llmConfig.idleTimeoutSeconds,
+            retryMaxAttempts = llmConfig.retryMaxAttempts,
         )
         // 会话实例按协议重建；协议切换 = close + 新实例，但树经 restore 延续
         // （P1 #3：export 当前树给新协议实例，会话 id + 历史跨 Provider 保留）
@@ -300,12 +301,10 @@ object LLMController {
 
     fun stream(
         query: String,
-        context: Context,
         fromUserInterface: Boolean = false,
     ): Flow<LlmStreamEvent> = channelFlow {
         // 确认型执行规则按来源区分：UI 直连可弹窗；宿主路径默认拒绝（英文错误回给 Agent）
         ToolPermissionCoordinator.canRequestUserConfirmation = fromUserInterface
-        val defaultErrorMessage = context.getString(R.string.error_llm_request_failed)
         try {
             val state = try {
                 refresh()
@@ -315,13 +314,10 @@ object LLMController {
                     throw throwable
                 }
                 runtimeState ?: run {
-                    // 用户可见错误文案在 IPC 前用资源本地化。CONFIG_REQUIRED 的异常
-                    // message 是内部码（ValidationTest 以 const 断言它），不直接展示
-                    val message = if (throwable.toUserErrorCode() == LlmErrorCode.ConfigRequired) {
-                        context.getString(R.string.error_config_required)
-                    } else {
-                        throwable.toUserErrorMessage(defaultErrorMessage)
-                    }
+                    // 原文透传不造文案：异常 message 多为内部码（ConfigRequired）或
+                    // 英文原文，翻译归直接消费方（UI toAssistantErrorUi / Service map）
+                    val code = throwable.toUserErrorCode()
+                    val message = throwable.message?.trim()?.ifEmpty { null }
                     Logger.e(
                         LOG_TAG,
                         "refresh failed errorType=${throwable.eventTypeName()} message=$message"
@@ -330,14 +326,14 @@ object LLMController {
                         LlmStreamEvent.Error(
                             message = message,
                             throwable = throwable,
-                            code = throwable.toUserErrorCode(),
+                            code = code,
                         )
                     )
                     return@channelFlow
                 }
             }
             if (state == null) {
-                send(LlmStreamEvent.Error(defaultErrorMessage))
+                send(LlmStreamEvent.Error(message = null, code = null))
                 return@channelFlow
             }
             Logger.i(
@@ -350,8 +346,18 @@ object LLMController {
 
             val startedAtMs = System.currentTimeMillis()
             var streamErrorReported = false
+            var streamTerminated = false
             var firstFrameLogged = false
             val sink: SendChannel<LlmStreamEvent> = this
+
+            /** 发送事件并维护终态标记（Error/Completed 已发则 [streamTerminated] 置位）。 */
+            suspend fun emit(event: LlmStreamEvent) {
+                if (event is LlmStreamEvent.Error) streamErrorReported = true
+                if (event is LlmStreamEvent.Error || event is LlmStreamEvent.Completed) {
+                    streamTerminated = true
+                }
+                sink.send(event)
+            }
             try {
                 Logger.i(
                     LOG_TAG,
@@ -377,8 +383,7 @@ object LLMController {
                         text = effectiveQuery,
                         options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt),
                     ) { event ->
-                        val mapped =
-                            LlmStreamEventMapper.map(event, startedAtMs, defaultErrorMessage)
+                        val mapped = LlmStreamEventMapper.map(event, startedAtMs)
                         mapped?.let {
                             if (!firstFrameLogged && it is LlmStreamEvent.TextDelta) {
                                 firstFrameLogged = true
@@ -389,7 +394,6 @@ object LLMController {
                                 )
                             }
                             if (it is LlmStreamEvent.Error && !streamErrorReported) {
-                                streamErrorReported = true
                                 Logger.e(
                                     LOG_TAG,
                                     "stream error stage=session_event code=${it.code} " +
@@ -398,7 +402,7 @@ object LLMController {
                                             "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                                 )
                             }
-                            sink.send(it)
+                            emit(it)
                         }
                     }
                 } catch (throwable: Throwable) {
@@ -412,12 +416,12 @@ object LLMController {
                             LOG_TAG,
                             "stream error stage=send code=${throwable.toUserErrorCode()} " +
                                     "errorType=${throwable.eventTypeName()} " +
-                                    "message=${throwable.toUserErrorMessage(defaultErrorMessage)} " +
+                                    "message=${throwable.message} " +
                                     "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                         )
-                        send(
+                        emit(
                             LlmStreamEvent.Error(
-                                message = throwable.toUserErrorMessage(defaultErrorMessage),
+                                message = throwable.message?.trim()?.ifEmpty { null },
                                 throwable = throwable,
                                 code = throwable.toUserErrorCode(),
                             )
@@ -435,13 +439,25 @@ object LLMController {
                                 "message=${error.message} " +
                                 "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                     )
-                    send(
+                    emit(
                         LlmStreamEvent.Error(
-                            message = error.message.trim().ifEmpty { defaultErrorMessage },
+                            message = error.message.trim().ifEmpty { null },
                             throwable = error.cause,
-                            code = null,
+                            code = RetryableErrorClassifier.classify(error),
                         )
                     )
+                }
+                // 流终态守卫：保证流结束前已发过 Error 或 Completed——
+                // 最初「无反馈卡住」bug 的直接防御（异常路径漏发终态时，
+                // UI 不能停在无限生成态）
+                if (!streamTerminated) {
+                    Logger.w(
+                        LOG_TAG,
+                        "stream ended without terminal event, emitting guard error " +
+                                "resultType=${result?.let { it::class.simpleName } ?: "null"} " +
+                                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                    )
+                    emit(LlmStreamEvent.Error(message = null, code = null))
                 }
                 if (!streamErrorReported) {
                     Logger.i(
@@ -455,14 +471,14 @@ object LLMController {
                 }
                 Logger.e(
                     LOG_TAG,
-                    "stream error stage=send code=${throwable.toUserErrorCode()} " +
+                    "stream error stage=outer code=${throwable.toUserErrorCode()} " +
                             "errorType=${throwable.eventTypeName()} " +
-                            "message=${throwable.toUserErrorMessage(defaultErrorMessage)} " +
+                            "message=${throwable.message} " +
                             "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
-                send(
+                emit(
                     LlmStreamEvent.Error(
-                        message = throwable.toUserErrorMessage(defaultErrorMessage),
+                        message = throwable.message?.trim()?.ifEmpty { null },
                         throwable = throwable,
                         code = throwable.toUserErrorCode(),
                     )
@@ -562,7 +578,9 @@ object LLMController {
             apiKey = config.apiKey
             model = config.model
             hooks += killToolResourcesHook
-            idleTimeoutSeconds = LLM_IDLE_TIMEOUT_SECONDS
+            // null = 不超时（General Settings 提供「不限时」选项）
+            idleTimeoutSeconds = config.idleTimeoutSeconds ?: NO_IDLE_TIMEOUT_SECONDS
+            retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
             toolRegistry = this@LLMController.toolRegistry
         }
     }
@@ -724,13 +742,6 @@ object LLMController {
         if (config.endpoint.isBlank() || config.model.isBlank()) {
             throw LlmConfigRequiredException()
         }
-    }
-
-    private fun Throwable.toUserErrorMessage(fallbackMessage: String): String {
-        return message
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
-            ?: fallbackMessage
     }
 
     private fun Throwable.toUserErrorCode(): LlmErrorCode? {

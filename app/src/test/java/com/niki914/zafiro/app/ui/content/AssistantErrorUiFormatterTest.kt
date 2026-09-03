@@ -30,13 +30,61 @@ class AssistantErrorUiFormatterTest {
     }
 
     @Test
-    fun toAssistantErrorUi_networkBlankMessageHasNoBody() {
+    fun toAssistantErrorUi_networkBlankMessageFallsBackToBodyRes() {
+        // controller 不再造兜底字符串：空原文由 bodyRes 兜底
         assertEquals(
             AssistantErrorUi(
                 titleRes = R.string.ui_home_error_network_title,
+                bodyRes = R.string.ui_home_error_retry_body,
                 body = null,
             ),
             toAssistantErrorUi("  ", LlmErrorCode.RateLimit),
+        )
+    }
+
+    @Test
+    fun toAssistantErrorUi_nullMessageFallsBackToBodyRes() {
+        assertEquals(
+            AssistantErrorUi(
+                titleRes = R.string.ui_home_error_network_title,
+                bodyRes = R.string.ui_home_error_retry_body,
+                body = null,
+            ),
+            toAssistantErrorUi(null, LlmErrorCode.Transport),
+        )
+    }
+
+    @Test
+    fun toAssistantErrorUi_idleTimeoutHasDedicatedTitle() {
+        assertEquals(
+            AssistantErrorUi(
+                titleRes = R.string.ui_home_error_idle_timeout_title,
+                bodyRes = R.string.ui_home_error_retry_body,
+                body = null,
+            ),
+            toAssistantErrorUi(null, LlmErrorCode.IdleTimeout),
+        )
+    }
+
+    @Test
+    fun toAssistantErrorUi_retryExhaustedWithAttemptsHasDedicatedTitle() {
+        assertEquals(
+            AssistantErrorUi(
+                titleRes = R.string.ui_home_error_retry_exhausted_title,
+                body = "retry exhausted (Transport)",
+            ),
+            toAssistantErrorUi("retry exhausted (Transport)", LlmErrorCode.RetryExhausted, attempts = 3),
+        )
+    }
+
+    @Test
+    fun toAssistantErrorUi_retryExhaustedWithoutAttemptsUsesNetworkTitle() {
+        assertEquals(
+            AssistantErrorUi(
+                titleRes = R.string.ui_home_error_network_title,
+                body = "retry exhausted (Transport)",
+            ),
+            toAssistantErrorUi("retry exhausted (Transport)", LlmErrorCode.RetryExhausted),
         )
     }
 

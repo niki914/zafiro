@@ -1,6 +1,5 @@
 package com.niki914.zafiro.chat
 
-import android.content.Context
 import com.niki914.okia.Okia
 import com.niki914.okia.OkiaDependencies
 import com.niki914.okia.conversation.ConversationEntry
@@ -42,8 +41,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
 
 class LLMControllerOkiaTest {
 
@@ -163,7 +160,7 @@ class LLMControllerOkiaTest {
         LLMController.okiaFactory =
             LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
-        val events = LLMController.stream("hello", mockContext()).toList()
+        val events = LLMController.stream("hello").toList()
 
         assertEquals(LlmStreamEvent.RoundStarted, events[0])
         assertEquals("hi", (events[1] as LlmStreamEvent.TextDelta).delta)
@@ -196,7 +193,7 @@ class LLMControllerOkiaTest {
         LLMController.okiaFactory =
             LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
-        val events = LLMController.stream("hello", mockContext()).toList()
+        val events = LLMController.stream("hello").toList()
 
         val error = events.first { it is LlmStreamEvent.Error } as LlmStreamEvent.Error
         assertEquals("boom", error.message)
@@ -221,7 +218,7 @@ class LLMControllerOkiaTest {
         LLMController.okiaFactory =
             LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
-        LLMController.stream("hello", mockContext()).toList()
+        LLMController.stream("hello").toList()
 
         val snapshot = capturedSnapshots.single()
         assertTrue(snapshot.systemPrompt.orEmpty().contains("Base"))
@@ -249,10 +246,10 @@ class LLMControllerOkiaTest {
         LLMController.okiaFactory =
             LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(blockingLoop) }
 
-        val firstJob = launch { LLMController.stream("q1", mockContext()).toList() }
+        val firstJob = launch { LLMController.stream("q1").toList() }
         entered.await()
         // 第二个并发 send：OKIA 活跃回合契约抛 IllegalStateException → TurnConflict
-        val secondEvents = LLMController.stream("q2", mockContext()).toList()
+        val secondEvents = LLMController.stream("q2").toList()
         val error = secondEvents.first { it is LlmStreamEvent.Error } as LlmStreamEvent.Error
         assertEquals(LlmErrorCode.TurnConflict, error.code)
 
@@ -411,10 +408,6 @@ class LLMControllerOkiaTest {
         )
     }
 
-    private fun mockContext(): Context = mock(Context::class.java).apply {
-        `when`(getString(com.niki914.zafiro.R.string.error_llm_request_failed))
-            .thenReturn("Request failed")
-    }
 
     private fun stubLoop(
         events: List<TurnEvent>,

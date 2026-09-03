@@ -64,7 +64,7 @@ internal data class AssistantErrorUi(
     val body: String? = null,
 )
 
-internal fun toAssistantErrorUi(message: String, code: LlmErrorCode?): AssistantErrorUi {
+internal fun toAssistantErrorUi(message: String?, code: LlmErrorCode?, attempts: Int? = null): AssistantErrorUi {
     return when (code) {
         // 配置问题：用户可行动的引导（唯一本地化正文）
         LlmErrorCode.ConfigRequired -> AssistantErrorUi(
@@ -75,20 +75,36 @@ internal fun toAssistantErrorUi(message: String, code: LlmErrorCode?): Assistant
         // 服务器/网络异常（用户选的服务器）：标题分类 + 原始 message 透传。
         // Parse 也归此类：400 系客户端错误（模型名无效等）是用户配置/服务器问题，
         // 与 Auth 同类，不应算内部错误（正文 message 给出具体原因）。
+        // message 为空（controller 不再兜底字符串）时由 bodyRes 兜底。
+        // RetryExhausted 带 attempts：标题反映"重试已耗尽"而非泛网络错误
+        LlmErrorCode.RetryExhausted if attempts != null -> AssistantErrorUi(
+            titleRes = R.string.ui_home_error_retry_exhausted_title,
+            bodyRes = if (message.isNullOrBlank()) R.string.ui_home_error_retry_body else null,
+            body = message?.trim()?.ifEmpty { null },
+        )
+
         LlmErrorCode.Auth, LlmErrorCode.Quota, LlmErrorCode.RateLimit,
         LlmErrorCode.Overloaded, LlmErrorCode.Transport, LlmErrorCode.Parse,
         LlmErrorCode.RetryExhausted,
             -> AssistantErrorUi(
             titleRes = R.string.ui_home_error_network_title,
-            body = message.trim().ifEmpty { null },
+            bodyRes = if (message.isNullOrBlank()) R.string.ui_home_error_retry_body else null,
+            body = message?.trim()?.ifEmpty { null },
+        )
+
+        // 响应空闲超时：专属标题，秒数不进错误串（用户只需知道超时了）
+        LlmErrorCode.IdleTimeout -> AssistantErrorUi(
+            titleRes = R.string.ui_home_error_idle_timeout_title,
+            bodyRes = if (message.isNullOrBlank()) R.string.ui_home_error_retry_body else null,
+            body = message?.trim()?.ifEmpty { null },
         )
 
         // 内部错误（我们的问题 / 未知）：标题分类 + 原始 message 透传，空则兜底
         LlmErrorCode.TurnConflict, LlmErrorCode.HookFailed,
         LlmErrorCode.ToolExecutionFailed, null,
             -> {
-            val normalized = message.trim()
-            if (normalized.isEmpty()) {
+            val normalized = message?.trim()
+            if (normalized.isNullOrEmpty()) {
                 AssistantErrorUi(
                     titleRes = R.string.ui_home_error_internal_title,
                     bodyRes = R.string.ui_home_error_retry_body,
@@ -103,7 +119,7 @@ internal fun toAssistantErrorUi(message: String, code: LlmErrorCode?): Assistant
     }
 }
 
-internal fun toAssistantErrorUi(message: String): AssistantErrorUi {
+internal fun toAssistantErrorUi(message: String?): AssistantErrorUi {
     return toAssistantErrorUi(message = message, code = null)
 }
 
@@ -315,8 +331,9 @@ private fun DrawScope.drawUserBubbleTail(color: Color) {
 
 @Composable
 fun AssistantErrorBlock(
-    message: String,
+    message: String?,
     code: LlmErrorCode? = null,
+    attempts: Int? = null,
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -349,6 +366,51 @@ fun AssistantErrorBlock(
                 color = colorScheme.onErrorContainer,
                 textAlign = TextAlign.Center,
             )
+        }
+    }
+}
+
+@Composable
+fun AssistantRetryingBlock(
+    attempt: Int,
+    maxAttempts: Int,
+    reason: String,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val shape = G2BubbleShape(18.dp)
+    // 原始错误文本透传（英文，来自上游/传输层）；空则只显示标题
+    val normalizedReason = reason.trim()
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = maxWidth * 0.82f)
+                .clip(shape)
+                .background(
+                    colorScheme.secondaryContainer.copy(alpha = 0.68f),
+                    shape,
+                )
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.ui_home_retrying_title, attempt, maxAttempts),
+                style = MaterialTheme.typography.labelLarge,
+                color = colorScheme.onSecondaryContainer,
+                textAlign = TextAlign.Center,
+            )
+            if (normalizedReason.isNotEmpty()) {
+                Text(
+                    text = normalizedReason,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }

@@ -788,6 +788,15 @@ private fun HomeChatTurnItem(
                                 AssistantErrorBlock(
                                     message = block.message,
                                     code = block.code,
+                                    attempts = block.attempts,
+                                )
+                            }
+
+                            is HomeChatBlock.Retrying -> {
+                                AssistantRetryingBlock(
+                                    attempt = block.attempt,
+                                    maxAttempts = block.maxAttempts,
+                                    reason = block.reason,
                                 )
                             }
 

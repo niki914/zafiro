@@ -5,11 +5,11 @@ import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.ToolCallOutcome
+import com.niki914.zafiro.chat.RetryableErrorClassifier
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.ToolCallKind
 import com.niki914.zafiro.chat.ToolCallStatus
-import com.niki914.okia.error.LLMErrorCode as OkiaLLMErrorCode
 
 /**
  * TurnEvent → LlmStreamEvent 映射器（OKIA 接入 T1 重写）。
@@ -37,15 +37,19 @@ object LlmStreamEventMapper {
     private var activeThinkingIndex: Int? = null
     private var activeThinkingText: String = ""
 
+    /** 本回合已排定的重试次数（RetryScheduled 累计；TurnStarted 重置）。
+     *  RetryExhausted 时随 Error 事件结构化携带，不反向解析错误串。 */
+    private var retryAttemptsScheduled = 0
+
     fun map(
         event: TurnEvent,
         startedAtMs: Long,
-        defaultErrorMessage: String,
     ): LlmStreamEvent? {
         val mapped = when (event) {
             is TurnEvent.TurnStarted -> {
                 accumulatedText = ""
                 resetThinkingState()
+                retryAttemptsScheduled = 0
                 LlmStreamEvent.RoundStarted
             }
 
@@ -91,20 +95,27 @@ object LlmStreamEventMapper {
             is TurnEvent.TurnFailed -> {
                 accumulatedText = ""
                 resetThinkingState()
+                val classified = RetryableErrorClassifier.classify(event.error)
                 LlmStreamEvent.Error(
-                    message = event.error.message.trim().ifEmpty { defaultErrorMessage },
+                    message = event.error.message.trim().ifEmpty { null },
                     throwable = event.error.cause,
-                    code = event.error.code.toZafiroCode(),
+                    code = classified,
+                    attempts = if (classified == LlmErrorCode.RetryExhausted) {
+                        retryAttemptsScheduled
+                    } else {
+                        null
+                    },
                 )
             }
 
-            // 超时也视为回合终止：清思考在途态（不合成——正常流不会走到这里）
+            // 超时也视为回合终止：清思考在途态（不合成——正常流不会走到这里）。
+            // 文案归 UI 层（toAssistantErrorUi 按 IdleTimeout 出专属标题），此处只带类型。
             is TurnEvent.TurnIdleTimeout -> {
                 resetThinkingState()
                 LlmStreamEvent.Error(
-                    message = defaultErrorMessage,
+                    message = null,
                     throwable = null,
-                    code = LlmErrorCode.Transport,
+                    code = LlmErrorCode.IdleTimeout,
                 )
             }
 
@@ -147,6 +158,20 @@ object LlmStreamEventMapper {
                 null
             }
 
+            // 重试已排定：透传为 Retrying（UI 展示 retry 卡片，流恢复即清除）；
+            // 重试会重发同一请求，partial 丢弃不 commit，故重试边界重置文本累积，
+            // 让成功尝试的全量重放与 UI 累积重新对齐（避免重复/缺段）。
+            is TurnEvent.RetryScheduled -> {
+                accumulatedText = ""
+                retryAttemptsScheduled = event.attempt
+                LlmStreamEvent.Retrying(
+                    attempt = event.attempt,
+                    maxAttempts = event.maxAttempts,
+                    delayMs = event.delayMs,
+                    reason = event.reason,
+                )
+            }
+
             // 工具意图阶段：名字已知、参数在途——透传为 ToolPending，UI 以 Running 占位（转圈、不可展开）。
             // 身份取自事件字段：发起中的调用未进 partial.content，从 partial 里取不到。
             // Delta 不透传（无需参数实时预览）；Ready 与 Running 几乎同时，走 Running 即可。
@@ -157,8 +182,7 @@ object LlmStreamEventMapper {
                 )
             )
 
-            is TurnEvent.ToolCallDelta, is TurnEvent.ToolCallReady,
-            is TurnEvent.RetryScheduled -> null
+            is TurnEvent.ToolCallDelta, is TurnEvent.ToolCallReady -> null
 
             // 用户停止：不映射为错误事件（停止由消费端 cancel 表达）；
             // 若思考块仍在途，为最后一块合成 ThinkingEnded（被掐也算完成）。
@@ -240,23 +264,6 @@ object LlmStreamEventMapper {
         is ToolCallOutcome.Intercepted -> content
         is ToolCallOutcome.Interrupted -> content
         is ToolCallOutcome.Unknown -> content
-    }
-
-    /**
-     * okia LLMErrorCode → Zafiro LlmErrorCode。ContextOverflow 归 Parse
-     * （上下文溢出，用户可感知的模型端内容问题）。
-     */
-    private fun OkiaLLMErrorCode.toZafiroCode(): LlmErrorCode = when (this) {
-        OkiaLLMErrorCode.Auth -> LlmErrorCode.Auth
-        OkiaLLMErrorCode.Quota -> LlmErrorCode.Quota
-        OkiaLLMErrorCode.RateLimit -> LlmErrorCode.RateLimit
-        OkiaLLMErrorCode.Overloaded -> LlmErrorCode.Overloaded
-        OkiaLLMErrorCode.ContextOverflow -> LlmErrorCode.Parse
-        OkiaLLMErrorCode.Transport -> LlmErrorCode.Transport
-        OkiaLLMErrorCode.Parse -> LlmErrorCode.Parse
-        OkiaLLMErrorCode.HookFailed -> LlmErrorCode.HookFailed
-        OkiaLLMErrorCode.ToolExecutionFailed -> LlmErrorCode.ToolExecutionFailed
-        OkiaLLMErrorCode.RetryExhausted -> LlmErrorCode.RetryExhausted
     }
 
     private fun ContentBlock.ToolCall.toStatus(): ToolCallStatus =

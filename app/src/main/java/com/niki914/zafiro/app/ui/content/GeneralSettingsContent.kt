@@ -33,6 +33,8 @@ import kotlinx.coroutines.runBlocking
 private const val LANGUAGE_ROW_ID = "general.language"
 private const val APPEARANCE_ROW_ID = "general.appearance"
 private const val LOAD_LAST_ROW_ID = "general.load_last"
+private const val IDLE_TIMEOUT_ROW_ID = "general.idle_timeout"
+private const val RETRY_ATTEMPTS_ROW_ID = "general.retry_attempts"
 
 private const val LANGUAGE_TAG_ZH_CN = "zh-CN"
 private const val LANGUAGE_TAG_ZH_TW = "zh-TW"
@@ -68,11 +70,17 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
     var savedLanguageTag by rememberSaveable { mutableStateOf<String?>(null) }
     var loadLastConversation by rememberSaveable { mutableStateOf(false) }
     var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
+    var idleTimeoutSeconds by rememberSaveable { mutableStateOf(60L) }
+    var retryMaxAttempts by rememberSaveable { mutableStateOf(3) }
+    var showIdleTimeoutDialog by rememberSaveable { mutableStateOf(false) }
+    var showRetryDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching {
             savedLanguageTag = XRepo.languageTag()
             loadLastConversation = XRepo.loadLastConversationOnStartup()
+            idleTimeoutSeconds = XRepo.llmIdleTimeoutSeconds()
+            retryMaxAttempts = XRepo.llmRetryMaxAttempts()
         }.onFailure {
             Logger.w("niki914_nexus_GeneralSettings", "load failed ${it.message}")
         }
@@ -104,6 +112,16 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
                         title = stringResource(R.string.ui_settings_general_load_last_conversation),
                         checked = loadLastConversation,
                     ),
+                    SettingsRowSpec.Navigation(
+                        id = IDLE_TIMEOUT_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_idle_timeout),
+                        currentState = idleTimeoutLabel(idleTimeoutSeconds),
+                    ),
+                    SettingsRowSpec.Navigation(
+                        id = RETRY_ATTEMPTS_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_retry_attempts),
+                        currentState = retryAttemptsLabel(retryMaxAttempts),
+                    ),
                 ),
             ),
         ),
@@ -118,6 +136,10 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
                         showLanguageDialog = true
                     } else if (action.id == APPEARANCE_ROW_ID) {
                         onPush(ThemeSettingsPage)
+                    } else if (action.id == IDLE_TIMEOUT_ROW_ID) {
+                        showIdleTimeoutDialog = true
+                    } else if (action.id == RETRY_ATTEMPTS_ROW_ID) {
+                        showRetryDialog = true
                     }
 
                 is SettingsRowAction.ToggleChanged ->
@@ -158,6 +180,40 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
             )
         },
     )
+
+    val idleTimeoutOptions = idleTimeoutOptions()
+    SingleChoiceLiquidDialog(
+        visible = showIdleTimeoutDialog,
+        onDismissRequest = { showIdleTimeoutDialog = false },
+        title = stringResource(R.string.ui_settings_general_idle_timeout),
+        hint = stringResource(R.string.ui_settings_general_idle_timeout_summary),
+        options = idleTimeoutOptions,
+        selectedId = idleTimeoutSeconds.toString(),
+        optionId = { it.seconds.toString() },
+        optionLabel = { it.label },
+        onSelect = { option ->
+            idleTimeoutSeconds = option.seconds
+            showIdleTimeoutDialog = false
+            scope.launch { XRepo.setLlmIdleTimeoutSeconds(option.seconds) }
+        },
+    )
+
+    val retryOptions = retryAttemptsOptions()
+    SingleChoiceLiquidDialog(
+        visible = showRetryDialog,
+        onDismissRequest = { showRetryDialog = false },
+        title = stringResource(R.string.ui_settings_general_retry_attempts),
+        hint = stringResource(R.string.ui_settings_general_retry_summary),
+        options = retryOptions,
+        selectedId = retryMaxAttempts.toString(),
+        optionId = { it.toString() },
+        optionLabel = { it.toString() },
+        onSelect = { option ->
+            retryMaxAttempts = option
+            showRetryDialog = false
+            scope.launch { XRepo.setLlmRetryMaxAttempts(option) }
+        },
+    )
 }
 
 @Composable
@@ -174,3 +230,31 @@ private fun appearanceSummary(): String {
         ?: stringResource(R.string.ui_theme_color_dynamic)
     return "$modeLabel · $colorLabel"
 }
+
+data class IdleTimeoutOption(
+    /** 持久化值：0 = 不超时。 */
+    val seconds: Long,
+    val label: String,
+)
+
+@Composable
+private fun idleTimeoutLabel(seconds: Long): String {
+    return idleTimeoutOptions().firstOrNull { it.seconds == seconds }?.label
+        ?: "$seconds"
+}
+
+@Composable
+private fun idleTimeoutOptions(): List<IdleTimeoutOption> {
+    val offLabel = stringResource(R.string.ui_settings_general_idle_timeout_off)
+    return listOf(
+        IdleTimeoutOption(seconds = 0L, label = offLabel),
+        IdleTimeoutOption(seconds = 30L, label = "30s"),
+        IdleTimeoutOption(seconds = 60L, label = "60s"),
+        IdleTimeoutOption(seconds = 90L, label = "90s"),
+        IdleTimeoutOption(seconds = 120L, label = "120s"),
+    )
+}
+
+private fun retryAttemptsLabel(attempts: Int): String = attempts.toString()
+
+private fun retryAttemptsOptions(): List<Int> = listOf(0, 1, 2, 3, 5)

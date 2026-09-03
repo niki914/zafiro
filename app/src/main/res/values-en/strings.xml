@@ -65,7 +65,10 @@
     <string name="ui_home_error_config_required_title">Model configuration is incomplete</string>
     <string name="ui_home_error_config_required_body">Please go fill in the model configuration.</string>
     <string name="ui_home_error_network_title">Network error</string>
+    <string name="ui_home_error_idle_timeout_title">Response timed out</string>
+    <string name="ui_home_error_retry_exhausted_title">Automatic retries exhausted</string>
     <string name="ui_home_error_internal_title">Internal error</string>
+    <string name="ui_home_retrying_title">Network hiccup, retrying (attempt %1$d/%2$d)…</string>
     <string name="runtime_error_internal">Internal error</string>
     <string name="ui_home_history_content_description">Conversation history</string>
     <string name="ui_conversation_history_back_content_description">Back</string>
@@ -368,6 +371,11 @@
     <string name="ui_settings_general_language">Language</string>
     <string name="ui_settings_general_language_follow_system">Follow system</string>
     <string name="ui_settings_general_load_last_conversation">Load last conversation on startup</string>
+    <string name="ui_settings_general_idle_timeout">Idle timeout</string>
+    <string name="ui_settings_general_idle_timeout_summary">End the turn when the server stays silent too long</string>
+    <string name="ui_settings_general_idle_timeout_off">No timeout</string>
+    <string name="ui_settings_general_retry_attempts">Auto retries</string>
+    <string name="ui_settings_general_retry_summary">Automatic retries after a failed request</string>
     <string name="ui_settings_saved_configuration_title">Saved configurations</string>
     <string name="ui_settings_saved_configuration_delete_title">Delete configuration</string>
     <string name="ui_settings_saved_configuration_delete_text">This configuration will be deleted and cannot be recovered.</string>

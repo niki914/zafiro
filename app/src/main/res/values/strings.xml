@@ -64,7 +64,10 @@
     <string name="ui_home_error_config_required_title">模型配置不完整</string>
     <string name="ui_home_error_config_required_body">请前往填写模型配置。</string>
     <string name="ui_home_error_network_title">网络异常</string>
+    <string name="ui_home_error_idle_timeout_title">响应超时</string>
+    <string name="ui_home_error_retry_exhausted_title">多次自动重试后仍失败</string>
     <string name="ui_home_error_internal_title">内部错误</string>
+    <string name="ui_home_retrying_title">网络波动，正在重试（第 %1$d/%2$d 次）…</string>
     <string name="runtime_error_internal">内部错误</string>
     <string name="ui_home_history_content_description">对话历史</string>
     <string name="ui_conversation_history_back_content_description">返回</string>
@@ -367,6 +370,11 @@
     <string name="ui_settings_general_language">语言</string>
     <string name="ui_settings_general_language_follow_system">跟随系统</string>
     <string name="ui_settings_general_load_last_conversation">启动时载入上次对话</string>
+    <string name="ui_settings_general_idle_timeout">响应空闲超时</string>
+    <string name="ui_settings_general_idle_timeout_summary">服务器长时间无响应时终止回合</string>
+    <string name="ui_settings_general_idle_timeout_off">不超时</string>
+    <string name="ui_settings_general_retry_attempts">自动重试次数</string>
+    <string name="ui_settings_general_retry_summary">请求失败后的自动重试</string>
     <string name="ui_settings_saved_configuration_title">已保存配置</string>
     <string name="ui_settings_saved_configuration_delete_title">删除配置</string>
     <string name="ui_settings_saved_configuration_delete_text">该配置将被删除，此操作无法恢复。</string>

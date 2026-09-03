@@ -1,6 +1,5 @@
 package com.niki914.zafiro.chat
 
-import android.content.Context
 import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
@@ -12,8 +11,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
 
 class LLMControllerRefreshSkillTest {
     @get:Rule
@@ -65,12 +62,8 @@ class LLMControllerRefreshSkillTest {
         val previous = LLMController.refresh()
         gateway.failListEnabledSkills = IllegalStateException("skills failed")
 
-        val context = mock(Context::class.java).apply {
-            `when`(getString(com.niki914.zafiro.R.string.error_llm_request_failed))
-                .thenReturn("Request failed")
-        }
         val firstEvent = withTimeoutOrNull(1_000) {
-            LLMController.stream("q", context).firstOrNull()
+            LLMController.stream("q").firstOrNull()
         }
 
         assertEquals(2, gateway.listEnabledSkillsCallCount)

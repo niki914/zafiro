@@ -8,8 +8,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 
 internal object SettingsJsonCodecUtils {
     fun parseObject(json: String): JsonObject {
@@ -28,6 +30,14 @@ internal object SettingsJsonCodecUtils {
 
     fun JsonObject.boolean(key: String, default: Boolean): Boolean {
         return (this[key] as? JsonPrimitive)?.booleanOrNull ?: default
+    }
+
+    fun JsonObject.long(key: String, default: Long): Long {
+        return (this[key] as? JsonPrimitive)?.longOrNull ?: default
+    }
+
+    fun JsonObject.int(key: String, default: Int): Int {
+        return (this[key] as? JsonPrimitive)?.intOrNull ?: default
     }
 
     fun JsonObject.obj(key: String): JsonObject? {

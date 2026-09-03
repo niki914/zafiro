@@ -12,6 +12,10 @@ data class RuntimeLlmConfig(
     val memoryPrompt: String = "",
     val memories: List<String> = emptyList(),
     val takeoverKeywords: List<String> = emptyList(),
+    /** 流式空闲超时秒数；null = 不超时（Long.MAX_VALUE）。 */
+    val idleTimeoutSeconds: Long? = 60L,
+    /** 传输层自动重试次数。 */
+    val retryMaxAttempts: Int = 3,
 )
 
 enum class RuntimeAgentMemoryMode {
