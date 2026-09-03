@@ -33,7 +33,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
@@ -785,10 +787,55 @@ private fun HomeChatTurnItem(
                             }
 
                             is HomeChatBlock.Error -> {
-                                AssistantErrorBlock(
+                                val errorUi = toAssistantErrorUi(
                                     message = block.message,
                                     code = block.code,
+                                    attempts = block.attempts,
                                 )
+                                CollapsibleBlock(
+                                    icon = Icons.Filled.ErrorOutline,
+                                    title = stringResource(errorUi.titleRes),
+                                    isExpanded = true,
+                                    onToggle = {},
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    nonCollapsible = true,
+                                ) {
+                                    val body = errorUi.bodyRes?.let { stringResource(it) }
+                                        ?: errorUi.body.orEmpty()
+                                    if (body.isNotEmpty()) {
+                                        ToolResultText(
+                                            text = body,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+
+                            is HomeChatBlock.Retrying -> {
+                                // 常展开、不可折叠（与 Error 块不同：retry 是进行中的转态，
+                                // 收起无意义）；重试成功即整个块消失
+                                CollapsibleBlock(
+                                    icon = Icons.Filled.Refresh,
+                                    title = stringResource(R.string.ui_home_retrying_title),
+                                    isExpanded = true,
+                                    onToggle = {},
+                                    isRunning = true,
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    nonCollapsible = true,
+                                ) {
+                                    val count = stringResource(
+                                        R.string.ui_home_retrying_attempt,
+                                        block.attempt,
+                                        block.maxAttempts,
+                                    )
+                                    ToolResultText(
+                                        text = if (block.reason.isBlank()) count
+                                        else "$count: ${block.reason.trim()}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
 
                             is HomeChatBlock.Thinking -> {

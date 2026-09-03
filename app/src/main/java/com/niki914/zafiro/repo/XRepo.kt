@@ -285,6 +285,30 @@ object XRepo {
             .loadLastConversationOnStartup
     }
 
+    suspend fun llmIdleTimeoutSeconds(): Long {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .llmIdleTimeoutSeconds
+    }
+
+    suspend fun setLlmIdleTimeoutSeconds(value: Long) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(llmIdleTimeoutSeconds = value))
+        }
+    }
+
+    suspend fun llmRetryMaxAttempts(): Int {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .llmRetryMaxAttempts
+    }
+
+    suspend fun setLlmRetryMaxAttempts(value: Int) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(llmRetryMaxAttempts = value))
+        }
+    }
+
     suspend fun setLoadLastConversationOnStartup(value: Boolean) {
         updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
             val current = AppStateSettingsCodec.parse(json)

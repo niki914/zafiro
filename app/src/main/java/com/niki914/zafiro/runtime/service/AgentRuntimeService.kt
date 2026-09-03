@@ -24,8 +24,11 @@ import com.niki914.store.XIpcStoreRepository
 import com.niki914.store.displayNameFor
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.chat.LLMController
+import com.niki914.zafiro.chat.LlmErrorCode
+import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.ToolStatusLabels
 import com.niki914.zafiro.chat.collectAsFull
+import kotlinx.coroutines.flow.map
 import com.niki914.zafiro.runtime.ipc.IAgentRuntimeService
 import com.niki914.zafiro.runtime.ipc.IAgentStoreService
 import com.niki914.zafiro.runtime.ipc.IRenderFrameCallback
@@ -410,7 +413,27 @@ class AgentRuntimeService : Service() {
         Logger.i(LOG_TAG, "turn started queryLength=${query.length}")
         var firstFrameSent = false
         try {
-            LLMController.stream(query, this@AgentRuntimeService).collectAsFull(
+            LLMController.stream(query)
+                // 数据变展示的边界（有 Context 的消费方负责本地化）：
+                // 无原文的错误（ConfigRequired/IdleTimeout/守卫）在此翻译，
+                // 有原文的错误原样透传；宿主进程只收渲染好的文本
+                .map { event ->
+                    if (event is LlmStreamEvent.Error && event.message == null) {
+                        event.copy(
+                            message = when (event.code) {
+                                LlmErrorCode.ConfigRequired ->
+                                    getString(AppR.string.ui_home_error_config_required_title)
+                                LlmErrorCode.IdleTimeout ->
+                                    getString(AppR.string.ui_home_error_idle_timeout_title)
+                                else ->
+                                    getString(AppR.string.runtime_error_internal)
+                            },
+                        )
+                    } else {
+                        event
+                    }
+                }
+                .collectAsFull(
                 labels = ToolStatusLabels(
                     called = getString(AppR.string.ui_tool_status_called),
                     running = getString(AppR.string.ui_tool_status_running),

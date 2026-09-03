@@ -65,7 +65,11 @@
     <string name="ui_home_error_config_required_title">Configuración del modelo incompleta</string>
     <string name="ui_home_error_config_required_body">Complete la configuración del modelo antes de continuar.</string>
     <string name="ui_home_error_network_title">Error de red</string>
+    <string name="ui_home_error_idle_timeout_title">Tiempo de espera agotado</string>
+    <string name="ui_home_error_retry_exhausted_title">Reintentos automáticos agotados</string>
     <string name="ui_home_error_internal_title">Error interno</string>
+    <string name="ui_home_retrying_title">Problema de red, reintentando…</string>
+    <string name="ui_home_retrying_attempt">Reintento %1$d/%2$d</string>
     <string name="runtime_error_internal">Error interno</string>
     <string name="ui_home_history_content_description">Historial de conversaciones</string>
     <string name="ui_conversation_history_back_content_description">Volver</string>
@@ -368,6 +372,11 @@
     <string name="ui_settings_general_language">Idioma</string>
     <string name="ui_settings_general_language_follow_system">Usar el del sistema</string>
     <string name="ui_settings_general_load_last_conversation">Cargar la última conversación al iniciar</string>
+    <string name="ui_settings_general_idle_timeout">Tiempo de inactividad</string>
+    <string name="ui_settings_general_idle_timeout_summary">Termina el turno si el servidor no responde</string>
+    <string name="ui_settings_general_idle_timeout_off">Sin límite</string>
+    <string name="ui_settings_general_retry_attempts">Reintentos automáticos</string>
+    <string name="ui_settings_general_retry_summary">Reintentos automáticos tras un error de solicitud</string>
     <string name="ui_settings_saved_configuration_title">Configuraciones guardadas</string>
     <string name="ui_settings_saved_configuration_delete_title">Eliminar configuración</string>
     <string name="ui_settings_saved_configuration_delete_text">Esta configuración se eliminará y la acción no se podrá deshacer.</string>

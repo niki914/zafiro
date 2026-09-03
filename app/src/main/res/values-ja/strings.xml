@@ -64,7 +64,11 @@
     <string name="ui_home_error_config_required_title">モデル設定が不完全です</string>
     <string name="ui_home_error_config_required_body">モデル設定を完了してください。</string>
     <string name="ui_home_error_network_title">ネットワークエラー</string>
+    <string name="ui_home_error_idle_timeout_title">応答がタイムアウトしました</string>
+    <string name="ui_home_error_retry_exhausted_title">自動リトライがすべて失敗しました</string>
     <string name="ui_home_error_internal_title">内部エラー</string>
+    <string name="ui_home_retrying_title">ネットワーク障害のため再試行中…</string>
+    <string name="ui_home_retrying_attempt">再試行 %1$d/%2$d</string>
     <string name="runtime_error_internal">内部エラー</string>
     <string name="ui_home_history_content_description">会話履歴</string>
     <string name="ui_conversation_history_back_content_description">戻る</string>
@@ -367,6 +371,11 @@
     <string name="ui_settings_general_language">言語</string>
     <string name="ui_settings_general_language_follow_system">システムに従う</string>
     <string name="ui_settings_general_load_last_conversation">起動時に前回の会話を読み込む</string>
+    <string name="ui_settings_general_idle_timeout">応答アイドルタイムアウト</string>
+    <string name="ui_settings_general_idle_timeout_summary">サーバーが長時間無応答のときにターンを終了します</string>
+    <string name="ui_settings_general_idle_timeout_off">タイムアウトなし</string>
+    <string name="ui_settings_general_retry_attempts">自動リトライ回数</string>
+    <string name="ui_settings_general_retry_summary">リクエスト失敗後の自動リトライ</string>
     <string name="ui_settings_saved_configuration_title">保存済みの設定</string>
     <string name="ui_settings_saved_configuration_delete_title">設定の削除</string>
     <string name="ui_settings_saved_configuration_delete_text">この設定は削除されます。この操作は元に戻せません。</string>

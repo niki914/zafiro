@@ -27,6 +27,8 @@ class XRepoRuntimeGateway(
             proxy = active?.proxy.orEmpty(),
             prompt = doc.prompt,
             memories = memories,
+            idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },
+            retryMaxAttempts = repo.llmRetryMaxAttempts(),
         )
     }
 

@@ -27,7 +27,7 @@ internal fun installRuntimeSettingsGatewayForTest(
 }
 
 internal class FakeRuntimeSettingsGateway(
-    private val llmConfig: RuntimeLlmConfig = RuntimeLlmConfig(),
+    var llmConfig: RuntimeLlmConfig = RuntimeLlmConfig(),
     customPyTools: List<RuntimeCustomPyTool> = emptyList(),
     builtinTools: List<RuntimeBuiltinToolSetting> = defaultBuiltinToolSettings(),
     memories: List<String> = emptyList(),

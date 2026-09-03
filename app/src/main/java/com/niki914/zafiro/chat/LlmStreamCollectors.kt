@@ -78,6 +78,9 @@ private sealed interface RenderSegment {
     data class Thinking(val label: String) : RenderSegment
 
     data class Error(val value: String) : RenderSegment
+
+    /** 瞬时重试状态行：流恢复即移除。 */
+    data class Retrying(val event: LlmStreamEvent.Retrying) : RenderSegment
 }
 
 private class FullTextProjector(
@@ -143,7 +146,7 @@ private class FullTextProjector(
 
             is LlmStreamEvent.Error -> {
                 val isFirstFrame = segments.isEmpty()
-                appendError(event.message)
+                appendError(event)
                 listOf(
                     LlmTextFrame(
                         text = renderSegments(),
@@ -153,6 +156,12 @@ private class FullTextProjector(
                 )
             }
 
+            is LlmStreamEvent.Retrying -> {
+                // 瞬时状态行：与工具/思考行同层展示，流恢复后由后续事件自然覆盖消失
+                segments += RenderSegment.Retrying(event)
+                listOf(LlmTextFrame(renderSegments(), isFirst = false, isFinal = false))
+            }
+
             is LlmStreamEvent.Completed ->
                 listOf(LlmTextFrame(renderSegments(), isFirst = false, isFinal = true))
         }
@@ -160,6 +169,8 @@ private class FullTextProjector(
 
     private fun appendText(text: String) {
         if (text.isEmpty()) return
+        // 流恢复（重试成功 / 正常续传）：瞬时 retry 状态行退场
+        segments.removeAll { it is RenderSegment.Retrying }
         assistantText.append(text)
         val last = segments.lastOrNull()
         if (last is RenderSegment.Text) {
@@ -169,8 +180,10 @@ private class FullTextProjector(
         }
     }
 
-    private fun appendError(message: String) {
-        val normalized = message.trim()
+    private fun appendError(event: LlmStreamEvent.Error) {
+        // message 为空（IdleTimeout/守卫错误等无原文场景）时不注入空 Error 块：
+        // code 类型由宿主侧状态行不表达，本路径只呈现原文，空 = 静默终态
+        val normalized = event.message?.trim() ?: return
         if (normalized.isEmpty()) return
         segments += RenderSegment.Error(normalized)
     }
@@ -250,7 +263,7 @@ private class ChunkTextProjector(
 
             is LlmStreamEvent.Error -> {
                 val isFirstFrame = fullText.isEmpty()
-                appendErrorLine(event.message)
+                appendErrorLine(event)
                 listOf(
                     LlmTextFrame(
                         text = fullText.toString(),
@@ -260,6 +273,11 @@ private class ChunkTextProjector(
                 )
             }
 
+            is LlmStreamEvent.Retrying -> {
+                appendRetryLine(event)
+                listOf(LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false))
+            }
+
             is LlmStreamEvent.Completed ->
                 listOf(LlmTextFrame(fullText.toString(), isFirst = false, isFinal = true))
         }
@@ -267,6 +285,11 @@ private class ChunkTextProjector(
 
     private fun appendText(text: String) {
         if (text.isEmpty()) return
+        // 流恢复：瞬时 retry 状态行退场
+        if (retryLineStart >= 0 && retryLineStart <= fullText.length) {
+            fullText.delete(retryLineStart, fullText.length)
+            retryLineStart = -1
+        }
         if (lastWasToolLine && fullText.isNotEmpty() && fullText.last() != '\n' && !text.startsWith(
                 "\n"
             )
@@ -296,8 +319,25 @@ private class ChunkTextProjector(
         lastWasToolLine = true
     }
 
-    private fun appendErrorLine(message: String) {
-        val normalized = message.trim()
+    private var retryLineStart = -1
+
+    private fun appendRetryLine(event: LlmStreamEvent.Retrying) {
+        // 同回合只有一行 retry 状态：替换旧行（记录行起点），流恢复时移除
+        if (retryLineStart >= 0 && retryLineStart <= fullText.length) {
+            fullText.delete(retryLineStart, fullText.length)
+        }
+        if (fullText.isNotEmpty() && fullText.last() != '\n') {
+            fullText.append('\n')
+        }
+        retryLineStart = fullText.length
+        fullText.append("`[Retrying ${event.attempt}/${event.maxAttempts}]`")
+        fullText.append('\n')
+        lastWasToolLine = true
+    }
+
+    private fun appendErrorLine(event: LlmStreamEvent.Error) {
+        // 同 Full 路径：message 为空不注入空错误行
+        val normalized = event.message?.trim() ?: return
         if (normalized.isEmpty()) return
         if (fullText.isNotEmpty() && fullText.last() != '\n') {
             fullText.append('\n')
@@ -314,6 +354,7 @@ private fun MutableList<RenderSegment>.render(): String {
             is RenderSegment.Text -> builder.appendTextSegment(segment.value)
             is RenderSegment.Tool -> builder.appendToolSegment(segment)
             is RenderSegment.Thinking -> builder.appendThinkingSegment(segment.label)
+            is RenderSegment.Retrying -> builder.appendThinkingSegment("Retrying ${segment.event.attempt}/${segment.event.maxAttempts}")
             // "## Error" 是注入宿主 markdown 的代码块结构标题，本地化会破坏注入内容一致性，保持原样
             is RenderSegment.Error -> builder.appendTextSegment("## Error\n```\n${segment.value}\n```")
         }

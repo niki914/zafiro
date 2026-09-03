@@ -6,7 +6,6 @@ import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.uikit.base.ComposeMVIViewModel
-import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationRepo
@@ -21,7 +20,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 internal interface HomeConversationStore {
     suspend fun lastOpenedConversationId(): String
@@ -97,7 +95,23 @@ sealed interface HomeChatBlock {
     data class Text(val text: String) : HomeChatBlock
     data class Thinking(val id: Int, val text: String) : HomeChatBlock
     data class Tool(val status: HomeToolStatus) : HomeChatBlock
-    data class Error(val message: String, val code: LlmErrorCode? = null) : HomeChatBlock
+    data class Error(
+        val message: String?,
+        val code: LlmErrorCode? = null,
+        /** RetryExhausted 专属：已耗尽的重试次数。 */
+        val attempts: Int? = null,
+    ) : HomeChatBlock
+
+    /**
+     * 瞬时重试提示：传输层自动重试进行中。不进持久化状态（落盘无意义），
+     * 下一个流事件到达即清除（见 [HomeChatViewModel.applyEvent]）。
+     */
+    data class Retrying(
+        val attempt: Int,
+        val maxAttempts: Int,
+        val delayMs: Long,
+        val reason: String,
+    ) : HomeChatBlock
 }
 
 data class HomeChatTurn(
@@ -174,7 +188,6 @@ private object LlmHomeChatRuntime : HomeChatRuntime {
     override fun stream(query: String): Flow<LlmStreamEvent> =
         LLMController.stream(
             query = query,
-            context = runBlocking { ContextProvider.await() },
             fromUserInterface = true,
         )
 
@@ -312,7 +325,11 @@ class HomeChatViewModel internal constructor(
                 // 新回合开始：清除旧错误卡片（瞬态 UI 态，T3 TODO②——
                 // 错误只在当轮显示，下一轮发起即消失）
                 turns = turns.map { turn ->
-                    turn.copy(blocks = turn.blocks.filterNot { it is HomeChatBlock.Error })
+                    turn.copy(
+                        blocks = turn.blocks.filterNot {
+                            it is HomeChatBlock.Error || it is HomeChatBlock.Retrying
+                        },
+                    )
                 } + HomeChatTurn(id = turnId, userText = query),
                 isGenerating = true,
                 lastEventName = null,
@@ -444,11 +461,15 @@ class HomeChatViewModel internal constructor(
     private suspend fun applyEvent(turnId: Long, event: LlmStreamEvent) {
         when (event) {
             LlmStreamEvent.RoundStarted -> updateState { copy(isGenerating = true) }
-            is LlmStreamEvent.TextDelta -> updateTurn(turnId) {
-                it.appendText(event.delta)
+            is LlmStreamEvent.TextDelta -> {
+                clearRetrying(turnId)
+                updateTurn(turnId) {
+                    it.appendText(event.delta)
+                }
             }
 
             is LlmStreamEvent.ThinkingStarted -> {
+                clearRetrying(turnId)
                 updateState {
                     val turnIndex = turns.indexOfFirst { it.id == turnId }
                     if (turnIndex == -1) return@updateState this
@@ -484,19 +505,26 @@ class HomeChatViewModel internal constructor(
             }
 
             is LlmStreamEvent.ThinkingEnded -> {
+                clearRetrying(turnId)
                 updateTurn(turnId) { it.upsertThinking(event.id, event.text) }
                 // 思考结束：只摘 active 指针（停止滚动跟随），块保持展开不收起
                 updateState { copy(activeThinkingKey = null) }
             }
 
-            is LlmStreamEvent.ToolPending -> updateTurn(turnId) {
-                // 占位行：仅名字已知，Running 态转圈、不可展开；后续 ToolRunning 按 callId 原地更新
-                it.updateTool(event.call, HomeToolState.Running)
+            is LlmStreamEvent.ToolPending -> {
+                clearRetrying(turnId)
+                updateTurn(turnId) {
+                    // 占位行：仅名字已知，Running 态转圈、不可展开；后续 ToolRunning 按 callId 原地更新
+                    it.updateTool(event.call, HomeToolState.Running)
+                }
             }
 
-            is LlmStreamEvent.ToolRunning -> updateTurn(turnId) {
-                // updateTool 而非 appendTool：参数构建期可能已插入占位行，按 callId 原地更新
-                it.updateTool(event.call, HomeToolState.Running)
+            is LlmStreamEvent.ToolRunning -> {
+                clearRetrying(turnId)
+                updateTurn(turnId) {
+                    // updateTool 而非 appendTool：参数构建期可能已插入占位行，按 callId 原地更新
+                    it.updateTool(event.call, HomeToolState.Running)
+                }
             }
 
             is LlmStreamEvent.ToolSucceeded -> updateTurn(turnId) {
@@ -518,7 +546,35 @@ class HomeChatViewModel internal constructor(
                     LOG_TAG,
                     "apply error turnId=$turnId code=${event.code} message=${event.message}"
                 )
-                applyError(turnId = turnId, message = event.message, code = event.code)
+                clearRetrying(turnId)
+                applyError(
+                    turnId = turnId,
+                    message = event.message,
+                    code = event.code,
+                    attempts = event.attempts,
+                )
+            }
+
+            is LlmStreamEvent.Retrying -> {
+                Logger.w(
+                    LOG_TAG,
+                    "apply retrying turnId=$turnId attempt=${event.attempt}/${event.maxAttempts} " +
+                            "delayMs=${event.delayMs} reason=${event.reason}"
+                )
+                updateTurn(turnId) { turn ->
+                    // 同回合只有一张 retry 卡片：替换旧的，不叠加
+                    val withoutStale = turn.copy(
+                        blocks = turn.blocks.filterNot { it is HomeChatBlock.Retrying },
+                    )
+                    withoutStale.copy(
+                        blocks = withoutStale.blocks + HomeChatBlock.Retrying(
+                            attempt = event.attempt,
+                            maxAttempts = event.maxAttempts,
+                            delayMs = event.delayMs,
+                            reason = event.reason,
+                        ),
+                    )
+                }
             }
 
             is LlmStreamEvent.Completed -> {
@@ -799,9 +855,30 @@ class HomeChatViewModel internal constructor(
         return sessionId
     }
 
-    private fun applyError(turnId: Long, message: String, code: LlmErrorCode?) {
+    private fun clearRetrying(turnId: Long) {
+        val turns = currentState.turns
+        val index = turns.indexOfFirst { it.id == turnId }
+        if (index == -1) return
+        if (turns[index].blocks.none { it is HomeChatBlock.Retrying }) return
+        updateState {
+            copy(
+                turns = turns.toMutableList().also { list ->
+                    list[index] = list[index].copy(
+                        blocks = list[index].blocks.filterNot { it is HomeChatBlock.Retrying },
+                    )
+                },
+            )
+        }
+    }
+
+    private fun applyError(
+        turnId: Long,
+        message: String?,
+        code: LlmErrorCode?,
+        attempts: Int? = null,
+    ) {
         updateTurn(turnId) {
-            it.appendError(message, code)
+            it.appendError(message, code, attempts)
         }
         updateState { copy(isGenerating = false, activeThinkingKey = null) }
     }
@@ -844,9 +921,13 @@ class HomeChatViewModel internal constructor(
         }
     }
 
-    private fun HomeChatTurn.appendError(message: String, code: LlmErrorCode?): HomeChatTurn {
-        if (message.isBlank()) return this
-        return copy(blocks = blocks + HomeChatBlock.Error(message = message, code = code))
+    private fun HomeChatTurn.appendError(
+        message: String?,
+        code: LlmErrorCode?,
+        attempts: Int? = null,
+    ): HomeChatTurn {
+        // message 为空也保留卡片：code 已承载错误类型，UI 按类型兕底文案
+        return copy(blocks = blocks + HomeChatBlock.Error(message = message, code = code, attempts = attempts))
     }
 
     private fun HomeChatTurn.appendTool(
@@ -923,6 +1004,7 @@ class HomeChatViewModel internal constructor(
     private fun eventName(event: LlmStreamEvent): String = when (event) {
         LlmStreamEvent.RoundStarted -> "RoundStarted"
         is LlmStreamEvent.TextDelta -> "TextDelta"
+        is LlmStreamEvent.Retrying -> "Retrying"
         is LlmStreamEvent.ThinkingStarted -> "ThinkingStarted"
         is LlmStreamEvent.ThinkingEnded -> "ThinkingEnded"
         is LlmStreamEvent.ToolRunning -> "ToolRunning"

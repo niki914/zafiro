@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="error_llm_request_failed">請求失敗，請重試</string>
     <string name="error_config_required">請先填寫配置</string>
 </resources>

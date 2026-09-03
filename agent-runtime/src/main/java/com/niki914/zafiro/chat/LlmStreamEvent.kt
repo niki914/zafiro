@@ -44,9 +44,23 @@ sealed interface LlmStreamEvent {
     ) : LlmStreamEvent
 
     data class Error(
-        val message: String,
+        /** 原始错误文本；null = 无可用原文，消费端按 code/兜底文案渲染。 */
+        val message: String?,
         val throwable: Throwable? = null,
         val code: LlmErrorCode? = null,
+        /** RetryExhausted 专属：已耗尽的重试次数（来自 RetryScheduled 事件，非字符串解析）。 */
+        val attempts: Int? = null,
+    ) : LlmStreamEvent
+
+    /**
+     * 传输层自动重试已排定（瞬时状态，不落盘）。UI 展示 retry 卡片，
+     * 下一个流事件到达即清除。reason 为原始错误文本（英文，来自上游/传输层）。
+     */
+    data class Retrying(
+        val attempt: Int,
+        val maxAttempts: Int,
+        val delayMs: Long,
+        val reason: String,
     ) : LlmStreamEvent
 
     /** 回合正常结束（纯终态标记；显示文本一律以 TextDelta 累积为准）。 */
@@ -65,6 +79,7 @@ enum class LlmErrorCode {
     RetryExhausted,
     HookFailed,
     ToolExecutionFailed,
+    IdleTimeout,
 }
 
 data class ToolCallStatus(

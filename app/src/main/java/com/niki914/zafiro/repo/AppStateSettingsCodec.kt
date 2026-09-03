@@ -1,6 +1,8 @@
 package com.niki914.zafiro.repo
 
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.boolean
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.int
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.long
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
 import kotlinx.serialization.json.JsonObject
@@ -19,6 +21,10 @@ internal data class AppStateSettings(
     val themeMode: String = "dark",
     /** 主题种子色 ARGB hex；空串 = 跟随壁纸动态色。 */
     val themeSeedColor: String = "FF52DBC9",
+    /** 流式空闲超时秒数；0 = 不超时。 */
+    val llmIdleTimeoutSeconds: Long = 60L,
+    /** 传输层自动重试次数。 */
+    val llmRetryMaxAttempts: Int = 3,
 )
 
 internal object AppStateSettingsCodec {
@@ -36,6 +42,8 @@ internal object AppStateSettingsCodec {
             ),
             themeMode = root.string(THEME_MODE_KEY).ifBlank { "dark" },
             themeSeedColor = root.string(THEME_SEED_COLOR_KEY).ifBlank { "FF52DBC9" },
+            llmIdleTimeoutSeconds = root.long(LLM_IDLE_TIMEOUT_KEY, default = 60L),
+            llmRetryMaxAttempts = root.int(LLM_RETRY_ATTEMPTS_KEY, default = 3),
         )
     }
 
@@ -50,6 +58,8 @@ internal object AppStateSettingsCodec {
                 LOAD_LAST_CONVERSATION_KEY to JsonPrimitive(state.loadLastConversationOnStartup),
                 THEME_MODE_KEY to JsonPrimitive(state.themeMode),
                 THEME_SEED_COLOR_KEY to JsonPrimitive(state.themeSeedColor),
+                LLM_IDLE_TIMEOUT_KEY to JsonPrimitive(state.llmIdleTimeoutSeconds),
+                LLM_RETRY_ATTEMPTS_KEY to JsonPrimitive(state.llmRetryMaxAttempts),
             )
         ).toString()
     }
@@ -62,4 +72,6 @@ internal object AppStateSettingsCodec {
     private const val LOAD_LAST_CONVERSATION_KEY = "load_last_conversation_on_startup"
     private const val THEME_MODE_KEY = "theme_mode"
     private const val THEME_SEED_COLOR_KEY = "theme_seed_color"
+    private const val LLM_IDLE_TIMEOUT_KEY = "llm_idle_timeout_seconds"
+    private const val LLM_RETRY_ATTEMPTS_KEY = "llm_retry_max_attempts"
 }
