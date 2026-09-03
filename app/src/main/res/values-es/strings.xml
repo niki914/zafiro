@@ -68,7 +68,8 @@
     <string name="ui_home_error_idle_timeout_title">Tiempo de espera agotado</string>
     <string name="ui_home_error_retry_exhausted_title">Reintentos automáticos agotados</string>
     <string name="ui_home_error_internal_title">Error interno</string>
-    <string name="ui_home_retrying_title">Problema de red, reintentando (intento %1$d/%2$d)…</string>
+    <string name="ui_home_retrying_title">Problema de red, reintentando…</string>
+    <string name="ui_home_retrying_attempt">Reintento %1$d/%2$d</string>
     <string name="runtime_error_internal">Error interno</string>
     <string name="ui_home_history_content_description">Historial de conversaciones</string>
     <string name="ui_conversation_history_back_content_description">Volver</string>

@@ -67,7 +67,8 @@
     <string name="ui_home_error_idle_timeout_title">応答がタイムアウトしました</string>
     <string name="ui_home_error_retry_exhausted_title">自動リトライがすべて失敗しました</string>
     <string name="ui_home_error_internal_title">内部エラー</string>
-    <string name="ui_home_retrying_title">ネットワーク障害のため再試行中（%1$d/%2$d 回目）…</string>
+    <string name="ui_home_retrying_title">ネットワーク障害のため再試行中…</string>
+    <string name="ui_home_retrying_attempt">再試行 %1$d/%2$d</string>
     <string name="runtime_error_internal">内部エラー</string>
     <string name="ui_home_history_content_description">会話履歴</string>
     <string name="ui_conversation_history_back_content_description">戻る</string>

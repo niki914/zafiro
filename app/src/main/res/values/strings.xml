@@ -67,7 +67,8 @@
     <string name="ui_home_error_idle_timeout_title">响应超时</string>
     <string name="ui_home_error_retry_exhausted_title">多次自动重试后仍失败</string>
     <string name="ui_home_error_internal_title">内部错误</string>
-    <string name="ui_home_retrying_title">网络波动，正在重试（第 %1$d/%2$d 次）…</string>
+    <string name="ui_home_retrying_title">网络波动，正在重试…</string>
+    <string name="ui_home_retrying_attempt">重试 %1$d/%2$d</string>
     <string name="runtime_error_internal">内部错误</string>
     <string name="ui_home_history_content_description">对话历史</string>
     <string name="ui_conversation_history_back_content_description">返回</string>

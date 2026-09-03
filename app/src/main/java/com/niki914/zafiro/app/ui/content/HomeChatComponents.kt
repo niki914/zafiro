@@ -338,7 +338,7 @@ fun AssistantErrorBlock(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val shape = G2BubbleShape(18.dp)
-    val errorUi = toAssistantErrorUi(message = message, code = code)
+    val errorUi = toAssistantErrorUi(message = message, code = code, attempts = attempts)
     val body = errorUi.bodyRes?.let { stringResource(it) } ?: errorUi.body.orEmpty()
 
     BoxWithConstraints(
@@ -366,51 +366,6 @@ fun AssistantErrorBlock(
                 color = colorScheme.onErrorContainer,
                 textAlign = TextAlign.Center,
             )
-        }
-    }
-}
-
-@Composable
-fun AssistantRetryingBlock(
-    attempt: Int,
-    maxAttempts: Int,
-    reason: String,
-    modifier: Modifier = Modifier,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val shape = G2BubbleShape(18.dp)
-    // 原始错误文本透传（英文，来自上游/传输层）；空则只显示标题
-    val normalizedReason = reason.trim()
-    BoxWithConstraints(
-        modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = maxWidth * 0.82f)
-                .clip(shape)
-                .background(
-                    colorScheme.secondaryContainer.copy(alpha = 0.68f),
-                    shape,
-                )
-                .padding(horizontal = 18.dp, vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.ui_home_retrying_title, attempt, maxAttempts),
-                style = MaterialTheme.typography.labelLarge,
-                color = colorScheme.onSecondaryContainer,
-                textAlign = TextAlign.Center,
-            )
-            if (normalizedReason.isNotEmpty()) {
-                Text(
-                    text = normalizedReason,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
-                    textAlign = TextAlign.Center,
-                )
-            }
         }
     }
 }

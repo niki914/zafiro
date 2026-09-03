@@ -86,7 +86,7 @@ object LLMController {
     )
 
     private var runtimeState: RuntimeState? = null
-    private var okia: Okia? = null
+    internal var okia: Okia? = null
     private var sessionProtocol: LlmProtocol? = null
 
     // T3：当前会话快照统一流（持久化器观察它做消息级增量落盘，D3-8）。
@@ -195,6 +195,10 @@ object LLMController {
             endpoint = configWithoutRuntimePrompt.endpoint
             apiKey = configWithoutRuntimePrompt.apiKey
             model = configWithoutRuntimePrompt.model
+            // 热更新超时/重试策略：实例复用时也要跟随设置变化，否则改设置要冷启才生效
+            idleTimeoutSeconds = configWithoutRuntimePrompt.idleTimeoutSeconds
+                ?: NO_IDLE_TIMEOUT_SECONDS
+            retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts)
             // T2b：MCP 服务器配置进 OKIA（McpDiscovery 发现后注册进同一 toolRegistry）
             mcpServers = toOkiaMcpServers(resolvedTools.mcpServers)
         }

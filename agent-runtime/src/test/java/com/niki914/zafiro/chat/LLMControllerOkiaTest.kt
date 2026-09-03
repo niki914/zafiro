@@ -81,6 +81,36 @@ class LLMControllerOkiaTest {
     }
 
     @Test
+    fun refresh_appliesTimeoutAndRetryToExistingSessionHot() = runTest {
+        // 实例复用路径（协议不变）：改设置后 refresh() 应热更新 idle timeout / retry policy，
+        // 否则改设置要冷启才生效（回归：曾只在新实例时写入）
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                llmConfig = validLlmConfig(idleTimeoutSeconds = 30L, retryMaxAttempts = 1),
+            )
+        )
+        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ ->
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
+        }
+
+        LLMController.refresh()
+        assertEquals(30L, LLMController.okia?.config()?.idleTimeoutSeconds)
+        assertEquals(1, LLMController.okia?.config()?.retryPolicy?.maxAttempts)
+
+        // 同一实例复用，仅改设置 → 热更新生效
+        val gateway = installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                llmConfig = validLlmConfig(idleTimeoutSeconds = 90L, retryMaxAttempts = 5),
+            )
+        )
+        gateway.llmConfig = validLlmConfig(idleTimeoutSeconds = 90L, retryMaxAttempts = 5)
+        LLMController.refresh()
+
+        assertEquals(90L, LLMController.okia?.config()?.idleTimeoutSeconds)
+        assertEquals(5, LLMController.okia?.config()?.retryPolicy?.maxAttempts)
+    }
+
+    @Test
     fun refresh_registersOnlyEnabledLocalTools() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
@@ -398,6 +428,8 @@ class LLMControllerOkiaTest {
         provider: String = "deepseek",
         protocol: String = LlmProtocol.OpenAiResponses.wireId,
         prompt: String = "Base prompt",
+        idleTimeoutSeconds: Long? = 60L,
+        retryMaxAttempts: Int = 3,
     ): RuntimeLlmConfig {
         return RuntimeLlmConfig(
             provider = provider,
@@ -405,6 +437,8 @@ class LLMControllerOkiaTest {
             endpoint = "https://example.com/v1",
             model = "deepseek-chat",
             prompt = prompt,
+            idleTimeoutSeconds = idleTimeoutSeconds,
+            retryMaxAttempts = retryMaxAttempts,
         )
     }
 

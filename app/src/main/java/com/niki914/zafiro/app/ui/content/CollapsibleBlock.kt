@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
@@ -116,6 +117,10 @@ fun CollapsibleBlock(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     isRunning: Boolean = false,
+    /** 容器色；默认 surfaceContainerLow（Thinking/Tool 现状）。retry/error 块传 container 色。 */
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    /** true = 常展开展示形态：无尾部槽位、toggle 不生效；按压反馈保留（错误展示用）。 */
+    nonCollapsible: Boolean = false,
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -166,7 +171,7 @@ fun CollapsibleBlock(
     )
 
     val shape = remember(radiusDp) { G2FieldShape(radiusDp) }
-    val surface = MaterialTheme.colorScheme.surfaceContainerLow
+    val surface = containerColor
 
     Column(
         modifier = modifier
@@ -179,7 +184,8 @@ fun CollapsibleBlock(
             .clickable(
                 interactionSource = interaction,
                 indication = null,
-                onClick = onToggle,
+                // 不可折叠形态只保留按压反馈，toggle 不触发
+                onClick = { if (!nonCollapsible) onToggle() },
             )
             .padding(vertical = BlockContainerPadY),
     ) {
@@ -210,8 +216,11 @@ fun CollapsibleBlock(
                 modifier = Modifier.weight(1f),
             )
             Spacer(modifier = Modifier.width(BlockRowGap))
-            // 尾部槽位：tonal 圆底与左图标对称，内容在 chevron（完成）↔ loader（运行中）间切换
-            Box(
+            // 尾部槽位：tonal 圆底与左图标对称，内容在 chevron（完成）↔ loader（运行中）间切换；
+            // 不可折叠形态整个槽位（含圆底）不渲染
+            if (nonCollapsible) {
+                Spacer(Modifier.size(BlockIconDot))
+            } else Box(
                 modifier = Modifier
                     .size(BlockIconDot)
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),

@@ -67,7 +67,8 @@
     <string name="ui_home_error_idle_timeout_title">回應逾時</string>
     <string name="ui_home_error_retry_exhausted_title">多次自動重試後仍失敗</string>
     <string name="ui_home_error_internal_title">內部錯誤</string>
-    <string name="ui_home_retrying_title">網路波動，正在重試（第 %1$d/%2$d 次）…</string>
+    <string name="ui_home_retrying_title">網路波動，正在重試…</string>
+    <string name="ui_home_retrying_attempt">重試 %1$d/%2$d</string>
     <string name="runtime_error_internal">內部錯誤</string>
     <string name="ui_home_history_content_description">對話歷史</string>
     <string name="ui_conversation_history_back_content_description">返回</string>
