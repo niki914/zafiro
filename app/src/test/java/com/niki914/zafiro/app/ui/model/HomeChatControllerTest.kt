@@ -554,6 +554,95 @@ class HomeChatViewModelTest {
     }
 
     @Test
+    fun send_clearsExpandedUserActionRowOfPreviousTurn() = runTest {
+        val conversations = FakeHomeConversationStore()
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(
+                // 第一轮失败：最后一条 turn 是裸 user message（无 AI 回应），
+                // 此时复制按钮因 isLastTurn 放开；第二轮发起后必须收起
+                stream = {
+                    flowOf(
+                        LlmStreamEvent.RoundStarted,
+                        LlmStreamEvent.Error(message = "boom", code = null),
+                    )
+                },
+            ),
+        )
+
+        viewModel.sendIntent(HomeChatIntent.InputChanged("q1"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        viewModel.sendIntent(HomeChatIntent.ToggleActionRow(0, ActionSource.User))
+        runCurrent()
+        assertEquals(0L, viewModel.uiStateFlow.value.expandedActionTurnId)
+
+        viewModel.sendIntent(HomeChatIntent.InputChanged("q2"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        val state = viewModel.uiStateFlow.value
+        assertNull(state.expandedActionTurnId)
+        assertNull(state.expandedActionSource)
+        // 旧回合的错误卡随新回合消失，仅剩两条 user turn
+        assertEquals(2, state.turns.size)
+        assertTrue(state.turns[0].blocks.isEmpty())
+    }
+
+    @Test
+    fun reGenerateAt_clearsErrorBlocksOfOldTurns() = runTest {
+        val conversations = FakeHomeConversationStore()
+        val sourceId = "session-regen-clear"
+        conversations.createConversation(sourceId, "first")
+        conversations.setSnapshot(
+            sourceId,
+            snapshotOf(
+                Message.User(listOf(ContentBlock.Text("first"))),
+            ),
+        )
+        conversations.setLastOpenedConversationId(sourceId)
+        var queryCount = 0
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(
+                stream = { _ ->
+                    queryCount++
+                    if (queryCount == 1) {
+                        flowOf(LlmStreamEvent.Error(message = "boom", code = null))
+                    } else {
+                        flowOf(LlmStreamEvent.Completed)
+                    }
+                },
+                historySnapshot = {
+                    listOf(
+                        Message.User(listOf(ContentBlock.Text("first"))),
+                    )
+                },
+            ),
+        )
+        advanceUntilIdle()
+
+        // 第一轮：直接对历史 turn regen，得到一条带 Error 的新 turn
+        viewModel.sendIntent(HomeChatIntent.ReGenerateAt(0))
+        advanceUntilIdle()
+        val failed = viewModel.uiStateFlow.value.turns.last()
+        assertTrue(failed.blocks.filterIsInstance<HomeChatBlock.Error>().isNotEmpty())
+
+        // 第二轮 regen：旧 turn 的 Error 块随新回合发起消失
+        viewModel.sendIntent(HomeChatIntent.ReGenerateAt(0))
+        advanceUntilIdle()
+
+        val state = viewModel.uiStateFlow.value
+        assertTrue(state.turns.dropLast(1).all { turn ->
+            turn.blocks.filterIsInstance<HomeChatBlock.Error>().isEmpty()
+        })
+        assertNull(state.expandedActionTurnId)
+    }
+
+    @Test
     fun newConversation_keepsPersistedConversationButClearsCurrentPointer() = runTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(

@@ -336,6 +336,10 @@ class HomeChatViewModel internal constructor(
                 streamEventCount = 0,
                 activeThinkingKey = null,
                 autoExpandedThinking = emptySet(),
+                // 旧回合的操作行（复制/重试）随新回合消失：旧 turn 失去 isLastTurn 后
+                // canToggleUserAction 变 false，不清则操作行永远挂着无法收回
+                expandedActionTurnId = null,
+                expandedActionSource = null,
             )
         }
         draftSaveJob?.cancel()
