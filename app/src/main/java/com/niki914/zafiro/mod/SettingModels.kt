@@ -51,15 +51,6 @@ class WebSettings(props: JsonObject = JsonObject(emptyMap())) : XSettings(props)
     val versionCode: Long
         get() = getLong("version_code")
 
-    val requestedVersionCode: Long
-        get() = getLong("requested_version_code", versionCode)
-
-    val resolvedVersionCode: Long
-        get() = getLong("resolved_version_code", versionCode)
-
-    val isBeta: Boolean
-        get() = getBoolean("is_beta", false)
-
     val config: JsonObject?
         get() = getObject("config")
 }

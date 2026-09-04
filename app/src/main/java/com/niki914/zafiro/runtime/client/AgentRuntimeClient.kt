@@ -245,37 +245,6 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         }
     }
 
-    override fun postNetworkErrorNotification(): Boolean {
-        val svc = storeService ?: return false
-        return try {
-            svc.postNetworkErrorNotification()
-            true
-        } catch (_: DeadObjectException) {
-            onBinderUnreachable()
-            false
-        } catch (_: RemoteException) {
-            onBinderUnreachable()
-            false
-        }
-    }
-
-    override fun postUnsupportedVersionNotification(
-        hostPackageName: String?,
-        hostVersion: String?
-    ): Boolean {
-        val svc = storeService ?: return false
-        return try {
-            svc.postUnsupportedVersionNotification(hostPackageName, hostVersion)
-            true
-        } catch (_: DeadObjectException) {
-            onBinderUnreachable()
-            false
-        } catch (_: RemoteException) {
-            onBinderUnreachable()
-            false
-        }
-    }
-
     // --- Binder death ---
 
     private fun onBinderUnreachable() {

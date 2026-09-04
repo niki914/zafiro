@@ -10,8 +10,6 @@ interface IAgentStoreService : IInterface {
     fun writeStore(storeId: String?, json: String?)
     fun mutateStore(storeId: String?, path: String?, valueJson: String?): String?
     fun postNotification(title: String?, content: String?, uri: String?)
-    fun postNetworkErrorNotification()
-    fun postUnsupportedVersionNotification(hostPackageName: String?, hostVersion: String?)
 
     abstract class Stub : Binder(), IAgentStoreService {
         init {
@@ -61,22 +59,6 @@ interface IAgentStoreService : IInterface {
                     return true
                 }
 
-                TRANSACTION_postNetworkErrorNotification -> {
-                    data.enforceInterface(DESCRIPTOR)
-                    postNetworkErrorNotification()
-                    reply?.writeNoException()
-                    return true
-                }
-
-                TRANSACTION_postUnsupportedVersionNotification -> {
-                    data.enforceInterface(DESCRIPTOR)
-                    val hostPackageName = data.readString()
-                    val hostVersion = data.readString()
-                    postUnsupportedVersionNotification(hostPackageName, hostVersion)
-                    reply?.writeNoException()
-                    return true
-                }
-
                 else -> return super.onTransact(code, data, reply, flags)
             }
         }
@@ -88,8 +70,6 @@ interface IAgentStoreService : IInterface {
             private const val TRANSACTION_writeStore = 2
             private const val TRANSACTION_mutateStore = 3
             private const val TRANSACTION_postNotification = 4
-            private const val TRANSACTION_postNetworkErrorNotification = 5
-            private const val TRANSACTION_postUnsupportedVersionNotification = 6
 
             fun asInterface(obj: IBinder?): IAgentStoreService? {
                 if (obj == null) return null
@@ -165,36 +145,7 @@ interface IAgentStoreService : IInterface {
                 }
             }
 
-            override fun postNetworkErrorNotification() {
-                val data = Parcel.obtain()
-                val reply = Parcel.obtain()
-                try {
-                    data.writeInterfaceToken(DESCRIPTOR)
-                    remote.transact(TRANSACTION_postNetworkErrorNotification, data, reply, 0)
-                    reply.readException()
-                } finally {
-                    reply.recycle()
-                    data.recycle()
-                }
-            }
 
-            override fun postUnsupportedVersionNotification(
-                hostPackageName: String?,
-                hostVersion: String?
-            ) {
-                val data = Parcel.obtain()
-                val reply = Parcel.obtain()
-                try {
-                    data.writeInterfaceToken(DESCRIPTOR)
-                    data.writeString(hostPackageName)
-                    data.writeString(hostVersion)
-                    remote.transact(TRANSACTION_postUnsupportedVersionNotification, data, reply, 0)
-                    reply.readException()
-                } finally {
-                    reply.recycle()
-                    data.recycle()
-                }
-            }
         }
     }
 }

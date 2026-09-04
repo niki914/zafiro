@@ -6,18 +6,6 @@
 
     <!-- Onboarding -->
     <string name="ui_onboard_startup_demo_button">開始使用</string>
-    <string name="ui_onboard_web_beta_title">目前仍處於 Beta 測試階段</string>
-    <string name="ui_onboard_web_beta_body">此助理的適配仍在驗證中，部分場景可能不太穩定。你可以繼續設定，若遇到異常，再回到設定調整或回報問題。</string>
-    <string name="ui_onboard_web_fetch_failed_title">暫時無法取得設定</string>
-    <string name="ui_onboard_web_fetch_failed_body">未能連線至設定服務。你可以重試，或直接進入設定。</string>
-    <string name="ui_onboard_web_unsupported_title">目前未支援此宿主版本</string>
-    <string name="ui_onboard_web_unsupported_body">目前尚未有對應此宿主版本的專屬設定，已套用最近版本的設定。若遇到問題，請回報。</string>
-    <string name="ui_onboard_web_network_error_title">網絡請求錯誤</string>
-    <string name="ui_onboard_web_network_error_body">目前網絡異常。檢查網絡後重試，或直接進入設定。</string>
-    <string name="ui_onboard_web_confirm">確定</string>
-    <string name="ui_onboard_web_cancel">取消</string>
-    <string name="ui_onboard_web_enter_directly">直接進入設定</string>
-    <string name="ui_onboard_web_retry">重試</string>
     <string name="ui_onboard_provider_pick_title">選擇供應商</string>
     <string name="ui_onboard_provider_pick_description">從這裡開始連接你的模型能力。\n選擇一個供應商以繼續。</string>
     <string name="ui_onboard_configure_title">設定模型連接資訊</string>

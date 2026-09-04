@@ -41,6 +41,13 @@ sealed interface ZafiroPage : Page {
      */
     val titleMode: TitleBarMode
         get() = TitleBarMode.Pinned
+
+    /**
+     * 是否允许系统返回键驱动页面回退。false 时返回键不触发 pop，
+     * 用于 onboarding 入口页防止退回动画页。
+     */
+    val backEnabled: Boolean
+        get() = true
 }
 
 enum class TitleBarMode { Pinned, Collapsible }
@@ -57,9 +64,10 @@ data object ProviderPickPage : ZafiroPage {
     override val routeKey: String = "provider-pick"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_onboard_provider_pick_title)
 
-    // onboarding 首次流程不可返回 StartupPage
+    // onboarding 首次流程不可返回 StartupPage：隐藏左上角按钮 + 拦截返回键。
     override val leftAction: TopBarActionSpec? = null
     override val rightAction: TopBarActionSpec? = null
+    override val backEnabled: Boolean = false
 }
 
 data object SettingsProviderPickPage : ZafiroPage {

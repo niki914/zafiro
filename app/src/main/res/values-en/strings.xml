@@ -6,18 +6,6 @@
 
     <!-- Onboarding -->
     <string name="ui_onboard_startup_demo_button">Get Started</string>
-    <string name="ui_onboard_web_beta_title">Support Is Still in Beta</string>
-    <string name="ui_onboard_web_beta_body">Support for this assistant is still being validated, so some scenarios may be unstable. You can continue setup and return to Settings later to adjust things or send feedback if anything goes wrong.</string>
-    <string name="ui_onboard_web_fetch_failed_title">Unable to Load Configuration</string>
-    <string name="ui_onboard_web_fetch_failed_body">Could not connect to the configuration service. Retry or go straight to setup.</string>
-    <string name="ui_onboard_web_unsupported_title">Host Version Not Supported</string>
-    <string name="ui_onboard_web_unsupported_body">A dedicated configuration is not available for this host version yet. The latest available configuration has been applied. Please send feedback if you run into issues.</string>
-    <string name="ui_onboard_web_network_error_title">Network Request Failed</string>
-    <string name="ui_onboard_web_network_error_body">There is a network problem. Check your connection and try again, or go straight to setup.</string>
-    <string name="ui_onboard_web_confirm">OK</string>
-    <string name="ui_onboard_web_cancel">Cancel</string>
-    <string name="ui_onboard_web_enter_directly">Go to Setup</string>
-    <string name="ui_onboard_web_retry">Retry</string>
     <string name="ui_onboard_provider_pick_title">Choose a Provider</string>
     <string name="ui_onboard_provider_pick_description">Start here to connect your model.\nSelect a provider to continue.</string>
     <string name="ui_onboard_configure_title">Configure Model Access</string>
