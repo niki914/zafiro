@@ -6,18 +6,6 @@
 
     <!-- Onboarding -->
     <string name="ui_onboard_startup_demo_button">利用を開始</string>
-    <string name="ui_onboard_web_beta_title">現在のサポートは Beta 段階です</string>
-    <string name="ui_onboard_web_beta_body">このアシスタントの適用は検証中のため、一部のシーンで不安定になる可能性があります。このまま連携を進めることもできます。問題が発生した場合は設定に戻って調整するか、フィードバックを送信してください。</string>
-    <string name="ui_onboard_web_fetch_failed_title">設定を取得できません</string>
-    <string name="ui_onboard_web_fetch_failed_body">設定サービスに接続できませんでした。再試行するか、直接設定に進んでください。</string>
-    <string name="ui_onboard_web_unsupported_title">未対応のホストバージョンです</string>
-    <string name="ui_onboard_web_unsupported_body">現在のホストバージョン専用の設定がないため、直近のバージョンの設定を適用しました。問題が発生した場合はフィードバックをお願いします。</string>
-    <string name="ui_onboard_web_network_error_title">ネットワークリクエストエラー</string>
-    <string name="ui_onboard_web_network_error_body">ネットワークエラーが発生しました。接続を確認して再試行するか、直接設定に進んでください。</string>
-    <string name="ui_onboard_web_confirm">OK</string>
-    <string name="ui_onboard_web_cancel">キャンセル</string>
-    <string name="ui_onboard_web_enter_directly">直接進む</string>
-    <string name="ui_onboard_web_retry">再試行</string>
     <string name="ui_onboard_provider_pick_title">プロバイダーを選択</string>
     <string name="ui_onboard_provider_pick_description">ここからモデル機能の連携を開始します。\nプロバイダーを選択して続行してください。</string>
     <string name="ui_onboard_configure_title">モデル連携情報の設定</string>

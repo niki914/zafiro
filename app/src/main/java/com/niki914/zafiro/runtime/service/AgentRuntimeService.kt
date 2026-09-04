@@ -21,7 +21,7 @@ import com.niki914.logging.Logger
 import com.niki914.store.HostApp
 import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.store.XIpcStoreRepository
-import com.niki914.store.displayNameFor
+
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmErrorCode
@@ -42,7 +42,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicReference
 import com.niki914.zafiro.app.R as AppR
 
@@ -82,7 +81,7 @@ class AgentRuntimeService : Service() {
         private const val MAX_QUERY_LENGTH = 8192
         private const val STORE_CHANNEL_ID = "nexus_xservice_default_channel"
         private const val STORE_CHANNEL_NAME = "Zafiro"
-        private const val UNSUPPORTED_NOTIFIED_FIELD = "unsupported_version_notified"
+
     }
 
     private fun createNotificationChannel() {
@@ -248,80 +247,7 @@ class AgentRuntimeService : Service() {
             postNotificationImpl(t, c, createContentIntent(uri))
         }
 
-        override fun postNetworkErrorNotification() {
-            if (!validateCaller()) return
-            val ctx = this@AgentRuntimeService
-            postNotificationImpl(
-                ctx.getString(AppR.string.notif_network_error_title),
-                ctx.getString(AppR.string.notif_network_error_body),
-                null
-            )
-        }
 
-        override fun postUnsupportedVersionNotification(
-            hostPackageName: String?,
-            hostVersion: String?
-        ) {
-            if (!validateCaller()) return
-            val ctx = this@AgentRuntimeService
-            val dedupKey = "${hostPackageName.orEmpty()}:${hostVersion.orEmpty()}"
-            if (isUnsupportedVersionNotified(dedupKey)) {
-                Logger.d(LOG_TAG, "unsupported notification suppressed key=$dedupKey")
-                return
-            }
-            val hostApp = HostApp.fromPackageName(hostPackageName)
-            val hostName = hostApp?.let { ctx.displayNameFor(it) }
-                ?: ctx.getString(AppR.string.fallback_assistant_name)
-            val version = hostVersion ?: ""
-            postNotificationImpl(
-                ctx.getString(AppR.string.notif_unsupported_version_title),
-                ctx.getString(AppR.string.notif_unsupported_version_body, hostName, version),
-                createAppLaunchPendingIntent()
-            )
-            markUnsupportedVersionNotified(dedupKey)
-        }
-
-        private fun isUnsupportedVersionNotified(key: String): Boolean {
-            val root = runCatching {
-                JSONObject(
-                    runBlocking {
-                        XIpcStoreRepository.readJson(
-                            this@AgentRuntimeService,
-                            StoreDescriptorRegistry.APP_STATE_ID
-                        )
-                    }
-                )
-            }.getOrNull() ?: return false
-            return root.optJSONObject(UNSUPPORTED_NOTIFIED_FIELD)?.optBoolean(key) == true
-        }
-
-        // ponytail: read-modify-write on app.state is not atomic across calls; a
-        // simultaneous Breeno+XiaoAi notify could drop one marker, which self-heals
-        // by re-notifying on the next host load
-        private fun markUnsupportedVersionNotified(key: String) {
-            runCatching {
-                runBlocking {
-                    val root = JSONObject(
-                        XIpcStoreRepository.readJson(
-                            this@AgentRuntimeService,
-                            StoreDescriptorRegistry.APP_STATE_ID
-                        )
-                    )
-                    val notified =
-                        root.optJSONObject(UNSUPPORTED_NOTIFIED_FIELD) ?: JSONObject().also {
-                            root.put(UNSUPPORTED_NOTIFIED_FIELD, it)
-                        }
-                    notified.put(key, true)
-                    XIpcStoreRepository.writeJson(
-                        this@AgentRuntimeService,
-                        StoreDescriptorRegistry.APP_STATE_ID,
-                        root.toString()
-                    )
-                }
-            }.onFailure { t ->
-                Logger.w(LOG_TAG, "mark unsupported notified failed key=$key error=$t")
-            }
-        }
 
         private fun postNotificationImpl(
             title: String,

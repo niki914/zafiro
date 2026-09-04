@@ -1,0 +1,145 @@
+{
+  "package_name": "com.heytap.speechassist",
+  "version_code": 120803,
+  "is_beta": false,
+  "config": {
+    "actions": {
+      "capture_input": {
+        "target": {
+          "owner_class": "com.heytap.speechassist.aichat.AIChatDataCenter",
+          "method_name": "r",
+          "param_types": [
+            "com.heytap.speechassist.aichat.bean.AIChatViewBean"
+          ],
+          "hook_timing": "before",
+          "hook_kind": "method",
+          "return_type": "void"
+        },
+        "business": {
+          "query_arg_index": 0,
+          "dialog_id_arg_index": 0,
+          "chat_type_query": 1,
+          "bean_get_chat_type_method": "getChatType",
+          "bean_get_room_id_method": "getRoomId",
+          "bean_get_content_method": "getContent"
+        }
+      },
+      "capture_response_target": {
+        "target": {
+          "owner_class": "com.heytap.speechassist.aichat.AIChatDataCenter",
+          "method_name": "r",
+          "param_types": [
+            "com.heytap.speechassist.aichat.bean.AIChatViewBean"
+          ],
+          "hook_timing": "before",
+          "hook_kind": "method",
+          "return_type": "void"
+        },
+        "business": {
+          "chat_type_answer": 2,
+          "self_injected_flag_key": "MY_MOCK_FLAG",
+          "bean_get_chat_type_method": "getChatType",
+          "bean_get_client_local_data_method": "getClientLocalData",
+          "bean_get_room_id_method": "getRoomId"
+        }
+      },
+      "reset_conversation_signal": {
+        "target": {
+          "owner_class": "com.heytap.speechassist.aichat.AIChatRoomIdManager",
+          "method_name": "p",
+          "param_types": [
+            "java.lang.String",
+            "java.lang.String"
+          ],
+          "hook_timing": "after",
+          "hook_kind": "method",
+          "return_type": "void"
+        },
+        "business": {}
+      },
+      "float_screen_detach": {
+        "target": {
+          "hook_kind": "method",
+          "hook_timing": "before",
+          "owner_class": "com.heytap.speechassist.cui.floatwindow.view.NewCuiFloatWindowRootView",
+          "method_name": "onDetachedFromWindow",
+          "param_types": [],
+          "return_type": "void"
+        },
+        "business": {
+          "resume_target": {
+            "hook_kind": "method",
+            "hook_timing": "after",
+            "owner_class": "com.heytap.speechassist.launcher.SpeechAssistMainActivity",
+            "method_name": "onResume",
+            "param_types": [],
+            "return_type": "void"
+          }
+        }
+      },
+      "suppress_cleanup": {
+        "target": {
+          "owner_class": "cc.e",
+          "method_name": "c",
+          "param_types": [
+            "com.heytap.speech.engine.protocol.directive.Directive",
+            "java.util.List",
+            "java.lang.String",
+            "com.heytap.speech.engine.net.remote.ConversationInfo"
+          ],
+          "hook_timing": "after",
+          "hook_kind": "method",
+          "return_type": "cc.f"
+        },
+        "business": {
+          "clean_operation_class": "CleanOperation",
+          "do_nothing_operation_class": "com.heytap.speechassist.uitemplate.operation.DoNothingOperation"
+        }
+      },
+      "render_card": {
+        "business": {
+          "view_bean_class": "com.heytap.speechassist.aichat.bean.AIChatViewBean",
+          "data_center_insert_message_method": "r",
+          "data_center_update_message_method": "i1",
+          "bean_set_chat_type_method": "setChatType",
+          "bean_set_room_id_method": "setRoomId",
+          "bean_set_content_method": "setContent",
+          "bean_set_record_id_method": "setRecordId",
+          "bean_set_final_method": "setFinal",
+          "bean_set_first_slice_method": "setFirstSlice",
+          "bean_add_client_local_data_method": "addClientLocalData",
+          "chat_type_answer": 2,
+          "hide_feedback_view_local_data_key": "bean_client_key_hide_feedback_view",
+          "mock_bean_methods": {
+            "setSkillType": "MyAI.StreamTextCard",
+            "setBasicContextView": true,
+            "setModeType": -1,
+            "setShowStatement": true,
+            "setStatement": "> Powered By niki914",
+            "setShowTTSPlayIcon": false,
+            "setMsPerChar": 5,
+            "setHasTextPrintAnimPlayed": false
+          },
+          "mock_bean_methods_replay_on_update": [
+            "setHasTextPrintAnimPlayed"
+          ],
+          "mock_bean_local_data": {
+            "MY_MOCK_FLAG": true,
+            "fromcui": true,
+            "resultStart": true,
+            "key_dash_line": true,
+            "bean_client_key_hide_feedback_view": true
+          },
+          "feedback_info_class": "com.heytap.speech.engine.protocol.directive.tracking.BreenoFeedback",
+          "footer_info_class": "com.heytap.speech.engine.protocol.directive.tracking.FooterInfo",
+          "bean_set_feedback_info_method": "setFeedBackInfo",
+          "feedback_set_footer_info_method": "setFooterInfo",
+          "footer_info_set_copy_flag_method": "setCopyFlag",
+          "footer_info_set_upvote_flag_method": "setUpvoteFlag",
+          "feedback_copy_flag_default": true,
+          "feedback_upvote_flag_default": true
+        }
+      }
+    }
+  }
+}

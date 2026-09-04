@@ -1,7 +1,6 @@
 package com.niki914.zafiro.mod
 
 import android.content.Context
-import com.niki914.store.HostApp
 import com.niki914.store.IpcReadResult
 import com.niki914.store.IpcWriteResult
 import com.niki914.store.XIpcBridge
@@ -41,15 +40,4 @@ object XService {
         ) is IpcWriteResult.Success
     }
 
-    fun postNetworkErrorNotification(client: XIpcBridge.StoreClient) {
-        client.postNetworkErrorNotification()
-    }
-
-    fun postUnsupportedVersionNotification(
-        hostApp: HostApp?,
-        hostVersion: String?,
-        client: XIpcBridge.StoreClient
-    ) {
-        client.postUnsupportedVersionNotification(hostApp?.packageName, hostVersion)
-    }
 }

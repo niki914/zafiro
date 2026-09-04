@@ -142,7 +142,7 @@ fun ZafiroApp(
     }
 
     fun popOrMoveTaskToBack() {
-        if (controller.canGoBack) {
+        if (controller.canGoBack && currentPage.backEnabled) {
             navigator.pop()
             return
         }

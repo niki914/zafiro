@@ -39,9 +39,6 @@ class App : Application() {
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         DynamicColors.applyToActivitiesIfAvailable(this)
         applicationScope.launch {
-            XRepo.web.await()
-        }
-        applicationScope.launch {
             UpdateCheckHolder.runOnce(BuildConfig.VERSION_NAME)
         }
         applicationScope.launch {

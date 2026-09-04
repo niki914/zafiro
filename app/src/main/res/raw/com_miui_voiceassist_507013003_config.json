@@ -1,0 +1,191 @@
+{
+  "package_name": "com.miui.voiceassist",
+  "version_code": 507013003,
+  "is_beta": true,
+  "config": {
+    "actions": {
+      "capture_input": {
+        "target": {
+          "hook_kind": "method",
+          "hook_timing": "before",
+          "owner_class": "com.xiaomi.voiceassistant.instruction.base.OperationManager",
+          "method_name": "setQueryInfo",
+          "param_types": [
+            "java.lang.String",
+            "java.lang.String",
+            "org.json.JSONObject"
+          ],
+          "return_type": "void"
+        },
+        "business": {
+          "dialog_id_arg_index": 0,
+          "query_arg_index": 1
+        }
+      },
+      "capture_response_target": {
+        "target": {
+          "hook_kind": "method",
+          "hook_timing": "before",
+          "owner_class": "cb0.eb",
+          "method_name": "A0",
+          "param_types": [
+            "com.xiaomi.ai.api.common.Instruction"
+          ],
+          "return_type": "void"
+        },
+        "business": {
+          "target_dialog_id_getter": "getDialogId",
+          "instruction_dialog_id_getter": "getDialogId",
+          "optional_has_value_method": "isPresent",
+          "optional_value_getter": "get"
+        }
+      },
+      "reset_conversation_signal": {
+        "business": {}
+      },
+      "float_screen_detach": {
+        "target": {
+          "hook_kind": "method",
+          "hook_timing": "before",
+          "owner_class": "com.xiaomi.voiceassistant.mainui.board.FloatViewRootLayout",
+          "method_name": "onDetachedFromWindow",
+          "param_types": [],
+          "return_type": "void"
+        },
+        "business": {
+          "resume_target": {
+            "hook_kind": "method",
+            "hook_timing": "after",
+            "owner_class": "com.xiaomi.voiceassistant.TabHostMainActivity",
+            "method_name": "onResume",
+            "param_types": [],
+            "return_type": "void"
+          }
+        }
+      },
+      "block_native_text_stream": {
+        "target": {
+          "hook_kind": "method",
+          "hook_timing": "before",
+          "owner_class": "cb0.eb",
+          "method_name": "A0",
+          "param_types": [
+            "com.xiaomi.ai.api.common.Instruction"
+          ],
+          "return_type": "void"
+        },
+        "business": {
+          "target_dialog_id_getter": "getDialogId",
+          "instruction_full_name": "Template.ToastStream",
+          "instruction_full_name_getter": "getFullName",
+          "instruction_dialog_id_getter": "getDialogId",
+          "optional_has_value_method": "isPresent",
+          "optional_value_getter": "get"
+        }
+      },
+      "block_native_tts_stream": {
+        "target": {
+          "hook_kind": "method",
+          "hook_timing": "before",
+          "owner_class": "cb0.eb",
+          "method_name": "A0",
+          "param_types": [
+            "com.xiaomi.ai.api.common.Instruction"
+          ],
+          "return_type": "void"
+        },
+        "business": {
+          "target_dialog_id_getter": "getDialogId",
+          "instruction_full_name": "SpeechSynthesizer.SpeakStream",
+          "instruction_full_name_getter": "getFullName",
+          "instruction_dialog_id_getter": "getDialogId",
+          "optional_has_value_method": "isPresent",
+          "optional_value_getter": "get"
+        }
+      },
+      "block_native_instruction_whitelist": {
+        "target": {
+          "hook_kind": "method",
+          "hook_timing": "before",
+          "owner_class": "cb0.eb",
+          "method_name": "A0",
+          "param_types": [
+            "com.xiaomi.ai.api.common.Instruction"
+          ],
+          "return_type": "void"
+        },
+        "business": {
+          "target_dialog_id_getter": "getDialogId",
+          "instruction_full_name_getter": "getFullName",
+          "instruction_dialog_id_getter": "getDialogId",
+          "optional_has_value_method": "isPresent",
+          "optional_value_getter": "get",
+          "allowed_instruction_full_names": [
+            "Nlp.UpdateStreamProperties"
+          ]
+        }
+      },
+      "block_native_tts_playback": {
+        "target": {
+          "hook_kind": "method",
+          "hook_timing": "before",
+          "owner_class": "cb0.n9",
+          "method_name": "onProcessOp",
+          "param_types": [
+            "g90.l"
+          ],
+          "return_type": "boolean"
+        },
+        "business": {
+          "target_dialog_id_getter": "getDialogId"
+        }
+      },
+      "render_text_stream_card": {
+        "target": {
+          "hook_kind": "method",
+          "hook_timing": "manual",
+          "owner_class": "cb0.eb",
+          "method_name": "A0",
+          "param_types": [
+            "com.xiaomi.ai.api.common.Instruction"
+          ],
+          "return_type": "void"
+        },
+        "business": {
+          "instruction_class": "com.xiaomi.ai.api.common.Instruction",
+          "instruction_constructor_param_types": [],
+          "instruction_header_class": "com.xiaomi.ai.api.common.InstructionHeader",
+          "instruction_header_constructor_param_types": [
+            "java.lang.String",
+            "java.lang.String"
+          ],
+          "instruction_namespace": "Template",
+          "instruction_name": "ToastStream",
+          "text_stream_payload_class": "com.xiaomi.ai.api.Template$ToastStream",
+          "text_stream_payload_constructor_param_types": [
+            "java.lang.String"
+          ],
+          "instruction_header_id_setter": "setId",
+          "instruction_header_dialog_id_setter": "setDialogId",
+          "instruction_header_setter": "setHeader",
+          "instruction_payload_setter": "setPayload",
+          "instruction_id_prefix": "nexus_xiaoai_text",
+          "final_chunk_text": "<FINAL>",
+          "injected_flag_key": "__nexus_injected"
+        }
+      },
+      "render_tts": {
+        "target": {
+          "hook_kind": "method",
+          "owner_class": "com.xiaomi.voiceassistant.instruction.card.TemplateReactNativeCard",
+          "method_name": "p1",
+          "param_types": [
+            "org.json.JSONObject"
+          ],
+          "return_type": "void"
+        },
+        "business": {}
+      }
+    }
+  }
+}

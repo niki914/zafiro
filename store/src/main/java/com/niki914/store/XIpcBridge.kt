@@ -26,11 +26,6 @@ object XIpcBridge {
         fun writeStore(storeId: String, json: String): Boolean
         fun mutateStore(storeId: String, path: String, valueJson: String): String?
         fun postNotification(title: String, content: String, uri: String?): Boolean
-        fun postNetworkErrorNotification(): Boolean
-        fun postUnsupportedVersionNotification(
-            hostPackageName: String?,
-            hostVersion: String?
-        ): Boolean
     }
 
     suspend fun readWebSettingsJson(context: Context, client: StoreClient?): IpcReadResult {

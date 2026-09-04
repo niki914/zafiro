@@ -3,6 +3,9 @@ package com.niki914.zafiro.repo
 import com.niki914.zafiro.mod.WebSettings
 import kotlinx.serialization.json.JsonObject
 
+// TODO WebSettings abstraction: future use for preferences, remote executable code, i18n, etc.
+//      Current implementation is intentionally empty — config is loaded locally from
+//      res/raw/legacy_xposed_hooks/ and injected via BaseConfigProvider.config.
 sealed interface WebSettingsResult {
     data class Success(
         val settings: WebSettings,
@@ -22,29 +25,11 @@ sealed interface WebSettingsResult {
     fun configOrNull(): JsonObject? = (this as? Success)?.settings?.config
 }
 
-enum class WebSettingsSource {
-    Cache,
-    Network,
-}
+// TODO placeholder — define when reimplementing web settings
+enum class WebSettingsSource
 
-enum class WebSettingsFailureReason {
-    NetworkUnavailable,
-    ServerError,
-    UnsupportedVersion,
-    InvalidConfig,
-    IpcUnreachable,
-}
+// TODO placeholder — define when reimplementing web settings
+enum class WebSettingsFailureReason
 
-object WebSettingsVersionFallback {
-    fun nearestVersionCode(
-        requestedVersionCode: Long,
-        supportedVersionCodes: List<Long>,
-    ): Long? {
-        return supportedVersionCodes
-            .distinct()
-            .minWithOrNull(
-                compareBy<Long> { kotlin.math.abs(it - requestedVersionCode) }
-                    .thenBy { it }
-            )
-    }
-}
+// TODO placeholder — define when reimplementing web settings
+object WebSettingsVersionFallback
