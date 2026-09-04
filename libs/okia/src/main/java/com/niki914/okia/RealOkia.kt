@@ -108,7 +108,8 @@ internal class RealOkia(
         McpDiscovery(
             client = dependencies.mcpClient,
             servers = { config.mcpServers },
-            registry = { effectiveRegistry(config) }
+            registry = { effectiveRegistry(config) },
+            imageSaver = config.imageSaver
         )
     }
 
@@ -266,7 +267,9 @@ internal class RealOkia(
                 readMs = cfg.readTimeoutSeconds * 1000,
                 writeMs = cfg.writeTimeoutSeconds * 1000
             ),
-            tools = effectiveRegistry(cfg).snapshot().map { it.descriptor }
+            tools = effectiveRegistry(cfg).snapshot().map { it.descriptor },
+            supportsImages = cfg.supportsImages,
+            imageLoader = cfg.imageLoader
             // 工具描述快照（T9b G5 整改）：send 时快照仅为初始值；每段
             // buildRequest 前 RealAgentLoop 用 registry 现取覆盖（§8.18），
             // 请求体表达「每段发送时的工具集」。

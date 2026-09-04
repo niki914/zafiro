@@ -13,9 +13,12 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface ToolCallOutcome {
 
-    /** 工具成功，产出结果负载。内容为任意文本，不一定是 JSON。 */
+    /**
+     * 工具成功，产出结果负载。内容为任意文本，不一定是 JSON。
+     * image：工具返回的图片（view_image / MCP 图片等），path 引用。
+     */
     @Serializable
-    data class Success(val content: String) : ToolCallOutcome
+    data class Success(val content: String, val image: ContentBlock.Image? = null) : ToolCallOutcome
 
     /** 工具已运行但失败。 */
     @Serializable

@@ -1,5 +1,6 @@
 package com.niki914.okia.protocol
 
+import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -11,6 +12,7 @@ import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.CancellationException
+import kotlin.io.encoding.Base64
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
@@ -123,7 +125,7 @@ class AnthropicMessagesProtocol(
                 put("tools", buildJsonArray { snapshot.tools.forEach { add(convertTool(it)) } })
             }
             put("messages", buildJsonArray {
-                mergeMessages(history).forEach { merged ->
+                mergeMessages(snapshot, history).forEach { merged ->
                     add(buildJsonObject {
                         put("role", merged.role)
                         put("content", buildJsonArray { merged.blocks.forEach { add(it) } })
@@ -137,13 +139,13 @@ class AnthropicMessagesProtocol(
      * 工具结果映射为 user 消息的 tool_result 块；连续同角色消息合并
      * （Anthropic 严格交替）。工具结果与后续用户输入合并进同一 user 消息。
      */
-    private fun mergeMessages(history: List<Message>): List<MergedMessage> {
+    private fun mergeMessages(snapshot: RequestSnapshot, history: List<Message>): List<MergedMessage> {
         val merged = mutableListOf<MergedMessage>()
         for (message in history) {
             val (role, blocks) = when (message) {
-                is Message.User -> "user" to userBlocks(message.content)
+                is Message.User -> "user" to userBlocks(snapshot, message.content)
                 is Message.Assistant -> "assistant" to assistantBlocks(message.message)
-                is Message.ToolResult -> "user" to listOf(toolResultBlock(message))
+                is Message.ToolResult -> "user" to listOf(toolResultBlock(snapshot, message))
             }
             val last = merged.lastOrNull()
             if (last != null && last.role == role) {
@@ -155,18 +157,53 @@ class AnthropicMessagesProtocol(
         return merged
     }
 
-    private fun userBlocks(blocks: List<ContentBlock>): List<JsonObject> {
+    private fun userBlocks(snapshot: RequestSnapshot, blocks: List<ContentBlock>): List<JsonObject> {
         val image = blocks.firstOrNull { it is ContentBlock.Image }
-        if (image != null) {
-            throw IllegalStateException(
-                "image content is not supported by AnthropicMessagesProtocol before M2"
-            )
+        if (image == null) {
+            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
+                buildJsonObject {
+                    put("type", "text")
+                    put("text", text.text)
+                }
+            }
         }
+        if (!snapshot.supportsImages) {
+            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
+                buildJsonObject {
+                    put("type", "text")
+                    put("text", text.text)
+                }
+            } + buildJsonObject {
+                put("type", "text")
+                put("text", "[image omitted: model does not support images]")
+            }
+        }
+        val loader = snapshot.imageLoader
+        val bytes = loader?.load((image as ContentBlock.Image).path)
+        if (bytes == null) {
+            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
+                buildJsonObject {
+                    put("type", "text")
+                    put("text", text.text)
+                }
+            } + buildJsonObject {
+                put("type", "text")
+                put("text", "[image omitted: file not found]")
+            }
+        }
+        val base64 = Base64.encode(bytes)
         return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
             buildJsonObject {
                 put("type", "text")
                 put("text", text.text)
             }
+        } + buildJsonObject {
+            put("type", "image")
+            put("source", buildJsonObject {
+                put("type", "base64")
+                put("media_type", image.mimeType)
+                put("data", base64)
+            })
         }
     }
 
@@ -201,13 +238,41 @@ class AnthropicMessagesProtocol(
             }
         }
 
-    private fun toolResultBlock(result: Message.ToolResult): JsonObject =
-        buildJsonObject {
+    private fun toolResultBlock(snapshot: RequestSnapshot, result: Message.ToolResult): JsonObject {
+        val image = (result.outcome as? ToolCallOutcome.Success)?.image
+        if (image != null && snapshot.supportsImages) {
+            val loader = snapshot.imageLoader
+            val bytes = loader?.load(image.path)
+            if (bytes != null) {
+                val base64 = Base64.encode(bytes)
+                return buildJsonObject {
+                    put("type", "tool_result")
+                    put("tool_use_id", result.callId)
+                    put("content", buildJsonArray {
+                        add(buildJsonObject {
+                            put("type", "text")
+                            put("text", result.outcome.providerContent())
+                        })
+                        add(buildJsonObject {
+                            put("type", "image")
+                            put("source", buildJsonObject {
+                                put("type", "base64")
+                                put("media_type", image.mimeType)
+                                put("data", base64)
+                            })
+                        })
+                    })
+                    if (result.outcome.isProviderError()) put("is_error", true)
+                }
+            }
+        }
+        return buildJsonObject {
             put("type", "tool_result")
             put("tool_use_id", result.callId)
             put("content", result.outcome.providerContent())
             if (result.outcome.isProviderError()) put("is_error", true)
         }
+    }
 
     private fun parseArguments(argumentsJson: String): JsonObject = try {
         codec.parseToJsonElement(argumentsJson) as? JsonObject ?: buildJsonObject { }

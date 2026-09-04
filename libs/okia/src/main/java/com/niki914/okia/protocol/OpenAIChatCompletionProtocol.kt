@@ -1,5 +1,6 @@
 package com.niki914.okia.protocol
 
+import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -10,6 +11,7 @@ import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
+import kotlin.io.encoding.Base64
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
@@ -135,7 +137,7 @@ class OpenAIChatCompletionProtocol(
                         put("content", it)
                     })
                 }
-                history.forEach { message -> convertMessage(message)?.let { add(it) } }
+                history.forEach { message -> convertMessage(snapshot, message)?.let { add(it) } }
             })
             put("stream", true)
             put("stream_options", buildJsonObject { put("include_usage", true) })
@@ -153,28 +155,71 @@ class OpenAIChatCompletionProtocol(
             }
         }
 
-    private fun convertMessage(message: Message): JsonObject? = when (message) {
+    private fun convertMessage(snapshot: RequestSnapshot, message: Message): JsonObject? = when (message) {
         is Message.User -> buildJsonObject {
             put("role", "user")
-            put("content", userContent(message.content))
+            val content = userContent(snapshot, message.content)
+            if (content is JsonPrimitive) {
+                put("content", content.content)
+            } else {
+                put("content", content)
+            }
         }
 
         is Message.Assistant -> convertAssistant(message.message)
         is Message.ToolResult -> buildJsonObject {
             put("role", "tool")
-            put("content", message.outcome.providerContent())
             put("tool_call_id", message.callId)
+            val image = (message.outcome as? ToolCallOutcome.Success)?.image
+            if (image != null && snapshot.supportsImages) {
+                val loader = snapshot.imageLoader
+                val bytes: ByteArray? = loader?.load(image.path)
+                if (bytes != null) {
+                    val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
+                    put("content", buildJsonArray {
+                        add(buildJsonObject {
+                            put("type", "text")
+                            put("text", message.outcome.providerContent())
+                        })
+                        add(buildJsonObject {
+                            put("type", "image_url")
+                            put("image_url", buildJsonObject { put("url", dataUrl) })
+                        })
+                    })
+                    return@buildJsonObject
+                }
+            }
+            put("content", message.outcome.providerContent())
         }
     }
 
-    private fun userContent(blocks: List<ContentBlock>): String {
+    private fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
         val image = blocks.firstOrNull { it is ContentBlock.Image }
-        if (image != null) {
-            throw IllegalStateException(
-                "image content is not supported by OpenAIChatCompletionProtocol before M2"
-            )
+        val text = blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
+        if (image == null) {
+            return JsonPrimitive(text)
         }
-        return blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
+        if (!snapshot.supportsImages) {
+            return JsonPrimitive("$text\n[image omitted: model does not support images]")
+        }
+        val loader = snapshot.imageLoader
+        val bytes = loader?.load((image as ContentBlock.Image).path)
+        if (bytes == null) {
+            return JsonPrimitive("$text\n[image omitted: file not found]")
+        }
+        val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
+        return buildJsonArray {
+            blocks.filterIsInstance<ContentBlock.Text>().forEach { t ->
+                add(buildJsonObject {
+                    put("type", "text")
+                    put("text", t.text)
+                })
+            }
+            add(buildJsonObject {
+                put("type", "image_url")
+                put("image_url", buildJsonObject { put("url", dataUrl) })
+            })
+        }
     }
 
     private fun convertAssistant(message: AssistantMessage): JsonObject? {

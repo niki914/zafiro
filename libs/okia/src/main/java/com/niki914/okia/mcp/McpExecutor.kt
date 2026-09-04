@@ -1,5 +1,7 @@
 package com.niki914.okia.mcp
 
+import com.niki914.okia.ImageSaver
+import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.tooling.ToolCallContext
 import com.niki914.okia.tooling.ToolExecutor
@@ -39,7 +41,8 @@ import kotlinx.coroutines.CancellationException
  */
 class McpExecutor(
     private val client: McpClient,
-    private val servers: (serverName: String) -> McpServer?
+    private val servers: (serverName: String) -> McpServer?,
+    private val imageSaver: ImageSaver? = null
 ) : ToolExecutor {
 
     override suspend fun execute(call: ToolCallContext): ToolCallOutcome {
@@ -50,19 +53,35 @@ class McpExecutor(
             val server = servers(serverName)
                 ?: return ToolCallOutcome.Failure("MCP server not found: $serverName")
             val result = client.callTool(server, toolName, call.argumentsJson)
-            val content = result.content.joinToString("\n") { block ->
+            val textContent = StringBuilder()
+            var imageBlock: ContentBlock.Image? = null
+            for (block in result.content) {
                 when (block) {
-                    // 非文本 block 已在 McpWire.parseCallResult 报错（§8.8 #4 收窄），
-                    // 此处 only Text 可达。
-                    is McpContentBlock.Text -> block.text
+                    is McpContentBlock.Text -> {
+                        if (textContent.isNotEmpty()) textContent.append("\n")
+                        textContent.append(block.text)
+                    }
+                    is McpContentBlock.Image -> {
+                        val saver = imageSaver
+                        if (saver != null && imageBlock == null) {
+                            // TODO: 当前 ToolCallOutcome.Success 仅承载单图，多图仅取第一张，其余静默丢弃
+                            val path = saver.save(block.data, block.mimeType)
+                            if (path != null) {
+                                imageBlock = ContentBlock.Image(path, block.mimeType)
+                            }
+                        }
+                    }
                 }
             }
             if (result.isError) {
                 ToolCallOutcome.Failure(
                     "tool returned isError=true",
-                    content = content.ifEmpty { null })
+                    content = textContent.toString().ifEmpty { null })
             } else {
-                ToolCallOutcome.Success(content)
+                ToolCallOutcome.Success(
+                    content = textContent.toString(),
+                    image = imageBlock
+                )
             }
         } catch (e: CancellationException) {
             throw e
