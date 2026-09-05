@@ -58,3 +58,4 @@ packing/
 /.as-run/app.run.xml
 /RELEASING.md
 media/
+.pi/

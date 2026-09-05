@@ -140,6 +140,8 @@
     <string name="ui_settings_configure_save">保存配置</string>
     <string name="ui_settings_configure_prompt_label">提示词</string>
     <string name="ui_settings_configure_prompt_placeholder">你的助手应该怎么做？</string>
+    <string name="prompt_editor_description">编辑 System Prompt。保存后，变更会在下次对话生效。</string>
+    <string name="prompt_error_load_failed">读取提示词失败，请返回重试。</string>
     <string name="ui_settings_configure_proxy_label">代理</string>
     <string name="ui_settings_configure_proxy_placeholder">例如：http://127.0.0.1:7890</string>
     <string name="ui_settings_configure_error_required">必填项不能为空</string>

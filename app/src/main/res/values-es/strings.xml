@@ -141,6 +141,8 @@
     <string name="ui_settings_configure_save">Guardar configuración</string>
     <string name="ui_settings_configure_prompt_label">Prompt del sistema</string>
     <string name="ui_settings_configure_prompt_placeholder">¿Cómo debería comportarse el asistente?</string>
+    <string name="prompt_editor_description">Edita el System Prompt. Los cambios se aplicarán en la siguiente conversación tras guardar.</string>
+    <string name="prompt_error_load_failed">No se pudo cargar el prompt. Vuelve atrás e inténtalo de nuevo.</string>
     <string name="ui_settings_configure_proxy_label">Proxy</string>
     <string name="ui_settings_configure_proxy_placeholder">Ejemplo: http://127.0.0.1:7890</string>
     <string name="ui_settings_configure_error_required">Los campos obligatorios no pueden estar vacíos</string>
