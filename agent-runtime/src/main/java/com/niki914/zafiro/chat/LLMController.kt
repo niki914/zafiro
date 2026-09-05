@@ -65,7 +65,6 @@ import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
  */
 object LLMController {
     private const val LOG_TAG = "niki914_nexus_LLMController"
-    internal const val CONFIG_REQUIRED_MESSAGE = "请先填写配置" // <--- TODO res
     internal const val NO_IDLE_TIMEOUT_SECONDS = Long.MAX_VALUE / 1000
 
     private val promptComposer =
@@ -143,7 +142,7 @@ object LLMController {
     @Volatile
     private var mcpFailureSignature: String? = null
 
-    // 测试注入点：T1 单测经 Okia.open(dependencies) 装配 fake loop/mapper。 <--- TODO Workaround???
+    // Test seam: overridden in unit tests to inject a fake Okia with stub dependencies.
     internal var okiaFactory: OkiaFactory = OkiaFactory { apiType, restore, config ->
         openOkiaWithDefaultProtocol(apiType, restore, config)
     }
@@ -788,5 +787,5 @@ object LLMController {
         val sessionProtocol: LlmProtocol?,
     )
 
-    private class LlmConfigRequiredException : IllegalStateException(CONFIG_REQUIRED_MESSAGE)
+    private class LlmConfigRequiredException : IllegalStateException("LLM config is required")
 }
