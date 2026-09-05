@@ -186,10 +186,7 @@ internal interface HomeChatRuntime {
 
 private object LlmHomeChatRuntime : HomeChatRuntime {
     override fun stream(query: String): Flow<LlmStreamEvent> =
-        LLMController.stream(
-            query = query,
-            fromUserInterface = true,
-        )
+        LLMController.stream(query)
 
     override suspend fun resetConversation() = LLMController.resetConversation()
     override suspend fun stopCurrentRound() =

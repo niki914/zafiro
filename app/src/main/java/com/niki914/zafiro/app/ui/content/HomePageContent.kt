@@ -355,22 +355,7 @@ fun HomePageContent(
  */
 @Composable
 private fun ToolPermissionDialog() {
-    val context = LocalContext.current
     val pending by ToolPermissionCoordinator.pendingConfirmation.collectAsState()
-
-    // 纯通知：仅告知有请求在等待，决策必须在应用内完成
-    LaunchedEffect(pending?.id) {
-        val request = pending ?: return@LaunchedEffect
-        if (MainActivity.isResumed) return@LaunchedEffect
-        val command = request.command.let { if (it.length > 80) it.take(80) + "…" else it }
-        XIpcBridge.postNotification(
-            context = context,
-            title = context.getString(R.string.tool_permission_notification_title),
-            content = context.getString(R.string.tool_permission_notification_content, command),
-            uri = null,
-            client = null,
-        )
-    }
 
     val request = pending ?: return
     LiquidDialog(

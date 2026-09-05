@@ -328,10 +328,7 @@ object LLMController {
 
     fun stream(
         query: String,
-        fromUserInterface: Boolean = false,
     ): Flow<LlmStreamEvent> = channelFlow {
-        // 确认型执行规则按来源区分：UI 直连可弹窗；宿主路径默认拒绝（英文错误回给 Agent）
-        ToolPermissionCoordinator.canRequestUserConfirmation = fromUserInterface
         try {
             val state = try {
                 refresh()

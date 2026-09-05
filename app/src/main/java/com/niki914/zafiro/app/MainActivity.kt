@@ -10,6 +10,7 @@ import androidx.core.os.LocaleListCompat
 import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import kotlinx.coroutines.runBlocking
 
 // tag:niki914 | tag:nexus-x-log | message:niki914 | message:nexus-x-log
@@ -55,16 +56,18 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         isResumed = true
+        ToolPermissionCoordinator.isUiResumed = true
     }
 
     override fun onPause() {
         super.onPause()
         isResumed = false
+        ToolPermissionCoordinator.isUiResumed = false
     }
 
     companion object {
 
-        /** 前后台标记：确认请求在后台时改为发通知（纯通知，无决策入口）。 */
+        /** 前后台标记：确认请求在后台时尝试 overlay 弹窗，无权限则静默拒绝。 */
         @Volatile
         var isResumed: Boolean = false
             private set
