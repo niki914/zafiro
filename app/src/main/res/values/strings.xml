@@ -353,6 +353,12 @@
     <string name="ui_tool_display_screen_operation_shell">屏幕操作</string>
     <string name="dialog_cancel">取消</string>
     <string name="dialog_confirm_delete">删除</string>
+    <string name="ui_settings_configure_endpoint_mismatch_title">更新端点</string>
+    <string name="ui_settings_configure_endpoint_mismatch_text_switch">协议已切换，是否将端点更新为\n%1$s ？</string>
+    <string name="ui_settings_configure_endpoint_mismatch_text_save">保存前，是否将端点更新为\n%1$s ？</string>
+    <string name="ui_settings_configure_endpoint_mismatch_confirm_update">更新</string>
+    <string name="ui_settings_configure_endpoint_mismatch_cancel_keep">保留</string>
+    <string name="ui_settings_configure_endpoint_mismatch_cancel_save">直接保存</string>
     <string name="ui_settings_section_general">通用</string>
     <string name="ui_settings_general">通用设置</string>
     <string name="ui_settings_general_summary">语言与启动行为</string>

@@ -10,8 +10,8 @@ data class ConfigurePagePolicy(
 
 internal fun onboardingConfigurePolicy(providerSpec: ProviderSpec): ConfigurePagePolicy {
     return ConfigurePagePolicy(
-        showEndpointSection = providerSpec.showEndpointConfigInOnboarding,
-        showEndpointOverrideToggle = providerSpec.showEndpointConfigInOnboarding,
-        endpointEditable = providerSpec.showEndpointConfigInOnboarding,
+        showEndpointSection = providerSpec.allowsCustomEndpointInNewConfig,
+        showEndpointOverrideToggle = providerSpec.allowsCustomEndpointInNewConfig,
+        endpointEditable = providerSpec.allowsCustomEndpointInNewConfig,
     )
 }

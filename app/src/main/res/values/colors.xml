@@ -16,4 +16,22 @@
     <color name="provider_anthropic_button_light_container">#FFD97757</color>
     <color name="provider_anthropic_button_dark_content">#FFFAF9F5</color>
     <color name="provider_anthropic_button_light_content">#FFFAF9F5</color>
+    <color name="provider_siliconflow_button_dark_container">#FF6E29F6</color>
+    <color name="provider_siliconflow_button_light_container">#FF6E29F6</color>
+    <color name="provider_siliconflow_button_dark_content">#FFFFFFFF</color>
+    <color name="provider_siliconflow_button_light_content">#FFFFFFFF</color>
+    <color name="provider_openrouter_button_dark_container">#FFFFFFFF</color>
+    <color name="provider_openrouter_button_light_container">#FF000000</color>
+    <color name="provider_openrouter_button_dark_content">#FF000000</color>
+    <color name="provider_openrouter_button_light_content">#FFFFFFFF</color>
+    <color name="provider_openrouter_icon_dark">#FF7624F4</color>
+    <color name="provider_openrouter_icon_light">#FFC8FF01</color>
+    <color name="provider_command_code_button_dark_container">#FFFFFFFF</color>
+    <color name="provider_command_code_button_light_container">#FF000000</color>
+    <color name="provider_command_code_button_dark_content">#FF000000</color>
+    <color name="provider_command_code_button_light_content">#FFFFFFFF</color>
+    <color name="provider_opencode_button_dark_container">#FFFFFFFF</color>
+    <color name="provider_opencode_button_light_container">#FF000000</color>
+    <color name="provider_opencode_button_dark_content">#FF000000</color>
+    <color name="provider_opencode_button_light_content">#FFFFFFFF</color>
 </resources>

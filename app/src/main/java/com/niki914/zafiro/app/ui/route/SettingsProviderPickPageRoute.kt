@@ -23,6 +23,8 @@ internal fun SettingsProviderPickPageRoute(
                 lightContainerColor = colors?.lightContainerColor,
                 darkContentColor = colors?.darkContentColor,
                 lightContentColor = colors?.lightContentColor,
+                darkIconColor = colors?.darkIconColor,
+                lightIconColor = colors?.lightIconColor,
                 onClick = {
                     onPush(
                         SavedConfigDetailPage(

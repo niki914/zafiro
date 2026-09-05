@@ -92,6 +92,8 @@ internal fun ConfigurePageRoute(
             viewModel.sendIntent(ConfigureIntent.ToggleApiKeyVisibility)
         },
         onComplete = { viewModel.sendIntent(ConfigureIntent.Save) },
+        onConfirmEndpointMismatch = { viewModel.sendIntent(ConfigureIntent.ConfirmEndpointMismatch) },
+        onCancelEndpointMismatch = { viewModel.sendIntent(ConfigureIntent.CancelEndpointMismatch) },
         requestedFocusField = pendingFocusField,
         onRequestedFocusHandled = {
             pendingFocusField = null

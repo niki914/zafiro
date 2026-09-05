@@ -12,6 +12,8 @@ internal data class ProviderButtonColors(
     val lightContainerColor: Color,
     val darkContentColor: Color,
     val lightContentColor: Color,
+    val darkIconColor: Color? = null,
+    val lightIconColor: Color? = null,
 )
 
 @Composable
@@ -40,5 +42,7 @@ internal fun ProviderButtonTokens.toProviderButtonColors(): ProviderButtonColors
             ?: colorScheme.onPrimary,
         lightContentColor = lightContentColorRes?.let { id -> colorResource(id) }
             ?: colorScheme.onPrimary,
+        darkIconColor = darkIconColorRes?.let { colorResource(it) },
+        lightIconColor = lightIconColorRes?.let { colorResource(it) },
     )
 }

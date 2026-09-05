@@ -3,16 +3,19 @@ package com.niki914.zafiro.app.ui.content
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.SettingsDetailFormScaffold
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureInlineError
 import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
+import com.niki914.zafiro.app.ui.model.EndpointMismatch
 import com.niki914.zafiro.app.ui.model.ProviderSpecs
 import com.niki914.zafiro.settings.model.LlmProtocol
 
@@ -31,6 +34,8 @@ fun ConfigurePageContent(
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit = {},
     onComplete: () -> Unit,
+    onConfirmEndpointMismatch: () -> Unit = {},
+    onCancelEndpointMismatch: () -> Unit = {},
     requestedFocusField: ConfigureEditableField? = null,
     onRequestedFocusHandled: () -> Unit = {},
 ) {
@@ -77,6 +82,12 @@ fun ConfigurePageContent(
             onClearActiveField = fieldController.clearActiveField,
         )
     }
+
+    EndpointMismatchDialog(
+        mismatch = uiState.pendingEndpointMismatch,
+        onConfirm = onConfirmEndpointMismatch,
+        onCancel = onCancelEndpointMismatch,
+    )
 }
 
 @Composable
@@ -93,6 +104,41 @@ internal fun configureInlineErrorText(error: ConfigureInlineError?): String? {
             error.reason.message,
         )
     }
+}
+
+@Composable
+internal fun EndpointMismatchDialog(
+    mismatch: EndpointMismatch?,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    if (mismatch == null) return
+    val isSwitch = mismatch.origin == EndpointMismatch.Origin.SwitchProtocol
+    ConfirmationLiquidDialog(
+        visible = true,
+        onDismissRequest = onCancel,
+        title = stringResource(R.string.ui_settings_configure_endpoint_mismatch_title),
+        text = stringResource(
+            if (isSwitch) {
+                R.string.ui_settings_configure_endpoint_mismatch_text_switch
+            } else {
+                R.string.ui_settings_configure_endpoint_mismatch_text_save
+            },
+            mismatch.expectedEndpoint,
+        ),
+        negativeButtonText = stringResource(
+            if (isSwitch) {
+                R.string.ui_settings_configure_endpoint_mismatch_cancel_keep
+            } else {
+                R.string.ui_settings_configure_endpoint_mismatch_cancel_save
+            },
+        ),
+        positiveButtonText = stringResource(
+            R.string.ui_settings_configure_endpoint_mismatch_confirm_update
+        ),
+        onNegativeClick = onCancel,
+        onPositiveClick = onConfirm,
+    )
 }
 
 @Preview(

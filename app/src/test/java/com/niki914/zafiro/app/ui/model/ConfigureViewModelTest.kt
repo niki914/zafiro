@@ -81,7 +81,7 @@ class ConfigureViewModelTest {
         id = id,
         name = id,
         provider = "deepseek",
-        endpoint = "https://api.deepseek.com/chat/completions",
+        endpoint = "https://api.deepseek.com/responses",
         apiKey = "secret",
         model = model,
         protocol = LlmProtocol.OpenAiResponses.wireId,
