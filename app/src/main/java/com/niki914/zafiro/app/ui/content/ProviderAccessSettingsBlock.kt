@@ -174,12 +174,14 @@ internal fun ProviderAccessSettingsBlock(
         )
     }
 
+    // "deepseek" 协议与 openai-chat-completions 同壳，仅作存量存储值兼容，不再提供新选
+    val selectableProtocols = LlmProtocol.entries.filter { it != LlmProtocol.DeepSeek }
     SingleChoiceLiquidDialog(
         visible = showProtocolDialog,
         onDismissRequest = { showProtocolDialog = false },
         title = stringResource(R.string.ui_settings_configure_protocol_label),
         hint = stringResource(R.string.ui_settings_configure_protocol_hint),
-        options = LlmProtocol.entries.toList(),
+        options = selectableProtocols,
         selectedId = uiState.protocolWireId,
         optionId = LlmProtocol::wireId,
         optionLabel = LlmProtocol::wireId,

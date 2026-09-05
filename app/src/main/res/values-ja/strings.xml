@@ -372,6 +372,12 @@
     <string name="ui_settings_configure_name_label">設定名</string>
     <string name="ui_settings_configure_name_placeholder">例：DeepSeek メイン</string>
     <string name="ui_settings_configure_protocol_label">プロトコル</string>
+    <string name="ui_settings_configure_endpoint_mismatch_title">エンドポイントを更新</string>
+    <string name="ui_settings_configure_endpoint_mismatch_text_switch">プロトコルを切り替えました。エンドポイントを\n%1$s に更新しますか？</string>
+    <string name="ui_settings_configure_endpoint_mismatch_text_save">保存前に、エンドポイントを\n%1$s に更新しますか？</string>
+    <string name="ui_settings_configure_endpoint_mismatch_confirm_update">更新</string>
+    <string name="ui_settings_configure_endpoint_mismatch_cancel_keep">維持</string>
+    <string name="ui_settings_configure_endpoint_mismatch_cancel_save">このまま保存</string>
     <string name="ui_settings_configure_protocol_hint">プロトコル切り替え後、エンドポイントがプロトコルと一致しているか確認してください。</string>
 
     <string name="ui_settings_appearance">外観</string>
