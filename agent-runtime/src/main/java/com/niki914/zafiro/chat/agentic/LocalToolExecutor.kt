@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic
 
 import com.niki914.logging.Logger
+import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.tooling.ToolCallContext
 import com.niki914.okia.tooling.ToolExecutor
@@ -128,7 +129,9 @@ class LocalToolExecutor(
             return if (failure != null) {
                 ToolCallOutcome.Failure(message = failure, content = raw)
             } else {
-                ToolCallOutcome.Success(content = raw)
+                // 检查工具结果是否包含图片引用（如 view_image）
+                val image = extractImageFromResult(json)
+                ToolCallOutcome.Success(content = raw, image = image)
             }
         }
         // 非 JSON：文本协议工具结果（#!tool-result 头）
@@ -144,6 +147,20 @@ class LocalToolExecutor(
         }
         // 未知格式：保守成功，原文回喂模型（沿用旧运行时行为）
         return ToolCallOutcome.Success(content = raw)
+    }
+
+    // ── 图片引用提取 ──────────────────────────────────────────────────────────
+
+    /** 从 JSON 结果中提取图片引用（如果工具返回了 image 字段）。 */
+    private fun extractImageFromResult(json: JsonObject?): com.niki914.okia.message.ContentBlock.Image? {
+        if (json == null) return null
+        // 支持 {"image": {"path": ..., "mime_type": ...}} 格式
+        val imageObj = json["image"] as? JsonObject
+            ?: (json["data"] as? JsonObject)?.get("image") as? JsonObject
+            ?: return null
+        val path = (imageObj["path"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: return null
+        val mimeType = (imageObj["mime_type"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: "image/jpeg"
+        return com.niki914.okia.message.ContentBlock.Image(path, mimeType)
     }
 
     // ── py_meta_tools write 回合内注册（D20）────────────────────────────────

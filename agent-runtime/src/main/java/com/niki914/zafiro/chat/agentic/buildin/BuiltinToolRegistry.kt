@@ -7,10 +7,12 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.NotifyBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.PyDownloadFileBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationAccessibilityBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationShellBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.TerminalBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.ViewImageBuiltin
 
 class BuiltinToolRegistry(
     private val tools: List<BuiltinTool>,
@@ -27,6 +29,7 @@ class BuiltinToolRegistry(
                 ExecutePythonBuiltin(),
                 LaunchAppBuiltin(),
                 PyMetaToolsBuiltin(),
+                PyDownloadFileBuiltin(),
                 MemoryBuiltin(),
                 NotifyBuiltin(),
                 OpenUriBuiltin(),
@@ -35,6 +38,7 @@ class BuiltinToolRegistry(
                 FindInstalledAppsBuiltin(),
                 ScreenOperationAccessibilityBuiltin(),
                 ScreenOperationShellBuiltin(),
+                ViewImageBuiltin(),
             )
         )
     }

@@ -1,5 +1,6 @@
 package com.niki914.okia.protocol
 
+import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -23,6 +24,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
+import kotlin.io.encoding.Base64
 import kotlinx.serialization.json.put
 
 /**
@@ -43,7 +45,7 @@ import kotlinx.serialization.json.put
  * 历史与请求装配：consecutive 同角色内容合并（Anthropic 同规则）；工具结果
  * 并入 user content（functionResponse part），可与用户文本共存。
  * 无集成测试（无真实 key，用户裁决 2026-08-18）：实现经代码走查 + fixture
- * 语义对照 pi google-generative-ai.ts。图片输入 M2 前不支持。
+ * 语义对照 pi google-generative-ai.ts。
  * Design source: pi api/google-generative-ai.ts + google-shared.ts。
  */
 class GeminiProtocol(
@@ -109,7 +111,7 @@ class GeminiProtocol(
     private fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
         buildJsonObject {
             put("contents", buildJsonArray {
-                mergeContents(history).forEach { content ->
+                mergeContents(snapshot, history).forEach { content ->
                     add(buildJsonObject {
                         put("role", content.role)
                         put("parts", buildJsonArray { content.parts.forEach { add(it) } })
@@ -143,13 +145,13 @@ class GeminiProtocol(
      * 助手 content = text / thought / functionCall parts；连续同角色合并。
      * 工具结果并入 user content（可与用户文本共存）。
      */
-    private fun mergeContents(history: List<Message>): List<MergedContent> {
+    private fun mergeContents(snapshot: RequestSnapshot, history: List<Message>): List<MergedContent> {
         val merged = mutableListOf<MergedContent>()
         for (message in history) {
             val (role, parts) = when (message) {
-                is Message.User -> "user" to userParts(message.content)
+                is Message.User -> "user" to userParts(snapshot, message.content)
                 is Message.Assistant -> "model" to assistantParts(message.message)
-                is Message.ToolResult -> "user" to listOf(functionResponsePart(message))
+                is Message.ToolResult -> "user" to listOf(functionResponsePart(snapshot, message))
             }
             val last = merged.lastOrNull()
             if (last != null && last.role == role) {
@@ -161,15 +163,33 @@ class GeminiProtocol(
         return merged
     }
 
-    private fun userParts(blocks: List<ContentBlock>): List<JsonObject> {
+    private fun userParts(snapshot: RequestSnapshot, blocks: List<ContentBlock>): List<JsonObject> {
         val image = blocks.firstOrNull { it is ContentBlock.Image }
-        if (image != null) {
-            throw IllegalStateException(
-                "image content is not supported by GeminiProtocol before M2"
-            )
+        if (image == null) {
+            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
+                buildJsonObject { put("text", text.text) }
+            }
         }
+        if (!snapshot.supportsImages) {
+            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
+                buildJsonObject { put("text", text.text) }
+            } + buildJsonObject { put("text", "[image omitted: model does not support images]") }
+        }
+        val loader = snapshot.imageLoader
+        val bytes = loader?.load((image as ContentBlock.Image).path)
+        if (bytes == null) {
+            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
+                buildJsonObject { put("text", text.text) }
+            } + buildJsonObject { put("text", "[image omitted: file not found]") }
+        }
+        val base64 = Base64.encode(bytes)
         return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
             buildJsonObject { put("text", text.text) }
+        } + buildJsonObject {
+            put("inlineData", buildJsonObject {
+                put("mimeType", image.mimeType)
+                put("data", base64)
+            })
         }
     }
 
@@ -198,16 +218,36 @@ class GeminiProtocol(
                     block.signature?.let { put("thoughtSignature", it) }
                 }
 
-                is ContentBlock.Image -> null  // M2 前不支持（user 侧已抛错），防御忽略
+                is ContentBlock.Image -> null  // assistant 不携带图片，防御忽略
             }
         }
 
-    private fun functionResponsePart(result: Message.ToolResult): JsonObject =
-        buildJsonObject {
+    private fun functionResponsePart(snapshot: RequestSnapshot, result: Message.ToolResult): JsonObject {
+        val image = (result.outcome as? ToolCallOutcome.Success)?.image
+        if (image != null && snapshot.supportsImages) {
+            val loader = snapshot.imageLoader
+            val bytes = loader?.load(image.path)
+            if (bytes != null) {
+                val base64 = Base64.encode(bytes)
+                return buildJsonObject {
+                    put("functionResponse", buildJsonObject {
+                        put("name", result.toolName)
+                        put("id", result.callId)
+                        put("response", buildJsonObject {
+                            put("output", result.outcome.providerContent())
+                        })
+                    })
+                    put("inlineData", buildJsonObject {
+                        put("mimeType", image.mimeType)
+                        put("data", base64)
+                    })
+                }
+            }
+        }
+        return buildJsonObject {
             put("functionResponse", buildJsonObject {
                 put("name", result.toolName)
                 put("id", result.callId)
-                // 成功走 output，失败走 error（SDK 语义，对照 pi）
                 if (result.outcome.isProviderError()) {
                     put("response", buildJsonObject {
                         put("error", result.outcome.providerContent())
@@ -219,6 +259,7 @@ class GeminiProtocol(
                 }
             })
         }
+    }
 
     private fun parseArguments(argumentsJson: String): JsonObject = try {
         codec.parseToJsonElement(argumentsJson) as? JsonObject ?: buildJsonObject { }

@@ -1,5 +1,6 @@
 package com.niki914.okia.mcp
 
+import com.niki914.okia.ImageSaver
 import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
@@ -46,13 +47,14 @@ import kotlin.time.ExperimentalTime
 internal class McpDiscovery(
     private val client: McpClient,
     private val servers: () -> List<McpServer>,
-    private val registry: () -> ToolRegistry
+    private val registry: () -> ToolRegistry,
+    private val imageSaver: ImageSaver? = null
 ) {
 
     // 每服务器执行器（注册给发现的工具；servers 解析闭包读最新配置）
-    private val executor = McpExecutor(client) { name ->
+    private val executor = McpExecutor(client, { name ->
         servers().firstOrNull { it.name == name }
-    }
+    }, imageSaver)
 
     // 当前发现快照（不可变整体替换；@Volatile 免锁读取，KMP 无 concurrent map）
     @Volatile

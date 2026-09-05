@@ -24,9 +24,12 @@ sealed interface ContentBlock {
         val opaquePayload: String? = null
     ) : ContentBlock
 
-    /** Base64 编码图像。多模态入口，M2 前不支持。 */
+    /**
+     * 图像引用。存储文件路径（非 base64），发送时由 protocol 经 ImageLoader
+     * 读取并转为 base64。统一存储路径：/sdcard/Download/Zafiro/images/。
+     */
     @Serializable
-    data class Image(val data: String, val mimeType: String) : ContentBlock
+    data class Image(val path: String, val mimeType: String) : ContentBlock
 
     /** 模型发出的工具调用。参数保持 JSON 字符串。signature：Gemini 3 思维内
      *  工具调用的 thoughtSignature（回放时原样带回到 functionCall part）。 */

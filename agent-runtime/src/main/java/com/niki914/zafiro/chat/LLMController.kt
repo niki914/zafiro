@@ -22,7 +22,10 @@ import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.xposed.api.util.LockState
+import com.niki914.zafiro.chat.agentic.AndroidImageLoader
+import com.niki914.zafiro.chat.agentic.AndroidImageSaver
 import com.niki914.zafiro.chat.agentic.LocalToolExecutor
 import com.niki914.zafiro.chat.agentic.PromptComposer
 import com.niki914.zafiro.chat.agentic.PromptComposerInput
@@ -74,6 +77,26 @@ object LLMController {
     // 实例重建共享同一 registry）。本地工具在 refresh 时全量同步；
     // MCP 工具由 T2b McpDiscovery 注册进同一 registry。
     internal val toolRegistry: ToolRegistry = DefaultToolRegistry()
+
+    // 图片加载器 + 保存器（host 注入 Okia）
+    private val imageLoader: AndroidImageLoader? = try {
+        AndroidImageLoader()
+    } catch (e: Exception) {
+        null
+    }
+    private var imageSaver: AndroidImageSaver? = null
+
+    /** 初始化图片保存器（延迟到首次需要时）。 */
+    private suspend fun ensureImageSaver(): AndroidImageSaver? {
+        if (imageSaver == null) {
+            imageSaver = try {
+                ContextProvider.await().applicationContext?.let { AndroidImageSaver(it) }
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return imageSaver
+    }
 
     // 回合内写入的 py 工具（py_meta_tools write 成功回调，D20）：
     // 持久化尚未被下一次 refresh 读取前的执行兜底 + 回合内注册数据源。
@@ -577,6 +600,7 @@ object LLMController {
             LlmProtocol.OpenAiResponses -> OpenAIResponsesProtocol()
             LlmProtocol.AnthropicMessages -> AnthropicMessagesProtocol()
         }
+        val saver = ensureImageSaver()
         return Okia.open(wireProtocol, restore) {
             this.endpoint = endpoint
             apiKey = config.apiKey
@@ -586,6 +610,8 @@ object LLMController {
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
             toolRegistry = this@LLMController.toolRegistry
+            imageLoader = this@LLMController.imageLoader
+            imageSaver = saver
         }
     }
 

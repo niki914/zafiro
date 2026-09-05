@@ -30,6 +30,9 @@ sealed interface McpContentBlock {
 
     /** 文本块。 */
     data class Text(val text: String) : McpContentBlock
+
+    /** 图片块。base64 编码，host 落地为文件后替换为路径引用。 */
+    data class Image(val data: String, val mimeType: String) : McpContentBlock
 }
 
 /** 在 MCP 服务器上发现的工具，喂入工具注册表。 */

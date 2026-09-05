@@ -1,5 +1,6 @@
 package com.niki914.okia.mcp
 
+import com.niki914.okia.ImageSaver
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.tooling.ToolCallContext
 import com.niki914.okia.tooling.ToolDescriptor
@@ -69,8 +70,9 @@ class McpExecutorTest {
 
     private fun executor(
         client: FakeClient,
-        servers: Map<String, McpServer> = mapOf("docs" to server("docs"))
-    ) = McpExecutor(client) { servers[it] }
+        servers: Map<String, McpServer> = mapOf("docs" to server("docs")),
+        imageSaver: ImageSaver? = null,
+    ) = McpExecutor(client, { servers[it] }, imageSaver)
 
     // ── 路由与工具名还原 ───────────────────────────────────────────────────
 

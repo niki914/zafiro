@@ -30,7 +30,10 @@ data class OkiaConfig(
     val mcpServers: List<McpServer>,
     val hooks: List<Hooks>,
     val toolRegistry: ToolRegistry?,
-    val httpEngine: HttpEngine?
+    val httpEngine: HttpEngine?,
+    val imageLoader: ImageLoader? = null,
+    val imageSaver: ImageSaver? = null,
+    val supportsImages: Boolean = false
 ) {
 
     // apiKey 与敏感 header 值脱敏；mcpServers 内 header 由 McpServer.toString 自行脱敏
@@ -59,6 +62,9 @@ data class OkiaConfig(
         var hooks: List<Hooks> = emptyList()
         var toolRegistry: ToolRegistry? = null
         var httpEngine: HttpEngine? = null
+        var imageLoader: ImageLoader? = null
+        var imageSaver: ImageSaver? = null
+        var supportsImages: Boolean = false
 
         // 组装不可变配置快照
         fun build(): OkiaConfig = OkiaConfig(
@@ -76,7 +82,10 @@ data class OkiaConfig(
             mcpServers = mcpServers,
             hooks = hooks,
             toolRegistry = toolRegistry,
-            httpEngine = httpEngine
+            httpEngine = httpEngine,
+            imageLoader = imageLoader,
+            imageSaver = imageSaver,
+            supportsImages = supportsImages
         )
 
         // 从现有快照复制全部字段（update 热更新的基础：只改 block 声明的字段）
@@ -96,6 +105,9 @@ data class OkiaConfig(
             hooks = other.hooks
             toolRegistry = other.toolRegistry
             httpEngine = other.httpEngine
+            imageLoader = other.imageLoader
+            imageSaver = other.imageSaver
+            supportsImages = other.supportsImages
             return this
         }
     }

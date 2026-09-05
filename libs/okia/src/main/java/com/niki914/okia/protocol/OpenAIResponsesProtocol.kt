@@ -1,5 +1,6 @@
 package com.niki914.okia.protocol
 
+import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
@@ -10,6 +11,7 @@ import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.CancellationException
+import kotlin.io.encoding.Base64
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
@@ -160,7 +162,7 @@ class OpenAIResponsesProtocol(
         buildJsonObject {
             put("model", snapshot.model)
             put("input", buildJsonArray {
-                history.forEach { message -> addInputItem(message).forEach { add(it) } }
+                history.forEach { message -> addInputItem(snapshot, message).forEach { add(it) } }
             })
             snapshot.systemPrompt?.let { put("instructions", it) }
             put("stream", true)
@@ -178,10 +180,10 @@ class OpenAIResponsesProtocol(
      * reasoning item（不把其文本拼进 message，避免重复）；无 payload 或前缀
      * 不认识的思考块继续按明文合并进文本（DeepSeek 网关形态）。
      */
-    private fun addInputItem(message: Message): List<JsonObject> = when (message) {
+    private fun addInputItem(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
         is Message.User -> listOf(buildJsonObject {
             put("role", "user")
-            put("content", userContent(message.content))
+            put("content", userContent(snapshot, message.content))
         })
 
         is Message.Assistant -> {
@@ -223,6 +225,25 @@ class OpenAIResponsesProtocol(
         is Message.ToolResult -> listOf(buildJsonObject {
             put("type", "function_call_output")
             put("call_id", message.callId)
+            val image = (message.outcome as? ToolCallOutcome.Success)?.image
+            if (image != null && snapshot.supportsImages) {
+                val loader = snapshot.imageLoader
+                val bytes = loader?.load(image.path)
+                if (bytes != null) {
+                    val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
+                    put("output", buildJsonArray {
+                        add(buildJsonObject {
+                            put("type", "input_text")
+                            put("text", message.outcome.providerContent())
+                        })
+                        add(buildJsonObject {
+                            put("type", "input_image")
+                            put("image_url", dataUrl)
+                        })
+                    })
+                    return@buildJsonObject
+                }
+            }
             put("output", message.outcome.providerContent())
         })
     }
@@ -260,14 +281,31 @@ class OpenAIResponsesProtocol(
         state.reasoningItems.clear()
     }
 
-    private fun userContent(blocks: List<ContentBlock>): String {
+    private fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
         val image = blocks.firstOrNull { it is ContentBlock.Image }
-        if (image != null) {
-            throw IllegalStateException(
-                "image content is not supported by OpenAIResponsesProtocol before M2"
-            )
+        val text = blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
+        if (image == null) {
+            return kotlinx.serialization.json.JsonPrimitive(text)
         }
-        return blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
+        if (!snapshot.supportsImages) {
+            return kotlinx.serialization.json.JsonPrimitive("$text\n[image omitted: model does not support images]")
+        }
+        val loader = snapshot.imageLoader
+        val bytes = loader?.load((image as ContentBlock.Image).path)
+        if (bytes == null) {
+            return kotlinx.serialization.json.JsonPrimitive("$text\n[image omitted: file not found]")
+        }
+        val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
+        return buildJsonArray {
+            add(buildJsonObject {
+                put("type", "input_text")
+                put("text", text)
+            })
+            add(buildJsonObject {
+                put("type", "input_image")
+                put("image_url", dataUrl)
+            })
+        }
     }
 
     private fun convertTool(tool: ToolDescriptor): JsonObject =

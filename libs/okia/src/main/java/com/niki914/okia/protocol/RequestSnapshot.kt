@@ -1,5 +1,6 @@
 package com.niki914.okia.protocol
 
+import com.niki914.okia.ImageLoader
 import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.redactHeaders
@@ -18,7 +19,9 @@ data class RequestSnapshot(
     val maxTokens: Int,
     val headers: Map<String, String>,
     val timeouts: HttpTimeouts,
-    val tools: List<ToolDescriptor>
+    val tools: List<ToolDescriptor>,
+    val supportsImages: Boolean = false,
+    val imageLoader: ImageLoader? = null
 ) {
 
     // apiKey 与敏感 header 值脱敏（systemPrompt 非凭据，保留）

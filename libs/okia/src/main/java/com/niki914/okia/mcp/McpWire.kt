@@ -178,7 +178,7 @@ internal class McpWire(
         }
     }
 
-    /** result 对象 → 结构化调用结果。非文本 content block → 抛（§8.8 #4 收窄）。 */
+    /** result 对象 → 结构化调用结果。非文本/图片 content block → 抛。 */
     fun parseCallResult(result: JsonObject): McpCallResult {
         val isError = (result["isError"] as? JsonPrimitive)?.booleanOrNull ?: false
         val rawContent = result["content"] as? JsonArray ?: JsonArray(emptyList())
@@ -186,15 +186,24 @@ internal class McpWire(
             val block = raw as? JsonObject
                 ?: throw McpProtocolException("content block is not an object: $raw")
             val type = block["type"]?.let { it as? JsonPrimitive }?.contentOrNull
-            if (type != "text") {
-                throw McpProtocolException(
-                    "MCP tool result contains non-text block type '${type ?: "unknown"}'; " +
-                            "only text blocks are supported"
+            when (type) {
+                "text" -> {
+                    val text = block["text"]?.let { it as? JsonPrimitive }?.contentOrNull
+                        ?: throw McpProtocolException("MCP text content block missing 'text': $block")
+                    McpContentBlock.Text(text)
+                }
+                "image" -> {
+                    val mimeType = block["mimeType"]?.let { it as? JsonPrimitive }?.contentOrNull
+                        ?: throw McpProtocolException("MCP image content block missing 'mimeType': $block")
+                    val data = block["data"]?.let { it as? JsonPrimitive }?.contentOrNull
+                        ?: throw McpProtocolException("MCP image content block missing 'data': $block")
+                    McpContentBlock.Image(data, mimeType)
+                }
+                else -> throw McpProtocolException(
+                    "MCP tool result contains unsupported block type '${type ?: "unknown"}'; " +
+                            "only text and image blocks are supported"
                 )
             }
-            val text = block["text"]?.let { it as? JsonPrimitive }?.contentOrNull
-                ?: throw McpProtocolException("MCP text content block missing 'text': $block")
-            McpContentBlock.Text(text)
         }
         return McpCallResult(isError = isError, content = blocks)
     }

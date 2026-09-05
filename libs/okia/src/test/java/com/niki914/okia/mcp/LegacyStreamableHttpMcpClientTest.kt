@@ -691,7 +691,7 @@ class LegacyStreamableHttpMcpClientTest {
     }
 
     @Test
-    fun `non-text content block is a protocol error`() = runBlocking {
+    fun `image content block is parsed`() = runBlocking {
         server.dispatcher = serverWith(
             call = { b ->
                 rpcResult(
@@ -700,12 +700,10 @@ class LegacyStreamableHttpMcpClientTest {
                 )
             }
         )
-        val e = try {
-            client.callTool(mcpServer(), "t", "{}"); null
-        } catch (x: McpProtocolException) {
-            x
-        }
-        assertNotNull(e)
+        val result = client.callTool(mcpServer(), "t", "{}")
+        val block = result.content.single() as McpContentBlock.Image
+        assertEquals("AAAA", block.data)
+        assertEquals("image/png", block.mimeType)
     }
 
     @Test
