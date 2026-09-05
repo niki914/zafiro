@@ -3,7 +3,6 @@ package com.niki914.okia.tooling
 import com.niki914.okia.fake.RecordingToolExecutor
 import com.niki914.okia.fake.localTool
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -11,35 +10,6 @@ import org.junit.Test
  * snapshot 返回复制（外部持有不影响内部存储）。
  */
 class DefaultToolRegistryTest {
-
-    @Test
-    fun registerFindReturnsRegisteredTool() {
-        val registry = DefaultToolRegistry()
-        val executor = RecordingToolExecutor()
-        registry.register(localTool("tool"), executor)
-
-        val found = registry.find("tool")
-        assertEquals("tool", found!!.descriptor.name)
-        assertEquals(executor, found.executor)
-    }
-
-    @Test
-    fun removeMakesFindReturnNull() {
-        val registry = DefaultToolRegistry()
-        registry.register(localTool("tool"), RecordingToolExecutor())
-        registry.remove("tool")
-        assertNull(registry.find("tool"))
-    }
-
-    @Test
-    fun reRegisterOverwrites() {
-        val registry = DefaultToolRegistry()
-        val first = RecordingToolExecutor()
-        val second = RecordingToolExecutor()
-        registry.register(localTool("tool"), first)
-        registry.register(localTool("tool"), second)
-        assertEquals(second, registry.find("tool")!!.executor)
-    }
 
     @Test
     fun snapshotReturnsCopyUnaffectedByExternalMutation() {

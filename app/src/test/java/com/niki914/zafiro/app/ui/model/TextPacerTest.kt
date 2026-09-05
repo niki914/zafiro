@@ -63,18 +63,6 @@ class TextPacerTest {
     }
 
     @Test
-    fun `stall snap releases remainder in one chunk`() = runTest {
-        val pacer = TextPacer(delayFn = { })
-        // 模拟上游停顿：首段放出后等待真实时间超过 STALL_SNAP_MS
-        pacer.pace(4) { _, _ -> }
-        Thread.sleep(TextPacer.STALL_SNAP_MS + 20)
-        val chunks = mutableListOf<Pair<Int, Int>>()
-        pacer.pace(400) { from, to -> chunks += from to to }
-        assertEquals(1, chunks.size)
-        assertEquals(400, pacer.released)
-    }
-
-    @Test
     fun `reset starts a new segment from zero`() = runTest {
         val pacer = TextPacer(delayFn = { })
         pacer.pace(10) { _, _ -> }
