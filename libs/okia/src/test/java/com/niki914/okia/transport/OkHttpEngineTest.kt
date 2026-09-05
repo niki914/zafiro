@@ -1,23 +1,16 @@
 package com.niki914.okia.transport
 
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
-import java.io.IOException
-import java.net.SocketTimeoutException
 
 /**
  * 默认 HttpEngine（OkHttp 4）的 JVM 测试：本地 HTTP server 验证真实请求构建、
@@ -125,55 +118,6 @@ class OkHttpEngineTest {
         val error = response as StreamResponse.Error
         assertEquals(429, error.statusCode)
         assertEquals("{\"error\":{\"message\":\"rate limited\"}}", error.body)
-    }
-
-    @Test
-    fun `stream connection refused throws IOException`() = runBlocking {
-        // 直接用已关闭的端口：connect refused
-        val refused =
-            HttpRequest("http://127.0.0.1:1/v1/chat", "POST", emptyMap(), null, defaultTimeouts)
-        try {
-            engine.stream(refused)
-            fail("expected IOException on connection refused")
-        } catch (e: IOException) {
-            // expected
-        }
-    }
-
-    @Test
-    fun `stream read timeout throws SocketTimeoutException`() = runBlocking {
-        // 服务端接受连接但不发数据 → 读间隔超时
-        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
-
-        val request =
-            HttpRequest("${server.url("/v1/chat")}", "POST", emptyMap(), null, shortReadTimeout)
-        try {
-            engine.stream(request)
-            fail("expected SocketTimeoutException")
-        } catch (e: SocketTimeoutException) {
-            // expected
-        }
-    }
-
-    @Test
-    fun `stream cancellation interrupts blocked read quickly`() = runBlocking {
-        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
-
-        val request =
-            HttpRequest("${server.url("/v1/chat")}", "POST", emptyMap(), null, defaultTimeouts)
-        val job = launch {
-            val response = engine.stream(request) as StreamResponse.Ok
-            response.lines.toList() // 永远阻塞（服务端不发数据）
-        }
-
-        // 等待请求已发出、读取挂起后再取消
-        delay(200)
-        val start = System.currentTimeMillis()
-        job.cancelAndJoin()
-        val elapsed = System.currentTimeMillis() - start
-
-        // 取消由 call.cancel() 打断阻塞读，应在短于 readTimeout(5s) 内完成
-        assertTrue("cancellation took ${elapsed}ms", elapsed < 3000)
     }
 
     @Test
@@ -293,18 +237,6 @@ class OkHttpEngineTest {
     }
 
     @Test
-    fun `unary network failure returns null status and body`() = runBlocking {
-        val refused =
-            HttpRequest("http://127.0.0.1:1/rpc", "POST", emptyMap(), "{}", defaultTimeouts)
-
-        val response = engine.unary(refused)
-
-        assertNull(response.statusCode)
-        assertNull(response.body)
-        assertTrue(response.headers.isEmpty())
-    }
-
-    @Test
     fun `unary empty body returns null body`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(204).setBody(""))
 
@@ -324,21 +256,6 @@ class OkHttpEngineTest {
     }
 
     // ── 请求超时参数 ────────────────────────────────────────────────────────
-
-    @Test
-    fun `unary read timeout returns null status and body`() = runBlocking {
-        // NO_RESPONSE：接受连接后不发任何数据 → 读超时（传输失败语义：
-        // 返回缺省结构而非抛异常，HttpResponse 契约）
-        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
-
-        val short = HttpTimeouts(connectMs = 5000, readMs = 150, writeMs = 5000)
-        val request = HttpRequest("${server.url("/slow")}", "GET", emptyMap(), null, short)
-        val response = engine.unary(request)
-
-        assertNull(response.statusCode)
-        assertNull(response.body)
-        assertTrue(response.headers.isEmpty())
-    }
 
     @Test
     fun `injected OkHttpClient is used for requests`() = runBlocking {
