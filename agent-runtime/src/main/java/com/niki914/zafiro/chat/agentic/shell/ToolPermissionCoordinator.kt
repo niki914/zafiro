@@ -1,9 +1,6 @@
 package com.niki914.zafiro.chat.agentic.shell
 
 import com.niki914.logging.Logger
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator.canRequestUserConfirmation
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator.pendingConfirmation
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator.respond
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,22 +14,28 @@ data class ToolPermissionRequest(
     val matchedRuleName: String,
 )
 
-/** 确认请求终态：允许 / 用户拒绝 / 无确认渠道（宿主路径）拒绝。 */
+/** 确认请求终态：允许 / 用户拒绝 / 无确认渠道拒绝。 */
 enum class ToolPermissionResponse { ALLOWED, DENIED_BY_USER, DENIED_UNAVAILABLE }
 
 /**
  * CONFIRM 型执行规则的用户确认协调器。
- * - LLMController.stream 按来源设置 [canRequestUserConfirmation]：
- *   UI 直连 = true；宿主 Binder = false（默认拒绝，Agent 收到英文错误）。
- * - UI collect [pendingConfirmation] 渲染对话框，[respond] 解除挂起；
- *   永不超时（用户明确决策，PRD §3）。
- * - LLMController 单活跃回合，confirm/respond 无并发竞争。
+ *
+ * 路由策略（按优先级）：
+ * - 应用前台 → Compose 对话框（[pendingConfirmation] StateFlow → HomePageContent 渲染）
+ * - 应用后台 + [backgroundConfirmationHandler] 已设置 → 后台弹窗（overlay）
+ * - 否则 → DENIED_UNAVAILABLE
+ *
+ * 永不超时（用户明确决策，PRD §3）。
  */
 object ToolPermissionCoordinator {
     private const val LOG_TAG = "niki914_nexus_ToolPermission"
 
+    /** 应用 UI 是否可见（MainActivity 前台）。由 App 端 onResume/onPause 写入。 */
     @Volatile
-    var canRequestUserConfirmation: Boolean = false
+    var isUiResumed: Boolean = false
+
+    /** 后台确认处理器（overlay 弹窗）。null = 无后台确认能力，静默拒绝。 */
+    var backgroundConfirmationHandler: (suspend (ToolPermissionRequest) -> ToolPermissionResponse)? = null
 
     private val pendingFlow = MutableStateFlow<ToolPermissionRequest?>(null)
 
@@ -42,11 +45,22 @@ object ToolPermissionCoordinator {
     private var deferred: CompletableDeferred<ToolPermissionResponse>? = null
 
     suspend fun confirm(request: ToolPermissionRequest): ToolPermissionResponse {
-        if (!canRequestUserConfirmation) {
-            Logger.i(LOG_TAG, "confirm denied source=host id=${request.id}")
-            return ToolPermissionResponse.DENIED_UNAVAILABLE
+        Logger.i(
+            LOG_TAG,
+            "confirm id=${request.id} tool=${request.toolName} uiResumed=$isUiResumed handler=${backgroundConfirmationHandler != null}",
+        )
+        if (isUiResumed) {
+            return showInAppDialog(request)
         }
-        Logger.i(LOG_TAG, "confirm requested id=${request.id} tool=${request.toolName}")
+        val handler = backgroundConfirmationHandler
+        if (handler != null) {
+            return handler(request)
+        }
+        Logger.i(LOG_TAG, "confirm denied unavailable id=${request.id}")
+        return ToolPermissionResponse.DENIED_UNAVAILABLE
+    }
+
+    private suspend fun showInAppDialog(request: ToolPermissionRequest): ToolPermissionResponse {
         pendingFlow.value = request
         val waiter = CompletableDeferred<ToolPermissionResponse>()
         deferred = waiter
