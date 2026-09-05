@@ -55,7 +55,7 @@ class OpenAIChatCompletionProtocol(
     override fun useApiKey(apiKey: String): Map<String, String> =
         if (apiKey.isEmpty()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
 
-    override fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
+    override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
         HttpRequest(
             url = snapshot.endpoint,
             method = "POST",
@@ -127,7 +127,7 @@ class OpenAIChatCompletionProtocol(
 
     // ── 请求体 ─────────────────────────────────────────────────────────────
 
-    private fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
+    private suspend fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
         buildJsonObject {
             put("model", snapshot.model)
             put("messages", buildJsonArray {
@@ -156,7 +156,7 @@ class OpenAIChatCompletionProtocol(
         }
 
     /** 一条历史消息 → 0..n 条 Chat Completions 消息（ToolResult 带图可产两条）。 */
-    private fun convertMessages(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
+    private suspend fun convertMessages(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
         is Message.User -> listOf(buildJsonObject {
             put("role", "user")
             val content = userContent(snapshot, message.content)
@@ -176,7 +176,7 @@ class OpenAIChatCompletionProtocol(
      * 不支持图片 content part（规范限制；pi 同：openai-completions.ts 把工具结果
      * 图片拆到独立的 user 消息）。图片加载失败 / 不支持时退回单条 tool 字符串消息。
      */
-    private fun toolResultMessages(snapshot: RequestSnapshot, message: Message.ToolResult): List<JsonObject> {
+    private suspend fun toolResultMessages(snapshot: RequestSnapshot, message: Message.ToolResult): List<JsonObject> {
         val toolMessage = buildJsonObject {
             put("role", "tool")
             put("tool_call_id", message.callId)
@@ -202,7 +202,7 @@ class OpenAIChatCompletionProtocol(
         })
     }
 
-    private fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
+    private suspend fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
         val image = blocks.firstOrNull { it is ContentBlock.Image }
         val text = blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
         if (image == null) {

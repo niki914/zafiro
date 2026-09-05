@@ -20,6 +20,7 @@ interface ProtocolCompatMapper {
 
     // 协议无关数据 → Provider 请求（beforeSerialization 时序在此层前后）。
     // history 包含当前输入，无独立的 pendingUserInput。
+    // suspend：ImageLoader 读取走 IO dispatcher，buildRequest 内调用它。
     suspend fun buildRequest(
         snapshot: RequestSnapshot,
         history: List<Message>

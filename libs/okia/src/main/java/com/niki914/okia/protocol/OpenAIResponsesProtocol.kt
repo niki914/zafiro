@@ -60,7 +60,7 @@ class OpenAIResponsesProtocol(
     override fun useApiKey(apiKey: String): Map<String, String> =
         if (apiKey.isEmpty()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
 
-    override fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
+    override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
         HttpRequest(
             url = snapshot.endpoint,
             method = "POST",
@@ -158,7 +158,7 @@ class OpenAIResponsesProtocol(
 
     // ── 请求体 ─────────────────────────────────────────────────────────────
 
-    private fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
+    private suspend fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
         buildJsonObject {
             put("model", snapshot.model)
             put("input", buildJsonArray {
@@ -180,7 +180,7 @@ class OpenAIResponsesProtocol(
      * reasoning item（不把其文本拼进 message，避免重复）；无 payload 或前缀
      * 不认识的思考块继续按明文合并进文本（DeepSeek 网关形态）。
      */
-    private fun addInputItem(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
+    private suspend fun addInputItem(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
         is Message.User -> listOf(buildJsonObject {
             put("role", "user")
             put("content", userContent(snapshot, message.content))
@@ -281,7 +281,7 @@ class OpenAIResponsesProtocol(
         state.reasoningItems.clear()
     }
 
-    private fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
+    private suspend fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
         val image = blocks.firstOrNull { it is ContentBlock.Image }
         val text = blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
         if (image == null) {

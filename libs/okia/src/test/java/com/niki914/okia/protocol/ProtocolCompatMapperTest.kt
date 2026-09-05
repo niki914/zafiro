@@ -37,7 +37,7 @@ class ProtocolCompatMapperTest {
             return if (apiKey.isEmpty()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
         }
 
-        override fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest {
+        override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest {
             buildRequestCalls++
             return HttpRequest(snapshot.endpoint, "POST", emptyMap(), null, snapshot.timeouts)
         }

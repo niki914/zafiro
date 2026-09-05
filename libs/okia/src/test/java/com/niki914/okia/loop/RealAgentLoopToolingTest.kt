@@ -19,6 +19,7 @@ import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpTimeouts
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
@@ -580,20 +581,22 @@ class RealAgentLoopToolingTest {
         runLoop(loopRequest(emptyList()) { commits += it }.copy(protocolMapper = mapper))
         val assistantMessage = (commits.single().single() as Message.Assistant).message
 
-        val request = AnthropicMessagesProtocol().buildRequest(
-            RequestSnapshot(
-                endpoint = "https://api.anthropic.com/v1/messages",
-                apiKey = "sk-test",
-                model = "claude-sonnet-4",
-                systemPrompt = null,
-                temperature = 0.7f,
-                maxTokens = 100,
-                headers = emptyMap(),
-                timeouts = HttpTimeouts(1_000, 1_000, 1_000),
-                tools = emptyList()
-            ),
-            listOf(Message.Assistant(assistantMessage))
-        )
+        val request = runBlocking {
+            AnthropicMessagesProtocol().buildRequest(
+                RequestSnapshot(
+                    endpoint = "https://api.anthropic.com/v1/messages",
+                    apiKey = "sk-test",
+                    model = "claude-sonnet-4",
+                    systemPrompt = null,
+                    temperature = 0.7f,
+                    maxTokens = 100,
+                    headers = emptyMap(),
+                    timeouts = HttpTimeouts(1_000, 1_000, 1_000),
+                    tools = emptyList()
+                ),
+                listOf(Message.Assistant(assistantMessage))
+            )
+        }
         val content = Json.parseToJsonElement(request.body!!).jsonObject["messages"]!!.jsonArray[0]
             .jsonObject["content"]!!.jsonArray
         val thinkingBlock = content.firstOrNull {

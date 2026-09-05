@@ -52,7 +52,7 @@ class AnthropicMessagesProtocol(
     override fun useApiKey(apiKey: String): Map<String, String> =
         if (apiKey.isEmpty()) emptyMap() else mapOf("x-api-key" to apiKey)
 
-    override fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
+    override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
         HttpRequest(
             url = snapshot.endpoint,
             method = "POST",
@@ -114,7 +114,7 @@ class AnthropicMessagesProtocol(
     /** 每条真实消息：role + content 块数组（合并后的最终形态）。 */
     private class MergedMessage(val role: String, val blocks: MutableList<JsonObject>)
 
-    private fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
+    private suspend fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
         buildJsonObject {
             put("model", snapshot.model)
             put("max_tokens", snapshot.maxTokens)  // Anthropic 必填
@@ -138,7 +138,7 @@ class AnthropicMessagesProtocol(
      * 工具结果映射为 user 消息的 tool_result 块；连续同角色消息合并
      * （Anthropic 严格交替）。工具结果与后续用户输入合并进同一 user 消息。
      */
-    private fun mergeMessages(snapshot: RequestSnapshot, history: List<Message>): List<MergedMessage> {
+    private suspend fun mergeMessages(snapshot: RequestSnapshot, history: List<Message>): List<MergedMessage> {
         val merged = mutableListOf<MergedMessage>()
         for (message in history) {
             val (role, blocks) = when (message) {
@@ -156,7 +156,7 @@ class AnthropicMessagesProtocol(
         return merged
     }
 
-    private fun userBlocks(snapshot: RequestSnapshot, blocks: List<ContentBlock>): List<JsonObject> {
+    private suspend fun userBlocks(snapshot: RequestSnapshot, blocks: List<ContentBlock>): List<JsonObject> {
         val image = blocks.firstOrNull { it is ContentBlock.Image }
         if (image == null) {
             return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
@@ -237,7 +237,7 @@ class AnthropicMessagesProtocol(
             }
         }
 
-    private fun toolResultBlock(snapshot: RequestSnapshot, result: Message.ToolResult): JsonObject {
+    private suspend fun toolResultBlock(snapshot: RequestSnapshot, result: Message.ToolResult): JsonObject {
         val image = (result.outcome as? ToolCallOutcome.Success)?.image
         if (image != null && snapshot.supportsImages) {
             val loader = snapshot.imageLoader
