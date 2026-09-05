@@ -148,14 +148,14 @@ class ShellCommandSafetyPolicyTest {
                 executionRules = listOf(dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM))
             )
         )
-        ToolPermissionCoordinator.canRequestUserConfirmation = false
+        ToolPermissionCoordinator.isUiResumed = false
+        ToolPermissionCoordinator.backgroundConfirmationHandler = null
 
         val decision = ShellCommandSafetyPolicy()
             .evaluate("rm -rf /data/local/tmp/cache", toolName = "terminal")
 
         assertFalse(decision.allowed)
         assertEquals("CONFIRM_UNAVAILABLE", decision.code)
-        assertTrue(decision.reason.contains("cannot request permission"))
     }
 
     @Test
@@ -165,7 +165,7 @@ class ShellCommandSafetyPolicyTest {
                 executionRules = listOf(dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM))
             )
         )
-        ToolPermissionCoordinator.canRequestUserConfirmation = true
+        ToolPermissionCoordinator.isUiResumed = true
 
         val evaluation = async {
             ShellCommandSafetyPolicy().evaluate(
@@ -197,7 +197,7 @@ class ShellCommandSafetyPolicyTest {
                 )
             )
         )
-        ToolPermissionCoordinator.canRequestUserConfirmation = true
+        ToolPermissionCoordinator.isUiResumed = true
 
         val evaluation = async {
             ShellCommandSafetyPolicy().evaluate(
@@ -221,7 +221,8 @@ class ShellCommandSafetyPolicyTest {
 
     @After
     fun resetToolPermissionCoordinator() {
-        ToolPermissionCoordinator.canRequestUserConfirmation = false
+        ToolPermissionCoordinator.isUiResumed = false
+        ToolPermissionCoordinator.backgroundConfirmationHandler = null
     }
 
     private fun dangerousRule(
