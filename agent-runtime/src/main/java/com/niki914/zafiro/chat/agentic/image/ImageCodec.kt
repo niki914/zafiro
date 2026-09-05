@@ -7,7 +7,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
 import android.util.Base64
-import com.caverock.androidsvg.SVG
+import com.hashsequence.coilresvg.SvgRenderer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -148,42 +148,55 @@ internal class ImageCodec(private val context: Context) {
         return result
     }
 
+    /**
+     * SVG 光栅化：resvg（coil-resvg-android 经 Rust FFI），mask/filter/clipPath
+     * 全支持。显式宽高缺失时按 viewBox 纵横比推算，避免方形 fallback 压扁原图。
+     * 输出与其他 ingest 源一致：JPEG q80 落盘。
+     */
     private fun ingestSvg(raw: ByteArray): IngestResult {
         return try {
-            val svg = SVG.getFromString(String(raw, Charsets.UTF_8))
-            // 优先显式宽高；缺失时从 viewBox 取纵横比，避免方形 fallback 压扁原图
-            val viewBox = svg.documentViewBox
-            val aspect = if (viewBox.width() > 0f && viewBox.height() > 0f) {
-                viewBox.width() / viewBox.height()
-            } else 1f
-            val srcW = svg.documentWidth.takeIf { it > 0f }
-                ?: (if (aspect >= 1f) 1600f else 1600f * aspect)
-            val srcH = svg.documentHeight.takeIf { it > 0f }
-                ?: (if (aspect >= 1f) 1600f / aspect else 1600f)
-            val (targetW, targetH) = ImageFormat.targetSize(srcW.toInt(), srcH.toInt())
+            SvgRenderer.fromData(raw).use { renderer ->
+                val size = renderer.getSize()
+                val aspect = if (size.height > 0f) size.width / size.height else 1f
+                val srcW = size.width.takeIf { it > 0f }
+                    ?: (if (aspect >= 1f) ImageFormat.MAX_LONG_EDGE.toFloat() else ImageFormat.MAX_LONG_EDGE * aspect)
+                val srcH = size.height.takeIf { it > 0f }
+                    ?: (if (aspect >= 1f) ImageFormat.MAX_LONG_EDGE / aspect else ImageFormat.MAX_LONG_EDGE.toFloat())
+                val (targetW, targetH) = ImageFormat.targetSize(srcW.toInt(), srcH.toInt())
 
-            val bitmap = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
-            try {
-                val canvas = Canvas(bitmap)
-                canvas.drawColor(Color.WHITE)
-                svg.documentWidth = targetW.toFloat()
-                svg.documentHeight = targetH.toFloat()
-                svg.renderToCanvas(canvas)
-            } catch (e: Throwable) {
-                bitmap.recycle()
-                throw e
+                val rendered = renderer.render(targetW.toUInt(), targetH.toUInt())
+                val bitmap = rgbaToBitmap(rendered.pixels, targetW, targetH)
+                try {
+                    val outBytes = ByteArrayOutputStream(targetW * targetH / 4).use { bos ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
+                        bos.toByteArray()
+                    }
+                    IngestResult.Ok(persistJpeg(outBytes, targetW, targetH))
+                } finally {
+                    bitmap.recycle()
+                }
             }
-
-            val outBytes = ByteArrayOutputStream(targetW * targetH / 4).use { bos ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
-                bos.toByteArray()
-            }
-            bitmap.recycle()
-
-            IngestResult.Ok(persistJpeg(outBytes, targetW, targetH))
         } catch (e: Exception) {
             IngestResult.Err(IngestError.SvgRenderFailed(e))
         }
+    }
+
+    /** resvg 输出 RGBA（非预乘）→ ARGB_8888 Bitmap（照抄库内 premultiply 模板）。 */
+    private fun rgbaToBitmap(rgba: ByteArray, width: Int, height: Int): Bitmap {
+        val pixels = IntArray(width * height)
+        for (i in pixels.indices) {
+            val base = i * 4
+            val r = rgba[base].toInt() and 0xFF
+            val g = rgba[base + 1].toInt() and 0xFF
+            val b = rgba[base + 2].toInt() and 0xFF
+            val a = rgba[base + 3].toInt() and 0xFF
+            pixels[i] = (a shl 24) or (r shl 16) or (g shl 8) or b
+        }
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        bitmap.isPremultiplied = false
+        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+        bitmap.isPremultiplied = true
+        return bitmap
     }
 
     /** sha256 命名落盘（tmp+rename，rename 失败回退直接写）→ StoredImage。 */
