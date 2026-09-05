@@ -373,6 +373,12 @@
     <string name="ui_settings_configure_name_label">Name</string>
     <string name="ui_settings_configure_name_placeholder">e.g. DeepSeek primary</string>
     <string name="ui_settings_configure_protocol_label">Protocol</string>
+    <string name="ui_settings_configure_endpoint_mismatch_title">Update endpoint</string>
+    <string name="ui_settings_configure_endpoint_mismatch_text_switch">Protocol changed. Update the endpoint to\n%1$s ?</string>
+    <string name="ui_settings_configure_endpoint_mismatch_text_save">Before saving, update the endpoint to\n%1$s ?</string>
+    <string name="ui_settings_configure_endpoint_mismatch_confirm_update">Update</string>
+    <string name="ui_settings_configure_endpoint_mismatch_cancel_keep">Keep</string>
+    <string name="ui_settings_configure_endpoint_mismatch_cancel_save">Save as is</string>
     <string name="ui_settings_configure_protocol_hint">After switching protocols, confirm the endpoint matches the protocol.</string>
 
     <string name="ui_settings_appearance">Appearance</string>

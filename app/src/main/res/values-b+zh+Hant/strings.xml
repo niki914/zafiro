@@ -330,6 +330,12 @@
     <string name="ui_settings_configure_name_label">配置名稱</string>
     <string name="ui_settings_configure_name_placeholder">例如：DeepSeek 主力</string>
     <string name="ui_settings_configure_protocol_label">協議</string>
+    <string name="ui_settings_configure_endpoint_mismatch_title">更新端點</string>
+    <string name="ui_settings_configure_endpoint_mismatch_text_switch">協議已切換，是否將端點更新為\n%1$s ？</string>
+    <string name="ui_settings_configure_endpoint_mismatch_text_save">儲存前，是否將端點更新為\n%1$s ？</string>
+    <string name="ui_settings_configure_endpoint_mismatch_confirm_update">更新</string>
+    <string name="ui_settings_configure_endpoint_mismatch_cancel_keep">保留</string>
+    <string name="ui_settings_configure_endpoint_mismatch_cancel_save">直接儲存</string>
     <string name="ui_settings_configure_protocol_hint">切換協議後，請確認端點與協議匹配。</string>
     <string name="notif_network_error_title">網路異常</string>
     <string name="notif_network_error_body">網路連線失敗，請檢查網路後重試</string>

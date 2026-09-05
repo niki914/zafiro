@@ -47,6 +47,9 @@ data class SelectionOption(
     val lightContainerColor: Color? = null,
     val darkContentColor: Color? = null,
     val lightContentColor: Color? = null,
+    /** 非空时优先于 contentColor 作为图标 tint 色。 */
+    val darkIconColor: Color? = null,
+    val lightIconColor: Color? = null,
     /** 选中态：trailing 渲染对勾，不渲染 chevron。 */
     val selected: Boolean = false,
     val onClick: () -> Unit,
@@ -60,6 +63,7 @@ internal fun SelectionOptionRow(
 ) {
     val brandContainer = if (isDarkTheme) option.darkContainerColor else option.lightContainerColor
     val brandContent = if (isDarkTheme) option.darkContentColor else option.lightContentColor
+    val brandIcon = if (isDarkTheme) option.darkIconColor else option.lightIconColor
     SettingsListItem(
         title = option.title,
         showChevron = !option.selected,
@@ -96,6 +100,7 @@ internal fun SelectionOptionRow(
                         contentDescription = null,
                         tint = when {
                             !option.tintLeadingIcon -> Color.Unspecified
+                            brandIcon != null -> brandIcon
                             brandContent != null -> brandContent
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
