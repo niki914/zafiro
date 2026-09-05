@@ -42,6 +42,8 @@ data class ConfigureUiState(
     val apiKeyVisible: Boolean = false,
     /** LlmProtocol.wireId。 */
     val protocolWireId: String = LlmProtocol.Default.wireId,
+    /** 视觉模型开关（图片输入支持），默认关。 */
+    val supportsImages: Boolean = false,
     @param:StringRes val nameErrorResId: Int? = null,
     @param:StringRes val endpointErrorResId: Int? = null,
     @param:StringRes val modelErrorResId: Int? = null,
@@ -66,6 +68,7 @@ data class ConfigureSnapshot(
     val model: String,
     val apiKey: String,
     val protocolWireId: String,
+    val supportsImages: Boolean,
     val proxy: String,
     val prompt: String,
 )
@@ -100,6 +103,7 @@ sealed interface ConfigureIntent {
     data class UpdateModel(val value: String) : ConfigureIntent
     data class UpdateApiKey(val value: String) : ConfigureIntent
     data class SelectProtocol(val wireId: String) : ConfigureIntent
+    data class UpdateSupportsImages(val enabled: Boolean) : ConfigureIntent
     data class UpdatePrompt(val value: String) : ConfigureIntent
 
     /** 仅持久化全局 prompt（列表页防抖自动保存）。 */
@@ -194,6 +198,10 @@ class ConfigureViewModel internal constructor(
             }
 
             is ConfigureIntent.SelectProtocol -> handleProtocolSwitch(intent.wireId)
+
+            is ConfigureIntent.UpdateSupportsImages -> updateState {
+                copy(supportsImages = intent.enabled)
+            }
 
             is ConfigureIntent.UpdatePrompt -> updateState {
                 copy(promptInput = intent.value)
@@ -350,6 +358,7 @@ class ConfigureViewModel internal constructor(
                 apiKeyInput = target.apiKey,
                 apiKeyVisible = false,
                 protocolWireId = LlmProtocol.fromWire(target.protocol).wireId,
+                supportsImages = target.supportsImages,
                 nameErrorResId = null,
                 endpointErrorResId = null,
                 modelErrorResId = null,
@@ -634,6 +643,7 @@ private fun ConfigureUiState.toSavedLlmConfig(): SavedLlmConfig {
         apiKey = apiKeyInput,
         model = modelInput,
         protocol = protocolWireId,
+        supportsImages = supportsImages,
         proxy = proxyInput,
         createdAt = 0L,
         updatedAt = 0L,
@@ -652,6 +662,7 @@ private fun ConfigureUiState.toSettingsSnapshot(): ConfigureSnapshot {
         model = modelInput.trim(),
         apiKey = apiKeyInput,
         protocolWireId = protocolWireId,
+        supportsImages = supportsImages,
         proxy = proxyInput.trim(),
         prompt = promptInput,
     )

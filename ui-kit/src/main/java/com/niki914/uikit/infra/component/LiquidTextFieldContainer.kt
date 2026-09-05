@@ -1,13 +1,17 @@
 package com.niki914.uikit.infra.component
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.LocalContentColor
@@ -35,7 +39,9 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
@@ -61,7 +67,7 @@ private val LiquidTextFieldInteractiveStyle =
 internal fun LiquidTextFieldContainer(
     value: String,
     onValueChange: (String) -> Unit,
-    placeholder: String,
+    placeholder: String?,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     singleLine: Boolean = false,
@@ -70,6 +76,14 @@ internal fun LiquidTextFieldContainer(
     moveCursorToEndOnFocus: Boolean = false,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     minHeight: Dp = 52.dp,
+    /** 内容行（leading/文本/trailing）的纵向对齐。Top 用于多行输入框：内容随高度增长锚定顶部。 */
+    contentVerticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
+    onTextLayout: ((TextLayoutResult?) -> Unit)? = null,
+    /** 展开布局：leading/trailing 移到文本区下方独立行（文本行内不显示按钮）。 */
+    expandedLayout: Boolean = false,
+    /** 展开布局下按钮行：左 leading 右 trailing，与文本区同一玻璃容器内。 */
+    expandedActionsRow: (@Composable RowScope.() -> Unit)? = null,
+    leadingContent: (@Composable RowScope.() -> Unit)? = null,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val backdrop = rememberLayerBackdrop()
@@ -248,35 +262,70 @@ internal fun LiquidTextFieldContainer(
         textStyle = MaterialTheme.typography.bodyLarge.merge(
             TextStyle(color = textColor),
         ),
+        onTextLayout = { layout -> onTextLayout?.invoke(layout) },
         decorationBox = { innerTextField ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .widthIn(min = 0.dp),
-                    contentAlignment = Alignment.CenterStart,
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = contentVerticalAlignment,
                 ) {
-                    if (textFieldValue.text.isBlank()) {
-                        Text(
-                            text = placeholder,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = placeholderColor,
-                        )
+                    if (leadingContent != null && !expandedLayout) {
+                        CompositionLocalProvider(LocalContentColor provides trailingColor) {
+                            leadingContent(this@Row)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
-                    innerTextField()
-                }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .widthIn(min = 0.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        if (textFieldValue.text.isEmpty() && placeholder != null) {
+                            Text(
+                                text = placeholder,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = placeholderColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        innerTextField()
+                    }
 
-                if (trailingContent != null) {
-                    CompositionLocalProvider(LocalContentColor provides trailingColor) {
-                        Box(
-                            modifier = Modifier.onGloballyPositioned { coordinates ->
-                                trailingBoundsInRoot = coordinates.boundsInRoot()
-                            },
-                        ) {
-                            trailingContent?.invoke(this@Row)
+                    if (trailingContent != null && !expandedLayout) {
+                        CompositionLocalProvider(LocalContentColor provides trailingColor) {
+                            Box(
+                                modifier = Modifier.onGloballyPositioned { coordinates ->
+                                    trailingBoundsInRoot = coordinates.boundsInRoot()
+                                },
+                            ) {
+                                trailingContent(this@Row)
+                            }
+                        }
+                    }
+                }
+                if (expandedLayout && expandedActionsRow != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (leadingContent != null) {
+                            CompositionLocalProvider(LocalContentColor provides trailingColor) {
+                                leadingContent(this@Row)
+                            }
+                        }
+                        if (trailingContent != null) {
+                            CompositionLocalProvider(LocalContentColor provides trailingColor) {
+                                Box(
+                                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                                        trailingBoundsInRoot = coordinates.boundsInRoot()
+                                    },
+                                ) {
+                                    trailingContent(this@Row)
+                                }
+                            }
                         }
                     }
                 }

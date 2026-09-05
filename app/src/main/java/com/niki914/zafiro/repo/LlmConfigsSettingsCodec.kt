@@ -7,6 +7,7 @@ import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.longOrNull
 
 /**
@@ -23,6 +24,8 @@ data class SavedLlmConfig(
     val model: String,
     /** LlmProtocol.wireId；空串 = 未设置，运行时回落默认协议。 */
     val protocol: String,
+    /** 视觉模型开关（图片输入支持），默认关。 */
+    val supportsImages: Boolean = false,
     val proxy: String,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
@@ -74,6 +77,7 @@ internal object LlmConfigsSettingsCodec {
             apiKey = obj.string(API_KEY_KEY),
             model = obj.string(MODEL_KEY),
             protocol = obj.string(PROTOCOL_KEY),
+            supportsImages = obj.boolean(SUPPORTS_IMAGES_KEY),
             proxy = obj.string(PROXY_KEY),
             createdAt = obj.long(CREATED_AT_KEY, 0L),
             updatedAt = obj.long(UPDATED_AT_KEY, 0L),
@@ -90,6 +94,7 @@ internal object LlmConfigsSettingsCodec {
                 API_KEY_KEY to JsonPrimitive(config.apiKey),
                 MODEL_KEY to JsonPrimitive(config.model),
                 PROTOCOL_KEY to JsonPrimitive(config.protocol),
+                SUPPORTS_IMAGES_KEY to JsonPrimitive(config.supportsImages),
                 PROXY_KEY to JsonPrimitive(config.proxy),
                 CREATED_AT_KEY to JsonPrimitive(config.createdAt),
                 UPDATED_AT_KEY to JsonPrimitive(config.updatedAt),
@@ -99,6 +104,10 @@ internal object LlmConfigsSettingsCodec {
 
     private fun JsonObject.long(key: String, default: Long): Long {
         return (this[key] as? JsonPrimitive)?.longOrNull ?: default
+    }
+
+    private fun JsonObject.boolean(key: String): Boolean {
+        return (this[key] as? JsonPrimitive)?.booleanOrNull ?: false
     }
 
     private const val ACTIVE_ID_KEY = "active_id"
@@ -111,6 +120,7 @@ internal object LlmConfigsSettingsCodec {
     private const val API_KEY_KEY = "api_key"
     private const val MODEL_KEY = "model"
     private const val PROTOCOL_KEY = "protocol"
+    private const val SUPPORTS_IMAGES_KEY = "supports_images"
     private const val PROXY_KEY = "proxy"
     private const val CREATED_AT_KEY = "created_at"
     private const val UPDATED_AT_KEY = "updated_at"

@@ -100,6 +100,9 @@ fun SavedConfigDetailContent(
             onModelChange = { viewModel.sendIntent(ConfigureIntent.UpdateModel(it)) },
             onApiKeyChange = { viewModel.sendIntent(ConfigureIntent.UpdateApiKey(it)) },
             onProtocolSelected = { viewModel.sendIntent(ConfigureIntent.SelectProtocol(it)) },
+            onSupportsImagesChange = { enabled ->
+                viewModel.sendIntent(ConfigureIntent.UpdateSupportsImages(enabled))
+            },
             onToggleApiKeyVisibility = { viewModel.sendIntent(ConfigureIntent.ToggleApiKeyVisibility) },
             onProxyChange = { viewModel.sendIntent(ConfigureIntent.UpdateProxy(it)) },
             onSave = { viewModel.sendIntent(ConfigureIntent.Save) },
@@ -139,6 +142,7 @@ private fun SavedConfigDetailContentBody(
     onModelChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onProtocolSelected: (String) -> Unit,
+    onSupportsImagesChange: (Boolean) -> Unit,
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit,
     onSave: () -> Unit,
@@ -174,6 +178,7 @@ private fun SavedConfigDetailContentBody(
             onModelChange = onModelChange,
             onApiKeyChange = onApiKeyChange,
             onProtocolSelected = onProtocolSelected,
+            onSupportsImagesChange = onSupportsImagesChange,
             onToggleApiKeyVisibility = onToggleApiKeyVisibility,
             onProxyChange = onProxyChange,
             onClearActiveField = fieldController.clearActiveField,

@@ -7,6 +7,8 @@ data class RuntimeLlmConfig(
     val model: String = "",
     /** LlmProtocol.wireId，如 "openai-responses"。空串回落默认协议。 */
     val protocol: String = "",
+    /** 视觉模型开关（图片输入支持），默认关。 */
+    val supportsImages: Boolean = false,
     val prompt: String = "",
     val proxy: String = "",
     val memoryPrompt: String = "",
