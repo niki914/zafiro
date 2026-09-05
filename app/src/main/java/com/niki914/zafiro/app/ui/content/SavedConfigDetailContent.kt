@@ -16,6 +16,7 @@ import com.niki914.zafiro.app.ui.model.ConfigureIntent
 import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
 import com.niki914.zafiro.app.ui.model.ConfigureViewModel
+import com.niki914.zafiro.app.ui.model.EndpointMismatch
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 
@@ -104,6 +105,12 @@ fun SavedConfigDetailContent(
             onSave = { viewModel.sendIntent(ConfigureIntent.Save) },
         )
 
+        EndpointMismatchDialog(
+            mismatch = uiState.pendingEndpointMismatch,
+            onConfirm = { viewModel.sendIntent(ConfigureIntent.ConfirmEndpointMismatch) },
+            onCancel = { viewModel.sendIntent(ConfigureIntent.CancelEndpointMismatch) },
+        )
+
         ConfirmationLiquidDialog(
             visible = showDeleteConfirmation,
             onDismissRequest = { showDeleteConfirmation = false },
@@ -136,11 +143,16 @@ private fun SavedConfigDetailContentBody(
     onProxyChange: (String) -> Unit,
     onSave: () -> Unit,
 ) {
-    val policy = ConfigurePagePolicy(
-        showEndpointSection = true,
-        showEndpointOverrideToggle = showEndpointOverrideToggle,
-        endpointEditable = true,
-    )
+    // 编辑态不限制端点编辑；新建态仅部分品牌开放自定义端点
+    val policy = if (!showEndpointOverrideToggle) {
+        ConfigurePagePolicy(
+            showEndpointSection = true,
+            showEndpointOverrideToggle = false,
+            endpointEditable = true,
+        )
+    } else {
+        onboardingConfigurePolicy(uiState.providerSpec)
+    }
     EditableSettingsDetailFormScaffold(
         actionText = stringResource(R.string.ui_settings_configure_save),
         requestedFocusField = requestedFocusField,

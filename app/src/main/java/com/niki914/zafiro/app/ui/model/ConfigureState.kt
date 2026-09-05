@@ -55,6 +55,8 @@ data class ConfigureUiState(
     val initialSettingsSnapshot: ConfigureSnapshot? = null,
     val savedConfigs: List<SavedConfigSummary> = emptyList(),
     val activeConfigId: String? = null,
+    /** 非 null 时应弹出端点不匹配确认弹窗。 */
+    val pendingEndpointMismatch: EndpointMismatch? = null,
 )
 
 data class ConfigureSnapshot(
@@ -107,6 +109,12 @@ sealed interface ConfigureIntent {
     data class ActivateConfig(val configId: String) : ConfigureIntent
     data class DeleteConfig(val configId: String) : ConfigureIntent
     data object Save : ConfigureIntent
+
+    /** 确认端点不匹配弹窗：点击更新。 */
+    data object ConfirmEndpointMismatch : ConfigureIntent
+
+    /** 确认端点不匹配弹窗：点击保留/直接保存。 */
+    data object CancelEndpointMismatch : ConfigureIntent
 }
 
 sealed interface ConfigureEffect {
@@ -120,6 +128,17 @@ sealed interface ConfigureEffect {
 
     /** 配置删除成功，详情页应退出。 */
     data object ConfigDeleted : ConfigureEffect
+}
+
+/** 端点与协议不匹配时的弹窗参数。
+ *  [Origin] 区分触发来源，决定弹窗文案与确认后的行为。 */
+data class EndpointMismatch(
+    val protocol: String,
+    val expectedEndpoint: String,
+    val currentEndpoint: String,
+    val origin: Origin,
+) {
+    enum class Origin { SwitchProtocol, Save }
 }
 
 internal data class ConfigureViewModelDependencies(
@@ -174,9 +193,7 @@ class ConfigureViewModel internal constructor(
                 copy(apiKeyInput = intent.value, apiKeyErrorResId = null, inlineError = null)
             }
 
-            is ConfigureIntent.SelectProtocol -> updateState {
-                copy(protocolWireId = intent.wireId)
-            }
+            is ConfigureIntent.SelectProtocol -> handleProtocolSwitch(intent.wireId)
 
             is ConfigureIntent.UpdatePrompt -> updateState {
                 copy(promptInput = intent.value)
@@ -192,8 +209,10 @@ class ConfigureViewModel internal constructor(
 
             is ConfigureIntent.ActivateConfig -> activateConfig(intent.configId)
             is ConfigureIntent.DeleteConfig -> deleteConfig(intent.configId)
-            ConfigureIntent.Save -> save()
+            ConfigureIntent.Save -> handleSave()
             ConfigureIntent.SavePrompt -> savePromptOnly()
+            ConfigureIntent.ConfirmEndpointMismatch -> confirmEndpointMismatch()
+            ConfigureIntent.CancelEndpointMismatch -> cancelEndpointMismatch()
         }
     }
 
@@ -402,9 +421,110 @@ class ConfigureViewModel internal constructor(
         sendEffect(ConfigureEffect.ConfigDeleted)
     }
 
-    private suspend fun save() {
-        if (currentState.isSaving) {
+    private fun handleProtocolSwitch(newProtocolWireId: String) {
+        if (newProtocolWireId == currentState.protocolWireId) {
             return
+        }
+        val newProtocol = LlmProtocol.fromWire(newProtocolWireId)
+        val currentEndpoint = currentState.endpointInput.trim()
+        // 空白端点不校验不弹窗：保存时由必填校验报错，用户自己解决
+        if (currentEndpoint.isBlank() ||
+            EndpointInference.endpointMatchesProtocol(currentEndpoint, newProtocol)
+        ) {
+            switchProtocolQuietly(newProtocolWireId)
+            return
+        }
+        // 预置官方端点：静默更新后缀，不弹窗；自定义端点：确认后只换后缀
+        if (EndpointInference.isPresetEndpoint(currentEndpoint)) {
+            updateState {
+                copy(
+                    endpointInput = EndpointInference.replaceSuffix(currentEndpoint, newProtocol),
+                    protocolWireId = newProtocolWireId,
+                )
+            }
+            return
+        }
+        updateState {
+            copy(
+                pendingEndpointMismatch = EndpointMismatch(
+                    protocol = newProtocolWireId,
+                    expectedEndpoint = EndpointInference.replaceSuffix(currentEndpoint, newProtocol),
+                    currentEndpoint = currentEndpoint,
+                    origin = EndpointMismatch.Origin.SwitchProtocol,
+                )
+            )
+        }
+    }
+
+    private suspend fun handleSave() {
+        // 先字段校验，再端点确认
+        if (!validate()) return
+        val currentProtocol = LlmProtocol.fromWire(currentState.protocolWireId)
+        val currentEndpoint = currentState.endpointInput.trim()
+        if (EndpointInference.endpointMatchesProtocol(currentEndpoint, currentProtocol)) {
+            saveConfig()
+            return
+        }
+        // 预置官方端点：静默更新后缀，不弹窗；自定义端点：确认后只换后缀
+        if (EndpointInference.isPresetEndpoint(currentEndpoint)) {
+            updateState {
+                copy(endpointInput = EndpointInference.replaceSuffix(currentEndpoint, currentProtocol))
+            }
+            saveConfig()
+            return
+        }
+        updateState {
+            copy(
+                pendingEndpointMismatch = EndpointMismatch(
+                    protocol = currentState.protocolWireId,
+                    expectedEndpoint = EndpointInference.replaceSuffix(currentEndpoint, currentProtocol),
+                    currentEndpoint = currentEndpoint,
+                    origin = EndpointMismatch.Origin.Save,
+                )
+            )
+        }
+    }
+
+    private suspend fun confirmEndpointMismatch() {
+        val pending = currentState.pendingEndpointMismatch ?: return
+        updateState {
+            copy(
+                endpointInput = pending.expectedEndpoint,
+                endpointErrorResId = null,
+                inlineError = null,
+                pendingEndpointMismatch = null,
+                protocolWireId = when (pending.origin) {
+                    EndpointMismatch.Origin.SwitchProtocol -> pending.protocol
+                    EndpointMismatch.Origin.Save -> protocolWireId
+                },
+            )
+        }
+        if (pending.origin == EndpointMismatch.Origin.Save) {
+            save()
+        }
+    }
+
+    private suspend fun cancelEndpointMismatch() {
+        val pending = currentState.pendingEndpointMismatch ?: return
+        updateState { copy(pendingEndpointMismatch = null) }
+        when (pending.origin) {
+            EndpointMismatch.Origin.SwitchProtocol -> {
+                switchProtocolQuietly(pending.protocol)
+            }
+            EndpointMismatch.Origin.Save -> {
+                save()
+            }
+        }
+    }
+
+    private fun switchProtocolQuietly(wireId: String) {
+        updateState { copy(protocolWireId = wireId) }
+    }
+
+    /** 校验重名与必填字段；不通过时置错误并发焦点 Effect。 */
+    private suspend fun validate(): Boolean {
+        if (currentState.isSaving) {
+            return false
         }
         val trimmedName = currentState.configNameInput.trim()
         val duplicateExists = dependencies.loadDocument().configs.any {
@@ -414,19 +534,19 @@ class ConfigureViewModel internal constructor(
             updateState {
                 copy(nameErrorResId = R.string.ui_settings_configure_error_name_duplicate)
             }
-            return
+            return false
         }
         when (val invalidField = currentState.firstInvalidField()) {
             ConfigureFieldTarget.Model -> {
                 updateState { copy(modelErrorResId = R.string.ui_settings_configure_error_required) }
                 sendEffect(ConfigureEffect.FocusModel)
-                return
+                return false
             }
 
             ConfigureFieldTarget.ApiKey -> {
                 updateState { copy(apiKeyErrorResId = R.string.ui_settings_configure_error_required) }
                 sendEffect(ConfigureEffect.FocusApiKey)
-                return
+                return false
             }
 
             ConfigureFieldTarget.Endpoint -> {
@@ -434,7 +554,7 @@ class ConfigureViewModel internal constructor(
                     copy(endpointErrorResId = R.string.ui_settings_configure_error_required)
                 }
                 sendEffect(ConfigureEffect.FocusEndpoint)
-                return
+                return false
             }
 
             ConfigureFieldTarget.Proxy -> {
@@ -442,12 +562,18 @@ class ConfigureViewModel internal constructor(
                     copy(proxyErrorResId = R.string.ui_settings_configure_error_proxy_invalid)
                 }
                 sendEffect(ConfigureEffect.FocusProxy)
-                return
+                return false
             }
 
             null -> Unit
         }
-        saveConfig()
+        return true
+    }
+
+    private suspend fun save() {
+        if (validate()) {
+            saveConfig()
+        }
     }
 
     private suspend fun saveConfig() {

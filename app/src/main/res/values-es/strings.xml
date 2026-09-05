@@ -373,6 +373,12 @@
     <string name="ui_settings_configure_name_label">Nombre de la configuración</string>
     <string name="ui_settings_configure_name_placeholder">Ejemplo: DeepSeek Principal</string>
     <string name="ui_settings_configure_protocol_label">Protocolo</string>
+    <string name="ui_settings_configure_endpoint_mismatch_title">Actualizar endpoint</string>
+    <string name="ui_settings_configure_endpoint_mismatch_text_switch">Protocolo cambiado. ¿Actualizar el endpoint a\n%1$s ?</string>
+    <string name="ui_settings_configure_endpoint_mismatch_text_save">Antes de guardar, ¿actualizar el endpoint a\n%1$s ?</string>
+    <string name="ui_settings_configure_endpoint_mismatch_confirm_update">Actualizar</string>
+    <string name="ui_settings_configure_endpoint_mismatch_cancel_keep">Conservar</string>
+    <string name="ui_settings_configure_endpoint_mismatch_cancel_save">Guardar tal cual</string>
     <string name="ui_settings_configure_protocol_hint">Tras cambiar el protocolo, asegúrese de que el endpoint sea compatible con dicho protocolo.</string>
 
     <string name="ui_settings_appearance">Apariencia</string>

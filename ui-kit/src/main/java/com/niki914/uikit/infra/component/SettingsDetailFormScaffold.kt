@@ -12,12 +12,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.liquidScreenTopPadding
 
 /**
@@ -42,6 +47,11 @@ fun SettingsDetailFormScaffold(
 ) {
     val scrollState =
         rememberSaveable(saver = ScrollState.Saver, init = { ScrollState(initial = 0) })
+    // 滚动超过折叠阈值后上报顶栏折叠：背景渐显 + 小标题浮现，与设置列表页同款行为。
+    // 不上报会导致滚动内容透过透明顶栏可见。
+    val collapseRangePx = with(LocalDensity.current) { 96.dp.toPx() }
+    val isCollapsed by remember { derivedStateOf { scrollState.value > collapseRangePx } }
+    ReportTitleBarCollapsed { isCollapsed }
     val contentModifier = if (onBackgroundTap != null) {
         Modifier.pointerInput(onBackgroundTap) {
             detectTapGestures(onTap = { onBackgroundTap() })
