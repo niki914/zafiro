@@ -7,8 +7,8 @@ import kotlin.String
 /**
  * 工具线缆名（provider 可见工具名）的派生与消歧。
  *
- * 背景：MCP 工具名是用户可控字符串，可含 `.`、空格等；OpenAI / Anthropic /
- * Gemini 对 function name 的约束为 `^[a-zA-Z0-9_-]{1,64}$` 量级。注册名原样
+ * 背景：MCP 工具名是用户可控字符串，可含 `.`、空格等；OpenAI / Anthropic
+ * 对 function name 的约束为 `^[a-zA-Z0-9_-]{1,64}$` 量级。注册名原样
  * 上线缆会因非法字符或超长被 Provider 拒绝，而 MCP 调用又需要还原原始工具名。
  * 因此线缆名与原始名（ToolDescriptor.name）分离：原始名只用于 MCP 调用，线缆
  * 名只用于 Provider 请求体与 registry 键。
