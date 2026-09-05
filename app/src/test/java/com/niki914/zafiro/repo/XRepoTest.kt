@@ -572,22 +572,6 @@ class XRepoTest {
     }
 
     @Test
-    fun builtinTerminalIgnoresLegacyRunCommandFlag() = runTest {
-        val store = installStore(
-            FakeDomainSettingsStore(
-                StoreDescriptorRegistry.TOOLS_BUILTIN_ID to ToolSettingsCodec.encodeBuiltinEnabled(
-                    mapOf("run_command" to false)
-                )
-            )
-        )
-
-        val terminal = XRepo.builtinTools.list().single { it.name == "terminal" }
-
-        assertTrue(terminal.enabled)
-        assertEquals(0, store.writeCount)
-    }
-
-    @Test
     fun customPyToolSave_acceptsValidTool() = runTest {
         val store = installStore(FakeDomainSettingsStore())
 

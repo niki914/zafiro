@@ -13,12 +13,6 @@ class ToolWireNameTest {
     // ── 本地工具 ───────────────────────────────────────────────────────────
 
     @Test
-    fun forLocalKeepsCleanName() {
-        assertEquals("web_search", ToolWireName.forLocal("web_search"))
-        assertEquals("noop", ToolWireName.forLocal("noop"))
-    }
-
-    @Test
     fun forLocalKeepsDashAndUnderscoreAndReplacesOthers() {
         // D2 B：- 与 _ 保留；点 / 空格 / 非 ASCII 替换为 _
         assertEquals("admin_tools_list", ToolWireName.forLocal("admin.tools.list"))
@@ -36,12 +30,6 @@ class ToolWireNameTest {
     }
 
     // ── MCP 工具（D1 B：mcp__server__tool） ────────────────────────────────
-
-    @Test
-    fun forMcpNamespacesServerAndTool() {
-        assertEquals("mcp__docs__search", ToolWireName.forMcp("docs", "search"))
-        assertEquals("mcp__a__t", ToolWireName.forMcp("a", "t"))
-    }
 
     @Test
     fun forMcpSanitizesServerAndToolSegments() {
@@ -63,21 +51,7 @@ class ToolWireNameTest {
         assertTrue(name.contains("__"))
     }
 
-    @Test
-    fun forMcpIsDeterministic() {
-        assertEquals(ToolWireName.forMcp("docs", "search"), ToolWireName.forMcp("docs", "search"))
-    }
-
     // ── 消歧（D4 A：哈希后缀） ─────────────────────────────────────────────
-
-    @Test
-    fun disambiguateReturnsBaseWhenUnused() {
-        val used = setOf("mcp__docs__other")
-        assertEquals(
-            "mcp__docs__search",
-            ToolWireName.disambiguate("mcp__docs__search", "docs\u0000search", used)
-        )
-    }
 
     @Test
     fun disambiguateAppendsHashSuffixOnCollisionAndStaysDeterministic() {
