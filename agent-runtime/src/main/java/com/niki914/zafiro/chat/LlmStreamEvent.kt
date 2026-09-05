@@ -8,6 +8,8 @@ sealed interface LlmStreamEvent {
         val delta: String,
         val fullText: String,
         val charsPerSecond: Float? = null,
+        /** 段起点：fullText 为新文本段坐标（从头累计），消费端据此重置段内状态（节流器等）。 */
+        val isSegmentStart: Boolean = false,
     ) : LlmStreamEvent
 
     /** 思考块开始/进行中：id 为回合内由 Mapper 分配的单调块标识（OKIA index 跨轮复用，不可作身份），text 为当前全量。 */

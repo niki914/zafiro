@@ -10,6 +10,7 @@ import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.util.SilentLoggerRule
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -77,6 +78,22 @@ class LlmStreamEventMapperTest {
         // 事件序列 delta 累积 == fullText：UI appendText 逐 delta 追加即得完整结果
         val accumulated = started.delta + next.delta
         assertEquals(next.fullText, accumulated)
+    }
+
+    @Test
+    fun `TextStarted marks segment start for downstream pacer reset`() {
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("hi")))),
+            0L,
+                    ) as LlmStreamEvent.TextDelta
+        assertTrue(result.isSegmentStart)
+
+        // 后续 Delta 非段起点
+        val next = LlmStreamEventMapper.map(
+            TurnEvent.TextDelta(0, "!", AssistantMessage(listOf(ContentBlock.Text("hi!")))),
+            0L,
+                    ) as LlmStreamEvent.TextDelta
+        assertFalse(next.isSegmentStart)
     }
 
     @Test
