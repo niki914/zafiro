@@ -1,5 +1,6 @@
 package com.niki914.okia.protocol
 
+import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -600,5 +601,68 @@ class OpenAIChatCompletionProtocolTest {
         assertEquals("deepseek", protocol.id)
         assertEquals("https://api.deepseek.com/chat/completions", protocol.defaultEndpoint)
         assertTrue(protocol.compat is DeepSeekCompat)
+    }
+
+    // ── 工具结果多图 ────────────────────────────────────────────────
+
+    private fun loaderOf(vararg missing: String) = ImageLoader { path ->
+        if (path in missing) null else path.toByteArray()
+    }
+
+    @Test
+    fun toolResultEncodesAllImagesInOneUserMessage() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(supportsImages = true, imageLoader = loaderOf()),
+            listOf(
+                toolResult(
+                    "call_1",
+                    ToolCallOutcome.Success(
+                        "two shots",
+                        images = listOf(
+                            ContentBlock.Image("/a.png", "image/png"),
+                            ContentBlock.Image("/b.png", "image/png")
+                        )
+                    )
+                )
+            )
+        )
+        val messages = messagesOf(request)
+        assertEquals(2, messages.size)  // tool + user
+        assertEquals("tool", messages[0]["role"]!!.jsonPrimitive.content)
+        assertEquals("two shots", messages[0]["content"]!!.jsonPrimitive.content)
+        val parts = messages[1]["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(3, parts.size)  // text + 2 image_url
+        assertEquals("image_url", parts[1]["type"]!!.jsonPrimitive.content)
+        assertEquals("image_url", parts[2]["type"]!!.jsonPrimitive.content)
+        assertTrue(
+            parts[1]["image_url"]!!.jsonObject["url"]!!.jsonPrimitive.content
+                .startsWith("data:image/png;base64,")
+        )
+    }
+
+    @Test
+    fun toolResultImageLoadFailureBecomesToolTextNote() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(supportsImages = true, imageLoader = loaderOf("/gone.png")),
+            listOf(
+                toolResult(
+                    "call_1",
+                    ToolCallOutcome.Success(
+                        "ok",
+                        images = listOf(
+                            ContentBlock.Image("/alive.png", "image/png"),
+                            ContentBlock.Image("/gone.png", "image/png")
+                        )
+                    )
+                )
+            )
+        )
+        val messages = messagesOf(request)
+        // 逐张降级：注记进 tool 文本，user 消息只带成功的 1 张
+        val parts = messages[1]["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(2, parts.size)  // text + 1 image_url
+        assertTrue(
+            messages[0]["content"]!!.jsonPrimitive.content.contains("[image omitted")
+        )
     }
 }

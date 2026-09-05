@@ -1,6 +1,7 @@
 package com.niki914.okia.protocol
 
 import com.niki914.okia.message.AssistantMessage
+import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
@@ -689,5 +690,73 @@ class OpenAIResponsesProtocolTest {
             Message.ToolResult("call_1", "tool-a", outcome),
             protocol.encodeToolResult(call, outcome)
         )
+    }
+
+    // ── 工具结果多图 ────────────────────────────────────────────────────
+
+    private fun loaderOf(vararg missing: String) = ImageLoader { path ->
+        if (path in missing) null else path.toByteArray()
+    }
+
+    @Test
+    fun toolResultEncodesAllImagesAsInputImageParts() = runBlocking {
+        val snapshot = snapshot().copy(
+            supportsImages = true,
+            imageLoader = loaderOf()
+        )
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                toolResult(
+                    "call_1",
+                    ToolCallOutcome.Success(
+                        "two shots",
+                        images = listOf(
+                            ContentBlock.Image("/a.png", "image/png"),
+                            ContentBlock.Image("/b.png", "image/png")
+                        )
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        assertEquals("function_call_output", item["type"]!!.jsonPrimitive.content)
+        val output = item["output"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(3, output.size)
+        assertEquals("input_text", output[0]["type"]!!.jsonPrimitive.content)
+        assertEquals("two shots", output[0]["text"]!!.jsonPrimitive.content)
+        assertEquals("input_image", output[1]["type"]!!.jsonPrimitive.content)
+        assertEquals("input_image", output[2]["type"]!!.jsonPrimitive.content)
+        assertTrue(output[1]["image_url"]!!.jsonPrimitive.content.startsWith("data:image/png;base64,"))
+    }
+
+    @Test
+    fun toolResultImageLoadFailureBecomesTextNote() = runBlocking {
+        val snapshot = snapshot().copy(
+            supportsImages = true,
+            imageLoader = loaderOf("/gone.png")
+        )
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                toolResult(
+                    "call_1",
+                    ToolCallOutcome.Success(
+                        "ok",
+                        images = listOf(
+                            ContentBlock.Image("/alive.png", "image/png"),
+                            ContentBlock.Image("/gone.png", "image/png")
+                        )
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        val output = item["output"]!!.jsonArray.map { it.jsonObject }
+        // 逐张降级：成功的照发，失败的进文本注记
+        assertEquals(2, output.size)  // text + 1 张图
+        val text = output[0]["text"]!!.jsonPrimitive.content
+        assertTrue(text.contains("[image omitted"))
+        assertEquals("input_image", output[1]["type"]!!.jsonPrimitive.content)
     }
 }

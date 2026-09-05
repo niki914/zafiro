@@ -39,7 +39,7 @@ class AndroidImageLoader(
 class AndroidImageSaver(context: Context) : ImageSaver {
     private val codec = ImageCodec(context.applicationContext)
 
-    override suspend fun save(base64: String, mimeType: String): String? {
+    override suspend fun save(base64: String): String? {
         return when (val result = codec.ingestBase64(base64)) {
             is IngestResult.Ok -> result.image.path
             is IngestResult.Err -> null
