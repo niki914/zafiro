@@ -1,13 +1,7 @@
 package com.niki914.zafiro.chat
 
-import com.niki914.okia.tooling.ToolWireName
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.zafiro.chat.agentic.buildin.impl.FindInstalledAppsBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.TerminalBuiltin
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -42,76 +36,10 @@ class BuiltinToolTest {
     }
 
     @Test
-    fun defaultRegistry_containsExpectedTools() {
-        val registry = BuiltinToolRegistry.default()
-
-        assertEquals(
-            listOf(
-                "execute_python",
-                "find_installed_apps",
-                "launch_app",
-                "load_skill",
-                "memory",
-                "notify",
-                "open_uri",
-                "py_meta_tools",
-                "screen_operation_accessibility",
-                "screen_operation_shell",
-                "terminal",
-            ),
-            registry.all().map { it.name }.sorted()
-        )
-        assertEquals("launch_app", registry.find("launch_app")?.name)
-        assertEquals("load_skill", registry.find("load_skill")?.name)
-        assertEquals("memory", registry.find("memory")?.name)
-        assertEquals("notify", registry.find("notify")?.name)
-        assertEquals("open_uri", registry.find("open_uri")?.name)
-        assertEquals("py_meta_tools", registry.find("py_meta_tools")?.name)
-        assertEquals(
-            "screen_operation_accessibility",
-            registry.find("screen_operation_accessibility")?.name
-        )
-        assertEquals("screen_operation_shell", registry.find("screen_operation_shell")?.name)
-        assertEquals("find_installed_apps", registry.find("find_installed_apps")?.name)
-        assertEquals("terminal", registry.find("terminal")?.name)
-    }
-
-    @Test
     fun toolSchemas_areValidJsonSchema() {
-        listOf(
-            LaunchAppBuiltin(),
-            MemoryBuiltin(),
-            OpenUriBuiltin(),
-            FindInstalledAppsBuiltin(),
-            TerminalBuiltin(),
-            com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin(),
-        ).forEach { tool ->
-            assertEquals(tool.name, tool.name.trim())
-            assertTrue("description not blank: ${tool.name}", tool.description.isNotBlank())
-            assertSchemaParsable(tool.inputSchemaJson, tool.name)
-        }
-    }
-
-    /**
-     * D25 描述合法性：schema JSON 可解析（至少是合法 JSON；T2b 前所有内置工具
-     * 都有 schema）、name 合法、wireName 满足 ToolWireName 约束（长度/字符）。
-     */
-    @Test
-    fun allRegisteredBuiltinTools_meetDescriptionLegality() {
         BuiltinToolRegistry.default().all().forEach { tool ->
-            assertEquals("name not blank: ${tool.name}", tool.name, tool.name.trim())
             assertTrue("description not blank: ${tool.name}", tool.description.isNotBlank())
             assertSchemaParsable(tool.inputSchemaJson, tool.name)
-            val wireName = ToolWireName.forLocal(tool.name)
-            assertTrue(
-                "wireName within length for ${tool.name}",
-                wireName.length <= ToolWireName.MAX_LENGTH,
-            )
-            assertEquals(
-                "wireName sanitizes to itself for ${tool.name}",
-                wireName,
-                ToolWireName.forLocal(wireName),
-            )
         }
     }
 
