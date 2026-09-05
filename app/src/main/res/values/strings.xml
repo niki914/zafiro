@@ -37,7 +37,6 @@
     <string name="ui_tool_status_running">执行中</string>
     <string name="ui_tool_status_success">成功</string>
     <string name="ui_tool_status_failed">失败</string>
-    <string name="ui_tool_status_failed_reason_interrupted">用户中断</string>
     <plurals name="ui_tool_chain_count">
         <item quantity="other">%d 个工具</item>
     </plurals>
@@ -91,7 +90,6 @@
     <string name="ui_settings_builtin_tools_summary">管理 Zafiro 提供的工具</string>
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">管理本地 Skills</string>
-    <string name="ui_settings_custom_py_tools_summary">管理自定义 Python 工具</string>
     <string name="skill_page_description">开启或关闭本地 Skills。开启后，Agent 可在对话中按需使用。</string>
     <string name="skill_loading">正在读取 Skills...</string>
     <string name="skill_empty">当前没有可用的 Skill。</string>
@@ -109,7 +107,6 @@
     <string name="skill_import_overwrite">覆盖</string>
     <string name="skill_import_cancel">取消</string>
     <string name="skill_import_resolve_failed">无法访问所选文件夹</string>
-    <string name="skill_import_error">导入失败</string>
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">接入外部 MCP 服务与工具</string>
     <string name="ui_settings_takeover">接管规则</string>
@@ -139,7 +136,6 @@
     <string name="ui_settings_configure_description">调整模型接入、提示词与代理配置。</string>
     <string name="ui_settings_configure_save">保存配置</string>
     <string name="ui_settings_configure_prompt_label">提示词</string>
-    <string name="ui_settings_configure_prompt_placeholder">你的助手应该怎么做？</string>
     <string name="prompt_editor_description">编辑 System Prompt。保存后，变更会在下次对话生效。</string>
     <string name="prompt_error_load_failed">读取提示词失败，请返回重试。</string>
     <string name="ui_settings_configure_proxy_label">代理</string>
@@ -213,9 +209,6 @@
     <string name="takeover_field_patterns_hint">天气\n.*闹钟.*\n打开.*</string>
     <string name="takeover_field_patterns_description">每行输入一个关键字或正则表达式，命中任意一条时，使用上方的接管方式。</string>
     <string name="takeover_save_action">保存规则</string>
-    <string name="takeover_rule_enabled">已启用</string>
-    <string name="takeover_rule_disabled">已停用</string>
-    <string name="takeover_rule_summary_more"> 等 %1$d 条</string>
     <string name="takeover_error_name_required">请输入规则名称</string>
     <string name="takeover_error_patterns_required">请输入至少一条规则</string>
     <string name="takeover_error_load_failed_generic">读取接管规则失败</string>
@@ -226,7 +219,6 @@
     <string name="takeover_delete_dialog_title">删除接管规则</string>
     <string name="takeover_delete_dialog_text">确定要删除接管规则「%1$s」吗？此操作不可撤销。</string>
     <string name="takeover_error_delete_failed">删除接管规则失败：%1$s</string>
-    <string name="takeover_save_failed">保存失败：%1$s</string>
 
     <!-- Builtin Tool Module -->
     <string name="builtin_tool_page_description">开启或关闭预设的内置工具。开启后，工具将在下次对话更新。</string>
@@ -296,8 +288,6 @@
     <string name="update_dialog_cancel">稍后</string>
 
     <!-- Notification strings -->
-    <string name="notif_network_error_title">网络异常</string>
-    <string name="notif_network_error_body">网络连接失败，请检查网络后重试</string>
 
     <!-- Error: MCP -->
     <string name="error_mcp_load_failed">读取 MCP 配置失败</string>
@@ -331,9 +321,6 @@
     <string name="host_xiaoai_display_name">小爱同学</string>
 
     <!-- XService notifications -->
-    <string name="fallback_assistant_name">助手</string>
-    <string name="notif_unsupported_version_title">宿主版本未适配</string>
-    <string name="notif_unsupported_version_body">当前%1$s版本还未被 Zafiro 支持\n宿主版本：%2$s</string>
 
     <string name="feedback_bug_template">## 问题描述\n\n## 复现步骤\n\n## 预期行为\n\n## 实际行为\n\n## 设备信息\n- Android 版本：\n- 助手（小布或其他）：\n- 模块版本：\n\n## 更多\n可以补充日志、截图录屏等信息，以便于我们理解</string>
     <string name="conversation_fork_title">Fork · %1$s</string>

@@ -21,15 +21,12 @@ import com.niki914.zafiro.app.ui.model.ToolPresentation
  */
 object ConversationFormatter {
     private const val LOG_TAG = "niki914_nexus_ConversationFormatter"
-    private const val DEFAULT_TITLE = "新对话" // TODO languages
     private const val MAX_TITLE_LENGTH = 40
     private const val MAX_PREVIEW_LENGTH = 20
     private const val ELLIPSIS = "..."
 
     fun titleFromFirstInput(firstUserInput: String): String {
-        val title = firstUserInput.trim()
-        if (title.isEmpty()) return DEFAULT_TITLE
-        return title.take(MAX_TITLE_LENGTH)
+        return firstUserInput.trim().take(MAX_TITLE_LENGTH)
     }
 
     fun previewFromText(text: String): String {

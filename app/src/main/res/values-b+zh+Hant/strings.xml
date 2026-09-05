@@ -37,7 +37,6 @@
     <string name="ui_tool_status_running">執行中</string>
     <string name="ui_tool_status_success">成功</string>
     <string name="ui_tool_status_failed">失敗</string>
-    <string name="ui_tool_status_failed_reason_interrupted">用戶中斷</string>
     <plurals name="ui_tool_chain_count">
         <item quantity="other">%d 個工具</item>
     </plurals>
@@ -91,7 +90,6 @@
     <string name="ui_settings_builtin_tools_summary">管理 Zafiro 提供的內建工具</string>
     <string name="ui_settings_skills">Skills</string>
     <string name="ui_settings_skills_summary">管理本地 Skills</string>
-    <string name="ui_settings_custom_py_tools_summary">管理自訂 Python 工具</string>
     <string name="skill_page_description">開啟或關閉本地 Skills。啟用後，Agent 可在對話中按需使用。</string>
     <string name="skill_loading">正在讀取 Skills...</string>
     <string name="skill_empty">目前沒有可用的 Skill。</string>
@@ -109,7 +107,6 @@
     <string name="skill_import_overwrite">覆蓋</string>
     <string name="skill_import_cancel">取消</string>
     <string name="skill_import_resolve_failed">無法存取所選文件夾</string>
-    <string name="skill_import_error">匯入失敗</string>
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">連接外部 MCP 服務與工具</string>
     <string name="ui_settings_takeover">接管規則</string>
@@ -139,7 +136,6 @@
     <string name="ui_settings_configure_description">調整模型連接、提示詞與代理設定。</string>
     <string name="ui_settings_configure_save">儲存設定</string>
     <string name="ui_settings_configure_prompt_label">提示詞</string>
-    <string name="ui_settings_configure_prompt_placeholder">你希望助理怎樣做？</string>
     <string name="prompt_editor_description">編輯 System Prompt。儲存後，變更會在下一次對話時生效。</string>
     <string name="prompt_error_load_failed">讀取提示詞失敗，請返回重試。</string>
     <string name="ui_settings_configure_proxy_label">代理</string>
@@ -213,9 +209,6 @@
     <string name="takeover_field_patterns_hint">天氣\n.*鬧鐘.*\n開啟.*</string>
     <string name="takeover_field_patterns_description">每行輸入一個關鍵字或正則表達式，只要符合其中一項，便會使用上方的接管方式。</string>
     <string name="takeover_save_action">儲存規則</string>
-    <string name="takeover_rule_enabled">已啟用</string>
-    <string name="takeover_rule_disabled">已停用</string>
-    <string name="takeover_rule_summary_more"> 等 %1$d 條</string>
     <string name="takeover_error_name_required">請輸入規則名稱</string>
     <string name="takeover_error_patterns_required">請輸入至少一條規則</string>
     <string name="takeover_error_load_failed_generic">讀取接管規則失敗</string>
@@ -226,7 +219,6 @@
     <string name="takeover_delete_dialog_title">刪除接管規則</string>
     <string name="takeover_delete_dialog_text">確定要刪除接管規則「%1$s」嗎？此操作不可撤銷。</string>
     <string name="takeover_error_delete_failed">刪除接管規則失敗：%1$s</string>
-    <string name="takeover_save_failed">儲存失敗：%1$s</string>
 
     <!-- Builtin Tool Module -->
     <string name="builtin_tool_page_description">開啟或關閉預設內建工具。啟用後，工具會在下一次對話時更新。</string>
@@ -337,8 +329,6 @@
     <string name="ui_settings_configure_endpoint_mismatch_cancel_keep">保留</string>
     <string name="ui_settings_configure_endpoint_mismatch_cancel_save">直接儲存</string>
     <string name="ui_settings_configure_protocol_hint">切換協議後，請確認端點與協議匹配。</string>
-    <string name="notif_network_error_title">網路異常</string>
-    <string name="notif_network_error_body">網路連線失敗，請檢查網路後重試</string>
     <string name="error_mcp_load_failed">讀取 MCP 配置失敗</string>
     <string name="error_mcp_save_failed">儲存 MCP 配置失敗</string>
     <string name="error_mcp_delete_failed">刪除 MCP 配置失敗</string>
@@ -360,9 +350,6 @@
     <string name="feedback_feature_template">## 功能建議\n\n## 使用場景\n\n## 預期效果</string>
     <string name="host_breeno_display_name">小布助手</string>
     <string name="host_xiaoai_display_name">小愛同學</string>
-    <string name="fallback_assistant_name">助手</string>
-    <string name="notif_unsupported_version_title">宿主版本未適配</string>
-    <string name="notif_unsupported_version_body">當前%1$s版本還未被 Zafiro 支援\n宿主版本：%2$s</string>
     <string name="feedback_bug_template">## 問題描述\n\n## 復現步驟\n\n## 預期行為\n\n## 實際行為\n\n## 設備資訊\n- Android 版本：\n- 助手（小布或其他）：\n- 模組版本：\n\n## 更多\n可以補充日誌、截圖錄屏等資訊，以便於我們理解</string>
 
     <string name="ui_settings_appearance">外觀</string>
