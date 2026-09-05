@@ -45,7 +45,7 @@ import kotlinx.serialization.json.put
  * 历史与请求装配：consecutive 同角色内容合并（Anthropic 同规则）；工具结果
  * 并入 user content（functionResponse part），可与用户文本共存。
  * 无集成测试（无真实 key，用户裁决 2026-08-18）：实现经代码走查 + fixture
- * 语义对照 pi google-generative-ai.ts。图片输入 M2 前不支持。
+ * 语义对照 pi google-generative-ai.ts。
  * Design source: pi api/google-generative-ai.ts + google-shared.ts。
  */
 class GeminiProtocol(
@@ -218,7 +218,7 @@ class GeminiProtocol(
                     block.signature?.let { put("thoughtSignature", it) }
                 }
 
-                is ContentBlock.Image -> null  // M2 前不支持（user 侧已抛错），防御忽略
+                is ContentBlock.Image -> null  // assistant 不携带图片，防御忽略
             }
         }
 

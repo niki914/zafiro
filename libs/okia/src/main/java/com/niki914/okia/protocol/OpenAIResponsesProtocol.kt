@@ -233,11 +233,11 @@ class OpenAIResponsesProtocol(
                     val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
                     put("output", buildJsonArray {
                         add(buildJsonObject {
-                            put("type", "text")
+                            put("type", "input_text")
                             put("text", message.outcome.providerContent())
                         })
                         add(buildJsonObject {
-                            put("type", "output_image")
+                            put("type", "input_image")
                             put("image_url", dataUrl)
                         })
                     })
@@ -298,7 +298,7 @@ class OpenAIResponsesProtocol(
         val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
         return buildJsonArray {
             add(buildJsonObject {
-                put("type", "text")
+                put("type", "input_text")
                 put("text", text)
             })
             add(buildJsonObject {

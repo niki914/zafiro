@@ -36,7 +36,6 @@ import kotlinx.serialization.json.put
  *   tool_result 块（assistant tool_use 之后紧随一个 user 消息携带全部结果）
  * - thinking 块历史回带必须带 signature；无 signature 的思考转文本
  * - 认证走 x-api-key 头 + 固定 anthropic-version 头
- * 图片输入 M2 前不支持（与 OpenAI 协议一致，抛 IllegalStateException）。
  * Design source: pi api/anthropic-messages.ts；实测 DeepSeek Anthropic 网关
  * 字节流（thinking/tool_use/usage/stop_reason 全形态）。
  */
@@ -234,7 +233,7 @@ class AnthropicMessagesProtocol(
                     put("input", parseArguments(block.argumentsJson))
                 }
 
-                is ContentBlock.Image -> null  // M2 前不支持，user 侧已先行抛错；此处防御忽略
+                is ContentBlock.Image -> null  // assistant 不携带图片，防御忽略
             }
         }
 

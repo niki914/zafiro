@@ -33,7 +33,7 @@ data class OkiaConfig(
     val httpEngine: HttpEngine?,
     val imageLoader: ImageLoader? = null,
     val imageSaver: ImageSaver? = null,
-    val supportsImages: Boolean = true
+    val supportsImages: Boolean = false
 ) {
 
     // apiKey 与敏感 header 值脱敏；mcpServers 内 header 由 McpServer.toString 自行脱敏
@@ -64,7 +64,7 @@ data class OkiaConfig(
         var httpEngine: HttpEngine? = null
         var imageLoader: ImageLoader? = null
         var imageSaver: ImageSaver? = null
-        var supportsImages: Boolean = true
+        var supportsImages: Boolean = false
 
         // 组装不可变配置快照
         fun build(): OkiaConfig = OkiaConfig(

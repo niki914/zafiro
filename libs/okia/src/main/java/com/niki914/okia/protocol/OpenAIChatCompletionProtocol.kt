@@ -137,7 +137,7 @@ class OpenAIChatCompletionProtocol(
                         put("content", it)
                     })
                 }
-                history.forEach { message -> convertMessage(snapshot, message)?.let { add(it) } }
+                history.forEach { message -> convertMessages(snapshot, message).forEach { add(it) } }
             })
             put("stream", true)
             put("stream_options", buildJsonObject { put("include_usage", true) })
@@ -155,8 +155,9 @@ class OpenAIChatCompletionProtocol(
             }
         }
 
-    private fun convertMessage(snapshot: RequestSnapshot, message: Message): JsonObject? = when (message) {
-        is Message.User -> buildJsonObject {
+    /** 一条历史消息 → 0..n 条 Chat Completions 消息（ToolResult 带图可产两条）。 */
+    private fun convertMessages(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
+        is Message.User -> listOf(buildJsonObject {
             put("role", "user")
             val content = userContent(snapshot, message.content)
             if (content is JsonPrimitive) {
@@ -164,33 +165,41 @@ class OpenAIChatCompletionProtocol(
             } else {
                 put("content", content)
             }
-        }
+        })
 
-        is Message.Assistant -> convertAssistant(message.message)
-        is Message.ToolResult -> buildJsonObject {
+        is Message.Assistant -> listOfNotNull(convertAssistant(message.message))
+        is Message.ToolResult -> toolResultMessages(snapshot, message)
+    }
+
+    /**
+     * ToolResult → Chat Completions 消息。OpenAI tool 角色 content 只接受字符串，
+     * 不支持图片 content part（规范限制；pi 同：openai-completions.ts 把工具结果
+     * 图片拆到独立的 user 消息）。图片加载失败 / 不支持时退回单条 tool 字符串消息。
+     */
+    private fun toolResultMessages(snapshot: RequestSnapshot, message: Message.ToolResult): List<JsonObject> {
+        val toolMessage = buildJsonObject {
             put("role", "tool")
             put("tool_call_id", message.callId)
-            val image = (message.outcome as? ToolCallOutcome.Success)?.image
-            if (image != null && snapshot.supportsImages) {
-                val loader = snapshot.imageLoader
-                val bytes: ByteArray? = loader?.load(image.path)
-                if (bytes != null) {
-                    val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
-                    put("content", buildJsonArray {
-                        add(buildJsonObject {
-                            put("type", "text")
-                            put("text", message.outcome.providerContent())
-                        })
-                        add(buildJsonObject {
-                            put("type", "image_url")
-                            put("image_url", buildJsonObject { put("url", dataUrl) })
-                        })
-                    })
-                    return@buildJsonObject
-                }
-            }
             put("content", message.outcome.providerContent())
         }
+        val image = (message.outcome as? ToolCallOutcome.Success)?.image ?: return listOf(toolMessage)
+        if (!snapshot.supportsImages) return listOf(toolMessage)
+        val loader = snapshot.imageLoader
+        val bytes = loader?.load(image.path) ?: return listOf(toolMessage)
+        val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
+        return listOf(toolMessage, buildJsonObject {
+            put("role", "user")
+            put("content", buildJsonArray {
+                add(buildJsonObject {
+                    put("type", "text")
+                    put("text", "Attached image(s) from tool result:")
+                })
+                add(buildJsonObject {
+                    put("type", "image_url")
+                    put("image_url", buildJsonObject { put("url", dataUrl) })
+                })
+            })
+        })
     }
 
     private fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
