@@ -2,13 +2,19 @@ package com.niki914.zafiro.app
 
 import android.app.ActivityManager
 import android.app.Application
+import android.content.Context
+import android.provider.Settings
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
+import com.niki914.zafiro.app.overlay.ToolPermissionOverlay
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionRequest
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionResponse
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.runtime.createAppRuntimeBridge
@@ -53,6 +59,43 @@ class App : Application() {
         applicationScope.launch {
             PyRuntime.warmUp()
         }
+
+        ToolPermissionCoordinator.backgroundConfirmationHandler = { request ->
+            handleBackgroundConfirmation(this, request)
+        }
+    }
+
+    private suspend fun handleBackgroundConfirmation(
+        context: Context,
+        request: ToolPermissionRequest,
+    ): ToolPermissionResponse {
+        if (!Settings.canDrawOverlays(context)) {
+            if (!grantOverlayPermissionViaRoot(context)) {
+                return ToolPermissionResponse.DENIED_UNAVAILABLE
+            }
+        }
+        // 窗口加不上（权限被收回等）≠ 用户拒绝：失败走 DENIED_UNAVAILABLE
+        val allowed = try {
+            ToolPermissionOverlay.show(context, request)
+        } catch (_: Throwable) {
+            return ToolPermissionResponse.DENIED_UNAVAILABLE
+        }
+        return if (allowed) {
+            ToolPermissionResponse.ALLOWED
+        } else {
+            ToolPermissionResponse.DENIED_BY_USER
+        }
+    }
+
+    private fun grantOverlayPermissionViaRoot(context: Context): Boolean {
+        return try {
+            val proc = Runtime.getRuntime().exec(
+                arrayOf("su", "-c", "appops set ${context.packageName} SYSTEM_ALERT_WINDOW allow")
+            )
+            proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS) && proc.exitValue() == 0
+        } catch (_: Exception) {
+            false
+        } && Settings.canDrawOverlays(context)
     }
 
     private fun isPythonWorkerProcess(): Boolean {
@@ -62,4 +105,5 @@ class App : Application() {
         ActivityManager.getMyMemoryState(info)
         return info.processName == "$packageName:python"
     }
+
 }
