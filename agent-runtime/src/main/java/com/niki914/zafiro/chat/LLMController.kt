@@ -612,6 +612,9 @@ object LLMController {
             toolRegistry = this@LLMController.toolRegistry
             imageLoader = this@LLMController.imageLoader
             imageSaver = saver
+            // 图片功能入口：loader 就绪即打开（Android 层 ingest 管线保证协议侧
+            // 拿到的图片已转码为 JPEG q80 小图，请求体安全）
+            supportsImages = imageLoader != null
         }
     }
 

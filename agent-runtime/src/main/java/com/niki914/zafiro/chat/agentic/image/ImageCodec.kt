@@ -110,36 +110,42 @@ internal class ImageCodec(private val context: Context) {
         val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
             ?: return IngestResult.Err(IngestError.DecodeFailed(null))
 
-        return try {
+        // 4-6 统一 try/finally：单一所有者 work，任何一步抛异常都在 finally 回收，
+        // 不泄漏中间位图（缩放 / 拍底各产生一个新 bitmap，旧图立即交接）
+        var work: Bitmap = decoded
+        var result: IngestResult
+        try {
             // 4. 精确缩放（inSampleSize 只保证粗缩）
-            val scaled = if (decoded.width != targetW || decoded.height != targetH) {
-                Bitmap.createScaledBitmap(decoded, targetW, targetH, true).also {
-                    if (it !== decoded) decoded.recycle()
-                }
-            } else decoded
+            if (work.width != targetW || work.height != targetH) {
+                val scaled = Bitmap.createScaledBitmap(work, targetW, targetH, true)
+                if (scaled !== work) work.recycle()
+                work = scaled
+            }
 
             // 5. JPEG q80 编码（alpha 拍白底：JPEG 无透明通道，直接压缩会按黑底合成）
-            val target = if (scaled.hasAlpha()) {
-                Bitmap.createBitmap(scaled.width, scaled.height, Bitmap.Config.ARGB_8888).also { flattened ->
-                    Canvas(flattened).apply {
+            if (work.hasAlpha()) {
+                val flattened = Bitmap.createBitmap(work.width, work.height, Bitmap.Config.ARGB_8888).also { out ->
+                    Canvas(out).apply {
                         drawColor(Color.WHITE)
-                        drawBitmap(scaled, 0f, 0f, null)
+                        drawBitmap(work, 0f, 0f, null)
                     }
-                    scaled.recycle()
                 }
-            } else scaled
-            val outBytes = ByteArrayOutputStream(minOf(target.width * target.height / 4, 2 * 1024 * 1024).coerceAtLeast(32 * 1024)).use { bos ->
-                target.compress(Bitmap.CompressFormat.JPEG, 80, bos)
+                work.recycle()
+                work = flattened
+            }
+            val outBytes = ByteArrayOutputStream(minOf(work.width * work.height / 4, 2 * 1024 * 1024).coerceAtLeast(32 * 1024)).use { bos ->
+                work.compress(Bitmap.CompressFormat.JPEG, 80, bos)
                 bos.toByteArray()
             }
-            target.recycle()
 
             // 6. 落盘
-            IngestResult.Ok(persistJpeg(outBytes, targetW, targetH))
+            result = IngestResult.Ok(persistJpeg(outBytes, targetW, targetH))
         } catch (e: Exception) {
-            decoded.recycle()
-            IngestResult.Err(IngestError.DecodeFailed(e))
+            result = IngestResult.Err(IngestError.DecodeFailed(e))
+        } finally {
+            if (!work.isRecycled) work.recycle()
         }
+        return result
     }
 
     private fun ingestSvg(raw: ByteArray): IngestResult {
@@ -157,11 +163,16 @@ internal class ImageCodec(private val context: Context) {
             val (targetW, targetH) = ImageFormat.targetSize(srcW.toInt(), srcH.toInt())
 
             val bitmap = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            canvas.drawColor(Color.WHITE)
-            svg.documentWidth = targetW.toFloat()
-            svg.documentHeight = targetH.toFloat()
-            svg.renderToCanvas(canvas)
+            try {
+                val canvas = Canvas(bitmap)
+                canvas.drawColor(Color.WHITE)
+                svg.documentWidth = targetW.toFloat()
+                svg.documentHeight = targetH.toFloat()
+                svg.renderToCanvas(canvas)
+            } catch (e: Throwable) {
+                bitmap.recycle()
+                throw e
+            }
 
             val outBytes = ByteArrayOutputStream(targetW * targetH / 4).use { bos ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)

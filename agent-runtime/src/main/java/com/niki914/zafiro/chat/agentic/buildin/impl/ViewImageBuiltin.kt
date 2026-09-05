@@ -66,7 +66,8 @@ Returns the normalized file path if the image was ingested successfully, or an e
 
         val codec = ensureCodec() ?: return BuiltinToolResult.failure(
             code = "CODEC_UNAVAILABLE",
-            message = "Image codec is not available."
+            message = "Image codec is not available.",
+            hint = "Application context is not initialized yet. Retry later."
         )
         return when (val result = codec.ingestFile(path)) {
             is IngestResult.Ok -> BuiltinToolResult.success(
@@ -89,9 +90,12 @@ Returns the normalized file path if the image was ingested successfully, or an e
                 val (code, message) = result.error.toToolError()
                 val hint = when (result.error) {
                     IngestError.FileNotFound -> "The file may have been deleted. Ask the user to share or download it again."
+                    IngestError.EmptyContent -> "The file is empty. Check the source and re-download it."
                     is IngestError.TooLarge -> "Try a smaller image or compress it first."
                     IngestError.UnsupportedFormat -> "Convert the image to JPEG or PNG first."
-                    else -> ""
+                    is IngestError.DecodeFailed -> "The file exists but is not a decodable image. Verify the file is complete and is an actual image."
+                    is IngestError.IoFailed -> "The file could not be read. Check permissions and retry."
+                    is IngestError.SvgRenderFailed -> "The SVG is invalid or too complex to render. Verify the SVG content."
                 }
                 BuiltinToolResult.failure(
                     code = code,
