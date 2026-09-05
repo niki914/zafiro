@@ -7,6 +7,7 @@ import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
+import kotlin.io.encoding.Base64
 
 /**
  * 一种 LLM API 方言：构建请求并解析流。传输在库外，测试用 SseLine 流
@@ -51,4 +52,28 @@ interface ChatProtocol {
 
     // 协议兼容性事实
     val compat: Compat
+}
+
+/**
+ * 工具结果图片逐张加载：成功 → (dataUrl, mimeType)，失败 → 文本注记。
+ * 逐张降级（部分成功照发，失败进注记），注记由调用方拼进工具结果文本。
+ * 共享于三协议的 tool result 图片编码。
+ */
+internal suspend fun loadToolImages(
+    snapshot: RequestSnapshot,
+    images: List<ContentBlock.Image>
+): Pair<List<Pair<String, String>>, String> {
+    if (images.isEmpty() || !snapshot.supportsImages) return emptyList<Pair<String, String>>() to ""
+    val loader = snapshot.imageLoader ?: return emptyList<Pair<String, String>>() to ""
+    val loaded = mutableListOf<Pair<String, String>>()
+    val notes = mutableListOf<String>()
+    for (image in images) {
+        val bytes = loader.load(image.path)
+        if (bytes != null) {
+            loaded += "data:${image.mimeType};base64,${Base64.encode(bytes)}" to image.mimeType
+        } else {
+            notes += "[image omitted: file not found]"
+        }
+    }
+    return loaded to notes.joinToString("\n")
 }

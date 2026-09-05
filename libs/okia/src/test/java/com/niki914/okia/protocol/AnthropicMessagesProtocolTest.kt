@@ -1,5 +1,6 @@
 package com.niki914.okia.protocol
 
+import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -542,5 +543,63 @@ class AnthropicMessagesProtocolTest {
             Message.ToolResult("toolu_1", "tool-a", outcome),
             protocol.encodeToolResult(call, outcome)
         )
+    }
+
+    // ── 工具结果多图 ────────────────────────────────────────────────
+
+    private fun loaderOf(vararg missing: String) = ImageLoader { path ->
+        if (path in missing) null else path.toByteArray()
+    }
+
+    @Test
+    fun toolResultEncodesAllImagesAsImageBlocks() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(supportsImages = true, imageLoader = loaderOf()),
+            listOf(
+                toolResult(
+                    "toolu_1",
+                    ToolCallOutcome.Success(
+                        "two shots",
+                        images = listOf(
+                            ContentBlock.Image("/a.png", "image/png"),
+                            ContentBlock.Image("/b.png", "image/png")
+                        )
+                    )
+                )
+            )
+        )
+        val blocks = messagesOf(request).single()["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals("tool_result", blocks[0]["type"]!!.jsonPrimitive.content)
+        val content = blocks[0]["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(3, content.size)  // text + 2 image
+        assertEquals("text", content[0]["type"]!!.jsonPrimitive.content)
+        assertEquals("image", content[1]["type"]!!.jsonPrimitive.content)
+        assertEquals("image", content[2]["type"]!!.jsonPrimitive.content)
+        assertEquals("image/png", content[2]["source"]!!.jsonObject["media_type"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun toolResultImageLoadFailureBecomesTextNote() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(supportsImages = true, imageLoader = loaderOf("/gone.png")),
+            listOf(
+                toolResult(
+                    "toolu_1",
+                    ToolCallOutcome.Success(
+                        "ok",
+                        images = listOf(
+                            ContentBlock.Image("/alive.png", "image/png"),
+                            ContentBlock.Image("/gone.png", "image/png")
+                        )
+                    )
+                )
+            )
+        )
+        val blocks = messagesOf(request).single()["content"]!!.jsonArray.map { it.jsonObject }
+        val content = blocks[0]["content"]!!.jsonArray.map { it.jsonObject }
+        // 逐张降级：text（含注记）+ 1 张成功图
+        assertEquals(2, content.size)
+        assertTrue(content[0]["text"]!!.jsonPrimitive.content.contains("[image omitted"))
+        assertEquals("image", content[1]["type"]!!.jsonPrimitive.content)
     }
 }

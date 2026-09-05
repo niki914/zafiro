@@ -238,37 +238,42 @@ class AnthropicMessagesProtocol(
         }
 
     private suspend fun toolResultBlock(snapshot: RequestSnapshot, result: Message.ToolResult): JsonObject {
-        val image = (result.outcome as? ToolCallOutcome.Success)?.image
-        if (image != null && snapshot.supportsImages) {
-            val loader = snapshot.imageLoader
-            val bytes = loader?.load(image.path)
-            if (bytes != null) {
-                val base64 = Base64.encode(bytes)
-                return buildJsonObject {
-                    put("type", "tool_result")
-                    put("tool_use_id", result.callId)
-                    put("content", buildJsonArray {
-                        add(buildJsonObject {
-                            put("type", "text")
-                            put("text", result.outcome.providerContent())
-                        })
+        val images = (result.outcome as? ToolCallOutcome.Success)?.images.orEmpty()
+        val (loaded, notes) = loadToolImages(snapshot, images)
+        val text = buildString {
+            append(result.outcome.providerContent())
+            if (notes.isNotEmpty()) {
+                if (isNotEmpty()) append("\n")
+                append(notes)
+            }
+        }
+        if (loaded.isNotEmpty()) {
+            return buildJsonObject {
+                put("type", "tool_result")
+                put("tool_use_id", result.callId)
+                put("content", buildJsonArray {
+                    add(buildJsonObject {
+                        put("type", "text")
+                        put("text", text)
+                    })
+                    loaded.forEach { (dataUrl, mimeType) ->
                         add(buildJsonObject {
                             put("type", "image")
                             put("source", buildJsonObject {
                                 put("type", "base64")
-                                put("media_type", image.mimeType)
-                                put("data", base64)
+                                put("media_type", mimeType)
+                                put("data", dataUrl.substringAfter("base64,"))
                             })
                         })
-                    })
-                    if (result.outcome.isProviderError()) put("is_error", true)
-                }
+                    }
+                })
+                if (result.outcome.isProviderError()) put("is_error", true)
             }
         }
         return buildJsonObject {
             put("type", "tool_result")
             put("tool_use_id", result.callId)
-            put("content", result.outcome.providerContent())
+            put("content", text)
             if (result.outcome.isProviderError()) put("is_error", true)
         }
     }

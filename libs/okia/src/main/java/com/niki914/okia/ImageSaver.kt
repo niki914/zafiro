@@ -8,5 +8,5 @@ package com.niki914.okia
  * 统一存储路径：filesDir/Zafiro/images/（私有，零权限），SHA-256 内容哈希命名。
  */
 fun interface ImageSaver {
-    suspend fun save(base64: String, mimeType: String): String?
+    suspend fun save(base64: String): String?
 }

@@ -225,26 +225,31 @@ class OpenAIResponsesProtocol(
         is Message.ToolResult -> listOf(buildJsonObject {
             put("type", "function_call_output")
             put("call_id", message.callId)
-            val image = (message.outcome as? ToolCallOutcome.Success)?.image
-            if (image != null && snapshot.supportsImages) {
-                val loader = snapshot.imageLoader
-                val bytes = loader?.load(image.path)
-                if (bytes != null) {
-                    val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
-                    put("output", buildJsonArray {
-                        add(buildJsonObject {
-                            put("type", "input_text")
-                            put("text", message.outcome.providerContent())
-                        })
+            val images = (message.outcome as? ToolCallOutcome.Success)?.images.orEmpty()
+            val (loaded, notes) = loadToolImages(snapshot, images)
+            val text = buildString {
+                append(message.outcome.providerContent())
+                if (notes.isNotEmpty()) {
+                    if (isNotEmpty()) append("\n")
+                    append(notes)
+                }
+            }
+            if (loaded.isNotEmpty()) {
+                put("output", buildJsonArray {
+                    add(buildJsonObject {
+                        put("type", "input_text")
+                        put("text", text)
+                    })
+                    loaded.forEach { (dataUrl, _) ->
                         add(buildJsonObject {
                             put("type", "input_image")
                             put("image_url", dataUrl)
                         })
-                    })
-                    return@buildJsonObject
-                }
+                    }
+                })
+            } else {
+                put("output", text)
             }
-            put("output", message.outcome.providerContent())
         })
     }
 

@@ -54,7 +54,8 @@ class McpExecutor(
                 ?: return ToolCallOutcome.Failure("MCP server not found: $serverName")
             val result = client.callTool(server, toolName, call.argumentsJson)
             val textContent = StringBuilder()
-            var imageBlock: ContentBlock.Image? = null
+            val images = mutableListOf<ContentBlock.Image>()
+            val saveFailures = mutableListOf<String>()
             for (block in result.content) {
                 when (block) {
                     is McpContentBlock.Text -> {
@@ -63,11 +64,15 @@ class McpExecutor(
                     }
                     is McpContentBlock.Image -> {
                         val saver = imageSaver
-                        if (saver != null && imageBlock == null) {
-                            // TODO: 当前 ToolCallOutcome.Success 仅承载单图，多图仅取第一张，其余静默丢弃
-                            val path = saver.save(block.data, block.mimeType)
+                        if (saver == null) {
+                            // host 未启用图片功能：维持旧行为，静默丢弃
+                        } else {
+                            val path = saver.save(block.data)
                             if (path != null) {
-                                imageBlock = ContentBlock.Image(path, block.mimeType)
+                                images += ContentBlock.Image(path, block.mimeType)
+                            } else {
+                                // 存图失败不毁工具结果：注记进文本，模型可见
+                                saveFailures += "[image omitted: save failed (${block.mimeType})]"
                             }
                         }
                     }
@@ -79,8 +84,10 @@ class McpExecutor(
                     content = textContent.toString().ifEmpty { null })
             } else {
                 ToolCallOutcome.Success(
-                    content = textContent.toString(),
-                    image = imageBlock
+                    content = (listOf(textContent.toString()) + saveFailures)
+                        .filter { it.isNotEmpty() }
+                        .joinToString("\n"),
+                    images = images
                 )
             }
         } catch (e: CancellationException) {

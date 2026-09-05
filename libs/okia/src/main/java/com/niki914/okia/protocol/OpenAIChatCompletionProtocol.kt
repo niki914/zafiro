@@ -177,16 +177,22 @@ class OpenAIChatCompletionProtocol(
      * 图片拆到独立的 user 消息）。图片加载失败 / 不支持时退回单条 tool 字符串消息。
      */
     private suspend fun toolResultMessages(snapshot: RequestSnapshot, message: Message.ToolResult): List<JsonObject> {
+        val images = (message.outcome as? ToolCallOutcome.Success)?.images.orEmpty()
+        val (loaded, notes) = loadToolImages(snapshot, images)
+        // 注记拼进 tool 消息文本（文本本来的家）；后续 user 消息保持纯图
+        val text = buildString {
+            append(message.outcome.providerContent())
+            if (notes.isNotEmpty()) {
+                if (isNotEmpty()) append("\n")
+                append(notes)
+            }
+        }
         val toolMessage = buildJsonObject {
             put("role", "tool")
             put("tool_call_id", message.callId)
-            put("content", message.outcome.providerContent())
+            put("content", text)
         }
-        val image = (message.outcome as? ToolCallOutcome.Success)?.image ?: return listOf(toolMessage)
-        if (!snapshot.supportsImages) return listOf(toolMessage)
-        val loader = snapshot.imageLoader
-        val bytes = loader?.load(image.path) ?: return listOf(toolMessage)
-        val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
+        if (loaded.isEmpty()) return listOf(toolMessage)
         return listOf(toolMessage, buildJsonObject {
             put("role", "user")
             put("content", buildJsonArray {
@@ -194,10 +200,12 @@ class OpenAIChatCompletionProtocol(
                     put("type", "text")
                     put("text", "Attached image(s) from tool result:")
                 })
-                add(buildJsonObject {
-                    put("type", "image_url")
-                    put("image_url", buildJsonObject { put("url", dataUrl) })
-                })
+                loaded.forEach { (dataUrl, _) ->
+                    add(buildJsonObject {
+                        put("type", "image_url")
+                        put("image_url", buildJsonObject { put("url", dataUrl) })
+                    })
+                }
             })
         })
     }
