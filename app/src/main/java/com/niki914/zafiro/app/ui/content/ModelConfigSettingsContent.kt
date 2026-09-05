@@ -7,39 +7,36 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
-import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsListPageContent
+import com.niki914.uikit.infra.component.SettingNavigationItem
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureIntent
 import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureViewModel
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
-import kotlinx.coroutines.delay
 
 /**
- * Model Configuration 一级页：System Prompt（防抖自动保存）+ Saved Configuration 列表。
- * 编辑/新建走 SavedConfigDetailPage 二级页。
+ * Model Configuration 一级页：System Prompt 卡片（点击进整页编辑）+ Saved Configuration 列表。
+ * 编辑/新建走 SavedConfigDetailPage 二级页，Prompt 编辑走 PromptEditPage 二级页。
  */
 @Composable
 fun ModelConfigSettingsContent(
     onBack: () -> Unit,
     onOpenProviderPick: () -> Unit,
     onOpenConfigDetail: (configId: String, configName: String) -> Unit,
+    onOpenPromptEdit: () -> Unit,
 ) {
     val viewModel = pageViewModel<ConfigureViewModel>(
         key = "settings-configure",
     )
     val uiState by viewModel.uiStateFlow.collectAsState()
     var pendingDeleteConfigId by rememberSaveable { mutableStateOf<String?>(null) }
-    // 首次加载 document.prompt 时不触发自动保存
-    var promptLoadSettled by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.sendIntent(
@@ -47,16 +44,6 @@ fun ModelConfigSettingsContent(
                 scene = ConfigureScene.SettingsEdit,
             ),
         )
-    }
-
-    // prompt 防抖自动保存：停止输入 500ms 后持久化
-    LaunchedEffect(uiState.promptInput) {
-        if (!promptLoadSettled) {
-            promptLoadSettled = true
-            return@LaunchedEffect
-        }
-        delay(PROMPT_AUTO_SAVE_DEBOUNCE_MILLIS)
-        viewModel.sendIntent(ConfigureIntent.SavePrompt)
     }
 
     EditableSettingsDetailChrome(
@@ -71,19 +58,10 @@ fun ModelConfigSettingsContent(
     ) {
         SettingsListPageContent {
             SettingsGroupCard {
-                var promptExpanded by rememberSaveable { mutableStateOf(false) }
-                SettingExpandableTextItem(
+                SettingNavigationItem(
                     title = stringResource(R.string.ui_settings_configure_prompt_label),
-                    value = uiState.promptInput,
-                    onValueChange = { value ->
-                        viewModel.sendIntent(ConfigureIntent.UpdatePrompt(value))
-                    },
-                    placeholder = stringResource(R.string.ui_settings_configure_prompt_placeholder),
-                    description = null,
-                    minLines = 3,
-                    maxLines = 8,
-                    expanded = promptExpanded,
-                    onExpandedChange = { promptExpanded = it },
+                    summary = null,
+                    onClick = onOpenPromptEdit,
                 )
             }
 
@@ -123,5 +101,3 @@ fun ModelConfigSettingsContent(
         },
     )
 }
-
-private const val PROMPT_AUTO_SAVE_DEBOUNCE_MILLIS = 500L

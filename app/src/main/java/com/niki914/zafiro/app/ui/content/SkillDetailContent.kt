@@ -1,26 +1,11 @@
 package com.niki914.zafiro.app.ui.content
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
-import com.niki914.uikit.infra.component.PageDescriptionText
-import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
-import com.niki914.uikit.infra.component.TintLiquidButton
-import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.SkillDeleteConfirmationState
@@ -105,74 +90,15 @@ private fun SkillDetailContentBody(
     val detailLoaded = uiState.formState.skillId.isNotBlank() &&
             uiState.inlineError !is SkillInlineError.LoadFailed
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = SettingsDetailPageDefaults.HorizontalPadding)
-                .padding(
-                    top = liquidScreenTopPadding(SettingsDetailPageDefaults.VerticalPadding),
-                    bottom = SettingsDetailPageDefaults.VerticalPadding +
-                            SettingsDetailPageDefaults.RootVerticalSpacing +
-                            SettingsDetailPageDefaults.ActionButtonReservedHeight,
-                ),
-            verticalArrangement = Arrangement.spacedBy(
-                SettingsDetailPageDefaults.ContentVerticalSpacing,
-            ),
-        ) {
-            PageDescriptionText(text = stringResource(R.string.skill_editor_description))
-            SkillContentEditor(
-                value = uiState.formState.content,
-                enabled = detailLoaded && !uiState.isSaving && !uiState.isLoading,
-                onValueChange = onContentChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            )
-            skillInlineErrorText(uiState.inlineError)?.let { errorText ->
-                Text(
-                    text = errorText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(
-                        horizontal = SettingsDetailPageDefaults.InlineErrorHorizontalPadding,
-                    ),
-                )
-            }
-        }
-
-        TintLiquidButton(
-            text = stringResource(R.string.skill_save_action),
-            enabled = detailLoaded && !uiState.isSaving && !uiState.isLoading,
-            isLoading = uiState.isSaving,
-            onClick = onSave,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(
-                    start = SettingsDetailPageDefaults.HorizontalPadding,
-                    end = SettingsDetailPageDefaults.HorizontalPadding,
-                    bottom = SettingsDetailPageDefaults.VerticalPadding,
-                ),
-        )
-    }
-}
-
-@Composable
-private fun SkillContentEditor(
-    value: String,
-    enabled: Boolean,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    TextField(
-        value = value,
-        onValueChange = onValueChange,
-        enabled = enabled,
-        textStyle = MaterialTheme.typography.bodyMedium,
-        modifier = modifier,
+    FullScreenContentEditor(
+        description = stringResource(R.string.skill_editor_description),
+        value = uiState.formState.content,
+        enabled = detailLoaded && !uiState.isSaving && !uiState.isLoading,
+        onValueChange = onContentChange,
+        actionText = stringResource(R.string.skill_save_action),
+        onActionClick = onSave,
+        actionLoading = uiState.isSaving,
+        inlineErrorText = skillInlineErrorText(uiState.inlineError),
     )
 }
 

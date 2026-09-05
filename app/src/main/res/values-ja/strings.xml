@@ -140,6 +140,8 @@
     <string name="ui_settings_configure_save">設定を保存</string>
     <string name="ui_settings_configure_prompt_label">プロンプト</string>
     <string name="ui_settings_configure_prompt_placeholder">アシスタントにどのような振る舞いをさせますか？</string>
+    <string name="prompt_editor_description">システムプロンプトを編集します。保存された変更は次回の会話から反映されます。</string>
+    <string name="prompt_error_load_failed">プロンプトの読み込みに失敗しました。戻って再試行してください。</string>
     <string name="ui_settings_configure_proxy_label">プロキシ</string>
     <string name="ui_settings_configure_proxy_placeholder">例：http://127.0.0.1:7890</string>
     <string name="ui_settings_configure_error_required">必須項目を入力してください</string>
