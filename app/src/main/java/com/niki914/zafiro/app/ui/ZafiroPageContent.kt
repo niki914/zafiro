@@ -15,6 +15,7 @@ import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
+import com.niki914.zafiro.app.ui.nav.PromptEditPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsHomePage
@@ -32,6 +33,7 @@ import com.niki914.zafiro.app.ui.route.ExecutionRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.HomePageRoute
 import com.niki914.zafiro.app.ui.route.McpServerDetailRoute
 import com.niki914.zafiro.app.ui.route.ProviderPickPageRoute
+import com.niki914.zafiro.app.ui.route.PromptEditRoute
 import com.niki914.zafiro.app.ui.route.SavedConfigDetailRoute
 import com.niki914.zafiro.app.ui.route.SettingsDetailPageRoute
 import com.niki914.zafiro.app.ui.route.SettingsHomePageRoute
@@ -116,6 +118,10 @@ fun ZafiroPageContent(
         is SettingsDetailPage -> SettingsDetailPageRoute(
             page = page,
             onPush = onPush,
+            onBack = onPop,
+        )
+
+        PromptEditPage -> PromptEditRoute(
             onBack = onPop,
         )
 

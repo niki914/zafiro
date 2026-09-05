@@ -46,8 +46,6 @@ data class ConfigureUiState(
     @param:StringRes val endpointErrorResId: Int? = null,
     @param:StringRes val modelErrorResId: Int? = null,
     @param:StringRes val apiKeyErrorResId: Int? = null,
-    /** 全局 system prompt（页面级，不随 saved config 切换）。 */
-    val promptInput: String = "",
     val proxyInput: String = "",
     @param:StringRes val proxyErrorResId: Int? = null,
     val isSaving: Boolean = false,
@@ -67,7 +65,6 @@ data class ConfigureSnapshot(
     val apiKey: String,
     val protocolWireId: String,
     val proxy: String,
-    val prompt: String,
 )
 
 val ConfigureUiState.hasUnsavedChanges: Boolean
@@ -100,10 +97,6 @@ sealed interface ConfigureIntent {
     data class UpdateModel(val value: String) : ConfigureIntent
     data class UpdateApiKey(val value: String) : ConfigureIntent
     data class SelectProtocol(val wireId: String) : ConfigureIntent
-    data class UpdatePrompt(val value: String) : ConfigureIntent
-
-    /** 仅持久化全局 prompt（列表页防抖自动保存）。 */
-    data object SavePrompt : ConfigureIntent
     data class UpdateProxy(val value: String) : ConfigureIntent
     data object ToggleApiKeyVisibility : ConfigureIntent
     data class ActivateConfig(val configId: String) : ConfigureIntent
@@ -146,7 +139,6 @@ internal data class ConfigureViewModelDependencies(
     val upsertConfig: suspend (SavedLlmConfig) -> String?,
     val deleteConfig: suspend (String) -> Unit,
     val setActiveConfig: suspend (String) -> Unit,
-    val saveGlobalPrompt: suspend (String) -> Unit,
 ) {
     companion object {
         val Default = ConfigureViewModelDependencies(
@@ -154,7 +146,6 @@ internal data class ConfigureViewModelDependencies(
             upsertConfig = { XRepo.llmConfigs.upsert(it) },
             deleteConfig = { XRepo.llmConfigs.delete(it) },
             setActiveConfig = { XRepo.llmConfigs.setActive(it) },
-            saveGlobalPrompt = { XRepo.llmConfigs.savePrompt(it) },
         )
     }
 }
@@ -195,10 +186,6 @@ class ConfigureViewModel internal constructor(
 
             is ConfigureIntent.SelectProtocol -> handleProtocolSwitch(intent.wireId)
 
-            is ConfigureIntent.UpdatePrompt -> updateState {
-                copy(promptInput = intent.value)
-            }
-
             is ConfigureIntent.UpdateProxy -> updateState {
                 copy(proxyInput = intent.value, proxyErrorResId = null, inlineError = null)
             }
@@ -210,7 +197,6 @@ class ConfigureViewModel internal constructor(
             is ConfigureIntent.ActivateConfig -> activateConfig(intent.configId)
             is ConfigureIntent.DeleteConfig -> deleteConfig(intent.configId)
             ConfigureIntent.Save -> handleSave()
-            ConfigureIntent.SavePrompt -> savePromptOnly()
             ConfigureIntent.ConfirmEndpointMismatch -> confirmEndpointMismatch()
             ConfigureIntent.CancelEndpointMismatch -> cancelEndpointMismatch()
         }
@@ -283,7 +269,6 @@ class ConfigureViewModel internal constructor(
                 endpointErrorResId = null,
                 modelErrorResId = null,
                 apiKeyErrorResId = null,
-                promptInput = document.prompt,
                 proxyInput = "",
                 proxyErrorResId = null,
                 isSaving = false,
@@ -315,7 +300,6 @@ class ConfigureViewModel internal constructor(
                 endpointErrorResId = null,
                 modelErrorResId = null,
                 apiKeyErrorResId = null,
-                promptInput = document.prompt,
                 proxyInput = "",
                 proxyErrorResId = null,
                 isSaving = false,
@@ -354,7 +338,6 @@ class ConfigureViewModel internal constructor(
                 endpointErrorResId = null,
                 modelErrorResId = null,
                 apiKeyErrorResId = null,
-                promptInput = document.prompt,
                 proxyInput = target.proxy,
                 proxyErrorResId = null,
                 isSaving = false,
@@ -393,14 +376,6 @@ class ConfigureViewModel internal constructor(
                 },
             )
         }
-    }
-
-    private suspend fun savePromptOnly() {
-        runCatching { dependencies.saveGlobalPrompt(currentState.promptInput) }
-            .onFailure { throwable ->
-                if (throwable is CancellationException) throw throwable
-                Logger.w(LOG_TAG, "save prompt failed reason=${throwable.message}")
-            }
     }
 
     private suspend fun deleteConfig(configId: String) {
@@ -653,7 +628,6 @@ private fun ConfigureUiState.toSettingsSnapshot(): ConfigureSnapshot {
         apiKey = apiKeyInput,
         protocolWireId = protocolWireId,
         proxy = proxyInput.trim(),
-        prompt = promptInput,
     )
 }
 

@@ -436,6 +436,15 @@ class HomeChatViewModel internal constructor(
      */
     private suspend fun paceTextDelta(turnId: Long, event: LlmStreamEvent.TextDelta) {
         val fullText = event.fullText
+        if (event.isSegmentStart) {
+            // 段边界（工具块等之后的新文本段）：fullText 从新坐标开始，节流器同步归零。
+            // 不重置则新段长度 ≤ 已放出字符数时 pace 直接 return，整段被静默丢弃。
+            Logger.d(
+                LOG_TAG,
+                "pace segment reset turnId=$turnId fullTextLen=${fullText.length} released=${textPacer.released}"
+            )
+            textPacer.reset()
+        }
         try {
             textPacer.pace(fullText.length) { from, to ->
                 applyEvent(

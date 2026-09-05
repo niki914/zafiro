@@ -9,6 +9,7 @@ import com.niki914.zafiro.app.ui.model.SettingsViewModel
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
+import com.niki914.zafiro.app.ui.nav.PromptEditPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
@@ -37,6 +38,9 @@ fun SettingsDetailPageContent(
             },
             onOpenConfigDetail = { configId, configName ->
                 onPush(SavedConfigDetailPage(configId = configId, configName = configName))
+            },
+            onOpenPromptEdit = {
+                onPush(PromptEditPage)
             },
         )
         return
