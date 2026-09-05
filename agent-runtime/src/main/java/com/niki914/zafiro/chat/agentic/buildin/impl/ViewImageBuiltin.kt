@@ -1,29 +1,46 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
+import com.niki914.xposed.api.util.ContextProvider
+import kotlin.concurrent.Volatile
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
+import com.niki914.zafiro.chat.agentic.image.ImageCodec
+import com.niki914.zafiro.chat.agentic.image.IngestError
+import com.niki914.zafiro.chat.agentic.image.IngestResult
+import com.niki914.zafiro.chat.agentic.toToolError
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
-import java.io.File
 
 /**
  * view_image 工具：Agent 主动读取磁盘上的图片文件。
- * 参数 path = 图片文件绝对路径，返回图片文件路径（供会话树引用）。
+ * 参数 path = 图片文件绝对路径，返回 ingest 后的图片文件路径（供会话树引用）。
  * 统一存储路径：App 私有目录（filesDir/Zafiro/images）。
  *
- * 文件不存在时返回错误，由 Agent 决定后续操作（如提示用户文件已删除）。
+ * ingest 失败时返回结构化错误码，由 Agent 决定后续操作。
  */
 class ViewImageBuiltin : BuiltinTool() {
+    @Volatile
+    private var codec: ImageCodec? = null
+
+    private suspend fun ensureCodec(): ImageCodec? {
+        codec?.let { return it }
+        val context = try {
+            ContextProvider.await().applicationContext
+        } catch (e: Exception) {
+            return null
+        } ?: return null
+        return ImageCodec(context).also { codec = it }
+    }
     override val name: String = "view_image"
     override val description: String = """
 Read an image file from disk so the model can see it.
 Use when you need to view an image that the user shared, downloaded from the web, or saved by a tool.
 Accepts an absolute file path (e.g. a path returned by py_download_file or the images directory).
-Returns the file path if the file exists, or an error if it was deleted or is unreadable.
+Returns the normalized file path if the image was ingested successfully, or an error code if it was deleted, unreadable, too large, or in an unsupported format.
     """.trimIndent()
     override val defaultEnabled: Boolean = true
     override val inputSchemaJson: String? = SCHEMA
@@ -31,8 +48,8 @@ Returns the file path if the file exists, or an error if it was deleted or is un
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         val args = request.argumentsJson
         val path = try {
-            val obj = kotlinx.serialization.json.Json.parseToJsonElement(args).jsonObject
-            (obj["path"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull?.trim().orEmpty()
+            val obj = Json.parseToJsonElement(args).jsonObject
+            (obj["path"] as? JsonPrimitive)?.contentOrNull?.trim().orEmpty()
         } catch (e: Exception) {
             return BuiltinToolResult.failure(
                 code = "INVALID_ARGUMENTS",
@@ -47,37 +64,42 @@ Returns the file path if the file exists, or an error if it was deleted or is un
             )
         }
 
-        val file = File(path)
-        if (!file.exists() || !file.isFile) {
-            return BuiltinToolResult.failure(
-                code = "FILE_NOT_FOUND",
-                message = "Image file not found or is not a readable file: $path",
-                hint = "The file may have been deleted. Ask the user to share or download it again."
-            )
-        }
-
-        val mimeType = when (file.extension.lowercase()) {
-            "jpg", "jpeg" -> "image/jpeg"
-            "png" -> "image/png"
-            "gif" -> "image/gif"
-            "webp" -> "image/webp"
-            "bmp" -> "image/bmp"
-            else -> "image/jpeg"
-        }
-
-        return BuiltinToolResult.success(
-            message = "Image file verified: $path",
-            data = JsonObject(
-                mapOf(
-                    "image" to JsonObject(
-                        mapOf(
-                            "path" to kotlinx.serialization.json.JsonPrimitive(path),
-                            "mime_type" to kotlinx.serialization.json.JsonPrimitive(mimeType)
+        val codec = ensureCodec() ?: return BuiltinToolResult.failure(
+            code = "CODEC_UNAVAILABLE",
+            message = "Image codec is not available."
+        )
+        return when (val result = codec.ingestFile(path)) {
+            is IngestResult.Ok -> BuiltinToolResult.success(
+                message = "Image ingested: ${result.image.path}",
+                data = JsonObject(
+                    mapOf(
+                        "image" to JsonObject(
+                            mapOf(
+                                "path" to JsonPrimitive(result.image.path),
+                                "mime_type" to JsonPrimitive(result.image.mimeType),
+                                "width" to JsonPrimitive(result.image.width),
+                                "height" to JsonPrimitive(result.image.height),
+                                "bytes" to JsonPrimitive(result.image.bytes),
+                            )
                         )
                     )
                 )
             )
-        )
+            is IngestResult.Err -> {
+                val (code, message) = result.error.toToolError()
+                val hint = when (result.error) {
+                    IngestError.FileNotFound -> "The file may have been deleted. Ask the user to share or download it again."
+                    is IngestError.TooLarge -> "Try a smaller image or compress it first."
+                    IngestError.UnsupportedFormat -> "Convert the image to JPEG or PNG first."
+                    else -> ""
+                }
+                BuiltinToolResult.failure(
+                    code = code,
+                    message = message,
+                    hint = hint
+                )
+            }
+        }
     }
 
     companion object {

@@ -37,7 +37,8 @@ interface ChatProtocol {
 
     // 协议无关数据 → Provider 请求。history 包含当前输入（send 已先提交
     // User 消息），不存在独立的 pendingUserInput。
-    fun buildRequest(
+    // suspend：ImageLoader 读取走 IO dispatcher，buildRequest 内调用它。
+    suspend fun buildRequest(
         snapshot: RequestSnapshot,
         history: List<Message>
     ): HttpRequest
