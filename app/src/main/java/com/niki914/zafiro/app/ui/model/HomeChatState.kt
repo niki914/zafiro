@@ -17,6 +17,7 @@ import com.niki914.zafiro.chat.ToolCallStatus
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import java.util.UUID
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -117,11 +118,25 @@ sealed interface HomeChatBlock {
 data class HomeChatTurn(
     val id: Long,
     val userText: String,
+    val images: List<HomeChatImage> = emptyList(),
     val blocks: List<HomeChatBlock> = emptyList(),
+)
+
+/**
+ * 用户消息附带的图片（预览与落盘引用）。
+ * 待发送与已发送共用：send 时 pendingImages 移入 turn.images，字段语义不变。
+ * dataUrl：预览位图来源（ingest 后的 JPEG data URL）；path：落盘路径（未来发送链路用）。
+ */
+data class HomeChatImage(
+    val id: String,
+    val path: String,
+    val dataUrl: String,
 )
 
 data class HomeChatUiState(
     val input: String = "",
+    /** 待发送图片（composer 上方图片条）。send 时移入新 turn.images 并清空。 */
+    val pendingImages: List<HomeChatImage> = emptyList(),
     val turns: List<HomeChatTurn> = emptyList(),
     val isGenerating: Boolean = false,
     val isLoadingConversation: Boolean = false,
@@ -149,6 +164,7 @@ data class HomeChatUiState(
  * 新会话不复用任何展开状态。所有会话切换路径（restore/load/new/delete）统一调用。
  */
 fun HomeChatUiState.withClearedTransient() = copy(
+    pendingImages = emptyList(),
     expandedToolRuns = emptySet(),
     expandedToolResults = emptySet(),
     expandedThinking = emptySet(),
@@ -161,6 +177,9 @@ fun HomeChatUiState.withClearedTransient() = copy(
 sealed interface HomeChatIntent {
     data class InputChanged(val value: String) : HomeChatIntent
     data object Send : HomeChatIntent
+    /** 相册选图完成：uri → ingest 落盘 → 加入 pendingImages。失败静默（记日志）。 */
+    data class ImageAttached(val uri: String) : HomeChatIntent
+    data class ImageRemoved(val id: String) : HomeChatIntent
     data object StopGenerating : HomeChatIntent
     data object NewConversation : HomeChatIntent
     data class LoadConversation(val id: String) : HomeChatIntent
@@ -182,6 +201,8 @@ internal interface HomeChatRuntime {
     suspend fun ensureSession(): String
     suspend fun openSession(restore: SessionSnapshot)
     suspend fun historySnapshot(): List<Message>
+    /** 相册 URI → ingest 落盘 → (path, dataUrl)。失败返回 null（静默丢弃）。 */
+    suspend fun ingestImage(uri: String): HomeChatImage?
 }
 
 private object LlmHomeChatRuntime : HomeChatRuntime {
@@ -200,6 +221,15 @@ private object LlmHomeChatRuntime : HomeChatRuntime {
         LLMController.openSession(restore)
 
     override suspend fun historySnapshot(): List<Message> = LLMController.historySnapshot()
+
+    override suspend fun ingestImage(uri: String): HomeChatImage? {
+        val ingested = LLMController.ingestUserImage(uri) ?: return null
+        return HomeChatImage(
+            id = UUID.randomUUID().toString(),
+            path = ingested.path,
+            dataUrl = ingested.dataUrl,
+        )
+    }
 }
 
 class HomeChatViewModel internal constructor(
@@ -225,6 +255,8 @@ class HomeChatViewModel internal constructor(
         when (intent) {
             is HomeChatIntent.InputChanged -> onInputChanged(intent.value)
             HomeChatIntent.Send -> sendCurrentInput()
+            is HomeChatIntent.ImageAttached -> attachImage(intent.uri)
+            is HomeChatIntent.ImageRemoved -> removeImage(intent.id)
             HomeChatIntent.StopGenerating -> stopGenerating()
             HomeChatIntent.NewConversation -> startNewConversation()
             is HomeChatIntent.LoadConversation -> loadConversation(intent.id)
@@ -307,21 +339,47 @@ class HomeChatViewModel internal constructor(
         }
     }
 
+    /**
+     * 相册选图 → ingest → pendingImages。仅 UI 预览链路：
+     * 图片不进 runtime.stream（发送链路待 Okia.send 支持图片参数后接入）。
+     */
+    private suspend fun attachImage(uri: String) {
+        if (currentState.isGenerating) return
+        val image = try {
+            runtime.ingestImage(uri)
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "image ingest failed uri=$uri error=${throwable.message}")
+            null
+        }
+        if (image != null) {
+            updateState { copy(pendingImages = pendingImages + image) }
+        }
+    }
+
+    private fun removeImage(id: String) {
+        updateState { copy(pendingImages = pendingImages.filterNot { it.id == id }) }
+    }
+
     private suspend fun sendCurrentInput() {
         val query = currentState.input.trim()
-        if (query.isBlank() || currentState.isGenerating) {
+        val images = currentState.pendingImages
+        if ((query.isBlank() && images.isEmpty()) || currentState.isGenerating) {
             Logger.d(
                 LOG_TAG,
-                "send skipped blank=${query.isBlank()} isGenerating=${currentState.isGenerating}"
+                "send skipped blank=${query.isBlank()} images=${images.size} " +
+                        "isGenerating=${currentState.isGenerating}"
             )
             return
         }
-        Logger.i(LOG_TAG, "send requested queryLength=${query.length}")
+        Logger.i(LOG_TAG, "send requested queryLength=${query.length} images=${images.size}")
 
         val turnId = nextTurnId++
         updateState {
             copy(
                 input = "",
+                // 待发图片移入 turn（UI 展示链路）；图片不进 runtime.stream（见 attachImage）
+                pendingImages = emptyList(),
                 // 新回合开始：清除旧错误卡片（瞬态 UI 态，T3 TODO②——
                 // 错误只在当轮显示，下一轮发起即消失）
                 turns = turns.map { turn ->
@@ -330,7 +388,7 @@ class HomeChatViewModel internal constructor(
                             it is HomeChatBlock.Error || it is HomeChatBlock.Retrying
                         },
                     )
-                } + HomeChatTurn(id = turnId, userText = query),
+                } + HomeChatTurn(id = turnId, userText = query, images = images),
                 isGenerating = true,
                 lastEventName = null,
                 streamEventCount = 0,
@@ -342,6 +400,14 @@ class HomeChatViewModel internal constructor(
                 expandedActionSource = null,
             )
         }
+        // 纯图片发送（无文本）：只进 UI 历史，不发流——发送链路待 Okia 支持
+        // 图片参数后接入；此刻发空文本请求会喂给模型一条空 user message。
+        if (images.isNotEmpty() && query.isEmpty()) {
+            Logger.i(LOG_TAG, "send images-only turnId=$turnId count=${images.size}, stream skipped")
+            updateState { copy(isGenerating = false) }
+            return
+        }
+
         draftSaveJob?.cancel()
         draftSaveJob = null
 

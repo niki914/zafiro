@@ -2,6 +2,9 @@ package com.niki914.zafiro.app.ui.content
 
 import android.content.ClipData
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -16,6 +19,7 @@ import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,6 +32,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -93,6 +98,7 @@ import com.niki914.zafiro.app.ui.PageChromeMenuItem
 import com.niki914.zafiro.app.ui.RegisterPageChrome
 import com.niki914.zafiro.app.ui.model.ActionSource
 import com.niki914.zafiro.app.ui.model.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.HomeChatImage
 import com.niki914.zafiro.app.ui.model.HomeChatIntent
 import com.niki914.zafiro.app.ui.model.HomeChatTurn
 import com.niki914.zafiro.app.ui.model.HomeChatUiState
@@ -296,6 +302,13 @@ fun HomePageContent(
         onStopClick = {
             viewModel.sendIntent(HomeChatIntent.StopGenerating)
         },
+        pendingImages = uiState.pendingImages,
+        onImageAttached = { uri ->
+            viewModel.sendIntent(HomeChatIntent.ImageAttached(uri))
+        },
+        onRemoveImage = { id ->
+            viewModel.sendIntent(HomeChatIntent.ImageRemoved(id))
+        },
         onComposerFocusChanged = { focused ->
             isComposerFocused = focused
         },
@@ -449,6 +462,9 @@ private fun HomePageContentBody(
     onInputChange: (String) -> Unit,
     onSendClick: () -> Unit,
     onStopClick: () -> Unit,
+    pendingImages: List<HomeChatImage>,
+    onImageAttached: (String) -> Unit,
+    onRemoveImage: (String) -> Unit,
     onComposerFocusChanged: (Boolean) -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
@@ -469,6 +485,15 @@ private fun HomePageContentBody(
     // composerBottomPadding*2 + composerHeight，composer 顶上方留一个视觉间距
     val bottomClearance = composerBottomPadding + composerHeight.value + composerGap
     val density = LocalDensity.current
+
+    // 系统图片选择器（photo picker，无权限）：选图 → ingest 落盘 → pendingImages
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            onImageAttached(uri.toString())
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -534,6 +559,24 @@ private fun HomePageContentBody(
             }
         }
 
+        // 待发图片条：宽 = composer 本体，位于 composer 上方 8dp；声明在 composer
+        // 之前，万一重合 composer 层级更高盖住图片。composer 拉长/被 IME 顶起时随
+        // composerHeight/composerBottomPadding 精确跟随。不可点击（TODO: 后续接入点开大图）
+        // TODO: 图片条点击事件（点开大图 / 重选入口），待发送链路落地后接入
+        if (pendingImages.isNotEmpty()) {
+            HomeChatImageRow(
+                images = pendingImages,
+                cardSize = 60.dp,
+                cornerRadius = 18.dp,
+                onRemoveImage = onRemoveImage,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 20.dp, end = 20.dp)
+                    .fillMaxWidth()
+                    .padding(bottom = composerBottomPadding + composerHeight.value + 8.dp),
+            )
+        }
+
         CompositionLocalProvider(LocalLiquidViewportAvoidanceController provides null) {
             LiquidChatComposer(
                 value = uiState.input,
@@ -541,7 +584,12 @@ private fun HomePageContentBody(
                 onSendClick = onSendClick,
                 onStopClick = onStopClick,
                 isGenerating = uiState.isGenerating,
-                maxLines = 10,
+                pendingImages = pendingImages,
+                onAttachImageClick = {
+                    photoPicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .onFocusChanged { focusState ->
@@ -680,22 +728,44 @@ private fun HomeChatTurnItem(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(BlockSpacing),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {
-                        onContentTap()
-                        if (canToggleUserAction) {
-                            onToggleActionRow(turn.id, ActionSource.User)
-                        }
-                    },
-                ),
-            contentAlignment = Alignment.CenterEnd,
-        ) {
-            UserMessageBubble(text = turn.userText, position = userBubblePosition)
+        // 图片行：镜像 UserMessageBubble 的对齐方式——BoxWithConstraints 右对齐，
+        // Row 贴内容宽、max 同 bubble（0.82f）；外层与卡片同圆角 clip——边缘图片被
+        // 裁时仍呈圆角。多图时初始 scroll=0 优先展示左边的图，整行靠右。
+        // 不可点击（TODO: 点开大图）
+        if (turn.images.isNotEmpty()) {
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                HomeChatImageRow(
+                    images = turn.images,
+                    cardSize = 120.dp,
+                    cornerRadius = UserBubbleCornerRadius,
+                    modifier = Modifier.widthIn(max = maxWidth * 0.82f),
+                )
+            }
+        }
+
+        // 纯图片 turn：文本为空（isEmpty 而非 isBlank——历史里用户发过的空白文本
+        // turn 仍显示气泡）；连 clickable 一起隐藏，空 bubble 点击弹操作行无意义
+        if (turn.userText.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            onContentTap()
+                            if (canToggleUserAction) {
+                                onToggleActionRow(turn.id, ActionSource.User)
+                            }
+                        },
+                    ),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                UserMessageBubble(text = turn.userText, position = userBubblePosition)
+            }
         }
 
         AnimatedVisibility(
@@ -1003,6 +1073,9 @@ private fun HomePageContentPreview() {
                 onInputChange = {},
                 onSendClick = {},
                 onStopClick = {},
+                pendingImages = emptyList(),
+                onImageAttached = {},
+                onRemoveImage = {},
                 onComposerFocusChanged = {},
                 onReGenerate = { },
                 onFork = { },

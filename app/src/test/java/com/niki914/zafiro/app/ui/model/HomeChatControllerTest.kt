@@ -187,6 +187,120 @@ class HomeChatViewModelTest {
     }
 
     @Test
+    fun imageAttached_ingestsAndAddsToPendingImages() = runTest {
+        val viewModel = HomeChatViewModel(
+            conversations = FakeHomeConversationStore(),
+            runtime = FakeHomeChatRuntime(stream = { flowOf(LlmStreamEvent.Completed) }),
+        )
+
+        viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/1"))
+        advanceUntilIdle()
+
+        val state = viewModel.uiStateFlow.value
+        assertEquals(1, state.pendingImages.size)
+        assertEquals("/tmp/content://media/1.jpg", state.pendingImages.single().path)
+    }
+
+    @Test
+    fun imageRemoved_removesOnlyTargetImage() = runTest {
+        val viewModel = HomeChatViewModel(
+            conversations = FakeHomeConversationStore(),
+            runtime = FakeHomeChatRuntime(stream = { flowOf(LlmStreamEvent.Completed) }),
+        )
+
+        viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/1"))
+        viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/2"))
+        advanceUntilIdle()
+        val idToRemove = viewModel.uiStateFlow.value.pendingImages.first().id
+
+        viewModel.sendIntent(HomeChatIntent.ImageRemoved(idToRemove))
+        runCurrent()
+
+        val remaining = viewModel.uiStateFlow.value.pendingImages
+        assertEquals(1, remaining.size)
+        assertEquals("/tmp/content://media/2.jpg", remaining.single().path)
+    }
+
+    @Test
+    fun send_movesPendingImagesIntoTurnAndClearsPending() = runTest {
+        val viewModel = HomeChatViewModel(
+            conversations = FakeHomeConversationStore(),
+            runtime = FakeHomeChatRuntime(stream = { flowOf(LlmStreamEvent.Completed) }),
+        )
+
+        viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/1"))
+        viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/2"))
+        advanceUntilIdle()
+        val attached = viewModel.uiStateFlow.value.pendingImages
+
+        viewModel.sendIntent(HomeChatIntent.InputChanged("look"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        val state = viewModel.uiStateFlow.value
+        assertTrue(state.pendingImages.isEmpty())
+        assertEquals(1, state.turns.size)
+        assertEquals(attached, state.turns.single().images)
+        assertEquals("look", state.turns.single().userText)
+    }
+
+    @Test
+    fun send_withImagesOnly_recordsTurnWithoutStreaming() = runTest {
+        var streamed = false
+        val viewModel = HomeChatViewModel(
+            conversations = FakeHomeConversationStore(),
+            runtime = FakeHomeChatRuntime(stream = {
+                streamed = true
+                flowOf(LlmStreamEvent.Completed)
+            }),
+        )
+
+        viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/1"))
+        advanceUntilIdle()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        // 纯图片发送：只进 UI 历史，不发流（发空文本会喂给模型空 user message）。
+        // 发送链路待 Okia 支持图片参数后接入
+        assertFalse(viewModel.uiStateFlow.value.isGenerating)
+        assertEquals(1, viewModel.uiStateFlow.value.turns.size)
+        assertEquals(1, viewModel.uiStateFlow.value.turns.single().images.size)
+        assertFalse(streamed)
+    }
+
+    @Test
+    fun imageAttached_ingestFailure_isSilentlyDropped() = runTest {
+        val viewModel = HomeChatViewModel(
+            conversations = FakeHomeConversationStore(),
+            runtime = FakeHomeChatRuntime(
+                stream = { flowOf(LlmStreamEvent.Completed) },
+                ingestImage = { null },
+            ),
+        )
+
+        viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/broken"))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiStateFlow.value.pendingImages.isEmpty())
+    }
+
+    @Test
+    fun newConversation_clearsPendingImages() = runTest {
+        val viewModel = HomeChatViewModel(
+            conversations = FakeHomeConversationStore(),
+            runtime = FakeHomeChatRuntime(stream = { flowOf(LlmStreamEvent.Completed) }),
+        )
+
+        viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/1"))
+        advanceUntilIdle()
+        viewModel.sendIntent(HomeChatIntent.NewConversation)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiStateFlow.value.pendingImages.isEmpty())
+    }
+
+    @Test
     fun send_doesNotCreateVisibleFallbackWhenUnexpectedErrorHasNoMessage() = runTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
@@ -1075,6 +1189,9 @@ private class FakeHomeChatRuntime(
     private val ensureSession: suspend () -> String = { "fake-session-1" },
     private val openSession: suspend (SessionSnapshot) -> Unit = {},
     private val historySnapshot: suspend () -> List<Message> = { emptyList() },
+    private val ingestImage: suspend (String) -> HomeChatImage? = { uri ->
+        HomeChatImage(id = "ingested-$uri", path = "/tmp/$uri.jpg", dataUrl = "data:image/jpeg;base64,xxx")
+    },
 ) : HomeChatRuntime {
     override fun stream(query: String): Flow<LlmStreamEvent> = stream.invoke(query)
     override suspend fun resetConversation() = resetConversation.invoke()
@@ -1083,6 +1200,7 @@ private class FakeHomeChatRuntime(
     override suspend fun ensureSession(): String = ensureSession.invoke()
     override suspend fun openSession(restore: SessionSnapshot) = openSession.invoke(restore)
     override suspend fun historySnapshot(): List<Message> = historySnapshot.invoke()
+    override suspend fun ingestImage(uri: String): HomeChatImage? = ingestImage.invoke(uri)
 }
 
 private open class FakeHomeConversationStore : HomeConversationStore {

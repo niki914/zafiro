@@ -43,6 +43,8 @@
         <item quantity="other">%d herramientas</item>
     </plurals>
     <string name="ui_home_send_content_description">Enviar mensaje</string>
+    <string name="ui_home_add_image_content_description">Añadir imagen</string>
+    <string name="ui_home_image_remove_content_description">Eliminar imagen</string>
     <string name="ui_home_scroll_to_bottom_content_description">Ir al final</string>
     <string name="ui_home_stop_content_description">Detener generación</string>
     <string name="ui_home_action_copy_content_description">Copiar</string>
@@ -372,6 +374,7 @@
     <string name="ui_settings_configure_add">Añadir configuración</string>
     <string name="ui_settings_configure_name_label">Nombre de la configuración</string>
     <string name="ui_settings_configure_name_placeholder">Ejemplo: DeepSeek Principal</string>
+    <string name="ui_settings_configure_vision_label">Modelo de visión</string>
     <string name="ui_settings_configure_protocol_label">Protocolo</string>
     <string name="ui_settings_configure_endpoint_mismatch_title">Actualizar endpoint</string>
     <string name="ui_settings_configure_endpoint_mismatch_text_switch">Protocolo cambiado. ¿Actualizar el endpoint a\n%1$s ?</string>

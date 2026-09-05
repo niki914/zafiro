@@ -26,10 +26,12 @@ import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.xposed.api.util.LockState
 import com.niki914.zafiro.chat.agentic.AndroidImageLoader
 import com.niki914.zafiro.chat.agentic.AndroidImageSaver
+import com.niki914.zafiro.chat.agentic.IngestedImage
 import com.niki914.zafiro.chat.agentic.LocalToolExecutor
 import com.niki914.zafiro.chat.agentic.PromptComposer
 import com.niki914.zafiro.chat.agentic.PromptComposerInput
 import com.niki914.zafiro.chat.agentic.ToolManager
+import com.niki914.zafiro.chat.agentic.UserImageSaver
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
@@ -86,6 +88,12 @@ object LLMController {
     }
     private var imageSaver: AndroidImageSaver? = null
 
+    // 用户分享图片 ingest（相册 URI → 私有目录落盘 + 预览 data URL）
+    // TODO: AndroidImageSaver 与 UserImageSaver 形状重复（各自 lazy + ensure +
+    //  独立 ImageCodec 实例），以后抽象统一；两者实现 seam 不同（okia ImageSaver
+    //  接口 vs Android 自由类），非简单合并
+    private var userImageSaver: UserImageSaver? = null
+
     /** 初始化图片保存器（延迟到首次需要时）。 */
     private suspend fun ensureImageSaver(): AndroidImageSaver? {
         if (imageSaver == null) {
@@ -96,6 +104,23 @@ object LLMController {
             }
         }
         return imageSaver
+    }
+
+    private suspend fun ensureUserImageSaver(): UserImageSaver? {
+        if (userImageSaver == null) {
+            userImageSaver = try {
+                ContextProvider.await().applicationContext?.let { UserImageSaver(it) }
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return userImageSaver
+    }
+
+    /** 相册 URI → ingest 落盘 → (path, dataUrl)。失败返回 null（UI 静默丢弃）。 */
+    suspend fun ingestUserImage(uriString: String): IngestedImage? {
+        val saver = ensureUserImageSaver() ?: return null
+        return saver.ingestFromUri(android.net.Uri.parse(uriString))
     }
 
     // 回合内写入的 py 工具（py_meta_tools write 成功回调，D20）：
@@ -207,6 +232,7 @@ object LLMController {
             baseSystemPrompt = llmConfig.prompt,
             finalSystemPrompt = llmConfig.prompt,
             proxy = llmConfig.proxy,
+            supportsImages = llmConfig.supportsImages,
             idleTimeoutSeconds = llmConfig.idleTimeoutSeconds,
             retryMaxAttempts = llmConfig.retryMaxAttempts,
         )
@@ -612,9 +638,9 @@ object LLMController {
             toolRegistry = this@LLMController.toolRegistry
             imageLoader = this@LLMController.imageLoader
             imageSaver = saver
-            // 图片功能入口：loader 就绪即打开（Android 层 ingest 管线保证协议侧
-            // 拿到的图片已转码为 JPEG q80 小图，请求体安全）
-            supportsImages = imageLoader != null
+            // 图片功能入口：loader 就绪且当前配置开启视觉开关（provider 设置页
+            // 「视觉模型」；ingest 管线保证协议侧拿到的图片已转码 JPEG q80 小图）
+            supportsImages = imageLoader != null && config.supportsImages
         }
     }
 

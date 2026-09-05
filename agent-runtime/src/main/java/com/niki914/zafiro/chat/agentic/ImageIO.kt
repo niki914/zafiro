@@ -7,6 +7,7 @@ import com.niki914.okia.ImageSaver
 import com.niki914.zafiro.chat.agentic.image.ImageCodec
 import com.niki914.zafiro.chat.agentic.image.IngestError
 import com.niki914.zafiro.chat.agentic.image.IngestResult
+import com.niki914.zafiro.chat.agentic.image.StoredImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -54,13 +55,25 @@ class AndroidImageSaver(context: Context) : ImageSaver {
 class UserImageSaver(private val context: Context) {
     private val codec = ImageCodec(context.applicationContext)
 
-    suspend fun saveFromUri(uri: Uri): String? {
+    /** Ingest 并返回落盘路径 + 预览 data URL（小图 JPEG base64，供 UI 直接解码）。 */
+    suspend fun ingestFromUri(uri: Uri): IngestedImage? {
         return when (val result = codec.ingestUri(uri)) {
-            is IngestResult.Ok -> result.image.path
+            is IngestResult.Ok -> IngestedImage(
+                path = result.image.path,
+                dataUrl = encodeDataUrl(result.image),
+            )
             is IngestResult.Err -> null
         }
     }
+
+    private suspend fun encodeDataUrl(image: StoredImage): String = withContext(Dispatchers.IO) {
+        val bytes = File(image.path).readBytes()
+        "data:image/jpeg;base64,${android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)}"
+    }
 }
+
+/** ingest 成功产出：落盘路径 + UI 预览 data URL。 */
+data class IngestedImage(val path: String, val dataUrl: String)
 
 /** IngestError → 工具错误码 JSON 的映射（供 ViewImageBuiltin 使用）。 */
 internal fun IngestError.toToolError(): Pair<String, String> = when (this) {
