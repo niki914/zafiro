@@ -53,7 +53,8 @@ object LlmStreamEventMapper {
                 LlmStreamEvent.RoundStarted
             }
 
-            // 文本块开始：partial 含第一个 delta（OKIA 不单发），以全量作 delta
+            // 文本块开始：partial 含第一个 delta（OKIA 不单发），以全量作 delta。
+            // isSegmentStart = true：工具块等边界后 fullText 从新坐标开始，消费端据此重置段内状态。
             is TurnEvent.TextStarted -> {
                 val fullText = event.partial.textContent()
                 accumulatedText = fullText
@@ -61,6 +62,7 @@ object LlmStreamEventMapper {
                     delta = fullText,
                     fullText = fullText,
                     charsPerSecond = charsPerSecond(fullText, startedAtMs),
+                    isSegmentStart = true,
                 )
             }
 

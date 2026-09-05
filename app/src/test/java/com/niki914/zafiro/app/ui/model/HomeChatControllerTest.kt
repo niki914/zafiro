@@ -878,6 +878,59 @@ class HomeChatViewModelTest {
     }
 
     @Test
+    fun send_textAfterToolBlock_isNotDroppedByPacer() = runTest {
+        // 回归：工具块后新文本段 fullText 从新坐标开始，若不重置节流器，
+        // 段长 ≤ 已放出字符数时整段被静默丢弃（trunk loss after tool blocks）
+        val longText = "a".repeat(600)
+        val conversations = FakeHomeConversationStore()
+        val viewModel = HomeChatViewModel(
+            conversations = conversations,
+            runtime = FakeHomeChatRuntime(
+                stream = {
+                    flow {
+                        emit(LlmStreamEvent.RoundStarted)
+                        // 第一段：长文本，pacer 放出后 released 坐标远大于下一段
+                        emit(
+                            LlmStreamEvent.TextDelta(
+                                delta = longText,
+                                fullText = longText,
+                                isSegmentStart = true,
+                            )
+                        )
+                        emit(
+                            LlmStreamEvent.ToolRunning(
+                                ToolCallStatus(callId = "t1", name = "tool")
+                            )
+                        )
+                        emit(
+                            LlmStreamEvent.ToolSucceeded(
+                                ToolCallStatus(callId = "t1", name = "tool")
+                            )
+                        )
+                        // 工具后新文本段：短坐标（isSegmentStart = true）
+                        emit(
+                            LlmStreamEvent.TextDelta(
+                                delta = "after tool",
+                                fullText = "after tool",
+                                isSegmentStart = true,
+                            )
+                        )
+                        emit(LlmStreamEvent.Completed)
+                    }
+                },
+            ),
+        )
+        viewModel.sendIntent(HomeChatIntent.InputChanged("q"))
+        runCurrent()
+        viewModel.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        val turn = viewModel.uiStateFlow.value.turns.single()
+        val texts = turn.blocks.filterIsInstance<HomeChatBlock.Text>().map { it.text }
+        assertEquals(listOf(longText, "after tool"), texts)
+    }
+
+    @Test
     fun thinking_autoExpandsWhileActive_manualCollapseSurvivesEchoEndKeepsState() = runTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
