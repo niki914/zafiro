@@ -34,6 +34,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -262,11 +263,16 @@ internal fun LiquidTextFieldContainer(
         textStyle = MaterialTheme.typography.bodyLarge.merge(
             TextStyle(color = textColor),
         ),
+        // 默认 cursorBrush 是固定黑色，不适配深色模式；跟随主题 primary
+        cursorBrush = SolidColor(colorScheme.primary),
         onTextLayout = { layout -> onTextLayout?.invoke(layout) },
         decorationBox = { innerTextField ->
             Column {
+                // 展开态文本区 top padding = 按钮自身 bottom padding
+                //（ActionBarButton 内建 vertical 12dp），上下留白对称
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
+                        .then(if (expandedLayout) Modifier.padding(top = 12.dp) else Modifier),
                     verticalAlignment = contentVerticalAlignment,
                 ) {
                     if (leadingContent != null && !expandedLayout) {
