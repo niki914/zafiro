@@ -79,7 +79,7 @@ private data object DeepSeekSpec : ProviderSpec {
 private data object OpenAiSpec : ProviderSpec {
     override val id: String = "openai"
     override val brandName: String = "OpenAI"
-    override val officialEndpoint: String = "https://api.openai.com/v1/chat/completions"
+    override val officialEndpoint: String = "https://api.openai.com/v1/responses"
     override val exampleModelId: String = "gpt-5.4"
     override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "openai-responses"

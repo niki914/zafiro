@@ -427,7 +427,10 @@ class ConfigureViewModel internal constructor(
         }
         val newProtocol = LlmProtocol.fromWire(newProtocolWireId)
         val currentEndpoint = currentState.endpointInput.trim()
-        if (EndpointInference.endpointMatchesProtocol(currentEndpoint, newProtocol)) {
+        // 空白端点不校验不弹窗：保存时由必填校验报错，用户自己解决
+        if (currentEndpoint.isBlank() ||
+            EndpointInference.endpointMatchesProtocol(currentEndpoint, newProtocol)
+        ) {
             switchProtocolQuietly(newProtocolWireId)
             return
         }

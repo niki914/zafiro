@@ -17,17 +17,22 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
@@ -148,10 +153,15 @@ internal fun SelectionGroupCard(
 fun SelectionPageContent(
     options: List<SelectionOption>,
 ) {
+    val scrollState = rememberScrollState()
+    // 滚动超过折叠阈值后上报顶栏折叠：背景渐显 + 小标题浮现，与设置列表页同款行为。
+    val collapseRangePx = with(LocalDensity.current) { 96.dp.toPx() }
+    val isCollapsed by remember { derivedStateOf { scrollState.value > collapseRangePx } }
+    ReportTitleBarCollapsed { isCollapsed }
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(top = liquidScreenTopPadding())
             .padding(horizontal = 16.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
