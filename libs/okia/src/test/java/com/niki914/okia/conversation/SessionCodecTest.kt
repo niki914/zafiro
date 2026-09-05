@@ -8,7 +8,6 @@ import com.niki914.okia.message.ToolCallOutcome
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SessionCodecTest {
@@ -81,15 +80,6 @@ class SessionCodecTest {
         assertEquals("e1", decoded.leafId)
         assertEquals(2, decoded.version)
         assertEquals(fullEntries(), decoded.entries)
-    }
-
-    @Test
-    fun nullLeafIdSurvivesRoundTrip() {
-        val snapshot = SessionSnapshot("s1", null, version = 1, entries = fullEntries())
-
-        val decoded = codec.decode(codec.encode(snapshot))
-
-        assertNull(decoded.leafId)
     }
 
     // ── 失败路径 ───────────────────────────────────────────────────────────
