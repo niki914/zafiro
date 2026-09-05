@@ -27,13 +27,12 @@ class ConfigureViewModelTest {
     val mainDispatcherRule =
         MainDispatcherRule()
 
-    /** 记录式依赖：upsert/delete/setActive/savePrompt 全部落到内存 document。 */
+    /** 记录式依赖：upsert/delete/setActive 全部落到内存 document。 */
     private class RecordingDeps {
         var document = LlmConfigsDocument()
         val upserted = mutableListOf<SavedLlmConfig>()
         val deletedIds = mutableListOf<String>()
         val activatedIds = mutableListOf<String>()
-        val savedPrompts = mutableListOf<String>()
 
         fun toDependencies(): ConfigureViewModelDependencies =
             ConfigureViewModelDependencies(
@@ -67,10 +66,6 @@ class ConfigureViewModelTest {
                     activatedIds += id
                     document = document.copy(activeId = id)
                 },
-                saveGlobalPrompt = { prompt ->
-                    savedPrompts += prompt
-                    document = document.copy(prompt = prompt)
-                },
             )
     }
 
@@ -89,7 +84,7 @@ class ConfigureViewModelTest {
     )
 
     @Test
-    fun initializeSettingsEdit_loadsActiveConfigAndGlobalPrompt() = runTest {
+    fun initializeSettingsEdit_loadsActiveConfig() = runTest {
         val deps = RecordingDeps()
         deps.document = LlmConfigsDocument(
             activeId = "cfg-a",
@@ -104,7 +99,6 @@ class ConfigureViewModelTest {
         val state = viewModel.uiStateFlow.value
         assertEquals(ConfigureScene.SettingsEdit, state.scene)
         assertEquals("cfg-a", state.editingConfigId)
-        assertEquals("global", state.promptInput)
         assertEquals("deepseek-v4-pro", state.modelInput)
         assertEquals(LlmProtocol.OpenAiResponses.wireId, state.protocolWireId)
         assertTrue(state.savedConfigs.first().isActive)
@@ -128,7 +122,7 @@ class ConfigureViewModelTest {
     }
 
     @Test
-    fun saveOnNewConfig_activatesIt_promptSavedViaSeparateIntent() = runTest {
+    fun saveOnNewConfig_activatesIt() = runTest {
         val deps = RecordingDeps()
         val viewModel = ConfigureViewModel(deps.toDependencies())
         viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
@@ -136,7 +130,6 @@ class ConfigureViewModelTest {
         val effectDeferred = async { viewModel.uiEffect.first() }
 
         viewModel.sendIntent(ConfigureIntent.UpdateName("主力"))
-        viewModel.sendIntent(ConfigureIntent.UpdatePrompt("你是一个测试助手。"))
         viewModel.sendIntent(ConfigureIntent.UpdateModel("gpt-5"))
         viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk"))
         viewModel.sendIntent(ConfigureIntent.Save)
@@ -144,10 +137,6 @@ class ConfigureViewModelTest {
 
         assertEquals(1, deps.upserted.size)
         assertTrue(deps.upserted.first().id.isNotBlank())
-        assertTrue(deps.savedPrompts.isEmpty())
-        viewModel.sendIntent(ConfigureIntent.SavePrompt)
-        advanceUntilIdle()
-        assertEquals("你是一个测试助手。", deps.savedPrompts.single())
         assertTrue(deps.activatedIds.isEmpty())
         assertEquals(deps.upserted.first().id, viewModel.uiStateFlow.value.activeConfigId)
         assertEquals(ConfigureEffect.SettingsSaveSucceeded, effectDeferred.await())
@@ -234,7 +223,7 @@ class ConfigureViewModelTest {
     }
 
     @Test
-    fun editingPrompt_marksDirty() = runTest {
+    fun editingName_marksDirty() = runTest {
         val deps = RecordingDeps()
         deps.document = LlmConfigsDocument(
             activeId = "cfg-a",
@@ -244,7 +233,7 @@ class ConfigureViewModelTest {
         viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit))
         advanceUntilIdle()
 
-        viewModel.sendIntent(ConfigureIntent.UpdatePrompt("new prompt"))
+        viewModel.sendIntent(ConfigureIntent.UpdateName("new name"))
         advanceUntilIdle()
         assertTrue(viewModel.uiStateFlow.value.hasUnsavedChanges)
     }

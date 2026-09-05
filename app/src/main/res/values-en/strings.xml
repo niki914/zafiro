@@ -141,6 +141,8 @@
     <string name="ui_settings_configure_save">Save Configuration</string>
     <string name="ui_settings_configure_prompt_label">Prompt</string>
     <string name="ui_settings_configure_prompt_placeholder">What should your assistant do?</string>
+    <string name="prompt_editor_description">Edit the System Prompt. Saved changes apply in the next conversation.</string>
+    <string name="prompt_error_load_failed">Failed to load the prompt. Go back and retry.</string>
     <string name="ui_settings_configure_proxy_label">Proxy</string>
     <string name="ui_settings_configure_proxy_placeholder">For example: http://127.0.0.1:7890</string>
     <string name="ui_settings_configure_error_required">This field cannot be empty</string>

@@ -202,6 +202,14 @@ data class TakeoverRuleDetailPage(
         if (isCreating) null else TopBarActionSpec(Icons.Default.Delete)
 }
 
+data object PromptEditPage : ZafiroPage {
+    override val routeKey: String = "prompt-edit"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_configure_prompt_label)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+}
+
 data object CustomPyToolsPage : ZafiroPage {
     override val routeKey: String = "custom-py-tools"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.custom_py_tool_page_title)
