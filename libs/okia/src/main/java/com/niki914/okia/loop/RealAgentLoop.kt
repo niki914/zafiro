@@ -475,9 +475,8 @@ internal class RealAgentLoop : AgentLoop {
 
             is ProtocolEvent.ThinkingSignature -> {
                 state.reasoningSignature = event.signature
-                // 块级签名（评审发现）：签名绑定到当前进行中的块（Anthropic 思考块 /
-                // Gemini 文本·思考块），flush 时写入块。无进行中块（Anthropic
-                // redacted_thinking 无文本 / Gemini functionCall 签名走 ToolCallReady）
+                // 块级签名（评审发现）：签名绑定到当前进行中的块（Anthropic 思考块），
+                // flush 时写入块。无进行中块（Anthropic redacted_thinking 无文本）
                 // 时仅保留消息级。
                 if (state.thinkingStarted || state.textStarted) {
                     state.pendingBlockSignature = event.signature
@@ -531,7 +530,7 @@ internal class RealAgentLoop : AgentLoop {
                     // 只有 Ready、无 Delta 的协议执行器不会收到空串。ifEmpty
                     // 回退累积 delta：兼容 Ready 不重复携带参数的流式协议。
                     argumentsJson = event.argumentsJson.ifEmpty { pending.arguments.toString() },
-                    // Gemini 3 思维内工具调用签名（事件契约，原样回带）
+                    // 思维内工具调用签名（事件契约，原样回带）
                     signature = event.signature
                 )
                 state.pendingToolCalls.remove(pending)

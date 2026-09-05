@@ -425,7 +425,7 @@ class RealAgentLoopToolingTest {
     fun alternatingThinkingTextBlocksFlushWithoutResidue() = runTest {
         // 回归（评审发现）：flush 只复位 started 标志、未清空 builder。thinking/text
         // 交替多次时旧内容 append 进新块（Text("AC") 应为 Text("C")），事件与
-        // 最终消息都携带累计残留。正常多 block response（Gemini parts 交替 / Anthropic
+        // 最终消息都携带累计残留。正常多 block response（Anthropic
         // 多 thinking 块）即可触发，非并发竞态。
         val commits = mutableListOf<List<Message>>()
         val emitted = mutableListOf<TurnEvent>()
@@ -466,8 +466,8 @@ class RealAgentLoopToolingTest {
     @Test
     fun interleavedToolCallKeepsProviderBlockOrder() = runTest {
         // CR5 回归：ToolCallReady 到达时先 flush 进行中 thinking/text 再插入统一
-        // blocks，块序保持 provider 原始交错（Anthropic interleaved thinking / Gemini
-        // thought+functionCall）。旧实现双容器拼接把 tool call 推到最后、前后 thinking
+        // blocks，块序保持 provider 原始交错（Anthropic interleaved thinking）。
+        // 旧实现双容器拼接把 tool call 推到最后、前后 thinking
         // 被合并、事件 index 与最终消息位置漂移。
         val executor = RecordingToolExecutor()
         val registry = DefaultToolRegistry().apply { register(localTool("tool"), executor) }
