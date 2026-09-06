@@ -10,8 +10,11 @@
 
 <p align="center">
   <a href="https://github.com/niki914/zafiro"><img src="https://img.shields.io/github/stars/niki914/zafiro?label=stars" alt="stars"/></a>
+  <a href="https://deepwiki.com/niki914/zafiro"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/v/release/niki914/zafiro?include_prereleases" alt="release"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/downloads/niki914/zafiro/total" alt="downloads"/></a>
+  <img src="https://img.shields.io/badge/kotlin-57.8k-blue" alt="kotlin lines"/>
+  <a href="https://app.codacy.com/gh/niki914/zafiro/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade"><img src="https://app.codacy.com/project/badge/Grade/b4cadbe5d2d74e3885106562cbd9715b" alt="Codacy"/></a>
 </p>
 
 <p align="center">
@@ -112,6 +115,8 @@ Through the [LSPosed](https://github.com/lsposed/lsposed) framework, Zafiro can 
 | Python Runtime | [Chaquopy](https://chaquo.com/chaquopy/)                             |
 | System Takeover       | [LSPosed](https://github.com/lsposed/lsposed) + Xposed API           |
 | Terminal / SSH   | [libterm](https://github.com/niki914/libterm)                        |
+| SVG Rendering      | [coil-resvg](https://github.com/hash-sequence/coil-resvg) (resvg)    |
+| G2 Rounded Corners | [Capsule](https://github.com/Kyant0/Capsule)                         |
 
 ## Getting Started
 
@@ -165,6 +170,12 @@ agentic-nexus/
         └── libterm-backend-ssh
 ```
 
+## Roadmap
+
+- Floating pet (desktop pet)
+- System voice assistant integration (non-Xposed takeover)
+- File import / sharing from outside the app
+
 ## Contributing
 
 Pull requests are welcome!
@@ -179,6 +190,7 @@ Pull requests are welcome!
 
 - [Telegram](https://t.me/+ZPX2xtSl6RwyZGNl) — discuss, ask questions, give feedback
 - [GitHub Issues](https://github.com/niki914/zafiro/issues) — report bugs or request features
+- [Afdian](https://afdian.com/a/niki914) — support the developer
 
 When reporting an issue, please include as much detail as possible: phone model and Android version, system voice assistant and its version, Zafiro version, steps to reproduce, and screenshots or screen recordings.
 
