@@ -199,9 +199,19 @@ internal class ImageCodec(private val context: Context) {
         return bitmap
     }
 
-    /** sha256 命名落盘（tmp+rename，rename 失败回退直接写）→ StoredImage。 */
+    /**
+     * JPEG 落盘（tmp+rename，rename 失败回退直接写）→ StoredImage。
+     *
+     * 命名：SHA-256 截断前 8 字符（32-bit hex）。
+     * - 去重语义保留：ingest 管线对输入统一重编码（JPEG q80，长边 ≤1600），
+     *   同编码结果命中同一文件。fork 复制消息树但不重 ingest，path 字面量
+     *   共享，文件也只存一份。
+     * - 文件名长度 68 → 12（含扩展名）。
+     * - 碰撞概率 2^-32 ≈ 2.3×10^-10，缓存规模几百张，比 SSD 坏道概率还低。
+     *   全写 64 字符是密码学级别的碰撞概率（2^-256），对图片缓存是过度保险。
+     */
     private fun persistJpeg(bytes: ByteArray, width: Int, height: Int): StoredImage {
-        val hash = sha256(bytes)
+        val hash = sha256(bytes).take(8)
         val file = File(imagesDir, "$hash.jpg")
         if (!file.exists()) {
             val tmp = File(imagesDir, "$hash.tmp")
