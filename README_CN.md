@@ -10,8 +10,11 @@
 
 <p align="center">
   <a href="https://github.com/niki914/zafiro"><img src="https://img.shields.io/github/stars/niki914/zafiro?label=stars" alt="stars"/></a>
+  <a href="https://deepwiki.com/niki914/zafiro"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/v/release/niki914/zafiro?include_prereleases" alt="release"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/downloads/niki914/zafiro/total" alt="downloads"/></a>
+  <img src="https://img.shields.io/badge/kotlin-57.8k-blue" alt="kotlin lines"/>
+  <a href="https://app.codacy.com/gh/niki914/zafiro/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade"><img src="https://app.codacy.com/project/badge/Grade/b4cadbe5d2d74e3885106562cbd9715b" alt="Codacy"/></a>
 </p>
 
 <p align="center">
@@ -112,6 +115,8 @@ Zafiro 是你的 Android 手机上运行一个智能代理。我们为 Zafiro Ag
 | Python 运行时 | [Chaquopy](https://chaquo.com/chaquopy/)                             |
 | 系统接管       | [LSPosed](https://github.com/lsposed/lsposed) + Xposed API           |
 | 终端 / SSH   | [libterm](https://github.com/niki914/libterm)                        |
+| SVG 渲染      | [coil-resvg](https://github.com/hash-sequence/coil-resvg) (resvg)    |
+| G2 圆角       | [Capsule](https://github.com/Kyant0/Capsule)                         |
 
 ## 快速开始
 
@@ -165,6 +170,12 @@ agentic-nexus/
         └── libterm-backend-ssh
 ```
 
+## Roadmap
+
+- 悬浮宠物（桌宠）
+- 系统语音助手实现（非 Xposed 接管）
+- 应用外文件导入 / 分享
+
 ## 贡献
 
 欢迎提交 Pull Request!
@@ -179,6 +190,7 @@ agentic-nexus/
 
 - [Telegram](https://t.me/+ZPX2xtSl6RwyZGNl) — 交流、提问、反馈问题
 - [GitHub Issues](https://github.com/niki914/zafiro/issues) — 提交 Bug 或功能请求
+- [爱发电](https://afdian.com/a/niki914) — 支持开发者
 
 如果遇到问题，请尽量提供：手机型号与 Android 版本、系统语音助手及版本、Zafiro 版本、复现步骤、截图或录屏。
 
