@@ -41,6 +41,8 @@
     <item quantity="other">%d 個のツール</item>
     </plurals>
     <string name="ui_home_send_content_description">メッセージを送信</string>
+    <string name="ui_home_add_image_content_description">画像を追加</string>
+    <string name="ui_home_image_remove_content_description">画像を削除</string>
     <string name="ui_home_scroll_to_bottom_content_description">一番下へスクロール</string>
     <string name="ui_home_stop_content_description">生成を停止</string>
     <string name="ui_home_action_copy_content_description">コピー</string>
@@ -358,6 +360,7 @@
     <string name="ui_settings_configure_add">設定を追加</string>
     <string name="ui_settings_configure_name_label">設定名</string>
     <string name="ui_settings_configure_name_placeholder">例：DeepSeek メイン</string>
+    <string name="ui_settings_configure_vision_label">ビジョンモデル</string>
     <string name="ui_settings_configure_protocol_label">プロトコル</string>
     <string name="ui_settings_configure_endpoint_mismatch_title">エンドポイントを更新</string>
     <string name="ui_settings_configure_endpoint_mismatch_text_switch">プロトコルを切り替えました。エンドポイントを\n%1$s に更新しますか？</string>

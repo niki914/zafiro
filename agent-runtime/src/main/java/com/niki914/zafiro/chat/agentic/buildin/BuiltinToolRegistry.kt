@@ -7,7 +7,6 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.NotifyBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
-import com.niki914.zafiro.chat.agentic.buildin.impl.PyDownloadFileBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationAccessibilityBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationShellBuiltin
@@ -29,7 +28,6 @@ class BuiltinToolRegistry(
                 ExecutePythonBuiltin(),
                 LaunchAppBuiltin(),
                 PyMetaToolsBuiltin(),
-                PyDownloadFileBuiltin(),
                 MemoryBuiltin(),
                 NotifyBuiltin(),
                 OpenUriBuiltin(),

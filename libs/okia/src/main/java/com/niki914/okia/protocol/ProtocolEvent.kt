@@ -40,8 +40,7 @@ sealed interface ProtocolEvent {
         val delta: String
     ) : ProtocolEvent
 
-    /** 携带最终参数 JSON 的完整工具调用。signature：Gemini 3 思维内工具调用的
-     *  thoughtSignature（须原样回带，见 GeminiProtocol.assistantParts）。 */
+    /** 携带最终参数 JSON 的完整工具调用。 */
     data class ToolCallReady(
         val callId: String,
         val toolName: String,

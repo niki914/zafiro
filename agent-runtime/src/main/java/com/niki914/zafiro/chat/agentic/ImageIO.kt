@@ -1,22 +1,24 @@
 package com.niki914.zafiro.chat.agentic
 
-import android.content.Context
-import android.net.Uri
-import android.util.Base64
 import com.niki914.okia.ImageLoader
-import com.niki914.okia.ImageSaver
+import com.niki914.zafiro.chat.agentic.image.IngestError
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
-import java.security.MessageDigest
 
 /**
- * Android ImageLoader 实现：从文件系统读取图片字节。
+ * Android ImageLoader 实现：从文件系统读取图片字节（suspend + IO dispatcher）。
  * 返回 null = 文件不存在或不可读（外部存储被用户删除等场景）。
+ * 护栏：文件 ≤12MB（纵深防御，ingest 已保证落盘图小，但历史路径无保证）。
  */
-class AndroidImageLoader : ImageLoader {
-    override fun load(path: String): ByteArray? {
-        return try {
+class AndroidImageLoader(
+    private val maxBytes: Int = com.niki914.zafiro.chat.agentic.image.ImageFormat.MAX_IMAGE_BYTES,
+) : ImageLoader {
+    override suspend fun load(path: String): ByteArray? = withContext(Dispatchers.IO) {
+        try {
             val file = File(path)
-            if (!file.exists() || !file.isFile) return null
+            if (!file.exists() || !file.isFile) return@withContext null
+            if (file.length() > maxBytes.toLong()) return@withContext null
             file.readBytes()
         } catch (e: Exception) {
             null
@@ -24,65 +26,16 @@ class AndroidImageLoader : ImageLoader {
     }
 }
 
-/**
- * Android ImageSaver 实现：将 base64 图片保存到 App 私有目录 filesDir/Zafiro/images/。
- * SHA-256 内容哈希命名，天然去重。返回文件路径，null = 保存失败。
- * 后续需要文件访问权限逻辑时再改存储位置（当前与 py 工具一致走私有目录，零权限负担）。
- */
-class AndroidImageSaver(context: Context) : ImageSaver {
-    private val imagesDir: File = File(File(context.filesDir, "Zafiro"), "images")
+/** ingest 成功产出：落盘路径（mimeType 由 ImageCodec 管线保证恒为 image/jpeg，不重复携带）。 */
+data class IngestedImage(val path: String)
 
-    override suspend fun save(base64: String, mimeType: String): String? {
-        return try {
-            val bytes = Base64.decode(base64, Base64.DEFAULT)
-            if (bytes.isEmpty()) return null
-            val hash = sha256(bytes)
-            val ext = mimeType.substringAfterLast("/").lowercase().takeIf { it.isNotEmpty() } ?: "jpg"
-            val file = File(imagesDir, "$hash.$ext")
-            if (!file.exists()) {
-                if (!imagesDir.exists()) imagesDir.mkdirs()
-                file.writeBytes(bytes)
-            }
-            file.absolutePath
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    private fun sha256(bytes: ByteArray): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        return digest.digest(bytes).joinToString("") { "%02x".format(it) }
-    }
-}
-
-/**
- * 用户分享图片（content URI）→ 保存到 App 私有目录 images 目录 → 返回路径。
- * 供分享入口调用。
- */
-class UserImageSaver(private val context: Context) {
-    private val imagesDir: File = File(File(context.filesDir, "Zafiro"), "images")
-
-    fun saveFromUri(uri: Uri): String? {
-        return try {
-            val resolver = context.contentResolver
-            val mimeType = resolver.getType(uri) ?: "image/jpeg"
-            val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
-            if (bytes.isEmpty()) return null
-            val hash = sha256(bytes)
-            val ext = mimeType.substringAfterLast("/").lowercase().takeIf { it.isNotEmpty() } ?: "jpg"
-            val file = File(imagesDir, "$hash.$ext")
-            if (!file.exists()) {
-                if (!imagesDir.exists()) imagesDir.mkdirs()
-                file.writeBytes(bytes)
-            }
-            file.absolutePath
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    private fun sha256(bytes: ByteArray): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        return digest.digest(bytes).joinToString("") { "%02x".format(it) }
-    }
+/** IngestError → 工具错误码 JSON 的映射（供 ViewImageBuiltin 使用）。 */
+internal fun IngestError.toToolError(): Pair<String, String> = when (this) {
+    IngestError.FileNotFound -> "FILE_NOT_FOUND" to "Image file not found or is not a readable file."
+    IngestError.EmptyContent -> "EMPTY_CONTENT" to "Image file is empty."
+    is IngestError.TooLarge -> "IMAGE_TOO_LARGE" to "Image exceeds size limit (${bytes / 1024 / 1024}MB)."
+    IngestError.UnsupportedFormat -> "UNSUPPORTED_FORMAT" to "Image format is not supported."
+    is IngestError.DecodeFailed -> "DECODE_FAILED" to "Failed to decode image: ${cause?.message ?: "unknown"}"
+    is IngestError.IoFailed -> "IO_FAILED" to "Failed to read image: ${cause?.message ?: "unknown"}"
+    is IngestError.SvgRenderFailed -> "SVG_RENDER_FAILED" to "Failed to render SVG: ${cause?.message ?: "unknown"}"
 }

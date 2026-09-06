@@ -117,6 +117,7 @@ internal class RealOkia(
 
     override suspend fun send(
         text: String,
+        images: List<ContentBlock.Image>,
         options: TurnOptions?,
         onEvent: suspend (TurnEvent) -> Unit
     ): TurnResult {
@@ -129,7 +130,12 @@ internal class RealOkia(
         mutex.withLock {
             check(!closed) { "Okia is closed" }
             check(activeTurn == null) { "another turn is already active" }
-            val turnStartEntry = tree.append(Message.User(listOf(ContentBlock.Text(text))))
+            // text + images 构成用户消息内容块（纯图片时不生成空 Text 块）
+            val userBlocks = buildList {
+                if (text.isNotBlank()) add(ContentBlock.Text(text))
+                addAll(images)
+            }
+            val turnStartEntry = tree.append(Message.User(userBlocks))
             publish()
 
             val request = buildLoopRequest(text, options)

@@ -17,6 +17,7 @@ import com.niki914.okia.message.Message
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
+import com.niki914.okia.ImageSaver
 import com.niki914.okia.protocol.OpenAIResponsesProtocol
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolDescriptor
@@ -25,7 +26,7 @@ import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.xposed.api.util.LockState
 import com.niki914.zafiro.chat.agentic.AndroidImageLoader
-import com.niki914.zafiro.chat.agentic.AndroidImageSaver
+import com.niki914.zafiro.chat.agentic.IngestedImage
 import com.niki914.zafiro.chat.agentic.LocalToolExecutor
 import com.niki914.zafiro.chat.agentic.PromptComposer
 import com.niki914.zafiro.chat.agentic.PromptComposerInput
@@ -42,6 +43,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +52,7 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import java.io.File
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 
 /**
@@ -77,24 +80,61 @@ object LLMController {
     // MCP 工具由 T2b McpDiscovery 注册进同一 registry。
     internal val toolRegistry: ToolRegistry = DefaultToolRegistry()
 
-    // 图片加载器 + 保存器（host 注入 Okia）
+    // 图片加载器 + ingest（host 注入 Okia）。单个 ImageCodec 实例供
+    // okia seam（MCP base64 落盘）与用户 URI ingest 共享。
     private val imageLoader: AndroidImageLoader? = try {
         AndroidImageLoader()
     } catch (e: Exception) {
         null
     }
-    private var imageSaver: AndroidImageSaver? = null
 
-    /** 初始化图片保存器（延迟到首次需要时）。 */
-    private suspend fun ensureImageSaver(): AndroidImageSaver? {
-        if (imageSaver == null) {
-            imageSaver = try {
-                ContextProvider.await().applicationContext?.let { AndroidImageSaver(it) }
-            } catch (e: Exception) {
-                null
+    private var imageCodec: com.niki914.zafiro.chat.agentic.image.ImageCodec? = null
+
+    private suspend fun ensureImageCodec(): com.niki914.zafiro.chat.agentic.image.ImageCodec? {
+        imageCodec?.let { return it }
+        // ponytail: 同 sandboxPaths，单测无 provide 时超时兑底
+        return withTimeoutOrNull(2_000) { ContextProvider.await().applicationContext }?.let {
+            com.niki914.zafiro.chat.agentic.image.ImageCodec(it).also { codec -> imageCodec = codec }
+        }
+    }
+
+    /**
+     * 私有存储路径集合，注入 PromptComposer 环境块。
+     * Context 不可用时返回空集合（环境块不渲染）。
+     */
+    private suspend fun sandboxPaths(): Set<String> {
+        // ponytail: 单测无 ContextProvider.provide，await 用超时兑底返回空集合；
+        // 生产环境 provide 在冷启动早期完成，此超时实际不生效
+        val context = try {
+            withTimeoutOrNull(2_000) { ContextProvider.await().applicationContext }
+        } catch (e: Exception) {
+            null
+        } ?: return emptySet()
+        return setOf(
+            File(context.filesDir, "image_cache").absolutePath,
+            File(context.filesDir, "downloads").absolutePath,
+        )
+    }
+
+    /** okia seam：MCP base64 图片 → ingest 落盘 → 返回路径。 */
+    private suspend fun ensureImageSaver(): ImageSaver? {
+        val codec = ensureImageCodec() ?: return null
+        return ImageSaver { base64 ->
+            when (val result = codec.ingestBase64(base64)) {
+                is com.niki914.zafiro.chat.agentic.image.IngestResult.Ok -> result.image.path
+                is com.niki914.zafiro.chat.agentic.image.IngestResult.Err -> null
             }
         }
-        return imageSaver
+    }
+
+    /** 相册 URI → ingest 落盘 → path。失败返回 null（UI 静默丢弃）。 */
+    suspend fun ingestUserImage(uriString: String): IngestedImage? {
+        val codec = ensureImageCodec() ?: return null
+        val result = codec.ingestUri(android.net.Uri.parse(uriString))
+        return when (result) {
+            is com.niki914.zafiro.chat.agentic.image.IngestResult.Ok -> IngestedImage(result.image.path)
+            is com.niki914.zafiro.chat.agentic.image.IngestResult.Err -> null
+        }
     }
 
     // 回合内写入的 py 工具（py_meta_tools write 成功回调，D20）：
@@ -206,6 +246,7 @@ object LLMController {
             baseSystemPrompt = llmConfig.prompt,
             finalSystemPrompt = llmConfig.prompt,
             proxy = llmConfig.proxy,
+            supportsImages = llmConfig.supportsImages,
             idleTimeoutSeconds = llmConfig.idleTimeoutSeconds,
             retryMaxAttempts = llmConfig.retryMaxAttempts,
         )
@@ -245,6 +286,7 @@ object LLMController {
                 memoryItems = buildMemoryItems(llmConfig),
                 tools = resolvedTools,
                 enabledSkills = enabledSkills,
+                sandboxPaths = sandboxPaths(),
             )
         )
         val finalConfig =
@@ -327,6 +369,7 @@ object LLMController {
 
     fun stream(
         query: String,
+        images: List<ContentBlock.Image> = emptyList(),
     ): Flow<LlmStreamEvent> = channelFlow {
         try {
             val state = try {
@@ -404,6 +447,7 @@ object LLMController {
                 val result = try {
                     state.okia.send(
                         text = effectiveQuery,
+                        images = images,
                         options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt),
                     ) { event ->
                         val mapped = LlmStreamEventMapper.map(event, startedAtMs)
@@ -608,6 +652,9 @@ object LLMController {
             toolRegistry = this@LLMController.toolRegistry
             imageLoader = this@LLMController.imageLoader
             imageSaver = saver
+            // 图片功能入口：loader 就绪且当前配置开启视觉开关（provider 设置页
+            // 「视觉模型」；ingest 管线保证协议侧拿到的图片已转码 JPEG q80 小图）
+            supportsImages = imageLoader != null && config.supportsImages
         }
     }
 
