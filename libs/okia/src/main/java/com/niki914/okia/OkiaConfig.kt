@@ -3,6 +3,7 @@ package com.niki914.okia
 import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.mcp.McpServer
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpEngine
 import com.niki914.okia.transport.redactHeaders
@@ -33,7 +34,11 @@ data class OkiaConfig(
     val httpEngine: HttpEngine?,
     val imageLoader: ImageLoader? = null,
     val imageSaver: ImageSaver? = null,
-    val supportsImages: Boolean = false
+    val supportsImages: Boolean = false,
+    /** 思考强度；null = 不发送思考字段（Provider 默认行为）。 */
+    val thinkingLevel: ThinkingLevel? = null,
+    /** 代理 URL（http/https/socks）；空串 = 直连。经传输层 ProxySelector 动态生效。 */
+    val proxy: String = ""
 ) {
 
     // apiKey 与敏感 header 值脱敏；mcpServers 内 header 由 McpServer.toString 自行脱敏
@@ -43,7 +48,7 @@ data class OkiaConfig(
                 "readTimeoutSeconds=$readTimeoutSeconds, writeTimeoutSeconds=$writeTimeoutSeconds, " +
                 "idleTimeoutSeconds=$idleTimeoutSeconds, headers=${redactHeaders(headers)}, " +
                 "retryPolicy=$retryPolicy, mcpServers=$mcpServers, hooks=$hooks, " +
-                "toolRegistry=$toolRegistry, httpEngine=$httpEngine)"
+                "toolRegistry=$toolRegistry, httpEngine=$httpEngine, proxy=$proxy)"
 
     /** 可变构建器。build() 之后配置不可变。 */
     class Builder {
@@ -65,6 +70,8 @@ data class OkiaConfig(
         var imageLoader: ImageLoader? = null
         var imageSaver: ImageSaver? = null
         var supportsImages: Boolean = false
+        var thinkingLevel: ThinkingLevel? = null
+        var proxy: String = ""
 
         // 组装不可变配置快照
         fun build(): OkiaConfig = OkiaConfig(
@@ -85,7 +92,9 @@ data class OkiaConfig(
             httpEngine = httpEngine,
             imageLoader = imageLoader,
             imageSaver = imageSaver,
-            supportsImages = supportsImages
+            supportsImages = supportsImages,
+            thinkingLevel = thinkingLevel,
+            proxy = proxy
         )
 
         // 从现有快照复制全部字段（update 热更新的基础：只改 block 声明的字段）
@@ -108,6 +117,8 @@ data class OkiaConfig(
             imageLoader = other.imageLoader
             imageSaver = other.imageSaver
             supportsImages = other.supportsImages
+            thinkingLevel = other.thinkingLevel
+            proxy = other.proxy
             return this
         }
     }

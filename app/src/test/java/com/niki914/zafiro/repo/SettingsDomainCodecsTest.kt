@@ -39,6 +39,7 @@ class SettingsDomainCodecsTest {
                     apiKey = "secret",
                     model = "gpt-test",
                     protocol = "openai-responses",
+                    thinkingLevel = "high",
                     proxy = "http://proxy",
                     createdAt = 1L,
                     updatedAt = 2L,

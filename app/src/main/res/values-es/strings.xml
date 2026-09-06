@@ -370,6 +370,8 @@
     <string name="ui_settings_configure_endpoint_mismatch_cancel_keep">Conservar</string>
     <string name="ui_settings_configure_endpoint_mismatch_cancel_save">Guardar tal cual</string>
     <string name="ui_settings_configure_protocol_hint">Tras cambiar el protocolo, asegúrese de que el endpoint sea compatible con dicho protocolo.</string>
+    <string name="ui_settings_configure_thinking_label">Esfuerzo de razonamiento</string>
+    <string name="ui_settings_configure_thinking_hint">Deje en Provider Default para usar el comportamiento predeterminado del proveedor; redúzcalo si el proveedor rechaza un nivel alto.</string>
 
     <string name="ui_settings_appearance">Apariencia</string>
     <string name="ui_theme_mode_system">Según el sistema</string>
