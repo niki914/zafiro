@@ -267,6 +267,8 @@ object LLMController {
             retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts)
             // 思考强度热更新：与超时/重试同层（实例复用时跟随设置变化）
             thinkingLevel = configWithoutRuntimePrompt.thinkingLevel
+            // 代理热更新：buildLoopRequest 每次请求读 config.proxy 并同步到引擎
+            proxy = configWithoutRuntimePrompt.proxy
             // T2b：MCP 服务器配置进 OKIA（McpDiscovery 发现后注册进同一 toolRegistry）
             mcpServers = toOkiaMcpServers(resolvedTools.mcpServers)
         }
@@ -661,6 +663,7 @@ object LLMController {
             // 「视觉模型」；ingest 管线保证协议侧拿到的图片已转码 JPEG q80 小图）
             supportsImages = imageLoader != null && config.supportsImages
             thinkingLevel = config.thinkingLevel
+            proxy = config.proxy
         }
     }
 
