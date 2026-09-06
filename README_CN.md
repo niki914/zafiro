@@ -167,7 +167,7 @@ agentic-nexus/
 
 ## 贡献
 
-欢迎提交 Pull Request！贡献前请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
+欢迎提交 Pull Request!
 
 1. Fork 本项目
 2. 创建功能分支（`git checkout -b feat/your-feature`）
