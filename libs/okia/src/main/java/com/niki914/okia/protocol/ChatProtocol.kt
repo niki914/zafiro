@@ -77,3 +77,15 @@ internal suspend fun loadToolImages(
     }
     return loaded to notes.joinToString("\n")
 }
+
+/**
+ * User 消息文本 + 全图降级注记拼接（supportsImages=false / loader 缺失的
+ * 全降级路径）。text 非空时注记换行追加，避免原文与注记粘连。
+ */
+internal inline fun String.withImageNotes(
+    images: List<ContentBlock.Image>,
+    crossinline note: (ContentBlock.Image) -> String
+): String {
+    val notes = images.joinToString("\n") { note(it) }
+    return if (isBlank()) notes else "$this\n$notes"
+}

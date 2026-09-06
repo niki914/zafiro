@@ -12,6 +12,7 @@ import com.niki914.okia.mcp.LegacyStreamableHttpMcpClient
 import com.niki914.okia.mcp.McpClient
 import com.niki914.okia.mcp.McpDiscoverySnapshot
 import com.niki914.okia.mcp.McpRefreshResult
+import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.protocol.ChatProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
 import com.niki914.okia.protocol.ProtocolCompatMapper
@@ -40,8 +41,10 @@ interface Okia {
     // 提交用户输入，跑完整个回合（LLM ↔ 工具循环）后返回回合结局。
     // 终态由 sealed TurnResult 承载（Completed / Failed / Aborted / IdleTimeout），
     // 失败不抛异常；onEvent 承担流式中间过程。
+    // images：附件图片（路径引用），与 text 同属一条 User 消息内容块。
     suspend fun send(
         text: String,
+        images: List<ContentBlock.Image> = emptyList(),
         options: TurnOptions? = null,
         onEvent: suspend (TurnEvent) -> Unit
     ): TurnResult

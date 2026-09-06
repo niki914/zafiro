@@ -157,53 +157,59 @@ class AnthropicMessagesProtocol(
     }
 
     private suspend fun userBlocks(snapshot: RequestSnapshot, blocks: List<ContentBlock>): List<JsonObject> {
-        val image = blocks.firstOrNull { it is ContentBlock.Image }
-        if (image == null) {
-            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
+        val textBlocks = blocks.filterIsInstance<ContentBlock.Text>()
+        val images = blocks.filterIsInstance<ContentBlock.Image>()
+        // 无图：纯文本
+        if (images.isEmpty()) {
+            return textBlocks.map { t ->
                 buildJsonObject {
                     put("type", "text")
-                    put("text", text.text)
+                    put("text", t.text)
                 }
             }
         }
-        if (!snapshot.supportsImages) {
-            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
+        // 不支持图片 / 无 loader：全部降级为文本注记
+        if (!snapshot.supportsImages || snapshot.imageLoader == null) {
+            return textBlocks.map { t ->
                 buildJsonObject {
                     put("type", "text")
-                    put("text", text.text)
+                    put("text", t.text)
                 }
-            } + buildJsonObject {
-                put("type", "text")
-                put("text", "[image omitted: model does not support images]")
+            } + images.map { img ->
+                buildJsonObject {
+                    put("type", "text")
+                    put("text", "[image omitted: ${if (snapshot.supportsImages) "file not found" else "model does not support images"}]")
+                }
             }
         }
         val loader = snapshot.imageLoader
-        val bytes = loader?.load((image as ContentBlock.Image).path)
-        if (bytes == null) {
-            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
-                buildJsonObject {
-                    put("type", "text")
-                    put("text", text.text)
+        // 逐张加载：成功 → image block；失败 → text note
+        val result = mutableListOf<JsonObject>()
+        for (t in textBlocks) {
+            result += buildJsonObject {
+                put("type", "text")
+                put("text", t.text)
+            }
+        }
+        for (image in images) {
+            val bytes = loader.load(image.path)
+            if (bytes != null) {
+                result += buildJsonObject {
+                    put("type", "image")
+                    put("source", buildJsonObject {
+                        put("type", "base64")
+                        put("media_type", image.mimeType)
+                        put("data", Base64.encode(bytes))
+                    })
                 }
-            } + buildJsonObject {
-                put("type", "text")
-                put("text", "[image omitted: file not found]")
+            } else {
+                result += buildJsonObject {
+                    put("type", "text")
+                    put("text", "[image omitted: file not found]")
+                }
             }
         }
-        val base64 = Base64.encode(bytes)
-        return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
-            buildJsonObject {
-                put("type", "text")
-                put("text", text.text)
-            }
-        } + buildJsonObject {
-            put("type", "image")
-            put("source", buildJsonObject {
-                put("type", "base64")
-                put("media_type", image.mimeType)
-                put("data", base64)
-            })
-        }
+        return result
     }
 
     private fun assistantBlocks(message: AssistantMessage): List<JsonObject> =

@@ -84,7 +84,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { query ->
+                stream = { query, _ ->
                     assertEquals("hello", query)
                     flowOf(
                         LlmStreamEvent.RoundStarted,
@@ -165,7 +165,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf(LlmStreamEvent.Completed) },
+                stream = { _, _ -> flowOf(LlmStreamEvent.Completed) },
                 resetConversation = { resetCalled = true },
             ),
         )
@@ -190,7 +190,7 @@ class HomeChatViewModelTest {
     fun imageAttached_ingestsAndAddsToPendingImages() = runTest {
         val viewModel = HomeChatViewModel(
             conversations = FakeHomeConversationStore(),
-            runtime = FakeHomeChatRuntime(stream = { flowOf(LlmStreamEvent.Completed) }),
+            runtime = FakeHomeChatRuntime(stream = { _, _ -> flowOf(LlmStreamEvent.Completed) }),
         )
 
         viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/1"))
@@ -205,7 +205,7 @@ class HomeChatViewModelTest {
     fun imageRemoved_removesOnlyTargetImage() = runTest {
         val viewModel = HomeChatViewModel(
             conversations = FakeHomeConversationStore(),
-            runtime = FakeHomeChatRuntime(stream = { flowOf(LlmStreamEvent.Completed) }),
+            runtime = FakeHomeChatRuntime(stream = { _, _ -> flowOf(LlmStreamEvent.Completed) }),
         )
 
         viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/1"))
@@ -225,7 +225,7 @@ class HomeChatViewModelTest {
     fun send_movesPendingImagesIntoTurnAndClearsPending() = runTest {
         val viewModel = HomeChatViewModel(
             conversations = FakeHomeConversationStore(),
-            runtime = FakeHomeChatRuntime(stream = { flowOf(LlmStreamEvent.Completed) }),
+            runtime = FakeHomeChatRuntime(stream = { _, _ -> flowOf(LlmStreamEvent.Completed) }),
         )
 
         viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/1"))
@@ -246,12 +246,14 @@ class HomeChatViewModelTest {
     }
 
     @Test
-    fun send_withImagesOnly_recordsTurnWithoutStreaming() = runTest {
+    fun send_withImagesOnly_streamsAndRecordsTurn() = runTest {
         var streamed = false
+        var streamedImages: List<ContentBlock.Image> = emptyList()
         val viewModel = HomeChatViewModel(
             conversations = FakeHomeConversationStore(),
-            runtime = FakeHomeChatRuntime(stream = {
+            runtime = FakeHomeChatRuntime(stream = { _, images ->
                 streamed = true
+                streamedImages = images
                 flowOf(LlmStreamEvent.Completed)
             }),
         )
@@ -261,12 +263,12 @@ class HomeChatViewModelTest {
         viewModel.sendIntent(HomeChatIntent.Send)
         advanceUntilIdle()
 
-        // 纯图片发送：只进 UI 历史，不发流（发空文本会喂给模型空 user message）。
-        // 发送链路待 Okia 支持图片参数后接入
+        // 纯图片发送照常发流，且图片块真到达 stream（Okia.send 空文本 + 图片块）
         assertFalse(viewModel.uiStateFlow.value.isGenerating)
         assertEquals(1, viewModel.uiStateFlow.value.turns.size)
         assertEquals(1, viewModel.uiStateFlow.value.turns.single().images.size)
-        assertFalse(streamed)
+        assertTrue(streamed)
+        assertEquals(1, streamedImages.size)
     }
 
     @Test
@@ -274,7 +276,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = FakeHomeConversationStore(),
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf(LlmStreamEvent.Completed) },
+                stream = { _, _ -> flowOf(LlmStreamEvent.Completed) },
                 ingestImage = { null },
             ),
         )
@@ -289,7 +291,7 @@ class HomeChatViewModelTest {
     fun newConversation_clearsPendingImages() = runTest {
         val viewModel = HomeChatViewModel(
             conversations = FakeHomeConversationStore(),
-            runtime = FakeHomeChatRuntime(stream = { flowOf(LlmStreamEvent.Completed) }),
+            runtime = FakeHomeChatRuntime(stream = { _, _ -> flowOf(LlmStreamEvent.Completed) }),
         )
 
         viewModel.sendIntent(HomeChatIntent.ImageAttached("content://media/1"))
@@ -305,7 +307,7 @@ class HomeChatViewModelTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
-            runtime = FakeHomeChatRuntime(stream = {
+            runtime = FakeHomeChatRuntime(stream = { _, _ ->
                 flow {
                     throw RuntimeException()
                 }
@@ -328,7 +330,7 @@ class HomeChatViewModelTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
-            runtime = FakeHomeChatRuntime(stream = {
+            runtime = FakeHomeChatRuntime(stream = { _, _ ->
                 flowOf(LlmStreamEvent.Error("network failed"))
             }),
         )
@@ -352,7 +354,7 @@ class HomeChatViewModelTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
-            runtime = FakeHomeChatRuntime(stream = { query ->
+            runtime = FakeHomeChatRuntime(stream = { query, _ ->
                 if (query == "hello") {
                     flowOf(LlmStreamEvent.Error("network failed"))
                 } else {
@@ -399,7 +401,7 @@ class HomeChatViewModelTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
-            runtime = FakeHomeChatRuntime(stream = {
+            runtime = FakeHomeChatRuntime(stream = { _, _ ->
                 flow {
                     emit(LlmStreamEvent.RoundStarted)
                     awaitCancellation()
@@ -432,7 +434,7 @@ class HomeChatViewModelTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
-            runtime = FakeHomeChatRuntime(stream = { query ->
+            runtime = FakeHomeChatRuntime(stream = { query, _ ->
                 sentQueries = sentQueries + query
                 flow {
                     emit(LlmStreamEvent.RoundStarted)
@@ -475,7 +477,7 @@ class HomeChatViewModelTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
-            runtime = FakeHomeChatRuntime(stream = {
+            runtime = FakeHomeChatRuntime(stream = { _, _ ->
                 flow {
                     emit(LlmStreamEvent.RoundStarted)
                     emit(
@@ -530,7 +532,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = {
+                stream = { _, _ ->
                     flow {
                         emit(LlmStreamEvent.RoundStarted)
                         emit(LlmStreamEvent.TextDelta(delta = "partial", fullText = "partial"))
@@ -561,7 +563,7 @@ class HomeChatViewModelTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
-            runtime = FakeHomeChatRuntime(stream = {
+            runtime = FakeHomeChatRuntime(stream = { _, _ ->
                 flowOf(
                     LlmStreamEvent.RoundStarted,
                     LlmStreamEvent.ToolRunning(ToolCallStatus(name = "search", label = "Search")),
@@ -606,7 +608,7 @@ class HomeChatViewModelTest {
         val conversations = FakeHomeConversationStore()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
-            runtime = FakeHomeChatRuntime(stream = {
+            runtime = FakeHomeChatRuntime(stream = { _, _ ->
                 flowOf(
                     LlmStreamEvent.RoundStarted,
                     LlmStreamEvent.ToolPending(
@@ -649,7 +651,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf(LlmStreamEvent.Completed) },
+                stream = { _, _ -> flowOf(LlmStreamEvent.Completed) },
             ),
         )
 
@@ -675,7 +677,7 @@ class HomeChatViewModelTest {
             runtime = FakeHomeChatRuntime(
                 // 第一轮失败：最后一条 turn 是裸 user message（无 AI 回应），
                 // 此时复制按钮因 isLastTurn 放开；第二轮发起后必须收起
-                stream = {
+                stream = { _, _ ->
                     flowOf(
                         LlmStreamEvent.RoundStarted,
                         LlmStreamEvent.Error(message = "boom", code = null),
@@ -722,7 +724,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { _ ->
+                stream = { _, _ ->
                     queryCount++
                     if (queryCount == 1) {
                         flowOf(LlmStreamEvent.Error(message = "boom", code = null))
@@ -762,7 +764,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf(LlmStreamEvent.Completed) },
+                stream = { _, _ -> flowOf(LlmStreamEvent.Completed) },
             ),
         )
         viewModel.sendIntent(HomeChatIntent.InputChanged("hello"))
@@ -801,7 +803,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf() },
+                stream = { _, _ -> flowOf() },
                 openSession = { openedSnapshot = it },
             ),
         )
@@ -845,7 +847,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf() },
+                stream = { _, _ -> flowOf() },
                 stopCurrentRound = { stopCount++ },
                 openSession = { openedSnapshot = it },
             ),
@@ -885,7 +887,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf() },
+                stream = { _, _ -> flowOf() },
                 historySnapshot = {
                     listOf(
                         Message.User(listOf(ContentBlock.Text("first"))),
@@ -929,17 +931,24 @@ class HomeChatViewModelTest {
         )
         conversations.setLastOpenedConversationId(sourceId)
         var lastQuery: String? = null
+        var regenImages: List<ContentBlock.Image> = emptyList()
         val opened = mutableListOf<SessionSnapshot>()
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { query ->
+                stream = { query, images ->
                     lastQuery = query
+                    regenImages = images
                     flowOf(LlmStreamEvent.Completed)
                 },
                 historySnapshot = {
                     listOf(
-                        Message.User(listOf(ContentBlock.Text("first"))),
+                        Message.User(
+                            listOf(
+                                ContentBlock.Text("first"),
+                                ContentBlock.Image("/tmp/regen.jpg", "image/jpeg"),
+                            )
+                        ),
                         Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("one")))),
                         Message.User(listOf(ContentBlock.Text("second"))),
                     )
@@ -954,6 +963,9 @@ class HomeChatViewModelTest {
 
         val newSnapshot = opened.last()
         assertEquals("first", lastQuery)
+        // regen 重发必须带原回合的图片（模型侧 + UI 侧），否则图片在重生成后丢失
+        assertEquals(1, regenImages.size)
+        assertEquals("/tmp/regen.jpg", regenImages.single().path)
         // regen 截断到第一条 User 之前（丢弃该轮及后续，重新生成）：保留 0 条
         assertEquals(0, newSnapshot.entries.size)
         val newRecord = conversations.getConversation(newSnapshot.id)!!
@@ -967,7 +979,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = { flowOf(LlmStreamEvent.Completed) },
+                stream = { _, _ -> flowOf(LlmStreamEvent.Completed) },
                 resetConversation = { resetCalled = true },
             ),
         )
@@ -997,7 +1009,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = {
+                stream = { _, _ ->
                     flow {
                         emit(LlmStreamEvent.RoundStarted)
                         // 首发：块 0 开始（Mapper 只对 Started 发新块，Delta 续接重发同 id）
@@ -1050,7 +1062,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = {
+                stream = { _, _ ->
                     flow {
                         emit(LlmStreamEvent.RoundStarted)
                         emit(LlmStreamEvent.ThinkingStarted(0, "first"))
@@ -1087,7 +1099,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = {
+                stream = { _, _ ->
                     flow {
                         emit(LlmStreamEvent.RoundStarted)
                         emit(LlmStreamEvent.ThinkingStarted(0, "first"))
@@ -1144,7 +1156,7 @@ class HomeChatViewModelTest {
         val viewModel = HomeChatViewModel(
             conversations = conversations,
             runtime = FakeHomeChatRuntime(
-                stream = {
+                stream = { _, _ ->
                     flowOf(
                         LlmStreamEvent.RoundStarted,
                         LlmStreamEvent.ThinkingStarted(0, "one"),
@@ -1183,17 +1195,18 @@ class HomeChatViewModelTest {
 }
 
 private class FakeHomeChatRuntime(
-    private val stream: (String) -> Flow<LlmStreamEvent>,
+    private val stream: (String, List<ContentBlock.Image>) -> Flow<LlmStreamEvent>,
     private val resetConversation: suspend () -> Unit = {},
     private val stopCurrentRound: suspend () -> Unit = {},
     private val ensureSession: suspend () -> String = { "fake-session-1" },
     private val openSession: suspend (SessionSnapshot) -> Unit = {},
     private val historySnapshot: suspend () -> List<Message> = { emptyList() },
     private val ingestImage: suspend (String) -> HomeChatImage? = { uri ->
-        HomeChatImage(id = "ingested-$uri", path = "/tmp/$uri.jpg", dataUrl = "data:image/jpeg;base64,xxx")
+        HomeChatImage(id = "ingested-$uri", path = "/tmp/$uri.jpg")
     },
 ) : HomeChatRuntime {
-    override fun stream(query: String): Flow<LlmStreamEvent> = stream.invoke(query)
+    override fun stream(query: String, images: List<ContentBlock.Image>): Flow<LlmStreamEvent> =
+        stream.invoke(query, images)
     override suspend fun resetConversation() = resetConversation.invoke()
     override suspend fun stopCurrentRound() = stopCurrentRound.invoke()
 

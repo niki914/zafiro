@@ -32,12 +32,15 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -584,19 +587,19 @@ private fun ActionButton(
 
 // ── 图片附件 ─────────────────────────────────────────────────────────────
 
-/** data URL（ingest 后的 JPEG）→ 预览 ImageBitmap；失败返回 null（显示占位）。 */
+/**
+ * 落盘路径 → 异步解码 ImageBitmap（IO dispatcher，主线程零阻塞）。
+ * null = 文件不存在/解码失败（显示占位底色）；解码完成自动刷新。
+ */
 @Composable
-private fun rememberDataUrlBitmap(dataUrl: String): ImageBitmap? {
-    val context = LocalContext.current
-    return remember(dataUrl) {
-        runCatching {
-            val encoded = dataUrl.substringAfter("base64,", "")
-            if (encoded.isEmpty()) return@runCatching null
-            val bytes = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT)
-            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-        }.getOrNull()
-    }
-}
+private fun rememberPathBitmap(path: String): ImageBitmap? =
+    produceState<ImageBitmap?>(initialValue = null, path) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                android.graphics.BitmapFactory.decodeFile(path)?.asImageBitmap()
+            }.getOrNull()
+        }
+    }.value
 
 /**
  * 单张图片卡。尺寸由调用方决定（composer 待发 60dp / 消息内大图卡）。
@@ -611,7 +614,7 @@ private fun HomeChatImageCard(
     modifier: Modifier = Modifier,
 ) {
     val shape = G2CardShape(cornerRadius)
-    val bitmap = rememberDataUrlBitmap(image.dataUrl)
+    val bitmap = rememberPathBitmap(image.path)
     Box(
         modifier = modifier
             .size(size)

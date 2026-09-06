@@ -9,6 +9,7 @@ import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.zafiro.app.ui.model.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.HomeChatImage
 import com.niki914.zafiro.app.ui.model.HomeChatTurn
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
@@ -89,9 +90,14 @@ object ConversationFormatter {
         history.forEach { entry ->
             when (val message = entry.message) {
                 is Message.User -> {
+                    // 图片从沙箱路径恢复（字节在 filesDir，重启不丢）：
+                    // id 用 path hash（同一张图跨会话恢复 id 稳定，UI key 不冲突）
                     turns += HomeChatTurn(
                         id = nextId++,
-                        userText = message.textBlocks().joinToString("\n")
+                        userText = message.textBlocks().joinToString("\n"),
+                        images = message.content.filterIsInstance<ContentBlock.Image>().map {
+                            HomeChatImage(id = it.path.hashCode().toString(), path = it.path)
+                        },
                     )
                 }
 

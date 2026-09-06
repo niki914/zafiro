@@ -602,4 +602,63 @@ class AnthropicMessagesProtocolTest {
         assertTrue(content[0]["text"]!!.jsonPrimitive.content.contains("[image omitted"))
         assertEquals("image", content[1]["type"]!!.jsonPrimitive.content)
     }
+
+    // ── 用户消息多图 ────────────────────────────────────────────────────────
+
+    @Test
+    fun userMessageEncodesAllImagesAsImageBlocks() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(supportsImages = true, imageLoader = loaderOf()),
+            listOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("see these"),
+                        ContentBlock.Image("/a.png", "image/png"),
+                        ContentBlock.Image("/b.png", "image/png"),
+                    )
+                )
+            )
+        )
+        val content = messagesOf(request).single()["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(3, content.size)
+        assertEquals("text", content[0]["type"]!!.jsonPrimitive.content)
+        assertEquals("see these", content[0]["text"]!!.jsonPrimitive.content)
+        assertEquals("image", content[1]["type"]!!.jsonPrimitive.content)
+        assertEquals("image", content[2]["type"]!!.jsonPrimitive.content)
+        assertEquals("image/png", content[1]["source"]!!.jsonObject["media_type"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun userMessageImageLoadFailureBecomesTextNote() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(supportsImages = true, imageLoader = loaderOf("/gone.png")),
+            listOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("look"),
+                        ContentBlock.Image("/gone.png", "image/png"),
+                        ContentBlock.Image("/alive.png", "image/png"),
+                    )
+                )
+            )
+        )
+        val content = messagesOf(request).single()["content"]!!.jsonArray.map { it.jsonObject }
+        // 逐张降级：text + 独立 text note + 1 张成功图
+        assertEquals(3, content.size)
+        assertEquals("text", content[0]["type"]!!.jsonPrimitive.content)
+        assertEquals("look", content[0]["text"]!!.jsonPrimitive.content)
+        assertTrue(content[1]["text"]!!.jsonPrimitive.content.contains("[image omitted"))
+        assertEquals("image", content[2]["type"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun userMessageImagesOnlyHasNoTextBlock() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(supportsImages = true, imageLoader = loaderOf()),
+            listOf(Message.User(listOf(ContentBlock.Image("/a.png", "image/png"))))
+        )
+        val content = messagesOf(request).single()["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(1, content.size)
+        assertEquals("image", content[0]["type"]!!.jsonPrimitive.content)
+    }
 }
