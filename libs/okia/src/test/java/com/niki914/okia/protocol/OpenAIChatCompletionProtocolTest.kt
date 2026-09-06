@@ -5,6 +5,7 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.tooling.ToolDescriptor
@@ -716,5 +717,31 @@ class OpenAIChatCompletionProtocolTest {
         val parts = messagesOf(request).single()["content"]!!.jsonArray.map { it.jsonObject }
         assertEquals(1, parts.size)
         assertEquals("image_url", parts[0]["type"]!!.jsonPrimitive.content)
+    }
+
+    // ── thinking level：请求体 reasoning_effort ─────────────────────────
+
+    @Test
+    fun thinkingLevelOmittedByDefault() = runBlocking {
+        val request = protocol.buildRequest(snapshot(), emptyList())
+        assertTrue(body(request)["reasoning_effort"] == null)
+    }
+
+    @Test
+    fun thinkingLevelSentAsReasoningEffort() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(thinkingLevel = ThinkingLevel.HIGH),
+            emptyList()
+        )
+        assertEquals("high", body(request)["reasoning_effort"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun thinkingLevelOffSentAsNone() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(thinkingLevel = ThinkingLevel.OFF),
+            emptyList()
+        )
+        assertEquals("none", body(request)["reasoning_effort"]!!.jsonPrimitive.content)
     }
 }

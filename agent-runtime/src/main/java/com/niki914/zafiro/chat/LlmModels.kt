@@ -1,5 +1,6 @@
 package com.niki914.zafiro.chat
 
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.zafiro.chat.agentic.PromptComposeResult
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 
@@ -19,6 +20,8 @@ data class ResolvedLlmConfig(
     val supportsImages: Boolean = false,
     val idleTimeoutSeconds: Long? = 60L,
     val retryMaxAttempts: Int = 3,
+    /** 思考强度；null = 不发送思考字段（Provider 默认行为）。 */
+    val thinkingLevel: ThinkingLevel? = null,
 )
 
 data class ResolvedTools(

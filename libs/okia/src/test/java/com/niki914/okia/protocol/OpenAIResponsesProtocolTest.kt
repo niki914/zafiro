@@ -5,6 +5,7 @@ import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.tooling.ToolDescriptor
@@ -868,5 +869,33 @@ class OpenAIResponsesProtocolTest {
         val content = item["content"]!!.jsonPrimitive.content
         assertTrue(content.contains("look"))
         assertTrue(content.contains("[image omitted"))
+    }
+
+    // ── thinking level：请求体 reasoning.effort ─────────────────────────
+
+    @Test
+    fun thinkingLevelOmittedByDefault() = runBlocking {
+        val request = protocol.buildRequest(snapshot(), emptyList())
+        assertTrue(body(request)["reasoning"] == null)
+    }
+
+    @Test
+    fun thinkingLevelSentAsReasoningEffort() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(thinkingLevel = ThinkingLevel.MEDIUM),
+            emptyList()
+        )
+        val reasoning = body(request)["reasoning"]!!.jsonObject
+        assertEquals("medium", reasoning["effort"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun thinkingLevelOffSentAsNone() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(thinkingLevel = ThinkingLevel.OFF),
+            emptyList()
+        )
+        val reasoning = body(request)["reasoning"]!!.jsonObject
+        assertEquals("none", reasoning["effort"]!!.jsonPrimitive.content)
     }
 }

@@ -18,6 +18,8 @@ data class RuntimeLlmConfig(
     val idleTimeoutSeconds: Long? = 60L,
     /** 传输层自动重试次数。 */
     val retryMaxAttempts: Int = 3,
+    /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
+    val thinkingLevel: String = "",
 )
 
 enum class RuntimeAgentMemoryMode {

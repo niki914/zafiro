@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
@@ -28,12 +29,14 @@ internal fun ProviderAccessSettingsBlock(
     onModelChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onProtocolSelected: (String) -> Unit = {},
+    onThinkingLevelSelected: (String) -> Unit = {},
     onSupportsImagesChange: (Boolean) -> Unit = {},
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit,
     onClearActiveField: () -> Unit,
 ) {
     var showProtocolDialog by rememberSaveable { mutableStateOf(false) }
+    var showThinkingDialog by rememberSaveable { mutableStateOf(false) }
 
     SettingsGroupCard {
         if (showNameField) {
@@ -132,6 +135,17 @@ internal fun ProviderAccessSettingsBlock(
             },
         )
         SettingsItemDivider()
+        // 思考强度行：与协议行同款 Value Row（点击弹单选弹窗）
+        SettingsListItem(
+            title = stringResource(R.string.ui_settings_configure_thinking_label),
+            currentState = thinkingLevelLabel(uiState.thinkingLevelWire),
+            showChevron = true,
+            onClick = {
+                onClearActiveField()
+                showThinkingDialog = true
+            },
+        )
+        SettingsItemDivider()
         SettingToggleItem(
             title = stringResource(R.string.ui_settings_configure_vision_label),
             checked = uiState.supportsImages,
@@ -203,4 +217,30 @@ internal fun ProviderAccessSettingsBlock(
             onProtocolSelected(protocol.wireId)
         },
     )
+
+    // 思考强度弹窗：含「Provider 默认」（不发字段）+ 全部 level，全协议同一可选项
+    SingleChoiceLiquidDialog(
+        visible = showThinkingDialog,
+        onDismissRequest = { showThinkingDialog = false },
+        title = stringResource(R.string.ui_settings_configure_thinking_label),
+        hint = stringResource(R.string.ui_settings_configure_thinking_hint),
+        options = thinkingLevelOptions(),
+        selectedId = uiState.thinkingLevelWire,
+        optionId = { it.wire },
+        optionLabel = { it.label },
+        onSelect = { option ->
+            showThinkingDialog = false
+            onThinkingLevelSelected(option.wire)
+        },
+    )
 }
+
+/** 思考强度可选项：「Provider 默认」（空串 = 不发字段）+ 全部 ThinkingLevel。 */
+private data class ThinkingLevelOption(val wire: String, val label: String)
+
+private fun thinkingLevelOptions(): List<ThinkingLevelOption> =
+    listOf(ThinkingLevelOption("", "Provider Default")) +
+        ThinkingLevel.entries.map { ThinkingLevelOption(it.wireValue, it.wireValue) }
+
+private fun thinkingLevelLabel(wire: String): String =
+    thinkingLevelOptions().firstOrNull { it.wire == wire }?.label ?: "Provider Default"

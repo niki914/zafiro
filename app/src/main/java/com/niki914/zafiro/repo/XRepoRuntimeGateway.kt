@@ -26,6 +26,7 @@ class XRepoRuntimeGateway(
             protocol = active?.protocol.orEmpty(),
             supportsImages = active?.supportsImages ?: false,
             proxy = active?.proxy.orEmpty(),
+            thinkingLevel = active?.thinkingLevel.orEmpty(),
             prompt = doc.prompt,
             memories = memories,
             idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },

@@ -332,6 +332,8 @@
     <string name="ui_settings_configure_endpoint_mismatch_cancel_keep">保留</string>
     <string name="ui_settings_configure_endpoint_mismatch_cancel_save">直接儲存</string>
     <string name="ui_settings_configure_protocol_hint">切換協議後，請確認端點與協議匹配。</string>
+    <string name="ui_settings_configure_thinking_label">思考強度</string>
+    <string name="ui_settings_configure_thinking_hint">留空（Provider Default）時使用 Provider 預設行為；過高時若 Provider 拒絕請自行調低。</string>
     <string name="error_mcp_load_failed">讀取 MCP 配置失敗</string>
     <string name="error_mcp_save_failed">儲存 MCP 配置失敗</string>
     <string name="error_mcp_delete_failed">刪除 MCP 配置失敗</string>

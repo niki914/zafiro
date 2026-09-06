@@ -369,6 +369,8 @@
     <string name="ui_settings_configure_endpoint_mismatch_cancel_keep">維持</string>
     <string name="ui_settings_configure_endpoint_mismatch_cancel_save">このまま保存</string>
     <string name="ui_settings_configure_protocol_hint">プロトコル切り替え後、エンドポイントがプロトコルと一致しているか確認してください。</string>
+    <string name="ui_settings_configure_thinking_label">思考強度</string>
+    <string name="ui_settings_configure_thinking_hint">Provider Default のままにするとプロバイダーのデフォルト動作になります。高いレベルが拒否された場合は自分で下げてください。</string>
 
     <string name="ui_settings_appearance">外観</string>
     <string name="ui_theme_mode_system">システムに従う</string>
