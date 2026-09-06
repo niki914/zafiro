@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -60,7 +61,7 @@ class OpenAIResponsesProtocol(
     override fun useApiKey(apiKey: String): Map<String, String> =
         if (apiKey.isEmpty()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
 
-    override fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
+    override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
         HttpRequest(
             url = snapshot.endpoint,
             method = "POST",
@@ -158,7 +159,7 @@ class OpenAIResponsesProtocol(
 
     // ── 请求体 ─────────────────────────────────────────────────────────────
 
-    private fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
+    private suspend fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
         buildJsonObject {
             put("model", snapshot.model)
             put("input", buildJsonArray {
@@ -180,7 +181,7 @@ class OpenAIResponsesProtocol(
      * reasoning item（不把其文本拼进 message，避免重复）；无 payload 或前缀
      * 不认识的思考块继续按明文合并进文本（DeepSeek 网关形态）。
      */
-    private fun addInputItem(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
+    private suspend fun addInputItem(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
         is Message.User -> listOf(buildJsonObject {
             put("role", "user")
             put("content", userContent(snapshot, message.content))
@@ -225,26 +226,31 @@ class OpenAIResponsesProtocol(
         is Message.ToolResult -> listOf(buildJsonObject {
             put("type", "function_call_output")
             put("call_id", message.callId)
-            val image = (message.outcome as? ToolCallOutcome.Success)?.image
-            if (image != null && snapshot.supportsImages) {
-                val loader = snapshot.imageLoader
-                val bytes = loader?.load(image.path)
-                if (bytes != null) {
-                    val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
-                    put("output", buildJsonArray {
-                        add(buildJsonObject {
-                            put("type", "input_text")
-                            put("text", message.outcome.providerContent())
-                        })
+            val images = (message.outcome as? ToolCallOutcome.Success)?.images.orEmpty()
+            val (loaded, notes) = loadToolImages(snapshot, images)
+            val text = buildString {
+                append(message.outcome.providerContent())
+                if (notes.isNotEmpty()) {
+                    if (isNotEmpty()) append("\n")
+                    append(notes)
+                }
+            }
+            if (loaded.isNotEmpty()) {
+                put("output", buildJsonArray {
+                    add(buildJsonObject {
+                        put("type", "input_text")
+                        put("text", text)
+                    })
+                    loaded.forEach { (dataUrl, _) ->
                         add(buildJsonObject {
                             put("type", "input_image")
                             put("image_url", dataUrl)
                         })
-                    })
-                    return@buildJsonObject
-                }
+                    }
+                })
+            } else {
+                put("output", text)
             }
-            put("output", message.outcome.providerContent())
         })
     }
 
@@ -281,30 +287,61 @@ class OpenAIResponsesProtocol(
         state.reasoningItems.clear()
     }
 
-    private fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
-        val image = blocks.firstOrNull { it is ContentBlock.Image }
+    private suspend fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
         val text = blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
-        if (image == null) {
+        val images = blocks.filterIsInstance<ContentBlock.Image>()
+        // 无图：纯文本
+        if (images.isEmpty()) {
             return kotlinx.serialization.json.JsonPrimitive(text)
         }
+        // 不支持图片或无 loader：全部降级为文本注记（text 非空时换行分隔）
         if (!snapshot.supportsImages) {
-            return kotlinx.serialization.json.JsonPrimitive("$text\n[image omitted: model does not support images]")
+            return kotlinx.serialization.json.JsonPrimitive(
+                text.withImageNotes(images) { "[image omitted: model does not support images]" }
+            )
         }
         val loader = snapshot.imageLoader
-        val bytes = loader?.load((image as ContentBlock.Image).path)
-        if (bytes == null) {
-            return kotlinx.serialization.json.JsonPrimitive("$text\n[image omitted: file not found]")
-        }
-        val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
-        return buildJsonArray {
-            add(buildJsonObject {
+            ?: return kotlinx.serialization.json.JsonPrimitive(
+                text.withImageNotes(images) { "[image omitted: file not found]" }
+            )
+        // 多图逐张加载：成功 → input_image part；失败 → text note（保留原文）
+        val parts = mutableListOf<JsonElement>()
+        if (text.isNotBlank()) {
+            parts += buildJsonObject {
                 put("type", "input_text")
                 put("text", text)
-            })
-            add(buildJsonObject {
-                put("type", "input_image")
-                put("image_url", dataUrl)
-            })
+            }
+        }
+        val loadNotes = mutableListOf<String>()
+        for (image in images) {
+            val bytes = loader.load(image.path)
+            if (bytes != null) {
+                parts += buildJsonObject {
+                    put("type", "input_image")
+                    put("image_url", "data:${image.mimeType};base64,${Base64.encode(bytes)}")
+                }
+            } else {
+                loadNotes += "[image omitted: file not found]"
+            }
+        }
+        // 注记并入文本 part；全部失败时文本 part 仍在，原文不丢
+        if (loadNotes.isNotEmpty()) {
+            val noteText = loadNotes.joinToString("\n")
+            val textPart = parts.firstOrNull() as? JsonObject
+            if (textPart != null && textPart["type"]?.let { (it as? JsonPrimitive)?.content } == "input_text") {
+                parts[0] = buildJsonObject {
+                    put("type", "input_text")
+                    put("text", text + "\n" + noteText)
+                }
+            } else {
+                parts += buildJsonObject {
+                    put("type", "input_text")
+                    put("text", noteText)
+                }
+            }
+        }
+        return buildJsonArray {
+            parts.forEach { add(it) }
         }
     }
 

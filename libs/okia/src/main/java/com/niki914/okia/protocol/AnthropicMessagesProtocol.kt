@@ -52,7 +52,7 @@ class AnthropicMessagesProtocol(
     override fun useApiKey(apiKey: String): Map<String, String> =
         if (apiKey.isEmpty()) emptyMap() else mapOf("x-api-key" to apiKey)
 
-    override fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
+    override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
         HttpRequest(
             url = snapshot.endpoint,
             method = "POST",
@@ -114,7 +114,7 @@ class AnthropicMessagesProtocol(
     /** 每条真实消息：role + content 块数组（合并后的最终形态）。 */
     private class MergedMessage(val role: String, val blocks: MutableList<JsonObject>)
 
-    private fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
+    private suspend fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
         buildJsonObject {
             put("model", snapshot.model)
             put("max_tokens", snapshot.maxTokens)  // Anthropic 必填
@@ -138,7 +138,7 @@ class AnthropicMessagesProtocol(
      * 工具结果映射为 user 消息的 tool_result 块；连续同角色消息合并
      * （Anthropic 严格交替）。工具结果与后续用户输入合并进同一 user 消息。
      */
-    private fun mergeMessages(snapshot: RequestSnapshot, history: List<Message>): List<MergedMessage> {
+    private suspend fun mergeMessages(snapshot: RequestSnapshot, history: List<Message>): List<MergedMessage> {
         val merged = mutableListOf<MergedMessage>()
         for (message in history) {
             val (role, blocks) = when (message) {
@@ -156,54 +156,60 @@ class AnthropicMessagesProtocol(
         return merged
     }
 
-    private fun userBlocks(snapshot: RequestSnapshot, blocks: List<ContentBlock>): List<JsonObject> {
-        val image = blocks.firstOrNull { it is ContentBlock.Image }
-        if (image == null) {
-            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
+    private suspend fun userBlocks(snapshot: RequestSnapshot, blocks: List<ContentBlock>): List<JsonObject> {
+        val textBlocks = blocks.filterIsInstance<ContentBlock.Text>()
+        val images = blocks.filterIsInstance<ContentBlock.Image>()
+        // 无图：纯文本
+        if (images.isEmpty()) {
+            return textBlocks.map { t ->
                 buildJsonObject {
                     put("type", "text")
-                    put("text", text.text)
+                    put("text", t.text)
                 }
             }
         }
-        if (!snapshot.supportsImages) {
-            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
+        // 不支持图片 / 无 loader：全部降级为文本注记
+        if (!snapshot.supportsImages || snapshot.imageLoader == null) {
+            return textBlocks.map { t ->
                 buildJsonObject {
                     put("type", "text")
-                    put("text", text.text)
+                    put("text", t.text)
                 }
-            } + buildJsonObject {
-                put("type", "text")
-                put("text", "[image omitted: model does not support images]")
+            } + images.map { img ->
+                buildJsonObject {
+                    put("type", "text")
+                    put("text", "[image omitted: ${if (snapshot.supportsImages) "file not found" else "model does not support images"}]")
+                }
             }
         }
         val loader = snapshot.imageLoader
-        val bytes = loader?.load((image as ContentBlock.Image).path)
-        if (bytes == null) {
-            return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
-                buildJsonObject {
-                    put("type", "text")
-                    put("text", text.text)
+        // 逐张加载：成功 → image block；失败 → text note
+        val result = mutableListOf<JsonObject>()
+        for (t in textBlocks) {
+            result += buildJsonObject {
+                put("type", "text")
+                put("text", t.text)
+            }
+        }
+        for (image in images) {
+            val bytes = loader.load(image.path)
+            if (bytes != null) {
+                result += buildJsonObject {
+                    put("type", "image")
+                    put("source", buildJsonObject {
+                        put("type", "base64")
+                        put("media_type", image.mimeType)
+                        put("data", Base64.encode(bytes))
+                    })
                 }
-            } + buildJsonObject {
-                put("type", "text")
-                put("text", "[image omitted: file not found]")
+            } else {
+                result += buildJsonObject {
+                    put("type", "text")
+                    put("text", "[image omitted: file not found]")
+                }
             }
         }
-        val base64 = Base64.encode(bytes)
-        return blocks.filterIsInstance<ContentBlock.Text>().map { text ->
-            buildJsonObject {
-                put("type", "text")
-                put("text", text.text)
-            }
-        } + buildJsonObject {
-            put("type", "image")
-            put("source", buildJsonObject {
-                put("type", "base64")
-                put("media_type", image.mimeType)
-                put("data", base64)
-            })
-        }
+        return result
     }
 
     private fun assistantBlocks(message: AssistantMessage): List<JsonObject> =
@@ -237,38 +243,43 @@ class AnthropicMessagesProtocol(
             }
         }
 
-    private fun toolResultBlock(snapshot: RequestSnapshot, result: Message.ToolResult): JsonObject {
-        val image = (result.outcome as? ToolCallOutcome.Success)?.image
-        if (image != null && snapshot.supportsImages) {
-            val loader = snapshot.imageLoader
-            val bytes = loader?.load(image.path)
-            if (bytes != null) {
-                val base64 = Base64.encode(bytes)
-                return buildJsonObject {
-                    put("type", "tool_result")
-                    put("tool_use_id", result.callId)
-                    put("content", buildJsonArray {
-                        add(buildJsonObject {
-                            put("type", "text")
-                            put("text", result.outcome.providerContent())
-                        })
+    private suspend fun toolResultBlock(snapshot: RequestSnapshot, result: Message.ToolResult): JsonObject {
+        val images = (result.outcome as? ToolCallOutcome.Success)?.images.orEmpty()
+        val (loaded, notes) = loadToolImages(snapshot, images)
+        val text = buildString {
+            append(result.outcome.providerContent())
+            if (notes.isNotEmpty()) {
+                if (isNotEmpty()) append("\n")
+                append(notes)
+            }
+        }
+        if (loaded.isNotEmpty()) {
+            return buildJsonObject {
+                put("type", "tool_result")
+                put("tool_use_id", result.callId)
+                put("content", buildJsonArray {
+                    add(buildJsonObject {
+                        put("type", "text")
+                        put("text", text)
+                    })
+                    loaded.forEach { (dataUrl, mimeType) ->
                         add(buildJsonObject {
                             put("type", "image")
                             put("source", buildJsonObject {
                                 put("type", "base64")
-                                put("media_type", image.mimeType)
-                                put("data", base64)
+                                put("media_type", mimeType)
+                                put("data", dataUrl.substringAfter("base64,"))
                             })
                         })
-                    })
-                    if (result.outcome.isProviderError()) put("is_error", true)
-                }
+                    }
+                })
+                if (result.outcome.isProviderError()) put("is_error", true)
             }
         }
         return buildJsonObject {
             put("type", "tool_result")
             put("tool_use_id", result.callId)
-            put("content", result.outcome.providerContent())
+            put("content", text)
             if (result.outcome.isProviderError()) put("is_error", true)
         }
     }

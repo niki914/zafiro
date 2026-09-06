@@ -24,6 +24,7 @@ class XRepoRuntimeGateway(
             apiKey = active?.apiKey.orEmpty(),
             model = active?.model.orEmpty(),
             protocol = active?.protocol.orEmpty(),
+            supportsImages = active?.supportsImages ?: false,
             proxy = active?.proxy.orEmpty(),
             prompt = doc.prompt,
             memories = memories,

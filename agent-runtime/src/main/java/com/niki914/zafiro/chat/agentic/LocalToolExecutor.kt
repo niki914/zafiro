@@ -130,8 +130,8 @@ class LocalToolExecutor(
                 ToolCallOutcome.Failure(message = failure, content = raw)
             } else {
                 // 检查工具结果是否包含图片引用（如 view_image）
-                val image = extractImageFromResult(json)
-                ToolCallOutcome.Success(content = raw, image = image)
+                val images = extractImagesFromResult(json)
+                ToolCallOutcome.Success(content = raw, images = images)
             }
         }
         // 非 JSON：文本协议工具结果（#!tool-result 头）
@@ -152,15 +152,16 @@ class LocalToolExecutor(
     // ── 图片引用提取 ──────────────────────────────────────────────────────────
 
     /** 从 JSON 结果中提取图片引用（如果工具返回了 image 字段）。 */
-    private fun extractImageFromResult(json: JsonObject?): com.niki914.okia.message.ContentBlock.Image? {
-        if (json == null) return null
+    /** 从 JSON 结果中提取图片引用列表（如果工具返回了 image 字段）。 */
+    private fun extractImagesFromResult(json: JsonObject?): List<com.niki914.okia.message.ContentBlock.Image> {
+        if (json == null) return emptyList()
         // 支持 {"image": {"path": ..., "mime_type": ...}} 格式
         val imageObj = json["image"] as? JsonObject
             ?: (json["data"] as? JsonObject)?.get("image") as? JsonObject
-            ?: return null
-        val path = (imageObj["path"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: return null
+            ?: return emptyList()
+        val path = (imageObj["path"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: return emptyList()
         val mimeType = (imageObj["mime_type"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: "image/jpeg"
-        return com.niki914.okia.message.ContentBlock.Image(path, mimeType)
+        return listOf(com.niki914.okia.message.ContentBlock.Image(path, mimeType))
     }
 
     // ── py_meta_tools write 回合内注册（D20）────────────────────────────────

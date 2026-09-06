@@ -19,7 +19,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -55,7 +57,7 @@ class OpenAIChatCompletionProtocol(
     override fun useApiKey(apiKey: String): Map<String, String> =
         if (apiKey.isEmpty()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
 
-    override fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
+    override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
         HttpRequest(
             url = snapshot.endpoint,
             method = "POST",
@@ -127,7 +129,7 @@ class OpenAIChatCompletionProtocol(
 
     // ── 请求体 ─────────────────────────────────────────────────────────────
 
-    private fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
+    private suspend fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
         buildJsonObject {
             put("model", snapshot.model)
             put("messages", buildJsonArray {
@@ -156,7 +158,7 @@ class OpenAIChatCompletionProtocol(
         }
 
     /** 一条历史消息 → 0..n 条 Chat Completions 消息（ToolResult 带图可产两条）。 */
-    private fun convertMessages(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
+    private suspend fun convertMessages(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
         is Message.User -> listOf(buildJsonObject {
             put("role", "user")
             val content = userContent(snapshot, message.content)
@@ -176,17 +178,23 @@ class OpenAIChatCompletionProtocol(
      * 不支持图片 content part（规范限制；pi 同：openai-completions.ts 把工具结果
      * 图片拆到独立的 user 消息）。图片加载失败 / 不支持时退回单条 tool 字符串消息。
      */
-    private fun toolResultMessages(snapshot: RequestSnapshot, message: Message.ToolResult): List<JsonObject> {
+    private suspend fun toolResultMessages(snapshot: RequestSnapshot, message: Message.ToolResult): List<JsonObject> {
+        val images = (message.outcome as? ToolCallOutcome.Success)?.images.orEmpty()
+        val (loaded, notes) = loadToolImages(snapshot, images)
+        // 注记拼进 tool 消息文本（文本本来的家）；后续 user 消息保持纯图
+        val text = buildString {
+            append(message.outcome.providerContent())
+            if (notes.isNotEmpty()) {
+                if (isNotEmpty()) append("\n")
+                append(notes)
+            }
+        }
         val toolMessage = buildJsonObject {
             put("role", "tool")
             put("tool_call_id", message.callId)
-            put("content", message.outcome.providerContent())
+            put("content", text)
         }
-        val image = (message.outcome as? ToolCallOutcome.Success)?.image ?: return listOf(toolMessage)
-        if (!snapshot.supportsImages) return listOf(toolMessage)
-        val loader = snapshot.imageLoader
-        val bytes = loader?.load(image.path) ?: return listOf(toolMessage)
-        val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
+        if (loaded.isEmpty()) return listOf(toolMessage)
         return listOf(toolMessage, buildJsonObject {
             put("role", "user")
             put("content", buildJsonArray {
@@ -194,40 +202,62 @@ class OpenAIChatCompletionProtocol(
                     put("type", "text")
                     put("text", "Attached image(s) from tool result:")
                 })
-                add(buildJsonObject {
-                    put("type", "image_url")
-                    put("image_url", buildJsonObject { put("url", dataUrl) })
-                })
+                loaded.forEach { (dataUrl, _) ->
+                    add(buildJsonObject {
+                        put("type", "image_url")
+                        put("image_url", buildJsonObject { put("url", dataUrl) })
+                    })
+                }
             })
         })
     }
 
-    private fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
-        val image = blocks.firstOrNull { it is ContentBlock.Image }
+    private suspend fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
         val text = blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
-        if (image == null) {
+        val images = blocks.filterIsInstance<ContentBlock.Image>()
+        // 无图：纯文本
+        if (images.isEmpty()) {
             return JsonPrimitive(text)
         }
-        if (!snapshot.supportsImages) {
-            return JsonPrimitive("$text\n[image omitted: model does not support images]")
+        // 不支持图片或无 loader：全部降级为文本注记（text 非空时换行分隔）
+        if (!snapshot.supportsImages || snapshot.imageLoader == null) {
+            return JsonPrimitive(
+                text.withImageNotes(images) {
+                    if (snapshot.supportsImages) "[image omitted: file not found]"
+                    else "[image omitted: model does not support images]"
+                }
+            )
         }
         val loader = snapshot.imageLoader
-        val bytes = loader?.load((image as ContentBlock.Image).path)
-        if (bytes == null) {
-            return JsonPrimitive("$text\n[image omitted: file not found]")
-        }
-        val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
-        return buildJsonArray {
-            blocks.filterIsInstance<ContentBlock.Text>().forEach { t ->
-                add(buildJsonObject {
-                    put("type", "text")
-                    put("text", t.text)
-                })
+        // 逐张加载：成功 → image_url part；失败 → text note
+        val parts = mutableListOf<JsonElement>()
+        if (text.isNotBlank()) {
+            parts += buildJsonObject {
+                put("type", "text")
+                put("text", text)
             }
-            add(buildJsonObject {
-                put("type", "image_url")
-                put("image_url", buildJsonObject { put("url", dataUrl) })
-            })
+        }
+        for (image in images) {
+            val bytes = loader.load(image.path)
+            if (bytes != null) {
+                parts += buildJsonObject {
+                    put("type", "image_url")
+                    put("image_url", buildJsonObject {
+                        put("url", "data:${image.mimeType};base64,${Base64.encode(bytes)}")
+                    })
+                }
+            } else {
+                parts += buildJsonObject {
+                    put("type", "text")
+                    put("text", "[image omitted: file not found]")
+                }
+            }
+        }
+        if (parts.size == 1 && (parts[0] as? JsonObject)?.get("type")?.let { it as? JsonPrimitive }?.content == "text") {
+            return JsonPrimitive((parts[0] as JsonObject)["text"]?.jsonPrimitive?.content.orEmpty())
+        }
+        return buildJsonArray {
+            parts.forEach { add(it) }
         }
     }
 

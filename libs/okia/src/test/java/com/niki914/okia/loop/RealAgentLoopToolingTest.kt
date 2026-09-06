@@ -19,6 +19,7 @@ import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.okia.transport.HttpTimeouts
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
@@ -425,7 +426,7 @@ class RealAgentLoopToolingTest {
     fun alternatingThinkingTextBlocksFlushWithoutResidue() = runTest {
         // 回归（评审发现）：flush 只复位 started 标志、未清空 builder。thinking/text
         // 交替多次时旧内容 append 进新块（Text("AC") 应为 Text("C")），事件与
-        // 最终消息都携带累计残留。正常多 block response（Gemini parts 交替 / Anthropic
+        // 最终消息都携带累计残留。正常多 block response（Anthropic
         // 多 thinking 块）即可触发，非并发竞态。
         val commits = mutableListOf<List<Message>>()
         val emitted = mutableListOf<TurnEvent>()
@@ -466,8 +467,8 @@ class RealAgentLoopToolingTest {
     @Test
     fun interleavedToolCallKeepsProviderBlockOrder() = runTest {
         // CR5 回归：ToolCallReady 到达时先 flush 进行中 thinking/text 再插入统一
-        // blocks，块序保持 provider 原始交错（Anthropic interleaved thinking / Gemini
-        // thought+functionCall）。旧实现双容器拼接把 tool call 推到最后、前后 thinking
+        // blocks，块序保持 provider 原始交错（Anthropic interleaved thinking）。
+        // 旧实现双容器拼接把 tool call 推到最后、前后 thinking
         // 被合并、事件 index 与最终消息位置漂移。
         val executor = RecordingToolExecutor()
         val registry = DefaultToolRegistry().apply { register(localTool("tool"), executor) }
@@ -580,20 +581,22 @@ class RealAgentLoopToolingTest {
         runLoop(loopRequest(emptyList()) { commits += it }.copy(protocolMapper = mapper))
         val assistantMessage = (commits.single().single() as Message.Assistant).message
 
-        val request = AnthropicMessagesProtocol().buildRequest(
-            RequestSnapshot(
-                endpoint = "https://api.anthropic.com/v1/messages",
-                apiKey = "sk-test",
-                model = "claude-sonnet-4",
-                systemPrompt = null,
-                temperature = 0.7f,
-                maxTokens = 100,
-                headers = emptyMap(),
-                timeouts = HttpTimeouts(1_000, 1_000, 1_000),
-                tools = emptyList()
-            ),
-            listOf(Message.Assistant(assistantMessage))
-        )
+        val request = runBlocking {
+            AnthropicMessagesProtocol().buildRequest(
+                RequestSnapshot(
+                    endpoint = "https://api.anthropic.com/v1/messages",
+                    apiKey = "sk-test",
+                    model = "claude-sonnet-4",
+                    systemPrompt = null,
+                    temperature = 0.7f,
+                    maxTokens = 100,
+                    headers = emptyMap(),
+                    timeouts = HttpTimeouts(1_000, 1_000, 1_000),
+                    tools = emptyList()
+                ),
+                listOf(Message.Assistant(assistantMessage))
+            )
+        }
         val content = Json.parseToJsonElement(request.body!!).jsonObject["messages"]!!.jsonArray[0]
             .jsonObject["content"]!!.jsonArray
         val thinkingBlock = content.firstOrNull {

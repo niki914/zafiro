@@ -9,6 +9,7 @@ import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.mcp.McpDiscoverySnapshot
 import com.niki914.okia.mcp.McpRefreshResult
+import com.niki914.okia.message.ContentBlock
 import com.niki914.zafiro.chat.util.SilentLoggerRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -52,6 +53,7 @@ class McpRefreshSchedulerTest {
 
         override suspend fun send(
             text: String,
+            images: List<ContentBlock.Image>,
             options: TurnOptions?,
             onEvent: suspend (TurnEvent) -> Unit,
         ): TurnResult = error("not used")

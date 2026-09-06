@@ -28,6 +28,7 @@ internal fun ProviderAccessSettingsBlock(
     onModelChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onProtocolSelected: (String) -> Unit = {},
+    onSupportsImagesChange: (Boolean) -> Unit = {},
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit,
     onClearActiveField: () -> Unit,
@@ -128,6 +129,18 @@ internal fun ProviderAccessSettingsBlock(
             onClick = {
                 onClearActiveField()
                 showProtocolDialog = true
+            },
+        )
+        SettingsItemDivider()
+        SettingToggleItem(
+            title = stringResource(R.string.ui_settings_configure_vision_label),
+            checked = uiState.supportsImages,
+            enabled = !uiState.isSaving,
+            onCheckedChange = { enabled ->
+                if (!uiState.isSaving) {
+                    onClearActiveField()
+                    onSupportsImagesChange(enabled)
+                }
             },
         )
         SettingsItemDivider()

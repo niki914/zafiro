@@ -1,6 +1,7 @@
 package com.niki914.okia.protocol
 
 import com.niki914.okia.message.AssistantMessage
+import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
@@ -14,6 +15,7 @@ import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -117,7 +119,7 @@ class OpenAIResponsesProtocolTest {
 
     @Test
     fun requestShellCarriesEndpointAndBearer() {
-        val request = protocol.buildRequest(snapshot(apiKey = "sk-abc"), emptyList())
+        val request = runBlocking { protocol.buildRequest(snapshot(apiKey = "sk-abc"), emptyList()) }
         assertEquals("https://api.deepseek.com/responses", request.url)
         assertEquals("POST", request.method)
         assertEquals("Bearer sk-abc", request.headers["Authorization"])
@@ -125,7 +127,7 @@ class OpenAIResponsesProtocolTest {
 
     @Test
     fun requestBodyCarriesResponsesFields() {
-        val request = protocol.buildRequest(
+        val request = runBlocking { protocol.buildRequest(
             snapshot(
                 model = "deepseek-v4-flash",
                 maxTokens = 512,
@@ -133,7 +135,7 @@ class OpenAIResponsesProtocolTest {
                 systemPrompt = "你简短"
             ),
             listOf(user("你好"))
-        )
+        ) }
         val json = body(request)
         assertEquals("deepseek-v4-flash", json["model"]!!.jsonPrimitive.content)
         assertEquals(512, json["max_output_tokens"]!!.jsonPrimitive.content.toInt())
@@ -144,7 +146,7 @@ class OpenAIResponsesProtocolTest {
 
     @Test
     fun inputMapsUserAndAssistantAndToolRoundtrip() {
-        val request = protocol.buildRequest(
+        val request = runBlocking { protocol.buildRequest(
             snapshot(),
             listOf(
                 user("你好"),
@@ -160,7 +162,7 @@ class OpenAIResponsesProtocolTest {
                 ),
                 toolResult("call_1", ToolCallOutcome.Success("""{"temp":26}"""))
             )
-        )
+        ) }
         val input = body(request)["input"]!!.jsonArray.map { it.jsonObject }
         assertEquals(
             listOf("user", "assistant", "function_call", "function_call_output"),
@@ -180,10 +182,10 @@ class OpenAIResponsesProtocolTest {
     @Test
     fun thinkingConvertsToTextOnReplay() {
         // OpenAI Responses reasoning 加密不可回放：思考块按 requiresThinkingAsText 转文本
-        val request = protocol.buildRequest(
+        val request = runBlocking { protocol.buildRequest(
             snapshot(),
             listOf(assistant(listOf(ContentBlock.Thinking("推导"), ContentBlock.Text("答案"))))
-        )
+        ) }
         val input = body(request)["input"]!!.jsonArray
         assertEquals(1, input.size)
         assertEquals("assistant", input[0].jsonObject["role"]!!.jsonPrimitive.content)
@@ -198,7 +200,7 @@ class OpenAIResponsesProtocolTest {
             inputSchemaJson = """{"type":"object","properties":{"city":{"type":"string"}}}""",
             kind = ToolKind.Local
         )
-        val request = protocol.buildRequest(snapshot(tools = listOf(tool)), emptyList())
+        val request = runBlocking { protocol.buildRequest(snapshot(tools = listOf(tool)), emptyList()) }
         val t = body(request)["tools"]!!.jsonArray[0].jsonObject
         assertEquals("function", t["type"]!!.jsonPrimitive.content)
         assertEquals("get_weather", t["name"]!!.jsonPrimitive.content)
@@ -207,7 +209,7 @@ class OpenAIResponsesProtocolTest {
 
     @Test
     fun toolsOmittedWhenEmpty() {
-        val request = protocol.buildRequest(snapshot(), emptyList())
+        val request = runBlocking { protocol.buildRequest(snapshot(), emptyList()) }
         assertNull(body(request)["tools"])
     }
 
@@ -393,7 +395,7 @@ class OpenAIResponsesProtocolTest {
         val reasoningItem =
             """{"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"摘要"}],"content":[{"type":"reasoning_text","text":"推导"}],"encrypted_content":"U2FsdGVkX1=="}"""
         val payload = "openai-responses:reasoning:v1:" + """{"items":[$reasoningItem]}"""
-        val request = protocol.buildRequest(
+        val request = runBlocking { protocol.buildRequest(
             snapshot(),
             listOf(
                 assistant(
@@ -403,7 +405,7 @@ class OpenAIResponsesProtocolTest {
                     )
                 )
             )
-        )
+        ) }
         val input = body(request)["input"]!!.jsonArray
         // 期望：reasoning item 单独成条（encrypted_content 原样），文本 message 条并存
         assertEquals(2, input.size)
@@ -420,7 +422,7 @@ class OpenAIResponsesProtocolTest {
     @Test
     fun unknownOpaquePayloadPrefixFallsBackToPlainText() = runTest {
         // 前缀不认识（未来其他 provider 的 payload）：忽略 payload，思考文本按明文合并
-        val request = protocol.buildRequest(
+        val request = runBlocking { protocol.buildRequest(
             snapshot(),
             listOf(
                 assistant(
@@ -430,7 +432,7 @@ class OpenAIResponsesProtocolTest {
                     )
                 )
             )
-        )
+        ) }
         val input = body(request)["input"]!!.jsonArray
         assertEquals(1, input.size)
         assertEquals("推导\n答案", input[0].jsonObject["content"]!!.jsonPrimitive.content)
@@ -688,5 +690,183 @@ class OpenAIResponsesProtocolTest {
             Message.ToolResult("call_1", "tool-a", outcome),
             protocol.encodeToolResult(call, outcome)
         )
+    }
+
+    // ── 工具结果多图 ────────────────────────────────────────────────────
+
+    private fun loaderOf(vararg missing: String) = ImageLoader { path ->
+        if (path in missing) null else path.toByteArray()
+    }
+
+    @Test
+    fun toolResultEncodesAllImagesAsInputImageParts() = runBlocking {
+        val snapshot = snapshot().copy(
+            supportsImages = true,
+            imageLoader = loaderOf()
+        )
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                toolResult(
+                    "call_1",
+                    ToolCallOutcome.Success(
+                        "two shots",
+                        images = listOf(
+                            ContentBlock.Image("/a.png", "image/png"),
+                            ContentBlock.Image("/b.png", "image/png")
+                        )
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        assertEquals("function_call_output", item["type"]!!.jsonPrimitive.content)
+        val output = item["output"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(3, output.size)
+        assertEquals("input_text", output[0]["type"]!!.jsonPrimitive.content)
+        assertEquals("two shots", output[0]["text"]!!.jsonPrimitive.content)
+        assertEquals("input_image", output[1]["type"]!!.jsonPrimitive.content)
+        assertEquals("input_image", output[2]["type"]!!.jsonPrimitive.content)
+        assertTrue(output[1]["image_url"]!!.jsonPrimitive.content.startsWith("data:image/png;base64,"))
+    }
+
+    @Test
+    fun toolResultImageLoadFailureBecomesTextNote() = runBlocking {
+        val snapshot = snapshot().copy(
+            supportsImages = true,
+            imageLoader = loaderOf("/gone.png")
+        )
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                toolResult(
+                    "call_1",
+                    ToolCallOutcome.Success(
+                        "ok",
+                        images = listOf(
+                            ContentBlock.Image("/alive.png", "image/png"),
+                            ContentBlock.Image("/gone.png", "image/png")
+                        )
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        val output = item["output"]!!.jsonArray.map { it.jsonObject }
+        // 逐张降级：成功的照发，失败的进文本注记
+        assertEquals(2, output.size)  // text + 1 张图
+        val text = output[0]["text"]!!.jsonPrimitive.content
+        assertTrue(text.contains("[image omitted"))
+        assertEquals("input_image", output[1]["type"]!!.jsonPrimitive.content)
+    }
+
+    // ── 用户消息多图 ────────────────────────────────────────────────────────
+
+    @Test
+    fun userMessageEncodesAllImagesAsInputImageParts() = runBlocking {
+        val snapshot = snapshot().copy(supportsImages = true, imageLoader = loaderOf())
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("see these"),
+                        ContentBlock.Image("/a.png", "image/png"),
+                        ContentBlock.Image("/b.png", "image/png"),
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        assertEquals("user", item["role"]!!.jsonPrimitive.content)
+        val content = item["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(3, content.size)
+        assertEquals("input_text", content[0]["type"]!!.jsonPrimitive.content)
+        assertEquals("see these", content[0]["text"]!!.jsonPrimitive.content)
+        assertEquals("input_image", content[1]["type"]!!.jsonPrimitive.content)
+        assertEquals("input_image", content[2]["type"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun userMessageImagesOnlyOmitsTextPart() = runBlocking {
+        val snapshot = snapshot().copy(supportsImages = true, imageLoader = loaderOf())
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(Message.User(listOf(ContentBlock.Image("/a.png", "image/png"))))
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        val content = item["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(1, content.size)
+        assertEquals("input_image", content[0]["type"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun userMessageImageLoadFailureKeepsTextAndNotes() = runBlocking {
+        val snapshot = snapshot().copy(supportsImages = true, imageLoader = loaderOf("/gone.png"))
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("look"),
+                        ContentBlock.Image("/gone.png", "image/png"),
+                        ContentBlock.Image("/alive.png", "image/png"),
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        val content = item["content"]!!.jsonArray.map { it.jsonObject }
+        // 逐张降级：文本（含注记）+ 1 张成功图，原文不丢
+        assertEquals(2, content.size)
+        assertEquals("input_text", content[0]["type"]!!.jsonPrimitive.content)
+        val text = content[0]["text"]!!.jsonPrimitive.content
+        assertTrue(text.contains("look"))
+        assertTrue(text.contains("[image omitted"))
+        assertEquals("input_image", content[1]["type"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun userMessageAllImagesFailedStillKeepsOriginalText() = runBlocking {
+        val snapshot = snapshot().copy(supportsImages = true, imageLoader = loaderOf("/gone.png"))
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("original text"),
+                        ContentBlock.Image("/gone.png", "image/png"),
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        // 全部加载失败：文本 part 仍在，原文不丢
+        val content = item["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(1, content.size)
+        assertEquals("input_text", content[0]["type"]!!.jsonPrimitive.content)
+        val text = content[0]["text"]!!.jsonPrimitive.content
+        assertTrue(text.contains("original text"))
+        assertTrue(text.contains("[image omitted"))
+    }
+
+    @Test
+    fun userMessageImagesWithoutSupportDegradesToNotes() = runBlocking {
+        val snapshot = snapshot().copy(supportsImages = false)
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("look"),
+                        ContentBlock.Image("/a.png", "image/png"),
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        val content = item["content"]!!.jsonPrimitive.content
+        assertTrue(content.contains("look"))
+        assertTrue(content.contains("[image omitted"))
     }
 }

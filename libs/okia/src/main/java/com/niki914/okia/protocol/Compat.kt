@@ -14,7 +14,6 @@ interface Compat {
 
     // 协议自带的默认端点（null = 协议不自带，调用方必须提供 endpoint）。
     // 调用方在 config.endpoint 显式设置时覆盖（方案 A，§8.17）。
-    // 端点含模型占位符 {model} 时（Gemini），协议在 buildRequest 时替换为 snapshot.model。
     val defaultEndpoint: String?
 
     // 请求体中的 maxTokens 字段名
@@ -73,9 +72,6 @@ enum class ThinkingFormat {
 
     /** thinking 块族：content 内 thinking 块 + signature，历史原样回带（签名必填）。 */
     ThinkingBlocks,
-
-    /** thought part 族：part 内 thought:true 标记 + thoughtSignature，历史回带 thought 块。 */
-    ThoughtParts
 }
 
 /**
@@ -160,21 +156,3 @@ class AnthropicMessagesCompat : Compat {
     override val retryableStatusCodes: Set<Int> = setOf(408, 409, 429) + (500..599).toSet()
 }
 
-/** Google Gemini（Generative Language API）兼容配置。 */
-class GeminiCompat : Compat {
-    override val id: String = "gemini"
-
-    // 端点含 {model} 占位符：Gemini 的模型在 URL 路径中，协议 buildRequest 时替换
-    override val defaultEndpoint: String? =
-        "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse"
-    override val maxTokensField: MaxTokensField = MaxTokensField.MaxTokens
-    override val thinkingFormat: ThinkingFormat = ThinkingFormat.ThoughtParts
-    override val supportsReasoningEffort: Boolean = false
-    override val requiresThinkingAsText: Boolean = false
-    override val requiresReasoningContentOnAssistantMessages: Boolean = false
-    override val requiresAssistantAfterToolResult: Boolean = false
-    override val requiresToolResultName: Boolean = true
-    override val supportsUsageInStreaming: Boolean = true
-    override val supportsFinishReason: Boolean = true
-    override val retryableStatusCodes: Set<Int> = setOf(408, 409, 429) + (500..599).toSet()
-}

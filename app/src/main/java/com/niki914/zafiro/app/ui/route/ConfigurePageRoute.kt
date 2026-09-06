@@ -88,6 +88,9 @@ internal fun ConfigurePageRoute(
         onProtocolSelected = { wireId ->
             viewModel.sendIntent(ConfigureIntent.SelectProtocol(wireId))
         },
+        onSupportsImagesChange = { enabled ->
+            viewModel.sendIntent(ConfigureIntent.UpdateSupportsImages(enabled))
+        },
         onToggleApiKeyVisibility = {
             viewModel.sendIntent(ConfigureIntent.ToggleApiKeyVisibility)
         },

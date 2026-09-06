@@ -186,6 +186,52 @@ class ConversationFormatterTest {
         assertEquals("q", ConversationFormatter.previewFromEntries(entries))
     }
 
+    @Test
+    fun toHomeTurns_restoresUserImagesFromSandboxPaths() {
+        val snapshot = snapshotOf(
+            Message.User(
+                listOf(
+                    ContentBlock.Text("look"),
+                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg", "image/jpeg"),
+                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/image_cache/bbb.jpg", "image/jpeg"),
+                )
+            ),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
+        )
+
+        val turns = ConversationFormatter.toHomeTurns(snapshot)
+
+        // 恢复投影：Image 块 → HomeChatImage（path 持久化，字节在沙箱重启不丢）
+        val turn = turns.single()
+        assertEquals("look", turn.userText)
+        assertEquals(2, turn.images.size)
+        assertEquals(
+            "/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg",
+            turn.images[0].path,
+        )
+        assertEquals(
+            "/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg".hashCode().toString(),
+            turn.images[0].id,
+        )
+    }
+
+    @Test
+    fun toHomeTurns_imageOnlyUserTurnKeepsImagesWithoutText() {
+        val snapshot = snapshotOf(
+            Message.User(
+                listOf(
+                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg", "image/jpeg"),
+                )
+            ),
+        )
+
+        val turns = ConversationFormatter.toHomeTurns(snapshot)
+
+        assertEquals(1, turns.size)
+        assertEquals("", turns.single().userText)
+        assertEquals(1, turns.single().images.size)
+    }
+
     private fun snapshotOf(vararg messages: Message): SessionSnapshot {
         var parent: String? = null
         val entries = messages.mapIndexed { index, message ->
