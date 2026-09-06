@@ -68,22 +68,27 @@ Propose one number with a one-line justification referencing the change list. Al
 
 Confirm once more before anything irreversible. Then:
 
-1. Update `versionCode = <new code>`, `versionName = "<new name>"` in `app/build.gradle.kts`, plus any other files from the approved list. Do not touch any other build config.
-2. Commit: `release: bump to <new name>`, push to `origin main`.
-3. Tag and push:
+1. Update the code-line badge so it lands in the release commit:
+   ```bash
+   bash scripts/update-code-badge.sh   # relative to the skill directory; the script cd's to the repo root itself
+   ```
+   It recounts production Kotlin + Python lines (excluding tests / build / generated) and rewrites the `kotlin-XX.Xk` badge in both READMEs. Include the README changes in the release commit.
+2. Update `versionCode = <new code>`, `versionName = "<new name>"` in `app/build.gradle.kts`, plus any other files from the approved list. Do not touch any other build config.
+3. Commit: `release: bump to <new name>`, push to `origin main`.
+4. Tag and push:
    ```bash
    git tag v<code>-<name>
    git push origin v<code>-<name>
    ```
    Tag push triggers CI: build → sign → create Release. CI reads signing config from GitHub Secrets; do not expect signing to work anywhere else.
-4. Wait for CI:
+5. Wait for CI:
    ```bash
    gh run list --workflow=release.yml --limit=1    # find the latest run
    gh run watch <run-id> --exit-status             # wait for it to finish
    gh run view <run-id> --log-failed               # on failure, read only the failed steps
    gh run rerun <run-id>                           # rerun after fixing
    ```
-5. Replace CI-generated release notes (they are a PR list) with the approved draft:
+6. Replace CI-generated release notes (they are a PR list) with the approved draft:
    ```bash
    gh release edit <tag> -R niki914/zafiro --notes "<approved notes>"
    ```
