@@ -67,23 +67,31 @@ fun ConfigurePageContent(
         actionButtonDarkContentColor = buttonDarkContentColor,
         actionButtonLightContentColor = buttonLightContentColor,
     ) {
-        ProviderAccessSettingsBlock(
+        ConfigureIdentitySettingsBlock(
+            uiState = uiState,
+            showNameField = false,
+            fieldController = fieldController,
+            onNameChange = {},
+            onProxyChange = onProxyChange,
+        )
+
+        ConfigureConnectionSettingsBlock(
             uiState = uiState,
             policy = policy,
-            showNameField = false,
-            expandedField = fieldController.expandedField,
-            onExpandedFieldChange = fieldController.onExpandedFieldChange,
-            onNameChange = {},
+            fieldController = fieldController,
             onEndpointOverrideChange = onEndpointOverrideChange,
             onEndpointChange = onEndpointChange,
             onModelChange = onModelChange,
             onApiKeyChange = onApiKeyChange,
+            onToggleApiKeyVisibility = onToggleApiKeyVisibility,
+        )
+
+        ConfigureProtocolSettingsBlock(
+            uiState = uiState,
+            fieldController = fieldController,
+            onSupportsImagesChange = onSupportsImagesChange,
             onProtocolSelected = onProtocolSelected,
             onThinkingLevelSelected = onThinkingLevelSelected,
-            onSupportsImagesChange = onSupportsImagesChange,
-            onToggleApiKeyVisibility = onToggleApiKeyVisibility,
-            onProxyChange = onProxyChange,
-            onClearActiveField = fieldController.clearActiveField,
         )
     }
 
