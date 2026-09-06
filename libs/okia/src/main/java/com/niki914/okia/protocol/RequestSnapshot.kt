@@ -1,6 +1,7 @@
 package com.niki914.okia.protocol
 
 import com.niki914.okia.ImageLoader
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.redactHeaders
@@ -21,12 +22,15 @@ data class RequestSnapshot(
     val timeouts: HttpTimeouts,
     val tools: List<ToolDescriptor>,
     val supportsImages: Boolean = false,
-    val imageLoader: ImageLoader? = null
+    val imageLoader: ImageLoader? = null,
+    /** 思考强度；null = 不发送思考字段（Provider 默认行为）。 */
+    val thinkingLevel: ThinkingLevel? = null
 ) {
 
     // apiKey 与敏感 header 值脱敏（systemPrompt 非凭据，保留）
     override fun toString(): String =
         "RequestSnapshot(endpoint=$endpoint, apiKey=██, model=$model, " +
                 "systemPrompt=$systemPrompt, temperature=$temperature, maxTokens=$maxTokens, " +
+                "thinkingLevel=$thinkingLevel, " +
                 "headers=${redactHeaders(headers)}, timeouts=$timeouts, tools=$tools)"
 }

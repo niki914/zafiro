@@ -88,6 +88,9 @@ internal fun ConfigurePageRoute(
         onProtocolSelected = { wireId ->
             viewModel.sendIntent(ConfigureIntent.SelectProtocol(wireId))
         },
+        onThinkingLevelSelected = { wireValue ->
+            viewModel.sendIntent(ConfigureIntent.UpdateThinkingLevel(wireValue))
+        },
         onSupportsImagesChange = { enabled ->
             viewModel.sendIntent(ConfigureIntent.UpdateSupportsImages(enabled))
         },

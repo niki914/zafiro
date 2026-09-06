@@ -31,6 +31,7 @@ fun ConfigurePageContent(
     onModelChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onProtocolSelected: (String) -> Unit = {},
+    onThinkingLevelSelected: (String) -> Unit = {},
     onSupportsImagesChange: (Boolean) -> Unit = {},
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit = {},
@@ -66,22 +67,31 @@ fun ConfigurePageContent(
         actionButtonDarkContentColor = buttonDarkContentColor,
         actionButtonLightContentColor = buttonLightContentColor,
     ) {
-        ProviderAccessSettingsBlock(
+        ConfigureIdentitySettingsBlock(
+            uiState = uiState,
+            showNameField = false,
+            fieldController = fieldController,
+            onNameChange = {},
+            onProxyChange = onProxyChange,
+        )
+
+        ConfigureConnectionSettingsBlock(
             uiState = uiState,
             policy = policy,
-            showNameField = false,
-            expandedField = fieldController.expandedField,
-            onExpandedFieldChange = fieldController.onExpandedFieldChange,
-            onNameChange = {},
+            fieldController = fieldController,
             onEndpointOverrideChange = onEndpointOverrideChange,
             onEndpointChange = onEndpointChange,
             onModelChange = onModelChange,
             onApiKeyChange = onApiKeyChange,
-            onProtocolSelected = onProtocolSelected,
-            onSupportsImagesChange = onSupportsImagesChange,
             onToggleApiKeyVisibility = onToggleApiKeyVisibility,
-            onProxyChange = onProxyChange,
-            onClearActiveField = fieldController.clearActiveField,
+        )
+
+        ConfigureProtocolSettingsBlock(
+            uiState = uiState,
+            fieldController = fieldController,
+            onSupportsImagesChange = onSupportsImagesChange,
+            onProtocolSelected = onProtocolSelected,
+            onThinkingLevelSelected = onThinkingLevelSelected,
         )
     }
 

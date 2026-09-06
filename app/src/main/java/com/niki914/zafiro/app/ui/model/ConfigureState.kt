@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.ui.model
 
 import androidx.annotation.StringRes
 import com.niki914.logging.Logger
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.LlmConfigsDocument
@@ -42,8 +43,10 @@ data class ConfigureUiState(
     val apiKeyVisible: Boolean = false,
     /** LlmProtocol.wireId。 */
     val protocolWireId: String = LlmProtocol.Default.wireId,
-    /** 视觉模型开关（图片输入支持），默认关。 */
-    val supportsImages: Boolean = false,
+    /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
+    val thinkingLevelWire: String = "",
+    /** 视觉模型开关（图片输入支持），默认开。 */
+    val supportsImages: Boolean = true,
     @param:StringRes val nameErrorResId: Int? = null,
     @param:StringRes val endpointErrorResId: Int? = null,
     @param:StringRes val modelErrorResId: Int? = null,
@@ -66,6 +69,7 @@ data class ConfigureSnapshot(
     val model: String,
     val apiKey: String,
     val protocolWireId: String,
+    val thinkingLevelWire: String,
     val supportsImages: Boolean,
     val proxy: String,
 )
@@ -100,6 +104,7 @@ sealed interface ConfigureIntent {
     data class UpdateModel(val value: String) : ConfigureIntent
     data class UpdateApiKey(val value: String) : ConfigureIntent
     data class SelectProtocol(val wireId: String) : ConfigureIntent
+    data class UpdateThinkingLevel(val wireValue: String) : ConfigureIntent
     data class UpdateSupportsImages(val enabled: Boolean) : ConfigureIntent
     data class UpdateProxy(val value: String) : ConfigureIntent
     data object ToggleApiKeyVisibility : ConfigureIntent
@@ -190,6 +195,10 @@ class ConfigureViewModel internal constructor(
 
             is ConfigureIntent.SelectProtocol -> handleProtocolSwitch(intent.wireId)
 
+            is ConfigureIntent.UpdateThinkingLevel -> updateState {
+                copy(thinkingLevelWire = intent.wireValue)
+            }
+
             is ConfigureIntent.UpdateSupportsImages -> updateState {
                 copy(supportsImages = intent.enabled)
             }
@@ -274,6 +283,7 @@ class ConfigureViewModel internal constructor(
                 apiKeyInput = "",
                 apiKeyVisible = false,
                 protocolWireId = providerSpec.defaultProtocol,
+                thinkingLevelWire = ThinkingLevel.Default.wireValue,
                 nameErrorResId = null,
                 endpointErrorResId = null,
                 modelErrorResId = null,
@@ -305,6 +315,7 @@ class ConfigureViewModel internal constructor(
                 apiKeyInput = "",
                 apiKeyVisible = false,
                 protocolWireId = providerSpec.defaultProtocol,
+                thinkingLevelWire = ThinkingLevel.Default.wireValue,
                 nameErrorResId = null,
                 endpointErrorResId = null,
                 modelErrorResId = null,
@@ -343,6 +354,7 @@ class ConfigureViewModel internal constructor(
                 apiKeyInput = target.apiKey,
                 apiKeyVisible = false,
                 protocolWireId = LlmProtocol.fromWire(target.protocol).wireId,
+                thinkingLevelWire = target.thinkingLevel,
                 supportsImages = target.supportsImages,
                 nameErrorResId = null,
                 endpointErrorResId = null,
@@ -619,6 +631,7 @@ private fun ConfigureUiState.toSavedLlmConfig(): SavedLlmConfig {
         apiKey = apiKeyInput,
         model = modelInput,
         protocol = protocolWireId,
+        thinkingLevel = thinkingLevelWire,
         supportsImages = supportsImages,
         proxy = proxyInput,
         createdAt = 0L,
@@ -638,6 +651,7 @@ private fun ConfigureUiState.toSettingsSnapshot(): ConfigureSnapshot {
         model = modelInput.trim(),
         apiKey = apiKeyInput,
         protocolWireId = protocolWireId,
+        thinkingLevelWire = thinkingLevelWire,
         supportsImages = supportsImages,
         proxy = proxyInput.trim(),
     )

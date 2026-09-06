@@ -5,6 +5,7 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.tooling.ToolDescriptor
@@ -119,6 +120,26 @@ class AnthropicMessagesProtocol(
             put("model", snapshot.model)
             put("max_tokens", snapshot.maxTokens)  // Anthropic 必填
             put("stream", true)
+            // 思考强度：adaptive thinking（thinking.type=adaptive + output_config.effort）。
+            // 恒等映射不 clamp（用户决策：全透传，不支持时由用户自调）；
+            // OFF = 显式关闭（thinking: disabled）；null = 不发字段（Provider 默认行为）。
+            snapshot.thinkingLevel?.let { level ->
+                when (level) {
+                    ThinkingLevel.OFF -> put("thinking", buildJsonObject {
+                        put("type", "disabled")
+                    })
+
+                    else -> {
+                        put("thinking", buildJsonObject {
+                            put("type", "adaptive")
+                            put("display", "summarized")
+                        })
+                        put("output_config", buildJsonObject {
+                            put("effort", level.wireValue)
+                        })
+                    }
+                }
+            }
             snapshot.systemPrompt?.let { put("system", it) }
             if (snapshot.tools.isNotEmpty()) {
                 put("tools", buildJsonArray { snapshot.tools.forEach { add(convertTool(it)) } })

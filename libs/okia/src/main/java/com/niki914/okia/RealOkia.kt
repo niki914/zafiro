@@ -92,8 +92,9 @@ internal class RealOkia(
     private var live: AssistantMessage? = null
 
     // 默认 HttpEngine：config 未注入时自建（实例所有；OkHttp 无显式释放语义，
-    // close 不释放——连接池到期自保洁，§8.17）
-    private val defaultEngine by lazy { OkHttpEngine() }
+    // close 不释放——连接池到期自保洁，§8.17）。proxy 同步在 buildLoopRequest
+    // 完成：每次请求读最新 config 快照，update 热更新代理后下一段请求即生效
+    private val defaultEngine by lazy { OkHttpEngine(proxyUrl = config.proxy) }
 
     // 默认工具注册表：config 未注入 toolRegistry 时门面持有（实例所有，T9b）。
     // MCP 发现结果注册进它（refreshMcpTools）；EmptyToolRegistry 已删除（T9b）。
@@ -259,7 +260,7 @@ internal class RealOkia(
 
     private fun buildLoopRequest(text: String, options: TurnOptions?): LoopRequest {
         val cfg = config
-        val engine = cfg.httpEngine ?: defaultEngine
+        val engine = cfg.httpEngine ?: defaultEngine.also { it.updateProxy(cfg.proxy) }
         val snapshot = RequestSnapshot(
             endpoint = cfg.endpoint,
             apiKey = cfg.apiKey,
@@ -275,7 +276,8 @@ internal class RealOkia(
             ),
             tools = effectiveRegistry(cfg).snapshot().map { it.descriptor },
             supportsImages = cfg.supportsImages,
-            imageLoader = cfg.imageLoader
+            imageLoader = cfg.imageLoader,
+            thinkingLevel = cfg.thinkingLevel
             // 工具描述快照（T9b G5 整改）：send 时快照仅为初始值；每段
             // buildRequest 前 RealAgentLoop 用 registry 现取覆盖（§8.18），
             // 请求体表达「每段发送时的工具集」。

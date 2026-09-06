@@ -370,6 +370,8 @@
     <string name="ui_settings_configure_endpoint_mismatch_cancel_keep">Keep</string>
     <string name="ui_settings_configure_endpoint_mismatch_cancel_save">Save as is</string>
     <string name="ui_settings_configure_protocol_hint">After switching protocols, confirm the endpoint matches the protocol.</string>
+    <string name="ui_settings_configure_thinking_label">Thinking Effort</string>
+    <string name="ui_settings_configure_thinking_hint">Leave as Provider Default to use the provider default behavior; lower it yourself if the provider rejects a high level.</string>
 
     <string name="ui_settings_appearance">Appearance</string>
     <string name="ui_theme_mode_system">Follow system</string>

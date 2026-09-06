@@ -100,6 +100,7 @@ fun SavedConfigDetailContent(
             onModelChange = { viewModel.sendIntent(ConfigureIntent.UpdateModel(it)) },
             onApiKeyChange = { viewModel.sendIntent(ConfigureIntent.UpdateApiKey(it)) },
             onProtocolSelected = { viewModel.sendIntent(ConfigureIntent.SelectProtocol(it)) },
+            onThinkingLevelSelected = { viewModel.sendIntent(ConfigureIntent.UpdateThinkingLevel(it)) },
             onSupportsImagesChange = { enabled ->
                 viewModel.sendIntent(ConfigureIntent.UpdateSupportsImages(enabled))
             },
@@ -142,6 +143,7 @@ private fun SavedConfigDetailContentBody(
     onModelChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onProtocolSelected: (String) -> Unit,
+    onThinkingLevelSelected: (String) -> Unit,
     onSupportsImagesChange: (Boolean) -> Unit,
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit,
@@ -166,22 +168,31 @@ private fun SavedConfigDetailContentBody(
         inlineErrorText = configureInlineErrorText(uiState.inlineError),
         actionEnabled = !uiState.isSaving,
     ) { fieldController ->
-        ProviderAccessSettingsBlock(
+        ConfigureIdentitySettingsBlock(
+            uiState = uiState,
+            showNameField = true,
+            fieldController = fieldController,
+            onNameChange = onNameChange,
+            onProxyChange = onProxyChange,
+        )
+
+        ConfigureConnectionSettingsBlock(
             uiState = uiState,
             policy = policy,
-            showNameField = true,
-            expandedField = fieldController.expandedField,
-            onExpandedFieldChange = fieldController.onExpandedFieldChange,
-            onNameChange = onNameChange,
+            fieldController = fieldController,
             onEndpointOverrideChange = onEndpointOverrideChange,
             onEndpointChange = onEndpointChange,
             onModelChange = onModelChange,
             onApiKeyChange = onApiKeyChange,
-            onProtocolSelected = onProtocolSelected,
-            onSupportsImagesChange = onSupportsImagesChange,
             onToggleApiKeyVisibility = onToggleApiKeyVisibility,
-            onProxyChange = onProxyChange,
-            onClearActiveField = fieldController.clearActiveField,
+        )
+
+        ConfigureProtocolSettingsBlock(
+            uiState = uiState,
+            fieldController = fieldController,
+            onSupportsImagesChange = onSupportsImagesChange,
+            onProtocolSelected = onProtocolSelected,
+            onThinkingLevelSelected = onThinkingLevelSelected,
         )
     }
 }
