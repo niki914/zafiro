@@ -167,7 +167,7 @@ agentic-nexus/
 
 ## Contributing
 
-Pull requests are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
+Pull requests are welcome!
 
 1. Fork this project
 2. Create a feature branch (`git checkout -b feat/your-feature`)
