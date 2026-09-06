@@ -168,23 +168,31 @@ private fun SavedConfigDetailContentBody(
         inlineErrorText = configureInlineErrorText(uiState.inlineError),
         actionEnabled = !uiState.isSaving,
     ) { fieldController ->
-        ProviderAccessSettingsBlock(
+        ConfigureIdentitySettingsBlock(
+            uiState = uiState,
+            showNameField = true,
+            fieldController = fieldController,
+            onNameChange = onNameChange,
+            onProxyChange = onProxyChange,
+        )
+
+        ConfigureConnectionSettingsBlock(
             uiState = uiState,
             policy = policy,
-            showNameField = true,
-            expandedField = fieldController.expandedField,
-            onExpandedFieldChange = fieldController.onExpandedFieldChange,
-            onNameChange = onNameChange,
+            fieldController = fieldController,
             onEndpointOverrideChange = onEndpointOverrideChange,
             onEndpointChange = onEndpointChange,
             onModelChange = onModelChange,
             onApiKeyChange = onApiKeyChange,
+            onToggleApiKeyVisibility = onToggleApiKeyVisibility,
+        )
+
+        ConfigureProtocolSettingsBlock(
+            uiState = uiState,
+            fieldController = fieldController,
+            onSupportsImagesChange = onSupportsImagesChange,
             onProtocolSelected = onProtocolSelected,
             onThinkingLevelSelected = onThinkingLevelSelected,
-            onSupportsImagesChange = onSupportsImagesChange,
-            onToggleApiKeyVisibility = onToggleApiKeyVisibility,
-            onProxyChange = onProxyChange,
-            onClearActiveField = fieldController.clearActiveField,
         )
     }
 }

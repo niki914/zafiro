@@ -45,8 +45,8 @@ data class ConfigureUiState(
     val protocolWireId: String = LlmProtocol.Default.wireId,
     /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevelWire: String = "",
-    /** 视觉模型开关（图片输入支持），默认关。 */
-    val supportsImages: Boolean = false,
+    /** 视觉模型开关（图片输入支持），默认开。 */
+    val supportsImages: Boolean = true,
     @param:StringRes val nameErrorResId: Int? = null,
     @param:StringRes val endpointErrorResId: Int? = null,
     @param:StringRes val modelErrorResId: Int? = null,
