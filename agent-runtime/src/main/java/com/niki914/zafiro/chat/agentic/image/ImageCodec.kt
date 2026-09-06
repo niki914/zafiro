@@ -22,9 +22,9 @@ import java.security.MessageDigest
  */
 internal class ImageCodec(private val context: Context) {
 
-    /** 落盘图片的统一存储目录：filesDir/Zafiro/images/（私有，零权限）。 */
+    /** 落盘图片的统一存储目录：filesDir/image_cache/（私有，零权限，Auto Backup 覆盖）。 */
     private val imagesDir: File
-        get() = File(File(context.filesDir, "Zafiro"), "images").apply {
+        get() = File(context.filesDir, "image_cache").apply {
             if (!exists()) mkdirs()
         }
 
