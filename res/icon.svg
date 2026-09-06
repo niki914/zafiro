@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 18 72 72" width="512" height="512">
+  <!-- 背景：宝石蓝 -->
+  <rect x="0" y="0" width="108" height="108" fill="#0F52BA"/>
+
+  <g stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- 左侧外轮廓线 -->
+    <path d="M54,34 L44,52.3 C45.4,53.7 45.4,55.3 44,56.7 L54,74" stroke-width="2"/>
+    <!-- 左侧内棱线 -->
+    <path d="M54,34 L49,52.3 C49.4,53.7 49.4,55.3 49,56.7 L54,74" stroke-width="1.5"/>
+    <!-- 右侧内棱线 -->
+    <path d="M54,34 L59,52.3 C58.6,53.7 58.6,55.3 59,56.7 L54,74" stroke-width="1.5"/>
+    <!-- 右侧外轮廓线 -->
+    <path d="M54,34 L64,52.3 C62.6,53.7 62.6,55.3 64,56.7 L54,74" stroke-width="2"/>
+    <!-- 凹陷层上下界面的水平横线 -->
+    <path d="M44,52.3 L64,52.3" stroke-width="1.5"/>
+    <path d="M44,56.7 L64,56.7" stroke-width="1.5"/>
+  </g>
+</svg>
