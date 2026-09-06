@@ -1,217 +1,126 @@
 ---
-name: "release-new-version"
-description: "Use when preparing a Zafiro release commit that requires syncing app/build.gradle.kts version fields with the latest GitHub release."
+name: release-new-version
+description: Use when the user wants to release a new Zafiro version — drafting bilingual release notes, deciding the next version number, bumping app/build.gradle.kts, tagging, and publishing to GitHub (main repo, optionally the Xposed repo).
 ---
 
 # Release New Version
 
-## Overview
+Release workflow for Zafiro.
 
-这个 skill 用于执行 Zafiro 的发版提交流程。
+Repos involved:
 
-它的核心规则只有三条：
+| Repo | Tag format | Release notes |
+|------|-----------|---------------|
+| `niki914/zafiro` (main, open source) | `v<code>-<name>` e.g. `v8-1.1.0` | Full bilingual notes |
+| `Xposed-Modules-Repo/com.niki914.nexus.agentic` (closed) | `<code>-<name>` e.g. `8-1.1.0` | Same feature entries, closing line points back to the main repo. **Optional — ask the user every time.** |
 
-- 版本事实以 `app/build.gradle.kts` 为准
-- GitHub 最新 release tag 作为下一次 `versionCode` 的基线
-- `versionName` 必须先询问用户，默认只建议递增一个小版本号
+One APK, two notes. CI builds and signs the APK and creates the Release when a tag is pushed to the main repo. There is no CI in the Xposed repo — its release is a manual `gh` operation. Never build locally.
 
-当前仓库已验证的版本映射规则如下：
+## Phase 1 — Gather facts
 
-- GitHub tag 格式：`<versionCode>-<versionName>`
-- 例如：`1-0.0.1`
-- 对应端上：
-  - `versionCode = 1`
-  - `versionName = "0.0.1"`
+Collect all of this before asking the user anything:
 
-## When to Use
+1. **Local version**: read `versionCode` / `versionName` from `app/build.gradle.kts`.
+2. **Latest release baseline**: `gh release view -R niki914/zafiro` (returns the latest non-draft, non-prerelease release by default). Parse its tag `v<code>-<name>`.
+3. **Version string locations**: find every place the current version literal lives:
+   ```bash
+   rg -n '<current versionName>' -g '*.{md,kt,kts,txt,py}' .
+   ```
+   Only scan these extensions: `md`, `kt`, `kts`, `txt`, `py`. Nothing else. rg respects `.gitignore` by default — do not disable that.
+4. **Changes since last release**: commits and merged PRs from the last release tag to `origin/main`:
+   ```bash
+   git log v<code>-<name>..origin/main --oneline --no-merges
+   gh pr list -R niki914/zafiro --state merged --limit 50 --json number,title --jq '.[] | "\(.number) \(.title)"'
+   ```
+5. If local `versionCode`/`versionName` do not match the latest release tag: **stop** and ask the user how to proceed. Do not guess.
 
-在以下场景使用：
+Summarize the changes for the user in plain language before drafting.
 
-- 用户明确要求“发版”“升版本”“准备 release 提交”
-- 需要根据 GitHub 最新 release 自动推导下一个 `versionCode`
-- 需要修改 `app/build.gradle.kts` 中的版本字段并产出 release APK
+## Phase 2 — Draft release notes (iterate until explicit approval)
 
-不要用于：
+Write bilingual notes (Chinese first, `---`, then English) from the change list. Apply these rules strictly — they are derived from every historical release:
 
-- 只查询当前版本，不需要修改文件
-- 只构建 debug 包
-- 普通功能开发或 bug 修复
+1. **Only user-perceivable changes.** New features, visible improvements, refactors with user-facing impact. Never list chores, CI fixes, string cleanups, dependency bumps, internal renames.
+2. **Bug fixes are always vague.** Collapse all fixes into one line: "修复了一些问题" / "Fixed several issues". Optionally append one phrase naming the improved area (e.g. "优化了 Phone Use 执行效率"). Never enumerate specific bugs.
+3. **4–8 numbered entries.** Feature names are brand terms (Phone Use, Skills System) — keep them consistent with past usage.
+4. **Breaking changes get a blockquote before the list**, in both languages, telling users what to do (e.g. the 1.1.0 package-name rename note told users to set up the new version as a fresh start).
+5. **Milestone items** (e.g. "仓库已开源，欢迎 Star、提 Issue、参与贡献") go as the final entry when applicable.
 
-## Required Inputs
+Present the draft. The user will revise it — redraft and repeat until the user explicitly approves. Approval is an explicit statement from the user, not silence.
 
-开始前必须确认以下事实：
+Few-shot (real entries from past releases):
 
-- 读取 `app/build.gradle.kts`
-- 找到 `defaultConfig` 下的 `versionCode` 与 `versionName`
-- 读取 GitHub 最新 release tag
-- 询问用户希望的新 `versionName`
+- Good feature entry: `1. 新增 Phone Use：支持自动点按、滑动、滚动、输入文字、打开 App`
+- Good vague fix entry: `7. 修复了一些问题`
+- Bad entry (do not write): `修复了 composer 光标在深色主题下的偏移` — too specific; fold into "修复了一些问题"
+- Bad entry (do not write): `chore: remove 13 unreferenced UI strings` — not user-perceivable, drop entirely
 
-如果用户没有明确指定新版本号，默认建议：
+## Phase 3 — Propose version number (iterate until explicit approval)
 
-- 旧版本：`0.0.1`
-- 新版本：`0.0.2`
+Semver `x.y.z`:
+- **Pump X** — proud version: milestone, rebranding, headline feature, open-source moment.
+- **Pump Y** — normal update: regular features.
+- **Pump Z** — shamed version: fixing a severe/P0 bug.
 
-## Version Rule
+Propose one number with a one-line justification referencing the change list. Also report every location found in Phase 1 step 3 that needs the version string updated. Iterate with the user until explicit approval of both the number and the file list.
 
-### 1. 读取本地版本
+## Phase 4 — Execute (main repo)
 
-只读取以下文件：
+Confirm once more before anything irreversible. Then:
 
-- `app/build.gradle.kts`
+1. Update `versionCode = <new code>`, `versionName = "<new name>"` in `app/build.gradle.kts`, plus any other files from the approved list. Do not touch any other build config.
+2. Commit: `release: bump to <new name>`, push to `origin main`.
+3. Tag and push:
+   ```bash
+   git tag v<code>-<name>
+   git push origin v<code>-<name>
+   ```
+   Tag push triggers CI: build → sign → create Release. CI reads signing config from GitHub Secrets; do not expect signing to work anywhere else.
+4. Wait for CI:
+   ```bash
+   gh run list --workflow=release.yml --limit=1    # find the latest run
+   gh run watch <run-id> --exit-status             # wait for it to finish
+   gh run view <run-id> --log-failed               # on failure, read only the failed steps
+   gh run rerun <run-id>                           # rerun after fixing
+   ```
+5. Replace CI-generated release notes (they are a PR list) with the approved draft:
+   ```bash
+   gh release edit <tag> -R niki914/zafiro --notes "<approved notes>"
+   ```
 
-目标字段：
+## Phase 5 — Xposed repo (optional, ask first)
 
-- `versionCode = <Int>`
-- `versionName = "<String>"`
-
-### 2. 读取 GitHub 最新 release
-
-优先使用备用脚本：
-
-```bash
-python3 .trae/skills/release-new-version/get_latest_release_version.py
-```
-
-默认目标仓库：
-
-- `Xposed-Modules-Repo/com.niki914.nexus.agentic`
-
-脚本输出应为单行 tag，例如：
-
-```text
-1-0.0.1
-```
-
-### 3. 解析与校验
-
-将 tag 按第一个 `-` 拆分：
-
-- 左侧：GitHub 最新 `versionCode`
-- 右侧：GitHub 最新 `versionName`
-
-示例：
-
-```text
-1-0.0.1 -> versionCode=1, versionName=0.0.1
-```
-
-同时校验本地 `app/build.gradle.kts` 当前值是否与该 tag 对应。
-
-如果不一致：
-
-- 先停止自动修改
-- 明确告诉用户 GitHub 与本地版本状态不一致
-- 请用户决定是否继续发版
-
-### 4. 计算下一版
-
-下一版规则：
-
-- 新 `versionCode = GitHub 最新 versionCode + 1`
-- 新 `versionName` 需要用户确认
-
-默认建议：
-
-- 如果 GitHub 最新是 `1-0.0.1`
-- 则建议新值为：
-  - `versionCode = 2`
-  - `versionName = "0.0.2"`
-
-## Execution Workflow
-
-### Step 1. 读取并核对版本
-
-必须先做：
-
-1. 读 `app/build.gradle.kts`
-2. 运行备用脚本获取 GitHub 最新 tag
-3. 对比本地值与 GitHub 值
-
-### Step 2. 询问用户新版本号
-
-必须显式询问用户：
-
-- 你要发的 `versionName` 是什么？
-
-默认建议文案可以直接使用：
-
-```text
-GitHub 最新 release 是 1-0.0.1，本地 app/build.gradle.kts 当前是 versionCode=1、versionName=0.0.1。
-按规则下一次发版建议使用 versionCode=2。
-如果你没有特殊要求，建议 versionName 使用 0.0.2。
-请确认是否使用 0.0.2，或告诉我你想要的新 versionName。
-```
-
-### Step 3. 修改版本字段
-
-只修改：
-
-- `app/build.gradle.kts`
-
-仅更新：
-
-- `versionCode`
-- `versionName`
-
-不要顺手修改其他构建配置。
-
-### Step 4. 构建 release
-
-版本更新完成后，执行：
+Ask: "这次要发 Xposed 仓库吗？" If no, state clearly "本次未发 Xposed 仓库" and stop. If yes:
 
 ```bash
-./gradlew assembleRelease
+# download the APK from the main repo release
+gh release download <main-tag> -R niki914/zafiro -p "*.apk" --dir /tmp/
+
+# create the Xposed release
+gh release create <code>-<name> /tmp/<apk> \
+  -R Xposed-Modules-Repo/com.niki914.nexus.agentic \
+  --title "Release - <name>" \
+  --notes "<approved notes>"
 ```
 
-### Step 5. 打开产物目录
+`gh` operates on the current repo's remote by default — external repos always need `-R owner/repo`, and the token must have write access there.
 
-构建完成后，执行：
+The Xposed notes use the same feature entries, but the closing line is `项目已开源：https://github.com/niki914/zafiro` (and its English counterpart) instead of a contribution invitation.
 
-```bash
-open app/build/outputs/apk/release/
-```
+## Known pitfalls
 
-## Command Reference
+- **CI build failure: Aliyun Maven mirror 502.** Overseas GitHub Actions runners intermittently fail on the Aliyun mirror if it is ordered before `mavenCentral()` / `gradlePluginPortal()` in `settings.gradle.kts`. Standard sources go first, Aliyun after. If CI fails on dependency resolution, check the mirror order.
+- **Tag already exists / CI failed and needs a re-trigger.** The same tag cannot be pushed twice:
+  ```bash
+  git push origin :v<code>-<name>   # delete remote tag
+  git tag -d v<code>-<name>         # delete local tag
+  git tag v<code>-<name>            # re-tag at latest commit
+  git push origin v<code>-<name>
+  ```
 
-```bash
-python3 .trae/skills/release-new-version/get_latest_release_version.py
-```
+## Hard rules
 
-```bash
-./gradlew assembleRelease
-```
-
-```bash
-open app/build/outputs/apk/release/
-```
-
-## Common Mistakes
-
-- 直接拿本地 `versionCode + 1`，却不先看 GitHub 最新 release
-- 把 GitHub tag `1-0.0.1` 误读成完整字符串版本，而不拆成 `Int` 和 `String`
-- 未经确认就自动改 `versionName`
-- 修改了 `build.gradle.kts` 里的无关配置
-- 发现 GitHub 与本地版本不一致时仍然继续提交
-
-## Output
-
-完成时给出简短结果：
-
-```text
-发版结果
-
-GitHub 最新:
-- 1-0.0.1
-
-本地原始版本:
-- versionCode=1
-- versionName=0.0.1
-
-本次更新后:
-- versionCode=2
-- versionName=0.0.2
-
-已执行:
-- ./gradlew assembleRelease
-- open app/build/outputs/apk/release/
-```
+- Never build locally. CI builds everything.
+- Never modify `versionName` without explicit user approval.
+- Never push a tag without showing the user the exact tag and target commit first.
+- If any state is ambiguous (local ≠ remote, tag exists, CI red), stop and ask.
