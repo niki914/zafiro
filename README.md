@@ -25,10 +25,10 @@ Zafiro is an intelligent agent running on your Android phone. We provide the Zaf
 <table align="center">
 <tr>
 <tr>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_phone_use.gif?raw=true" alt="Zafiro device control demo" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_net_research.gif?raw=true" alt="Zafiro web research demo" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_native.gif?raw=true" alt="Zafiro app installation demo" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_settings_screen.png?raw=true" alt="Zafiro settings screen" width="142" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__phone_use.gif?raw=true" alt="Zafiro device control demo" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__net_research.gif?raw=true" alt="Zafiro web research demo" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__native.gif?raw=true" alt="Zafiro app installation demo" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__settings_screen.png?raw=true" alt="Zafiro settings screen" width="142" height="300"/></td>
 </tr>
 <tr>
 <td align="center">Device Control</td>
@@ -92,9 +92,9 @@ Through the [LSPosed](https://github.com/lsposed/lsposed) framework, Zafiro can 
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno_github_mcp.gif?raw=true" alt="Zafiro voice assistant takeover demo" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/hyper_intro.gif?raw=true" alt="Zafiro voice assistant takeover demo" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno_magisk.gif?raw=true" alt="Zafiro voice assistant takeover demo" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno__github_mcp.gif?raw=true" alt="Zafiro voice assistant takeover demo" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/hyper__intro.gif?raw=true" alt="Zafiro voice assistant takeover demo" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno__magisk.gif?raw=true" alt="Zafiro voice assistant takeover demo" width="200"/></td>
 </tr>
 </table>
 

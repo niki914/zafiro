@@ -25,10 +25,10 @@ Zafiro 是你的 Android 手机上运行一个智能代理。我们为 Zafiro Ag
 <table align="center">
 <tr>
 <tr>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_phone_use.gif?raw=true" alt="Zafiro 手机操控演示" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_net_research.gif?raw=true" alt="Zafiro 网络研究演示" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_native.gif?raw=true" alt="Zafiro 应用安装演示" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro_settings_screen.png?raw=true" alt="Zafiro 设置界面" width="142" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__phone_use.gif?raw=true" alt="Zafiro 手机操控演示" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__net_research.gif?raw=true" alt="Zafiro 网络研究演示" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__native.gif?raw=true" alt="Zafiro 应用安装演示" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__settings_screen.png?raw=true" alt="Zafiro 设置界面" width="142" height="300"/></td>
 </tr>
 <tr>
 <td align="center">手机操控</td>
@@ -92,9 +92,9 @@ Zafiro 是你的 Android 手机上运行一个智能代理。我们为 Zafiro Ag
 
 <table align="center">
 <tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno_github_mcp.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/hyper_intro.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno_magisk.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno__github_mcp.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/hyper__intro.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
+<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno__magisk.gif?raw=true" alt="Zafiro 语音助手接管演示" width="200"/></td>
 </tr>
 </table>
 
