@@ -458,6 +458,37 @@ class PromptComposerTest {
         )
     }
 
+    // --- Environment block (sandbox paths) ---
+
+    @Test
+    fun compose_emptySandboxPathsOmitsEnvironmentBlock() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(additionalInstructions = "ctx")
+        )
+
+        assertFalse(result.finalSystemPrompt.contains("# Environment"))
+    }
+
+    @Test
+    fun compose_sandboxPathsRenderEnvironmentBlock() {
+        val result = PromptComposer().compose(
+            PromptComposerInput(
+                additionalInstructions = "ctx",
+                memoryItems = listOf("mem"),
+                sandboxPaths = setOf("/data/user/0/x/files/image_cache", "/data/user/0/x/files/downloads"),
+            )
+        )
+
+        assertTrue(result.finalSystemPrompt.contains("# Environment"))
+        assertTrue(result.finalSystemPrompt.contains("/data/user/0/x/files/image_cache"))
+        assertTrue(result.finalSystemPrompt.contains("/data/user/0/x/files/downloads"))
+        assertTrue(result.finalSystemPrompt.contains("no storage permission required"))
+        // 环境块属于 stable tier：位于 memory（volatile）段之前
+        val envIdx = result.finalSystemPrompt.indexOf("# Environment")
+        val volatileIdx = result.finalSystemPrompt.indexOf("═══")
+        assertTrue(envIdx in 0 until volatileIdx)
+    }
+
     private class FakeBuiltinTool(
         override val name: String,
     ) : BuiltinTool() {

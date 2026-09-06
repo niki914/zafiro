@@ -20,6 +20,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.io.File
 import kotlinx.serialization.json.longOrNull
 import java.util.UUID
 import com.niki914.zafiro.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
@@ -350,6 +351,7 @@ object XRepo {
             seedWebReadTool(context),
             seedLaunchWechatTool(context),
             seedInstallApkTool(context),
+            seedDownloadFileTool(context),
         )
 
     // Seed custom py tools: code lives in res/raw，此处只负责组装。
@@ -379,15 +381,36 @@ object XRepo {
     )
 
     private val SCHEMA_INSTALL_APK =
-        """{"type":"object","properties":{"url":{"type":"string","description":"APK 直链 URL"},"force":{"type":"boolean","description":"覆盖安装；默认已安装则跳过"}},"required":["url"]}"""
+        """{"type":"object","properties":{"url":{"type":"string","description":"APK direct URL"},"force":{"type":"boolean","description":"Overwrite install; skip if already installed by default"},"path":{"type":"string","description":"Optional download directory. Defaults to the app private downloads directory. External paths may require storage permission."}},"required":["url"]}"""
 
     // 下载+安装大 APK 可能超过默认 30s，直接设到上限 120s。
+    // 默认下载目录在播种时烘进脚本（占位符替换）。
     private fun seedInstallApkTool(context: Context) = CustomPyTool(
         name = "py_install_apk",
-        description = "Download an APK from a URL and install it via su. Non-force by default: skips if the app is already installed; set force=true to overwrite.",
+        description = "Download an APK from a URL and install it via su. The APK is saved to the app private downloads directory before install. Non-force by default: skips if the app is already installed; set force=true to overwrite.",
         schemaJson = SCHEMA_INSTALL_APK,
-        code = readRawResource(context, R.raw.seed_py_install_apk),
+        code = readRawResource(context, R.raw.seed_py_install_apk).replace(
+            "__DEFAULT_DOWNLOAD_DIR__",
+            File(context.filesDir, "downloads/py_install_apk").absolutePath,
+        ),
         timeoutMs = CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS,
+    )
+
+    private val SCHEMA_DOWNLOAD_FILE =
+        """{"type":"object","properties":{"url":{"type":"string","description":"URL of the file to download"},"filename":{"type":"string","description":"Optional filename; extracted from URL if omitted"},"path":{"type":"string","description":"Optional download directory. Defaults to the app private downloads directory. External paths may require storage permission."}},"required":["url"]}"""
+
+    // 从 URL 下载文件到私有 downloads 子目录；path 可指定其他目录（外部路径可能需要存储权限）。
+    // 默认目录在播种时烘进脚本（占位符替换），运行时零注入成本。
+    // TODO(permission-manager): 权限管理器落地后，由其向 PromptComposer 环境块注入
+    //  真实存储权限状态（granted/denied），替代提示词中对“优先私有目录”的静态描述。
+    private fun seedDownloadFileTool(context: Context) = CustomPyTool(
+        name = "py_download_file",
+        description = "Download a file from a URL and return its local file path. By default the file is saved to the app private downloads directory; prefer private directories unless you have a special reason.",
+        schemaJson = SCHEMA_DOWNLOAD_FILE,
+        code = readRawResource(context, R.raw.seed_py_download_file).replace(
+            "__DEFAULT_DOWNLOAD_DIR__",
+            File(context.filesDir, "downloads/py_download_file").absolutePath,
+        ),
     )
 
     private fun readRawResource(context: Context, rawId: Int): String {

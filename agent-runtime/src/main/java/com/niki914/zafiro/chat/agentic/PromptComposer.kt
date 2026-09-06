@@ -12,6 +12,7 @@ data class PromptComposerInput(
     val memoryItems: List<String> = emptyList(),
     val tools: ResolvedTools = ResolvedTools(),
     val enabledSkills: List<RuntimeSkillMetadata> = emptyList(),
+    val sandboxPaths: Set<String> = emptySet(),
 )
 
 class PromptComposer {
@@ -29,8 +30,10 @@ class PromptComposer {
 
     private fun buildStableTier(input: PromptComposerInput): String {
         val identity = input.additionalInstructions.trim().ifBlank { DEFAULT_AGENT_IDENTITY }
+        val envBlock = renderEnvironmentBlock(input.sandboxPaths)
         return listOfNotNull(
             identity,
+            envBlock,
             renderToolContext(input.tools),
             renderSkillContext(input.enabledSkills)
                 .takeIf { hasBuiltinTool(input, "load_skill") },
@@ -112,6 +115,24 @@ class PromptComposer {
             appendLine("<available_skills>")
             entries.forEach { appendLine(it) }
             append("</available_skills>")
+        }
+    }
+
+    // --- Environment block ---
+
+    /** 私有存储路径提示块：告诉 Agent 这些目录可自由读写，零权限。 */
+    private fun renderEnvironmentBlock(paths: Set<String>): String? {
+        if (paths.isEmpty()) return null
+        val pathList = paths.sorted().joinToString("\n") { "- $it" }
+        return buildString {
+            appendLine("# Environment")
+            appendLine()
+            appendLine("Private app storage (read/write freely, no storage permission required):")
+            appendLine(pathList)
+            appendLine()
+            appendLine("Files outside these directories are shared storage and may require")
+            appendLine("storage permission that is not currently granted — prefer private")
+            appendLine("directories. If a task requires public files, tell the user.")
         }
     }
 

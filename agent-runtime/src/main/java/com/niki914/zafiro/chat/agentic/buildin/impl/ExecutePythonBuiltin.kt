@@ -32,7 +32,6 @@ class ExecutePythonBuiltin(
 Execute Python code in an Android environment with the full standard library plus requests and bs4.
 The Android shell has no curl/wget — use this tool for HTTP requests.
 Can drive Android system commands (am, pm, input) via os.popen or subprocess; prefix with su -c when root is needed.
-Write files to public directories like /sdcard/Download so other apps can access them via file:// URIs.
 
 State does not persist between calls: every run starts fresh — no variables, working directory, environment
 changes, open handles, or background tasks. Persist intentionally through files when needed.

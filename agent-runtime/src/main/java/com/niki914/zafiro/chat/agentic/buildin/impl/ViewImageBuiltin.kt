@@ -18,7 +18,7 @@ import kotlinx.serialization.json.jsonObject
 /**
  * view_image 工具：Agent 主动读取磁盘上的图片文件。
  * 参数 path = 图片文件绝对路径，返回 ingest 后的图片文件路径（供会话树引用）。
- * 统一存储路径：App 私有目录（filesDir/Zafiro/images）。
+ * 统一存储路径：App 私有目录（files/image_cache）。
  *
  * ingest 失败时返回结构化错误码，由 Agent 决定后续操作。
  */
@@ -39,7 +39,7 @@ class ViewImageBuiltin : BuiltinTool() {
     override val description: String = """
 Read an image file from disk so the model can see it.
 Use when you need to view an image that the user shared, downloaded from the web, or saved by a tool.
-Accepts an absolute file path (e.g. a path returned by py_download_file or the images directory).
+Accepts an absolute file path (e.g. a path returned by py_download_file). Paths inside app private storage (see Environment) are always readable; external paths may fail without storage permission.
 Returns the normalized file path if the image was ingested successfully, or an error code if it was deleted, unreadable, too large, or in an unsupported format.
     """.trimIndent()
     override val defaultEnabled: Boolean = true
@@ -89,7 +89,12 @@ Returns the normalized file path if the image was ingested successfully, or an e
             is IngestResult.Err -> {
                 val (code, message) = result.error.toToolError()
                 val hint = when (result.error) {
-                    IngestError.FileNotFound -> "The file may have been deleted. Ask the user to share or download it again."
+                    IngestError.FileNotFound ->
+                        "The file may have been deleted. If the path is outside app private " +
+                                "storage (e.g. /sdcard), reading it may require storage permission " +
+                                "the app does not have - copy the file into app private storage " +
+                                "first (e.g. with a root shell), or ask the user to grant storage " +
+                                "permission, or download it again into a private directory."
                     IngestError.EmptyContent -> "The file is empty. Check the source and re-download it."
                     is IngestError.TooLarge -> "Try a smaller image or compress it first."
                     IngestError.UnsupportedFormat -> "Convert the image to JPEG or PNG first."

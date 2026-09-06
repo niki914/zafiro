@@ -51,6 +51,7 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import java.io.File
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 
 /**
@@ -94,6 +95,22 @@ object LLMController {
         return ContextProvider.await().applicationContext?.let {
             com.niki914.zafiro.chat.agentic.image.ImageCodec(it).also { codec -> imageCodec = codec }
         }
+    }
+
+    /**
+     * 私有存储路径集合，注入 PromptComposer 环境块。
+     * Context 不可用时返回空集合（环境块不渲染）。
+     */
+    private suspend fun sandboxPaths(): Set<String> {
+        val context = try {
+            ContextProvider.await().applicationContext
+        } catch (e: Exception) {
+            null
+        } ?: return emptySet()
+        return setOf(
+            File(context.filesDir, "image_cache").absolutePath,
+            File(context.filesDir, "downloads").absolutePath,
+        )
     }
 
     /** okia seam：MCP base64 图片 → ingest 落盘 → 返回路径。 */
@@ -266,6 +283,7 @@ object LLMController {
                 memoryItems = buildMemoryItems(llmConfig),
                 tools = resolvedTools,
                 enabledSkills = enabledSkills,
+                sandboxPaths = sandboxPaths(),
             )
         )
         val finalConfig =

@@ -54,7 +54,6 @@ class BuiltinToolTest {
                 "memory",
                 "notify",
                 "open_uri",
-                "py_download_file",
                 "py_meta_tools",
                 "screen_operation_accessibility",
                 "screen_operation_shell",

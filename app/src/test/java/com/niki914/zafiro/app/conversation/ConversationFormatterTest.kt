@@ -192,8 +192,8 @@ class ConversationFormatterTest {
             Message.User(
                 listOf(
                     ContentBlock.Text("look"),
-                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/Zafiro/images/aaa.jpg", "image/jpeg"),
-                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/Zafiro/images/bbb.jpg", "image/jpeg"),
+                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg", "image/jpeg"),
+                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/image_cache/bbb.jpg", "image/jpeg"),
                 )
             ),
             Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
@@ -206,11 +206,11 @@ class ConversationFormatterTest {
         assertEquals("look", turn.userText)
         assertEquals(2, turn.images.size)
         assertEquals(
-            "/data/user/0/com.niki914.zafiro/files/Zafiro/images/aaa.jpg",
+            "/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg",
             turn.images[0].path,
         )
         assertEquals(
-            "/data/user/0/com.niki914.zafiro/files/Zafiro/images/aaa.jpg".hashCode().toString(),
+            "/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg".hashCode().toString(),
             turn.images[0].id,
         )
     }
@@ -220,7 +220,7 @@ class ConversationFormatterTest {
         val snapshot = snapshotOf(
             Message.User(
                 listOf(
-                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/Zafiro/images/aaa.jpg", "image/jpeg"),
+                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg", "image/jpeg"),
                 )
             ),
         )

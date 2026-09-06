@@ -19,11 +19,15 @@ import shlex
 import shutil
 import subprocess
 import sys
-import tempfile
 import urllib.request
+import uuid
 
 INSTALL_TIMEOUT = 300
 UA = "Mozilla/5.0 (Linux; Android 14)"
+
+# 播种时由宿主替换为绝对路径（files/downloads/py_install_apk）；
+# 占位符未替换时用 tempfile.mkstemp 兼容旧路径。
+DEFAULT_DOWNLOAD_DIR = "__DEFAULT_DOWNLOAD_DIR__"
 
 
 def su_run(args, timeout=INSTALL_TIMEOUT):
@@ -48,7 +52,7 @@ def install(apk_path, force):
     return su_run(cmd)
 
 
-def main(url, force=False):
+def main(url, force=False, path=""):
     try:
         probe = su_run(["id"], timeout=10)
     except FileNotFoundError:
@@ -58,8 +62,9 @@ def main(url, force=False):
         print("su 未授权或不可用", file=sys.stderr)
         sys.exit(2)
 
-    fd, apk_path = tempfile.mkstemp(suffix=".apk")
-    os.close(fd)
+    download_dir = path or DEFAULT_DOWNLOAD_DIR
+    os.makedirs(download_dir, exist_ok=True)
+    apk_path = os.path.join(download_dir, f"{uuid.uuid4()}.apk")
     try:
         download(url, apk_path)
         print(f"[2/2] installing via su ({'force' if force else 'non-force'})")
@@ -83,5 +88,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("url", help="APK 直链 URL")
     ap.add_argument("--force", action="store_true", help="覆盖安装（默认已安装则跳过）")
+    ap.add_argument("--path", default="", help="APK 下载目录（不传用默认私有目录）")
     args = ap.parse_args()
-    main(args.url, force=args.force)
+    main(args.url, force=args.force, path=args.path)
