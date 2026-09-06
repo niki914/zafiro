@@ -26,7 +26,7 @@ sealed interface ContentBlock {
 
     /**
      * 图像引用。存储文件路径（非 base64），发送时由 protocol 经 ImageLoader
-     * 读取并转为 base64。统一存储路径：/sdcard/Download/Zafiro/images/。
+     * 读取并转为 base64。统一存储在 filesDir/Zafiro/images/（app 沙箱私有目录）。
      */
     @Serializable
     data class Image(val path: String, val mimeType: String) : ContentBlock

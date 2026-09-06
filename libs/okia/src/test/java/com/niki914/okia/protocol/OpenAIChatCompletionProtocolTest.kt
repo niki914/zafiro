@@ -665,4 +665,56 @@ class OpenAIChatCompletionProtocolTest {
             messages[0]["content"]!!.jsonPrimitive.content.contains("[image omitted")
         )
     }
+
+    // ── 用户消息多图 ────────────────────────────────────────────────────
+
+    @Test
+    fun userMessageEncodesAllImagesInContentArray() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(supportsImages = true, imageLoader = loaderOf()),
+            listOf(
+                userBlocks(
+                    ContentBlock.Text("see these"),
+                    ContentBlock.Image("/a.png", "image/png"),
+                    ContentBlock.Image("/b.png", "image/png"),
+                )
+            )
+        )
+        val parts = messagesOf(request).single()["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(3, parts.size)
+        assertEquals("text", parts[0]["type"]!!.jsonPrimitive.content)
+        assertEquals("see these", parts[0]["text"]!!.jsonPrimitive.content)
+        assertEquals("image_url", parts[1]["type"]!!.jsonPrimitive.content)
+        assertEquals("image_url", parts[2]["type"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun userMessageAllImagesFailedKeepsPlainTextWithNote() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(supportsImages = true, imageLoader = loaderOf("/gone.png")),
+            listOf(
+                userBlocks(
+                    ContentBlock.Text("look"),
+                    ContentBlock.Image("/gone.png", "image/png"),
+                )
+            )
+        )
+        // 全部加载失败：content 为数组（text + text note），原文不丢且无引号污染
+        val parts = messagesOf(request).single()["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(2, parts.size)
+        assertEquals("text", parts[0]["type"]!!.jsonPrimitive.content)
+        assertEquals("look", parts[0]["text"]!!.jsonPrimitive.content)
+        assertTrue(parts[1]["text"]!!.jsonPrimitive.content.contains("[image omitted"))
+    }
+
+    @Test
+    fun userMessageImagesOnlyHasNoTextPart() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(supportsImages = true, imageLoader = loaderOf()),
+            listOf(userBlocks(ContentBlock.Image("/a.png", "image/png")))
+        )
+        val parts = messagesOf(request).single()["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(1, parts.size)
+        assertEquals("image_url", parts[0]["type"]!!.jsonPrimitive.content)
+    }
 }

@@ -759,4 +759,114 @@ class OpenAIResponsesProtocolTest {
         assertTrue(text.contains("[image omitted"))
         assertEquals("input_image", output[1]["type"]!!.jsonPrimitive.content)
     }
+
+    // ── 用户消息多图 ────────────────────────────────────────────────────────
+
+    @Test
+    fun userMessageEncodesAllImagesAsInputImageParts() = runBlocking {
+        val snapshot = snapshot().copy(supportsImages = true, imageLoader = loaderOf())
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("see these"),
+                        ContentBlock.Image("/a.png", "image/png"),
+                        ContentBlock.Image("/b.png", "image/png"),
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        assertEquals("user", item["role"]!!.jsonPrimitive.content)
+        val content = item["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(3, content.size)
+        assertEquals("input_text", content[0]["type"]!!.jsonPrimitive.content)
+        assertEquals("see these", content[0]["text"]!!.jsonPrimitive.content)
+        assertEquals("input_image", content[1]["type"]!!.jsonPrimitive.content)
+        assertEquals("input_image", content[2]["type"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun userMessageImagesOnlyOmitsTextPart() = runBlocking {
+        val snapshot = snapshot().copy(supportsImages = true, imageLoader = loaderOf())
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(Message.User(listOf(ContentBlock.Image("/a.png", "image/png"))))
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        val content = item["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(1, content.size)
+        assertEquals("input_image", content[0]["type"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun userMessageImageLoadFailureKeepsTextAndNotes() = runBlocking {
+        val snapshot = snapshot().copy(supportsImages = true, imageLoader = loaderOf("/gone.png"))
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("look"),
+                        ContentBlock.Image("/gone.png", "image/png"),
+                        ContentBlock.Image("/alive.png", "image/png"),
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        val content = item["content"]!!.jsonArray.map { it.jsonObject }
+        // 逐张降级：文本（含注记）+ 1 张成功图，原文不丢
+        assertEquals(2, content.size)
+        assertEquals("input_text", content[0]["type"]!!.jsonPrimitive.content)
+        val text = content[0]["text"]!!.jsonPrimitive.content
+        assertTrue(text.contains("look"))
+        assertTrue(text.contains("[image omitted"))
+        assertEquals("input_image", content[1]["type"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun userMessageAllImagesFailedStillKeepsOriginalText() = runBlocking {
+        val snapshot = snapshot().copy(supportsImages = true, imageLoader = loaderOf("/gone.png"))
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("original text"),
+                        ContentBlock.Image("/gone.png", "image/png"),
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        // 全部加载失败：文本 part 仍在，原文不丢
+        val content = item["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(1, content.size)
+        assertEquals("input_text", content[0]["type"]!!.jsonPrimitive.content)
+        val text = content[0]["text"]!!.jsonPrimitive.content
+        assertTrue(text.contains("original text"))
+        assertTrue(text.contains("[image omitted"))
+    }
+
+    @Test
+    fun userMessageImagesWithoutSupportDegradesToNotes() = runBlocking {
+        val snapshot = snapshot().copy(supportsImages = false)
+        val request = protocol.buildRequest(
+            snapshot,
+            listOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("look"),
+                        ContentBlock.Image("/a.png", "image/png"),
+                    )
+                )
+            )
+        )
+        val item = body(request)["input"]!!.jsonArray.single().jsonObject
+        val content = item["content"]!!.jsonPrimitive.content
+        assertTrue(content.contains("look"))
+        assertTrue(content.contains("[image omitted"))
+    }
 }

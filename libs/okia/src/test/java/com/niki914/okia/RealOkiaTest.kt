@@ -117,7 +117,7 @@ class RealOkiaTest {
         )
         val result = okia.send(
             "hi",
-            TurnOptions(loopOptions = LoopOptions(turnRetryPolicy = RetryPolicy(maxAttempts = 3)))
+            options = TurnOptions(loopOptions = LoopOptions(turnRetryPolicy = RetryPolicy(maxAttempts = 3)))
         ) { event ->
             if (event is TurnEvent.TextDelta) throw IllegalStateException("ui boom")
         }
@@ -587,7 +587,7 @@ class RealOkiaTest {
             loop = loop,
             scope = testScope(testScheduler)
         )
-        okia.send("hi", TurnOptions(systemPrompt = "sys", model = "override-model")) { }
+        okia.send("hi", options = TurnOptions(systemPrompt = "sys", model = "override-model")) { }
 
         val request = received!!
         assertEquals("hi", request.input)

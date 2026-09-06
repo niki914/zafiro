@@ -19,7 +19,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -211,31 +213,51 @@ class OpenAIChatCompletionProtocol(
     }
 
     private suspend fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
-        val image = blocks.firstOrNull { it is ContentBlock.Image }
         val text = blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
-        if (image == null) {
+        val images = blocks.filterIsInstance<ContentBlock.Image>()
+        // 无图：纯文本
+        if (images.isEmpty()) {
             return JsonPrimitive(text)
         }
-        if (!snapshot.supportsImages) {
-            return JsonPrimitive("$text\n[image omitted: model does not support images]")
+        // 不支持图片或无 loader：全部降级为文本注记（text 非空时换行分隔）
+        if (!snapshot.supportsImages || snapshot.imageLoader == null) {
+            return JsonPrimitive(
+                text.withImageNotes(images) {
+                    if (snapshot.supportsImages) "[image omitted: file not found]"
+                    else "[image omitted: model does not support images]"
+                }
+            )
         }
         val loader = snapshot.imageLoader
-        val bytes = loader?.load((image as ContentBlock.Image).path)
-        if (bytes == null) {
-            return JsonPrimitive("$text\n[image omitted: file not found]")
-        }
-        val dataUrl = "data:${image.mimeType};base64,${Base64.encode(bytes)}"
-        return buildJsonArray {
-            blocks.filterIsInstance<ContentBlock.Text>().forEach { t ->
-                add(buildJsonObject {
-                    put("type", "text")
-                    put("text", t.text)
-                })
+        // 逐张加载：成功 → image_url part；失败 → text note
+        val parts = mutableListOf<JsonElement>()
+        if (text.isNotBlank()) {
+            parts += buildJsonObject {
+                put("type", "text")
+                put("text", text)
             }
-            add(buildJsonObject {
-                put("type", "image_url")
-                put("image_url", buildJsonObject { put("url", dataUrl) })
-            })
+        }
+        for (image in images) {
+            val bytes = loader.load(image.path)
+            if (bytes != null) {
+                parts += buildJsonObject {
+                    put("type", "image_url")
+                    put("image_url", buildJsonObject {
+                        put("url", "data:${image.mimeType};base64,${Base64.encode(bytes)}")
+                    })
+                }
+            } else {
+                parts += buildJsonObject {
+                    put("type", "text")
+                    put("text", "[image omitted: file not found]")
+                }
+            }
+        }
+        if (parts.size == 1 && (parts[0] as? JsonObject)?.get("type")?.let { it as? JsonPrimitive }?.content == "text") {
+            return JsonPrimitive((parts[0] as JsonObject)["text"]?.jsonPrimitive?.content.orEmpty())
+        }
+        return buildJsonArray {
+            parts.forEach { add(it) }
         }
     }
 

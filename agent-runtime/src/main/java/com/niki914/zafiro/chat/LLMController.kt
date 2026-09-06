@@ -17,6 +17,7 @@ import com.niki914.okia.message.Message
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
+import com.niki914.okia.ImageSaver
 import com.niki914.okia.protocol.OpenAIResponsesProtocol
 import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolDescriptor
@@ -25,13 +26,11 @@ import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.xposed.api.util.LockState
 import com.niki914.zafiro.chat.agentic.AndroidImageLoader
-import com.niki914.zafiro.chat.agentic.AndroidImageSaver
 import com.niki914.zafiro.chat.agentic.IngestedImage
 import com.niki914.zafiro.chat.agentic.LocalToolExecutor
 import com.niki914.zafiro.chat.agentic.PromptComposer
 import com.niki914.zafiro.chat.agentic.PromptComposerInput
 import com.niki914.zafiro.chat.agentic.ToolManager
-import com.niki914.zafiro.chat.agentic.UserImageSaver
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
@@ -80,47 +79,42 @@ object LLMController {
     // MCP 工具由 T2b McpDiscovery 注册进同一 registry。
     internal val toolRegistry: ToolRegistry = DefaultToolRegistry()
 
-    // 图片加载器 + 保存器（host 注入 Okia）
+    // 图片加载器 + ingest（host 注入 Okia）。单个 ImageCodec 实例供
+    // okia seam（MCP base64 落盘）与用户 URI ingest 共享。
     private val imageLoader: AndroidImageLoader? = try {
         AndroidImageLoader()
     } catch (e: Exception) {
         null
     }
-    private var imageSaver: AndroidImageSaver? = null
 
-    // 用户分享图片 ingest（相册 URI → 私有目录落盘 + 预览 data URL）
-    // TODO: AndroidImageSaver 与 UserImageSaver 形状重复（各自 lazy + ensure +
-    //  独立 ImageCodec 实例），以后抽象统一；两者实现 seam 不同（okia ImageSaver
-    //  接口 vs Android 自由类），非简单合并
-    private var userImageSaver: UserImageSaver? = null
+    private var imageCodec: com.niki914.zafiro.chat.agentic.image.ImageCodec? = null
 
-    /** 初始化图片保存器（延迟到首次需要时）。 */
-    private suspend fun ensureImageSaver(): AndroidImageSaver? {
-        if (imageSaver == null) {
-            imageSaver = try {
-                ContextProvider.await().applicationContext?.let { AndroidImageSaver(it) }
-            } catch (e: Exception) {
-                null
-            }
+    private suspend fun ensureImageCodec(): com.niki914.zafiro.chat.agentic.image.ImageCodec? {
+        imageCodec?.let { return it }
+        return ContextProvider.await().applicationContext?.let {
+            com.niki914.zafiro.chat.agentic.image.ImageCodec(it).also { codec -> imageCodec = codec }
         }
-        return imageSaver
     }
 
-    private suspend fun ensureUserImageSaver(): UserImageSaver? {
-        if (userImageSaver == null) {
-            userImageSaver = try {
-                ContextProvider.await().applicationContext?.let { UserImageSaver(it) }
-            } catch (e: Exception) {
-                null
+    /** okia seam：MCP base64 图片 → ingest 落盘 → 返回路径。 */
+    private suspend fun ensureImageSaver(): ImageSaver? {
+        val codec = ensureImageCodec() ?: return null
+        return ImageSaver { base64 ->
+            when (val result = codec.ingestBase64(base64)) {
+                is com.niki914.zafiro.chat.agentic.image.IngestResult.Ok -> result.image.path
+                is com.niki914.zafiro.chat.agentic.image.IngestResult.Err -> null
             }
         }
-        return userImageSaver
     }
 
-    /** 相册 URI → ingest 落盘 → (path, dataUrl)。失败返回 null（UI 静默丢弃）。 */
+    /** 相册 URI → ingest 落盘 → path。失败返回 null（UI 静默丢弃）。 */
     suspend fun ingestUserImage(uriString: String): IngestedImage? {
-        val saver = ensureUserImageSaver() ?: return null
-        return saver.ingestFromUri(android.net.Uri.parse(uriString))
+        val codec = ensureImageCodec() ?: return null
+        val result = codec.ingestUri(android.net.Uri.parse(uriString))
+        return when (result) {
+            is com.niki914.zafiro.chat.agentic.image.IngestResult.Ok -> IngestedImage(result.image.path)
+            is com.niki914.zafiro.chat.agentic.image.IngestResult.Err -> null
+        }
     }
 
     // 回合内写入的 py 工具（py_meta_tools write 成功回调，D20）：
@@ -354,6 +348,7 @@ object LLMController {
 
     fun stream(
         query: String,
+        images: List<ContentBlock.Image> = emptyList(),
         fromUserInterface: Boolean = false,
     ): Flow<LlmStreamEvent> = channelFlow {
         // 确认型执行规则按来源区分：UI 直连可弹窗；宿主路径默认拒绝（英文错误回给 Agent）
@@ -434,6 +429,7 @@ object LLMController {
                 val result = try {
                     state.okia.send(
                         text = effectiveQuery,
+                        images = images,
                         options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt),
                     ) { event ->
                         val mapped = LlmStreamEventMapper.map(event, startedAtMs)

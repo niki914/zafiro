@@ -123,14 +123,13 @@ data class HomeChatTurn(
 )
 
 /**
- * 用户消息附带的图片（预览与落盘引用）。
+ * 用户消息附带的图片（落盘路径引用）。
  * 待发送与已发送共用：send 时 pendingImages 移入 turn.images，字段语义不变。
- * dataUrl：预览位图来源（ingest 后的 JPEG data URL）；path：落盘路径（未来发送链路用）。
+ * path：落盘路径（发送链路与 UI 渲染共用；图片字节在 app 沙箱，重启不丢）。
  */
 data class HomeChatImage(
     val id: String,
     val path: String,
-    val dataUrl: String,
 )
 
 data class HomeChatUiState(
@@ -195,22 +194,25 @@ sealed interface HomeChatIntent {
 }
 
 internal interface HomeChatRuntime {
-    fun stream(query: String): Flow<LlmStreamEvent>
+    fun stream(query: String, images: List<ContentBlock.Image>): Flow<LlmStreamEvent>
     suspend fun resetConversation()
     suspend fun stopCurrentRound()
     suspend fun ensureSession(): String
     suspend fun openSession(restore: SessionSnapshot)
     suspend fun historySnapshot(): List<Message>
-    /** 相册 URI → ingest 落盘 → (path, dataUrl)。失败返回 null（静默丢弃）。 */
+    /** 相册 URI → ingest 落盘 → path。失败返回 null（静默丢弃）。 */
     suspend fun ingestImage(uri: String): HomeChatImage?
 }
 
 private object LlmHomeChatRuntime : HomeChatRuntime {
-    override fun stream(query: String): Flow<LlmStreamEvent> =
-        LLMController.stream(
-            query = query,
-            fromUserInterface = true,
-        )
+    override fun stream(
+        query: String,
+        images: List<ContentBlock.Image>
+    ): Flow<LlmStreamEvent> = LLMController.stream(
+        query = query,
+        images = images,
+        fromUserInterface = true,
+    )
 
     override suspend fun resetConversation() = LLMController.resetConversation()
     override suspend fun stopCurrentRound() =
@@ -227,7 +229,6 @@ private object LlmHomeChatRuntime : HomeChatRuntime {
         return HomeChatImage(
             id = UUID.randomUUID().toString(),
             path = ingested.path,
-            dataUrl = ingested.dataUrl,
         )
     }
 }
@@ -363,22 +364,23 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun sendCurrentInput() {
         val query = currentState.input.trim()
-        val images = currentState.pendingImages
-        if ((query.isBlank() && images.isEmpty()) || currentState.isGenerating) {
+        val pendingImages = currentState.pendingImages
+        if (query.isBlank() && pendingImages.isEmpty() || currentState.isGenerating) {
             Logger.d(
                 LOG_TAG,
-                "send skipped blank=${query.isBlank()} images=${images.size} " +
+                "send skipped blank=${query.isBlank()} images=${pendingImages.size} " +
                         "isGenerating=${currentState.isGenerating}"
             )
             return
         }
-        Logger.i(LOG_TAG, "send requested queryLength=${query.length} images=${images.size}")
+        Logger.i(LOG_TAG, "send requested queryLength=${query.length} images=${pendingImages.size}")
 
         val turnId = nextTurnId++
+        val imageBlocks = pendingImages.map { ContentBlock.Image(it.path, "image/jpeg") }
         updateState {
             copy(
                 input = "",
-                // 待发图片移入 turn（UI 展示链路）；图片不进 runtime.stream（见 attachImage）
+                // 待发图片移入 turn（UI 展示链路）
                 pendingImages = emptyList(),
                 // 新回合开始：清除旧错误卡片（瞬态 UI 态，T3 TODO②——
                 // 错误只在当轮显示，下一轮发起即消失）
@@ -388,7 +390,7 @@ class HomeChatViewModel internal constructor(
                             it is HomeChatBlock.Error || it is HomeChatBlock.Retrying
                         },
                     )
-                } + HomeChatTurn(id = turnId, userText = query, images = images),
+                } + HomeChatTurn(id = turnId, userText = query, images = pendingImages),
                 isGenerating = true,
                 lastEventName = null,
                 streamEventCount = 0,
@@ -400,14 +402,6 @@ class HomeChatViewModel internal constructor(
                 expandedActionSource = null,
             )
         }
-        // 纯图片发送（无文本）：只进 UI 历史，不发流——发送链路待 Okia 支持
-        // 图片参数后接入；此刻发空文本请求会喂给模型一条空 user message。
-        if (images.isNotEmpty() && query.isEmpty()) {
-            Logger.i(LOG_TAG, "send images-only turnId=$turnId count=${images.size}, stream skipped")
-            updateState { copy(isGenerating = false) }
-            return
-        }
-
         draftSaveJob?.cancel()
         draftSaveJob = null
 
@@ -419,7 +413,7 @@ class HomeChatViewModel internal constructor(
                     LOG_TAG,
                     "send turn started turnId=$turnId conversationId=$conversationId queryLength=${query.length}"
                 )
-                collectLlmStream(turnId = turnId, query = query)
+                collectLlmStream(turnId = turnId, query = query, images = imageBlocks)
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
                 Logger.e(
@@ -476,9 +470,9 @@ class HomeChatViewModel internal constructor(
         }
     }
 
-    private suspend fun collectLlmStream(turnId: Long, query: String) {
+    private suspend fun collectLlmStream(turnId: Long, query: String, images: List<ContentBlock.Image> = emptyList()) {
         textPacer.reset()
-        runtime.stream(query).collect { event ->
+        runtime.stream(query, images).collect { event ->
             val eventName = eventName(event)
             val eventCount = currentState.streamEventCount + 1
             updateState {
@@ -827,6 +821,9 @@ class HomeChatViewModel internal constructor(
         if (userIndex < 0) return
         val userTurn = history[userIndex] as? Message.User ?: return
         val userText = userTurn.text()
+        // 原回合的图片随 fork 截断丢失，重发时必须带上（否则模型看不到图、
+        // UI 新 turn 图片卡消失）
+        val userImages = userTurn.content.filterIsInstance<ContentBlock.Image>()
         // D3-10/D3-11：regen = fork（复制截断子树，新会话互不影响）+ 自动 resend
         val newConvId = conversations.forkConversation(currentId, userIndex, ForkKind.Regenerate)
         Logger.i(
@@ -837,7 +834,13 @@ class HomeChatViewModel internal constructor(
         val newTurnId = nextTurnId++
         updateState {
             copy(
-                turns = turns + HomeChatTurn(id = newTurnId, userText = userText),
+                turns = turns + HomeChatTurn(
+                    id = newTurnId,
+                    userText = userText,
+                    images = userImages.map {
+                        HomeChatImage(id = it.path.hashCode().toString(), path = it.path)
+                    },
+                ),
                 isGenerating = true,
                 lastEventName = null,
                 streamEventCount = 0,
@@ -847,7 +850,7 @@ class HomeChatViewModel internal constructor(
         }
         streamJob = viewModelScope.launch {
             try {
-                collectLlmStream(turnId = newTurnId, query = userText)
+                collectLlmStream(turnId = newTurnId, query = userText, images = userImages)
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
                 throwable.message?.let { message ->
