@@ -19,13 +19,22 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okio.BufferedSink
 import java.io.IOException
+import java.net.InetSocketAddress
+import java.net.Proxy
+import java.net.ProxySelector
+import java.net.URI
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
  * 默认 HttpEngine：OkHttp 4 实现。public（D-T2B-4）：构造接受自定义
  * OkHttpClient，供 host 注入 proxy interceptor 等；默认 client 门面自建。
+ * proxy：构造传入初始代理 URL（http/https = HTTP 代理，socks = SOCKS），
+ * updateProxy 热更新——client 不可变，代理经 ProxySelector 每次连接动态
+ * 读取 AtomicReference，变更对后续连接立即生效，已建连接不受影响。
+ * 解析失败（非法 URI / 未知 scheme）回退直连。
  * 经 OkiaConfig.httpEngine 注入或门面自建；KMP 迁移时本文件进入 jvm/android
  * actual（OkHttp5 或 Ktor 替代，HttpEngine 契约不动）。
  * stream：异步 enqueue 挂起到响应头；2xx → body 分块读字符流经 SseLineParser
@@ -39,8 +48,39 @@ import kotlin.coroutines.resumeWithException
  * Design source: okia PRD §5.14（KMP actual 点）；okhttp3 API。
  */
 class OkHttpEngine(
-    private val base: OkHttpClient = OkHttpClient()
+    private val base: OkHttpClient = OkHttpClient(),
+    proxyUrl: String = ""
 ) : HttpEngine {
+
+    // ponytail: 解析失败静默回退直连——okia 模块无 Logger，UI 层已有 URI 校验兜底
+    private val proxy = AtomicReference(parseProxy(proxyUrl))
+
+    /** 热更新代理：空串 = 直连；解析失败回退直连。对后续连接立即生效。 */
+    fun updateProxy(proxyUrl: String) {
+        proxy.set(parseProxy(proxyUrl))
+    }
+
+    private fun parseProxy(url: String): Proxy? {
+        val trimmed = url.trim()
+        if (trimmed.isEmpty()) return null
+        return runCatching {
+            val uri = URI(trimmed)
+            val host = uri.host ?: return null
+            val port = if (uri.port > 0) uri.port else 80
+            when (uri.scheme?.lowercase()) {
+                "http", "https" -> Proxy(Proxy.Type.HTTP, InetSocketAddress(host, port))
+                "socks", "socks5" -> Proxy(Proxy.Type.SOCKS, InetSocketAddress(host, port))
+                else -> null
+            }
+        }.getOrNull()
+    }
+
+    private fun proxySelector() = object : ProxySelector() {
+        override fun select(uri: URI?): List<Proxy> =
+            proxy.get()?.let { listOf(it) } ?: listOf(Proxy.NO_PROXY)
+
+        override fun connectFailed(uri: URI?, sa: java.net.SocketAddress?, ioe: IOException?) = Unit
+    }
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
@@ -120,6 +160,7 @@ class OkHttpEngine(
             .connectTimeout(timeouts.connectMs, TimeUnit.MILLISECONDS)
             .readTimeout(timeouts.readMs, TimeUnit.MILLISECONDS)
             .writeTimeout(timeouts.writeMs, TimeUnit.MILLISECONDS)
+            .proxySelector(proxySelector())
             .build()
 
     // body 行流：分块读 UTF-8 字符 → SseLineParser 切行（行切分与分类单一来源）。
