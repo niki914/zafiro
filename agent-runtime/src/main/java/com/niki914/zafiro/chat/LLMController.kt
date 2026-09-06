@@ -14,6 +14,7 @@ import com.niki914.okia.mcp.McpServerDiscoverySnapshot
 import com.niki914.okia.mcp.McpTransport
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
@@ -249,6 +250,8 @@ object LLMController {
             supportsImages = llmConfig.supportsImages,
             idleTimeoutSeconds = llmConfig.idleTimeoutSeconds,
             retryMaxAttempts = llmConfig.retryMaxAttempts,
+            thinkingLevel = llmConfig.thinkingLevel.takeIf(String::isNotBlank)
+                ?.let(ThinkingLevel::fromWire),
         )
         // 会话实例按协议重建；协议切换 = close + 新实例，但树经 restore 延续
         // （P1 #3：export 当前树给新协议实例，会话 id + 历史跨 Provider 保留）
@@ -262,6 +265,8 @@ object LLMController {
             idleTimeoutSeconds = configWithoutRuntimePrompt.idleTimeoutSeconds
                 ?: NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts)
+            // 思考强度热更新：与超时/重试同层（实例复用时跟随设置变化）
+            thinkingLevel = configWithoutRuntimePrompt.thinkingLevel
             // T2b：MCP 服务器配置进 OKIA（McpDiscovery 发现后注册进同一 toolRegistry）
             mcpServers = toOkiaMcpServers(resolvedTools.mcpServers)
         }
@@ -655,6 +660,7 @@ object LLMController {
             // 图片功能入口：loader 就绪且当前配置开启视觉开关（provider 设置页
             // 「视觉模型」；ingest 管线保证协议侧拿到的图片已转码 JPEG q80 小图）
             supportsImages = imageLoader != null && config.supportsImages
+            thinkingLevel = config.thinkingLevel
         }
     }
 

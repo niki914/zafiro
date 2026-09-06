@@ -4,6 +4,7 @@ import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.tooling.ToolDescriptor
@@ -169,6 +170,14 @@ class OpenAIResponsesProtocol(
             put("stream", true)
             put("max_output_tokens", snapshot.maxTokens)
             put("temperature", snapshot.temperature)
+            // 思考强度：Responses API 的 reasoning 对象（对齐 pi openai-responses.ts：
+            // effort + summary=auto）。OFF = "none"；null = 不发字段（Provider 默认行为）。
+            snapshot.thinkingLevel?.let {
+                put("reasoning", buildJsonObject {
+                    put("effort", it.wireValue)
+                    put("summary", "auto")
+                })
+            }
             if (snapshot.tools.isNotEmpty()) {
                 put("tools", buildJsonArray { snapshot.tools.forEach { add(convertTool(it)) } })
             }

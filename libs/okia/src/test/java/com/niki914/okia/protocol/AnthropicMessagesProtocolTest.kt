@@ -5,6 +5,7 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.tooling.ToolDescriptor
@@ -660,5 +661,37 @@ class AnthropicMessagesProtocolTest {
         val content = messagesOf(request).single()["content"]!!.jsonArray.map { it.jsonObject }
         assertEquals(1, content.size)
         assertEquals("image", content[0]["type"]!!.jsonPrimitive.content)
+    }
+
+    // ── thinking level：请求体 thinking + output_config.effort ─────────
+
+    @Test
+    fun thinkingLevelOmittedByDefault() = runBlocking {
+        val request = protocol.buildRequest(snapshot(), emptyList())
+        assertTrue(body(request)["thinking"] == null)
+        assertTrue(body(request)["output_config"] == null)
+    }
+
+    @Test
+    fun thinkingLevelSentAsAdaptiveWithEffort() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(thinkingLevel = ThinkingLevel.HIGH),
+            emptyList()
+        )
+        val thinking = body(request)["thinking"]!!.jsonObject
+        assertEquals("adaptive", thinking["type"]!!.jsonPrimitive.content)
+        val outputConfig = body(request)["output_config"]!!.jsonObject
+        assertEquals("high", outputConfig["effort"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun thinkingLevelOffSentAsDisabled() = runBlocking {
+        val request = protocol.buildRequest(
+            snapshot().copy(thinkingLevel = ThinkingLevel.OFF),
+            emptyList()
+        )
+        val thinking = body(request)["thinking"]!!.jsonObject
+        assertEquals("disabled", thinking["type"]!!.jsonPrimitive.content)
+        assertTrue(body(request)["output_config"] == null)
     }
 }

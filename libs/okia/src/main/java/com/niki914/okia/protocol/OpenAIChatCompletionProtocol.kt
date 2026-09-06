@@ -5,6 +5,7 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
+import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.tooling.ToolDescriptor
@@ -110,6 +111,11 @@ class OpenAIChatCompletionProtocol(
                 ?.let {
                     emit(ProtocolEvent.ThinkingDelta(it))
                 }
+            // pi 兼容：部分 Provider reasoning 为纯字符串（非 OpenAI 官方对象形态）
+            (delta["reasoning"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
+                ?.let {
+                    emit(ProtocolEvent.ThinkingDelta(it))
+                }
             // OpenAI 官方：delta.reasoning 对象（content 明文；encrypted_content 不可读，忽略）
             (delta["reasoning"] as? JsonObject)?.let { reasoning ->
                 (reasoning["content"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
@@ -152,6 +158,11 @@ class OpenAIChatCompletionProtocol(
                 snapshot.maxTokens
             )
             put("temperature", snapshot.temperature)
+            // 思考强度：非 null 时发送 reasoning_effort（恒等映射，wire 值即 level 值）。
+            // OFF = 显式关闭（"none"，对齐 pi/Eta）；null = 不发字段（Provider 默认行为）。
+            snapshot.thinkingLevel?.let {
+                put("reasoning_effort", it.wireValue)
+            }
             if (snapshot.tools.isNotEmpty()) {
                 put("tools", buildJsonArray { snapshot.tools.forEach { add(convertTool(it)) } })
             }

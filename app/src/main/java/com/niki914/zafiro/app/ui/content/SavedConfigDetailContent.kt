@@ -100,6 +100,7 @@ fun SavedConfigDetailContent(
             onModelChange = { viewModel.sendIntent(ConfigureIntent.UpdateModel(it)) },
             onApiKeyChange = { viewModel.sendIntent(ConfigureIntent.UpdateApiKey(it)) },
             onProtocolSelected = { viewModel.sendIntent(ConfigureIntent.SelectProtocol(it)) },
+            onThinkingLevelSelected = { viewModel.sendIntent(ConfigureIntent.UpdateThinkingLevel(it)) },
             onSupportsImagesChange = { enabled ->
                 viewModel.sendIntent(ConfigureIntent.UpdateSupportsImages(enabled))
             },
@@ -142,6 +143,7 @@ private fun SavedConfigDetailContentBody(
     onModelChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onProtocolSelected: (String) -> Unit,
+    onThinkingLevelSelected: (String) -> Unit,
     onSupportsImagesChange: (Boolean) -> Unit,
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit,
@@ -178,6 +180,7 @@ private fun SavedConfigDetailContentBody(
             onModelChange = onModelChange,
             onApiKeyChange = onApiKeyChange,
             onProtocolSelected = onProtocolSelected,
+            onThinkingLevelSelected = onThinkingLevelSelected,
             onSupportsImagesChange = onSupportsImagesChange,
             onToggleApiKeyVisibility = onToggleApiKeyVisibility,
             onProxyChange = onProxyChange,
