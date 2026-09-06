@@ -4,13 +4,12 @@
 *.iml
 *.ipr
 *.iws
-.worktrees/
-.claude/worktrees/
-nexus-res/
-.apk_decs/*
-!.apk_decs/README.txt
-.workspace/*
-!.workspace/README.txt
+/.worktrees/
+
+/.pi/
+.env
+.env.local
+.env.*.local
 
 ### Android / Gradle
 **/.gradle/
@@ -26,10 +25,11 @@ captures/
 *.ap_
 *.dex
 
-### Python
+*.kotlin_builtins
+
+### non-Android languages
 **/__pycache__/*
 
-### Node / TypeScript
 **/node_modules/
 **/dist/
 **/coverage/
@@ -40,22 +40,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-.env
-.env.local
-.env.*.local
-
-### JADX
-*.kotlin_builtins
-
-### External (root-level standalone checkouts only; vendored copies under libs/ are tracked)
-# no trailing slash: matches both the real dir and a symlink to a standalone checkout
-/libterm
-/kai
-
-### Release signing (keystore stays local, never committed)
-packing/
-
+### External
 /.as-run/app.run.xml
-/RELEASING.md
+/libterm
+packing/
 media/
-.pi/
+nexus-res/
