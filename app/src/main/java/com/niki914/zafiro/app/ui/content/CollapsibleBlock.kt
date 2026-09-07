@@ -75,6 +75,7 @@ internal val OutputBtnInset = 36.dp   // 多行输出右缘给右上角按钮让
 internal val CopyBtnSize = 26.dp      // 复制按钮
 internal val CopyIconSize = 14.dp     // 复制图标
 internal val ResultScrollMaxHeight = 102.dp // 工具结果/思考正文滚动高度上限
+internal val ToolImagePreviewSize = 120.dp  // 工具结果图片预览卡边长（与消息内大图卡一致）
 
 // 块正文统一色规则：onSurfaceVariant 满值（不叠 alpha）。
 // 层级三档：收起行 variant×0.7 < 块内正文 variant < 助手回答 onSurface。

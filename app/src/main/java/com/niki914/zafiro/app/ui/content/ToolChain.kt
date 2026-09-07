@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.model.HomeChatImage
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
@@ -184,24 +185,48 @@ private fun SingleToolRow(
                 .fillMaxWidth()
                 .then(contentModifier)
         ) {
-            if (useCommandBody) {
-                CodeToolBody(
+            when {
+                status.images.isNotEmpty() -> ImagePreviewBody(images = status.images)
+                useCommandBody -> CodeToolBody(
                     command = inputPreview.orEmpty(),
                     copyText = status.inputText,
                     output = displayOutput(status).trim(),
                     isError = status.state == HomeToolState.Failed,
                 )
-            } else if (status.name in ResultTextToolNames && status.state != HomeToolState.Failed) {
-                ResultTextBody(text = displayOutput(status).trim())
-            } else {
-                // 兕底：正文只显示本地化「成功 / 失败」，失败红色。
-                FallbackResultBody(isFailed = status.state == HomeToolState.Failed)
+
+                status.name in ResultTextToolNames && status.state != HomeToolState.Failed ->
+                    ResultTextBody(text = displayOutput(status).trim())
+
+                else ->
+                    // 兕底：正文只显示本地化「成功 / 失败」，失败红色。
+                    FallbackResultBody(isFailed = status.state == HomeToolState.Failed)
             }
         }
     }
 }
 
 // ── tool result bodies ──────────────────────────────────────────────────────
+
+/**
+ * 图片预览体：工具返回了图片（view_image / screenshot 等）时展示落盘图缩略卡。
+ * 通用分派（images 非空即渲染），不依赖工具名；复用消息图片卡组件。
+ */
+@Composable
+private fun ImagePreviewBody(images: List<HomeChatImage>) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(BlockSpacing, Alignment.CenterHorizontally),
+    ) {
+        images.forEach { image ->
+            HomeChatImageCard(
+                image = image,
+                size = ToolImagePreviewSize,
+                cornerRadius = 18.dp,
+                onRemove = null,
+            )
+        }
+    }
+}
 
 /**
  * 命令型结果体：上下两段独立着色，中间 2dp 透明缝隙露出页面背景（M3E 分割样式）。

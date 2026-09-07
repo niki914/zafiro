@@ -93,7 +93,7 @@ object ConversationFormatter {
                         id = nextId++,
                         userText = message.textBlocks().joinToString("\n"),
                         images = message.content.filterIsInstance<ContentBlock.Image>().map {
-                            HomeChatImage(id = it.path.hashCode().toString(), path = it.path)
+                            HomeChatImage.of(it)
                         },
                     )
                 }
@@ -116,6 +116,7 @@ object ConversationFormatter {
                         state = state,
                         resultText = resultText,
                         failedReason = failedReason,
+                        images = (message.outcome as? ToolCallOutcome.Success)?.images.orEmpty(),
                     )
                     turns.replaceLastOrAdd(updated)
                 }
@@ -181,6 +182,7 @@ object ConversationFormatter {
         state: HomeToolState,
         resultText: String? = null,
         failedReason: String? = null,
+        images: List<ContentBlock.Image> = emptyList(),
     ): HomeChatTurn {
         val index = blocks.indexOfLast { block ->
             block is HomeChatBlock.Tool && block.status.matchesTool(callId, toolName)
@@ -194,6 +196,9 @@ object ConversationFormatter {
                         state = state,
                         resultText = resultText,
                         failedReason = failedReason,
+                        images = images.map {
+                            HomeChatImage.of(it)
+                        },
                     ),
                 )
             },

@@ -303,6 +303,8 @@
     <string name="ui_tool_display_find_installed_apps">尋找應用程式</string>
     <string name="ui_tool_display_screen_operation_accessibility">螢幕操作</string>
     <string name="ui_tool_display_screen_operation_shell">螢幕操作</string>
+    <string name="ui_tool_display_screenshot">擷取螢幕</string>
+    <string name="ui_tool_display_view_image">檢視圖片</string>
     <string name="dialog_cancel">取消</string>
     <string name="dialog_confirm_delete">刪除</string>
     <string name="ui_settings_section_general">一般</string>

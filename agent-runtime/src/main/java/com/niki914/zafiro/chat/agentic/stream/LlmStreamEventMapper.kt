@@ -239,7 +239,7 @@ object LlmStreamEventMapper {
         val call = toolCall.toStatus()
         val outcome = this.outcome
         return when (outcome) {
-            is ToolCallOutcome.Success -> LlmStreamEvent.ToolSucceeded(call, outcome.content)
+            is ToolCallOutcome.Success -> LlmStreamEvent.ToolSucceeded(call, outcome.content, outcome.images)
             is ToolCallOutcome.Intercepted ->
                 if (outcome.isError) LlmStreamEvent.ToolFailed(
                     call,
