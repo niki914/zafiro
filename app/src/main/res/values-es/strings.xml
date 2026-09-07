@@ -61,6 +61,10 @@
     <string name="ui_home_retrying_attempt">Reintento %1$d/%2$d</string>
     <string name="runtime_error_internal">Error interno</string>
     <string name="ui_home_history_content_description">Historial de conversaciones</string>
+    <string name="ui_conversation_history_today">Hoy</string>
+    <string name="ui_conversation_history_this_week">Esta semana</string>
+    <string name="ui_conversation_history_this_month">Este mes</string>
+    <string name="ui_conversation_history_older">Anterior</string>
     <string name="ui_conversation_history_back_content_description">Volver</string>
     <string name="ui_conversation_history_loading">Cargando historial...</string>
     <string name="ui_conversation_history_empty_title">Sin conversaciones</string>
