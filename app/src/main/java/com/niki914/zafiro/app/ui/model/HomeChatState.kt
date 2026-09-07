@@ -191,6 +191,7 @@ sealed interface HomeChatIntent {
     data class ToggleActionRow(val turnId: Long, val source: ActionSource) : HomeChatIntent
     data class ReGenerateAt(val turnId: Long) : HomeChatIntent
     data class ForkAt(val turnId: Long) : HomeChatIntent
+    data class RewindAt(val turnId: Long) : HomeChatIntent
 }
 
 internal interface HomeChatRuntime {
@@ -277,6 +278,7 @@ class HomeChatViewModel internal constructor(
 
             is HomeChatIntent.ReGenerateAt -> reGenerateAt(intent.turnId)
             is HomeChatIntent.ForkAt -> forkAt(intent.turnId)
+            is HomeChatIntent.RewindAt -> rewindAt(intent.turnId)
         }
     }
 
@@ -887,6 +889,35 @@ class HomeChatViewModel internal constructor(
             "fork sourceId=$currentId turnId=$turnId endIndex=$endIndex newId=$newConvId"
         )
         loadConversation(newConvId)
+    }
+
+    private suspend fun rewindAt(turnId: Long) {
+        if (currentState.isGenerating) return
+        val currentId = currentConversationId ?: return
+        streamJob?.cancel()
+        streamJob = null
+        val history = runtime.historySnapshot()
+        val userIndex = findUserTurnIndex(history, turnId)
+        if (userIndex < 0) return
+        val userTurn = history[userIndex] as? Message.User ?: return
+        val userText = userTurn.text()
+        val userImages = userTurn.content.filterIsInstance<ContentBlock.Image>()
+        val newConvId = conversations.forkConversation(currentId, userIndex, ForkKind.Rewind)
+        Logger.i(
+            LOG_TAG,
+            "rewind sourceId=$currentId turnId=$turnId newId=$newConvId"
+        )
+        loadConversation(newConvId)
+        updateState {
+            copy(
+                input = userText,
+                pendingImages = userImages.map {
+                    HomeChatImage(id = it.path.hashCode().toString(), path = it.path)
+                },
+                expandedActionTurnId = null,
+                expandedActionSource = null,
+            )
+        }
     }
 
     internal suspend fun deleteConversationNow(id: String) {
