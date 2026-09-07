@@ -19,15 +19,15 @@
 
 ## 什么是 Zafiro?
 
-Zafiro 是你的 Android 手机上运行一个智能代理。我们为 Zafiro Agent 提供了充分的脚手架，使得它能看懂你的屏幕，操控你的设备，完成各种 App 操作。它能自行用 Python 封装各种工具来完成：网络搜索、下载文件或其他功能。Zafiro 支持记忆、MCP、Skills，也能通过 SSH 对接远程开发机
+Zafiro 是一个运行在 Android 设备上的智能 Agent，完全开源，支持 [BYOK](https://www.ibm.com/think/topics/byok)。它能看懂你的屏幕，操控你的设备，完成各种 App 操作——并完整支持 Skills、MCP 与记忆。也能原生运行 Shell 和 Python 3 并自行封装工具，完成网络搜索、文件下载等任务，或通过 SSH 对接远程开发机。
 
 <table align="center">
 <tr>
 <tr>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__phone_use.gif?raw=true" alt="Zafiro 手机操控演示" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__net_research.gif?raw=true" alt="Zafiro 网络研究演示" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__native.gif?raw=true" alt="Zafiro 应用安装演示" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__settings_screen.png?raw=true" alt="Zafiro 设置界面" width="142" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__phone_use.gif?raw=true" alt="Zafiro 通过 Phone-Use 操控 Spotify 挑选并播放音乐" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__net_research.gif?raw=true" alt="Zafiro 通过 Python 脚本完成无头的网页搜索和文章读取，最终完成网络研究" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__native.gif?raw=true" alt="Zafiro 通过 Py 从网络下载 APK 并通过 Root 完成应用安装" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__settings_screen.png?raw=true" alt="Zafiro 的设置界面" width="142" height="300"/></td>
 </tr>
 <tr>
 <td align="center">手机操控</td>
@@ -39,7 +39,7 @@ Zafiro 是你的 Android 手机上运行一个智能代理。我们为 Zafiro Ag
 </table>
 
 > [!IMPORTANT]
-> Zafiro 当前仍处于 Beta 阶段，功能和体验仍在持续改进。
+> Zafiro 当前仍处于 Beta 阶段，功能和体验仍在持续改进。Zafiro 可通过 [Shizuku](https://github.com/RikkaApps/Shizuku) 运行——无需 Root，Root 用户可获得完整体验。
 >
 > 可以前往 [Releases](https://github.com/niki914/zafiro/releases/latest) 下载发布版本，或从源码构建。
 
@@ -47,25 +47,25 @@ Zafiro 是你的 Android 手机上运行一个智能代理。我们为 Zafiro Ag
 
 ### 现代的 UI 设计语言
 
-- **[MD3E](https://m3.material.io/) & Apple Liquid Glass** - 现代、精美的界面
-- **动态主题** - 多种主体色与深色 / 浅色模式切换
-- **多语言支持** - 中文、英文、日文、西班牙语等
+- **[Material 3 Expressive](https://m3.material.io/) & Apple Liquid Glass** - 现代、精美的界面
+- **个性化主题** - 多种主题色，支持深色模式与动态取色
+- **多语言支持** - English、中文、日本語、Español
 
 ### 手机操控
 
-- **屏幕交互** - 打开应用、填写表单、切换页面，一步到位
-- **全程可见** - 屏幕上的指针动画展示 Agent 的每一步操作
+- **屏幕交互** - 打开应用、挑选音乐、点外卖，全部搞定
+- **全程可见** - 屏幕上的鼠标展示 Agent 的每一步操作
 
 ### Agent 系统
 
-- **开箱即用** - 内置 Skills、MCP、记忆与接管规则，无需配置
-- **按需扩展** - 支持自定义工具，按你的方式扩展
-- **权限管理** - 每一条运行的命令都受控
+- **开箱即用** - 内置 OpenAI、Anthropic、Google Gemini、DeepSeek、OpenRouter、Kimi、阿里百炼、硅基流动等
+- **按需扩展** - 完整支持 Skills、MCP，并拥有记忆和工作区，随意扩展
+- **权限管理** - 通过配置规则，每一条运行的命令和代码都由你管控
 
 ### Python 工具
 
-- **直接运行代码** - 在设备上原生运行 Python
-- **元工具** - 支持封装自定义 Python 工具
+- **直接运行代码** - 在设备上原生运行 Python 3
+- **Meta 工具** - 支持封装自定义 Python 工具，Agent 能复用、维护它创造的工具
 - **内置场景** - 网络搜索、网页内容读取、APK 安装开箱即用
 
 ### 远程环境
