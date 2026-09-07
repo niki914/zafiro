@@ -340,6 +340,8 @@
     <string name="ui_tool_display_find_installed_apps">アプリを探す</string>
     <string name="ui_tool_display_screen_operation_accessibility">画面操作</string>
     <string name="ui_tool_display_screen_operation_shell">画面操作</string>
+    <string name="ui_tool_display_screenshot">スクリーンショット</string>
+    <string name="ui_tool_display_view_image">画像を表示</string>
     <string name="dialog_cancel">キャンセル</string>
     <string name="dialog_confirm_delete">削除</string>
     <string name="ui_settings_section_general">一般</string>

@@ -602,11 +602,12 @@ private fun rememberPathBitmap(path: String): ImageBitmap? =
     }.value
 
 /**
- * 单张图片卡。尺寸由调用方决定（composer 待发 60dp / 消息内大图卡）。
- * 顶部 30% 纵向渐变遮罩（black 50% → 0%），右上角白色关闭钮，无圆形背景。
+ * 单张图片卡。尺寸由调用方决定（composer 待发 60dp / 消息内大图卡 / 工具结果预览）。
+ * 顶部 30% 纵向渐变遮罩（black 50% → 0%），右上角白色关闭钮（可选），无圆形背景。
+ * 供本文件与 ToolChain（工具结果图片预览）共用。
  */
 @Composable
-private fun HomeChatImageCard(
+internal fun HomeChatImageCard(
     image: HomeChatImage,
     size: Dp,
     cornerRadius: Dp,
