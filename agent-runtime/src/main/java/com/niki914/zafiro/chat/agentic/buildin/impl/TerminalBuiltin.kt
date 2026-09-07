@@ -21,6 +21,7 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stderrText
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stdoutText
+import com.niki914.zafiro.util.ToolOutputTruncator
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -35,6 +36,8 @@ import kotlinx.serialization.json.longOrNull
 
 class TerminalBuiltin(
     private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(),
+    /** 截断导出目录（filesDir/tool_output），测试可注入临时目录；null 时经 ContextProvider 取。 */
+    private val exportDirOverride: java.io.File? = null,
 ) : BuiltinTool(), RawJsonBuiltinTool {
     override val name: String = "terminal"
 
@@ -151,7 +154,7 @@ class TerminalBuiltin(
                 is TerminalCommandOutcome.Success -> {
                     val result = outcome.result
                     TerminalToolResponse.commandSuccessFlat(
-                        stdout = mergedStdout(result, mergeStderr),
+                        stdout = filteredStdout(result, mergeStderr),
                         stderr = if (mergeStderr) "" else result.stderrText(),
                         exitCode = result.exitCode ?: UNKNOWN_EXIT_CODE,
                     )
@@ -160,7 +163,7 @@ class TerminalBuiltin(
                 is TerminalCommandOutcome.Timeout -> {
                     val result = outcome.result
                     TerminalToolResponse.commandTimeoutFlat(
-                        stdout = mergedStdout(result, mergeStderr),
+                        stdout = filteredStdout(result, mergeStderr),
                         stderr = if (mergeStderr) "" else result.stderrText(),
                         timeoutSec = timeoutMs / 1000L,
                     )
@@ -276,7 +279,7 @@ class TerminalBuiltin(
                 is TerminalCommandOutcome.Success -> {
                     val result = outcome.result
                     TerminalToolResponse.commandSuccessFlat(
-                        stdout = mergedStdout(result, mergeStderr),
+                        stdout = filteredStdout(result, mergeStderr),
                         stderr = if (mergeStderr) "" else result.stderrText(),
                         exitCode = result.exitCode ?: UNKNOWN_EXIT_CODE,
                     )
@@ -285,7 +288,7 @@ class TerminalBuiltin(
                 is TerminalCommandOutcome.Timeout -> {
                     val result = outcome.result
                     TerminalToolResponse.commandTimeoutFlat(
-                        stdout = mergedStdout(result, mergeStderr),
+                        stdout = filteredStdout(result, mergeStderr),
                         stderr = if (mergeStderr) "" else result.stderrText(),
                         timeoutSec = timeoutMs / 1000L,
                     )
@@ -706,6 +709,14 @@ class TerminalBuiltin(
     private fun mergedStdout(result: CommandResult, mergeStderr: Boolean): String {
         val stdout = result.stdoutText()
         return if (mergeStderr) stdout + result.stderrText() else stdout
+    }
+
+    /** 前台输出统一过滤：超限截断 + 全量导出（对齐 ToolOutputTruncator 口径）。 */
+    private fun filteredStdout(result: CommandResult, mergeStderr: Boolean): String {
+        return ToolOutputTruncator.filterForAgent(
+            fullContent = mergedStdout(result, mergeStderr),
+            exportDir = exportDirOverride ?: ToolOutputTruncator.defaultExportDir(),
+        )
     }
 
     // ── Data types ───────────────────────────────────────────────────────────

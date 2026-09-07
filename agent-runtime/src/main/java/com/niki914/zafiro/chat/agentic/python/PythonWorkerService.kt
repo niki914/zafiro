@@ -43,6 +43,12 @@ class PythonWorkerService : Service() {
         pythonHandler.post {
             try {
                 Python.start(AndroidPlatform(applicationContext))
+                // runtime.py 从这里拿传输文件目录（cacheDir/py_output）；
+                // 不设则缺省 /tmp，Android 上不可写 → 写盘降级全量走 inline
+                Python.getInstance()
+                    .getModule("os")
+                    .get("environ")!!
+                    .callAttr("__setitem__", "ZAFIRO_CACHE_DIR", applicationContext.cacheDir.absolutePath)
             } catch (t: Throwable) {
                 initFailure = t
             } finally {
@@ -66,15 +72,24 @@ class PythonWorkerService : Service() {
     }
 
     private inner class Stub : IPythonWorkerService.Stub() {
-        override fun exec(code: String?, timeoutMs: Long): String? {
+        override fun exec(code: String?, timeoutMs: Long): PyExecResult {
             awaitReady()
             val py = Python.getInstance()
             val runtime = py.getModule("runtime")
-            return runtime.callAttr(
+            val result = runtime.callAttr(
                 "exec_code",
                 code ?: "",
                 timeoutMs / 1000.0
-            ).toString()
+            )
+            // runtime.exec_code 返回 {status, file_path, inline_text}
+            val status = when (result.callAttr("get", "status").toString()) {
+                "timeout" -> PyExecResult.Status.TIMEOUT
+                "exec_error" -> PyExecResult.Status.EXEC_ERROR
+                else -> PyExecResult.Status.OK
+            }
+            val filePath = result.callAttr("get", "file_path").toString().ifEmpty { null }
+            val inlineText = result.callAttr("get", "inline_text").toString().ifEmpty { null }
+            return PyExecResult(status, filePath, inlineText)
         }
 
         override fun ping(): String? {

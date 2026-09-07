@@ -3,6 +3,7 @@ package com.niki914.zafiro.chat.agentic.buildin.impl
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
+import com.niki914.zafiro.chat.agentic.python.PyExecOutput
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.util.ToolOutputTruncator
@@ -22,8 +23,10 @@ class ExecutePythonBuiltin(
      * @param code     Python source code to execute.
      * @param timeoutMs Max wait in milliseconds.
      */
-    var executor: suspend (code: String, timeoutMs: Long) -> String = PyRuntime::exec,
+    var executor: suspend (code: String, timeoutMs: Long) -> PyExecOutput = PyRuntime::exec,
     private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(),
+    /** 截断导出目录（filesDir/tool_output），测试可注入临时目录。 */
+    var exportDir: java.io.File? = ToolOutputTruncator.defaultExportDir(),
 ) : TextResultBuiltinTool() {
 
     override val name: String = "execute_python"
@@ -36,7 +39,9 @@ Can drive Android system commands (am, pm, input) via os.popen or subprocess; pr
 State does not persist between calls: every run starts fresh — no variables, working directory, environment
 changes, open handles, or background tasks. Persist intentionally through files when needed.
 
-Limits: timeout 30 s default, 120 s max; output capped at 50 KB.
+Limits: timeout 30 s default, 120 s max. Output over 2000 lines / 50 KB is
+truncated; the full output is saved to a file whose absolute path is included
+in the result — read it back with terminal commands (e.g. cat) when needed.
     """.trimIndent()
 
     override val defaultEnabled: Boolean = true
@@ -73,9 +78,8 @@ Limits: timeout 30 s default, 120 s max; output capped at 50 KB.
             )
         }
         return try {
-            val output = executor(code, timeoutMs)
-            val capped = capOutput(output)
-            TextToolResult.success(capped)
+            val result = executor(code, timeoutMs)
+            TextToolResult.success(filter(result))
         } catch (e: TimeoutCancellationException) {
             TextToolResult.failure(
                 code = "TIMEOUT",
@@ -84,24 +88,22 @@ Limits: timeout 30 s default, 120 s max; output capped at 50 KB.
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
-            val msg = t.message ?: "Python execution failed."
-            val isTimeout = msg.contains("timed out after")
-            TextToolResult.failure(
-                code = if (isTimeout) "TIMEOUT" else "PYTHON_ERROR",
-                message = msg,
-            )
+            TextToolResult.failure(code = "PYTHON_ERROR", message = t.message ?: "Python execution failed.")
         }
     }
 
-    private fun capOutput(
-        output: String,
-        maxBytes: Int = ToolOutputTruncator.DEFAULT_MAX_BYTES
-    ): String {
-        val truncation = ToolOutputTruncator.truncateTail(output, maxBytes = maxBytes)
-        if (!truncation.truncated) return output
-        return truncation.content + "\n\n[Output truncated: showing last " +
-                truncation.content.count { it == '\n' } + " of " + truncation.totalLines +
-                " lines]"
+    /**
+     * 超限截断 + 导出：Python 路径把传输文件 move 到导出目录（零拷贝），
+     * inline 降级路径现场写导出文件。timedOut 时输出仍走同一过滤
+     * （对齐 pi：超时的部分输出也截断展示 + 全量落盘）。
+     */
+    private fun filter(result: PyExecOutput): String {
+        val body = ToolOutputTruncator.filterForAgent(
+            fullContent = result.output,
+            existingFile = result.file,
+            exportDir = exportDir,
+        )
+        return if (result.timedOut) "$body\n\n[Execution timed out: partial output shown]" else body
     }
 
     private fun parseArgs(argumentsJson: String): ParseResult {
