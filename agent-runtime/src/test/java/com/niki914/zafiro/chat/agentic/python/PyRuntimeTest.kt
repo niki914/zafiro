@@ -23,7 +23,7 @@ class PyRuntimeTest {
     private class FakeWorker : IPythonWorkerService {
         override fun asBinder(): IBinder = error("not used in tests")
 
-        var execResult: String? = "ok"
+        var execResult: PyExecResult = PyExecResult(PyExecResult.Status.OK, null, "ok")
         var execBlockMs: Long = 0L
         var pingBlockMs: Long = 0L
         var pingCalls = 0
@@ -31,7 +31,7 @@ class PyRuntimeTest {
         var killCount = 0
         var execCalls = 0
 
-        override fun exec(code: String?, timeoutMs: Long): String? {
+        override fun exec(code: String?, timeoutMs: Long): PyExecResult {
             execCalls++
             if (execBlockMs > 0) Thread.sleep(execBlockMs)
             return execResult
@@ -61,7 +61,7 @@ class PyRuntimeTest {
 
         val result = PyRuntime.exec("print('hi')", 30_000L)
 
-        assertEquals("ok", result)
+        assertEquals("ok", result.output)
         assertEquals(1, fake.execCalls)
         assertFalse(fake.killed)
     }
@@ -69,11 +69,15 @@ class PyRuntimeTest {
     @Test
     fun `exec normal timeout returns TimeoutError text without killing`() = runBlocking {
         val fake = FakeWorker().also { PyRuntime.testService = it }
-        fake.execResult = "Execution timed out after 30s\n\nPartial output:\n"
+        fake.execResult = PyExecResult(
+            PyExecResult.Status.TIMEOUT, null,
+            "Execution timed out after 30s\n\nPartial output:\n"
+        )
 
         val result = PyRuntime.exec("import time; time.sleep(999)", 30_000L)
 
-        assertTrue(result.contains("timed out after"))
+        assertTrue(result.output.contains("timed out after"))
+        assertTrue(result.timedOut)
         assertFalse(fake.killed)
     }
 
@@ -109,7 +113,7 @@ class PyRuntimeTest {
         // 测试模式无法真正重连：kill 后复用同一 fake 重试（生产路径是重新 bind 新进程）
         assertTrue(fake.killed)
         assertEquals(1, fake.execCalls)
-        assertEquals("ok", result)
+        assertEquals("ok", result.output)
     }
 
     @Test

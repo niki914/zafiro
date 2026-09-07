@@ -14,6 +14,7 @@ import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResultCodec
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
+import com.niki914.zafiro.chat.agentic.python.PyExecOutput
 import com.niki914.zafiro.chat.util.SilentLoggerRule
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -69,7 +70,9 @@ class LocalToolExecutorTest {
     @Test
     fun execute_pySuccess_mapsToSuccessOutcome() = runBlocking {
         val py = LocalTool.Py("py_a", "desc", "print('hi')", null)
-        val pyExec = fakePyExecutor { _, _ -> "{\"ok\":true,\"stdout\":\"hi\"}" }
+        val pyExec = fakePyExecutor { _, _ ->
+            PyExecOutput("{\"ok\":true,\"stdout\":\"hi\"}", null, timedOut = false)
+        }
         val executor = LocalToolExecutor(
             customPyToolExecutor = pyExec,
             currentTools = { pyResolved(listOf(py)) },
@@ -86,7 +89,7 @@ class LocalToolExecutorTest {
         val pyExec = fakePyExecutor { _, _ ->
             throw RuntimeException("denied")
             @Suppress("UNREACHABLE_CODE")
-            ""
+            PyExecOutput("", null, timedOut = false)
         }
         val executor = LocalToolExecutor(
             customPyToolExecutor = pyExec,
@@ -268,7 +271,9 @@ class LocalToolExecutorTest {
     @Test
     fun custom_py_toolsWrite_inlineTool_executesViaInlineFallback() = runBlocking {
         val inline = mutableMapOf<String, LocalTool.Py>()
-        val pyExec = fakePyExecutor { _, _ -> "{\"ok\":true,\"stdout\":\"ran\"}" }
+        val pyExec = fakePyExecutor { _, _ ->
+            PyExecOutput("{\"ok\":true,\"stdout\":\"ran\"}", null, timedOut = false)
+        }
         val executor = LocalToolExecutor(
             customPyToolExecutor = pyExec,
             currentTools = { ResolvedTools() }, // snapshot 里没有该工具
@@ -283,7 +288,7 @@ class LocalToolExecutorTest {
     }
 
     private fun fakePyExecutor(
-        fake: suspend (String, Long) -> String,
+        fake: suspend (String, Long) -> PyExecOutput,
     ): CustomPyToolExecutor = CustomPyToolExecutor(exec = fake)
 
     private class StaticBuiltinTool(

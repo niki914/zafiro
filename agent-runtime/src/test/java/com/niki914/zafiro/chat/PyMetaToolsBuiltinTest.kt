@@ -2,6 +2,7 @@ package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
+import com.niki914.zafiro.chat.agentic.python.PyExecOutput
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import kotlinx.coroutines.test.runTest
@@ -21,8 +22,12 @@ class PyMetaToolsBuiltinTest {
     }
 
     /** 双身份 fake exec：introspection 请求返回签名 JSON，其余按 runner 语义回 stdout。 */
-    private val exec: suspend (code: String, timeoutMs: Long) -> String = { code, _ ->
-        if (code.contains("inspect.signature")) INTROSPECTION_OK else "hello"
+    private val exec: suspend (code: String, timeoutMs: Long) -> PyExecOutput = { code, _ ->
+        if (code.contains("inspect.signature")) {
+            PyExecOutput(INTROSPECTION_OK, null, timedOut = false)
+        } else {
+            PyExecOutput("hello", null, timedOut = false)
+        }
     }
 
     private fun gateway() =
@@ -59,8 +64,11 @@ class PyMetaToolsBuiltinTest {
         val tool = PyMetaToolsBuiltin(
             exec = { code, _ ->
                 if (code.contains("inspect.signature")) {
-                    """{"error":"UNANNOTATED_PARAMS","message":"Parameters need basic type annotations (str/int/float/bool): query"}"""
-                } else "ok"
+                    PyExecOutput(
+                        """{"error":"UNANNOTATED_PARAMS","message":"Parameters need basic type annotations (str/int/float/bool): query"}""",
+                        null, timedOut = false
+                    )
+                } else PyExecOutput("ok", null, timedOut = false)
             },
             reservedNames = setOf("terminal"),
         )
@@ -162,7 +170,7 @@ class PyMetaToolsBuiltinTest {
         val tool = PyMetaToolsBuiltin(
             exec = { code, _ ->
                 ranCode = code
-                "hello"
+                PyExecOutput("hello", null, timedOut = false)
             },
             reservedNames = setOf("terminal"),
         )

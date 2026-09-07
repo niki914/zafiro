@@ -6,7 +6,9 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolHarness
+import com.niki914.zafiro.chat.agentic.python.PyExecOutput
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
+import com.niki914.zafiro.util.ToolOutputTruncator
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
@@ -33,9 +35,11 @@ import kotlinx.serialization.json.put
  * - test 用同一 harness 试跑草稿 code 或已存工具，write 前可先 test。
  */
 class PyMetaToolsBuiltin(
-    private val exec: suspend (code: String, timeoutMs: Long) -> String = PyRuntime::exec,
+    private val exec: suspend (code: String, timeoutMs: Long) -> PyExecOutput = PyRuntime::exec,
     private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(),
     private val reservedNames: Set<String>? = null,
+    /** 截断导出目录，测试可注入临时目录；默认 filesDir/tool_output。 */
+    private val exportDir: java.io.File? = ToolOutputTruncator.defaultExportDir(),
 ) : BuiltinTool() {
 
     override val name: String = "py_meta_tools"
@@ -218,7 +222,12 @@ Store the result of a run by printing from main; stdout is returned.
         }
 
         return try {
-            val output = exec(CustomPyToolHarness.buildRunner(code, args.argsJson), timeoutMs)
+            val result = exec(CustomPyToolHarness.buildRunner(code, args.argsJson), timeoutMs)
+            val output = ToolOutputTruncator.filterForAgent(
+                fullContent = result.output,
+                existingFile = result.file,
+                exportDir = exportDir,
+            )
             BuiltinToolResult.success(
                 message = "Test run finished.",
                 data = buildJsonObject { put("stdout", output) },
@@ -251,6 +260,7 @@ Store the result of a run by printing from main; stdout is returned.
     private suspend fun introspect(code: String): Introspection {
         val output = try {
             exec(CustomPyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
+                .output // 内部结构化输出，不截断不导出
         } catch (e: TimeoutCancellationException) {
             return Introspection(
                 null,
