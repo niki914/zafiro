@@ -25,6 +25,8 @@ internal data class AppStateSettings(
     val llmIdleTimeoutSeconds: Long = 60L,
     /** 传输层自动重试次数。 */
     val llmRetryMaxAttempts: Int = 3,
+    /** 回答进行中保持屏幕常亮。 */
+    val keepScreenOn: Boolean = true,
 )
 
 internal object AppStateSettingsCodec {
@@ -44,6 +46,7 @@ internal object AppStateSettingsCodec {
             themeSeedColor = root.string(THEME_SEED_COLOR_KEY).ifBlank { "FF52DBC9" },
             llmIdleTimeoutSeconds = root.long(LLM_IDLE_TIMEOUT_KEY, default = 60L),
             llmRetryMaxAttempts = root.int(LLM_RETRY_ATTEMPTS_KEY, default = 3),
+            keepScreenOn = root.boolean(KEEP_SCREEN_ON_KEY, default = true),
         )
     }
 
@@ -60,6 +63,7 @@ internal object AppStateSettingsCodec {
                 THEME_SEED_COLOR_KEY to JsonPrimitive(state.themeSeedColor),
                 LLM_IDLE_TIMEOUT_KEY to JsonPrimitive(state.llmIdleTimeoutSeconds),
                 LLM_RETRY_ATTEMPTS_KEY to JsonPrimitive(state.llmRetryMaxAttempts),
+                KEEP_SCREEN_ON_KEY to JsonPrimitive(state.keepScreenOn),
             )
         ).toString()
     }
@@ -74,4 +78,5 @@ internal object AppStateSettingsCodec {
     private const val THEME_SEED_COLOR_KEY = "theme_seed_color"
     private const val LLM_IDLE_TIMEOUT_KEY = "llm_idle_timeout_seconds"
     private const val LLM_RETRY_ATTEMPTS_KEY = "llm_retry_max_attempts"
+    private const val KEEP_SCREEN_ON_KEY = "keep_screen_on"
 }

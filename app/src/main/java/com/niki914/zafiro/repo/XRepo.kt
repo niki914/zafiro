@@ -317,6 +317,17 @@ object XRepo {
         }
     }
 
+    suspend fun keepScreenOn(): Boolean {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).keepScreenOn
+    }
+
+    suspend fun setKeepScreenOn(value: Boolean) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(keepScreenOn = value))
+        }
+    }
+
     suspend fun themeMode(): String {
         return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).themeMode
     }
