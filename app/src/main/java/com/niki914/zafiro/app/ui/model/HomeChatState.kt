@@ -249,6 +249,8 @@ class HomeChatViewModel internal constructor(
     private var streamJob: Job? = null
     private var draftSaveJob: Job? = null
     private val textPacer = TextPacer()
+    // thinking 与正文在流中交织（thinking → tool → text），坐标系独立，单独实例
+    private val thinkingPacer = TextPacer()
     private var currentConversationId: String? = null
     private var startupRestoreAttempted = false
 
@@ -481,6 +483,8 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun collectLlmStream(turnId: Long, query: String, images: List<ContentBlock.Image> = emptyList()) {
         textPacer.reset()
+        // Mapper 的 thinking id 跨轮复用（id 0 每轮重新出现），回合开始必须归零
+        thinkingPacer.reset()
         runtime.stream(query, images).collect { event ->
             val eventName = eventName(event)
             val eventCount = currentState.streamEventCount + 1
@@ -490,10 +494,12 @@ class HomeChatViewModel internal constructor(
                     streamEventCount = eventCount,
                 )
             }
-            if (event is LlmStreamEvent.TextDelta) {
-                paceTextDelta(turnId, event)
-            } else {
-                applyEvent(turnId = turnId, event = event)
+            when {
+                event is LlmStreamEvent.TextDelta -> paceTextDelta(turnId, event)
+                event is LlmStreamEvent.ThinkingStarted || event is LlmStreamEvent.ThinkingEnded ->
+                    paceThinking(turnId, event)
+
+                else -> applyEvent(turnId = turnId, event = event)
             }
         }
     }
@@ -537,6 +543,54 @@ class HomeChatViewModel internal constructor(
                 )
             }
             throw e
+        }
+    }
+
+    /**
+     * Thinking 事件复用正文节流：ThinkingStarted/Ended 的 text 都是块内累积全量，
+     * 与 TextDelta.fullText 同坐标，首发时 reset、后续 pace。B 方案：
+     * ThinkingEnded 也走 pace（尾部最多 0.2s 放完），不瞬间追平；取消（停止/新会话）
+     * 时立即追平，保证已收到的思考内容全部展示。
+     */
+    private suspend fun paceThinking(turnId: Long, event: LlmStreamEvent) {
+        val (id, fullText, isEnded) = when (event) {
+            is LlmStreamEvent.ThinkingStarted -> Triple(event.id, event.text, false)
+            is LlmStreamEvent.ThinkingEnded -> Triple(event.id, event.text, true)
+            else -> return
+        }
+        // 新块首发（同 id 块不存在于当前回合）：坐标归零。Mapper 对续接重发同 id。
+        val isNewBlock = currentState.turns.any { turn ->
+            turn.blocks.any { it is HomeChatBlock.Thinking && it.id == id }
+        }.not()
+        if (isNewBlock) {
+            thinkingPacer.reset()
+        }
+        try {
+            thinkingPacer.pace(fullText.length) { from, to ->
+                applyEvent(
+                    turnId = turnId,
+                    event = LlmStreamEvent.ThinkingStarted(
+                        id = id,
+                        text = fullText.substring(0, to),
+                    ),
+                )
+            }
+        } catch (e: CancellationException) {
+            val from = thinkingPacer.released
+            if (from < fullText.length) {
+                thinkingPacer.syncReleased(fullText.length)
+                applyEvent(
+                    turnId = turnId,
+                    event = LlmStreamEvent.ThinkingStarted(id = id, text = fullText),
+                )
+            }
+            // 停止路径可能先于取消传播清掉 activeThinkingKey，追平的 applyEvent
+            // 若是首发会重新置位；取消后不该再有 active 思考块
+            updateState { copy(activeThinkingKey = null) }
+            throw e
+        }
+        if (isEnded) {
+            applyEvent(turnId = turnId, event = event)
         }
     }
 
