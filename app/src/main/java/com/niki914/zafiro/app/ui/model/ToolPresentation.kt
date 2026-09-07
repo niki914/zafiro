@@ -3,6 +3,8 @@ package com.niki914.zafiro.app.ui.model
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.runtime.Composable
@@ -30,6 +32,8 @@ object ToolPresentation {
 
     private val TerminalIcon = Icons.Filled.Terminal
     private val Skill = Icons.AutoMirrored.Filled.MenuBook
+    private val Camera = Icons.Filled.CameraAlt
+    private val ImageTool = Icons.Filled.Image
 
     /** 默认（兜底）图标：扳手。 */
     val Default = Icons.Filled.Build
@@ -47,6 +51,8 @@ object ToolPresentation {
                 ignoreCase = true
             ) -> TerminalIcon
 
+            name == "screenshot" -> Camera
+            name == "view_image" -> ImageTool
             name.contains("skill", ignoreCase = true) -> Skill
             else -> Default
         }
@@ -66,6 +72,8 @@ object ToolPresentation {
         "find_installed_apps" -> R.string.ui_tool_display_find_installed_apps
         "screen_operation_accessibility" -> R.string.ui_tool_display_screen_operation_accessibility
         "screen_operation_shell" -> R.string.ui_tool_display_screen_operation_shell
+        "screenshot" -> R.string.ui_tool_display_screenshot
+        "view_image" -> R.string.ui_tool_display_view_image
         else -> null
     }
 
