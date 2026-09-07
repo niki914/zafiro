@@ -1,0 +1,107 @@
+# PRD：Zafiro 权限管理器（PermissionManager）
+
+## 背景
+
+权限获取逻辑散落多处：`App.grantOverlayPermissionViaRoot`（裸 `su -c`）、`AccessibilityController.ensureService`（手写 root→shizuku→跳设置三连）、`NotificationPermissionGate`（独立 object）。新增权限会继续复制这套模式。
+
+## 目标
+
+1. **统一入口**：全应用权限的查询与申请走 PermissionManager，业务方不直接碰 `Settings.canDrawOverlays` / `su -c` / `ActivityResultLauncher`。
+2. **降级链显式化**：`scope(Channel...)` 声明通道优先级，按序尝试，首个 GRANTED 即成功，任何失败继续下一环，链尽则失败。引擎对失败原因不做特判——"用户 deny 后不再继续"由调用方省略后续通道表达。
+3. **版本差异一等公民**：通道声明 `minSdk`，引擎统一把门；不支持的通道记 `UNAVAILABLE` 并降级，永不崩溃。
+4. **无 UI 进程支持**：宿主侧只注册 shell 类通道，`SYSTEM_DIALOG` / `JUMP_SETTINGS` 未 bind Activity 时报 `UNAVAILABLE`。
+5. **回调转同步**：通道内部用 `suspendCancellableCoroutine`（参考 libterm `ShizukuPrivilegeAuthorizer`），对外提供挂起式与阻塞式 API。
+
+## 非目标
+
+- 并发请求单飞去重（各试各的链，通道实现保证幂等）
+- 权限撤销监听/推送（按需 `status()` 查询）
+- 授权重试机制（调用方重新调 `withPermission` 即重试）
+- 改动 libterm（仅依赖其 shell 能力）
+- 保留 `NotificationPermissionGate`（实现时删除收编）
+
+## 契约
+
+```kotlin
+enum class Permission { ROOT, SHIZUKU, NOTIFICATION, OVERLAY, ACCESSIBILITY }
+
+enum class Channel { ROOT_SHELL, SHIZUKU, SYSTEM_DIALOG, JUMP_SETTINGS }
+
+enum class PermissionState { GRANTED, DENIED_BY_USER, UNAVAILABLE, FAILED }
+
+@JvmInline value class MinSdk(val api: Int) {
+    val supported: Boolean get() = Build.VERSION.SDK_INT >= api
+}
+
+data class Attempt(val permission: Permission, val channel: Channel,
+                   val state: PermissionState, val detail: String? = null)
+
+data class PermissionResult(val permission: Permission,
+                            val finalState: PermissionState, val attempts: List<Attempt>)
+
+interface ChannelHandler {
+    val channel: Channel
+    val minSdk: MinSdk                    // 实现类标 @RequiresApi，lint NewApi(error) 编译期兜底
+
+    /** 永远静默：不弹窗、不跳页、不写 */
+    fun status(): PermissionState
+
+    /**
+     * 契约：必须在状态确定后返回，不允许"发射后不管"。
+     * - SYSTEM_DIALOG：弹窗回调返回时确定结果
+     * - JUMP_SETTINGS：launch intent → 挂起等 Activity resume → 复查一次 status() 后确定结果
+     * - shell 通道：命令 exit code 校验后确定结果
+     * Activity 销毁导致挂起被取消 = 本次请求无结果，由下次 status() 兜底。
+     */
+    suspend fun request(): PermissionState
+}
+
+interface PermissionManager {
+    fun bind(activity: Activity)          // onDestroy 必须 unbind，防泄漏
+    fun unbind()
+    suspend fun status(permission: Permission): PermissionState
+    fun scope(vararg channels: Channel): ScopeBuilder
+}
+
+interface ScopeBuilder {
+    fun withPermission(permission: Permission, onResult: (PermissionResult) -> Unit)
+    fun withPermissionBlocking(permission: Permission): PermissionResult
+}
+```
+
+## 引擎语义
+
+- 尝试顺序 = `scope()` 传入顺序。
+- 每环：`minSdk.supported == false` → `UNAVAILABLE`（detail 注明 API 要求）→ 下一环；否则 `request()`，结果原样入 `attempts`。
+- 首个 `GRANTED` 终止；链尽返回，`finalState` 取最后一环。
+
+## 通道与默认链
+
+| Permission | 默认链 | 说明 |
+|---|---|---|
+| OVERLAY | ROOT_SHELL → SHIZUKU → JUMP_SETTINGS | shell 执行 `appops set ... SYSTEM_ALERT_WINDOW allow` |
+| ACCESSIBILITY | ROOT_SHELL → SHIZUKU → JUMP_SETTINGS | shell 写 `settings put secure enabled_accessibility_services`（收编 AccessibilityController 逻辑） |
+| NOTIFICATION | SYSTEM_DIALOG → JUMP_SETTINGS | minSdk 33；<33 恒 GRANTED |
+| ROOT / SHIZUKU | 自身对应通道 | 能力型目标，复用 libterm 授权检查 |
+
+## 模块归属
+
+```
+libs/permission-manager/   # 新模块，与 libterm 平级
+  依赖: libterm-runtime（shell 通道执行）、shizuku-api
+被依赖: app、agent-runtime（宿主侧后续接入）
+```
+
+## 版本策略
+
+- minSdk 26，与 app/libs 现状一致。
+- 版本分叉只存在于 handler 内部与 `minSdk` 声明；引擎侧零 `SDK_INT` 判断。
+- handler 实现标注 `@RequiresApi`，lint NewApi（error 级）作为编译期兜底。
+
+## 验收
+
+1. `NotificationPermissionGate` 删除，通知申请走 PermissionManager，行为不变。
+2. `App.grantOverlayPermissionViaRoot` 删除，悬浮窗授权走 PermissionManager，`handleBackgroundConfirmation` 改调 `withPermissionBlocking`。
+3. `AccessibilityController.ensureService` 降级逻辑改调 PermissionManager，`attempts` 用于拼装给 LLM 的报错文案。
+4. JUMP_SETTINGS 通道：跳设置 → 返回后复查一次 status()，返回真实结果，符合 request() 契约。
+5. 单测：FakeChannelHandler 覆盖链语义（成功短路、UNAVAILABLE 降级、DENIED 继续、链尽失败）与 minSdk 门槛。
