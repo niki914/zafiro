@@ -1,13 +1,12 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
-import com.niki914.xposed.api.util.ContextProvider
-import kotlin.concurrent.Volatile
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.zafiro.chat.agentic.image.ImageCodec
 import com.niki914.zafiro.chat.agentic.image.IngestError
 import com.niki914.zafiro.chat.agentic.image.IngestResult
+import com.niki914.zafiro.chat.agentic.SharedImageCodec
+import com.niki914.zafiro.chat.agentic.toImageToolResult
 import com.niki914.zafiro.chat.agentic.toToolError
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -23,18 +22,6 @@ import kotlinx.serialization.json.jsonObject
  * ingest 失败时返回结构化错误码，由 Agent 决定后续操作。
  */
 class ViewImageBuiltin : BuiltinTool() {
-    @Volatile
-    private var codec: ImageCodec? = null
-
-    private suspend fun ensureCodec(): ImageCodec? {
-        codec?.let { return it }
-        val context = try {
-            ContextProvider.await().applicationContext
-        } catch (e: Exception) {
-            return null
-        } ?: return null
-        return ImageCodec(context).also { codec = it }
-    }
     override val name: String = "view_image"
     override val description: String = """
 Read an image file from disk so the model can see it.
@@ -64,27 +51,14 @@ Returns the normalized file path if the image was ingested successfully, or an e
             )
         }
 
-        val codec = ensureCodec() ?: return BuiltinToolResult.failure(
+        val codec = SharedImageCodec.get() ?: return BuiltinToolResult.failure(
             code = "CODEC_UNAVAILABLE",
             message = "Image codec is not available.",
             hint = "Application context is not initialized yet. Retry later."
         )
         return when (val result = codec.ingestFile(path)) {
-            is IngestResult.Ok -> BuiltinToolResult.success(
+            is IngestResult.Ok -> result.toImageToolResult(
                 message = "Image ingested: ${result.image.path}",
-                data = JsonObject(
-                    mapOf(
-                        "image" to JsonObject(
-                            mapOf(
-                                "path" to JsonPrimitive(result.image.path),
-                                "mime_type" to JsonPrimitive(result.image.mimeType),
-                                "width" to JsonPrimitive(result.image.width),
-                                "height" to JsonPrimitive(result.image.height),
-                                "bytes" to JsonPrimitive(result.image.bytes),
-                            )
-                        )
-                    )
-                )
             )
             is IngestResult.Err -> {
                 val (code, message) = result.error.toToolError()

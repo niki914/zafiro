@@ -1,5 +1,7 @@
 package com.niki914.zafiro.chat
 
+import com.niki914.okia.message.ContentBlock
+
 
 sealed interface LlmStreamEvent {
     data object RoundStarted : LlmStreamEvent
@@ -37,6 +39,8 @@ sealed interface LlmStreamEvent {
     data class ToolSucceeded(
         val call: ToolCallStatus,
         val outputText: String? = null,
+        /** 工具返回的图片引用（view_image / screenshot 等），path 指向 image_cache 落盘文件。 */
+        val images: List<ContentBlock.Image> = emptyList(),
     ) : LlmStreamEvent
 
     data class ToolFailed(

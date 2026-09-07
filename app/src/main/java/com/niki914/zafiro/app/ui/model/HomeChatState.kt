@@ -90,6 +90,8 @@ data class HomeToolStatus(
     val displayNameRes: Int? = null,
     /** 工具参数原文（复制用）；显示预览由 UI 从原文裁剪。null → 只显示标题无预览、无复制。 */
     val inputText: String? = null,
+    /** 工具返回的图片引用（view_image / screenshot 等），path 指向 image_cache 落盘文件。 */
+    val images: List<HomeChatImage> = emptyList(),
 )
 
 sealed interface HomeChatBlock {
@@ -130,7 +132,13 @@ data class HomeChatTurn(
 data class HomeChatImage(
     val id: String,
     val path: String,
-)
+) {
+    companion object {
+        /** ContentBlock.Image（工具结果/历史恢复）→ UI 图片卡模型，id 取 path hash 保持跨会话稳定。 */
+        fun of(block: com.niki914.okia.message.ContentBlock.Image): HomeChatImage =
+            HomeChatImage(id = block.path.hashCode().toString(), path = block.path)
+    }
+}
 
 data class HomeChatUiState(
     val input: String = "",
@@ -605,6 +613,7 @@ class HomeChatViewModel internal constructor(
                 it.updateTool(
                     event.call,
                     HomeToolState.Succeeded, event.outputText,
+                    images = event.images,
                 )
             }
 
@@ -848,7 +857,7 @@ class HomeChatViewModel internal constructor(
                     id = newTurnId,
                     userText = userText,
                     images = userImages.map {
-                        HomeChatImage(id = it.path.hashCode().toString(), path = it.path)
+                        HomeChatImage.of(it)
                     },
                 ),
                 isGenerating = true,
@@ -1047,6 +1056,7 @@ class HomeChatViewModel internal constructor(
         state: HomeToolState,
         resultText: String? = null,
         failedReason: String? = null,
+        images: List<ContentBlock.Image> = emptyList(),
     ): HomeChatTurn = copy(
         blocks = blocks + HomeChatBlock.Tool(
             HomeToolStatus(
@@ -1057,6 +1067,9 @@ class HomeChatViewModel internal constructor(
                 failedReason = failedReason,
                 displayNameRes = ToolPresentation.displayNameResOf(call.name),
                 inputText = ToolPresentation.inputOf(call.name, call.argumentsJson),
+                images = images.map {
+                    HomeChatImage.of(it)
+                },
             ),
         ),
     )
@@ -1066,10 +1079,11 @@ class HomeChatViewModel internal constructor(
         state: HomeToolState,
         resultText: String? = null,
         failedReason: String? = null,
+        images: List<ContentBlock.Image> = emptyList(),
     ): HomeChatTurn {
         val index = findToolBlockIndex(call.callId, call.label)
         if (index == -1) {
-            return appendTool(call, state, resultText, failedReason)
+            return appendTool(call, state, resultText, failedReason, images)
         }
         return copy(
             blocks = blocks.toMutableList().also { mutableBlocks ->
@@ -1082,6 +1096,9 @@ class HomeChatViewModel internal constructor(
                         failedReason = failedReason,
                         displayNameRes = ToolPresentation.displayNameResOf(call.name),
                         inputText = ToolPresentation.inputOf(call.name, call.argumentsJson),
+                        images = images.map {
+                            HomeChatImage.of(it)
+                        },
                     ),
                 )
             },
