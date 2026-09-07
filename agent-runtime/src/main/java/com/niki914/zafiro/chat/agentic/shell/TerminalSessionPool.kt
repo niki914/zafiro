@@ -38,7 +38,9 @@ object TerminalSessionPool {
     private const val PUBLIC_HANDLE_LENGTH = 4
     private const val MAX_HANDLE_GENERATION_ATTEMPTS = 64
     private const val DEFAULT_INTERACTIVE_READ_MAX_BYTES = 8192
-    private const val DEFAULT_READ_MAX_BYTES = 8192
+    // 与 ToolOutputTruncator.DEFAULT_MAX_BYTES 对齐；readSession 截断由统一入口处理并导出全量
+    // FIXME(async-refactor): 异步轮询链路重构时一并收口 readSession 的上限与导出语义
+    private const val DEFAULT_READ_MAX_BYTES = ToolOutputTruncator.DEFAULT_MAX_BYTES
     private const val GENERATED_HANDLE_COLLISION_MESSAGE = "Generated session handle collision."
     private val PUBLIC_HANDLE_REGEX: Regex = Regex("^[0-9a-f]{4}$")
     private val lock = Any()
@@ -600,7 +602,7 @@ object TerminalSessionPool {
         val completedUnexpectedError = synchronized(lock) { entry.completedUnexpectedError }
         // 2. Completed with a result.
         if (completedResult != null) {
-            val output = truncateOutput(mergedOutput(completedResult), maxBytes)
+            val output = truncateOutput(mergedOutput(completedResult), maxBytes, exportDir())
             return if (completedResult.timedOut) {
                 TerminalReadOutcome.TimedOut(
                     session = session,
@@ -653,7 +655,7 @@ object TerminalSessionPool {
             }
             return TerminalReadOutcome.Running(
                 session = session,
-                output = truncateOutput(output, maxBytes),
+                output = truncateOutput(output, maxBytes, exportDir()),
                 elapsedSeconds = elapsedSeconds(asyncState.startTimeMs),
             )
         }
@@ -931,13 +933,19 @@ object TerminalSessionPool {
         }
     }
 
-    private fun truncateOutput(text: String, maxBytes: Int): String {
-        val truncation = ToolOutputTruncator.truncateTail(text, maxBytes = maxBytes)
-        if (!truncation.truncated) return text
-        return truncation.content + "\n\n[Output truncated: showing last " +
-                truncation.content.count { it == '\n' } + " of " + truncation.totalLines +
-                " lines]"
+    /**
+     * 后台轮询输出统一过滤：截断 + 全量导出（FIXME(async-refactor): 异步
+     * 轮询重构时收口此处；DELTA 模式增量导出语义待重新设计）。
+     */
+    private fun truncateOutput(text: String, maxBytes: Int, exportDir: java.io.File?): String {
+        return ToolOutputTruncator.filterForAgent(fullContent = text, exportDir = exportDir)
     }
+
+    /** 截断导出目录（filesDir/tool_output）；无 Context（单测）时返回 null（不导出）。 */
+    internal var exportDirOverride: java.io.File? = null
+
+    private fun exportDir(): java.io.File? =
+        exportDirOverride ?: ToolOutputTruncator.defaultExportDir()
 
     private fun mergedOutput(result: CommandResult): String {
         return result.stdoutText() + result.stderrText()

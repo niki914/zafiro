@@ -23,10 +23,23 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
 class PythonWorkerUnavailableException :
     IllegalStateException("Python worker is not connected")
+
+/**
+ * exec 的最终结果，供下游消费：
+ * - [output]：完整输出文本（优先从传输文件读取）
+ * - [file]：输出传输文件（cacheDir/py_output），未消费时保留给上层做截断导出
+ * - [timedOut]：worker 侧 join 超时（部分输出在 [file]/[output] 里）
+ */
+data class PyExecOutput(
+    val output: String,
+    val file: File?,
+    val timedOut: Boolean,
+)
 
 /**
  * Client for the Python worker in the dedicated `:python` process.
@@ -144,7 +157,7 @@ object PyRuntime {
      * Never returns a stuck result: a hard-stuck interpreter is killed and
      * the connection re-established before the retry.
      */
-    suspend fun exec(code: String, timeoutMs: Long): String {
+    suspend fun exec(code: String, timeoutMs: Long): PyExecOutput {
         pythonUsed = true
         activeExecCount.incrementAndGet()
         val startedAtMs = System.currentTimeMillis()
@@ -153,7 +166,8 @@ object PyRuntime {
             return execInternal(code, timeoutMs).also { result ->
                 Logger.i(
                     LOG_TAG,
-                    "python exec done codeLength=${code.length} resultLength=${result.length} " +
+                    "python exec done codeLength=${code.length} outputLength=${result.output.length} " +
+                            "file=${result.file?.path} timedOut=${result.timedOut} " +
                             "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
             }
@@ -172,7 +186,7 @@ object PyRuntime {
         }
     }
 
-    private suspend fun execInternal(code: String, timeoutMs: Long): String {
+    private suspend fun execInternal(code: String, timeoutMs: Long): PyExecOutput {
         ensureConnected()
         var svc = testService ?: service ?: throw PythonWorkerUnavailableException()
         if (!isHealthy(svc)) {
@@ -223,11 +237,16 @@ object PyRuntime {
             }
         } ?: false
 
-    private suspend fun execOn(svc: IPythonWorkerService, code: String, timeoutMs: Long): String {
+    private suspend fun execOn(
+        svc: IPythonWorkerService,
+        code: String,
+        timeoutMs: Long,
+    ): PyExecOutput {
         try {
-            return withTimeout(timeoutMs + EXEC_GRACE_MS) {
+            val result = withTimeout(timeoutMs + EXEC_GRACE_MS) {
                 withContext(Dispatchers.IO) { svc.exec(code, timeoutMs) }
-            } ?: ""
+            }
+            return consume(result)
         } catch (e: TimeoutCancellationException) {
             killAndReconnect()
             throw e
@@ -235,6 +254,26 @@ object PyRuntime {
             service = null
             throw PythonWorkerUnavailableException()
         }
+    }
+
+    /** worker 结构化结果 → [PyExecOutput]：读传输文件还原全文，文件留给上层决定导出或删除。 */
+    private fun consume(result: PyExecResult): PyExecOutput {
+        val file = result.filePath?.takeIf { it.isNotEmpty() }?.let(::File)
+        val output = when {
+            file != null && file.exists() -> {
+                // ponytail: 全文一次性读入内存；输出源头已有 1MB Binder clip 兜底，
+                // 若未来需要处理超大输出应改为流式读取
+                file.readText(Charsets.UTF_8)
+            }
+            result.inlineText != null -> result.inlineText
+            else -> ""
+        }
+        // inline 降级路径没有文件；文件路径仅在正常写盘时存在
+        return PyExecOutput(
+            output = output,
+            file = file?.takeIf { it.exists() },
+            timedOut = result.status == PyExecResult.Status.TIMEOUT,
+        )
     }
 
     private suspend fun ensureConnected() {

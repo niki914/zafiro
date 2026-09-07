@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
+import com.niki914.zafiro.chat.agentic.python.PyExecOutput
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -24,7 +25,7 @@ class CustomPyToolExecutorTest {
     fun execute_wrapsStdoutInOkJson() = runTest {
         val executor = CustomPyToolExecutor(exec = { code, _ ->
             assertTrue(code.contains("main(**_args)"))
-            "hello"
+            PyExecOutput("hello", null, timedOut = false)
         })
 
         val json = Json.parseToJsonElement(executor.execute(tool, "{\"text\":\"x\"}")).jsonObject
@@ -36,7 +37,7 @@ class CustomPyToolExecutorTest {
 
     @Test
     fun execute_blankArgumentsTreatedAsEmptyObject() = runTest {
-        val executor = CustomPyToolExecutor(exec = { _, _ -> "ok" })
+        val executor = CustomPyToolExecutor(exec = { _, _ -> PyExecOutput("ok", null, timedOut = false) })
 
         val json = Json.parseToJsonElement(executor.execute(tool, "")).jsonObject
 
@@ -58,7 +59,7 @@ class CustomPyToolExecutorTest {
     fun execute_timeout_mapsToTimeoutFailure() = runTest {
         val executor = CustomPyToolExecutor(exec = { _, _ ->
             withTimeout(1) { kotlinx.coroutines.delay(5_000) }
-            ""
+            PyExecOutput("", null, timedOut = false)
         })
 
         val json = Json.parseToJsonElement(executor.execute(tool, "{}")).jsonObject
@@ -72,7 +73,7 @@ class CustomPyToolExecutorTest {
         var received = ""
         val spyExecutor = CustomPyToolExecutor(exec = { code, _ ->
             received = code
-            "ok"
+            PyExecOutput("ok", null, timedOut = false)
         })
 
         spyExecutor.execute(tool, "not-json{")
