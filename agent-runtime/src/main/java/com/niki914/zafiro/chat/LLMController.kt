@@ -38,6 +38,7 @@ import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
+import com.niki914.zafiro.util.ToolOutputTruncator
 import com.niki914.zafiro.chat.agentic.stream.LlmStreamEventMapper
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.LlmProtocol
@@ -120,6 +121,8 @@ object LLMController {
         return setOf(
             File(context.filesDir, "image_cache").absolutePath,
             File(context.filesDir, "downloads").absolutePath,
+            // 截断导出目录：agent 可用 terminal 回读全量工具输出
+            File(context.filesDir, ToolOutputTruncator.EXPORT_DIR_NAME).absolutePath,
         )
     }
 

@@ -1,5 +1,9 @@
 package com.niki914.zafiro.util
 
+import com.niki914.logging.Logger
+import java.io.File
+import kotlin.random.Random
+
 /**
  * 工具输出统一截断器，对齐 pi 的 truncateHead / truncateTail 语义：
  * - 行数 / 字节双限制（2000 行 / 50KB）先到先生效；
@@ -8,6 +12,20 @@ package com.niki914.zafiro.util
  * 调用方负责在 [Truncation.truncated] 时附截断提示。
  */
 object ToolOutputTruncator {
+
+    private const val LOG_TAG = "niki914_nexus_ToolOutputTruncator"
+
+    /** 截断导出目录（App 沙箱 filesDir 下），agent 可用 terminal 回读全量。 */
+    const val EXPORT_DIR_NAME = "tool_output"
+
+    /**
+     * 生产默认导出目录：filesDir/tool_output。无 Context（单测）时返回 null
+     * （不导出），调用方无需各自接 ContextProvider。
+     */
+    fun defaultExportDir(): File? {
+        val context = com.niki914.xposed.api.util.ContextProvider.awaitIfAvailable() ?: return null
+        return File(context.filesDir, EXPORT_DIR_NAME)
+    }
 
     const val DEFAULT_MAX_LINES = 2000
     const val DEFAULT_MAX_BYTES = 50 * 1024
@@ -81,4 +99,67 @@ object ToolOutputTruncator {
         while (start < bytes.size && (bytes[start].toInt() and 0xC0) == 0x80) start++
         return String(bytes, start, bytes.size - start, Charsets.UTF_8)
     }
+
+    /**
+     * 统一入口：过滤全文，超限时导出全量文件并在提示中附绝对路径（对齐 pi）。
+     *
+     * @param fullContent 工具完整输出
+     * @param existingFile 输出已有落盘文件（如 Python 传输文件）：截断时直接
+     *   move 到导出目录（零拷贝）；null 时现场写入导出文件
+     * @param exportDir 导出目录（filesDir/tool_output），null 表示不导出（仅截断）
+     * @return 截断后内容（超限时末尾附 Full output 路径提示）
+     */
+    fun filterForAgent(
+        fullContent: String,
+        existingFile: File? = null,
+        exportDir: File? = null,
+    ): String {
+        val truncation = truncateTail(fullContent)
+        if (!truncation.truncated) {
+            // 传输文件消费完即删（未截断无需导出）
+            existingFile?.takeIf { it.exists() }?.delete()
+            return fullContent
+        }
+        val exportPath = exportTo(fullContent, existingFile, exportDir)
+        return buildString {
+            append(truncation.content)
+            append("\n\n[Output truncated: showing last ")
+            append(truncation.content.count { it == '\n' })
+            append(" of ")
+            append(truncation.totalLines)
+            append(" lines]")
+            if (exportPath != null) {
+                append("\n[Full output: ")
+                append(exportPath)
+                append("]")
+            }
+        }
+    }
+
+    /** 把全量输出落到导出目录：优先 move 已有文件（零拷贝），否则现写。返回绝对路径。 */
+    private fun exportTo(fullContent: String, existingFile: File?, exportDir: File?): String? {
+        if (exportDir == null) return null
+        return try {
+            exportDir.mkdirs()
+            val target = File(exportDir, exportFileName())
+            if (existingFile != null && existingFile.exists()) {
+                if (!existingFile.renameTo(target)) {
+                    // 跨目录 rename 失败（罕见）：降级复制 + 删源
+                    existingFile.copyTo(target, overwrite = true)
+                    existingFile.delete()
+                }
+            } else {
+                target.writeText(fullContent, Charsets.UTF_8)
+            }
+            Logger.d(LOG_TAG, "tool output exported bytes=${target.length()} path=${target.absolutePath}")
+            target.absolutePath
+        } catch (e: Exception) {
+            // 导出失败不阻断主链路：截断提示照常返回，只是没有全量文件可回读
+            Logger.w(LOG_TAG, "tool output export failed: ${e.message}")
+            null
+        }
+    }
+
+    private fun exportFileName(): String =
+        (Random.nextBits(32).toLong() and 0xFFFFFFFFL).toString(16).padStart(8, '0') + ".log"
 }

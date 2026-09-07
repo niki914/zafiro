@@ -3,9 +3,14 @@ package com.niki914.zafiro.util
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import java.io.File
 
 class ToolOutputTruncatorTest {
+
+    @get:Rule
+    val silentLogger = com.niki914.zafiro.chat.util.SilentLoggerRule()
 
     @Test
     fun head_withinLimits_returnsUntouched() {
@@ -87,5 +92,68 @@ class ToolOutputTruncatorTest {
         assertTrue(result.truncated)
         // 尾部 10 字节 = 第二行（3字×3字节+换行1字节=10字节），边界不切半个字符
         assertEquals("第二行", result.content)
+    }
+
+    // ---- filterForAgent（统一入口：截断 + 导出 + 消费）----
+
+    private fun tempDir(): File = java.nio.file.Files.createTempDirectory("export").toFile()
+
+    @Test
+    fun filter_smallOutput_noExportAndFileDeleted() {
+        val exportDir = tempDir()
+        val transfer = File.createTempFile("tmp", ".log", tempDir())
+        transfer.writeText("ok\n")
+
+        val result = ToolOutputTruncator.filterForAgent("ok\n", transfer, exportDir)
+
+        assertEquals("ok\n", result)
+        assertFalse(transfer.exists()) // 未截断：传输文件消费后即删
+        assertEquals(0, exportDir.listFiles()?.size)
+    }
+
+    @Test
+    fun filter_truncated_movesTransferFileToExportDir() {
+        val exportDir = tempDir()
+        val transfer = File.createTempFile("tmp", ".log", tempDir())
+        val big = "x\n".repeat(30000)
+        transfer.writeText(big)
+
+        val result = ToolOutputTruncator.filterForAgent(big, transfer, exportDir)
+
+        assertTrue(result.contains("[Output truncated"))
+        assertTrue(result.contains("[Full output: "))
+        assertFalse(transfer.exists()) // 零拷贝 move
+        val exported = exportDir.listFiles()!!.single()
+        assertEquals(big, exported.readText())
+    }
+
+    @Test
+    fun filter_truncatedWithoutFile_writesExportFile() {
+        val exportDir = tempDir()
+        val big = "y".repeat(60_000)
+
+        val result = ToolOutputTruncator.filterForAgent(big, existingFile = null, exportDir = exportDir)
+
+        assertTrue(result.contains("[Full output: "))
+        val exported = exportDir.listFiles()!!.single()
+        assertEquals(big, exported.readText())
+    }
+
+    @Test
+    fun filter_truncatedWithoutExportDir_noPathHint() {
+        val big = "z\n".repeat(30000)
+
+        val result = ToolOutputTruncator.filterForAgent(big, existingFile = null, exportDir = null)
+
+        assertTrue(result.contains("[Output truncated"))
+        assertFalse(result.contains("[Full output"))
+    }
+
+    @Test
+    fun filter_exportFileName_is8HexDotLog() {
+        val exportDir = tempDir()
+        ToolOutputTruncator.filterForAgent("z\n".repeat(30000), exportDir = exportDir)
+        val name = exportDir.listFiles()!!.single().name
+        assertTrue(name.matches(Regex("[0-9a-f]{8}\\.log")))
     }
 }

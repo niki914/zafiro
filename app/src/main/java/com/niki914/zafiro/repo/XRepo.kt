@@ -1095,6 +1095,7 @@ class CustomPyToolApi internal constructor(
     private suspend fun introspectMain(code: String): PyIntrospection {
         val output = try {
             PyRuntime.exec(CustomPyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
+                .output
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
