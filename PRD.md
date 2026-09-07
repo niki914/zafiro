@@ -29,9 +29,9 @@ enum class Channel { ROOT_SHELL, SHIZUKU, SYSTEM_DIALOG, JUMP_SETTINGS }
 
 enum class PermissionState { GRANTED, DENIED_BY_USER, UNAVAILABLE, FAILED }
 
-@JvmInline value class MinSdk(val api: Int) {
-    val supported: Boolean get() = Build.VERSION.SDK_INT >= api
-}
+@JvmInline value class MinSdk(val api: Int)
+// 版本判定不入 MinSdk（保持引擎纯 Kotlin、设备 API 可注入测试）；
+// 引擎构造时传入 currentApi，统一比对 minSdk
 
 data class Attempt(val permission: Permission, val channel: Channel,
                    val state: PermissionState, val detail: String? = null)
@@ -43,17 +43,22 @@ interface ChannelHandler {
     val channel: Channel
     val minSdk: MinSdk                    // 实现类标 @RequiresApi，lint NewApi(error) 编译期兜底
 
-    /** 永远静默：不弹窗、不跳页、不写 */
-    fun status(): PermissionState
+    /**
+     * 永远静默：不弹窗、不跳页、不写。
+     * 契约：对本 handler 管不了的 permission 必须返回 UNAVAILABLE 而非 FAILED
+     * （引擎 status() 语义为“任一 handler 报 GRANTED 即 GRANTED”）。
+     */
+    fun status(permission: Permission): PermissionState
 
     /**
-     * 契约：必须在状态确定后返回，不允许"发射后不管"。
+     * 契约：必须在状态确定后返回，不允许“发射后不管”。
      * - SYSTEM_DIALOG：弹窗回调返回时确定结果
      * - JUMP_SETTINGS：launch intent → 挂起等 Activity resume → 复查一次 status() 后确定结果
      * - shell 通道：命令 exit code 校验后确定结果
-     * Activity 销毁导致挂起被取消 = 本次请求无结果，由下次 status() 兜底。
+     * Activity 销毁导致挂起被取消 = 本次请求无结果（引擎将 CancellationException
+     * 原样上抛，不记为 FAILED），由下次 status() 兜底。
      */
-    suspend fun request(): PermissionState
+    suspend fun request(permission: Permission): PermissionState
 }
 
 interface PermissionManager {
