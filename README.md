@@ -19,14 +19,14 @@
 
 ## What is Zafiro?
 
-Zafiro is an intelligent agent running on your Android phone. We provide the Zafiro Agent with a full set of scaffolding so it can understand your screen, control your device, and carry out operations across apps. It can wrap tools on its own with Python to perform tasks such as web search, file downloads, and more. Zafiro supports memory, MCP, and Skills, and can also connect to a remote dev machine via SSH.
+Zafiro is an open-source intelligent Agent running on Android devices, with [BYOK](https://www.ibm.com/think/topics/byok) support. It understands your screen, controls your device, and carries out operations across apps — with full support for Skills, MCP, and memory. It can also run Shell and Python 3 natively and wrap tools on its own to perform tasks such as web search and file downloads, or connect to a remote dev machine via SSH.
 
 <table align="center">
 <tr>
 <tr>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__phone_use.gif?raw=true" alt="Zafiro device control demo" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__net_research.gif?raw=true" alt="Zafiro web research demo" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__native.gif?raw=true" alt="Zafiro app installation demo" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__phone_use.gif?raw=true" alt="Zafiro picks and plays music in Spotify via Phone-Use" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__net_research.gif?raw=true" alt="Zafiro completes web research with headless web search and article reading via Python scripts" width="135" height="300"/></td>
+<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__native.gif?raw=true" alt="Zafiro downloads an APK from the web via Python and installs it with Root" width="135" height="300"/></td>
 <td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__settings_screen.png?raw=true" alt="Zafiro settings screen" width="142" height="300"/></td>
 </tr>
 <tr>
@@ -39,7 +39,7 @@ Zafiro is an intelligent agent running on your Android phone. We provide the Zaf
 </table>
 
 > [!IMPORTANT]
-> Zafiro is still in Beta — functionality and experience are being continuously improved.
+> Zafiro is still in Beta — functionality and experience are being continuously improved. Zafiro runs via [Shizuku](https://github.com/RikkaApps/Shizuku) — no Root required; Root users get the full experience.
 >
 > You can download a release from [Releases](https://github.com/niki914/zafiro/releases/latest), or build from source.
 
@@ -47,25 +47,25 @@ Zafiro is an intelligent agent running on your Android phone. We provide the Zaf
 
 ### Modern UI Design Language
 
-- **[MD3E](https://m3.material.io/) & Apple Liquid Glass** - a modern, polished interface
-- **Dynamic Theming** - multiple accent colors with dark / light mode switching
-- **Multilingual Support** - Chinese, English, Japanese, Spanish, and more
+- **[Material 3 Expressive](https://m3.material.io/) & Apple Liquid Glass** - a modern, polished interface
+- **Personalized Theming** - multiple theme colors with dark mode and dynamic color extraction
+- **Multilingual Support** - English, 中文, 日本語, Español
 
 ### Device Control
 
-- **Screen Interaction** - open apps, fill forms, and switch pages in one go
-- **Fully Visible** - an on-screen pointer animation shows every step the Agent takes
+- **Screen Interaction** - open apps, pick music, order food — all done for you
+- **Fully Visible** - an on-screen mouse shows every step the Agent takes
 
 ### Agent System
 
-- **Out of the Box** - built-in Skills, MCP, memory, and takeover rules, no configuration needed
-- **Extend as Needed** - supports custom tools, extend it your way
-- **Permission Management** - every command that runs is under control
+- **Out-of-the-Box** - built-in support for OpenAI, Anthropic, Google Gemini, DeepSeek, OpenRouter, Kimi, Alibaba Bailian, SiliconFlow, and more
+- **Extend as Needed** - full support for Skills and MCP, plus memory and a workspace — extend it your way
+- **Permission Management** - with configurable rules, every command and piece of code is under your control
 
 ### Python Tools
 
-- **Run Code Directly** - run Python natively on the device
-- **Meta-Tooling** - wrap your own Python tools
+- **Run Code Directly** - run Python 3 natively on the device
+- **Meta-Tooling** - wrap your own Python tools; the Agent reuses and maintains the tools it creates
 - **Built-in Scenarios** - web search, web page reading, and APK installation work out of the box
 
 ### Remote Environments

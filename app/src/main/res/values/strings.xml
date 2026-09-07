@@ -48,6 +48,7 @@
     <string name="ui_home_action_copy_content_description">复制</string>
     <string name="ui_home_action_regenerate_content_description">重新生成</string>
     <string name="ui_home_action_fork_content_description">分叉对话</string>
+    <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">已复制</string>
     <string name="ui_home_error_retry_body">请稍后重试。</string>
     <string name="ui_home_error_config_required_title">模型配置不完整</string>
@@ -327,6 +328,7 @@
     <string name="feedback_bug_template">## 问题描述\n\n## 复现步骤\n\n## 预期行为\n\n## 实际行为\n\n## 设备信息\n- Android 版本：\n- 助手（小布或其他）：\n- 模块版本：\n\n## 更多\n可以补充日志、截图录屏等信息，以便于我们理解</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_regenerate_title">Regenerate · %1$s</string>
+    <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
     <string name="ui_tool_display_terminal">终端</string>
     <string name="ui_tool_display_load_skill">加载技能</string>

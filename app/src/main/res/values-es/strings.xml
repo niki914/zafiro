@@ -49,6 +49,7 @@
     <string name="ui_home_action_copy_content_description">Copiar</string>
     <string name="ui_home_action_regenerate_content_description">Regenerar</string>
     <string name="ui_home_action_fork_content_description">Crear bifurcación</string>
+    <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">Copiado al portapapeles</string>
     <string name="ui_home_error_retry_body">Inténtelo de nuevo más tarde.</string>
     <string name="ui_home_error_config_required_title">Configuración del modelo incompleta</string>
@@ -328,6 +329,7 @@
     <string name="feedback_bug_template">## Descripción del problema\n\n## Pasos para reproducir\n\n## Comportamiento esperado\n\n## Comportamiento real\n\n## Información del dispositivo\n- Versión de Android:\n- Asistente (Breeno u otro):\n- Versión del módulo:\n\n## Información adicional\nPuede adjuntar registros, capturas o grabaciones de pantalla para ayudarnos a entender el problema.</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_regenerate_title">Regenerar · %1$s</string>
+    <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
     <string name="ui_tool_display_terminal">Terminal</string>
     <string name="ui_tool_display_load_skill">Cargar Skill</string>
