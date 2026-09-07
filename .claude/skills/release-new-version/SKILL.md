@@ -90,8 +90,17 @@ Confirm once more before anything irreversible. Then:
    ```
 6. Replace CI-generated release notes (they are a PR list) with the approved draft:
    ```bash
-   gh release edit <tag> -R niki914/zafiro --notes "<approved notes>"
+   gh release edit <tag> -R niki914/zafiro --title "Release - <name>" --notes "<approved notes>"
    ```
+   CI generates the release title as the raw tag name (e.g. `v9-1.2.0`); the historical format is `Release - <name>` — pass `--title` explicitly or the wrong title stays.
+
+### Release notes format
+
+Historical releases follow this format strictly (no deviations):
+
+- **English first, Chinese after, separated by a single `---` line.** Never reverse the order.
+- **No language headers** (no `**English**` / `**中文**` labels) — the notes start directly with the numbered list. Blank line separates the `---` from the lists.
+- The `--title "Release - <name>"` from step 6 is part of the format, not optional.
 
 ## Phase 5 — Xposed repo (optional, ask first)
 
