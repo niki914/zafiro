@@ -355,6 +355,8 @@
     <string name="ui_settings_general_idle_timeout_off">タイムアウトなし</string>
     <string name="ui_settings_general_retry_attempts">自動リトライ回数</string>
     <string name="ui_settings_general_retry_summary">リクエスト失敗後の自動リトライ</string>
+    <string name="ui_settings_general_keep_screen_on">回答中は画面をオンに保つ</string>
+    <string name="ui_settings_general_keep_screen_on_summary">エージェントの応答とツール実行中は画面をオフにしません</string>
     <string name="ui_settings_saved_configuration_title">保存済みの設定</string>
     <string name="ui_settings_saved_configuration_delete_title">設定の削除</string>
     <string name="ui_settings_saved_configuration_delete_text">この設定は削除されます。この操作は元に戻せません。</string>

@@ -7,6 +7,7 @@ import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.hooks.Hooks
+import com.niki914.okia.hooks.SerializationHolder
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.mcp.McpDiscoveryState
 import com.niki914.okia.mcp.McpServer
@@ -15,6 +16,7 @@ import com.niki914.okia.mcp.McpTransport
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ThinkingLevel
+import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
@@ -70,6 +72,10 @@ import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 object LLMController {
     private const val LOG_TAG = "niki914_nexus_LLMController"
     internal const val NO_IDLE_TIMEOUT_SECONDS = Long.MAX_VALUE / 1000
+
+    /** 孤儿工具调用兜底文案：只说结果缺失与疑似异常中断，不断言进程被杀。 */
+    private const val TOOL_RESULT_MISSING =
+        "Tool result missing: execution may have been interrupted abnormally."
 
     private val promptComposer =
         PromptComposer()
@@ -417,6 +423,7 @@ object LLMController {
                         "mcp=${state.snapshot.tools.mcpServers.size}"
             )
 
+            turnActive.value = true
             val startedAtMs = System.currentTimeMillis()
             var streamErrorReported = false
             var streamTerminated = false
@@ -559,6 +566,7 @@ object LLMController {
                 )
             }
         } finally {
+            turnActive.value = false
             AccessibilityController.onTurnEnd()
         }
     }.flowOn(Dispatchers.IO)
@@ -653,6 +661,7 @@ object LLMController {
             apiKey = config.apiKey
             model = config.model
             hooks += killToolResourcesHook
+            hooks += fixIncompleteToolCallsHook
             // null = 不超时（General Settings 提供「不限时」选项）
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
@@ -796,6 +805,70 @@ object LLMController {
         return buildMcpFailureNotice(failed)
     }
 
+    /**
+     * 未闭合工具调用修复钩子：进程被杀等异常退出后，历史里可能存在只有
+     * ToolCall 没有 ToolResult 的消息（服务端报 "No tool output found for
+     * tool call"，会话报废）。每次请求序列化前扫描历史，为孤儿调用注入
+     * 兜底 Failure 结果，只修发出去的请求，不改会话树（幂等，每次重扫）。
+     */
+    private val fixIncompleteToolCallsHook = object : Hooks {
+        override suspend fun beforeSerialization(request: SerializationHolder) {
+            val history = request.history
+            val missing = countMissingToolResults(history)
+            if (missing > 0) {
+                Logger.i(LOG_TAG, "fixIncompleteToolCalls history=${history.size} missing=$missing")
+            }
+            val fixed = withMissingToolResultsFilled(history)
+            if (fixed != history) {
+                request.write(request.snapshot, fixed, "fix_incomplete_tool_calls")
+                Logger.i(LOG_TAG, "fixIncompleteToolCalls patched ${fixed.size - history.size} results")
+            }
+        }
+    }
+
+    private fun countMissingToolResults(history: List<Message>): Int {
+        val answered = history.filterIsInstance<Message.ToolResult>().mapTo(mutableSetOf()) { it.callId }
+        var missing = 0
+        for (message in history) {
+            if (message !is Message.Assistant) continue
+            missing += message.message.content
+                .filterIsInstance<ContentBlock.ToolCall>()
+                .count { it.id !in answered }
+        }
+        return missing
+    }
+
+    /** 为历史中无 ToolResult 的 ToolCall 注入兜底结果，插入位置 = 对应
+     *  Assistant 消息之后，保持协议要求的 call/result 相邻顺序。 */
+    private fun withMissingToolResultsFilled(history: List<Message>): List<Message> {
+        val answered = history.filterIsInstance<Message.ToolResult>().mapTo(mutableSetOf()) { it.callId }
+        if (answered.isEmpty() && history.none { it is Message.Assistant }) return history
+        val patched = mutableListOf<Message>()
+        var changed = false
+        for (message in history) {
+            patched += message
+            if (message !is Message.Assistant) continue
+            val missing = message.message.content
+                .filterIsInstance<ContentBlock.ToolCall>()
+                .filter { it.id !in answered }
+            if (missing.isEmpty()) continue
+            changed = true
+            missing.forEach { call ->
+                patched += Message.ToolResult(
+                    callId = call.id,
+                    toolName = call.name,
+                    outcome = ToolCallOutcome.Failure(
+                        message = TOOL_RESULT_MISSING,
+                        // content 才是回喂模型的正文（providerContent 取它），
+                        // 只填 message 模型会看到空结果
+                        content = TOOL_RESULT_MISSING,
+                    ),
+                )
+            }
+        }
+        return if (changed) patched else history
+    }
+
     // 全局工具资源 kill 钩子：OKIA 停止流程的 kill 步骤（beforeStop 每回合
     // 至多一次，参数为本回合已派发的工具调用，共享资源池不会被误杀）
     private val killToolResourcesHook = object : Hooks {
@@ -809,6 +882,13 @@ object LLMController {
             TerminalSessionPool.closeAll()
         }
     }
+
+    /**
+     * 回合进行中信号（Keep Alive）：stream() 全程为 true（网络请求 + 流式输出
+     * + 工具执行），终态后复位。MainActivity 观察它控制 FLAG_KEEP_SCREEN_ON。
+     */
+    private val turnActive = MutableStateFlow(false)
+    val keepScreenOn: StateFlow<Boolean> get() = turnActive
 
     // ── 杂项 ──────────────────────────────────────────────────────────────────
 

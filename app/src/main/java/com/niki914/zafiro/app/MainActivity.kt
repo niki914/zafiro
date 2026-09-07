@@ -1,16 +1,22 @@
 package com.niki914.zafiro.app
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.lifecycleScope
 import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
+import com.niki914.zafiro.chat.LLMController
+import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 // tag:niki914 | tag:nexus-x-log | message:niki914 | message:nexus-x-log
@@ -50,6 +56,29 @@ class MainActivity : AppCompatActivity() {
                 startupAssistantUi = startupAssistantUi,
                 launchDecision = launchDecision,
             )
+        }
+        observeKeepScreenOn()
+    }
+
+    /**
+     * Keep Alive：设置开关 && 回合进行中 → FLAG_KEEP_SCREEN_ON。
+     * flag 只在 Activity 可见时生效，回桌面/锁屏自动失效，无泄漏风险。
+     */
+    private fun observeKeepScreenOn() {
+        lifecycleScope.launch {
+            // 设置初值：读盘失败按开启兑底（默认开）
+            runCatching { XRepo.keepScreenOn() }
+            combine(
+                XRepo.keepScreenOnSetting,
+                LLMController.keepScreenOn,
+            ) { settingOn, turnActive -> settingOn && turnActive }
+                .collect { keepOn ->
+                    if (keepOn) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                }
         }
     }
 
