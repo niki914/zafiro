@@ -19,7 +19,7 @@
 
 ## What is Zafiro?
 
-Zafiro is a open-source intelligent Agent running on Android devices, with [BYOK](https://www.ibm.com/think/topics/byok) support. It understands your screen, controls your device, and carries out operations across apps — with full support for Skills, MCP, and memory. It can also run Shell and Python 3 natively and wrap tools on its own to perform tasks such as web search and file downloads, or connect to a remote dev machine via SSH.
+Zafiro is an open-source intelligent Agent running on Android devices, with [BYOK](https://www.ibm.com/think/topics/byok) support. It understands your screen, controls your device, and carries out operations across apps — with full support for Skills, MCP, and memory. It can also run Shell and Python 3 natively and wrap tools on its own to perform tasks such as web search and file downloads, or connect to a remote dev machine via SSH.
 
 <table align="center">
 <tr>
