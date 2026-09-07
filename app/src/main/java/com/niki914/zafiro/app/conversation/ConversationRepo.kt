@@ -13,6 +13,7 @@ import java.util.UUID
 enum class ForkKind {
     Fork,
     Regenerate,
+    Rewind,
 }
 
 object ConversationRepo {
@@ -33,6 +34,9 @@ object ConversationRepo {
     @Volatile
     private var regenerateTitleFormat = "Regenerate · %1\$s"
 
+    @Volatile
+    private var rewindTitleFormat = "Rewind · %1\$s"
+
     fun init(context: Context) {
         if (database != null) return
         synchronized(this) {
@@ -46,6 +50,9 @@ object ConversationRepo {
                 regenerateTitleFormat = runCatching {
                     context.getString(R.string.conversation_regenerate_title)
                 }.getOrDefault(regenerateTitleFormat)
+                rewindTitleFormat = runCatching {
+                    context.getString(R.string.conversation_rewind_title)
+                }.getOrDefault(rewindTitleFormat)
             }
         }
     }
@@ -142,6 +149,7 @@ object ConversationRepo {
         val titleFormat = when (kind) {
             ForkKind.Fork -> forkTitleFormat
             ForkKind.Regenerate -> regenerateTitleFormat
+            ForkKind.Rewind -> rewindTitleFormat
         }
         val preview = ConversationFormatter.previewFromEntries(truncated)
 

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
@@ -524,6 +525,7 @@ fun TurnActionRow(
     onCopy: () -> Unit,
     onReGenerate: () -> Unit,
     onFork: () -> Unit,
+    onRewind: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val isAgent = source == ActionSource.Agent
@@ -551,6 +553,17 @@ fun TurnActionRow(
                     icon = Icons.AutoMirrored.Filled.CallSplit,
                     contentDescription = stringResource(R.string.ui_home_action_fork_content_description),
                     onClick = onFork,
+                )
+            } else {
+                ActionButton(
+                    icon = Icons.Default.Refresh,
+                    contentDescription = stringResource(R.string.ui_home_action_regenerate_content_description),
+                    onClick = onReGenerate,
+                )
+                ActionButton(
+                    icon = Icons.Default.Undo,
+                    contentDescription = stringResource(R.string.ui_home_action_rewind_content_description),
+                    onClick = onRewind,
                 )
             }
         }
