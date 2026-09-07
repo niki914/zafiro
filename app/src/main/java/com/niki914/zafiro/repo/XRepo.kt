@@ -14,6 +14,7 @@ import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_PATTERNS
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
@@ -317,11 +318,17 @@ object XRepo {
         }
     }
 
+    /** Keep Alive 设置的进程内热更新通道：读时回填初值，写时同步。 */
+    val keepScreenOnSetting = MutableStateFlow(true)
+
     suspend fun keepScreenOn(): Boolean {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).keepScreenOn
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .keepScreenOn
+            .also { keepScreenOnSetting.value = it }
     }
 
     suspend fun setKeepScreenOn(value: Boolean) {
+        keepScreenOnSetting.value = value
         updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
             val current = AppStateSettingsCodec.parse(json)
             AppStateSettingsCodec.encode(current.copy(keepScreenOn = value))
