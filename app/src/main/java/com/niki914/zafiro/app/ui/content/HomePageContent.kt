@@ -318,6 +318,9 @@ fun HomePageContent(
         onFork = { id ->
             viewModel.sendIntent(HomeChatIntent.ForkAt(id))
         },
+        onRewind = { id ->
+            viewModel.sendIntent(HomeChatIntent.RewindAt(id))
+        },
         expandedToolRuns = uiState.expandedToolRuns,
         expandedToolResults = uiState.expandedToolResults,
         expandedThinking = uiState.expandedThinking,
@@ -453,6 +456,7 @@ private fun HomePageContentBody(
     onComposerFocusChanged: (Boolean) -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
+    onRewind: (Long) -> Unit,
     expandedToolRuns: Set<String>,
     expandedToolResults: Set<String>,
     expandedThinking: Set<String>,
@@ -521,6 +525,7 @@ private fun HomePageContentBody(
                     onContentTap = onContentTap,
                     onReGenerate = onReGenerate,
                     onFork = onFork,
+                    onRewind = onRewind,
                     expandedToolRuns = expandedToolRuns,
                     expandedToolResults = expandedToolResults,
                     expandedThinking = expandedThinking,
@@ -673,6 +678,7 @@ private fun HomeChatTurnItem(
     onContentTap: () -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
+    onRewind: (Long) -> Unit,
     expandedToolRuns: Set<String>,
     expandedToolResults: Set<String>,
     expandedThinking: Set<String>,
@@ -765,6 +771,7 @@ private fun HomeChatTurnItem(
                 },
                 onReGenerate = { onReGenerate(turn.id) },
                 onFork = { onFork(turn.id) },
+                onRewind = { onRewind(turn.id) },
             )
         }
 
@@ -1064,6 +1071,7 @@ private fun HomePageContentPreview() {
                 onComposerFocusChanged = {},
                 onReGenerate = { },
                 onFork = { },
+                onRewind = { },
                 expandedToolRuns = emptySet(),
                 expandedToolResults = emptySet(),
                 expandedThinking = emptySet(),

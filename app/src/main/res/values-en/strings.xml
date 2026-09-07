@@ -49,6 +49,7 @@
     <string name="ui_home_action_copy_content_description">Copy</string>
     <string name="ui_home_action_regenerate_content_description">Regenerate</string>
     <string name="ui_home_action_fork_content_description">Fork conversation</string>
+    <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">Copied</string>
     <string name="ui_home_error_retry_body">Please try again later.</string>
     <string name="ui_home_error_config_required_title">Model configuration is incomplete</string>
@@ -328,6 +329,7 @@
     <string name="feedback_bug_template">## Issue Description\n\n## Steps to Reproduce\n\n## Expected Behavior\n\n## Actual Behavior\n\n## Device Info\n- Android version:\n- Assistant (Breeno or other):\n- Module version:\n\n## More\nYou can attach logs, screenshots, or recordings to help us understand the issue.</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_regenerate_title">Regenerate · %1$s</string>
+    <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
     <string name="ui_tool_display_terminal">Terminal</string>
     <string name="ui_tool_display_load_skill">Load Skill</string>
