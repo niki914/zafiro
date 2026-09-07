@@ -35,6 +35,7 @@ private const val APPEARANCE_ROW_ID = "general.appearance"
 private const val LOAD_LAST_ROW_ID = "general.load_last"
 private const val IDLE_TIMEOUT_ROW_ID = "general.idle_timeout"
 private const val RETRY_ATTEMPTS_ROW_ID = "general.retry_attempts"
+private const val KEEP_SCREEN_ON_ROW_ID = "general.keep_screen_on"
 
 private const val LANGUAGE_TAG_ZH_CN = "zh-CN"
 private const val LANGUAGE_TAG_ZH_TW = "zh-TW"
@@ -72,6 +73,7 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
     var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var idleTimeoutSeconds by rememberSaveable { mutableStateOf(60L) }
     var retryMaxAttempts by rememberSaveable { mutableStateOf(3) }
+    var keepScreenOn by rememberSaveable { mutableStateOf(true) }
     var showIdleTimeoutDialog by rememberSaveable { mutableStateOf(false) }
     var showRetryDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -81,6 +83,7 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
             loadLastConversation = XRepo.loadLastConversationOnStartup()
             idleTimeoutSeconds = XRepo.llmIdleTimeoutSeconds()
             retryMaxAttempts = XRepo.llmRetryMaxAttempts()
+            keepScreenOn = XRepo.keepScreenOn()
         }.onFailure {
             Logger.w("niki914_nexus_GeneralSettings", "load failed ${it.message}")
         }
@@ -122,6 +125,11 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
                         title = stringResource(R.string.ui_settings_general_retry_attempts),
                         currentState = retryAttemptsLabel(retryMaxAttempts),
                     ),
+                    SettingsRowSpec.Toggle(
+                        id = KEEP_SCREEN_ON_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_keep_screen_on),
+                        checked = keepScreenOn,
+                    ),
                 ),
             ),
         ),
@@ -147,6 +155,11 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
                         loadLastConversation = action.checked
                         scope.launch {
                             XRepo.setLoadLastConversationOnStartup(action.checked)
+                        }
+                    } else if (action.id == KEEP_SCREEN_ON_ROW_ID) {
+                        keepScreenOn = action.checked
+                        scope.launch {
+                            XRepo.setKeepScreenOn(action.checked)
                         }
                     }
 
