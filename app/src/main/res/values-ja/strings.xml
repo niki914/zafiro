@@ -61,6 +61,10 @@
     <string name="ui_home_retrying_attempt">再試行 %1$d/%2$d</string>
     <string name="runtime_error_internal">内部エラー</string>
     <string name="ui_home_history_content_description">会話履歴</string>
+    <string name="ui_conversation_history_today">今日</string>
+    <string name="ui_conversation_history_this_week">今週</string>
+    <string name="ui_conversation_history_this_month">今月</string>
+    <string name="ui_conversation_history_older">より前</string>
     <string name="ui_conversation_history_back_content_description">戻る</string>
     <string name="ui_conversation_history_loading">会話履歴を読み込み中...</string>
     <string name="ui_conversation_history_empty_title">会話履歴はありません</string>
