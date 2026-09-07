@@ -354,6 +354,8 @@
     <string name="ui_settings_general_idle_timeout_off">Sin límite</string>
     <string name="ui_settings_general_retry_attempts">Reintentos automáticos</string>
     <string name="ui_settings_general_retry_summary">Reintentos automáticos tras un error de solicitud</string>
+    <string name="ui_settings_general_keep_screen_on">Mantener la pantalla encendida al responder</string>
+    <string name="ui_settings_general_keep_screen_on_summary">Mantener la pantalla encendida mientras el agente responde y ejecuta herramientas</string>
     <string name="ui_settings_saved_configuration_title">Configuraciones guardadas</string>
     <string name="ui_settings_saved_configuration_delete_title">Eliminar configuración</string>
     <string name="ui_settings_saved_configuration_delete_text">Esta configuración se eliminará y la acción no se podrá deshacer.</string>

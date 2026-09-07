@@ -354,6 +354,8 @@
     <string name="ui_settings_general_idle_timeout_off">No timeout</string>
     <string name="ui_settings_general_retry_attempts">Auto retries</string>
     <string name="ui_settings_general_retry_summary">Automatic retries after a failed request</string>
+    <string name="ui_settings_general_keep_screen_on">Keep screen on while answering</string>
+    <string name="ui_settings_general_keep_screen_on_summary">Keep the screen on while the agent is responding and running tools</string>
     <string name="ui_settings_saved_configuration_title">Saved configurations</string>
     <string name="ui_settings_saved_configuration_delete_title">Delete configuration</string>
     <string name="ui_settings_saved_configuration_delete_text">This configuration will be deleted and cannot be recovered.</string>
