@@ -17,7 +17,8 @@
 - 并发请求单飞去重（各试各的链，通道实现保证幂等）
 - 权限撤销监听/推送（按需 `status()` 查询）
 - 授权重试机制（调用方重新调 `withPermission` 即重试）
-- 改动 libterm（仅依赖其 shell 能力）
+- 合流 libterm（战略迁移完成前允许两套 provider 共存：permission-manager 自带
+  shizuku/root 实现，libterm 保持不动；迁移完成后再抽公共模块或改 libterm）
 - 保留 `NotificationPermissionGate`（实现时删除收编）
 
 ## 契约
@@ -27,7 +28,8 @@ enum class Permission { ROOT, SHIZUKU, NOTIFICATION, OVERLAY, ACCESSIBILITY }
 
 enum class Channel { ROOT_SHELL, SHIZUKU, SYSTEM_DIALOG, JUMP_SETTINGS }
 
-enum class PermissionState { GRANTED, DENIED_BY_USER, UNAVAILABLE, FAILED }
+/** UNKNOWN = 无法静默得知（如 root 嗅探会拉起授权），非成功也非失败 */
+enum class PermissionState { GRANTED, DENIED_BY_USER, UNAVAILABLE, FAILED, UNKNOWN }
 
 @JvmInline value class MinSdk(val api: Int)
 // 版本判定不入 MinSdk（保持引擎纯 Kotlin、设备 API 可注入测试）；
@@ -45,8 +47,8 @@ interface ChannelHandler {
 
     /**
      * 永远静默：不弹窗、不跳页、不写。
-     * 契约：对本 handler 管不了的 permission 必须返回 UNAVAILABLE 而非 FAILED
-     * （引擎 status() 语义为“任一 handler 报 GRANTED 即 GRANTED”）。
+     * 真实状态优先；无法静默得知（如 root 嗅探会拉授权）返回 UNKNOWN。
+     * 对本 handler 管不了的 permission 必须返回 UNAVAILABLE 而非 FAILED。
      */
     fun status(permission: Permission): PermissionState
 
@@ -78,7 +80,27 @@ interface ScopeBuilder {
 
 - 尝试顺序 = `scope()` 传入顺序。
 - 每环：`minSdk.supported == false` → `UNAVAILABLE`（detail 注明 API 要求）→ 下一环；否则 `request()`，结果原样入 `attempts`。
-- 首个 `GRANTED` 终止；链尽返回，`finalState` 取最后一环。
+- 首个 `GRANTED` 终止；`UNKNOWN` 视为未成功，继续下一环；链尽返回，`finalState` 取最后一环（可能为 UNKNOWN）。
+- `status()` 聚合：任一 handler 报 GRANTED → GRANTED；否则取任一真实状态（DENIED_BY_USER/UNAVAILABLE）；全为 UNKNOWN → UNKNOWN。
+
+### status() 真实状态来源（Context 注入给 handler）
+
+| Permission | 静默查询方式 | 结果映射 |
+|---|---|---|
+| ROOT | `Shell.isAppGrantedRoot()`：已建 shell 给真实值；未建 shell 返回 null（建 shell 即拉授权，不可静默） | true→GRANTED / false→DENIED_BY_USER / null→UNKNOWN |
+| SHIZUKU | `Shizuku.pingBinder()` + `checkSelfPermission()`，异常一律 UNAVAILABLE | binder 死/抛异常→UNAVAILABLE / 已授权→GRANTED / 未授权→DENIED_BY_USER |
+| OVERLAY | `Settings.canDrawOverlays(context)` | GRANTED / DENIED_BY_USER |
+| ACCESSIBILITY | 查 enabled_accessibility_services 是否含本应用服务（ComponentName 归一化比较，短名与全限定名都认） | GRANTED / DENIED_BY_USER |
+| NOTIFICATION | `checkSelfPermission(POST_NOTIFICATIONS)`；<33 恒 GRANTED | GRANTED / DENIED_BY_USER |
+
+### Shizuku binder 到达机制（真机验证结论）
+
+binder 由 Shizuku server 在应用启动后异步推送（`sendBinder`），无法通过
+`contentResolver.call(getBinder)` 主动要（extras 传 null 时 provider 直接返回空）。
+因此 `status()` 只上报当前快照（binder 不在即 UNAVAILABLE，不阻塞）；
+`request()` 用 sticky 监听等 binder 最长 8 秒，到不了才报 UNAVAILABLE。
+授权 requestCode 必须自增生成并与监听配对，超时后复查一次 `checkSelfPermission()`
+避免回调迟到误判拒绝。
 
 ## 通道与默认链
 
@@ -93,7 +115,7 @@ interface ScopeBuilder {
 
 ```
 libs/permission-manager/   # 新模块，与 libterm 平级
-  依赖: libterm-runtime（shell 通道执行）、shizuku-api
+  依赖: libsu-core、shizuku-api/provider（独立实现，与 libterm 共存）
 被依赖: app、agent-runtime（宿主侧后续接入）
 ```
 

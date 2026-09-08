@@ -134,6 +134,46 @@ class PermissionEngineTest {
     }
 
     @Test
+    fun `status prefers real state over UNKNOWN`() {
+        val e = engine(
+            FakeChannelHandler(Channel.ROOT_SHELL, fixedStatus = PermissionState.UNKNOWN),
+            FakeChannelHandler(Channel.SHIZUKU, fixedStatus = PermissionState.DENIED_BY_USER),
+        )
+        assertEquals(PermissionState.DENIED_BY_USER, e.status(perm))
+    }
+
+    @Test
+    fun `status all UNKNOWN returns UNKNOWN`() {
+        val e = engine(
+            FakeChannelHandler(Channel.ROOT_SHELL, fixedStatus = PermissionState.UNKNOWN),
+            FakeChannelHandler(Channel.SHIZUKU, fixedStatus = PermissionState.UNKNOWN),
+        )
+        assertEquals(PermissionState.UNKNOWN, e.status(perm))
+    }
+
+    @Test
+    fun `UNKNOWN request continues to next channel`() {
+        val e = engine(
+            FakeChannelHandler(Channel.ROOT_SHELL, requestStatus = PermissionState.UNKNOWN),
+            FakeChannelHandler(Channel.JUMP_SETTINGS, requestStatus = PermissionState.GRANTED),
+        )
+        val r = request(e, Channel.ROOT_SHELL, Channel.JUMP_SETTINGS)
+        assertEquals(PermissionState.GRANTED, r.finalState)
+        assertEquals(2, r.attempts.size)
+        assertEquals(PermissionState.UNKNOWN, r.attempts[0].state)
+    }
+
+    @Test
+    fun `chain exhaust with all UNKNOWN returns UNKNOWN`() {
+        val e = engine(
+            FakeChannelHandler(Channel.ROOT_SHELL, requestStatus = PermissionState.UNKNOWN),
+            FakeChannelHandler(Channel.SHIZUKU, requestStatus = PermissionState.UNKNOWN),
+        )
+        val r = request(e, Channel.ROOT_SHELL, Channel.SHIZUKU)
+        assertEquals(PermissionState.UNKNOWN, r.finalState)
+    }
+
+    @Test
     fun `request failure catches exception and records FAILED`() {
         val failing = object : ChannelHandler {
             override val channel = Channel.ROOT_SHELL

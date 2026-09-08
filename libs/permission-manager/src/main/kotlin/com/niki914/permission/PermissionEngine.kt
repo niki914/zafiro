@@ -11,13 +11,20 @@ class PermissionEngine(
     private val currentApi: Int,
     private val handlers: Map<Channel, ChannelHandler>,
 ) {
-    /** 静默查询：任一 handler 报 GRANTED 即 GRANTED，否则 UNAVAILABLE */
+    /**
+     * 静默查询聚合：任一 handler 报 GRANTED → GRANTED；
+     * 否则取任一真实状态（DENIED_BY_USER/UNAVAILABLE/FAILED）；全为 UNKNOWN → UNKNOWN。
+     */
     fun status(permission: Permission): PermissionState {
+        var fallback: PermissionState = PermissionState.UNKNOWN
         for ((_, handler) in handlers) {
-            val s = handler.status(permission)
-            if (s == PermissionState.GRANTED) return PermissionState.GRANTED
+            when (val s = handler.status(permission)) {
+                PermissionState.GRANTED -> return PermissionState.GRANTED
+                PermissionState.UNKNOWN -> Unit
+                else -> if (fallback == PermissionState.UNKNOWN) fallback = s
+            }
         }
-        return PermissionState.UNAVAILABLE
+        return fallback
     }
 
     suspend fun request(permission: Permission, channels: List<Channel>): PermissionResult {
@@ -45,6 +52,7 @@ class PermissionEngine(
             if (state == PermissionState.GRANTED) {
                 return PermissionResult(permission, PermissionState.GRANTED, attempts)
             }
+            // UNKNOWN/DENIED/UNAVAILABLE/FAILED 均视为未成功，继续下一环
         }
         val final = attempts.lastOrNull()?.state ?: PermissionState.UNAVAILABLE
         return PermissionResult(permission, final, attempts)
