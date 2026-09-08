@@ -326,6 +326,7 @@
     <string name="ui_settings_general_retry_summary">請求失敗後的自動重試</string>
     <string name="ui_settings_general_keep_screen_on">回應期間保持螢幕常亮</string>
     <string name="ui_settings_general_keep_screen_on_summary">回應與工具執行期間保持螢幕常亮</string>
+    <string name="ui_settings_general_always_show_message_actions">總是顯示訊息操作</string>
     <string name="ui_settings_saved_configuration_title">已儲存配置</string>
     <string name="ui_settings_saved_configuration_delete_title">刪除配置</string>
     <string name="ui_settings_saved_configuration_delete_text">該配置將被刪除，此操作無法復原。</string>

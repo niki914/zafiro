@@ -1328,6 +1328,7 @@ private open class FakeHomeConversationStore : HomeConversationStore {
         val prefix = when (kind) {
             ForkKind.Fork -> "Fork · "
             ForkKind.Regenerate -> "Regenerate · "
+            ForkKind.Rewind -> "Rewind · "
         }
         records[newId] = ConversationRecord(
             summary = source.summary.copy(

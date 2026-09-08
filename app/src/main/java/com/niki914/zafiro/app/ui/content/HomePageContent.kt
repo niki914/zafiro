@@ -103,6 +103,7 @@ import com.niki914.zafiro.app.ui.model.HomeChatIntent
 import com.niki914.zafiro.app.ui.model.HomeChatTurn
 import com.niki914.zafiro.app.ui.model.HomeChatUiState
 import com.niki914.zafiro.app.ui.model.HomeChatViewModel
+import com.niki914.zafiro.app.ui.model.MessageActionsDisplay
 import com.niki914.zafiro.app.ui.model.HomeToolState
 import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
@@ -110,6 +111,7 @@ import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.repo.UpdateCheckHolder
+import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -142,6 +144,12 @@ fun HomePageContent(
     )
     val latestOnActiveConversationChanged by rememberUpdatedState(onActiveConversationChanged)
     val uiState by viewModel.uiStateFlow.collectAsState()
+    val alwaysShowActions by XRepo.alwaysShowMessageActionsSetting.collectAsState()
+    val actionsDisplay = if (alwaysShowActions) {
+        MessageActionsDisplay.Always
+    } else {
+        MessageActionsDisplay.OnTap
+    }
     val density = LocalDensity.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -283,6 +291,7 @@ fun HomePageContent(
 
     HomePageContentBody(
         uiState = uiState,
+        actionsDisplay = actionsDisplay,
         listState = listState,
         composerBottomPadding = composerBottomPadding,
         composerGap = composerGap,
@@ -439,6 +448,7 @@ private fun ToolPermissionDialog() {
 @Composable
 private fun HomePageContentBody(
     uiState: HomeChatUiState,
+    actionsDisplay: MessageActionsDisplay,
     listState: LazyListState,
     composerBottomPadding: Dp,
     composerGap: Dp,
@@ -510,6 +520,9 @@ private fun HomePageContentBody(
             ) { index, turn ->
                 // User 气泡组内位置（渲染层：两个相邻 UserBubble 之间无任何内容即同组，见 userBubblePosition）
                 val position = userBubblePosition(uiState.turns, index)
+                // 组归一化：点组内任意一条都弹/聚合到组尾（操作行在组尾 turn 下渲染）
+                val tailIndex = userGroupTailIndex(uiState.turns, index)
+                val tailTurn = uiState.turns[tailIndex]
                 // 顶距：组中/组末用组内间隙与上一气泡连体；组首/单条维持 turn 分隔
                 val turnTopPad = when {
                     index == 0 -> Modifier
@@ -522,6 +535,10 @@ private fun HomePageContentBody(
                     turn = turn,
                     userBubblePosition = position,
                     isLastTurn = index == uiState.turns.lastIndex,
+                    actionsDisplay = actionsDisplay,
+                    userGroupTailTurnId = tailTurn.id,
+                    userGroupTappable = tailTurn.blocks.isNotEmpty() || tailIndex == uiState.turns.lastIndex,
+                    userGroupText = userGroupText(uiState.turns, index),
                     onContentTap = onContentTap,
                     onReGenerate = onReGenerate,
                     onFork = onFork,
@@ -670,11 +687,39 @@ private fun userBubblePosition(turns: List<HomeChatTurn>, index: Int): UserBubbl
     }
 }
 
+/**
+ * 渲染层连续 User 气泡组（见 [userBubblePosition]）：index 所在组的组尾下标。
+ * 组向下延伸的判定与 userBubblePosition 一致：自身 blocks 为空则下一气泡与本气泡相邻。
+ */
+internal fun userGroupTailIndex(turns: List<HomeChatTurn>, index: Int): Int {
+    var tail = index
+    while (tail < turns.lastIndex && turns[tail].blocks.isEmpty()) tail++
+    return tail
+}
+
+/** index 所在 User 组的组内全部用户文本：按序、双换行分隔、跳过空白（纯图片 turn）。 */
+internal fun userGroupText(turns: List<HomeChatTurn>, index: Int): String {
+    var head = index
+    while (head > 0 && turns[head - 1].blocks.isEmpty()) head--
+    val tail = userGroupTailIndex(turns, index)
+    return turns.subList(head, tail + 1)
+        .map { it.userText }
+        .filter { it.isNotBlank() }
+        .joinToString("\n\n")
+}
+
 @Composable
 private fun HomeChatTurnItem(
     turn: HomeChatTurn,
     userBubblePosition: UserBubblePosition,
     isLastTurn: Boolean,
+    actionsDisplay: MessageActionsDisplay,
+    /** 点组内任意一条时操作行归一到组尾 turn；非组尾成员仅作点击归一目标。 */
+    userGroupTailTurnId: Long,
+    /** 组尾 turn 的操作行资格（blocks 非空或为最后一条）。 */
+    userGroupTappable: Boolean,
+    /** 组内全部用户文本（双换行分隔），供组尾操作行复制。 */
+    userGroupText: String,
     onContentTap: () -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
@@ -692,10 +737,13 @@ private fun HomeChatTurnItem(
     isGenerating: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val alwaysVisible = actionsDisplay == MessageActionsDisplay.Always
+    // Agent 操作行：生成中隐藏（流式中的重新生成无意义）
     val canToggleAction = !isGenerating && turn.blocks.isNotEmpty()
-    // User 操作行（仅复制）：最后一条 turn 即使无内容（失败后无错误卡/被中断的裸回合）也放开，
-    // 使本条 query 仍可复制；非最后一条裸回合维持不可复制（历史行为），Agent 操作行不放开
-    val canToggleUserAction = !isGenerating && (turn.blocks.isNotEmpty() || isLastTurn)
+    // User 操作行资格：生成中同样放开（历史遗留修复：复制无害，重新生成/回退由 Controller 护栏拦截）；
+    // 最后一条 turn 即使无内容也放开，使本条 query 仍可复制
+    val userRowEligible = turn.blocks.isNotEmpty() || isLastTurn
+    val isUserGroupTail = turn.id == userGroupTailTurnId
 
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
@@ -748,8 +796,9 @@ private fun HomeChatTurnItem(
                         indication = null,
                         onClick = {
                             onContentTap()
-                            if (canToggleUserAction) {
-                                onToggleActionRow(turn.id, ActionSource.User)
+                            // Always 模式永不收回；OnTap 模式点组内任意一条都归一到组尾
+                            if (!alwaysVisible && userGroupTappable) {
+                                onToggleActionRow(userGroupTailTurnId, ActionSource.User)
                             }
                         },
                     ),
@@ -760,14 +809,16 @@ private fun HomeChatTurnItem(
         }
 
         AnimatedVisibility(
-            visible = showActionRow && actionSource == ActionSource.User,
+            visible = isUserGroupTail && userRowEligible &&
+                    (alwaysVisible || (showActionRow && actionSource == ActionSource.User)),
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut(),
         ) {
             TurnActionRow(
                 source = ActionSource.User,
+                display = actionsDisplay,
                 onCopy = {
-                    copyText(turn.userText)
+                    copyText(userGroupText)
                 },
                 onReGenerate = { onReGenerate(turn.id) },
                 onFork = { onFork(turn.id) },
@@ -816,7 +867,7 @@ private fun HomeChatTurnItem(
                             },
                             onContentClick = {
                                 onContentTap()
-                                if (canToggleAction) {
+                                if (!alwaysVisible && canToggleAction) {
                                     onToggleActionRow(turn.id, ActionSource.Agent)
                                 }
                             },
@@ -834,7 +885,7 @@ private fun HomeChatTurnItem(
                                                 indication = null,
                                                 onClick = {
                                                     onContentTap()
-                                                    if (canToggleAction) {
+                                                    if (!alwaysVisible && canToggleAction) {
                                                         onToggleActionRow(
                                                             turn.id,
                                                             ActionSource.Agent
@@ -924,7 +975,7 @@ private fun HomeChatTurnItem(
                                                 indication = null,
                                                 onClick = {
                                                     onContentTap()
-                                                    if (canToggleAction) {
+                                                    if (!alwaysVisible && canToggleAction) {
                                                         onToggleActionRow(
                                                             turn.id,
                                                             ActionSource.Agent
@@ -953,11 +1004,13 @@ private fun HomeChatTurnItem(
         }
 
         AnimatedVisibility(
-            visible = showActionRow && actionSource == ActionSource.Agent,
+            visible = (alwaysVisible && canToggleAction) ||
+                    (showActionRow && actionSource == ActionSource.Agent),
             enter = expandVertically() + fadeIn(),
         ) {
             TurnActionRow(
                 source = ActionSource.Agent,
+                display = actionsDisplay,
                 onCopy = {
                     val text = turn.blocks
                         .filterIsInstance<HomeChatBlock.Text>()
@@ -1016,6 +1069,7 @@ private fun HomePageContentPreview() {
     BaseTheme {
         ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
             HomePageContentBody(
+                actionsDisplay = MessageActionsDisplay.OnTap,
                 composerFocusRequester = remember { FocusRequester() },
                 uiState = HomeChatUiState(
                     input = "继续分析",
