@@ -352,6 +352,16 @@ object XRepo {
         }
     }
 
+    /**
+     * 回填型设置 flow 的统一冷启动回填：flow 初值是猜的默认值，必须有人调一次
+     * getter 读盘才能对齐真值。MainActivity.onCreate 同步调用。
+     * 新增响应式设置 flow 必须在此登记，否则冷启动首帧读到假值。
+     */
+    suspend fun hydrateSettings() {
+        keepScreenOn()
+        alwaysShowMessageActions()
+    }
+
     suspend fun themeMode(): String {
         return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).themeMode
     }

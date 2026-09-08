@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
+import com.niki914.logging.Logger
 import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
@@ -47,6 +48,9 @@ class MainActivity : AppCompatActivity() {
             val decision = AppLaunchDecision.resolve(startupAssistantUi)
             // 同步读主题偏好：深色模式冷启动首帧不能闪白
             ThemeController.load()
+            // 回填型设置 flow 的冷启动回填（首帧真值，防“进设置页才生效”类 bug）
+            runCatching { XRepo.hydrateSettings() }
+                .onFailure { Logger.w("niki914_nexus_Main", "hydrate failed ${it.message}") }
             decision
         }
         applyLanguageTag(launchDecision.languageTag)
