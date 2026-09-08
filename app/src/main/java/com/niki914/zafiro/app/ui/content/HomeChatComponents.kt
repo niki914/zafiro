@@ -1,9 +1,11 @@
 package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -80,6 +82,7 @@ import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ActionSource
+import com.niki914.zafiro.app.ui.model.MessageActionsDisplay
 import com.niki914.zafiro.app.ui.model.HomeChatImage
 import com.niki914.zafiro.chat.LlmErrorCode
 
@@ -522,6 +525,7 @@ fun LiquidChatComposer(
 @Composable
 fun TurnActionRow(
     source: ActionSource,
+    display: MessageActionsDisplay,
     onCopy: () -> Unit,
     onReGenerate: () -> Unit,
     onFork: () -> Unit,
@@ -529,6 +533,8 @@ fun TurnActionRow(
     modifier: Modifier = Modifier,
 ) {
     val isAgent = source == ActionSource.Agent
+    // Always 模式：去背景只留图标，融入背景降噪音
+    val iconOnly = display == MessageActionsDisplay.Always
 
     Box(
         modifier = modifier.fillMaxWidth(),
@@ -542,28 +548,33 @@ fun TurnActionRow(
                 icon = Icons.Default.ContentCopy,
                 contentDescription = stringResource(R.string.ui_home_action_copy_content_description),
                 onClick = onCopy,
+                iconOnly = iconOnly,
             )
             if (isAgent) {
                 ActionButton(
                     icon = Icons.Default.Refresh,
                     contentDescription = stringResource(R.string.ui_home_action_regenerate_content_description),
                     onClick = onReGenerate,
+                    iconOnly = iconOnly,
                 )
                 ActionButton(
                     icon = Icons.AutoMirrored.Filled.CallSplit,
                     contentDescription = stringResource(R.string.ui_home_action_fork_content_description),
                     onClick = onFork,
+                    iconOnly = iconOnly,
                 )
             } else {
                 ActionButton(
                     icon = Icons.Default.Refresh,
                     contentDescription = stringResource(R.string.ui_home_action_regenerate_content_description),
                     onClick = onReGenerate,
+                    iconOnly = iconOnly,
                 )
                 ActionButton(
                     icon = Icons.Default.Undo,
                     contentDescription = stringResource(R.string.ui_home_action_rewind_content_description),
                     onClick = onRewind,
+                    iconOnly = iconOnly,
                 )
             }
         }
@@ -575,25 +586,36 @@ private fun ActionButton(
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
+    iconOnly: Boolean,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val containerColor = colorScheme.surfaceVariant.copy(alpha = 0.72f)
-    val contentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
     val shape = G2CardShape(14.dp)
 
     Box(
         modifier = Modifier
             .size(38.dp)
-            .clip(shape)
-            .background(containerColor, shape)
-            .clickable(onClick = onClick),
+            .then(
+                if (iconOnly) {
+                    Modifier
+                } else {
+                    Modifier
+                        .clip(shape)
+                        .background(colorScheme.surfaceVariant.copy(alpha = 0.72f), shape)
+                }
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                // iconOnly 无背景：波纹会重新暴露按钮矩形，直接禁用点击指示
+                indication = if (iconOnly) null else LocalIndication.current,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
             modifier = Modifier.size(20.dp),
-            tint = contentColor,
+            tint = colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
         )
     }
 }

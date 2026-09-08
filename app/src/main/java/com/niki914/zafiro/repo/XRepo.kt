@@ -335,6 +335,23 @@ object XRepo {
         }
     }
 
+    /** 消息操作行常显开关的进程内热更新通道：读时回填初值，写时同步。 */
+    val alwaysShowMessageActionsSetting = MutableStateFlow(true)
+
+    suspend fun alwaysShowMessageActions(): Boolean {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .alwaysShowMessageActions
+            .also { alwaysShowMessageActionsSetting.value = it }
+    }
+
+    suspend fun setAlwaysShowMessageActions(value: Boolean) {
+        alwaysShowMessageActionsSetting.value = value
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(alwaysShowMessageActions = value))
+        }
+    }
+
     suspend fun themeMode(): String {
         return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).themeMode
     }

@@ -74,6 +74,12 @@ private object DefaultHomeConversationStore : HomeConversationStore {
 
 enum class ActionSource { User, Agent }
 
+/**
+ * 消息操作行显示模式：OnTap 点击消息弹出、再点收起；
+ * Always 常显、永不收回，按钮去背景只留图标（降噪音）。
+ */
+enum class MessageActionsDisplay { OnTap, Always }
+
 enum class HomeToolState {
     Running,
     Succeeded,
