@@ -22,6 +22,9 @@ enum class PermissionState {
     DENIED_BY_USER,
     UNAVAILABLE,
     FAILED,
+
+    /** 无法静默得知（如 root 嗅探会拉起授权）。非成功也非失败，链中视为未成功继续降级 */
+    UNKNOWN,
 }
 
 /** 版本门槛，一等公民。引擎读取，不直接碰 Build.VERSION */
