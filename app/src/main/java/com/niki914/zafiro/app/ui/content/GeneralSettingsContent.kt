@@ -33,6 +33,7 @@ import kotlinx.coroutines.runBlocking
 private const val LANGUAGE_ROW_ID = "general.language"
 private const val APPEARANCE_ROW_ID = "general.appearance"
 private const val LOAD_LAST_ROW_ID = "general.load_last"
+private const val ALWAYS_SHOW_ACTIONS_ROW_ID = "general.always_show_message_actions"
 private const val IDLE_TIMEOUT_ROW_ID = "general.idle_timeout"
 private const val RETRY_ATTEMPTS_ROW_ID = "general.retry_attempts"
 private const val KEEP_SCREEN_ON_ROW_ID = "general.keep_screen_on"
@@ -70,6 +71,7 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     var savedLanguageTag by rememberSaveable { mutableStateOf<String?>(null) }
     var loadLastConversation by rememberSaveable { mutableStateOf(false) }
+    var alwaysShowMessageActions by rememberSaveable { mutableStateOf(true) }
     var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var idleTimeoutSeconds by rememberSaveable { mutableStateOf(60L) }
     var retryMaxAttempts by rememberSaveable { mutableStateOf(3) }
@@ -81,6 +83,7 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
         runCatching {
             savedLanguageTag = XRepo.languageTag()
             loadLastConversation = XRepo.loadLastConversationOnStartup()
+            alwaysShowMessageActions = XRepo.alwaysShowMessageActions()
             idleTimeoutSeconds = XRepo.llmIdleTimeoutSeconds()
             retryMaxAttempts = XRepo.llmRetryMaxAttempts()
             keepScreenOn = XRepo.keepScreenOn()
@@ -114,6 +117,11 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
                         id = LOAD_LAST_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_load_last_conversation),
                         checked = loadLastConversation,
+                    ),
+                    SettingsRowSpec.Toggle(
+                        id = ALWAYS_SHOW_ACTIONS_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_always_show_message_actions),
+                        checked = alwaysShowMessageActions,
                     ),
                     SettingsRowSpec.Navigation(
                         id = IDLE_TIMEOUT_ROW_ID,
@@ -155,6 +163,11 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
                         loadLastConversation = action.checked
                         scope.launch {
                             XRepo.setLoadLastConversationOnStartup(action.checked)
+                        }
+                    } else if (action.id == ALWAYS_SHOW_ACTIONS_ROW_ID) {
+                        alwaysShowMessageActions = action.checked
+                        scope.launch {
+                            XRepo.setAlwaysShowMessageActions(action.checked)
                         }
                     } else if (action.id == KEEP_SCREEN_ON_ROW_ID) {
                         keepScreenOn = action.checked
