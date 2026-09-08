@@ -369,6 +369,7 @@
     <string name="ui_settings_general_retry_summary">请求失败后的自动重试</string>
     <string name="ui_settings_general_keep_screen_on">回答期间保持屏幕常亮</string>
     <string name="ui_settings_general_keep_screen_on_summary">回答与工具执行期间保持屏幕常亮</string>
+    <string name="ui_settings_general_always_show_message_actions">总是显示消息操作</string>
     <string name="ui_settings_saved_configuration_title">已保存配置</string>
     <string name="ui_settings_saved_configuration_delete_title">删除配置</string>
     <string name="ui_settings_saved_configuration_delete_text">该配置将被删除，此操作无法恢复。</string>

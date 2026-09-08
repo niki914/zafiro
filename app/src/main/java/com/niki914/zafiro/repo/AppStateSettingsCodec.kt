@@ -27,6 +27,8 @@ internal data class AppStateSettings(
     val llmRetryMaxAttempts: Int = 3,
     /** 回答进行中保持屏幕常亮。 */
     val keepScreenOn: Boolean = true,
+    /** 消息操作行（复制/重新生成/fork 等）是否常显。 */
+    val alwaysShowMessageActions: Boolean = true,
 )
 
 internal object AppStateSettingsCodec {
@@ -47,6 +49,10 @@ internal object AppStateSettingsCodec {
             llmIdleTimeoutSeconds = root.long(LLM_IDLE_TIMEOUT_KEY, default = 60L),
             llmRetryMaxAttempts = root.int(LLM_RETRY_ATTEMPTS_KEY, default = 3),
             keepScreenOn = root.boolean(KEEP_SCREEN_ON_KEY, default = true),
+            alwaysShowMessageActions = root.boolean(
+                ALWAYS_SHOW_MESSAGE_ACTIONS_KEY,
+                default = true
+            ),
         )
     }
 
@@ -64,6 +70,7 @@ internal object AppStateSettingsCodec {
                 LLM_IDLE_TIMEOUT_KEY to JsonPrimitive(state.llmIdleTimeoutSeconds),
                 LLM_RETRY_ATTEMPTS_KEY to JsonPrimitive(state.llmRetryMaxAttempts),
                 KEEP_SCREEN_ON_KEY to JsonPrimitive(state.keepScreenOn),
+                ALWAYS_SHOW_MESSAGE_ACTIONS_KEY to JsonPrimitive(state.alwaysShowMessageActions),
             )
         ).toString()
     }
@@ -79,4 +86,5 @@ internal object AppStateSettingsCodec {
     private const val LLM_IDLE_TIMEOUT_KEY = "llm_idle_timeout_seconds"
     private const val LLM_RETRY_ATTEMPTS_KEY = "llm_retry_max_attempts"
     private const val KEEP_SCREEN_ON_KEY = "keep_screen_on"
+    private const val ALWAYS_SHOW_MESSAGE_ACTIONS_KEY = "always_show_message_actions"
 }
