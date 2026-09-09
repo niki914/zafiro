@@ -7,6 +7,7 @@ import android.provider.Settings
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
+import com.niki914.permission.Permission
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
@@ -69,10 +70,12 @@ class App : Application() {
         context: Context,
         request: ToolPermissionRequest,
     ): ToolPermissionResponse {
-        if (!Settings.canDrawOverlays(context)) {
-            if (!grantOverlayPermissionViaRoot(context)) {
-                return ToolPermissionResponse.DENIED_UNAVAILABLE
-            }
+        // ponytail: withPermissionBlocking 抛取消（Activity 销毁）时不吞，交由调用方协程处理
+        val result = PermissionHolder.get(context).scope().withPermissionBlocking(Permission.OVERLAY)
+        if (result.finalState != com.niki914.permission.PermissionState.GRANTED &&
+            !Settings.canDrawOverlays(context)
+        ) {
+            return ToolPermissionResponse.DENIED_UNAVAILABLE
         }
         // 窗口加不上（权限被收回等）≠ 用户拒绝：失败走 DENIED_UNAVAILABLE
         val allowed = try {
@@ -85,17 +88,6 @@ class App : Application() {
         } else {
             ToolPermissionResponse.DENIED_BY_USER
         }
-    }
-
-    private fun grantOverlayPermissionViaRoot(context: Context): Boolean {
-        return try {
-            val proc = Runtime.getRuntime().exec(
-                arrayOf("su", "-c", "appops set ${context.packageName} SYSTEM_ALERT_WINDOW allow")
-            )
-            proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS) && proc.exitValue() == 0
-        } catch (_: Exception) {
-            false
-        } && Settings.canDrawOverlays(context)
     }
 
     private fun isPythonWorkerProcess(): Boolean {

@@ -1,12 +1,9 @@
 package com.niki914.zafiro.app
 
-import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.activity.result.ActivityResultLauncher
-import androidx.core.content.ContextCompat
 import com.niki914.store.HostApp
 import com.niki914.store.XValues
 import com.niki914.xposed.api.util.OsFamily
@@ -35,32 +32,6 @@ fun Context.getInstalledPackageVersion(packageName: String): InstalledPackageVer
         InstalledPackageVersion(versionName = pi.versionName, versionCode = versionCode)
     } catch (_: PackageManager.NameNotFoundException) {
         null
-    }
-}
-
-object NotificationPermissionGate {
-    private var launcher: ActivityResultLauncher<String>? = null
-
-    fun init(launcher: ActivityResultLauncher<String>) {
-        this.launcher = launcher
-    }
-
-    fun isGranted(context: Context): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS,
-                ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    /** Request the permission dialog. No-op if already granted or launcher not ready. */
-    fun requestIfNeeded(context: Context) {
-        if (isGranted(context)) return
-        try {
-            launcher?.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } catch (_: Exception) {
-            // Activity not in resumed state — skip, caller will retry next time
-        }
     }
 }
 

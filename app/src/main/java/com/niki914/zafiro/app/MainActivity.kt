@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
 import com.niki914.zafiro.app.ui.ZafiroApp
+import com.niki914.permission.PermissionManager
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.chat.LLMController
@@ -32,16 +33,23 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    // ponytail: launcher 必须在 STARTED 前注册，由门面 UiGate 持有结果路由（决策 1：launcher 注入）
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) {}
+    ) { granted ->
+        PermissionHolder.ui.onNotificationResult(granted)
+    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        NotificationPermissionGate.init(notificationPermissionLauncher)
+        PermissionManager.installNotificationLauncher(
+            PermissionHolder.ui,
+            notificationPermissionLauncher,
+        )
+        PermissionHolder.get(this).bind(this)
         val startupAssistantUi = resolveStartupAssistantUi()
         val launchDecision = runBlocking {
             val decision = AppLaunchDecision.resolve(startupAssistantUi)
@@ -86,12 +94,19 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         isResumed = true
         ToolPermissionCoordinator.isUiResumed = true
+        // JUMP_SETTINGS 通道：resume 代数推进，唤醒等设置页返回的请求
+        PermissionHolder.ui.onActivityResumed()
     }
 
     override fun onPause() {
         super.onPause()
         isResumed = false
         ToolPermissionCoordinator.isUiResumed = false
+    }
+
+    override fun onDestroy() {
+        PermissionHolder.get(this).unbind()
+        super.onDestroy()
     }
 
     companion object {
