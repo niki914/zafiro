@@ -102,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         isResumed = false
         ToolPermissionCoordinator.isUiResumed = false
+        PermissionHolder.ui.onActivityPaused()
     }
 
     override fun onDestroy() {
