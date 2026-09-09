@@ -18,8 +18,7 @@ import kotlinx.coroutines.runBlocking
  * MainActivity：onCreate 预注册 launcher → `ui.notificationLauncher = launcher`、
  * onResume 转发 `ui.onActivityResumed()`、onDestroy 调 `pm.unbind()`。
  *
- * 宿主进程（无 UI）：`PermissionManager.createShellOnly(context)`，只注册 shell 通道，
- * UI 通道未 bind 恒 UNAVAILABLE。
+ * 仅主进程：全部业务经 Binder 收敛于主进程，宿主进程禁止直连。
  */
 class PermissionManager private constructor(
     private val engine: PermissionEngine,
@@ -75,24 +74,6 @@ class PermissionManager private constructor(
                 ),
             )
             return PermissionManager(engine, ui)
-        }
-
-        /** 宿主侧：只注册 shell 通道，无 UiGate */
-        fun createShellOnly(
-            context: Context,
-            accessibilityService: ComponentName? = null,
-        ): PermissionManager {
-            val app = context.applicationContext
-            val root = RootShellHandler(app, app.packageName, accessibilityService)
-            val shizuku = ShizukuHandler(app, app.packageName, accessibilityService)
-            val engine = PermissionEngine(
-                currentApi = Build.VERSION.SDK_INT,
-                handlers = mapOf(
-                    Channel.ROOT_SHELL to root,
-                    Channel.SHIZUKU to shizuku,
-                ),
-            )
-            return PermissionManager(engine, null)
         }
 
         private fun queryTarget(

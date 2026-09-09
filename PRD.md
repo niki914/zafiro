@@ -130,10 +130,13 @@ libs/permission-manager/   # 新模块，与 libterm 平级
 1. [已完成] `NotificationPermissionGate` 删除，通知申请走 PermissionManager，行为不变。
    真机验证：`SystemDialogHandler: request(NOTIFICATION): granted=true`。
 2. [已完成] `App.grantOverlayPermissionViaRoot` 删除，悬浮窗授权走 PermissionManager，
-   `handleBackgroundConfirmation` 改调 `withPermissionBlocking`。
+   `handleBackgroundConfirmation` 改调挂起式 `withPermission`。
    真机验证：`RootShellHandler: exec [appops set ...] exit=0` → `OVERLAY -> GRANTED`。
-3. [待做] `AccessibilityController.ensureService` 降级逻辑改调 PermissionManager，
-   `attempts` 用于拼装给 LLM 的报错文案。
+3. [已完成] `AccessibilityController.ensureService` 降级逻辑改调 PermissionManager，
+   `attempts` 用于拼装给 LLM 的报错文案；申请前置屏幕控制知情同意
+   （前台弹窗，后台直接拒绝，拒绝不记忆）。
+   真机验证：`RootShellHandler: exec [settings put secure ...] exit=0` 或
+   `JumpSettingsHandler: request(ACCESSIBILITY): recheck=GRANTED`。
 4. [已完成] JUMP_SETTINGS 通道：跳设置 → 返回后复查一次 status()，返回真实结果，
    符合 request() 契约。实现：`UiGate` resume 代数 + 60s 超时复查；未 bind 报 UNAVAILABLE。
 5. [已完成] 单测：FakeChannelHandler 覆盖链语义（成功短路、UNAVAILABLE 降级、DENIED 继续、

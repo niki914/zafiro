@@ -3,7 +3,6 @@ package com.niki914.zafiro.app
 import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
-import android.provider.Settings
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
@@ -73,11 +72,12 @@ class App : Application() {
         context: Context,
         request: ToolPermissionRequest,
     ): ToolPermissionResponse {
-        // ponytail: withPermissionBlocking 抛取消（Activity 销毁）时不吞，交由调用方协程处理
-        val result = PermissionHolder.get(context).scope().withPermissionBlocking(Permission.OVERLAY)
-        if (result.finalState != com.niki914.permission.PermissionState.GRANTED &&
-            !Settings.canDrawOverlays(context)
-        ) {
+        // ponytail: 挂起式等链路结果，不占线程；取消（Activity 销毁）时不吞，交由调用方协程处理
+        var granted = false
+        PermissionHolder.get(context).scope().withPermission(Permission.OVERLAY) { result ->
+            granted = result.finalState == com.niki914.permission.PermissionState.GRANTED
+        }
+        if (!granted) {
             return ToolPermissionResponse.DENIED_UNAVAILABLE
         }
         // 窗口加不上（权限被收回等）≠ 用户拒绝：失败走 DENIED_UNAVAILABLE
