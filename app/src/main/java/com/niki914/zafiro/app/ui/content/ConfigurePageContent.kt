@@ -38,6 +38,9 @@ fun ConfigurePageContent(
     onComplete: () -> Unit,
     onConfirmEndpointMismatch: () -> Unit = {},
     onCancelEndpointMismatch: () -> Unit = {},
+    onShowModelCatalogSheet: () -> Unit = {},
+    onHideModelCatalogSheet: () -> Unit = {},
+    onSelectCatalogModel: (String) -> Unit = {},
     requestedFocusField: ConfigureEditableField? = null,
     onRequestedFocusHandled: () -> Unit = {},
 ) {
@@ -84,6 +87,7 @@ fun ConfigurePageContent(
             onModelChange = onModelChange,
             onApiKeyChange = onApiKeyChange,
             onToggleApiKeyVisibility = onToggleApiKeyVisibility,
+            onShowModelCatalogSheet = onShowModelCatalogSheet,
         )
 
         ConfigureProtocolSettingsBlock(
@@ -99,6 +103,14 @@ fun ConfigurePageContent(
         mismatch = uiState.pendingEndpointMismatch,
         onConfirm = onConfirmEndpointMismatch,
         onCancel = onCancelEndpointMismatch,
+    )
+
+    ModelCatalogSheet(
+        visible = uiState.showModelCatalogSheet,
+        catalog = uiState.modelCatalog,
+        currentModelInput = uiState.modelInput,
+        onDismissRequest = onHideModelCatalogSheet,
+        onSelect = onSelectCatalogModel,
     )
 }
 

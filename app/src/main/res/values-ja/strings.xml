@@ -19,6 +19,10 @@
     <string name="ui_onboard_configure_model_label">モデル名</string>
     <string name="ui_onboard_configure_model_placeholder">モデル名を入力</string>
     <string name="ui_onboard_configure_model_example">例：%1$s</string>
+    <string name="ui_onboard_configure_model_catalog_open">モデルを選択</string>
+    <string name="ui_onboard_configure_model_catalog_title">モデルを選択</string>
+    <string name="ui_onboard_configure_model_catalog_search_placeholder">モデルを検索</string>
+    <string name="ui_onboard_configure_model_catalog_empty">一致するモデルがありません</string>
     <string name="ui_onboard_configure_api_key_label">API キー</string>
     <string name="ui_onboard_configure_api_key_placeholder">API キーを入力</string>
     <string name="ui_onboard_configure_api_key_show">API キーを表示</string>

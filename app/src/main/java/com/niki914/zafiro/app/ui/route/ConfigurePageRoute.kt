@@ -100,6 +100,9 @@ internal fun ConfigurePageRoute(
         onComplete = { viewModel.sendIntent(ConfigureIntent.Save) },
         onConfirmEndpointMismatch = { viewModel.sendIntent(ConfigureIntent.ConfirmEndpointMismatch) },
         onCancelEndpointMismatch = { viewModel.sendIntent(ConfigureIntent.CancelEndpointMismatch) },
+        onShowModelCatalogSheet = { viewModel.sendIntent(ConfigureIntent.ShowModelCatalogSheet) },
+        onHideModelCatalogSheet = { viewModel.sendIntent(ConfigureIntent.HideModelCatalogSheet) },
+        onSelectCatalogModel = { viewModel.sendIntent(ConfigureIntent.SelectCatalogModel(it)) },
         requestedFocusField = pendingFocusField,
         onRequestedFocusHandled = {
             pendingFocusField = null

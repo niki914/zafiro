@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -54,6 +55,8 @@ fun SettingExpandableTextItem(
     toggleSecretVisibleContentDescription: String? = null,
     toggleSecretHiddenContentDescription: String? = null,
     onExpandedChange: ((Boolean) -> Unit)? = null,
+    /** 展开后输入框行的尾部内容（如模型扫描按钮）；null = 输入框占满。 */
+    fieldTrailingContent: (@Composable () -> Unit)? = null,
 ) {
     var internalExpanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     val isExpanded = expanded ?: internalExpanded
@@ -92,6 +95,7 @@ fun SettingExpandableTextItem(
                 updateExpanded(!isExpanded)
             }
         },
+        fieldTrailingContent = fieldTrailingContent,
         modifier = modifier,
     )
 }
@@ -113,6 +117,7 @@ internal fun SettingExpandableTextItemContent(
     toggleSecretHiddenContentDescription: String?,
     focusRequester: FocusRequester,
     onToggleExpanded: () -> Unit,
+    fieldTrailingContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val animationSpec = tween<IntSize>(durationMillis = 320, easing = FastOutSlowInEasing)
@@ -191,42 +196,56 @@ internal fun SettingExpandableTextItemContent(
 
         if (expanded) {
             Spacer(modifier = Modifier.height(12.dp))
-            if (usesSecretField) {
-                LiquidSecretTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    placeholder = placeholder,
-                    visible = secretVisible,
-                    onToggleVisibility = requireNotNull(onToggleSecretVisibility),
-                    toggleVisibleContentDescription = requireNotNull(
-                        toggleSecretVisibleContentDescription,
-                    ),
-                    toggleHiddenContentDescription = requireNotNull(
-                        toggleSecretHiddenContentDescription,
-                    ),
-                    enabled = enabled,
-                    singleLine = singleLine,
-                    moveCursorToEndOnFocus = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = fieldMinHeight)
-                        .focusRequester(focusRequester),
-                )
+            @Composable
+            fun fieldContent(fieldModifier: Modifier) {
+                if (usesSecretField) {
+                    LiquidSecretTextField(
+                        value = value,
+                        onValueChange = onValueChange,
+                        placeholder = placeholder,
+                        visible = secretVisible,
+                        onToggleVisibility = requireNotNull(onToggleSecretVisibility),
+                        toggleVisibleContentDescription = requireNotNull(
+                            toggleSecretVisibleContentDescription,
+                        ),
+                        toggleHiddenContentDescription = requireNotNull(
+                            toggleSecretHiddenContentDescription,
+                        ),
+                        enabled = enabled,
+                        singleLine = singleLine,
+                        moveCursorToEndOnFocus = true,
+                        modifier = fieldModifier
+                            .heightIn(min = fieldMinHeight)
+                            .focusRequester(focusRequester),
+                    )
+                } else {
+                    LiquidTextField(
+                        value = value,
+                        onValueChange = onValueChange,
+                        placeholder = placeholder,
+                        enabled = enabled,
+                        singleLine = singleLine,
+                        minLines = minLines,
+                        maxLines = maxLines,
+                        moveCursorToEndOnFocus = true,
+                        modifier = fieldModifier
+                            .heightIn(min = fieldMinHeight)
+                            .focusRequester(focusRequester),
+                    )
+                }
+            }
+            val trailing = fieldTrailingContent
+            if (trailing != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    fieldContent(Modifier.weight(1f))
+                    trailing()
+                }
             } else {
-                LiquidTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    placeholder = placeholder,
-                    enabled = enabled,
-                    singleLine = singleLine,
-                    minLines = minLines,
-                    maxLines = maxLines,
-                    moveCursorToEndOnFocus = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = fieldMinHeight)
-                        .focusRequester(focusRequester),
-                )
+                fieldContent(Modifier.fillMaxWidth())
             }
         }
     }

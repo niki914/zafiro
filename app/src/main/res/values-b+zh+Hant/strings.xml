@@ -19,6 +19,10 @@
     <string name="ui_onboard_configure_model_label">模型 ID</string>
     <string name="ui_onboard_configure_model_placeholder">輸入模型 ID</string>
     <string name="ui_onboard_configure_model_example">例如：%1$s</string>
+    <string name="ui_onboard_configure_model_catalog_open">選擇模型</string>
+    <string name="ui_onboard_configure_model_catalog_title">選擇模型</string>
+    <string name="ui_onboard_configure_model_catalog_search_placeholder">搜尋模型</string>
+    <string name="ui_onboard_configure_model_catalog_empty">無相符模型</string>
     <string name="ui_onboard_configure_api_key_label">API Key</string>
     <string name="ui_onboard_configure_api_key_placeholder">輸入 API Key</string>
     <string name="ui_onboard_configure_api_key_show">顯示 API Key</string>

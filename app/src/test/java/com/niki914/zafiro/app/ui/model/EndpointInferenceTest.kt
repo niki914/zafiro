@@ -241,6 +241,43 @@ class EndpointInferenceTest {
     }
 
     @Test
+    fun `modelsUrl derives models endpoint preserving version segment`() {
+        assertEquals(
+            "https://api.openai.com/v1/models",
+            EndpointInference.modelsUrl(
+                "https://api.openai.com/v1/chat/completions",
+                LlmProtocol.OpenAiChatCompletions,
+            ),
+        )
+        assertEquals(
+            "https://dashscope.aliyuncs.com/compatible-mode/v1/models",
+            EndpointInference.modelsUrl(
+                "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+                LlmProtocol.OpenAiChatCompletions,
+            ),
+        )
+        assertEquals(
+            "https://api.deepseek.com/models",
+            EndpointInference.modelsUrl(
+                "https://api.deepseek.com/chat/completions",
+                LlmProtocol.OpenAiChatCompletions,
+            ),
+        )
+        assertEquals(
+            "https://api.anthropic.com/v1/models",
+            EndpointInference.modelsUrl(
+                "https://api.anthropic.com/v1/messages",
+                LlmProtocol.AnthropicMessages,
+            ),
+        )
+    }
+
+    @Test
+    fun `modelsUrl returns null for blank endpoint`() {
+        assertEquals(null, EndpointInference.modelsUrl("  ", LlmProtocol.OpenAiResponses))
+    }
+
+    @Test
     fun `openai spec endpoint matches its default protocol`() {
         // OpenAI officialEndpoint 与 defaultProtocol 必须自洽，否则新建即不匹配
         val openai = ProviderSpecs.find("openai")
