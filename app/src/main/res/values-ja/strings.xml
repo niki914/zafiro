@@ -192,6 +192,10 @@
     <string name="tool_permission_matched_rule">一致したルール「%1$s」</string>
     <string name="tool_permission_allow">今回のみ許可</string>
     <string name="tool_permission_deny">拒否</string>
+    <string name="screen_control_consent_title">画面操作権限のリクエスト</string>
+    <string name="screen_control_consent_body">Zafiro が画面を操作するには次の権限が必要です：\n1. ユーザー補助サービス：UI の読み取りとタップの実行\n2. 他のアプリの上に重ねて表示：ポインターインジケーターの表示\n\nこの後、システムの許可ダイアログや設定画面が表示される場合があります。</string>
+    <string name="screen_control_consent_agree">同意</string>
+    <string name="screen_control_consent_deny">拒否</string>
     <string name="execution_rules_field_patterns">ルール</string>
     <string name="execution_rules_field_patterns_hint">例：\brm\s+-rf\b</string>
     <string name="execution_rules_field_patterns_description">1行につき1つのキーワードまたは正規表現を入力します。いずれかにマッチした場合、そのコマンドをブロックします。</string>

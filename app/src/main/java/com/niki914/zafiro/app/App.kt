@@ -12,6 +12,7 @@ import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.overlay.ToolPermissionOverlay
+import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionRequest
@@ -64,6 +65,8 @@ class App : Application() {
         ToolPermissionCoordinator.backgroundConfirmationHandler = { request ->
             handleBackgroundConfirmation(this, request)
         }
+        // 全部权限走 PermissionManager：ensureService 的门面注入（主 App 进程）。
+        AccessibilityController.permissions = PermissionHolder.get(this)
     }
 
     private suspend fun handleBackgroundConfirmation(

@@ -193,6 +193,10 @@
     <string name="tool_permission_matched_rule">Matched rule "%1$s"</string>
     <string name="tool_permission_allow">Allow once</string>
     <string name="tool_permission_deny">Deny</string>
+    <string name="screen_control_consent_title">Screen control permission request</string>
+    <string name="screen_control_consent_body">Zafiro needs these permissions to control the screen:\n1. Accessibility service: read the UI and perform taps\n2. Display over other apps: show the pointer indicator\n\nA system prompt or a Settings page may appear next.</string>
+    <string name="screen_control_consent_agree">Agree</string>
+    <string name="screen_control_consent_deny">Deny</string>
     <string name="execution_rules_field_patterns">Patterns</string>
     <string name="execution_rules_field_patterns_hint">For example: \brm\s+-rf\b</string>
     <string name="execution_rules_field_patterns_description">Enter one keyword or regular expression per line. The command is blocked as soon as any rule matches.</string>

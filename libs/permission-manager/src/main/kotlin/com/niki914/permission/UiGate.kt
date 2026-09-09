@@ -16,6 +16,11 @@ class UiGate {
     var activity: Activity? = null
         private set
 
+    /** 应用是否前台（MainActivity onResume/onPause 转发）。后台不跳设置页、不弹窗。 */
+    @Volatile
+    var isResumed: Boolean = false
+        private set
+
     @Volatile
     var notificationLauncher: ActivityResultLauncher<String>? = null
 
@@ -44,11 +49,17 @@ class UiGate {
 
     /** MainActivity.onResume 转发，每次调用推进一代并唤醒等待者。 */
     fun onActivityResumed() {
+        isResumed = true
         val waiters = synchronized(lock) {
             resumeGen++
             resumeWaiters.toList().also { resumeWaiters.clear() }
         }
         waiters.forEach { if (it.isActive) it.resume(Unit) }
+    }
+
+    /** MainActivity.onPause 转发。 */
+    fun onActivityPaused() {
+        isResumed = false
     }
 
     fun currentGeneration(): Long = synchronized(lock) { resumeGen }

@@ -9,6 +9,7 @@ import android.provider.Settings
 import com.niki914.logging.Logger
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * SYSTEM_DIALOG 通道（minSdk 33；<33 的 NOTIFICATION 恒 GRANTED，request 走不到这）。
@@ -78,6 +79,18 @@ class JumpSettingsHandler(
             Logger.d(TAG, "request($permission): not bound -> UNAVAILABLE")
             return PermissionState.UNAVAILABLE
         }
+        if (!ui.isResumed) {
+            // 刚从系统授权框回来时 resume 回调可能还没到：等一次（2s），等不到才放弃。
+            // 后台真实场景：2s 内无 resume → UNKNOWN 收尾，不跳页骚扰。
+            val fgGen = ui.currentGeneration()
+            withTimeoutOrNull(FOREGROUND_WAIT_MILLIS) {
+                ui.awaitResumeAfter(fgGen)
+            }
+            if (!ui.isResumed) {
+                Logger.d(TAG, "request($permission): app in background, skip jump -> UNKNOWN")
+                return PermissionState.UNKNOWN
+            }
+        }
         val intent = defaultIntent(context, permission, packageName)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val gen = ui.currentGeneration()
@@ -113,6 +126,7 @@ class JumpSettingsHandler(
     companion object {
         const val TAG = "JumpSettingsHandler"
         const val SETTINGS_RETURN_TIMEOUT_MILLIS = 60_000L
+        const val FOREGROUND_WAIT_MILLIS = 2_000L
 
         fun defaultIntent(context: Context, permission: Permission, packageName: String): Intent =
             when (permission) {

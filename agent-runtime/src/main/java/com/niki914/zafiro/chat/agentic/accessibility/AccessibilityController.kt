@@ -6,16 +6,18 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
-import android.content.Intent
-import android.net.Uri
 import android.os.SystemClock
-import android.provider.Settings
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT
+import com.niki914.permission.Channel
+import com.niki914.permission.Permission
+import com.niki914.permission.PermissionManager
+import com.niki914.permission.PermissionResult
+import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.currentVersion
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.ensureService
@@ -84,7 +86,13 @@ object AccessibilityController {
 
     private var shellSessionHandle: String? = null
     private var shellIdentity: ShellIdentity = ShellIdentity.NONE
-    private var accessibilitySettingsOpened: Boolean = false
+
+    /**
+     * 主 App 进程在启动时注入（App.onCreate）。全部权限申请走它；
+     * 宿主进程不直连 AccessibilityController，无需 shell-only 注册。
+     */
+    @Volatile
+    var permissions: PermissionManager? = null
 
     private enum class ShellIdentity { ROOT, SHIZUKU, USER, NONE }
 
@@ -182,114 +190,48 @@ object AccessibilityController {
     /**
      * Ensures the accessibility service is connected.
      *
-     * Tries root first, then shizuku, to enable the service via settings put secure.
-     * If neither can write secure settings, opens the accessibility settings page
-     * for manual setup (once per process lifetime).
+     * 知情门（链外）：无障碍与悬浮窗缺一不可，任一未授权即先要同意；拒绝不记忆。
+     * 逐个确保：申请前活查 status()，已授权直接跳过，缺失才跑各自默认链
+     * （ROOT_SHELL → SHIZUKU → JUMP_SETTINGS），跑完复查一次。
      */
     suspend fun ensureService(): Result<Unit> {
         if (serviceInstance != null) return Result.success(Unit)
 
-        val ctx = ContextProvider.await()
-        val serviceName = "${ctx.packageName}/.mod.feat.ZafiroAccessibilityService"
-
-        // Try root, then shizuku to enable the accessibility service.
-        // Each attempt runs a real command and checks exit codes — a
-        // TerminalCommandOutcome.Success only means the terminal returned,
-        // not that the command succeeded. A denied root prompt may produce
-        // a non-root shell whose settings commands return non-zero.
-        var canWriteSettings = false
-        for (identity in listOf("root", "shizuku")) {
-            val openOutcome = TerminalSessionPool.openAndExecute(
-                identity = identity,
-                cwd = null,
-                command = "settings get secure enabled_accessibility_services",
-                timeoutMs = 15_000L,
+        val pm = permissions
+            ?: return Result.failure(
+                RuntimeException("PermissionManager not installed (App.onCreate must set AccessibilityController.permissions)")
             )
-            if (openOutcome !is TerminalCommandOutcome.Success) continue
-            val getExitCode = openOutcome.result.exitCode ?: -1
-            if (getExitCode != 0) {
-                TerminalSessionPool.close(openOutcome.session)
-                continue
-            }
 
-            val stdout = openOutcome.result.stdout.toByteArray().decodeToString().trim()
-            val existing = stdout
-                .takeUnless { it.isBlank() || it == "null" }
-                ?.split(":")
-                .orEmpty()
-                .filter { it.isNotBlank() }
-                .toMutableSet()
-            existing += serviceName
-            val newValue = existing.joinToString(":")
-
-            val putServices = TerminalSessionPool.executeBlocking(
-                openOutcome.session,
-                "settings put secure enabled_accessibility_services $newValue",
-                10_000L,
+        // 知情门（链外，引擎保持尽力尝试）：无障碍与悬浮窗缺一不可，任一未授权即先要同意。
+        // 后台弹不了窗 → 直接拒绝；拒绝不记忆，下次申请会再弹。
+        val needsAccess = pm.status(Permission.ACCESSIBILITY) != PermissionState.GRANTED
+        val needsOverlay = pm.status(Permission.OVERLAY) != PermissionState.GRANTED
+        if ((needsAccess || needsOverlay) && !ScreenControlConsent.request()) {
+            return Result.failure(
+                RuntimeException(
+                    "User declined screen-control consent (accessibility + overlay). " +
+                            "Tell the user these permissions are required for screen control; " +
+                            "they can retry or grant them manually in Settings."
+                )
             )
-            if (putServices !is TerminalCommandOutcome.Success || (putServices.result.exitCode
-                    ?: -1) != 0
-            ) {
-                TerminalSessionPool.close(openOutcome.session)
-                continue
-            }
-
-            val putEnabled = TerminalSessionPool.executeBlocking(
-                openOutcome.session,
-                "settings put secure accessibility_enabled 1",
-                10_000L,
-            )
-            if (putEnabled !is TerminalCommandOutcome.Success || (putEnabled.result.exitCode
-                    ?: -1) != 0
-            ) {
-                TerminalSessionPool.close(openOutcome.session)
-                continue
-            }
-
-            shellSessionHandle = openOutcome.session
-            shellIdentity = if (identity == "root") ShellIdentity.ROOT else ShellIdentity.SHIZUKU
-            canWriteSettings = true
-
-            // Grant overlay permission for pointer indicator (best-effort)
-            TerminalSessionPool.executeBlocking(
-                openOutcome.session,
-                "appops set ${ctx.packageName} SYSTEM_ALERT_WINDOW allow",
-                10_000L,
-            )
-            break
         }
 
-        if (!canWriteSettings) {
-            ensureShellSession() // fall back to user shell for basic commands
+        // 逐个确保：已授权跳过，缺失才跑链。用户最多进出设置两次，已知代价。
+        val failures = ArrayList<String>(2)
+        ensureOne(pm, Permission.ACCESSIBILITY, failures)
+        ensureOne(pm, Permission.OVERLAY, failures)
 
+        if (failures.isNotEmpty()) {
+            ensureShellSession() // fall back to user shell for basic commands
             if (serviceInstance != null) {
                 return Result.success(Unit) // user enabled it manually in a previous attempt
             }
-
-            // Cannot enable automatically — open both settings pages and fail
-            if (!accessibilitySettingsOpened) {
-                accessibilitySettingsOpened = true
-                try {
-                    ctx.startActivity(
-                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
-                    ctx.startActivity(
-                        Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:${ctx.packageName}")
-                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
-                } catch (_: Exception) {
-                }
-            }
-
             return Result.failure(
                 RuntimeException(
-                    "Zafiro cannot control this device because the Accessibility Service is not enabled, " +
-                            "and neither root nor Shizuku is available to enable it automatically. " +
-                            "Tell the user to open Settings > Accessibility and turn on 'Zafiro' manually, " +
-                            "then grant 'Display over other apps' permission."
+                    "Zafiro cannot fully control this device because required permissions were not granted. " +
+                            "Failed: ${failures.joinToString("; ")}. " +
+                            "Tell the user to open Settings, enable 'Zafiro' under Accessibility, " +
+                            "and allow 'Display over other apps'."
                 )
             )
         }
@@ -307,6 +249,37 @@ object AccessibilityController {
             Result.failure(RuntimeException("AccessibilityService did not start within 3s"))
         }
     }
+
+    /**
+     * 单个权限确保：申请前活查，已授权直接返回 true；缺失跑默认链，跑完复查一次。
+     * 失败原因记入 [failures]，调用方拼装给 LLM 的报错文案。
+     */
+    private suspend fun ensureOne(
+        pm: PermissionManager,
+        permission: Permission,
+        failures: MutableList<String>,
+    ): Boolean {
+        if (pm.status(permission) == PermissionState.GRANTED) return true
+        val result = requestPermission(pm, permission)
+        if (result.finalState == PermissionState.GRANTED) return true
+        failures += "$permission: ${chainSummary(result)}"
+        return false
+    }
+
+    /** 空 channels = 默认链。阻塞式会卡宿主 Binder 线程，挂起式 + 任一结果回调。 */
+    private suspend fun requestPermission(
+        pm: PermissionManager,
+        permission: Permission,
+        vararg channels: Channel,
+    ): PermissionResult {
+        var result: PermissionResult? = null
+        pm.scope(*channels).withPermission(permission) { result = it }
+        return requireNotNull(result)
+    }
+
+    /** 链路摘要：每环通道与状态，拼进给 LLM 的报错文案。 */
+    private fun chainSummary(result: PermissionResult): String =
+        result.attempts.joinToString(", ") { "${it.channel}=${it.state}" }
 
     /**
      * Captures the current screen's accessibility tree.
