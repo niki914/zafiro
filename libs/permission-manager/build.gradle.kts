@@ -22,6 +22,8 @@ dependencies {
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation(project(":libs:logging"))
     implementation("androidx.annotation:annotation:1.10.0")
+    // UiGate 持有 MainActivity 预注册的 launcher（决策 1：launcher 注入）
+    implementation("androidx.activity:activity:1.4.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     // shell 通道：root（libsu）+ shizuku。逻辑抄自 libterm，代码独立
