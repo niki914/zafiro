@@ -66,6 +66,7 @@ class ConfigureViewModelTest {
                     activatedIds += id
                     document = document.copy(activeId = id)
                 },
+                fetchModelCatalog = { _, _, _ -> emptyList() },
             )
     }
 
@@ -171,19 +172,19 @@ class ConfigureViewModelTest {
     }
 
     @Test
-    fun save_withBlankModel_sendsFocusEffectWithoutWriting() = runTest {
+    fun save_withBlankApiKey_sendsFocusEffectWithoutWriting() = runTest {
         val deps = RecordingDeps()
         val viewModel = ConfigureViewModel(deps.toDependencies())
         viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
         advanceUntilIdle()
         val effectDeferred = async { viewModel.uiEffect.first() }
 
-        viewModel.sendIntent(ConfigureIntent.UpdateModel(""))
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey(""))
         viewModel.sendIntent(ConfigureIntent.Save)
         advanceUntilIdle()
 
         assertTrue(deps.upserted.isEmpty())
-        assertEquals(ConfigureEffect.FocusModel, effectDeferred.await())
+        assertEquals(ConfigureEffect.FocusApiKey, effectDeferred.await())
     }
 
 
