@@ -127,8 +127,23 @@ libs/permission-manager/   # 新模块，与 libterm 平级
 
 ## 验收
 
-1. `NotificationPermissionGate` 删除，通知申请走 PermissionManager，行为不变。
-2. `App.grantOverlayPermissionViaRoot` 删除，悬浮窗授权走 PermissionManager，`handleBackgroundConfirmation` 改调 `withPermissionBlocking`。
-3. `AccessibilityController.ensureService` 降级逻辑改调 PermissionManager，`attempts` 用于拼装给 LLM 的报错文案。
-4. JUMP_SETTINGS 通道：跳设置 → 返回后复查一次 status()，返回真实结果，符合 request() 契约。
-5. 单测：FakeChannelHandler 覆盖链语义（成功短路、UNAVAILABLE 降级、DENIED 继续、链尽失败）与 minSdk 门槛。
+1. [已完成] `NotificationPermissionGate` 删除，通知申请走 PermissionManager，行为不变。
+   真机验证：`SystemDialogHandler: request(NOTIFICATION): granted=true`。
+2. [已完成] `App.grantOverlayPermissionViaRoot` 删除，悬浮窗授权走 PermissionManager，
+   `handleBackgroundConfirmation` 改调 `withPermissionBlocking`。
+   真机验证：`RootShellHandler: exec [appops set ...] exit=0` → `OVERLAY -> GRANTED`。
+3. [待做] `AccessibilityController.ensureService` 降级逻辑改调 PermissionManager，
+   `attempts` 用于拼装给 LLM 的报错文案。
+4. [已完成] JUMP_SETTINGS 通道：跳设置 → 返回后复查一次 status()，返回真实结果，
+   符合 request() 契约。实现：`UiGate` resume 代数 + 60s 超时复查；未 bind 报 UNAVAILABLE。
+5. [已完成] 单测：FakeChannelHandler 覆盖链语义（成功短路、UNAVAILABLE 降级、DENIED 继续、
+   链尽失败）与 minSdk 门槛；新增 `UiGateTest`（resume 代数、通知结果路由、unbind 取消）
+   与 `DefaultChainTest`（默认链对照表）。25 项全绿。
+
+## 冒烟方法（debug 临时自测入口）
+
+复现链路复杂时（如后台确认需大模型触发），可在关于页加一行 debug-only 的
+`PermissionSelfTestRow`：点一下按默认链依次跑 OVERLAY / NOTIFICATION / ACCESSIBILITY，
+结果打 logcat（tag `PermissionSelfTest`）并弹窗展示。验证完即删，不进正式代码。
+真机验收日志关键字：`RootShellHandler exec`（exit 码）、`SystemDialogHandler granted=`、
+`JumpSettingsHandler recheck=`。
