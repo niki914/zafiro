@@ -339,6 +339,9 @@ class ConfigureViewModel internal constructor(
                 initialSettingsSnapshot = null,
                 savedConfigs = summariesOf(document),
                 activeConfigId = document.activeId,
+                // 新会话：目录缓存不跨页复用（同 VM 复用时旧名单不清会误回填）
+                modelCatalog = emptyList(),
+                showModelCatalogSheet = false,
             )
             next
         }
@@ -371,6 +374,9 @@ class ConfigureViewModel internal constructor(
                 inlineError = null,
                 savedConfigs = summariesOf(document),
                 activeConfigId = document.activeId,
+                // 新会话：目录缓存不跨页复用（同 VM 复用时旧名单不清会误回填）
+                modelCatalog = emptyList(),
+                showModelCatalogSheet = false,
             )
             // 快照必须取自初始化后的状态，否则未修改也会被判为 dirty
             next.copy(initialSettingsSnapshot = next.toSettingsSnapshot())
@@ -411,6 +417,9 @@ class ConfigureViewModel internal constructor(
                 inlineError = null,
                 savedConfigs = summariesOf(document),
                 activeConfigId = document.activeId,
+                // 新会话：目录缓存不跨页复用（同 VM 复用时旧名单不清会误回填）
+                modelCatalog = emptyList(),
+                showModelCatalogSheet = false,
             )
             // 快照必须取自初始化后的状态，否则未修改也会被判为 dirty
             next.copy(initialSettingsSnapshot = next.toSettingsSnapshot())
@@ -418,7 +427,8 @@ class ConfigureViewModel internal constructor(
     }
 
     /** 模型目录自动拉取：50ms trailing + 取消在途 + 三元组去重 + 空值短路。
-     *  失败 = 无事发生（只记日志）；只刷新缓存，从不覆盖 modelInput。 */
+     *  缓存语义：成功覆盖（含空结果，空 = 藏按钮）；失败与空值短路保留旧缓存，只记日志；
+     *  只刷新缓存，从不覆盖 modelInput。 */
     private fun scheduleCatalogFetch(immediate: Boolean = false) {
         catalogFetchJob?.cancel()
         // 注意：handleIntent 已跑在 viewModelScope 的 intent 串行通道里；
@@ -432,7 +442,7 @@ class ConfigureViewModel internal constructor(
                 protocolWireId = state.protocolWireId,
             )
             if (key == lastCatalogKey) return@launch
-            // 空值短路：Key 或 endpoint 为空直接不发，不清空旧缓存
+            // 空值短路：Key 或 endpoint 为空直接不发，保留旧缓存
             if (key.endpoint.isBlank() || key.apiKey.isBlank()) return@launch
             val protocol = LlmProtocol.fromWire(key.protocolWireId)
             val modelsUrl = EndpointInference.modelsUrl(key.endpoint, protocol)
@@ -440,9 +450,8 @@ class ConfigureViewModel internal constructor(
             lastCatalogKey = key
             try {
                 val ids = dependencies.fetchModelCatalog(modelsUrl, key.apiKey, protocol)
-                if (ids.isNotEmpty()) {
-                    updateState { copy(modelCatalog = ids) }
-                }
+                // 成功覆盖：空结果也写入（藏按钮），失败走 catch 保留旧缓存
+                updateState { copy(modelCatalog = ids) }
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
                 Logger.w(LOG_TAG, "catalog fetch failed: ${throwable.message}")
