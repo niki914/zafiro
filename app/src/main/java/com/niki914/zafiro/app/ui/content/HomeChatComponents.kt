@@ -38,7 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -274,9 +274,6 @@ internal val UserBubbleCornerRadius = 24.dp
 /** 紧凑态 composer 最小高度：12dp 容器垂直 padding × 2 + 48sp 按钮 footprint。 */
 internal val COMPACT_COMPOSER_MIN_HEIGHT = 72.dp
 
-/** 紧凑态字符数上限：超过即切展开态（先于布局溢出信号，杜绝横向滚动）。 */
-private const val COMPACT_CHAR_LIMIT = 12
-
 /** 展开态编辑区最大行数。 */
 private const val EXPANDED_MAX_LINES = 7
 
@@ -431,22 +428,18 @@ fun LiquidChatComposer(
         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
     }
 
-    // 双态：紧凑态恒单行；文本放不下（布局 didOverflowWidth）或输入了换行符
-    // → 展开态（2..7 行）；展开态回到 1 行 → 回紧凑。字符数阈值先于溢出兜底，
-    // 保证打字过程中不会出现单行横向滚动。同一 BasicTextField + 同一玻璃容器，
-    // 切换不丢焦点、键盘不收起；按钮 bottom/左右 padding 不变。
-    var compactOverflow by remember { mutableStateOf(false) }
-    var expandedLineCount by remember { mutableIntStateOf(1) }
-    val expanded = value.contains('\n') || value.length > COMPACT_CHAR_LIMIT ||
-            compactOverflow || expandedLineCount > 1
+    // 展开唯一信号源：布局行数。观测到 lineCount > 1 即锁住展开态；
+    // expanded 本身改变测量宽度，对称条件会振荡，故回落只看文本清空。
+    // 同一 BasicTextField + 同一玻璃容器，切换不丢焦点、键盘不收起。
+    var expandedLatch by remember { mutableStateOf(false) }
+    val expanded = value.contains('\n') || expandedLatch
     val onLayout: (TextLayoutResult?) -> Unit = { layout ->
-        if (layout != null) {
-            if (expanded) {
-                expandedLineCount = layout.lineCount
-            } else {
-                compactOverflow = layout.didOverflowWidth
-            }
+        if (layout != null && !expandedLatch && layout.lineCount > 1) {
+            expandedLatch = true
         }
+    }
+    LaunchedEffect(value) {
+        if (value.isEmpty()) expandedLatch = false
     }
 
     @Composable
