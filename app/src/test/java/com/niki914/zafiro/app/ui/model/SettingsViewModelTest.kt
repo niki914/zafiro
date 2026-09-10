@@ -22,7 +22,7 @@ class SettingsViewModelTest {
             )
         )
 
-        assertEquals(4, state.sections.size)
+        assertEquals(5, state.sections.size)
         assertEquals(
             listOf(ZafiroSettingsGroup.ModelConfig),
             state.sections[0].groups,
@@ -45,6 +45,10 @@ class SettingsViewModelTest {
             ),
             state.sections[3].groups,
         )
+        assertEquals(
+            listOf(ZafiroSettingsGroup.Storage),
+            state.sections[4].groups,
+        )
     }
 
     @Test
@@ -59,6 +63,7 @@ class SettingsViewModelTest {
         assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Mcp))
         assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Takeover))
         assertTrue(state.isGroupVisible(ZafiroSettingsGroup.ExecutionRules))
+        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Storage))
         assertTrue(state.isGroupVisible(ZafiroSettingsGroup.About))
     }
 }

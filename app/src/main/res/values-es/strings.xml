@@ -126,6 +126,8 @@
     <string name="ui_settings_takeover_summary">Configurar qué entradas procesa el asistente nativo o Zafiro</string>
     <string name="ui_settings_execution_rules">Reglas de ejecución</string>
     <string name="ui_settings_execution_rules_summary">Configurar la política de seguridad para comandos Shell</string>
+    <string name="ui_settings_storage">Almacenamiento</string>
+    <string name="ui_settings_storage_summary">Borrar cachés y archivos descargados</string>
     <string name="ui_settings_about">Acerca de</string>
     <string name="ui_settings_about_summary"></string>
     <string name="ui_settings_about_description">Conecte su asistente de voz a sus propios modelos</string>
@@ -136,6 +138,23 @@
     <string name="ui_settings_about_feedback_feature">Sugerir función</string>
     <string name="ui_settings_about_feedback_bug">Notificar error</string>
     <string name="ui_settings_about_version">Versión</string>
+
+    <string name="ui_settings_storage_description">Consulta el espacio que ocupa cada caché y tócalo para borrarlo. Nunca se tocan los ajustes, los recuerdos ni las conversaciones.</string>
+    <string name="ui_settings_storage_tool_output">Caché de salida</string>
+    <string name="ui_settings_storage_tool_output_summary">Salida completa exportada de resultados truncados</string>
+    <string name="ui_settings_storage_image_cache">Caché de imágenes</string>
+    <string name="ui_settings_storage_image_cache_summary">Las imágenes de conversaciones anteriores dejarán de mostrarse</string>
+    <string name="ui_settings_storage_downloads">Archivos descargados</string>
+    <string name="ui_settings_storage_downloads_summary">Archivos descargados por el Agente durante las tareas</string>
+    <string name="ui_settings_storage_other_cache">Otras cachés</string>
+    <string name="ui_settings_storage_other_cache_summary">Archivos temporales del funcionamiento normal</string>
+    <string name="ui_settings_storage_loading">Midiendo el almacenamiento...</string>
+    <string name="ui_settings_storage_clear_dialog_title">Borrar caché</string>
+    <string name="ui_settings_storage_clear_dialog_text">¿Vaciar «%1$s»? Esta acción no se puede deshacer.</string>
+    <string name="ui_settings_storage_clear_dialog_confirm">Borrar</string>
+    <string name="ui_settings_storage_clear_dialog_cancel">Cancelar</string>
+    <string name="ui_settings_storage_error_load_failed">No se pudo medir el almacenamiento: %1$s</string>
+    <string name="ui_settings_storage_error_clear_failed">No se pudo borrar: %1$s</string>
 
     <!-- Settings Detail Shared -->
     <string name="ui_todo_page_title">Función en desarrollo</string>

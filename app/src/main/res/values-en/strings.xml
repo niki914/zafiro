@@ -126,6 +126,8 @@
     <string name="ui_settings_takeover_summary">Route matched requests to the native assistant or Zafiro</string>
     <string name="ui_settings_execution_rules">Execution Rules</string>
     <string name="ui_settings_execution_rules_summary">Set safety rules for Shell execution</string>
+    <string name="ui_settings_storage">Storage</string>
+    <string name="ui_settings_storage_summary">Clear caches and downloaded files</string>
     <string name="ui_settings_about">About</string>
     <string name="ui_settings_about_summary"></string>
     <string name="ui_settings_about_description">Bring your own model to your voice assistant</string>
@@ -136,6 +138,23 @@
     <string name="ui_settings_about_feedback_feature">Feature Requests</string>
     <string name="ui_settings_about_feedback_bug">Bug Reports</string>
     <string name="ui_settings_about_version">Version</string>
+
+    <string name="ui_settings_storage_description">See how much space each cache takes. Tap an item to clear it. Clearing never touches settings, memories, or conversations.</string>
+    <string name="ui_settings_storage_tool_output">Tool output cache</string>
+    <string name="ui_settings_storage_tool_output_summary">Exported full output of truncated tool results</string>
+    <string name="ui_settings_storage_image_cache">Image cache</string>
+    <string name="ui_settings_storage_image_cache_summary">Images in past conversations will no longer load</string>
+    <string name="ui_settings_storage_downloads">Downloaded files</string>
+    <string name="ui_settings_storage_downloads_summary">Files downloaded by the Agent during tasks</string>
+    <string name="ui_settings_storage_other_cache">Other caches</string>
+    <string name="ui_settings_storage_other_cache_summary">Temporary files from normal app operation</string>
+    <string name="ui_settings_storage_loading">Measuring storage...</string>
+    <string name="ui_settings_storage_clear_dialog_title">Clear cache</string>
+    <string name="ui_settings_storage_clear_dialog_text">Clear \"%1$s\"? This action cannot be undone.</string>
+    <string name="ui_settings_storage_clear_dialog_confirm">Clear</string>
+    <string name="ui_settings_storage_clear_dialog_cancel">Cancel</string>
+    <string name="ui_settings_storage_error_load_failed">Failed to measure storage: %1$s</string>
+    <string name="ui_settings_storage_error_clear_failed">Failed to clear: %1$s</string>
 
     <!-- Settings Detail Shared -->
     <string name="ui_todo_page_title">Coming Soon</string>

@@ -125,6 +125,8 @@
     <string name="ui_settings_takeover_summary">入力に応じてネイティブアシスタントと Zafiro のどちらが応答するかを設定</string>
     <string name="ui_settings_execution_rules">実行ルール</string>
     <string name="ui_settings_execution_rules_summary">Shell のセキュリティポリシーを設定</string>
+    <string name="ui_settings_storage">ストレージ</string>
+    <string name="ui_settings_storage_summary">キャッシュとダウンロード済みファイルを削除</string>
     <string name="ui_settings_about">アプリについて</string>
     <string name="ui_settings_about_summary"></string>
     <string name="ui_settings_about_description">音声アシスタントに独自のモデル機能を連携</string>
@@ -135,6 +137,23 @@
     <string name="ui_settings_about_feedback_feature">機能のリクエスト</string>
     <string name="ui_settings_about_feedback_bug">バグ報告</string>
     <string name="ui_settings_about_version">バージョン</string>
+
+    <string name="ui_settings_storage_description">各種キャッシュの使用量を確認し、タップして削除できます。設定・記憶・会話履歴には影響しません。</string>
+    <string name="ui_settings_storage_tool_output">ツール出力キャッシュ</string>
+    <string name="ui_settings_storage_tool_output_summary">切り詰められたツール出力のフルエクスポート</string>
+    <string name="ui_settings_storage_image_cache">画像キャッシュ</string>
+    <string name="ui_settings_storage_image_cache_summary">削除すると過去のメッセージの画像が表示できなくなります</string>
+    <string name="ui_settings_storage_downloads">ダウンロード済みファイル</string>
+    <string name="ui_settings_storage_downloads_summary">タスク中に Agent がダウンロードしたファイル</string>
+    <string name="ui_settings_storage_other_cache">その他のキャッシュ</string>
+    <string name="ui_settings_storage_other_cache_summary">通常動作で生じる一時ファイル</string>
+    <string name="ui_settings_storage_loading">ストレージを計測中...</string>
+    <string name="ui_settings_storage_clear_dialog_title">キャッシュを削除</string>
+    <string name="ui_settings_storage_clear_dialog_text">「%1$s」を空にしてもよろしいですか？この操作は取り消せません。</string>
+    <string name="ui_settings_storage_clear_dialog_confirm">削除</string>
+    <string name="ui_settings_storage_clear_dialog_cancel">キャンセル</string>
+    <string name="ui_settings_storage_error_load_failed">ストレージの計測に失敗しました：%1$s</string>
+    <string name="ui_settings_storage_error_clear_failed">削除に失敗しました：%1$s</string>
 
     <!-- Settings Detail Shared -->
     <string name="ui_todo_page_title">開発中の機能です</string>
