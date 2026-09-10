@@ -51,6 +51,7 @@
     <string name="ui_home_action_fork_content_description">Fork conversation</string>
     <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">Copied</string>
+    <string name="ui_toast_generating">Generating, please wait</string>
     <string name="ui_home_error_retry_body">Please try again later.</string>
     <string name="ui_home_error_config_required_title">Model configuration is incomplete</string>
     <string name="ui_home_error_config_required_body">Please go fill in the model configuration.</string>
