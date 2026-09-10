@@ -193,6 +193,10 @@
     <string name="tool_permission_matched_rule">Regla alcanzada: "%1$s"</string>
     <string name="tool_permission_allow">Permitir una vez</string>
     <string name="tool_permission_deny">Denegar</string>
+    <string name="screen_control_consent_title">Solicitud de permisos de control de pantalla</string>
+    <string name="screen_control_consent_body">Zafiro necesita estos permisos para controlar la pantalla:\n1. Servicio de accesibilidad: leer la interfaz y realizar toques\n2. Superponer sobre otras apps: mostrar el indicador de puntero\n\nA continuación puede aparecer un aviso del sistema o una página de ajustes.</string>
+    <string name="screen_control_consent_agree">Aceptar</string>
+    <string name="screen_control_consent_deny">Denegar</string>
     <string name="execution_rules_field_patterns">Reglas</string>
     <string name="execution_rules_field_patterns_hint">Ejemplo: \brm\s+-rf\b</string>
     <string name="execution_rules_field_patterns_description">Introduzca una palabra clave o expresión regular por línea. El comando se interceptará si coincide con cualquiera de ellas.</string>

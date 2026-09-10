@@ -85,20 +85,6 @@ class PointerOverlay : IPointerOverlay {
         view?.alpha = 0f
 
         tryAttach()
-
-        grantOverlayPermission(ctx.packageName)
-    }
-
-    private fun grantOverlayPermission(pkg: String) {
-        Thread {
-            try {
-                val proc = Runtime.getRuntime().exec(
-                    arrayOf("su", "-c", "appops set $pkg SYSTEM_ALERT_WINDOW allow")
-                )
-                proc.waitFor()
-            } catch (_: Exception) {
-            }
-        }.start()
     }
 
     // ============================================================

@@ -109,6 +109,7 @@ import com.niki914.zafiro.app.ui.model.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
+import com.niki914.zafiro.chat.agentic.accessibility.ScreenControlConsent
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.XRepo
@@ -372,6 +373,54 @@ fun HomePageContent(
     )
 
     ToolPermissionDialog()
+
+    ScreenControlConsentDialog()
+}
+
+/**
+ * 屏幕控制知情同意（无障碍 + 悬浮窗缺一不可）。权限申请前由 AccessibilityController 触发，
+ * 用户同意才进 PermissionManager 链路；拒绝不记忆，下次申请会再弹。
+ */
+@Composable
+private fun ScreenControlConsentDialog() {
+    val pending by ScreenControlConsent.pending.collectAsState()
+    if (!pending) return
+    LiquidDialog(
+        visible = true,
+        onDismissRequest = { ScreenControlConsent.respond(false) },
+        dismissOnBackgroundTap = false,
+        title = {
+            Text(
+                text = stringResource(R.string.screen_control_consent_title),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.screen_control_consent_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        actions = {
+            MaterialTintLiquidButton(
+                text = stringResource(R.string.screen_control_consent_deny),
+                onClick = { ScreenControlConsent.respond(false) },
+                modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            )
+            MaterialTintLiquidButton(
+                text = stringResource(R.string.screen_control_consent_agree),
+                onClick = { ScreenControlConsent.respond(true) },
+                modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            )
+        },
+    )
 }
 
 /**
