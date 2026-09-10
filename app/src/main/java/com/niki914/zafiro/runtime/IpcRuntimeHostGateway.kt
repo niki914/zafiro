@@ -7,7 +7,6 @@ import com.niki914.store.XIpcBridge
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.PermissionHolder
 import com.niki914.zafiro.settings.RuntimeHostGateway
-import kotlinx.coroutines.runBlocking
 
 class IpcRuntimeHostGateway : RuntimeHostGateway {
     override suspend fun postNotification(
@@ -18,12 +17,9 @@ class IpcRuntimeHostGateway : RuntimeHostGateway {
         val context = ContextProvider.await()
         val pm = PermissionHolder.get(context)
         if (pm.status(Permission.NOTIFICATION) != PermissionState.GRANTED) {
-            // ponytail: 挂起式等弹窗回调；阻塞式会卡宿主 Binder 线程，禁用
-            var posted = false
-            pm.scope().withPermission(Permission.NOTIFICATION) { result ->
-                posted = result.finalState == PermissionState.GRANTED
+            if (pm.request(Permission.NOTIFICATION).finalState != PermissionState.GRANTED) {
+                return false
             }
-            if (!posted) return false
         }
         return XIpcBridge.postNotification(
             context = context,

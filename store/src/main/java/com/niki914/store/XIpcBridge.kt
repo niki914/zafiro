@@ -1,19 +1,17 @@
 package com.niki914.store
 
-import android.Manifest
 import android.R
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.niki914.logging.Logger
+import com.niki914.permission.PermissionState
+import com.niki914.permission.TargetStatus
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -269,13 +267,8 @@ object XIpcBridge {
         content: String,
         uri: String?
     ) {
-        fun hasPermission(): Boolean {
-            return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-        if (!hasPermission()) return
+        // 只读查询只经过 TargetStatus；业务方禁止直连原生权限 API（单测扫描兜底）
+        if (TargetStatus.notification(context) != PermissionState.GRANTED) return
         ensureNotificationChannel(context)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)

@@ -1,6 +1,5 @@
 package com.niki914.zafiro.runtime.service
 
-import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,14 +7,15 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Binder
 import android.os.Build
 import android.os.DeadObjectException
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
+import com.niki914.permission.Permission
+import com.niki914.permission.PermissionState
+import com.niki914.zafiro.app.PermissionHolder
 import androidx.core.net.toUri
 import com.niki914.logging.Logger
 import com.niki914.store.HostApp
@@ -254,13 +254,10 @@ class AgentRuntimeService : Service() {
             content: String,
             contentIntent: PendingIntent?
         ) {
-            fun hasPermission(): Boolean {
-                return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || ContextCompat.checkSelfPermission(
-                    this@AgentRuntimeService,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-            }
-            if (!hasPermission()) return
+            // 只读查询只经过 PermissionManager；业务方禁止直连原生权限 API（单测扫描兜底）
+            if (PermissionHolder.get(this@AgentRuntimeService)
+                .targetStatus(Permission.NOTIFICATION) != PermissionState.GRANTED
+            ) return
             ensureNotificationChannel()
 
             val builder = NotificationCompat.Builder(this@AgentRuntimeService, STORE_CHANNEL_ID)

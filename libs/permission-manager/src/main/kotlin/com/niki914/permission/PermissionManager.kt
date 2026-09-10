@@ -5,7 +5,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.os.Build
 import androidx.activity.result.ActivityResultLauncher
-import kotlinx.coroutines.runBlocking
 
 /**
  * PRD 门面：bind/unbind + scope() API。
@@ -36,6 +35,20 @@ class PermissionManager private constructor(
     fun status(permission: Permission): PermissionState =
         engine.status(permission)
 
+    /**
+     * 只读查询出口：AgentRuntimeService 发通知前只看 NOTIFICATION 状态（静默，不跑链）。
+     * 由 TargetStatus 直出 + 引擎聚合，不拉授权、不弹窗、不跳页。
+     */
+    fun targetStatus(permission: Permission): PermissionState =
+        status(permission)
+
+    /**
+     * 默认链快捷入口：scope() 空参的等价写法。
+     * 业务能确定用哪条链时直接调这个；要自定义通道才用 scope(vararg channels)。
+     */
+    suspend fun request(permission: Permission): PermissionResult =
+        scope().request(permission)
+
     fun scope(vararg channels: Channel): ScopeBuilder =
         ScopeBuilder(engine, channels.toList())
 
@@ -45,7 +58,7 @@ class PermissionManager private constructor(
             Permission.OVERLAY, Permission.ACCESSIBILITY ->
                 listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.JUMP_SETTINGS)
             Permission.NOTIFICATION ->
-                listOf(Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS)
+                listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS)
             Permission.ROOT -> listOf(Channel.ROOT_SHELL)
             Permission.SHIZUKU -> listOf(Channel.SHIZUKU)
         }
@@ -58,11 +71,11 @@ class PermissionManager private constructor(
             val app = context.applicationContext
             val root = RootShellHandler(app, app.packageName, accessibilityService)
             val shizuku = ShizukuHandler(app, app.packageName, accessibilityService)
-            val dialog = SystemDialogHandler(ui)
             // ponytail: UI 通道的复查走同一份 TargetStatus，避免 handler 与外部查询口径分叉
             val statusQuery: (Permission) -> PermissionState = { p ->
                 queryTarget(app, p, accessibilityService)
             }
+            val dialog = SystemDialogHandler(ui)
             val jump = JumpSettingsHandler(app, ui, app.packageName, statusQuery)
             val engine = PermissionEngine(
                 currentApi = Build.VERSION.SDK_INT,
@@ -88,10 +101,6 @@ class PermissionManager private constructor(
             Permission.ROOT, Permission.SHIZUKU -> PermissionState.UNKNOWN
         }
 
-        /** MainActivity 预注册的 launcher 注入点（决策 1：launcher 注入，不内部注册） */
-        fun installNotificationLauncher(ui: UiGate, launcher: ActivityResultLauncher<String>) {
-            ui.notificationLauncher = launcher
-        }
     }
 }
 
@@ -100,21 +109,11 @@ class ScopeBuilder internal constructor(
     private val channels: List<Channel>,
 ) {
     /**
-     * 挂起式：回调跑在调用方协程上下文。
-     * 空 scope = 用该 permission 的默认链。
+     * 空 scope = 用该 permission 的默认链；传了 channels 就按传入顺序跑。
+     * 挂起式：不占线程等回调；阻塞式会卡 Binder 线程，不提供。
      */
-    suspend fun withPermission(
-        permission: Permission,
-        onResult: (PermissionResult) -> Unit,
-    ) {
+    suspend fun request(permission: Permission): PermissionResult {
         val chain = channels.ifEmpty { PermissionManager.defaultChain(permission) }
-        onResult(engine.request(permission, chain))
+        return engine.request(permission, chain)
     }
-
-    /** 阻塞式：给 handleBackgroundConfirmation 这类同步回调桥用 */
-    fun withPermissionBlocking(permission: Permission): PermissionResult =
-        runBlocking {
-            val chain = channels.ifEmpty { PermissionManager.defaultChain(permission) }
-            engine.request(permission, chain)
-        }
 }
