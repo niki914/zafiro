@@ -93,6 +93,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
         SettingsSectionDefinition(
             titleRes = R.string.ui_settings_section_app,
             groups = listOf(
+                ZafiroSettingsGroup.Storage,
                 ZafiroSettingsGroup.About,
             ),
         ),

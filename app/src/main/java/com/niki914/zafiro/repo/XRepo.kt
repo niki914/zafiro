@@ -48,6 +48,7 @@ object XRepo {
     val takeoverRules: TakeoverRulesApi = TakeoverRulesApi(this)
     val agents: AgentApi = AgentApi(this)
     val skills: SkillApi = SkillApi(this)
+    val storage: StorageApi = StorageApi(this)
     val llmConfigs = LlmConfigsApi(this)
 
     private val writeMutex = Mutex()
