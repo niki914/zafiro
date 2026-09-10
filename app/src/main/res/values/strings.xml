@@ -50,6 +50,7 @@
     <string name="ui_home_action_fork_content_description">分叉对话</string>
     <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">已复制</string>
+    <string name="ui_toast_generating">生成中，请稍后</string>
     <string name="ui_home_error_retry_body">请稍后重试。</string>
     <string name="ui_home_error_config_required_title">模型配置不完整</string>
     <string name="ui_home_error_config_required_body">请前往填写模型配置。</string>

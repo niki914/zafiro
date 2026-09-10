@@ -738,8 +738,9 @@ private fun HomeChatTurnItem(
     modifier: Modifier = Modifier,
 ) {
     val alwaysVisible = actionsDisplay == MessageActionsDisplay.Always
-    // Agent 操作行：生成中隐藏（流式中的重新生成无意义）
-    val canToggleAction = !isGenerating && turn.blocks.isNotEmpty()
+    // Agent 操作行：仅正生成中的末轮隐藏；已结束的旧 turn 常显（复制无害，
+    // 重新生成/分叉/回退在生成中点按弹 toast，见 guarded 回调）
+    val canToggleAction = turn.blocks.isNotEmpty() && (!isGenerating || !isLastTurn)
     // User 操作行资格：生成中同样放开（历史遗留修复：复制无害，重新生成/回退由 Controller 护栏拦截）；
     // 最后一条 turn 即使无内容也放开，使本条 query 仍可复制
     val userRowEligible = turn.blocks.isNotEmpty() || isLastTurn
@@ -754,6 +755,20 @@ private fun HomeChatTurnItem(
             clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
         }
         Toast.makeText(context, R.string.ui_toast_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    fun toastGenerating() {
+        Toast.makeText(context, R.string.ui_toast_generating, Toast.LENGTH_SHORT).show()
+    }
+    // 生成中：危险动作（重新生成/分叉/回退）弹 toast 提示，不透传给 Controller（其护栏会静默吞掉）
+    val guardedReGenerate: (Long) -> Unit = { id ->
+        if (isGenerating) toastGenerating() else onReGenerate(id)
+    }
+    val guardedFork: (Long) -> Unit = { id ->
+        if (isGenerating) toastGenerating() else onFork(id)
+    }
+    val guardedRewind: (Long) -> Unit = { id ->
+        if (isGenerating) toastGenerating() else onRewind(id)
     }
 
     val isActionExpanded = expandedActionTurnId == turn.id
@@ -820,9 +835,9 @@ private fun HomeChatTurnItem(
                 onCopy = {
                     copyText(userGroupText)
                 },
-                onReGenerate = { onReGenerate(turn.id) },
-                onFork = { onFork(turn.id) },
-                onRewind = { onRewind(turn.id) },
+                onReGenerate = { guardedReGenerate(turn.id) },
+                onFork = { guardedFork(turn.id) },
+                onRewind = { guardedRewind(turn.id) },
             )
         }
 
@@ -1017,8 +1032,8 @@ private fun HomeChatTurnItem(
                         .joinToString("\n\n") { it.text }
                     copyText(text)
                 },
-                onReGenerate = { onReGenerate(turn.id) },
-                onFork = { onFork(turn.id) },
+                onReGenerate = { guardedReGenerate(turn.id) },
+                onFork = { guardedFork(turn.id) },
             )
         }
     }

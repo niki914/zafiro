@@ -51,6 +51,7 @@
     <string name="ui_home_action_fork_content_description">Crear bifurcación</string>
     <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">Copiado al portapapeles</string>
+    <string name="ui_toast_generating">Generando, espere un momento</string>
     <string name="ui_home_error_retry_body">Inténtelo de nuevo más tarde.</string>
     <string name="ui_home_error_config_required_title">Configuración del modelo incompleta</string>
     <string name="ui_home_error_config_required_body">Complete la configuración del modelo antes de continuar.</string>
