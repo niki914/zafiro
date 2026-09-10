@@ -192,6 +192,10 @@
     <string name="tool_permission_matched_rule">命中规则「%1$s」</string>
     <string name="tool_permission_allow">允许本次</string>
     <string name="tool_permission_deny">拒绝</string>
+    <string name="screen_control_consent_title">屏幕控制权限申请</string>
+    <string name="screen_control_consent_body">Zafiro 需要以下权限才能控制屏幕：\n1. 无障碍服务：读取界面、执行点按\n2. 显示在其他应用上层：显示指针指示器\n\n接下来可能会弹出系统授权框或跳转到设置页。</string>
+    <string name="screen_control_consent_agree">同意</string>
+    <string name="screen_control_consent_deny">拒绝</string>
     <string name="execution_rules_field_patterns">规则</string>
     <string name="execution_rules_field_patterns_hint">例如：\brm\s+-rf\b</string>
     <string name="execution_rules_field_patterns_description">每行输入一个关键字或正则表达式，命中任意一条时，拦截该命令。</string>
