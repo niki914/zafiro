@@ -125,6 +125,8 @@
     <string name="ui_settings_takeover_summary">設定哪些輸入交給原生助理或 Zafiro</string>
     <string name="ui_settings_execution_rules">執行規則</string>
     <string name="ui_settings_execution_rules_summary">設定 Shell 的安全策略</string>
+    <string name="ui_settings_storage">儲存空間</string>
+    <string name="ui_settings_storage_summary">清理快取與下載檔案</string>
     <string name="ui_settings_about">關於</string>
     <string name="ui_settings_about_summary"></string>
     <string name="ui_settings_about_description">讓語音助理用上你自己的模型能力</string>
@@ -135,6 +137,23 @@
     <string name="ui_settings_about_feedback_feature">功能建議</string>
     <string name="ui_settings_about_feedback_bug">Bug 回報</string>
     <string name="ui_settings_about_version">版本</string>
+
+    <string name="ui_settings_storage_description">查看各類快取佔用的空間，點選某一項即可清理。清理不會影響設定、記憶與對話記錄。</string>
+    <string name="ui_settings_storage_tool_output">工具輸出快取</string>
+    <string name="ui_settings_storage_tool_output_summary">超長工具輸出的截斷匯出</string>
+    <string name="ui_settings_storage_image_cache">圖片快取</string>
+    <string name="ui_settings_storage_image_cache_summary">清理後歷史訊息中的圖片將無法顯示</string>
+    <string name="ui_settings_storage_downloads">下載檔案</string>
+    <string name="ui_settings_storage_downloads_summary">Agent 在任務過程中下載的檔案</string>
+    <string name="ui_settings_storage_other_cache">其他快取</string>
+    <string name="ui_settings_storage_other_cache_summary">應用運行時的暫存檔案</string>
+    <string name="ui_settings_storage_loading">正在統計儲存空間...</string>
+    <string name="ui_settings_storage_clear_dialog_title">清理快取</string>
+    <string name="ui_settings_storage_clear_dialog_text">確定要清空「%1$s」嗎？此操作不可撤銷。</string>
+    <string name="ui_settings_storage_clear_dialog_confirm">清理</string>
+    <string name="ui_settings_storage_clear_dialog_cancel">取消</string>
+    <string name="ui_settings_storage_error_load_failed">統計儲存空間失敗：%1$s</string>
+    <string name="ui_settings_storage_error_clear_failed">清理失敗：%1$s</string>
 
     <!-- Settings Detail Shared -->
     <string name="ui_todo_page_title">功能開發中</string>
