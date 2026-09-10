@@ -19,6 +19,10 @@
     <string name="ui_onboard_configure_model_label">Model ID</string>
     <string name="ui_onboard_configure_model_placeholder">Enter your model ID</string>
     <string name="ui_onboard_configure_model_example">Example: %1$s</string>
+    <string name="ui_onboard_configure_model_catalog_open">Pick a model</string>
+    <string name="ui_onboard_configure_model_catalog_title">Pick a model</string>
+    <string name="ui_onboard_configure_model_catalog_search_placeholder">Search models</string>
+    <string name="ui_onboard_configure_model_catalog_empty">No matching models</string>
     <string name="ui_onboard_configure_api_key_label">API Key</string>
     <string name="ui_onboard_configure_api_key_placeholder">Enter your API Key</string>
     <string name="ui_onboard_configure_api_key_show">Show API Key</string>

@@ -56,6 +56,25 @@ internal object EndpointInference {
         }
     }
 
+    /** 由对话端点推导模型目录地址（id-only 扫描用）。
+     *  剥末段 API 路径、保留版本段后拼 `/models`；Anthropic 保 `/v1/models`。
+     *  推不出（空白端点）返回 null，调用方按失败静默处理。 */
+    fun modelsUrl(currentEndpoint: String, protocol: LlmProtocol): String? {
+        val e = currentEndpoint.trim().trimEnd('/')
+        if (e.isBlank()) return null
+        val remainder = KNOWN_API_TAILS.firstOrNull { e.endsWith(it) }
+            ?.let { e.removeSuffix(it) }
+            ?: e
+        val version = remainder.substringAfterLast('/').takeIf { it.matches(VERSION_SEGMENT) }
+        val base = version?.let { remainder.removeSuffix("/$it") } ?: remainder
+        if (base.isBlank()) return null
+        return when {
+            version != null -> "$base/$version/models"
+            protocol == LlmProtocol.AnthropicMessages -> "$base/v1/models"
+            else -> "$base/models"
+        }
+    }
+
     /** endpoint 是否为任一预置品牌的官方端点形态（预置端点切协议时静默更新，不弹窗）。
      *  按前缀匹配：host + 品牌路径段一致即算预置，官方端点经静默更新派生的
      *  其他协议形态（如 .../provider/v1/responses）同样命中，避免行为漂移。 */

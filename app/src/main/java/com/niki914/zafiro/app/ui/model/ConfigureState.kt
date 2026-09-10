@@ -1,15 +1,20 @@
 package com.niki914.zafiro.app.ui.model
 
 import androidx.annotation.StringRes
+import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.okia.message.ThinkingLevel
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.LlmConfigsDocument
+import com.niki914.zafiro.repo.ModelCatalogApi
 import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.net.URI
 
 enum class ConfigureScene {
@@ -60,6 +65,10 @@ data class ConfigureUiState(
     val activeConfigId: String? = null,
     /** 非 null 时应弹出端点不匹配确认弹窗。 */
     val pendingEndpointMismatch: EndpointMismatch? = null,
+    /** 模型目录扫描缓存：为空 = 不显示扫描按钮；非空 = 显示按钮。 */
+    val modelCatalog: List<String> = emptyList(),
+    /** 非 null 时应弹出模型选择单。 */
+    val showModelCatalogSheet: Boolean = false,
 )
 
 data class ConfigureSnapshot(
@@ -111,6 +120,9 @@ sealed interface ConfigureIntent {
     data class ActivateConfig(val configId: String) : ConfigureIntent
     data class DeleteConfig(val configId: String) : ConfigureIntent
     data object Save : ConfigureIntent
+    data object ShowModelCatalogSheet : ConfigureIntent
+    data object HideModelCatalogSheet : ConfigureIntent
+    data class SelectCatalogModel(val modelId: String) : ConfigureIntent
 
     /** 确认端点不匹配弹窗：点击更新。 */
     data object ConfirmEndpointMismatch : ConfigureIntent
@@ -148,6 +160,7 @@ internal data class ConfigureViewModelDependencies(
     val upsertConfig: suspend (SavedLlmConfig) -> String?,
     val deleteConfig: suspend (String) -> Unit,
     val setActiveConfig: suspend (String) -> Unit,
+    val fetchModelCatalog: suspend (modelsUrl: String, apiKey: String, protocol: LlmProtocol) -> List<String>,
 ) {
     companion object {
         val Default = ConfigureViewModelDependencies(
@@ -155,6 +168,9 @@ internal data class ConfigureViewModelDependencies(
             upsertConfig = { XRepo.llmConfigs.upsert(it) },
             deleteConfig = { XRepo.llmConfigs.delete(it) },
             setActiveConfig = { XRepo.llmConfigs.setActive(it) },
+            fetchModelCatalog = { modelsUrl, apiKey, protocol ->
+                ModelCatalogApi.fetch(modelsUrl, apiKey, protocol)
+            },
         )
     }
 }
@@ -168,7 +184,14 @@ class ConfigureViewModel internal constructor(
 
     private companion object {
         private const val LOG_TAG = "niki914_nexus_ConfigureViewModel"
+        /** 输入防抖：停手 50ms 才发； trailing + 取消在途 + 三元组去重。 */
+        private const val CATALOG_DEBOUNCE_MS = 50L
     }
+
+    /** 在途的目录拉取（防抖 + 可取消）。 */
+    private var catalogFetchJob: Job? = null
+    /** 上次已拉取的三元组（endpoint/apiKey/protocol），去重用。 */
+    private var lastCatalogKey: CatalogKey? = null
 
     override suspend fun handleIntent(intent: ConfigureIntent) {
         when (intent) {
@@ -183,7 +206,7 @@ class ConfigureViewModel internal constructor(
 
             is ConfigureIntent.UpdateEndpoint -> updateState {
                 copy(endpointInput = intent.value, endpointErrorResId = null, inlineError = null)
-            }
+            }.also { scheduleCatalogFetch() }
 
             is ConfigureIntent.UpdateModel -> updateState {
                 copy(modelInput = intent.value, modelErrorResId = null, inlineError = null)
@@ -191,7 +214,7 @@ class ConfigureViewModel internal constructor(
 
             is ConfigureIntent.UpdateApiKey -> updateState {
                 copy(apiKeyInput = intent.value, apiKeyErrorResId = null, inlineError = null)
-            }
+            }.also { scheduleCatalogFetch() }
 
             is ConfigureIntent.SelectProtocol -> handleProtocolSwitch(intent.wireId)
 
@@ -217,6 +240,20 @@ class ConfigureViewModel internal constructor(
             ConfigureIntent.Save -> handleSave()
             ConfigureIntent.ConfirmEndpointMismatch -> confirmEndpointMismatch()
             ConfigureIntent.CancelEndpointMismatch -> cancelEndpointMismatch()
+            ConfigureIntent.ShowModelCatalogSheet -> updateState {
+                copy(showModelCatalogSheet = true)
+            }
+            ConfigureIntent.HideModelCatalogSheet -> updateState {
+                copy(showModelCatalogSheet = false)
+            }
+            is ConfigureIntent.SelectCatalogModel -> updateState {
+                copy(
+                    modelInput = intent.modelId,
+                    modelErrorResId = null,
+                    inlineError = null,
+                    showModelCatalogSheet = false,
+                )
+            }
         }
     }
 
@@ -225,6 +262,10 @@ class ConfigureViewModel internal constructor(
         initialProviderId: String?,
         configId: String?,
     ) {
+        // 拉取三元组跨初始化重置：不同配置页实例互不污染
+        lastCatalogKey = null
+        catalogFetchJob?.cancel()
+        catalogFetchJob = null
         try {
             val document = dependencies.loadDocument()
             Logger.d(LOG_TAG, "initialize scene=$scene configs=${document.configs.size}")
@@ -239,6 +280,8 @@ class ConfigureViewModel internal constructor(
                     // configId 缺省时编辑当前生效配置；不存在则回落新建
                     initializeEdit(document, configId ?: document.activeId)
             }
+            // 进页拉一次（Key 为空时内部短路，不发请求）
+            scheduleCatalogFetch(immediate = true)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             val message = throwable.message ?: throwable::class.java.simpleName
@@ -279,7 +322,8 @@ class ConfigureViewModel internal constructor(
                 configNameInput = providerSpec.brandName,
                 endpointOverrideEnabled = false,
                 endpointInput = providerSpec.officialEndpoint,
-                modelInput = providerSpec.exampleModelId,
+                // Model 无默认值：用户先填 Key，目录拉回后从底单选，或手填
+                modelInput = "",
                 apiKeyInput = "",
                 apiKeyVisible = false,
                 protocolWireId = providerSpec.defaultProtocol,
@@ -295,6 +339,9 @@ class ConfigureViewModel internal constructor(
                 initialSettingsSnapshot = null,
                 savedConfigs = summariesOf(document),
                 activeConfigId = document.activeId,
+                // 新会话：目录缓存不跨页复用（同 VM 复用时旧名单不清会误回填）
+                modelCatalog = emptyList(),
+                showModelCatalogSheet = false,
             )
             next
         }
@@ -311,7 +358,8 @@ class ConfigureViewModel internal constructor(
                 configNameInput = providerSpec.brandName,
                 endpointOverrideEnabled = false,
                 endpointInput = providerSpec.officialEndpoint,
-                modelInput = providerSpec.exampleModelId,
+                // Model 无默认值：用户先填 Key，目录拉回后从底单选，或手填
+                modelInput = "",
                 apiKeyInput = "",
                 apiKeyVisible = false,
                 protocolWireId = providerSpec.defaultProtocol,
@@ -326,6 +374,9 @@ class ConfigureViewModel internal constructor(
                 inlineError = null,
                 savedConfigs = summariesOf(document),
                 activeConfigId = document.activeId,
+                // 新会话：目录缓存不跨页复用（同 VM 复用时旧名单不清会误回填）
+                modelCatalog = emptyList(),
+                showModelCatalogSheet = false,
             )
             // 快照必须取自初始化后的状态，否则未修改也会被判为 dirty
             next.copy(initialSettingsSnapshot = next.toSettingsSnapshot())
@@ -366,11 +417,53 @@ class ConfigureViewModel internal constructor(
                 inlineError = null,
                 savedConfigs = summariesOf(document),
                 activeConfigId = document.activeId,
+                // 新会话：目录缓存不跨页复用（同 VM 复用时旧名单不清会误回填）
+                modelCatalog = emptyList(),
+                showModelCatalogSheet = false,
             )
             // 快照必须取自初始化后的状态，否则未修改也会被判为 dirty
             next.copy(initialSettingsSnapshot = next.toSettingsSnapshot())
         }
     }
+
+    /** 模型目录自动拉取：50ms trailing + 取消在途 + 三元组去重 + 空值短路。
+     *  缓存语义：成功覆盖（含空结果，空 = 藏按钮）；失败与空值短路保留旧缓存，只记日志；
+     *  只刷新缓存，从不覆盖 modelInput。 */
+    private fun scheduleCatalogFetch(immediate: Boolean = false) {
+        catalogFetchJob?.cancel()
+        // 注意：handleIntent 已跑在 viewModelScope 的 intent 串行通道里；
+        // 这里起子协程只为防抖 delay 不阻塞后续 intent，取消语义经 job 传递
+        catalogFetchJob = viewModelScope.launch {
+            if (!immediate) delay(CATALOG_DEBOUNCE_MS)
+            val state = currentState
+            val key = CatalogKey(
+                endpoint = state.endpointInput.trim(),
+                apiKey = state.apiKeyInput.trim(),
+                protocolWireId = state.protocolWireId,
+            )
+            if (key == lastCatalogKey) return@launch
+            // 空值短路：Key 或 endpoint 为空直接不发，保留旧缓存
+            if (key.endpoint.isBlank() || key.apiKey.isBlank()) return@launch
+            val protocol = LlmProtocol.fromWire(key.protocolWireId)
+            val modelsUrl = EndpointInference.modelsUrl(key.endpoint, protocol)
+                ?: return@launch
+            lastCatalogKey = key
+            try {
+                val ids = dependencies.fetchModelCatalog(modelsUrl, key.apiKey, protocol)
+                // 成功覆盖：空结果也写入（藏按钮），失败走 catch 保留旧缓存
+                updateState { copy(modelCatalog = ids) }
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
+                Logger.w(LOG_TAG, "catalog fetch failed: ${throwable.message}")
+            }
+        }
+    }
+
+    private data class CatalogKey(
+        val endpoint: String,
+        val apiKey: String,
+        val protocolWireId: String,
+    )
 
     private fun setEndpointOverride(enabled: Boolean) {
         updateState {
@@ -386,6 +479,7 @@ class ConfigureViewModel internal constructor(
                 inlineError = null,
             )
         }
+        scheduleCatalogFetch()
     }
 
     private suspend fun activateConfig(configId: String) {
@@ -439,6 +533,7 @@ class ConfigureViewModel internal constructor(
                     protocolWireId = newProtocolWireId,
                 )
             }
+            scheduleCatalogFetch()
             return
         }
         updateState {
@@ -516,6 +611,7 @@ class ConfigureViewModel internal constructor(
 
     private fun switchProtocolQuietly(wireId: String) {
         updateState { copy(protocolWireId = wireId) }
+        scheduleCatalogFetch()
     }
 
     /** 校验重名与必填字段；不通过时置错误并发焦点 Effect。 */
@@ -666,8 +762,9 @@ private enum class ConfigureFieldTarget {
 
 private fun ConfigureUiState.firstInvalidField(): ConfigureFieldTarget? {
     return when {
-        modelInput.trim().isBlank() -> ConfigureFieldTarget.Model
+        // 与填写顺序一致：API Key → Model → Endpoint → Proxy
         apiKeyInput.trim().isBlank() -> ConfigureFieldTarget.ApiKey
+        modelInput.trim().isBlank() -> ConfigureFieldTarget.Model
         endpointOverrideEnabled && endpointInput.trim().isBlank() -> ConfigureFieldTarget.Endpoint
         isValidProxy(proxyInput).not() -> ConfigureFieldTarget.Proxy
         else -> null

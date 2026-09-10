@@ -11,7 +11,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
-import okhttp3.OkHttpClient
 import okhttp3.Request
 
 data class UpdateCheckResult(
@@ -44,7 +43,7 @@ object UpdateCheckHolder {
 }
 
 private object UpdateCheckApi {
-    private val client = OkHttpClient()
+    private val client = SharedHttp.client
     private val json = Json { ignoreUnknownKeys = true }
 
     private const val GITHUB_API_LATEST =

@@ -21,6 +21,7 @@ fun SettingExpandableTextCard(
     toggleSecretVisibleContentDescription: String? = null,
     toggleSecretHiddenContentDescription: String? = null,
     onExpandedChange: ((Boolean) -> Unit)? = null,
+    fieldTrailingContent: (@Composable () -> Unit)? = null,
 ) {
     SettingsGroupCard(
         title = null,
@@ -42,6 +43,7 @@ fun SettingExpandableTextCard(
             toggleSecretVisibleContentDescription = toggleSecretVisibleContentDescription,
             toggleSecretHiddenContentDescription = toggleSecretHiddenContentDescription,
             onExpandedChange = onExpandedChange,
+            fieldTrailingContent = fieldTrailingContent,
         )
     }
 }

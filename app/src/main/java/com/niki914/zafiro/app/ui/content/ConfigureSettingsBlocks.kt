@@ -1,11 +1,18 @@
 package com.niki914.zafiro.app.ui.content
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import com.niki914.uikit.infra.ActionBarButton
 import com.niki914.okia.message.ThinkingLevel
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
@@ -64,9 +71,47 @@ internal fun ConfigureConnectionSettingsBlock(
     onModelChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onToggleApiKeyVisibility: () -> Unit,
+    onShowModelCatalogSheet: () -> Unit = {},
 ) {
     val onClearActiveField = fieldController.clearActiveField
     SettingsGroupCard {
+        // 填写顺序：API Key → Model；Model 有目录时挤左 + 右侧按钮
+        SettingControlledExpandableTextItem(
+            field = ConfigureEditableField.ApiKey,
+            controller = fieldController,
+            title = stringResource(R.string.ui_onboard_configure_api_key_label),
+            value = uiState.apiKeyInput,
+            onValueChange = onApiKeyChange,
+            placeholder = stringResource(R.string.ui_onboard_configure_api_key_placeholder),
+            description = uiState.apiKeyErrorResId?.let { stringResource(it) },
+            enabled = !uiState.isSaving,
+            minLines = 1,
+            maxLines = 1,
+            secretVisible = uiState.apiKeyVisible,
+            onToggleSecretVisibility = onToggleApiKeyVisibility,
+            toggleSecretVisibleContentDescription = stringResource(
+                R.string.ui_onboard_configure_api_key_show,
+            ),
+            toggleSecretHiddenContentDescription = stringResource(
+                R.string.ui_onboard_configure_api_key_hide,
+            ),
+        )
+        SettingsItemDivider()
+        // 双模式：目录为空 = 输入框占满（现状）；非空 = 输入框挤左 + 右侧按钮
+        val catalogButton: (@Composable () -> Unit)? =
+            if (uiState.modelCatalog.isEmpty()) {
+                null
+            } else {
+                {
+                    ModelCatalogButton(
+                        enabled = !uiState.isSaving,
+                        onClick = {
+                            onClearActiveField()
+                            onShowModelCatalogSheet()
+                        },
+                    )
+                }
+            }
         SettingControlledExpandableTextItem(
             field = ConfigureEditableField.Model,
             controller = fieldController,
@@ -86,6 +131,7 @@ internal fun ConfigureConnectionSettingsBlock(
             enabled = !uiState.isSaving,
             minLines = 1,
             maxLines = 1,
+            fieldTrailingContent = catalogButton,
         )
         SettingsItemDivider()
         if (policy.showEndpointSection) {
@@ -126,26 +172,30 @@ internal fun ConfigureConnectionSettingsBlock(
             }
             SettingsItemDivider()
         }
-        SettingControlledExpandableTextItem(
-            field = ConfigureEditableField.ApiKey,
-            controller = fieldController,
-            title = stringResource(R.string.ui_onboard_configure_api_key_label),
-            value = uiState.apiKeyInput,
-            onValueChange = onApiKeyChange,
-            placeholder = stringResource(R.string.ui_onboard_configure_api_key_placeholder),
-            description = uiState.apiKeyErrorResId?.let { stringResource(it) },
-            enabled = !uiState.isSaving,
-            minLines = 1,
-            maxLines = 1,
-            secretVisible = uiState.apiKeyVisible,
-            onToggleSecretVisibility = onToggleApiKeyVisibility,
-            toggleSecretVisibleContentDescription = stringResource(
-                R.string.ui_onboard_configure_api_key_show,
-            ),
-            toggleSecretHiddenContentDescription = stringResource(
-                R.string.ui_onboard_configure_api_key_hide,
-            ),
-        )
+    }
+}
+
+/** 模型目录按钮：复用 LiquidScreen 左右按钮同款（Home 添加图片按钮同款）。 */
+@Composable
+private fun ModelCatalogButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    // add 按钮恒亮：不随 isSaving 变灰（只有输入框随保存态禁用）
+    CompositionLocalProvider(
+        LocalContentColor provides MaterialTheme.colorScheme.primary,
+    ) {
+        ActionBarButton(
+            onClick = onClick,
+            enabled = enabled,
+        ) {
+            Icon(
+                imageVector = Icons.Default.FormatListBulleted,
+                contentDescription = stringResource(
+                    R.string.ui_onboard_configure_model_catalog_open
+                ),
+            )
+        }
     }
 }
 

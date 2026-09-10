@@ -107,12 +107,23 @@ fun SavedConfigDetailContent(
             onToggleApiKeyVisibility = { viewModel.sendIntent(ConfigureIntent.ToggleApiKeyVisibility) },
             onProxyChange = { viewModel.sendIntent(ConfigureIntent.UpdateProxy(it)) },
             onSave = { viewModel.sendIntent(ConfigureIntent.Save) },
+            onShowModelCatalogSheet = { viewModel.sendIntent(ConfigureIntent.ShowModelCatalogSheet) },
+            onHideModelCatalogSheet = { viewModel.sendIntent(ConfigureIntent.HideModelCatalogSheet) },
+            onSelectCatalogModel = { viewModel.sendIntent(ConfigureIntent.SelectCatalogModel(it)) },
         )
 
         EndpointMismatchDialog(
             mismatch = uiState.pendingEndpointMismatch,
             onConfirm = { viewModel.sendIntent(ConfigureIntent.ConfirmEndpointMismatch) },
             onCancel = { viewModel.sendIntent(ConfigureIntent.CancelEndpointMismatch) },
+        )
+
+        ModelCatalogSheet(
+            visible = uiState.showModelCatalogSheet,
+            catalog = uiState.modelCatalog,
+            currentModelInput = uiState.modelInput,
+            onDismissRequest = { viewModel.sendIntent(ConfigureIntent.HideModelCatalogSheet) },
+            onSelect = { viewModel.sendIntent(ConfigureIntent.SelectCatalogModel(it)) },
         )
 
         ConfirmationLiquidDialog(
@@ -148,6 +159,9 @@ private fun SavedConfigDetailContentBody(
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit,
     onSave: () -> Unit,
+    onShowModelCatalogSheet: () -> Unit = {},
+    onHideModelCatalogSheet: () -> Unit = {},
+    onSelectCatalogModel: (String) -> Unit = {},
 ) {
     // 编辑态不限制端点编辑；新建态仅部分品牌开放自定义端点
     val policy = if (!showEndpointOverrideToggle) {
@@ -185,6 +199,7 @@ private fun SavedConfigDetailContentBody(
             onModelChange = onModelChange,
             onApiKeyChange = onApiKeyChange,
             onToggleApiKeyVisibility = onToggleApiKeyVisibility,
+            onShowModelCatalogSheet = onShowModelCatalogSheet,
         )
 
         ConfigureProtocolSettingsBlock(
