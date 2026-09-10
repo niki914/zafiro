@@ -5,6 +5,8 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * 屏幕控制知情同意（无障碍 + 悬浮窗，缺一不可）。
@@ -18,9 +20,14 @@ object ScreenControlConsent {
     /** 当前是否有挂起的知情请求；UI collect 后渲染对话框。 */
     val pending: StateFlow<Boolean> = pendingFlow.asStateFlow()
 
+    private val mutex = Mutex()
     private var deferred: CompletableDeferred<Boolean>? = null
 
-    suspend fun request(): Boolean {
+    /**
+     * 并发请求串行化：第二个请求等第一个出结果后再弹，不覆盖 waiter。
+     * 串行等待时 UI 前台状态可能变化，每轮重新检查 isUiResumed。
+     */
+    suspend fun request(): Boolean = mutex.withLock {
         if (!ToolPermissionCoordinator.isUiResumed) return false
         pendingFlow.value = true
         val waiter = CompletableDeferred<Boolean>()

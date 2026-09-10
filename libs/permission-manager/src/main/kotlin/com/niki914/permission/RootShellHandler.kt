@@ -55,42 +55,15 @@ class RootShellHandler(
             return PermissionState.DENIED_BY_USER
         }
 
+        // ponytail: 授权命令文本与 merge 逻辑收敛到 ShellGrants，两个 shell 通道不再各抄一份
         return when (permission) {
             Permission.ROOT -> PermissionState.GRANTED
-            Permission.OVERLAY -> exec("appops set $packageName SYSTEM_ALERT_WINDOW allow")
-            Permission.ACCESSIBILITY -> grantAccessibility()
+            Permission.OVERLAY ->
+                ShellGrants.grantOverlay({ cmd -> run(cmd) }, packageName)
+            Permission.ACCESSIBILITY ->
+                ShellGrants.grantAccessibility({ cmd -> run(cmd) }, accessibilityService)
             else -> PermissionState.UNAVAILABLE
         }
-    }
-
-    private suspend fun grantAccessibility(): PermissionState {
-        val service = requireNotNull(accessibilityService) {
-            "accessibilityService is required for Permission.ACCESSIBILITY"
-        }
-        val get = run("settings get secure enabled_accessibility_services")
-        if (!get.isSuccess) return PermissionState.FAILED
-        val merged = get.stdout.joinToString("").trim()
-            .takeUnless { it.isBlank() || it == "null" }
-            ?.split(":")
-            .orEmpty()
-            .filter { it.isNotBlank() }
-            .plus(service.flattenToShortString())
-            .distinct()
-            .joinToString(":")
-        if (!run("settings put secure enabled_accessibility_services $merged").isSuccess) {
-            return PermissionState.FAILED
-        }
-        return if (run("settings put secure accessibility_enabled 1").isSuccess) {
-            PermissionState.GRANTED
-        } else {
-            PermissionState.FAILED
-        }
-    }
-
-    private suspend fun exec(command: String): PermissionState {
-        val outcome = run(command)
-        Logger.d(TAG, "exec [$command] exit=${outcome.exitCode} stdoutLines=${outcome.stdout.size}")
-        return if (outcome.isSuccess) PermissionState.GRANTED else PermissionState.FAILED
     }
 
     private suspend fun run(command: String): ShellOutcome = withContext(Dispatchers.IO) {

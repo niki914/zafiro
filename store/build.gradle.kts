@@ -19,6 +19,8 @@ android {
 dependencies {
     implementation(project(":xposed-api"))
     implementation(project(":libs:logging"))
+    // 通知只读查询走 permission-manager 的 TargetStatus；业务方禁止直连原生权限 API
+    implementation(project(":libs:permission-manager"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("com.google.android.material:material:1.12.0")
 

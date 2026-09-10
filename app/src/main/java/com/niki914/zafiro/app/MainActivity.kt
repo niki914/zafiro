@@ -11,7 +11,6 @@ import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
 import com.niki914.logging.Logger
 import com.niki914.zafiro.app.ui.ZafiroApp
-import com.niki914.permission.PermissionManager
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.chat.LLMController
@@ -34,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    // ponytail: launcher 必须在 STARTED 前注册，由门面 UiGate 持有结果路由（决策 1：launcher 注入）
+    // launcher 必须在 STARTED 前注册：MainActivity 预注册 → UiGate 持有结果路由
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -46,10 +45,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        PermissionManager.installNotificationLauncher(
-            PermissionHolder.ui,
-            notificationPermissionLauncher,
-        )
+        // launcher 必须在 STARTED 前注册：MainActivity 预注册 → UiGate 持有结果路由
+        PermissionHolder.ui.notificationLauncher = notificationPermissionLauncher
         PermissionHolder.get(this).bind(this)
         val startupAssistantUi = resolveStartupAssistantUi()
         val launchDecision = runBlocking {

@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
 import com.niki914.permission.Permission
+import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
@@ -72,12 +73,9 @@ class App : Application() {
         context: Context,
         request: ToolPermissionRequest,
     ): ToolPermissionResponse {
-        // ponytail: 挂起式等链路结果，不占线程；取消（Activity 销毁）时不吞，交由调用方协程处理
-        var granted = false
-        PermissionHolder.get(context).scope().withPermission(Permission.OVERLAY) { result ->
-            granted = result.finalState == com.niki914.permission.PermissionState.GRANTED
-        }
-        if (!granted) {
+        // 挂起式等链路结果，不占线程；取消（Activity 销毁）时不吞，交由调用方协程处理
+        val result = PermissionHolder.get(context).request(Permission.OVERLAY)
+        if (result.finalState != PermissionState.GRANTED) {
             return ToolPermissionResponse.DENIED_UNAVAILABLE
         }
         // 窗口加不上（权限被收回等）≠ 用户拒绝：失败走 DENIED_UNAVAILABLE

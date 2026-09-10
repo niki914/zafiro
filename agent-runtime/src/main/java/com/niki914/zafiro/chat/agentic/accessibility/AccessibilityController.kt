@@ -13,7 +13,6 @@ import android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT
-import com.niki914.permission.Channel
 import com.niki914.permission.Permission
 import com.niki914.permission.PermissionManager
 import com.niki914.permission.PermissionResult
@@ -266,16 +265,11 @@ object AccessibilityController {
         return false
     }
 
-    /** 空 channels = 默认链。阻塞式会卡宿主 Binder 线程，挂起式 + 任一结果回调。 */
+    /** 默认链申请。调用方能确定用哪条链时改调 pm.scope(...)，不要在这里加参数。 */
     private suspend fun requestPermission(
         pm: PermissionManager,
         permission: Permission,
-        vararg channels: Channel,
-    ): PermissionResult {
-        var result: PermissionResult? = null
-        pm.scope(*channels).withPermission(permission) { result = it }
-        return requireNotNull(result)
-    }
+    ): PermissionResult = pm.request(permission)
 
     /** 链路摘要：每环通道与状态，拼进给 LLM 的报错文案。 */
     private fun chainSummary(result: PermissionResult): String =

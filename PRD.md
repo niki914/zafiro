@@ -10,13 +10,13 @@
 2. **降级链显式化**：`scope(Channel...)` 声明通道优先级，按序尝试，首个 GRANTED 即成功，任何失败继续下一环，链尽则失败。引擎对失败原因不做特判——"用户 deny 后不再继续"由调用方省略后续通道表达。
 3. **版本差异一等公民**：通道声明 `minSdk`，引擎统一把门；不支持的通道记 `UNAVAILABLE` 并降级，永不崩溃。
 4. **无 UI 进程支持**：宿主侧只注册 shell 类通道，`SYSTEM_DIALOG` / `JUMP_SETTINGS` 未 bind Activity 时报 `UNAVAILABLE`。
-5. **回调转同步**：通道内部用 `suspendCancellableCoroutine`（参考 libterm `ShizukuPrivilegeAuthorizer`），对外提供挂起式与阻塞式 API。
+5. **回调转挂起**：通道内部用 `suspendCancellableCoroutine`（参考 libterm `ShizukuPrivilegeAuthorizer`），对外只提供挂起式 API——阻塞式会卡 Binder 线程，不提供。
 
 ## 非目标
 
 - 并发请求单飞去重（各试各的链，通道实现保证幂等）
 - 权限撤销监听/推送（按需 `status()` 查询）
-- 授权重试机制（调用方重新调 `withPermission` 即重试）
+- 授权重试机制（调用方重新调 `request` 即重试）
 - 合流 libterm（战略迁移完成前允许两套 provider 共存：permission-manager 自带
   shizuku/root 实现，libterm 保持不动；迁移完成后再抽公共模块或改 libterm）
 - 保留 `NotificationPermissionGate`（实现时删除收编）
@@ -67,18 +67,23 @@ interface PermissionManager {
     fun bind(activity: Activity)          // onDestroy 必须 unbind，防泄漏
     fun unbind()
     suspend fun status(permission: Permission): PermissionState
+    /** 默认链快捷入口；要自定义通道才用 scope(vararg channels) */
+    suspend fun request(permission: Permission): PermissionResult
     fun scope(vararg channels: Channel): ScopeBuilder
 }
 
 interface ScopeBuilder {
-    fun withPermission(permission: Permission, onResult: (PermissionResult) -> Unit)
-    fun withPermissionBlocking(permission: Permission): PermissionResult
+    /**
+     * 空 scope = 默认链（见默认链对照表）；传了 channels 就按传入顺序跑。
+     * 挂起式：不占线程等回调；阻塞式会卡 Binder 线程，不提供。
+     */
+    suspend fun request(permission: Permission): PermissionResult
 }
 ```
 
 ## 引擎语义
 
-- 尝试顺序 = `scope()` 传入顺序。
+- 尝试顺序 = `scope()` 传入顺序；空 scope 用该 permission 的默认链。
 - 每环：`minSdk.supported == false` → `UNAVAILABLE`（detail 注明 API 要求）→ 下一环；否则 `request()`，结果原样入 `attempts`。
 - 首个 `GRANTED` 终止；`UNKNOWN` 视为未成功，继续下一环；链尽返回，`finalState` 取最后一环（可能为 UNKNOWN）。
 - `status()` 聚合：任一 handler 报 GRANTED → GRANTED；否则取任一真实状态（DENIED_BY_USER/UNAVAILABLE）；全为 UNKNOWN → UNKNOWN。
@@ -130,8 +135,10 @@ libs/permission-manager/   # 新模块，与 libterm 平级
 1. [已完成] `NotificationPermissionGate` 删除，通知申请走 PermissionManager，行为不变。
    真机验证：`SystemDialogHandler: request(NOTIFICATION): granted=true`。
 2. [已完成] `App.grantOverlayPermissionViaRoot` 删除，悬浮窗授权走 PermissionManager，
-   `handleBackgroundConfirmation` 改调挂起式 `withPermission`。
+   `handleBackgroundConfirmation` 改调挂起式 `request`。
    真机验证：`RootShellHandler: exec [appops set ...] exit=0` → `OVERLAY -> GRANTED`。
+6. [已完成] `AgentRuntimeService` 的通知只读检查改调 `PermissionManager.status`，
+   只读查询只经过 TargetStatus；全仓不再有业务方直连原生权限查询。
 3. [已完成] `AccessibilityController.ensureService` 降级逻辑改调 PermissionManager，
    `attempts` 用于拼装给 LLM 的报错文案；申请前置屏幕控制知情同意
    （前台弹窗，后台直接拒绝，拒绝不记忆）。

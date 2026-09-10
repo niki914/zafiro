@@ -1,7 +1,6 @@
 package com.niki914.permission
 
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.runBlocking
 
 /**
  * 纯 Kotlin 引擎，不依赖 Android。
@@ -57,7 +56,4 @@ class PermissionEngine(
         val final = attempts.lastOrNull()?.state ?: PermissionState.UNAVAILABLE
         return PermissionResult(permission, final, attempts)
     }
-
-    fun requestBlocking(permission: Permission, channels: List<Channel>): PermissionResult =
-        runBlocking { request(permission, channels) }
 }
