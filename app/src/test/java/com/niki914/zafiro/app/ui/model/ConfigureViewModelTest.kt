@@ -33,6 +33,8 @@ class ConfigureViewModelTest {
         val upserted = mutableListOf<SavedLlmConfig>()
         val deletedIds = mutableListOf<String>()
         val activatedIds = mutableListOf<String>()
+        var catalogResult: List<String> = emptyList()
+        var catalogError: Throwable? = null
 
         fun toDependencies(): ConfigureViewModelDependencies =
             ConfigureViewModelDependencies(
@@ -65,6 +67,10 @@ class ConfigureViewModelTest {
                 setActiveConfig = { id ->
                     activatedIds += id
                     document = document.copy(activeId = id)
+                },
+                fetchModelCatalog = { _, _, _ ->
+                    catalogError?.let { throw it }
+                    catalogResult
                 },
             )
     }
@@ -178,12 +184,68 @@ class ConfigureViewModelTest {
         advanceUntilIdle()
         val effectDeferred = async { viewModel.uiEffect.first() }
 
+        // ApiKey 已填：只剩 Model 为空，校验应停在 Model 分支
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk"))
         viewModel.sendIntent(ConfigureIntent.UpdateModel(""))
         viewModel.sendIntent(ConfigureIntent.Save)
         advanceUntilIdle()
 
         assertTrue(deps.upserted.isEmpty())
         assertEquals(ConfigureEffect.FocusModel, effectDeferred.await())
+    }
+
+    @Test
+    fun catalogFetch_successOverwritesIncludingEmpty() = runTest {
+        val deps = RecordingDeps()
+        deps.catalogResult = listOf("m-1")
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-1"))
+        advanceUntilIdle()
+        assertEquals(listOf("m-1"), viewModel.uiStateFlow.value.modelCatalog)
+
+        // 成功空结果也覆盖：按钮藏起，不残留旧名单
+        deps.catalogResult = emptyList()
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-2"))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiStateFlow.value.modelCatalog.isEmpty())
+    }
+
+    @Test
+    fun catalogFetch_failureKeepsOldCache() = runTest {
+        val deps = RecordingDeps()
+        deps.catalogResult = listOf("m-1")
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-1"))
+        advanceUntilIdle()
+        assertEquals(listOf("m-1"), viewModel.uiStateFlow.value.modelCatalog)
+
+        // 失败保留旧缓存：不断网恢复前按钮仍可用
+        deps.catalogError = RuntimeException("boom")
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-2"))
+        advanceUntilIdle()
+        assertEquals(listOf("m-1"), viewModel.uiStateFlow.value.modelCatalog)
+    }
+
+    @Test
+    fun save_withBlankApiKey_sendsFocusEffectWithoutWriting() = runTest {
+        val deps = RecordingDeps()
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
+        advanceUntilIdle()
+        val effectDeferred = async { viewModel.uiEffect.first() }
+
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey(""))
+        viewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+
+        assertTrue(deps.upserted.isEmpty())
+        assertEquals(ConfigureEffect.FocusApiKey, effectDeferred.await())
     }
 
 

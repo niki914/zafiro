@@ -149,6 +149,7 @@ fun <Field : Enum<Field>> SettingControlledExpandableTextItem(
     onToggleSecretVisibility: (() -> Unit)? = null,
     toggleSecretVisibleContentDescription: String? = null,
     toggleSecretHiddenContentDescription: String? = null,
+    fieldTrailingContent: (@Composable () -> Unit)? = null,
 ) {
     SettingExpandableTextItem(
         title = title,
@@ -167,6 +168,7 @@ fun <Field : Enum<Field>> SettingControlledExpandableTextItem(
         onExpandedChange = { expanded ->
             controller.onExpandedFieldChange(if (expanded) field else null)
         },
+        fieldTrailingContent = fieldTrailingContent,
     )
 }
 
