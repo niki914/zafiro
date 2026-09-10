@@ -541,7 +541,7 @@ fun TurnActionRow(
         contentAlignment = if (isAgent) Alignment.CenterStart else Alignment.CenterEnd,
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (iconOnly) 2.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ActionButton(
@@ -593,7 +593,7 @@ private fun ActionButton(
 
     Box(
         modifier = Modifier
-            .size(38.dp)
+            .size(if (iconOnly) 28.dp else 38.dp)
             .then(
                 if (iconOnly) {
                     Modifier
@@ -614,7 +614,7 @@ private fun ActionButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(if (iconOnly) 16.dp else 20.dp),
             tint = colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
         )
     }
