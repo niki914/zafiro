@@ -104,8 +104,8 @@ class ShizukuHandler(
 
         return when (permission) {
             Permission.ROOT, Permission.SHIZUKU -> PermissionState.GRANTED
-            Permission.OVERLAY -> exec("appops set $packageName SYSTEM_ALERT_WINDOW allow")
-            Permission.ACCESSIBILITY -> grantAccessibility()
+            Permission.OVERLAY -> ShellGrants.grantOverlay(::run, packageName)
+            Permission.ACCESSIBILITY -> ShellGrants.grantAccessibility(::run, accessibilityService)
             else -> PermissionState.UNAVAILABLE
         }
     }
@@ -176,33 +176,6 @@ class ShizukuHandler(
             }
         }
 
-    private suspend fun grantAccessibility(): PermissionState {
-        val service = requireNotNull(accessibilityService) {
-            "accessibilityService is required for Permission.ACCESSIBILITY"
-        }
-        val get = run("settings get secure enabled_accessibility_services")
-            ?: return PermissionState.FAILED
-        val merged = get.stdout.joinToString("").trim()
-            .takeUnless { it.isBlank() || it == "null" }
-            ?.split(":")
-            .orEmpty()
-            .filter { it.isNotBlank() }
-            .plus(service.flattenToShortString())
-            .distinct()
-            .joinToString(":")
-        val put1 = run("settings put secure enabled_accessibility_services $merged")
-            ?: return PermissionState.FAILED
-        if (!put1.isSuccess) return PermissionState.FAILED
-        val put2 = run("settings put secure accessibility_enabled 1")
-            ?: return PermissionState.FAILED
-        return if (put2.isSuccess) PermissionState.GRANTED else PermissionState.FAILED
-    }
-
-    private suspend fun exec(command: String): PermissionState {
-        val outcome = run(command) ?: return PermissionState.FAILED
-        return if (outcome.isSuccess) PermissionState.GRANTED else PermissionState.FAILED
-    }
-
     /** null = 进程创建/执行失败。stdout/stderr 并发消费，防 stderr 撑满死锁。 */
     private suspend fun run(command: String): ShellOutcome? = withContext(Dispatchers.IO) {
         try {
@@ -249,12 +222,5 @@ class ShizukuHandler(
         const val AUTH_TIMEOUT_MILLIS = 30_000L
         const val BINDER_TIMEOUT_MILLIS = 8_000L
         val requestCodeGen = AtomicInteger(1000)
-
-        /** 诊断快照：主进程打日志用，无需直接依赖 shizuku-api */
-        fun binderSnapshot(): String {
-            val alive = runCatching { Shizuku.pingBinder() }.getOrDefault(false)
-            val version = runCatching { Shizuku.getVersion() }.getOrNull()
-            return "alive=$alive version=$version"
-        }
     }
 }

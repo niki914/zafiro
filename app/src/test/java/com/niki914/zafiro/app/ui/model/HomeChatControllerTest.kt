@@ -1328,6 +1328,7 @@ private open class FakeHomeConversationStore : HomeConversationStore {
         val prefix = when (kind) {
             ForkKind.Fork -> "Fork · "
             ForkKind.Regenerate -> "Regenerate · "
+            // Fake 与真实 Repo 对齐：ConversationRepo.forkConversation 用 rewindTitleFormat（默认 "Rewind · %1$s"）
             ForkKind.Rewind -> "Rewind · "
         }
         records[newId] = ConversationRecord(

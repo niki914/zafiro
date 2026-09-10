@@ -8,8 +8,11 @@ import android.provider.Settings
 /**
  * 目标权限的真实状态静默查询（PRD：status() 报真实权限，Context 注入）。
  * 各通道 handler 共用；查询只读系统状态，不拉任何授权。
+ *
+ * public：XIpcBridge.postLocalNotification 这类“只看状态、不跑链”的调用方
+ * 也经此出口，业务方禁止直连原生权限 API（单测 PermissionEntryGuardTest 兜底）。
  */
-internal object TargetStatus {
+object TargetStatus {
 
     fun overlay(context: Context): PermissionState =
         if (Settings.canDrawOverlays(context)) {
