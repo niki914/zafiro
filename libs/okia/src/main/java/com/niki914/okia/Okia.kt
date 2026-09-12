@@ -52,6 +52,13 @@ interface Okia {
     // 取消当前回合；kill-then-stop（先杀工具资源再取消 job）
     suspend fun stop(): Unit
 
+    // 定向取消：只取消 send 时经 TurnOptions.turnToken 绑定该 token 的活跃回合
+    // （token 值相等即匹配，不要求同一对象）。返回 true = 本次调用定位到目标并
+    // 完成其 kill/join 清理；token 过期、回合已结束或重复停止返回 false，且不与
+    // 后来创建的新回合发生任何交互（不 kill、不取消、不清 guard）。
+    // 默认实现：不支持定向身份的实现（假实现/未接入）永远视为未命中，无副作用。
+    suspend fun stop(turnToken: Any): Boolean = false
+
     // 原地移动 leafId 到过去的条目，被跳过的尾部保留在树中。
     // entryId 不存在时抛 IllegalArgumentException；位置语义不校验（放开）：
     // 停在未配对工具调用等位置由下游负责。改第一条消息 = 新建实例（§5.1），

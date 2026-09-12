@@ -43,6 +43,7 @@ import com.niki914.zafiro.chat.agentic.stream.LlmStreamEventMapper
 import com.niki914.zafiro.chat.runtime.BoundFactEmitter
 import com.niki914.zafiro.chat.runtime.NoOp
 import com.niki914.zafiro.chat.runtime.RuntimeFactSink
+import com.niki914.zafiro.chat.runtime.TurnKey
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.CancellationException
@@ -395,6 +396,10 @@ object LLMController {
         // （executor）在构造 BoundFactEmitter 时捕获一次；此处只发 raw 事件，
         // 永不读取全局"当前回合"。任意汇点只收显式 emit，不做 unsafe cast。
         val emitter = observer as? BoundFactEmitter
+        // 回合身份 token（scoped stop）：直接取已绑定的执行身份，send 时写入
+        // TurnOptions，定向 stop 按值相等命中同一回合。null = 无观察调用，
+        // 只能被无参 stop / 外部取消命中（原行为）。
+        val turnToken: TurnKey? = emitter?.scope?.key
         // emit-only 安全观察（Fix-2）：同步汇点回调的一切抛错（含观察者自造的
         // CancellationException/Throwable）全部隔离，不取消、不失败 AI 执行。
         // 真正的协程取消走原有业务 catch（is CancellationException 即重抛），
@@ -488,7 +493,10 @@ object LLMController {
                     state.okia.send(
                         text = effectiveQuery,
                         images = images,
-                        options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt),
+                        options = TurnOptions(
+                            systemPrompt = state.snapshot.config.finalSystemPrompt,
+                            turnToken = turnToken,
+                        ),
                     ) { event ->
                         // 观察隔离：一切抛错隔离，取消仍由原有业务 catch 判定。
                         observeSafely { emit(event) }
@@ -621,11 +629,28 @@ object LLMController {
 
     suspend fun stopCurrentRound() {
         Logger.i(LOG_TAG, "stop round requested")
-        // OKIA stop() 内建 kill-then-stop：beforeStop hook（杀 py/tty）先于
-        // 取消 job 执行，阻塞工具不再吃得协程取消（§5.11）。
-        // OKIA 停止不动会话树，下一轮自然承接历史。
+        // 无目标停止（旧入口兼容）：OKIA stop() 内建 kill-then-stop：beforeStop
+        // hook（杀 py/tty）先于取消 job 执行，阻塞工具不再吃得协程取消（§5.11）。
+        // OKIA 停止不动会话树，下一轮自然承接历史。定向停止走 stopTurn。
         okia?.stop()
         Logger.i(LOG_TAG, "stop round done")
+    }
+
+    /**
+     * 定向停止指定回合（AC9/PR1）：[turn] 为执行身份 TurnKey，send 时经
+     * TurnOptions.turnToken 绑定。只有“当前会话实例仍持有该 token 的活跃回合”
+     * 会被命中；会话已切换/实例已替换/回合已结束/重复停止一律 no-op，不取消、
+     * 不 kill 任何当前回合。TurnKey 含全局唯一 turnId + epoch，因此无需另行登记
+     * “哪个实例跑该回合”：错实例上不存在同值 token，比对必然不命中（过期目标
+     * 不触达新回合）。
+     *
+     * @return true = 本次调用定位到目标并完成其 kill/join 清理。
+     */
+    suspend fun stopTurn(turn: TurnKey): Boolean {
+        Logger.i(LOG_TAG, "stop turn requested turnId=${turn.turnId} epoch=${turn.epoch}")
+        val handled = okia?.stop(turn) ?: false
+        Logger.i(LOG_TAG, "stop turn done handled=$handled")
+        return handled
     }
 
     // ── 会话管理（OKIA 实例生命周期） ──────────────────────────────────────────

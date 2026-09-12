@@ -32,6 +32,13 @@ interface ConversationEngine {
         images: List<ContentBlock.Image>,
         observer: RuntimeFactSink,
     ): Flow<LlmStreamEvent>
+
+    /**
+     * 定向停止引擎侧回合（AC9）：[turn] 是执行身份，引擎在 send 时已将其绑定为
+     * 回合 token。token 不再匹配（回合已结束/会话已切换/实例已替换）时返回 false
+     * 且不触碰任何当前回合。
+     */
+    suspend fun stopTurn(turn: TurnKey): Boolean
 }
 
 /** 生产默认：包装 [LLMController]，不新增行为。 */
@@ -43,6 +50,8 @@ object LlmControllerEngine : ConversationEngine {
         images: List<ContentBlock.Image>,
         observer: RuntimeFactSink,
     ): Flow<LlmStreamEvent> = LLMController.stream(query, images, observer)
+
+    override suspend fun stopTurn(turn: TurnKey): Boolean = LLMController.stopTurn(turn)
 }
 
 /**
@@ -155,6 +164,18 @@ class ConversationExecutor(
         val execution = synchronized(lock) { executions[turn] } ?: return false
         execution.job.cancel()
         return true
+    }
+
+    /**
+     * 定向停止（引擎侧）：仅对仍登记的执行将 [turn] 转交引擎做有界 kill-then-stop。
+     * 未登记（已结束/过期）或引擎侧 token 不再匹配（实例已替换）时返回 false，
+     * 不触碰任何当前回合。与 [cancel] 的先后顺序由接入方按原入口保持
+     * （HomeChat：先本方法、后 cancel；Host：先 cancel、后异步本方法）；
+     * executor 不新增仲裁或排队。
+     */
+    suspend fun stopTurn(turn: TurnKey): Boolean {
+        if (synchronized(lock) { executions[turn] } == null) return false
+        return engine.stopTurn(turn)
     }
 
     /** 等待目标执行结束（已完成/未知立即返回）；等价于对原 Job join，不暴露 Job。 */
