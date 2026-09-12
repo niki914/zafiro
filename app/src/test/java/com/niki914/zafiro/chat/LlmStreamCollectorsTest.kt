@@ -3,6 +3,8 @@ package com.niki914.zafiro.chat
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LlmStreamCollectorsTest {
@@ -214,6 +216,150 @@ class LlmStreamCollectorsTest {
         )
         assertEquals(false, frames.last().isFirst)
         assertEquals(true, frames.last().isFinal)
+    }
+
+    // ── FullTextProjector（Service 复用的 internal seam）与旧 collectAsFull 对照 ────────
+
+    @Test
+    fun fullTextProjector_matchesCollectAsFull_andMatchesGoldenFrames() = runTest {
+        val events = listOf(
+            LlmStreamEvent.RoundStarted,
+            LlmStreamEvent.TextDelta(delta = "I'll call search.", fullText = "I'll call search."),
+            LlmStreamEvent.ThinkingStarted(0, "plan"),
+            LlmStreamEvent.ThinkingEnded(0, "plan"),
+            LlmStreamEvent.ToolRunning(ToolCallStatus(callId = "search-1", name = "search")),
+            LlmStreamEvent.ToolSucceeded(ToolCallStatus(callId = "search-1", name = "search")),
+            LlmStreamEvent.TextDelta(delta = "Done.", fullText = "I'll call search.Done."),
+            LlmStreamEvent.Completed,
+        )
+
+        val projectorFrames = mutableListOf<LlmTextFrame>()
+        val projector = FullTextProjector(testLabels)
+        events.forEach { event ->
+            projector.apply(event).forEach { projectorFrames += it }
+        }
+
+        val collectorFrames = mutableListOf<LlmTextFrame>()
+        flowOf(*events.toTypedArray()).collectAsFull(testLabels) { collectorFrames += it }
+
+        // Service 复用的 internal seam 与旧 collectAsFull 逐帧一致（含顺序与终结帧）
+        assertEquals(collectorFrames, projectorFrames)
+        assertEquals(
+            """
+            I'll call search.
+            `[Thought]`
+            `[search] success`
+            Done.
+            """.trimIndent(),
+            projectorFrames.last().text,
+        )
+        assertTrue(projectorFrames.first().isFirst)
+        assertTrue(projectorFrames.last().isFinal)
+    }
+
+    @Test
+    fun fullTextProjector_emptyThinkingEmitsNoThinkingLine() {
+        val projector = FullTextProjector(testLabels)
+        val frames = mutableListOf<LlmTextFrame>()
+        listOf(
+            LlmStreamEvent.RoundStarted,
+            LlmStreamEvent.ThinkingStarted(0, ""),
+            LlmStreamEvent.ThinkingEnded(0, ""),
+            LlmStreamEvent.TextDelta(delta = "answer", fullText = "answer"),
+            LlmStreamEvent.Completed,
+        ).forEach { event -> projector.apply(event).forEach { frames += it } }
+
+        assertEquals("answer", frames.last().text)
+        assertTrue(frames.none { "[Thinking]" in it.text || "[Thought]" in it.text })
+    }
+
+    @Test
+    fun fullTextProjector_toolArgsAndResultStayOutOfVisibleFrame() {
+        val projector = FullTextProjector(testLabels)
+        val frames = mutableListOf<LlmTextFrame>()
+        listOf(
+            LlmStreamEvent.RoundStarted,
+            LlmStreamEvent.ToolRunning(
+                ToolCallStatus(
+                    callId = "c1",
+                    name = "terminal",
+                    label = "terminal",
+                    argumentsJson = """{"command":"rm -rf /"}""",
+                ),
+            ),
+            LlmStreamEvent.ToolSucceeded(
+                ToolCallStatus(callId = "c1", name = "terminal", label = "terminal"),
+                outputText = "secret-output",
+            ),
+            LlmStreamEvent.Completed,
+        ).forEach { event -> projector.apply(event).forEach { frames += it } }
+
+        assertEquals("`[terminal] success`", frames.last().text)
+        assertTrue(frames.none { "rm -rf /" in it.text || "secret-output" in it.text })
+    }
+
+    @Test
+    fun fullTextProjector_retryLineAppearsAndClearsOnRecovery() {
+        val projector = FullTextProjector(testLabels)
+        val frames = mutableListOf<LlmTextFrame>()
+        listOf(
+            LlmStreamEvent.RoundStarted,
+            LlmStreamEvent.TextDelta(delta = "partial", fullText = "partial"),
+            LlmStreamEvent.Retrying(
+                attempt = 1,
+                maxAttempts = 3,
+                delayMs = 100L,
+                reason = "rate limit",
+            ),
+            LlmStreamEvent.TextDelta(delta = "recovered", fullText = "partialrecovered"),
+            LlmStreamEvent.Completed,
+        ).forEach { event -> projector.apply(event).forEach { frames += it } }
+
+        // 重试状态行在流恢复后整行退场；正文不重复、不丢失
+        val retryFrame = frames.first { "[Retrying 1/3]" in it.text }
+        assertTrue(retryFrame.text.startsWith("partial"))
+        assertEquals("partialrecovered", frames.last().text)
+        assertTrue(frames.last().isFinal)
+    }
+
+    @Test
+    fun fullTextProjector_streamWithoutCompletedHasNoFinalFrame() {
+        val projector = FullTextProjector(testLabels)
+        val frames = mutableListOf<LlmTextFrame>()
+        listOf(
+            LlmStreamEvent.RoundStarted,
+            LlmStreamEvent.TextDelta(delta = "partial", fullText = "partial"),
+            LlmStreamEvent.ThinkingStarted(0, "half thought"),
+            LlmStreamEvent.ThinkingEnded(0, "half thought"),
+        ).forEach { event -> projector.apply(event).forEach { frames += it } }
+
+        // 中止（无 Completed）：不产生 isFinal 帧，已收内容保留
+        assertTrue(frames.none { it.isFinal })
+        assertEquals("partial\n`[Thought]`", frames.last().text)
+    }
+
+    @Test
+    fun fullTextProjector_errorIsFinalFrameWithGoldenText() {
+        val projector = FullTextProjector(testLabels)
+        val frames = projector.apply(LlmStreamEvent.Error("boom"))
+
+        assertEquals(1, frames.size)
+        assertTrue(frames.single().isFirst)
+        assertTrue(frames.single().isFinal)
+        assertEquals("## Error\n```\nboom\n```", frames.single().text)
+    }
+
+    @Test
+    fun fullTextProjector_errorAfterTextIsFinalButNotFirst() {
+        val projector = FullTextProjector(testLabels)
+        val frames = mutableListOf<LlmTextFrame>()
+        projector.apply(LlmStreamEvent.TextDelta(delta = "hello", fullText = "hello"))
+            .forEach { frames += it }
+        projector.apply(LlmStreamEvent.Error("boom")).forEach { frames += it }
+
+        assertFalse(frames.last().isFirst)
+        assertTrue(frames.last().isFinal)
+        assertEquals("hello\n## Error\n```\nboom\n```", frames.last().text)
     }
 
     private val testLabels = ToolStatusLabels(
