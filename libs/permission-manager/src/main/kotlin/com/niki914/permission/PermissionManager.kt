@@ -46,8 +46,10 @@ class PermissionManager private constructor(
      * 默认链快捷入口：scope() 空参的等价写法。
      * 业务能确定用哪条链时直接调这个；要自定义通道才用 scope(vararg channels)。
      */
-    suspend fun request(permission: Permission): PermissionResult =
-        scope().request(permission)
+    suspend fun request(
+        permission: Permission,
+        observation: PermissionObservation? = null,
+    ): PermissionResult = scope().request(permission, observation)
 
     fun scope(vararg channels: Channel): ScopeBuilder =
         ScopeBuilder(engine, channels.toList())
@@ -112,8 +114,11 @@ class ScopeBuilder internal constructor(
      * 空 scope = 用该 permission 的默认链；传了 channels 就按传入顺序跑。
      * 挂起式：不占线程等回调；阻塞式会卡 Binder 线程，不提供。
      */
-    suspend fun request(permission: Permission): PermissionResult {
+    suspend fun request(
+        permission: Permission,
+        observation: PermissionObservation? = null,
+    ): PermissionResult {
         val chain = channels.ifEmpty { PermissionManager.defaultChain(permission) }
-        return engine.request(permission, chain)
+        return engine.request(permission, chain, observation)
     }
 }

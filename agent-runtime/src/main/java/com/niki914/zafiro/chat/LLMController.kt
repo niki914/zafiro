@@ -40,6 +40,9 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.util.ToolOutputTruncator
 import com.niki914.zafiro.chat.agentic.stream.LlmStreamEventMapper
+import com.niki914.zafiro.chat.runtime.BoundFactEmitter
+import com.niki914.zafiro.chat.runtime.NoOp
+import com.niki914.zafiro.chat.runtime.RuntimeFactSink
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.CancellationException
@@ -386,7 +389,23 @@ object LLMController {
     fun stream(
         query: String,
         images: List<ContentBlock.Image> = emptyList(),
+        observer: RuntimeFactSink = NoOp,
     ): Flow<LlmStreamEvent> = channelFlow {
+        // 观察适配（T-08）：原始 TurnEvent 在旧 mapper 过滤前送出。身份由调用方
+        // （executor）在构造 BoundFactEmitter 时捕获一次；此处只发 raw 事件，
+        // 永不读取全局"当前回合"。任意汇点只收显式 emit，不做 unsafe cast。
+        val emitter = observer as? BoundFactEmitter
+        // emit-only 安全观察（Fix-2）：同步汇点回调的一切抛错（含观察者自造的
+        // CancellationException/Throwable）全部隔离，不取消、不失败 AI 执行。
+        // 真正的协程取消走原有业务 catch（is CancellationException 即重抛），
+        // 与观察者异常类型无关，不在此判断。
+        fun observeSafely(block: BoundFactEmitter.() -> Unit) {
+            val sink = emitter ?: return
+            try {
+                sink.block()
+            } catch (_: Throwable) {
+            }
+        }
         try {
             val state = try {
                 refresh()
@@ -404,6 +423,8 @@ object LLMController {
                         LOG_TAG,
                         "refresh failed errorType=${throwable.eventTypeName()} message=$message"
                     )
+                    // 配置错误未进 TurnResult：补最终原因，原异常保留，返回语义不变。
+                    observeSafely { emit(throwable) }
                     send(
                         LlmStreamEvent.Error(
                             message = message,
@@ -431,6 +452,8 @@ object LLMController {
             var streamErrorReported = false
             var streamTerminated = false
             var firstFrameLogged = false
+            // 每次执行独立映射实例：并发执行状态互不串扰，旧输出筛选不变。
+            val eventMapper = LlmStreamEventMapper()
             val sink: SendChannel<LlmStreamEvent> = this
 
             /** 发送事件并维护终态标记（Error/Completed 已发则 [streamTerminated] 置位）。 */
@@ -467,7 +490,9 @@ object LLMController {
                         images = images,
                         options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt),
                     ) { event ->
-                        val mapped = LlmStreamEventMapper.map(event, startedAtMs)
+                        // 观察隔离：一切抛错隔离，取消仍由原有业务 catch 判定。
+                        observeSafely { emit(event) }
+                        val mapped = eventMapper.map(event, startedAtMs)
                         mapped?.let {
                             if (!firstFrameLogged && it is LlmStreamEvent.TextDelta) {
                                 firstFrameLogged = true
@@ -494,7 +519,9 @@ object LLMController {
                         throw throwable
                     }
                     // OKIA 失败走 TurnResult 不抛；此处捕获契约违例（并发 send /
-                    // closed 等），转错误事件保持 UI 行为（D9）
+                    // closed 等），转错误事件保持 UI 行为（D9）。观察侧无条件上报：
+                    // UI 去重（streamErrorReported）不管观察完整性，去重由 reducer 负责。
+                    observeSafely { emit(throwable) }
                     if (!streamErrorReported) {
                         Logger.e(
                             LOG_TAG,
@@ -513,6 +540,9 @@ object LLMController {
                     }
                     null
                 }
+                // send 返回值终态：已发 TurnCompleted/TurnFailed 等价事件后，
+                // 同一终态再结算一次供归约（终态去重由 reducer 负责）。
+                result?.let { final -> observeSafely { emit(final) } }
                 // 终态兜底：事件流中间过程未覆盖的失败（防御路径，正常事件已含
                 // TurnFailed 映射），按返回值补发一条错误事件
                 if (result is TurnResult.Failed && !streamErrorReported) {

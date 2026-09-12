@@ -17,9 +17,14 @@ import com.niki914.zafiro.chat.ToolCallStatus
  * 本映射只负责单条事件的投影，流结束语义由 LLMController 按返回值处理。
  * 工具事件映射为 T2 铺路：T1 无工具注册，事件不会出现，但映射逻辑完整。
  * 错误的 Zafiro 侧 code 映射留 T4（可重试维度，LlmErrorCode 暂不扩展）。
+ *
+ * 每次执行独立实例（T-09）：调用方按执行创建，不再跨执行共享可变累积；
+ * 映射语义（筛选/速率/收尾）不变。
  */
-object LlmStreamEventMapper {
-    private const val LOG_TAG = "niki914_nexus_LlmStreamEventMapper"
+class LlmStreamEventMapper {
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_LlmStreamEventMapper"
+    }
 
     /**
      * 当前正在流式的文本块已累积文本（跨事件状态）。
