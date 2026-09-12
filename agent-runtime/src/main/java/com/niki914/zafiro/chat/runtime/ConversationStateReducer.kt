@@ -99,6 +99,9 @@ class ConversationStateReducer(
             settle(fact.key, fact.attempt) { applyFailure(fact.error, it) }
         is RuntimeFact.OperationEvent -> onOperation(fact)
         is RuntimeFact.PermissionReported -> onPermission(fact.observation)
+        is RuntimeFact.CancellationRequested -> onCancellationRequested(fact)
+        is RuntimeFact.CapabilityPreparationStarted -> onCapabilityPreparation(fact.key, true)
+        is RuntimeFact.CapabilityPreparationEnded -> onCapabilityPreparation(fact.key, false)
     }
 
     private fun onExecutionStarted(fact: RuntimeFact.ExecutionStarted): Boolean {
@@ -130,7 +133,9 @@ class ConversationStateReducer(
 
     private fun applyEvent(event: TurnEvent, attempt: Int, turn: TurnState) {
         when (event) {
-            is TurnEvent.TurnStarted -> turn.phase = TurnPhase.Running
+            is TurnEvent.TurnStarted ->
+                // 晚到的 TurnStarted 不回退已取消状态（准备期公开 stop 先到）。
+                if (turn.phase == TurnPhase.Preparing) turn.phase = TurnPhase.Running
 
             // 块首事件：先判消息边界，再落块。delta/ended 不是块首，不参与边界。
             is TurnEvent.TextStarted -> {
@@ -238,13 +243,16 @@ class ConversationStateReducer(
         }
     }
 
-    /** 终态迁移：首次终态决定 phase/reason，之后只补空缺原因，绝不重复迁移。 */
+    /** 终态迁移：首次终态决定 phase/reason，之后只补空缺原因，绝不重复迁移。
+     * 取消请求原因仅作首终态缺原因时的兜底，不覆盖引擎给出的 StopCause/失败原因；
+     * 正常 Completed 不附带取消原因。 */
     private fun terminal(turn: TurnState, phase: TurnPhase, reason: Reason?) {
+        val fallback = turn.cancelReason.takeIf { phase != TurnPhase.Completed }
         if (!turn.phase.isTerminal) {
             turn.phase = phase
-            turn.reason = reason
+            turn.reason = reason ?: fallback
         } else if (turn.reason == null) {
-            turn.reason = reason
+            turn.reason = reason ?: fallback
         }
         turn.finalizeInflight()
     }
@@ -300,8 +308,13 @@ class ConversationStateReducer(
 
     private fun applyFailure(error: Throwable, turn: TurnState) {
         if (error is CancellationException) {
-            // 真实取消：按取消结算，不发明 reset。
-            terminal(turn, TurnPhase.Cancelled, Reason("CANCELLED", ORIGIN_EXECUTOR, error.message))
+            // 真实取消：按取消结算，不发明 reset；已捕获的取消请求原因（公开 stop /
+            // owner 触发）优先于通用 CANCELLED 兜底。
+            terminal(
+                turn,
+                TurnPhase.Cancelled,
+                turn.cancelReason ?: Reason("CANCELLED", ORIGIN_EXECUTOR, error.message),
+            )
         } else {
             // 未进 TurnResult 的框架异常（配置错误等）。
             terminal(turn, TurnPhase.Failed, Reason("EXECUTION_FAILED", ORIGIN_EXECUTOR, describe(error)))
@@ -318,12 +331,18 @@ class ConversationStateReducer(
         operationPhase = fact.phase
         operationReason = fact.reason
         // 只有已提交的成功状态更新当前持久身份；失败操作保留先前身份。
+        // create 无请求负载，身份只可能来自后端回执；restore/switch 以后端回执优先，
+        // 无回执时用请求目标。均不从 OKIA 会话 id 推断。
         when (val op = fact.operation) {
             is ConversationOperation.Restore ->
-                if (fact.phase == OperationPhase.Succeeded) persistedId = op.persistedId
+                if (fact.phase == OperationPhase.Succeeded) {
+                    persistedId = fact.persistedId ?: op.persistedId
+                }
 
             is ConversationOperation.Switch ->
-                if (fact.phase == OperationPhase.Succeeded) persistedId = op.persistedId
+                if (fact.phase == OperationPhase.Succeeded) {
+                    persistedId = fact.persistedId ?: op.persistedId
+                }
 
             ConversationOperation.Reset ->
                 if (fact.phase == OperationPhase.Succeeded) {
@@ -332,7 +351,44 @@ class ConversationStateReducer(
                     conversation = null
                 }
 
-            ConversationOperation.Create -> Unit
+            ConversationOperation.Create ->
+                if (fact.phase == OperationPhase.Succeeded) {
+                    fact.persistedId?.let { persistedId = it }
+                }
+        }
+        return true
+    }
+
+    /**
+     * 取消请求：目标仍非终态时进入 Cancelling，并保留请求原因（仅终态缺原因时兜底）。
+     * 已结算/未知目标不构造猜测性观察，旧回合请求不污染新回合。
+     */
+    private fun onCancellationRequested(fact: RuntimeFact.CancellationRequested): Boolean {
+        val turn = target(fact.key) ?: return false
+        if (turn.phase.isTerminal) return false
+        turn.phase = TurnPhase.Cancelling
+        if (turn.cancelReason == null) turn.cancelReason = fact.reason
+        return true
+    }
+
+    /**
+     * 能力准备显式阻塞：begin 挂 [BlockerKind.CapabilityPreparation]（与权限/工具/
+     * 退避并存），end 在 finally 清除；终态后到达的事实被隔离。
+     */
+    private fun onCapabilityPreparation(key: TurnKey, started: Boolean): Boolean {
+        val turn = target(key) ?: return false
+        if (started) {
+            if (turn.phase.isTerminal) return false
+            turn.blockers[CAPABILITY_BLOCKER_ID] = Blocker(
+                id = CAPABILITY_BLOCKER_ID,
+                kind = BlockerKind.CapabilityPreparation,
+                toolCallId = null,
+                requestId = null,
+                retryDelayMs = null,
+                reason = CAPABILITY_PREPARATION_REASON,
+            )
+        } else {
+            turn.blockers.remove(CAPABILITY_BLOCKER_ID)
         }
         return true
     }
@@ -407,6 +463,9 @@ class ConversationStateReducer(
         const val RETRY_BLOCKER_ID = "retry"
         const val TOOL_BLOCKER_PREFIX = "tool:"
         const val PERM_BLOCKER_PREFIX = "perm:"
+        const val CAPABILITY_BLOCKER_ID = "capability"
+        val CAPABILITY_PREPARATION_REASON =
+            Reason("CAPABILITY_PREPARATION", ORIGIN_EXECUTOR)
     }
 }
 
@@ -450,6 +509,9 @@ private class TurnState(
     /** ExecutionStarted 无 attempt；首个流事实前呈 0（未知哨兵）。 */
     var attempt: Int = 0
     var reason: Reason? = null
+
+    /** 已收到的取消请求原因；仅终态缺原因时兜底，不覆盖引擎终态原因。 */
+    var cancelReason: Reason? = null
 
     /** 同 attempt 内的段序号（工具循环多段）；见 [beginMessage]。 */
     var ordinal: Int = 0
@@ -681,7 +743,9 @@ private class TurnState(
             tools = (tools.values + pendingViews).sortedWith(toolOrder),
             blockers = blockers.values.toSet(),
             permissions = permissions.values.toList(),
-            reason = reason,
+            // 取消请求已捕获但尚无终态时，用请求原因解释当前 Cancelling；
+            // 已有终态原因时不覆盖（引擎 StopCause/失败原因优先），Completed 不继承。
+            reason = reason ?: cancelReason?.takeIf { phase == TurnPhase.Cancelling },
         )
     }
 }

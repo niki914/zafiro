@@ -17,6 +17,7 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.coroutines.CoroutineContext
 
 /**
  * 执行引擎接缝（T-04）：executor 只依赖本接口，生产默认 [LlmControllerEngine]，
@@ -100,6 +101,7 @@ class ConversationExecutor(
     private class Execution(
         val owner: ExecutionOwner,
         val job: Job,
+        val emitter: BoundFactEmitter,
     )
 
     /**
@@ -138,7 +140,7 @@ class ConversationExecutor(
                 .launch(start = CoroutineStart.LAZY) {
                     runExecution(key, input, output, emitter)
                 }
-            execution = Execution(owner, job)
+            execution = Execution(owner, job, emitter)
             executions[key] = execution
             emitter.emitFact(RuntimeFact.ExecutionStarted(key, owner.source, input))
         }
@@ -157,13 +159,49 @@ class ConversationExecutor(
     }
 
     /**
-     * 定向停止：仅当 [turn] 仍是登记中的执行才取消其 Job。
+     * 定向停止（兼容钩子）：仅当 [turn] 仍是登记中的执行才取消其 Job。
      * 过期/已结束身份返回 false，绝不影响后来创建的新回合，也不触碰引擎。
+     * 取消前发取消请求事实（已结算目标不伪造）。适用于 new/load/delete-current/reset
+     * 等适配器的原局部取消。
      */
     fun cancel(turn: TurnKey): Boolean {
         val execution = synchronized(lock) { executions[turn] } ?: return false
+        execution.emitter.emitCancellationRequest(CANCEL_REQUEST_REASON)
         execution.job.cancel()
         return true
+    }
+
+    /**
+     * 统一停止命令（Group6 门面委托，AC9）：顺序只看**捕获的目标执行** -
+     * [ExecutionOwner.source] 与原始入口，不看调用者 surface（Notification 调用者
+     * 停 Home 回合也不改变其策略）。返回实际生效/无操作结果；过期/已结算目标
+     * 不触碰新回合。
+     *
+     * - Home 归属（原 stopGenerating）：先 [ConversationEngine.stopTurn]（引擎侧
+     *   kill-then-stop），再取消捕获 Job。引擎尚未准入（返回 false）但准备中的
+     *   Job 已被取消时仍为 [CommandOutcome.Applied]。
+     * - Host 归属（原 Service cancel）：先取消捕获 Job，再在**捕获的** owner
+     *   执行上下文里异步 [ConversationEngine.stopTurn]，不扩大作用域/寿命。
+     */
+    suspend fun stop(turn: TurnKey): CommandOutcome {
+        val execution = synchronized(lock) { executions[turn] } ?: return CommandOutcome.IgnoredStaleTarget
+        // 已发终态的执行不再接收取消请求，也不因仍在 map 中而重启停止。
+        if (execution.emitter.settled) return CommandOutcome.IgnoredStaleTarget
+        execution.emitter.emitCancellationRequest(STOP_REQUEST_REASON)
+        return when (execution.owner.source) {
+            EntrySource.HomeChat -> {
+                engine.stopTurn(turn)
+                execution.job.cancel()
+                CommandOutcome.Applied
+            }
+
+            EntrySource.Host -> {
+                val context = execution.owner.executionContext
+                execution.job.cancel()
+                scheduleEngineStop(turn, context)
+                CommandOutcome.Applied
+            }
+        }
     }
 
     /**
@@ -184,18 +222,49 @@ class ConversationExecutor(
         job.join()
     }
 
-    /** 当前是否仍登记有 [turn]（含取消中、尚未完成）；供入口判断可否安全做全局 stop。 */
-    fun isActive(turn: TurnKey): Boolean = synchronized(lock) { executions.containsKey(turn) }
-
     /**
-     * owner 寿命结束（onCleared/Binder death/destroy/scope cancel 等价）：
-     * 取消该 owner 创建的全部执行，沿父 Job 取消相应传播。
+     * owner 寿命结束（onCleared/Binder death/destroy/scope cancel 等价）：取消该 owner
+     * 创建的全部执行，沿父 Job 取消相应传播，顺序按原触发来源：
+     * - [StopTrigger.OwnerCleared] / [StopTrigger.ServiceDestroyed]：只取消（原
+     *   HomeChat onCleared / Service onDestroy）。
+     * - [StopTrigger.HostTaskCancelled] / [StopTrigger.BinderDied]：先取消，再在
+     *   捕获的 owner 执行上下文里异步转发引擎定向停止（原 Service cancel / Binder
+     *   death）；不扩大作用域或寿命。
+     * - [StopTrigger.SessionReset]：只取消；cancel/join/reset 次序仍由原 reset 操作
+     *   拥有，此处不自动 reset。
+     *
+     * 取消前先捕获 key/执行/上下文，避免完成回调清理登记条目后丢失目标；
+     * 已结算目标不伪造取消请求。
      */
     fun ownerEnded(owner: ExecutionOwner, trigger: StopTrigger) {
-        val jobs = synchronized(lock) {
-            executions.values.filter { it.owner.id == owner.id }.map { it.job }
+        val targets = synchronized(lock) {
+            executions.entries.filter { it.value.owner.id == owner.id }
+                .map { it.key to it.value }
         }
-        jobs.forEach { it.cancel() }
+        if (targets.isEmpty()) return
+        val reason = Reason(trigger.name, ORIGIN_EXECUTOR)
+        targets.forEach { (_, execution) ->
+            if (!execution.emitter.settled) execution.emitter.emitCancellationRequest(reason, trigger)
+        }
+        val scheduleStop =
+            trigger == StopTrigger.HostTaskCancelled || trigger == StopTrigger.BinderDied
+        val contexts: Map<TurnKey, CoroutineContext> = if (scheduleStop) {
+            targets.associate { (key, execution) -> key to execution.owner.executionContext }
+        } else {
+            emptyMap()
+        }
+        targets.forEach { (_, execution) -> execution.job.cancel() }
+        contexts.forEach { (key, context) -> scheduleEngineStop(key, context) }
+    }
+
+    /** 在捕获的执行上下文里异步转发引擎定向停止；异常与原 Service 一致地吞掉。 */
+    private fun scheduleEngineStop(turn: TurnKey, context: CoroutineContext) {
+        CoroutineScope(context).launch {
+            try {
+                engine.stopTurn(turn)
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private suspend fun runExecution(
@@ -233,7 +302,7 @@ class ConversationExecutor(
         private val terminalClaim = AtomicBoolean(false)
 
         /** 是否已有终态事实（StreamResult/ExecutionFailed）。 */
-        val settled: Boolean get() = terminalClaim.get()
+        override val settled: Boolean get() = terminalClaim.get()
 
         override val scope: ExecutionScope
             get() = ExecutionScope(key, currentAttempt, source)
@@ -259,6 +328,24 @@ class ConversationExecutor(
             emitFact(RuntimeFact.ExecutionFailed(key, currentAttempt, error))
         }
 
+        /** 能力准备阶段事实；已结算后不再发射（不伪造终态后的准备阶段）。 */
+        override fun emitPreparation(started: Boolean) {
+            if (settled) return
+            emitFact(
+                if (started) {
+                    RuntimeFact.CapabilityPreparationStarted(key)
+                } else {
+                    RuntimeFact.CapabilityPreparationEnded(key)
+                },
+            )
+        }
+
+        /** 取消请求事实；已结算后不再发射（不伪造取消请求）。 */
+        override fun emitCancellationRequest(reason: Reason, trigger: StopTrigger?) {
+            if (settled) return
+            emitFact(RuntimeFact.CancellationRequested(key, reason, trigger))
+        }
+
         /** 汇点抛错不影响执行（§9.9）；start 事实也走这里。 */
         fun emitFact(fact: RuntimeFact) {
             try {
@@ -266,5 +353,13 @@ class ConversationExecutor(
             } catch (_: Throwable) {
             }
         }
+    }
+
+    private companion object {
+        const val ORIGIN_EXECUTOR = "EXECUTOR"
+        const val CODE_STOP_REQUEST = "STOP_REQUEST"
+        const val CODE_CANCEL_REQUEST = "CANCEL_REQUEST"
+        val STOP_REQUEST_REASON = Reason(CODE_STOP_REQUEST, ORIGIN_EXECUTOR)
+        val CANCEL_REQUEST_REASON = Reason(CODE_CANCEL_REQUEST, ORIGIN_EXECUTOR)
     }
 }

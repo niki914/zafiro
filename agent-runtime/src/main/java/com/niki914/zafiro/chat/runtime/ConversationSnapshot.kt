@@ -332,11 +332,41 @@ sealed interface RuntimeFact {
         val error: Throwable,
     ) : RuntimeFact
 
-    /** 会话操作事实（create/restore/switch/reset 进展与结果）。 */
+    /**
+     * 取消请求：目标回合已收到取消请求（公开 stop / 适配器 cancel / owner 生命周期
+     * 取消），归约据此进入 Cancelling。请求原因只在终态缺原因时兜底；引擎随后给出的
+     * StopCause / 失败原因优先。已结算回合不接收本事实（不伪造取消请求）。
+     *
+     * [trigger] 非空 = 原 [StopTrigger] 生命周期来源（ownerEnded）；公开 stop / 适配器
+     * cancel 为 null。[reason] 记录请求事实（含来源 code），不替代引擎终态原因。
+     */
+    data class CancellationRequested(
+        val key: TurnKey,
+        val reason: Reason,
+        val trigger: StopTrigger? = null,
+    ) : RuntimeFact
+
+    /**
+     * 能力准备阶段（executor 侧 refresh/工具/MCP 准备）显式开始：在该已知阶段上挂
+     * [BlockerKind.CapabilityPreparation] 阻塞，与权限/工具/退避阻塞并存；不把任意
+     * suspend 等待当作准备。结束见 [CapabilityPreparationEnded]。
+     */
+    data class CapabilityPreparationStarted(val key: TurnKey) : RuntimeFact
+
+    /** 能力准备阶段结束（成功/失败/取消）：在 finally 清除该显式阻塞。 */
+    data class CapabilityPreparationEnded(val key: TurnKey) : RuntimeFact
+
+    /**
+     * 会话操作事实（create/restore/switch/reset 进展与结果）。
+     *
+     * [persistedId] 为操作后端实际分配/绑定的持久化 ID（无回执为 null）。
+     * 只用于 create 这类后端分配身份的场景，不从 OKIA 会话 id 推断 Room 身份。
+     */
     data class OperationEvent(
         val operation: ConversationOperation,
         val phase: OperationPhase,
         val reason: Reason? = null,
+        val persistedId: String? = null,
     ) : RuntimeFact
 
     /** 授权事实（工具确认/屏控/系统权限链请求与进展），按 requestId 归属回合。 */
@@ -393,10 +423,27 @@ data class ExecutionScope(
  */
 interface BoundFactEmitter : RuntimeFactSink {
     val scope: ExecutionScope
+
+    /** 本执行是否已发出执行级终态事实（StreamResult/ExecutionFailed）；
+     * 已结算执行不再接收取消/准备阶段事实（不伪造已结算回合的观察）。 */
+    val settled: Boolean
     /** raw 流事件 → 带绑定身份的 [RuntimeFact.StreamEvent]。 */
     fun emit(event: TurnEvent)
     /** raw 终态 → 带绑定身份的 [RuntimeFact.StreamResult]。 */
     fun emit(result: TurnResult)
     /** 未进 TurnResult 的框架异常 → 带绑定身份的 [RuntimeFact.ExecutionFailed]，原异常保留。 */
     fun emit(error: Throwable)
+
+    /**
+     * 能力准备阶段开始/结束 → 带绑定身份的 [RuntimeFact.CapabilityPreparationStarted] /
+     * [RuntimeFact.CapabilityPreparationEnded]。只允许标注已知准备阶段
+     * （LLMController.stream 的 refresh），不得用于任意 suspend 等待。
+     */
+    fun emitPreparation(started: Boolean)
+
+    /**
+     * 取消请求 → 带绑定身份的 [RuntimeFact.CancellationRequested]；由 executor 在公开
+     * stop / 适配器 cancel / owner 生命周期取消前发出（未结算时）。
+     */
+    fun emitCancellationRequest(reason: Reason, trigger: StopTrigger? = null)
 }

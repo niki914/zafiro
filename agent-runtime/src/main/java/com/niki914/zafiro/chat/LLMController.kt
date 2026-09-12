@@ -412,6 +412,10 @@ object LLMController {
             }
         }
         try {
+            // 能力准备阶段事实（BlockerKind.CapabilityPreparation）：只标注本次 refresh
+            // 准备，finally 必达清除（成功/失败/取消同路径）。只观察不改控制流：
+            // refresh 抛错而 runtimeState 仍可用时仍走原兜底，不伪造回合失败。
+            observeSafely { emitPreparation(true) }
             val state = try {
                 refresh()
                 runtimeState
@@ -439,6 +443,8 @@ object LLMController {
                     )
                     return@channelFlow
                 }
+            } finally {
+                observeSafely { emitPreparation(false) }
             }
             if (state == null) {
                 send(LlmStreamEvent.Error(message = null, code = null))
