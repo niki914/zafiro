@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.runtime
 
 import com.niki914.okia.conversation.Conversation
+import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.message.AssistantMessage
@@ -91,18 +92,47 @@ data class TurnInput(
 )
 
 /**
- * 内部任务令牌：submit 的返回值，只做身份关联，不暴露 Job 所有权。
+ * 执行完成回执（内部能力）：只承载“执行已结束”与原始失败（取消/非取消）或 null。
+ * 不暴露 Job/Deferred；调用侧只经 `ConversationRuntime.await(handle)` 消费。
+ */
+internal interface TurnCompletion {
+    /** 等待执行结束；保留原始失败时原样抛出该 [Throwable]，否则正常返回。 */
+    suspend fun awaitCompletion()
+}
+
+/**
+ * 内部任务令牌：submit 的返回值，只做身份关联，不暴露 Job 所有权；
+ * 并私有携带完成回执，使 `await(handle)` 在完成早于 await 时仍能取到原始失败，
+ * 无需全局结果注册表或有界缓存。
  * 停止/响应一律走 runtime 命令并携带 [TurnKey]。
  */
-data class TurnHandle(val key: TurnKey)
+class TurnHandle internal constructor(
+    val key: TurnKey,
+    internal val completion: TurnCompletion,
+)
 
 // ── 会话操作 ────────────────────────────────────────────────────────────
 
 /** 原入口动作及其负载；只显式调用时执行，不自动触发。 */
 sealed interface ConversationOperation {
-    data object Create : ConversationOperation
-    data class Restore(val persistedId: String) : ConversationOperation
-    data class Switch(val persistedId: String) : ConversationOperation
+    /** 首条用户输入随操作携带，供后端复现原 Room 建档的标题/预览与时序。 */
+    data class Create(val firstUserInput: String) : ConversationOperation
+
+    /**
+     * 恢复目标持久身份；[snapshot] 为调用方已加载的原 [SessionSnapshot]，
+     * 直接复用不触发第二次 DB 读取。仅按 ID 的调用方可省略，不做 ID 推断。
+     */
+    data class Restore(
+        val persistedId: String,
+        val snapshot: SessionSnapshot? = null,
+    ) : ConversationOperation
+
+    /** 切换目标持久身份；[snapshot] 语义同 [Restore]。 */
+    data class Switch(
+        val persistedId: String,
+        val snapshot: SessionSnapshot? = null,
+    ) : ConversationOperation
+
     data object Reset : ConversationOperation
 }
 
@@ -129,9 +159,12 @@ enum class StopTrigger {
     SessionReset,
 }
 
-/** 操作结果：成功或原始失败原因。 */
+/**
+ * 操作结果：成功（携带后端实际分配/绑定的 [OperationOutcome.Succeeded.persistedId]，无身份为 null）
+ * 或原始失败原因。不从 OKIA 会话 id 推断持久身份。
+ */
 sealed interface OperationOutcome {
-    data object Succeeded : OperationOutcome
+    data class Succeeded(val persistedId: String? = null) : OperationOutcome
     data class Failed(val reason: Reason) : OperationOutcome
 }
 

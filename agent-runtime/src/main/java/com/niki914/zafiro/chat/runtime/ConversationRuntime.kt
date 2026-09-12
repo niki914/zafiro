@@ -123,7 +123,7 @@ class ConversationRuntime(
                     persistedId = receipt.persistedId,
                 ),
             )
-            return OperationOutcome.Succeeded
+            return OperationOutcome.Succeeded(receipt.persistedId)
         } catch (throwable: Throwable) {
             // 记录原始失败/取消后原样重抛，沿旧入口错误投影。
             val reason = if (throwable is CancellationException) {
@@ -164,7 +164,14 @@ class ConversationRuntime(
     /** 等待目标执行结束（等价原 `cancelAndJoin`）；不暴露 Job。 */
     suspend fun await(turn: TurnKey) = executor.await(turn)
 
-    /** 引擎侧定向停止（等价原 `stopCurrentRound`）；不触碰过期回合。 */
+    /**
+     * 等待原执行结束并交付原始失败（业务/输出非取消异常原样抛出，取消异常保留）；
+     * 消费 [handle] 自带的完成回执，完成早于 await（登记已清理）同样有效，
+     * 不暴露 Job/Deferred，也不向原包装器 parent 传播失败。无原始失败时正常返回。
+     */
+    suspend fun await(handle: TurnHandle) = executor.await(handle)
+
+    /** 引擎侧定向停止（等价原 `stopCurrentRound`）：无条件转发，过期身份由引擎 token 匹配拒绝。 */
     suspend fun stopTurn(turn: TurnKey): Boolean = executor.stopTurn(turn)
 
     // ── 后台 responder 装配缝：App 注册实际等待器；按实例比较解除，不误删新请求 ──

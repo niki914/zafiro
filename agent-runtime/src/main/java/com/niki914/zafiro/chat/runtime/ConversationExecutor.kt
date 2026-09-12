@@ -7,6 +7,7 @@ import com.niki914.okia.message.ContentBlock
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmStreamEvent
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -17,6 +18,7 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -58,19 +60,25 @@ object LlmControllerEngine : ConversationEngine {
 /**
  * 唯一执行冷流收集点（T-04，AC2/AC3/AC9）。
  *
- * - 唯一收集：[submit] 是发起执行的唯一入口，返回只带身份的 [TurnHandle]，
+ * - 唯一收集：[submit] 是发起执行的唯一入口，返回只带身份与私有完成回执的 [TurnHandle]，
  *   不暴露 Job 所有权；停止一律走 [cancel]/[ownerEnded]。
  * - 寿命等价：执行 Job 是 [ExecutionOwner.parentJob] 的子 Job，其余上下文来自
  *   [ExecutionOwner.executionContext]（集成方的原作用域上下文），不强制迁移
- *   调度器，也不上移/延长寿命。
+ *   调度器，也不上移/延长寿命；不引入独立于 owner 的 supervisor/额外 Job。
  * - 顺序等价：兼容输出经 [output] 按原顺序同步交付，不从 snapshot 重建。
  * - 身份绑定：执行冷流包在 [ConversationPermissionObserver.contextFor] 的
  *   [AuthorizationContext] 中，工具/屏控授权按捕获的 [TurnKey] 归属。
  * - start→terminal 必达：[RuntimeFact.ExecutionStarted] 在 start 前同步发出；
  *   终态由 [RuntimeFact.StreamResult] / [RuntimeFact.ExecutionFailed] 结算，
  *   体未运行（父 Job 已取消）或体未结算时由完成回调补齐，且不重复结算。
- * - 异常不吞：非取消异常先发 [RuntimeFact.ExecutionFailed] 再原样抛出，沿 owner
- *   Job 传播；[RuntimeFactSink] 抛错不影响执行。
+ * - 失败交付：[await] 走 handle 私有完成回执，业务/输出非取消异常原样保留并在
+ *   await 点抛出（含完成早于 await）；不再向 owner Job 传播，因此不会先取消
+ *   原入口包装器，也不产生未处理的 launch 异常。取消异常按协程语义保留。
+ * - 结算时机：体内只记录原始失败，不发布回执；回执在 Job 完成回调中、
+ *   bookkeeping 与 [ConversationPermissionObserver.clearTurn] 清理之后才发布，
+ *   await 恢复时清理已生效，不会提前唤醒原包装器 catch/finally。
+ * - 正常结束不发明失败：无 raw 终态时只为 snapshot 补结算，不把该观察性
+ *   “missing result” 异常交给 [await]（原流程正常结束时 await 正常返回）。
  * - 收尾必达：回合 bookkeeping 清理与 [ConversationPermissionObserver.clearTurn]
  *   挂在 Job 完成回调上，不依赖体 finally。
  *
@@ -102,7 +110,39 @@ class ConversationExecutor(
         val owner: ExecutionOwner,
         val job: Job,
         val emitter: BoundFactEmitter,
+        val completion: ExecutionCompletion,
     )
+
+    /**
+     * 执行完成回执：只保存原始失败（取消/非取消）或 null，不暴露 Job/Deferred；
+     * [awaitCompletion] 在调用点原样抛出失败。
+     */
+    private class ExecutionCompletion : TurnCompletion {
+        private val failure = CompletableDeferred<Throwable?>()
+
+        /** 体在结束前记录原始业务/输出失败；不在此结算回执。 */
+        private val recorded = AtomicReference<Throwable?>(null)
+
+        /**
+         * 记录原始失败，不发布回执。发布由 Job 完成回调在 bookkeeping/权限清理之后
+         * 调用 [complete]，确保 await 恢复时执行与清理均已结。
+         */
+        fun record(error: Throwable) {
+            recorded.set(error)
+        }
+
+        /**
+         * 在 Job 完成且清理之后结算（仅一次）：原记录失败优先；否则用 Job 完成原因
+         * （含取消/启动前父取消）；两者皆无为 null（正常结束）。
+         */
+        fun complete(cause: Throwable?) {
+            failure.complete(recorded.get() ?: cause)
+        }
+
+        override suspend fun awaitCompletion() {
+            failure.await()?.let { throw it }
+        }
+    }
 
     /**
      * 发起一次执行。忙时/重复发送判断仍在原入口（HomeChat isGenerating、Service
@@ -120,6 +160,7 @@ class ConversationExecutor(
         val emitter: ExecutionEmitter
         val job: Job
         val execution: Execution
+        val completion = ExecutionCompletion()
         // epoch 分配与 ExecutionStarted 发布同处一个短临界区：start 事实严格按
         // epoch 递增到达 reducer 水位线，不会出现 A(epoch1) 晚于 B(epoch2) 发布
         // 而被永久拒绝。观察者重入 submit 时（synchronized 可重入）重入发生在本次
@@ -138,9 +179,9 @@ class ConversationExecutor(
             emitter = ExecutionEmitter(key, owner.source)
             job = CoroutineScope(owner.executionContext + owner.parentJob)
                 .launch(start = CoroutineStart.LAZY) {
-                    runExecution(key, input, output, emitter)
+                    runExecution(key, input, output, emitter, completion)
                 }
-            execution = Execution(owner, job, emitter)
+            execution = Execution(owner, job, emitter, completion)
             executions[key] = execution
             emitter.emitFact(RuntimeFact.ExecutionStarted(key, owner.source, input))
         }
@@ -149,13 +190,21 @@ class ConversationExecutor(
             emitter.emit(
                 cause ?: IllegalStateException("execution ended without terminal result"),
             )
-            synchronized(lock) {
-                if (executions[key] === execution) executions.remove(key)
+            try {
+                synchronized(lock) {
+                    if (executions[key] === execution) executions.remove(key)
+                }
+                permissions.clearTurn(key)
+            } finally {
+                // 回执发布放在 bookkeeping/权限清理之后，且用 finally 保证清理异常也不会
+                // 永久搁置等待者：await(handle) 恢复时执行已终止、登记已移除、观察已清干净，
+                // 不会在清理前提前唤醒原包装器 catch/finally。
+                // 原记录失败优先，否则保留 Job 完成原因（取消/启动前父取消）。
+                completion.complete(cause)
             }
-            permissions.clearTurn(key)
         }
         job.start()
-        return TurnHandle(key)
+        return TurnHandle(key, completion)
     }
 
     /**
@@ -205,22 +254,29 @@ class ConversationExecutor(
     }
 
     /**
-     * 定向停止（引擎侧）：仅对仍登记的执行将 [turn] 转交引擎做有界 kill-then-stop。
-     * 未登记（已结束/过期）或引擎侧 token 不再匹配（实例已替换）时返回 false，
-     * 不触碰任何当前回合。与 [cancel] 的先后顺序由接入方按原入口保持
-     * （HomeChat：先本方法、后 cancel；Host：先 cancel、后异步本方法）；
-     * executor 不新增仲裁或排队。
+     * 定向停止（兼容钩子）：无条件转发引擎 [ConversationEngine.stopTurn]，由引擎侧
+     * token 匹配提供过期安全（未登记/已清理的 TurnKey 在引擎侧不命中，不触碰新回合）。
+     * 调用侧仍按原入口顺序使用（HomeChat：先本方法、后 [cancel]；Host：先 [cancel]、
+     * 后异步本方法）；executor 不新增仲裁或排队。
      */
-    suspend fun stopTurn(turn: TurnKey): Boolean {
-        if (synchronized(lock) { executions[turn] } == null) return false
-        return engine.stopTurn(turn)
-    }
+    suspend fun stopTurn(turn: TurnKey): Boolean = engine.stopTurn(turn)
 
-    /** 等待目标执行结束（已完成/未知立即返回）；等价于对原 Job join，不暴露 Job。 */
+    /**
+     * 兼容 join（仅 [TurnKey] 可查的登记条目）：等价于对原 Job join，不暴露 Job，
+     * 不带失败回执；已完成/未登记立即返回。新接线请用 [await] 的 handle 重载，
+     * 以免登记清理后丢失原始失败。
+     */
     suspend fun await(turn: TurnKey) {
         val job = synchronized(lock) { executions[turn]?.job } ?: return
         job.join()
     }
+
+    /**
+     * 等待原执行结束并交付原始失败：消费 [TurnHandle] 自带的完成回执，不查登记表，
+     * 因此完成早于 await（条目已被清理）仍有效；非取消业务/输出异常原样抛出，
+     * 取消异常保留，无原始失败（含无 raw 终态的观察性结束）正常返回。不暴露 Job/Deferred。
+     */
+    suspend fun await(handle: TurnHandle) = handle.completion.awaitCompletion()
 
     /**
      * owner 寿命结束（onCleared/Binder death/destroy/scope cancel 等价）：取消该 owner
@@ -272,21 +328,26 @@ class ConversationExecutor(
         input: TurnInput,
         output: suspend (LlmStreamEvent) -> Unit,
         emitter: ExecutionEmitter,
+        completion: ExecutionCompletion,
     ) {
         try {
             val auth = permissions.contextFor(key)
             withContext(auth) {
                 engine.stream(input.query, input.images, emitter).collect { output(it) }
             }
-            // 终态缺失不伪造 Completed：按框架异常结算，保证回合必被结算。
+            // 无 raw 终态：只为 snapshot 补结算（保证回合必被结算），
+            // 不写入完成回执——原流程正常结束时 await 不得收到该观察性错误。
             emitter.emit(IllegalStateException("execution ended without terminal result"))
         } catch (cancelled: CancellationException) {
+            // 取消：保留原取消异常，沿 Job 取消语义传播（仅取消本执行，不取消 owner parent）。
             emitter.emit(cancelled)
             throw cancelled
         } catch (throwable: Throwable) {
-            // 先观察再原样抛出：失败沿 owner Job 传播，保持原入口的失败可见性。
+            // 业务/输出非取消异常：先观察，再记录到完成回执（不在体内发布），
+            // 由 Job 完成回调在清理之后原样交付 await；不再向 owner parent 传播，
+            // 因此不会先取消原入口包装器，也无未处理的 launch 异常。
             emitter.emit(throwable)
-            throw throwable
+            completion.record(throwable)
         }
     }
 

@@ -323,7 +323,7 @@ class ConversationStateReducer(
 
     private fun onOperation(fact: RuntimeFact.OperationEvent): Boolean {
         operation = when (fact.operation) {
-            ConversationOperation.Create -> OperationKind.Create
+            is ConversationOperation.Create -> OperationKind.Create
             is ConversationOperation.Restore -> OperationKind.Restore
             is ConversationOperation.Switch -> OperationKind.Switch
             ConversationOperation.Reset -> OperationKind.Reset
@@ -331,8 +331,8 @@ class ConversationStateReducer(
         operationPhase = fact.phase
         operationReason = fact.reason
         // 只有已提交的成功状态更新当前持久身份；失败操作保留先前身份。
-        // create 无请求负载，身份只可能来自后端回执；restore/switch 以后端回执优先，
-        // 无回执时用请求目标。均不从 OKIA 会话 id 推断。
+        // create 的 firstUserInput 只用于后端建档负载，不携带身份，身份只可能来自后端回执；
+        // restore/switch 以后端回执优先，无回执时用请求目标。均不从 OKIA 会话 id 推断。
         when (val op = fact.operation) {
             is ConversationOperation.Restore ->
                 if (fact.phase == OperationPhase.Succeeded) {
@@ -351,7 +351,7 @@ class ConversationStateReducer(
                     conversation = null
                 }
 
-            ConversationOperation.Create ->
+            is ConversationOperation.Create ->
                 if (fact.phase == OperationPhase.Succeeded) {
                     fact.persistedId?.let { persistedId = it }
                 }
