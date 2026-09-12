@@ -8,13 +8,27 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.zafiro.app.util.SilentLoggerRule
+import com.niki914.zafiro.chat.LlmStreamEvent
+import com.niki914.zafiro.chat.runtime.ConversationEngine
+import com.niki914.zafiro.chat.runtime.ConversationRuntime
+import com.niki914.zafiro.chat.runtime.EntrySource
+import com.niki914.zafiro.chat.runtime.ExecutionOwner
+import com.niki914.zafiro.chat.runtime.RuntimeFactSink
+import com.niki914.zafiro.chat.runtime.TurnInput
+import com.niki914.zafiro.chat.runtime.TurnKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -22,6 +36,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -177,6 +192,70 @@ class ConversationPersisterTest {
         scope.cancel()
     }
 
+    // ── Group11：真实 runtime 同源订阅（AC4） ──────────────────────────────
+
+    @Test
+    fun runtimeConversationSource_persistsIncrementallyWithoutStatusDrivenSaves() = runBlocking {
+        val sessionId = ConversationRepo.createConversation("session-runtime", "hi")
+        val engine = FakeConversationEngine()
+        val runtimeScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        // Unconfined：start 返回时收集器已订阅；每次 emission 之间用 awaitEntries 作确定性屏障。
+        val persistScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val runtime = ConversationRuntime(runtimeScope, engine)
+        ConversationPersister.start(persistScope, runtime.conversation)
+
+        // 初始 null（空闲）不落盘、不建档。
+        assertEquals(0, ConversationRepo.countEntries(sessionId))
+
+        engine.conversationFlow.value = conversationOf(sessionId, "u1")
+        awaitEntries(sessionId, 1)
+        assertEquals(1, ConversationRepo.countEntries(sessionId))
+
+        engine.conversationFlow.value = conversationOf(sessionId, "u1", "a1")
+        awaitEntries(sessionId, 2)
+
+        // 状态版本增长（执行开始/事件/终态）不得触发保存或新增行：
+        // 再推入真实新内容作为正序屏障，最终条数必须恰好是 3。
+        runtime.submit(
+            TurnInput("q"),
+            ExecutionOwner("owner-1", EntrySource.HomeChat, Job(), Dispatchers.Default),
+        ) { }
+        engine.conversationFlow.value = conversationOf(sessionId, "u1", "a1", "u2")
+        awaitEntries(sessionId, 3)
+
+        val record = ConversationRepo.getConversation(sessionId)!!
+        assertEquals(3, record.snapshot.entries.size)
+        assertEquals(
+            Message.User(listOf(ContentBlock.Text("u2"))),
+            record.snapshot.entries.last().message,
+        )
+        // 同源订阅不得自行建档。
+        assertEquals(1, ConversationRepo.listConversations().size)
+
+        persistScope.cancel()
+        runtimeScope.cancel()
+    }
+
+    @Test
+    fun persistNowDoesNotArchiveUnknownSession() = runBlocking {
+        val existing = ConversationRepo.createConversation("session-existing", "x")
+
+        // 真实 persistNow：无 Room 行的会话外键失败，不得替它建档。
+        val failure = runCatching {
+            ConversationPersister.persistNow(conversationOf("session-ghost", "g1"))
+        }
+
+        assertTrue(failure.isFailure)
+        assertNull(ConversationRepo.getConversation("session-ghost"))
+        assertEquals(listOf(existing), ConversationRepo.listConversations().map { it.id })
+    }
+
+    private suspend fun awaitEntries(sessionId: String, expected: Int) {
+        withTimeout(5_000) {
+            while (ConversationRepo.countEntries(sessionId) < expected) delay(10)
+        }
+    }
+
     // ── helpers ─────────────────────────────────────────────────────────────
 
     private fun conversationOf(sessionId: String, vararg messages: String): Conversation {
@@ -216,4 +295,19 @@ class ConversationPersisterTest {
     private companion object {
         const val DB_NAME = "test-conversation.db"
     }
+}
+
+/** 真实 runtime 同源内容源的最小替身："conversation" 即 [ConversationRuntime.conversation] 的底层流。 */
+private class FakeConversationEngine : ConversationEngine {
+    val conversationFlow = MutableStateFlow<Conversation?>(null)
+
+    override val conversation: StateFlow<Conversation?> get() = conversationFlow
+
+    override fun stream(
+        query: String,
+        images: List<ContentBlock.Image>,
+        observer: RuntimeFactSink,
+    ): Flow<LlmStreamEvent> = flow { }
+
+    override suspend fun stopTurn(turn: TurnKey): Boolean = false
 }
