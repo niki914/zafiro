@@ -24,11 +24,14 @@ import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.nod
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.refreshNodeCache
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.buildin.ScreenOperationError
+import com.niki914.zafiro.chat.agentic.shell.AuthorizationContext
 import com.niki914.zafiro.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -192,8 +195,31 @@ object AccessibilityController {
      * 知情门（链外）：无障碍与悬浮窗缺一不可，任一未授权即先要同意；拒绝不记忆。
      * 逐个确保：申请前活查 status()，已授权直接跳过，缺失才跑各自默认链
      * （ROOT_SHELL → SHIZUKU → JUMP_SETTINGS），跑完复查一次。
+     *
+     * 授权观察上下文：执行冷流入口随协程下发 AuthorizationContext 后，此处经当前
+     * 协程读到同一份上下文，随 `pm.request` 透传 `permissionObservation`，并把工具
+     * 调用 ID 补进观察上下文；无上下文的调用（旧路径）行为不变。事实由 Group5 的
+     * observer 按 requestId 归属回合，本文件不直接发布 PermissionReported。
      */
-    suspend fun ensureService(): Result<Unit> {
+    suspend fun ensureService(toolCallId: String? = null): Result<Unit> {
+        val auth = currentCoroutineContext()[AuthorizationContext].plusToolCall(toolCallId)
+        return if (auth == null) {
+            ensureServiceInternal(observation = null)
+        } else {
+            withContext(auth) { ensureServiceInternal(observation = auth.permissionObservation) }
+        }
+    }
+
+    /** 仅在 toolCallId 有证据时补齐，无证据保持 null（unknown，不猜测并行请求）。 */
+    private fun AuthorizationContext?.plusToolCall(toolCallId: String?): AuthorizationContext? {
+        if (this == null) return null
+        if (toolCallId == null || toolCallId == this.toolCallId) return this
+        return copy(toolCallId = toolCallId)
+    }
+
+    private suspend fun ensureServiceInternal(
+        observation: com.niki914.permission.PermissionObservation?,
+    ): Result<Unit> {
         if (serviceInstance != null) return Result.success(Unit)
 
         val pm = permissions
@@ -217,8 +243,8 @@ object AccessibilityController {
 
         // 逐个确保：已授权跳过，缺失才跑链。用户最多进出设置两次，已知代价。
         val failures = ArrayList<String>(2)
-        ensureOne(pm, Permission.ACCESSIBILITY, failures)
-        ensureOne(pm, Permission.OVERLAY, failures)
+        ensureOne(pm, Permission.ACCESSIBILITY, failures, observation)
+        ensureOne(pm, Permission.OVERLAY, failures, observation)
 
         if (failures.isNotEmpty()) {
             ensureShellSession() // fall back to user shell for basic commands
@@ -257,9 +283,10 @@ object AccessibilityController {
         pm: PermissionManager,
         permission: Permission,
         failures: MutableList<String>,
+        observation: com.niki914.permission.PermissionObservation? = null,
     ): Boolean {
         if (pm.status(permission) == PermissionState.GRANTED) return true
-        val result = requestPermission(pm, permission)
+        val result = requestPermission(pm, permission, observation)
         if (result.finalState == PermissionState.GRANTED) return true
         failures += "$permission: ${chainSummary(result)}"
         return false
@@ -269,7 +296,8 @@ object AccessibilityController {
     private suspend fun requestPermission(
         pm: PermissionManager,
         permission: Permission,
-    ): PermissionResult = pm.request(permission)
+        observation: com.niki914.permission.PermissionObservation? = null,
+    ): PermissionResult = pm.request(permission, observation)
 
     /** 链路摘要：每环通道与状态，拼进给 LLM 的报错文案。 */
     private fun chainSummary(result: PermissionResult): String =
