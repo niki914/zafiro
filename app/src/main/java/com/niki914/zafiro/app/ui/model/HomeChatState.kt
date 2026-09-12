@@ -2,10 +2,10 @@ package com.niki914.zafiro.app.ui.model
 
 import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
-import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.uikit.base.ComposeMVIViewModel
+import com.niki914.zafiro.app.AppConversationRuntime
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationRepo
@@ -14,12 +14,19 @@ import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.ToolCallStatus
+import com.niki914.zafiro.chat.runtime.CommandCaller
+import com.niki914.zafiro.chat.runtime.CommandSurface
+import com.niki914.zafiro.chat.runtime.ConversationOperation
+import com.niki914.zafiro.chat.runtime.EntrySource
+import com.niki914.zafiro.chat.runtime.ExecutionOwner
+import com.niki914.zafiro.chat.runtime.OperationOutcome
+import com.niki914.zafiro.chat.runtime.TurnInput
+import com.niki914.zafiro.chat.runtime.TurnKey
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import java.util.UUID
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 internal interface HomeConversationStore {
@@ -208,33 +215,63 @@ sealed interface HomeChatIntent {
     data class RewindAt(val turnId: Long) : HomeChatIntent
 }
 
+/**
+ * HomeChat 的运行时命令缝（测试注入替身；生产转发共享主进程
+ * [com.niki914.zafiro.chat.runtime.ConversationRuntime]）。
+ *
+ * - [execute]：唯一执行入口。生产 = `ConversationRuntime.submit` + `await(handle)`，
+ *   原始业务/输出异常在 await 点原样交付；[onStarted] 在提交后、等待前同步回调
+ *   执行身份（供停止/会话切换定位回合）。
+ * - [stop]：停止按钮（原 `stopCurrentRound` + `streamJob.cancel` 次序，引擎先停）。
+ * - [stopTurn]：new/load/delete 的定向引擎停止（原无参 `stopCurrentRound` 的 scoped 等价）。
+ * - [operate]：create/restore/switch/reset 会话操作，只显式调用；失败原样抛出。
+ * - [historySnapshot]/[ingestImage]：仍走既有 LLMController helper，不经 Runtime。
+ */
 internal interface HomeChatRuntime {
-    fun stream(query: String, images: List<ContentBlock.Image>): Flow<LlmStreamEvent>
-    suspend fun resetConversation()
-    suspend fun stopCurrentRound()
-    suspend fun ensureSession(): String
-    suspend fun openSession(restore: SessionSnapshot)
+    suspend fun execute(
+        input: TurnInput,
+        owner: ExecutionOwner,
+        onStarted: (TurnKey) -> Unit,
+        output: suspend (LlmStreamEvent) -> Unit,
+    )
+
+    suspend fun stop(turn: TurnKey)
+
+    suspend fun stopTurn(turn: TurnKey)
+
+    suspend fun operate(operation: ConversationOperation): OperationOutcome
+
     suspend fun historySnapshot(): List<Message>
+
     /** 相册 URI → ingest 落盘 → path。失败返回 null（静默丢弃）。 */
     suspend fun ingestImage(uri: String): HomeChatImage?
 }
 
 private object LlmHomeChatRuntime : HomeChatRuntime {
-    override fun stream(
-        query: String,
-        images: List<ContentBlock.Image>
-    ): Flow<LlmStreamEvent> = LLMController.stream(
-        query = query,
-        images = images,
-    )
+    private val homeChat = CommandCaller(CommandSurface.HomeChat)
 
-    override suspend fun resetConversation() = LLMController.resetConversation()
-    override suspend fun stopCurrentRound() =
-        LLMController.stopCurrentRound()
+    override suspend fun execute(
+        input: TurnInput,
+        owner: ExecutionOwner,
+        onStarted: (TurnKey) -> Unit,
+        output: suspend (LlmStreamEvent) -> Unit,
+    ) {
+        val runtime = AppConversationRuntime.require()
+        val handle = runtime.submit(input = input, owner = owner, output = output)
+        onStarted(handle.key)
+        runtime.await(handle)
+    }
 
-    override suspend fun ensureSession(): String = LLMController.ensureSession()
-    override suspend fun openSession(restore: SessionSnapshot) =
-        LLMController.openSession(restore)
+    override suspend fun stop(turn: TurnKey) {
+        AppConversationRuntime.require().stop(turn, homeChat)
+    }
+
+    override suspend fun stopTurn(turn: TurnKey) {
+        AppConversationRuntime.require().stopTurn(turn)
+    }
+
+    override suspend fun operate(operation: ConversationOperation): OperationOutcome =
+        AppConversationRuntime.require().operate(operation, homeChat)
 
     override suspend fun historySnapshot(): List<Message> = LLMController.historySnapshot()
 
@@ -254,6 +291,10 @@ class HomeChatViewModel internal constructor(
     private var nextTurnId = 0L
     private var streamJob: Job? = null
     private var draftSaveJob: Job? = null
+    /** 当前执行身份：onStarted 同步写入，仅用于停止/会话切换定位回合。 */
+    private var currentExecutionKey: TurnKey? = null
+    /** 稳定 VM 执行归属 id（同一 ViewModel 的所有执行同源）。 */
+    private val executionOwnerId = "home-" + UUID.randomUUID().toString()
     private val textPacer = TextPacer()
     // thinking 与正文在流中交织（thinking → tool → text），坐标系独立，单独实例
     private val thinkingPacer = TextPacer()
@@ -359,7 +400,7 @@ class HomeChatViewModel internal constructor(
 
     /**
      * 相册选图 → ingest → pendingImages。仅 UI 预览链路：
-     * 图片不进 runtime.stream（发送链路待 Okia.send 支持图片参数后接入）。
+     * 图片不进 runtime.execute（发送链路待 Okia.send 支持图片参数后接入）。
      */
     private suspend fun attachImage(uri: String) {
         if (currentState.isGenerating) return
@@ -430,7 +471,7 @@ class HomeChatViewModel internal constructor(
                     LOG_TAG,
                     "send turn started turnId=$turnId conversationId=$conversationId queryLength=${query.length}"
                 )
-                collectLlmStream(turnId = turnId, query = query, images = imageBlocks)
+                runLlmTurn(turnId = turnId, query = query, images = imageBlocks)
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
                 Logger.e(
@@ -452,17 +493,25 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun stopGenerating() {
         if (!currentState.isGenerating) return
-        runtime.stopCurrentRound()
-        streamJob?.cancel()
+        // 先捕获旧身份/包装 Job：stop 悬挂期间新回合不得被误伤。
+        val key = currentExecutionKey
+        val wrapper = streamJob
+        // 原序：引擎停止（kill 工具资源）后取消包装任务；无身份（pre-submit）不降级为全局 stop。
+        if (key != null) runtime.stop(key)
+        wrapper?.cancel()
         streamJob = null
+        // 悬挂期间若后继已写入新身份，不清它。
+        if (currentExecutionKey == key) currentExecutionKey = null
         finalizeRunningTools()
         updateState { copy(isGenerating = false, activeThinkingKey = null) }
     }
 
     private fun startNewConversation() {
         Logger.d(LOG_TAG, "start new conversation")
+        val key = currentExecutionKey
         streamJob?.cancel()
         streamJob = null
+        if (currentExecutionKey == key) currentExecutionKey = null
         draftSaveJob?.cancel()
         draftSaveJob = null
         currentConversationId = null
@@ -471,10 +520,10 @@ class HomeChatViewModel internal constructor(
         viewModelScope.launch {
             val startedAtMs = System.currentTimeMillis()
             try {
-                // D3-9：先 stop（终止回合）再丢弃实例（kill 工具资源 + close），
+                // D3-9：先 scoped stop（终止回合）再丢弃实例（kill 工具资源 + close），
                 // 避免 close 撞活跃回合（OKIA §8.7 #5）
-                runtime.stopCurrentRound()
-                runtime.resetConversation()
+                if (key != null) runtime.stopTurn(key)
+                runtime.operate(ConversationOperation.Reset)
                 conversations.setLastOpenedConversationId("")
                 Logger.i(
                     LOG_TAG,
@@ -487,26 +536,59 @@ class HomeChatViewModel internal constructor(
         }
     }
 
-    private suspend fun collectLlmStream(turnId: Long, query: String, images: List<ContentBlock.Image> = emptyList()) {
+    /**
+     * 发起一轮执行：preparation（ensureCurrentConversation + 草稿清空）仍在原
+     * viewModelScope.launch 内、提交前完成；冷流 collect 换成 runtime.submit 回调
+     * + await(handle)，原始业务/输出异常仍在同一 try/catch 交付。
+     */
+    private suspend fun runLlmTurn(turnId: Long, query: String, images: List<ContentBlock.Image> = emptyList()) {
         textPacer.reset()
         // Mapper 的 thinking id 跨轮复用（id 0 每轮重新出现），回合开始必须归零
         thinkingPacer.reset()
-        runtime.stream(query, images).collect { event ->
-            val eventName = eventName(event)
-            val eventCount = currentState.streamEventCount + 1
-            updateState {
-                copy(
-                    lastEventName = eventName,
-                    streamEventCount = eventCount,
-                )
+        val ownerJob = currentCoroutineContext()[Job]
+            ?: error("runLlmTurn requires a coroutine Job owner")
+        var startedKey: TurnKey? = null
+        try {
+            runtime.execute(
+                input = TurnInput(query = query, images = images),
+                owner = ExecutionOwner(
+                    id = executionOwnerId,
+                    source = EntrySource.HomeChat,
+                    parentJob = ownerJob,
+                    executionContext = viewModelScope.coroutineContext,
+                ),
+                onStarted = { key ->
+                    startedKey = key
+                    currentExecutionKey = key
+                },
+                output = { event -> onStreamEvent(turnId, event) },
+            )
+        } finally {
+            // 本执行结束立即清身份，不依赖 streamJob 赋值：提交/输出可同步内联完成，
+            // viewModelScope.launch 尚未返回时本 finally 已运行（旧实现会漏清，key 永久残留）。
+            // 仅当仍持有本次身份时清除，后继执行已写入新 key 时不动。
+            if (startedKey != null && currentExecutionKey == startedKey) {
+                currentExecutionKey = null
             }
-            when {
-                event is LlmStreamEvent.TextDelta -> paceTextDelta(turnId, event)
-                event is LlmStreamEvent.ThinkingStarted || event is LlmStreamEvent.ThinkingEnded ->
-                    paceThinking(turnId, event)
+        }
+    }
 
-                else -> applyEvent(turnId = turnId, event = event)
-            }
+    /** 原 collect body：事件计数、pacer 与全量投影逐字保留。 */
+    private suspend fun onStreamEvent(turnId: Long, event: LlmStreamEvent) {
+        val eventName = eventName(event)
+        val eventCount = currentState.streamEventCount + 1
+        updateState {
+            copy(
+                lastEventName = eventName,
+                streamEventCount = eventCount,
+            )
+        }
+        when {
+            event is LlmStreamEvent.TextDelta -> paceTextDelta(turnId, event)
+            event is LlmStreamEvent.ThinkingStarted || event is LlmStreamEvent.ThinkingEnded ->
+                paceThinking(turnId, event)
+
+            else -> applyEvent(turnId = turnId, event = event)
         }
     }
 
@@ -760,7 +842,7 @@ class HomeChatViewModel internal constructor(
                     Logger.w(LOG_TAG, "restore notFound id=$conversationId")
                     return@launch
                 }
-                runtime.openSession(record.snapshot)
+                runtime.operate(ConversationOperation.Restore(conversationId, record.snapshot))
                 currentConversationId = conversationId
                 val restoredTurns = ConversationFormatter.toHomeTurns(record.snapshot)
                 val restoredTitle = record.summary.title.takeIf {
@@ -818,16 +900,19 @@ class HomeChatViewModel internal constructor(
         }
     }
 
-    private suspend fun loadConversation(id: String) {
+    private suspend fun loadConversation(id: String, pendingStop: TurnKey? = null) {
         val startedAtMs = System.currentTimeMillis()
         Logger.i(LOG_TAG, "load conversation id=$id started")
+        // 调用方（regen/rewind）在取消前捕获的旧目标优先；否则取当前身份。
+        val key = pendingStop ?: currentExecutionKey
         streamJob?.cancel()
         streamJob = null
+        if (currentExecutionKey == key) currentExecutionKey = null
         draftSaveJob?.cancel()
         draftSaveJob = null
-        // D3-9：先 stop（终止回合 + kill 工具资源）再关实例换树，
-        // 避免 close 撞活跃回合（OKIA §8.7 #5）
-        runtime.stopCurrentRound()
+        // D3-9：先 local cancel（上）再 scoped engine stop（kill 工具资源）再关实例换树，
+        // 避免 close 撞活跃回合（OKIA §8.7 #5）；无身份不降级为全局 stop。
+        if (key != null) runtime.stopTurn(key)
         updateState { copy(isLoadingConversation = true) }
         try {
             val record = conversations.getConversation(id)
@@ -839,7 +924,8 @@ class HomeChatViewModel internal constructor(
                 )
                 return
             }
-            runtime.openSession(record.snapshot)
+            // 已读出的 record.snapshot 直接随操作下发，后端不二次读库。
+            runtime.operate(ConversationOperation.Switch(id, record.snapshot))
             currentConversationId = id
             conversations.setLastOpenedConversationId(id)
             val restoredTurns = ConversationFormatter.toHomeTurns(record.snapshot)
@@ -893,6 +979,9 @@ class HomeChatViewModel internal constructor(
     private suspend fun reGenerateAt(turnId: Long) {
         if (currentState.isGenerating) return
         val currentId = currentConversationId ?: return
+        // 取消前捕获旧目标：runLlmTurn 的 finally 会清 currentExecutionKey，
+        // pendingStop 交给 loadConversation 做 scoped engine stop。
+        val pendingStop = currentExecutionKey
         streamJob?.cancel()
         streamJob = null
         val history = runtime.historySnapshot()
@@ -909,7 +998,7 @@ class HomeChatViewModel internal constructor(
             LOG_TAG,
             "regenerate fork sourceId=$currentId turnId=$turnId newId=$newConvId"
         )
-        loadConversation(newConvId)
+        loadConversation(newConvId, pendingStop)
         val newTurnId = nextTurnId++
         updateState {
             copy(
@@ -929,7 +1018,7 @@ class HomeChatViewModel internal constructor(
         }
         streamJob = viewModelScope.launch {
             try {
-                collectLlmStream(turnId = newTurnId, query = userText, images = userImages)
+                runLlmTurn(turnId = newTurnId, query = userText, images = userImages)
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
                 throwable.message?.let { message ->
@@ -963,6 +1052,8 @@ class HomeChatViewModel internal constructor(
     private suspend fun rewindAt(turnId: Long) {
         if (currentState.isGenerating) return
         val currentId = currentConversationId ?: return
+        // 同 reGenerateAt：取消前捕获旧目标并交给 loadConversation。
+        val pendingStop = currentExecutionKey
         streamJob?.cancel()
         streamJob = null
         val history = runtime.historySnapshot()
@@ -976,7 +1067,7 @@ class HomeChatViewModel internal constructor(
             LOG_TAG,
             "rewind sourceId=$currentId turnId=$turnId newId=$newConvId"
         )
-        loadConversation(newConvId)
+        loadConversation(newConvId, pendingStop)
         updateState {
             copy(
                 input = userText,
@@ -998,15 +1089,18 @@ class HomeChatViewModel internal constructor(
             return
         }
 
+        val key = currentExecutionKey
         streamJob?.cancel()
         streamJob = null
+        if (currentExecutionKey == key) currentExecutionKey = null
         draftSaveJob?.cancel()
         draftSaveJob = null
         currentConversationId = null
         nextTurnId = 0L
-        // D3-9：先 stop 再丢弃实例（close 撞活跃回合防护）
-        runtime.stopCurrentRound()
-        runtime.resetConversation()
+        // D3-9：先 local cancel（上）再 scoped engine stop 再丢弃实例（close 撞活跃回合防护）；
+        // 无身份（无在飞回合）时不降级为全局 stop。
+        if (key != null) runtime.stopTurn(key)
+        runtime.operate(ConversationOperation.Reset)
         conversations.setLastOpenedConversationId("")
         updateState { HomeChatUiState() }
         Logger.i(
@@ -1018,10 +1112,11 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun ensureCurrentConversation(firstUserInput: String): String {
         currentConversationId?.let { return it }
-        // T3：新会话实例由 LLMController 惰性创建（ensureSession），
-        // 树 id 即 Room 会话 id（对齐，open(restore) 恢复时从快照 id 取）
-        val sessionId = runtime.ensureSession()
-        conversations.createConversation(id = sessionId, firstUserInput = firstUserInput)
+        // T3：只走本路径建档。创建由 App 侧 ConversationOperationBackend 完成
+        // （ensureSession + Room 建档同源），Home 使用后端回执的持久化 ID。
+        val outcome = runtime.operate(ConversationOperation.Create(firstUserInput))
+        val sessionId = (outcome as? OperationOutcome.Succeeded)?.persistedId
+            ?: error("create conversation failed: $outcome")
         currentConversationId = sessionId
         conversations.setLastOpenedConversationId(sessionId)
         Logger.i(LOG_TAG, "conversation created id=$sessionId")
