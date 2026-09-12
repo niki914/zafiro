@@ -7,6 +7,7 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.permission.Attempt
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.Job
 
 /**
@@ -70,11 +71,17 @@ sealed interface CommandOutcome {
 /**
  * 生命周期绑定：仅用于创建任务及旧入口兼容（parentJob 取消即连带取消），
  * 不限制其他端凭 [TurnKey] 操作该任务；调用者不因持有它成为 Job 所有者。
+ *
+ * [executionContext] 是集成方原执行作用域上下文（如 viewModelScope.coroutineContext / Service
+ * scope 上下文），executor 以它承载调度器及其它元素；[parentJob] 始终是任务父 Job 与
+ * 所有权归属。默认仅 [parentJob]（无调度器时由协程库默认调度器兜底），
+ * 集成方必须传自己的实际作用域上下文，避免输出被默认迁到后台调度器。
  */
 data class ExecutionOwner(
     val id: String,
     val source: EntrySource,
     val parentJob: Job,
+    val executionContext: CoroutineContext = parentJob,
 )
 
 /** 提交输入：query 文本 + 图片路径引用（与 OKIA send 同形态）。 */
@@ -295,10 +302,13 @@ sealed interface RuntimeFact {
      * 同源内容更新：OKIA Conversation 引用变化时（ensure/restore/switch 后）
      * 的新引用，与 `snapshot.conversation` 同源。reducer 只替换引用不重建内容；
      * 持久化器据此订阅同一内容源。会话级事实，不归属回合。
+     *
+     * 清空语义：reset/close 后无会话实例时两个字段均为 null，reducer 据此清空
+     * 会话引用；不以空字符串或占位对象假装仍有内容。
      */
     data class ConversationUpdated(
-        val runtimeConversationId: String,
-        val conversation: Conversation,
+        val runtimeConversationId: String?,
+        val conversation: Conversation?,
     ) : RuntimeFact
 
     /** 旧 mapper 过滤前的原始流事件（TextEnded/ToolCallDelta/Ready/TurnAborted 均在此）。 */
