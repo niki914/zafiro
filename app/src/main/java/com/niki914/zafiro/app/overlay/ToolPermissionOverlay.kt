@@ -18,6 +18,7 @@ import android.widget.TextView
 import com.niki914.logging.Logger
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionRequest
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -71,26 +72,42 @@ object ToolPermissionOverlay {
     private const val ERROR_LIGHT = 0xFFB3261E.toInt()
     private const val ERROR_DARK = 0xFFF2B8B5.toInt()
 
-    private var wm: WindowManager? = null
-    private var currentView: View? = null
-    private var currentDeferred: CompletableDeferred<Boolean>? = null
+    /**
+     * 当前后台确认窗口的原子绑定（Group8 race fix）。
+     *
+     * 同一窗口/等待器与全部已并入的 requestId 由单个对象持有，Runtime 响应线程只需一次
+     * [current] 读取即可获得一致身份（不是两个无法同步的 volatile 字段）；
+     * requestId 集合仅在短锁内增删，窗口/UI 操作不在锁内执行。
+     */
+    private class Waiter(
+        val wm: WindowManager,
+        val view: View,
+        val deferred: CompletableDeferred<Boolean> = CompletableDeferred(),
+    ) {
+        private val lock = Any()
+        private val requestIds = mutableSetOf<String>()
+
+        fun bind(requestId: String) = synchronized(lock) { requestIds.add(requestId) }
+        fun unbind(requestId: String) = synchronized(lock) { requestIds.remove(requestId) }
+        fun holds(requestId: String) = synchronized(lock) { requestId in requestIds }
+    }
+
+    private val current = AtomicReference<Waiter?>(null)
 
     suspend fun show(context: Context, request: ToolPermissionRequest): Boolean =
         withContext(Dispatchers.Main) {
-            // 已有窗口在显示时并入等待，禁止叠两层（双重黑幕的来源）
-            val existing = currentDeferred
-            if (existing != null && existing.isActive) {
-                return@withContext existing.await()
+            // 已有窗口在显示时并入同一等待器：本次 requestId 也绑定到同一 waiter，
+            // 任一身份都能完成它（禁止叠两层，双重黑幕的来源）。本次调用 finally 只解除
+            // 自己的绑定，不关闭共享窗口（由首个调用方 finally 按捕获身份释放）。
+            val merged = current.get()
+            if (merged != null && merged.deferred.isActive) {
+                merged.bind(request.id)
+                return@withContext try {
+                    merged.deferred.await()
+                } finally {
+                    merged.unbind(request.id)
+                }
             }
-
-            val deferred = CompletableDeferred<Boolean>()
-            currentDeferred = deferred
-            wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
-            val view = buildRoot(context, request) { allowed ->
-                currentDeferred?.let { if (it.isActive) it.complete(allowed) }
-            }
-            currentView = view
 
             val lp = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -105,27 +122,54 @@ object ToolPermissionOverlay {
             )
             lp.gravity = Gravity.TOP or Gravity.START
 
+            // 捕获本次的 WindowManager/view/waiter；getSystemService、buildRoot、addView
+            // 任一失败都按捕获身份清理，失败原样上抛（宿主映射 DENIED_UNAVAILABLE）。
+            var waiter: Waiter? = null
             try {
-                wm?.addView(view, lp)
-                deferred.await()
+                val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                val view = buildRoot(context, request) { allowed ->
+                    waiter?.deferred?.let { if (it.isActive) it.complete(allowed) }
+                }
+                val bound = Waiter(wm, view)
+                waiter = bound
+                bound.bind(request.id)
+                current.set(bound)
+                wm.addView(view, lp)
+                bound.deferred.await()
             } finally {
-                dismiss()
+                waiter?.let { release(it) }
             }
         }
 
+    /**
+     * 后台授权响应接缝（Group8 §9.11）：按 requestId 完成当前窗口的同一原等待器。
+     * 合并进来的每个 requestId 都绑定到同一 waiter，故任一身份都能完成它；
+     * 无窗口、身份未绑定或等待器已结束一律返回 false（安全默认，不误完成后继请求）。
+     */
+    internal fun respond(requestId: String, allowed: Boolean): Boolean {
+        val waiter = current.get() ?: return false
+        if (!waiter.holds(requestId)) return false
+        val deferred = waiter.deferred
+        if (!deferred.isActive) return false
+        return deferred.complete(allowed)
+    }
+
+    /** 关闭当前窗口（外部显式清理）；仅释放当前 waiter，旧窗口不能清除后继。 */
     fun dismiss() {
-        val view = currentView
-        val w = wm
-        if (view != null && w != null) {
-            try {
-                w.removeViewImmediate(view)
-            } catch (e: Exception) {
-                Logger.w(TAG, "overlay removeView failed", e)
-            }
+        current.get()?.let { release(it) }
+    }
+
+    /**
+     * 按捕获的 waiter 身份释放：仅当仍是当前窗口时原子清除 [current]；
+     * view 移除用捕获的 wm/view，旧窗口的 finally 不清掉后来显示的窗口。
+     */
+    private fun release(waiter: Waiter) {
+        current.compareAndSet(waiter, null)
+        try {
+            waiter.wm.removeViewImmediate(waiter.view)
+        } catch (e: Exception) {
+            Logger.w(TAG, "overlay removeView failed", e)
         }
-        currentView = null
-        wm = null
-        currentDeferred = null
     }
 
     // ============================================================

@@ -3,7 +3,6 @@ package com.niki914.zafiro.app.conversation
 import com.niki914.logging.Logger
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.ConversationEntry
-import com.niki914.zafiro.chat.LLMController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -31,9 +30,14 @@ object ConversationPersister {
     /** 已持久化条数（按会话 id 隔离）。内存态，重启后按 Room 现有条数重建。 */
     private val persistedCountBySession = mutableMapOf<String, Int>()
 
+    /**
+     * [source] 为 runtime 同源内容流（`ConversationRuntime.conversation`，底层即
+     * LLMController.currentConversation 的同一 StateFlow）；由组装方显式注入，
+     * 持久化不再直连聊天引擎。
+     */
     fun start(
         scope: CoroutineScope,
-        source: Flow<Conversation?> = LLMController.currentConversation
+        source: Flow<Conversation?>,
     ) {
         scope.launch {
             source.collect { snapshot ->

@@ -22,19 +22,26 @@ import com.niki914.store.HostApp
 import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.store.XIpcStoreRepository
 
+import com.niki914.zafiro.app.AppConversationRuntime
 import com.niki914.zafiro.app.MainActivity
-import com.niki914.zafiro.chat.LLMController
+import com.niki914.zafiro.chat.FullTextProjector
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.ToolStatusLabels
-import com.niki914.zafiro.chat.collectAsFull
-import kotlinx.coroutines.flow.map
+import com.niki914.zafiro.chat.runtime.CommandCaller
+import com.niki914.zafiro.chat.runtime.CommandSurface
+import com.niki914.zafiro.chat.runtime.ConversationOperation
+import com.niki914.zafiro.chat.runtime.EntrySource
+import com.niki914.zafiro.chat.runtime.ExecutionOwner
+import com.niki914.zafiro.chat.runtime.TurnInput
+import com.niki914.zafiro.chat.runtime.TurnKey
 import com.niki914.zafiro.runtime.ipc.IAgentRuntimeService
 import com.niki914.zafiro.runtime.ipc.IAgentStoreService
 import com.niki914.zafiro.runtime.ipc.IRenderFrameCallback
 import com.niki914.zafiro.runtime.ipc.RenderFrame
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -42,6 +49,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 import com.niki914.zafiro.app.R as AppR
 
@@ -69,10 +77,66 @@ class AgentRuntimeService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val activeTurn = AtomicReference<ActiveTurn?>(null)
 
-    private data class ActiveTurn(
+    private class ActiveTurn(
         val callback: IRenderFrameCallback,
+        /** 来源包装 Job：原回调/死亡/取消/清理的寿命所有者，也是执行 Job 的父 Job。 */
         val job: Job,
+        /** 取消请求与执行身份发布的原子交接；绑定到本回合，不随 CAS 时序丢失。 */
+        val stopHandoff: TurnStopHandoff,
     )
+
+    /**
+     * 单回合的停止交接（Group8 race fix）：把「取消请求」与「执行身份发布」两个随时序
+     * 到达的事件收敛为一次原子判定，保证捕获回合的 scoped 引擎停止恰好调度一次。
+     *
+     * 状态只为当前 ActiveTurn 持有（有界，无全局缓存）：
+     * - 取消先到：记 stopRequested，待 handle 发布时由发布方调度停止；
+     * - 身份先到：requestStop 立即调度停止；
+     * - 两者竞争：CAS 保证只有一个调用真正触发 [schedule]。
+     * 调度沿用原 Service scope 异步执行，不等待整个包装协程，也不扩大寿命。
+     */
+    private class TurnStopHandoff(
+        private val schedule: (TurnKey) -> Unit,
+    ) {
+        private data class State(
+            val key: TurnKey? = null,
+            val stopRequested: Boolean = false,
+            val scheduled: Boolean = false,
+        )
+
+        private val state = AtomicReference(State())
+
+        /** executor 发布执行身份；若取消请求已先到，触发一次 scoped 引擎停止。 */
+        fun publishKey(key: TurnKey) {
+            update { it.copy(key = key) }
+            scheduleOnce()
+        }
+
+        /** 取消/死亡请求；若身份已先到，触发一次 scoped 引擎停止，否则等发布方触发。 */
+        fun requestStop() {
+            update { it.copy(stopRequested = true) }
+            scheduleOnce()
+        }
+
+        private fun update(transform: (State) -> State) {
+            while (true) {
+                val current = state.get()
+                if (state.compareAndSet(current, transform(current))) return
+            }
+        }
+
+        private fun scheduleOnce() {
+            while (true) {
+                val current = state.get()
+                if (current.scheduled || !current.stopRequested) return
+                val key = current.key ?: return
+                if (state.compareAndSet(current, current.copy(scheduled = true))) {
+                    schedule(key)
+                    return
+                }
+            }
+        }
+    }
 
     companion object {
         private const val LOG_TAG = "niki914_nexus_AgentRuntimeService"
@@ -146,8 +210,31 @@ class AgentRuntimeService : Service() {
                 return
             }
 
-            val job = scope.launch { executeTurn(q, cb) }
-            val turn = ActiveTurn(cb, job)
+            // 保留原顺序：linkToDeath → 启动执行 → activeTurn CAS → 忙时 cancel/unlink/error。
+            // LAZY 仅用于在启动前建立捕获的 owner（其 parentJob 即本来源包装 Job），
+            // start 仍在 CAS 之前，不引入“CAS 成功才启动”的新门控。
+            val stopHandoff = TurnStopHandoff { key ->
+                // 捕获回合的 scoped 引擎停止：沿原 Service scope 异步执行，不等待包装协程。
+                scope.launch {
+                    try {
+                        AppConversationRuntime.require().stopTurn(key)
+                        Logger.i(LOG_TAG, "cancel done stopRoundCompleted=true")
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            var owner: ExecutionOwner? = null
+            val job = scope.launch(start = CoroutineStart.LAZY) {
+                executeTurn(q, cb, owner!!, stopHandoff)
+            }
+            owner = ExecutionOwner(
+                id = UUID.randomUUID().toString(),
+                source = EntrySource.Host,
+                parentJob = job,
+                executionContext = scope.coroutineContext,
+            )
+            val turn = ActiveTurn(cb, job, stopHandoff)
+            job.start()
             if (!activeTurn.compareAndSet(null, turn)) {
                 job.cancel()
                 try {
@@ -167,15 +254,12 @@ class AgentRuntimeService : Service() {
                 Logger.i(LOG_TAG, "cancel ignored noActiveTurn=true")
                 return
             }
+            // 先取消捕获的来源包装 Job（含 submit 前），再原子交接：身份已发布则立即
+            // 调度 scoped 引擎停止，未发布则由 executeTurn 发布时调度（恰好一次），
+            // 不再因取消早于 turnKey 发布而静默丢弃显式停止。
             turn.job.cancel()
             Logger.i(LOG_TAG, "cancel requested")
-            scope.launch {
-                try {
-                    LLMController.stopCurrentRound()
-                    Logger.i(LOG_TAG, "cancel done stopRoundCompleted=true")
-                } catch (_: Exception) {
-                }
-            }
+            turn.stopHandoff.requestStop()
         }
 
         override fun resetConversation() {
@@ -184,7 +268,11 @@ class AgentRuntimeService : Service() {
                 val turn = activeTurn.getAndSet(null)
                 turn?.job?.cancelAndJoin()
                 try {
-                    LLMController.resetConversation()
+                    // 原 reset：只做显式 Runtime Reset（后端调原 LLMController.resetConversation）
+                    AppConversationRuntime.require().operate(
+                        ConversationOperation.Reset,
+                        CommandCaller(CommandSurface.Host),
+                    )
                     Logger.i(LOG_TAG, "reset conversation done")
                 } catch (_: Exception) {
                 }
@@ -330,64 +418,76 @@ class AgentRuntimeService : Service() {
         }
     }
 
-    private suspend fun executeTurn(query: String, callback: IRenderFrameCallback) {
+    private suspend fun executeTurn(
+        query: String,
+        callback: IRenderFrameCallback,
+        owner: ExecutionOwner,
+        stopHandoff: TurnStopHandoff,
+    ) {
         val thisTurn = activeTurn.get()
         val startedAtMs = System.currentTimeMillis()
         Logger.i(LOG_TAG, "turn started queryLength=${query.length}")
         var firstFrameSent = false
         try {
-            LLMController.stream(query)
-                // 数据变展示的边界（有 Context 的消费方负责本地化）：
-                // 无原文的错误（ConfigRequired/IdleTimeout/守卫）在此翻译，
-                // 有原文的错误原样透传；宿主进程只收渲染好的文本
-                .map { event ->
-                    if (event is LlmStreamEvent.Error && event.message == null) {
-                        event.copy(
-                            message = when (event.code) {
-                                LlmErrorCode.ConfigRequired ->
-                                    getString(AppR.string.ui_home_error_config_required_title)
-                                LlmErrorCode.IdleTimeout ->
-                                    getString(AppR.string.ui_home_error_idle_timeout_title)
-                                else ->
-                                    getString(AppR.string.runtime_error_internal)
-                            },
-                        )
-                    } else {
-                        event
-                    }
-                }
-                .collectAsFull(
-                labels = ToolStatusLabels(
+            val runtime = AppConversationRuntime.require()
+            // 复用既有 FullTextProjector（每次执行独立实例），在 output 回调里直接 apply；
+            // 不新增 channelFlow/buffer，帧内容、顺序与收尾条件与原 collectAsFull 一致。
+            val projector = FullTextProjector(
+                ToolStatusLabels(
                     called = getString(AppR.string.ui_tool_status_called),
                     running = getString(AppR.string.ui_tool_status_running),
                     success = getString(AppR.string.ui_tool_status_success),
                     failed = getString(AppR.string.ui_tool_status_failed),
-                )
-            ) { frame ->
-                if (!firstFrameSent) {
-                    firstFrameSent = true
-                    Logger.i(
-                        LOG_TAG,
-                        "first render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                "textLength=${frame.text.length}"
+                ),
+            )
+            val handle = runtime.submit(TurnInput(query), owner) { event ->
+                // 数据变展示的边界（有 Context 的消费方负责本地化）：
+                // 无原文的错误（ConfigRequired/IdleTimeout/守卫）在此翻译，
+                // 有原文的错误原样透传；宿主进程只收渲染好的文本
+                val mapped = if (event is LlmStreamEvent.Error && event.message == null) {
+                    event.copy(
+                        message = when (event.code) {
+                            LlmErrorCode.ConfigRequired ->
+                                getString(AppR.string.ui_home_error_config_required_title)
+                            LlmErrorCode.IdleTimeout ->
+                                getString(AppR.string.ui_home_error_idle_timeout_title)
+                            else ->
+                                getString(AppR.string.runtime_error_internal)
+                        },
+                    )
+                } else {
+                    event
+                }
+                projector.apply(mapped).forEach { frame ->
+                    if (!firstFrameSent) {
+                        firstFrameSent = true
+                        Logger.i(
+                            LOG_TAG,
+                            "first render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                                    "textLength=${frame.text.length}"
+                        )
+                    }
+                    if (frame.isFinal) {
+                        Logger.i(
+                            LOG_TAG,
+                            "final render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                                    "textLength=${frame.text.length}"
+                        )
+                    }
+                    sendFrame(
+                        callback,
+                        RenderFrame(
+                            text = frame.text,
+                            isFirst = frame.isFirst,
+                            isFinal = frame.isFinal
+                        ),
                     )
                 }
-                if (frame.isFinal) {
-                    Logger.i(
-                        LOG_TAG,
-                        "final render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                "textLength=${frame.text.length}"
-                    )
-                }
-                sendFrame(
-                    callback,
-                    RenderFrame(
-                        text = frame.text,
-                        isFirst = frame.isFirst,
-                        isFinal = frame.isFinal
-                    ),
-                )
             }
+            // submit 后发布执行身份：若取消请求早到，这里触发 scoped 引擎停止
+            stopHandoff.publishKey(handle.key)
+            // 原始业务/输出失败在 await(handle) 点原样交付，落在同一 try/catch 内
+            runtime.await(handle)
             Logger.i(
                 LOG_TAG,
                 "turn completed elapsedMs=${System.currentTimeMillis() - startedAtMs}"
@@ -442,13 +542,10 @@ class AgentRuntimeService : Service() {
 
     private fun handleBinderDeath() {
         val turn = activeTurn.getAndSet(null) ?: return
+        // 先取消捕获的来源包装 Job，再原子交接：身份已发布则调度 scoped 定向引擎停止，
+        // 未发布则由 handle 发布时调度。
         turn.job.cancel()
-        scope.launch {
-            try {
-                LLMController.stopCurrentRound()
-            } catch (_: Exception) {
-            }
-        }
+        turn.stopHandoff.requestStop()
     }
 
     private fun validateCaller(): Boolean {

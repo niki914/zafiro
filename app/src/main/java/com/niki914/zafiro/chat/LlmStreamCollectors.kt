@@ -83,7 +83,12 @@ private sealed interface RenderSegment {
     data class Retrying(val event: LlmStreamEvent.Retrying) : RenderSegment
 }
 
-private class FullTextProjector(
+/**
+ * 全量文本投影器（T-17 复用缝）：原 [collectAsFull] 内部实现，改为 internal 供
+ * Service 在输出回调里直接 apply，避免为执行转移新增 channelFlow/buffer。
+ * 语义不变：仍由调用方每次执行新建实例，事件顺序与收尾帧与旧路径一致。
+ */
+internal class FullTextProjector(
     private val labels: ToolStatusLabels,
 ) {
     private val segments = mutableListOf<RenderSegment>()
