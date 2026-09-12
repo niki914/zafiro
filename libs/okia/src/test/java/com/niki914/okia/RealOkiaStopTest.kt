@@ -31,12 +31,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicReference
@@ -476,6 +478,421 @@ class RealOkiaStopTest {
 
         okia.stop()
         assertEquals(TurnResult.Aborted(StopCause.UserStop), b.await())
+        okia.close()
+    }
+
+    // ── AC9：定向 token 停止、捕获清理与 guard 竞争 ─────────────────────────
+
+    /** 记录 beforeStop 调用并在 kill 步骤内挂起，用于固定「cleanup 未完成」窗口。 */
+    private class SuspendingStopHooks(
+        private val stopCalls: MutableList<List<ContentBlock.ToolCall>>,
+        private val gate: CompletableDeferred<Unit>,
+        private val started: CompletableDeferred<Unit>,
+    ) : Hooks {
+        override suspend fun beforeStop(calls: List<ContentBlock.ToolCall>) {
+            stopCalls += calls
+            started.complete(Unit)
+            gate.await()
+        }
+    }
+
+    private fun callIds(calls: List<List<ContentBlock.ToolCall>>): List<List<String>> =
+        calls.map { batch -> batch.map { it.id } }
+
+    @Test
+    fun scopedStopMatchesBoundTokenAndRejectsStaleTokens() = runTest {
+        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
+        val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
+        val okia = openOkia(
+            FakeProtocolMapper(events),
+            hooks = listOf(StopRecordingHooks(stopCalls)),
+            scope = testScope(testScheduler),
+        )
+        val token = Any()
+        val sendJob = async { okia.send("hi", emptyList(), TurnOptions(turnToken = token)) { } }
+        runCurrent()
+
+        // 过期 token：不 kill、不取消，回合继续运行。
+        assertFalse(okia.stop(Any()))
+        assertTrue(stopCalls.isEmpty())
+        assertTrue(sendJob.isActive)
+
+        // 匹配 token 值相等即命中：kill 一次，终态 UserStop。
+        assertTrue(okia.stop(token))
+        assertEquals(1, stopCalls.size)
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), sendJob.await())
+        // 回合已结束：同一 token 再停为 no-op，不产生第二次 kill。
+        assertFalse(okia.stop(token))
+        assertEquals(1, stopCalls.size)
+        okia.close()
+    }
+
+    @Test
+    fun concurrentScopedStopsKillAtMostOnce() = runTest {
+        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
+        val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
+        val okia = openOkia(
+            FakeProtocolMapper(events),
+            hooks = listOf(StopRecordingHooks(stopCalls)),
+            scope = testScope(testScheduler),
+        )
+        val token = Any()
+        val sendJob = async { okia.send("hi", emptyList(), TurnOptions(turnToken = token)) { } }
+        runCurrent()
+
+        val first = async { okia.stop(token) }
+        val second = async { okia.stop(token) }
+        runCurrent()
+        val results = listOf(first.await(), second.await())
+
+        assertEquals(1, results.count { it })
+        assertEquals(1, stopCalls.size)
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), sendJob.await())
+        okia.close()
+    }
+
+    @Test
+    fun scopedStopCleanupCompletesWhileKillHookSuspends() = runTest {
+        val registry = DefaultToolRegistry()
+        val executor = RecordingToolExecutor()
+        val toolGate = CompletableDeferred<Unit>()
+        executor.onExecute = { toolGate.await() }
+        registry.register(localTool("t1"), executor)
+        val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
+        val killGate = CompletableDeferred<Unit>()
+        val killStarted = CompletableDeferred<Unit>()
+        val okia = openOkia(
+            FakeProtocolMapper(
+                listOf(
+                    listOf(
+                        ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                        completed(StopReason.ToolUse),
+                    ),
+                ),
+            ),
+            registry = registry,
+            hooks = listOf(SuspendingStopHooks(stopCalls, killGate, killStarted)),
+            scope = testScope(testScheduler),
+        )
+        val token = Any()
+        val sendJob = async { okia.send("hi", emptyList(), TurnOptions(turnToken = token)) { } }
+        runCurrent()
+
+        val stopJob = async { okia.stop(token) }
+        runCurrent()
+        // kill 步骤挂起：捕获清理尚未完成，stop 未返回，kill 只发生一次。
+        assertTrue(killStarted.isCompleted)
+        assertFalse(stopJob.isCompleted)
+        assertEquals(listOf(listOf("c1")), callIds(stopCalls))
+
+        killGate.complete(Unit)
+        runCurrent()
+        assertTrue(stopJob.await())
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), sendJob.await())
+        assertEquals(listOf(listOf("c1")), callIds(stopCalls))
+        okia.close()
+    }
+
+    @Test
+    fun lateScopedStopCannotFlipCapturedExternalCancellation() = runTest {
+        val registry = DefaultToolRegistry()
+        val executor = RecordingToolExecutor()
+        val toolGate = CompletableDeferred<Unit>()
+        executor.onExecute = { toolGate.await() }
+        registry.register(localTool("t1"), executor)
+        val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
+        val killGate = CompletableDeferred<Unit>()
+        val killStarted = CompletableDeferred<Unit>()
+        val okia = openOkia(
+            FakeProtocolMapper(
+                listOf(
+                    listOf(
+                        ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                        completed(StopReason.ToolUse),
+                    ),
+                ),
+            ),
+            registry = registry,
+            hooks = listOf(SuspendingStopHooks(stopCalls, killGate, killStarted)),
+            scope = testScope(testScheduler),
+        )
+        val token = Any()
+        var caught: CancellationException? = null
+        val abortedCauses = mutableListOf<StopCause>()
+        val sendJob = launch {
+            try {
+                okia.send("hi", emptyList(), TurnOptions(turnToken = token)) { event ->
+                    if (event is TurnEvent.TurnAborted) abortedCauses += event.cause
+                }
+            } catch (e: CancellationException) {
+                caught = e
+            }
+        }
+        runCurrent()
+
+        sendJob.cancel()
+        runCurrent()
+        // 外部取消已在 ensureCleanup 前捕获 stopCause=null，清理认领并挂起在 kill 钩子。
+        assertTrue(killStarted.isCompleted)
+
+        // 清理进行中的迟到定向 stop：等待同一清理，不重复 kill，也不改变已捕获分支。
+        val lateStop = async { okia.stop(token) }
+        runCurrent()
+        assertFalse(lateStop.isCompleted)
+        killGate.complete(Unit)
+        runCurrent()
+        sendJob.join()
+        assertTrue(lateStop.await())
+        assertTrue(caught != null)
+        assertTrue(abortedCauses.isEmpty())
+        assertEquals(1, stopCalls.size)
+        okia.close()
+    }
+
+    @Test
+    fun scopedStopHoldsAdmissionGuardAndOldCleanupCannotKillSuccessor() = runTest {
+        val registry = DefaultToolRegistry()
+        val executor = RecordingToolExecutor()
+        val firstToolGate = CompletableDeferred<Unit>()
+        val secondToolGate = CompletableDeferred<Unit>()
+        var executions = 0
+        executor.onExecute = {
+            executions++
+            if (executions == 1) firstToolGate.await() else secondToolGate.await()
+        }
+        registry.register(localTool("t1"), executor)
+        val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
+        val killGate = CompletableDeferred<Unit>()
+        val killStarted = CompletableDeferred<Unit>()
+        val okia = openOkia(
+            FakeProtocolMapper(
+                listOf(
+                    listOf(
+                        ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                        completed(StopReason.ToolUse),
+                    ),
+                    listOf(
+                        ProtocolEvent.ToolCallReady("c2", "t1", "{}"),
+                        completed(StopReason.ToolUse),
+                    ),
+                    listOf(completed()),
+                ),
+            ),
+            registry = registry,
+            hooks = listOf(SuspendingStopHooks(stopCalls, killGate, killStarted)),
+            scope = testScope(testScheduler),
+        )
+        val firstToken = Any()
+        val first = async { okia.send("first", emptyList(), TurnOptions(turnToken = firstToken)) { } }
+        runCurrent()
+
+        val firstStop = async { okia.stop(firstToken) }
+        runCurrent()
+        assertTrue(killStarted.isCompleted)
+
+        // 捕获清理未结束：guard 未释放，其他 token 不被触碰，后继 send 被拒。
+        val secondToken = Any()
+        assertFalse(okia.stop(secondToken))
+        val rejected = async {
+            runCatching { okia.send("second", emptyList(), TurnOptions(turnToken = secondToken)) { } }
+        }
+        runCurrent()
+        assertEquals("another turn is already active", rejected.await().exceptionOrNull()?.message)
+
+        killGate.complete(Unit)
+        runCurrent()
+        assertTrue(firstStop.await())
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), first.await())
+        assertEquals(listOf(listOf("c1")), callIds(stopCalls))
+
+        // 后继仅在旧回合清理与终态处理完成后才被接纳，其 kill 只含自己的调用。
+        val second = async { okia.send("second", emptyList(), TurnOptions(turnToken = secondToken)) { } }
+        runCurrent()
+        assertEquals(2, executions)
+        assertTrue(okia.stop(secondToken))
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), second.await())
+        assertEquals(listOf(listOf("c1"), listOf("c2")), callIds(stopCalls))
+        okia.close()
+    }
+
+    @Test
+    fun scopedStopAfterNaturalCompletionIsStaleNoOp() = runTest {
+        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
+        val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
+        val okia = openOkia(
+            FakeProtocolMapper(events),
+            hooks = listOf(StopRecordingHooks(stopCalls)),
+            scope = testScope(testScheduler),
+        )
+        val token = Any()
+        val sendJob = async { okia.send("hi", emptyList(), TurnOptions(turnToken = token)) { } }
+        runCurrent()
+        events.emit(completed())
+        runCurrent()
+        assertEquals(TurnResult.Completed(CompletionReason.Stop), sendJob.await())
+
+        // 自然完成后句柄整体置 null：定向 stop 不再命中，不写陈旧 stopCause。
+        assertFalse(okia.stop(token))
+        assertTrue(stopCalls.isEmpty())
+        okia.close()
+    }
+
+    // ── AC9 补充窗口：stop 调用方取消、finally 争用私有锁、值相等 token ──────
+
+    /** 值相等（data class）的不同实例：定向 stop 必须按值命中，而非按引用。 */
+    private data class ValueToken(val id: String)
+
+    /**
+     * 窄反射取真实私有 mutex：无生产测试接缝，仅用于在测试侧持有/释放该锁，
+     * 固定 send finally 争用窗口。不修改任何生产代码。
+     */
+    private fun okiaMutex(okia: RealOkia): Mutex {
+        val field = RealOkia::class.java.getDeclaredField("mutex")
+        field.isAccessible = true
+        return field.get(okia) as Mutex
+    }
+
+    @Test
+    fun scopedStopMatchesValueEqualDistinctToken() = runTest {
+        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
+        val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
+        val okia = openOkia(
+            FakeProtocolMapper(events),
+            hooks = listOf(StopRecordingHooks(stopCalls)),
+            scope = testScope(testScheduler),
+        )
+        val sendToken = ValueToken("t1")
+        val sendJob = async { okia.send("hi", emptyList(), TurnOptions(turnToken = sendToken)) { } }
+        runCurrent()
+
+        // 不同实例但值相等：命中（传参按值比较）。
+        assertTrue(okia.stop(ValueToken("t1")))
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), sendJob.await())
+        assertEquals(1, stopCalls.size)
+
+        // 值不等：不命中，回合继续运行。
+        val otherToken = ValueToken("t2")
+        val next = async { okia.send("next", emptyList(), TurnOptions(turnToken = otherToken)) { } }
+        runCurrent()
+        assertFalse(okia.stop(ValueToken("other")))
+        assertTrue(next.isActive)
+        assertTrue(okia.stop(ValueToken("t2")))
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), next.await())
+        okia.close()
+    }
+
+    @Test
+    fun cancelledScopedStopCallerStillCompletesCleanupAndReleasesGuard() = runTest {
+        val registry = DefaultToolRegistry()
+        val executor = RecordingToolExecutor()
+        val toolGate = CompletableDeferred<Unit>()
+        executor.onExecute = { toolGate.await() }
+        registry.register(localTool("t1"), executor)
+        val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
+        val killGate = CompletableDeferred<Unit>()
+        val killStarted = CompletableDeferred<Unit>()
+        val okia = openOkia(
+            FakeProtocolMapper(
+                listOf(
+                    listOf(
+                        ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                        completed(StopReason.ToolUse),
+                    ),
+                    listOf(completed()),
+                ),
+            ),
+            registry = registry,
+            hooks = listOf(SuspendingStopHooks(stopCalls, killGate, killStarted)),
+            scope = testScope(testScheduler),
+        )
+        val token = Any()
+        val sendJob = async { okia.send("hi", emptyList(), TurnOptions(turnToken = token)) { } }
+        runCurrent()
+
+        val stopJob = async { okia.stop(token) }
+        runCurrent()
+        assertTrue(killStarted.isCompleted)
+
+        // 取消 stop 调用方：捕获清理已认领，kill 步骤在 NonCancellable 中仍须跑到完成。
+        stopJob.cancel()
+        runCurrent()
+        killGate.complete(Unit)
+        runCurrent()
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), sendJob.await())
+        assertTrue(stopJob.isCancelled)
+        assertEquals(listOf(listOf("c1")), callIds(stopCalls))
+
+        // 清理完成且 guard 已释放：后继回合可被接纳。
+        val nextToken = Any()
+        val next = async { okia.send("next", emptyList(), TurnOptions(turnToken = nextToken)) { } }
+        runCurrent()
+        assertEquals(TurnResult.Completed(CompletionReason.Stop), next.await())
+        okia.close()
+    }
+
+    @Test
+    fun cancelledSendFinallyAcquiresContendedMutexAndReleasesGuard() = runTest {
+        val registry = DefaultToolRegistry()
+        val executor = RecordingToolExecutor()
+        val toolGate = CompletableDeferred<Unit>()
+        executor.onExecute = { toolGate.await() }
+        registry.register(localTool("t1"), executor)
+        val stopCalls = mutableListOf<List<ContentBlock.ToolCall>>()
+        val killGate = CompletableDeferred<Unit>()
+        val killStarted = CompletableDeferred<Unit>()
+        val okia = openOkia(
+            FakeProtocolMapper(
+                listOf(
+                    listOf(
+                        ProtocolEvent.ToolCallReady("c1", "t1", "{}"),
+                        completed(StopReason.ToolUse),
+                    ),
+                    listOf(completed()),
+                ),
+            ),
+            registry = registry,
+            hooks = listOf(SuspendingStopHooks(stopCalls, killGate, killStarted)),
+            scope = testScope(testScheduler),
+        )
+        val token = Any()
+        var caught: CancellationException? = null
+        val sendJob = launch {
+            try {
+                okia.send("hi", emptyList(), TurnOptions(turnToken = token)) { }
+            } catch (e: CancellationException) {
+                caught = e
+            }
+        }
+        runCurrent()
+
+        // 外部取消先完成清理认领，kill 步骤挂起——此时私有锁仍空闲。
+        sendJob.cancel()
+        runCurrent()
+        assertTrue(killStarted.isCompleted)
+
+        // 测试侧持有真实私有 mutex，放行 kill 后取消的 send finally 必须在
+        // NonCancellable 中争用该锁，不得因取消而跳过 guard 清除。
+        val mutex = okiaMutex(okia)
+        mutex.lock()
+        try {
+            killGate.complete(Unit)
+            runCurrent()
+            // 清理已完成但 finally 阻塞在争用锁上：若清除被取消绕过，这里会提前完成。
+            assertFalse(sendJob.isCompleted)
+        } finally {
+            mutex.unlock()
+        }
+
+        runCurrent()
+        sendJob.join()
+        assertTrue(caught != null)
+        assertEquals(listOf(listOf("c1")), callIds(stopCalls))
+
+        // guard 已释放：后继 send 不再被旧回合挡住。
+        val nextToken = Any()
+        val next = async { okia.send("next", emptyList(), TurnOptions(turnToken = nextToken)) { } }
+        runCurrent()
+        assertEquals(TurnResult.Completed(CompletionReason.Stop), next.await())
         okia.close()
     }
 }
