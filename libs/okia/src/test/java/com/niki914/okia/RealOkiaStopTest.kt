@@ -1,6 +1,7 @@
 package com.niki914.okia
 
 import com.niki914.okia.event.StopCause
+import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.fake.FakeAgentLoop
 import com.niki914.okia.fake.FakeHttpEngine
 import com.niki914.okia.fake.FakeProtocolMapper

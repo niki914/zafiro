@@ -796,7 +796,7 @@ class ConversationRuntimeTest {
             emitter.emitCancellationRequest(Reason("STOP_REQUEST", "EXECUTOR"))
         }
         val owner = owner("home", EntrySource.HomeChat)
-        val handle = executor.submit(TurnInput("q"), owner) {}
+        val handle = executor.submit(TurnInput("q"), owner, output = {})
         advanceUntilIdle()
 
         assertEquals(1, facts.count { it is RuntimeFact.StreamResult })
@@ -820,7 +820,7 @@ class ConversationRuntimeTest {
             emit(LlmStreamEvent.TextDelta("a", "a"))
             emitter.emit(TurnResult.Completed(CompletionReason.Stop))
         }
-        val handle = executor.submit(TurnInput("q"), owner) { received += it }
+        val handle = executor.submit(TurnInput("q"), owner, output = { received += it })
         advanceUntilIdle()
 
         assertEquals(1, received.size)
@@ -884,7 +884,7 @@ class ConversationRuntimeTest {
             completedWithBindingCleanup = true
             emitter.emit(TurnResult.Completed(CompletionReason.Stop))
         }
-        val handle = executor.submit(TurnInput("q"), owner) {}
+        val handle = executor.submit(TurnInput("q"), owner, output = {})
         val waiter = launch(Dispatchers.Unconfined) {
             executor.await(handle)
             // Unconfined：await 返回即在本线程继续，此刻 bookkeeping/权限清理必须已完成。
@@ -938,7 +938,7 @@ class ConversationRuntimeTest {
             emitter.emit(originalFailure)
             throw originalFailure
         }
-        val handle = executor.submit(TurnInput("q"), owner) {}
+        val handle = executor.submit(TurnInput("q"), owner, output = {})
         val waiter = launch(Dispatchers.Unconfined) {
             val delivered = runCatching { executor.await(handle) }.exceptionOrNull()
             waiterObservedFailure = delivered === originalFailure

@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
@@ -418,11 +419,11 @@ private class RecordingCallback : IRenderFrameCallback.Stub() {
         frame?.let { frames += it }
     }
 
-    override fun linkToDeath(recipient: IBinder.DeathRecipient?, flags: Int) {
+    override fun linkToDeath(recipient: IBinder.DeathRecipient, flags: Int) {
         linkCalls.incrementAndGet()
     }
 
-    override fun unlinkToDeath(recipient: IBinder.DeathRecipient?, flags: Int): Boolean {
+    override fun unlinkToDeath(recipient: IBinder.DeathRecipient, flags: Int): Boolean {
         unlinkCalls.incrementAndGet()
         return true
     }
