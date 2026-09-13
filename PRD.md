@@ -113,7 +113,7 @@ binder 由 Shizuku server 在应用启动后异步推送（`sendBinder`），无
 |---|---|---|
 | OVERLAY | ROOT_SHELL → SHIZUKU → JUMP_SETTINGS | shell 执行 `appops set ... SYSTEM_ALERT_WINDOW allow` |
 | ACCESSIBILITY | ROOT_SHELL → SHIZUKU → JUMP_SETTINGS | shell 写 `settings put secure enabled_accessibility_services`（收编 AccessibilityController 逻辑） |
-| NOTIFICATION | SYSTEM_DIALOG → JUMP_SETTINGS | minSdk 33；<33 恒 GRANTED |
+| NOTIFICATION | ROOT_SHELL → SHIZUKU → SYSTEM_DIALOG → JUMP_SETTINGS | 有 root / Shizuku 时 shell 执行 `pm grant ... POST_NOTIFICATIONS`（未生效则再试 `appops set ... POST_NOTIFICATION allow`）并以 `TargetStatus.notification` 复查收尾；不可用时降级到系统弹窗；<33 恒 GRANTED |
 | ROOT / SHIZUKU | 自身对应通道 | 能力型目标，复用 libterm 授权检查 |
 
 ## 模块归属
@@ -149,6 +149,15 @@ libs/permission-manager/   # 新模块，与 libterm 平级
 5. [已完成] 单测：FakeChannelHandler 覆盖链语义（成功短路、UNAVAILABLE 降级、DENIED 继续、
    链尽失败）与 minSdk 门槛；新增 `UiGateTest`（resume 代数、通知结果路由、unbind 取消）
    与 `DefaultChainTest`（默认链对照表）。25 项全绿。
+7. [结论待定] NOTIFICATION 默认链增加 ROOT_SHELL / SHIZUKU 两环：两个 shell handler 补上
+   `pm grant` / `appops set POST_NOTIFICATION` 授权，命令后以 `TargetStatus.notification` 复查
+   真实状态收尾（退出码不等于权限状态）。命令文本与三种收尾状态由 `ShellGrantsTest` 覆盖。
+   两个 handler 的 `status(NOTIFICATION)` 同时改为 `TargetStatus.notification` 直出：
+   `PermissionManager.status(NOTIFICATION)` 由 UNAVAILABLE 变为真实状态，因此
+   `AgentRuntimeService.postNotificationImpl` 的只读门与 `IpcRuntimeHostGateway.postNotification`
+   的“已授权则不再申请”开始生效，这两条路径需一并真机确认。
+   真机验证待补：`RootShellHandler: exec [pm grant ...] exit=0` → `NOTIFICATION -> GRANTED`；
+   无 root / Shizuku 或系统拒纳时应降级到 `SystemDialogHandler: request(NOTIFICATION): granted=true`。
 
 ## 冒烟方法（debug 临时自测入口）
 

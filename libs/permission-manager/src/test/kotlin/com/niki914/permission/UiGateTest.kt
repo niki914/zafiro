@@ -64,9 +64,11 @@ class DefaultChainTest {
     }
 
     @Test
-    fun `notification defaults to dialog-jump`() {
+    fun `notification tries shell channels before dialog-jump`() {
+        // 有 root / Shizuku 时先静默授权（handler 内部走 pm grant / appops），
+        // 不可用时降级到系统弹窗与跳设置页。
         assertEquals(
-            listOf(Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS),
+            listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS),
             PermissionManager.defaultChain(Permission.NOTIFICATION),
         )
     }

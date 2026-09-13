@@ -37,6 +37,35 @@ internal object ShellGrants {
         return if (put2.isSuccess) PermissionState.GRANTED else PermissionState.FAILED
     }
 
+    /**
+     * 通知授权：POST_NOTIFICATIONS 是运行时权限（API 33+），shell 能代授权。
+     *
+     * 两条命令都试：`pm grant` 走运行时权限表，`appops set POST_NOTIFICATION` 走通知开关，
+     * 不同 ROM 对二者的接受程度不一致。命令退出码不等于系统里的权限状态，因此每条命令后都用
+     * [verify] 复查真实状态收尾。
+     *
+     * 返回 DENIED_BY_USER = 命令被接受但系统仍未授权（链继续降级到弹窗）；
+     * 返回 FAILED = 两条命令都没跑起来（进程创建失败）。
+     */
+    suspend fun grantNotification(
+        run: suspend (String) -> ShellOutcome?,
+        packageName: String,
+        verify: () -> PermissionState,
+    ): PermissionState {
+        val commands = listOf(
+            "pm grant $packageName android.permission.POST_NOTIFICATIONS",
+            "appops set $packageName POST_NOTIFICATION allow",
+        )
+        var anyAccepted = false
+        for (command in commands) {
+            val outcome = run(command) ?: continue
+            anyAccepted = anyAccepted || outcome.isSuccess
+            Logger.d(TAG, "exec [$command] exit=${outcome.exitCode} stdoutLines=${outcome.stdout.size}")
+            if (verify() == PermissionState.GRANTED) return PermissionState.GRANTED
+        }
+        return if (anyAccepted) PermissionState.DENIED_BY_USER else PermissionState.FAILED
+    }
+
     private fun mergeServices(stdout: List<String>, service: ComponentName): String =
         stdout.joinToString("").trim()
             .takeUnless { it.isBlank() || it == "null" }
