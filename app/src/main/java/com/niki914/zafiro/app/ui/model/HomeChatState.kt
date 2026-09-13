@@ -250,13 +250,14 @@ private object LlmHomeChatRuntime : HomeChatRuntime {
 class HomeChatViewModel internal constructor(
     private val runtime: HomeChatRuntime = LlmHomeChatRuntime,
     private val conversations: HomeConversationStore = DefaultHomeConversationStore,
+    // 节流器可注入：单测传 delayFn = {} 把放出节奏与状态机解耦（同 TextPacerTest 的用法）
+    private val textPacer: TextPacer = TextPacer(),
+    // thinking 与正文在流中交织（thinking → tool → text），坐标系独立，单独实例
+    private val thinkingPacer: TextPacer = TextPacer(),
 ) : ComposeMVIViewModel<HomeChatIntent, HomeChatUiState, Nothing>() {
     private var nextTurnId = 0L
     private var streamJob: Job? = null
     private var draftSaveJob: Job? = null
-    private val textPacer = TextPacer()
-    // thinking 与正文在流中交织（thinking → tool → text），坐标系独立，单独实例
-    private val thinkingPacer = TextPacer()
     private var currentConversationId: String? = null
     private var startupRestoreAttempted = false
 

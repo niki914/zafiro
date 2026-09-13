@@ -1,19 +1,38 @@
 package com.niki914.zafiro.app.ui.model
 
+import androidx.test.core.app.ApplicationProvider
+import com.niki914.zafiro.repo.FakeDomainSettingsStore
+import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class AboutSettingsViewModelTest {
     @get:Rule
     val mainDispatcherRule =
         MainDispatcherRule()
+
+    @Before
+    fun setUp() {
+        XRepo.installStoreForTest(FakeDomainSettingsStore())
+        XRepo.init(ApplicationProvider.getApplicationContext())
+    }
+
+    @After
+    fun tearDown() {
+        XRepo.resetForTest()
+    }
 
     @Test
     fun openItem_withGithub_emitsOpenUri() = runTest {

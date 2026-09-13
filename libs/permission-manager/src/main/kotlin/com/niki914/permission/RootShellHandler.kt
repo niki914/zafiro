@@ -2,6 +2,7 @@ package com.niki914.permission
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Build
 import com.niki914.logging.Logger
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.CancellationException
@@ -13,7 +14,7 @@ import kotlinx.coroutines.withContext
  * - status：Shell.isAppGrantedRoot()（未建 shell 时返回 null → UNKNOWN，静默契约）
  * - request：Shell.getShell() 阻塞拉起 su 授权，完成后 shell.isRoot 判定
  *
- * 支持 ROOT / OVERLAY / ACCESSIBILITY，其余 permission 返回 UNAVAILABLE。
+ * 支持 ROOT / OVERLAY / ACCESSIBILITY / NOTIFICATION，其余 permission 返回 UNAVAILABLE。
  */
 class RootShellHandler(
     private val context: Context,
@@ -30,6 +31,7 @@ class RootShellHandler(
             Permission.OVERLAY -> TargetStatus.overlay(context)
             Permission.ACCESSIBILITY ->
                 TargetStatus.accessibility(context, accessibilityService)
+            Permission.NOTIFICATION -> TargetStatus.notification(context)
             Permission.ROOT -> when (Shell.isAppGrantedRoot()) {
                 true -> PermissionState.GRANTED
                 false -> PermissionState.DENIED_BY_USER
@@ -62,6 +64,17 @@ class RootShellHandler(
                 ShellGrants.grantOverlay({ cmd -> run(cmd) }, packageName)
             Permission.ACCESSIBILITY ->
                 ShellGrants.grantAccessibility({ cmd -> run(cmd) }, accessibilityService)
+            Permission.NOTIFICATION ->
+                if (Build.VERSION.SDK_INT < NOTIFICATION_API) {
+                    // <33 无 POST_NOTIFICATIONS 权限，通知恒可用（同 TargetStatus.notification）
+                    PermissionState.GRANTED
+                } else {
+                    ShellGrants.grantNotification(
+                        run = { cmd -> run(cmd) },
+                        packageName = packageName,
+                        verify = { TargetStatus.notification(context) },
+                    )
+                }
             else -> PermissionState.UNAVAILABLE
         }
     }
@@ -87,6 +100,7 @@ class RootShellHandler(
     private val Permission.isSupported: Boolean
         get() = this == Permission.ROOT ||
             this == Permission.OVERLAY ||
+            this == Permission.NOTIFICATION ||
             (this == Permission.ACCESSIBILITY && accessibilityService != null)
 
     private companion object {

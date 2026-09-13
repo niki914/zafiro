@@ -1076,6 +1076,9 @@ class HomeChatViewModelTest {
                     }
                 },
             ),
+            // 状态机语义与放出节奏解耦：节奏器不延时，事件到达即生效
+            textPacer = TextPacer(delayFn = {}),
+            thinkingPacer = TextPacer(delayFn = {}),
         )
         viewModel.sendIntent(HomeChatIntent.InputChanged("q"))
         runCurrent()
@@ -1126,6 +1129,8 @@ class HomeChatViewModelTest {
                     }
                 },
             ),
+            textPacer = TextPacer(delayFn = {}),
+            thinkingPacer = TextPacer(delayFn = {}),
         )
         viewModel.sendIntent(HomeChatIntent.InputChanged("q"))
         runCurrent()
@@ -1165,6 +1170,8 @@ class HomeChatViewModelTest {
                     }
                 },
             ),
+            textPacer = TextPacer(delayFn = {}),
+            thinkingPacer = TextPacer(delayFn = {}),
         )
         viewModel.sendIntent(HomeChatIntent.InputChanged("q"))
         runCurrent()

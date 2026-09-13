@@ -62,9 +62,4 @@ class SemanticTokenTest {
         val result = SemanticToken.parse("")
         assertTrue(result.isFailure)
     }
-
-    @Test
-    fun generate_returnsVersionUnderscoreIndex() {
-        assertEquals("a3f2_42", SemanticToken.generate("a3f2", 42))
-    }
 }

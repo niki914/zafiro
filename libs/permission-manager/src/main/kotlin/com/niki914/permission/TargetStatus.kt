@@ -6,6 +6,11 @@ import android.os.Build
 import android.provider.Settings
 
 /**
+ * POST_NOTIFICATIONS 引入的 API 级别；低于此值时通知恒可用，不能也不需要申请。
+ */
+internal const val NOTIFICATION_API = 33
+
+/**
  * 目标权限的真实状态静默查询（PRD：status() 报真实权限，Context 注入）。
  * 各通道 handler 共用；查询只读系统状态，不拉任何授权。
  *
@@ -22,7 +27,7 @@ object TargetStatus {
         }
 
     fun notification(context: Context): PermissionState {
-        if (Build.VERSION.SDK_INT < 33) return PermissionState.GRANTED
+        if (Build.VERSION.SDK_INT < NOTIFICATION_API) return PermissionState.GRANTED
         val granted = context.checkSelfPermission("android.permission.POST_NOTIFICATIONS") ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
         return if (granted) PermissionState.GRANTED else PermissionState.DENIED_BY_USER

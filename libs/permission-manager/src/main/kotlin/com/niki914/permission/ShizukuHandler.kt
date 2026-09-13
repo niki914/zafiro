@@ -3,6 +3,7 @@ package com.niki914.permission
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import com.niki914.logging.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +29,7 @@ import kotlin.coroutines.resumeWithException
  * 内部仅转发 IShizukuService.newProcess → ShizukuRemoteProcess）。
  * 升级 shizuku-api 前先确认 newProcess 可见性。
  *
- * 支持 ROOT / SHIZUKU（能力自查）/ OVERLAY / ACCESSIBILITY，其余返回 UNAVAILABLE。
+ * 支持 ROOT / SHIZUKU（能力自查）/ OVERLAY / ACCESSIBILITY / NOTIFICATION，其余返回 UNAVAILABLE。
  */
 class ShizukuHandler(
     private val context: Context,
@@ -44,6 +45,7 @@ class ShizukuHandler(
         return when (permission) {
             Permission.OVERLAY -> TargetStatus.overlay(context)
             Permission.ACCESSIBILITY -> TargetStatus.accessibility(context, accessibilityService)
+            Permission.NOTIFICATION -> TargetStatus.notification(context)
             Permission.ROOT, Permission.SHIZUKU -> {
                 if (!pingBinder()) {
                     Logger.d(TAG, "status($permission): binder not alive -> UNAVAILABLE")
@@ -65,7 +67,6 @@ class ShizukuHandler(
                     else -> PermissionState.UNKNOWN
                 }
             }
-            else -> PermissionState.UNAVAILABLE
         }
     }
 
@@ -106,7 +107,17 @@ class ShizukuHandler(
             Permission.ROOT, Permission.SHIZUKU -> PermissionState.GRANTED
             Permission.OVERLAY -> ShellGrants.grantOverlay(::run, packageName)
             Permission.ACCESSIBILITY -> ShellGrants.grantAccessibility(::run, accessibilityService)
-            else -> PermissionState.UNAVAILABLE
+            Permission.NOTIFICATION ->
+                if (Build.VERSION.SDK_INT < NOTIFICATION_API) {
+                    // <33 无 POST_NOTIFICATIONS 权限，通知恒可用（同 TargetStatus.notification）
+                    PermissionState.GRANTED
+                } else {
+                    ShellGrants.grantNotification(
+                        run = ::run,
+                        packageName = packageName,
+                        verify = { TargetStatus.notification(context) },
+                    )
+                }
         }
     }
 
@@ -215,6 +226,7 @@ class ShizukuHandler(
         get() = this == Permission.ROOT ||
             this == Permission.SHIZUKU ||
             this == Permission.OVERLAY ||
+            this == Permission.NOTIFICATION ||
             (this == Permission.ACCESSIBILITY && accessibilityService != null)
 
     companion object {

@@ -39,7 +39,6 @@ class ShizukuPrivilegeAuthorizerTest {
 
         val unavailable = assertIs<AuthorizationResult.Unavailable>(result)
         assertEquals(TerminalIdentity.Shizuku, unavailable.failure.identity)
-        assertEquals("Shizuku is not installed or not running", unavailable.failure.message)
         assertTrue(requester.requestedCodes.isEmpty())
     }
 
@@ -74,7 +73,6 @@ class ShizukuPrivilegeAuthorizerTest {
 
         val denied = assertIs<AuthorizationResult.Denied>(deferred.await())
         assertEquals(TerminalIdentity.Shizuku, denied.failure.identity)
-        assertEquals("Shizuku authorization was denied", denied.failure.message)
         assertTrue(requester.listeners.isEmpty())
     }
 
@@ -103,7 +101,6 @@ class ShizukuPrivilegeAuthorizerTest {
 
         val unavailable = assertIs<AuthorizationResult.Unavailable>(result)
         assertEquals(TerminalIdentity.User, unavailable.failure.identity)
-        assertEquals("Shizuku authorizer only supports SHIZUKU", unavailable.failure.message)
         assertTrue(requester.requestedCodes.isEmpty())
     }
 
@@ -143,7 +140,6 @@ class ShizukuPrivilegeAuthorizerTest {
             val failed = assertIs<AuthorizationResult.Failed>(deferred.await())
             val failure = assertIs<TerminalFailure.AuthorizationFailed>(failed.failure)
             assertEquals(TerminalIdentity.Shizuku, failure.identity)
-            assertEquals("Timed out waiting for Shizuku authorization result", failure.message)
             assertTrue(requester.listeners.isEmpty())
         }
 

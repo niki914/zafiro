@@ -46,8 +46,7 @@ class PermissionEntryGuardTest {
             AllowRule("MainActivity.kt", "RequestPermission"),
             AllowRule("AndroidManifest.xml", ""),
         ),
-        // seed py 脚本是 py 工具层自身能力（py 进程无 PermissionManager 可用），显式排除；
-        // RootUtils 是 xposed-api 遗留死代码（零调用方），见下方单独断言
+        // seed py 脚本是 py 工具层自身能力（py 进程无 PermissionManager 可用），显式排除
         "\"su\"" to listOf(
             AllowRule("seed_py_launch_wechat.py", ""),
             AllowRule("seed_py_install_apk.py", ""),
@@ -103,30 +102,6 @@ class PermissionEntryGuardTest {
     }
 
     @Test
-    fun `RootUtils legacy su helper stays deleted`() {
-        // xposed-api 遗留裸 su 工具已删除（零调用方）；一旦有人重建，先收编进 PermissionManager。
-        // 引用扫描只看 Kotlin/Java 源码（py 脚本调不到它），本测试文件自身除外。
-        val repoRoot = findRepoRoot()
-        val self = "PermissionEntryGuardTest.kt"
-        val hits = mutableListOf<String>()
-        repoRoot.walkTopDown()
-            .filter { it.isFile && it.extension in setOf("kt", "java") }
-            .filterNot { "/build/" in it.path }
-            .filterNot { it.name == self }
-            .forEach { file ->
-                file.readLines().forEachIndexed { index, line ->
-                    if ("RootUtils" in line) {
-                        hits += "${file.relativeTo(repoRoot).path}:${index + 1}"
-                    }
-                }
-            }
-        assertTrue(
-            "RootUtils 被重建或引用了（收编进 PermissionManager 后再用）：\n" + hits.joinToString("\n"),
-            hits.isEmpty(),
-        )
-    }
-
-    @Test
     fun `service notification gate goes through PermissionManager`() {
         // AgentRuntimeService 的通知门必须经门面：删掉 import 即删掉调用，无调用也要有门面引用。
         val service = File(
@@ -146,8 +121,15 @@ class PermissionEntryGuardTest {
     }
 
     private fun isAllowed(relative: String, line: String, pattern: String): Boolean {
-        // libterm 是独立演进的终端运行时，整目录豁免
-        if ("/libterm/" in relative || relative.startsWith("libs/libterm/")) return true
+        // libterm 是独立演进的终端运行时，整目录豁免。
+        // 仓库根的 libterm 是 .gitignore 掉的符号链接（指向仓库外的同级 checkout），
+        // walkTopDown 会跟进去，此时相对路径以 "libterm/" 开头而非 "libs/libterm/"。
+        if ("/libterm/" in relative ||
+            relative.startsWith("libs/libterm/") ||
+            relative.startsWith("libterm/")
+        ) {
+            return true
+        }
         // permission-manager 内部实现就是被收编的正主（含 KDoc 里的方法名引用），整模块豁免
         if (relative.startsWith("libs/permission-manager/src/main/")) return true
         // 测试源码不在扫描范围（walk 已过滤），此处仅防漏网

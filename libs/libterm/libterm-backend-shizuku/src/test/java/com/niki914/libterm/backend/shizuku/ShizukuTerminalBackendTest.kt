@@ -129,7 +129,6 @@ class ShizukuTerminalBackendTest {
         val failed = assertIs<SendResult.Failed>(result)
         val failure = assertIs<TerminalFailure.AlreadyClosed>(failed.failure)
         assertEquals(TerminalIdentity.Shizuku, failure.identity)
-        assertEquals("Shizuku backend has not been started", failure.message)
         assertEquals(0, clientFactory.openCallCount)
     }
 

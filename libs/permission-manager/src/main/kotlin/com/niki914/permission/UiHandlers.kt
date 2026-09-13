@@ -29,7 +29,7 @@ class SystemDialogHandler(
 
     override suspend fun request(permission: Permission): PermissionState {
         if (permission != Permission.NOTIFICATION) return PermissionState.UNAVAILABLE
-        if (Build.VERSION.SDK_INT < 33) return PermissionState.GRANTED
+        if (Build.VERSION.SDK_INT < NOTIFICATION_API) return PermissionState.GRANTED
         val launcher = ui.notificationLauncher
         if (launcher == null || ui.activity == null) {
             Logger.d(TAG, "request(NOTIFICATION): launcher=$launcher bound=${ui.activity != null} -> UNAVAILABLE")

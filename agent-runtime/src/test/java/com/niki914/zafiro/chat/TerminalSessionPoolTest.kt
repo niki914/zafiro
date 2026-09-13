@@ -506,23 +506,31 @@ class TerminalSessionPoolTest {
     }
 
     /**
-     * Polls [TerminalSessionPool.readSession] until the async task exits, then
-     * asserts the final outcome. The execJob runs on the pool's IO dispatcher so
-     * [runTest] does not automatically advance it; polling bridges the gap.
+     * 轮询 [TerminalSessionPool.readSession] 直到异步任务离开运行态，随后由调用方断言最终结果。
+     * execJob 跑在池自己的 [kotlinx.coroutines.Dispatchers.IO] 作用域上（见 getRuntimeHolder），
+     * [runTest] 不会推进它，只能轮询桥接。
+     *
+     * 两个边界都要容忍：Running（IO 线程还在跑）与 NotBackground（读取落在任务登记 / 清理的
+     * 边界上）。用墙钟设上限并在两次轮询之间让出 CPU：之前那个 500 次无间隔紧循环在机器负载高时
+     * 会在 IO 线程完成一次 exec 之前就烧完次数，导致用例偶发失败。
      */
     private suspend fun waitForAsyncCompletion(session: String) {
-        repeat(500) {
-            when (val outcome = TerminalSessionPool.readSession(session)) {
-                is TerminalReadOutcome.Exited -> return
-                is TerminalReadOutcome.TimedOut -> return
+        val deadline = System.currentTimeMillis() + ASYNC_WAIT_TIMEOUT_MS
+        while (System.currentTimeMillis() < deadline) {
+            when (TerminalSessionPool.readSession(session)) {
+                is TerminalReadOutcome.Exited,
+                is TerminalReadOutcome.TimedOut,
                 is TerminalReadOutcome.Crashed -> return
-                is TerminalReadOutcome.Running -> { /* IO thread still working, retry */
-                }
 
-                else -> throw AssertionError("Unexpected read outcome: $outcome")
+                is TerminalReadOutcome.Running,
+                is TerminalReadOutcome.NotBackground -> Thread.sleep(ASYNC_POLL_INTERVAL_MS)
+
+                else -> throw AssertionError("Unexpected read outcome for $session")
             }
         }
-        throw AssertionError("Async task on $session did not complete within 500 polls")
+        throw AssertionError(
+            "Async task on $session did not complete within ${ASYNC_WAIT_TIMEOUT_MS}ms"
+        )
     }
 
     private fun installFakeRuntime(fakeRuntime: FakeTerminalRuntime): AutoCloseable {
@@ -589,6 +597,10 @@ class TerminalSessionPoolTest {
     }
 
     private companion object {
+        /** [waitForAsyncCompletion] 的墙钟上限与轮询间隔：exec 跑在池的 IO 作用域上，只能轮询桥接。 */
+        const val ASYNC_WAIT_TIMEOUT_MS = 5_000L
+        const val ASYNC_POLL_INTERVAL_MS = 5L
+
         fun commandResult(
             stdout: String = "",
             stderr: String = "",
