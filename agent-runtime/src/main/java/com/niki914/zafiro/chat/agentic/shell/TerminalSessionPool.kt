@@ -594,12 +594,22 @@ object TerminalSessionPool {
         val entry = synchronized(lock) {
             sessions[session]
         } ?: return TerminalReadOutcome.SessionNotFound(session)
-        // Read completion fields under the same monitor that guards their writes
-        // in onAsyncCompleted so the writes are visible here.
-        val (completedResult, completedFailure, completedElapsed) = synchronized(lock) {
-            Triple(entry.completedResult, entry.completedFailure, entry.completedElapsedSeconds)
+        // 完成字段、异常结果与 asyncStates 必须在同一个监视器临界区里取快照：
+        // onAsyncCompleted 是“先在 state.lock 下写完成字段、再单独进 lock 从 asyncStates 移除”
+        // 两段临界区，分开读会落在两者之间，把刚跑完的任务误判成 NotBackground。
+        val snapshot = synchronized(lock) {
+            ReadSnapshot(
+                result = entry.completedResult,
+                failure = entry.completedFailure,
+                unexpectedError = entry.completedUnexpectedError,
+                elapsedSeconds = entry.completedElapsedSeconds,
+                asyncState = asyncStates[session],
+            )
         }
-        val completedUnexpectedError = synchronized(lock) { entry.completedUnexpectedError }
+        val completedResult = snapshot.result
+        val completedFailure = snapshot.failure
+        val completedElapsed = snapshot.elapsedSeconds
+        val completedUnexpectedError = snapshot.unexpectedError
         // 2. Completed with a result.
         if (completedResult != null) {
             val output = truncateOutput(mergedOutput(completedResult), maxBytes, exportDir())
@@ -636,7 +646,7 @@ object TerminalSessionPool {
             )
         }
         // 4. Still running: partial output (delta or snapshot).
-        val asyncState = synchronized(lock) { asyncStates[session] }
+        val asyncState = snapshot.asyncState
         if (asyncState != null) {
             val output = synchronized(asyncState.lock) {
                 when (mode) {
@@ -977,6 +987,18 @@ private data class RuntimeHolder(
     val runtime: TerminalRuntimePort,
     val scopeJob: Job,
     val scope: CoroutineScope,
+)
+
+/**
+ * [TerminalSessionPool.readSession] 的一次性状态快照。五个字段必须原子读取：
+ * 分成多次取锁会让“任务刚完成”这个瞬间既看不到完成结果、也看不到运行态。
+ */
+private data class ReadSnapshot(
+    val result: CommandResult?,
+    val failure: TerminalFailure?,
+    val unexpectedError: Throwable?,
+    val elapsedSeconds: Long,
+    val asyncState: AsyncState?,
 )
 
 internal data class TerminalSessionEntry(
