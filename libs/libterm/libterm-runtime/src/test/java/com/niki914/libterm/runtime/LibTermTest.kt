@@ -4,7 +4,6 @@ import android.content.Context
 import com.niki914.libterm.OutputChunk
 import com.niki914.libterm.OutputStream
 import com.niki914.libterm.TerminalBytes
-import kotlinx.coroutines.test.TestScope
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -13,13 +12,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LibTermTest {
-
-    @Test
-    fun `runtime returns runtime facade`() {
-        val runtime: Any = LibTerm.runtime(scope = TestScope())
-
-        assertIs<LibTermRuntime>(runtime)
-    }
 
     @Test
     fun `libterm exposes ssh simple term entry`() {

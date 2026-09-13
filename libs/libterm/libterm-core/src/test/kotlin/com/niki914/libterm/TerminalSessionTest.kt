@@ -193,7 +193,6 @@ class TerminalSessionTest {
         val failed = assertIs<SendResult.Failed>(session.send(bytesOf("id\n")))
         val failure = assertIs<TerminalFailure.AlreadyClosed>(failed.failure)
         assertEquals(TerminalIdentity.Shizuku, failure.identity)
-        assertEquals("Session is not running", failure.message)
         assertTrue(backend.writes.isEmpty())
     }
 

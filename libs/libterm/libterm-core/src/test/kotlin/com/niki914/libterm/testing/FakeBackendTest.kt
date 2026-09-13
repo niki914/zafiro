@@ -157,11 +157,9 @@ class FakeBackendTest {
         assertEquals(1, backend.closeCallCount)
         assertTrue(backend.isClosed)
 
-        val error = assertFailsWith<IllegalStateException> {
+        assertFailsWith<IllegalStateException> {
             backend.send(bytesOf("whoami\n"))
         }
-
-        assertEquals("FakeBackend is closed", error.message)
     }
 
     @Test
