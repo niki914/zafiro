@@ -11,6 +11,7 @@ import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.mcp.McpTransport
 import com.niki914.okia.tooling.DefaultToolRegistry
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -25,6 +26,7 @@ import org.junit.Test
  * 注入时 MCP 工具注册进门面默认实例）、注入 registry 时注册进注入实例、
  * update 热更新后刷新对全部配置生效。
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class RealOkiaMcpTest {
 
     // ── fixtures ───────────────────────────────────────────────────────────

@@ -51,6 +51,7 @@ class BuiltinToolTest {
                 "py_meta_tools",
                 "screen_operation_accessibility",
                 "screen_operation_shell",
+                "screenshot",
                 "terminal",
                 "view_image",
             ),
@@ -71,6 +72,7 @@ class BuiltinToolTest {
         assertEquals("terminal", registry.find("terminal")?.name)
     }
 
+    @Test
     fun toolSchemas_areValidJsonSchema() {
         BuiltinToolRegistry.default().all().forEach { tool ->
             assertTrue("description not blank: ${tool.name}", tool.description.isNotBlank())
