@@ -25,15 +25,7 @@ internal class TextPacer(
      * （参数 = 本帧放出区间 [from, to)），调用方据此从 fullText 切增量。
      */
     internal suspend fun pace(targetChars: Int, onRelease: suspend (Int, Int) -> Unit) {
-        // ponytail: 诊断日志，复现确认后随修复验证删除，不进 commit
         if (targetChars <= released) {
-            if (targetChars < released) {
-                android.util.Log.w(
-                    "TextPacer",
-                    "drop branch hit: targetChars=$targetChars released=$released " +
-                            "(segment shorter than released coords, content would be lost)"
-                )
-            }
             return
         }
         var firstFrame = lastFrameMs == 0L
