@@ -151,7 +151,7 @@ class ConversationRuntimeLoggerTest {
             "outcome=Success",
         )
         permissionGate.complete(Unit)
-        awaitRecords(sink, "kind=ToolConfirmation", "channel=background", "phase=Allowed", "attempts=[")
+        awaitRecords(sink, "kind=ToolConfirmation", "channel=background", "phase=Allowed", "attempts=")
         terminalGate.complete(Unit)
         awaitRecords(sink, "last{", "phase=Completed")
         runtime.await(handle)
@@ -187,6 +187,66 @@ class ConversationRuntimeLoggerTest {
         assertTrue(combined.contains("EXECUTION_FAILED@EXECUTOR"))
         assertFalse(combined.contains(SECRET_EXCEPTION))
         assertFalse(combined.contains("IllegalStateException"))
+
+        scope.cancel()
+    }
+
+    // ── 瘦身：连续量不重复成行 + 门控关闭时不构造记录 ──────────────────────────
+
+    @Test
+    fun lengthOnlyGrowthIsNotRepeatedInRecords() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val scope = CoroutineScope(SupervisorJob() + dispatcher)
+        val sink = RecordingSink()
+        val finalText = "x".repeat(41)
+        val engine = ScriptedEngine { emitter ->
+            emitter.emit(TurnEvent.TurnStarted("q"))
+            emitter.emit(TurnEvent.TextStarted(0, assistant(ContentBlock.Text("x"))))
+            repeat(40) { i ->
+                val text = "x".repeat(i + 2)
+                emitter.emit(TurnEvent.TextDelta(0, text, assistant(ContentBlock.Text(text))))
+            }
+            emitter.emit(TurnEvent.TextEnded(0, finalText, assistant(ContentBlock.Text(finalText))))
+            emitter.emit(TurnResult.Completed(CompletionReason.Stop))
+        }
+        val runtime = ConversationRuntime(scope, engine)
+        ConversationRuntimeLogger.start(runtime, scope, sink = sink, dispatcher = dispatcher)
+
+        val handle = runtime.submitWith(dispatcher)
+        runtime.await(handle)
+        advanceUntilIdle()
+
+        // 40 次长度增长与 Started 同形状，不得各成一行；Ended 是形状变化，必须成行。
+        val streaming = sink.records.filter { it.contains("Text/Streaming") }
+        assertTrue(
+            "length-only growth must not repeat, got ${sink.records.size} records",
+            streaming.size <= 1,
+        )
+        assertEquals(1, sink.records.count { it.contains("Text/Ended") })
+        assertTrue(sink.records.any { it.contains("len=${finalText.length}") })
+
+        scope.cancel()
+    }
+
+    @Test
+    fun disabledSinkSkipsRecordConstructionEntirely() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val scope = CoroutineScope(SupervisorJob() + dispatcher)
+        val sink = RecordingSink(enabled = false)
+        val engine = ScriptedEngine { emitter ->
+            emitter.emit(TurnEvent.TextEnded(0, "a", assistant(ContentBlock.Text("a"))))
+            emitter.emit(TurnResult.Completed(CompletionReason.Stop))
+        }
+        val runtime = ConversationRuntime(scope, engine)
+        ConversationRuntimeLogger.start(runtime, scope, sink = sink, dispatcher = dispatcher)
+
+        val handle = runtime.submitWith(dispatcher)
+        runtime.await(handle)
+        advanceUntilIdle()
+
+        // 关闭时连快照都不格式化：sink 一次也不被调。
+        assertTrue("disabled sink received ${sink.records.size} records", sink.records.isEmpty())
+        assertEquals(TurnPhase.Completed, runtime.snapshot.value.lastTerminal?.phase)
 
         scope.cancel()
     }
@@ -440,8 +500,10 @@ class ConversationRuntimeLoggerTest {
 }
 
 /** 记录型 sink：捕获 logger 实际写入的每条记录。 */
-private class RecordingSink : ConversationRuntimeLogSink {
+private class RecordingSink(private val enabled: Boolean = true) : ConversationRuntimeLogSink {
     val records = Collections.synchronizedList(mutableListOf<String>())
+
+    override fun isEnabled(): Boolean = enabled
 
     override fun log(message: String) {
         records += message

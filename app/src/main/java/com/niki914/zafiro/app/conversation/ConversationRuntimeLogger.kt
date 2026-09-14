@@ -1,5 +1,6 @@
 package com.niki914.zafiro.app.conversation
 
+import com.niki914.logging.Level
 import com.niki914.logging.Logger
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.message.ContentBlock
@@ -24,10 +25,18 @@ import kotlinx.coroutines.launch
  */
 fun interface ConversationRuntimeLogSink {
     fun log(message: String)
+
+    /**
+     * 该 sink 当前是否会真的输出。false 时上游跳过格式化，不构造任何记录。
+     * 默认 true（自定义 sink 自行决定），生产 [LoggerSink] 跟随 [Logger] 门面。
+     */
+    fun isEnabled(): Boolean = true
 }
 
 /** 生产默认：复用既有 [Logger]（DEBUG 级；显式调试摘要不落任何持久化设置）。 */
 object LoggerSink : ConversationRuntimeLogSink {
+    override fun isEnabled(): Boolean = Logger.isEnabled(TAG, Level.DEBUG)
+
     override fun log(message: String) = Logger.d(TAG, message)
 }
 
@@ -80,13 +89,20 @@ object ConversationRuntimeLogger {
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
     ): Job = scope.launch(dispatcher) {
         var sinkFailureReported = false
+        var previousShape: String? = null
         runtime.snapshot.collect { snapshot ->
+            // 门控前置：关闭时不构造任何记录，避免「格式化完再被 Logger 丢弃」的空转。
+            if (!sink.isEnabled()) return@collect
             val lines = try {
                 records(snapshot, debugSummary)
             } catch (_: Throwable) {
                 // 格式化异常不终止采集：跳过本版本，下一版本继续。
                 return@collect
             }
+            // 连续量（版本/时间戳/长度/参数）不参与判定：流式期间同一状态否则会重复成行上百次。
+            val shape = shapeOf(lines)
+            if (shape == previousShape) return@collect
+            previousShape = shape
             lines.forEach { record ->
                 try {
                     sink.log(record)
@@ -102,6 +118,21 @@ object ConversationRuntimeLogger {
             }
         }
     }
+
+    // ── 形状（判重） ─────────────────────────────────────────────────────
+
+    /**
+     * 记录形状：把连续量掩为 `#` 后的文本，用于判断相邻快照是否有实质变化。
+     * 掩掉的只有长度/参数/版本/时间戳/重试延时这些每帧都会变的量；块、工具、
+     * 权限的身份与状态均保留，所以形状相同即意味着没有任何结构性变化。
+     */
+    private fun shapeOf(lines: List<String>): String =
+        lines.joinToString("\n") { line ->
+            VOLATILE_FIELD.replace(line) { match -> match.groupValues[1] + "=#" }
+        }
+
+    /** 注意 `[` `]` 也在排除集内：`attempts=1[a:B,c:D]` 只掩计数，不掩尝试状态。 */
+    private val VOLATILE_FIELD = Regex("\\b(v|t|len|argsLen|live|attempts|delay)=[^ ,}\\]\\[]+")
 
     // ── 字段 → 有界记录 ──────────────────────────────────────────────────
 

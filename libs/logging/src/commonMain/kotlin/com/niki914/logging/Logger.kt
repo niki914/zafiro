@@ -81,9 +81,15 @@ object Logger {
         log(Level.ERROR, tag, msg, t)
     }
 
+    /**
+     * 该级别与 TAG 当前是否会被输出。供调用方在**构造日志内容之前**提前返回：
+     * 门控本身极廉价，但被丢弃的那条消息的格式化开销不廉价。
+     */
+    fun isEnabled(tag: String, level: Level): Boolean =
+        level.priority >= this.level.priority && scopeAllowed(tag)
+
     private fun log(level: Level, tag: String, msg: String, throwable: Throwable?) {
-        if (level.priority < this.level.priority) return
-        if (!scopeAllowed(tag)) return
+        if (!isEnabled(tag, level)) return
         backend.emit(level, tag, msg, throwable)
     }
 
