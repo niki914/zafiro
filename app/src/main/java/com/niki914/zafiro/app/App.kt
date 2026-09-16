@@ -25,6 +25,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.io.File
 
 class App : Application() {
 
@@ -34,9 +35,9 @@ class App : Application() {
         super.onCreate()
         // 日志 debug 门控：release 构建 DEBUG/VERBOSE 全停，仅 INFO+ 输出
         Logger.setDebugProvider { BuildConfig.DEBUG }
-        // `:python` worker 进程只需 PythonWorkerService，跳过主进程全部初始化
+        // 非主进程（目前只有 `:python`）不初始化主进程状态：上下文与持久化只属于主进程
         //（否则 ContextProvider 从未 provide，PyRuntime.warmUp 会永远挂起）
-        if (isPythonWorkerProcess()) return
+        if (!isMainProcess()) return
         ContextProvider.provide(applicationContext)
         XRepo.init(this.applicationContext)
         ConversationRepo.init(this.applicationContext)
@@ -91,12 +92,22 @@ class App : Application() {
         }
     }
 
-    private fun isPythonWorkerProcess(): Boolean {
-        // getMyMemoryState 是官方静态 API（API 23+，无权限），比 runningAppProcesses
-        // （官方标注仅用于调试/进程管理 UI）更适合作为核心分支判断。
-        val info = ActivityManager.RunningAppProcessInfo()
-        ActivityManager.getMyMemoryState(info)
-        return info.processName == "$packageName:python"
+    /**
+     * 是否主进程。进程名优先读 `/proc/self/cmdline`（内核直接给出命令行，
+     * 不依赖框架侧的内存状态），`getMyMemoryState` 仅作兜底；
+     * 两者都取不到进程名时按主进程处理——宁可多初始化，不能让主进程缺初始化。
+     */
+    private fun isMainProcess(): Boolean {
+        val fromProc = runCatching {
+            File("/proc/self/cmdline").readBytes()
+                .takeWhile { it != 0.toByte() }
+                .toByteArray()
+                .decodeToString()
+        }.getOrNull()?.takeIf { it.isNotEmpty() }
+        val name = fromProc ?: ActivityManager.RunningAppProcessInfo().also {
+            ActivityManager.getMyMemoryState(it)
+        }.processName?.takeIf { it.isNotEmpty() }
+        return name == null || name == packageName
     }
 
 }
