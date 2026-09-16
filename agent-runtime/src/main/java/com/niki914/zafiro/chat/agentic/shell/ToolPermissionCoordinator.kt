@@ -1,10 +1,12 @@
 package com.niki914.zafiro.chat.agentic.shell
 
 import com.niki914.logging.Logger
+import com.niki914.zafiro.chat.AgentStatusHolder
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /** 一次工具执行确认请求（UI 展示字段）。 */
 data class ToolPermissionRequest(
@@ -44,6 +46,13 @@ object ToolPermissionCoordinator {
 
     private var deferred: CompletableDeferred<ToolPermissionResponse>? = null
 
+    /**
+     * 在途等待的请求 id（并行工具可同时确认），先进先出。
+     * 前台对话框与后台弹窗共用，供 [AgentStatusHolder] 的等待阶段与通知按钮结算使用；
+     * 不改变 [pendingConfirmation] 的既有语义（仍只反映前台对话框）。
+     */
+    private val waitingIds = ConcurrentLinkedQueue<String>()
+
     suspend fun confirm(request: ToolPermissionRequest): ToolPermissionResponse {
         Logger.i(
             LOG_TAG,
@@ -54,14 +63,25 @@ object ToolPermissionCoordinator {
         }
         val handler = backgroundConfirmationHandler
         if (handler != null) {
-            return handler(request)
+            return showBackgroundDialog(request, handler)
         }
         Logger.i(LOG_TAG, "confirm denied unavailable id=${request.id}")
         return ToolPermissionResponse.DENIED_UNAVAILABLE
     }
 
+    private fun enterWaiting(requestId: String) {
+        waitingIds += requestId
+        AgentStatusHolder.onPermissionPending(waitingIds.peek())
+    }
+
+    private fun exitWaiting(requestId: String) {
+        waitingIds.remove(requestId)
+        AgentStatusHolder.onPermissionPending(waitingIds.peek())
+    }
+
     private suspend fun showInAppDialog(request: ToolPermissionRequest): ToolPermissionResponse {
         pendingFlow.value = request
+        enterWaiting(request.id)
         val waiter = CompletableDeferred<ToolPermissionResponse>()
         deferred = waiter
         try {
@@ -71,6 +91,20 @@ object ToolPermissionCoordinator {
                 deferred = null
                 pendingFlow.value = null
             }
+            exitWaiting(request.id)
+        }
+    }
+
+    /** 后台弹窗（overlay）：等待状态同样需要对外可见，但不动 [pendingConfirmation]。 */
+    private suspend fun showBackgroundDialog(
+        request: ToolPermissionRequest,
+        handler: suspend (ToolPermissionRequest) -> ToolPermissionResponse,
+    ): ToolPermissionResponse {
+        enterWaiting(request.id)
+        return try {
+            handler(request)
+        } finally {
+            exitWaiting(request.id)
         }
     }
 
