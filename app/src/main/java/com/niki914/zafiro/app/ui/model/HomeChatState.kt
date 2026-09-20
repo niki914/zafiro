@@ -10,6 +10,9 @@ import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.conversation.ForkKind
+import com.niki914.zafiro.agent.LlmAgent
+import com.niki914.zafiro.api.model.Attachment
+import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
@@ -219,18 +222,30 @@ internal interface HomeChatRuntime {
     suspend fun ingestImage(uri: String): HomeChatImage?
 }
 
+// 存废：阶段 5 删除（业务侧接缝，被 LlmAgent 取代；M3e 删）
 private object LlmHomeChatRuntime : HomeChatRuntime {
     override fun stream(
         query: String,
         images: List<ContentBlock.Image>
-    ): Flow<LlmStreamEvent> = LLMController.stream(
-        query = query,
-        images = images,
-    )
+    ): Flow<LlmStreamEvent> {
+        // 临时通道（M2）：命令经 LlmAgent，事件仍从这里收；M3e 删除本成员。
+        LlmAgent.updateDraft { draft ->
+            draft.copy(
+                text = query,
+                images = images.map { DraftImage.Ready(Attachment(path = it.path, mimeType = it.mimeType)) },
+            )
+        }
+        LlmAgent.stream()
+        return LlmAgent.events
+    }
 
-    override suspend fun resetConversation() = LLMController.resetConversation()
-    override suspend fun stopCurrentRound() =
-        LLMController.stopCurrentRound()
+    override suspend fun resetConversation() {
+        LlmAgent.discard()
+    }
+
+    override suspend fun stopCurrentRound() {
+        LlmAgent.stop()
+    }
 
     override suspend fun ensureSession(): String = LLMController.ensureSession()
     override suspend fun openSession(restore: SessionSnapshot) =

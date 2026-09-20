@@ -83,6 +83,7 @@ dependencies {
     implementation(project(":xposed-runtime"))
     implementation(project(":store"))
     implementation(project(":libs:logging"))
+    implementation(project(":business:api"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation(project(":libs:okia"))
