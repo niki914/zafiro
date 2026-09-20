@@ -38,6 +38,9 @@ include(":ui-kit")
 include(":store")
 include(":agent-runtime")
 
+// Business 层：契约（api）与实现（py / agent）分离，业务方只依赖 api。
+include(":business:api")
+
 // Vendored libraries (see libs/README.md)
 include(":libs:logging")
 include(":libs:okia")
