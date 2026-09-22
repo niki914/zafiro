@@ -84,6 +84,7 @@ dependencies {
     implementation(project(":store"))
     implementation(project(":libs:logging"))
     implementation(project(":business:api"))
+    implementation(project(":business:agent"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation(project(":libs:okia"))

@@ -38,6 +38,15 @@ class ConversationRepoTest {
     }
 
     @Test
+    fun exists_isFalseBeforeCreateAndTrueAfter() = runTest {
+        assertFalse(ConversationRepo.exists("session-missing"))
+
+        ConversationRepo.createConversation("session-exists", "hello")
+
+        assertTrue(ConversationRepo.exists("session-exists"))
+    }
+
+    @Test
     fun createAndGet_persistsConversationMetadata() = runTest {
         val id = ConversationRepo.createConversation("session-1", "hello world")
 

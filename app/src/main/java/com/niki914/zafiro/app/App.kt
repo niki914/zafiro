@@ -9,9 +9,6 @@ import com.niki914.logging.Logger
 import com.niki914.permission.Permission
 import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
-import com.niki914.zafiro.agent.LlmAgent
-import com.niki914.zafiro.api.Agent
-import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.overlay.ToolPermissionOverlay
@@ -23,7 +20,6 @@ import com.niki914.zafiro.chat.agentic.shell.ToolPermissionResponse
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.runtime.createAppRuntimeBridge
-import com.niki914.zafiro.service.installService
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,9 +45,8 @@ class App : Application() {
         // 独立于 UI 生命周期——回合可能在宿主后台跑，ViewModel 已销毁时仍落盘）
         ConversationPersister.start(applicationScope)
         RuntimeEnvironment.install(createAppRuntimeBridge())
-        // M2：同一实例登记两个接口键（按精确类型查找，AgentControl 供窄客户端）。
-        installService<Agent>(LlmAgent)
-        installService<AgentControl>(LlmAgent)
+        // 依赖装配只发生在 AppServices（主进程组合根）
+        AppServices.install()
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         DynamicColors.applyToActivitiesIfAvailable(this)
         applicationScope.launch {
