@@ -10,14 +10,16 @@ import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.conversation.ForkKind
-import com.niki914.zafiro.agent.LlmAgent
+import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.DraftImage
+import com.niki914.zafiro.business.agent.AgentImpl
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.ToolCallStatus
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import java.util.UUID
@@ -33,6 +35,8 @@ internal interface HomeConversationStore {
     suspend fun getConversation(id: String): ConversationRecord?
     suspend fun updateDraft(conversationId: String, draftText: String)
     suspend fun deleteConversation(id: String)
+    // TODO(收进 Agent)：历史派生操作（reGenerate / fork / rewind）本轮留在业务侧自己组合
+    //  fork（仓储）→ load（Agent）→ stream（Agent）。契约暂无 fork / delete 命令，为此不改。
     suspend fun forkConversation(sourceId: String, keepEntryCount: Int, kind: ForkKind): String
 }
 
@@ -222,29 +226,31 @@ internal interface HomeChatRuntime {
     suspend fun ingestImage(uri: String): HomeChatImage?
 }
 
-// 存废：阶段 5 删除（业务侧接缝，被 LlmAgent 取代；M3e 删）
+// 存废：阶段 5 删除（业务侧接缝，被 Agent 取代；M3e 删）
 private object LlmHomeChatRuntime : HomeChatRuntime {
+    private fun agent(): Agent = requireService()
+
     override fun stream(
         query: String,
         images: List<ContentBlock.Image>
     ): Flow<LlmStreamEvent> {
-        // 临时通道（M2）：命令经 LlmAgent，事件仍从这里收；M3e 删除本成员。
-        LlmAgent.updateDraft { draft ->
+        // 命令已走契约；事件仍从实现侧的过渡通道收（`events_Tmp`，P2 删）
+        agent().updateDraft { draft ->
             draft.copy(
                 text = query,
                 images = images.map { DraftImage.Ready(Attachment(path = it.path, mimeType = it.mimeType)) },
             )
         }
-        LlmAgent.stream()
-        return LlmAgent.events
+        agent().stream()
+        return AgentImpl.events_Tmp
     }
 
     override suspend fun resetConversation() {
-        LlmAgent.discard()
+        agent().discard()
     }
 
     override suspend fun stopCurrentRound() {
-        LlmAgent.stop()
+        agent().stop()
     }
 
     override suspend fun ensureSession(): String = LLMController.ensureSession()

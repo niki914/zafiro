@@ -137,14 +137,16 @@ business/api/src/main/java/com/niki914/zafiro/api/
 | 阶段 | 交付物 | 允许改的 | 禁止 | 验收判据 |
 |---|---|---|---|---|
 | 0 已完成 | 消费面扫描 + `business/api/SCAN.md` | — | — | 调用面穷举可核对 |
-| 1 进行中 | 门面定稿：`business:api` 的类型、接口、注释 | `business/api/**` | 改任何现有实现 | `./gradlew :business:api:clean :business:api:assemble` 通过；`compileClasspath` 只有 coroutines 与 stdlib |
-| 2 委托实现 | `Agent` 的实现类，内部转发到 `LLMController`；业务方切到门面（宿主本轮不动） | 新增适配器文件；调用点接线 | 改 `LLMController` 内部；改行为 | 除适配器与组合根外，`app` 内无 `LLMController.`；`App.onCreate` 装配注册表 |
-| 2a | 归约器移到实现侧（`HomeChatState` 的 `applyEvent` 折叠搬走） | 实现侧、Compose 侧渲染 | 改状态语义 | Compose 只渲染，不再折叠事件 |
-| 3 架空 LLMController | 按能力逐个抽出服务：settings 网关、py、工具注册表、MCP 调度、会话存储、图片编码 | 每个 PR 抽一个 | 一次抽多个 | `LLMController` 只剩 `requireService<T>()` 取协作者 |
-| 4 真源切换 | 内容真源移到 `Agent.conversation`；status / 宿主渲染都从它派生（persister 继续观察引擎树） | 行为 | 保留旧真源 | 删除 `LLMController.currentConversation` 出口 |
-| 5 删旧 | 删适配器、旧事件线、`AgentStatusHolder` 的重复折叠 | 行为 | 保留兼容层 | `grep -rln "import com.niki914.okia" app/src/main` 返回空 |
+| 1 已完成 | 门面定稿：`business:api` 的类型、接口、注释 | `business/api/**` | 改任何现有实现 | `./gradlew :business:api:clean :business:api:assemble` 通过；`compileClasspath` 只有 coroutines 与 stdlib |
+| 2 部分完成（M2） | `Agent` 的实现类，内部转发到 `LLMController`；业务方命令面切到门面（宿主本轮不动） | 新增适配器文件；调用点接线 | 改 `LLMController` 内部；改行为 | 除适配器与组合根外，`app` 内无 `LLMController.`；`App.onCreate` 装配注册表 |
+| 2a 待开工（M3a–M3e） | 归约器移到实现侧（`HomeChatState` 的 `applyEvent` 折叠搬走） | 实现侧、Compose 侧渲染 | 改状态语义 | Compose 只渲染，不再折叠事件 |
+| 3 待开工（M6、M7、X1） | 按能力逐个抽出服务：settings 网关、py、工具注册表、MCP 调度、会话存储、图片编码 | 每个 PR 抽一个 | 一次抽多个 | `LLMController` 只剩 `requireService<T>()` 取协作者 |
+| 4 待开工（M5） | 内容真源移到 `Agent.conversation`；status / 宿主渲染都从它派生（persister 继续观察引擎树） | 行为 | 保留旧真源 | 删除 `LLMController.currentConversation` 出口 |
+| 5 待开工（M10） | 删适配器、旧事件线、`AgentStatusHolder` 的重复折叠 | 行为 | 保留兼容层 | `grep -rln "import com.niki914.okia" app/src/main` 返回空 |
 
 阶段 3 是大头，按能力切多个 PR；每个 PR 的规模目标是「评审半小时内能看完调用点从哪改到哪」。
+
+阶段的节点拆分、前置关系与逐节点验收判据见 `GRAPH_PROGRESS.md`（进度真源）。
 
 ## 4. 已核实的事实清单
 
@@ -179,21 +181,25 @@ business/api/src/main/java/com/niki914/zafiro/api/
 
 ## 5. 当前进度
 
+进度真源已搬到 `GRAPH_PROGRESS.md`（依赖图、每节点验收判据、存废清单）。本文件只保留设计判据与未决问题。
+
 **分支策略**：`dev` 从 `origin/main = 10c333d6` 切出；重构的每个 PR 从 `dev` 切出、合回 `dev`；最终验收完 `dev` 再合进 main。`dev` 只跑这一系列，main 主线的杂活仍然直接切分支合 main。
 
-**当前工作区**：分支 `refactor/conversation-session-architecture` 下只有 `business:api` 进第一个 PR；其余未提交改动（`HomeChatRuntime` 接线 5 文件、`ServiceRegistry`、业务测试）都不进本 PR。
+**当前工作区**：分支 `refactor/llm-agent-adapter`（PR #2，目标 `dev`），交付节点 M2 命令面委托。
 
 **已落地**：
 
 | 内容 | 路径 |
 |---|---|
-| 门面模块（10 个源文件，631 行；`assemble` 通过，`compileClasspath` 只有 coroutines 与 stdlib） | `business/api/**`（`settings.gradle.kts` 已 `include(":business:api")`） |
+| 门面模块（10 个源文件，631 行；`compileClasspath` 只有 coroutines 与 stdlib） | `business/api/**`（PR #1，已合入 `dev`） |
 | 扫描结论与调用面映射 | `business/api/SCAN.md` |
 | 注册表（reified 类型查找） | `agent-runtime/src/main/java/com/niki914/zafiro/service/ServiceRegistry.kt` + 单测 |
-| ~~调用点接线（`HomeChatRuntime` 补 `currentConversation` / `keepScreenOn`，四处调用方改走注册表）~~ | 废弃：那是第二套门面，不再维护。业务方从下一个 PR 起直接接 `Agent` |
-| debug 包 | `/Users/niki/.repo/android/agentic-nexus/app/build/outputs/apk/debug/app-debug.apk`（57,399,720 字节） |
+| 委托实现（`stream` / `stop` / `discard` + 草稿；非契约成员 `events` 作临时事件通道） | `app/src/main/java/com/niki914/zafiro/agent/LlmAgent.kt` |
+| 业务调用点接线（三处命令走门面，事件仍由 ViewModel 折叠） | `HomeChatState.kt` 的 `LlmHomeChatRuntime` |
+| ~~调用点接线（`HomeChatRuntime` 补 `currentConversation` / `keepScreenOn`，四处调用方改走注册表）~~ | 废弃：那是第二套门面，不再维护 |
+| debug 包 | `/Users/niki/.repo/android/agentic-nexus/app/build/outputs/apk/debug/app-debug.apk` |
 
-`app` 模块内 `LLMController.` 现在只剩 `LlmHomeChatRuntime` 这个适配器（`HomeChatState.kt:235`）与 `App.kt` 的装配注释。
+`app` 模块内 `LLMController.` 的分布：委托实现 4 处（`LlmAgent.kt`）、业务侧读面 4 处（`LlmHomeChatRuntime` 的 `ensureSession` / `openSession` / `historySnapshot` / `ingestUserImage`，M3e 处理）、本轮范围外 6 处（`AgentRuntimeService` 4、`ConversationPersister` 1、`MainActivity` 1）。
 
 ## 6. 待决问题
 

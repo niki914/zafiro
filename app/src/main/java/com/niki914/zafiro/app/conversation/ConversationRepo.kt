@@ -68,6 +68,14 @@ object ConversationRepo {
         }
     }
 
+    /**
+     * 会话是否已建档（只查行，不读快照与条目；[getConversation] 会装配快照）。
+     *
+     * 用于「建档可能已经发生过」的幂等路径：`createConversation` 的 DAO 冲突策略是
+     * ABORT，重复建档会抛异常。
+     */
+    suspend fun exists(id: String): Boolean = dao().getConversation(id) != null
+
     suspend fun getConversation(id: String): ConversationRecord? {
         val startedAtMs = System.currentTimeMillis()
         val conversation = dao().getConversation(id)
