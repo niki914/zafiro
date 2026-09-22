@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -56,7 +55,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.res.stringResource
@@ -81,9 +79,9 @@ import com.niki914.uikit.infra.shape.G2BubbleShape
 import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.model.ActionSource
-import com.niki914.zafiro.app.ui.model.MessageActionsDisplay
-import com.niki914.zafiro.app.ui.model.HomeChatImage
+import com.niki914.zafiro.app.ui.model.home.ActionSource
+import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
+import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.chat.LlmErrorCode
 
 internal data class AssistantErrorUi(

@@ -13,6 +13,15 @@ import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.conversation.ForkKind
+import com.niki914.zafiro.app.ui.model.home.ActionSource
+import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.home.HomeChatImage
+import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
+import com.niki914.zafiro.app.ui.model.home.HomeChatRuntime
+import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel
+import com.niki914.zafiro.app.ui.model.home.HomeConversationStore
+import com.niki914.zafiro.app.ui.model.home.HomeToolState
+import com.niki914.zafiro.app.ui.model.home.HomeToolStatus
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.ToolCallStatus
 import com.niki914.zafiro.repo.AppStateSettings
