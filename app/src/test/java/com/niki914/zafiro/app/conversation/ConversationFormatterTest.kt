@@ -10,8 +10,8 @@ import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
-import com.niki914.zafiro.app.ui.model.HomeChatBlock
-import com.niki914.zafiro.app.ui.model.HomeToolState
+import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.home.HomeToolState
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import org.junit.Assert.assertEquals
 import org.junit.Rule

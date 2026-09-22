@@ -15,11 +15,11 @@ import com.niki914.zafiro.api.model.ConversationTurn
 import com.niki914.zafiro.api.model.ToolInvocation
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
-import com.niki914.zafiro.app.ui.model.HomeChatBlock
-import com.niki914.zafiro.app.ui.model.HomeChatImage
-import com.niki914.zafiro.app.ui.model.HomeChatTurn
-import com.niki914.zafiro.app.ui.model.HomeToolState
-import com.niki914.zafiro.app.ui.model.HomeToolStatus
+import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.home.HomeChatImage
+import com.niki914.zafiro.app.ui.model.home.HomeChatTurn
+import com.niki914.zafiro.app.ui.model.home.HomeToolState
+import com.niki914.zafiro.app.ui.model.home.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.business.agent.blockIdAt
 import com.niki914.zafiro.business.agent.turnIdAt
