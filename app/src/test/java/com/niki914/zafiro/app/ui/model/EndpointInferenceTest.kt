@@ -69,6 +69,11 @@ class EndpointInferenceTest {
                 "https://opencode.ai/zen/go/v1/responses",
                 "https://opencode.ai/zen/go/v1/messages",
             ),
+            "https://ark.cn-beijing.volces.com/api/coding/v3/responses" to Triple(
+                "https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions",
+                "https://ark.cn-beijing.volces.com/api/coding/v3/responses",
+                "https://ark.cn-beijing.volces.com/api/coding/v3/messages",
+            ),
         )
         cases.forEach { (endpoint, expected) ->
             val (toChat, toResponses, toMessages) = expected
@@ -285,6 +290,25 @@ class EndpointInferenceTest {
             EndpointInference.endpointMatchesProtocol(
                 openai.officialEndpoint,
                 LlmProtocol.fromWire(openai.defaultProtocol),
+            )
+        )
+    }
+
+    @Test
+    fun `volcengine coding plan spec uses dedicated coding endpoint`() {
+        val spec = ProviderSpecs.find("volcengine-coding-plan")
+
+        assertEquals("火山引擎 Coding Plan", spec.brandName)
+        assertEquals(
+            "https://ark.cn-beijing.volces.com/api/coding/v3/responses",
+            spec.officialEndpoint,
+        )
+        assertEquals("ark-code-latest", spec.initialModelId)
+        assertEquals(LlmProtocol.OpenAiResponses.wireId, spec.defaultProtocol)
+        assertTrue(
+            EndpointInference.endpointMatchesProtocol(
+                spec.officialEndpoint,
+                LlmProtocol.fromWire(spec.defaultProtocol),
             )
         )
     }

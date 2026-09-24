@@ -9,6 +9,8 @@ sealed interface ProviderSpec {
     val brandName: String
     val officialEndpoint: String
     val exampleModelId: String
+    /** 新建配置时可选的预填模型；null 表示继续要求用户选择或手填。 */
+    val initialModelId: String? get() = null
     val allowsCustomEndpointInNewConfig: Boolean
 
     /** 新建配置时预填的协议（LlmProtocol.wireId）。 */
@@ -46,6 +48,7 @@ object ProviderSpecs {
         KimiSpec,
         BailianSpec,
         SiliconFlowSpec,
+        VolcengineCodingPlanSpec,
         OpenCodeSpec,
         CommandCodeSpec,
     )
@@ -53,6 +56,22 @@ object ProviderSpecs {
     fun find(providerId: String?): ProviderSpec {
         return all.firstOrNull { it.id == providerId } ?: default
     }
+}
+
+private data object VolcengineCodingPlanSpec : ProviderSpec {
+    override val id: String = "volcengine-coding-plan"
+    override val brandName: String = "火山引擎 Coding Plan"
+    override val officialEndpoint: String =
+        "https://ark.cn-beijing.volces.com/api/coding/v3/responses"
+    override val exampleModelId: String = "ark-code-latest"
+    override val initialModelId: String = "ark-code-latest"
+    override val allowsCustomEndpointInNewConfig: Boolean = false
+    override val defaultProtocol: String = "openai-responses"
+    override val iconRes: Int = R.drawable.volcengine
+    override val tintIcon: Boolean = true
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(),
+    )
 }
 
 private data object DeepSeekSpec : ProviderSpec {
