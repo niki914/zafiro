@@ -30,6 +30,10 @@
     <color name="provider_command_code_button_light_container">#FF000000</color>
     <color name="provider_command_code_button_dark_content">#FF000000</color>
     <color name="provider_command_code_button_light_content">#FFFFFFFF</color>
+    <color name="provider_volcengine_button_dark_container">#FFFFFFFF</color>
+    <color name="provider_volcengine_button_light_container">#FF000000</color>
+    <color name="provider_volcengine_button_dark_content">#FF000000</color>
+    <color name="provider_volcengine_button_light_content">#FFFFFFFF</color>
     <color name="provider_opencode_button_dark_container">#FFFFFFFF</color>
     <color name="provider_opencode_button_light_container">#FF000000</color>
     <color name="provider_opencode_button_dark_content">#FF000000</color>
