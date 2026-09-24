@@ -59,7 +59,7 @@ object ProviderSpecs {
 }
 
 private data object VolcengineCodingPlanSpec : ProviderSpec {
-    override val id: String = "volcengine-coding-plan"
+    override val id: String = "volcengine"
     override val brandName: String = "火山引擎"
     override val officialEndpoint: String =
         "https://ark.cn-beijing.volces.com/api/coding/v3/responses"

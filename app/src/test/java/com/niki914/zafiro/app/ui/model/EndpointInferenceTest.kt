@@ -296,7 +296,7 @@ class EndpointInferenceTest {
 
     @Test
     fun `volcengine coding plan spec uses dedicated coding endpoint`() {
-        val spec = ProviderSpecs.find("volcengine-coding-plan")
+        val spec = ProviderSpecs.find("volcengine")
 
         assertEquals("火山引擎", spec.brandName)
         assertEquals(

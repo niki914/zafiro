@@ -135,7 +135,7 @@ class ConfigureViewModelTest {
         viewModel.sendIntent(
             ConfigureIntent.Initialize(
                 ConfigureScene.SettingsNew,
-                providerId = "volcengine-coding-plan",
+                providerId = "volcengine",
             )
         )
         advanceUntilIdle()
@@ -157,7 +157,7 @@ class ConfigureViewModelTest {
         createViewModel.sendIntent(
             ConfigureIntent.Initialize(
                 ConfigureScene.SettingsNew,
-                providerId = "volcengine-coding-plan",
+                providerId = "volcengine",
             )
         )
         createViewModel.sendIntent(ConfigureIntent.UpdateApiKey("test-key"))
@@ -165,7 +165,7 @@ class ConfigureViewModelTest {
         advanceUntilIdle()
 
         val saved = deps.upserted.single()
-        assertEquals("volcengine-coding-plan", saved.provider)
+        assertEquals("volcengine", saved.provider)
         assertEquals("ark-code-latest", saved.model)
 
         val reloadViewModel = ConfigureViewModel(deps.toDependencies())
