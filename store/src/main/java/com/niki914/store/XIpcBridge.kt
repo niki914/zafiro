@@ -189,9 +189,7 @@ object XIpcBridge {
         val transport = when (XValues.getAppTypeOf(context)) {
             XValues.AppType.Host -> if (client != null) Transport.Binder else Transport.Unreachable
             XValues.AppType.Me -> Transport.Local
-            XValues.AppType.Unknown -> throw IllegalStateException(
-                "XIpcBridge does not support package=${context.packageName}"
-            )
+            XValues.AppType.Unknown -> Transport.Unreachable
         }
         if (transport == Transport.Unreachable) {
             Logger.w(
