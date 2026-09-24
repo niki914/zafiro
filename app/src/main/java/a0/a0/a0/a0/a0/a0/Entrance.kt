@@ -84,7 +84,7 @@ class Entrance : IXposed() {
     private fun loadConfigFromRaw(context: Context, targetPkg: String): JsonObject? {
         // 宿主进程的 resources 是宿主包的资源表，读不到 Zafiro 的 raw 资源。
         // 必须用 Zafiro 自己的包上下文（createPackageContext）去读 R.raw.*。
-        val moduleContext = context.createPackageContext(XValues.myPackageName, 0)
+        val moduleContext = context.createPackageContext(BuildConfig.APPLICATION_ID, 0)
         val versionsRawId = versionsRawIdFor(targetPkg) ?: run {
             Logger.w(LOG_TAG, "no raw config for package=$targetPkg")
             return null

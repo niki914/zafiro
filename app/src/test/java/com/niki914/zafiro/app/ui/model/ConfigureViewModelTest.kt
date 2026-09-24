@@ -128,6 +128,63 @@ class ConfigureViewModelTest {
     }
 
     @Test
+    fun initializeVolcengineCodingPlan_prefillsStableModelAlias() = runTest {
+        val deps = RecordingDeps()
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.SettingsNew,
+                providerId = "volcengine",
+            )
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiStateFlow.value
+        assertEquals("火山引擎", state.configNameInput)
+        assertEquals("ark-code-latest", state.modelInput)
+        assertEquals(
+            "https://ark.cn-beijing.volces.com/api/coding/v3/responses",
+            state.endpointInput,
+        )
+        assertEquals(LlmProtocol.OpenAiResponses.wireId, state.protocolWireId)
+    }
+
+    @Test
+    fun volcengineCodingPlan_savesReloadsAndAllowsCustomModel() = runTest {
+        val deps = RecordingDeps()
+        val createViewModel = ConfigureViewModel(deps.toDependencies())
+        createViewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.SettingsNew,
+                providerId = "volcengine",
+            )
+        )
+        createViewModel.sendIntent(ConfigureIntent.UpdateApiKey("test-key"))
+        createViewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+
+        val saved = deps.upserted.single()
+        assertEquals("volcengine", saved.provider)
+        assertEquals("ark-code-latest", saved.model)
+
+        val reloadViewModel = ConfigureViewModel(deps.toDependencies())
+        reloadViewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.SettingsEdit,
+                configId = saved.id,
+            )
+        )
+        advanceUntilIdle()
+        assertEquals("ark-code-latest", reloadViewModel.uiStateFlow.value.modelInput)
+
+        reloadViewModel.sendIntent(ConfigureIntent.UpdateModel("custom-coding-model"))
+        reloadViewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+        assertEquals("custom-coding-model", deps.upserted.last().model)
+    }
+
+    @Test
     fun saveOnNewConfig_activatesIt() = runTest {
         val deps = RecordingDeps()
         val viewModel = ConfigureViewModel(deps.toDependencies())
