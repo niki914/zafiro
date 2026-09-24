@@ -1,19 +1,13 @@
 package com.niki914.zafiro.app.ui.model.home
 
-import com.niki914.okia.conversation.SessionSnapshot
-import com.niki914.okia.message.ContentBlock
-import com.niki914.okia.message.Message
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.chat.LlmErrorCode
-import com.niki914.zafiro.chat.LlmStreamEvent
-import kotlinx.coroutines.flow.Flow
 
 internal interface HomeConversationStore {
     suspend fun lastOpenedConversationId(): String
     suspend fun setLastOpenedConversationId(value: String)
     suspend fun loadLastConversationOnStartup(): Boolean
-    suspend fun createConversation(id: String, firstUserInput: String)
     suspend fun getConversation(id: String): ConversationRecord?
     suspend fun updateDraft(conversationId: String, draftText: String)
     suspend fun deleteConversation(id: String)
@@ -54,7 +48,7 @@ data class HomeToolStatus(
 
 sealed interface HomeChatBlock {
     data class Text(val text: String) : HomeChatBlock
-    data class Thinking(val id: Int, val text: String) : HomeChatBlock
+    data class Thinking(val id: Int, val text: String, val isComplete: Boolean = false) : HomeChatBlock
     data class Tool(val status: HomeToolStatus) : HomeChatBlock
     data class Error(
         val message: String?,
@@ -65,7 +59,7 @@ sealed interface HomeChatBlock {
 
     /**
      * 瞬时重试提示：传输层自动重试进行中。不进持久化状态（落盘无意义），
-     * 下一个流事件到达即清除（见 [HomeChatViewModel.applyEvent]）。
+     * 下一个流事件到达即清除（由 `ConversationReducer` 处理）。
      */
     data class Retrying(
         val attempt: Int,
@@ -90,13 +84,7 @@ data class HomeChatTurn(
 data class HomeChatImage(
     val id: String,
     val path: String,
-) {
-    companion object {
-        /** ContentBlock.Image（工具结果/历史恢复）→ UI 图片卡模型，id 取 path hash 保持跨会话稳定。 */
-        fun of(block: ContentBlock.Image): HomeChatImage =
-            HomeChatImage(id = block.path.hashCode().toString(), path = block.path)
-    }
-}
+)
 
 data class HomeChatUiState(
     val input: String = "",
@@ -105,8 +93,8 @@ data class HomeChatUiState(
     val turns: List<HomeChatTurn> = emptyList(),
     val isGenerating: Boolean = false,
     val isLoadingConversation: Boolean = false,
-    val lastEventName: String? = null,
-    val streamEventCount: Int = 0,
+    /** 内容发射版本，用于 Compose 贴底触发；不携带事件类型。 */
+    val conversationVersion: Int = 0,
     val currentConversationId: String? = null,
     val currentConversationTitle: String? = null,
     val expandedToolRuns: Set<String> = emptySet(),
@@ -143,7 +131,7 @@ sealed interface HomeChatIntent {
     data class InputChanged(val value: String) : HomeChatIntent
     data object Send : HomeChatIntent
 
-    /** 相册选图完成：uri → ingest 落盘 → 加入 pendingImages。失败静默（记日志）。 */
+    /** 相册选图完成：追加一个待落盘项，实现侧完成后从 draft 读回。失败时该项消失。 */
     data class ImageAttached(val uri: String) : HomeChatIntent
     data class ImageRemoved(val id: String) : HomeChatIntent
     data object StopGenerating : HomeChatIntent
@@ -159,16 +147,4 @@ sealed interface HomeChatIntent {
     data class ReGenerateAt(val turnId: Long) : HomeChatIntent
     data class ForkAt(val turnId: Long) : HomeChatIntent
     data class RewindAt(val turnId: Long) : HomeChatIntent
-}
-
-internal interface HomeChatRuntime {
-    fun stream(query: String, images: List<ContentBlock.Image>): Flow<LlmStreamEvent>
-    suspend fun resetConversation()
-    suspend fun stopCurrentRound()
-    suspend fun ensureSession(): String
-    suspend fun openSession(restore: SessionSnapshot)
-    suspend fun historySnapshot(): List<Message>
-
-    /** 相册 URI → ingest 落盘 → path。失败返回 null（静默丢弃）。 */
-    suspend fun ingestImage(uri: String): HomeChatImage?
 }

@@ -14,10 +14,6 @@ object DefaultHomeConversationStore : HomeConversationStore {
     override suspend fun loadLastConversationOnStartup(): Boolean =
         XRepo.loadLastConversationOnStartup()
 
-    override suspend fun createConversation(id: String, firstUserInput: String) {
-        ConversationRepo.createConversation(id = id, firstUserInput = firstUserInput)
-    }
-
     override suspend fun getConversation(
         id: String,
     ): ConversationRecord? {

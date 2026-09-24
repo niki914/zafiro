@@ -11,6 +11,7 @@ import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
+import com.niki914.zafiro.chat.AgentStatusHolder
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.service.requireService
@@ -19,12 +20,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 // 存废：阶段 5 删除（委托实现：命令内部转发到 LLMController；架空完成后删除）
@@ -56,34 +54,27 @@ object AgentImpl : Agent {
     private val draftFlow = MutableStateFlow(Draft())
     private val conversationFlow = MutableStateFlow(Conversation())
 
-    // 存废：M4 前为占位（chat.AgentStatus → api.AgentStatus 映射落地后替换）
-    private val placeholderStatus_Tmp = MutableStateFlow(AgentStatus())
+    private val statusFlow = MutableStateFlow(AgentStatus())
 
     private val roundActive = MutableStateFlow(false)
     private var streamJob: Job? = null
     private var roundToken = 0
 
-    private var eventChannel = Channel<LlmStreamEvent>(Channel.UNLIMITED)
-
-    /** 归约器辅助态：见 [Reduced.thinkingSlots]。 */
-    private var thinkingSlots: Map<Int, Int> = emptyMap()
+    /** 归约器辅助态：保留跨事件的思考槽与待补全工具占位项。 */
+    private var reduced = Reduced(Conversation())
 
     override val conversation: StateFlow<Conversation> = conversationFlow.asStateFlow()
     override val draft: StateFlow<Draft> = draftFlow.asStateFlow()
-    override val status: StateFlow<AgentStatus> = placeholderStatus_Tmp.asStateFlow()
-
-    /**
-     * 非契约的临时事件通道，供对话页折叠用。
-     *
-     * 存废：阶段 2a 删除（P2：UI 直接订阅 [conversation] 后本成员与其折叠一起删）
-     *
-     * 每回合一个新 channel，回合结束时关闭：消费方的 `collect` 随回合返回，
-     * 与旧冷流语义一致。不关闭会让上一轮的 collector 永不返回，新一轮的事件
-     * 被它取走并折叠进错误的回合。单消费者，`receiveAsFlow` 表达「谁发起谁收」。
-     */
-    val events_Tmp: Flow<LlmStreamEvent> get() = eventChannel.receiveAsFlow()
+    override val status: StateFlow<AgentStatus> = statusFlow.asStateFlow()
 
     init {
+        scope.launch {
+            AgentStatusHolder.status.collect { status ->
+                if (roundActive.value && status.phase != com.niki914.zafiro.chat.AgentPhase.Idle) {
+                    statusFlow.value = status.toApiStatus()
+                }
+            }
+        }
         // 草稿里的 Pending 项由实现侧落盘并归约成 Ready（契约的图片写入路径）
         scope.launch {
             draftFlow.collect { draft ->
@@ -117,11 +108,9 @@ object AgentImpl : Agent {
         }
         // 发起即清空草稿：写入与清空在同一次归约里，覆盖窗口只有一帧
         draftFlow.value = Draft()
+        statusFlow.value = AgentStatus(phase = com.niki914.zafiro.api.model.AgentPhase.Generating)
         foldWith(ConversationReducer.startTurn(conversationFlow.value, query, attachments))
 
-        // 每回合一个新 channel（见 [events_Tmp]）
-        val channel = Channel<LlmStreamEvent>(Channel.UNLIMITED)
-        eventChannel = channel
         val token = ++roundToken
         streamJob = scope.launch {
             try {
@@ -130,17 +119,25 @@ object AgentImpl : Agent {
                 Logger.i(LOG_TAG, "round started conversationId=${conversationId.value} queryLength=${query.length}")
                 LLMController.stream(query = query, images = images).collect { event ->
                     fold(event)
-                    channel.send(event)
                 }
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
                 Logger.e(LOG_TAG, "round failed errorType=${throwable::class.simpleName} message=${throwable.message}")
-                throwable.message?.let { fold(LlmStreamEvent.Error(message = it)) }
+                val message = throwable.message?.trim()?.takeIf(String::isNotEmpty)
+                if (message != null) fold(LlmStreamEvent.Error(message = message))
+                else statusFlow.value = statusFlow.value.copy(
+                    phase = com.niki914.zafiro.api.model.AgentPhase.Idle,
+                    outcome = com.niki914.zafiro.api.model.TurnOutcome.Interrupted,
+                )
             } finally {
-                // 关闭让消费方的 collect 随回合结束返回（旧冷流语义）
-                channel.close()
-                // 只有仍是当前回合时才释放门禁：stop/load 已经推进过 token
                 if (roundToken == token) {
+                    if (statusFlow.value.phase != com.niki914.zafiro.api.model.AgentPhase.Idle) {
+                        statusFlow.value = statusFlow.value.copy(
+                            phase = com.niki914.zafiro.api.model.AgentPhase.Idle,
+                            outcome = statusFlow.value.outcome
+                                ?: com.niki914.zafiro.api.model.TurnOutcome.Interrupted,
+                        )
+                    }
                     streamJob = null
                     roundActive.value = false
                 }
@@ -152,16 +149,27 @@ object AgentImpl : Agent {
     override fun stop() {
         if (roundActive.value) {
             conversationFlow.value = ConversationReducer.interrupt(conversationFlow.value)
+            // TODO(LLMController lifecycle): publish Idle and reopen the Agent gate only after the round has really stopped.
+            statusFlow.value = AgentStatus(
+                phase = com.niki914.zafiro.api.model.AgentPhase.Idle,
+                outcome = com.niki914.zafiro.api.model.TurnOutcome.Interrupted,
+            )
         }
         releaseRound()
-        scope.launch { LLMController.stopCurrentRound() }
+        scope.launch {
+            LLMController.stopCurrentRound()
+            if (statusFlow.value.phase != com.niki914.zafiro.api.model.AgentPhase.Idle) {
+                statusFlow.value = AgentStatusHolder.status.value.toApiStatus()
+            }
+        }
     }
 
     override fun discard() {
         releaseRound()
-        thinkingSlots = emptyMap()
+        reduced = Reduced(Conversation())
         conversationFlow.value = Conversation()
         draftFlow.value = Draft()
+        statusFlow.value = AgentStatus()
         scope.launch {
             // 调用点不再维持顺序：先停后关在实现内部（OKIA §8.7 #5）
             LLMController.stopCurrentRound()
@@ -171,6 +179,7 @@ object AgentImpl : Agent {
 
     override suspend fun load(id: ConversationId) {
         releaseRound()
+        statusFlow.value = AgentStatus()
         // 先停（终止回合 + kill 工具资源）再换树：close 撞活跃回合由实现侧兜住
         LLMController.stopCurrentRound()
         val stored = store().load(id)
@@ -180,7 +189,7 @@ object AgentImpl : Agent {
         }
         LLMController.openSession(stored.snapshot)
         store().setLastOpened(id)
-        thinkingSlots = emptyMap()
+        reduced = Reduced(stored.conversation.copy(id = id))
         conversationFlow.value = stored.conversation.copy(id = id)
         draftFlow.value = Draft(text = stored.draftText)
         Logger.i(LOG_TAG, "loaded id=${id.value} turns=${stored.conversation.turns.size}")
@@ -193,11 +202,10 @@ object AgentImpl : Agent {
     /** 单测复位：进程内单例状态跨用例保留（同 `LLMController.resetForTest`）。 */
     internal fun clearForTest() {
         releaseRound()
-        thinkingSlots = emptyMap()
+        reduced = Reduced(Conversation())
         conversationFlow.value = Conversation()
         draftFlow.value = Draft()
-        eventChannel.close()
-        eventChannel = Channel(Channel.UNLIMITED)
+        statusFlow.value = AgentStatus()
     }
 
     // ── 内部 ────────────────────────────────────────────────────────────────
@@ -228,11 +236,22 @@ object AgentImpl : Agent {
     }
 
     private fun fold(event: LlmStreamEvent) {
-        foldWith(ConversationReducer.reduce(Reduced(conversationFlow.value, thinkingSlots), event))
+        foldWith(ConversationReducer.reduce(reduced, event))
+        val terminalOutcome = when (event) {
+            is LlmStreamEvent.Error -> com.niki914.zafiro.api.model.TurnOutcome.Failed
+            LlmStreamEvent.Completed -> com.niki914.zafiro.api.model.TurnOutcome.Completed
+            else -> null
+        }
+        if (terminalOutcome != null) {
+            statusFlow.value = AgentStatusHolder.status.value.toApiStatus().copy(
+                phase = com.niki914.zafiro.api.model.AgentPhase.Idle,
+                outcome = terminalOutcome,
+            )
+        }
     }
 
     private fun foldWith(reduced: Reduced) {
-        thinkingSlots = reduced.thinkingSlots
+        this.reduced = reduced
         conversationFlow.value = reduced.conversation
     }
 

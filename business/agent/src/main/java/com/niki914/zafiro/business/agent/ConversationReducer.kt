@@ -40,6 +40,8 @@ internal data class Reduced(
      * （mapper 的重试路径会把其 id 归零，跨回合沿用会串行）。
      */
     val thinkingSlots: Map<Int, Int> = emptyMap(),
+    /** Insertion-ordered block ids for id-less ToolPending rows; ToolRunning binds FIFO by name. */
+    val pendingToolIds: List<String> = emptyList(),
 )
 
 /**
@@ -98,32 +100,28 @@ internal object ConversationReducer {
                 thinking(state, turnIndex, event.id, event.text, isComplete = true)
 
             is LlmStreamEvent.ToolPending ->
-                state.withTurn(turnIndex, turn.clearRetrying().upsertTool(turnIndex, event.call, null))
+                state.upsertTool(turnIndex, turn.clearRetrying(), event.call, outcome = null, pending = true)
 
             is LlmStreamEvent.ToolRunning ->
-                state.withTurn(turnIndex, turn.clearRetrying().upsertTool(turnIndex, event.call, null))
+                state.upsertTool(turnIndex, turn.clearRetrying(), event.call, outcome = null)
 
             is LlmStreamEvent.ToolSucceeded ->
-                state.withTurn(
+                state.upsertTool(
                     turnIndex,
-                    turn.upsertTool(
-                        turnIndex,
-                        event.call,
-                        ToolOutcome.Succeeded(
-                            resultText = event.outputText,
-                            images = event.images.map { Attachment(it.path, it.mimeType) },
-                        ),
+                    turn,
+                    event.call,
+                    ToolOutcome.Succeeded(
+                        resultText = event.outputText,
+                        images = event.images.map { Attachment(it.path, it.mimeType) },
                     ),
                 )
 
             is LlmStreamEvent.ToolFailed ->
-                state.withTurn(
+                state.upsertTool(
                     turnIndex,
-                    turn.upsertTool(
-                        turnIndex,
-                        event.call,
-                        ToolOutcome.Failed(message = event.message, resultText = event.resultText),
-                    ),
+                    turn,
+                    event.call,
+                    ToolOutcome.Failed(message = event.message, resultText = event.resultText),
                 )
 
             is LlmStreamEvent.Error ->
@@ -200,6 +198,7 @@ internal object ConversationReducer {
                 ),
             ),
             thinkingSlots = state.thinkingSlots + (mapperId to blockIndex),
+            pendingToolIds = state.pendingToolIds,
         )
     }
 
@@ -208,6 +207,54 @@ internal object ConversationReducer {
 
     private fun Conversation.withTurn(turnIndex: Int, turn: ConversationTurn): Conversation =
         copy(turns = turns.toMutableList().also { it[turnIndex] = turn })
+
+    private fun Reduced.upsertTool(
+        turnIndex: Int,
+        turn: ConversationTurn,
+        call: ToolCallStatus,
+        outcome: ToolOutcome?,
+        pending: Boolean = false,
+    ): Reduced {
+        // A pending call without an id has no identity yet: preserve every event as a row.
+        // Once ToolRunning supplies ids, bind them to the oldest matching placeholder.
+        val exact = call.callId?.let { callId ->
+            turn.blocks.indexOfFirst { it is TurnBlock.Tool && it.invocation.id == callId }
+        } ?: -1
+        val index = when {
+            exact >= 0 -> exact
+            pending -> -1
+            else -> pendingToolIds.firstNotNullOfOrNull { pendingId ->
+                turn.blocks.indexOfFirst { block ->
+                    block is TurnBlock.Tool && block.id == pendingId &&
+                        block.invocation.argumentsJson == null && block.invocation.name == call.name
+                }.takeIf { it >= 0 }
+            } ?: turn.blocks.indexOfLast { block ->
+                call.callId == null && block is TurnBlock.Tool &&
+                    block.invocation.id == block.invocation.name &&
+                    block.invocation.argumentsJson == null && block.invocation.name == call.name
+            }
+        }
+        if (index < 0) {
+            val block = turn.appendTool(turnIndex, call, outcome)
+            val id = block.blocks.last().id
+            return copy(
+                conversation = conversation.withTurn(turnIndex, block),
+                pendingToolIds = if (pending && call.callId == null) pendingToolIds + id else pendingToolIds,
+            )
+        }
+        val existing = turn.blocks[index] as TurnBlock.Tool
+        val replacement = existing.copy(
+            invocation = call.toInvocation(previousId = existing.invocation.id),
+            outcome = outcome,
+        )
+        return copy(
+            conversation = conversation.withTurn(
+                turnIndex,
+                turn.copy(blocks = turn.blocks.toMutableList().also { it[index] = replacement }),
+            ),
+            pendingToolIds = pendingToolIds - existing.id,
+        )
+    }
 
     private fun ConversationTurn.clearRetrying(): ConversationTurn {
         if (blocks.none { it is TurnBlock.Retrying }) return this
@@ -231,32 +278,17 @@ internal object ConversationReducer {
         }
     }
 
-    private fun ConversationTurn.upsertTool(
+    private fun ConversationTurn.appendTool(
         turnIndex: Int,
         call: ToolCallStatus,
         outcome: ToolOutcome?,
-    ): ConversationTurn {
-        val index = blocks.indexOfLast { it is TurnBlock.Tool && it.matches(call) }
-        if (index == -1) {
-            return copy(
-                blocks = blocks + TurnBlock.Tool(
-                    id = blockIdAt(turnIndex, blocks.size),
-                    invocation = call.toInvocation(),
-                    outcome = outcome,
-                ),
-            )
-        }
-        val existing = blocks[index] as TurnBlock.Tool
-        return copy(
-            blocks = blocks.toMutableList().also { blocks ->
-                blocks[index] = existing.copy(
-                    // 占位行的 id 来自名字，参数到位后换成真实 callId（工具身份）
-                    invocation = call.toInvocation(previousId = existing.invocation.id),
-                    outcome = outcome,
-                )
-            },
-        )
-    }
+    ): ConversationTurn = copy(
+        blocks = blocks + TurnBlock.Tool(
+            id = blockIdAt(turnIndex, blocks.size),
+            invocation = call.toInvocation(),
+            outcome = outcome,
+        ),
+    )
 
     private fun ConversationTurn.replaceRetrying(
         turnIndex: Int,
@@ -287,16 +319,6 @@ internal object ConversationReducer {
             attempts = event.attempts,
         ),
     )
-
-    /**
-     * 占位行（`ToolPending` 只有名字、没有 callId）用名字匹配，之后的
-     * `ToolRunning` 带上 callId 时仍要落回这一行。
-     */
-    private fun TurnBlock.Tool.matches(call: ToolCallStatus): Boolean {
-        val callId = call.callId
-        if (callId != null && invocation.id == callId) return true
-        return invocation.argumentsJson == null && invocation.name == call.name
-    }
 
     private fun ToolCallStatus.toInvocation(previousId: String? = null): ToolInvocation =
         ToolInvocation(

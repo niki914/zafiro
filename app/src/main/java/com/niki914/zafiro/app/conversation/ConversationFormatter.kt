@@ -15,12 +15,6 @@ import com.niki914.zafiro.api.model.ConversationTurn
 import com.niki914.zafiro.api.model.ToolInvocation
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
-import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
-import com.niki914.zafiro.app.ui.model.home.HomeChatImage
-import com.niki914.zafiro.app.ui.model.home.HomeChatTurn
-import com.niki914.zafiro.app.ui.model.home.HomeToolState
-import com.niki914.zafiro.app.ui.model.home.HomeToolStatus
-import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.business.agent.blockIdAt
 import com.niki914.zafiro.business.agent.turnIdAt
 
@@ -35,13 +29,7 @@ object ConversationFormatter {
     private const val MAX_PREVIEW_LENGTH = 20
     private const val ELLIPSIS = "..."
 
-    /**
-     * 没有配对 `ToolResult` 的工具调用的失败原因。
-     *
-     * 旧装配把它记为失败且不带原因（`HomeToolStatus.failedReason = null`），而契约的
-     * `ToolOutcome.Failed.message` 不可空，故用空串表示「失败但无原因」，消费方按 blank
-     * 视作无原因。
-     */
+    /** 没有配对 `ToolResult` 的工具调用：恢复后记为失败，且无失败原因。 */
     private const val UNPAIRED_TOOL_REASON = ""
 
     fun titleFromFirstInput(firstUserInput: String): String {
@@ -96,67 +84,7 @@ object ConversationFormatter {
         return chain.reversed()
     }
 
-    // 存废：P2 删除（旧装配路径，被 toConversation 取代；UI 切到契约类型后消失）
-    fun toHomeTurns(snapshot: SessionSnapshot): List<HomeChatTurn> {
-        val startedAtMs = System.currentTimeMillis()
-        val history = projectLeaf(snapshot.entries, snapshot.leafId)
-        val turns = mutableListOf<HomeChatTurn>()
-        var nextId = 0L
-
-        history.forEach { entry ->
-            when (val message = entry.message) {
-                is Message.User -> {
-                    // 图片从沙箱路径恢复（字节在 filesDir，重启不丢）：
-                    // id 用 path hash（同一张图跨会话恢复 id 稳定，UI key 不冲突）
-                    turns += HomeChatTurn(
-                        id = nextId++,
-                        userText = message.textBlocks().joinToString("\n"),
-                        images = message.content.filterIsInstance<ContentBlock.Image>().map {
-                            HomeChatImage.of(it)
-                        },
-                    )
-                }
-
-                is Message.Assistant -> {
-                    val target = turns.lastOrNull() ?: HomeChatTurn(id = nextId++, userText = "")
-                    val updated = target
-                        .appendThinkingBlocks(message.message)
-                        .appendTextBlock(message.message.textBlocks().joinToString("\n"))
-                        .appendToolBlocks(message.message)
-                    turns.replaceLastOrAdd(updated)
-                }
-
-                is Message.ToolResult -> {
-                    val target = turns.lastOrNull() ?: return@forEach
-                    val (state, resultText, failedReason) = message.outcome.toHomeToolState()
-                    val updated = target.updateToolState(
-                        callId = message.callId,
-                        toolName = message.toolName,
-                        state = state,
-                        resultText = resultText,
-                        failedReason = failedReason,
-                        images = (message.outcome as? ToolCallOutcome.Success)?.images.orEmpty(),
-                    )
-                    turns.replaceLastOrAdd(updated)
-                }
-            }
-        }
-
-        return turns.also {
-            Logger.i(
-                LOG_TAG,
-                "format history entries=${history.size} turns=${it.size} " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-            )
-        }
-    }
-
-    /**
-     * 历史恢复装配成契约类型。与流式归约（`ConversationReducer`）共用
-     * `turnIdAt` / `blockIdAt`，所以同一个会话从流式与从恢复得到同一结构。
-     *
-     * 展示名（`ToolPresentation` 的资源 id）与参数预览是消费方的派生值，不在这里算。
-     */
+    /** 历史恢复装配成契约类型，与流式归约共用回合与块 id 规则。 */
     fun toConversation(snapshot: SessionSnapshot): Conversation {
         val startedAtMs = System.currentTimeMillis()
         val history = projectLeaf(snapshot.entries, snapshot.leafId)
@@ -286,11 +214,7 @@ object ConversationFormatter {
         )
     }
 
-    /**
-     * 与旧装配（`HomeToolStatus.matchesTool`）同口径：只按 okia 的 callId 匹配。
-     * 旧路径的工具块 callId 恒取自 `ContentBlock.ToolCall.id`（非 null），
-     * 同名回退从未生效；放宽会在同名工具并发时误配到别的块。
-     */
+    /** OKIA 工具结果按 callId 匹配对应工具调用。 */
     private fun ToolInvocation.matches(callId: String): Boolean = id == callId
 
     /** outcome 5 态 → 契约工具结果（Intercepted 按 isError 分成功/失败）。 */
@@ -316,97 +240,4 @@ object ConversationFormatter {
 
     private fun AssistantMessage.textBlocks(): List<String> =
         content.filterIsInstance<ContentBlock.Text>().map { it.text }
-
-    private fun HomeChatTurn.appendTextBlock(text: String): HomeChatTurn {
-        if (text.isBlank()) return this
-        return copy(blocks = blocks + HomeChatBlock.Text(text))
-    }
-
-    private fun HomeChatTurn.appendThinkingBlocks(assistant: AssistantMessage): HomeChatTurn {
-        val thoughts = assistant.content.filterIsInstance<ContentBlock.Thinking>()
-        if (thoughts.isEmpty()) return this
-        // 恢复后不再流式，index 仅需块内唯一（按出现顺序编号）
-        val thinkingBlocks =
-            thoughts.mapIndexed { i, thought ->
-                HomeChatBlock.Thinking(
-                    id = i,
-                    text = thought.text
-                )
-            }
-        return copy(blocks = blocks + thinkingBlocks)
-    }
-
-    private fun HomeChatTurn.appendToolBlocks(assistant: AssistantMessage): HomeChatTurn {
-        val toolCalls = assistant.content.filterIsInstance<ContentBlock.ToolCall>()
-        if (toolCalls.isEmpty()) return this
-        val toolBlocks = toolCalls.map { toolCall ->
-            HomeChatBlock.Tool(
-                HomeToolStatus(
-                    callId = toolCall.id,
-                    name = toolCall.name,
-                    state = HomeToolState.Failed,
-                    displayNameRes = ToolPresentation.displayNameResOf(toolCall.name),
-                    inputText = ToolPresentation.inputOf(toolCall.name, toolCall.argumentsJson),
-                ),
-            )
-        }
-        return copy(blocks = blocks + toolBlocks)
-    }
-
-    private fun HomeChatTurn.updateToolState(
-        callId: String,
-        toolName: String,
-        state: HomeToolState,
-        resultText: String? = null,
-        failedReason: String? = null,
-        images: List<ContentBlock.Image> = emptyList(),
-    ): HomeChatTurn {
-        val index = blocks.indexOfLast { block ->
-            block is HomeChatBlock.Tool && block.status.matchesTool(callId, toolName)
-        }
-        if (index == -1) return this
-        return copy(
-            blocks = blocks.toMutableList().also { mutableBlocks ->
-                val block = mutableBlocks[index] as HomeChatBlock.Tool
-                mutableBlocks[index] = block.copy(
-                    status = block.status.copy(
-                        state = state,
-                        resultText = resultText,
-                        failedReason = failedReason,
-                        images = images.map {
-                            HomeChatImage.of(it)
-                        },
-                    ),
-                )
-            },
-        )
-    }
-
-    private fun HomeToolStatus.matchesTool(callId: String, toolName: String): Boolean {
-        if (this.callId != null) return this.callId == callId
-        return name == toolName
-    }
-
-    /** outcome 5 态 → UI 工具块终态（Success 成功；Intercepted 按 isError；其余失败）。 */
-    private fun ToolCallOutcome.toHomeToolState(): Triple<HomeToolState, String?, String?> =
-        when (this) {
-            is ToolCallOutcome.Success -> Triple(HomeToolState.Succeeded, content, null)
-            is ToolCallOutcome.Failure -> Triple(HomeToolState.Failed, content, message)
-            is ToolCallOutcome.Intercepted -> if (isError) {
-                Triple(HomeToolState.Failed, content, reason)
-            } else {
-                Triple(HomeToolState.Succeeded, content, null)
-            }
-
-            is ToolCallOutcome.Interrupted -> Triple(HomeToolState.Failed, content, "Interrupted")
-            is ToolCallOutcome.Unknown -> Triple(HomeToolState.Failed, content, message)
-        }
-
-    private fun MutableList<HomeChatTurn>.replaceLastOrAdd(turn: HomeChatTurn) {
-        if (isEmpty()) {
-            add(turn)
-        } else {
-            this[lastIndex] = turn
-        }
-    }
 }
