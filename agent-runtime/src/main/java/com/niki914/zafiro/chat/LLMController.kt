@@ -597,6 +597,11 @@ object LLMController {
         Logger.i(LOG_TAG, "reset conversation done")
     }
 
+    /**
+     * TODO(Agent lifecycle): return/completion must represent the round's actual stop boundary.
+     * AgentImpl currently publishes Idle before this suspend call finishes; when restructuring
+     * this controller, let AgentImpl release its status and send gate only after this completes.
+     */
     suspend fun stopCurrentRound() {
         Logger.i(LOG_TAG, "stop round requested")
         // OKIA stop() 内建 kill-then-stop：beforeStop hook（杀 py/tty）先于

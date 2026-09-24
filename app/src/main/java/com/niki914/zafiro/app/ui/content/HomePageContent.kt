@@ -81,7 +81,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.niki914.store.XIpcBridge
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
@@ -91,21 +90,20 @@ import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
-import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.PageChromeMenuItem
 import com.niki914.zafiro.app.ui.RegisterPageChrome
-import com.niki914.zafiro.app.ui.model.ActionSource
-import com.niki914.zafiro.app.ui.model.HomeChatBlock
-import com.niki914.zafiro.app.ui.model.HomeChatImage
-import com.niki914.zafiro.app.ui.model.HomeChatIntent
-import com.niki914.zafiro.app.ui.model.HomeChatTurn
-import com.niki914.zafiro.app.ui.model.HomeChatUiState
-import com.niki914.zafiro.app.ui.model.HomeChatViewModel
-import com.niki914.zafiro.app.ui.model.MessageActionsDisplay
-import com.niki914.zafiro.app.ui.model.HomeToolState
-import com.niki914.zafiro.app.ui.model.HomeToolStatus
+import com.niki914.zafiro.app.ui.model.home.ActionSource
+import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.home.HomeChatImage
+import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
+import com.niki914.zafiro.app.ui.model.home.HomeChatTurn
+import com.niki914.zafiro.app.ui.model.home.HomeChatUiState
+import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel__V2
+import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
+import com.niki914.zafiro.app.ui.model.home.HomeToolState
+import com.niki914.zafiro.app.ui.model.home.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
@@ -133,7 +131,7 @@ fun HomePageContent(
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    val viewModel = pageViewModel<HomeChatViewModel>()
+    val viewModel = pageViewModel<HomeChatViewModel__V2>()
     val newConversationMenuLabel = stringResource(R.string.ui_home_menu_new_conversation)
     val settingsMenuLabel = stringResource(R.string.ui_settings_menu_entry)
     val historyContentDescription = stringResource(R.string.ui_home_history_content_description)
@@ -177,7 +175,7 @@ fun HomePageContent(
     // 长高）变化时 padding 跟着变，也必须重新贴底，否则最后一条消息被 composer 遮住
     val bottomContentVersion = remember(
         uiState.turns.size,
-        uiState.streamEventCount,
+        uiState.conversationVersion,
         lastTurn?.id,
         lastTurn?.blocks?.size,
         composerBottomPadding,
@@ -185,7 +183,7 @@ fun HomePageContent(
     ) {
         listOf(
             uiState.turns.size,
-            uiState.streamEventCount,
+            uiState.conversationVersion,
             lastTurn?.id,
             lastTurn?.blocks?.size,
             composerBottomPadding,
