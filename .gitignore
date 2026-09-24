@@ -6,7 +6,10 @@
 *.iws
 /.worktrees/
 
-/.pi/
+/.pi/*
+!/.pi/skills/
+/.pi/skills/*
+!/.pi/skills/*
 .env
 .env.local
 .env.*.local
