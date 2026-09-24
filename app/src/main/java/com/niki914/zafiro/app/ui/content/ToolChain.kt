@@ -56,9 +56,9 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.model.HomeChatImage
-import com.niki914.zafiro.app.ui.model.HomeToolState
-import com.niki914.zafiro.app.ui.model.HomeToolStatus
+import com.niki914.zafiro.app.ui.model.home.HomeChatImage
+import com.niki914.zafiro.app.ui.model.home.HomeToolState
+import com.niki914.zafiro.app.ui.model.home.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

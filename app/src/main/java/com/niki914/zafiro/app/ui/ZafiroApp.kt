@@ -53,7 +53,7 @@ import com.niki914.uikit.infra.nav.rememberNavigationController
 import com.niki914.uikit.infra.rememberLiquidScreenState
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
-import com.niki914.zafiro.app.ui.model.HomeChatViewModel
+import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel__V2
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.app.ui.nav.HomePage
@@ -173,8 +173,8 @@ fun ZafiroApp(
         val homeEntry = controller.stack.lastOrNull { entry -> entry.page == HomePage }
             ?: error("Home entry is required before deleting the active conversation.")
         val homeViewModel = ViewModelProvider(homeEntry)[
-            HomeChatViewModel::class.java.name,
-            HomeChatViewModel::class.java,
+            HomeChatViewModel__V2::class.java.name,
+            HomeChatViewModel__V2::class.java,
         ]
         homeViewModel.deleteConversationNow(id)
         if (activeConversationId == id) {
