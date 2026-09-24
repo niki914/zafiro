@@ -60,7 +60,7 @@ object ProviderSpecs {
 
 private data object VolcengineCodingPlanSpec : ProviderSpec {
     override val id: String = "volcengine-coding-plan"
-    override val brandName: String = "火山引擎 Coding Plan"
+    override val brandName: String = "火山引擎"
     override val officialEndpoint: String =
         "https://ark.cn-beijing.volces.com/api/coding/v3/responses"
     override val exampleModelId: String = "ark-code-latest"
@@ -68,9 +68,14 @@ private data object VolcengineCodingPlanSpec : ProviderSpec {
     override val allowsCustomEndpointInNewConfig: Boolean = false
     override val defaultProtocol: String = "openai-responses"
     override val iconRes: Int = R.drawable.volcengine
-    override val tintIcon: Boolean = true
+    override val tintIcon: Boolean = false
     override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
-        button = ProviderButtonTokens(),
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_volcengine_button_dark_container,
+            lightContainerColorRes = R.color.provider_volcengine_button_light_container,
+            darkContentColorRes = R.color.provider_volcengine_button_dark_content,
+            lightContentColorRes = R.color.provider_volcengine_button_light_content,
+        ),
     )
 }
 

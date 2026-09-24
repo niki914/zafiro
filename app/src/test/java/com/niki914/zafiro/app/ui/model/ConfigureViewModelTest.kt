@@ -141,7 +141,7 @@ class ConfigureViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiStateFlow.value
-        assertEquals("火山引擎 Coding Plan", state.configNameInput)
+        assertEquals("火山引擎", state.configNameInput)
         assertEquals("ark-code-latest", state.modelInput)
         assertEquals(
             "https://ark.cn-beijing.volces.com/api/coding/v3/responses",
