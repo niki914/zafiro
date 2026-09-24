@@ -34,7 +34,7 @@ object PermissionHolder {
                 ui,
                 ComponentName(
                     context.packageName,
-                    "${context.packageName}.mod.feat.ZafiroAccessibilityService",
+                    "com.niki914.zafiro.mod.feat.ZafiroAccessibilityService",
                 ),
             ).also { manager = it }
         }

@@ -20,7 +20,15 @@ fun Context.displayNameFor(host: HostApp): String = getString(host.displayNameRe
 
 object XValues {
 
-    val myPackageName = "com.niki914.zafiro"
+    var myPackageName = "com.niki914.zafiro"
+        private set
+
+    /** Register the installed application id, which may differ from the production id in test builds. */
+    fun registerMyPackageName(packageName: String) {
+        require(packageName.isNotBlank()) { "packageName must not be blank" }
+        myPackageName = packageName
+    }
+
     val appList: List<String>
         get() = HostApp.packageNames
 
