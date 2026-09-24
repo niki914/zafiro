@@ -53,7 +53,6 @@ android {
             )
         }
         debug {
-            applicationIdSuffix = ".debug"
             ndk {
                 abiFilters += "x86_64"   // 模拟器调试
             }
