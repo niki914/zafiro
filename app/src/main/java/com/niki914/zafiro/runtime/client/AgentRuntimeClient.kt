@@ -53,6 +53,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
 
     companion object {
         private const val LOG_TAG = "niki914_nexus_AgentRuntimeClient"
+        private const val ZAFIRO_PACKAGE = "com.niki914.zafiro"
         private const val BIND_ACTION = "com.niki914.zafiro.runtime.BIND"
         private const val SERVICE_CLASS =
             "com.niki914.zafiro.runtime.service.AgentRuntimeService"
@@ -70,7 +71,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         deathRecipient = IBinder.DeathRecipient { handleBinderDeath() }
 
         val intent = Intent(BIND_ACTION).apply {
-            setClassName(context.packageName, SERVICE_CLASS)
+            setClassName(ZAFIRO_PACKAGE, SERVICE_CLASS)
         }
 
         val result = try {
@@ -352,7 +353,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         _connectionState.value = ConnectionState.Connecting
 
         val intent = Intent(BIND_ACTION).apply {
-            setClassName(context.packageName, SERVICE_CLASS)
+            setClassName(ZAFIRO_PACKAGE, SERVICE_CLASS)
         }
 
         try {
