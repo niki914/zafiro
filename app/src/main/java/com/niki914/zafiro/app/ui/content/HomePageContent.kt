@@ -100,7 +100,7 @@ import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
 import com.niki914.zafiro.app.ui.model.home.HomeChatTurn
 import com.niki914.zafiro.app.ui.model.home.HomeChatUiState
-import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel
+import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel__V2
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import com.niki914.zafiro.app.ui.model.home.HomeToolState
 import com.niki914.zafiro.app.ui.model.home.HomeToolStatus
@@ -131,7 +131,7 @@ fun HomePageContent(
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    val viewModel = pageViewModel<HomeChatViewModel>()
+    val viewModel = pageViewModel<HomeChatViewModel__V2>()
     val newConversationMenuLabel = stringResource(R.string.ui_home_menu_new_conversation)
     val settingsMenuLabel = stringResource(R.string.ui_settings_menu_entry)
     val historyContentDescription = stringResource(R.string.ui_home_history_content_description)
@@ -175,7 +175,7 @@ fun HomePageContent(
     // 长高）变化时 padding 跟着变，也必须重新贴底，否则最后一条消息被 composer 遮住
     val bottomContentVersion = remember(
         uiState.turns.size,
-        uiState.streamEventCount,
+        uiState.conversationVersion,
         lastTurn?.id,
         lastTurn?.blocks?.size,
         composerBottomPadding,
@@ -183,7 +183,7 @@ fun HomePageContent(
     ) {
         listOf(
             uiState.turns.size,
-            uiState.streamEventCount,
+            uiState.conversationVersion,
             lastTurn?.id,
             lastTurn?.blocks?.size,
             composerBottomPadding,

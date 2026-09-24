@@ -129,6 +129,33 @@ class ConversationReducerTest {
     }
 
     @Test
+    fun sameNamePendingToolsBindCallIdsInArrivalOrder() {
+        val firstPending = reduce(
+            startTurn("q"),
+            LlmStreamEvent.ToolPending(call = call(callId = null, name = "search")),
+        )
+        val secondPending = reduce(
+            firstPending,
+            LlmStreamEvent.ToolPending(call = call(callId = null, name = "search")),
+        )
+
+        val firstRunning = reduce(
+            secondPending,
+            LlmStreamEvent.ToolRunning(call = call(callId = "c1", name = "search", arguments = """{"q":1}""")),
+        )
+        val bothRunning = reduce(
+            firstRunning,
+            LlmStreamEvent.ToolRunning(call = call(callId = "c2", name = "search", arguments = """{"q":2}""")),
+        )
+
+        val tools = bothRunning.conversation.turns.last().blocks.filterIsInstance<TurnBlock.Tool>()
+        assertEquals(2, tools.size)
+        assertEquals(listOf("c1", "c2"), tools.map { it.invocation.id })
+        assertEquals(listOf("""{"q":1}""", """{"q":2}"""), tools.map { it.invocation.argumentsJson })
+        assertEquals(listOf("t0:0", "t0:1"), tools.map { it.id })
+    }
+
+    @Test
     fun toolOutcomeIsSettledOnTheSameBlock() {
         val running = reduce(
             startTurn("q"),

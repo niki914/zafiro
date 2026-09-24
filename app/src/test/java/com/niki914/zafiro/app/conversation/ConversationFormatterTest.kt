@@ -10,8 +10,6 @@ import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
-import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
-import com.niki914.zafiro.app.ui.model.home.HomeToolState
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -21,134 +19,6 @@ class ConversationFormatterTest {
 
     @get:Rule
     val silentLogger = SilentLoggerRule()
-
-    @Test
-    fun toHomeTurns_groupsByUserTurn() {
-        val snapshot = snapshotOf(
-            Message.User(listOf(ContentBlock.Text("first"))),
-            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer 1")))),
-            Message.User(listOf(ContentBlock.Text("second"))),
-            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer 2")))),
-        )
-
-        val turns = ConversationFormatter.toHomeTurns(snapshot)
-
-        assertEquals(2, turns.size)
-        assertEquals("first", turns[0].userText)
-        assertEquals("second", turns[1].userText)
-        assertEquals(
-            listOf("answer 1"),
-            turns[0].blocks.filterIsInstance<HomeChatBlock.Text>().map { it.text },
-        )
-        assertEquals(
-            listOf("answer 2"),
-            turns[1].blocks.filterIsInstance<HomeChatBlock.Text>().map { it.text },
-        )
-    }
-
-    @Test
-    fun toHomeTurns_restoresToolSuccessFromOutcome() {
-        val snapshot = snapshotOf(
-            Message.User(listOf(ContentBlock.Text("question"))),
-            Message.Assistant(
-                AssistantMessage(
-                    listOf(
-                        ContentBlock.Text("let me tap"),
-                        ContentBlock.ToolCall("c1", "screen_operation_accessibility", "{}"),
-                    ),
-                ),
-            ),
-            Message.ToolResult(
-                callId = "c1",
-                toolName = "screen_operation_accessibility",
-                outcome = ToolCallOutcome.Success(content = "tree yaml"),
-            ),
-        )
-
-        val turns = ConversationFormatter.toHomeTurns(snapshot)
-        val toolBlock = turns.single().blocks.last() as HomeChatBlock.Tool
-        assertEquals(HomeToolState.Succeeded, toolBlock.status.state)
-        assertEquals("tree yaml", toolBlock.status.resultText)
-    }
-
-    @Test
-    fun toHomeTurns_restoresToolFailureFromOutcome() {
-        val snapshot = snapshotOf(
-            Message.User(listOf(ContentBlock.Text("question"))),
-            Message.Assistant(
-                AssistantMessage(
-                    listOf(
-                        ContentBlock.ToolCall("c1", "screen_operation_accessibility", "{}"),
-                    ),
-                ),
-            ),
-            Message.ToolResult(
-                callId = "c1",
-                toolName = "screen_operation_accessibility",
-                outcome = ToolCallOutcome.Failure(
-                    message = "Token expired",
-                    content = "yaml",
-                ),
-            ),
-        )
-
-        val turns = ConversationFormatter.toHomeTurns(snapshot)
-        val toolBlock = turns.single().blocks.last() as HomeChatBlock.Tool
-        assertEquals(HomeToolState.Failed, toolBlock.status.state)
-        assertEquals("Token expired", toolBlock.status.failedReason)
-    }
-
-    @Test
-    fun toHomeTurns_interceptedErrorShowsFailed() {
-        val snapshot = snapshotOf(
-            Message.User(listOf(ContentBlock.Text("q"))),
-            Message.Assistant(
-                AssistantMessage(listOf(ContentBlock.ToolCall("c1", "mcp__s__t", "{}"))),
-            ),
-            Message.ToolResult(
-                callId = "c1",
-                toolName = "mcp__s__t",
-                outcome = ToolCallOutcome.Intercepted(reason = "denied", isError = true),
-            ),
-        )
-
-        val turns = ConversationFormatter.toHomeTurns(snapshot)
-        val toolBlock = turns.single().blocks.last() as HomeChatBlock.Tool
-        assertEquals(HomeToolState.Failed, toolBlock.status.state)
-    }
-
-    @Test
-    fun toHomeTurns_ignoresThinkingBlocks() {
-        val snapshot = snapshotOf(
-            Message.User(listOf(ContentBlock.Text("q"))),
-            Message.Assistant(
-                AssistantMessage(
-                    listOf(
-                        ContentBlock.Thinking("hidden reasoning"),
-                        ContentBlock.Text("visible"),
-                    ),
-                ),
-            ),
-        )
-
-        val turns = ConversationFormatter.toHomeTurns(snapshot)
-        val textBlocks = turns.single().blocks.filterIsInstance<HomeChatBlock.Text>()
-        assertEquals(listOf("visible"), textBlocks.map { it.text })
-    }
-
-    @Test
-    fun toHomeTurns_unpairedToolCallDefaultsToFailedPlaceholder() {
-        val snapshot = snapshotOf(
-            Message.User(listOf(ContentBlock.Text("q"))),
-            Message.Assistant(
-                AssistantMessage(listOf(ContentBlock.ToolCall("c1", "search", "{}"))),
-            ),
-        )
-
-        val turns = ConversationFormatter.toHomeTurns(snapshot)
-        val toolBlock = turns.single().blocks.last() as HomeChatBlock.Tool
-        assertEquals(HomeToolState.Failed, toolBlock.status.state)
-    }
 
     @Test
     fun projectLeaf_followsParentChainToRoot() {
@@ -188,52 +58,6 @@ class ConversationFormatterTest {
         )
 
         assertEquals("q", ConversationFormatter.previewFromEntries(entries))
-    }
-
-    @Test
-    fun toHomeTurns_restoresUserImagesFromSandboxPaths() {
-        val snapshot = snapshotOf(
-            Message.User(
-                listOf(
-                    ContentBlock.Text("look"),
-                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg", "image/jpeg"),
-                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/image_cache/bbb.jpg", "image/jpeg"),
-                )
-            ),
-            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
-        )
-
-        val turns = ConversationFormatter.toHomeTurns(snapshot)
-
-        // 恢复投影：Image 块 → HomeChatImage（path 持久化，字节在沙箱重启不丢）
-        val turn = turns.single()
-        assertEquals("look", turn.userText)
-        assertEquals(2, turn.images.size)
-        assertEquals(
-            "/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg",
-            turn.images[0].path,
-        )
-        assertEquals(
-            "/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg".hashCode().toString(),
-            turn.images[0].id,
-        )
-    }
-
-    @Test
-    fun toHomeTurns_imageOnlyUserTurnKeepsImagesWithoutText() {
-        val snapshot = snapshotOf(
-            Message.User(
-                listOf(
-                    ContentBlock.Image("/data/user/0/com.niki914.zafiro/files/image_cache/aaa.jpg", "image/jpeg"),
-                )
-            ),
-        )
-
-        val turns = ConversationFormatter.toHomeTurns(snapshot)
-
-        assertEquals(1, turns.size)
-        assertEquals("", turns.single().userText)
-        assertEquals(1, turns.single().images.size)
     }
 
     @Test
