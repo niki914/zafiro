@@ -4,6 +4,7 @@ import android.content.ComponentName
 import com.niki914.logging.Logger
 import com.niki914.permission.PermissionManager
 import com.niki914.permission.UiGate
+import com.niki914.zafiro.mod.feat.ZafiroAccessibilityService
 
 /**
  * PermissionManager 单例：UiGate + 门面持有者。
@@ -33,8 +34,8 @@ object PermissionHolder {
                 context,
                 ui,
                 ComponentName(
-                    context.packageName,
-                    "${context.packageName}.mod.feat.ZafiroAccessibilityService",
+                    BuildConfig.APPLICATION_ID,
+                    ZafiroAccessibilityService::class.java.name,
                 ),
             ).also { manager = it }
         }

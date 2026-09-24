@@ -10,6 +10,14 @@ android {
         minSdk = 26
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
+    defaultConfig {
+        buildConfigField("String", "APPLICATION_ID", "\"com.niki914.zafiro\"")
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
