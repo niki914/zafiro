@@ -1,141 +1,86 @@
-# AGENT RULES
+# About
 
-## 项目定位
+## 项目简介
 
-Zafiro 是一个 Android 应用，使用 Kotlin 技术栈。它通过 compose UI 结合 Root/Shizuku 等权限给 Agent 提供丰富的脚手架。同时支持通过基于 Binder + LSPosed 的接管系统将部分厂商语音助手换源为 Zafiro
+详见 README.md
 
-重要优先级: 主应用 > Okia > py >> 宿主
+---
 
-### 术语（你在对话中会用到这些词）
+## 术语
 
-- **宿主 / Host**：被 Hook 的语音助手 App。Breeno（ColorOS，`com.heytap.speechassist`）和 XiaoAi（HyperOS，`com.miui.voiceassist`）
-- **主 App**：Zafiro 自己的进程（`com.niki914.zafiro`），跑设置 UI + Runtime Service
-- **takeover**：本轮 query 的接管决策——`InjectedLLM`（Zafiro 替换回答）或 `NativeTakeover`（放行原生回复），由 `TakeoverResolver` 判定
-- **turn**：一轮"用户问 → 回答呈现"的完整生命周期，`ConversationTurnState` 跟踪
-- **store**：一个命名的 JSON 持久化单元（如 `agent.main.config`、`rules.takeover`），原子写入 `filesDir/` 下对应路径
-- **render pipeline**：LLM 响应注入宿主 UI 的链路。Breeno 走卡片全量刷新，XiaoAi 走响应目标捕获 + 指令分片注入
+### 宿主 / Host
 
-### 进程与 IPC 骨架
+本项目通过 Xposed API 对 com.heytap.speechassist 等应用做 Hook，将系统语音助手的回答换成 Zafiro Agent 回答，具体实现是通过 Binder + AgentRuntimeService。当前的实现重点是，复杂的数据结构从不穿过 Binder，即，复杂的数据结构留在主进程，在 map 后喂给宿主，而宿主侧 Binder Client 得到纯文本，直接无脑 render，通过这种方式，我们降低了在数据库所需要投入的成本
 
-- **宿主进程**：Xposed Hook 注入点。通过 `AgentRuntimeClient`（Binder）向主 App 提交 LLM 查询，通过 `XIpcBridge.StoreClient`（Binder）读写 settings store
-- **主 App 进程**：运行 `AgentRuntimeService`（前台 Service，Binder IPC），持有 store 持久化的本地访问权
-- **两条 IPC 通道**：`XIpcBridge`（配置读写/通知，走 `StoreClient` Binder 接口） + `AgentRuntimeService`（LLM query 提交与 `RenderFrame` 流式回调）
+我们把取代原生 agent 的功能称为 takeover / 接管。宿主是比较边缘的业务，在重要决策时，不应该为了宿主的业务而去妥协，应该牺牲宿主
 
-## Engineering principles
+### 主界面 / Home / Compose
 
-- Do not preserve backward compatibility. Remove obsolete paths instead of adding compatibility layers, fallbacks, or migrations.
-- Choose the simplest implementation that fully meets the current requirements. Avoid speculative abstractions, configuration, and indirection.
-- Grow the system in layers. Start from the smallest version that works end to end, and add each new capability on top of a product that already works. Never trade a working product for unfinished complexity.
-- Keep components modular and concerns clearly separated.
-- Prefer established, well-maintained libraries when they reduce overall complexity or improve reliability. Do not reimplement common functionality without a clear reason.
-- Lean on the dependencies already in the project before writing your own implementation or adding packages. Do not assume a library lacks a capability without checking its documentation and types.
-- Make architectural decisions for the long term. Do not accept a stopgap that only works for now and is meant to be replaced later.
-- Ask the user for help when a task is easy for the user but hard for you, such as refactoring code in Android Studio.
-- When a feature is hard to implement (difficulty above 6/10) and low in value, negotiate scope with the user before building it.
-- Use the `android` CLI for Android-related operations: build, install, device management, screenshots, UI inspection. Load the `android-cli` skill first.
-- Only implement code changes when the user explicitly requests implementation (e.g., 开发 / 改 / 开始实现). Otherwise, plan and discuss without editing files.
-- Before implementing, present the proposed solution and get the user's decision on the design.
-- The user wants to decide anything that affects architecture or code quality. Surface such decisions for them to make. For trivial choices that no architect would weigh in on, decide yourself and mention them in passing.
-- After implementing, recap the key changes. Do not commit unless the user asks.
+这些都是指应用的主入口，Compose UI，具体的对话是在 HomChatViewModel 内通过 Agent API 维护
 
-## 中文写作规范
+这是整个应用的根基，它的重要性和优先级最高
 
-适用于所有中文写作：报告、文档、总结及其他成文内容。
+### 对话列表
 
-### 规则 1：使用标准术语
+AI 对话通常是以 list 的形式存放 messages，同时只会有一个对话在进行，数据结构：Conversation - List<Message>。应用通过 Room 数据库，将每次 AI 对话的内容持久化。对话列表指的是对话的列表，数据结构：ConversationList - List<Conversation>
 
-已有通用说法的概念不另造表述。
+这是一个不应混淆的概念，通常在提及对话列表的时候，就是在指后者，而不是 HomeChat 对话界面
 
-- 超长度 / 超不超长度 → 截断 / 是否触及长度上限
-- Ray 的端口会跟自己撞 → 多个任务的 Ray 抢占同一端口
-- 臂 → 方案
-- 只看长度那条线 → 长度启发式基线
-- 刷奖励 → 奖励被优化但评测指标未改善
-- 存档 → checkpoint
+### AI 对话数据结构
 
-### 规则 2：不发明比喻作为术语
+- Conversation - 单次对话中的消息的集合
+- Turn - Agent 通常会与 Tool 交互多个回合才结束。因此，我们将一条用户消息与其产生的若干 Agent 回答、Tool 调用、Tool 结果的集合称为一个 Turn。便于管理
 
-- 血统 → 基座来源
-- 8 个不同血统 → 8 个不同基座的模型
-- 那是尺寸差异，不是血统差异 → 原有区间由 Qwen 的 14B、32B、72B 构成，差异来自参数量而非基座
-- 已经吃掉一半空间 → 已覆盖一半区间
-- 变成了一个认题目的检索器 → 退化为问题识别，与学习价值无关
-- 挑出来的题目看上去健康得多 → 选中问题的截断比例更低
-- 误差范围还盖着基准线 → 置信区间与基线重叠
+### 持久化
 
-### 规则 3：表头和分类名使用中性名词
+项目有着多种持久化方案：
 
-- 坑 / 代价和教训 → 问题 / 影响
-- 把握 → 确认程度
-- 怎么做的 → 实验设置
-- 重挑一次还剩多少重合 → 重采样后的重合率
-- 有几种不同取值 → 取值数量
-- 还在跑的 → 进行中
-- 一个必须关掉的开关 → 需要关闭的过滤器
+- 维护对话列表：使用 Room 数据库，
+- 其他：通过在沙箱内直接读写文件实现，主要通过多 Json 单元（见 XRepo API）
 
-章节状态标签使用统一集合：已完成、已确认、未达到基线、结论待定。出现其他表述（如“做通了”“意外发现”“需要修”）时，替换为集合中最接近的标签。
+### IPC
 
-### 规则 4：不使用“是 X，不是 Y”的对比句式
+目前来说，agent 的对话功能是限定在主进程之内的，虽然有一个宿主的业务，Agent 相关的调用逻辑依然用 Binder 包裹在主进程之内
 
-- 梯度对齐：是噪声，不是信号 → 梯度对齐：三项检查结果均在噪声范围内
-- 我们买到了血统上的多样性，但没有买到能力上的多样性 → 新增模型覆盖了更多基座，但正确率均低于原有区间下界
-- 考法和用法对不上 → 评测口径为成对比较，与实际使用方式不一致
-- 稳定是靠粗糙换来的 → 取值数量少的指标重合率高
-- 越稳定的指标越挑不出东西，越挑得出东西的指标越不稳定 → 重合率与取值数量呈反向关系
+项目通过 Chaquopy 实现 Python 能力支持，在单独的 py 进程中运行代码
 
-### 规则 5：条目可以不包含数字或结论
+---
 
-部分条目只说明发生了什么，即为完整。
+## HARD GATE
 
-例：对照组为随机选取的 32 个问题。
+- 不必维持向后兼容性。移除过时的路径，而不是添加兼容层、回退机制或迁移逻辑
+- 采用能完全满足当前需求的、最简单的实现方案。避免过度抽象、过多的配置项以及不必要的间接层
+- 采用分层方式构建系统。从能实现端到端功能的最小版本起步，在现有可用产品的基础上逐步增加新功能。切勿为了尚未完成的复杂设计而牺牲现有的可用产品
+- 在开辟大型业务时，优先考虑用 ServiceManager 来做依赖注入，避免在构造函数、方法签名里面堆砌太多字段
+- 若能降低整体复杂度或提高可靠性，应优先使用成熟且维护良好的现有库。除非有充分理由，否则不要重复实现通用功能
+- 在自行编写实现或引入新包之前，应优先利用项目中已有的依赖项。在未查阅文档和类型定义之前，切勿主观臆断某个库不具备某项功能
+- 架构决策应着眼于长远。不要接受那种仅能暂时应付、日后还需替换的权宜之计
+- 若某项功能实现难度高（难度评分超过 6/10）且 ROI 较低，在着手开发前应先与用户协商功能范围
+- 允许对 UI 相关的状态机做测试，但禁止给 UI 写单元测试
 
-### 规则 6：未查明原因时写“原因未查明”
+---
 
-前文已写明“原因未查明”时，后文不补充未经验证的解释。
+## Preferred Skills
 
-- 这可能也解释了前文那个现象 → 该现象与截断的关系尚未验证
+### 认知对齐
 
-### 规则 7：不使用口语词
+不仅在与用户对话时会有误差，与 subagent 打交道时同样会出现误差，误差的后果是，后者做出来的东西并不符合前者的预期，因此描述任务的人必须尽可能确保他们的任务一清二楚
 
-- 赢得很干脆 → 差值为 0.030
-- 测得更准 / 测得更糙 → 估计精度更高 / 更低
-- 可选的余地很小 → 候选范围小
-- 基本上等于抓阄 → 接近随机选取
-- 本来就分不出高下 → 真实差距低于可分辨范围
-- 白跑 / 白占 → 无效运行 / 空占
-- 不是白捡的 → 需要 79 GPU·小时
-- 一个致命问题 → 主要问题
-- 有事后找补的嫌疑 → 该切分方式在观察结果之后确定
-- 原因不复杂 → 删除
-- 既然预测这条路走不通，那就退一步 → 删除，直接进入实验设置
+- 在一个需求开始时，如果用户没有带着详细的计划，优先通过 `grill-me` 或 `grill-with-docs` 来快速与用户对齐认知
+- 在需要派发 subagent 的任务中，通过 `prompt-engineering` 或 `writing-for-agents` 来与它们对齐
 
-### 规则 8：不使用拟人表述
+### 讲解
 
-- 天生需要几百到上千次采样 → 该信号所需的采样量为几百到上千次
-- 一旦超就制造出参差 → 截断发生时会增大奖励方差
-- 24 步训练只挪动 0.05 → 24 步训练后正确率变化为 0.05
-- 超得越彻底反而越稳定 → 截断率越高，奖励方差越低
-- 回答内容本身的好坏参差 → 答案质量的差异
+- 需要向用户阐述复杂内容时，可以通过 `eli5` 或 `show-me` 帮助解答。eli5 是打比方，show-me 是用前端页面
 
-## 首选模式
+---
 
-- 需要项目上下文、架构事实、源码入口、能力现状时，直接读源码定位：grep / 文件浏览找入口，再读关键文件
+## 未完成项目
 
-## Skill 路由
-
-- `asc-director-old`
-  - 用于新增功能、方案设计、技术调研、任务拆解、页面开发、模块重构、Bug 修复方案
-  - 适合多阶段任务，不适合回答单个局部源码问题
-- `prompt-engineering` + `context-engineering`
-  - 用于编写或修改提示词、Agent 文档、Skill 文档、任务说明
-  - 凡是目标读者主要是 Agent 而不是人类用户，优先加载它
-- `release-new-version`
-  - 用于 Zafiro 发版提交流程（同步 app/build.gradle.kts 版本字段与 GitHub release）
-
-## 默认执行顺序
-
-1. 判断任务是否需要仓库上下文
-2. 若需要，直接读源码定位（grep / 文件浏览）
-3. 若任务是方案或复杂执行编排，切到 `asc-director-old`
-4. 若任务是提示词或 Agent 文档编写，切到 `context-engineering`
-5. 完成路由后再读源码、给结论或实施修改
+[] HARD: 将 LLMController、agent-runtime 这样的遗留代码逐渐迁移成便于维护和解耦的 ServiceManager 模式
+[] MEDIUM: 统一整个项目的权限管理（:libs:permission-manager)，这个模块封装了一套权限管理系统，实现了 Root-Shizuku-Dialog-JumpSetting 的降级方案，有待确认的是，是否整个项目都完全通过这个 API 做权限获取
+[] MEDIUM: 统一 :libs:permission-manager 与 :libs:libterm 中 Root、Szk 相关的重复代码
+[] EAZY: 通过 Agent API 构建出其他的 Agent 状态载体 - A - 常驻通知栏
+[] MEDIUM: 通过 Agent API 构建出其他的 Agent 状态载体 - B - 悬浮球
+[] MEDIUM: 通过参考开源项目重构宿主业务
+[] HARD: 实现一个 Replay 功能，用户可以录制一段操作，作为工具保存下来，Agent 通过调用这个工具来重放用户的操作。此任务依赖于悬浮球
