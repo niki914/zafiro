@@ -141,6 +141,50 @@ class AgentStatusReducerTest {
     }
 
     @Test
+    fun stopping_setsStoppingPhaseAndRetainsPreview() {
+        var state = AgentStatusReducer.startRound("问")
+        state = AgentStatusReducer.reduce(
+            state,
+            LlmStreamEvent.TextDelta(delta = "正", fullText = "正文"),
+        )
+        val stopping = AgentStatusReducer.stopping(state)
+
+        assertEquals(AgentPhase.Stopping, stopping.status.phase)
+        assertNull(stopping.status.outcome)
+        assertEquals("正文", stopping.status.preview)
+    }
+
+    @Test
+    fun reduce_whenStopping_ignoresTrailingDeltasAndTools() {
+        val state = AgentStatusReducer.stopping(AgentStatusReducer.startRound("问"))
+
+        val deltaState = AgentStatusReducer.reduce(
+            state,
+            LlmStreamEvent.TextDelta(delta = "字", fullText = "文字"),
+        )
+        assertEquals(AgentPhase.Stopping, deltaState.status.phase)
+
+        val toolState = AgentStatusReducer.reduce(
+            deltaState,
+            LlmStreamEvent.ToolRunning(ToolCallStatus(name = "bash")),
+        )
+        assertEquals(AgentPhase.Stopping, toolState.status.phase)
+    }
+
+    @Test
+    fun reduce_whenStopping_allowsCompletedOrError() {
+        val state = AgentStatusReducer.stopping(AgentStatusReducer.startRound("问"))
+
+        val completed = AgentStatusReducer.reduce(state, LlmStreamEvent.Completed)
+        assertEquals(AgentPhase.Idle, completed.status.phase)
+        assertEquals(TurnOutcome.Completed, completed.status.outcome)
+
+        val failed = AgentStatusReducer.reduce(state, LlmStreamEvent.Error(message = "err"))
+        assertEquals(AgentPhase.Idle, failed.status.phase)
+        assertEquals(TurnOutcome.Failed, failed.status.outcome)
+    }
+
+    @Test
     fun reset_returnsDefaultStatus() {
         val reset = AgentStatusReducer.reset()
         assertEquals(AgentPhase.Idle, reset.status.phase)

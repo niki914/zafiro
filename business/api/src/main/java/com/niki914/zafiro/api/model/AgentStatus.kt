@@ -34,6 +34,11 @@ enum class AgentPhase {
      * 改名以免与系统权限混淆。
      */
     WaitingApproval,
+
+    /**
+     * 正在停止中：底层资源正在清理与取消，尚未完全进入 [Idle]。
+     */
+    Stopping,
 }
 
 /** 回合的结束方式。 */

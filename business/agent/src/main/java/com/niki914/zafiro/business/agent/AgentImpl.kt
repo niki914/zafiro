@@ -21,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -126,7 +127,7 @@ object AgentImpl : Agent {
                     statusFlow.value = reducedStatus.status
                 }
             } finally {
-                if (roundToken == token) {
+                if (roundToken == token && statusFlow.value.phase != AgentPhase.Stopping) {
                     if (statusFlow.value.phase != AgentPhase.Idle) {
                         reducedStatus = AgentStatusReducer.interrupt(reducedStatus)
                         statusFlow.value = reducedStatus.status
@@ -140,14 +141,26 @@ object AgentImpl : Agent {
     }
 
     override fun stop() {
-        if (roundActive.value) {
-            conversationFlow.value = ConversationReducer.interrupt(conversationFlow.value)
-            reducedStatus = AgentStatusReducer.interrupt(reducedStatus)
-            statusFlow.value = reducedStatus.status
-        }
-        releaseRound()
+        if (!roundActive.value || statusFlow.value.phase == AgentPhase.Stopping) return
+
+        conversationFlow.value = ConversationReducer.interrupt(conversationFlow.value)
+        reducedStatus = AgentStatusReducer.stopping(reducedStatus)
+        statusFlow.value = reducedStatus.status
+
+        val currentJob = streamJob
+        val token = roundToken
         scope.launch {
-            LLMController.stopCurrentRound()
+            try {
+                LLMController.stopCurrentRound()
+                currentJob?.cancelAndJoin()
+            } finally {
+                if (roundToken == token) {
+                    reducedStatus = AgentStatusReducer.interrupt(reducedStatus)
+                    statusFlow.value = reducedStatus.status
+                    streamJob = null
+                    roundActive.value = false
+                }
+            }
         }
     }
 

@@ -39,7 +39,39 @@ internal object AgentStatusReducer {
         )
     }
 
+    fun stopping(current: ReducedStatus): ReducedStatus {
+        return current.copy(
+            status = current.status.copy(
+                phase = AgentPhase.Stopping,
+                outcome = null,
+            ),
+        )
+    }
+
     fun reduce(current: ReducedStatus, event: LlmStreamEvent): ReducedStatus {
+        if (current.status.phase == AgentPhase.Stopping) {
+            return when (event) {
+                LlmStreamEvent.Completed -> {
+                    current.copy(
+                        status = current.status.copy(
+                            phase = AgentPhase.Idle,
+                            outcome = TurnOutcome.Completed,
+                            preview = current.latestAgentText ?: current.firstAgentText,
+                        ),
+                    )
+                }
+                is LlmStreamEvent.Error -> {
+                    current.copy(
+                        status = current.status.copy(
+                            phase = AgentPhase.Idle,
+                            outcome = TurnOutcome.Failed,
+                            preview = null,
+                        ),
+                    )
+                }
+                else -> current
+            }
+        }
         return when (event) {
             LlmStreamEvent.RoundStarted -> {
                 current.copy(
