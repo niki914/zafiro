@@ -56,8 +56,9 @@ class LocalToolExecutor(
         return decodeOutcome(raw)
     }
 
+    // TODO: 如果工具执行过程中已有部分流式输出，中断时应保留并拼接部分输出（如 "$partial\n\n[Tool execution was interrupted by user.]"）
     override fun onInterrupt(call: ToolCallContext): ToolCallOutcome =
-        ToolCallOutcome.Interrupted()
+        ToolCallOutcome.Interrupted(content = "Tool execution was interrupted by user.")
 
     // ── 本地执行（builtin / py 路由）──────────────────────────────────
 
