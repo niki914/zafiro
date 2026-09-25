@@ -354,7 +354,7 @@ object XRepo {
     }
 
     /** 悬浮球开关的进程内热更新通道：读时回填初值，写时同步。TODO 这里开始出现大量同重复的代码了 */
-    val floatingBallEnabledSetting = MutableStateFlow(true)
+    val floatingBallEnabledSetting = MutableStateFlow(false)
 
     suspend fun floatingBallEnabled(): Boolean {
         return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
@@ -370,6 +370,23 @@ object XRepo {
         }
     }
 
+    /** 常驻通知栏开关的进程内热更新通道 */
+    val residentNotificationEnabledSetting = MutableStateFlow(false)
+
+    suspend fun residentNotificationEnabled(): Boolean {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .residentNotificationEnabled
+            .also { residentNotificationEnabledSetting.value = it }
+    }
+
+    suspend fun setResidentNotificationEnabled(value: Boolean) {
+        residentNotificationEnabledSetting.value = value
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(residentNotificationEnabled = value))
+        }
+    }
+
     /**
      * 回填型设置 flow 的统一冷启动回填：flow 初值是猜的默认值，必须有人调一次
      * getter 读盘才能对齐真值。MainActivity.onCreate 同步调用。
@@ -379,6 +396,7 @@ object XRepo {
         keepScreenOn()
         alwaysShowMessageActions()
         floatingBallEnabled()
+        residentNotificationEnabled()
     }
 
     suspend fun themeMode(): String {

@@ -29,8 +29,10 @@ internal data class AppStateSettings(
     val keepScreenOn: Boolean = true,
     /** 消息操作行（复制/重新生成/fork 等）是否常显。 */
     val alwaysShowMessageActions: Boolean = true,
-    /** 是否启用 Agent 悬浮球。设置入口暂未开放。 */
-    val floatingBallEnabled: Boolean = true,
+    /** 是否启用 Agent 悬浮球。 */
+    val floatingBallEnabled: Boolean = false,
+    /** 是否启用常驻通知栏。 */
+    val residentNotificationEnabled: Boolean = false,
 )
 
 internal object AppStateSettingsCodec {
@@ -55,7 +57,11 @@ internal object AppStateSettingsCodec {
                 ALWAYS_SHOW_MESSAGE_ACTIONS_KEY,
                 default = true
             ),
-            floatingBallEnabled = root.boolean(FLOATING_BALL_ENABLED_KEY, default = true),
+            floatingBallEnabled = root.boolean(FLOATING_BALL_ENABLED_KEY, default = false),
+            residentNotificationEnabled = root.boolean(
+                RESIDENT_NOTIFICATION_ENABLED_KEY,
+                default = false
+            ),
         )
     }
 
@@ -75,6 +81,7 @@ internal object AppStateSettingsCodec {
                 KEEP_SCREEN_ON_KEY to JsonPrimitive(state.keepScreenOn),
                 ALWAYS_SHOW_MESSAGE_ACTIONS_KEY to JsonPrimitive(state.alwaysShowMessageActions),
                 FLOATING_BALL_ENABLED_KEY to JsonPrimitive(state.floatingBallEnabled),
+                RESIDENT_NOTIFICATION_ENABLED_KEY to JsonPrimitive(state.residentNotificationEnabled),
             )
         ).toString()
     }
@@ -92,4 +99,5 @@ internal object AppStateSettingsCodec {
     private const val KEEP_SCREEN_ON_KEY = "keep_screen_on"
     private const val ALWAYS_SHOW_MESSAGE_ACTIONS_KEY = "always_show_message_actions"
     private const val FLOATING_BALL_ENABLED_KEY = "floating_ball_enabled"
+    private const val RESIDENT_NOTIFICATION_ENABLED_KEY = "resident_notification_enabled"
 }
