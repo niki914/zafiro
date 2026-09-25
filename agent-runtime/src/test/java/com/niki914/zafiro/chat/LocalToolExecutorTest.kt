@@ -204,7 +204,7 @@ class LocalToolExecutorTest {
         val executor = LocalToolExecutor(currentTools = { ResolvedTools() })
 
         assertEquals(
-            ToolCallOutcome.Interrupted(),
+            ToolCallOutcome.Interrupted(content = "Tool execution was interrupted by user."),
             executor.onInterrupt(call("a", "{}")),
         )
     }
