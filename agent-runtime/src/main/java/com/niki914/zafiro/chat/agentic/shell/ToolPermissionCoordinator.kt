@@ -1,7 +1,6 @@
 package com.niki914.zafiro.chat.agentic.shell
 
 import com.niki914.logging.Logger
-import com.niki914.zafiro.chat.AgentStatusHolder
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -71,12 +70,10 @@ object ToolPermissionCoordinator {
 
     private fun enterWaiting(requestId: String) {
         waitingIds += requestId
-        AgentStatusHolder.onPermissionPending(waitingIds.peek())
     }
 
     private fun exitWaiting(requestId: String) {
         waitingIds.remove(requestId)
-        AgentStatusHolder.onPermissionPending(waitingIds.peek())
     }
 
     private suspend fun showInAppDialog(request: ToolPermissionRequest): ToolPermissionResponse {
