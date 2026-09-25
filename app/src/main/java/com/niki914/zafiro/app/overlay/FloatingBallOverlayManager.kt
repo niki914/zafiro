@@ -16,6 +16,7 @@ import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +38,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.remoteview.floatingball.DockSide
@@ -45,6 +47,7 @@ import com.niki914.zafiro.remoteview.floatingball.FloatingBallGeometry
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallMorphCard
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallTokens
+import com.niki914.zafiro.service.requireService
 import kotlin.math.hypot
 
 /**
@@ -62,7 +65,7 @@ import kotlin.math.hypot
 object FloatingBallOverlayManager {
 
     private const val TAG = "FloatingBallOverlay"
-    private const val INITIAL_Y_RATIO = 0.35f
+    private const val INITIAL_Y_RATIO = 0.68f
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -76,7 +79,7 @@ object FloatingBallOverlayManager {
         private set
     var dockSide by mutableStateOf(DockSide.Right)
         private set
-    var isSubmerged by mutableStateOf(false)
+    var isSubmerged by mutableStateOf(true)
         private set
     var yRatio by mutableFloatStateOf(INITIAL_Y_RATIO)
         private set
@@ -101,13 +104,12 @@ object FloatingBallOverlayManager {
             val cardWidthPx = (FloatingBallTokens.expandedWidth * density).toInt()
             val cardHeightPx = (FloatingBallTokens.expandedHeight * density).toInt()
 
-            val escapeDistancePx = (FloatingBallTokens.escapeSnapDistance * density).toInt()
-            val initialX = FloatingBallGeometry.calculateStableDockX(
-                dockSide = dockSide,
-                screenWidthPx = screenWidth,
-                ballWidthPx = ballWidthPx,
-                escapeDistancePx = escapeDistancePx,
-            )
+            val submergedPx = (FloatingBallTokens.submergedOffset * density).toInt()
+            val initialX = if (dockSide.isLeft) {
+                -submergedPx
+            } else {
+                screenWidth - (ballWidthPx - submergedPx)
+            }
             val initialY = (screenHeight * INITIAL_Y_RATIO).toInt()
             val initialAnchorXPx = if (dockSide.isRight) {
                 (FloatingBallTokens.rightAnchorX * density).toInt()
@@ -250,6 +252,9 @@ object FloatingBallOverlayManager {
                     val isDark = themePrefs.resolveDarkTheme(isSystemDark)
                     val seed = themePrefs.seedColor?.let { Color(it) }
 
+                    val agentControl = requireService<AgentControl>()
+                    val agentStatus by agentControl.status.collectAsState()
+
                     BaseTheme(
                         darkTheme = isDark,
                         dynamicColor = themePrefs.seedColor == null,
@@ -258,7 +263,7 @@ object FloatingBallOverlayManager {
                         FloatingBallMorphCard(
                             state = ballState,
                             dockSide = dockSide,
-                            preview = "Agent Msg Pre-\n-view..",
+                            preview = agentStatus.preview,
                             onBallClick = {},
                             onMinimize = {
                                 cardLayout.requestCollapse()
@@ -271,6 +276,7 @@ object FloatingBallOverlayManager {
                             },
                             onStop = {
                                 Logger.i(TAG, "FloatingBall: Stop clicked")
+                                agentControl.stop()
                             },
                             onCollapseFinished = {
                                 cardLayout.notifyCollapseFinished()
