@@ -58,7 +58,7 @@ Zafiro 是一个运行在 Android 设备上的智能 Agent，完全开源，支�
 
 ### Agent 系统
 
-- **开箱即用** - 内置 OpenAI、Anthropic、Google Gemini、DeepSeek、OpenRouter、Kimi、阿里百炼、硅基流动等
+- **开箱即用** - 内置 OpenAI、Anthropic、Google Gemini、DeepSeek、OpenRouter、Requesty、Kimi、阿里百炼、硅基流动等
 - **按需扩展** - 完整支持 Skills、MCP，并拥有记忆和工作区，随意扩展
 - **权限管理** - 通过配置规则，每一条运行的命令和代码都由你管控
 

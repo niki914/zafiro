@@ -43,6 +43,7 @@ object ProviderSpecs {
         AnthropicSpec,
         OpenAiSpec,
         OpenRouterSpec,
+        RequestySpec,
         DeepSeekSpec,
         GoogleSpec,
         KimiSpec,
@@ -219,6 +220,25 @@ private data object OpenRouterSpec : ProviderSpec {
             lightContentColorRes = R.color.provider_openrouter_button_light_content,
             darkIconColorRes = R.color.provider_openrouter_icon_dark,
             lightIconColorRes = R.color.provider_openrouter_icon_light,
+        ),
+    )
+}
+
+private data object RequestySpec : ProviderSpec {
+    override val id: String = "requesty"
+    override val brandName: String = "Requesty"
+    override val officialEndpoint: String = "https://router.requesty.ai/v1/chat/completions"
+    override val exampleModelId: String = "openai/gpt-4o-mini"
+    override val allowsCustomEndpointInNewConfig: Boolean = false
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.requesty
+    override val tintIcon: Boolean = true
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_requesty_button_dark_container,
+            lightContainerColorRes = R.color.provider_requesty_button_light_container,
+            darkContentColorRes = R.color.provider_requesty_button_dark_content,
+            lightContentColorRes = R.color.provider_requesty_button_light_content,
         ),
     )
 }

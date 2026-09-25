@@ -59,6 +59,11 @@ class EndpointInferenceTest {
                 "https://openrouter.ai/api/v1/responses",
                 "https://openrouter.ai/api/v1/messages",
             ),
+            "https://router.requesty.ai/v1/chat/completions" to Triple(
+                "https://router.requesty.ai/v1/chat/completions",
+                "https://router.requesty.ai/v1/responses",
+                "https://router.requesty.ai/v1/messages",
+            ),
             "https://api.commandcode.ai/provider/v1/chat/completions" to Triple(
                 "https://api.commandcode.ai/provider/v1/chat/completions",
                 "https://api.commandcode.ai/provider/v1/responses",

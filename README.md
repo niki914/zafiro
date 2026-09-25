@@ -58,7 +58,7 @@ Zafiro is an open-source intelligent Agent running on Android devices, with [BYO
 
 ### Agent System
 
-- **Out-of-the-Box** - built-in support for OpenAI, Anthropic, Google Gemini, DeepSeek, OpenRouter, Kimi, Alibaba Bailian, SiliconFlow, and more
+- **Out-of-the-Box** - built-in support for OpenAI, Anthropic, Google Gemini, DeepSeek, OpenRouter, Requesty, Kimi, Alibaba Bailian, SiliconFlow, and more
 - **Extend as Needed** - full support for Skills and MCP, plus memory and a workspace — extend it your way
 - **Permission Management** - with configurable rules, every command and piece of code is under your control
 
