@@ -381,6 +381,14 @@
     <string name="ui_settings_section_general">一般</string>
     <string name="ui_settings_general">一般設定</string>
     <string name="ui_settings_general_summary">言語と起動時の動作</string>
+    <string name="ui_settings_general_group_appearance">外観と言語</string>
+    <string name="ui_settings_general_group_floating_notification">フローティングと通知</string>
+    <string name="ui_settings_general_group_conversation">会話と操作</string>
+    <string name="ui_settings_general_group_runtime">実行と制御</string>
+    <string name="ui_settings_general_floating_ball">フローティングボール</string>
+    <string name="ui_settings_general_floating_ball_summary">バックグラウンド実行中にエージェントの状態とクイック操作を表示</string>
+    <string name="ui_settings_general_resident_notification">常駐通知</string>
+    <string name="ui_settings_general_resident_notification_summary">通知パネルにリアルタイムの状態とコントロールを表示</string>
     <string name="ui_settings_general_language">言語</string>
     <string name="ui_settings_general_language_follow_system">システムに従う</string>
     <string name="ui_settings_general_load_last_conversation">起動時に前回の会話を読み込む</string>

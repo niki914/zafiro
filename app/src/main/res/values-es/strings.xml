@@ -382,6 +382,14 @@
     <string name="ui_settings_section_general">General</string>
     <string name="ui_settings_general">Ajustes generales</string>
     <string name="ui_settings_general_summary">Idioma y comportamiento de inicio</string>
+    <string name="ui_settings_general_group_appearance">Apariencia e idioma</string>
+    <string name="ui_settings_general_group_floating_notification">Flotante y notificaciones</string>
+    <string name="ui_settings_general_group_conversation">Conversación e interacción</string>
+    <string name="ui_settings_general_group_runtime">Ejecución y control</string>
+    <string name="ui_settings_general_floating_ball">Bola flotante</string>
+    <string name="ui_settings_general_floating_ball_summary">Mostrar estado del agente y acciones rápidas en segundo plano</string>
+    <string name="ui_settings_general_resident_notification">Notificación residente</string>
+    <string name="ui_settings_general_resident_notification_summary">Mostrar estado en vivo y accesos directos en el panel de notificaciones</string>
     <string name="ui_settings_general_language">Idioma</string>
     <string name="ui_settings_general_language_follow_system">Usar el del sistema</string>
     <string name="ui_settings_general_load_last_conversation">Cargar la última conversación al iniciar</string>

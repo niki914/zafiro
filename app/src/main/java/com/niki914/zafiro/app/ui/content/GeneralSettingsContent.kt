@@ -3,35 +3,37 @@ package com.niki914.zafiro.app.ui.content
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.os.LocaleListCompat
-import com.niki914.logging.Logger
+import com.niki914.permission.Permission
+import com.niki914.permission.PermissionState
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
 import com.niki914.uikit.infra.component.settings.SettingsRowSpec
 import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
+import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.PermissionHolder
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.model.ThemeController
-import com.niki914.zafiro.app.ui.model.ThemeMode
+import com.niki914.zafiro.app.ui.model.GeneralSettingsDialog
+import com.niki914.zafiro.app.ui.model.GeneralSettingsEffect
+import com.niki914.zafiro.app.ui.model.GeneralSettingsIntent
+import com.niki914.zafiro.app.ui.model.GeneralSettingsViewModel
 import com.niki914.zafiro.app.ui.nav.ThemeSettingsPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
-import com.niki914.zafiro.repo.XRepo
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 /**
- * General Settings：语言（用户指定优先，空 = 跟随系统）+ 冷启动是否载入上次对话。
- * 容器与 About 同款（SettingsSpecPageContent + GroupedCard）。
+ * General Settings：外观与语言、悬浮与通知、对话与交互、运行与控制 4 个分组。
+ * 容器使用 SettingsSpecPageContent + GroupedCard，弹窗状态由 ViewModel 驱动。
  */
 private const val LANGUAGE_ROW_ID = "general.language"
 private const val APPEARANCE_ROW_ID = "general.appearance"
+private const val FLOATING_BALL_ROW_ID = "general.floating_ball"
+private const val RESIDENT_NOTIFICATION_ROW_ID = "general.resident_notification"
 private const val LOAD_LAST_ROW_ID = "general.load_last"
 private const val ALWAYS_SHOW_ACTIONS_ROW_ID = "general.always_show_message_actions"
 private const val IDLE_TIMEOUT_ROW_ID = "general.idle_timeout"
@@ -67,76 +69,111 @@ private fun languageOptions(): List<LanguageOption> {
 }
 
 @Composable
-fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
-    val scope = rememberCoroutineScope()
-    var savedLanguageTag by rememberSaveable { mutableStateOf<String?>(null) }
-    var loadLastConversation by rememberSaveable { mutableStateOf(false) }
-    var alwaysShowMessageActions by rememberSaveable { mutableStateOf(true) }
-    var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
-    var idleTimeoutSeconds by rememberSaveable { mutableStateOf(60L) }
-    var retryMaxAttempts by rememberSaveable { mutableStateOf(3) }
-    var keepScreenOn by rememberSaveable { mutableStateOf(true) }
-    var showIdleTimeoutDialog by rememberSaveable { mutableStateOf(false) }
-    var showRetryDialog by rememberSaveable { mutableStateOf(false) }
+fun GeneralSettingsContent(
+    onPush: (ZafiroPage) -> Unit = {},
+    viewModel: GeneralSettingsViewModel = pageViewModel(),
+) {
+    val uiState by viewModel.uiStateFlow.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        runCatching {
-            savedLanguageTag = XRepo.languageTag()
-            loadLastConversation = XRepo.loadLastConversationOnStartup()
-            alwaysShowMessageActions = XRepo.alwaysShowMessageActions()
-            idleTimeoutSeconds = XRepo.llmIdleTimeoutSeconds()
-            retryMaxAttempts = XRepo.llmRetryMaxAttempts()
-            keepScreenOn = XRepo.keepScreenOn()
-        }.onFailure {
-            Logger.w("niki914_nexus_GeneralSettings", "load failed ${it.message}")
-        }
+        viewModel.sendIntent(GeneralSettingsIntent.Load)
     }
 
-    val selectedLabel = languageOptions()
-        .firstOrNull { it.tag == savedLanguageTag }
-        ?.label
-        ?: stringResource(R.string.ui_settings_general_language_follow_system)
+    LaunchedEffect(viewModel, context) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                GeneralSettingsEffect.RequestOverlayPermission -> {
+                    val result = PermissionHolder.get(context).request(Permission.OVERLAY)
+                    val granted = result.finalState == PermissionState.GRANTED
+                    viewModel.sendIntent(GeneralSettingsIntent.OnOverlayPermissionResult(granted = granted))
+                }
+                is GeneralSettingsEffect.ApplyApplicationLocales -> {
+                    AppCompatDelegate.setApplicationLocales(
+                        if (effect.languageTag.isBlank()) {
+                            LocaleListCompat.getEmptyLocaleList()
+                        } else {
+                            LocaleListCompat.forLanguageTags(effect.languageTag)
+                        }
+                    )
+                }
+            }
+        }
+    }
 
     val spec = SettingsPageSpec(
         description = null,
         sections = listOf(
+            // 分组 1：外观与语言
             SettingsSectionSpec(
+                title = stringResource(R.string.ui_settings_general_group_appearance),
                 layout = SettingsSectionLayout.GroupedCard,
                 rows = listOf(
                     SettingsRowSpec.Navigation(
                         id = LANGUAGE_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_language),
-                        currentState = selectedLabel,
                     ),
                     SettingsRowSpec.Navigation(
                         id = APPEARANCE_ROW_ID,
                         title = stringResource(R.string.ui_settings_appearance),
-                        currentState = appearanceSummary(),
                     ),
+                ),
+            ),
+            // 分组 2：悬浮与通知
+            SettingsSectionSpec(
+                title = stringResource(R.string.ui_settings_general_group_floating_notification),
+                layout = SettingsSectionLayout.GroupedCard,
+                rows = listOf(
+                    SettingsRowSpec.Toggle(
+                        id = FLOATING_BALL_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_floating_ball),
+                        summary = stringResource(R.string.ui_settings_general_floating_ball_summary),
+                        checked = uiState.floatingBallEnabled,
+                    ),
+                    SettingsRowSpec.Toggle(
+                        id = RESIDENT_NOTIFICATION_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_resident_notification),
+                        summary = stringResource(R.string.ui_settings_general_resident_notification_summary),
+                        checked = uiState.residentNotificationEnabled,
+                    ),
+                ),
+            ),
+            // 分组 3：对话与交互
+            SettingsSectionSpec(
+                title = stringResource(R.string.ui_settings_general_group_conversation),
+                layout = SettingsSectionLayout.GroupedCard,
+                rows = listOf(
                     SettingsRowSpec.Toggle(
                         id = LOAD_LAST_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_load_last_conversation),
-                        checked = loadLastConversation,
+                        checked = uiState.loadLastConversation,
                     ),
                     SettingsRowSpec.Toggle(
                         id = ALWAYS_SHOW_ACTIONS_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_always_show_message_actions),
-                        checked = alwaysShowMessageActions,
+                        checked = uiState.alwaysShowMessageActions,
                     ),
+                ),
+            ),
+            // 分组 4：运行与控制
+            SettingsSectionSpec(
+                title = stringResource(R.string.ui_settings_general_group_runtime),
+                layout = SettingsSectionLayout.GroupedCard,
+                rows = listOf(
                     SettingsRowSpec.Navigation(
                         id = IDLE_TIMEOUT_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_idle_timeout),
-                        currentState = idleTimeoutLabel(idleTimeoutSeconds),
+                        currentState = idleTimeoutLabel(uiState.idleTimeoutSeconds),
                     ),
                     SettingsRowSpec.Navigation(
                         id = RETRY_ATTEMPTS_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_retry_attempts),
-                        currentState = retryAttemptsLabel(retryMaxAttempts),
+                        currentState = retryAttemptsLabel(uiState.retryMaxAttempts),
                     ),
                     SettingsRowSpec.Toggle(
                         id = KEEP_SCREEN_ON_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_keep_screen_on),
-                        checked = keepScreenOn,
+                        checked = uiState.keepScreenOn,
                     ),
                 ),
             ),
@@ -148,32 +185,20 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate ->
-                    if (action.id == LANGUAGE_ROW_ID) {
-                        showLanguageDialog = true
-                    } else if (action.id == APPEARANCE_ROW_ID) {
-                        onPush(ThemeSettingsPage)
-                    } else if (action.id == IDLE_TIMEOUT_ROW_ID) {
-                        showIdleTimeoutDialog = true
-                    } else if (action.id == RETRY_ATTEMPTS_ROW_ID) {
-                        showRetryDialog = true
+                    when (action.id) {
+                        LANGUAGE_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.Language))
+                        APPEARANCE_ROW_ID -> onPush(ThemeSettingsPage)
+                        IDLE_TIMEOUT_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.IdleTimeout))
+                        RETRY_ATTEMPTS_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.RetryAttempts))
                     }
 
                 is SettingsRowAction.ToggleChanged ->
-                    if (action.id == LOAD_LAST_ROW_ID) {
-                        loadLastConversation = action.checked
-                        scope.launch {
-                            XRepo.setLoadLastConversationOnStartup(action.checked)
-                        }
-                    } else if (action.id == ALWAYS_SHOW_ACTIONS_ROW_ID) {
-                        alwaysShowMessageActions = action.checked
-                        scope.launch {
-                            XRepo.setAlwaysShowMessageActions(action.checked)
-                        }
-                    } else if (action.id == KEEP_SCREEN_ON_ROW_ID) {
-                        keepScreenOn = action.checked
-                        scope.launch {
-                            XRepo.setKeepScreenOn(action.checked)
-                        }
+                    when (action.id) {
+                        FLOATING_BALL_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBall(action.checked))
+                        RESIDENT_NOTIFICATION_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleResidentNotification(action.checked))
+                        LOAD_LAST_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleLoadLastConversation(action.checked))
+                        ALWAYS_SHOW_ACTIONS_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleAlwaysShowMessageActions(action.checked))
+                        KEEP_SCREEN_ON_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleKeepScreenOn(action.checked))
                     }
 
                 else -> Unit
@@ -181,80 +206,46 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
         },
     )
 
-    val labeledOptions = languageOptions()
     SingleChoiceLiquidDialog(
-        visible = showLanguageDialog,
-        onDismissRequest = { showLanguageDialog = false },
+        visible = uiState.activeDialog == GeneralSettingsDialog.Language,
+        onDismissRequest = { viewModel.sendIntent(GeneralSettingsIntent.DismissDialog) },
         title = stringResource(R.string.ui_settings_general_language),
-        options = labeledOptions,
-        selectedId = savedLanguageTag ?: "",
+        options = languageOptions(),
+        selectedId = uiState.languageTag,
         optionId = LanguageOption::tag,
         optionLabel = LanguageOption::label,
         onSelect = { option ->
-            savedLanguageTag = option.tag
-            showLanguageDialog = false
-            // 必须同步落盘：setApplicationLocales 触发 recreate 会取消协程作用域
-            runBlocking {
-                XRepo.setLanguageTag(option.tag)
-            }
-            AppCompatDelegate.setApplicationLocales(
-                if (option.tag.isBlank()) {
-                    LocaleListCompat.getEmptyLocaleList()
-                } else {
-                    LocaleListCompat.forLanguageTags(option.tag)
-                },
-            )
+            viewModel.sendIntent(GeneralSettingsIntent.SelectLanguage(option.tag))
         },
     )
 
-    val idleTimeoutOptions = idleTimeoutOptions()
     SingleChoiceLiquidDialog(
-        visible = showIdleTimeoutDialog,
-        onDismissRequest = { showIdleTimeoutDialog = false },
+        visible = uiState.activeDialog == GeneralSettingsDialog.IdleTimeout,
+        onDismissRequest = { viewModel.sendIntent(GeneralSettingsIntent.DismissDialog) },
         title = stringResource(R.string.ui_settings_general_idle_timeout),
         hint = stringResource(R.string.ui_settings_general_idle_timeout_summary),
-        options = idleTimeoutOptions,
-        selectedId = idleTimeoutSeconds.toString(),
+        options = idleTimeoutOptions(),
+        selectedId = uiState.idleTimeoutSeconds.toString(),
         optionId = { it.seconds.toString() },
         optionLabel = { it.label },
         onSelect = { option ->
-            idleTimeoutSeconds = option.seconds
-            showIdleTimeoutDialog = false
-            scope.launch { XRepo.setLlmIdleTimeoutSeconds(option.seconds) }
+            viewModel.sendIntent(GeneralSettingsIntent.SelectIdleTimeout(option.seconds))
         },
     )
 
-    val retryOptions = retryAttemptsOptions()
     SingleChoiceLiquidDialog(
-        visible = showRetryDialog,
-        onDismissRequest = { showRetryDialog = false },
+        visible = uiState.activeDialog == GeneralSettingsDialog.RetryAttempts,
+        onDismissRequest = { viewModel.sendIntent(GeneralSettingsIntent.DismissDialog) },
         title = stringResource(R.string.ui_settings_general_retry_attempts),
         hint = stringResource(R.string.ui_settings_general_retry_summary),
-        options = retryOptions,
-        selectedId = retryMaxAttempts.toString(),
+        options = retryAttemptsOptions(),
+        selectedId = uiState.retryMaxAttempts.toString(),
         optionId = { it.toString() },
         optionLabel = { it.toString() },
         onSelect = { option ->
-            retryMaxAttempts = option
-            showRetryDialog = false
-            scope.launch { XRepo.setLlmRetryMaxAttempts(option) }
+            viewModel.sendIntent(GeneralSettingsIntent.SelectRetryMaxAttempts(option))
         },
     )
-}
-
-@Composable
-private fun appearanceSummary(): String {
-    val prefs = ThemeController.prefs
-    val modeLabel = when (prefs.mode) {
-        ThemeMode.System -> stringResource(R.string.ui_theme_mode_system)
-        ThemeMode.Light -> stringResource(R.string.ui_theme_mode_light)
-        ThemeMode.Dark -> stringResource(R.string.ui_theme_mode_dark)
-    }
-    val colorLabel = prefs.seedColor
-        ?.let { seed -> ThemeSeedColors.indexOf(seed).takeIf { it >= 0 } }
-        ?.let { stringResource(ThemeColorLabelRes[it]) }
-        ?: stringResource(R.string.ui_theme_color_dynamic)
-    return "$modeLabel · $colorLabel"
 }
 
 data class IdleTimeoutOption(
