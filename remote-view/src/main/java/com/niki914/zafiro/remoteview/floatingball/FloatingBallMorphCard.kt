@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -26,13 +27,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.shape.G2CardShape
@@ -50,7 +54,7 @@ fun FloatingBallMorphCard(
     state: FloatingBallState,
     dockSide: DockSide,
     modifier: Modifier = Modifier,
-    preview: String = "Agent Msg Pre-\n-view..",
+    preview: String? = null,
     onBallClick: () -> Unit = {},
     onMinimize: () -> Unit = {},
     onJumpToApp: () -> Unit = {},
@@ -153,25 +157,12 @@ fun FloatingBallMorphCard(
                 0f
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(textSlotHeight)
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                contentAlignment = Alignment.TopCenter,
-            ) {
-                if (textAlpha > 0f) {
-                    Text(
-                        text = preview,
-                        color = cardContentColor,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = FloatingBallTokens.previewMaxLines,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.graphicsLayer { alpha = textAlpha },
-                    )
-                }
-            }
+            FloatingBallPreviewSlot(
+                preview = preview,
+                slotHeight = textSlotHeight,
+                alpha = textAlpha,
+                contentColor = cardContentColor,
+            )
 
             // 操作栏：3 个卡牌按钮永远固定顺序 [跳转应用 | 暂停 | 收起]，像卡牌一样叠放与铺开
             val offsets = FloatingBallGeometry.computeCardStackOffsets(dockSide, progress)
@@ -228,6 +219,99 @@ fun FloatingBallMorphCard(
     }
 }
 
+/**
+ * 预览槽位：根据文本有无自动切换展示。
+ *
+ * 核心约束：
+ * 外层 Box 必须终生占用 [slotHeight]，绝对禁止在 alpha <= 0f 时提前 return 或移除 Box。
+ * 展开/收缩全过程中卡片容器的 containerTop 与 slotHeight 联动抵消，
+ * 保证下方 3 颗按钮的屏幕垂直物理坐标 100% 严格静止。任何 slotHeight 缺失都会造成按钮往上飘。
+ */
+@Composable
+private fun FloatingBallPreviewSlot(
+    preview: String?,
+    slotHeight: Dp,
+    alpha: Float,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(slotHeight),
+    ) {
+        if (alpha > 0f) {
+            val isBlank = preview.isNullOrBlank()
+            if (isBlank) {
+                FloatingBallPlaceholderPreview(
+                    alpha = alpha,
+                    contentColor = contentColor,
+                )
+            } else {
+                FloatingBallTextPreview(
+                    text = preview,
+                    alpha = alpha,
+                    contentColor = contentColor,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 待命/空文本占位：居中显示 '-'。
+ */
+@Composable
+fun FloatingBallPlaceholderPreview(
+    alpha: Float,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .graphicsLayer { this.alpha = alpha },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "-",
+            color = contentColor,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/**
+ * 真实流式文本展示：居中排版，保留充足的行高与内边距以完整容纳 2 行富文本/Emoji。
+ */
+@Composable
+fun FloatingBallTextPreview(
+    text: String,
+    alpha: Float,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .graphicsLayer { this.alpha = alpha },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = contentColor,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                lineHeight = 18.sp,
+            ),
+            maxLines = FloatingBallTokens.previewMaxLines,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
 @Preview(name = "Morph Card - Right Collapsed", showBackground = true)
 @Composable
 private fun PreviewRightCollapsed() {
@@ -250,6 +334,7 @@ private fun PreviewRightExpanded() {
             FloatingBallMorphCard(
                 state = FloatingBallState.Expanded,
                 dockSide = DockSide.Right,
+                preview = "早 ☀️ 需要我干点什么呢？今天的天气真好啊",
                 modifier = Modifier.padding(16.dp),
             )
         }
