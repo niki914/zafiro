@@ -27,7 +27,7 @@ import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class HomeChatViewModelV2UiStateTest {
+class HomeChatViewModelUiStateTest {
     @get:Rule
     val mainDispatcherRule = com.niki914.zafiro.app.ui.model.MainDispatcherRule(UnconfinedTestDispatcher())
 

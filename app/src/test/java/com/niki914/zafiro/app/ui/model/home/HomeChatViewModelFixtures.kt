@@ -36,7 +36,7 @@ internal fun fixture(
     return Fixture(
         store = store,
         agent = agent,
-        vm = HomeChatViewModel__V2(
+        vm = HomeChatViewModel(
             conversations = store,
             textPacer = TextPacer(delayFn = {}),
             thinkingPacer = TextPacer(delayFn = {}),
@@ -48,7 +48,7 @@ internal fun fixture(
 internal data class Fixture(
     val store: FakeHomeConversationStore,
     val agent: FakeHomeAgent,
-    val vm: HomeChatViewModel__V2,
+    val vm: HomeChatViewModel,
 )
 
 internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Agent {
@@ -179,8 +179,8 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
         mutableStatus.value = status
     }
 
-    override fun addApprover(approver: Approver) = error("unused in HomeChatViewModelV2Test")
-    override fun removeApprover(approver: Approver) = error("unused in HomeChatViewModelV2Test")
+    override fun addApprover(approver: Approver) = error("unused in HomeChatViewModelTest")
+    override fun removeApprover(approver: Approver) = error("unused in HomeChatViewModelTest")
 }
 
 internal class FakeHomeConversationStore(
