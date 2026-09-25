@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
  *
  * 草稿文本的落盘按按键节流写 Room，契约明确把这一步留在 app 侧。
  */
-class HomeChatViewModel__V2 internal constructor(
+class HomeChatViewModel internal constructor(
     private val conversations: HomeConversationStore = com.niki914.zafiro.app.ui.model.home.tmp.DefaultHomeConversationStore,
     // 节流器可注入：单测传 delayFn = {} 把放出节奏与状态机解耦（同 TextPacerTest 的用法）
     private val textPacer: TextPacer = TextPacer(),

@@ -349,8 +349,6 @@ object LLMController {
             LOG_TAG,
             "open session id=${restore.id} entries=${restore.entries.size} started"
         )
-        // 上一个会话的预览与回合结果不能显示在新会话上。
-        AgentStatusHolder.onConversationChanged()
         if (runtimeState == null) {
             refresh()
         }
@@ -429,8 +427,6 @@ object LLMController {
             )
 
             turnActive.value = true
-            // 提问此刻尚未落入会话树，由执行侧显式交给状态投影作为预览。
-            AgentStatusHolder.onRoundStarted(query)
             val startedAtMs = System.currentTimeMillis()
             var streamErrorReported = false
             var streamTerminated = false
@@ -473,7 +469,6 @@ object LLMController {
                     ) { event ->
                         val mapped = LlmStreamEventMapper.map(event, startedAtMs)
                         mapped?.let {
-                            AgentStatusHolder.onEvent(it)
                             if (!firstFrameLogged && it is LlmStreamEvent.TextDelta) {
                                 firstFrameLogged = true
                                 Logger.i(
@@ -576,14 +571,11 @@ object LLMController {
         } finally {
             turnActive.value = false
             AccessibilityController.onTurnEnd()
-            // 回合结束（含取消/异常）统一回到空闲：状态不能停在生成中。
-            AgentStatusHolder.onPhase(AgentPhase.Idle)
         }
     }.flowOn(Dispatchers.IO)
 
     suspend fun resetConversation() {
         Logger.i(LOG_TAG, "reset conversation requested")
-        AgentStatusHolder.onConversationChanged()
         // 丢弃当前会话实例（T3）：kill 工具资源 + close，不建新实例。
         // 新会话实例由 ensureSession() 在第一次 send 时惰性创建
         // （树 id 与 Room 会话 id 对齐）；kill 动作确保新会话不继承

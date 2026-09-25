@@ -44,4 +44,10 @@ class AgentImplTest {
         assertEquals(Draft(), AgentImpl.draft.value)
         assertTrue(AgentImpl.draft.value.images.isEmpty())
     }
+
+    @Test
+    fun stop_whenIdle_isNoOp() {
+        AgentImpl.stop()
+        assertEquals(com.niki914.zafiro.api.model.AgentPhase.Idle, AgentImpl.status.value.phase)
+    }
 }
