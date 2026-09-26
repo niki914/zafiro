@@ -1,7 +1,5 @@
 package com.niki914.zafiro.app.overlay
 
-import android.animation.ValueAnimator
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -9,33 +7,18 @@ import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
-import android.view.ViewConfiguration
 import android.view.WindowManager
-import android.view.animation.DecelerateInterpolator
-import android.widget.FrameLayout
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.core.animation.doOnEnd
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
@@ -49,31 +32,33 @@ import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.remoteview.floatingball.DockSide
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallCollapsedBall
+import com.niki914.zafiro.remoteview.floatingball.FloatingBallDetailMorphCard
+import com.niki914.zafiro.remoteview.floatingball.FloatingBallEffect
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallGeometry
+import com.niki914.zafiro.remoteview.floatingball.FloatingBallIntent
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallMorphCard
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallTokens
+import com.niki914.zafiro.remoteview.floatingball.FloatingBallUiState
+import com.niki914.zafiro.remoteview.floatingball.FloatingBallViewModel
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
-import kotlin.math.hypot
 
 /**
- * 悬浮球 WindowManager 承载管理器（双窗口分离架构）。
+ * 悬浮球 WindowManager 承载管理器（三窗口分离与 MVI 解耦架构）。
  *
  * 核心设计：
- * - **双窗口分离（Two-Window Architecture）**：
- *   - [Ball Window]：专职小球常态、手势拖动与贴边淹没。终生尺寸固定，永远不做 Window Resize；
- *   - [Card Window]：专职卡片展开与收缩动效。终生尺寸固定，永远不做 Window Resize；
+ * - **三窗口分离（Three-Window Architecture）**：
+ *   - [Ball Window]：专职小球常态、手势拖动与贴边淹没。终生尺寸固定 (50x50dp)，永远不做 Window Resize；
+ *   - [Card Window]：专职卡片展开与收缩动效。终生尺寸固定 (182x118dp)，永远不做 Window Resize；
+ *   - [Detail Window]：专职授权详情展示与点击空白外部关闭。全屏透明无黑底蒙层，基于卡片物理坐标向屏幕中心平滑扩张/收回。
  * - **零系统级 Resize 缺陷**：
  *   彻底绕过 Android 底层 SurfaceFlinger 从大到小裁切与移动时产生的左上角撕裂和位移补间；
- * - **物理像素严格重合接力**：
- *   展开前和收缩后，在动画交界的那一帧，两窗口在 (ballX, ballY) 处 100% 严丝合缝重合接力，视觉上完全无缝。
- *
- *   TODO: 重构。目前来看，将来至少出现三个 Window。所以肯定是需要解耦的。然后目前这个选择框其实是 compose，所以可以用上 MVI 架构，而不是全部都聚集在这个 overlay manager 里面。
- *   TODO：approver review 以后改成翻页动画并且提供进一步展开的 UI，可以参考已经删除的 Tool permission overlay
+ * - **MVI 状态机驱动（FloatingBallViewModel）**：
+ *   小球、卡片、授权详情三窗口的业务交互逻辑统一收拢于 ViewModel，Overlay 管理器只专职负责 WindowManager 宿主。
  */
 object FloatingBallOverlayManager {
 
@@ -85,39 +70,32 @@ object FloatingBallOverlayManager {
     private var windowManager: WindowManager? = null
     private var ballRootView: FloatingBallTouchLayout? = null
     private var cardRootView: FloatingCardTouchLayout? = null
+    private var detailRootView: View? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
+    private var viewModel: FloatingBallViewModel? = null
 
-    // 悬浮球状态机
-    var ballState by mutableStateOf(FloatingBallState.Collapsed)
-        private set
-    var dockSide by mutableStateOf(DockSide.Right)
-        private set
-    var isSubmerged by mutableStateOf(true)
-        private set
-    var yRatio by mutableFloatStateOf(INITIAL_Y_RATIO)
-        private set
+    // 悬浮球状态代理（读 MVI UiState）
+    val ballState: FloatingBallState
+        get() = viewModel?.uiStateFlow?.value?.ballState ?: FloatingBallState.Collapsed
+    val dockSide: DockSide
+        get() = viewModel?.uiStateFlow?.value?.dockSide ?: DockSide.Right
+    val isSubmerged: Boolean
+        get() = viewModel?.uiStateFlow?.value?.isSubmerged ?: true
+    val yRatio: Float
+        get() = viewModel?.uiStateFlow?.value?.yRatio ?: INITIAL_Y_RATIO
 
     // 授权状态
-    var activeApprovalRequest by mutableStateOf<ApprovalRequest?>(null)
-        private set
+    val activeApprovalRequest: ApprovalRequest?
+        get() = viewModel?.uiStateFlow?.value?.approvalRequest
     private var activeApprovalCont: CancellableContinuation<ApprovalDecision>? = null
     private var floatingBallApprover: FloatingBallApprover? = null
 
     val isShowing: Boolean
         get() = ballRootView != null
 
-    private fun autoExpandIfCollapsed() {
-        mainHandler.post {
-            if (ballState.isCollapsed) {
-                ballRootView?.requestExpand()
-            }
-        }
-    }
-
     private fun resolveApproval(decision: ApprovalDecision) {
         val cont = activeApprovalCont
         activeApprovalCont = null
-        activeApprovalRequest = null
         cont?.resume(decision)
     }
 
@@ -125,14 +103,15 @@ object FloatingBallOverlayManager {
         override suspend fun decide(request: ApprovalRequest): ApprovalDecision {
             return suspendCancellableCoroutine { cont ->
                 mainHandler.post {
-                    activeApprovalRequest = request
                     activeApprovalCont = cont
-                    autoExpandIfCollapsed()
+                    viewModel?.sendIntent(FloatingBallIntent.UpdateApprovalRequest(request))
                 }
                 cont.invokeOnCancellation {
                     mainHandler.post {
-                        if (activeApprovalRequest == request) {
-                            activeApprovalRequest = null
+                        if (viewModel?.uiStateFlow?.value?.approvalRequest == request) {
+                            viewModel?.sendIntent(FloatingBallIntent.UpdateApprovalRequest(null))
+                        }
+                        if (activeApprovalCont === cont) {
                             activeApprovalCont = null
                         }
                     }
@@ -208,10 +187,47 @@ object FloatingBallOverlayManager {
             }
             lifecycleOwner = owner
 
+            val vmInstance = FloatingBallViewModel()
+            viewModel = vmInstance
+
             val approver = FloatingBallApprover()
             floatingBallApprover = approver
             val agentControl = runCatching { requireService<AgentControl>() }.getOrNull()
             agentControl?.addApprover(approver)
+
+            lateinit var ballLayout: FloatingBallTouchLayout
+            lateinit var cardLayout: FloatingCardTouchLayout
+
+            owner.lifecycleScope.launch {
+                vmInstance.uiEffect.collect { effect ->
+                    when (effect) {
+                        FloatingBallEffect.ExpandCard -> {
+                            ballLayout.requestExpand()
+                        }
+                        is FloatingBallEffect.CollapseCard -> {
+                            cardLayout.requestCollapse(effect.snapDock)
+                        }
+                        FloatingBallEffect.ShowDetail -> {
+                            showDetailWindow(appContext, wm, owner)
+                        }
+                        FloatingBallEffect.DismissDetail -> {
+                            removeDetailWindow()
+                        }
+                        is FloatingBallEffect.SettleApproval -> {
+                            resolveApproval(effect.decision)
+                        }
+                        FloatingBallEffect.RequestStopAgent -> {
+                            runCatching { requireService<AgentControl>() }.getOrNull()?.stop()
+                        }
+                        FloatingBallEffect.LaunchApp -> {
+                            val intent = Intent(appContext, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            appContext.startActivity(intent)
+                        }
+                    }
+                }
+            }
 
             owner.lifecycleScope.launch {
                 var lastOutcome: TurnOutcome? = null
@@ -221,14 +237,17 @@ object FloatingBallOverlayManager {
                     val outcomeArrived = newOutcome != null && newOutcome != lastOutcome && lastPhase != AgentPhase.Idle
                     lastOutcome = newOutcome
                     lastPhase = status.phase
+                    vmInstance.sendIntent(
+                        FloatingBallIntent.UpdateAgentStatus(
+                            preview = status.preview,
+                            isRunning = status.phase != AgentPhase.Idle,
+                        )
+                    )
                     if (outcomeArrived) {
-                        autoExpandIfCollapsed()
+                        vmInstance.sendIntent(FloatingBallIntent.RequestExpand)
                     }
                 }
             }
-
-            lateinit var ballLayout: FloatingBallTouchLayout
-            lateinit var cardLayout: FloatingCardTouchLayout
 
             // --- A. 小球窗口挂载 ---
             ballLayout = FloatingBallTouchLayout(
@@ -237,18 +256,21 @@ object FloatingBallOverlayManager {
                 lp = ballLp,
                 initialBallX = initialX,
                 initialBallY = initialY,
+                dockSideProvider = { dockSide },
+                isSubmergedProvider = { isSubmerged },
                 onRequestExpand = {
-                    cardLayout.openAt(ballLayout.ballX, ballLayout.ballY, dockSide)
+                    val currentDock = vmInstance.uiStateFlow.value.dockSide
+                    cardLayout.openAt(ballLayout.ballX, ballLayout.ballY, currentDock)
                 },
                 onDockSideChanged = { newDock ->
-                    dockSide = newDock
+                    vmInstance.sendIntent(FloatingBallIntent.UpdateDockSide(newDock))
                 },
                 onSnapFinished = { newDock, submerged ->
-                    dockSide = newDock
-                    isSubmerged = submerged
+                    vmInstance.sendIntent(FloatingBallIntent.UpdateDockSide(newDock))
+                    vmInstance.sendIntent(FloatingBallIntent.UpdateSubmerged(submerged))
                 },
                 onPositionUpdated = { newYRatio ->
-                    yRatio = newYRatio
+                    vmInstance.sendIntent(FloatingBallIntent.UpdatePosition(newYRatio))
                 },
             ).apply {
                 setViewTreeLifecycleOwner(owner)
@@ -271,7 +293,7 @@ object FloatingBallOverlayManager {
                     ) {
                         FloatingBallCollapsedBall(
                             onClick = {
-                                ballLayout.requestExpand()
+                                vmInstance.sendIntent(FloatingBallIntent.RequestExpand)
                             },
                         )
                     }
@@ -289,7 +311,7 @@ object FloatingBallOverlayManager {
                 initialBallY = initialY,
                 onCardDragged = { newBallX, newBallY, newDock ->
                     ballLayout.syncPosition(newBallX, newBallY)
-                    dockSide = newDock
+                    vmInstance.sendIntent(FloatingBallIntent.UpdateDockSide(newDock))
                 },
                 onCardCollapseStarting = { anchorX, anchorY ->
                     ballLayout.syncPosition(anchorX, anchorY)
@@ -297,17 +319,16 @@ object FloatingBallOverlayManager {
                     ballLayout.visibility = View.VISIBLE
                 },
                 onCardCollapseCompleted = { finalBallX, finalBallY, snapDock ->
-                    ballState = FloatingBallState.Collapsed
                     ballLayout.syncPosition(finalBallX, finalBallY)
                     ballLayout.visibility = View.VISIBLE
                     ballLayout.alpha = 1f
                     cardLayout.visibility = View.GONE
                     if (snapDock != null) {
-                        dockSide = snapDock
-                        isSubmerged = true
+                        vmInstance.sendIntent(FloatingBallIntent.UpdateDockSide(snapDock))
+                        vmInstance.sendIntent(FloatingBallIntent.UpdateSubmerged(true))
                         ballLayout.snapToEdge(snapDock)
                     } else {
-                        isSubmerged = false
+                        vmInstance.sendIntent(FloatingBallIntent.UpdateSubmerged(false))
                     }
                 },
             ).apply {
@@ -325,11 +346,7 @@ object FloatingBallOverlayManager {
                     val isDark = themePrefs.resolveDarkTheme(isSystemDark)
                     val seed = themePrefs.seedColor?.let { Color(it) }
 
-                    val currentAgentControl = requireService<AgentControl>()
-                    val agentStatus by currentAgentControl.status.collectAsState()
-                    val currentApproval = activeApprovalRequest
-
-                    val previewText = agentStatus.preview
+                    val uiState by vmInstance.uiStateFlow.collectAsState()
 
                     BaseTheme(
                         darkTheme = isDark,
@@ -337,36 +354,30 @@ object FloatingBallOverlayManager {
                         seedColor = seed,
                     ) {
                         FloatingBallMorphCard(
-                            state = ballState,
-                            dockSide = dockSide,
-                            preview = previewText,
-                            approvalRequest = currentApproval,
-                            isApprovalPending = currentApproval != null,
-                            isStopEnabled = agentStatus.phase != AgentPhase.Idle,
+                            state = uiState.ballState,
+                            dockSide = uiState.dockSide,
+                            preview = uiState.preview,
+                            approvalRequest = uiState.approvalRequest,
+                            isApprovalPending = uiState.isApprovalPending,
+                            isStopEnabled = uiState.isStopEnabled,
                             onBallClick = {},
                             onMinimize = {
-                                cardLayout.requestCollapse()
+                                vmInstance.sendIntent(FloatingBallIntent.RequestCollapse())
                             },
                             onJumpToApp = {
-                                val intent = Intent(appContext, MainActivity::class.java).apply {
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                }
-                                appContext.startActivity(intent)
+                                vmInstance.sendIntent(FloatingBallIntent.JumpToApp)
                             },
                             onStop = {
-                                Logger.i(TAG, "FloatingBall: Stop clicked")
-                                currentAgentControl.stop()
+                                vmInstance.sendIntent(FloatingBallIntent.StopAgent)
                             },
                             onAllow = {
-                                Logger.i(TAG, "FloatingBall: Allow clicked")
-                                resolveApproval(ApprovalDecision.Allow)
+                                vmInstance.sendIntent(FloatingBallIntent.AllowApproval)
                             },
                             onDeny = {
-                                Logger.i(TAG, "FloatingBall: Deny clicked")
-                                resolveApproval(ApprovalDecision.Deny)
+                                vmInstance.sendIntent(FloatingBallIntent.DenyApproval)
                             },
                             onOpenDetail = {
-                                Logger.i(TAG, "FloatingBall: OpenDetail clicked")
+                                vmInstance.sendIntent(FloatingBallIntent.OpenDetail)
                             },
                             onCollapseFinished = {
                                 cardLayout.notifyCollapseFinished()
@@ -388,10 +399,10 @@ object FloatingBallOverlayManager {
             cardRootView = cardLayout
 
             try {
-                // ballLayout 在下，cardLayout 在上（展开时覆于小球之上）
+                // ballLayout 在下，cardLayout 在上
                 wm.addView(ballLayout, ballLp)
                 wm.addView(cardLayout, cardLp)
-                Logger.i(TAG, "FloatingBall dual windows added to WindowManager (ball below, card above)")
+                Logger.i(TAG, "FloatingBall 2 windows added to WindowManager (ball, card)")
             } catch (e: Exception) {
                 Logger.e(TAG, "Failed to add FloatingBall windows", e)
                 dismiss()
@@ -406,6 +417,8 @@ object FloatingBallOverlayManager {
             }
             floatingBallApprover = null
             resolveApproval(ApprovalDecision.Abstain)
+
+            removeDetailWindow()
 
             val wm = windowManager
 
@@ -433,417 +446,98 @@ object FloatingBallOverlayManager {
 
             ballRootView = null
             cardRootView = null
+            detailRootView = null
+            viewModel = null
             windowManager = null
             lifecycleOwner = null
-            Logger.i(TAG, "FloatingBall dual windows dismissed")
+            Logger.i(TAG, "FloatingBall 3 windows dismissed")
         }
     }
 
-    /**
-     * 小球窗口触摸承载（专职小球拖动、贴边吸附与淹没）。
-     */
-    @SuppressLint("ViewConstructor")
-    private class FloatingBallTouchLayout(
-        context: Context,
-        private val wm: WindowManager,
-        private val lp: WindowManager.LayoutParams,
-        initialBallX: Int,
-        initialBallY: Int,
-        private val onRequestExpand: () -> Unit,
-        private val onDockSideChanged: (DockSide) -> Unit,
-        private val onSnapFinished: (DockSide, Boolean) -> Unit,
-        private val onPositionUpdated: (Float) -> Unit,
-    ) : FrameLayout(context) {
 
-        var ballX: Int = initialBallX
-            private set
-        var ballY: Int = initialBallY
-            private set
+    private fun showDetailWindow(appContext: Context, wm: WindowManager, owner: OverlayLifecycleOwner) {
+        if (detailRootView != null) return
+        val request = viewModel?.uiStateFlow?.value?.approvalRequest ?: return
+        val cardLayout = cardRootView ?: return
 
-        private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
-        private var downRawX = 0f
-        private var downRawY = 0f
-        private var lastRawX = 0f
-        private var lastRawY = 0f
-        private var isDragging = false
-        private var positionAnimator: ValueAnimator? = null
+        val density = appContext.resources.displayMetrics.density
+        val cardXDp = (cardLayout.cardX / density).dp
+        val cardYDp = (cardLayout.cardY / density).dp
 
-        private val density: Float get() = context.resources.displayMetrics.density
-        private val ballWidthPx: Int get() = (FloatingBallTokens.buttonDiameter * density).toInt()
-        private val ballHeightPx: Int get() = (FloatingBallTokens.buttonDiameter * density).toInt()
-        private val submergedPx: Int get() = (FloatingBallTokens.submergedOffset * density).toInt()
-        private val snapThresholdPx: Float get() = FloatingBallTokens.snapThreshold * density
-        private val escapeDistancePx: Int get() = (FloatingBallTokens.escapeSnapDistance * density).toInt()
+        // 注意：Window 2（cardLayout）先保持 VISIBLE 垫底，绝不提前隐藏！
+        // 等待 Window 3 首帧真实绘制完毕（onFirstFrameReady）后再交接隐藏，杜绝开窗闪烁
 
-        private val minBallY: Int get() = ((32 + FloatingBallTokens.anchorY) * density).toInt()
-        private val maxBallY: Int get() = (context.resources.displayMetrics.heightPixels - (48 + FloatingBallTokens.expandedHeight - FloatingBallTokens.anchorY) * density).toInt()
-
-        fun syncPosition(newX: Int, newY: Int) {
-            ballX = newX
-            ballY = newY.coerceIn(minBallY, maxBallY)
-            lp.x = ballX
-            lp.y = ballY
-            val screenWidth = context.resources.displayMetrics.widthPixels
-            val newDock = FloatingBallGeometry.resolveDockSide(ballX.toFloat(), ballWidthPx, screenWidth)
-            if (newDock != dockSide) {
-                onDockSideChanged(newDock)
-            }
-            if (isAttachedToWindow) {
-                wm.updateViewLayout(this, lp)
-            }
+        val detailLp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            windowAnimations = 0
         }
 
-        fun snapToEdge(dock: DockSide) {
-            val screenWidth = context.resources.displayMetrics.widthPixels
-            val targetX = if (dock.isLeft) -submergedPx else screenWidth - (ballWidthPx - submergedPx)
-            onDockSideChanged(dock)
-            animateBallTo(targetX, ballY) {
-                onSnapFinished(dock, true)
-            }
-        }
+        val composeView = ComposeView(appContext).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+            setContent {
+                val themePrefs = ThemeController.prefs
+                val isSystemDark = isSystemInDarkTheme()
+                val isDark = themePrefs.resolveDarkTheme(isSystemDark)
+                val seed = themePrefs.seedColor?.let { Color(it) }
 
-        fun applySubmerged(dock: DockSide) {
-            val screenWidth = context.resources.displayMetrics.widthPixels
-            ballX = if (dock.isLeft) -submergedPx else screenWidth - (ballWidthPx - submergedPx)
-            lp.x = ballX
-            if (isAttachedToWindow) {
-                wm.updateViewLayout(this, lp)
-            }
-        }
-
-        override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    positionAnimator?.cancel()
-                    downRawX = ev.rawX
-                    downRawY = ev.rawY
-                    lastRawX = ev.rawX
-                    lastRawY = ev.rawY
-                    isDragging = false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dist = hypot((ev.rawX - downRawX).toDouble(), (ev.rawY - downRawY).toDouble()).toFloat()
-                    if (dist > touchSlop) {
-                        isDragging = true
-                        return true
-                    }
-                }
-            }
-            return false
-        }
-
-        @SuppressLint("ClickableViewAccessibility")
-        override fun onTouchEvent(ev: MotionEvent): Boolean {
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> return true
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = ev.rawX - lastRawX
-                    val dy = ev.rawY - lastRawY
-                    lastRawX = ev.rawX
-                    lastRawY = ev.rawY
-
-                    val screenWidth = context.resources.displayMetrics.widthPixels
-
-                    ballX += dx.toInt()
-                    ballY = (ballY + dy.toInt()).coerceIn(minBallY, maxBallY)
-                    lp.x = ballX
-                    lp.y = ballY
-
-                    val newDock = FloatingBallGeometry.resolveDockSide(ballX.toFloat(), ballWidthPx, screenWidth)
-                    if (newDock != dockSide) {
-                        onDockSideChanged(newDock)
-                    }
-
-                    if (isAttachedToWindow) {
-                        wm.updateViewLayout(this, lp)
-                    }
-                    return true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (isDragging) {
-                        isDragging = false
-                        handleSnap()
-                    }
-                    return true
-                }
-            }
-            return super.onTouchEvent(ev)
-        }
-
-        private fun handleSnap() {
-            val screenWidth = context.resources.displayMetrics.widthPixels
-            val screenHeight = context.resources.displayMetrics.heightPixels
-
-            val currentYRatio = ballY.toFloat() / screenHeight.coerceAtLeast(1)
-            onPositionUpdated(currentYRatio)
-
-            val distanceToLeft = ballX.toFloat()
-            val distanceToRight = (screenWidth - (ballX + ballWidthPx)).toFloat()
-
-            when {
-                distanceToLeft < snapThresholdPx -> {
-                    val targetX = -submergedPx
-                    onDockSideChanged(DockSide.Left)
-                    animateBallTo(targetX, ballY) {
-                        onSnapFinished(DockSide.Left, true)
-                    }
-                }
-                distanceToRight < snapThresholdPx -> {
-                    val targetX = screenWidth - (ballWidthPx - submergedPx)
-                    onDockSideChanged(DockSide.Right)
-                    animateBallTo(targetX, ballY) {
-                        onSnapFinished(DockSide.Right, true)
-                    }
-                }
-                else -> {
-                    val finalDock = if (distanceToLeft < distanceToRight) DockSide.Left else DockSide.Right
-                    onDockSideChanged(finalDock)
-                    onSnapFinished(finalDock, false)
+                BaseTheme(
+                    darkTheme = isDark,
+                    dynamicColor = themePrefs.seedColor == null,
+                    seedColor = seed,
+                ) {
+                    FloatingBallDetailMorphCard(
+                        startCardX = cardXDp,
+                        startCardY = cardYDp,
+                        request = request,
+                        onAllow = {
+                            cardLayout.makeVisibleAndNotifyDrawn { removeDetailWindow() }
+                            viewModel?.sendIntent(FloatingBallIntent.AllowApproval)
+                        },
+                        onDeny = {
+                            cardLayout.makeVisibleAndNotifyDrawn { removeDetailWindow() }
+                            viewModel?.sendIntent(FloatingBallIntent.DenyApproval)
+                        },
+                        onFirstFrameReady = {
+                            // Window 3 首帧真实绘制完毕（且与卡片完全重叠），此时让底层卡片隐藏
+                            cardRootView?.visibility = View.INVISIBLE
+                        },
+                        onCollapseFinished = {
+                            cardLayout.makeVisibleAndNotifyDrawn { removeDetailWindow() }
+                            viewModel?.sendIntent(FloatingBallIntent.CloseDetail)
+                        },
+                    )
                 }
             }
         }
 
-        fun requestExpand() {
-            val screenWidth = context.resources.displayMetrics.widthPixels
-            val distanceToLeft = ballX
-            val distanceToRight = screenWidth - (ballX + ballWidthPx)
-
-            if (isSubmerged || distanceToLeft < escapeDistancePx || distanceToRight < escapeDistancePx) {
-                val escapeX = FloatingBallGeometry.calculateStableDockX(
-                    dockSide = dockSide,
-                    screenWidthPx = screenWidth,
-                    ballWidthPx = ballWidthPx,
-                    escapeDistancePx = escapeDistancePx,
-                )
-
-                animateBallTo(escapeX, ballY) {
-                    isSubmerged = false
-                    onRequestExpand()
-                }
-            } else {
-                onRequestExpand()
-            }
-        }
-
-        private fun animateBallTo(targetX: Int, targetY: Int, onEnd: () -> Unit = {}) {
-            positionAnimator?.cancel()
-            val startX = ballX
-            val startY = ballY
-
-            if (startX == targetX && startY == targetY) {
-                onEnd()
-                return
-            }
-
-            positionAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 200
-                interpolator = DecelerateInterpolator()
-                addUpdateListener {
-                    val frac = it.animatedValue as Float
-                    ballX = (startX + (targetX - startX) * frac).toInt()
-                    ballY = (startY + (targetY - startY) * frac).toInt()
-                    lp.x = ballX
-                    lp.y = ballY
-                    if (isAttachedToWindow) {
-                        wm.updateViewLayout(this@FloatingBallTouchLayout, lp)
-                    }
-                }
-                doOnEnd {
-                    onEnd()
-                }
-                start()
-            }
+        detailRootView = composeView
+        try {
+            wm.addView(composeView, detailLp)
+            Logger.i(TAG, "FloatingBall detail window added on-demand")
+        } catch (e: Exception) {
+            Logger.e(TAG, "Failed to add detail window", e)
+            removeDetailWindow()
         }
     }
 
-    /**
-     * 卡片窗口触摸承载（专职展开展示、拖动与收缩交接）。
-     */
-    @SuppressLint("ViewConstructor")
-    private class FloatingCardTouchLayout(
-        context: Context,
-        private val wm: WindowManager,
-        private val lp: WindowManager.LayoutParams,
-        initialBallX: Int,
-        initialBallY: Int,
-        private val onCardDragged: (Int, Int, DockSide) -> Unit,
-        private val onCardCollapseStarting: (Int, Int) -> Unit,
-        private val onCardCollapseCompleted: (Int, Int, DockSide?) -> Unit,
-    ) : FrameLayout(context) {
-
-        private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
-        private var downRawX = 0f
-        private var downRawY = 0f
-        private var lastRawX = 0f
-        private var lastRawY = 0f
-        private var isDragging = false
-
-        private val density: Float get() = context.resources.displayMetrics.density
-        private val ballWidthPx: Int get() = (FloatingBallTokens.buttonDiameter * density).toInt()
-        private val cardWidthPx: Int get() = (FloatingBallTokens.expandedWidth * density).toInt()
-        private val cardHeightPx: Int get() = (FloatingBallTokens.expandedHeight * density).toInt()
-        private val rightAnchorXPx: Int get() = (FloatingBallTokens.rightAnchorX * density).toInt()
-        private val leftAnchorXPx: Int get() = (FloatingBallTokens.leftAnchorX * density).toInt()
-        private val anchorYPx: Int get() = (FloatingBallTokens.anchorY * density).toInt()
-        private val snapThresholdPx: Float get() = FloatingBallTokens.snapThreshold * density
-        private val submergedPx: Int get() = (FloatingBallTokens.submergedOffset * density).toInt()
-
-        private val minCardY: Int get() = (32 * density).toInt()
-        private val maxCardY: Int get() = (context.resources.displayMetrics.heightPixels - (48 + FloatingBallTokens.expandedHeight) * density).toInt()
-
-        private var currentAnchorBallX = initialBallX
-        private var currentAnchorBallY = initialBallY
-        private var pendingSnapDock: DockSide? = null
-
-        fun openAt(ballX: Int, ballY: Int, dock: DockSide) {
-            currentAnchorBallX = ballX
-            currentAnchorBallY = ballY
-
-            val anchorXPx = if (dock.isRight) rightAnchorXPx else leftAnchorXPx
-            lp.x = ballX - anchorXPx
-            lp.y = ballY - anchorYPx
-
-            if (isAttachedToWindow) {
-                wm.updateViewLayout(this, lp)
-            }
-            alpha = 1f
-            visibility = View.VISIBLE
-            ballState = FloatingBallState.Expanded
-        }
-
-        fun requestCollapse(snapDock: DockSide? = null) {
-            pendingSnapDock = snapDock
-            onCardCollapseStarting(currentAnchorBallX, currentAnchorBallY)
-            ballState = FloatingBallState.Collapsed
-        }
-
-        fun notifyCollapseFinished() {
-            val snapDock = pendingSnapDock
-            pendingSnapDock = null
-            onCardCollapseCompleted(currentAnchorBallX, currentAnchorBallY, snapDock)
-        }
-
-        override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    downRawX = ev.rawX
-                    downRawY = ev.rawY
-                    lastRawX = ev.rawX
-                    lastRawY = ev.rawY
-                    isDragging = false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dist = hypot((ev.rawX - downRawX).toDouble(), (ev.rawY - downRawY).toDouble()).toFloat()
-                    if (dist > touchSlop) {
-                        isDragging = true
-                        return true
-                    }
-                }
-            }
-            return false
-        }
-
-        @SuppressLint("ClickableViewAccessibility")
-        override fun onTouchEvent(ev: MotionEvent): Boolean {
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> return true
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = ev.rawX - lastRawX
-                    val dy = ev.rawY - lastRawY
-                    lastRawX = ev.rawX
-                    lastRawY = ev.rawY
-
-                    val screenWidth = context.resources.displayMetrics.widthPixels
-
-                    lp.x += dx.toInt()
-                    lp.y = (lp.y + dy.toInt()).coerceIn(minCardY, maxCardY)
-
-                    val newDock = FloatingBallGeometry.resolveDockSide(lp.x.toFloat(), cardWidthPx, screenWidth)
-
-                    val anchorXPx = if (newDock.isRight) rightAnchorXPx else leftAnchorXPx
-                    currentAnchorBallX = lp.x + anchorXPx
-                    currentAnchorBallY = lp.y + anchorYPx
-
-                    onCardDragged(currentAnchorBallX, currentAnchorBallY, newDock)
-
-                    if (isAttachedToWindow) {
-                        wm.updateViewLayout(this, lp)
-                    }
-                    return true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (isDragging) {
-                        isDragging = false
-                        handleSnap()
-                    }
-                    return true
-                }
-            }
-            return super.onTouchEvent(ev)
-        }
-
-        private fun handleSnap() {
-            val screenWidth = context.resources.displayMetrics.widthPixels
-            val distanceToLeft = lp.x.toFloat()
-            val distanceToRight = (screenWidth - (lp.x + cardWidthPx)).toFloat()
-
-            when {
-                distanceToLeft < snapThresholdPx -> {
-                    // 拉到左边缘收起：先在原地收缩为小球，完成后平滑吸附到左侧并淹没
-                    dockSide = DockSide.Left
-                    requestCollapse(snapDock = DockSide.Left)
-                }
-                distanceToRight < snapThresholdPx -> {
-                    // 拉到右边缘收起：先在原地收缩为小球，完成后平滑吸附到右侧并淹没
-                    dockSide = DockSide.Right
-                    requestCollapse(snapDock = DockSide.Right)
-                }
-                else -> {
-                    // 自由悬停：保持展开
-                    val finalDock = FloatingBallGeometry.resolveDockSide(lp.x.toFloat(), cardWidthPx, screenWidth)
-                    onCardDragged(currentAnchorBallX, currentAnchorBallY, finalDock)
-                }
-            }
-        }
-    }
-
-    private class OverlayLifecycleOwner :
-        LifecycleOwner,
-        SavedStateRegistryOwner,
-        ViewModelStoreOwner {
-
-        private val lifecycleRegistry = LifecycleRegistry(this)
-        private val savedStateRegistryController = SavedStateRegistryController.create(this)
-        private val store = ViewModelStore()
-
-        override val lifecycle: Lifecycle get() = lifecycleRegistry
-        override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
-        override val viewModelStore: ViewModelStore get() = store
-
-        fun onCreate() {
-            savedStateRegistryController.performRestore(null)
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        }
-
-        fun onStart() {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        }
-
-        fun onResume() {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-        }
-
-        fun onPause() {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        }
-
-        fun onStop() {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-        }
-
-        fun onDestroy() {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-            store.clear()
+    private fun removeDetailWindow() {
+        val view = detailRootView ?: return
+        detailRootView = null
+        try {
+            windowManager?.removeViewImmediate(view)
+            Logger.i(TAG, "FloatingBall detail window removed")
+        } catch (e: Exception) {
+            Logger.w(TAG, "Failed to remove detail window", e)
         }
     }
 }

@@ -61,14 +61,11 @@ object ToolPermissionCoordinator {
             "confirm id=${request.id} tool=${request.toolName} uiResumed=$isUiResumed handler=${backgroundConfirmationHandler != null}",
         )
         val handler = backgroundConfirmationHandler
-        if (isUiResumed && handler != null) {
+        if (handler != null) {
             return showConcurrent(request, handler)
         }
         if (isUiResumed) {
             return showInAppDialog(request)
-        }
-        if (handler != null) {
-            return showBackgroundDialog(request, handler)
         }
         Logger.i(LOG_TAG, "confirm denied unavailable id=${request.id}")
         return ToolPermissionResponse.DENIED_UNAVAILABLE
@@ -95,7 +92,11 @@ object ToolPermissionCoordinator {
                 inAppDeferred.onAwait { it }
                 handlerDeferred.onAwait { resp ->
                     if (resp == ToolPermissionResponse.DENIED_UNAVAILABLE) {
-                        inAppDeferred.await()
+                        if (isUiResumed) {
+                            inAppDeferred.await()
+                        } else {
+                            resp
+                        }
                     } else {
                         resp
                     }
@@ -132,19 +133,6 @@ object ToolPermissionCoordinator {
                 deferred = null
                 pendingFlow.value = null
             }
-            exitWaiting(request.id)
-        }
-    }
-
-    /** 后台弹窗（overlay）：等待状态同样需要对外可见，但不动 [pendingConfirmation]。 */
-    private suspend fun showBackgroundDialog(
-        request: ToolPermissionRequest,
-        handler: suspend (ToolPermissionRequest) -> ToolPermissionResponse,
-    ): ToolPermissionResponse {
-        enterWaiting(request.id)
-        return try {
-            handler(request)
-        } finally {
             exitWaiting(request.id)
         }
     }
