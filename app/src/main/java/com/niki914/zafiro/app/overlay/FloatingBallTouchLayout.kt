@@ -91,10 +91,26 @@ internal class FloatingBallTouchLayout(
         }
     }
 
+    private val motionPredictor: FloatingBallMotionPredictor by lazy {
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        FloatingBallMotionPredictor(
+            sampleWindowMs = 200L,
+            maxGlideDistancePx = 95f * density,
+            snapThresholdPx = snapThresholdPx,
+            screenWidthPx = screenWidth,
+            ballWidthPx = ballWidthPx,
+            submergedPx = submergedPx,
+            minBallY = minBallY,
+            maxBallY = maxBallY,
+        )
+    }
+
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 positionAnimator?.cancel()
+                motionPredictor.reset()
+                motionPredictor.recordPoint(ev.rawX, ev.rawY, ev.eventTime)
                 downRawX = ev.rawX
                 downRawY = ev.rawY
                 lastRawX = ev.rawX
@@ -102,11 +118,15 @@ internal class FloatingBallTouchLayout(
                 isDragging = false
             }
             MotionEvent.ACTION_MOVE -> {
+                motionPredictor.recordPoint(ev.rawX, ev.rawY, ev.eventTime)
                 val dist = hypot((ev.rawX - downRawX).toDouble(), (ev.rawY - downRawY).toDouble()).toFloat()
                 if (dist > touchSlop) {
                     isDragging = true
                     return true
                 }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                motionPredictor.reset()
             }
         }
         return false
@@ -115,8 +135,12 @@ internal class FloatingBallTouchLayout(
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
-            MotionEvent.ACTION_DOWN -> return true
+            MotionEvent.ACTION_DOWN -> {
+                motionPredictor.recordPoint(ev.rawX, ev.rawY, ev.eventTime)
+                return true
+            }
             MotionEvent.ACTION_MOVE -> {
+                motionPredictor.recordPoint(ev.rawX, ev.rawY, ev.eventTime)
                 val dx = ev.rawX - lastRawX
                 val dy = ev.rawY - lastRawY
                 lastRawX = ev.rawX
@@ -139,47 +163,40 @@ internal class FloatingBallTouchLayout(
                 }
                 return true
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 if (isDragging) {
                     isDragging = false
-                    handleSnap()
+                    motionPredictor.recordPoint(ev.rawX, ev.rawY, ev.eventTime)
+                    val prediction = motionPredictor.predict(ballX, ballY, ev.eventTime)
+                    applyPrediction(prediction)
                 }
+                motionPredictor.reset()
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                if (isDragging) {
+                    isDragging = false
+                    val prediction = motionPredictor.predict(ballX, ballY, ev.eventTime)
+                    applyPrediction(prediction)
+                }
+                motionPredictor.reset()
                 return true
             }
         }
         return super.onTouchEvent(ev)
     }
 
-    private fun handleSnap() {
-        val screenWidth = context.resources.displayMetrics.widthPixels
-        val screenHeight = context.resources.displayMetrics.heightPixels
-
-        val currentYRatio = ballY.toFloat() / screenHeight.coerceAtLeast(1)
-        onPositionUpdated(currentYRatio)
-
-        val distanceToLeft = ballX.toFloat()
-        val distanceToRight = (screenWidth - (ballX + ballWidthPx)).toFloat()
-
-        when {
-            distanceToLeft < snapThresholdPx -> {
-                val targetX = -submergedPx
-                onDockSideChanged(DockSide.Left)
-                animateBallTo(targetX, ballY) {
-                    onSnapFinished(DockSide.Left, true)
-                }
-            }
-            distanceToRight < snapThresholdPx -> {
-                val targetX = screenWidth - (ballWidthPx - submergedPx)
-                onDockSideChanged(DockSide.Right)
-                animateBallTo(targetX, ballY) {
-                    onSnapFinished(DockSide.Right, true)
-                }
-            }
-            else -> {
-                val finalDock = if (distanceToLeft < distanceToRight) DockSide.Left else DockSide.Right
-                onDockSideChanged(finalDock)
-                onSnapFinished(finalDock, false)
-            }
+    private fun applyPrediction(prediction: PredictionResult) {
+        onDockSideChanged(prediction.targetDock)
+        animateBallTo(
+            targetX = prediction.targetX,
+            targetY = prediction.targetY,
+            duration = prediction.durationMillis,
+        ) {
+            val screenHeight = context.resources.displayMetrics.heightPixels
+            val currentYRatio = ballY.toFloat() / screenHeight.coerceAtLeast(1)
+            onPositionUpdated(currentYRatio)
+            onSnapFinished(prediction.targetDock, prediction.willSubmerge)
         }
     }
 
@@ -205,7 +222,12 @@ internal class FloatingBallTouchLayout(
         }
     }
 
-    private fun animateBallTo(targetX: Int, targetY: Int, onEnd: () -> Unit = {}) {
+    private fun animateBallTo(
+        targetX: Int,
+        targetY: Int,
+        duration: Long = 200L,
+        onEnd: () -> Unit = {},
+    ) {
         positionAnimator?.cancel()
         val startX = ballX
         val startY = ballY
@@ -216,8 +238,8 @@ internal class FloatingBallTouchLayout(
         }
 
         positionAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 200
-            interpolator = DecelerateInterpolator()
+            this.duration = duration
+            interpolator = DecelerateInterpolator(1.6f)
             addUpdateListener {
                 val frac = it.animatedValue as Float
                 ballX = (startX + (targetX - startX) * frac).toInt()
@@ -233,5 +255,11 @@ internal class FloatingBallTouchLayout(
             }
             start()
         }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        positionAnimator?.cancel()
+        motionPredictor.reset()
     }
 }
