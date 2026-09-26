@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_permission_dialog_title">AI 请求执行操作</string>
+    <string name="tool_permission_request_intro">Zafiro 的工具「%1$s」请求执行以下命令：</string>
+    <string name="tool_permission_matched_rule">命中规则「%1$s」</string>
+    <string name="tool_permission_allow">允许本次</string>
+    <string name="tool_permission_deny">拒绝</string>
+</resources>

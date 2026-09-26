@@ -12,6 +12,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -237,6 +238,82 @@ fun FloatingBallMorphCard(
     }
 }
 
+/**
+ * 悬浮球卡片完全展开态的通用内容区域（预览槽位 + 三颗操作按钮）。
+ *
+ * 作为单一事实来源（Single Source of Truth），供卡片展开态和 Detail 容器形变起始态 100% 共享，
+ * 保证颜色体系（薄荷绿 onPrimaryContainer / 墨绿 primaryContainer）、文本样式、按钮排版绝对一致。
+ */
+@Composable
+fun FloatingBallExpandedCardContent(
+    preview: String?,
+    approvalRequest: ApprovalRequest?,
+    isApprovalPending: Boolean,
+    isStopEnabled: Boolean,
+    onJumpToApp: () -> Unit,
+    onAllow: () -> Unit,
+    onDeny: () -> Unit,
+    onStop: () -> Unit,
+    onMinimize: () -> Unit,
+    onOpenDetail: () -> Unit,
+    modifier: Modifier = Modifier,
+    buttonsEnabled: Boolean = true,
+) {
+    val colors = MaterialTheme.colorScheme
+    val cardContentColor = colors.onPrimaryContainer
+    val buttonBg = colors.onPrimaryContainer
+    val buttonIconTint = colors.primaryContainer
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(FloatingBallTokens.cardPaddingDp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        FloatingBallPreviewSlot(
+            preview = preview,
+            approvalRequest = approvalRequest,
+            isApprovalPending = isApprovalPending,
+            slotHeight = FloatingBallTokens.previewHeightDp,
+            alpha = 1f,
+            contentColor = cardContentColor,
+            onOpenDetail = onOpenDetail,
+        )
+
+        val step = FloatingBallTokens.buttonStepDp
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(FloatingBallTokens.buttonDiameterDp),
+        ) {
+            FloatingBallActionButton(
+                icon = Icons.AutoMirrored.Filled.OpenInNew,
+                onClick = onJumpToApp,
+                backgroundColor = buttonBg,
+                contentColor = buttonIconTint,
+                enabled = buttonsEnabled,
+                modifier = Modifier.offset(x = 0.dp, y = 0.dp),
+            )
+            FloatingBallActionButton(
+                icon = if (isApprovalPending) Icons.Filled.Check else Icons.Filled.Pause,
+                onClick = if (isApprovalPending) onAllow else onStop,
+                backgroundColor = buttonBg,
+                contentColor = buttonIconTint,
+                enabled = buttonsEnabled && (isApprovalPending || isStopEnabled),
+                modifier = Modifier.offset(x = step, y = 0.dp),
+            )
+            FloatingBallActionButton(
+                icon = if (isApprovalPending) Icons.Filled.Close else Icons.Filled.CloseFullscreen,
+                onClick = if (isApprovalPending) onDeny else onMinimize,
+                backgroundColor = buttonBg,
+                contentColor = buttonIconTint,
+                enabled = buttonsEnabled,
+                modifier = Modifier.offset(x = step * 2, y = 0.dp),
+            )
+        }
+    }
+}
+
 private sealed class PreviewTarget(val order: Int) {
     data object Placeholder : PreviewTarget(0)
     data class AgentText(val text: String) : PreviewTarget(1)
@@ -400,7 +477,11 @@ fun FloatingBallApprovalPreview(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .clickable(onClick = onOpenDetail)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onOpenDetail,
+            )
             .padding(horizontal = 6.dp, vertical = 2.dp)
             .graphicsLayer { this.alpha = alpha },
         horizontalAlignment = Alignment.CenterHorizontally,
