@@ -41,9 +41,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontFamily
@@ -388,12 +390,18 @@ private fun DetailActionButton(
         bottomStart = bottomCorner,
         bottomEnd = bottomCorner,
     )
+    val haptics = LocalHapticFeedback.current
     Box(
         modifier = modifier
             .height(56.dp)
             .clip(shape)
             .background(bgColor, shape)
-            .clickable(onClick = onClick)
+            .clickable(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    onClick()
+                },
+            )
             .padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {

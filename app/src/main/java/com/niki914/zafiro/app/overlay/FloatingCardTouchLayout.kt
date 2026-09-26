@@ -24,6 +24,7 @@ internal class FloatingCardTouchLayout(
     initialBallX: Int,
     initialBallY: Int,
     private val onCardDragged: (Int, Int, DockSide) -> Unit,
+    private val onRequestCollapse: (DockSide) -> Unit,
     private val onCardCollapseStarting: (Int, Int) -> Unit,
     private val onCardCollapseCompleted: (Int, Int, DockSide?) -> Unit,
 ) : FrameLayout(context) {
@@ -184,12 +185,12 @@ internal class FloatingCardTouchLayout(
             distanceToLeft < snapThresholdPx -> {
                 // 拉到左边缘收起：先在原地收缩为小球，完成后平滑吸附到左侧并淹没
                 onCardDragged(currentAnchorBallX, currentAnchorBallY, DockSide.Left)
-                requestCollapse(snapDock = DockSide.Left)
+                onRequestCollapse(DockSide.Left)
             }
             distanceToRight < snapThresholdPx -> {
                 // 拉到右边缘收起：先在原地收缩为小球，完成后平滑吸附到右侧并淹没
                 onCardDragged(currentAnchorBallX, currentAnchorBallY, DockSide.Right)
-                requestCollapse(snapDock = DockSide.Right)
+                onRequestCollapse(DockSide.Right)
             }
             else -> {
                 // 自由悬停：保持展开

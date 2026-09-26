@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,12 +27,33 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.zafiro.remoteview.R
+import kotlinx.coroutines.launch
+
+private val ButtonSpinSpec = tween<Float>(
+    durationMillis = 550,
+    easing = CubicBezierEasing(0.1f, 0.1f, 0.25f, 1.0f),
+)
+
+private suspend fun Animatable<Float, *>.animateSpin(
+    onProgress: ((Float) -> Unit)? = null,
+) {
+    snapTo(0f)
+    animateTo(
+        targetValue = 720f,
+        animationSpec = ButtonSpinSpec,
+    ) {
+        onProgress?.invoke(value)
+    }
+    snapTo(0f)
+}
 
 /**
  * 悬浮球统一原子操作按钮组件。
@@ -39,6 +61,7 @@ import com.niki914.zafiro.remoteview.R
  * 尺寸由 [FloatingBallTokens.buttonDiameterDp] 约束。
  * 形状固定为 [CircleShape] 正圆形。
  * 当 [icon] 发生变更时，自动触发 720° 先快后慢的减速旋转动效，并在初始小幅转动后迅速切换为新图标。
+ * 支持点击触发触感反馈，且在 [spinOnClick] 开启时点击亦会触发 720° 旋转动效。
  * 收起态悬浮球本体、展开态底部的 Jump、Stop、Minimize 按钮均复用本组件。
  */
 @Composable
@@ -51,26 +74,21 @@ fun FloatingBallActionButton(
     border: BorderStroke? = null,
     iconSize: Dp = 20.dp,
     enabled: Boolean = true,
+    spinOnClick: Boolean = false,
 ) {
     var displayedIcon by remember { mutableStateOf(icon) }
     val rotationAnim = remember { Animatable(0f) }
+    val haptics = LocalHapticFeedback.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(icon) {
         if (displayedIcon != icon) {
-            rotationAnim.snapTo(0f)
-            rotationAnim.animateTo(
-                targetValue = 720f,
-                animationSpec = tween(
-                    durationMillis = 550,
-                    easing = CubicBezierEasing(0.1f, 0.1f, 0.25f, 1.0f),
-                ),
-            ) {
-                if (value >= 40f && displayedIcon != icon) {
+            rotationAnim.animateSpin { progress ->
+                if (progress >= 40f && displayedIcon != icon) {
                     displayedIcon = icon
                 }
             }
             displayedIcon = icon
-            rotationAnim.snapTo(0f)
         }
     }
 
@@ -80,7 +98,18 @@ fun FloatingBallActionButton(
             .clip(CircleShape)
             .background(backgroundColor, CircleShape)
             .then(if (border != null) Modifier.border(border, CircleShape) else Modifier)
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(
+                enabled = enabled,
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    if (spinOnClick) {
+                        coroutineScope.launch {
+                            rotationAnim.animateSpin()
+                        }
+                    }
+                    onClick()
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

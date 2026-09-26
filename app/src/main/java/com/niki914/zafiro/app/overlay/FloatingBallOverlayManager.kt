@@ -317,6 +317,9 @@ object FloatingBallOverlayManager {
                     ballLayout.syncPosition(newBallX, newBallY)
                     vmInstance.sendIntent(FloatingBallIntent.UpdateDockSide(newDock))
                 },
+                onRequestCollapse = { snapDock ->
+                    vmInstance.sendIntent(FloatingBallIntent.RequestCollapse(snapDock = snapDock))
+                },
                 onCardCollapseStarting = { anchorX, anchorY ->
                     ballLayout.syncPosition(anchorX, anchorY)
                     ballLayout.alpha = 1f

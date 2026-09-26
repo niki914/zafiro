@@ -25,13 +25,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloseFullscreen
-import androidx.compose.ui.res.stringResource
-import com.niki914.zafiro.remoteview.R
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
+import com.niki914.zafiro.remoteview.R
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -213,12 +217,15 @@ fun FloatingBallMorphCard(
                         .zIndex(offsets.jumpZIndex)
                         .graphicsLayer { alpha = buttonsAlpha },
                 )
+                val centerConfig = resolveCenterButtonConfig(isApprovalPending, isStopEnabled, onAllow, onStop)
+
                 FloatingBallActionButton(
-                    icon = if (isApprovalPending) Icons.Filled.Check else Icons.Filled.Pause,
-                    onClick = if (isApprovalPending) onAllow else onStop,
+                    icon = centerConfig.icon,
+                    onClick = centerConfig.onClick,
                     backgroundColor = buttonBg,
                     contentColor = buttonIconTint,
-                    enabled = progress >= 0.7f && (isApprovalPending || isStopEnabled),
+                    enabled = progress >= 0.7f,
+                    spinOnClick = centerConfig.isToyMode,
                     modifier = Modifier
                         .offset { IntOffset(offsets.stopX.roundToPx(), 0) }
                         .zIndex(offsets.stopZIndex)
@@ -296,12 +303,15 @@ fun FloatingBallExpandedCardContent(
                 enabled = buttonsEnabled,
                 modifier = Modifier.offset(x = 0.dp, y = 0.dp),
             )
+            val centerConfig = resolveCenterButtonConfig(isApprovalPending, isStopEnabled, onAllow, onStop)
+
             FloatingBallActionButton(
-                icon = if (isApprovalPending) Icons.Filled.Check else Icons.Filled.Pause,
-                onClick = if (isApprovalPending) onAllow else onStop,
+                icon = centerConfig.icon,
+                onClick = centerConfig.onClick,
                 backgroundColor = buttonBg,
                 contentColor = buttonIconTint,
-                enabled = buttonsEnabled && (isApprovalPending || isStopEnabled),
+                enabled = buttonsEnabled,
+                spinOnClick = centerConfig.isToyMode,
                 modifier = Modifier.offset(x = step, y = 0.dp),
             )
             FloatingBallActionButton(
@@ -473,6 +483,7 @@ fun FloatingBallApprovalPreview(
     onOpenDetail: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = LocalHapticFeedback.current
     val linkColor = MaterialTheme.colorScheme.primary
     val fallbackReason = stringResource(R.string.floating_ball_approval_reason_unknown)
     val displayReason = reason.ifBlank { fallbackReason }
@@ -483,7 +494,10 @@ fun FloatingBallApprovalPreview(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = onOpenDetail,
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    onOpenDetail()
+                },
             )
             .padding(horizontal = 6.dp, vertical = 2.dp)
             .graphicsLayer { this.alpha = alpha },
@@ -578,4 +592,24 @@ private fun PreviewWaitingApproval() {
         }
     }
 }
+
+private data class CenterButtonConfig(
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+    val isToyMode: Boolean,
+)
+
+private fun resolveCenterButtonConfig(
+    isApprovalPending: Boolean,
+    isStopEnabled: Boolean,
+    onAllow: () -> Unit,
+    onStop: () -> Unit,
+): CenterButtonConfig {
+    return when {
+        isApprovalPending -> CenterButtonConfig(Icons.Filled.Check, onAllow, isToyMode = false)
+        isStopEnabled -> CenterButtonConfig(Icons.Filled.Pause, onStop, isToyMode = false)
+        else -> CenterButtonConfig(Icons.Filled.AutoAwesome, {}, isToyMode = true)
+    }
+}
+
 
