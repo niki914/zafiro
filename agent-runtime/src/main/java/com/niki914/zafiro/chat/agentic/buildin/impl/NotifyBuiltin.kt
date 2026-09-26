@@ -1,9 +1,17 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.core.app.NotificationCompat
+import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.business.notification.AppNotificationChannel
+import com.niki914.zafiro.business.notification.NotificationChannelManager
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.zafiro.settings.RuntimeEnvironment
+import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -59,11 +67,22 @@ class NotifyBuiltin : BuiltinTool() {
         }
 
         val data = buildPayload(args)
-        val posted = RuntimeEnvironment.awaitBridge().host.postNotification(
-            title = args.title,
-            content = args.content,
-            uri = args.uri,
-        )
+        val notificationChannelManager = requireService<NotificationChannelManager>()
+        val context = ContextProvider.await().applicationContext
+        val id = notificationId(args.title, args.content, args.uri)
+
+        val posted = notificationChannelManager.post(AppNotificationChannel.Alerts, id) {
+            val icon = context.applicationInfo.icon.takeIf { it != 0 }
+                ?: android.R.drawable.ic_dialog_info
+            setSmallIcon(icon)
+            setContentTitle(args.title)
+            setContentText(args.content)
+            setStyle(NotificationCompat.BigTextStyle().bigText(args.content))
+            setPriority(NotificationCompat.PRIORITY_MAX)
+            setDefaults(NotificationCompat.DEFAULT_ALL)
+            setAutoCancel(true)
+            createContentIntent(context, args.uri)?.let { setContentIntent(it) }
+        }
 
         return if (posted) {
             BuiltinToolResult.success(
@@ -79,6 +98,30 @@ class NotifyBuiltin : BuiltinTool() {
                 data = data,
             )
         }
+    }
+
+    private fun createContentIntent(context: Context, uri: String?): PendingIntent? {
+        if (uri.isNullOrBlank()) {
+            return null
+        }
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        val resolved = context.packageManager.resolveActivity(intent, 0) ?: return null
+        val pendingIntentFlags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        return PendingIntent.getActivity(
+            context,
+            resolved.activityInfo.packageName.hashCode(),
+            intent,
+            pendingIntentFlags
+        )
+    }
+
+    private fun notificationId(title: String, content: String, uri: String?): Int {
+        var result = title.hashCode()
+        result = 31 * result + content.hashCode()
+        result = 31 * result + (uri?.hashCode() ?: 0)
+        return result
     }
 
     private fun parseArguments(argumentsJson: String): NotifyArguments {

@@ -436,4 +436,15 @@
     <string name="ui_theme_color_lemon">レモン</string>
     <string name="ui_theme_color_amber">アンバー</string>
     <string name="ui_theme_color_sunset">サンセット</string>
+
+    <!-- Resident Notification -->
+    <string name="agent_resident_title_idle">Agent · 待機中</string>
+    <string name="agent_resident_title_thinking">Agent · 思考中</string>
+    <string name="agent_resident_title_generating">Agent · 応答中</string>
+    <string name="agent_resident_title_tool_running">Agent · ツール実行中</string>
+    <string name="agent_resident_title_waiting_approval">Agent · 承認待ち</string>
+    <string name="agent_resident_title_stopping">Agent · 停止中</string>
+    <string name="agent_resident_action_stop">停止</string>
+    <string name="agent_resident_action_approve">許可</string>
+    <string name="agent_resident_action_decline">拒否</string>
 </resources>

@@ -1,5 +1,8 @@
 package com.niki914.zafiro.app
 
+import com.niki914.zafiro.business.notification.NotificationChannelManager
+import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
+import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.app.conversation.RoomConversationStore_Tmp
@@ -29,5 +32,13 @@ object AppServices {
         // 会话门面：宽接口与窄接口指向同一实例
         installService<Agent>(AgentImpl)
         installService<AgentControl>(AgentImpl)
+
+        val context = ContextProvider.awaitIfAvailable() ?: error("Context not available for NotificationChannelManager")
+        installService<NotificationChannelManager>(
+            NotificationChannelManagerImpl(
+                context = context,
+                permissionManager = PermissionHolder.get(context),
+            )
+        )
     }
 }

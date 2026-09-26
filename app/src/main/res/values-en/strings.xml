@@ -437,4 +437,15 @@
     <string name="ui_theme_color_lemon">Lemon</string>
     <string name="ui_theme_color_amber">Amber</string>
     <string name="ui_theme_color_sunset">Sunset</string>
+
+    <!-- Resident Notification -->
+    <string name="agent_resident_title_idle">Agent · Standby</string>
+    <string name="agent_resident_title_thinking">Agent · Thinking</string>
+    <string name="agent_resident_title_generating">Agent · Responding</string>
+    <string name="agent_resident_title_tool_running">Agent · Running tool</string>
+    <string name="agent_resident_title_waiting_approval">Agent · Authorization required</string>
+    <string name="agent_resident_title_stopping">Agent · Stopping</string>
+    <string name="agent_resident_action_stop">Stop</string>
+    <string name="agent_resident_action_approve">Allow</string>
+    <string name="agent_resident_action_decline">Deny</string>
 </resources>

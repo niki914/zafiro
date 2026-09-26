@@ -98,7 +98,15 @@ internal object AgentStatusReducer {
                 )
             }
 
-            is LlmStreamEvent.ThinkingStarted,
+            is LlmStreamEvent.ThinkingStarted -> {
+                current.copy(
+                    status = current.status.copy(
+                        phase = AgentPhase.Thinking,
+                        outcome = null,
+                    ),
+                )
+            }
+
             is LlmStreamEvent.ThinkingEnded,
             is LlmStreamEvent.Retrying -> {
                 current.copy(

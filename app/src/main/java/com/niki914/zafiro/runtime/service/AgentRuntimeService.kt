@@ -47,21 +47,75 @@ import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicReference
 import com.niki914.zafiro.app.R as AppR
 
+import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.model.AgentStatus
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.app.notification.ResidentNotificationBuilder
+import com.niki914.zafiro.app.notification.ResidentNotificationManager
+import com.niki914.zafiro.business.notification.NotificationChannelManager
+
 class AgentRuntimeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        val notification = buildNotification()
-        startForeground(NOTIFICATION_ID, notification)
+        instance = this
+        val initialStatus = currentEffectiveStatus()
+        val initialNotification = ResidentNotificationBuilder.build(
+            context = this,
+            channelManager = notificationChannelManager,
+            status = initialStatus,
+        )
+        startForeground(ResidentNotificationBuilder.NOTIFICATION_ID, initialNotification)
+        observeStatus()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ResidentNotificationBuilder.ACTION_STOP -> {
+                Logger.i(LOG_TAG, "Resident notification: Stop clicked")
+                agentControl.stop()
+            }
+            ResidentNotificationBuilder.ACTION_APPROVE -> {
+                Logger.i(LOG_TAG, "Resident notification: Approve clicked")
+                ResidentNotificationManager.resolveApproval(ApprovalDecision.Allow)
+            }
+            ResidentNotificationBuilder.ACTION_DECLINE -> {
+                Logger.i(LOG_TAG, "Resident notification: Decline clicked")
+                ResidentNotificationManager.resolveApproval(ApprovalDecision.Deny)
+            }
+            ACTION_START_RESIDENT -> {
+                isResidentRequested = true
+                updateResidentNotification()
+            }
+            ACTION_STOP_RESIDENT -> {
+                isResidentRequested = false
+                if (boundClientsCount == 0 && activeTurn.get() == null) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+            }
+        }
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? {
         if (!validateCaller()) return null
+        boundClientsCount++
         return StubImpl()
     }
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        boundClientsCount = (boundClientsCount - 1).coerceAtLeast(0)
+        if (boundClientsCount == 0 && !isResidentRequested && activeTurn.get() == null) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+        return super.onUnbind(intent)
+    }
+
     override fun onDestroy() {
+        instance = null
+        statusJob?.cancel()
         activeTurn.getAndSet(null)?.job?.cancel()
         scope.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -69,8 +123,13 @@ class AgentRuntimeService : Service() {
     }
 
     private val agent: Agent get() = requireService()
+    private val agentControl: AgentControl get() = requireService()
+    private val notificationChannelManager: NotificationChannelManager get() = requireService()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val activeTurn = AtomicReference<ActiveTurn?>(null)
+    private var statusJob: Job? = null
+    private var boundClientsCount = 0
+    private var isResidentRequested = false
 
     private data class ActiveTurn(
         val callback: IRenderFrameCallback,
@@ -79,42 +138,48 @@ class AgentRuntimeService : Service() {
 
     companion object {
         private const val LOG_TAG = "niki914_nexus_AgentRuntimeService"
-        private const val NOTIFICATION_ID = 1001
-        private const val CHANNEL_ID = "agent_runtime"
+        const val ACTION_START_RESIDENT = "com.niki914.zafiro.action.START_RESIDENT"
+        const val ACTION_STOP_RESIDENT = "com.niki914.zafiro.action.STOP_RESIDENT"
         private const val MAX_QUERY_LENGTH = 8192
         private const val STORE_CHANNEL_ID = "nexus_xservice_default_channel"
         private const val STORE_CHANNEL_NAME = "Zafiro"
-    }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Agent Runtime",
-                NotificationManager.IMPORTANCE_LOW,
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+        private var instance: AgentRuntimeService? = null
+
+        fun notifyUpdate() {
+            instance?.updateResidentNotification()
         }
     }
 
-    private fun buildNotification(): Notification {
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        val pendingIntent = if (launchIntent != null) {
-            PendingIntent.getActivity(
-                this, 0, launchIntent,
-                PendingIntent.FLAG_IMMUTABLE,
+    private fun currentEffectiveStatus(): AgentStatus {
+        val pendingApproval = ResidentNotificationManager.activeApprovalRequest
+        return if (pendingApproval != null) {
+            AgentStatus(
+                phase = AgentPhase.WaitingApproval,
+                preview = pendingApproval.command.takeIf { it.isNotBlank() } ?: pendingApproval.toolName,
             )
         } else {
-            null
+            agentControl.status.value
         }
-        return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Zafiro Agent Runtime")
-            .setContentText("Running")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .build()
+    }
+
+    fun updateResidentNotification() {
+        val status = currentEffectiveStatus()
+        val notification = ResidentNotificationBuilder.build(
+            context = this,
+            channelManager = notificationChannelManager,
+            status = status,
+        )
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(ResidentNotificationBuilder.NOTIFICATION_ID, notification)
+    }
+
+    private fun observeStatus() {
+        statusJob = scope.launch {
+            agentControl.status.collect {
+                updateResidentNotification()
+            }
+        }
     }
 
     private inner class StubImpl : IAgentRuntimeService.Stub() {

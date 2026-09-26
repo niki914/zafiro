@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_alerts">即時提醒</string>
+    <string name="notification_channel_resident">常駐狀態</string>
+</resources>
