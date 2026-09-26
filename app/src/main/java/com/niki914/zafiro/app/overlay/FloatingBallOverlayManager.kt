@@ -329,11 +329,7 @@ object FloatingBallOverlayManager {
                     val agentStatus by currentAgentControl.status.collectAsState()
                     val currentApproval = activeApprovalRequest
 
-                    val previewText = if (currentApproval != null) {
-                        "⚠️ 待授权 · ${currentApproval.toolName}: ${currentApproval.command}"
-                    } else {
-                        agentStatus.preview
-                    }
+                    val previewText = agentStatus.preview
 
                     BaseTheme(
                         darkTheme = isDark,
@@ -344,6 +340,7 @@ object FloatingBallOverlayManager {
                             state = ballState,
                             dockSide = dockSide,
                             preview = previewText,
+                            approvalRequest = currentApproval,
                             isApprovalPending = currentApproval != null,
                             isStopEnabled = agentStatus.phase != AgentPhase.Idle,
                             onBallClick = {},
@@ -367,6 +364,9 @@ object FloatingBallOverlayManager {
                             onDeny = {
                                 Logger.i(TAG, "FloatingBall: Deny clicked")
                                 resolveApproval(ApprovalDecision.Deny)
+                            },
+                            onOpenDetail = {
+                                Logger.i(TAG, "FloatingBall: OpenDetail clicked")
                             },
                             onCollapseFinished = {
                                 cardLayout.notifyCollapseFinished()
