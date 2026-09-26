@@ -54,6 +54,68 @@ class XRepoDomainSettingsTest {
     }
 
     @Test
+    fun hydrateSettingsBackfillsAllReactiveFlows() = runTest {
+        val store = FakeDomainSettingsStore(
+            StoreDescriptorRegistry.APP_STATE_ID to
+                """{"keep_screen_on":false,"always_show_message_actions":false,"floating_ball_enabled":true,"resident_notification_enabled":true}""",
+        )
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        // flow 初值是猜的默认值，与盘上真值相反，hydrate 后必须对齐真值。
+        assertTrue(XRepo.keepScreenOnSetting.value)
+        assertTrue(XRepo.alwaysShowMessageActionsSetting.value)
+        assertFalse(XRepo.floatingBallEnabledSetting.value)
+        assertFalse(XRepo.residentNotificationEnabledSetting.value)
+
+        XRepo.hydrateSettings()
+
+        assertFalse(XRepo.keepScreenOnSetting.value)
+        assertFalse(XRepo.alwaysShowMessageActionsSetting.value)
+        assertTrue(XRepo.floatingBallEnabledSetting.value)
+        assertTrue(XRepo.residentNotificationEnabledSetting.value)
+    }
+
+    @Test
+    fun reactiveGetterBackfillsFlowOnRead() = runTest {
+        val store = FakeDomainSettingsStore(
+            StoreDescriptorRegistry.APP_STATE_ID to """{"floating_ball_enabled":true}""",
+        )
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        assertFalse(XRepo.floatingBallEnabledSetting.value)
+        assertTrue(XRepo.floatingBallEnabled())
+        assertTrue(XRepo.floatingBallEnabledSetting.value)
+    }
+
+    @Test
+    fun reactiveSetterSyncsFlowBeforeDiskWrite() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        XRepo.setKeepScreenOn(false)
+
+        // flow 同步回显，盘上同样落盘。
+        assertFalse(XRepo.keepScreenOnSetting.value)
+        assertFalse(XRepo.keepScreenOn())
+    }
+
+    @Test
+    fun stringSettingsTrimOnWrite() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        XRepo.setLanguageTag("  zh-CN  ")
+        XRepo.setLastOpenedConversationId("  conv-1  ")
+
+        assertEquals("zh-CN", XRepo.languageTag())
+        assertEquals("conv-1", XRepo.lastOpenedConversationId())
+    }
+
+    @Test
     fun llmConfigs_upsertBlankNameFallsBackToProvider() = runTest {
         val store = FakeDomainSettingsStore()
         XRepo.installStoreForTest(store)
