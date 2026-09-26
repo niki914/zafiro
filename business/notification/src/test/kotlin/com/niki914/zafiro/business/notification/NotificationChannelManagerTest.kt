@@ -2,6 +2,7 @@ package com.niki914.zafiro.business.notification
 
 import android.app.NotificationManager
 import android.content.Context
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -12,7 +13,7 @@ class NotificationChannelManagerTest {
     @Test
     fun appNotificationChannel_definesCorrectChannels() {
         val alerts = AppNotificationChannel.Alerts
-        assertEquals("zafiro_alerts_v2", alerts.id)
+        assertEquals("zafiro_alerts", alerts.id)
         assertEquals(NotificationManager.IMPORTANCE_HIGH, alerts.importance)
         assertEquals(R.string.notification_channel_alerts, alerts.channelNameResId)
 
@@ -38,7 +39,7 @@ class NotificationChannelManagerTest {
     }
 
     @Test
-    fun post_shortCircuitsWhenPermissionDenied() {
+    fun post_shortCircuitsWhenPermissionDenied() = runTest {
         var builderBlockExecuted = false
         val deniedManager = NotificationChannelManagerImpl(
             context = FakeContext(),

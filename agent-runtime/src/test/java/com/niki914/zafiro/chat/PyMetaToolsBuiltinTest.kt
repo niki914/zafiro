@@ -3,6 +3,7 @@ package com.niki914.zafiro.chat
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
 import com.niki914.zafiro.chat.agentic.python.PyExecOutput
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import kotlinx.coroutines.test.runTest
@@ -12,9 +13,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 
 class PyMetaToolsBuiltinTest {
+
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
 
     @After
     fun tearDown() {

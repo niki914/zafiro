@@ -16,9 +16,12 @@ enum class AppNotificationChannel(
     /**
      * 即时提醒通道：用于工具调用提醒、即时消息与重要告警。
      * 重要性为 [NotificationManager.IMPORTANCE_HIGH]，配合 PRIORITY_HIGH 可弹出浮动横幅 (Heads-up)。
+     *
+     * 注意：部分厂商定制系统（如 ColorOS/Oppo 等）有系统级拦截策略，默认可能关闭三方应用的横幅 (Banner)
+     * 或静音，仅保留通知抽屉展示；原生 AOSP / Pixel 等可正常展示浮动横幅。
      */
     Alerts(
-        id = "zafiro_alerts_v2",
+        id = "zafiro_alerts",
         channelNameResId = R.string.notification_channel_alerts,
         importance = NotificationManager.IMPORTANCE_HIGH,
     ),

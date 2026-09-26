@@ -31,7 +31,7 @@ interface NotificationChannelManager {
      * @param block 用于配置 NotificationCompat.Builder 的 DSL 块
      * @return 成功发送返回 true；若被权限拦截返回 false
      */
-    fun post(
+    suspend fun post(
         channel: AppNotificationChannel,
         notificationId: Int,
         block: NotificationCompat.Builder.() -> Unit,
