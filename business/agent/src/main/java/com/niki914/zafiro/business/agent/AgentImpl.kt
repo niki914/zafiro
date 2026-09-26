@@ -279,14 +279,23 @@ object AgentImpl : Agent {
             Logger.i(LOG_TAG, "conversation created id=${sessionId.value}")
         }
         store().setLastOpened(sessionId)
-        conversationFlow.value = conversationFlow.value.copy(id = sessionId)
+        applySessionId(sessionId)
         return sessionId
+    }
+
+    internal fun applySessionId(sessionId: ConversationId) {
+        reduced = reduced.copy(conversation = reduced.conversation.copy(id = sessionId))
+        conversationFlow.value = reduced.conversation
     }
 
     private fun fold(event: LlmStreamEvent) {
         foldWith(ConversationReducer.reduce(reduced, event))
         reducedStatus = AgentStatusReducer.reduce(reducedStatus, event)
         statusFlow.value = reducedStatus.status
+    }
+
+    internal fun foldForTest(event: LlmStreamEvent) {
+        fold(event)
     }
 
     private fun foldWith(reduced: Reduced) {
