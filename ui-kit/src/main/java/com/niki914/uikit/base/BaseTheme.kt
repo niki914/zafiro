@@ -1,6 +1,8 @@
 package com.niki914.uikit.base
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +55,7 @@ fun BaseTheme(
     val view = LocalView.current
     if (!view.isInEditMode) { // 避免在预览模式下执行
         SideEffect {
-            val window = (view.context as Activity).window
+            val window = view.context.findActivity()?.window ?: return@SideEffect
 //            window.statusBarColor = colorScheme.primary.toArgb() // 将状态栏颜色设置为主题主色
             // 控制状态栏图标颜色，根据主题亮暗调整
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
@@ -70,4 +72,10 @@ fun BaseTheme(
             content = content // 渲染传入的内容
         )
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

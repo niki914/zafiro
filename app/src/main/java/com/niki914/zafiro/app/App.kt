@@ -11,6 +11,7 @@ import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
+import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
 import com.niki914.zafiro.app.overlay.ToolPermissionOverlay
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
@@ -70,6 +71,21 @@ class App : Application() {
         }
         // 全部权限走 PermissionManager：ensureService 的门面注入（主 App 进程）。
         AccessibilityController.permissions = PermissionHolder.get(this)
+        observeFloatingBall()
+    }
+
+    private fun observeFloatingBall() {
+        applicationScope.launch {
+            XRepo.floatingBallEnabledSetting.collect { enabled ->
+                if (enabled) {
+                    if (PermissionHolder.get(this@App).status(Permission.OVERLAY) == PermissionState.GRANTED) {
+                        FloatingBallOverlayManager.show(this@App)
+                    }
+                } else {
+                    FloatingBallOverlayManager.dismiss()
+                }
+            }
+        }
     }
 
     private suspend fun handleBackgroundConfirmation(

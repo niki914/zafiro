@@ -35,6 +35,7 @@ include(":app")
 include(":xposed-api")
 include(":xposed-runtime")
 include(":ui-kit")
+include(":remote-view")
 include(":store")
 include(":agent-runtime")
 
