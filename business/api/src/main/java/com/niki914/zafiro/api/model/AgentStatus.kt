@@ -19,6 +19,10 @@ data class AgentStatus(
      * 单行摘要，长度按通知一行截断（现有实现 120 字符，截断不切开代理对）。
      * 进行中：本回合 agent 的首句，尚未开口时用本回合提问；
      * 已完成：本回合 agent 的最后一句；失败 / 已停止 / 待命：null。
+     *
+     * // TODO: 架构演进方向：未来将 [phase] 与 [preview] 合并为一个类型安全的 sealed interface (例如 AgentState / AgentPhase)，
+     * // 消除两字段之间的语义重叠与状态不一致（如 Stopping 时 preview 为 null、ToolRunning 缺乏工具名等问题），
+     * // 让状态自身直接携带类型安全且具针对性的内生属性（如 ToolRunning(name, command)、WaitingApproval(request) 等）。
      */
     val preview: String? = null,
 )
@@ -26,6 +30,10 @@ data class AgentStatus(
 /** 对话的粗粒度阶段。 */
 enum class AgentPhase {
     Idle,
+
+    /** 思考块进行中（CoT / 思维链模式），尚未开始输出正式回答。 */
+    Thinking,
+
     Generating,
     ToolRunning,
 

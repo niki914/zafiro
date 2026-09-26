@@ -421,4 +421,15 @@
     <string name="ui_theme_color_lemon">檸檬黃</string>
     <string name="ui_theme_color_amber">琥珀</string>
     <string name="ui_theme_color_sunset">落日橙</string>
+
+    <!-- Resident Notification -->
+    <string name="agent_resident_title_idle">Agent · 待命</string>
+    <string name="agent_resident_title_thinking">Agent · 思考中</string>
+    <string name="agent_resident_title_generating">Agent · 回覆中</string>
+    <string name="agent_resident_title_tool_running">Agent · 工具執行中</string>
+    <string name="agent_resident_title_waiting_approval">Agent · 等待授權</string>
+    <string name="agent_resident_title_stopping">Agent · 停止中</string>
+    <string name="agent_resident_action_stop">停止</string>
+    <string name="agent_resident_action_approve">允許</string>
+    <string name="agent_resident_action_decline">拒絕</string>
 </resources>

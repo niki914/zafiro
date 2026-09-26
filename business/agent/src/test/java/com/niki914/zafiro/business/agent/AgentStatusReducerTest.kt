@@ -99,6 +99,24 @@ class AgentStatusReducerTest {
     }
 
     @Test
+    fun reduce_thinkingStartedSwitchesPhaseToThinking() {
+        var state = AgentStatusReducer.startRound("复杂数学题")
+        assertEquals(AgentPhase.Generating, state.status.phase)
+
+        state = AgentStatusReducer.reduce(
+            state,
+            LlmStreamEvent.ThinkingStarted(id = 1, text = "Let me think"),
+        )
+        assertEquals(AgentPhase.Thinking, state.status.phase)
+
+        state = AgentStatusReducer.reduce(
+            state,
+            LlmStreamEvent.ThinkingEnded(id = 1, text = "Done thinking"),
+        )
+        assertEquals(AgentPhase.Generating, state.status.phase)
+    }
+
+    @Test
     fun reduce_completedSetsIdleWithCompletedOutcomeAndLatestPreview() {
         var state = AgentStatusReducer.startRound("问")
         state = AgentStatusReducer.reduce(

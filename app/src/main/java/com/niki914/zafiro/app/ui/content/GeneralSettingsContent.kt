@@ -88,6 +88,11 @@ fun GeneralSettingsContent(
                     val granted = result.finalState == PermissionState.GRANTED
                     viewModel.sendIntent(GeneralSettingsIntent.OnOverlayPermissionResult(granted = granted))
                 }
+                GeneralSettingsEffect.RequestNotificationPermission -> {
+                    val result = PermissionHolder.get(context).request(Permission.NOTIFICATION)
+                    val granted = result.finalState == PermissionState.GRANTED
+                    viewModel.sendIntent(GeneralSettingsIntent.OnNotificationPermissionResult(granted = granted))
+                }
                 is GeneralSettingsEffect.ApplyApplicationLocales -> {
                     AppCompatDelegate.setApplicationLocales(
                         if (effect.languageTag.isBlank()) {

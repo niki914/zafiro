@@ -11,6 +11,7 @@ import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
+import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
 import com.niki914.zafiro.app.permission.ToolPermissionCoordinatorApproverImpl__Tmp
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
@@ -70,6 +71,23 @@ class App : Application() {
             ToolPermissionCoordinatorApproverImpl__Tmp.confirm(request)
         }
         observeFloatingBall()
+        observeResidentNotification()
+    }
+
+    private fun observeResidentNotification() {
+        applicationScope.launch {
+            XRepo.residentNotificationEnabledSetting.collect { enabled ->
+                if (enabled) {
+                    if (PermissionHolder.get(this@App).status(Permission.NOTIFICATION) == PermissionState.GRANTED) {
+                        ResidentNotificationManager.start(this@App)
+                    } else {
+                        XRepo.setResidentNotificationEnabled(false)
+                    }
+                } else {
+                    ResidentNotificationManager.stop(this@App)
+                }
+            }
+        }
     }
 
     private fun observeFloatingBall() {
@@ -78,6 +96,8 @@ class App : Application() {
                 if (enabled) {
                     if (PermissionHolder.get(this@App).status(Permission.OVERLAY) == PermissionState.GRANTED) {
                         FloatingBallOverlayManager.show(this@App)
+                    } else {
+                        XRepo.setFloatingBallEnabled(false)
                     }
                 } else {
                     FloatingBallOverlayManager.dismiss()

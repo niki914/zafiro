@@ -40,9 +40,13 @@ class GeneralSettingsViewModelTest {
     }
 
     private fun createViewModel(
-        isOverlayPermissionGranted: suspend () -> Boolean = { true }
+        isOverlayPermissionGranted: suspend () -> Boolean = { true },
+        isNotificationPermissionGranted: suspend () -> Boolean = { true },
     ): GeneralSettingsViewModel {
-        return GeneralSettingsViewModel(isOverlayPermissionGranted)
+        return GeneralSettingsViewModel(
+            isOverlayPermissionGranted = isOverlayPermissionGranted,
+            isNotificationPermissionGranted = isNotificationPermissionGranted,
+        )
     }
 
     @Before
@@ -163,8 +167,11 @@ class GeneralSettingsViewModelTest {
     }
 
     @Test
-    fun toggleResidentNotification_updatesStateAndRepo() = runTest {
-        val viewModel = createViewModel()
+    fun toggleResidentNotification_whenPermissionGranted_updatesStateAndRepo() = runTest {
+        val viewModel = createViewModel(isNotificationPermissionGranted = { true })
+
+        assertFalse(viewModel.uiStateFlow.value.residentNotificationEnabled)
+        assertFalse(XRepo.residentNotificationEnabled())
 
         viewModel.sendIntent(GeneralSettingsIntent.ToggleResidentNotification(true))
         advanceUntilIdle()
@@ -177,6 +184,28 @@ class GeneralSettingsViewModelTest {
 
         assertFalse(viewModel.uiStateFlow.value.residentNotificationEnabled)
         assertFalse(XRepo.residentNotificationEnabled())
+    }
+
+    @Test
+    fun toggleResidentNotification_whenPermissionMissing_requestsPermissionAndHandlesResult() = runTest {
+        val viewModel = createViewModel(isNotificationPermissionGranted = { false })
+        val effects = collectEffects(viewModel, count = 1)
+
+        viewModel.sendIntent(GeneralSettingsIntent.ToggleResidentNotification(true))
+        advanceUntilIdle()
+
+        assertEquals(listOf(GeneralSettingsEffect.RequestNotificationPermission), effects)
+
+        // Denied case
+        viewModel.sendIntent(GeneralSettingsIntent.OnNotificationPermissionResult(granted = false))
+        advanceUntilIdle()
+        assertFalse(viewModel.uiStateFlow.value.residentNotificationEnabled)
+
+        // Granted case
+        viewModel.sendIntent(GeneralSettingsIntent.OnNotificationPermissionResult(granted = true))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiStateFlow.value.residentNotificationEnabled)
+        assertTrue(XRepo.residentNotificationEnabled())
     }
 
     @Test

@@ -35,6 +35,7 @@ sealed interface GeneralSettingsIntent {
     data class ToggleFloatingBall(val enabled: Boolean) : GeneralSettingsIntent
     data class OnOverlayPermissionResult(val granted: Boolean) : GeneralSettingsIntent
     data class ToggleResidentNotification(val enabled: Boolean) : GeneralSettingsIntent
+    data class OnNotificationPermissionResult(val granted: Boolean) : GeneralSettingsIntent
     data class ToggleLoadLastConversation(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleAlwaysShowMessageActions(val enabled: Boolean) : GeneralSettingsIntent
     data class SelectIdleTimeout(val seconds: Long) : GeneralSettingsIntent
@@ -44,6 +45,7 @@ sealed interface GeneralSettingsIntent {
 
 sealed interface GeneralSettingsEffect {
     data object RequestOverlayPermission : GeneralSettingsEffect
+    data object RequestNotificationPermission : GeneralSettingsEffect
     data class ApplyApplicationLocales(val languageTag: String) : GeneralSettingsEffect
 }
 
@@ -52,6 +54,14 @@ class GeneralSettingsViewModel(
         val context = ContextProvider.awaitIfAvailable()
         if (context != null) {
             PermissionHolder.get(context).status(Permission.OVERLAY) == PermissionState.GRANTED
+        } else {
+            false
+        }
+    },
+    private val isNotificationPermissionGranted: suspend () -> Boolean = {
+        val context = ContextProvider.awaitIfAvailable()
+        if (context != null) {
+            PermissionHolder.get(context).status(Permission.NOTIFICATION) == PermissionState.GRANTED
         } else {
             false
         }
@@ -69,6 +79,7 @@ class GeneralSettingsViewModel(
             is GeneralSettingsIntent.ToggleFloatingBall -> toggleFloatingBall(intent.enabled)
             is GeneralSettingsIntent.OnOverlayPermissionResult -> onOverlayPermissionResult(intent.granted)
             is GeneralSettingsIntent.ToggleResidentNotification -> toggleResidentNotification(intent.enabled)
+            is GeneralSettingsIntent.OnNotificationPermissionResult -> onNotificationPermissionResult(intent.granted)
             is GeneralSettingsIntent.ToggleLoadLastConversation -> toggleLoadLastConversation(intent.enabled)
             is GeneralSettingsIntent.ToggleAlwaysShowMessageActions -> toggleAlwaysShowMessageActions(intent.enabled)
             is GeneralSettingsIntent.SelectIdleTimeout -> selectIdleTimeout(intent.seconds)
@@ -143,12 +154,26 @@ class GeneralSettingsViewModel(
     }
 
     private suspend fun toggleResidentNotification(enabled: Boolean) {
-        updateState { copy(residentNotificationEnabled = enabled) }
-        try {
-            XRepo.setResidentNotificationEnabled(enabled)
-        } catch (e: Throwable) {
-            e.printStackTrace()
-            throw e
+        if (enabled) {
+            val granted = isNotificationPermissionGranted()
+            if (!granted) {
+                sendEffect(GeneralSettingsEffect.RequestNotificationPermission)
+                return
+            }
+            updateState { copy(residentNotificationEnabled = true) }
+            XRepo.setResidentNotificationEnabled(true)
+        } else {
+            updateState { copy(residentNotificationEnabled = false) }
+            XRepo.setResidentNotificationEnabled(false)
+        }
+    }
+
+    private suspend fun onNotificationPermissionResult(granted: Boolean) {
+        if (granted) {
+            updateState { copy(residentNotificationEnabled = true) }
+            XRepo.setResidentNotificationEnabled(true)
+        } else {
+            updateState { copy(residentNotificationEnabled = false) }
         }
     }
 
