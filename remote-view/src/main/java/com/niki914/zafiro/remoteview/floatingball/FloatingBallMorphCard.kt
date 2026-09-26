@@ -28,6 +28,8 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloseFullscreen
+import androidx.compose.ui.res.stringResource
+import com.niki914.zafiro.remoteview.R
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -472,7 +474,8 @@ fun FloatingBallApprovalPreview(
     modifier: Modifier = Modifier,
 ) {
     val linkColor = MaterialTheme.colorScheme.primary
-    val displayReason = reason.ifBlank { "待确认" }
+    val fallbackReason = stringResource(R.string.floating_ball_approval_reason_unknown)
+    val displayReason = reason.ifBlank { fallbackReason }
 
     Column(
         modifier = modifier
@@ -488,7 +491,7 @@ fun FloatingBallApprovalPreview(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "操作待您批准 ($displayReason)",
+            text = stringResource(R.string.floating_ball_approval_pending, displayReason),
             color = contentColor,
             style = MaterialTheme.typography.bodySmall.copy(
                 fontWeight = FontWeight.SemiBold,
@@ -500,7 +503,7 @@ fun FloatingBallApprovalPreview(
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = "点击展开详情",
+            text = stringResource(R.string.floating_ball_approval_view_details),
             color = linkColor,
             style = MaterialTheme.typography.labelSmall.copy(
                 textDecoration = TextDecoration.Underline,

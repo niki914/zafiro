@@ -211,7 +211,11 @@ object FloatingBallOverlayManager {
                             showDetailWindow(appContext, wm, owner)
                         }
                         FloatingBallEffect.DismissDetail -> {
-                            removeDetailWindow()
+                            if (detailRootView != null) {
+                                cardRootView?.makeVisibleAndNotifyDrawn {
+                                    removeDetailWindow()
+                                } ?: removeDetailWindow()
+                            }
                         }
                         is FloatingBallEffect.SettleApproval -> {
                             resolveApproval(effect.decision)
@@ -457,7 +461,8 @@ object FloatingBallOverlayManager {
 
     private fun showDetailWindow(appContext: Context, wm: WindowManager, owner: OverlayLifecycleOwner) {
         if (detailRootView != null) return
-        val request = viewModel?.uiStateFlow?.value?.approvalRequest ?: return
+        val vm = viewModel ?: return
+        val request = vm.uiStateFlow.value.approvalRequest ?: return
         val cardLayout = cardRootView ?: return
 
         val density = appContext.resources.displayMetrics.density
@@ -495,25 +500,34 @@ object FloatingBallOverlayManager {
                     dynamicColor = themePrefs.seedColor == null,
                     seedColor = seed,
                 ) {
+                    val uiState by vm.uiStateFlow.collectAsState()
                     FloatingBallDetailMorphCard(
                         startCardX = cardXDp,
                         startCardY = cardYDp,
                         request = request,
+                        preview = uiState.preview,
+                        isStopEnabled = uiState.isStopEnabled,
                         onAllow = {
-                            cardLayout.makeVisibleAndNotifyDrawn { removeDetailWindow() }
-                            viewModel?.sendIntent(FloatingBallIntent.AllowApproval)
+                            cardLayout.makeVisibleAndNotifyDrawn {
+                                removeDetailWindow()
+                                viewModel?.sendIntent(FloatingBallIntent.AllowApproval)
+                            }
                         },
                         onDeny = {
-                            cardLayout.makeVisibleAndNotifyDrawn { removeDetailWindow() }
-                            viewModel?.sendIntent(FloatingBallIntent.DenyApproval)
+                            cardLayout.makeVisibleAndNotifyDrawn {
+                                removeDetailWindow()
+                                viewModel?.sendIntent(FloatingBallIntent.DenyApproval)
+                            }
                         },
                         onFirstFrameReady = {
                             // Window 3 首帧真实绘制完毕（且与卡片完全重叠），此时让底层卡片隐藏
                             cardRootView?.visibility = View.INVISIBLE
                         },
                         onCollapseFinished = {
-                            cardLayout.makeVisibleAndNotifyDrawn { removeDetailWindow() }
-                            viewModel?.sendIntent(FloatingBallIntent.CloseDetail)
+                            cardLayout.makeVisibleAndNotifyDrawn {
+                                removeDetailWindow()
+                                viewModel?.sendIntent(FloatingBallIntent.CloseDetail)
+                            }
                         },
                     )
                 }

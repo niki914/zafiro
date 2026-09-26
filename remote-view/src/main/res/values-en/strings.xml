@@ -5,4 +5,7 @@
     <string name="tool_permission_matched_rule">Matched rule "%1$s"</string>
     <string name="tool_permission_allow">Allow once</string>
     <string name="tool_permission_deny">Deny</string>
+    <string name="floating_ball_approval_pending">Action pending approval (%1$s)</string>
+    <string name="floating_ball_approval_reason_unknown">Pending</string>
+    <string name="floating_ball_approval_view_details">Click to view details</string>
 </resources>

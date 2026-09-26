@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_permission_dialog_title">AI が操作の実行を要求しています</string>
+    <string name="tool_permission_request_intro">Zafiro のツール「%1$s」が次のコマンドの実行を要求しています:</string>
+    <string name="tool_permission_matched_rule">一致したルール「%1$s」</string>
+    <string name="tool_permission_allow">今回のみ許可</string>
+    <string name="tool_permission_deny">拒否</string>
+    <string name="floating_ball_approval_pending">操作の承認待ち (%1$s)</string>
+    <string name="floating_ball_approval_reason_unknown">要確認</string>
+    <string name="floating_ball_approval_view_details">タップして詳細を表示</string>
+</resources>
