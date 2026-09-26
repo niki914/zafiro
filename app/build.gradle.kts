@@ -79,6 +79,7 @@ android {
 dependencies {
     implementation(project(":agent-runtime"))
     implementation(project(":libs:permission-manager"))
+    implementation(project(":business:notification"))
     implementation(project(":ui-kit"))
     implementation(project(":xposed-runtime"))
     implementation(project(":store"))
