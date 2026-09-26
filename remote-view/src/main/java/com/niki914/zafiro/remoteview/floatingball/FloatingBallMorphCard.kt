@@ -3,7 +3,6 @@ package com.niki914.zafiro.remoteview.floatingball
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -118,7 +117,6 @@ fun FloatingBallMorphCard(
 
     val currentWidth = lerp(FloatingBallTokens.collapsedWidthDp, FloatingBallTokens.expandedWidthDp, progress)
     val currentHeight = lerp(FloatingBallTokens.collapsedHeightDp, FloatingBallTokens.expandedHeightDp, progress)
-    val currentCornerRadius = lerp(FloatingBallTokens.collapsedCornerRadiusDp, FloatingBallTokens.cardCornerRadiusDp, progress)
     val currentCardPadding = lerp(0.dp, FloatingBallTokens.cardPaddingDp, progress)
 
     // 计算卡片容器在展开窗口中的偏移，使锚点相对屏幕绝对坐标严格静止
@@ -129,7 +127,7 @@ fun FloatingBallMorphCard(
     }
     val containerTop = anchorY + FloatingBallTokens.buttonDiameterDp + currentCardPadding - currentHeight
 
-    val cardShape = G2CardShape(currentCornerRadius)
+    val cardShape = G2CardShape(FloatingBallTokens.cardCornerRadiusDp)
 
     Box(
         modifier = modifier
@@ -171,7 +169,6 @@ fun FloatingBallMorphCard(
             } else {
                 0f
             }
-            val buttonBorder = BorderStroke(1.5.dp, cardBg)
 
             Box(
                 modifier = Modifier
@@ -183,7 +180,6 @@ fun FloatingBallMorphCard(
                     onClick = onJumpToApp,
                     backgroundColor = buttonBg,
                     contentColor = buttonIconTint,
-                    border = buttonBorder,
                     enabled = progress >= 0.7f,
                     modifier = Modifier
                         .offset { IntOffset(offsets.jumpX.roundToPx(), 0) }
@@ -195,7 +191,6 @@ fun FloatingBallMorphCard(
                     onClick = onStop,
                     backgroundColor = buttonBg,
                     contentColor = buttonIconTint,
-                    border = buttonBorder,
                     enabled = progress >= 0.7f,
                     modifier = Modifier
                         .offset { IntOffset(offsets.stopX.roundToPx(), 0) }
@@ -207,7 +202,6 @@ fun FloatingBallMorphCard(
                     onClick = onMinimize,
                     backgroundColor = buttonBg,
                     contentColor = buttonIconTint,
-                    border = buttonBorder,
                     enabled = progress >= 0.7f,
                     modifier = Modifier
                         .offset { IntOffset(offsets.minimizeX.roundToPx(), 0) }

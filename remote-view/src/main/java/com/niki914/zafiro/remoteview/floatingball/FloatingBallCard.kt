@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,13 +22,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.zafiro.remoteview.R
 
 /**
  * 悬浮球统一原子操作按钮组件。
  *
  * 尺寸由 [FloatingBallTokens.buttonDiameterDp] 约束。
+ * 形状固定为 [CircleShape] 正圆形。
  * 收起态悬浮球本体、展开态底部的 Jump、Stop、Minimize 按钮均复用本组件。
  */
 @Composable
@@ -38,17 +39,15 @@ fun FloatingBallActionButton(
     backgroundColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.primaryContainer,
     border: BorderStroke? = null,
-    cornerRadius: Dp = FloatingBallTokens.expandedButtonCornerRadiusDp,
     iconSize: Dp = 20.dp,
     enabled: Boolean = true,
 ) {
-    val shape = G2CardShape(cornerRadius)
     Box(
         modifier = modifier
             .size(FloatingBallTokens.buttonDiameterDp)
-            .clip(shape)
-            .background(backgroundColor, shape)
-            .then(if (border != null) Modifier.border(border, shape) else Modifier)
+            .clip(CircleShape)
+            .background(backgroundColor, CircleShape)
+            .then(if (border != null) Modifier.border(border, CircleShape) else Modifier)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -77,7 +76,6 @@ fun FloatingBallCollapsedBall(
         modifier = modifier,
         backgroundColor = backgroundColor,
         contentColor = contentColor,
-        cornerRadius = FloatingBallTokens.collapsedCornerRadiusDp,
         iconSize = 18.dp,
     )
 }

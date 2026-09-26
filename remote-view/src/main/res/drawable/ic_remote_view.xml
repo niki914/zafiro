@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Remote view icon -->
+<?xml version="1.0" encoding="utf-8"?><!-- Thinking spark icon. Glyph bbox 28.28x28.28 (39.86..68.14) at 80% of canvas:
+     viewport 35.35x35.35, translate (-3.535, -3.535) centers the glyph. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -23,29 +23,27 @@
             android:strokeColor="#FFFFFF"
             android:strokeLineCap="round" />
         <path
-            android:pathData="M68.14,39.86L55.22,52.79C53.94,54.06 52.82,55.19 51.54,56.47L39.86,68.14"
+            android:pathData="M68.14,39.86L58.74,56.33C57.46,57.04 56.33,58.17 55.63,59.44L39.86,68.14"
             android:strokeLineJoin="round"
             android:strokeWidth="1.5"
             android:fillColor="#00000000"
             android:strokeColor="#FFFFFF"
             android:strokeLineCap="round" />
         <path
-            android:pathData="M68.14,39.86L58.68,56.32C57.41,57.6 56.28,58.73 55,60L39.86,68.14"
+            android:pathData="M68.14,39.86L62.27,59.87C60.29,59.87 59.16,61 59.16,62.98L39.86,68.14"
             android:strokeLineJoin="round"
             android:strokeWidth="2"
             android:fillColor="#00000000"
             android:strokeColor="#FFFFFF"
             android:strokeLineCap="round" />
         <path
-            android:pathData="M48.13,45.73L58.68,56.32"
-            android:strokeLineJoin="round"
+            android:pathData="M48.13,45.73L62.27,59.87"
             android:strokeWidth="1.5"
             android:fillColor="#00000000"
             android:strokeColor="#FFFFFF"
             android:strokeLineCap="round" />
         <path
-            android:pathData="M45.02,48.84L55,60"
-            android:strokeLineJoin="round"
+            android:pathData="M45.02,48.84L59.16,62.98"
             android:strokeWidth="1.5"
             android:fillColor="#00000000"
             android:strokeColor="#FFFFFF"
