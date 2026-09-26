@@ -35,9 +35,19 @@ class FloatingBallViewModelTest {
     }
 
     @Test
-    fun requestExpand_expandsAndUnsubmerges() = runTest {
+    fun requestExpand_emitsExpandCardEffect() = runTest {
         val viewModel = FloatingBallViewModel()
+        val effectDeferred = async { viewModel.uiEffect.first() }
         viewModel.sendIntent(FloatingBallIntent.RequestExpand)
+        advanceUntilIdle()
+
+        assertEquals(FloatingBallEffect.ExpandCard, effectDeferred.await())
+    }
+
+    @Test
+    fun commitExpand_expandsAndUnsubmerges() = runTest {
+        val viewModel = FloatingBallViewModel()
+        viewModel.sendIntent(FloatingBallIntent.CommitExpand)
         advanceUntilIdle()
 
         val state = viewModel.uiStateFlow.value
@@ -48,7 +58,7 @@ class FloatingBallViewModelTest {
     @Test
     fun requestCollapse_collapsesAndClosesDetail() = runTest {
         val viewModel = FloatingBallViewModel()
-        viewModel.sendIntent(FloatingBallIntent.RequestExpand)
+        viewModel.sendIntent(FloatingBallIntent.CommitExpand)
         advanceUntilIdle()
         viewModel.sendIntent(
             FloatingBallIntent.UpdateApprovalRequest(
@@ -72,15 +82,20 @@ class FloatingBallViewModelTest {
         val viewModel = FloatingBallViewModel()
         assertEquals(FloatingBallState.Collapsed, viewModel.uiStateFlow.value.ballState)
 
+        val effectDeferred = async { viewModel.uiEffect.first() }
         val request = ApprovalRequest("terminal", "rm -rf /tmp", "dangerous_rm")
         viewModel.sendIntent(FloatingBallIntent.UpdateApprovalRequest(request))
         advanceUntilIdle()
 
+        assertEquals(request, viewModel.uiStateFlow.value.approvalRequest)
+        assertTrue(viewModel.uiStateFlow.value.isApprovalPending)
+        assertEquals(FloatingBallEffect.ExpandCard, effectDeferred.await())
+
+        viewModel.sendIntent(FloatingBallIntent.CommitExpand)
+        advanceUntilIdle()
         val state = viewModel.uiStateFlow.value
         assertEquals(FloatingBallState.Expanded, state.ballState)
         assertFalse(state.isSubmerged)
-        assertEquals(request, state.approvalRequest)
-        assertTrue(state.isApprovalPending)
     }
 
     @Test
@@ -88,6 +103,7 @@ class FloatingBallViewModelTest {
         val viewModel = FloatingBallViewModel()
         val request = ApprovalRequest("terminal", "ls", "safe_ls")
         viewModel.sendIntent(FloatingBallIntent.UpdateApprovalRequest(request))
+        viewModel.sendIntent(FloatingBallIntent.CommitExpand)
         advanceUntilIdle()
 
         viewModel.sendIntent(FloatingBallIntent.OpenDetail)
@@ -104,6 +120,7 @@ class FloatingBallViewModelTest {
         val viewModel = FloatingBallViewModel()
         val request = ApprovalRequest("terminal", "id", "safe_id")
         viewModel.sendIntent(FloatingBallIntent.UpdateApprovalRequest(request))
+        viewModel.sendIntent(FloatingBallIntent.CommitExpand)
         advanceUntilIdle()
         viewModel.sendIntent(FloatingBallIntent.OpenDetail)
         advanceUntilIdle()

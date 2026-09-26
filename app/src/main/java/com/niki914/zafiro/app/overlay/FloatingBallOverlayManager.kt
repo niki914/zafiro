@@ -265,6 +265,7 @@ object FloatingBallOverlayManager {
                 onRequestExpand = {
                     val currentDock = vmInstance.uiStateFlow.value.dockSide
                     cardLayout.openAt(ballLayout.ballX, ballLayout.ballY, currentDock)
+                    vmInstance.sendIntent(FloatingBallIntent.CommitExpand)
                 },
                 onDockSideChanged = { newDock ->
                     vmInstance.sendIntent(FloatingBallIntent.UpdateDockSide(newDock))

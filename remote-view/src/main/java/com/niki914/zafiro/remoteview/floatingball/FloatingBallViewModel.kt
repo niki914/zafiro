@@ -26,6 +26,7 @@ data class FloatingBallUiState(
  */
 sealed interface FloatingBallIntent {
     data object RequestExpand : FloatingBallIntent
+    data object CommitExpand : FloatingBallIntent
     data class RequestCollapse(val snapDock: DockSide? = null) : FloatingBallIntent
     data object OpenDetail : FloatingBallIntent
     data object CloseDetail : FloatingBallIntent
@@ -69,8 +70,12 @@ class FloatingBallViewModel :
     override suspend fun handleIntent(intent: FloatingBallIntent) {
         when (intent) {
             FloatingBallIntent.RequestExpand -> {
-                updateState { copy(ballState = FloatingBallState.Expanded, isSubmerged = false) }
+                if (currentState.ballState.isExpanded) return
                 sendEffect(FloatingBallEffect.ExpandCard)
+            }
+
+            FloatingBallIntent.CommitExpand -> {
+                updateState { copy(ballState = FloatingBallState.Expanded, isSubmerged = false) }
             }
 
             is FloatingBallIntent.RequestCollapse -> {
@@ -150,7 +155,6 @@ class FloatingBallViewModel :
                     sendEffect(FloatingBallEffect.DismissDetail)
                 }
                 if (newRequest != null && currentState.ballState.isCollapsed) {
-                    updateState { copy(ballState = FloatingBallState.Expanded, isSubmerged = false) }
                     sendEffect(FloatingBallEffect.ExpandCard)
                 }
             }
