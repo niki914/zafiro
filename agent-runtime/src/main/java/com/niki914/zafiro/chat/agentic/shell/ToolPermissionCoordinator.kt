@@ -2,9 +2,12 @@ package com.niki914.zafiro.chat.agentic.shell
 
 import com.niki914.logging.Logger
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.selects.select
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /** 一次工具执行确认请求（UI 展示字段）。 */
@@ -57,15 +60,56 @@ object ToolPermissionCoordinator {
             LOG_TAG,
             "confirm id=${request.id} tool=${request.toolName} uiResumed=$isUiResumed handler=${backgroundConfirmationHandler != null}",
         )
+        val handler = backgroundConfirmationHandler
+        if (isUiResumed && handler != null) {
+            return showConcurrent(request, handler)
+        }
         if (isUiResumed) {
             return showInAppDialog(request)
         }
-        val handler = backgroundConfirmationHandler
         if (handler != null) {
             return showBackgroundDialog(request, handler)
         }
         Logger.i(LOG_TAG, "confirm denied unavailable id=${request.id}")
         return ToolPermissionResponse.DENIED_UNAVAILABLE
+    }
+
+    private suspend fun showConcurrent(
+        request: ToolPermissionRequest,
+        handler: suspend (ToolPermissionRequest) -> ToolPermissionResponse,
+    ): ToolPermissionResponse = coroutineScope {
+        pendingFlow.value = request
+        enterWaiting(request.id)
+        val waiter = CompletableDeferred<ToolPermissionResponse>()
+        deferred = waiter
+
+        val inAppDeferred = async {
+            waiter.await()
+        }
+        val handlerDeferred = async {
+            handler(request)
+        }
+
+        try {
+            select<ToolPermissionResponse> {
+                inAppDeferred.onAwait { it }
+                handlerDeferred.onAwait { resp ->
+                    if (resp == ToolPermissionResponse.DENIED_UNAVAILABLE) {
+                        inAppDeferred.await()
+                    } else {
+                        resp
+                    }
+                }
+            }
+        } finally {
+            inAppDeferred.cancel()
+            handlerDeferred.cancel()
+            if (deferred === waiter) {
+                deferred = null
+                pendingFlow.value = null
+            }
+            exitWaiting(request.id)
+        }
     }
 
     private fun enterWaiting(requestId: String) {

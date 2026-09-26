@@ -50,4 +50,60 @@ class AgentImplTest {
         AgentImpl.stop()
         assertEquals(com.niki914.zafiro.api.model.AgentPhase.Idle, AgentImpl.status.value.phase)
     }
+
+    @Test
+    fun decideApproval_whenNoApprovers_returnsDeny() = kotlinx.coroutines.runBlocking {
+        val request = com.niki914.zafiro.api.model.ApprovalRequest(
+            toolName = "terminal",
+            command = "rm -rf /",
+            ruleName = "RULE",
+        )
+        val decision = AgentImpl.decideApproval(request)
+        assertEquals(com.niki914.zafiro.api.model.ApprovalDecision.Deny, decision)
+    }
+
+    @Test
+    fun decideApproval_firstNonAbstainWins() = kotlinx.coroutines.runBlocking {
+        val approver1 = object : com.niki914.zafiro.api.Approver {
+            override suspend fun decide(request: com.niki914.zafiro.api.model.ApprovalRequest): com.niki914.zafiro.api.model.ApprovalDecision {
+                kotlinx.coroutines.delay(50)
+                return com.niki914.zafiro.api.model.ApprovalDecision.Allow
+            }
+        }
+        val approver2 = object : com.niki914.zafiro.api.Approver {
+            override suspend fun decide(request: com.niki914.zafiro.api.model.ApprovalRequest): com.niki914.zafiro.api.model.ApprovalDecision {
+                kotlinx.coroutines.delay(10)
+                return com.niki914.zafiro.api.model.ApprovalDecision.Deny
+            }
+        }
+        AgentImpl.addApprover(approver1)
+        AgentImpl.addApprover(approver2)
+
+        val request = com.niki914.zafiro.api.model.ApprovalRequest(
+            toolName = "terminal",
+            command = "ls",
+            ruleName = "RULE",
+        )
+        val decision = AgentImpl.decideApproval(request)
+        assertEquals(com.niki914.zafiro.api.model.ApprovalDecision.Deny, decision)
+    }
+
+    @Test
+    fun removeApprover_removesRegisteredApprover() = kotlinx.coroutines.runBlocking {
+        val approver = object : com.niki914.zafiro.api.Approver {
+            override suspend fun decide(request: com.niki914.zafiro.api.model.ApprovalRequest): com.niki914.zafiro.api.model.ApprovalDecision {
+                return com.niki914.zafiro.api.model.ApprovalDecision.Allow
+            }
+        }
+        AgentImpl.addApprover(approver)
+        AgentImpl.removeApprover(approver)
+
+        val request = com.niki914.zafiro.api.model.ApprovalRequest(
+            toolName = "terminal",
+            command = "pwd",
+            ruleName = "RULE",
+        )
+        val decision = AgentImpl.decideApproval(request)
+        assertEquals(com.niki914.zafiro.api.model.ApprovalDecision.Deny, decision)
+    }
 }

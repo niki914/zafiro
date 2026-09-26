@@ -30,6 +30,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
@@ -39,6 +40,11 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.Approver
+import com.niki914.zafiro.api.model.AgentPhase
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.remoteview.floatingball.DockSide
@@ -48,6 +54,10 @@ import com.niki914.zafiro.remoteview.floatingball.FloatingBallMorphCard
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallTokens
 import com.niki914.zafiro.service.requireService
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import kotlin.math.hypot
 
 /**
@@ -61,6 +71,9 @@ import kotlin.math.hypot
  *   彻底绕过 Android 底层 SurfaceFlinger 从大到小裁切与移动时产生的左上角撕裂和位移补间；
  * - **物理像素严格重合接力**：
  *   展开前和收缩后，在动画交界的那一帧，两窗口在 (ballX, ballY) 处 100% 严丝合缝重合接力，视觉上完全无缝。
+ *
+ *   TODO: 重构。目前来看，将来至少出现三个 Window。所以肯定是需要解耦的。然后目前这个选择框其实是 compose，所以可以用上 MVI 架构，而不是全部都聚集在这个 overlay manager 里面。
+ *   TODO：approver review 以后改成翻页动画并且提供进一步展开的 UI，可以参考已经删除的 Tool permission overlay
  */
 object FloatingBallOverlayManager {
 
@@ -84,8 +97,49 @@ object FloatingBallOverlayManager {
     var yRatio by mutableFloatStateOf(INITIAL_Y_RATIO)
         private set
 
+    // 授权状态
+    var activeApprovalRequest by mutableStateOf<ApprovalRequest?>(null)
+        private set
+    private var activeApprovalCont: CancellableContinuation<ApprovalDecision>? = null
+    private var floatingBallApprover: FloatingBallApprover? = null
+
     val isShowing: Boolean
         get() = ballRootView != null
+
+    private fun autoExpandIfCollapsed() {
+        mainHandler.post {
+            if (ballState.isCollapsed) {
+                ballRootView?.requestExpand()
+            }
+        }
+    }
+
+    private fun resolveApproval(decision: ApprovalDecision) {
+        val cont = activeApprovalCont
+        activeApprovalCont = null
+        activeApprovalRequest = null
+        cont?.resume(decision)
+    }
+
+    private class FloatingBallApprover : Approver {
+        override suspend fun decide(request: ApprovalRequest): ApprovalDecision {
+            return suspendCancellableCoroutine { cont ->
+                mainHandler.post {
+                    activeApprovalRequest = request
+                    activeApprovalCont = cont
+                    autoExpandIfCollapsed()
+                }
+                cont.invokeOnCancellation {
+                    mainHandler.post {
+                        if (activeApprovalRequest == request) {
+                            activeApprovalRequest = null
+                            activeApprovalCont = null
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     fun show(context: Context) {
         mainHandler.post {
@@ -153,6 +207,25 @@ object FloatingBallOverlayManager {
                 onResume()
             }
             lifecycleOwner = owner
+
+            val approver = FloatingBallApprover()
+            floatingBallApprover = approver
+            val agentControl = runCatching { requireService<AgentControl>() }.getOrNull()
+            agentControl?.addApprover(approver)
+
+            owner.lifecycleScope.launch {
+                var lastOutcome: TurnOutcome? = null
+                var lastPhase = AgentPhase.Idle
+                agentControl?.status?.collect { status ->
+                    val newOutcome = status.outcome
+                    val outcomeArrived = newOutcome != null && newOutcome != lastOutcome && lastPhase != AgentPhase.Idle
+                    lastOutcome = newOutcome
+                    lastPhase = status.phase
+                    if (outcomeArrived) {
+                        autoExpandIfCollapsed()
+                    }
+                }
+            }
 
             lateinit var ballLayout: FloatingBallTouchLayout
             lateinit var cardLayout: FloatingCardTouchLayout
@@ -252,8 +325,15 @@ object FloatingBallOverlayManager {
                     val isDark = themePrefs.resolveDarkTheme(isSystemDark)
                     val seed = themePrefs.seedColor?.let { Color(it) }
 
-                    val agentControl = requireService<AgentControl>()
-                    val agentStatus by agentControl.status.collectAsState()
+                    val currentAgentControl = requireService<AgentControl>()
+                    val agentStatus by currentAgentControl.status.collectAsState()
+                    val currentApproval = activeApprovalRequest
+
+                    val previewText = if (currentApproval != null) {
+                        "⚠️ 待授权 · ${currentApproval.toolName}: ${currentApproval.command}"
+                    } else {
+                        agentStatus.preview
+                    }
 
                     BaseTheme(
                         darkTheme = isDark,
@@ -263,7 +343,9 @@ object FloatingBallOverlayManager {
                         FloatingBallMorphCard(
                             state = ballState,
                             dockSide = dockSide,
-                            preview = agentStatus.preview,
+                            preview = previewText,
+                            isApprovalPending = currentApproval != null,
+                            isStopEnabled = agentStatus.phase != AgentPhase.Idle,
                             onBallClick = {},
                             onMinimize = {
                                 cardLayout.requestCollapse()
@@ -276,7 +358,15 @@ object FloatingBallOverlayManager {
                             },
                             onStop = {
                                 Logger.i(TAG, "FloatingBall: Stop clicked")
-                                agentControl.stop()
+                                currentAgentControl.stop()
+                            },
+                            onAllow = {
+                                Logger.i(TAG, "FloatingBall: Allow clicked")
+                                resolveApproval(ApprovalDecision.Allow)
+                            },
+                            onDeny = {
+                                Logger.i(TAG, "FloatingBall: Deny clicked")
+                                resolveApproval(ApprovalDecision.Deny)
                             },
                             onCollapseFinished = {
                                 cardLayout.notifyCollapseFinished()
@@ -311,6 +401,12 @@ object FloatingBallOverlayManager {
 
     fun dismiss() {
         mainHandler.post {
+            floatingBallApprover?.let { approver ->
+                runCatching { requireService<AgentControl>() }.getOrNull()?.removeApprover(approver)
+            }
+            floatingBallApprover = null
+            resolveApproval(ApprovalDecision.Abstain)
+
             val wm = windowManager
 
             ballRootView?.let {

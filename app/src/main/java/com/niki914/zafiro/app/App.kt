@@ -12,12 +12,10 @@ import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
-import com.niki914.zafiro.app.overlay.ToolPermissionOverlay
+import com.niki914.zafiro.app.permission.ToolPermissionCoordinatorApproverImpl__Tmp
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionRequest
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionResponse
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.runtime.createAppRuntimeBridge
@@ -66,11 +64,11 @@ class App : Application() {
             PyRuntime.warmUp()
         }
 
-        ToolPermissionCoordinator.backgroundConfirmationHandler = { request ->
-            handleBackgroundConfirmation(this, request)
-        }
         // 全部权限走 PermissionManager：ensureService 的门面注入（主 App 进程）。
         AccessibilityController.permissions = PermissionHolder.get(this)
+        ToolPermissionCoordinator.backgroundConfirmationHandler = { request ->
+            ToolPermissionCoordinatorApproverImpl__Tmp.confirm(request)
+        }
         observeFloatingBall()
     }
 
@@ -85,28 +83,6 @@ class App : Application() {
                     FloatingBallOverlayManager.dismiss()
                 }
             }
-        }
-    }
-
-    private suspend fun handleBackgroundConfirmation(
-        context: Context,
-        request: ToolPermissionRequest,
-    ): ToolPermissionResponse {
-        // 挂起式等链路结果，不占线程；取消（Activity 销毁）时不吞，交由调用方协程处理
-        val result = PermissionHolder.get(context).request(Permission.OVERLAY)
-        if (result.finalState != PermissionState.GRANTED) {
-            return ToolPermissionResponse.DENIED_UNAVAILABLE
-        }
-        // 窗口加不上（权限被收回等）≠ 用户拒绝：失败走 DENIED_UNAVAILABLE
-        val allowed = try {
-            ToolPermissionOverlay.show(context, request)
-        } catch (_: Throwable) {
-            return ToolPermissionResponse.DENIED_UNAVAILABLE
-        }
-        return if (allowed) {
-            ToolPermissionResponse.ALLOWED
-        } else {
-            ToolPermissionResponse.DENIED_BY_USER
         }
     }
 

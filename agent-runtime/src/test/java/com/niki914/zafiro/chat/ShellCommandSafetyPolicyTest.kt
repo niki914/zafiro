@@ -7,15 +7,20 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
 class ShellCommandSafetyPolicyTest {
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
+
     @After
     fun tearDown() {
         RuntimeEnvironment.clearForTest()

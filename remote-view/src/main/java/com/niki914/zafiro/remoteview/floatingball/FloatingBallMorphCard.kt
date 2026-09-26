@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloseFullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +48,7 @@ import com.niki914.uikit.infra.shape.G2CardShape
  * 核心设计：
  * 1. 窗口尺寸终生固定，永远不做系统级 Window Resize；
  * 2. 展开与收缩全过程由双窗口无缝接力：小球在底层垫底，卡片在顶层展开/收起；
- * 3. 按钮顺序永远保持固定（[跳转应用 | 暂停 | 收起]），贴边方向仅决定卡片容器朝左或朝右收拢。
+ * 3. 按钮顺序永远保持固定（1B 顺序：[跳转应用 | 暂停/允许 | 收起/拒绝]），贴边方向仅决定卡片容器朝左或朝右收拢。
  */
 @Composable
 fun FloatingBallMorphCard(
@@ -54,10 +56,14 @@ fun FloatingBallMorphCard(
     dockSide: DockSide,
     modifier: Modifier = Modifier,
     preview: String? = null,
+    isApprovalPending: Boolean = false,
+    isStopEnabled: Boolean = true,
     onBallClick: () -> Unit = {},
     onMinimize: () -> Unit = {},
     onJumpToApp: () -> Unit = {},
     onStop: () -> Unit = {},
+    onAllow: () -> Unit = {},
+    onDeny: () -> Unit = {},
     onCollapseFinished: () -> Unit = {},
     onBallAlphaChanged: (Float) -> Unit = {},
 ) {
@@ -162,7 +168,7 @@ fun FloatingBallMorphCard(
                 contentColor = cardContentColor,
             )
 
-            // 操作栏：3 个卡牌按钮永远固定顺序 [跳转应用 | 暂停 | 收起]，像卡牌一样叠放与铺开
+            // 操作栏：3 个卡牌按钮永远固定 1B 顺序 [跳转应用 | 暂停/允许 | 收起/拒绝]，像卡牌一样叠放与铺开
             val offsets = FloatingBallGeometry.computeCardStackOffsets(dockSide, progress)
             val buttonsAlpha = if (progress > 0.15f) {
                 ((progress - 0.15f) / 0.55f).coerceIn(0f, 1f)
@@ -187,19 +193,19 @@ fun FloatingBallMorphCard(
                         .graphicsLayer { alpha = buttonsAlpha },
                 )
                 FloatingBallActionButton(
-                    icon = Icons.Filled.Pause,
-                    onClick = onStop,
+                    icon = if (isApprovalPending) Icons.Filled.Check else Icons.Filled.Pause,
+                    onClick = if (isApprovalPending) onAllow else onStop,
                     backgroundColor = buttonBg,
                     contentColor = buttonIconTint,
-                    enabled = progress >= 0.7f,
+                    enabled = progress >= 0.7f && (isApprovalPending || isStopEnabled),
                     modifier = Modifier
                         .offset { IntOffset(offsets.stopX.roundToPx(), 0) }
                         .zIndex(offsets.stopZIndex)
                         .graphicsLayer { alpha = buttonsAlpha },
                 )
                 FloatingBallActionButton(
-                    icon = Icons.Filled.CloseFullscreen,
-                    onClick = onMinimize,
+                    icon = if (isApprovalPending) Icons.Filled.Close else Icons.Filled.CloseFullscreen,
+                    onClick = if (isApprovalPending) onDeny else onMinimize,
                     backgroundColor = buttonBg,
                     contentColor = buttonIconTint,
                     enabled = progress >= 0.7f,
@@ -348,3 +354,20 @@ private fun PreviewLeftExpanded() {
         }
     }
 }
+
+@Preview(name = "Morph Card - Waiting Approval", showBackground = true)
+@Composable
+private fun PreviewWaitingApproval() {
+    BaseTheme(darkTheme = false, dynamicColor = false) {
+        Surface {
+            FloatingBallMorphCard(
+                state = FloatingBallState.Expanded,
+                dockSide = DockSide.Right,
+                isApprovalPending = true,
+                preview = "⚠️ 待授权 · terminal: rm -rf /tmp/cache",
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+    }
+}
+
