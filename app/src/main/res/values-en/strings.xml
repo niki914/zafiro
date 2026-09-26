@@ -382,6 +382,14 @@
     <string name="ui_settings_section_general">General</string>
     <string name="ui_settings_general">General Settings</string>
     <string name="ui_settings_general_summary">Language and startup behavior</string>
+    <string name="ui_settings_general_group_appearance">Appearance &amp; Language</string>
+    <string name="ui_settings_general_group_floating_notification">Floating &amp; Notifications</string>
+    <string name="ui_settings_general_group_conversation">Conversation &amp; Interaction</string>
+    <string name="ui_settings_general_group_runtime">Runtime &amp; Control</string>
+    <string name="ui_settings_general_floating_ball">Floating Ball</string>
+    <string name="ui_settings_general_floating_ball_summary">Display agent status and quick actions when in background</string>
+    <string name="ui_settings_general_resident_notification">Resident Notification</string>
+    <string name="ui_settings_general_resident_notification_summary">Show live status and controls in the notification drawer</string>
     <string name="ui_settings_general_language">Language</string>
     <string name="ui_settings_general_language_follow_system">Follow system</string>
     <string name="ui_settings_general_load_last_conversation">Load last conversation on startup</string>

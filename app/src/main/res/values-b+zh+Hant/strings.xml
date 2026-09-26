@@ -344,6 +344,14 @@
     <string name="ui_settings_section_general">一般</string>
     <string name="ui_settings_general">通用設定</string>
     <string name="ui_settings_general_summary">語言與啟動行為</string>
+    <string name="ui_settings_general_group_appearance">外觀與語言</string>
+    <string name="ui_settings_general_group_floating_notification">懸浮與通知</string>
+    <string name="ui_settings_general_group_conversation">對話與互動</string>
+    <string name="ui_settings_general_group_runtime">運行與控制</string>
+    <string name="ui_settings_general_floating_ball">懸浮球</string>
+    <string name="ui_settings_general_floating_ball_summary">後台運行時顯示 Agent 狀態與快捷操作</string>
+    <string name="ui_settings_general_resident_notification">常駐通知</string>
+    <string name="ui_settings_general_resident_notification_summary">在通知欄顯示實時狀態與控制入口</string>
     <string name="ui_settings_general_language">語言</string>
     <string name="ui_settings_general_language_follow_system">跟隨系統</string>
     <string name="ui_settings_general_load_last_conversation">啟動時載入上次對話</string>
