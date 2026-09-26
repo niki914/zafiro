@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_permission_dialog_title">La IA solicita ejecutar una operación</string>
+    <string name="tool_permission_request_intro">La herramienta "%1$s" de Zafiro desea ejecutar el siguiente comando:</string>
+    <string name="tool_permission_matched_rule">Regla coincidente "%1$s"</string>
+    <string name="tool_permission_allow">Permitir una vez</string>
+    <string name="tool_permission_deny">Rechazar</string>
+    <string name="floating_ball_approval_pending">Operación pendiente de aprobación (%1$s)</string>
+    <string name="floating_ball_approval_reason_unknown">Por confirmar</string>
+    <string name="floating_ball_approval_view_details">Toca para ver detalles</string>
+</resources>

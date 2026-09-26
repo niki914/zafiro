@@ -75,14 +75,18 @@ internal class FloatingCardTouchLayout(
      * 确保上层覆盖窗口在此之前继续遮盖，杜绝交接期间 1 帧空白造成的闪烁。
      */
     fun makeVisibleAndNotifyDrawn(onDrawn: () -> Unit) {
+        alpha = 1f
         visibility = View.VISIBLE
+        invalidate()
         var handled = false
         val listener = object : ViewTreeObserver.OnDrawListener {
             override fun onDraw() {
                 if (!handled) {
                     handled = true
                     post {
-                        viewTreeObserver.removeOnDrawListener(this)
+                        if (viewTreeObserver.isAlive) {
+                            runCatching { viewTreeObserver.removeOnDrawListener(this) }
+                        }
                         onDrawn()
                     }
                 }
@@ -93,7 +97,9 @@ internal class FloatingCardTouchLayout(
         postDelayed({
             if (!handled) {
                 handled = true
-                runCatching { viewTreeObserver.removeOnDrawListener(listener) }
+                if (viewTreeObserver.isAlive) {
+                    runCatching { viewTreeObserver.removeOnDrawListener(listener) }
+                }
                 onDrawn()
             }
         }, 50)

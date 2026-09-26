@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_permission_dialog_title">AI 請求執行操作</string>
+    <string name="tool_permission_request_intro">Zafiro 工具「%1$s」請求執行以下指令：</string>
+    <string name="tool_permission_matched_rule">命中規則「%1$s」</string>
+    <string name="tool_permission_allow">允許本次</string>
+    <string name="tool_permission_deny">拒絕</string>
+    <string name="floating_ball_approval_pending">操作待您核准 (%1$s)</string>
+    <string name="floating_ball_approval_reason_unknown">待確認</string>
+    <string name="floating_ball_approval_view_details">點擊展開詳情</string>
+</resources>

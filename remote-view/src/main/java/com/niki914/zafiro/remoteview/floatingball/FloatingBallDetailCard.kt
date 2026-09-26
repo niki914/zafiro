@@ -75,6 +75,8 @@ fun FloatingBallDetailMorphCard(
     startCardX: Dp,
     startCardY: Dp,
     request: ApprovalRequest,
+    preview: String? = null,
+    isStopEnabled: Boolean = false,
     onAllow: () -> Unit,
     onDeny: () -> Unit,
     onFirstFrameReady: () -> Unit = {},
@@ -189,10 +191,10 @@ fun FloatingBallDetailMorphCard(
             if (progress < 0.35f) {
                 val previewAlpha = ((0.35f - progress) / 0.35f).coerceIn(0f, 1f)
                 FloatingBallExpandedCardContent(
-                    preview = null,
+                    preview = preview,
                     approvalRequest = request,
                     isApprovalPending = true,
-                    isStopEnabled = false,
+                    isStopEnabled = isStopEnabled,
                     onJumpToApp = {},
                     onAllow = {},
                     onDeny = {},
