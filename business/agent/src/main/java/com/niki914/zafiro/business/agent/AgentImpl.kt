@@ -7,6 +7,8 @@ import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.AgentPhase
 import com.niki914.zafiro.api.model.AgentStatus
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
@@ -17,15 +19,18 @@ import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.CopyOnWriteArrayList
 
 // 存废：阶段 5 删除（委托实现：命令内部转发到 LLMController；架空完成后删除）
 
@@ -197,13 +202,53 @@ object AgentImpl : Agent {
         Logger.i(LOG_TAG, "loaded id=${id.value} turns=${stored.conversation.turns.size}")
     }
 
-    override fun addApprover(approver: Approver): Unit = error("approver 注册在 M6")
+    private val approvers = CopyOnWriteArrayList<Approver>()
 
-    override fun removeApprover(approver: Approver): Unit = error("approver 注册在 M6")
+    val hasApprovers: Boolean
+        get() = approvers.isNotEmpty()
+
+    override fun addApprover(approver: Approver) {
+        if (!approvers.contains(approver)) {
+            approvers.add(approver)
+        }
+    }
+
+    override fun removeApprover(approver: Approver) {
+        approvers.remove(approver)
+    }
+
+    /**
+     * 并发询问所有已注册的 Approver，首个非 Abstain 决策胜出。若无 Approver 则直接 Deny。
+     */
+    suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision = coroutineScope {
+        val currentApprovers = approvers.toList()
+        if (currentApprovers.isEmpty()) return@coroutineScope ApprovalDecision.Deny
+
+        val deferred = CompletableDeferred<ApprovalDecision>()
+        val jobs = currentApprovers.map { approver ->
+            launch {
+                try {
+                    val decision = approver.decide(request)
+                    if (decision != ApprovalDecision.Abstain) {
+                        deferred.complete(decision)
+                    }
+                } catch (t: Throwable) {
+                    if (t is CancellationException) throw t
+                }
+            }
+        }
+
+        try {
+            deferred.await()
+        } finally {
+            jobs.forEach { it.cancel() }
+        }
+    }
 
     /** 单测复位：进程内单例状态跨用例保留（同 `LLMController.resetForTest`）。 */
     internal fun clearForTest() {
         releaseRound()
+        approvers.clear()
         reduced = Reduced(Conversation())
         conversationFlow.value = Conversation()
         draftFlow.value = Draft()

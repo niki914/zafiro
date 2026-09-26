@@ -2,20 +2,29 @@ package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
+import com.niki914.zafiro.chat.agentic.shell.ToolPermissionResponse
 import com.niki914.zafiro.settings.RuntimeEnvironment
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
 class ShellCommandSafetyPolicyTest {
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
+
     @After
     fun tearDown() {
         RuntimeEnvironment.clearForTest()
@@ -217,6 +226,36 @@ class ShellCommandSafetyPolicyTest {
         assertFalse(decision.allowed)
         assertEquals("RULE_BLOCKED", decision.code)
         assertEquals("uninstall", decision.matchedRuleId)
+    }
+
+    @Test
+    fun evaluate_confirmRuleInBackgroundSurfacesPendingConfirmationAndAllowsViaHandler() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                executionRules = listOf(dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM))
+            )
+        )
+        ToolPermissionCoordinator.isUiResumed = false
+        val handlerDeferred = CompletableDeferred<ToolPermissionResponse>()
+        ToolPermissionCoordinator.backgroundConfirmationHandler = { handlerDeferred.await() }
+
+        val evaluation = async {
+            ShellCommandSafetyPolicy().evaluate(
+                "rm -rf /data/local/tmp/cache",
+                toolName = "terminal"
+            )
+        }
+        withTimeout(5_000) {
+            ToolPermissionCoordinator.pendingConfirmation.first { it != null }
+        }
+        val pending = ToolPermissionCoordinator.pendingConfirmation.value
+        assertNotNull(pending)
+        assertEquals("terminal", pending?.toolName)
+
+        handlerDeferred.complete(ToolPermissionResponse.ALLOWED)
+        val decision = evaluation.await()
+        assertTrue(decision.allowed)
+        assertNull(ToolPermissionCoordinator.pendingConfirmation.value)
     }
 
     @After
