@@ -1,12 +1,21 @@
 package com.niki914.zafiro.remoteview.floatingball
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,9 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -41,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.shape.G2CardShape
+import com.niki914.zafiro.api.model.ApprovalRequest
 
 /**
  * 卡片独立窗口内部的形态演变组件。
@@ -56,7 +69,8 @@ fun FloatingBallMorphCard(
     dockSide: DockSide,
     modifier: Modifier = Modifier,
     preview: String? = null,
-    isApprovalPending: Boolean = false,
+    approvalRequest: ApprovalRequest? = null,
+    isApprovalPending: Boolean = approvalRequest != null,
     isStopEnabled: Boolean = true,
     onBallClick: () -> Unit = {},
     onMinimize: () -> Unit = {},
@@ -64,6 +78,7 @@ fun FloatingBallMorphCard(
     onStop: () -> Unit = {},
     onAllow: () -> Unit = {},
     onDeny: () -> Unit = {},
+    onOpenDetail: () -> Unit = {},
     onCollapseFinished: () -> Unit = {},
     onBallAlphaChanged: (Float) -> Unit = {},
 ) {
@@ -163,9 +178,12 @@ fun FloatingBallMorphCard(
 
             FloatingBallPreviewSlot(
                 preview = preview,
+                approvalRequest = approvalRequest,
+                isApprovalPending = isApprovalPending,
                 slotHeight = textSlotHeight,
                 alpha = textAlpha,
                 contentColor = cardContentColor,
+                onOpenDetail = onOpenDetail,
             )
 
             // 操作栏：3 个卡牌按钮永远固定 1B 顺序 [跳转应用 | 暂停/允许 | 收起/拒绝]，像卡牌一样叠放与铺开
@@ -219,8 +237,14 @@ fun FloatingBallMorphCard(
     }
 }
 
+private sealed class PreviewTarget(val order: Int) {
+    data object Placeholder : PreviewTarget(0)
+    data class AgentText(val text: String) : PreviewTarget(1)
+    data class Approval(val reason: String) : PreviewTarget(2)
+}
+
 /**
- * 预览槽位：根据文本有无自动切换展示。
+ * 预览槽位：根据文本有无及待授权状态自动切换展示，支持上下翻折滑入滑出动效。
  *
  * 核心约束：
  * 外层 Box 必须终生占用 [slotHeight]，绝对禁止在 alpha <= 0f 时提前 return 或移除 Box。
@@ -230,29 +254,74 @@ fun FloatingBallMorphCard(
 @Composable
 private fun FloatingBallPreviewSlot(
     preview: String?,
+    approvalRequest: ApprovalRequest?,
+    isApprovalPending: Boolean,
     slotHeight: Dp,
     alpha: Float,
     contentColor: Color,
+    onOpenDetail: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(slotHeight),
+            .height(slotHeight)
+            .clipToBounds(),
+        contentAlignment = Alignment.Center,
     ) {
         if (alpha > 0f) {
-            val isBlank = preview.isNullOrBlank()
-            if (isBlank) {
-                FloatingBallPlaceholderPreview(
-                    alpha = alpha,
-                    contentColor = contentColor,
-                )
-            } else {
-                FloatingBallTextPreview(
-                    text = preview,
-                    alpha = alpha,
-                    contentColor = contentColor,
-                )
+            val previewTarget: PreviewTarget = when {
+                isApprovalPending || approvalRequest != null -> {
+                    val reason = approvalRequest?.ruleName?.takeIf { it.isNotBlank() }
+                        ?: approvalRequest?.toolName
+                        ?: ""
+                    PreviewTarget.Approval(reason)
+                }
+                preview.isNullOrBlank() -> PreviewTarget.Placeholder
+                else -> PreviewTarget.AgentText(preview)
+            }
+
+            AnimatedContent(
+                targetState = previewTarget,
+                transitionSpec = {
+                    val floatSpec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
+                    val intOffsetSpec = tween<IntOffset>(durationMillis = 280, easing = FastOutSlowInEasing)
+                    if (targetState.order >= initialState.order) {
+                        (slideInVertically(animationSpec = intOffsetSpec) { it } + fadeIn(animationSpec = floatSpec)) togetherWith
+                                (slideOutVertically(animationSpec = intOffsetSpec) { -it } + fadeOut(animationSpec = floatSpec))
+                    } else {
+                        (slideInVertically(animationSpec = intOffsetSpec) { -it } + fadeIn(animationSpec = floatSpec)) togetherWith
+                                (slideOutVertically(animationSpec = intOffsetSpec) { it } + fadeOut(animationSpec = floatSpec))
+                    }.using(SizeTransform(clip = true))
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { this.alpha = alpha },
+                label = "FloatingBallPreviewSlide",
+            ) { target ->
+                when (target) {
+                    is PreviewTarget.Placeholder -> {
+                        FloatingBallPlaceholderPreview(
+                            alpha = 1f,
+                            contentColor = contentColor,
+                        )
+                    }
+                    is PreviewTarget.AgentText -> {
+                        FloatingBallTextPreview(
+                            text = target.text,
+                            alpha = 1f,
+                            contentColor = contentColor,
+                        )
+                    }
+                    is PreviewTarget.Approval -> {
+                        FloatingBallApprovalPreview(
+                            reason = target.reason,
+                            alpha = 1f,
+                            contentColor = contentColor,
+                            onOpenDetail = onOpenDetail,
+                        )
+                    }
+                }
             }
         }
     }
@@ -312,6 +381,57 @@ fun FloatingBallTextPreview(
     }
 }
 
+/**
+ * 待授权提示文本展示：
+ * - 第一行：居中显示 "操作待您批准 (${reason})"
+ * - 第二行：居中小字带下划线 "点击展开详情"，具备超链接交互质感
+ */
+@Composable
+fun FloatingBallApprovalPreview(
+    reason: String,
+    alpha: Float,
+    contentColor: Color,
+    onOpenDetail: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val linkColor = MaterialTheme.colorScheme.primary
+    val displayReason = reason.ifBlank { "待确认" }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .clickable(onClick = onOpenDetail)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .graphicsLayer { this.alpha = alpha },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = "操作待您批准 ($displayReason)",
+            color = contentColor,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 16.sp,
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "点击展开详情",
+            color = linkColor,
+            style = MaterialTheme.typography.labelSmall.copy(
+                textDecoration = TextDecoration.Underline,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 14.sp,
+            ),
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
 @Preview(name = "Morph Card - Right Collapsed", showBackground = true)
 @Composable
 private fun PreviewRightCollapsed() {
@@ -363,8 +483,12 @@ private fun PreviewWaitingApproval() {
             FloatingBallMorphCard(
                 state = FloatingBallState.Expanded,
                 dockSide = DockSide.Right,
+                approvalRequest = ApprovalRequest(
+                    toolName = "terminal",
+                    command = "rm -rf /tmp/cache",
+                    ruleName = "危险删除命令",
+                ),
                 isApprovalPending = true,
-                preview = "⚠️ 待授权 · terminal: rm -rf /tmp/cache",
                 modifier = Modifier.padding(16.dp),
             )
         }
