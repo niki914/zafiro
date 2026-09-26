@@ -35,9 +35,7 @@ object FloatingBallTokens {
     const val cardPadding = 8
     const val cardCornerRadius = 25
 
-    // --- 圆角与排版 ---
-    const val expandedButtonCornerRadius = Int.MAX_VALUE // 展开态按钮为正圆
-    const val collapsedCornerRadius = 16
+    // --- 排版 ---
     const val previewMaxLines = 2
 
     // --- 极值尺寸 (严格受原子尺度与间距约束) ---
@@ -59,7 +57,7 @@ object FloatingBallTokens {
     // 距离屏幕边缘小于该阈值时触发自动吸附收起
     const val snapThreshold = 30
     // 靠边时隐藏靠边的部分宽度，屏幕上露出剩余部分作为抓手
-    const val submergedOffset = 20
+    const val submergedOffset = 8
     // 脱离吸边区时的安全外距
     const val escapeSnapDistance = 31
 
@@ -68,8 +66,6 @@ object FloatingBallTokens {
     val cardPaddingDp: Dp get() = cardPadding.dp
     val buttonStepDp: Dp get() = buttonDiameterDp + cardPaddingDp
     val cardCornerRadiusDp: Dp get() = cardCornerRadius.dp
-    val expandedButtonCornerRadiusDp: Dp get() = expandedButtonCornerRadius.dp
-    val collapsedCornerRadiusDp: Dp get() = collapsedCornerRadius.dp
     val expandedWidthDp: Dp get() = expandedWidth.dp
     val expandedHeightDp: Dp get() = expandedHeight.dp
     val collapsedWidthDp: Dp get() = collapsedWidth.dp
