@@ -8,7 +8,7 @@ import com.niki914.okia.message.Message
 import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
-import com.niki914.zafiro.api.model.AgentStatus
+import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
@@ -100,7 +100,7 @@ class HomeChatViewModelTest {
                 turns = listOf(ConversationTurn(id = turnIdAt(0), userText = "question", blocks = listOf(TurnBlock.Text("t0:0", "partial")))),
             ),
         )
-        fixture.agent.publishStatus(AgentStatus(phase = com.niki914.zafiro.api.model.AgentPhase.Generating))
+        fixture.agent.publishStatus(AgentState.Generating(text = null))
         runCurrent()
         assertTrue(fixture.vm.uiStateFlow.value.isGenerating)
         fixture.vm.sendIntent(HomeChatIntent.StopGenerating)

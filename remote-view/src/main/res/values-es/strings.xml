@@ -8,4 +8,5 @@
     <string name="floating_ball_approval_pending">Operación pendiente de aprobación (%1$s)</string>
     <string name="floating_ball_approval_reason_unknown">Por confirmar</string>
     <string name="floating_ball_approval_view_details">Toca para ver detalles</string>
+    <string name="floating_ball_tool_running">Ejecutando %1$s</string>
 </resources>

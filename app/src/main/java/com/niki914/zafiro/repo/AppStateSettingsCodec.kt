@@ -1,103 +1,74 @@
 package com.niki914.zafiro.repo
 
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.boolean
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.int
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.long
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 
+/**
+ * 应用级开关与偏好的单文档聚合。文件位置见 StoreDescriptorRegistry.APP_STATE_ID。
+ *
+ * 序列化说明：字段声明顺序即写盘 key 顺序（与历史手写 encode 一致），
+ * 缺 key 走默认值，未知 key（如已删除的旧字段）直接忽略，畸形 JSON 回全默认值。
+ */
+@Serializable
 internal data class AppStateSettings(
+    @SerialName("onboarding_completed")
     val onboardingCompleted: Boolean = false,
-    val startupAssistantUi: String = "auto",
-    val lastOpenedAgentId: String = "main",
+    @SerialName("last_opened_conversation_id")
     val lastOpenedConversationId: String = "",
     /** BCP-47 tag；空串 = 跟随系统语言。 */
+    @SerialName("language_tag")
     val languageTag: String = "",
     /** 冷启动是否恢复上次会话；false = 默认进入新对话。 */
-    val loadLastConversationOnStartup: Boolean = true,
+    @SerialName("load_last_conversation_on_startup")
+    val loadLastConversationOnStartup: Boolean = false,
     /** 主题深浅色模式；system/light/dark。 */
+    @SerialName("theme_mode")
     val themeMode: String = "dark",
     /** 主题种子色 ARGB hex；空串 = 跟随壁纸动态色。 */
+    @SerialName("theme_seed_color")
     val themeSeedColor: String = "FF52DBC9",
     /** 流式空闲超时秒数；0 = 不超时。 */
+    @SerialName("llm_idle_timeout_seconds")
     val llmIdleTimeoutSeconds: Long = 60L,
     /** 传输层自动重试次数。 */
+    @SerialName("llm_retry_max_attempts")
     val llmRetryMaxAttempts: Int = 3,
     /** 回答进行中保持屏幕常亮。 */
+    @SerialName("keep_screen_on")
     val keepScreenOn: Boolean = true,
     /** 消息操作行（复制/重新生成/fork 等）是否常显。 */
+    @SerialName("always_show_message_actions")
     val alwaysShowMessageActions: Boolean = true,
     /** 是否启用 Agent 悬浮球。 */
+    @SerialName("floating_ball_enabled")
     val floatingBallEnabled: Boolean = false,
     /** 是否启用常驻通知栏。 */
+    @SerialName("resident_notification_enabled")
     val residentNotificationEnabled: Boolean = false,
 )
 
 internal object AppStateSettingsCodec {
-    fun parse(json: String): AppStateSettings {
-        val root = parseObject(json)
-        return AppStateSettings(
-            onboardingCompleted = root.boolean(ONBOARDING_COMPLETED_KEY, default = false),
-            startupAssistantUi = root.string(STARTUP_ASSISTANT_UI_KEY).ifBlank { "auto" },
-            lastOpenedAgentId = root.string(LAST_OPENED_AGENT_ID_KEY).ifBlank { "main" },
-            lastOpenedConversationId = root.string(LAST_OPENED_CONVERSATION_ID_KEY),
-            languageTag = root.string(LANGUAGE_TAG_KEY),
-            loadLastConversationOnStartup = root.boolean(
-                LOAD_LAST_CONVERSATION_KEY,
-                default = true
-            ),
-            themeMode = root.string(THEME_MODE_KEY).ifBlank { "dark" },
-            themeSeedColor = root.string(THEME_SEED_COLOR_KEY).ifBlank { "FF52DBC9" },
-            llmIdleTimeoutSeconds = root.long(LLM_IDLE_TIMEOUT_KEY, default = 60L),
-            llmRetryMaxAttempts = root.int(LLM_RETRY_ATTEMPTS_KEY, default = 3),
-            keepScreenOn = root.boolean(KEEP_SCREEN_ON_KEY, default = true),
-            alwaysShowMessageActions = root.boolean(
-                ALWAYS_SHOW_MESSAGE_ACTIONS_KEY,
-                default = true
-            ),
-            floatingBallEnabled = root.boolean(FLOATING_BALL_ENABLED_KEY, default = false),
-            residentNotificationEnabled = root.boolean(
-                RESIDENT_NOTIFICATION_ENABLED_KEY,
-                default = false
-            ),
-        )
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
     }
 
-    fun encode(state: AppStateSettings): String {
-        return JsonObject(
-            mapOf(
-                ONBOARDING_COMPLETED_KEY to JsonPrimitive(state.onboardingCompleted),
-                STARTUP_ASSISTANT_UI_KEY to JsonPrimitive(state.startupAssistantUi),
-                LAST_OPENED_AGENT_ID_KEY to JsonPrimitive(state.lastOpenedAgentId),
-                LAST_OPENED_CONVERSATION_ID_KEY to JsonPrimitive(state.lastOpenedConversationId),
-                LANGUAGE_TAG_KEY to JsonPrimitive(state.languageTag),
-                LOAD_LAST_CONVERSATION_KEY to JsonPrimitive(state.loadLastConversationOnStartup),
-                THEME_MODE_KEY to JsonPrimitive(state.themeMode),
-                THEME_SEED_COLOR_KEY to JsonPrimitive(state.themeSeedColor),
-                LLM_IDLE_TIMEOUT_KEY to JsonPrimitive(state.llmIdleTimeoutSeconds),
-                LLM_RETRY_ATTEMPTS_KEY to JsonPrimitive(state.llmRetryMaxAttempts),
-                KEEP_SCREEN_ON_KEY to JsonPrimitive(state.keepScreenOn),
-                ALWAYS_SHOW_MESSAGE_ACTIONS_KEY to JsonPrimitive(state.alwaysShowMessageActions),
-                FLOATING_BALL_ENABLED_KEY to JsonPrimitive(state.floatingBallEnabled),
-                RESIDENT_NOTIFICATION_ENABLED_KEY to JsonPrimitive(state.residentNotificationEnabled),
-            )
-        ).toString()
+    fun parse(jsonString: String): AppStateSettings {
+        return try {
+            // 显式 serializer：与 ConversationRepo 一致（reified 重载在本模块不可用）。
+            json.decodeFromString(AppStateSettings.serializer(), jsonString).let {
+                // 损坏文件里的空串兜底：setter 只写 system/light/dark。
+                if (it.themeMode.isBlank()) it.copy(themeMode = "dark") else it
+            }
+        } catch (_: SerializationException) {
+            AppStateSettings()
+        } catch (_: IllegalArgumentException) {
+            AppStateSettings()
+        }
     }
 
-    private const val ONBOARDING_COMPLETED_KEY = "onboarding_completed"
-    private const val STARTUP_ASSISTANT_UI_KEY = "startup_assistant_ui"
-    private const val LAST_OPENED_AGENT_ID_KEY = "last_opened_agent_id"
-    private const val LAST_OPENED_CONVERSATION_ID_KEY = "last_opened_conversation_id"
-    private const val LANGUAGE_TAG_KEY = "language_tag"
-    private const val LOAD_LAST_CONVERSATION_KEY = "load_last_conversation_on_startup"
-    private const val THEME_MODE_KEY = "theme_mode"
-    private const val THEME_SEED_COLOR_KEY = "theme_seed_color"
-    private const val LLM_IDLE_TIMEOUT_KEY = "llm_idle_timeout_seconds"
-    private const val LLM_RETRY_ATTEMPTS_KEY = "llm_retry_max_attempts"
-    private const val KEEP_SCREEN_ON_KEY = "keep_screen_on"
-    private const val ALWAYS_SHOW_MESSAGE_ACTIONS_KEY = "always_show_message_actions"
-    private const val FLOATING_BALL_ENABLED_KEY = "floating_ball_enabled"
-    private const val RESIDENT_NOTIFICATION_ENABLED_KEY = "resident_notification_enabled"
+    fun encode(state: AppStateSettings): String =
+        json.encodeToString(AppStateSettings.serializer(), state)
 }

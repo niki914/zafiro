@@ -440,6 +440,8 @@
 
     <!-- Resident Notification -->
     <string name="agent_resident_title_idle">Agent · En espera</string>
+    <string name="agent_resident_title_failed">Agent · Error</string>
+    <string name="agent_resident_title_interrupted">Agent · Detenido</string>
     <string name="agent_resident_title_thinking">Agent · Pensando</string>
     <string name="agent_resident_title_generating">Agent · Respondiendo</string>
     <string name="agent_resident_title_tool_running">Agent · Ejecutando herramienta</string>

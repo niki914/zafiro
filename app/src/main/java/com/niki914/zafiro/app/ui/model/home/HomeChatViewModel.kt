@@ -8,6 +8,7 @@ import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.DraftImage
+import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.ui.model.TextPacer
@@ -86,7 +87,7 @@ class HomeChatViewModel internal constructor(
     private fun observeAgent() {
         viewModelScope.launch {
             agent.status.collect { status ->
-                updateState { copy(isGenerating = status.phase.isGenerating()) }
+                updateState { copy(isGenerating = status.isRunning) }
             }
         }
         viewModelScope.launch {
@@ -296,7 +297,7 @@ class HomeChatViewModel internal constructor(
         Logger.i(LOG_TAG, "send result=$result")
         if (result != TurnStart.Started) {
             updateState {
-                copy(isGenerating = agent.status.value.phase.isGenerating())
+                copy(isGenerating = agent.status.value.isRunning)
             }
             return
         }

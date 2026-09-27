@@ -8,4 +8,5 @@
     <string name="floating_ball_approval_pending">Action pending approval (%1$s)</string>
     <string name="floating_ball_approval_reason_unknown">Pending</string>
     <string name="floating_ball_approval_view_details">Click to view details</string>
+    <string name="floating_ball_tool_running">Running %1$s</string>
 </resources>

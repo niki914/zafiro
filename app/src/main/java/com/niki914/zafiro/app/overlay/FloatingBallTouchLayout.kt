@@ -201,6 +201,7 @@ internal class FloatingBallTouchLayout(
     }
 
     fun requestExpand() {
+        if (positionAnimator?.isRunning == true) return
         val screenWidth = context.resources.displayMetrics.widthPixels
         val distanceToLeft = ballX
         val distanceToRight = screenWidth - (ballX + ballWidthPx)

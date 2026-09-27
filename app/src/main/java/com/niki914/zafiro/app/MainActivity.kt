@@ -14,7 +14,7 @@ import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.api.AgentControl
-import com.niki914.zafiro.api.model.AgentPhase
+import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.repo.XRepo
@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
             combine(
                 XRepo.keepScreenOnSetting,
                 agentControl.status,
-            ) { settingOn, status -> settingOn && (status.phase != AgentPhase.Idle) }
+            ) { settingOn, status -> settingOn && status.isRunning }
                 .collect { keepOn ->
                     if (keepOn) {
                         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

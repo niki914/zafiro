@@ -1,6 +1,5 @@
 package com.niki914.zafiro.app.ui.model.home
 
-import com.niki914.zafiro.api.model.AgentPhase
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationTurn
@@ -80,7 +79,5 @@ class ConversationUiMapperTest {
             HomeChatBlock.Error("network", LlmErrorCode.Transport),
             turn.blocks.single(),
         )
-        assertEquals(true, AgentPhase.ToolRunning.isGenerating())
-        assertEquals(false, AgentPhase.Idle.isGenerating())
     }
 }

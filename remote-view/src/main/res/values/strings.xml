@@ -8,4 +8,5 @@
     <string name="floating_ball_approval_pending">操作待您批准 (%1$s)</string>
     <string name="floating_ball_approval_reason_unknown">待确认</string>
     <string name="floating_ball_approval_view_details">点击展开详情</string>
+    <string name="floating_ball_tool_running">正在运行 %1$s</string>
 </resources>
