@@ -381,6 +381,16 @@
     <string name="ui_settings_section_general">一般</string>
     <string name="ui_settings_general">一般設定</string>
     <string name="ui_settings_general_summary">言語と起動時の動作</string>
+    <string name="ui_settings_general_group_appearance">外観と言語</string>
+    <string name="ui_settings_general_group_floating_notification">フローティングと通知</string>
+    <string name="ui_settings_general_group_conversation">会話と操作</string>
+    <string name="ui_settings_general_group_runtime">実行と制御</string>
+    <string name="ui_settings_general_floating_ball">フローティングボール</string>
+    <string name="ui_settings_general_floating_ball_summary">バックグラウンド実行中にエージェントの状態とクイック操作を表示</string>
+    <string name="ui_settings_general_floating_ball_auto_expand">フローティングボールの自動展開</string>
+    <string name="ui_settings_general_floating_ball_auto_expand_summary">応答の完了時や承認が必要なときにフローティングボールを自動的に展開</string>
+    <string name="ui_settings_general_resident_notification">常駐通知</string>
+    <string name="ui_settings_general_resident_notification_summary">通知パネルにリアルタイムの状態とコントロールを表示</string>
     <string name="ui_settings_general_language">言語</string>
     <string name="ui_settings_general_language_follow_system">システムに従う</string>
     <string name="ui_settings_general_load_last_conversation">起動時に前回の会話を読み込む</string>
@@ -428,4 +438,17 @@
     <string name="ui_theme_color_lemon">レモン</string>
     <string name="ui_theme_color_amber">アンバー</string>
     <string name="ui_theme_color_sunset">サンセット</string>
+
+    <!-- Resident Notification -->
+    <string name="agent_resident_title_idle">Agent · 待機中</string>
+    <string name="agent_resident_title_failed">Agent · 失敗</string>
+    <string name="agent_resident_title_interrupted">Agent · 停止済み</string>
+    <string name="agent_resident_title_thinking">Agent · 思考中</string>
+    <string name="agent_resident_title_generating">Agent · 応答中</string>
+    <string name="agent_resident_title_tool_running">Agent · ツール実行中</string>
+    <string name="agent_resident_title_waiting_approval">Agent · 承認待ち</string>
+    <string name="agent_resident_title_stopping">Agent · 停止中</string>
+    <string name="agent_resident_action_stop">停止</string>
+    <string name="agent_resident_action_approve">許可</string>
+    <string name="agent_resident_action_decline">拒否</string>
 </resources>

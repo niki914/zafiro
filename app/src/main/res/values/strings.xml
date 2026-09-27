@@ -387,6 +387,16 @@
     <string name="ui_settings_section_general">通用</string>
     <string name="ui_settings_general">通用设置</string>
     <string name="ui_settings_general_summary">语言与启动行为</string>
+    <string name="ui_settings_general_group_appearance">外观与语言</string>
+    <string name="ui_settings_general_group_floating_notification">悬浮与通知</string>
+    <string name="ui_settings_general_group_conversation">对话与交互</string>
+    <string name="ui_settings_general_group_runtime">运行与控制</string>
+    <string name="ui_settings_general_floating_ball">悬浮球</string>
+    <string name="ui_settings_general_floating_ball_summary">后台运行时展示 Agent 状态与快捷操作</string>
+    <string name="ui_settings_general_floating_ball_auto_expand">悬浮球自动展开</string>
+    <string name="ui_settings_general_floating_ball_auto_expand_summary">回答结束或需要授权时自动展开悬浮球</string>
+    <string name="ui_settings_general_resident_notification">常驻通知</string>
+    <string name="ui_settings_general_resident_notification_summary">在通知栏显示实时状态与控制入口</string>
     <string name="ui_settings_general_language">语言</string>
     <string name="ui_settings_general_language_follow_system">跟随系统</string>
     <string name="ui_settings_general_load_last_conversation">启动时载入上次对话</string>
@@ -428,4 +438,17 @@
     <string name="ui_theme_color_lemon">柠檬黄</string>
     <string name="ui_theme_color_amber">琥珀</string>
     <string name="ui_theme_color_sunset">落日橙</string>
+
+    <!-- Resident Notification -->
+    <string name="agent_resident_title_idle">Agent · 待命</string>
+    <string name="agent_resident_title_failed">Agent · 运行失败</string>
+    <string name="agent_resident_title_interrupted">Agent · 已停止</string>
+    <string name="agent_resident_title_thinking">Agent · 思考中</string>
+    <string name="agent_resident_title_generating">Agent · 回复中</string>
+    <string name="agent_resident_title_tool_running">Agent · 工具执行中</string>
+    <string name="agent_resident_title_waiting_approval">Agent · 等待授权</string>
+    <string name="agent_resident_title_stopping">Agent · 停止中</string>
+    <string name="agent_resident_action_stop">停止</string>
+    <string name="agent_resident_action_approve">允许</string>
+    <string name="agent_resident_action_decline">拒绝</string>
 </resources>

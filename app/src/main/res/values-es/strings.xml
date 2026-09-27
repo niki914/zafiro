@@ -382,6 +382,16 @@
     <string name="ui_settings_section_general">General</string>
     <string name="ui_settings_general">Ajustes generales</string>
     <string name="ui_settings_general_summary">Idioma y comportamiento de inicio</string>
+    <string name="ui_settings_general_group_appearance">Apariencia e idioma</string>
+    <string name="ui_settings_general_group_floating_notification">Flotante y notificaciones</string>
+    <string name="ui_settings_general_group_conversation">Conversación e interacción</string>
+    <string name="ui_settings_general_group_runtime">Ejecución y control</string>
+    <string name="ui_settings_general_floating_ball">Bola flotante</string>
+    <string name="ui_settings_general_floating_ball_summary">Mostrar estado del agente y acciones rápidas en segundo plano</string>
+    <string name="ui_settings_general_floating_ball_auto_expand">Expandir la bola automáticamente</string>
+    <string name="ui_settings_general_floating_ball_auto_expand_summary">Expandir la bola flotante al terminar una respuesta o al requerir aprobación</string>
+    <string name="ui_settings_general_resident_notification">Notificación residente</string>
+    <string name="ui_settings_general_resident_notification_summary">Mostrar estado en vivo y accesos directos en el panel de notificaciones</string>
     <string name="ui_settings_general_language">Idioma</string>
     <string name="ui_settings_general_language_follow_system">Usar el del sistema</string>
     <string name="ui_settings_general_load_last_conversation">Cargar la última conversación al iniciar</string>
@@ -429,4 +439,17 @@
     <string name="ui_theme_color_lemon">Limón</string>
     <string name="ui_theme_color_amber">Ámbar</string>
     <string name="ui_theme_color_sunset">Atardecer</string>
+
+    <!-- Resident Notification -->
+    <string name="agent_resident_title_idle">Agent · En espera</string>
+    <string name="agent_resident_title_failed">Agent · Error</string>
+    <string name="agent_resident_title_interrupted">Agent · Detenido</string>
+    <string name="agent_resident_title_thinking">Agent · Pensando</string>
+    <string name="agent_resident_title_generating">Agent · Respondiendo</string>
+    <string name="agent_resident_title_tool_running">Agent · Ejecutando herramienta</string>
+    <string name="agent_resident_title_waiting_approval">Agent · Autorización requerida</string>
+    <string name="agent_resident_title_stopping">Agent · Deteniendo</string>
+    <string name="agent_resident_action_stop">Detener</string>
+    <string name="agent_resident_action_approve">Permitir</string>
+    <string name="agent_resident_action_decline">Rechazar</string>
 </resources>

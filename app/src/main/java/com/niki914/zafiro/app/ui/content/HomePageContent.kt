@@ -81,7 +81,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.niki914.store.XIpcBridge
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
@@ -91,26 +90,25 @@ import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
-import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.PageChromeMenuItem
 import com.niki914.zafiro.app.ui.RegisterPageChrome
-import com.niki914.zafiro.app.ui.model.ActionSource
-import com.niki914.zafiro.app.ui.model.HomeChatBlock
-import com.niki914.zafiro.app.ui.model.HomeChatImage
-import com.niki914.zafiro.app.ui.model.HomeChatIntent
-import com.niki914.zafiro.app.ui.model.HomeChatTurn
-import com.niki914.zafiro.app.ui.model.HomeChatUiState
-import com.niki914.zafiro.app.ui.model.HomeChatViewModel
-import com.niki914.zafiro.app.ui.model.MessageActionsDisplay
-import com.niki914.zafiro.app.ui.model.HomeToolState
-import com.niki914.zafiro.app.ui.model.HomeToolStatus
+import com.niki914.zafiro.app.ui.model.home.ActionSource
+import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.home.HomeChatImage
+import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
+import com.niki914.zafiro.app.ui.model.home.HomeChatTurn
+import com.niki914.zafiro.app.ui.model.home.HomeChatUiState
+import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel
+import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
+import com.niki914.zafiro.app.ui.model.home.HomeToolState
+import com.niki914.zafiro.app.ui.model.home.HomeToolStatus
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
-import com.niki914.zafiro.chat.agentic.accessibility.ScreenControlConsent
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.delay
@@ -177,7 +175,7 @@ fun HomePageContent(
     // 长高）变化时 padding 跟着变，也必须重新贴底，否则最后一条消息被 composer 遮住
     val bottomContentVersion = remember(
         uiState.turns.size,
-        uiState.streamEventCount,
+        uiState.conversationVersion,
         lastTurn?.id,
         lastTurn?.blocks?.size,
         composerBottomPadding,
@@ -185,7 +183,7 @@ fun HomePageContent(
     ) {
         listOf(
             uiState.turns.size,
-            uiState.streamEventCount,
+            uiState.conversationVersion,
             lastTurn?.id,
             lastTurn?.blocks?.size,
             composerBottomPadding,
@@ -372,22 +370,35 @@ fun HomePageContent(
         dismissOnBackgroundTap = false,
     )
 
-    ToolPermissionDialog()
-
-    ScreenControlConsentDialog()
+    when (val request = uiState.pendingApproval) {
+        is ApprovalRequest.ToolExecution -> {
+            ToolPermissionDialog(
+                request = request,
+                onAllow = { viewModel.sendIntent(HomeChatIntent.ResolveApproval(ApprovalDecision.Allow)) },
+                onDeny = { viewModel.sendIntent(HomeChatIntent.ResolveApproval(ApprovalDecision.Deny)) },
+            )
+        }
+        is ApprovalRequest.ScreenControlConsent -> {
+            ScreenControlConsentDialog(
+                onAgree = { viewModel.sendIntent(HomeChatIntent.ResolveApproval(ApprovalDecision.Allow)) },
+                onDeny = { viewModel.sendIntent(HomeChatIntent.ResolveApproval(ApprovalDecision.Deny)) },
+            )
+        }
+        null -> {}
+    }
 }
 
 /**
- * 屏幕控制知情同意（无障碍 + 悬浮窗缺一不可）。权限申请前由 AccessibilityController 触发，
- * 用户同意才进 PermissionManager 链路；拒绝不记忆，下次申请会再弹。
+ * 屏幕控制知情同意对话框（无障碍 + 悬浮窗）。
  */
 @Composable
-private fun ScreenControlConsentDialog() {
-    val pending by ScreenControlConsent.pending.collectAsState()
-    if (!pending) return
+private fun ScreenControlConsentDialog(
+    onAgree: () -> Unit,
+    onDeny: () -> Unit,
+) {
     LiquidDialog(
         visible = true,
-        onDismissRequest = { ScreenControlConsent.respond(false) },
+        onDismissRequest = onDeny,
         dismissOnBackgroundTap = false,
         title = {
             Text(
@@ -407,14 +418,14 @@ private fun ScreenControlConsentDialog() {
         actions = {
             MaterialTintLiquidButton(
                 text = stringResource(R.string.screen_control_consent_deny),
-                onClick = { ScreenControlConsent.respond(false) },
+                onClick = onDeny,
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             )
             MaterialTintLiquidButton(
                 text = stringResource(R.string.screen_control_consent_agree),
-                onClick = { ScreenControlConsent.respond(true) },
+                onClick = onAgree,
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -425,16 +436,16 @@ private fun ScreenControlConsentDialog() {
 
 /**
  * CONFIRM 型执行规则的用户确认对话框（永不超时，PRD §3）。
- * 后台时改为发一条纯通知（无决策入口），点通知回主 App 决策。
  */
 @Composable
-private fun ToolPermissionDialog() {
-    val pending by ToolPermissionCoordinator.pendingConfirmation.collectAsState()
-
-    val request = pending ?: return
+private fun ToolPermissionDialog(
+    request: ApprovalRequest.ToolExecution,
+    onAllow: () -> Unit,
+    onDeny: () -> Unit,
+) {
     LiquidDialog(
         visible = true,
-        onDismissRequest = { ToolPermissionCoordinator.respond(request.id, allowed = false) },
+        onDismissRequest = onDeny,
         dismissOnBackgroundTap = false,
         title = {
             Text(
@@ -467,7 +478,7 @@ private fun ToolPermissionDialog() {
                 Text(
                     text = stringResource(
                         R.string.tool_permission_matched_rule,
-                        request.matchedRuleName
+                        request.ruleName
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
@@ -477,14 +488,14 @@ private fun ToolPermissionDialog() {
         actions = {
             MaterialTintLiquidButton(
                 text = stringResource(R.string.tool_permission_deny),
-                onClick = { ToolPermissionCoordinator.respond(request.id, allowed = false) },
+                onClick = onDeny,
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             )
             MaterialTintLiquidButton(
                 text = stringResource(R.string.tool_permission_allow),
-                onClick = { ToolPermissionCoordinator.respond(request.id, allowed = true) },
+                onClick = onAllow,
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,

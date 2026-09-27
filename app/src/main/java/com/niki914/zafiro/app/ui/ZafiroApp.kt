@@ -53,7 +53,7 @@ import com.niki914.uikit.infra.nav.rememberNavigationController
 import com.niki914.uikit.infra.rememberLiquidScreenState
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
-import com.niki914.zafiro.app.ui.model.HomeChatViewModel
+import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.app.ui.nav.HomePage

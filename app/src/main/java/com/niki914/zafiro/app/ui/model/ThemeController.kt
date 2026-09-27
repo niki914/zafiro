@@ -37,6 +37,9 @@ data class ThemePrefs(
 /**
  * 全局主题状态单一来源：MainActivity 冷启动时 [load]，主题设置页经 [setMode]/[setSeedColor]
  * 更新内存并落盘（调用方用组合作用域 launch），ZafiroApp 据此驱动 BaseTheme。
+ *
+ * TODO(appstate-reactive): 本对象是手搓的第五个模式 A（内存快照 + 写穿 + 手工 load），
+ *  待 XRepo 响应式设置注册表稳定后收编为 ReactiveAppStateField，删除手工 load/prefs 双写。
  */
 object ThemeController {
     var prefs by mutableStateOf(ThemePrefs())

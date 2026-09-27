@@ -4,7 +4,9 @@ import android.content.Context
 import com.niki914.logging.Logger
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
+import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.app.R
 import kotlinx.serialization.json.Json
 import java.util.UUID
@@ -15,6 +17,18 @@ enum class ForkKind {
     Regenerate,
     Rewind,
 }
+
+/**
+ * 派生结果：新会话 id + 需要回填草稿的原用户输入。
+ *
+ * Fork 不回填（截断保留整轮，草稿为空）；Regenerate / Rewind 回填该回合的
+ * 文本与附件（[Attachment] 是契约类型，okia 的 ContentBlock.Image 不出仓储层）。
+ */
+data class ForkResult(
+    val newConversationId: String,
+    val promptText: String = "",
+    val attachments: List<Attachment> = emptyList(),
+)
 
 object ConversationRepo {
     private const val LOG_TAG = "niki914_nexus_ConversationRepo"
@@ -67,6 +81,14 @@ object ConversationRepo {
             )
         }
     }
+
+    /**
+     * 会话是否已建档（只查行，不读快照与条目；[getConversation] 会装配快照）。
+     *
+     * 用于「建档可能已经发生过」的幂等路径：`createConversation` 的 DAO 冲突策略是
+     * ABORT，重复建档会抛异常。
+     */
+    suspend fun exists(id: String): Boolean = dao().getConversation(id) != null
 
     suspend fun getConversation(id: String): ConversationRecord? {
         val startedAtMs = System.currentTimeMillis()
@@ -124,25 +146,37 @@ object ConversationRepo {
     }
 
     /**
-     * fork/regenerate（D3-10/D3-11）：复制源会话的截断子树到新会话
-     * （entries 原样复制、id 共享，复合主键允许跨会话同 id），新会话
-     * 树 id = 新 Room id（loadConversation 时 open(restore) 对齐）。
+     * 回合级派生（D3-10/D3-11）：把源会话截断到某个回合的条目边界，复制成
+     * 一个新会话（entries 原样复制、id 共享，复合主键允许跨会话同 id），
+     * 新会话树 id = 新 Room id（loadConversation 时 open(restore) 对齐）。
+     *
+     * 截断点由 leaf 投影上的 User 计数反推——UI 的 turnId 就是回合下标：
+     * - [ForkKind.Regenerate] / [ForkKind.Rewind]：截在该回合的用户条目之前
+     *   （不含），原输入随 [ForkResult] 返回，由调用方回填草稿；
+     * - [ForkKind.Fork]：整回合保留，截在下一个用户条目之前（无则到尾部）。
+     *
+     * @param turnIndex 目标回合下标（第 N 个用户消息）。
+     * @return 源会话不存在或该回合不存在时 null。
      */
-    suspend fun forkConversation(
+    suspend fun forkAtTurn(
         sourceId: String,
-        keepEntryCount: Int,
+        turnIndex: Int,
         kind: ForkKind,
         now: Long = System.currentTimeMillis(),
-    ): String {
+    ): ForkResult? {
         val startedAtMs = System.currentTimeMillis()
-        val source = dao().getConversation(sourceId)
-            ?: throw IllegalStateException("Source conversation not found: $sourceId")
+        val source = dao().getConversation(sourceId) ?: return null
 
-        val allEntries = dao().listEntries(sourceId)
         val projected = ConversationFormatter.projectLeaf(
-            allEntries.mapNotNull { it.toConversationEntry() },
+            dao().listEntries(sourceId).mapNotNull { it.toConversationEntry() },
             source.leafId,
         )
+        val userEntryIndex = projected.indexOfUserTurn(turnIndex)
+        if (userEntryIndex < 0) return null
+        val keepEntryCount = when (kind) {
+            ForkKind.Fork -> projected.indexOfNextUserTurn(userEntryIndex + 1) ?: projected.size
+            ForkKind.Regenerate, ForkKind.Rewind -> userEntryIndex
+        }
         val truncated = projected.take(keepEntryCount)
 
         val newId = UUID.randomUUID().toString()
@@ -169,12 +203,44 @@ object ConversationRepo {
         )
         Logger.i(
             LOG_TAG,
-            "fork done sourceId=$sourceId kind=$kind keepEntryCount=$keepEntryCount " +
-                    "newId=$newId entries=${truncated.size} " +
+            "fork done sourceId=$sourceId kind=$kind turnIndex=$turnIndex " +
+                    "keepEntryCount=$keepEntryCount newId=$newId entries=${truncated.size} " +
                     "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
-        return newId
+        if (kind == ForkKind.Fork) return ForkResult(newId)
+        val userMessage = projected[userEntryIndex].message as Message.User
+        return ForkResult(
+            newConversationId = newId,
+            promptText = userMessage.text(),
+            attachments = userMessage.attachments(),
+        )
     }
+
+    /** 第 [turnIndex] 个 User 条目在 leaf 投影里的下标；不存在返回 -1。 */
+    private fun List<ConversationEntry>.indexOfUserTurn(turnIndex: Int): Int {
+        var seen = 0
+        forEachIndexed { index, entry ->
+            if (entry.message is Message.User) {
+                if (seen == turnIndex) return index
+                seen++
+            }
+        }
+        return -1
+    }
+
+    /** [fromEntryIndex] 起第一个 User 条目的下标；不存在返回 null。 */
+    private fun List<ConversationEntry>.indexOfNextUserTurn(fromEntryIndex: Int): Int? {
+        for (index in fromEntryIndex until size) {
+            if (get(index).message is Message.User) return index
+        }
+        return null
+    }
+
+    private fun Message.User.text(): String =
+        content.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
+
+    private fun Message.User.attachments(): List<Attachment> =
+        content.filterIsInstance<ContentBlock.Image>().map { Attachment(it.path, it.mimeType) }
 
     /**
      * 消息级增量落盘（D3-2/D3-8，持久化器调用）：插入新 commit 的消息，

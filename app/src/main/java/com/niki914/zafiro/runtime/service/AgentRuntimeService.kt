@@ -13,61 +13,122 @@ import android.os.DeadObjectException
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.niki914.permission.Permission
-import com.niki914.permission.PermissionState
-import com.niki914.zafiro.app.PermissionHolder
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionState
 import androidx.core.net.toUri
 import com.niki914.logging.Logger
 import com.niki914.store.HostApp
 import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.store.XIpcStoreRepository
 
+import com.niki914.zafiro.api.Agent
+import com.niki914.zafiro.api.TurnStart
+import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.TurnFailureCode
 import com.niki914.zafiro.app.MainActivity
-import com.niki914.zafiro.chat.LLMController
-import com.niki914.zafiro.chat.LlmErrorCode
-import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.ToolStatusLabels
-import com.niki914.zafiro.chat.collectAsFull
-import kotlinx.coroutines.flow.map
 import com.niki914.zafiro.runtime.ipc.IAgentRuntimeService
 import com.niki914.zafiro.runtime.ipc.IAgentStoreService
 import com.niki914.zafiro.runtime.ipc.IRenderFrameCallback
 import com.niki914.zafiro.runtime.ipc.RenderFrame
+import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicReference
 import com.niki914.zafiro.app.R as AppR
 
+import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.app.notification.ResidentNotificationBuilder
+import com.niki914.zafiro.app.notification.ResidentNotificationManager
+import com.niki914.zafiro.business.notification.NotificationChannelManager
+
 class AgentRuntimeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        val notification = buildNotification()
-        startForeground(NOTIFICATION_ID, notification)
+        instance = this
+        val initialNotification = ResidentNotificationBuilder.build(
+            context = this,
+            channelManager = notificationChannelManager,
+            status = agentControl.status.value,
+        )
+        startForeground(ResidentNotificationBuilder.NOTIFICATION_ID, initialNotification)
+        observeStatus()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ResidentNotificationBuilder.ACTION_STOP -> {
+                Logger.i(LOG_TAG, "Resident notification: Stop clicked")
+                agentControl.stop()
+            }
+            ResidentNotificationBuilder.ACTION_APPROVE -> {
+                Logger.i(LOG_TAG, "Resident notification: Approve clicked")
+                ResidentNotificationManager.resolveApproval(ApprovalDecision.Allow)
+            }
+            ResidentNotificationBuilder.ACTION_DECLINE -> {
+                Logger.i(LOG_TAG, "Resident notification: Decline clicked")
+                ResidentNotificationManager.resolveApproval(ApprovalDecision.Deny)
+            }
+            ACTION_START_RESIDENT -> {
+                isResidentRequested = true
+                updateResidentNotification()
+            }
+            ACTION_STOP_RESIDENT -> {
+                isResidentRequested = false
+                if (boundClientsCount == 0 && activeTurn.get() == null) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+            }
+        }
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? {
         if (!validateCaller()) return null
+        boundClientsCount++
         return StubImpl()
     }
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        boundClientsCount = (boundClientsCount - 1).coerceAtLeast(0)
+        if (boundClientsCount == 0 && !isResidentRequested && activeTurn.get() == null) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+        return super.onUnbind(intent)
+    }
+
     override fun onDestroy() {
+        instance = null
+        statusJob?.cancel()
         activeTurn.getAndSet(null)?.job?.cancel()
         scope.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
 
+    private val agent: Agent get() = requireService()
+    private val agentControl: AgentControl get() = requireService()
+    private val notificationChannelManager: NotificationChannelManager get() = requireService()
+    private val permissionManager: PermissionManager get() = requireService()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val activeTurn = AtomicReference<ActiveTurn?>(null)
+    private var statusJob: Job? = null
+    private var boundClientsCount = 0
+    private var isResidentRequested = false
 
     private data class ActiveTurn(
         val callback: IRenderFrameCallback,
@@ -76,43 +137,36 @@ class AgentRuntimeService : Service() {
 
     companion object {
         private const val LOG_TAG = "niki914_nexus_AgentRuntimeService"
-        private const val NOTIFICATION_ID = 1001
-        private const val CHANNEL_ID = "agent_runtime"
+        const val ACTION_START_RESIDENT = "com.niki914.zafiro.action.START_RESIDENT"
+        const val ACTION_STOP_RESIDENT = "com.niki914.zafiro.action.STOP_RESIDENT"
         private const val MAX_QUERY_LENGTH = 8192
         private const val STORE_CHANNEL_ID = "nexus_xservice_default_channel"
         private const val STORE_CHANNEL_NAME = "Zafiro"
 
-    }
+        private var instance: AgentRuntimeService? = null
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Agent Runtime",
-                NotificationManager.IMPORTANCE_LOW,
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+        fun notifyUpdate() {
+            instance?.updateResidentNotification()
         }
     }
 
-    private fun buildNotification(): Notification {
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        val pendingIntent = if (launchIntent != null) {
-            PendingIntent.getActivity(
-                this, 0, launchIntent,
-                PendingIntent.FLAG_IMMUTABLE,
-            )
-        } else {
-            null
+    fun updateResidentNotification() {
+        val status = agentControl.status.value
+        val notification = ResidentNotificationBuilder.build(
+            context = this,
+            channelManager = notificationChannelManager,
+            status = status,
+        )
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(ResidentNotificationBuilder.NOTIFICATION_ID, notification)
+    }
+
+    private fun observeStatus() {
+        statusJob = scope.launch {
+            agentControl.status.collect {
+                updateResidentNotification()
+            }
         }
-        return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Zafiro Agent Runtime")
-            .setContentText("Running")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .build()
     }
 
     private inner class StubImpl : IAgentRuntimeService.Stub() {
@@ -142,23 +196,39 @@ class AgentRuntimeService : Service() {
 
             try {
                 cb.asBinder().linkToDeath(deathRecipient, 0)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Logger.e(LOG_TAG, "submit failed linkToDeath error=${e.message}")
                 return
             }
 
-            val job = scope.launch { executeTurn(q, cb) }
-            val turn = ActiveTurn(cb, job)
-            if (!activeTurn.compareAndSet(null, turn)) {
-                job.cancel()
-                try {
-                    cb.asBinder().unlinkToDeath(deathRecipient, 0)
-                } catch (_: Exception) {
+            agent.updateDraft { it.copy(text = q, images = emptyList()) }
+            when (val startResult = agent.stream()) {
+                TurnStart.Busy -> {
+                    try {
+                        cb.asBinder().unlinkToDeath(deathRecipient, 0)
+                    } catch (_: Exception) {
+                    }
+                    Logger.w(LOG_TAG, "submit rejected activeTurnBusy=true")
+                    sendError(cb, "Another turn is already in progress")
+                    return
                 }
-                Logger.w(LOG_TAG, "submit rejected activeTurnBusy=true")
-                sendError(cb, "Another turn is already in progress")
-            } else {
-                Logger.i(LOG_TAG, "turn registered callbackLinked=true")
+                TurnStart.DraftEmpty -> {
+                    try {
+                        cb.asBinder().unlinkToDeath(deathRecipient, 0)
+                    } catch (_: Exception) {
+                    }
+                    sendError(cb, "Query is blank")
+                    return
+                }
+                TurnStart.Started -> {
+                    Logger.i(LOG_TAG, "agent.stream started successfully")
+                }
             }
+
+            val job = scope.launch { executeTurn(cb) }
+            val turn = ActiveTurn(cb, job)
+            activeTurn.set(turn)
+            Logger.i(LOG_TAG, "turn registered callbackLinked=true")
         }
 
         override fun cancel() {
@@ -171,24 +241,15 @@ class AgentRuntimeService : Service() {
             Logger.i(LOG_TAG, "cancel requested")
             scope.launch {
                 try {
-                    LLMController.stopCurrentRound()
-                    Logger.i(LOG_TAG, "cancel done stopRoundCompleted=true")
+                    agent.stop()
+                    Logger.i(LOG_TAG, "cancel done agent.stop completed")
                 } catch (_: Exception) {
                 }
             }
         }
 
         override fun resetConversation() {
-            Logger.i(LOG_TAG, "reset conversation requested")
-            scope.launch {
-                val turn = activeTurn.getAndSet(null)
-                turn?.job?.cancelAndJoin()
-                try {
-                    LLMController.resetConversation()
-                    Logger.i(LOG_TAG, "reset conversation done")
-                } catch (_: Exception) {
-                }
-            }
+            Logger.i(LOG_TAG, "reset conversation requested by host (ignored to protect shared conversation)")
         }
     }
 
@@ -254,10 +315,8 @@ class AgentRuntimeService : Service() {
             content: String,
             contentIntent: PendingIntent?
         ) {
-            // 只读查询只经过 PermissionManager；业务方禁止直连原生权限 API（单测扫描兜底）
-            if (PermissionHolder.get(this@AgentRuntimeService)
-                .targetStatus(Permission.NOTIFICATION) != PermissionState.GRANTED
-            ) return
+            // 只读查询只经过 PermissionManager 服务；业务方禁止直连原生权限 API（单测扫描兜底）
+            if (permissionManager.status(Permission.NOTIFICATION) != PermissionState.GRANTED) return
             ensureNotificationChannel()
 
             val builder = NotificationCompat.Builder(this@AgentRuntimeService, STORE_CHANNEL_ID)
@@ -330,64 +389,83 @@ class AgentRuntimeService : Service() {
         }
     }
 
-    private suspend fun executeTurn(query: String, callback: IRenderFrameCallback) {
-        val thisTurn = activeTurn.get()
+    private suspend fun executeTurn(callback: IRenderFrameCallback) {
         val startedAtMs = System.currentTimeMillis()
-        Logger.i(LOG_TAG, "turn started queryLength=${query.length}")
+        Logger.i(LOG_TAG, "turn started")
         var firstFrameSent = false
+        var lastRenderedText: String? = null
+        var frameIndex = 0
+
+        val labels = ToolStatusLabels(
+            called = getString(AppR.string.ui_tool_status_called),
+            running = getString(AppR.string.ui_tool_status_running),
+            success = getString(AppR.string.ui_tool_status_success),
+            failed = getString(AppR.string.ui_tool_status_failed),
+        )
+
+        fun resolveErrorMessage(code: TurnFailureCode?): String = when (code) {
+            TurnFailureCode.ConfigRequired -> getString(AppR.string.ui_home_error_config_required_title)
+            TurnFailureCode.IdleTimeout -> getString(AppR.string.ui_home_error_idle_timeout_title)
+            else -> getString(AppR.string.runtime_error_internal)
+        }
+
+        val targetTurnId = agent.conversation.value.turns.lastOrNull()?.id
+        Logger.i(LOG_TAG, "executeTurn targetTurnId=$targetTurnId")
+
         try {
-            LLMController.stream(query)
-                // 数据变展示的边界（有 Context 的消费方负责本地化）：
-                // 无原文的错误（ConfigRequired/IdleTimeout/守卫）在此翻译，
-                // 有原文的错误原样透传；宿主进程只收渲染好的文本
-                .map { event ->
-                    if (event is LlmStreamEvent.Error && event.message == null) {
-                        event.copy(
-                            message = when (event.code) {
-                                LlmErrorCode.ConfigRequired ->
-                                    getString(AppR.string.ui_home_error_config_required_title)
-                                LlmErrorCode.IdleTimeout ->
-                                    getString(AppR.string.ui_home_error_idle_timeout_title)
-                                else ->
-                                    getString(AppR.string.runtime_error_internal)
-                            },
-                        )
-                    } else {
-                        event
+            coroutineScope {
+                val conversationJob = launch {
+                    agent.conversation.collect { conv ->
+                        val turn = conv.turns.find { it.id == targetTurnId } ?: conv.turns.lastOrNull()
+                        if (turn != null) {
+                            val text = HostConversationProjector.render(turn, labels, ::resolveErrorMessage)
+                            if (text != lastRenderedText || !firstFrameSent) {
+                                frameIndex++
+                                lastRenderedText = text
+                                val isFirst = !firstFrameSent
+                                firstFrameSent = true
+                                if (isFirst) {
+                                    Logger.i(
+                                        LOG_TAG,
+                                        "first render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} textLength=${text.length}"
+                                    )
+                                }
+                                sendFrame(
+                                    callback,
+                                    RenderFrame(
+                                        text = text,
+                                        isFirst = isFirst,
+                                        isFinal = false,
+                                    ),
+                                )
+                            }
+                        }
                     }
                 }
-                .collectAsFull(
-                labels = ToolStatusLabels(
-                    called = getString(AppR.string.ui_tool_status_called),
-                    running = getString(AppR.string.ui_tool_status_running),
-                    success = getString(AppR.string.ui_tool_status_success),
-                    failed = getString(AppR.string.ui_tool_status_failed),
-                )
-            ) { frame ->
-                if (!firstFrameSent) {
-                    firstFrameSent = true
-                    Logger.i(
-                        LOG_TAG,
-                        "first render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                "textLength=${frame.text.length}"
-                    )
-                }
-                if (frame.isFinal) {
-                    Logger.i(
-                        LOG_TAG,
-                        "final render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                "textLength=${frame.text.length}"
-                    )
-                }
-                sendFrame(
-                    callback,
-                    RenderFrame(
-                        text = frame.text,
-                        isFirst = frame.isFirst,
-                        isFinal = frame.isFinal
-                    ),
-                )
+
+                agent.status.first { it is AgentState.Idle }
+                conversationJob.cancel()
             }
+
+            val finalTurn = agent.conversation.value.turns.find { it.id == targetTurnId }
+                ?: agent.conversation.value.turns.lastOrNull()
+            val finalText = if (finalTurn != null) {
+                HostConversationProjector.render(finalTurn, labels, ::resolveErrorMessage)
+            } else {
+                lastRenderedText.orEmpty()
+            }
+            Logger.i(
+                LOG_TAG,
+                "final render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} textLength=${finalText.length}"
+            )
+            sendFrame(
+                callback,
+                RenderFrame(
+                    text = finalText,
+                    isFirst = !firstFrameSent,
+                    isFinal = true,
+                ),
+            )
             Logger.i(
                 LOG_TAG,
                 "turn completed elapsedMs=${System.currentTimeMillis() - startedAtMs}"
@@ -408,8 +486,8 @@ class AgentRuntimeService : Service() {
                 callback,
                 RenderFrame(
                     text = e.message ?: getString(AppR.string.runtime_error_internal),
-                    isFirst = true,
-                    isFinal = true
+                    isFirst = !firstFrameSent,
+                    isFinal = true,
                 ),
             )
         } finally {
@@ -417,7 +495,9 @@ class AgentRuntimeService : Service() {
                 callback.asBinder().unlinkToDeath(deathRecipient, 0)
             } catch (_: Exception) {
             }
-            activeTurn.compareAndSet(thisTurn, null)
+            if (activeTurn.get()?.callback === callback) {
+                activeTurn.set(null)
+            }
         }
     }
 
@@ -443,12 +523,9 @@ class AgentRuntimeService : Service() {
     private fun handleBinderDeath() {
         val turn = activeTurn.getAndSet(null) ?: return
         turn.job.cancel()
-        scope.launch {
-            try {
-                LLMController.stopCurrentRound()
-            } catch (_: Exception) {
-            }
-        }
+        // TODO: 宿主（如 Breeno）进程被系统强杀时，AMS 解绑导致后台 Service 失去绑定上下文，
+        // 进而引发网络套接字受限或级联 Stream interrupted。此问题涉及跨进程服务生命周期与系统级保活架构，后续专门迭代处理。
+        Logger.i(LOG_TAG, "binder died, cancelled host frame collector without stopping agent")
     }
 
     private fun validateCaller(): Boolean {

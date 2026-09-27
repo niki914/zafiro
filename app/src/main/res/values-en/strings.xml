@@ -382,6 +382,16 @@
     <string name="ui_settings_section_general">General</string>
     <string name="ui_settings_general">General Settings</string>
     <string name="ui_settings_general_summary">Language and startup behavior</string>
+    <string name="ui_settings_general_group_appearance">Appearance &amp; Language</string>
+    <string name="ui_settings_general_group_floating_notification">Floating &amp; Notifications</string>
+    <string name="ui_settings_general_group_conversation">Conversation &amp; Interaction</string>
+    <string name="ui_settings_general_group_runtime">Runtime &amp; Control</string>
+    <string name="ui_settings_general_floating_ball">Floating Ball</string>
+    <string name="ui_settings_general_floating_ball_summary">Display agent status and quick actions when in background</string>
+    <string name="ui_settings_general_floating_ball_auto_expand">Auto-expand Floating Ball</string>
+    <string name="ui_settings_general_floating_ball_auto_expand_summary">Expand the floating ball when a reply finishes or approval is needed</string>
+    <string name="ui_settings_general_resident_notification">Resident Notification</string>
+    <string name="ui_settings_general_resident_notification_summary">Show live status and controls in the notification drawer</string>
     <string name="ui_settings_general_language">Language</string>
     <string name="ui_settings_general_language_follow_system">Follow system</string>
     <string name="ui_settings_general_load_last_conversation">Load last conversation on startup</string>
@@ -429,4 +439,17 @@
     <string name="ui_theme_color_lemon">Lemon</string>
     <string name="ui_theme_color_amber">Amber</string>
     <string name="ui_theme_color_sunset">Sunset</string>
+
+    <!-- Resident Notification -->
+    <string name="agent_resident_title_idle">Agent · Standby</string>
+    <string name="agent_resident_title_failed">Agent · Failed</string>
+    <string name="agent_resident_title_interrupted">Agent · Stopped</string>
+    <string name="agent_resident_title_thinking">Agent · Thinking</string>
+    <string name="agent_resident_title_generating">Agent · Responding</string>
+    <string name="agent_resident_title_tool_running">Agent · Running tool</string>
+    <string name="agent_resident_title_waiting_approval">Agent · Authorization required</string>
+    <string name="agent_resident_title_stopping">Agent · Stopping</string>
+    <string name="agent_resident_action_stop">Stop</string>
+    <string name="agent_resident_action_approve">Allow</string>
+    <string name="agent_resident_action_decline">Deny</string>
 </resources>

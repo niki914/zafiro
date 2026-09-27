@@ -78,6 +78,12 @@ object XRepo {
         appContext = null
         store = XIpcDomainSettingsStore(null)
         installedStoreForTest = false
+        // 响应式 flow 是进程内单例状态：重置回声明默认值，测试互不污染。
+        keepScreenOnField.flow.value = true
+        alwaysShowMessageActionsField.flow.value = true
+        floatingBallEnabledField.flow.value = false
+        residentNotificationEnabledField.flow.value = false
+        floatingBallAutoExpandField.flow.value = true
     }
 
     internal suspend fun context(): Context {
@@ -228,163 +234,205 @@ object XRepo {
         }
     }
 
-    suspend fun onboardingCompleted(): Boolean {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).onboardingCompleted
-    }
+    // ---- app-state 单字段读写底座：新增设置只加一行字段声明，读写走通用函数 ----
+    // 全文档 read-modify-write（writeMutex 内串行，无 lost-update）；耗时日志由
+    // readJson/updateJson 中心层统一打，逐 setter 不再重复。
 
-    suspend fun setOnboardingCompleted(value: Boolean) {
-        val startedAtMs = System.currentTimeMillis()
-        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
-            val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(onboardingCompleted = value))
-        }
-        Logger.i(
-            LOG_TAG,
-            "setOnboardingCompleted value=$value " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-        )
-    }
+    /** 普通字段：读盘直取，写盘走通用 read-modify-write。 */
+    private class PlainAppStateField<T>(
+        private val select: AppStateSettings.() -> T,
+        private val update: AppStateSettings.(T) -> AppStateSettings,
+        private val normalize: (T) -> T = { it },
+    ) {
+        suspend fun get(): T = XRepo.readAppStateField(select)
 
-    suspend fun lastOpenedConversationId(): String {
-        val startedAtMs = System.currentTimeMillis()
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
-            .lastOpenedConversationId
-            .also { id ->
-                Logger.d(
-                    LOG_TAG,
-                    "lastOpenedConversationId value=$id " +
-                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-                )
-            }
-    }
-
-    suspend fun setLastOpenedConversationId(value: String) {
-        val startedAtMs = System.currentTimeMillis()
-        val trimmed = value.trim()
-        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
-            val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(lastOpenedConversationId = trimmed))
-        }
-        Logger.d(
-            LOG_TAG,
-            "setLastOpenedConversationId value=$trimmed " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-        )
-    }
-
-    suspend fun languageTag(): String {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).languageTag
-    }
-
-    suspend fun setLanguageTag(tag: String) {
-        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
-            val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(languageTag = tag.trim()))
-        }
-    }
-
-    suspend fun loadLastConversationOnStartup(): Boolean {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
-            .loadLastConversationOnStartup
-    }
-
-    suspend fun llmIdleTimeoutSeconds(): Long {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
-            .llmIdleTimeoutSeconds
-    }
-
-    suspend fun setLlmIdleTimeoutSeconds(value: Long) {
-        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
-            val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(llmIdleTimeoutSeconds = value))
-        }
-    }
-
-    suspend fun llmRetryMaxAttempts(): Int {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
-            .llmRetryMaxAttempts
-    }
-
-    suspend fun setLlmRetryMaxAttempts(value: Int) {
-        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
-            val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(llmRetryMaxAttempts = value))
-        }
-    }
-
-    suspend fun setLoadLastConversationOnStartup(value: Boolean) {
-        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
-            val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(loadLastConversationOnStartup = value))
-        }
-    }
-
-    /** Keep Alive 设置的进程内热更新通道：读时回填初值，写时同步。 */
-    val keepScreenOnSetting = MutableStateFlow(true)
-
-    suspend fun keepScreenOn(): Boolean {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
-            .keepScreenOn
-            .also { keepScreenOnSetting.value = it }
-    }
-
-    suspend fun setKeepScreenOn(value: Boolean) {
-        keepScreenOnSetting.value = value
-        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
-            val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(keepScreenOn = value))
-        }
-    }
-
-    /** 消息操作行常显开关的进程内热更新通道：读时回填初值，写时同步。 */
-    val alwaysShowMessageActionsSetting = MutableStateFlow(true)
-
-    suspend fun alwaysShowMessageActions(): Boolean {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
-            .alwaysShowMessageActions
-            .also { alwaysShowMessageActionsSetting.value = it }
-    }
-
-    suspend fun setAlwaysShowMessageActions(value: Boolean) {
-        alwaysShowMessageActionsSetting.value = value
-        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
-            val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(alwaysShowMessageActions = value))
-        }
+        suspend fun set(value: T) = XRepo.writeAppStateField(normalize(value), update)
     }
 
     /**
+     * 响应式字段：附带进程内热更新 flow。构造时向 hydrateSteps 自注册，
+     * hydrateSettings 只需遍历执行，新增响应式设置无需手动登记。
+     * 语义与旧手写版一致：读时回填 flow，写时先同步 flow 再落盘。
+     */
+    private class ReactiveAppStateField<T>(
+        default: T,
+        private val select: AppStateSettings.() -> T,
+        private val update: AppStateSettings.(T) -> AppStateSettings,
+    ) {
+        val flow = MutableStateFlow(default)
+
+        init {
+            XRepo.hydrateSteps.add { flow.value = XRepo.readAppStateField(select) }
+        }
+
+        suspend fun get(): T = XRepo.readAppStateField(select).also { flow.value = it }
+
+        suspend fun set(value: T) {
+            flow.value = value
+            XRepo.writeAppStateField(value, update)
+        }
+    }
+
+    private suspend fun <T> readAppStateField(select: AppStateSettings.() -> T): T {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).select()
+    }
+
+    private suspend fun <T> writeAppStateField(
+        value: T,
+        update: AppStateSettings.(T) -> AppStateSettings,
+    ) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            AppStateSettingsCodec.encode(AppStateSettingsCodec.parse(json).update(value))
+        }
+    }
+
+    private val hydrateSteps = mutableListOf<suspend () -> Unit>()
+
+    private val onboardingCompletedField = PlainAppStateField(
+        select = { onboardingCompleted },
+        update = { copy(onboardingCompleted = it) },
+    )
+    private val lastOpenedConversationIdField = PlainAppStateField(
+        select = { lastOpenedConversationId },
+        update = { copy(lastOpenedConversationId = it) },
+        normalize = { it.trim() },
+    )
+    private val languageTagField = PlainAppStateField(
+        select = { languageTag },
+        update = { copy(languageTag = it) },
+        normalize = { it.trim() },
+    )
+    private val loadLastConversationOnStartupField = PlainAppStateField(
+        select = { loadLastConversationOnStartup },
+        update = { copy(loadLastConversationOnStartup = it) },
+    )
+    private val llmIdleTimeoutSecondsField = PlainAppStateField(
+        select = { llmIdleTimeoutSeconds },
+        update = { copy(llmIdleTimeoutSeconds = it) },
+    )
+    private val llmRetryMaxAttemptsField = PlainAppStateField(
+        select = { llmRetryMaxAttempts },
+        update = { copy(llmRetryMaxAttempts = it) },
+    )
+
+    suspend fun onboardingCompleted(): Boolean = onboardingCompletedField.get()
+
+    suspend fun setOnboardingCompleted(value: Boolean) = onboardingCompletedField.set(value)
+
+    suspend fun lastOpenedConversationId(): String = lastOpenedConversationIdField.get()
+
+    suspend fun setLastOpenedConversationId(value: String) =
+        lastOpenedConversationIdField.set(value)
+
+    suspend fun languageTag(): String = languageTagField.get()
+
+    suspend fun setLanguageTag(tag: String) = languageTagField.set(tag)
+
+    suspend fun loadLastConversationOnStartup(): Boolean = loadLastConversationOnStartupField.get()
+
+    suspend fun llmIdleTimeoutSeconds(): Long = llmIdleTimeoutSecondsField.get()
+
+    suspend fun setLlmIdleTimeoutSeconds(value: Long) = llmIdleTimeoutSecondsField.set(value)
+
+    suspend fun llmRetryMaxAttempts(): Int = llmRetryMaxAttemptsField.get()
+
+    suspend fun setLlmRetryMaxAttempts(value: Int) = llmRetryMaxAttemptsField.set(value)
+
+    suspend fun setLoadLastConversationOnStartup(value: Boolean) =
+        loadLastConversationOnStartupField.set(value)
+
+    /** Keep Alive 设置的进程内热更新通道：读时回填初值，写时同步。 */
+    private val keepScreenOnField = ReactiveAppStateField(
+        default = true,
+        select = { keepScreenOn },
+        update = { copy(keepScreenOn = it) },
+    )
+    val keepScreenOnSetting: MutableStateFlow<Boolean> get() = keepScreenOnField.flow
+
+    suspend fun keepScreenOn(): Boolean = keepScreenOnField.get()
+
+    suspend fun setKeepScreenOn(value: Boolean) = keepScreenOnField.set(value)
+
+    /** 消息操作行常显开关的进程内热更新通道：读时回填初值，写时同步。 */
+    private val alwaysShowMessageActionsField = ReactiveAppStateField(
+        default = true,
+        select = { alwaysShowMessageActions },
+        update = { copy(alwaysShowMessageActions = it) },
+    )
+    val alwaysShowMessageActionsSetting: MutableStateFlow<Boolean>
+        get() = alwaysShowMessageActionsField.flow
+
+    suspend fun alwaysShowMessageActions(): Boolean = alwaysShowMessageActionsField.get()
+
+    suspend fun setAlwaysShowMessageActions(value: Boolean) =
+        alwaysShowMessageActionsField.set(value)
+
+    /** 悬浮球开关的进程内热更新通道：读时回填初值，写时同步。 */
+    private val floatingBallEnabledField = ReactiveAppStateField(
+        default = false,
+        select = { floatingBallEnabled },
+        update = { copy(floatingBallEnabled = it) },
+    )
+    val floatingBallEnabledSetting: MutableStateFlow<Boolean>
+        get() = floatingBallEnabledField.flow
+
+    suspend fun floatingBallEnabled(): Boolean = floatingBallEnabledField.get()
+
+    suspend fun setFloatingBallEnabled(value: Boolean) = floatingBallEnabledField.set(value)
+
+    /** 常驻通知栏开关的进程内热更新通道 */
+    private val residentNotificationEnabledField = ReactiveAppStateField(
+        default = false,
+        select = { residentNotificationEnabled },
+        update = { copy(residentNotificationEnabled = it) },
+    )
+    val residentNotificationEnabledSetting: MutableStateFlow<Boolean>
+        get() = residentNotificationEnabledField.flow
+
+    suspend fun residentNotificationEnabled(): Boolean = residentNotificationEnabledField.get()
+
+    suspend fun setResidentNotificationEnabled(value: Boolean) =
+        residentNotificationEnabledField.set(value)
+
+    /** 悬浮球自动展开开关的进程内热更新通道（app 以外的消费方经 XSettings 读）。 */
+    private val floatingBallAutoExpandField = ReactiveAppStateField(
+        default = true,
+        select = { floatingBallAutoExpand },
+        update = { copy(floatingBallAutoExpand = it) },
+    )
+    val floatingBallAutoExpandSetting: MutableStateFlow<Boolean>
+        get() = floatingBallAutoExpandField.flow
+
+    suspend fun floatingBallAutoExpand(): Boolean = floatingBallAutoExpandField.get()
+
+    suspend fun setFloatingBallAutoExpand(value: Boolean) =
+        floatingBallAutoExpandField.set(value)
+
+    /**
      * 回填型设置 flow 的统一冷启动回填：flow 初值是猜的默认值，必须有人调一次
-     * getter 读盘才能对齐真值。MainActivity.onCreate 同步调用。
-     * 新增响应式设置 flow 必须在此登记，否则冷启动首帧读到假值。
+     * 读盘才能对齐真值。MainActivity.onCreate 同步调用。
+     * 响应式字段构造时已自注册到 hydrateSteps，新增无需手动登记。
      */
     suspend fun hydrateSettings() {
-        keepScreenOn()
-        alwaysShowMessageActions()
+        hydrateSteps.forEach { it() }
     }
 
-    suspend fun themeMode(): String {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID)).themeMode
-    }
+    private val themeModeField = PlainAppStateField(
+        select = { themeMode },
+        update = { copy(themeMode = it) },
+    )
+    private val themeSeedColorField = PlainAppStateField(
+        select = { themeSeedColor },
+        update = { copy(themeSeedColor = it) },
+    )
 
-    suspend fun setThemeMode(mode: String) {
-        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
-            val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(themeMode = mode))
-        }
-    }
+    suspend fun themeMode(): String = themeModeField.get()
 
-    suspend fun themeSeedColor(): String {
-        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
-            .themeSeedColor
-    }
+    suspend fun setThemeMode(mode: String) = themeModeField.set(mode)
 
-    suspend fun setThemeSeedColor(hex: String) {
-        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
-            val current = AppStateSettingsCodec.parse(json)
-            AppStateSettingsCodec.encode(current.copy(themeSeedColor = hex))
-        }
-    }
+    suspend fun themeSeedColor(): String = themeSeedColorField.get()
+
+    suspend fun setThemeSeedColor(hex: String) = themeSeedColorField.set(hex)
 
     private val SCHEMA_WEB_SEARCH =
         """{"type":"object","properties":{"query":{"type":"string"},"engine":{"type":"string","enum":["all","baidu","sogou","ddg"],"description":"search engine; \"all\" (default) merges Baidu + Sogou + DuckDuckGo"},"max_results":{"type":"integer","description":"default: 8"}},"required":["query"]}"""
@@ -447,8 +495,9 @@ object XRepo {
 
     // 从 URL 下载文件到私有 downloads 子目录；path 可指定其他目录（外部路径可能需要存储权限）。
     // 默认目录在播种时烘进脚本（占位符替换），运行时零注入成本。
-    // TODO(permission-manager): 权限管理器落地后，由其向 PromptComposer 环境块注入
-    //  真实存储权限状态（granted/denied），替代提示词中对“优先私有目录”的静态描述。
+    // TODO(permission-manager): PermissionManager 支持外部存储权限后，调用下载类 Python 工具
+    //  （py_download_file / py_install_apk）前先按目标路径检查：沙箱内路径总是有权限直接放行；
+    //  外部路径无权限时阻塞到拿到权限为止再运行脚本。现在先不做。
     private fun seedDownloadFileTool(context: Context) = CustomPyTool(
         name = "py_download_file",
         description = "Download a file from a URL and return its local file path. By default the file is saved to the app private downloads directory; prefer private directories unless you have a special reason.",

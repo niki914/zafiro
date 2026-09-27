@@ -10,8 +10,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import com.niki914.logging.Logger
-import com.niki914.permission.PermissionState
-import com.niki914.permission.TargetStatus
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -265,8 +263,7 @@ object XIpcBridge {
         content: String,
         uri: String?
     ) {
-        // 只读查询只经过 TargetStatus；业务方禁止直连原生权限 API（单测扫描兜底）
-        if (TargetStatus.notification(context) != PermissionState.GRANTED) return
+        // 不查通知权限：没授权时 NotificationManagerCompat.notify 本来就静默丢弃
         ensureNotificationChannel(context)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
