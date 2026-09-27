@@ -47,6 +47,9 @@ internal data class AppStateSettings(
     /** 是否启用常驻通知栏。 */
     @SerialName("resident_notification_enabled")
     val residentNotificationEnabled: Boolean = false,
+    /** 悬浮球在回合结束/审批到达时是否自动展开。 */
+    @SerialName("floating_ball_auto_expand")
+    val floatingBallAutoExpand: Boolean = true,
 )
 
 internal object AppStateSettingsCodec {

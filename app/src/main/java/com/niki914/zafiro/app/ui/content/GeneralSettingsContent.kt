@@ -29,6 +29,7 @@ import com.niki914.zafiro.app.ui.nav.ZafiroPage
 private const val LANGUAGE_ROW_ID = "general.language"
 private const val APPEARANCE_ROW_ID = "general.appearance"
 private const val FLOATING_BALL_ROW_ID = "general.floating_ball"
+private const val FLOATING_BALL_AUTO_EXPAND_ROW_ID = "general.floating_ball_auto_expand"
 private const val RESIDENT_NOTIFICATION_ROW_ID = "general.resident_notification"
 private const val LOAD_LAST_ROW_ID = "general.load_last"
 private const val ALWAYS_SHOW_ACTIONS_ROW_ID = "general.always_show_message_actions"
@@ -121,6 +122,12 @@ fun GeneralSettingsContent(
                         checked = uiState.floatingBallEnabled,
                     ),
                     SettingsRowSpec.Toggle(
+                        id = FLOATING_BALL_AUTO_EXPAND_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_floating_ball_auto_expand),
+                        summary = stringResource(R.string.ui_settings_general_floating_ball_auto_expand_summary),
+                        checked = uiState.floatingBallAutoExpand,
+                    ),
+                    SettingsRowSpec.Toggle(
                         id = RESIDENT_NOTIFICATION_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_resident_notification),
                         summary = stringResource(R.string.ui_settings_general_resident_notification_summary),
@@ -185,6 +192,7 @@ fun GeneralSettingsContent(
                 is SettingsRowAction.ToggleChanged ->
                     when (action.id) {
                         FLOATING_BALL_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBall(action.checked))
+                        FLOATING_BALL_AUTO_EXPAND_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBallAutoExpand(action.checked))
                         RESIDENT_NOTIFICATION_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleResidentNotification(action.checked))
                         LOAD_LAST_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleLoadLastConversation(action.checked))
                         ALWAYS_SHOW_ACTIONS_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleAlwaysShowMessageActions(action.checked))

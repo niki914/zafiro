@@ -35,6 +35,7 @@ dependencies {
     implementation(project(":business:api"))
     implementation(project(":ui-kit"))
     implementation(project(":libs:logging"))
+    implementation(project(":xsettings"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 

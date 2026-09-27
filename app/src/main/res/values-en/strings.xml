@@ -388,6 +388,8 @@
     <string name="ui_settings_general_group_runtime">Runtime &amp; Control</string>
     <string name="ui_settings_general_floating_ball">Floating Ball</string>
     <string name="ui_settings_general_floating_ball_summary">Display agent status and quick actions when in background</string>
+    <string name="ui_settings_general_floating_ball_auto_expand">Auto-expand Floating Ball</string>
+    <string name="ui_settings_general_floating_ball_auto_expand_summary">Expand the floating ball when a reply finishes or approval is needed</string>
     <string name="ui_settings_general_resident_notification">Resident Notification</string>
     <string name="ui_settings_general_resident_notification_summary">Show live status and controls in the notification drawer</string>
     <string name="ui_settings_general_language">Language</string>

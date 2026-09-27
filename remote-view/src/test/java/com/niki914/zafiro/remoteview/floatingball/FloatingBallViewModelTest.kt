@@ -2,15 +2,22 @@ package com.niki914.zafiro.remoteview.floatingball
 
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.api.model.TurnOutcome
+import com.niki914.zafiro.service.ServiceRegistry
+import com.niki914.zafiro.service.installService
+import com.niki914.xsettings.XSettings
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -19,6 +26,23 @@ class FloatingBallViewModelTest {
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
+
+    /** 假实现，默认自动展开开启；测试直接改 flow 即可切开关。 */
+    private class FakeXSettings(
+        override val floatingBallAutoExpand: MutableStateFlow<Boolean> = MutableStateFlow(true),
+    ) : XSettings
+
+    private val settings = FakeXSettings()
+
+    @Before
+    fun setUp() {
+        installService<XSettings>(settings)
+    }
+
+    @After
+    fun tearDown() {
+        ServiceRegistry.clearForTest()
+    }
 
     @Test
     fun initialState_isDefaultCollapsed() = runTest {
@@ -161,5 +185,55 @@ class FloatingBallViewModelTest {
         val state = viewModel.uiStateFlow.value
         assertEquals("正在生成天气信息...", state.preview)
         assertTrue(state.isStopEnabled)
+    }
+
+    @Test
+    fun outcomeArrived_autoExpandsOnlyWhenSettingEnabled() = runTest {
+        val viewModel = FloatingBallViewModel()
+        assertEquals(FloatingBallState.Collapsed, viewModel.uiStateFlow.value.ballState)
+
+        // 先进入运行中，再拿到结局，才算是「结局到达」
+        viewModel.sendIntent(FloatingBallIntent.UpdateAgentStatus("跑", true))
+        advanceUntilIdle()
+
+        val effectDeferred = async { viewModel.uiEffect.first() }
+        viewModel.sendIntent(
+            FloatingBallIntent.UpdateAgentStatus("完事", isRunning = false, lastOutcome = TurnOutcome.Completed)
+        )
+        advanceUntilIdle()
+        assertEquals(FloatingBallEffect.ExpandCard, effectDeferred.await())
+    }
+
+    @Test
+    fun outcomeArrived_doesNotExpandWhenAutoExpandDisabled() = runTest {
+        settings.floatingBallAutoExpand.value = false
+        val viewModel = FloatingBallViewModel()
+
+        viewModel.sendIntent(FloatingBallIntent.UpdateAgentStatus("跑", true))
+        advanceUntilIdle()
+        viewModel.sendIntent(
+            FloatingBallIntent.UpdateAgentStatus("完事", isRunning = false, lastOutcome = TurnOutcome.Failed)
+        )
+        advanceUntilIdle()
+
+        // 状态照旧更新（小球靠颜色提示），但不展开
+        assertEquals(TurnOutcome.Failed, viewModel.uiStateFlow.value.lastOutcome)
+        assertEquals(FloatingBallState.Collapsed, viewModel.uiStateFlow.value.ballState)
+    }
+
+    @Test
+    fun approvalArrived_doesNotExpandWhenAutoExpandDisabled() = runTest {
+        settings.floatingBallAutoExpand.value = false
+        val viewModel = FloatingBallViewModel()
+
+        viewModel.sendIntent(
+            FloatingBallIntent.UpdateApprovalRequest(
+                ApprovalRequest.ToolExecution("terminal", "rm -rf /", "danger")
+            )
+        )
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiStateFlow.value.isApprovalPending)
+        assertEquals(FloatingBallState.Collapsed, viewModel.uiStateFlow.value.ballState)
     }
 }

@@ -350,6 +350,8 @@
     <string name="ui_settings_general_group_runtime">運行與控制</string>
     <string name="ui_settings_general_floating_ball">懸浮球</string>
     <string name="ui_settings_general_floating_ball_summary">後台運行時顯示 Agent 狀態與快捷操作</string>
+    <string name="ui_settings_general_floating_ball_auto_expand">懸浮球自動展開</string>
+    <string name="ui_settings_general_floating_ball_auto_expand_summary">回答結束或需要授權時自動展開懸浮球</string>
     <string name="ui_settings_general_resident_notification">常駐通知</string>
     <string name="ui_settings_general_resident_notification_summary">在通知欄顯示實時狀態與控制入口</string>
     <string name="ui_settings_general_language">語言</string>

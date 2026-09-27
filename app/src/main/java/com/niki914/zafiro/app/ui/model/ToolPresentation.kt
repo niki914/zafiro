@@ -1,5 +1,6 @@
 package com.niki914.zafiro.app.ui.model
 
+import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Build
@@ -13,6 +14,7 @@ import androidx.compose.ui.res.vectorResource
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ToolPresentation.inputOf
 import com.niki914.zafiro.app.ui.model.ToolPresentation.previewOf
+import com.niki914.zafiro.remoteview.R as RemoteViewR
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -76,6 +78,25 @@ object ToolPresentation {
         "view_image" -> R.string.ui_tool_display_view_image
         else -> null
     }
+
+    /**
+     * 工具执行中的展示名：内置工具走本地化显示名，未命中映射（Custom Tool / MCP）
+     * 回退参数携带的 label，再回退原始工具名。
+     */
+    fun displayName(context: Context, toolName: String, label: String): String =
+        displayNameResOf(toolName)?.let { context.getString(it) }
+            ?: label.takeIf { it.isNotBlank() }
+            ?: toolName
+
+    /**
+     * 工具执行中文案：悬浮球卡片与常驻通知共用同一口径（文案复用 remote-view 的
+     * [RemoteViewR.string.floating_ball_tool_running]，不另起一份翻译）。
+     */
+    fun runningText(context: Context, toolName: String, label: String): String =
+        context.getString(
+            RemoteViewR.string.floating_ball_tool_running,
+            displayName(context, toolName, label),
+        )
 
     /**
      * 工具参数原文：terminal 取完整 command、execute_python 取完整 code、load_skill 取 id；

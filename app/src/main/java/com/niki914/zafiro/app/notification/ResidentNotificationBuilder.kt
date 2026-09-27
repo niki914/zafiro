@@ -11,6 +11,7 @@ import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.business.notification.AppNotificationChannel
 import com.niki914.zafiro.business.notification.NotificationChannelManager
 import com.niki914.zafiro.runtime.service.AgentRuntimeService
@@ -62,14 +63,18 @@ object ResidentNotificationBuilder {
 
     /**
      * 解析常驻通知的大文本正文：
-     * 进行中取当段文本，审批取 `command ?: toolName`（知情同意取标题），Idle 取末轮尾巴
-     * `lastText`，ToolRunning / Stopping 无正文。若无内容则返回 null
+     * 进行中取当段文本，工具执行中取工具运行文案（与悬浮球同口径），
+     * 审批取 `command ?: toolName`（知情同意取标题），Idle 取末轮尾巴
+     * `lastText`，Stopping 无正文。若无内容则返回 null
      * （通知只展示标题，不填充无意义兜底文本）。
      */
     fun resolveBody(state: AgentState, context: Context): String? {
         val raw = when (state) {
             is AgentState.Generating -> state.text
             is AgentState.Thinking -> state.text
+            is AgentState.ToolRunning ->
+                ToolPresentation.runningText(context, state.toolName, state.label)
+
             is AgentState.WaitingApproval -> when (val req = state.request) {
                 is ApprovalRequest.ToolExecution ->
                     req.command.takeIf { it.isNotBlank() } ?: req.toolName
@@ -77,7 +82,6 @@ object ResidentNotificationBuilder {
                     context.getString(R.string.screen_control_consent_title)
             }
             is AgentState.Idle -> state.lastText
-            is AgentState.ToolRunning,
             AgentState.Stopping -> null
         }
         val singleLine = raw?.replace(WHITESPACE, " ")?.trim()?.takeIf { it.isNotBlank() } ?: return null

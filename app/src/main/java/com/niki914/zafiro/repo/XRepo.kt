@@ -83,6 +83,7 @@ object XRepo {
         alwaysShowMessageActionsField.flow.value = true
         floatingBallEnabledField.flow.value = false
         residentNotificationEnabledField.flow.value = false
+        floatingBallAutoExpandField.flow.value = true
     }
 
     internal suspend fun context(): Context {
@@ -392,6 +393,20 @@ object XRepo {
 
     suspend fun setResidentNotificationEnabled(value: Boolean) =
         residentNotificationEnabledField.set(value)
+
+    /** 悬浮球自动展开开关的进程内热更新通道（app 以外的消费方经 XSettings 读）。 */
+    private val floatingBallAutoExpandField = ReactiveAppStateField(
+        default = true,
+        select = { floatingBallAutoExpand },
+        update = { copy(floatingBallAutoExpand = it) },
+    )
+    val floatingBallAutoExpandSetting: MutableStateFlow<Boolean>
+        get() = floatingBallAutoExpandField.flow
+
+    suspend fun floatingBallAutoExpand(): Boolean = floatingBallAutoExpandField.get()
+
+    suspend fun setFloatingBallAutoExpand(value: Boolean) =
+        floatingBallAutoExpandField.set(value)
 
     /**
      * 回填型设置 flow 的统一冷启动回填：flow 初值是猜的默认值，必须有人调一次

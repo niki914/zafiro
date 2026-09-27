@@ -296,6 +296,15 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
+    fun appStateFloatingBallAutoExpandDefaultsEnabledAndRoundTrips() {
+        assertTrue(AppStateSettingsCodec.parse("""{}""").floatingBallAutoExpand)
+
+        val json = AppStateSettingsCodec.encode(AppStateSettings(floatingBallAutoExpand = false))
+        assertFalse(jsonObject(json)["floating_ball_auto_expand"]!!.jsonPrimitive.boolean)
+        assertFalse(AppStateSettingsCodec.parse(json).floatingBallAutoExpand)
+    }
+
+    @Test
     fun appStateRoundTripUsesSnakeCaseKeys() {
         val state = AppStateSettings(
             onboardingCompleted = true,
