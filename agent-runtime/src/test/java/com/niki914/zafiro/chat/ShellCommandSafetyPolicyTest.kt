@@ -1,20 +1,18 @@
 package com.niki914.zafiro.chat
 
+import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.Approver
+import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionResponse
 import com.niki914.zafiro.settings.RuntimeEnvironment
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withTimeout
 import com.niki914.zafiro.chat.util.SilentLoggerRule
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -157,10 +155,9 @@ class ShellCommandSafetyPolicyTest {
                 executionRules = listOf(dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM))
             )
         )
-        ToolPermissionCoordinator.isUiResumed = false
-        ToolPermissionCoordinator.backgroundConfirmationHandler = null
+        val agentControl = FakeAgentControl(decision = ApprovalDecision.Abstain)
 
-        val decision = ShellCommandSafetyPolicy()
+        val decision = ShellCommandSafetyPolicy(agentControlProvider = { agentControl })
             .evaluate("rm -rf /data/local/tmp/cache", toolName = "terminal")
 
         assertFalse(decision.allowed)
@@ -174,26 +171,25 @@ class ShellCommandSafetyPolicyTest {
                 executionRules = listOf(dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM))
             )
         )
-        ToolPermissionCoordinator.isUiResumed = true
+        var receivedRequest: ApprovalRequest? = null
+        val agentControl = FakeAgentControl(
+            decision = ApprovalDecision.Deny,
+            onRequest = { receivedRequest = it }
+        )
 
-        val evaluation = async {
-            ShellCommandSafetyPolicy().evaluate(
+        val decision = ShellCommandSafetyPolicy(agentControlProvider = { agentControl })
+            .evaluate(
                 "rm -rf /data/local/tmp/cache",
                 toolName = "terminal"
             )
-        }
-        withTimeout(5_000) {
-            ToolPermissionCoordinator.pendingConfirmation.first { it != null }
-        }
-        ToolPermissionCoordinator.respond(
-            ToolPermissionCoordinator.pendingConfirmation.value?.id.orEmpty(),
-            allowed = false,
-        )
 
-        val decision = evaluation.await()
         assertFalse(decision.allowed)
         assertEquals("CONFIRM_DENIED", decision.code)
         assertEquals("危险删改", decision.matchedRuleName)
+        assertTrue(receivedRequest is ApprovalRequest.ToolExecution)
+        val toolReq = receivedRequest as ApprovalRequest.ToolExecution
+        assertEquals("terminal", toolReq.toolName)
+        assertEquals("rm -rf /data/local/tmp/cache", toolReq.command)
     }
 
     @Test
@@ -206,62 +202,41 @@ class ShellCommandSafetyPolicyTest {
                 )
             )
         )
-        ToolPermissionCoordinator.isUiResumed = true
+        val agentControl = FakeAgentControl(decision = ApprovalDecision.Allow)
 
-        val evaluation = async {
-            ShellCommandSafetyPolicy().evaluate(
+        val decision = ShellCommandSafetyPolicy(agentControlProvider = { agentControl })
+            .evaluate(
                 command = "rm -rf /data/local/tmp/cache; pm uninstall com.example.app",
                 toolName = "terminal",
             )
-        }
-        withTimeout(5_000) {
-            ToolPermissionCoordinator.pendingConfirmation.first { it != null }
-        }
-        ToolPermissionCoordinator.respond(
-            ToolPermissionCoordinator.pendingConfirmation.value?.id.orEmpty(),
-            allowed = true,
-        )
 
-        val decision = evaluation.await()
         assertFalse(decision.allowed)
         assertEquals("RULE_BLOCKED", decision.code)
         assertEquals("uninstall", decision.matchedRuleId)
     }
 
     @Test
-    fun evaluate_confirmRuleInBackgroundSurfacesPendingConfirmationAndAllowsViaHandler() = runTest {
+    fun evaluate_confirmRuleAllowedWhenApproverAllows() = runTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(
                 executionRules = listOf(dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM))
             )
         )
-        ToolPermissionCoordinator.isUiResumed = false
-        val handlerDeferred = CompletableDeferred<ToolPermissionResponse>()
-        ToolPermissionCoordinator.backgroundConfirmationHandler = { handlerDeferred.await() }
+        var receivedRequest: ApprovalRequest? = null
+        val agentControl = FakeAgentControl(
+            decision = ApprovalDecision.Allow,
+            onRequest = { receivedRequest = it }
+        )
 
-        val evaluation = async {
-            ShellCommandSafetyPolicy().evaluate(
+        val decision = ShellCommandSafetyPolicy(agentControlProvider = { agentControl })
+            .evaluate(
                 "rm -rf /data/local/tmp/cache",
                 toolName = "terminal"
             )
-        }
-        withTimeout(5_000) {
-            ToolPermissionCoordinator.pendingConfirmation.first { it != null }
-        }
-        val pending = ToolPermissionCoordinator.pendingConfirmation.value
-        assertNotNull(pending)
-        assertEquals("terminal", pending?.toolName)
 
-        handlerDeferred.complete(ToolPermissionResponse.ALLOWED)
-        val decision = evaluation.await()
         assertTrue(decision.allowed)
-        assertNull(ToolPermissionCoordinator.pendingConfirmation.value)
-    }
-
-    @After
-    fun resetToolPermissionCoordinator() {
-        ToolPermissionCoordinator.isUiResumed = false
-        ToolPermissionCoordinator.backgroundConfirmationHandler = null
+        assertEquals("OK", decision.code)
+        assertTrue(receivedRequest is ApprovalRequest.ToolExecution)
     }
 
     private fun dangerousRule(
@@ -290,3 +265,18 @@ class ShellCommandSafetyPolicyTest {
         )
     }
 }
+
+private class FakeAgentControl(
+    var decision: ApprovalDecision = ApprovalDecision.Abstain,
+    val onRequest: ((ApprovalRequest) -> Unit)? = null,
+) : AgentControl {
+    override val status = MutableStateFlow<AgentState>(AgentState.Idle())
+    override fun stop() {}
+    override fun addApprover(approver: Approver) {}
+    override fun removeApprover(approver: Approver) {}
+    override suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision {
+        onRequest?.invoke(request)
+        return decision
+    }
+}
+

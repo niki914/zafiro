@@ -16,9 +16,7 @@ import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.business.application.ApplicationService
-import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -98,22 +96,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        isResumed = true
-        ToolPermissionCoordinator.isUiResumed = true
         // 前台跟踪由 ApplicationService 经 lifecycle callbacks 自动维护，无需手动转发
-    }
-
-    override fun onPause() {
-        super.onPause()
-        isResumed = false
-        ToolPermissionCoordinator.isUiResumed = false
-    }
-
-    companion object {
-
-        /** 前后台标记：确认请求在后台时尝试 overlay 弹窗，无权限则静默拒绝。 */
-        @Volatile
-        var isResumed: Boolean = false
-            private set
     }
 }

@@ -9,6 +9,8 @@ import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
@@ -27,6 +29,7 @@ import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.service.ServiceRegistry
 import com.niki914.zafiro.service.installService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -239,6 +242,38 @@ class HomeChatViewModelTest {
         advanceUntilIdle()
         assertEquals("first", fixture.vm.uiStateFlow.value.input)
         assertEquals("/image.jpg", fixture.vm.uiStateFlow.value.pendingImages.single().path)
+    }
+
+    @Test
+    fun approvalRequestSurfacesInUiStateAndSettlesThroughIntent() = runTest {
+        val fixture = fixture()
+        val approver = requireNotNull(fixture.agent.registeredApprover)
+        val request = ApprovalRequest.ToolExecution("terminal", "rm -rf /tmp", "dangerous_rm")
+
+        val decision = async { approver.decide(request) }
+        advanceUntilIdle()
+        assertEquals(request, fixture.vm.uiStateFlow.value.pendingApproval)
+
+        fixture.vm.sendIntent(HomeChatIntent.ResolveApproval(ApprovalDecision.Allow))
+        advanceUntilIdle()
+
+        assertEquals(ApprovalDecision.Allow, decision.await())
+        assertNull(fixture.vm.uiStateFlow.value.pendingApproval)
+    }
+
+    @Test
+    fun cancelledApprovalRequestClearsPendingUiState() = runTest {
+        val fixture = fixture()
+        val approver = requireNotNull(fixture.agent.registeredApprover)
+
+        val decision = async { approver.decide(ApprovalRequest.ScreenControlConsent) }
+        advanceUntilIdle()
+        assertEquals(ApprovalRequest.ScreenControlConsent, fixture.vm.uiStateFlow.value.pendingApproval)
+
+        decision.cancel()
+        advanceUntilIdle()
+
+        assertNull(fixture.vm.uiStateFlow.value.pendingApproval)
     }
 
 }

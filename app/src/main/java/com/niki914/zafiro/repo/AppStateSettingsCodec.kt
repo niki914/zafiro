@@ -28,7 +28,7 @@ internal data class AppStateSettings(
     val themeMode: String = "dark",
     /** 主题种子色 ARGB hex；空串 = 跟随壁纸动态色。 */
     @SerialName("theme_seed_color")
-    val themeSeedColor: String = "FF52DBC9",
+    val themeSeedColor: String = "",
     /** 流式空闲超时秒数；0 = 不超时。 */
     @SerialName("llm_idle_timeout_seconds")
     val llmIdleTimeoutSeconds: Long = 60L,

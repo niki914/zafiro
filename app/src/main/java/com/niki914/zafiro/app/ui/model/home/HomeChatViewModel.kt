@@ -4,7 +4,10 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.api.Agent
+import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.DraftImage
@@ -13,12 +16,15 @@ import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.service.requireService
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 /**
  * 对话页的 UI 状态持有者。
@@ -44,6 +50,15 @@ class HomeChatViewModel internal constructor(
     private var draftSaveJob: Job? = null
     private var startupRestoreAttempted = false
 
+    /**
+     * 前台审批来源：请求落到 [HomeChatUiState.pendingApproval]，
+     * UI 裁决后经 [HomeChatIntent.ResolveApproval] 回灌。
+     * 在途请求被取消（别处先结算 / 回合被停 / 本 ViewModel 销毁）时收起对话框。
+     */
+    private val approvalApprover = ForegroundDialogApprover { pending ->
+        updateState { copy(pendingApproval = pending) }
+    }
+
     /** 正在节流的文本块；块 id 变化 = 新段开始，节流器归零。 */
     private var pacedTextBlockId: String? = null
 
@@ -53,6 +68,7 @@ class HomeChatViewModel internal constructor(
     private val seenThinkingKeys = mutableSetOf<String>()
 
     init {
+        agent.addApprover(approvalApprover)
         observeAgent()
         restoreLastConversationOnStartup()
     }
@@ -79,6 +95,7 @@ class HomeChatViewModel internal constructor(
             is HomeChatIntent.ReGenerateAt -> reGenerateAt(intent.turnId)
             is HomeChatIntent.ForkAt -> forkAt(intent.turnId)
             is HomeChatIntent.RewindAt -> rewindAt(intent.turnId)
+            is HomeChatIntent.ResolveApproval -> approvalApprover.settle(intent.decision)
         }
     }
 
@@ -557,11 +574,51 @@ class HomeChatViewModel internal constructor(
     override fun onCleared() {
         draftSaveJob?.cancel()
         draftSaveJob = null
+        // 在途请求交给其他来源（或按拒绝结算）；本类不再持有来源身份
+        approvalApprover.detach()
+        agent.removeApprover(approvalApprover)
         super.onCleared()
     }
 
     companion object {
         private const val LOG_TAG = "niki914_nexus_HomeChatState"
         private const val DRAFT_SAVE_DEBOUNCE_MS = 350L
+    }
+}
+
+/**
+ * 前台对话框的审批来源：单槽挂起，把在途请求交给构造时传入的回调渲染，
+ * 等 [settle]（用户裁决）或 [detach]（ViewModel 销毁）回灌。
+ * 同一时刻只支持一个在途请求。
+ */
+private class ForegroundDialogApprover(
+    private val onPendingChanged: (ApprovalRequest?) -> Unit,
+) : Approver {
+    private var cont: CancellableContinuation<ApprovalDecision>? = null
+
+    override suspend fun decide(request: ApprovalRequest): ApprovalDecision =
+        suspendCancellableCoroutine { current ->
+            cont = current
+            onPendingChanged(request)
+            current.invokeOnCancellation {
+                if (cont === current) cont = null
+                onPendingChanged(null)
+            }
+        }
+
+    /** UI 裁决入口。 */
+    fun settle(decision: ApprovalDecision) {
+        val current = cont
+        cont = null
+        onPendingChanged(null)
+        current?.resume(decision)
+    }
+
+    /** 注销前上报在途请求：取消挂起，让 agent 按「来源没了」继续结算。 */
+    fun detach() {
+        val current = cont
+        cont = null
+        onPendingChanged(null)
+        current?.cancel()
     }
 }

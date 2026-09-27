@@ -1,6 +1,8 @@
 package com.niki914.zafiro.api
 
 import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -46,19 +48,17 @@ interface AgentControl {
     fun stop()
 
     /**
-     * 注册授权裁决者。同一实例重复注册为幂等；顺序即优先级。
+     * 注册授权裁决者。同一实例重复注册为幂等。
      *
-     * 调用面（今天三处各走各的，接入后统一为注册）：
-     * - Compose 前台对话框（今天读 `ToolPermissionCoordinator.pendingConfirmation`、
-     *   经 `respond(id)` 结算，接入后改为注册 [Approver] 并直接返回裁决）；
-     * - overlay 后台弹窗（今天是 `App.backgroundConfirmationHandler` +
-     *   `ToolPermissionOverlay.show`，接入后改为注册 [Approver]）；
-     * - 常驻通知的允许 / 拒绝按钮（待建，注册 [Approver]）。
+     * 调用面：
+     * - Compose 前台对话框（注册 [Approver]，界面不可见时不注册或返回弃权）；
+     * - overlay 悬浮球卡片；
+     * - 常驻通知的允许 / 拒绝按钮。
      *
-     * 按注册顺序询问，第一个返回非弃权者结算；全部弃权或没有任何来源
-     * 注册时视为拒绝（今天的 `DENIED_UNAVAILABLE`）。今天的硬编码路由
-     * （前台优先 `isUiResumed`、否则后台处理器、否则拒绝）由注册顺序替代：
-     * 前台的 [Approver] 在界面不可见时返回弃权即可。
+     * 裁决并发询问所有已注册来源，先到先得：第一个返回非 [ApprovalDecision.Abstain]
+     * 的来源结算，注册顺序不代表优先级。结算后其余来源的挂起调用被取消，
+     * 各自在取消回调里撤下自己的界面——同一次请求只在一个地方决策。
+     * 没有任何来源注册，或全部弃权时视为拒绝。
      */
     fun addApprover(approver: Approver)
 
@@ -69,4 +69,10 @@ interface AgentControl {
      * 销毁时），否则界面销毁后会留下仍在响应请求的僵尸来源。
      */
     fun removeApprover(approver: Approver)
+
+    /**
+     * 发起一次审批裁决。并发询问已注册的 [Approver]，首个非 [ApprovalDecision.Abstain]
+     * 决策胜出；若无已注册的裁决者或全部弃权则返回 [ApprovalDecision.Deny]。
+     */
+    suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision
 }

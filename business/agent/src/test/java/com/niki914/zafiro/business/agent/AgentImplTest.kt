@@ -1,9 +1,17 @@
 package com.niki914.zafiro.business.agent
 
+import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
+import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
+import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
+import com.niki914.zafiro.chat.LlmStreamEvent
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -48,75 +56,82 @@ class AgentImplTest {
     @Test
     fun stop_whenIdle_isNoOp() {
         AgentImpl.stop()
-        assertEquals(com.niki914.zafiro.api.model.AgentState.Idle(), AgentImpl.status.value)
+        assertEquals(AgentState.Idle(), AgentImpl.status.value)
     }
 
     @Test
-    fun decideApproval_whenNoApprovers_returnsDeny() = kotlinx.coroutines.runBlocking {
-        val request = com.niki914.zafiro.api.model.ApprovalRequest(
-            toolName = "terminal",
-            command = "rm -rf /",
-            ruleName = "RULE",
-        )
-        val decision = AgentImpl.decideApproval(request)
-        assertEquals(com.niki914.zafiro.api.model.ApprovalDecision.Deny, decision)
+    fun decideApproval_whenNoApprovers_returnsDeny() = runBlocking {
+        val decision = AgentImpl.decideApproval(toolRequest("rm -rf /"))
+        assertEquals(ApprovalDecision.Deny, decision)
     }
 
     @Test
-    fun decideApproval_firstNonAbstainWins() = kotlinx.coroutines.runBlocking {
-        val approver1 = object : com.niki914.zafiro.api.Approver {
-            override suspend fun decide(request: com.niki914.zafiro.api.model.ApprovalRequest): com.niki914.zafiro.api.model.ApprovalDecision {
-                kotlinx.coroutines.delay(50)
-                return com.niki914.zafiro.api.model.ApprovalDecision.Allow
-            }
-        }
-        val approver2 = object : com.niki914.zafiro.api.Approver {
-            override suspend fun decide(request: com.niki914.zafiro.api.model.ApprovalRequest): com.niki914.zafiro.api.model.ApprovalDecision {
-                kotlinx.coroutines.delay(10)
-                return com.niki914.zafiro.api.model.ApprovalDecision.Deny
-            }
-        }
-        AgentImpl.addApprover(approver1)
-        AgentImpl.addApprover(approver2)
+    fun decideApproval_whenAllApproversAbstain_returnsDeny() = runBlocking {
+        AgentImpl.addApprover(approverOf(ApprovalDecision.Abstain))
+        AgentImpl.addApprover(approverOf(ApprovalDecision.Abstain))
 
-        val request = com.niki914.zafiro.api.model.ApprovalRequest(
-            toolName = "terminal",
-            command = "ls",
-            ruleName = "RULE",
-        )
-        val decision = AgentImpl.decideApproval(request)
-        assertEquals(com.niki914.zafiro.api.model.ApprovalDecision.Deny, decision)
+        val decision = AgentImpl.decideApproval(toolRequest("rm -rf /data"))
+
+        assertEquals(ApprovalDecision.Deny, decision)
     }
 
     @Test
-    fun removeApprover_removesRegisteredApprover() = kotlinx.coroutines.runBlocking {
-        val approver = object : com.niki914.zafiro.api.Approver {
-            override suspend fun decide(request: com.niki914.zafiro.api.model.ApprovalRequest): com.niki914.zafiro.api.model.ApprovalDecision {
-                return com.niki914.zafiro.api.model.ApprovalDecision.Allow
-            }
-        }
+    fun decideApproval_firstNonAbstainWins() = runBlocking {
+        AgentImpl.addApprover(approverOf(ApprovalDecision.Allow, delayMs = 50))
+        AgentImpl.addApprover(approverOf(ApprovalDecision.Deny, delayMs = 10))
+
+        val decision = AgentImpl.decideApproval(toolRequest("ls"))
+
+        assertEquals(ApprovalDecision.Deny, decision)
+    }
+
+    @Test
+    fun decideApproval_abstainDoesNotBlockLaterDecision() = runBlocking {
+        AgentImpl.addApprover(approverOf(ApprovalDecision.Abstain))
+        AgentImpl.addApprover(approverOf(ApprovalDecision.Allow, delayMs = 10))
+
+        val decision = AgentImpl.decideApproval(toolRequest("ls"))
+
+        assertEquals(ApprovalDecision.Allow, decision)
+    }
+
+    @Test
+    fun removeApprover_removesRegisteredApprover() = runBlocking {
+        val approver = approverOf(ApprovalDecision.Allow)
         AgentImpl.addApprover(approver)
         AgentImpl.removeApprover(approver)
 
-        val request = com.niki914.zafiro.api.model.ApprovalRequest(
-            toolName = "terminal",
-            command = "pwd",
-            ruleName = "RULE",
-        )
-        val decision = AgentImpl.decideApproval(request)
-        assertEquals(com.niki914.zafiro.api.model.ApprovalDecision.Deny, decision)
+        val decision = AgentImpl.decideApproval(toolRequest("pwd"))
+
+        assertEquals(ApprovalDecision.Deny, decision)
     }
 
     @Test
     fun fold_afterApplySessionId_preservesSessionIdAcrossEvents() {
-        val sessionId = com.niki914.zafiro.api.model.ConversationId("new-conv-uuid")
+        val sessionId = ConversationId("new-conv-uuid")
         AgentImpl.applySessionId(sessionId)
         assertEquals(sessionId, AgentImpl.conversation.value.id)
 
-        AgentImpl.foldForTest(com.niki914.zafiro.chat.LlmStreamEvent.RoundStarted)
+        AgentImpl.foldForTest(LlmStreamEvent.RoundStarted)
         assertEquals(sessionId, AgentImpl.conversation.value.id)
 
-        AgentImpl.foldForTest(com.niki914.zafiro.chat.LlmStreamEvent.TextDelta(delta = "hello", fullText = "hello"))
+        AgentImpl.foldForTest(LlmStreamEvent.TextDelta(delta = "hello", fullText = "hello"))
         assertEquals(sessionId, AgentImpl.conversation.value.id)
+    }
+
+    private fun toolRequest(command: String) = ApprovalRequest.ToolExecution(
+        toolName = "terminal",
+        command = command,
+        ruleName = "RULE",
+    )
+
+    private fun approverOf(
+        decision: ApprovalDecision,
+        delayMs: Long = 0,
+    ) = object : Approver {
+        override suspend fun decide(request: ApprovalRequest): ApprovalDecision {
+            if (delayMs > 0) delay(delayMs)
+            return decision
+        }
     }
 }

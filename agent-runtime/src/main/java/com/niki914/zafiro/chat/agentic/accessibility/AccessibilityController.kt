@@ -13,6 +13,9 @@ import android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT
+import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionResult
@@ -196,14 +199,19 @@ object AccessibilityController {
         // 后台弹不了窗 → 直接拒绝；拒绝不记忆，下次申请会再弹。
         val needsAccess = permissions.status(Permission.ACCESSIBILITY) != PermissionState.GRANTED
         val needsOverlay = permissions.status(Permission.OVERLAY) != PermissionState.GRANTED
-        if ((needsAccess || needsOverlay) && !ScreenControlConsent.request()) {
-            return Result.failure(
-                RuntimeException(
-                    "User declined screen-control consent (accessibility + overlay). " +
-                            "Tell the user these permissions are required for screen control; " +
-                            "they can retry or grant them manually in Settings."
+        if (needsAccess || needsOverlay) {
+            val agentControl = runCatching { requireService<AgentControl>() }.getOrNull()
+            val decision = agentControl?.decideApproval(ApprovalRequest.ScreenControlConsent)
+                ?: ApprovalDecision.Deny
+            if (decision != ApprovalDecision.Allow) {
+                return Result.failure(
+                    RuntimeException(
+                        "User declined screen-control consent (accessibility + overlay). " +
+                                "Tell the user these permissions are required for screen control; " +
+                                "they can retry or grant them manually in Settings."
+                    )
                 )
-            )
+            }
         }
 
         // 逐个确保：已授权跳过，缺失才跑链。用户最多进出设置两次，已知代价。

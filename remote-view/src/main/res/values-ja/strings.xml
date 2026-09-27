@@ -9,4 +9,7 @@
     <string name="floating_ball_approval_reason_unknown">要確認</string>
     <string name="floating_ball_approval_view_details">タップして詳細を表示</string>
     <string name="floating_ball_tool_running">%1$s を実行中</string>
+    <string name="screen_control_consent_title">画面操作権限のリクエスト</string>
+    <string name="screen_control_consent_body">Zafiro が画面を操作するにはユーザー補助とオーバーレイ権限が必要です。</string>
+    <string name="screen_control_consent_agree">同意</string>
 </resources>

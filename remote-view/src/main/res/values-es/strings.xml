@@ -9,4 +9,7 @@
     <string name="floating_ball_approval_reason_unknown">Por confirmar</string>
     <string name="floating_ball_approval_view_details">Toca para ver detalles</string>
     <string name="floating_ball_tool_running">Ejecutando %1$s</string>
+    <string name="screen_control_consent_title">Solicitud de permisos de control de pantalla</string>
+    <string name="screen_control_consent_body">Zafiro necesita permisos de accesibilidad y superposición para controlar la pantalla.</string>
+    <string name="screen_control_consent_agree">Aceptar</string>
 </resources>
