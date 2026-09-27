@@ -1,9 +1,12 @@
 package com.niki914.zafiro.chat.agentic.shell
 
 import com.niki914.xposed.api.util.LockState
+import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.service.requireService
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.util.TextPatternMatcher
-import java.util.UUID
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
@@ -21,6 +24,9 @@ class ShellCommandSafetyPolicy(
         RuntimeEnvironment.awaitSettingsGateway().listExecutionRules()
     },
     private val isUnlocked: suspend () -> Boolean = { LockState.isUnlocked() },
+    private val agentControlProvider: () -> AgentControl? = {
+        runCatching { requireService<AgentControl>() }.getOrNull()
+    },
 ) {
     suspend fun evaluate(command: String, toolName: String): ShellCommandPolicyDecision {
         val rules = listExecutionRules()
@@ -57,41 +63,31 @@ class ShellCommandSafetyPolicy(
             when (rule.enabledMode) {
                 ExecutionRuleEnabledMode.ALWAYS, ExecutionRuleEnabledMode.LOCKED_ONLY -> return blocked
                 ExecutionRuleEnabledMode.DISABLED -> {}
-                ExecutionRuleEnabledMode.CONFIRM -> when (
-                    ToolPermissionCoordinator.confirm(
-                        blocked.toConfirmationRequest(
-                            command,
-                            toolName
+                ExecutionRuleEnabledMode.CONFIRM -> {
+                    val agentControl = agentControlProvider()
+                    val decision = agentControl?.decideApproval(
+                        ApprovalRequest.ToolExecution(
+                            toolName = toolName,
+                            command = command,
+                            ruleName = rule.name,
                         )
-                    )
-                ) {
-                    ToolPermissionResponse.ALLOWED -> continue
-                    ToolPermissionResponse.DENIED_BY_USER -> return blocked.copy(
-                        code = "CONFIRM_DENIED",
-                        reason = "The user denied this operation.",
-                    )
-
-                    ToolPermissionResponse.DENIED_UNAVAILABLE -> return blocked.copy(
-                        code = "CONFIRM_UNAVAILABLE",
-                        reason = "Tool execution requires user confirmation, but this session " +
-                                "cannot request permission from the user. The operation was denied.",
-                    )
+                    ) ?: ApprovalDecision.Abstain
+                    when (decision) {
+                        ApprovalDecision.Allow -> continue
+                        ApprovalDecision.Deny -> return blocked.copy(
+                            code = "CONFIRM_DENIED",
+                            reason = "The user denied this operation.",
+                        )
+                        ApprovalDecision.Abstain -> return blocked.copy(
+                            code = "CONFIRM_UNAVAILABLE",
+                            reason = "Tool execution requires user confirmation, but this session " +
+                                    "cannot request permission from the user. The operation was denied.",
+                        )
+                    }
                 }
             }
         }
         return ShellCommandPolicyDecision(allowed = true)
-    }
-
-    private fun ShellCommandPolicyDecision.toConfirmationRequest(
-        command: String,
-        toolName: String,
-    ): ToolPermissionRequest {
-        return ToolPermissionRequest(
-            id = UUID.randomUUID().toString(),
-            toolName = toolName,
-            command = command,
-            matchedRuleName = matchedRuleName.orEmpty(),
-        )
     }
 
     private fun String.shellLikeTokens(): List<String> {

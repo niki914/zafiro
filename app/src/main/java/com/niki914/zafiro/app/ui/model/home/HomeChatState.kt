@@ -1,5 +1,7 @@
 package com.niki914.zafiro.app.ui.model.home
 
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.conversation.ForkResult
@@ -112,6 +114,11 @@ data class HomeChatUiState(
      * （首发与续接回声的区分改用 turns 中是否已存在同 id Thinking 块判断，见 applyEvent。）
      */
     val autoExpandedThinking: Set<String> = emptySet(),
+    /**
+     * 前台待裁决的审批请求；非空即渲染对应对话框。裁决用
+     * [HomeChatIntent.ResolveApproval]，结算后归 null。
+     */
+    val pendingApproval: ApprovalRequest? = null,
 )
 
 /**
@@ -149,4 +156,7 @@ sealed interface HomeChatIntent {
     data class ReGenerateAt(val turnId: Long) : HomeChatIntent
     data class ForkAt(val turnId: Long) : HomeChatIntent
     data class RewindAt(val turnId: Long) : HomeChatIntent
+
+    /** 前台对话框的裁决回灌；由 [com.niki914.zafiro.api.Approver] 实现侧等待。 */
+    data class ResolveApproval(val decision: ApprovalDecision) : HomeChatIntent
 }

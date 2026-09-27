@@ -37,7 +37,6 @@ import com.niki914.zafiro.chat.agentic.ToolManager
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.util.ToolOutputTruncator
 import com.niki914.zafiro.chat.agentic.stream.LlmStreamEventMapper
 import com.niki914.zafiro.settings.RuntimeEnvironment

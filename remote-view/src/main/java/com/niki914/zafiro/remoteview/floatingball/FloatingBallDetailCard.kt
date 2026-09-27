@@ -257,90 +257,105 @@ fun FloatingBallDetailCardContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 标题 20sp 居中
-        Text(
-            text = stringResource(R.string.tool_permission_dialog_title),
-            color = colors.onSurface,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp),
-        )
+        when (request) {
+            is ApprovalRequest.ToolExecution -> {
+                // 标题 20sp 居中
+                Text(
+                    text = stringResource(R.string.tool_permission_dialog_title),
+                    color = colors.onSurface,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
 
-        Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-        // 工具介绍
-        Text(
-            text = stringResource(R.string.tool_permission_request_intro, request.toolName),
-            color = colors.onSurfaceVariant,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp),
-        )
+                // 工具介绍
+                Text(
+                    text = stringResource(R.string.tool_permission_request_intro, request.toolName),
+                    color = colors.onSurfaceVariant,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
 
-        Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-        // 命令块（等宽，surfaceContainerHighest 圆角块，支持水平滚动）
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(colors.surfaceContainerHighest, RoundedCornerShape(12.dp))
-                .padding(12.dp),
-        ) {
-            Text(
-                text = request.command,
-                color = colors.onSurface,
-                fontSize = 13.sp,
-                fontFamily = FontFamily.Monospace,
-                maxLines = 6,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-            )
+                // 命令块（等宽，surfaceContainerHighest 圆角块，支持水平滚动）
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colors.surfaceContainerHighest, RoundedCornerShape(12.dp))
+                        .padding(12.dp),
+                ) {
+                    Text(
+                        text = request.command,
+                        color = colors.onSurface,
+                        fontSize = 13.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 6,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 命中规则
+                Text(
+                    text = stringResource(R.string.tool_permission_matched_rule, request.ruleName),
+                    color = colors.error,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                ApprovalActionButtons(
+                    allowText = stringResource(R.string.tool_permission_allow),
+                    denyText = stringResource(R.string.tool_permission_deny),
+                    onAllow = onAllow,
+                    onDeny = onDeny,
+                )
+            }
+
+            is ApprovalRequest.ScreenControlConsent -> {
+                // 标题 20sp 居中
+                Text(
+                    text = stringResource(R.string.screen_control_consent_title),
+                    color = colors.onSurface,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 说明文本
+                Text(
+                    text = stringResource(R.string.screen_control_consent_body),
+                    color = colors.onSurfaceVariant,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                ApprovalActionButtons(
+                    allowText = stringResource(R.string.screen_control_consent_agree),
+                    denyText = stringResource(R.string.tool_permission_deny),
+                    onAllow = onAllow,
+                    onDeny = onDeny,
+                )
+            }
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 命中规则
-        Text(
-            text = stringResource(R.string.tool_permission_matched_rule, request.ruleName),
-            color = colors.error,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp),
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 允许按钮（上）：外侧上圆角 12dp，内侧下圆角 4dp
-        DetailActionButton(
-            text = stringResource(R.string.tool_permission_allow),
-            bgColor = colors.primaryContainer,
-            textColor = colors.onPrimaryContainer,
-            topCorner = 12.dp,
-            bottomCorner = 4.dp,
-            onClick = onAllow,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-        )
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // 拒绝按钮（下）：内侧上圆角 4dp，外侧下圆角 12dp
-        DetailActionButton(
-            text = stringResource(R.string.tool_permission_deny),
-            bgColor = colors.primaryContainer,
-            textColor = colors.onPrimaryContainer,
-            topCorner = 4.dp,
-            bottomCorner = 12.dp,
-            onClick = onDeny,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-        )
     }
 }
 
@@ -372,6 +387,45 @@ fun FloatingBallDetailCard(
             icon = icon,
         )
     }
+}
+
+@Composable
+private fun ApprovalActionButtons(
+    allowText: String,
+    denyText: String,
+    onAllow: () -> Unit,
+    onDeny: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Spacer(modifier = Modifier.height(24.dp))
+
+    // 允许（上）：外侧上圆角 12dp，内侧下圆角 4dp
+    DetailActionButton(
+        text = allowText,
+        bgColor = colors.primaryContainer,
+        textColor = colors.onPrimaryContainer,
+        topCorner = 12.dp,
+        bottomCorner = 4.dp,
+        onClick = onAllow,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+    )
+
+    Spacer(modifier = Modifier.height(2.dp))
+
+    // 拒绝（下）：内侧上圆角 4dp，外侧下圆角 12dp
+    DetailActionButton(
+        text = denyText,
+        bgColor = colors.primaryContainer,
+        textColor = colors.onPrimaryContainer,
+        topCorner = 4.dp,
+        bottomCorner = 12.dp,
+        onClick = onDeny,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+    )
 }
 
 @Composable
@@ -422,7 +476,7 @@ private fun PreviewDetailCard() {
         Surface {
             Box(modifier = Modifier.padding(16.dp)) {
                 FloatingBallDetailCard(
-                    request = ApprovalRequest(
+                    request = ApprovalRequest.ToolExecution(
                         toolName = "terminal",
                         command = "rm -rf /data/local/tmp/cache_logs_001.log",
                         ruleName = "危险删除命令",

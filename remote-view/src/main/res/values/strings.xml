@@ -9,4 +9,7 @@
     <string name="floating_ball_approval_reason_unknown">待确认</string>
     <string name="floating_ball_approval_view_details">点击展开详情</string>
     <string name="floating_ball_tool_running">正在运行 %1$s</string>
+    <string name="screen_control_consent_title">屏幕控制权限申请</string>
+    <string name="screen_control_consent_body">Zafiro 需要开启无障碍服务与悬浮窗权限才能控制屏幕。</string>
+    <string name="screen_control_consent_agree">同意</string>
 </resources>
