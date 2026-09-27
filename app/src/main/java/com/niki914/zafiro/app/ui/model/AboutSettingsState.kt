@@ -77,7 +77,7 @@ private fun aboutSettingsItems(): List<AboutSettingsItemUiState> {
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.AuthorHomepage,
             titleRes = R.string.ui_settings_about_author_homepage,
-            uri = "https://niki914.github.io/",
+            uri = "https://github.com/niki914",
         ),
         AboutSettingsItemUiState(
             id = AboutSettingsItemId.Github,
