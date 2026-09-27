@@ -13,7 +13,7 @@ class FloatScreenResetDetector(
     private val onReset: () -> Unit
 ) {
     private companion object {
-        const val LOG_TAG = "niki914_nexus_FloatScreenResetDetector"
+        const val LOG_TAG = "niki914_zafiro_FloatScreenResetDetector"
     }
 
     private var lastFloatResumeObservedElapsed: Long = 0

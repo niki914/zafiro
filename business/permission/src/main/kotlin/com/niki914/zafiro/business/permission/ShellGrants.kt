@@ -76,5 +76,5 @@ internal object ShellGrants {
             .distinct()
             .joinToString(":")
 
-    private const val TAG = "ShellGrants"
+    private const val TAG = "niki914_zafiro_ShellGrants"
 }

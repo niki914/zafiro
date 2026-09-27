@@ -21,7 +21,7 @@ abstract class AbstractAssistantHook(
     protected open val floatResumeGraceWindowMs: Long = 1500L
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_AbstractAssistantHook"
+        const val LOG_TAG = "niki914_zafiro_AbstractAssistantHook"
     }
 
     protected fun installFloatScreenDetachHooks(

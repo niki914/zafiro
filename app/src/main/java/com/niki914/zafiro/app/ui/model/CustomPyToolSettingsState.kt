@@ -420,7 +420,7 @@ class CustomPyToolSettingsViewModel :
     }
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_CustomPyToolSettingsViewModel"
+        private const val LOG_TAG = "niki914_zafiro_CustomPyToolSettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }

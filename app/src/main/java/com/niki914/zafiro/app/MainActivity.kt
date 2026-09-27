@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity() {
             ThemeController.load()
             // 回填型设置 flow 的冷启动回填（首帧真值，防“进设置页才生效”类 bug）
             runCatching { XRepo.hydrateSettings() }
-                .onFailure { Logger.w("niki914_nexus_Main", "hydrate failed ${it.message}") }
+                .onFailure { Logger.w("niki914_zafiro_Main", "hydrate failed ${it.message}") }
             decision
         }
         applyLanguageTag(launchDecision.languageTag)

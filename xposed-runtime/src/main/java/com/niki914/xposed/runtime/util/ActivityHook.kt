@@ -11,7 +11,7 @@ class ActivityHook : Hook {
     override val name: String = "ActivityHook"
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_ActivityHook"
+        const val LOG_TAG = "niki914_zafiro_ActivityHook"
     }
 
     override fun onHook(lpparam: XC_LoadPackage.LoadPackageParam) {

@@ -12,7 +12,7 @@ import de.robv.android.xposed.XC_MethodHook
 class BlockNativeTtsPlaybackHook : SubHook() {
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_BlockNativeTts"
+        const val LOG_TAG = "niki914_zafiro_BlockNativeTts"
     }
 
     override val hookTarget: HookTarget?

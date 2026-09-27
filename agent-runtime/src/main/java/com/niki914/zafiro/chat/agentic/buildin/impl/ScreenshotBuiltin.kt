@@ -112,7 +112,7 @@ shell (root/shizuku) is available or the capture failed.
     }
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_ScreenshotBuiltin"
+        private const val LOG_TAG = "niki914_zafiro_ScreenshotBuiltin"
         private const val CAPTURE_TIMEOUT_MS = 15_000L
 
         private val SCHEMA = """

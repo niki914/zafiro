@@ -14,7 +14,7 @@ import de.robv.android.xposed.XC_MethodHook
 class BlockNativeInstructionByWhitelistHook : SubHook() {
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_BlockNativeInstruction"
+        const val LOG_TAG = "niki914_zafiro_BlockNativeInstruction"
     }
 
     override val hookTarget: HookTarget?

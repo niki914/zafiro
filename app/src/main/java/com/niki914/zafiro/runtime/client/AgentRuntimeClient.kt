@@ -53,7 +53,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
     private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
-        private const val LOG_TAG = "niki914_nexus_AgentRuntimeClient"
+        private const val LOG_TAG = "niki914_zafiro_AgentRuntimeClient"
         private const val BIND_ACTION = "com.niki914.zafiro.runtime.BIND"
         private const val SERVICE_CLASS =
             "com.niki914.zafiro.runtime.service.AgentRuntimeService"

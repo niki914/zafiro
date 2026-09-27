@@ -45,7 +45,7 @@ class PromptEditViewModel : ComposeMVIViewModel<
         >() {
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_PromptEditViewModel"
+        private const val LOG_TAG = "niki914_zafiro_PromptEditViewModel"
     }
 
     override fun initUiState(): PromptEditUiState = PromptEditUiState()

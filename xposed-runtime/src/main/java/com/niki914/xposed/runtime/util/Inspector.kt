@@ -4,7 +4,7 @@ import com.niki914.logging.Logger
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
-private const val LOG_TAG = "niki914_nexus_Inspector"
+private const val LOG_TAG = "niki914_zafiro_Inspector"
 
 
 fun Class<*>.inspect(): String {

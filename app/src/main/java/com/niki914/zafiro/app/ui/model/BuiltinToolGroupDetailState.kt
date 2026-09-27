@@ -38,7 +38,7 @@ class BuiltinToolGroupDetailViewModel :
     override fun initUiState(): BuiltinToolGroupDetailUiState = BuiltinToolGroupDetailUiState()
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_BuiltinToolGroupDetailViewModel"
+        private const val LOG_TAG = "niki914_zafiro_BuiltinToolGroupDetailViewModel"
     }
 
     override suspend fun handleIntent(intent: BuiltinToolGroupDetailIntent) {

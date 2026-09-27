@@ -15,7 +15,7 @@ import org.json.JSONObject
 
 object XIpcBridge {
 
-    private const val LOG_TAG = "niki914_nexus_XIpcBridge"
+    private const val LOG_TAG = "niki914_zafiro_XIpcBridge"
 
     interface StoreClient {
         fun readStore(storeId: String): String?

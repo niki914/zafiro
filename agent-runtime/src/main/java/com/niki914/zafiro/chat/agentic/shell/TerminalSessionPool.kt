@@ -32,7 +32,7 @@ import java.util.UUID
 import kotlin.random.Random
 
 object TerminalSessionPool {
-    private const val LOG_TAG = "niki914_nexus_TerminalSessionPool"
+    private const val LOG_TAG = "niki914_zafiro_TerminalSessionPool"
     private const val CUSTOM_TOOL_SESSION = "__custom_user"
     private const val SSH_PUBLIC_IDENTITY = "ssh"
     private const val PUBLIC_HANDLE_LENGTH = 4

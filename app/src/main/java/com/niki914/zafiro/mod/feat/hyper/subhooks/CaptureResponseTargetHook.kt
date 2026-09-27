@@ -12,7 +12,7 @@ class CaptureResponseTargetHook(
 ) : SubHook() {
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_CaptureResponseTarget"
+        const val LOG_TAG = "niki914_zafiro_CaptureResponseTarget"
     }
 
     override val hookTarget: HookTarget?

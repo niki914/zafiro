@@ -183,7 +183,7 @@ class ConfigureViewModel internal constructor(
     override fun initUiState(): ConfigureUiState = ConfigureUiState()
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_ConfigureViewModel"
+        private const val LOG_TAG = "niki914_zafiro_ConfigureViewModel"
         /** 输入防抖：停手 50ms 才发； trailing + 取消在途 + 三元组去重。 */
         private const val CATALOG_DEBOUNCE_MS = 50L
     }

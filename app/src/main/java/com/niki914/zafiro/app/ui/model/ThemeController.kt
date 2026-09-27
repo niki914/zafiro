@@ -53,7 +53,7 @@ object ThemeController {
                     ?.toInt(),
             )
         }.onFailure {
-            Logger.w("niki914_nexus_ThemeController", "load failed ${it.message}")
+            Logger.w("niki914_zafiro_ThemeController", "load failed ${it.message}")
         }
     }
 
@@ -62,7 +62,7 @@ object ThemeController {
         runCatching { XRepo.setThemeMode(mode.storageKey) }
             .onFailure {
                 Logger.w(
-                    "niki914_nexus_ThemeController",
+                    "niki914_zafiro_ThemeController",
                     "persist mode failed ${it.message}"
                 )
             }
@@ -74,7 +74,7 @@ object ThemeController {
         runCatching { XRepo.setThemeSeedColor(hex) }
             .onFailure {
                 Logger.w(
-                    "niki914_nexus_ThemeController",
+                    "niki914_zafiro_ThemeController",
                     "persist seed failed ${it.message}"
                 )
             }

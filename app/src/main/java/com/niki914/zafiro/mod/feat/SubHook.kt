@@ -10,7 +10,7 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage
 abstract class SubHook : Hook {
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_SubHook"
+        const val LOG_TAG = "niki914_zafiro_SubHook"
     }
 
     override val name: String = this::class.java.simpleName

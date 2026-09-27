@@ -136,7 +136,7 @@ class AgentRuntimeService : Service() {
     )
 
     companion object {
-        private const val LOG_TAG = "niki914_nexus_AgentRuntimeService"
+        private const val LOG_TAG = "niki914_zafiro_AgentRuntimeService"
         const val ACTION_START_RESIDENT = "com.niki914.zafiro.action.START_RESIDENT"
         const val ACTION_STOP_RESIDENT = "com.niki914.zafiro.action.STOP_RESIDENT"
         private const val MAX_QUERY_LENGTH = 8192

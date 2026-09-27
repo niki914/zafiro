@@ -374,7 +374,7 @@ Store the result of a run by printing from main; stdout is returned.
     )
 
     companion object {
-        private const val LOG_TAG = "niki914_nexus_PyMetaToolsBuiltin"
+        private const val LOG_TAG = "niki914_zafiro_PyMetaToolsBuiltin"
         private const val PREFIX = "py_"
         private const val INTROSPECTION_TIMEOUT_MS = 60_000L
         private val NAME_PATTERN = Regex("^[a-z][a-z0-9_]{0,63}$")

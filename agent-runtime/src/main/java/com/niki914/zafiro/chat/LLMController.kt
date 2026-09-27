@@ -70,7 +70,7 @@ import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
  *   （恢复/切会话）+ currentConversation（统一快照流，持久化器消息级增量落盘）替代
  */
 object LLMController {
-    private const val LOG_TAG = "niki914_nexus_LLMController"
+    private const val LOG_TAG = "niki914_zafiro_LLMController"
     internal const val NO_IDLE_TIMEOUT_SECONDS = Long.MAX_VALUE / 1000
 
     /** 孤儿工具调用兜底文案：只说结果缺失与疑似异常中断，不断言进程被杀。 */

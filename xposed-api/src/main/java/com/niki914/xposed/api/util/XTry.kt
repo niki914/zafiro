@@ -9,4 +9,4 @@ fun <T> xTry(
     Logger.w(LOG_TAG, "$name failed: ${it.message}")
 }.getOrNull()
 
-private const val LOG_TAG = "niki914_nexus_xTry"
+private const val LOG_TAG = "niki914_zafiro_xTry"

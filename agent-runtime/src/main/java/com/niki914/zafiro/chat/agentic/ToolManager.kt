@@ -14,7 +14,7 @@ class ToolManager(
     private val builtinToolRegistry: BuiltinToolRegistry = BuiltinToolRegistry.default(),
 ) {
     private companion object {
-        const val LOG_TAG = "niki914_nexus_ToolManager"
+        const val LOG_TAG = "niki914_zafiro_ToolManager"
     }
 
     fun resolve(

@@ -97,7 +97,7 @@ abstract class ComposeMVIViewModel<Intent, State, Effect>(
      */
     protected open fun onError(error: Throwable) {
         Logger.e(
-            "niki914_nexus_ViewModel",
+            "niki914_zafiro_ViewModel",
             "${this::class.simpleName ?: "ComposeMVIViewModel"}: ${error.message ?: "Unhandled intent error"}",
             error
         )

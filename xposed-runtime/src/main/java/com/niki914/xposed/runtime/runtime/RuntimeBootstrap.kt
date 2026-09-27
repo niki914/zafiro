@@ -8,7 +8,7 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage
  * 不尝试跨进程共享实例；每个宿主进程都会拥有自己独立的一份状态。
  */
 object RuntimeBootstrap {
-    private const val LOG_TAG = "niki914_nexus_RuntimeBootstrap"
+    private const val LOG_TAG = "niki914_zafiro_RuntimeBootstrap"
 
     @Volatile
     private var runtime: Runtime? = null

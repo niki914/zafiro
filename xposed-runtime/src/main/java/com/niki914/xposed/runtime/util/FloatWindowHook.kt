@@ -12,7 +12,7 @@ class FloatWindowHook : Hook {
     override val name: String = "FloatWindowHook"
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_FloatWindow"
+        const val LOG_TAG = "niki914_zafiro_FloatWindow"
     }
 
     override fun onHook(lpparam: XC_LoadPackage.LoadPackageParam) {
