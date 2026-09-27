@@ -1,7 +1,6 @@
 package com.niki914.zafiro.app.ui.model.home
 
 import com.niki914.zafiro.api.model.AgentPhase
-import com.niki914.okia.message.ContentBlock
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.DraftImage
@@ -42,10 +41,7 @@ internal fun DraftImage.toHomeImage(): HomeChatImage? = when (this) {
     is DraftImage.Ready -> attachment.toHomeImage()
 }
 
-internal fun ContentBlock.Image.toHomeImage(): HomeChatImage =
-    HomeChatImage(id = path.hashCode().toString(), path = path)
-
-private fun Attachment.toHomeImage(): HomeChatImage =
+internal fun Attachment.toHomeImage(): HomeChatImage =
     HomeChatImage(id = path.hashCode().toString(), path = path)
 
 private fun TurnBlock.toHomeBlock(blockIndex: Int): HomeChatBlock = when (this) {

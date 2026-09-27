@@ -1,9 +1,9 @@
-package com.niki914.zafiro.app.ui.model.home.tmp
+package com.niki914.zafiro.app.ui.model.home
 
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.conversation.ForkKind
-import com.niki914.zafiro.app.ui.model.home.HomeConversationStore
+import com.niki914.zafiro.app.conversation.ForkResult
 import com.niki914.zafiro.repo.XRepo
 
 object DefaultHomeConversationStore : HomeConversationStore {
@@ -28,14 +28,14 @@ object DefaultHomeConversationStore : HomeConversationStore {
         ConversationRepo.deleteConversation(id)
     }
 
-    override suspend fun forkConversation(
+    override suspend fun forkAtTurn(
         sourceId: String,
-        keepEntryCount: Int,
+        turnIndex: Int,
         kind: ForkKind,
-    ): String {
-        return ConversationRepo.forkConversation(
+    ): ForkResult? {
+        return ConversationRepo.forkAtTurn(
             sourceId = sourceId,
-            keepEntryCount = keepEntryCount,
+            turnIndex = turnIndex,
             kind = kind,
         )
     }

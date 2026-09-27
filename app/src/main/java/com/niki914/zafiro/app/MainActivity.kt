@@ -13,6 +13,8 @@ import com.niki914.logging.Logger
 import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
+import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.model.AgentPhase
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.repo.XRepo
@@ -79,10 +81,11 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             // 设置初值：读盘失败按开启兑底（默认开）
             runCatching { XRepo.keepScreenOn() }
+            val agentControl = requireService<AgentControl>()
             combine(
                 XRepo.keepScreenOnSetting,
-                LLMController.keepScreenOn,
-            ) { settingOn, turnActive -> settingOn && turnActive }
+                agentControl.status,
+            ) { settingOn, status -> settingOn && (status.phase != AgentPhase.Idle) }
                 .collect { keepOn ->
                     if (keepOn) {
                         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
