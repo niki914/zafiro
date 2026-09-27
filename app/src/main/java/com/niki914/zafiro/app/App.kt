@@ -6,24 +6,26 @@ import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
-import com.niki914.permission.Permission
-import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
 import com.niki914.zafiro.app.permission.ToolPermissionCoordinatorApproverImpl__Tmp
-import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionState
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.runtime.createAppRuntimeBridge
+import com.niki914.zafiro.service.requireService
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -46,7 +48,7 @@ class App : Application() {
         ConversationPersister.start(applicationScope)
         RuntimeEnvironment.install(createAppRuntimeBridge())
         // 依赖装配只发生在 AppServices（主进程组合根）
-        AppServices.install()
+        AppServices.install(this)
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         DynamicColors.applyToActivitiesIfAvailable(this)
         applicationScope.launch {
@@ -65,8 +67,7 @@ class App : Application() {
             PyRuntime.warmUp()
         }
 
-        // 全部权限走 PermissionManager：ensureService 的门面注入（主 App 进程）。
-        AccessibilityController.permissions = PermissionHolder.get(this)
+        // 全部权限走 PermissionManager 服务（AppServices 登记）；工具审批桥接另走遗留路径。
         ToolPermissionCoordinator.backgroundConfirmationHandler = { request ->
             ToolPermissionCoordinatorApproverImpl__Tmp.confirm(request)
         }
@@ -74,33 +75,38 @@ class App : Application() {
         observeResidentNotification()
     }
 
-    private fun observeResidentNotification() {
-        applicationScope.launch {
-            XRepo.residentNotificationEnabledSetting.collect { enabled ->
-                if (enabled) {
-                    if (PermissionHolder.get(this@App).status(Permission.NOTIFICATION) == PermissionState.GRANTED) {
-                        ResidentNotificationManager.start(this@App)
-                    } else {
-                        XRepo.setResidentNotificationEnabled(false)
-                    }
-                } else {
-                    ResidentNotificationManager.stop(this@App)
-                }
-            }
-        }
+    private fun observeResidentNotification() = launchFeatureFlagObserver(
+        enabledFlow = XRepo.residentNotificationEnabledSetting,
+        permission = Permission.NOTIFICATION,
+        onPermissionMissing = { XRepo.setResidentNotificationEnabled(false) },
+    ) { enabled ->
+        if (enabled) ResidentNotificationManager.start(this) else ResidentNotificationManager.stop(this)
     }
 
-    private fun observeFloatingBall() {
+    private fun observeFloatingBall() = launchFeatureFlagObserver(
+        enabledFlow = XRepo.floatingBallEnabledSetting,
+        permission = Permission.OVERLAY,
+        onPermissionMissing = { XRepo.setFloatingBallEnabled(false) },
+    ) { enabled ->
+        if (enabled) FloatingBallOverlayManager.show(this) else FloatingBallOverlayManager.dismiss()
+    }
+
+    /**
+     * 开关类功能的统一门禁：开关被打开但缺权限时回滚开关（不静默无效），
+     * 其余情况交回 [onChange] 处理。
+     */
+    private fun launchFeatureFlagObserver(
+        enabledFlow: Flow<Boolean>,
+        permission: Permission,
+        onPermissionMissing: suspend () -> Unit,
+        onChange: (Boolean) -> Unit,
+    ) {
         applicationScope.launch {
-            XRepo.floatingBallEnabledSetting.collect { enabled ->
-                if (enabled) {
-                    if (PermissionHolder.get(this@App).status(Permission.OVERLAY) == PermissionState.GRANTED) {
-                        FloatingBallOverlayManager.show(this@App)
-                    } else {
-                        XRepo.setFloatingBallEnabled(false)
-                    }
+            enabledFlow.collect { enabled ->
+                if (enabled && requireService<PermissionManager>().status(permission) != PermissionState.GRANTED) {
+                    onPermissionMissing()
                 } else {
-                    FloatingBallOverlayManager.dismiss()
+                    onChange(enabled)
                 }
             }
         }

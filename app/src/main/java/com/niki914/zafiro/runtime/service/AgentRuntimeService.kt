@@ -13,9 +13,9 @@ import android.os.DeadObjectException
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.niki914.permission.Permission
-import com.niki914.permission.PermissionState
-import com.niki914.zafiro.app.PermissionHolder
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionState
 import androidx.core.net.toUri
 import com.niki914.logging.Logger
 import com.niki914.store.HostApp
@@ -125,6 +125,7 @@ class AgentRuntimeService : Service() {
     private val agent: Agent get() = requireService()
     private val agentControl: AgentControl get() = requireService()
     private val notificationChannelManager: NotificationChannelManager get() = requireService()
+    private val permissionManager: PermissionManager get() = requireService()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val activeTurn = AtomicReference<ActiveTurn?>(null)
     private var statusJob: Job? = null
@@ -328,10 +329,8 @@ class AgentRuntimeService : Service() {
             content: String,
             contentIntent: PendingIntent?
         ) {
-            // 只读查询只经过 PermissionManager；业务方禁止直连原生权限 API（单测扫描兜底）
-            if (PermissionHolder.get(this@AgentRuntimeService)
-                .targetStatus(Permission.NOTIFICATION) != PermissionState.GRANTED
-            ) return
+            // 只读查询只经过 PermissionManager 服务；业务方禁止直连原生权限 API（单测扫描兜底）
+            if (permissionManager.status(Permission.NOTIFICATION) != PermissionState.GRANTED) return
             ensureNotificationChannel()
 
             val builder = NotificationCompat.Builder(this@AgentRuntimeService, STORE_CHANNEL_ID)

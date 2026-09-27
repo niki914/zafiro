@@ -13,10 +13,11 @@ import android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT
-import com.niki914.permission.Permission
-import com.niki914.permission.PermissionManager
-import com.niki914.permission.PermissionResult
-import com.niki914.permission.PermissionState
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionResult
+import com.niki914.zafiro.business.permission.PermissionState
+import com.niki914.zafiro.service.requireService
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.currentVersion
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.ensureService
@@ -86,12 +87,7 @@ object AccessibilityController {
     private var shellSessionHandle: String? = null
     private var shellIdentity: ShellIdentity = ShellIdentity.NONE
 
-    /**
-     * 主 App 进程在启动时注入（App.onCreate）。全部权限申请走它；
-     * 宿主进程不直连 AccessibilityController，无需 shell-only 注册。
-     */
-    @Volatile
-    var permissions: PermissionManager? = null
+    private val permissions: PermissionManager get() = requireService()
 
     private enum class ShellIdentity { ROOT, SHIZUKU, USER, NONE }
 
@@ -196,15 +192,10 @@ object AccessibilityController {
     suspend fun ensureService(): Result<Unit> {
         if (serviceInstance != null) return Result.success(Unit)
 
-        val pm = permissions
-            ?: return Result.failure(
-                RuntimeException("PermissionManager not installed (App.onCreate must set AccessibilityController.permissions)")
-            )
-
         // 知情门（链外，引擎保持尽力尝试）：无障碍与悬浮窗缺一不可，任一未授权即先要同意。
         // 后台弹不了窗 → 直接拒绝；拒绝不记忆，下次申请会再弹。
-        val needsAccess = pm.status(Permission.ACCESSIBILITY) != PermissionState.GRANTED
-        val needsOverlay = pm.status(Permission.OVERLAY) != PermissionState.GRANTED
+        val needsAccess = permissions.status(Permission.ACCESSIBILITY) != PermissionState.GRANTED
+        val needsOverlay = permissions.status(Permission.OVERLAY) != PermissionState.GRANTED
         if ((needsAccess || needsOverlay) && !ScreenControlConsent.request()) {
             return Result.failure(
                 RuntimeException(
@@ -217,8 +208,8 @@ object AccessibilityController {
 
         // 逐个确保：已授权跳过，缺失才跑链。用户最多进出设置两次，已知代价。
         val failures = ArrayList<String>(2)
-        ensureOne(pm, Permission.ACCESSIBILITY, failures)
-        ensureOne(pm, Permission.OVERLAY, failures)
+        ensureOne(Permission.ACCESSIBILITY, failures)
+        ensureOne(Permission.OVERLAY, failures)
 
         if (failures.isNotEmpty()) {
             ensureShellSession() // fall back to user shell for basic commands
@@ -254,22 +245,15 @@ object AccessibilityController {
      * 失败原因记入 [failures]，调用方拼装给 LLM 的报错文案。
      */
     private suspend fun ensureOne(
-        pm: PermissionManager,
         permission: Permission,
         failures: MutableList<String>,
     ): Boolean {
-        if (pm.status(permission) == PermissionState.GRANTED) return true
-        val result = requestPermission(pm, permission)
+        if (permissions.status(permission) == PermissionState.GRANTED) return true
+        val result = permissions.request(permission)
         if (result.finalState == PermissionState.GRANTED) return true
         failures += "$permission: ${chainSummary(result)}"
         return false
     }
-
-    /** 默认链申请。调用方能确定用哪条链时改调 pm.scope(...)，不要在这里加参数。 */
-    private suspend fun requestPermission(
-        pm: PermissionManager,
-        permission: Permission,
-    ): PermissionResult = pm.request(permission)
 
     /** 链路摘要：每环通道与状态，拼进给 LLM 的报错文案。 */
     private fun chainSummary(result: PermissionResult): String =
