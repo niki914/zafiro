@@ -1,6 +1,6 @@
 package com.niki914.zafiro.api
 
-import com.niki914.zafiro.api.model.AgentStatus
+import com.niki914.zafiro.api.model.AgentState
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
  * - 常驻通知（待建）：订阅 [status] 渲染标题与正文，取消按钮调 [stop]，
  *   允许 / 拒绝按钮注册为 [Approver]。
  * - 悬浮窗（待建）：订阅 [status]，弹窗注册为 [Approver]。
- * - MainActivity：屏幕常亮 = `status.phase != Idle`（今天读自有中介接口的
+ * - MainActivity：屏幕常亮 = `status.value.isRunning`（今天读自有中介接口的
  *   `keepScreenOn`，接入后改为订阅本字段）。
  *
  * 宽接口 [Agent] 继承本接口：Compose、宿主取 [Agent] 即可，
@@ -20,13 +20,13 @@ import kotlinx.coroutines.flow.StateFlow
 interface AgentControl {
 
     /**
-     * 粗粒度状态：阶段 + 结束方式 + 单行摘要。晚订阅立即取得当前值。
+     * 粗粒度状态：类型自身携带该阶段的内生数据。晚订阅立即取得当前值。
      *
      * 实现保证回合终态时先发布 [Agent.conversation] 的最终内容，
-     * 再发布本字段的 Idle（宿主渲染桥的收尾依赖这个顺序，否则会在
+     * 再发布本字段的 [AgentState.Idle]（宿主渲染桥的收尾依赖这个顺序，否则会在
      * 最后一帧内容到达前就停止）。
      */
-    val status: StateFlow<AgentStatus>
+    val status: StateFlow<AgentState>
 
     /**
      * 请求停止当前回合。无活跃回合时为空操作。
@@ -41,7 +41,7 @@ interface AgentControl {
      * （今天是 `LLMController` 的 `killToolResourcesHook`：
      * `PyRuntime.kill()` + `TerminalSessionPool.closeAll()`），
      * 与哪个客户端调用无关。回合结束经 [status] 观察
-     * （`phase` → Idle，`outcome` = Interrupted）。
+     * （`Idle`，`lastOutcome` = Interrupted）。
      */
     fun stop()
 

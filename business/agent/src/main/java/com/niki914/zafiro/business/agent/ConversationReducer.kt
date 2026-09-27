@@ -52,7 +52,7 @@ internal data class Reduced(
  * 在此之前事件仍由 `HomeChatState` 折叠一份。
  *
  * 只折内容，不折 UI 本地态（展开集合、操作行、输入框）与派生标志
- * （生成中、屏幕常亮）：那些由消费方从 `AgentStatus.phase` 与块的
+ * （生成中、屏幕常亮）：那些由消费方从 `AgentState` 与块的
  * `isComplete` 派生。
  */
 internal object ConversationReducer {

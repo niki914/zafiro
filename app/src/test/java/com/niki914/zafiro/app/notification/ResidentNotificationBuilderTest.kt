@@ -4,13 +4,15 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
-import com.niki914.zafiro.api.model.AgentPhase
-import com.niki914.zafiro.api.model.AgentStatus
+import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.business.notification.AppNotificationChannel
 import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -33,27 +35,109 @@ class ResidentNotificationBuilderTest {
     }
 
     @Test
-    fun resolveTitleResId_mapsAllPhasesCorrectly() {
-        assertEquals(R.string.agent_resident_title_idle, ResidentNotificationBuilder.resolveTitleResId(AgentPhase.Idle))
-        assertEquals(R.string.agent_resident_title_thinking, ResidentNotificationBuilder.resolveTitleResId(AgentPhase.Thinking))
-        assertEquals(R.string.agent_resident_title_generating, ResidentNotificationBuilder.resolveTitleResId(AgentPhase.Generating))
-        assertEquals(R.string.agent_resident_title_tool_running, ResidentNotificationBuilder.resolveTitleResId(AgentPhase.ToolRunning))
-        assertEquals(R.string.agent_resident_title_waiting_approval, ResidentNotificationBuilder.resolveTitleResId(AgentPhase.WaitingApproval))
-        assertEquals(R.string.agent_resident_title_stopping, ResidentNotificationBuilder.resolveTitleResId(AgentPhase.Stopping))
+    fun resolveTitleResId_mapsAllStatesCorrectly() {
+        assertEquals(R.string.agent_resident_title_idle, ResidentNotificationBuilder.resolveTitleResId(AgentState.Idle()))
+        assertEquals(
+            R.string.agent_resident_title_idle,
+            ResidentNotificationBuilder.resolveTitleResId(
+                AgentState.Idle(lastOutcome = TurnOutcome.Completed, lastText = "done"),
+            ),
+        )
+        assertEquals(
+            R.string.agent_resident_title_failed,
+            ResidentNotificationBuilder.resolveTitleResId(
+                AgentState.Idle(lastOutcome = TurnOutcome.Failed, lastText = "partial"),
+            ),
+        )
+        assertEquals(
+            R.string.agent_resident_title_interrupted,
+            ResidentNotificationBuilder.resolveTitleResId(
+                AgentState.Idle(lastOutcome = TurnOutcome.Interrupted, lastText = "half"),
+            ),
+        )
+        assertEquals(R.string.agent_resident_title_thinking, ResidentNotificationBuilder.resolveTitleResId(AgentState.Thinking(text = null)))
+        assertEquals(R.string.agent_resident_title_generating, ResidentNotificationBuilder.resolveTitleResId(AgentState.Generating(text = null)))
+        assertEquals(
+            R.string.agent_resident_title_tool_running,
+            ResidentNotificationBuilder.resolveTitleResId(
+                AgentState.ToolRunning(toolName = "bash", label = "bash", argumentsJson = null),
+            ),
+        )
+        assertEquals(
+            R.string.agent_resident_title_waiting_approval,
+            ResidentNotificationBuilder.resolveTitleResId(
+                AgentState.WaitingApproval(ApprovalRequest("terminal", "ls", "RULE")),
+            ),
+        )
+        assertEquals(R.string.agent_resident_title_stopping, ResidentNotificationBuilder.resolveTitleResId(AgentState.Stopping))
     }
 
     @Test
-    fun resolveBody_usesPreviewWhenPresent() {
-        val status = AgentStatus(phase = AgentPhase.Generating, preview = "Streaming markdown response...")
-        val body = ResidentNotificationBuilder.resolveBody(status)
+    fun resolveBody_usesTextWhenPresent() {
+        val body = ResidentNotificationBuilder.resolveBody(AgentState.Generating(text = "Streaming markdown response..."))
         assertEquals("Streaming markdown response...", body)
     }
 
     @Test
     fun resolveBody_returnsNullWhenBlank() {
-        val status = AgentStatus(phase = AgentPhase.Idle, preview = "")
-        val body = ResidentNotificationBuilder.resolveBody(status)
-        org.junit.Assert.assertNull(body)
+        val body = ResidentNotificationBuilder.resolveBody(AgentState.Idle(lastOutcome = null))
+        assertNull(body)
+    }
+
+    @Test
+    fun resolveBody_idleUsesLastText() {
+        assertEquals(
+            "最终回答",
+            ResidentNotificationBuilder.resolveBody(
+                AgentState.Idle(lastOutcome = TurnOutcome.Completed, lastText = "最终回答"),
+            ),
+        )
+        assertEquals(
+            "说到一半",
+            ResidentNotificationBuilder.resolveBody(
+                AgentState.Idle(lastOutcome = TurnOutcome.Interrupted, lastText = "说到一半"),
+            ),
+        )
+        assertNull(
+            ResidentNotificationBuilder.resolveBody(
+                AgentState.Idle(lastOutcome = TurnOutcome.Completed, lastText = null),
+            ),
+        )
+    }
+
+    @Test
+    fun resolveBody_truncatesLongTextWithEllipsis() {
+        val long = "字".repeat(200)
+        val body = ResidentNotificationBuilder.resolveBody(
+            AgentState.Idle(lastOutcome = TurnOutcome.Completed, lastText = long),
+        )
+        assertEquals("字".repeat(119) + "…", body)
+    }
+
+    @Test
+    fun resolveBody_waitingApprovalUsesCommandFallback() {
+        assertEquals(
+            "rm -rf /tmp",
+            ResidentNotificationBuilder.resolveBody(
+                AgentState.WaitingApproval(ApprovalRequest("terminal", "rm -rf /tmp", "RULE")),
+            ),
+        )
+        assertEquals(
+            "terminal",
+            ResidentNotificationBuilder.resolveBody(
+                AgentState.WaitingApproval(ApprovalRequest("terminal", "  ", "RULE")),
+            ),
+        )
+    }
+
+    @Test
+    fun resolveBody_toolRunningAndStoppingHaveNoBody() {
+        assertNull(
+            ResidentNotificationBuilder.resolveBody(
+                AgentState.ToolRunning(toolName = "bash", label = "bash", argumentsJson = null),
+            ),
+        )
+        assertNull(ResidentNotificationBuilder.resolveBody(AgentState.Stopping))
     }
 
     @Test
@@ -64,7 +148,7 @@ class ResidentNotificationBuilderTest {
             Intent("ACTION_STOP"),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val status = AgentStatus(phase = AgentPhase.Generating, preview = "Generating response")
+        val status = AgentState.Generating(text = "Generating response")
         val notification = ResidentNotificationBuilder.build(
             context = context,
             channelManager = channelManager,
@@ -86,7 +170,7 @@ class ResidentNotificationBuilderTest {
             Intent("ACTION_STOP"),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val status = AgentStatus(phase = AgentPhase.Thinking, preview = "Reasoning...")
+        val status = AgentState.Thinking(text = "Reasoning...")
         val notification = ResidentNotificationBuilder.build(
             context = context,
             channelManager = channelManager,
@@ -107,7 +191,7 @@ class ResidentNotificationBuilderTest {
             Intent("ACTION_STOP"),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val status = AgentStatus(phase = AgentPhase.ToolRunning, preview = "Executing bash command")
+        val status = AgentState.ToolRunning(toolName = "bash", label = "bash", argumentsJson = null)
         val notification = ResidentNotificationBuilder.build(
             context = context,
             channelManager = channelManager,
@@ -134,7 +218,9 @@ class ResidentNotificationBuilderTest {
             Intent("ACTION_DECLINE"),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val status = AgentStatus(phase = AgentPhase.WaitingApproval, preview = "Tool execute_command needs confirmation")
+        val status = AgentState.WaitingApproval(
+            ApprovalRequest(toolName = "execute_command", command = "ls /tmp", ruleName = "RULE"),
+        )
         val notification = ResidentNotificationBuilder.build(
             context = context,
             channelManager = channelManager,
@@ -150,8 +236,8 @@ class ResidentNotificationBuilderTest {
     }
 
     @Test
-    fun build_forIdle_hasNoActions() {
-        val status = AgentStatus(phase = AgentPhase.Idle, preview = "")
+    fun build_forIdle_showsLastTextWithNoActions() {
+        val status = AgentState.Idle(lastOutcome = TurnOutcome.Completed, lastText = "最终回答")
         val notification = ResidentNotificationBuilder.build(
             context = context,
             channelManager = channelManager,
@@ -159,7 +245,21 @@ class ResidentNotificationBuilderTest {
         )
 
         assertNotNull(notification)
-        org.junit.Assert.assertNull(notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT))
+        assertEquals("最终回答", notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT).toString())
+        assertTrue(notification.actions == null || notification.actions.isEmpty())
+    }
+
+    @Test
+    fun build_forFreshIdle_hasNoBody() {
+        val status = AgentState.Idle()
+        val notification = ResidentNotificationBuilder.build(
+            context = context,
+            channelManager = channelManager,
+            status = status,
+        )
+
+        assertNotNull(notification)
+        assertNull(notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT))
         assertTrue(notification.actions == null || notification.actions.isEmpty())
     }
 
@@ -171,7 +271,7 @@ class ResidentNotificationBuilderTest {
             Intent("ACTION_STOP"),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val status = AgentStatus(phase = AgentPhase.Stopping, preview = "Cancelling turn...")
+        val status = AgentState.Stopping
         val notification = ResidentNotificationBuilder.build(
             context = context,
             channelManager = channelManager,

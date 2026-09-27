@@ -1,6 +1,5 @@
 package com.niki914.zafiro.app.ui.model.home
 
-import com.niki914.zafiro.api.model.AgentPhase
 import com.niki914.okia.message.ContentBlock
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
@@ -31,9 +30,6 @@ internal fun Conversation.toHomeTurns(): List<HomeChatTurn> =
             blocks = turn.blocks.mapIndexed { blockIndex, block -> block.toHomeBlock(blockIndex) },
         )
     }
-
-/** 契约阶段 → 生成中。除 Idle 外都算生成中（含工具执行与等待授权）。 */
-internal fun AgentPhase.isGenerating(): Boolean = this != AgentPhase.Idle
 
 /** 草稿图片 → 待发送图片条。Pending 还没有落盘路径，用 uri 占位，发送时由实现侧跳过。 */
 internal fun DraftImage.toHomeImage(): HomeChatImage? = when (this) {

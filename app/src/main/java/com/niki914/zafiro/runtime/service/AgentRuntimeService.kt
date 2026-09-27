@@ -24,7 +24,7 @@ import com.niki914.store.XIpcStoreRepository
 
 import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.TurnStart
-import com.niki914.zafiro.api.model.AgentPhase
+import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.TurnFailureCode
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.chat.ToolStatusLabels
@@ -48,7 +48,6 @@ import java.util.concurrent.atomic.AtomicReference
 import com.niki914.zafiro.app.R as AppR
 
 import com.niki914.zafiro.api.AgentControl
-import com.niki914.zafiro.api.model.AgentStatus
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.app.notification.ResidentNotificationBuilder
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
@@ -59,11 +58,10 @@ class AgentRuntimeService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        val initialStatus = currentEffectiveStatus()
         val initialNotification = ResidentNotificationBuilder.build(
             context = this,
             channelManager = notificationChannelManager,
-            status = initialStatus,
+            status = agentControl.status.value,
         )
         startForeground(ResidentNotificationBuilder.NOTIFICATION_ID, initialNotification)
         observeStatus()
@@ -151,20 +149,8 @@ class AgentRuntimeService : Service() {
         }
     }
 
-    private fun currentEffectiveStatus(): AgentStatus {
-        val pendingApproval = ResidentNotificationManager.activeApprovalRequest
-        return if (pendingApproval != null) {
-            AgentStatus(
-                phase = AgentPhase.WaitingApproval,
-                preview = pendingApproval.command.takeIf { it.isNotBlank() } ?: pendingApproval.toolName,
-            )
-        } else {
-            agentControl.status.value
-        }
-    }
-
     fun updateResidentNotification() {
-        val status = currentEffectiveStatus()
+        val status = agentControl.status.value
         val notification = ResidentNotificationBuilder.build(
             context = this,
             channelManager = notificationChannelManager,
@@ -429,14 +415,6 @@ class AgentRuntimeService : Service() {
 
         try {
             coroutineScope {
-                val statusJob = launch {
-                    agent.status.collect { status ->
-                        if (status.phase == AgentPhase.Idle) {
-                            return@collect
-                        }
-                    }
-                }
-
                 val conversationJob = launch {
                     agent.conversation.collect { conv ->
                         val turn = conv.turns.find { it.id == targetTurnId } ?: conv.turns.lastOrNull()
@@ -466,9 +444,8 @@ class AgentRuntimeService : Service() {
                     }
                 }
 
-                agent.status.first { it.phase == AgentPhase.Idle }
+                agent.status.first { it is AgentState.Idle }
                 conversationJob.cancel()
-                statusJob.cancel()
             }
 
             val finalTurn = agent.conversation.value.turns.find { it.id == targetTurnId }

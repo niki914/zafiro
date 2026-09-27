@@ -8,7 +8,7 @@ import com.niki914.okia.message.Message
 import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
-import com.niki914.zafiro.api.model.AgentStatus
+import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
@@ -54,10 +54,10 @@ internal data class Fixture(
 internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Agent {
     private val mutableDraft = MutableStateFlow(Draft())
     private val mutableConversation = MutableStateFlow(Conversation())
-    private val mutableStatus = MutableStateFlow(AgentStatus())
+    private val mutableStatus = MutableStateFlow<AgentState>(AgentState.Idle())
     override val draft: StateFlow<Draft> = mutableDraft.asStateFlow()
     override val conversation: StateFlow<Conversation> = mutableConversation.asStateFlow()
-    override val status: StateFlow<AgentStatus> = mutableStatus.asStateFlow()
+    override val status: StateFlow<AgentState> = mutableStatus.asStateFlow()
 
     var streamResult = TurnStart.Started
 
@@ -108,21 +108,21 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
                 blocks = streamText?.let { listOf(TurnBlock.Text("t$turnIndex:0", it)) }.orEmpty(),
             ),
         )
-        mutableStatus.value = AgentStatus(outcome = com.niki914.zafiro.api.model.TurnOutcome.Completed)
+        mutableStatus.value = AgentState.Idle(com.niki914.zafiro.api.model.TurnOutcome.Completed)
         store.recordNewConversation(id.value, draft.text)
         return TurnStart.Started
     }
 
     override fun stop() {
         stopCount++
-        mutableStatus.value = AgentStatus()
+        mutableStatus.value = AgentState.Idle()
     }
 
     override fun discard() {
         discardCount++
         mutableDraft.value = Draft()
         mutableConversation.value = Conversation()
-        mutableStatus.value = AgentStatus()
+        mutableStatus.value = AgentState.Idle()
     }
 
     override suspend fun load(id: ConversationId) {
@@ -131,7 +131,7 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
         mutableConversation.value = record?.let { ConversationFormatter.toConversation(it.snapshot) }
             ?: Conversation(id = id)
         mutableDraft.value = record?.let { Draft(it.draftText) } ?: Draft()
-        mutableStatus.value = AgentStatus()
+        mutableStatus.value = AgentState.Idle()
         store.setLastOpenedConversationId(id.value)
     }
 
@@ -175,7 +175,7 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
         )
     }
 
-    fun publishStatus(status: AgentStatus) {
+    fun publishStatus(status: AgentState) {
         mutableStatus.value = status
     }
 

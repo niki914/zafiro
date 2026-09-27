@@ -25,7 +25,7 @@ value class ConversationId(val value: String)
  * 有意去掉的字段：
  * - `isComplete`：它唯一的用途是让落盘跳过正在流式产生的那一轮。本轮落盘不读本类型；
  *   Compose 的滚动跟随由 [TurnBlock.Thinking.isComplete] 判断，操作行可用性由
- *   `AgentStatus.phase` 与「是否最后一个回合」派生。
+ *   `AgentState` 与「是否最后一个回合」派生。
  */
 data class Conversation(
     val id: ConversationId? = null,

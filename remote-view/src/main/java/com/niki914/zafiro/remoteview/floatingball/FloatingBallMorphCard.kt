@@ -90,6 +90,8 @@ fun FloatingBallMorphCard(
     onBallAlphaChanged: (Float) -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
+    // TODO: 卡片背景色按末轮结局变色（primaryContainer 默认 / errorContainer 失败 /
+    //   tertiaryContainer 打断，禁用 hardcode 以兼容动态取色）：见 OverlayManager collect 处主 TODO。
     val cardBg = colors.primaryContainer
     val cardContentColor = colors.onPrimaryContainer
     val buttonBg = colors.onPrimaryContainer

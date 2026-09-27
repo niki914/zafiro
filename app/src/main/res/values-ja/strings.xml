@@ -439,6 +439,8 @@
 
     <!-- Resident Notification -->
     <string name="agent_resident_title_idle">Agent · 待機中</string>
+    <string name="agent_resident_title_failed">Agent · 失敗</string>
+    <string name="agent_resident_title_interrupted">Agent · 停止済み</string>
     <string name="agent_resident_title_thinking">Agent · 思考中</string>
     <string name="agent_resident_title_generating">Agent · 応答中</string>
     <string name="agent_resident_title_tool_running">Agent · ツール実行中</string>

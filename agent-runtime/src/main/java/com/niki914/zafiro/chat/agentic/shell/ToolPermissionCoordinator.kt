@@ -50,7 +50,7 @@ object ToolPermissionCoordinator {
 
     /**
      * 在途等待的请求 id（并行工具可同时确认），先进先出。
-     * 前台对话框与后台弹窗共用，供 [AgentStatusHolder] 的等待阶段与通知按钮结算使用；
+     * 前台对话框与后台弹窗共用，供等待阶段与通知按钮结算使用；
      * 不改变 [pendingConfirmation] 的既有语义（仍只反映前台对话框）。
      */
     private val waitingIds = ConcurrentLinkedQueue<String>()

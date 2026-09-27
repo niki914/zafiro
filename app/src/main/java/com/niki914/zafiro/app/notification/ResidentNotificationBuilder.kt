@@ -6,8 +6,8 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
-import com.niki914.zafiro.api.model.AgentPhase
-import com.niki914.zafiro.api.model.AgentStatus
+import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.business.notification.AppNotificationChannel
@@ -20,7 +20,7 @@ import com.niki914.zafiro.runtime.service.AgentRuntimeService
  * 核心设计：
  * - 严格采用系统原生 [NotificationCompat.BigTextStyle] 模版，杜绝 RemoteViews 跨厂商渲染变形与暗黑模式适配问题；
  * - 依托原生 [NotificationCompat.Action] 提供标准化按钮交互（Stop / Approve / Decline）；
- * - 结合 [AgentStatus] 的生命周期状态（[AgentPhase]）与预览内容（preview）动态构建。
+ * - 结合 [AgentState] 的类型化阶段与内生数据动态构建。
  */
 object ResidentNotificationBuilder {
 
@@ -35,25 +35,51 @@ object ResidentNotificationBuilder {
     private const val REQUEST_CODE_APPROVE = 103
     private const val REQUEST_CODE_DECLINE = 104
 
+    /** state 存 500，通知取一行 120（单行化后裁剪，不切开代理对；超长补显式 …）。 */
+    private const val BODY_MAX_CHARS = 120
+
+    private val WHITESPACE = Regex("\\s+")
+
     /**
-     * 解析当前 [AgentPhase] 对应的本地化标题资源 ID。
+     * 解析当前 [AgentState] 对应的本地化标题资源 ID。
+     * [AgentState.Idle] 按结局拆：新鲜态 / Completed 共用 StandBy，
+     * Failed / Interrupted 各有标题（文案归属业务方，契约只给数据）。
      */
     @StringRes
-    fun resolveTitleResId(phase: AgentPhase): Int = when (phase) {
-        AgentPhase.Idle -> R.string.agent_resident_title_idle
-        AgentPhase.Thinking -> R.string.agent_resident_title_thinking
-        AgentPhase.Generating -> R.string.agent_resident_title_generating
-        AgentPhase.ToolRunning -> R.string.agent_resident_title_tool_running
-        AgentPhase.WaitingApproval -> R.string.agent_resident_title_waiting_approval
-        AgentPhase.Stopping -> R.string.agent_resident_title_stopping
+    fun resolveTitleResId(state: AgentState): Int = when (state) {
+        is AgentState.Idle -> when (state.lastOutcome) {
+            null, TurnOutcome.Completed -> R.string.agent_resident_title_idle
+            TurnOutcome.Failed -> R.string.agent_resident_title_failed
+            TurnOutcome.Interrupted -> R.string.agent_resident_title_interrupted
+        }
+        is AgentState.Thinking -> R.string.agent_resident_title_thinking
+        is AgentState.Generating -> R.string.agent_resident_title_generating
+        is AgentState.ToolRunning -> R.string.agent_resident_title_tool_running
+        is AgentState.WaitingApproval -> R.string.agent_resident_title_waiting_approval
+        AgentState.Stopping -> R.string.agent_resident_title_stopping
     }
 
     /**
      * 解析常驻通知的大文本正文：
-     * 若当前 status.preview 存在则返回；若无内容则返回 null（通知只展示标题，不填充无意义兜底文本）。
+     * 进行中取当段文本，审批取 `command ?: toolName`，Idle 取末轮尾巴
+     * `lastText`，ToolRunning / Stopping 无正文。若无内容则返回 null
+     * （通知只展示标题，不填充无意义兜底文本）。
      */
-    fun resolveBody(status: AgentStatus): String? {
-        return status.preview?.takeIf { it.isNotBlank() }
+    fun resolveBody(state: AgentState): String? {
+        val raw = when (state) {
+            is AgentState.Generating -> state.text
+            is AgentState.Thinking -> state.text
+            is AgentState.WaitingApproval ->
+                state.request.command.takeIf { it.isNotBlank() } ?: state.request.toolName
+            is AgentState.Idle -> state.lastText
+            is AgentState.ToolRunning,
+            AgentState.Stopping -> null
+        }
+        val singleLine = raw?.replace(WHITESPACE, " ")?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        if (singleLine.length <= BODY_MAX_CHARS) return singleLine
+        val end = BODY_MAX_CHARS - 1
+        val cut = if (Character.isHighSurrogate(singleLine[end - 1])) end - 1 else end
+        return singleLine.substring(0, cut) + "…"
     }
 
     /**
@@ -97,7 +123,7 @@ object ResidentNotificationBuilder {
     fun build(
         context: Context,
         channelManager: NotificationChannelManager,
-        status: AgentStatus,
+        status: AgentState,
         contentIntent: PendingIntent? = createContentIntent(context),
         stopIntent: PendingIntent? = createStopIntent(context),
         approveIntent: PendingIntent? = createApproveIntent(context),
@@ -108,7 +134,7 @@ object ResidentNotificationBuilder {
                 ?: android.R.drawable.ic_dialog_info
             setSmallIcon(icon)
 
-            val title = context.getString(resolveTitleResId(status.phase))
+            val title = context.getString(resolveTitleResId(status))
             setContentTitle(title)
 
             val body = resolveBody(status)
@@ -124,10 +150,10 @@ object ResidentNotificationBuilder {
             setOnlyAlertOnce(true)
             setCategory(NotificationCompat.CATEGORY_SERVICE)
 
-            when (status.phase) {
-                AgentPhase.Generating,
-                AgentPhase.Thinking,
-                AgentPhase.ToolRunning -> {
+            when (status) {
+                is AgentState.Generating,
+                is AgentState.Thinking,
+                is AgentState.ToolRunning -> {
                     if (stopIntent != null) {
                         addAction(
                             0,
@@ -137,7 +163,7 @@ object ResidentNotificationBuilder {
                     }
                 }
 
-                AgentPhase.WaitingApproval -> {
+                is AgentState.WaitingApproval -> {
                     if (approveIntent != null) {
                         addAction(
                             0,
@@ -154,8 +180,8 @@ object ResidentNotificationBuilder {
                     }
                 }
 
-                AgentPhase.Idle,
-                AgentPhase.Stopping -> {
+                is AgentState.Idle,
+                AgentState.Stopping -> {
                     // 无操作按钮
                 }
             }

@@ -48,7 +48,7 @@ class AgentImplTest {
     @Test
     fun stop_whenIdle_isNoOp() {
         AgentImpl.stop()
-        assertEquals(com.niki914.zafiro.api.model.AgentPhase.Idle, AgentImpl.status.value.phase)
+        assertEquals(com.niki914.zafiro.api.model.AgentState.Idle(), AgentImpl.status.value)
     }
 
     @Test
