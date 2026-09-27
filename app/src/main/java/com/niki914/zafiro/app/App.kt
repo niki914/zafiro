@@ -11,12 +11,10 @@ import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
-import com.niki914.zafiro.app.permission.ToolPermissionCoordinatorApproverImpl__Tmp
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionState
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
-import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.runtime.createAppRuntimeBridge
@@ -67,10 +65,6 @@ class App : Application() {
             PyRuntime.warmUp()
         }
 
-        // 全部权限走 PermissionManager 服务（AppServices 登记）；工具审批桥接另走遗留路径。
-        ToolPermissionCoordinator.backgroundConfirmationHandler = { request ->
-            ToolPermissionCoordinatorApproverImpl__Tmp.confirm(request)
-        }
         observeFloatingBall()
         observeResidentNotification()
     }

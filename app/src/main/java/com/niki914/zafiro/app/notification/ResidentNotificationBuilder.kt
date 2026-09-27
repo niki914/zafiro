@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
 import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.R
@@ -61,16 +62,20 @@ object ResidentNotificationBuilder {
 
     /**
      * 解析常驻通知的大文本正文：
-     * 进行中取当段文本，审批取 `command ?: toolName`，Idle 取末轮尾巴
+     * 进行中取当段文本，审批取 `command ?: toolName`（知情同意取标题），Idle 取末轮尾巴
      * `lastText`，ToolRunning / Stopping 无正文。若无内容则返回 null
      * （通知只展示标题，不填充无意义兜底文本）。
      */
-    fun resolveBody(state: AgentState): String? {
+    fun resolveBody(state: AgentState, context: Context): String? {
         val raw = when (state) {
             is AgentState.Generating -> state.text
             is AgentState.Thinking -> state.text
-            is AgentState.WaitingApproval ->
-                state.request.command.takeIf { it.isNotBlank() } ?: state.request.toolName
+            is AgentState.WaitingApproval -> when (val req = state.request) {
+                is ApprovalRequest.ToolExecution ->
+                    req.command.takeIf { it.isNotBlank() } ?: req.toolName
+                is ApprovalRequest.ScreenControlConsent ->
+                    context.getString(R.string.screen_control_consent_title)
+            }
             is AgentState.Idle -> state.lastText
             is AgentState.ToolRunning,
             AgentState.Stopping -> null
@@ -137,7 +142,7 @@ object ResidentNotificationBuilder {
             val title = context.getString(resolveTitleResId(status))
             setContentTitle(title)
 
-            val body = resolveBody(status)
+            val body = resolveBody(status, context)
             if (body != null) {
                 setContentText(body)
                 setStyle(NotificationCompat.BigTextStyle().bigText(body))

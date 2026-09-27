@@ -363,9 +363,11 @@ private fun FloatingBallPreviewSlot(
         if (alpha > 0f) {
             val previewTarget: PreviewTarget = when {
                 isApprovalPending || approvalRequest != null -> {
-                    val reason = approvalRequest?.ruleName?.takeIf { it.isNotBlank() }
-                        ?: approvalRequest?.toolName
-                        ?: ""
+                    val reason = when (val req = approvalRequest) {
+                        is ApprovalRequest.ToolExecution -> req.ruleName.takeIf { it.isNotBlank() } ?: req.toolName
+                        is ApprovalRequest.ScreenControlConsent -> stringResource(R.string.screen_control_consent_title)
+                        null -> ""
+                    }
                     PreviewTarget.Approval(reason)
                 }
                 preview.isNullOrBlank() -> PreviewTarget.Placeholder
@@ -583,7 +585,7 @@ private fun PreviewWaitingApproval() {
             FloatingBallMorphCard(
                 state = FloatingBallState.Expanded,
                 dockSide = DockSide.Right,
-                approvalRequest = ApprovalRequest(
+                approvalRequest = ApprovalRequest.ToolExecution(
                     toolName = "terminal",
                     command = "rm -rf /tmp/cache",
                     ruleName = "危险删除命令",

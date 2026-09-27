@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -224,9 +225,6 @@ object AgentImpl : Agent {
 
     private val approvers = CopyOnWriteArrayList<Approver>()
 
-    val hasApprovers: Boolean
-        get() = approvers.isNotEmpty()
-
     override fun addApprover(approver: Approver) {
         if (!approvers.contains(approver)) {
             approvers.add(approver)
@@ -238,9 +236,10 @@ object AgentImpl : Agent {
     }
 
     /**
-     * 并发询问所有已注册的 Approver，首个非 Abstain 决策胜出。若无 Approver 则直接 Deny。
+     * 并发询问所有已注册的 Approver，首个非 Abstain 决策胜出，其余来源随之取消。
+     * 无 Approver 或全部弃权则 Deny。
      */
-    suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision = coroutineScope {
+    override suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision = coroutineScope {
         val currentApprovers = approvers.toList()
         if (currentApprovers.isEmpty()) return@coroutineScope ApprovalDecision.Deny
 
@@ -258,12 +257,18 @@ object AgentImpl : Agent {
                 }
             }
         }
+        // 全部来源都结束仍无人结算（全弃权）→ 拒绝：弃权不是裁决，不能把请求悬在那里
+        val allAbstained = launch {
+            jobs.joinAll()
+            deferred.complete(ApprovalDecision.Deny)
+        }
 
         try {
             deferred.await()
         } finally {
             approvalFlow.value = null
             jobs.forEach { it.cancel() }
+            allAbstained.cancel()
         }
     }
 

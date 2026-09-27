@@ -8,6 +8,8 @@ import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
@@ -177,8 +179,19 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
         mutableStatus.value = status
     }
 
-    override fun addApprover(approver: Approver) = error("unused in HomeChatViewModelTest")
-    override fun removeApprover(approver: Approver) = error("unused in HomeChatViewModelTest")
+    override fun addApprover(approver: Approver) {
+        registeredApprover = approver
+    }
+
+    override fun removeApprover(approver: Approver) {
+        if (registeredApprover === approver) registeredApprover = null
+    }
+
+    override suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision =
+        error("unused in HomeChatViewModelTest")
+
+    /** ViewModel 注册进来的前台审批来源（本类不代它结算）。 */
+    var registeredApprover: Approver? = null
 }
 
 internal class FakeHomeConversationStore(

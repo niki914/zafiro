@@ -9,4 +9,7 @@
     <string name="floating_ball_approval_reason_unknown">Pending</string>
     <string name="floating_ball_approval_view_details">Click to view details</string>
     <string name="floating_ball_tool_running">Running %1$s</string>
+    <string name="screen_control_consent_title">Screen control permission request</string>
+    <string name="screen_control_consent_body">Zafiro needs accessibility and overlay permissions to control the screen.</string>
+    <string name="screen_control_consent_agree">Agree</string>
 </resources>
