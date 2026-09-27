@@ -12,7 +12,9 @@ import com.niki914.zafiro.business.notification.NotificationChannelManager
 import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionManagerImpl
+import com.niki914.zafiro.repo.XSettingsImpl
 import com.niki914.zafiro.service.installService
+import com.niki914.xsettings.XSettings
 
 /**
  * 主进程的组合根：`installService` 只在这里出现。
@@ -44,5 +46,8 @@ object AppServices {
 
         installService<PermissionManager>(PermissionManagerImpl())
         installService<NotificationChannelManager>(NotificationChannelManagerImpl(application))
+
+        // 本地配置读取口：给 app 以外的模块按需取用
+        installService<XSettings>(XSettingsImpl)
     }
 }

@@ -17,6 +17,7 @@ sealed interface GeneralSettingsDialog {
 data class GeneralSettingsUiState(
     val languageTag: String = "",
     val floatingBallEnabled: Boolean = false,
+    val floatingBallAutoExpand: Boolean = true,
     val residentNotificationEnabled: Boolean = false,
     val loadLastConversation: Boolean = false,
     val alwaysShowMessageActions: Boolean = true,
@@ -33,6 +34,7 @@ sealed interface GeneralSettingsIntent {
     data object DismissDialog : GeneralSettingsIntent
     data class SelectLanguage(val tag: String) : GeneralSettingsIntent
     data class ToggleFloatingBall(val enabled: Boolean) : GeneralSettingsIntent
+    data class ToggleFloatingBallAutoExpand(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleResidentNotification(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleLoadLastConversation(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleAlwaysShowMessageActions(val enabled: Boolean) : GeneralSettingsIntent
@@ -56,6 +58,8 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
             GeneralSettingsIntent.DismissDialog -> updateState { copy(activeDialog = null) }
             is GeneralSettingsIntent.SelectLanguage -> selectLanguage(intent.tag)
             is GeneralSettingsIntent.ToggleFloatingBall -> toggleFloatingBall(intent.enabled)
+            is GeneralSettingsIntent.ToggleFloatingBallAutoExpand ->
+                toggleFloatingBallAutoExpand(intent.enabled)
             is GeneralSettingsIntent.ToggleResidentNotification -> toggleResidentNotification(intent.enabled)
             is GeneralSettingsIntent.ToggleLoadLastConversation -> toggleLoadLastConversation(intent.enabled)
             is GeneralSettingsIntent.ToggleAlwaysShowMessageActions -> toggleAlwaysShowMessageActions(intent.enabled)
@@ -75,6 +79,7 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
             val retryMaxAttempts = XRepo.llmRetryMaxAttempts()
             val keepScreenOn = XRepo.keepScreenOn()
             val floatingBallEnabled = XRepo.floatingBallEnabled()
+            val floatingBallAutoExpand = XRepo.floatingBallAutoExpand()
             val residentNotificationEnabled = XRepo.residentNotificationEnabled()
             updateState {
                 copy(
@@ -85,6 +90,7 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
                     retryMaxAttempts = retryMaxAttempts,
                     keepScreenOn = keepScreenOn,
                     floatingBallEnabled = floatingBallEnabled,
+                    floatingBallAutoExpand = floatingBallAutoExpand,
                     residentNotificationEnabled = residentNotificationEnabled,
                     isLoading = false,
                 )
@@ -125,6 +131,11 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
         if (!ensurePermission(Permission.OVERLAY)) return
         updateState { copy(floatingBallEnabled = true) }
         XRepo.setFloatingBallEnabled(true)
+    }
+
+    private suspend fun toggleFloatingBallAutoExpand(enabled: Boolean) {
+        updateState { copy(floatingBallAutoExpand = enabled) }
+        XRepo.setFloatingBallAutoExpand(enabled)
     }
 
     private suspend fun toggleResidentNotification(enabled: Boolean) {

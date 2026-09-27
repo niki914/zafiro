@@ -57,7 +57,7 @@ class XRepoDomainSettingsTest {
     fun hydrateSettingsBackfillsAllReactiveFlows() = runTest {
         val store = FakeDomainSettingsStore(
             StoreDescriptorRegistry.APP_STATE_ID to
-                """{"keep_screen_on":false,"always_show_message_actions":false,"floating_ball_enabled":true,"resident_notification_enabled":true}""",
+                """{"keep_screen_on":false,"always_show_message_actions":false,"floating_ball_enabled":true,"resident_notification_enabled":true,"floating_ball_auto_expand":false}""",
         )
         XRepo.installStoreForTest(store)
         XRepo.init(context)
@@ -67,6 +67,7 @@ class XRepoDomainSettingsTest {
         assertTrue(XRepo.alwaysShowMessageActionsSetting.value)
         assertFalse(XRepo.floatingBallEnabledSetting.value)
         assertFalse(XRepo.residentNotificationEnabledSetting.value)
+        assertTrue(XRepo.floatingBallAutoExpandSetting.value)
 
         XRepo.hydrateSettings()
 
@@ -74,6 +75,7 @@ class XRepoDomainSettingsTest {
         assertFalse(XRepo.alwaysShowMessageActionsSetting.value)
         assertTrue(XRepo.floatingBallEnabledSetting.value)
         assertTrue(XRepo.residentNotificationEnabledSetting.value)
+        assertFalse(XRepo.floatingBallAutoExpandSetting.value)
     }
 
     @Test

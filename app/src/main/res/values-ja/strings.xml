@@ -387,6 +387,8 @@
     <string name="ui_settings_general_group_runtime">実行と制御</string>
     <string name="ui_settings_general_floating_ball">フローティングボール</string>
     <string name="ui_settings_general_floating_ball_summary">バックグラウンド実行中にエージェントの状態とクイック操作を表示</string>
+    <string name="ui_settings_general_floating_ball_auto_expand">フローティングボールの自動展開</string>
+    <string name="ui_settings_general_floating_ball_auto_expand_summary">応答の完了時や承認が必要なときにフローティングボールを自動的に展開</string>
     <string name="ui_settings_general_resident_notification">常駐通知</string>
     <string name="ui_settings_general_resident_notification_summary">通知パネルにリアルタイムの状態とコントロールを表示</string>
     <string name="ui_settings_general_language">言語</string>

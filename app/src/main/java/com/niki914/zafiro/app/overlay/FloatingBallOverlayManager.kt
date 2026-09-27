@@ -27,12 +27,10 @@ import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
-import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.app.ui.model.ToolPresentation
-import com.niki914.zafiro.remoteview.R
 import com.niki914.zafiro.remoteview.floatingball.DockSide
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallCollapsedBall
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallDetailMorphCard
@@ -237,32 +235,24 @@ object FloatingBallOverlayManager {
             }
 
             owner.lifecycleScope.launch {
-                var lastOutcome: TurnOutcome? = null
-                var wasRunning = false
                 agentControl?.status?.collect { state ->
-                    val outcome = (state as? AgentState.Idle)?.lastOutcome
-                    val outcomeArrived = outcome != null && outcome != lastOutcome && wasRunning
-                    lastOutcome = outcome
-                    wasRunning = state.isRunning
-                    // TODO: 卡片背景色体现末轮结局（Completed 默认色 / Failed 红系 /
-                    //   Interrupted 黄系），需把 Idle.lastOutcome 经 UpdateAgentStatus
-                    //   透到卡片。本次不做，只透 lastText。
+                    // 末轮结局与「结局到达时是否自动展开」全部交给 ViewModel：
+                    // 自动展开策略只存在于状态机一处，不在这里另开一套判断。
                     vmInstance.sendIntent(
                         FloatingBallIntent.UpdateAgentStatus(
                             preview = when (state) {
                                 is AgentState.Generating -> state.text
                                 is AgentState.Thinking -> state.text
                                 is AgentState.Idle -> state.lastText
-                                is AgentState.ToolRunning -> toolRunningPreview(appContext, state)
+                                is AgentState.ToolRunning ->
+                                    ToolPresentation.runningText(appContext, state.toolName, state.label)
                                 is AgentState.WaitingApproval,
                                 AgentState.Stopping -> null
                             },
                             isRunning = state.isRunning,
+                            lastOutcome = (state as? AgentState.Idle)?.lastOutcome,
                         )
                     )
-                    if (outcomeArrived) {
-                        vmInstance.sendIntent(FloatingBallIntent.RequestExpand)
-                    }
                 }
             }
 
@@ -570,15 +560,5 @@ object FloatingBallOverlayManager {
         } catch (e: Exception) {
             Logger.w(TAG, "Failed to remove detail window", e)
         }
-    }
-
-    /**
-     * 工具执行中文案：显示名与 Home 工具卡同一口径（[ToolPresentation]），
-     * 未命中内置映射（Custom Tool / MCP）时回退原始名。单槽位，不计数。
-     */
-    private fun toolRunningPreview(context: Context, state: AgentState.ToolRunning): String {
-        val displayName = ToolPresentation.displayNameResOf(state.toolName)?.let { context.getString(it) }
-            ?: state.label.takeIf { it.isNotBlank() } ?: state.toolName
-        return context.getString(R.string.floating_ball_tool_running, displayName)
     }
 }

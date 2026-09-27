@@ -84,6 +84,7 @@ dependencies {
     implementation(project(":ui-kit"))
     implementation(project(":xposed-runtime"))
     implementation(project(":store"))
+    implementation(project(":xsettings"))
     implementation(project(":libs:logging"))
     implementation(project(":business:api"))
     implementation(project(":business:agent"))
@@ -120,7 +121,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("androidx.room:room-testing:2.7.2")
-    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("org.robolectric:robolectric:4.15.1")
     testImplementation("androidx.test:core:1.6.1")
 }
 

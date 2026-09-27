@@ -39,6 +39,9 @@ include(":remote-view")
 include(":store")
 include(":agent-runtime")
 
+// 本地配置读取口：给 app 模块以外的模块按需依赖，见 xsettings/XSettings.kt 的「懒」规则。
+include(":xsettings")
+
 // Business 层：契约（api）与实现（agent）分离，业务方只依赖 api。
 include(":business:api")
 include(":business:agent")

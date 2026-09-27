@@ -1,8 +1,11 @@
 package com.niki914.zafiro.remoteview.floatingball
 
 import com.niki914.uikit.base.ComposeMVIViewModel
+import com.niki914.xsettings.XSettings
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.api.model.TurnOutcome
+import com.niki914.zafiro.service.requireService
 
 /**
  * 悬浮球统一 MVI UI 状态。
@@ -16,6 +19,8 @@ data class FloatingBallUiState(
     val approvalRequest: ApprovalRequest? = null,
     val isStopEnabled: Boolean = false,
     val yRatio: Float = 0.68f,
+    /** 末轮结局；null = 尚无结局。「结局到达」据此判断（自动展开的触发条件之一）。 */
+    val lastOutcome: TurnOutcome? = null,
 ) {
     val isApprovalPending: Boolean
         get() = approvalRequest != null
@@ -37,7 +42,11 @@ sealed interface FloatingBallIntent {
     data class UpdateDockSide(val dockSide: DockSide) : FloatingBallIntent
     data class UpdateSubmerged(val submerged: Boolean) : FloatingBallIntent
     data class UpdatePosition(val yRatio: Float) : FloatingBallIntent
-    data class UpdateAgentStatus(val preview: String?, val isRunning: Boolean) : FloatingBallIntent
+    data class UpdateAgentStatus(
+        val preview: String?,
+        val isRunning: Boolean,
+        val lastOutcome: TurnOutcome? = null,
+    ) : FloatingBallIntent
     data class UpdateApprovalRequest(val request: ApprovalRequest?) : FloatingBallIntent
 }
 
@@ -65,14 +74,19 @@ sealed interface FloatingBallEffect {
 class FloatingBallViewModel :
     ComposeMVIViewModel<FloatingBallIntent, FloatingBallUiState, FloatingBallEffect>() {
 
+    private val settings: XSettings get() = requireService()
+
     override fun initUiState(): FloatingBallUiState = FloatingBallUiState()
+
+    /** 展开请求的唯一出口（用户点击 / 自动展开共用），已展开时幂等。 */
+    private fun requestExpand() {
+        if (currentState.ballState.isExpanded) return
+        sendEffect(FloatingBallEffect.ExpandCard)
+    }
 
     override suspend fun handleIntent(intent: FloatingBallIntent) {
         when (intent) {
-            FloatingBallIntent.RequestExpand -> {
-                if (currentState.ballState.isExpanded) return
-                sendEffect(FloatingBallEffect.ExpandCard)
-            }
+            FloatingBallIntent.RequestExpand -> requestExpand()
 
             FloatingBallIntent.CommitExpand -> {
                 updateState { copy(ballState = FloatingBallState.Expanded, isSubmerged = false) }
@@ -134,11 +148,21 @@ class FloatingBallViewModel :
             }
 
             is FloatingBallIntent.UpdateAgentStatus -> {
+                val wasRunning = currentState.isStopEnabled
+                val wasCollapsed = currentState.ballState.isCollapsed
+                val outcomeArrived = intent.lastOutcome != null &&
+                        intent.lastOutcome != currentState.lastOutcome &&
+                        wasRunning
                 updateState {
                     copy(
                         preview = intent.preview,
                         isStopEnabled = intent.isRunning,
+                        lastOutcome = intent.lastOutcome,
                     )
+                }
+                // 末轮结局到达：自动展开由设置控制（否则小球只用颜色提示）
+                if (outcomeArrived && wasCollapsed && settings.floatingBallAutoExpand.value) {
+                    requestExpand()
                 }
             }
 
@@ -154,8 +178,8 @@ class FloatingBallViewModel :
                 if (newRequest == null && wasDetailOpen) {
                     sendEffect(FloatingBallEffect.DismissDetail)
                 }
-                if (newRequest != null && currentState.ballState.isCollapsed) {
-                    sendEffect(FloatingBallEffect.ExpandCard)
+                if (newRequest != null && settings.floatingBallAutoExpand.value) {
+                    requestExpand()
                 }
             }
         }

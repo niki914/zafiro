@@ -10,6 +10,7 @@ import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.business.notification.AppNotificationChannel
 import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
+import com.niki914.zafiro.remoteview.R as RemoteViewR
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -148,13 +149,21 @@ class ResidentNotificationBuilderTest {
     }
 
     @Test
-    fun resolveBody_toolRunningAndStoppingHaveNoBody() {
-        assertNull(
+    fun resolveBody_toolRunningUsesRunningTextFromFloatingBall() {
+        assertEquals(
+            context.getString(
+                RemoteViewR.string.floating_ball_tool_running,
+                context.getString(R.string.ui_tool_display_terminal),
+            ),
             ResidentNotificationBuilder.resolveBody(
-                AgentState.ToolRunning(toolName = "bash", label = "bash", argumentsJson = null),
+                AgentState.ToolRunning(toolName = "terminal", label = "terminal", argumentsJson = null),
                 context,
             ),
         )
+    }
+
+    @Test
+    fun resolveBody_stoppingHasNoBody() {
         assertNull(ResidentNotificationBuilder.resolveBody(AgentState.Stopping, context))
     }
 
