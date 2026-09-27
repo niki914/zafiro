@@ -13,7 +13,7 @@
   <a href="https://deepwiki.com/niki914/zafiro"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/v/release/niki914/zafiro?include_prereleases" alt="release"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/downloads/niki914/zafiro/total" alt="downloads"/></a>
-  <img src="https://img.shields.io/badge/kotlin-58.0k-blue" alt="kotlin lines"/>
+  <img src="https://img.shields.io/badge/kotlin-66.4k-blue" alt="kotlin lines"/>
   <a href="https://app.codacy.com/gh/niki914/zafiro/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade"><img src="https://app.codacy.com/project/badge/Grade/b4cadbe5d2d74e3885106562cbd9715b" alt="Codacy"/></a>
 </p>
 
@@ -39,9 +39,9 @@ Zafiro 是一个运行在 Android 设备上的智能 Agent，完全开源，支�
 </table>
 
 > [!IMPORTANT]
-> Zafiro 当前仍处于 Beta 阶段，功能和体验仍在持续改进。Zafiro 可通过 [Shizuku](https://github.com/RikkaApps/Shizuku) 运行——无需 Root，Root 用户可获得完整体验。
+> Zafiro 可通过 [Shizuku](https://github.com/RikkaApps/Shizuku) 运行——无需 Root，Root 后可获得更完整的体验。
 >
-> 可以前往 [Releases](https://github.com/niki914/zafiro/releases/latest) 下载发布版本，或从源码构建。
+> 请前往 [Releases](https://github.com/niki914/zafiro/releases/latest) 下载发布版本，或选择[从源码构建](#从源码构建)。
 
 ## 核心能力
 
@@ -50,6 +50,7 @@ Zafiro 是一个运行在 Android 设备上的智能 Agent，完全开源，支�
 - **[Material 3 Expressive](https://m3.material.io/) & Apple Liquid Glass** - 现代、精美的界面
 - **个性化主题** - 多种主题色，支持深色模式与动态取色
 - **多语言支持** - English、中文、日本語、Español
+- **后台交互** - 支持美观的悬浮窗和通知栏 UI，便于实时跟进 Agent
 
 ### 手机操控
 
@@ -61,6 +62,7 @@ Zafiro 是一个运行在 Android 设备上的智能 Agent，完全开源，支�
 - **开箱即用** - 内置 OpenAI、Anthropic、Google Gemini、DeepSeek、OpenRouter、Kimi、阿里百炼、硅基流动等
 - **按需扩展** - 完整支持 Skills、MCP，并拥有记忆和工作区，随意扩展
 - **权限管理** - 通过配置规则，每一条运行的命令和代码都由你管控
+- **对话管理** - 你的每一次对话都能进行回退与重新生成，数据仅保留在本地。同一个会话中，模型可以随意切换
 
 ### Python 工具
 
@@ -79,10 +81,7 @@ Zafiro 是一个运行在 Android 设备上的智能 Agent，完全开源，支�
 通过 [LSPosed](https://github.com/lsposed/lsposed) 框架，Zafiro 可以接管系统语音助手——唤醒小布或小爱，实际应答你的是你自己的 Agent。支持根据关键词决定哪些请求交给 Zafiro、哪些放行给原生助手。接管后的助手保留包括设备操控在内的全部 Agent 能力。
 
 > [!NOTE]
-> 接管系统语音助手需要 **Root + LSPosed**，目前支持：
->
-> - OPPO / OnePlus / Realme | 小布助手
-> - ~~小米 | 小爱同学~~（已停止维护，欢迎社区贡献者接手）
+> 接管系统语音助手需要 **Root + LSPosed**，目前支持：OPPO 系列 - 小布助手
 >
 > 接管可用性可能受机型、系统版本、语音助手版本及厂商系统限制影响。当你的设备暂不支持系统助手接管时，仍可使用 Zafiro 的聊天界面使用全部 Agent 能力。
 
@@ -148,29 +147,32 @@ keytool -genkeypair -v -keystore my-release.jks \
 ## 项目结构
 
 ```
-agentic-nexus/
-├── app/                 # 主应用：设置 UI、AgentRuntimeService、Xposed 钩子
+./
+├── app/                 # 主应用：Compose UI、AgentRuntimeService、Xposed 钩子
+├── business/            # 业务核心层（契约与实现分离）
+│   ├── api/             # 业务对外公共契约接口
+│   ├── agent/           # Agent 核心逻辑、会话编排与状态流
+│   ├── notification/    # 常驻通知、前台服务与通知渠道管理
+│   ├── permission/      # 权限管理中心（Root / Shizuku 自动授权、统一审批）
+│   └── application/     # 应用管理与生命周期
 ├── agent-runtime/       # Agent 运行时：LLM 调用、工具/Skill/MCP 执行、Python 运行时
-├── xposed-api/          # Xposed 事件类型、共享常量（主应用与宿主进程共享）
-├── xposed-runtime/      # Xposed 运行时、Hook 基类
+├── xsettings/           # 轻量配置模块（业务按需依赖）
 ├── store/               # Store 持久化、IPC 桥（XIpcBridge）
 ├── ui-kit/              # 共享 Compose 组件、LiquidScreen 壳、导航
+├── remote-view/         # 跨进程 / 悬浮窗 RemoteView 视图
+├── xposed-api/          # Xposed 事件类型、共享常量（主应用与宿主进程共享）
+├── xposed-runtime/      # Xposed 运行时、Hook 基类
 └── libs/
     ├── logging/         # 日志库
     ├── okia/            # Okia Agent 运行时基础库
-    └── libterm/         # 终端库（含多个后端）
-        ├── libterm-core
-        ├── libterm-runtime
-        ├── libterm-backend-libsu
-        ├── libterm-backend-shizuku
-        └── libterm-backend-ssh
+    └── libterm/         # 终端库（含多个后端：libsu, shizuku, ssh 等）
 ```
 
 ## Roadmap
 
-- 悬浮宠物（桌宠）
 - 系统语音助手实现（非 Xposed 接管）
 - 应用外文件导入 / 分享
+- Termux 等更多内置技能，`/skill` 提示和云端导入 Skill
 
 ## 贡献
 

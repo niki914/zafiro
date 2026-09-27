@@ -13,7 +13,7 @@
   <a href="https://deepwiki.com/niki914/zafiro"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/v/release/niki914/zafiro?include_prereleases" alt="release"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/downloads/niki914/zafiro/total" alt="downloads"/></a>
-  <img src="https://img.shields.io/badge/kotlin-58.0k-blue" alt="kotlin lines"/>
+  <img src="https://img.shields.io/badge/kotlin-66.4k-blue" alt="kotlin lines"/>
   <a href="https://app.codacy.com/gh/niki914/zafiro/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade"><img src="https://app.codacy.com/project/badge/Grade/b4cadbe5d2d74e3885106562cbd9715b" alt="Codacy"/></a>
 </p>
 
@@ -39,9 +39,9 @@ Zafiro is an open-source intelligent Agent running on Android devices, with [BYO
 </table>
 
 > [!IMPORTANT]
-> Zafiro is still in Beta — functionality and experience are being continuously improved. Zafiro runs via [Shizuku](https://github.com/RikkaApps/Shizuku) — no Root required; Root users get the full experience.
+> Zafiro runs via [Shizuku](https://github.com/RikkaApps/Shizuku) — no Root required; Root users get the full experience.
 >
-> You can download a release from [Releases](https://github.com/niki914/zafiro/releases/latest), or build from source.
+> You can download a release from [Releases](https://github.com/niki914/zafiro/releases/latest), or choose to [build from source](#from-source).
 
 ## Core Capabilities
 
@@ -50,6 +50,7 @@ Zafiro is an open-source intelligent Agent running on Android devices, with [BYO
 - **[Material 3 Expressive](https://m3.material.io/) & Apple Liquid Glass** - a modern, polished interface
 - **Personalized Theming** - multiple theme colors with dark mode and dynamic color extraction
 - **Multilingual Support** - English, 中文, 日本語, Español
+- **Background Interaction** - sleek floating ball and notification tray UI to follow and interact with the Agent in real time
 
 ### Device Control
 
@@ -61,6 +62,7 @@ Zafiro is an open-source intelligent Agent running on Android devices, with [BYO
 - **Out-of-the-Box** - built-in support for OpenAI, Anthropic, Google Gemini, DeepSeek, OpenRouter, Kimi, Alibaba Bailian, SiliconFlow, and more
 - **Extend as Needed** - full support for Skills and MCP, plus memory and a workspace — extend it your way
 - **Permission Management** - with configurable rules, every command and piece of code is under your control
+- **Conversation Control** - rewind, edit, and regenerate any turn at will; all conversation data stays strictly local, and models can be switched on the fly within the same session
 
 ### Python Tools
 
@@ -79,10 +81,7 @@ Zafiro is an open-source intelligent Agent running on Android devices, with [BYO
 Through the [LSPosed](https://github.com/lsposed/lsposed) framework, Zafiro can take over your system voice assistant — wake Breeno or XiaoAi, and the one actually answering is your own Agent. You can decide, based on keywords, which requests go to Zafiro and which pass through to the native assistant. After takeover, the assistant retains full Agent capabilities including device control.
 
 > [!NOTE]
-> Taking over the system voice assistant requires **Root + LSPosed**, and currently supports:
->
-> - OPPO / OnePlus / Realme | Breeno Assistant
-> - ~~Xiaomi | XiaoAi~~ (no longer maintained — community contributors welcome)
+> Taking over the system voice assistant requires **Root + LSPosed**, and currently supports: OPPO - Breeno
 >
 > Voice takeover availability may be affected by phone model, system version, voice assistant version, and vendor system restrictions. When your device does not yet support system assistant takeover, you can still use Zafiro's chat interface with all Agent capabilities.
 
@@ -148,29 +147,32 @@ keytool -genkeypair -v -keystore my-release.jks \
 ## Project Structure
 
 ```
-agentic-nexus/
-├── app/                 # Main app: settings UI, AgentRuntimeService, Xposed hooks
-├── agent-runtime/       # Agent runtime: LLM calls, tool/Skill/MCP execution, Python runtime
-├── xposed-api/          # Xposed event types, shared constants (shared by main app and host process)
-├── xposed-runtime/      # Xposed runtime, hook base classes
+./
+├── app/                 # Main app: Compose UI, AgentRuntimeService, Xposed hooks
+├── business/            # Core business layer (separation of contracts and implementations)
+│   ├── api/             # Public business contract interfaces
+│   ├── agent/           # Agent core logic, conversation orchestration & state flow
+│   ├── notification/    # Resident notification, foreground service & channel management
+│   ├── permission/      # Unified permission manager (Root / Shizuku auto-granting, tool approval)
+│   └── application/     # Application management & lifecycle
+├── agent-runtime/       # Agent runtime: LLM invocation, Tool/Skill/MCP execution, Python runtime
+├── xsettings/           # Lightweight configuration module (depended on by modules as needed)
 ├── store/               # Store persistence, IPC bridge (XIpcBridge)
 ├── ui-kit/              # Shared Compose components, LiquidScreen shell, navigation
+├── remote-view/         # Cross-process / floating RemoteView components
+├── xposed-api/          # Xposed event types, shared constants (shared by main app and host process)
+├── xposed-runtime/      # Xposed runtime, hook base classes
 └── libs/
     ├── logging/         # Logging library
     ├── okia/            # Okia Agent runtime base library
-    └── libterm/         # Terminal library (with multiple backends)
-        ├── libterm-core
-        ├── libterm-runtime
-        ├── libterm-backend-libsu
-        ├── libterm-backend-shizuku
-        └── libterm-backend-ssh
+    └── libterm/         # Terminal library (multiple backends: libsu, shizuku, ssh, etc.)
 ```
 
 ## Roadmap
 
-- Floating pet (desktop pet)
 - System voice assistant integration (non-Xposed takeover)
 - File import / sharing from outside the app
+- Built-in skills like Termux, `/skill` hints, and cloud skill imports
 
 ## Contributing
 
