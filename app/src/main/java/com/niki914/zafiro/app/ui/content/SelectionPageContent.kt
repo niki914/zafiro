@@ -36,6 +36,7 @@ import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
+import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.zafiro.app.R
 
@@ -162,8 +163,12 @@ fun SelectionPageContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(top = liquidScreenTopPadding())
-            .padding(horizontal = 16.dp, vertical = 24.dp),
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = liquidScreenTopPadding(24.dp),
+                bottom = liquidScreenBottomPadding(),
+            ),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Text(

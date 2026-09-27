@@ -16,6 +16,10 @@ import com.niki914.uikit.infra.nav.Page
 @Stable
 class LiquidScreenContentContext internal constructor(
     val topPadding: Dp,
+    /** 底部安全距离 = 系统导航栏 inset + 设计间距。
+     * 由 `LiquidScreen` 计算并下发，业务经 `liquidScreenBottomPadding` 读取，
+     * 不自行读取 WindowInsets，避免多来源漂移。 */
+    val bottomPadding: Dp,
 )
 
 /**
@@ -57,6 +61,17 @@ fun liquidScreenTopPadding(extra: Dp = 0.dp): Dp {
     return LocalLiquidScreenContentContext.current.topPadding + extra
 }
 
+/**
+ * 内容区底部安全距离（已含系统导航栏 inset）。
+ *
+ * 与 [liquidScreenTopPadding] 对称：默认值由壳层下发，业务可传 `extra` 追加，
+ * 也可在容器参数（如 `contentBottomPadding`）上显式覆盖重写。
+ */
+@Composable
+fun liquidScreenBottomPadding(extra: Dp = 0.dp): Dp {
+    return LocalLiquidScreenContentContext.current.bottomPadding + extra
+}
+
 private object PreviewPage : Page {
     override val routeKey: String = "preview"
 }
@@ -64,11 +79,13 @@ private object PreviewPage : Page {
 @Composable
 fun ProvideLiquidScreenContentForPreview(
     topPadding: Dp = 0.dp,
+    bottomPadding: Dp = 0.dp,
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(
         LocalLiquidScreenContentContext provides LiquidScreenContentContext(
             topPadding = topPadding,
+            bottomPadding = bottomPadding,
         ),
         LocalNavigationEntry provides NavigationEntry(id = "preview", page = PreviewPage),
         content = content,

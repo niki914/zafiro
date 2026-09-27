@@ -59,6 +59,9 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
 import kotlinx.coroutines.delay
 
+/** 底部安全距离中，系统导航栏 inset 之外额外留出的设计间距。 */
+private val BottomInsetSpacing = 50.dp
+
 @Composable
 fun LiquidScreen(
     state: LiquidScreenState,
@@ -84,6 +87,7 @@ fun LiquidScreen(
     val activeAvoidanceRequest = state.viewportAvoidanceController.activeRequest
     val imeBottomPx = WindowInsets.ime.getBottom(density)
     val navigationBottomPx = WindowInsets.navigationBars.getBottom(density)
+    val navigationBottom = with(density) { navigationBottomPx.toDp() }
     var screenHeightPx by remember { mutableStateOf(0) }
 
     // 背景板/小标题折叠状态唯一来源：当前导航条目的 titleCollapsed
@@ -137,6 +141,7 @@ fun LiquidScreen(
         CompositionLocalProvider(
             LocalLiquidScreenContentContext provides LiquidScreenContentContext(
                 topPadding = actionBarHeight,
+                bottomPadding = navigationBottom + BottomInsetSpacing,
             ),
             LocalLiquidViewportAvoidanceController provides state.viewportAvoidanceController,
             LocalLiquidDialogHostState provides dialogHostState,

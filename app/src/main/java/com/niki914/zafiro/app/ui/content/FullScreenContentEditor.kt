@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import com.niki914.uikit.infra.component.PageDescriptionText
 import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
 import com.niki914.uikit.infra.component.TintLiquidButton
+import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 
 /**
@@ -41,7 +42,8 @@ internal fun FullScreenContentEditor(
                 .padding(horizontal = SettingsDetailPageDefaults.HorizontalPadding)
                 .padding(
                     top = liquidScreenTopPadding(SettingsDetailPageDefaults.VerticalPadding),
-                    bottom = SettingsDetailPageDefaults.VerticalPadding +
+                    // 底部预留 = 底部安全距离 + 按钮位高，与吸底按钮的 bottom 同源，避免最后一行被遮挡
+                    bottom = liquidScreenBottomPadding() +
                             SettingsDetailPageDefaults.RootVerticalSpacing +
                             SettingsDetailPageDefaults.ActionButtonReservedHeight,
                 ),
@@ -81,7 +83,7 @@ internal fun FullScreenContentEditor(
                 .padding(
                     start = SettingsDetailPageDefaults.HorizontalPadding,
                     end = SettingsDetailPageDefaults.HorizontalPadding,
-                    bottom = SettingsDetailPageDefaults.VerticalPadding,
+                    bottom = liquidScreenBottomPadding(),
                 ),
         )
     }

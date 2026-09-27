@@ -19,9 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
+import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.LocalPageTitle
 
@@ -33,11 +35,15 @@ import com.niki914.uikit.infra.nav.LocalPageTitle
  * 由 `LiquidScreen` 驱动顶栏小标题浮现与背景色渐显。
  *
  * Preview 或独立样例请用 `ProvideLiquidScreenContentForPreview` 提供壳层上下文。
+ *
+ * @param contentBottomPadding 内容区底部安全距离。null（默认）走壳层下发的
+ * `liquidScreenBottomPadding()`；非空则严格使用传入值，供业务主动覆盖重写。
  */
 @Composable
 fun SettingsListPageContent(
     description: String? = null,
     modifier: Modifier = Modifier,
+    contentBottomPadding: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState =
@@ -49,12 +55,19 @@ fun SettingsListPageContent(
     // 折叠状态写入当前导航条目，action bar 拉取；返回本页时立即恢复离开前状态。
     ReportTitleBarCollapsed { isCollapsed }
 
+    val resolvedBottomPadding = contentBottomPadding ?: liquidScreenBottomPadding()
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(top = liquidScreenTopPadding())
-            .padding(horizontal = 16.dp, vertical = 24.dp),
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                // 顶部原来为 topPadding 与 24dp 两层叠加，此处保持等价
+                top = liquidScreenTopPadding(24.dp),
+                bottom = resolvedBottomPadding,
+            ),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         val pageTitle = LocalPageTitle.current
