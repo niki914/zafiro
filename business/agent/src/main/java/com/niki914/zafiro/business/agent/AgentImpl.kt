@@ -1,6 +1,5 @@
 package com.niki914.zafiro.business.agent
 
-import android.os.SystemClock
 import com.niki914.logging.Logger
 import com.niki914.okia.message.ContentBlock
 import com.niki914.zafiro.api.Agent
@@ -304,8 +303,13 @@ object AgentImpl : Agent {
             Logger.i(LOG_TAG, "conversation created id=${sessionId.value}")
         }
         store().setLastOpened(sessionId)
-        conversationFlow.value = conversationFlow.value.copy(id = sessionId)
+        applySessionId(sessionId)
         return sessionId
+    }
+
+    internal fun applySessionId(sessionId: ConversationId) {
+        reduced = reduced.copy(conversation = reduced.conversation.copy(id = sessionId))
+        conversationFlow.value = reduced.conversation
     }
 
     private fun fold(event: LlmStreamEvent) {
@@ -343,13 +347,17 @@ object AgentImpl : Agent {
         lastStatusEmitMs = nowMs()
     }
 
-    /** 单调时钟（避 NTP 跳变抖节流），仅供 [publishStatus]/[emitStatus] 用。 */
-    private fun nowMs(): Long = SystemClock.uptimeMillis()
+    /** 节流时钟（JVM 可测；500ms 粒度下 NTP 跳变可忽略），仅供 [publishStatus]/[emitStatus] 用。 */
+    private fun nowMs(): Long = System.currentTimeMillis()
 
     /** 状态机外事件（发起/停止/打断/重置）：换态直通，不走文本节流。 */
     private fun emitStatus(state: AgentState) {
         statusFlow.value = state
         lastStatusEmitMs = nowMs()
+    }
+
+    internal fun foldForTest(event: LlmStreamEvent) {
+        fold(event)
     }
 
     private fun foldWith(reduced: Reduced) {

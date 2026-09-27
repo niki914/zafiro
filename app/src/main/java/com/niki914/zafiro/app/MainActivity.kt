@@ -13,9 +13,13 @@ import com.niki914.logging.Logger
 import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
+import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.model.isRunning
+import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
+import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -33,11 +37,11 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    // launcher 必须在 STARTED 前注册：MainActivity 预注册 → UiGate 持有结果路由
+    // launcher 必须在 STARTED 前注册：MainActivity 预注册 → ApplicationService 持有结果路由
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        PermissionHolder.ui.onNotificationResult(granted)
+        requireService<ApplicationService>().onNotificationResult(granted)
     }
 
 
@@ -45,9 +49,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // launcher 必须在 STARTED 前注册：MainActivity 预注册 → UiGate 持有结果路由
-        PermissionHolder.ui.notificationLauncher = notificationPermissionLauncher
-        PermissionHolder.get(this).bind(this)
+        // launcher 必须在 STARTED 前注册：预注册后装进 ApplicationService
+        requireService<ApplicationService>()
+            .installNotificationLauncher(notificationPermissionLauncher)
         val startupAssistantUi = resolveStartupAssistantUi()
         val launchDecision = runBlocking {
             val decision = AppLaunchDecision.resolve(startupAssistantUi)
@@ -77,10 +81,11 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             // 设置初值：读盘失败按开启兑底（默认开）
             runCatching { XRepo.keepScreenOn() }
+            val agentControl = requireService<AgentControl>()
             combine(
                 XRepo.keepScreenOnSetting,
-                LLMController.keepScreenOn,
-            ) { settingOn, turnActive -> settingOn && turnActive }
+                agentControl.status,
+            ) { settingOn, status -> settingOn && status.isRunning }
                 .collect { keepOn ->
                     if (keepOn) {
                         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -95,20 +100,13 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         isResumed = true
         ToolPermissionCoordinator.isUiResumed = true
-        // JUMP_SETTINGS 通道：resume 代数推进，唤醒等设置页返回的请求
-        PermissionHolder.ui.onActivityResumed()
+        // 前台跟踪由 ApplicationService 经 lifecycle callbacks 自动维护，无需手动转发
     }
 
     override fun onPause() {
         super.onPause()
         isResumed = false
         ToolPermissionCoordinator.isUiResumed = false
-        PermissionHolder.ui.onActivityPaused()
-    }
-
-    override fun onDestroy() {
-        PermissionHolder.get(this).unbind()
-        super.onDestroy()
     }
 
     companion object {

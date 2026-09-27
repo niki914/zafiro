@@ -106,4 +106,17 @@ class AgentImplTest {
         val decision = AgentImpl.decideApproval(request)
         assertEquals(com.niki914.zafiro.api.model.ApprovalDecision.Deny, decision)
     }
+
+    @Test
+    fun fold_afterApplySessionId_preservesSessionIdAcrossEvents() {
+        val sessionId = com.niki914.zafiro.api.model.ConversationId("new-conv-uuid")
+        AgentImpl.applySessionId(sessionId)
+        assertEquals(sessionId, AgentImpl.conversation.value.id)
+
+        AgentImpl.foldForTest(com.niki914.zafiro.chat.LlmStreamEvent.RoundStarted)
+        assertEquals(sessionId, AgentImpl.conversation.value.id)
+
+        AgentImpl.foldForTest(com.niki914.zafiro.chat.LlmStreamEvent.TextDelta(delta = "hello", fullText = "hello"))
+        assertEquals(sessionId, AgentImpl.conversation.value.id)
+    }
 }

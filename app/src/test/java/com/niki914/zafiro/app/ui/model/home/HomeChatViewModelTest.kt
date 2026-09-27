@@ -187,11 +187,7 @@ class HomeChatViewModelTest {
 
     @Test
     fun forkRetainsExistingAppOwnedHistoryPath() = runTest {
-        val fixture = fixture(history = listOf(
-            Message.User(listOf(ContentBlock.Text("first"))),
-            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
-            Message.User(listOf(ContentBlock.Text("second"))),
-        ))
+        val fixture = fixture()
         fixture.store.createRecord("source", "first")
         fixture.store.setSnapshot("source", snapshotOf(
             Message.User(listOf(ContentBlock.Text("first"))),
@@ -210,15 +206,14 @@ class HomeChatViewModelTest {
     }
 
     @Test
-    fun regenerateAndRewindKeepSelectedQueryAndImages() = runTest {
-        val history = listOf(
+    fun regenerateKeepsSelectedQueryAndImages() = runTest {
+        val fixture = fixture()
+        fixture.store.createRecord("source", "first")
+        fixture.store.setSnapshot("source", snapshotOf(
             Message.User(listOf(ContentBlock.Text("first"), ContentBlock.Image("/image.jpg", "image/jpeg"))),
             Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
             Message.User(listOf(ContentBlock.Text("second"))),
-        )
-        val fixture = fixture(history = history)
-        fixture.store.createRecord("source", "first")
-        fixture.store.setSnapshot("source", snapshotOf(*history.toTypedArray()))
+        ))
         fixture.vm.sendIntent(HomeChatIntent.LoadConversation("source"))
         advanceUntilIdle()
 
@@ -226,6 +221,19 @@ class HomeChatViewModelTest {
         advanceUntilIdle()
         assertEquals("first", fixture.agent.sentDrafts.last().text)
         assertEquals(listOf("/image.jpg"), fixture.agent.sentImages.last().map { it.path })
+    }
+
+    @Test
+    fun rewindKeepsSelectedQueryAndImages() = runTest {
+        val fixture = fixture()
+        fixture.store.createRecord("source", "first")
+        fixture.store.setSnapshot("source", snapshotOf(
+            Message.User(listOf(ContentBlock.Text("first"), ContentBlock.Image("/image.jpg", "image/jpeg"))),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
+            Message.User(listOf(ContentBlock.Text("second"))),
+        ))
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("source"))
+        advanceUntilIdle()
 
         fixture.vm.sendIntent(HomeChatIntent.RewindAt(0))
         advanceUntilIdle()

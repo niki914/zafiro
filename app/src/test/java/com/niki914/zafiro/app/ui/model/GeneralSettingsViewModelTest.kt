@@ -4,8 +4,16 @@ import android.content.Context
 import android.content.ContextWrapper
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.util.SilentLoggerRule
+import com.niki914.zafiro.business.permission.Channel
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionResult
+import com.niki914.zafiro.business.permission.PermissionScope
+import com.niki914.zafiro.business.permission.PermissionState
 import com.niki914.zafiro.repo.FakeDomainSettingsStore
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.service.ServiceRegistry
+import com.niki914.zafiro.service.installService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
@@ -39,14 +47,9 @@ class GeneralSettingsViewModelTest {
         override fun getFilesDir(): java.io.File = tempDir
     }
 
-    private fun createViewModel(
-        isOverlayPermissionGranted: suspend () -> Boolean = { true },
-        isNotificationPermissionGranted: suspend () -> Boolean = { true },
-    ): GeneralSettingsViewModel {
-        return GeneralSettingsViewModel(
-            isOverlayPermissionGranted = isOverlayPermissionGranted,
-            isNotificationPermissionGranted = isNotificationPermissionGranted,
-        )
+    /** 权限结果由注册表里的假实现控制：ViewModel 自己经 ServiceRegistry 取 PermissionManager。 */
+    private fun installPermission(state: PermissionState) {
+        installService<PermissionManager>(FakePermissionManager(state))
     }
 
     @Before
@@ -59,6 +62,7 @@ class GeneralSettingsViewModelTest {
     @After
     fun tearDown() {
         XRepo.resetForTest()
+        ServiceRegistry.clearForTest()
     }
 
     @Test
@@ -72,7 +76,7 @@ class GeneralSettingsViewModelTest {
         XRepo.setFloatingBallEnabled(true)
         XRepo.setResidentNotificationEnabled(true)
 
-        val viewModel = createViewModel()
+        val viewModel = GeneralSettingsViewModel()
         viewModel.sendIntent(GeneralSettingsIntent.Load)
         advanceUntilIdle()
 
@@ -91,7 +95,7 @@ class GeneralSettingsViewModelTest {
 
     @Test
     fun dialogState_openAndDismissWorkAsExpected() = runTest {
-        val viewModel = createViewModel()
+        val viewModel = GeneralSettingsViewModel()
 
         viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.Language))
         advanceUntilIdle()
@@ -108,7 +112,7 @@ class GeneralSettingsViewModelTest {
 
     @Test
     fun selectLanguage_updatesStateRepoAndEmitsEffect() = runTest {
-        val viewModel = createViewModel()
+        val viewModel = GeneralSettingsViewModel()
         val effects = collectEffects(viewModel, count = 1)
 
         viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.Language))
@@ -126,7 +130,8 @@ class GeneralSettingsViewModelTest {
 
     @Test
     fun toggleFloatingBall_whenPermissionGranted_updatesStateAndRepo() = runTest {
-        val viewModel = createViewModel(isOverlayPermissionGranted = { true })
+        installPermission(PermissionState.GRANTED)
+        val viewModel = GeneralSettingsViewModel()
 
         assertFalse(viewModel.uiStateFlow.value.floatingBallEnabled)
         assertFalse(XRepo.floatingBallEnabled())
@@ -145,30 +150,24 @@ class GeneralSettingsViewModelTest {
     }
 
     @Test
-    fun toggleFloatingBall_whenPermissionMissing_requestsPermissionAndHandlesResult() = runTest {
-        val viewModel = createViewModel(isOverlayPermissionGranted = { false })
+    fun toggleFloatingBall_whenPermissionMissing_staysOffAndEmitsNoEffect() = runTest {
+        installPermission(PermissionState.DENIED_BY_USER)
+        val viewModel = GeneralSettingsViewModel()
         val effects = collectEffects(viewModel, count = 1)
 
         viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBall(true))
         advanceUntilIdle()
 
-        assertEquals(listOf(GeneralSettingsEffect.RequestOverlayPermission), effects)
-
-        // Denied case
-        viewModel.sendIntent(GeneralSettingsIntent.OnOverlayPermissionResult(granted = false))
-        advanceUntilIdle()
+        // 申请在 ViewModel 内完成，UI 层不再参与，所以既没有 effect，也不会亮开关
+        assertTrue(effects.isEmpty())
         assertFalse(viewModel.uiStateFlow.value.floatingBallEnabled)
-
-        // Granted case
-        viewModel.sendIntent(GeneralSettingsIntent.OnOverlayPermissionResult(granted = true))
-        advanceUntilIdle()
-        assertTrue(viewModel.uiStateFlow.value.floatingBallEnabled)
-        assertTrue(XRepo.floatingBallEnabled())
+        assertFalse(XRepo.floatingBallEnabled())
     }
 
     @Test
     fun toggleResidentNotification_whenPermissionGranted_updatesStateAndRepo() = runTest {
-        val viewModel = createViewModel(isNotificationPermissionGranted = { true })
+        installPermission(PermissionState.GRANTED)
+        val viewModel = GeneralSettingsViewModel()
 
         assertFalse(viewModel.uiStateFlow.value.residentNotificationEnabled)
         assertFalse(XRepo.residentNotificationEnabled())
@@ -187,30 +186,22 @@ class GeneralSettingsViewModelTest {
     }
 
     @Test
-    fun toggleResidentNotification_whenPermissionMissing_requestsPermissionAndHandlesResult() = runTest {
-        val viewModel = createViewModel(isNotificationPermissionGranted = { false })
+    fun toggleResidentNotification_whenPermissionMissing_staysOffAndEmitsNoEffect() = runTest {
+        installPermission(PermissionState.DENIED_BY_USER)
+        val viewModel = GeneralSettingsViewModel()
         val effects = collectEffects(viewModel, count = 1)
 
         viewModel.sendIntent(GeneralSettingsIntent.ToggleResidentNotification(true))
         advanceUntilIdle()
 
-        assertEquals(listOf(GeneralSettingsEffect.RequestNotificationPermission), effects)
-
-        // Denied case
-        viewModel.sendIntent(GeneralSettingsIntent.OnNotificationPermissionResult(granted = false))
-        advanceUntilIdle()
+        assertTrue(effects.isEmpty())
         assertFalse(viewModel.uiStateFlow.value.residentNotificationEnabled)
-
-        // Granted case
-        viewModel.sendIntent(GeneralSettingsIntent.OnNotificationPermissionResult(granted = true))
-        advanceUntilIdle()
-        assertTrue(viewModel.uiStateFlow.value.residentNotificationEnabled)
-        assertTrue(XRepo.residentNotificationEnabled())
+        assertFalse(XRepo.residentNotificationEnabled())
     }
 
     @Test
     fun selectTimeoutsAndAttempts_updatesStateAndRepo() = runTest {
-        val viewModel = createViewModel()
+        val viewModel = GeneralSettingsViewModel()
 
         viewModel.sendIntent(GeneralSettingsIntent.SelectIdleTimeout(120L))
         advanceUntilIdle()
@@ -232,5 +223,22 @@ class GeneralSettingsViewModelTest {
             viewModel.uiEffect.take(count).toList(effects)
         }
         return effects
+    }
+
+    private class FakePermissionManager(
+        private val state: PermissionState,
+    ) : PermissionManager {
+        override fun status(permission: Permission): PermissionState = state
+
+        override suspend fun request(permission: Permission): PermissionResult =
+            PermissionResult(permission, state, emptyList())
+
+        override suspend fun request(
+            permission: Permission,
+            vararg channels: Channel,
+        ): PermissionResult = PermissionResult(permission, state, emptyList())
+
+        override fun applyScope(vararg channels: Channel): PermissionScope =
+            throw UnsupportedOperationException("not needed in test")
     }
 }

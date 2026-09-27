@@ -112,7 +112,7 @@ class ConversationRepoTest {
     }
 
     @Test
-    fun forkConversation_copiesTruncatedSubtreeWithForkTitle() = runTest {
+    fun forkAtTurn_forkKeepsWholeTurnWithForkTitle() = runTest {
         val sourceId = ConversationRepo.createConversation("session-src", "original")
         val entries = linearEntries(
             Message.User(listOf(ContentBlock.Text("u1"))),
@@ -122,37 +122,94 @@ class ConversationRepoTest {
         ConversationRepo.insertEntries(sourceId, entries)
         ConversationRepo.updateLeafId(sourceId, entries.last().id)
 
-        val newId = ConversationRepo.forkConversation(
-            sourceId = sourceId,
-            keepEntryCount = 2,
-            kind = ForkKind.Fork,
-        )
+        val result = ConversationRepo.forkAtTurn(sourceId, turnIndex = 0, kind = ForkKind.Fork)!!
 
-        val newRecord = ConversationRepo.getConversation(newId)!!
+        val newRecord = ConversationRepo.getConversation(result.newConversationId)!!
         assertTrue(newRecord.summary.title.startsWith("Fork ·"))
         assertTrue(newRecord.summary.titleEdited)
+        // 整回合保留：截在下一个 User 条目之前
         assertEquals(2, newRecord.snapshot.entries.size)
         assertEquals(entries[0].id, newRecord.snapshot.entries[0].id)
         assertEquals(entries[1].id, newRecord.snapshot.entries[1].id)
         assertEquals(entries[1].id, newRecord.snapshot.leafId)
+        // Fork 不回填草稿
+        assertEquals("", result.promptText)
+        assertTrue(result.attachments.isEmpty())
         // 源会话不受影响
         assertEquals(3, ConversationRepo.countEntries(sourceId))
     }
 
     @Test
-    fun forkConversation_regenerateUsesRegenerateTitle() = runTest {
+    fun forkAtTurn_forkOnLastTurnKeepsToTail() = runTest {
+        val sourceId = ConversationRepo.createConversation("session-src", "original")
+        val entries = linearEntries(
+            Message.User(listOf(ContentBlock.Text("u1"))),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("a1")))),
+        )
+        ConversationRepo.insertEntries(sourceId, entries)
+        ConversationRepo.updateLeafId(sourceId, entries.last().id)
+
+        val result = ConversationRepo.forkAtTurn(sourceId, turnIndex = 0, kind = ForkKind.Fork)!!
+
+        assertEquals(2, ConversationRepo.countEntries(result.newConversationId))
+    }
+
+    @Test
+    fun forkAtTurn_regenTruncatesBeforeUserAndExtractsInput() = runTest {
+        val sourceId = ConversationRepo.createConversation("session-src", "original")
+        val entries = linearEntries(
+            Message.User(
+                listOf(
+                    ContentBlock.Text("u1"),
+                    ContentBlock.Image("/image.jpg", "image/jpeg"),
+                ),
+            ),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("a1")))),
+            Message.User(listOf(ContentBlock.Text("u2"))),
+        )
+        ConversationRepo.insertEntries(sourceId, entries)
+        ConversationRepo.updateLeafId(sourceId, entries.last().id)
+
+        val result = ConversationRepo.forkAtTurn(sourceId, turnIndex = 0, kind = ForkKind.Regenerate)!!
+
+        val newRecord = ConversationRepo.getConversation(result.newConversationId)!!
+        assertTrue(newRecord.summary.title.startsWith("Regenerate ·"))
+        // 截在该回合用户条目之前（不含）：turn 0 → 0 条
+        assertTrue(newRecord.snapshot.entries.isEmpty())
+        assertEquals("u1", result.promptText)
+        assertEquals(listOf("/image.jpg"), result.attachments.map { it.path })
+    }
+
+    @Test
+    fun forkAtTurn_rewindOnLaterTurnExtractsThatTurnInput() = runTest {
+        val sourceId = ConversationRepo.createConversation("session-src", "original")
+        val entries = linearEntries(
+            Message.User(listOf(ContentBlock.Text("u1"))),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("a1")))),
+            Message.User(listOf(ContentBlock.Text("u2"))),
+        )
+        ConversationRepo.insertEntries(sourceId, entries)
+        ConversationRepo.updateLeafId(sourceId, entries.last().id)
+
+        val result = ConversationRepo.forkAtTurn(sourceId, turnIndex = 1, kind = ForkKind.Rewind)!!
+
+        val newRecord = ConversationRepo.getConversation(result.newConversationId)!!
+        assertTrue(newRecord.summary.title.startsWith("Rewind ·"))
+        // turn 1 的用户条目在投影下标 2：保留前两条（turn 0 完整）
+        assertEquals(2, newRecord.snapshot.entries.size)
+        assertEquals("u2", result.promptText)
+        assertTrue(result.attachments.isEmpty())
+    }
+
+    @Test
+    fun forkAtTurn_missingSourceOrTurnReturnsNull() = runTest {
         val sourceId = ConversationRepo.createConversation("session-src", "original")
         val entries = linearEntries(Message.User(listOf(ContentBlock.Text("u1"))))
         ConversationRepo.insertEntries(sourceId, entries)
         ConversationRepo.updateLeafId(sourceId, entries.last().id)
 
-        val newId = ConversationRepo.forkConversation(
-            sourceId = sourceId,
-            keepEntryCount = 1,
-            kind = ForkKind.Regenerate,
-        )
-
-        assertTrue(ConversationRepo.getConversation(newId)!!.summary.title.startsWith("Regenerate ·"))
+        assertNull(ConversationRepo.forkAtTurn("session-nope", turnIndex = 0, kind = ForkKind.Fork))
+        assertNull(ConversationRepo.forkAtTurn(sourceId, turnIndex = 1, kind = ForkKind.Fork))
     }
 
     @Test

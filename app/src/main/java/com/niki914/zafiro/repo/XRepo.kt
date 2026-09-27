@@ -480,8 +480,9 @@ object XRepo {
 
     // 从 URL 下载文件到私有 downloads 子目录；path 可指定其他目录（外部路径可能需要存储权限）。
     // 默认目录在播种时烘进脚本（占位符替换），运行时零注入成本。
-    // TODO(permission-manager): 权限管理器落地后，由其向 PromptComposer 环境块注入
-    //  真实存储权限状态（granted/denied），替代提示词中对“优先私有目录”的静态描述。
+    // TODO(permission-manager): PermissionManager 支持外部存储权限后，调用下载类 Python 工具
+    //  （py_download_file / py_install_apk）前先按目标路径检查：沙箱内路径总是有权限直接放行；
+    //  外部路径无权限时阻塞到拿到权限为止再运行脚本。现在先不做。
     private fun seedDownloadFileTool(context: Context) = CustomPyTool(
         name = "py_download_file",
         description = "Download a file from a URL and return its local file path. By default the file is saved to the app private downloads directory; prefer private directories unless you have a special reason.",

@@ -17,6 +17,7 @@
 ### Android / Gradle
 **/.gradle/
 **/build/
+gradle/gradle-daemon-jvm.properties
 local.properties
 **/.externalNativeBuild/
 **/.cxx/

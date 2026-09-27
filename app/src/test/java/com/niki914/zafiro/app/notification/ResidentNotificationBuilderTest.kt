@@ -28,10 +28,7 @@ class ResidentNotificationBuilderTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        channelManager = NotificationChannelManagerImpl(
-            context = context,
-            isPermissionGrantedProvider = { true },
-        )
+        channelManager = NotificationChannelManagerImpl(context = context)
     }
 
     @Test

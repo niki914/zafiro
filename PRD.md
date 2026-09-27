@@ -119,9 +119,10 @@ binder 由 Shizuku server 在应用启动后异步推送（`sendBinder`），无
 ## 模块归属
 
 ```
-libs/permission-manager/   # 新模块，与 libterm 平级
-  依赖: libsu-core、shizuku-api/provider（独立实现，与 libterm 共存）
-被依赖: app、agent-runtime（宿主侧后续接入）
+business/permission/        # 权限门面与通道实现（原 libs/permission-manager 迁移而来）
+  依赖: libsu-core、shizuku-api/provider（独立实现，与 libterm 共存）、business/application
+被依赖: app、agent-runtime、business/notification（宿主侧后续接入）
+入口: PermissionManager 接口，经 ServiceRegistry 装配（AppServices 登记）
 ```
 
 ## 版本策略
@@ -133,7 +134,7 @@ libs/permission-manager/   # 新模块，与 libterm 平级
 ## 验收
 
 1. [已完成] `NotificationPermissionGate` 删除，通知申请走 PermissionManager，行为不变。
-   真机验证：`SystemDialogHandler: request(NOTIFICATION): granted=true`。
+   真机验证：`SystemDialogHandler: request(NOTIFICATION): GRANTED`。
 2. [已完成] `App.grantOverlayPermissionViaRoot` 删除，悬浮窗授权走 PermissionManager，
    `handleBackgroundConfirmation` 改调挂起式 `request`。
    真机验证：`RootShellHandler: exec [appops set ...] exit=0` → `OVERLAY -> GRANTED`。
@@ -145,10 +146,10 @@ libs/permission-manager/   # 新模块，与 libterm 平级
    真机验证：`RootShellHandler: exec [settings put secure ...] exit=0` 或
    `JumpSettingsHandler: request(ACCESSIBILITY): recheck=GRANTED`。
 4. [已完成] JUMP_SETTINGS 通道：跳设置 → 返回后复查一次 status()，返回真实结果，
-   符合 request() 契约。实现：`UiGate` resume 代数 + 60s 超时复查；未 bind 报 UNAVAILABLE。
+   符合 request() 契约。实现：`ApplicationService` resume 代数 + 60s 超时复查；无前台报 UNAVAILABLE。
 5. [已完成] 单测：FakeChannelHandler 覆盖链语义（成功短路、UNAVAILABLE 降级、DENIED 继续、
-   链尽失败）与 minSdk 门槛；新增 `UiGateTest`（resume 代数、通知结果路由、unbind 取消）
-   与 `DefaultChainTest`（默认链对照表）。25 项全绿。
+   链尽失败）与 minSdk 门槛；`DefaultChainTest` 钉默认链对照表，`ShellGrantsTest` 钉 shell 授权
+   命令文本与三种收尾状态。`ApplicationService` 的 resume 代数需 Activity，只走真机冒烟。
 7. [结论待定] NOTIFICATION 默认链增加 ROOT_SHELL / SHIZUKU 两环：两个 shell handler 补上
    `pm grant` / `appops set POST_NOTIFICATION` 授权，命令后以 `TargetStatus.notification` 复查
    真实状态收尾（退出码不等于权限状态）。命令文本与三种收尾状态由 `ShellGrantsTest` 覆盖。
@@ -157,7 +158,7 @@ libs/permission-manager/   # 新模块，与 libterm 平级
    `AgentRuntimeService.postNotificationImpl` 的只读门与 `IpcRuntimeHostGateway.postNotification`
    的“已授权则不再申请”开始生效，这两条路径需一并真机确认。
    真机验证待补：`RootShellHandler: exec [pm grant ...] exit=0` → `NOTIFICATION -> GRANTED`；
-   无 root / Shizuku 或系统拒纳时应降级到 `SystemDialogHandler: request(NOTIFICATION): granted=true`。
+   无 root / Shizuku 或系统拒纳时应降级到 `SystemDialogHandler: request(NOTIFICATION): GRANTED`。
 
 ## 冒烟方法（debug 临时自测入口）
 

@@ -2,12 +2,9 @@ package com.niki914.zafiro.app.ui.model.home
 
 import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
-import com.niki914.okia.message.ContentBlock
-import com.niki914.okia.message.Message
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.TurnStart
-import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.DraftImage
@@ -15,7 +12,6 @@ import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.ui.model.TextPacer
-import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -38,14 +34,13 @@ import kotlinx.coroutines.launch
  * 草稿文本的落盘按按键节流写 Room，契约明确把这一步留在 app 侧。
  */
 class HomeChatViewModel internal constructor(
-    private val conversations: HomeConversationStore = com.niki914.zafiro.app.ui.model.home.tmp.DefaultHomeConversationStore,
+    private val conversations: HomeConversationStore = DefaultHomeConversationStore,
     // 节流器可注入：单测传 delayFn = {} 把放出节奏与状态机解耦（同 TextPacerTest 的用法）
     private val textPacer: TextPacer = TextPacer(),
     // thinking 与正文在流中交织（thinking → tool → text），坐标系独立，单独实例
     private val thinkingPacer: TextPacer = TextPacer(),
-    private val historySnapshot_Tmp: suspend () -> List<Message> = { LLMController.historySnapshot() },
 ) : ComposeMVIViewModel<HomeChatIntent, HomeChatUiState, Nothing>() {
-    private val agent: Agent = requireService()
+    private val agent: Agent get() = requireService()
     private var draftSaveJob: Job? = null
     private var startupRestoreAttempted = false
 
@@ -422,49 +417,21 @@ class HomeChatViewModel internal constructor(
     }
 
     // ── 历史派生操作 ────────────────────────────────────────────────────────
-    // TODO(收进 Agent)：reGenerate / fork / rewind 需要按消息条目下标截断，
-    // 而契约的 Conversation 把工具结果折成块后丢了条目边界，推不出这个下标。
-    // 故此处仍读引擎的 historySnapshot。改走 Room 快照会引入持久化器尚未刷盘的竞态。
-
-    private suspend fun historySnapshot_Tmp(): List<Message> = historySnapshot_Tmp.invoke()
-
-    private fun findUserTurnIndex(history: List<Message>, targetTurnId: Long): Int {
-        var userCount = 0L
-        for ((index, turn) in history.withIndex()) {
-            if (turn is Message.User) {
-                if (userCount == targetTurnId) return index
-                userCount++
-            }
-        }
-        return -1
-    }
-
-    private fun findNextUserIndex(history: List<Message>, startIndex: Int): Int? {
-        for (index in startIndex until history.size) {
-            if (history[index] is Message.User) return index
-        }
-        return null
-    }
-
-    private fun Message.User.text(): String =
-        content.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
+    // TODO(收进 Agent)：契约暂无 fork / delete 命令，组合仍留在业务侧：
+    //  仓储按回合截断派生（forkAtTurn）→ load（Agent）→ stream（Agent）。
+    //  截断点与回填内容由仓储从持久化条目算，本层只见回合下标与契约类型。
 
     private suspend fun reGenerateAt(turnId: Long) {
         if (currentState.isGenerating) return
         val currentId = agent.conversation.value.id?.value ?: return
-        val history = historySnapshot_Tmp()
-        val userIndex = findUserTurnIndex(history, turnId)
-        if (userIndex < 0) return
-        val userTurn = history[userIndex] as? Message.User ?: return
-        val userText = userTurn.text()
-        val userImages = userTurn.content.filterIsInstance<ContentBlock.Image>()
-        val newConvId = conversations.forkConversation(currentId, userIndex, ForkKind.Regenerate)
-        Logger.i(LOG_TAG, "regenerate fork sourceId=$currentId turnId=$turnId newId=$newConvId")
-        loadConversation(newConvId)
+        val result = conversations.forkAtTurn(currentId, turnId.toInt(), ForkKind.Regenerate)
+            ?: return
+        Logger.i(LOG_TAG, "regenerate fork sourceId=$currentId turnId=$turnId newId=${result.newConversationId}")
+        loadConversation(result.newConversationId)
         agent.updateDraft { draft ->
             draft.copy(
-                text = userText,
-                images = userImages.map { DraftImage.Ready(Attachment(it.path, it.mimeType)) },
+                text = result.promptText,
+                images = result.attachments.map { DraftImage.Ready(it) },
             )
         }
         if (agent.stream() == TurnStart.Started) {
@@ -475,37 +442,29 @@ class HomeChatViewModel internal constructor(
     private suspend fun forkAt(turnId: Long) {
         if (currentState.isGenerating) return
         val currentId = agent.conversation.value.id?.value ?: return
-        val history = historySnapshot_Tmp()
-        val userIndex = findUserTurnIndex(history, turnId)
-        if (userIndex < 0) return
-        val nextUserIndex = findNextUserIndex(history, userIndex + 1)
-        val endIndex = if (nextUserIndex != null) nextUserIndex - 1 else history.lastIndex
-        val newConvId = conversations.forkConversation(currentId, endIndex + 1, ForkKind.Fork)
-        Logger.i(LOG_TAG, "fork sourceId=$currentId turnId=$turnId endIndex=$endIndex newId=$newConvId")
-        loadConversation(newConvId)
+        val result = conversations.forkAtTurn(currentId, turnId.toInt(), ForkKind.Fork)
+            ?: return
+        Logger.i(LOG_TAG, "fork sourceId=$currentId turnId=$turnId newId=${result.newConversationId}")
+        loadConversation(result.newConversationId)
     }
 
     private suspend fun rewindAt(turnId: Long) {
         if (currentState.isGenerating) return
         val currentId = agent.conversation.value.id?.value ?: return
-        val history = historySnapshot_Tmp()
-        val userIndex = findUserTurnIndex(history, turnId)
-        if (userIndex < 0) return
-        val userTurn = history[userIndex] as? Message.User ?: return
-        val newConvId = conversations.forkConversation(currentId, userIndex, ForkKind.Rewind)
-        Logger.i(LOG_TAG, "rewind sourceId=$currentId turnId=$turnId newId=$newConvId")
-        loadConversation(newConvId)
-        val images = userTurn.content.filterIsInstance<ContentBlock.Image>()
+        val result = conversations.forkAtTurn(currentId, turnId.toInt(), ForkKind.Rewind)
+            ?: return
+        Logger.i(LOG_TAG, "rewind sourceId=$currentId turnId=$turnId newId=${result.newConversationId}")
+        loadConversation(result.newConversationId)
         agent.updateDraft { draft ->
             draft.copy(
-                text = userTurn.text(),
-                images = images.map { DraftImage.Ready(Attachment(it.path, it.mimeType)) },
+                text = result.promptText,
+                images = result.attachments.map { DraftImage.Ready(it) },
             )
         }
         updateState {
             copy(
-                input = userTurn.text(),
-                pendingImages = images.map { it.toHomeImage() },
+                input = result.promptText,
+                pendingImages = result.attachments.map { it.toHomeImage() },
                 expandedActionTurnId = null,
                 expandedActionSource = null,
             )
