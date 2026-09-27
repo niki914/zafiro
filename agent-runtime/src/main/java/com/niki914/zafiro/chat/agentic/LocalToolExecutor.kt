@@ -43,7 +43,7 @@ class LocalToolExecutor(
 ) : ToolExecutor {
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_LocalToolExecutor"
+        const val LOG_TAG = "niki914_zafiro_LocalToolExecutor"
         const val PY_META_TOOLS_NAME = "py_meta_tools"
         const val CUSTOM_PY_TOOL_NAME_PATTERN = """^[a-z][a-z0-9_]{0,63}$"""
     }

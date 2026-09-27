@@ -27,7 +27,7 @@ import kotlin.concurrent.Volatile
  */
 internal class McpRefreshScheduler(private val scope: CoroutineScope) {
 
-    private val logTag = "niki914_nexus_McpRefreshScheduler"
+    private val logTag = "niki914_zafiro_McpRefreshScheduler"
 
     @Volatile
     private var desiredSignature: String? = null

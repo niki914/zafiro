@@ -121,7 +121,7 @@ class SkillSettingsViewModel(
     override fun initUiState(): SkillSettingsUiState = SkillSettingsUiState()
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_SkillSettingsViewModel"
+        private const val LOG_TAG = "niki914_zafiro_SkillSettingsViewModel"
     }
 
     override suspend fun handleIntent(intent: SkillSettingsIntent) {

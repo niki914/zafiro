@@ -7,7 +7,7 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage
 abstract class IXposed : IXposedHookLoadPackage {
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_IXposed"
+        const val LOG_TAG = "niki914_zafiro_IXposed"
     }
 
     sealed interface Target {

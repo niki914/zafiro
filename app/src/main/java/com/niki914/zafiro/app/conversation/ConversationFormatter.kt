@@ -24,7 +24,7 @@ import com.niki914.zafiro.business.agent.turnIdAt
  * （okia PRD §5.4：turn 分组由下游自行封装）。
  */
 object ConversationFormatter {
-    private const val LOG_TAG = "niki914_nexus_ConversationFormatter"
+    private const val LOG_TAG = "niki914_zafiro_ConversationFormatter"
     private const val MAX_TITLE_LENGTH = 40
     private const val MAX_PREVIEW_LENGTH = 20
     private const val ELLIPSIS = "..."

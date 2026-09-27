@@ -183,7 +183,7 @@ class ConfigureViewModel internal constructor(
     override fun initUiState(): ConfigureUiState = ConfigureUiState()
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_ConfigureViewModel"
+        private const val LOG_TAG = "niki914_zafiro_ConfigureViewModel"
         /** 输入防抖：停手 50ms 才发； trailing + 取消在途 + 三元组去重。 */
         private const val CATALOG_DEBOUNCE_MS = 50L
     }
@@ -428,7 +428,7 @@ class ConfigureViewModel internal constructor(
 
     /** 模型目录自动拉取：50ms trailing + 取消在途 + 三元组去重 + 空值短路。
      *  缓存语义：成功覆盖（含空结果，空 = 藏按钮）；失败与空值短路保留旧缓存，只记日志；
-     *  只刷新缓存，从不覆盖 modelInput。 */
+     *  仅当 modelInput 为空时用首个结果回填（手填内容永不覆盖）。 */
     private fun scheduleCatalogFetch(immediate: Boolean = false) {
         catalogFetchJob?.cancel()
         // 注意：handleIntent 已跑在 viewModelScope 的 intent 串行通道里；
@@ -451,7 +451,20 @@ class ConfigureViewModel internal constructor(
             try {
                 val ids = dependencies.fetchModelCatalog(modelsUrl, key.apiKey, protocol)
                 // 成功覆盖：空结果也写入（藏按钮），失败走 catch 保留旧缓存
-                updateState { copy(modelCatalog = ids) }
+                updateState {
+                    // 没走 Provider 默认 model ID（编辑区为空）时，拉到的首个直接回填，免开选择单
+                    if (modelInput.isBlank() && ids.isNotEmpty()) {
+                        copy(
+                            modelCatalog = ids,
+                            modelInput = ids.first(),
+                            modelErrorResId = null,
+                            inlineError = null,
+                            showModelCatalogSheet = false,
+                        )
+                    } else {
+                        copy(modelCatalog = ids)
+                    }
+                }
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
                 Logger.w(LOG_TAG, "catalog fetch failed: ${throwable.message}")

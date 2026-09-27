@@ -63,7 +63,7 @@ import kotlin.coroutines.resume
  */
 object FloatingBallOverlayManager {
 
-    private const val TAG = "FloatingBallOverlay"
+    private const val TAG = "niki914_zafiro_FloatingBallOverlay"
     private const val INITIAL_Y_RATIO = 0.68f
 
     private val mainHandler = Handler(Looper.getMainLooper())

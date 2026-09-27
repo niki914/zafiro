@@ -452,7 +452,7 @@ class TakeoverSettingsViewModel :
     }
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_TakeoverSettingsViewModel"
+        private const val LOG_TAG = "niki914_zafiro_TakeoverSettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }

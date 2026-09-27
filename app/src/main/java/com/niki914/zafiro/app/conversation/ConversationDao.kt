@@ -10,7 +10,7 @@ import com.niki914.logging.Logger
 @Dao
 interface ConversationDao {
     companion object {
-        private const val LOG_TAG = "niki914_nexus_ConversationDao"
+        private const val LOG_TAG = "niki914_zafiro_ConversationDao"
     }
 
     @Query("SELECT * FROM conversation ORDER BY updated_at DESC")

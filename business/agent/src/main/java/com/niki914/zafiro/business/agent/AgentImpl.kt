@@ -56,7 +56,7 @@ object AgentImpl : Agent {
     /** 持久化端口：由 app 侧实现并在组合根 install。 */
     private fun store(): ConversationStore_Tmp = requireService()
 
-    private const val LOG_TAG = "niki914_nexus_AgentImpl"
+    private const val LOG_TAG = "niki914_zafiro_AgentImpl"
 
     /** 同态纯文本增长的发射间隔：thinking 全量重发的刷屏主凶压到此粒度。 */
     private const val STATUS_TEXT_THROTTLE_MS = 500L

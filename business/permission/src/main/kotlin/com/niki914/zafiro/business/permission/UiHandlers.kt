@@ -57,7 +57,7 @@ internal class SystemDialogHandler(
     }
 
     private companion object {
-        const val TAG = "SystemDialogHandler"
+        const val TAG = "niki914_zafiro_SystemDialogHandler"
         val mutex = Mutex()
     }
 }
@@ -118,7 +118,7 @@ internal class JumpSettingsHandler(
     }
 
     private companion object {
-        const val TAG = "JumpSettingsHandler"
+        const val TAG = "niki914_zafiro_JumpSettingsHandler"
         const val SETTINGS_RETURN_TIMEOUT_MILLIS = 60_000L
         const val FOREGROUND_WAIT_MILLIS = 2_000L
     }

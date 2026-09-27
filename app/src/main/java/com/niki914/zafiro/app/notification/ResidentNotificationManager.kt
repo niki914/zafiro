@@ -24,7 +24,7 @@ import kotlin.coroutines.resume
  */
 object ResidentNotificationManager {
 
-    private const val TAG = "ResidentNotificationManager"
+    private const val TAG = "niki914_zafiro_ResidentNotificationManager"
 
     private var activeApprovalCont: CancellableContinuation<ApprovalDecision>? = null
     var activeApprovalRequest: ApprovalRequest? = null

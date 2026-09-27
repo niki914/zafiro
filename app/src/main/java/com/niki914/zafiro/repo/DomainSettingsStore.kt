@@ -20,7 +20,7 @@ internal class XIpcDomainSettingsStore(
 ) : DomainSettingsStore {
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_XIpcDomainSettingsStore"
+        private const val LOG_TAG = "niki914_zafiro_XIpcDomainSettingsStore"
         private const val EMPTY_JSON = "{}"
     }
 

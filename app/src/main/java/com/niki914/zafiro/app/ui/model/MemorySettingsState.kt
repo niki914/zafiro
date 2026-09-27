@@ -264,7 +264,7 @@ class MemorySettingsViewModel :
     }
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_MemorySettingsViewModel"
+        private const val LOG_TAG = "niki914_zafiro_MemorySettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }

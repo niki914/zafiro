@@ -13,7 +13,7 @@ import kotlin.random.Random
  */
 object ToolOutputTruncator {
 
-    private const val LOG_TAG = "niki914_nexus_ToolOutputTruncator"
+    private const val LOG_TAG = "niki914_zafiro_ToolOutputTruncator"
 
     /** 截断导出目录（App 沙箱 filesDir 下），agent 可用 terminal 回读全量。 */
     const val EXPORT_DIR_NAME = "tool_output"

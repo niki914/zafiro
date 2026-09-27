@@ -183,7 +183,7 @@ class RenderTextStreamCardHook : SubHook() {
         }
 
     companion object {
-        private const val LOG_TAG = "niki914_nexus_RenderTextStreamCard"
+        private const val LOG_TAG = "niki914_zafiro_RenderTextStreamCard"
 
         private val runtimePrimitiveTypes = mapOf(
             "boolean" to Boolean::class.javaPrimitiveType!!,

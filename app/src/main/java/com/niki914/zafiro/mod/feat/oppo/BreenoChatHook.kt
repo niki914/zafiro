@@ -26,7 +26,7 @@ class BreenoChatHook(
     override val name: String = "BreenoChatHook"
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_BreenoChatHook"
+        const val LOG_TAG = "niki914_zafiro_BreenoChatHook"
     }
 
     private var dataCenterInstance: Any? = null

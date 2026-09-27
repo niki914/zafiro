@@ -429,7 +429,7 @@ class ExecutionRulesSettingsViewModel :
     }
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_ExecutionRulesSettingsViewModel"
+        private const val LOG_TAG = "niki914_zafiro_ExecutionRulesSettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }

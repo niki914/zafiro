@@ -200,6 +200,6 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
     }
 
     private companion object {
-        private const val TAG = "GeneralSettingsViewModel"
+        private const val TAG = "niki914_zafiro_GeneralSettingsViewModel"
     }
 }

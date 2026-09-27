@@ -24,7 +24,7 @@ class Runtime(
     private val hooks: List<Hook>
 ) {
     companion object {
-        private const val LOG_TAG = "niki914_nexus_Runtime"
+        private const val LOG_TAG = "niki914_zafiro_Runtime"
     }
 
     fun attach(params: XC_LoadPackage.LoadPackageParam) {

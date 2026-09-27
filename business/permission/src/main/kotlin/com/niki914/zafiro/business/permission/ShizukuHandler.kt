@@ -228,7 +228,7 @@ internal class ShizukuHandler(
             isAppLevelGrantable(accessibilityService != null)
 
     companion object {
-        const val TAG = "ShizukuHandler"
+        const val TAG = "niki914_zafiro_ShizukuHandler"
         const val AUTH_TIMEOUT_MILLIS = 30_000L
         const val BINDER_TIMEOUT_MILLIS = 8_000L
         val requestCodeGen = AtomicInteger(1000)

@@ -11,7 +11,7 @@ import de.robv.android.xposed.XC_MethodHook
 class SuppressCleanupHook : SubHook() {
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_SuppressCleanup"
+        const val LOG_TAG = "niki914_zafiro_SuppressCleanup"
     }
 
     override val hookTarget: HookTarget?

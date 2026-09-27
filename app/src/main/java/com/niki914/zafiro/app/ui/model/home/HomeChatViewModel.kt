@@ -581,7 +581,7 @@ class HomeChatViewModel internal constructor(
     }
 
     companion object {
-        private const val LOG_TAG = "niki914_nexus_HomeChatState"
+        private const val LOG_TAG = "niki914_zafiro_HomeChatState"
         private const val DRAFT_SAVE_DEBOUNCE_MS = 350L
     }
 }

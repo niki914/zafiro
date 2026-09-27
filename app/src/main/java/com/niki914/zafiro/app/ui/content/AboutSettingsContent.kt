@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
+import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
@@ -38,6 +39,7 @@ import com.niki914.zafiro.app.ui.model.AboutSettingsViewModel
 import com.niki914.zafiro.app.ui.model.buildIssueUri
 
 private const val ABOUT_SETTINGS_ROW_ID_PREFIX = "about.item."
+private const val LOG_TAG = "niki914_zafiro_AboutSettings"
 
 @Composable
 fun AboutSettingsContent() {
@@ -48,12 +50,17 @@ fun AboutSettingsContent() {
 
     LaunchedEffect(viewModel, uriHandler) {
         viewModel.uiEffect.collect { effect ->
-            when (effect) {
-                is AboutSettingsEffect.OpenUri -> uriHandler.openUri(effect.uri)
-                is AboutSettingsEffect.OpenFeedbackIssue -> {
-                    val body = context.localizedString(effect.bodyTemplateRes, effect.languageTag)
-                    uriHandler.openUri(buildIssueUri(effect.title, body))
+            // 单个 effect 抛异常不能杀掉收集协程，否则后续 effect 全部无人接收（表现为点一次后再也点不动）
+            runCatching {
+                when (effect) {
+                    is AboutSettingsEffect.OpenUri -> uriHandler.openUri(effect.uri)
+                    is AboutSettingsEffect.OpenFeedbackIssue -> {
+                        val body = context.localizedString(effect.bodyTemplateRes, effect.languageTag)
+                        uriHandler.openUri(buildIssueUri(effect.title, body))
+                    }
                 }
+            }.onFailure { throwable ->
+                Logger.w(LOG_TAG, "open effect failed: ${throwable.message}")
             }
         }
     }
@@ -202,7 +209,7 @@ private fun previewAboutSettingsUiState(): AboutSettingsUiState {
             AboutSettingsItemUiState(
                 id = AboutSettingsItemId.AuthorHomepage,
                 titleRes = R.string.ui_settings_about_author_homepage,
-                uri = "https://niki914.github.io/",
+                uri = "https://github.com/niki914",
             ),
             AboutSettingsItemUiState(
                 id = AboutSettingsItemId.Github,

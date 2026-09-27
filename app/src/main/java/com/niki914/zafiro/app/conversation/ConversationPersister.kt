@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  *   本器自然落盘（D3-4，bug 修复）
  */
 object ConversationPersister {
-    private const val LOG_TAG = "niki914_nexus_ConversationPersister"
+    private const val LOG_TAG = "niki914_zafiro_ConversationPersister"
 
     /** 已持久化条数（按会话 id 隔离）。内存态，重启后按 Room 现有条数重建。 */
     private val persistedCountBySession = mutableMapOf<String, Int>()

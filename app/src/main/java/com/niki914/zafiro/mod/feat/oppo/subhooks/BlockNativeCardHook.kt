@@ -25,7 +25,7 @@ class BlockNativeCardHook(
 ) : SubHook() {
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_BlockNativeCard"
+        const val LOG_TAG = "niki914_zafiro_BlockNativeCard"
     }
 
     override val hookTarget: HookTarget?

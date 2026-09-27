@@ -34,7 +34,7 @@ class SettingsViewModel : ComposeMVIViewModel<SettingsIntent, SettingsUiState, S
     override suspend fun handleIntent(intent: SettingsIntent) = Unit
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_SettingsViewModel"
+        private const val LOG_TAG = "niki914_zafiro_SettingsViewModel"
     }
 }
 

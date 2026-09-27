@@ -12,7 +12,7 @@ data class TakeoverDecision(
 )
 
 object TakeoverResolver {
-    private const val LOG_TAG = "niki914_nexus_TakeoverResolver"
+    private const val LOG_TAG = "niki914_zafiro_TakeoverResolver"
 
     fun resolve(
         query: String,

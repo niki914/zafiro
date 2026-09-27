@@ -99,6 +99,6 @@ internal class RootShellHandler(
         get() = this == Permission.ROOT || isAppLevelGrantable(accessibilityService != null)
 
     private companion object {
-        const val TAG = "RootShellHandler"
+        const val TAG = "niki914_zafiro_RootShellHandler"
     }
 }

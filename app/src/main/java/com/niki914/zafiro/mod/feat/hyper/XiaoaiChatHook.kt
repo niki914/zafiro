@@ -20,7 +20,7 @@ class XiaoaiChatHook(
     override val name: String = "XiaoaiChatHook"
 
     private companion object {
-        const val LOG_TAG = "niki914_nexus_XiaoaiChatHook"
+        const val LOG_TAG = "niki914_zafiro_XiaoaiChatHook"
     }
 
     private var renderTextStreamCardHook: RenderTextStreamCardHook? = null

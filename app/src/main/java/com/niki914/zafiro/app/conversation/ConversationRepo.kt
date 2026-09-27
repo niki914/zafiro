@@ -31,7 +31,7 @@ data class ForkResult(
 )
 
 object ConversationRepo {
-    private const val LOG_TAG = "niki914_nexus_ConversationRepo"
+    private const val LOG_TAG = "niki914_zafiro_ConversationRepo"
     private const val SNAPSHOT_VERSION = 1
 
     private val json = Json {

@@ -37,7 +37,7 @@ import com.niki914.zafiro.settings.model.RuntimeTakeoverRuleValidation as Takeov
 import com.niki914.zafiro.settings.model.RuntimeToolValidation as ToolValidation
 
 object XRepo {
-    private const val LOG_TAG = "niki914_nexus_XRepo"
+    private const val LOG_TAG = "niki914_zafiro_XRepo"
 
     val mcp: McpApi = McpApi(this)
     val customPyTools: CustomPyToolApi = CustomPyToolApi(this)
@@ -727,7 +727,7 @@ class LlmConfigsApi internal constructor(
     }
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_LlmConfigs"
+        private const val LOG_TAG = "niki914_zafiro_LlmConfigs"
 
         fun newConfigId(): String {
             return "cfg-" + UUID.randomUUID().toString().replace("-", "").take(12)
@@ -951,7 +951,7 @@ class TakeoverRulesApi internal constructor(
     private val repo: XRepo,
 ) {
     private companion object {
-        const val LOG_TAG = "niki914_nexus_TakeoverRules"
+        const val LOG_TAG = "niki914_zafiro_TakeoverRules"
     }
 
     suspend fun list(): List<TakeoverRule> {

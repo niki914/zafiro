@@ -66,7 +66,7 @@ data class PyExecOutput(
  */
 object PyRuntime {
 
-    private const val LOG_TAG = "niki914_nexus_PyRuntime"
+    private const val LOG_TAG = "niki914_zafiro_PyRuntime"
 
     // 锁死检测的 ping 窗口：与 worker 的 30s 初始化上限对齐，覆盖慢设备冷启动
     // （Python.start 首次可达数十秒）。ping 只是预检优化——真正的锁死由 exec

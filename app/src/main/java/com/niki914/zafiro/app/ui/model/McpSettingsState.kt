@@ -446,7 +446,7 @@ class McpSettingsViewModel :
     }
 
     private companion object {
-        private const val LOG_TAG = "niki914_nexus_McpSettingsViewModel"
+        private const val LOG_TAG = "niki914_zafiro_McpSettingsViewModel"
         val settingsChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     }
 }
