@@ -322,8 +322,8 @@ class ConfigureViewModel internal constructor(
                 configNameInput = providerSpec.brandName,
                 endpointOverrideEnabled = false,
                 endpointInput = providerSpec.officialEndpoint,
-                // Model 无默认值：用户先填 Key，目录拉回后从底单选，或手填
-                modelInput = "",
+                // 个别 Provider 可提供稳定别名作为默认值；仍可在输入框中手动修改
+                modelInput = providerSpec.initialModelId.orEmpty(),
                 apiKeyInput = "",
                 apiKeyVisible = false,
                 protocolWireId = providerSpec.defaultProtocol,
@@ -358,8 +358,8 @@ class ConfigureViewModel internal constructor(
                 configNameInput = providerSpec.brandName,
                 endpointOverrideEnabled = false,
                 endpointInput = providerSpec.officialEndpoint,
-                // Model 无默认值：用户先填 Key，目录拉回后从底单选，或手填
-                modelInput = "",
+                // 个别 Provider 可提供稳定别名作为默认值；仍可在输入框中手动修改
+                modelInput = providerSpec.initialModelId.orEmpty(),
                 apiKeyInput = "",
                 apiKeyVisible = false,
                 protocolWireId = providerSpec.defaultProtocol,
