@@ -5,11 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.os.LocaleListCompat
-import com.niki914.permission.Permission
-import com.niki914.permission.PermissionState
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
 import com.niki914.uikit.infra.component.settings.SettingsRowSpec
@@ -17,7 +14,6 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
-import com.niki914.zafiro.app.PermissionHolder
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.GeneralSettingsDialog
 import com.niki914.zafiro.app.ui.model.GeneralSettingsEffect
@@ -74,25 +70,14 @@ fun GeneralSettingsContent(
     viewModel: GeneralSettingsViewModel = pageViewModel(),
 ) {
     val uiState by viewModel.uiStateFlow.collectAsState()
-    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.sendIntent(GeneralSettingsIntent.Load)
     }
 
-    LaunchedEffect(viewModel, context) {
+    LaunchedEffect(viewModel) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
-                GeneralSettingsEffect.RequestOverlayPermission -> {
-                    val result = PermissionHolder.get(context).request(Permission.OVERLAY)
-                    val granted = result.finalState == PermissionState.GRANTED
-                    viewModel.sendIntent(GeneralSettingsIntent.OnOverlayPermissionResult(granted = granted))
-                }
-                GeneralSettingsEffect.RequestNotificationPermission -> {
-                    val result = PermissionHolder.get(context).request(Permission.NOTIFICATION)
-                    val granted = result.finalState == PermissionState.GRANTED
-                    viewModel.sendIntent(GeneralSettingsIntent.OnNotificationPermissionResult(granted = granted))
-                }
                 is GeneralSettingsEffect.ApplyApplicationLocales -> {
                     AppCompatDelegate.setApplicationLocales(
                         if (effect.languageTag.isBlank()) {

@@ -10,24 +10,14 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.niki914.logging.Logger
-import com.niki914.permission.Permission
-import com.niki914.permission.PermissionManager
-import com.niki914.permission.PermissionState
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionState
+import com.niki914.zafiro.service.requireService
 
 class NotificationChannelManagerImpl(
     private val context: Context,
-    private val permissionManager: PermissionManager? = null,
-    private val isPermissionGrantedProvider: (() -> Boolean)? = null,
 ) : NotificationChannelManager {
-
-    constructor(
-        context: Context,
-        permissionManager: PermissionManager,
-    ) : this(
-        context = context,
-        permissionManager = permissionManager,
-        isPermissionGrantedProvider = null,
-    )
 
     companion object {
         private const val TAG = "NotificationChannelManager"
@@ -83,8 +73,7 @@ class NotificationChannelManagerImpl(
     }
 
     override fun isNotificationPermissionGranted(): Boolean {
-        return isPermissionGrantedProvider?.invoke()
-            ?: (permissionManager?.status(Permission.NOTIFICATION) == PermissionState.GRANTED)
+        return requireService<PermissionManager>().status(Permission.NOTIFICATION) == PermissionState.GRANTED
     }
 
     override suspend fun post(
@@ -93,13 +82,9 @@ class NotificationChannelManagerImpl(
         block: NotificationCompat.Builder.() -> Unit,
     ): Boolean {
         if (!isNotificationPermissionGranted()) {
-            val requestResult = permissionManager?.request(Permission.NOTIFICATION)
-            if (requestResult != null && requestResult.finalState != PermissionState.GRANTED) {
+            val requestResult = requireService<PermissionManager>().request(Permission.NOTIFICATION)
+            if (requestResult.finalState != PermissionState.GRANTED) {
                 Logger.w(TAG, "post skipped: notification permission is not granted after request")
-                return false
-            }
-            if (requestResult == null && !isNotificationPermissionGranted()) {
-                Logger.w(TAG, "post skipped: notification permission is not granted")
                 return false
             }
         }

@@ -92,12 +92,9 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 ## 未完成项目
 
 [] HARD: 将 LLMController、agent-runtime 这样的遗留代码逐渐迁移成便于维护和解耦的 ServiceManager 模式
-[] MEDIUM: 统一整个项目的权限管理（:libs:permission-manager)，这个模块封装了一套权限管理系统，实现了 Root-Shizuku-Dialog-JumpSetting 的降级方案，有待确认的是，是否整个项目都完全通过这个 API 做权限获取
-[] MEDIUM: 统一 :libs:permission-manager 与 :libs:libterm 中 Root、Szk 相关的重复代码
-[] EAZY: 通过 Agent API 构建出其他的 Agent 状态载体 - A - 常驻通知栏
-[] MEDIUM: 通过 Agent API 构建出其他的 Agent 状态载体 - B - 悬浮球
+[] MEDIUM: 统一 :business:permission 与 :libs:libterm 中 Root、Szk 相关的重复代码
 [] MEDIUM: 通过参考开源项目重构宿主业务
-[] HARD: 实现一个 Replay 功能，用户可以录制一段操作，作为工具保存下来，Agent 通过调用这个工具来重放用户的操作。此任务依赖于悬浮球
+[] HARD: 实现一个 Replay 功能，用户可以录制一段操作，作为工具保存下来，Agent 通过调用这个工具来重放用户的操作
 [] EAZY: `Build.VERSION.SDK_INT >= Build.VERSION_CODES.O` 这样的版本相关的无用判断
 [] MEDIUM: 内联包名清理，使用默认参数而放在构造函数里面的成员
 [] HARD: 处理散落的 `TODO`

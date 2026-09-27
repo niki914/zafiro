@@ -5,10 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.app.NotificationCompat
-import com.niki914.permission.Permission
-import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
-import com.niki914.zafiro.app.PermissionHolder
 import com.niki914.zafiro.business.notification.AppNotificationChannel
 import com.niki914.zafiro.business.notification.NotificationChannelManager
 import com.niki914.zafiro.service.requireService
@@ -21,12 +18,6 @@ class IpcRuntimeHostGateway : RuntimeHostGateway {
         uri: String?,
     ): Boolean {
         val context = ContextProvider.await()
-        val pm = PermissionHolder.get(context)
-        if (pm.status(Permission.NOTIFICATION) != PermissionState.GRANTED) {
-            if (pm.request(Permission.NOTIFICATION).finalState != PermissionState.GRANTED) {
-                return false
-            }
-        }
         val notiManager = requireService<NotificationChannelManager>()
         val id = notificationId(title, content, uri)
         return notiManager.post(AppNotificationChannel.Alerts, id) {

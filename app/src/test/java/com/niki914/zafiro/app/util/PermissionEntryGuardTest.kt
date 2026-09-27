@@ -1,19 +1,14 @@
 package com.niki914.zafiro.app.util
 
-import com.niki914.zafiro.runtime.service.AgentRuntimeService
-import android.app.Application
 import java.io.File
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 /**
  * 权限入口统一守卫：业务代码禁止直连原生权限 API。
  *
- * - 允许名单：PermissionManager 门面 + permission-manager 模块内部 + TargetStatus 静默查询的
+ * - 允许名单：PermissionManager 门面 + business:permission 模块内部 + TargetStatus 静默查询的
  *   被调用方（SystemDialogHandler 弹窗、TargetStatus 查询本身）+ libterm（独立演进的终端运行时）。
  * - 私调清单：checkSelfPermission / requestPermissions / 裸 su / settings put / appops set /
  *   Shizuku.requestPermission / libsu Shell / canDrawOverlays 等，出现在允许名单之外即失败。
@@ -21,9 +16,9 @@ import org.robolectric.annotation.Config
  *   ActivityResultContracts 非权限 contract，不在私调清单内。
  *
  * 新增私调时先改需求：要么收编进 PermissionManager，要么把用例加进白名单并在 PR 里说明。
+ *
+ * 纯文本扫描，不碰 Android 框架，所以不要 Robolectric runner：这份网必须在任何 JDK 上都能跑。
  */
-@RunWith(RobolectricTestRunner::class)
-@Config(application = Application::class)
 class PermissionEntryGuardTest {
 
     /** 私调用法 → 允许出现的源码位置（文件后缀 + 行内标记）。 */
@@ -31,7 +26,7 @@ class PermissionEntryGuardTest {
 
     /** 私调用法 → 允许名单。marker 为空表示整文件允许。 */
     private val allowlist: Map<String, List<AllowRule>> = mapOf(
-        // 只读查询只经过 TargetStatus；permission-manager 内部实现
+        // 只读查询只经过 TargetStatus；business:permission 内部实现
         "canDrawOverlays(" to listOf(
             AllowRule("permission/TargetStatus.kt", ""),
         ),
@@ -41,7 +36,7 @@ class PermissionEntryGuardTest {
         ),
         // 系统弹窗的 launcher 调用 + Manifest 文本
         "POST_NOTIFICATIONS" to listOf(
-            AllowRule("permission/UiHandlers.kt", ""),
+            AllowRule("ApplicationServiceImpl.kt", ""),
             AllowRule("permission/TargetStatus.kt", ""),
             AllowRule("MainActivity.kt", "RequestPermission"),
             AllowRule("AndroidManifest.xml", ""),
@@ -51,7 +46,7 @@ class PermissionEntryGuardTest {
             AllowRule("seed_py_launch_wechat.py", ""),
             AllowRule("seed_py_install_apk.py", ""),
         ),
-        // shell 通道授权命令只出现在 permission-manager 内部
+        // shell 通道授权命令只出现在 business:permission 内部
         "settings put secure" to listOf(
             AllowRule("permission/ShellGrants.kt", ""),
         ),
@@ -111,7 +106,7 @@ class PermissionEntryGuardTest {
         val text = service.readText()
         assertTrue(
             "AgentRuntimeService 必须经 PermissionManager 查通知状态",
-            "PermissionHolder" in text && "targetStatus" in text,
+            "PermissionManager" in text && ".status(" in text,
         )
         assertTrue(
             " AgentRuntimeService 禁止直连 checkSelfPermission",
@@ -130,8 +125,8 @@ class PermissionEntryGuardTest {
         ) {
             return true
         }
-        // permission-manager 内部实现就是被收编的正主（含 KDoc 里的方法名引用），整模块豁免
-        if (relative.startsWith("libs/permission-manager/src/main/")) return true
+        // business:permission 内部实现就是被收编的正主（含 KDoc 里的方法名引用），整模块豁免
+        if (relative.startsWith("business/permission/src/main/")) return true
         // 测试源码不在扫描范围（walk 已过滤），此处仅防漏网
         if ("/src/test/" in relative) return true
         return allowlist[pattern].orEmpty().any { rule ->

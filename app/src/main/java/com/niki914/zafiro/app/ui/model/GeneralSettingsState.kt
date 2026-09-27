@@ -1,12 +1,12 @@
 package com.niki914.zafiro.app.ui.model
 
 import com.niki914.logging.Logger
-import com.niki914.permission.Permission
-import com.niki914.permission.PermissionState
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionState
 import com.niki914.uikit.base.ComposeMVIViewModel
-import com.niki914.xposed.api.util.ContextProvider
-import com.niki914.zafiro.app.PermissionHolder
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.service.requireService
 
 sealed interface GeneralSettingsDialog {
     data object Language : GeneralSettingsDialog
@@ -33,9 +33,7 @@ sealed interface GeneralSettingsIntent {
     data object DismissDialog : GeneralSettingsIntent
     data class SelectLanguage(val tag: String) : GeneralSettingsIntent
     data class ToggleFloatingBall(val enabled: Boolean) : GeneralSettingsIntent
-    data class OnOverlayPermissionResult(val granted: Boolean) : GeneralSettingsIntent
     data class ToggleResidentNotification(val enabled: Boolean) : GeneralSettingsIntent
-    data class OnNotificationPermissionResult(val granted: Boolean) : GeneralSettingsIntent
     data class ToggleLoadLastConversation(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleAlwaysShowMessageActions(val enabled: Boolean) : GeneralSettingsIntent
     data class SelectIdleTimeout(val seconds: Long) : GeneralSettingsIntent
@@ -44,29 +42,10 @@ sealed interface GeneralSettingsIntent {
 }
 
 sealed interface GeneralSettingsEffect {
-    data object RequestOverlayPermission : GeneralSettingsEffect
-    data object RequestNotificationPermission : GeneralSettingsEffect
     data class ApplyApplicationLocales(val languageTag: String) : GeneralSettingsEffect
 }
 
-class GeneralSettingsViewModel(
-    private val isOverlayPermissionGranted: suspend () -> Boolean = {
-        val context = ContextProvider.awaitIfAvailable()
-        if (context != null) {
-            PermissionHolder.get(context).status(Permission.OVERLAY) == PermissionState.GRANTED
-        } else {
-            false
-        }
-    },
-    private val isNotificationPermissionGranted: suspend () -> Boolean = {
-        val context = ContextProvider.awaitIfAvailable()
-        if (context != null) {
-            PermissionHolder.get(context).status(Permission.NOTIFICATION) == PermissionState.GRANTED
-        } else {
-            false
-        }
-    },
-) : ComposeMVIViewModel<GeneralSettingsIntent, GeneralSettingsUiState, GeneralSettingsEffect>() {
+class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, GeneralSettingsUiState, GeneralSettingsEffect>() {
 
     override fun initUiState(): GeneralSettingsUiState = GeneralSettingsUiState()
 
@@ -77,9 +56,7 @@ class GeneralSettingsViewModel(
             GeneralSettingsIntent.DismissDialog -> updateState { copy(activeDialog = null) }
             is GeneralSettingsIntent.SelectLanguage -> selectLanguage(intent.tag)
             is GeneralSettingsIntent.ToggleFloatingBall -> toggleFloatingBall(intent.enabled)
-            is GeneralSettingsIntent.OnOverlayPermissionResult -> onOverlayPermissionResult(intent.granted)
             is GeneralSettingsIntent.ToggleResidentNotification -> toggleResidentNotification(intent.enabled)
-            is GeneralSettingsIntent.OnNotificationPermissionResult -> onNotificationPermissionResult(intent.granted)
             is GeneralSettingsIntent.ToggleLoadLastConversation -> toggleLoadLastConversation(intent.enabled)
             is GeneralSettingsIntent.ToggleAlwaysShowMessageActions -> toggleAlwaysShowMessageActions(intent.enabled)
             is GeneralSettingsIntent.SelectIdleTimeout -> selectIdleTimeout(intent.seconds)
@@ -129,52 +106,36 @@ class GeneralSettingsViewModel(
         sendEffect(GeneralSettingsEffect.ApplyApplicationLocales(tag))
     }
 
-    private suspend fun toggleFloatingBall(enabled: Boolean) {
-        if (enabled) {
-            val granted = isOverlayPermissionGranted()
-            if (!granted) {
-                sendEffect(GeneralSettingsEffect.RequestOverlayPermission)
-                return
-            }
-            updateState { copy(floatingBallEnabled = true) }
-            XRepo.setFloatingBallEnabled(true)
-        } else {
-            updateState { copy(floatingBallEnabled = false) }
-            XRepo.setFloatingBallEnabled(false)
-        }
+    /**
+     * 权限门：先静默查，缺了才跑默认链。申请不需要 UI 层参与（Activity 由
+     * ApplicationService 提供），所以它是个挂起端口，不是 effect。
+     */
+    private suspend fun ensurePermission(permission: Permission): Boolean {
+        val pm = requireService<PermissionManager>()
+        return pm.status(permission) == PermissionState.GRANTED ||
+                pm.request(permission).finalState == PermissionState.GRANTED
     }
 
-    private suspend fun onOverlayPermissionResult(granted: Boolean) {
-        if (granted) {
-            updateState { copy(floatingBallEnabled = true) }
-            XRepo.setFloatingBallEnabled(true)
-        } else {
+    private suspend fun toggleFloatingBall(enabled: Boolean) {
+        if (!enabled) {
             updateState { copy(floatingBallEnabled = false) }
+            XRepo.setFloatingBallEnabled(false)
+            return
         }
+        if (!ensurePermission(Permission.OVERLAY)) return
+        updateState { copy(floatingBallEnabled = true) }
+        XRepo.setFloatingBallEnabled(true)
     }
 
     private suspend fun toggleResidentNotification(enabled: Boolean) {
-        if (enabled) {
-            val granted = isNotificationPermissionGranted()
-            if (!granted) {
-                sendEffect(GeneralSettingsEffect.RequestNotificationPermission)
-                return
-            }
-            updateState { copy(residentNotificationEnabled = true) }
-            XRepo.setResidentNotificationEnabled(true)
-        } else {
+        if (!enabled) {
             updateState { copy(residentNotificationEnabled = false) }
             XRepo.setResidentNotificationEnabled(false)
+            return
         }
-    }
-
-    private suspend fun onNotificationPermissionResult(granted: Boolean) {
-        if (granted) {
-            updateState { copy(residentNotificationEnabled = true) }
-            XRepo.setResidentNotificationEnabled(true)
-        } else {
-            updateState { copy(residentNotificationEnabled = false) }
-        }
+        if (!ensurePermission(Permission.NOTIFICATION)) return
+        updateState { copy(residentNotificationEnabled = true) }
+        XRepo.setResidentNotificationEnabled(true)
     }
 
     private suspend fun toggleLoadLastConversation(enabled: Boolean) {
