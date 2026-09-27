@@ -28,7 +28,9 @@ jobs:
           python-version: '3.11'   # Chaquopy buildPython requirement
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
