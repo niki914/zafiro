@@ -2,7 +2,6 @@ package com.niki914.zafiro.app.ui.model.home
 
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
-import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.zafiro.api.Agent
@@ -20,6 +19,7 @@ import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.conversation.ForkKind
+import com.niki914.zafiro.app.conversation.ForkResult
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.business.agent.turnIdAt
 import com.niki914.zafiro.service.installService
@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.asStateFlow
 
 internal fun fixture(
     store: FakeHomeConversationStore = FakeHomeConversationStore(),
-    history: List<Message> = emptyList(),
 ): Fixture {
     val agent = FakeHomeAgent(store)
     installService<Agent>(agent)
@@ -40,7 +39,6 @@ internal fun fixture(
             conversations = store,
             textPacer = TextPacer(delayFn = {}),
             thinkingPacer = TextPacer(delayFn = {}),
-            historySnapshot_Tmp = { history },
         ),
     )
 }
@@ -228,10 +226,20 @@ internal class FakeHomeConversationStore(
         records[id]?.let { records[id] = it.copy(snapshot = snapshot.copy(id = id)) }
     }
 
-    override suspend fun forkConversation(sourceId: String, keepEntryCount: Int, kind: ForkKind): String {
-        val source = records.getValue(sourceId)
-        val entries = ConversationFormatter.projectLeaf(source.snapshot.entries, source.snapshot.leafId)
-            .take(keepEntryCount)
+    override suspend fun forkAtTurn(sourceId: String, turnIndex: Int, kind: ForkKind): ForkResult? {
+        val source = records[sourceId] ?: return null
+        val projected = ConversationFormatter.projectLeaf(source.snapshot.entries, source.snapshot.leafId)
+        val userEntryIndex = projected.withIndex()
+            .filter { (_, entry) -> entry.message is Message.User }
+            .let { users -> users.getOrNull(turnIndex)?.index ?: -1 }
+        if (userEntryIndex < 0) return null
+        val keepEntryCount = when (kind) {
+            ForkKind.Fork -> (userEntryIndex + 1 until projected.size)
+                .firstOrNull { projected[it].message is Message.User }
+                ?: projected.size
+            ForkKind.Regenerate, ForkKind.Rewind -> userEntryIndex
+        }
+        val entries = projected.take(keepEntryCount)
         val prefix = when (kind) {
             ForkKind.Fork -> "Fork · "
             ForkKind.Regenerate -> "Regenerate · "
@@ -243,7 +251,15 @@ internal class FakeHomeConversationStore(
             draftText = "",
             snapshot = SessionSnapshot(id, entries.lastOrNull()?.id, 1, entries),
         )
-        return id
+        if (kind == ForkKind.Fork) return ForkResult(id)
+        val userMessage = projected[userEntryIndex].message as Message.User
+        return ForkResult(
+            newConversationId = id,
+            promptText = userMessage.content
+                .filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text },
+            attachments = userMessage.content
+                .filterIsInstance<ContentBlock.Image>().map { Attachment(it.path, it.mimeType) },
+        )
     }
 }
 

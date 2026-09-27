@@ -377,12 +377,6 @@ object LLMController {
         )
     }
 
-    /**
-     * 当前会话树投影消息列表（fork/regen 的 User 定位用，T3）。
-     */
-    suspend fun historySnapshot(): List<Message> =
-        okia?.conversation?.value?.history?.map { it.message }.orEmpty()
-
     fun stream(
         query: String,
         images: List<ContentBlock.Image> = emptyList(),

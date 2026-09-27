@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.ui.model.home
 
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ForkKind
+import com.niki914.zafiro.app.conversation.ForkResult
 import com.niki914.zafiro.chat.LlmErrorCode
 
 internal interface HomeConversationStore {
@@ -14,7 +15,8 @@ internal interface HomeConversationStore {
 
     // TODO(收进 Agent)：历史派生操作（reGenerate / fork / rewind）本轮留在业务侧自己组合
     //  fork（仓储）→ load（Agent）→ stream（Agent）。契约暂无 fork / delete 命令，为此不改。
-    suspend fun forkConversation(sourceId: String, keepEntryCount: Int, kind: ForkKind): String
+    //  截断点与回填内容由仓储按回合计算，UI 侧不见底层条目与 okia 消息。
+    suspend fun forkAtTurn(sourceId: String, turnIndex: Int, kind: ForkKind): ForkResult?
 }
 
 

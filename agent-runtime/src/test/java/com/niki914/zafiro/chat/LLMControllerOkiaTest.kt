@@ -342,8 +342,8 @@ class LLMControllerOkiaTest {
         LLMController.openSession(snapshot)
 
         assertEquals("session-restored", LLMController.currentConversation.value?.id)
-        val texts = LLMController.historySnapshot().map { message ->
-            when (message) {
+        val texts = LLMController.currentConversation.value?.history.orEmpty().map { entry ->
+            when (val message = entry.message) {
                 is Message.User -> message.content
                     .filterIsInstance<ContentBlock.Text>().map { it.text }.joinToString("\n")
 
