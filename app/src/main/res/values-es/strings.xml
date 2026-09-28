@@ -47,6 +47,11 @@
     </plurals>
     <string name="ui_home_send_content_description">Enviar mensaje</string>
     <string name="ui_home_add_image_content_description">Añadir imagen</string>
+    <string name="ui_home_attach_sheet_title">Añadir a la conversación</string>
+    <string name="ui_home_attach_photos">Fotos</string>
+    <string name="ui_home_attach_camera">Cámara</string>
+    <string name="ui_home_attach_file">Archivo</string>
+    <string name="ui_home_attach_folder">Carpeta</string>
     <string name="ui_home_image_remove_content_description">Eliminar imagen</string>
     <string name="ui_home_scroll_to_bottom_content_description">Ir al final</string>
     <string name="ui_home_stop_content_description">Detener generación</string>

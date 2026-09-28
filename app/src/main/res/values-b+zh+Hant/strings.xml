@@ -46,6 +46,11 @@
     </plurals>
     <string name="ui_home_send_content_description">傳送訊息</string>
     <string name="ui_home_add_image_content_description">添加圖片</string>
+    <string name="ui_home_attach_sheet_title">加入對話</string>
+    <string name="ui_home_attach_photos">照片</string>
+    <string name="ui_home_attach_camera">相機</string>
+    <string name="ui_home_attach_file">檔案</string>
+    <string name="ui_home_attach_folder">資料夾</string>
     <string name="ui_home_image_remove_content_description">移除圖片</string>
     <string name="ui_home_scroll_to_bottom_content_description">滾動到底部</string>
     <string name="ui_home_stop_content_description">停止生成</string>

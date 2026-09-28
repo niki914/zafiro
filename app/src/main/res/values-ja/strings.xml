@@ -46,6 +46,11 @@
     </plurals>
     <string name="ui_home_send_content_description">メッセージを送信</string>
     <string name="ui_home_add_image_content_description">画像を追加</string>
+    <string name="ui_home_attach_sheet_title">会話に追加</string>
+    <string name="ui_home_attach_photos">写真</string>
+    <string name="ui_home_attach_camera">カメラ</string>
+    <string name="ui_home_attach_file">ファイル</string>
+    <string name="ui_home_attach_folder">フォルダ</string>
     <string name="ui_home_image_remove_content_description">画像を削除</string>
     <string name="ui_home_scroll_to_bottom_content_description">一番下へスクロール</string>
     <string name="ui_home_stop_content_description">生成を停止</string>

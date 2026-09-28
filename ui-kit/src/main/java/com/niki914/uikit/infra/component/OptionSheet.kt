@@ -92,7 +92,7 @@ fun OptionRow(
 ) {
     // 选中态 = 对比色底 + G2 圆角框，文字换 onContainer 保可读；未选中透明。
     // clip 保证按下底色与选中底色同形状（SettingsItemSurface 自身无 shape 参数）。
-    val highlightShape = G2FieldShape(16.dp)
+    val highlightShape = G2FieldShape(20.dp)
     SettingsItemSurface(
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),

@@ -1,6 +1,12 @@
 package com.niki914.zafiro.app.ui.content
 
 import android.content.ClipData
+import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -39,8 +45,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -81,6 +91,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
@@ -88,6 +99,8 @@ import com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.uikit.infra.component.OptionRow
+import com.niki914.uikit.infra.component.OptionSheet
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
@@ -122,6 +135,9 @@ import kotlinx.coroutines.launch
 private var composerAutoFocusDone = false
 private const val AUTO_FOCUS_MAX_ATTEMPTS = 20
 private const val AUTO_FOCUS_RETRY_INTERVAL_MILLIS = 150L
+
+/** 附件入口日志 TAG（Step 1 只打日志验收链路，见 TASK.md D18）。 */
+private const val ATTACH_LOG_TAG = "niki914_zafiro_Attach"
 
 @Composable
 fun HomePageContent(
@@ -545,6 +561,13 @@ private fun HomePageContentBody(
     val bottomClearance = composerBottomPadding + composerHeight.value + composerGap
     val density = LocalDensity.current
 
+    // 附件入口：加号 → 选项单（Photos / Camera / File / Folder）。
+    // Step 1 只打通「入口能拉起、能拿到结果」这一段：除 Photos 仍走既有图片链路外，
+    // Camera / File / Folder 一律只打日志即止，不落 Draft、不进 UI。见 TASK.md D18。
+    val context = LocalContext.current
+    var attachSheetVisible by remember { mutableStateOf(false) }
+    var pendingCaptureUri by remember { mutableStateOf<Uri?>(null) }
+
     // 系统图片选择器（photo picker，无权限）：选图 → ingest 落盘 → pendingImages
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -552,6 +575,29 @@ private fun HomePageContentBody(
         if (uri != null) {
             onImageAttached(uri.toString())
         }
+    }
+
+    // SAF 文档 / 目录选择器（Step 1：只记录返回的 content uri）
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        Logger.d(ATTACH_LOG_TAG, "file picked: $uri")
+    }
+    val folderPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        Logger.d(ATTACH_LOG_TAG, "folder picked: $uri")
+    }
+
+    // 系统相机：拍完拿到的是我们预先插进 MediaStore 的目标 uri
+    val takePicture = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+    ) { success ->
+        val uri = pendingCaptureUri
+        pendingCaptureUri = null
+        Logger.d(ATTACH_LOG_TAG, "camera captured: success=$success uri=$uri")
+        // Step 1 只验证链路：拍完即删掉临时记录，不把一次性拍摄留在相册里
+        uri?.let { runCatching { context.contentResolver.delete(it, null, null) } }
     }
 
     Box(
@@ -652,11 +698,7 @@ private fun HomePageContentBody(
                 onStopClick = onStopClick,
                 isGenerating = uiState.isGenerating,
                 pendingImages = pendingImages,
-                onAttachImageClick = {
-                    photoPicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                },
+                onAttachImageClick = { attachSheetVisible = true },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .onFocusChanged { focusState ->
@@ -726,7 +768,72 @@ private fun HomePageContentBody(
                 )
             }
         }
+
+        OptionSheet(
+            visible = attachSheetVisible,
+            onDismissRequest = { attachSheetVisible = false },
+            title = stringResource(R.string.ui_home_attach_sheet_title),
+        ) { dismissThen ->
+            OptionRow(
+                title = stringResource(R.string.ui_home_attach_photos),
+                leadingContent = { Icon(Icons.Default.Image, contentDescription = null) },
+                onClick = {
+                    dismissThen {
+                        photoPicker.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
+                    }
+                },
+            )
+            // 相机链路要 MediaStore 的 RELATIVE_PATH / IS_PENDING（API 29+），低版本不出现该项
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                OptionRow(
+                    title = stringResource(R.string.ui_home_attach_camera),
+                    leadingContent = { Icon(Icons.Default.PhotoCamera, contentDescription = null) },
+                    onClick = {
+                        dismissThen {
+                            val uri = createCameraOutputUri(context)
+                            if (uri == null) {
+                                Logger.w(ATTACH_LOG_TAG, "camera: output uri unavailable")
+                            } else {
+                                pendingCaptureUri = uri
+                                takePicture.launch(uri)
+                            }
+                        }
+                    },
+                )
+            }
+            OptionRow(
+                title = stringResource(R.string.ui_home_attach_file),
+                leadingContent = { Icon(Icons.Default.Description, contentDescription = null) },
+                onClick = { dismissThen { filePicker.launch(arrayOf("*/*")) } },
+            )
+            OptionRow(
+                title = stringResource(R.string.ui_home_attach_folder),
+                leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
+                onClick = { dismissThen { folderPicker.launch(null) } },
+            )
+        }
     }
+}
+
+/**
+ * 相机的输出目标：往 MediaStore 插一条 pending 记录交给系统相机写。
+ * 只有 API 29+ 有 RELATIVE_PATH / IS_PENDING，低版本返回 null
+ * （相机项本身也只在 29+ 出现，见 TASK.md D13）。
+ * 记录对外不可见，由调用方用完后（无论成败）删除。
+ */
+private fun createCameraOutputUri(context: Context): Uri? {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+    val values = ContentValues().apply {
+        put(MediaStore.Images.Media.DISPLAY_NAME, "zafiro_capture_${System.currentTimeMillis()}.jpg")
+        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/Zafiro")
+        put(MediaStore.Images.Media.IS_PENDING, 1)
+    }
+    return context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
 }
 
 /**
