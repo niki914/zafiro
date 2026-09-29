@@ -35,6 +35,7 @@ fun ConfigurePageContent(
     onSupportsImagesChange: (Boolean) -> Unit = {},
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit = {},
+    onMaxTokensChange: (String) -> Unit = {},
     onComplete: () -> Unit,
     onConfirmEndpointMismatch: () -> Unit = {},
     onCancelEndpointMismatch: () -> Unit = {},
@@ -96,6 +97,7 @@ fun ConfigurePageContent(
             onSupportsImagesChange = onSupportsImagesChange,
             onProtocolSelected = onProtocolSelected,
             onThinkingLevelSelected = onThinkingLevelSelected,
+            onMaxTokensChange = onMaxTokensChange,
         )
     }
 

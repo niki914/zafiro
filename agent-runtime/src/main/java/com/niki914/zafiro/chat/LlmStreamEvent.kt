@@ -86,6 +86,7 @@ enum class LlmErrorCode {
     HookFailed,
     ToolExecutionFailed,
     IdleTimeout,
+    OutputTruncated,
 }
 
 data class ToolCallStatus(

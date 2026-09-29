@@ -754,4 +754,65 @@ class RealAgentLoopToolingTest {
         // 第二轮：末尾是 ToolResult（改写只作用于第一轮，不反复改写后续历史）
         assertFalse(mapper.builtHistories[1].last() is Message.User)
     }
+
+    // ── 截断（Length）回合的未执行工具调用 ──────────────────────────────
+
+    @Test
+    fun truncatedLengthTurnFailsToolCallsWithoutExecuting() = runTest {
+        val executor = RecordingToolExecutor()
+        val registry = DefaultToolRegistry().apply { register(localTool("tool"), executor) }
+        val committed = mutableListOf<List<Message>>()
+        // 参数被上限切断：JSON 不完整
+        val mapper = FakeProtocolMapper(
+            listOf(
+                listOf(
+                    ProtocolEvent.ToolCallReady("call1", "tool", "{\"q\":1"),
+                    ProtocolEvent.Completed(stopReason = StopReason.Length)
+                )
+            )
+        )
+        val emitted = mutableListOf<TurnEvent>()
+
+        val result = runLoop(
+            loopRequest(
+                emptyList(),
+                toolRegistry = registry,
+                onCommit = { committed += it }
+            ).copy(protocolMapper = mapper),
+            emitted
+        )
+
+        // 回合终态仍是 Length（UI 据此出「回复被切断」卡）
+        assertEquals(TurnResult.Completed(CompletionReason.Length), result)
+        // 截断参数不执行
+        assertTrue("truncated tool call must not run", executor.calls.isEmpty())
+        // 树尾必须闭合：已 commit 的 ToolCall 有配对 ToolResult
+        val toolResults = committed.flatten().filterIsInstance<Message.ToolResult>()
+        assertEquals(listOf("call1"), toolResults.map { it.callId })
+        val outcome = toolResults.single().outcome
+        assertTrue(outcome is ToolCallOutcome.Failure)
+        assertTrue((outcome as ToolCallOutcome.Failure).message.contains("output limit"))
+        // 事件侧结算：UI 工具块从转圈切到失败
+        assertEquals(1, emitted.count { it is TurnEvent.ToolFailed })
+    }
+
+    @Test
+    fun stopReasonStopWithToolCallsStillExecutesThem() = runTest {
+        val executor = RecordingToolExecutor()
+        val registry = DefaultToolRegistry().apply { register(localTool("tool"), executor) }
+        val mapper = FakeProtocolMapper(
+            listOf(
+                listOf(
+                    ProtocolEvent.ToolCallReady("call1", "tool", "{\"q\":1}"),
+                    ProtocolEvent.Completed(stopReason = StopReason.Stop)
+                ),
+                listOf(ProtocolEvent.Completed(stopReason = StopReason.Stop))
+            )
+        )
+
+        runLoop(loopRequest(emptyList(), toolRegistry = registry).copy(protocolMapper = mapper))
+
+        // 没有任何截断迹象：照常执行（否则同样会留下未闭合调用）
+        assertEquals("{\"q\":1}", executor.calls.single().argumentsJson)
+    }
 }

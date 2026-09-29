@@ -29,6 +29,8 @@ data class SavedLlmConfig(
     val proxy: String,
     /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: String = "",
+    /** 单次输出上限（max_output_tokens / max_tokens）；0/缺键 = 未设置，由 gateway 落默认值。 */
+    val maxTokens: Int = 0,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 )
@@ -82,6 +84,7 @@ internal object LlmConfigsSettingsCodec {
             supportsImages = obj.boolean(SUPPORTS_IMAGES_KEY),
             proxy = obj.string(PROXY_KEY),
             thinkingLevel = obj.string(THINKING_LEVEL_KEY),
+            maxTokens = obj.long(MAX_TOKENS_KEY, 0L).toInt(),
             createdAt = obj.long(CREATED_AT_KEY, 0L),
             updatedAt = obj.long(UPDATED_AT_KEY, 0L),
         )
@@ -100,6 +103,7 @@ internal object LlmConfigsSettingsCodec {
                 SUPPORTS_IMAGES_KEY to JsonPrimitive(config.supportsImages),
                 PROXY_KEY to JsonPrimitive(config.proxy),
                 THINKING_LEVEL_KEY to JsonPrimitive(config.thinkingLevel),
+                MAX_TOKENS_KEY to JsonPrimitive(config.maxTokens),
                 CREATED_AT_KEY to JsonPrimitive(config.createdAt),
                 UPDATED_AT_KEY to JsonPrimitive(config.updatedAt),
             )
@@ -127,6 +131,7 @@ internal object LlmConfigsSettingsCodec {
     private const val SUPPORTS_IMAGES_KEY = "supports_images"
     private const val PROXY_KEY = "proxy"
     private const val THINKING_LEVEL_KEY = "thinking_level"
+    private const val MAX_TOKENS_KEY = "max_tokens"
     private const val CREATED_AT_KEY = "created_at"
     private const val UPDATED_AT_KEY = "updated_at"
 }

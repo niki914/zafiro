@@ -5,6 +5,7 @@ import com.niki914.okia.event.StopCause
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.StopReason
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
@@ -433,6 +434,22 @@ class LlmStreamEventMapperTest {
             0L,
                     )
         assertEquals(LlmStreamEvent.Completed, result)
+    }
+
+    @Test
+    fun `TurnCompleted with Length maps to OutputTruncated error`() {
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.TurnCompleted(
+                AssistantMessage(
+                    content = listOf(ContentBlock.Text("cut off mid-sen")),
+                    stopReason = StopReason.Length,
+                )
+            ),
+            0L,
+                    )
+        val mapped = result as LlmStreamEvent.Error
+        assertNull(mapped.message)
+        assertEquals(LlmErrorCode.OutputTruncated, mapped.code)
     }
 
     @Test

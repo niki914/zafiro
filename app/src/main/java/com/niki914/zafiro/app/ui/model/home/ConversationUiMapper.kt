@@ -85,4 +85,5 @@ private fun TurnFailureCode?.toLlmErrorCode(): LlmErrorCode? = when (this) {
     TurnFailureCode.HookFailed -> LlmErrorCode.HookFailed
     TurnFailureCode.ToolExecutionFailed -> LlmErrorCode.ToolExecutionFailed
     TurnFailureCode.IdleTimeout -> LlmErrorCode.IdleTimeout
+    TurnFailureCode.OutputTruncated -> LlmErrorCode.OutputTruncated
 }

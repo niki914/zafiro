@@ -60,6 +60,8 @@
     <string name="ui_home_error_config_required_body">請前往填寫模型配置。</string>
     <string name="ui_home_error_network_title">網路異常</string>
     <string name="ui_home_error_idle_timeout_title">回應逾時</string>
+    <string name="ui_home_error_output_truncated_title">輸出被截斷</string>
+    <string name="ui_home_error_output_truncated_body">單次輸出達到上限，回答未完成。請在模型設定中調大 Max Tokens 後重新生成。</string>
     <string name="ui_home_error_retry_exhausted_title">多次自動重試後仍失敗</string>
     <string name="ui_home_error_internal_title">內部錯誤</string>
     <string name="ui_home_retrying_title">網路波動，正在重試…</string>
@@ -383,6 +385,10 @@
     <string name="ui_settings_configure_protocol_hint">切換協議後，請確認端點與協議匹配。</string>
     <string name="ui_settings_configure_thinking_label">思考強度</string>
     <string name="ui_settings_configure_thinking_hint">留空（Provider Default）時使用 Provider 預設行為；過高時若 Provider 拒絕請自行調低。</string>
+    <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
+    <string name="ui_settings_configure_max_tokens_placeholder">例如：%1$d</string>
+    <string name="ui_settings_configure_max_tokens_hint">單次請求最多輸出多少 token。留空使用預設值；伺服器回報輸出長度超限時請調小。</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">請填寫不小於 256 的整數</string>
     <string name="error_mcp_load_failed">讀取 MCP 配置失敗</string>
     <string name="error_mcp_save_failed">儲存 MCP 配置失敗</string>
     <string name="error_mcp_delete_failed">刪除 MCP 配置失敗</string>

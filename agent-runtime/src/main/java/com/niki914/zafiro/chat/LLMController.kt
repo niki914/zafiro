@@ -258,6 +258,7 @@ object LLMController {
             supportsImages = llmConfig.supportsImages,
             idleTimeoutSeconds = llmConfig.idleTimeoutSeconds,
             retryMaxAttempts = llmConfig.retryMaxAttempts,
+            maxTokens = llmConfig.maxTokens,
             thinkingLevel = llmConfig.thinkingLevel.takeIf(String::isNotBlank)
                 ?.let(ThinkingLevel::fromWire),
         )
@@ -273,6 +274,8 @@ object LLMController {
             idleTimeoutSeconds = configWithoutRuntimePrompt.idleTimeoutSeconds
                 ?: NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts)
+            // 最大输出长度热更新：与超时/重试同层（实例复用时跟随设置变化）
+            maxTokens = configWithoutRuntimePrompt.maxTokens
             // 思考强度热更新：与超时/重试同层（实例复用时跟随设置变化）
             thinkingLevel = configWithoutRuntimePrompt.thinkingLevel
             // 代理热更新：buildLoopRequest 每次请求读 config.proxy 并同步到引擎
@@ -526,8 +529,10 @@ object LLMController {
                 }
                 // 流终态守卫：保证流结束前已发过 Error 或 Completed——
                 // 最初「无反馈卡住」bug 的直接防御（异常路径漏发终态时，
-                // UI 不能停在无限生成态）
-                if (!streamTerminated) {
+                // UI 不能停在无限生成态）。
+                // Aborted（用户停止）例外：停止不是错误，终态由消费方按打断结算；
+                // 在这里补发 Error 会只因为用户点了停止就冒一张错误卡。
+                if (!streamTerminated && result !is TurnResult.Aborted) {
                     Logger.w(
                         LOG_TAG,
                         "stream ended without terminal event, emitting guard error " +
@@ -666,6 +671,8 @@ object LLMController {
             // null = 不超时（General Settings 提供「不限时」选项）
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
+            // 单次输出上限：不设就用 okia 骨架的 4096，长回答/大工具参数会被切断
+            maxTokens = config.maxTokens
             toolRegistry = this@LLMController.toolRegistry
             imageLoader = this@LLMController.imageLoader
             imageSaver = saver
