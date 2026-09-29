@@ -4,6 +4,7 @@ import com.niki914.logging.Logger
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.StopReason
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.zafiro.chat.RetryableErrorClassifier
 import com.niki914.zafiro.chat.LlmErrorCode
@@ -91,7 +92,17 @@ object LlmStreamEventMapper {
             is TurnEvent.TurnCompleted -> {
                 accumulatedText = ""
                 resetThinkingState()
-                LlmStreamEvent.Completed
+                // Length = 输出被上限截断：走错误通道（错误卡按 code 渲染「去调大最大输出
+                // 长度」），而不是 Completed——否则用户只看到回答/思考突然停住。
+                if (event.message.stopReason == StopReason.Length) {
+                    LlmStreamEvent.Error(
+                        message = null,
+                        throwable = null,
+                        code = LlmErrorCode.OutputTruncated,
+                    )
+                } else {
+                    LlmStreamEvent.Completed
+                }
             }
 
             is TurnEvent.TurnFailed -> {

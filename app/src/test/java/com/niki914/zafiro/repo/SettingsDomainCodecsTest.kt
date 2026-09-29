@@ -41,6 +41,7 @@ class SettingsDomainCodecsTest {
                     protocol = "openai-responses",
                     thinkingLevel = "high",
                     proxy = "http://proxy",
+                    maxTokens = 32_000,
                     createdAt = 1L,
                     updatedAt = 2L,
                 ),
@@ -60,6 +61,18 @@ class SettingsDomainCodecsTest {
         val parsed = LlmConfigsSettingsCodec.encode(document).let(LlmConfigsSettingsCodec::parse)
 
         assertEquals(document, parsed)
+    }
+
+    @Test
+    fun llmConfigsDocumentLegacyConfigWithoutMaxTokensParsesAsUnset() {
+        // 老数据（无 max_tokens 键）：0 = 未设置，由 gateway 落默认值
+        val json = """
+            {"active_id":"cfg-a","configs":[{"id":"cfg-a","name":"Primary","provider":"openai","endpoint":"https://api.example","api_key":"k","model":"m","protocol":"openai-responses","supports_images":true,"proxy":"","thinking_level":"high","created_at":1,"updated_at":2}]}
+        """.trimIndent()
+
+        val config = LlmConfigsSettingsCodec.parse(json).configs.single()
+
+        assertEquals(0, config.maxTokens)
     }
 
     @Test

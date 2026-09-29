@@ -125,6 +125,12 @@ internal fun toAssistantErrorUi(message: String?, code: LlmErrorCode?, attempts:
             body = message?.trim()?.ifEmpty { null },
         )
 
+        // 输出被上限截断：正文告诉用户去哪里调大（新设置项），不说是网络/内部问题
+        LlmErrorCode.OutputTruncated -> AssistantErrorUi(
+            titleRes = R.string.ui_home_error_output_truncated_title,
+            bodyRes = R.string.ui_home_error_output_truncated_body,
+        )
+
         // 内部错误（我们的问题 / 未知）：标题分类 + 原始 message 透传，空则兜底
         LlmErrorCode.TurnConflict, LlmErrorCode.HookFailed,
         LlmErrorCode.ToolExecutionFailed, null,

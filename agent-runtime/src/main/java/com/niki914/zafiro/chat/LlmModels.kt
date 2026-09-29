@@ -20,6 +20,7 @@ data class ResolvedLlmConfig(
     val supportsImages: Boolean = false,
     val idleTimeoutSeconds: Long? = 60L,
     val retryMaxAttempts: Int = 3,
+    val maxTokens: Int,
     /** 思考强度；null = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: ThinkingLevel? = null,
 )

@@ -60,6 +60,8 @@
     <string name="ui_home_error_config_required_body">请前往填写模型配置。</string>
     <string name="ui_home_error_network_title">网络异常</string>
     <string name="ui_home_error_idle_timeout_title">响应超时</string>
+    <string name="ui_home_error_output_truncated_title">输出被截断</string>
+    <string name="ui_home_error_output_truncated_body">单次输出达到上限，回答未完成。请在模型配置中调大 Max Tokens 后重新生成。</string>
     <string name="ui_home_error_retry_exhausted_title">多次自动重试后仍失败</string>
     <string name="ui_home_error_internal_title">内部错误</string>
     <string name="ui_home_retrying_title">网络波动，正在重试…</string>
@@ -420,6 +422,10 @@
     <string name="ui_settings_configure_protocol_hint">切换协议后，请确认端点与协议匹配。</string>
     <string name="ui_settings_configure_thinking_label">思考强度</string>
     <string name="ui_settings_configure_thinking_hint">留空（Provider Default）时使用 Provider 默认行为；过高时若 Provider 拒绝请自行调低。</string>
+    <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
+    <string name="ui_settings_configure_max_tokens_placeholder">例如：%1$d</string>
+    <string name="ui_settings_configure_max_tokens_hint">单次请求最多输出多少 token。留空使用默认值；服务端报输出长度超限时调小。</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">请填写不小于 256 的整数</string>
 
     <string name="ui_settings_appearance">外观</string>
     <string name="ui_theme_mode_system">跟随系统</string>

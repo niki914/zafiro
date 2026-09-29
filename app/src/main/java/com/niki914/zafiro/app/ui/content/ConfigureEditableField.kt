@@ -6,4 +6,5 @@ enum class ConfigureEditableField {
     Model,
     ApiKey,
     Proxy,
+    MaxTokens,
 }

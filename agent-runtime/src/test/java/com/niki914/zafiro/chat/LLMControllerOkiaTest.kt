@@ -4,6 +4,7 @@ import com.niki914.okia.Okia
 import com.niki914.okia.OkiaDependencies
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.event.StopCause
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.AgentLoop
 import com.niki914.okia.loop.CompletionReason
@@ -254,6 +255,75 @@ class LLMControllerOkiaTest {
         assertTrue(snapshot.systemPrompt.orEmpty().contains("Base"))
     }
 
+    // ── 单次输出上限（maxTokens）：装配 + 热更新 ──────────────────────────
+
+    @Test
+    fun stream_appliesConfiguredMaxTokensToRequestSnapshot() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(llmConfig = validLlmConfig(maxTokens = 64_000))
+        )
+        val capturedSnapshots = mutableListOf<com.niki914.okia.protocol.RequestSnapshot>()
+        val loop = object : AgentLoop {
+            override suspend fun run(
+                request: LoopRequest,
+                onEvent: suspend (TurnEvent) -> Unit
+            ): TurnResult {
+                capturedSnapshots += request.snapshot
+                return TurnResult.Completed(CompletionReason.Stop)
+            }
+        }
+        LLMController.okiaFactory =
+            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
+
+        LLMController.stream("hello").toList()
+
+        // 设置页填的输出上限必须原样进请求快照（不是 okia 骨架的 4096）
+        assertEquals(64_000, capturedSnapshots.single().maxTokens)
+    }
+
+    @Test
+    fun stream_hotUpdatesMaxTokensWithoutColdStart() = runTest {
+        val gateway = installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(llmConfig = validLlmConfig(maxTokens = 64_000))
+        )
+        val capturedSnapshots = mutableListOf<com.niki914.okia.protocol.RequestSnapshot>()
+        val loop = object : AgentLoop {
+            override suspend fun run(
+                request: LoopRequest,
+                onEvent: suspend (TurnEvent) -> Unit
+            ): TurnResult {
+                capturedSnapshots += request.snapshot
+                return TurnResult.Completed(CompletionReason.Stop)
+            }
+        }
+        LLMController.okiaFactory =
+            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
+
+        LLMController.stream("hello").toList()
+        // 改设置：同一会话实例复用（不冷启），下一轮请求必须看到新值
+        gateway.llmConfig = gateway.llmConfig.copy(maxTokens = 32_000)
+        LLMController.stream("again").toList()
+
+        assertEquals(listOf(64_000, 32_000), capturedSnapshots.map { it.maxTokens })
+    }
+
+    // ── 终态：用户停止不发错误事件 ────────────────────────────────────────
+
+    @Test
+    fun stream_userStopDoesNotEmitErrorEvent() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
+        )
+        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ ->
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Aborted(StopCause.UserStop)))
+        }
+
+        val events = LLMController.stream("hello").toList()
+
+        // 停止不是错误：终态由 Agent 按打断结算，这里不能补错误卡（旧守卫会补一张「内部错误」）
+        assertTrue(events.none { it is LlmStreamEvent.Error })
+    }
+
     // ── 并发：活跃回合中二次 send → TurnConflict ────────────────────────────
 
     @Test
@@ -430,6 +500,7 @@ class LLMControllerOkiaTest {
         prompt: String = "Base prompt",
         idleTimeoutSeconds: Long? = 60L,
         retryMaxAttempts: Int = 3,
+        maxTokens: Int = 128_000,
     ): RuntimeLlmConfig {
         return RuntimeLlmConfig(
             provider = provider,
@@ -439,6 +510,7 @@ class LLMControllerOkiaTest {
             prompt = prompt,
             idleTimeoutSeconds = idleTimeoutSeconds,
             retryMaxAttempts = retryMaxAttempts,
+            maxTokens = maxTokens,
         )
     }
 

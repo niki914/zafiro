@@ -97,4 +97,7 @@ enum class TurnFailureCode {
 
     /** 空闲超时。 */
     IdleTimeout,
+
+    /** 单次输出被上限截断：回答没写完，工具参数可能被切断。 */
+    OutputTruncated,
 }

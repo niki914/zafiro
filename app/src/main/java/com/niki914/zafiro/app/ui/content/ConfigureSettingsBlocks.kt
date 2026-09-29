@@ -20,6 +20,7 @@ import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
+import com.niki914.zafiro.settings.model.DEFAULT_MAX_TOKENS
 import com.niki914.zafiro.settings.model.LlmProtocol
 
 @Composable
@@ -206,6 +207,7 @@ internal fun ConfigureProtocolSettingsBlock(
     onSupportsImagesChange: (Boolean) -> Unit,
     onProtocolSelected: (String) -> Unit,
     onThinkingLevelSelected: (String) -> Unit,
+    onMaxTokensChange: (String) -> Unit,
 ) {
     val onClearActiveField = fieldController.clearActiveField
     var showProtocolDialog by rememberSaveable { mutableStateOf(false) }
@@ -244,6 +246,24 @@ internal fun ConfigureProtocolSettingsBlock(
                 onClearActiveField()
                 showThinkingDialog = true
             },
+        )
+        SettingsItemDivider()
+        // Max Tokens：未设置时回显默认值，清空 = 落默认值；服务端报输出超限时调小
+        SettingControlledExpandableTextItem(
+            field = ConfigureEditableField.MaxTokens,
+            controller = fieldController,
+            title = stringResource(R.string.ui_settings_configure_max_tokens_label),
+            value = uiState.maxTokensInput,
+            onValueChange = onMaxTokensChange,
+            placeholder = stringResource(
+                R.string.ui_settings_configure_max_tokens_placeholder,
+                DEFAULT_MAX_TOKENS,
+            ),
+            description = uiState.maxTokensErrorResId?.let { stringResource(it) }
+                ?: stringResource(R.string.ui_settings_configure_max_tokens_hint),
+            enabled = !uiState.isSaving,
+            minLines = 1,
+            maxLines = 1,
         )
     }
 

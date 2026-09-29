@@ -97,6 +97,9 @@ internal fun ConfigurePageRoute(
         onToggleApiKeyVisibility = {
             viewModel.sendIntent(ConfigureIntent.ToggleApiKeyVisibility)
         },
+        onMaxTokensChange = { value ->
+            viewModel.sendIntent(ConfigureIntent.UpdateMaxTokens(value))
+        },
         onComplete = { viewModel.sendIntent(ConfigureIntent.Save) },
         onConfirmEndpointMismatch = { viewModel.sendIntent(ConfigureIntent.ConfirmEndpointMismatch) },
         onCancelEndpointMismatch = { viewModel.sendIntent(ConfigureIntent.CancelEndpointMismatch) },

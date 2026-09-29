@@ -113,14 +113,15 @@ internal class RealAgentLoop : AgentLoop {
             request.onCommit(listOf(Message.Assistant(assistant)))
             history += Message.Assistant(assistant)
 
-            // ToolUse → 执行工具 → 下一轮；Stop / Length → 回合结束
-            if (assistant.stopReason == StopReason.ToolUse) {
-                val toolCalls = assistant.content.filterIsInstance<ContentBlock.ToolCall>()
-                if (toolCalls.isEmpty()) {
-                    // 防御：ToolUse 但无工具调用块（协议不一致）→ 按 Stop 结束，避免死循环
-                    onEvent(TurnEvent.TurnCompleted(assistant))
-                    return TurnResult.Completed(CompletionReason.Stop)
-                }
+            // 工具段：Length（输出被上限截断）时的调用参数可能被切断 → 一律不执行，
+            // 只补一条失败结果闭合树尾；其余（ToolUse，个别把带调用的响应标成 Stop 的
+            // 网关）执行后进入下一轮。
+            // 不变量：已 commit 的 Assistant 里的 ToolCall 必须有配对 ToolResult——
+            // 缺配对会让历史协议非法（严格 Provider 直接报错），UI 侧对应块永远转圈。
+            val toolCalls = assistant.content.filterIsInstance<ContentBlock.ToolCall>()
+            if (assistant.stopReason == StopReason.Length && toolCalls.isNotEmpty()) {
+                failUnexecutedToolCalls(request, onEvent, assistant, toolCalls)
+            } else if (toolCalls.isNotEmpty()) {
                 when (val toolOutcome = executeTools(request, onEvent, assistant, toolCalls)) {
                     is ToolExecutionOutcome.Failure -> return toolOutcome.result
                     is ToolExecutionOutcome.Success -> {
@@ -138,6 +139,32 @@ internal class RealAgentLoop : AgentLoop {
             onEvent(TurnEvent.TurnCompleted(assistant))
             return TurnResult.Completed(reason)
         }
+    }
+
+    /**
+     * 截断回合里未执行的工具调用：补写失败结果（与取消路径同一不变量）。
+     *
+     * plan 预置 outcome ⇒ [commitToolOutcomes] 不走 afterToolCall 链，只做「编码结果 +
+     * onCommit 进树 + 发 ToolFailed 事件」——工具面板据此从转圈切到失败，历史保持可回放。
+     */
+    private suspend fun failUnexecutedToolCalls(
+        request: LoopRequest,
+        onEvent: suspend (TurnEvent) -> Unit,
+        assistant: AssistantMessage,
+        toolCalls: List<ContentBlock.ToolCall>,
+    ) {
+        val plans = toolCalls.map { call ->
+            val message = truncatedToolCallMessage(call.name)
+            Plan(
+                toolCall = call,
+                holder = null,
+                executor = null,
+                context = null,
+                // content 才是回喂模型的正文（providerContent 取它），与 message 同值
+                outcome = ToolCallOutcome.Failure(message = message, content = message),
+            )
+        }
+        commitToolOutcomes(request, onEvent, assistant, plans, executedOutcomes = emptyMap())
     }
 
     // ── 段执行（一层模型往返；含回合层段首重试） ──────────────────────────
@@ -1056,3 +1083,8 @@ private data class Plan(
 
 // 非 2xx 错误 body 进 LLMError.message 的最大字符数（UI 详情，非完整响应）
 private const val MAX_ERROR_BODY_CHARS = 2000
+
+/** 输出被截断导致未执行的调用：回喂模型与工具面板共用同一条文案（英文，落树不本地化）。 */
+private fun truncatedToolCallMessage(name: String): String =
+    "Tool call \"$name\" was not executed: the response hit the output limit, " +
+            "so its arguments may be truncated."
