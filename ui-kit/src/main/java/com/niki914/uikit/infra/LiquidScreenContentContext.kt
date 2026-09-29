@@ -13,6 +13,16 @@ import com.niki914.uikit.infra.nav.LocalNavigationEntry
 import com.niki914.uikit.infra.nav.NavigationEntry
 import com.niki914.uikit.infra.nav.Page
 
+/**
+ * LiquidScreen 内容树的壳层上下文。
+ *
+ * 业务页面应由 `LiquidScreen` 承载；Preview 或独立样例请使用
+ * `ProvideLiquidScreenContentForPreview` 包裹。
+ *
+ * 顶栏折叠信号不在此下发：它归属导航条目（`NavigationEntry.titleBarScroll`），
+ * 默认由 `LiquidScreen` 经 nestedScroll 自动写入，页面无需参与；仅需定制的
+ * 页面用 `ReportTitleBarCollapsed` 接管。
+ */
 @Stable
 class LiquidScreenContentContext internal constructor(
     val topPadding: Dp,
@@ -22,31 +32,31 @@ class LiquidScreenContentContext internal constructor(
     val bottomPadding: Dp,
 )
 
+/** Collapsible 页的顶栏折叠阈值：与大标题滚走的距离一致（页面大标题淡出同用此值）。 */
+val TitleBarCollapseThreshold = 55.dp
+
 /**
- * LiquidScreen 内容树的壳层上下文。
+ * 用页面自身的滚动状态提供精确的顶栏折叠信号，接管壳层的自动感知。
  *
- * 业务页面应由 `LiquidScreen` 承载；Preview 或独立样例请使用
- * `ProvideLiquidScreenContentForPreview` 包裹。
- */
-/**
- * 把页面自身的「内容是否已滚离顶部」写入当前导航条目（`LocalNavigationEntry`）。
+ * 默认路径是壳层经 nestedScroll 累积滚离量，页面不需参与。但累积量只能反映
+ * **手势**产生的位移，存在两类它看不见的情况：
  *
- * 折叠状态归属条目（`NavigationEntry.titleCollapsed`）：action bar 只拉取
- * 当前条目的状态，因此过渡期退场页的写入不会干扰新页；条目在栈内存活期间
- * 状态保留，返回本页时 bar 首帧即恢复离开前的状态（配合 alpha 动画平滑过渡）。
+ * - 程序化定位：自动贴底、恢复滚动位置等非手势位移完全不计入，导致列表已在
+ *   中部而累积量仍为 0，顶栏保持透明（Home Chat 的自动贴底即属此类）。
+ * - 页内嵌套滚动子树：如工具结果框自带滚动，其位移会被误计入页面滚离量。
+ *
+ * 因此**仅当页面命中上述任一条**时才调用本函数，用自身的滚动状态接管；
+ * 这属于显式声明的特例，其余页面应保持自动感知。
  *
  * 不可滚动的页面无需调用（条目默认 false = 背景板透明）。
  */
 @Composable
 fun ReportTitleBarCollapsed(isCollapsed: () -> Boolean) {
-    val entry = LocalNavigationEntry.current
-    LaunchedEffect(entry) {
-        snapshotFlow(isCollapsed).collect { entry.titleCollapsed = it }
+    val titleBarScroll = LocalNavigationEntry.current.titleBarScroll
+    LaunchedEffect(titleBarScroll) {
+        snapshotFlow(isCollapsed).collect { titleBarScroll.setFromPage(it) }
     }
 }
-
-// ponytail: 折叠信号唯一来源是条目上的 titleCollapsed（bar 拉、页面推自己槽）；
-// 若再出现第二个信号通道，应先删掉旧的再考虑新的。
 
 val LocalLiquidScreenContentContext: ProvidableCompositionLocal<LiquidScreenContentContext> =
     compositionLocalOf {

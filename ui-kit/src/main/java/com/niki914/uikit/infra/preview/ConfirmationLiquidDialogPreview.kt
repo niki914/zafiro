@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidScreen
+import com.niki914.uikit.infra.nav.TitleBarScrollState
 import com.niki914.uikit.infra.rememberLiquidScreenState
 
 @Composable
@@ -24,7 +26,10 @@ private fun ConfirmationLiquidDialogPreviewContent() {
         showBlurLayer = false,
     )
 
-    LiquidScreen(state = screenState, collapsed = false) {
+    LiquidScreen(
+        state = screenState,
+        titleBarScroll = remember { TitleBarScrollState() },
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()

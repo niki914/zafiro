@@ -154,11 +154,12 @@ fun HomePageContent(
     val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
 
-    // Home Chat 是可 saveable 恢复滚动位置的 Pinned 页：折叠状态写入当前条目，
-    // 返回时（scroll 恢复但不产生滚动事件）背景板由条目保留的状态立即动画恢复。
+    // Home 必须显式接管顶栏折叠信号：列表位置会由程序化驱动（自动贴底），且工具结果框
+    // 自带滚动子树——两者都是壳层累积量看不见的位移。其余页面保持自动感知。
     ReportTitleBarCollapsed {
         listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
     }
+
     val imeBottom = with(density) { WindowInsets.ime.getBottom(this).toDp() }
     val navigationBottom = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
     var isComposerFocused by remember { mutableStateOf(false) }
