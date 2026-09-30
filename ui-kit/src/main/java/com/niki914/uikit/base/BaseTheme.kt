@@ -51,16 +51,30 @@ fun BaseTheme(
         else -> LightColorScheme // 否则，使用预定义浅色方案
     }
 
-    // 设置系统状态栏颜色
+    // 系统栏样式跟随应用主题（唯一来源，运行时切主题即时生效）。
+    // enableEdgeToEdge 默认按【系统】昼夜决定纱罩与导航栏图标颜色；应用内主题与系统
+    // 不一致时（系统浅色 + 应用深色），返回键导航的设备上会被系统对比度强制渲染成
+    // 一条突兀的浅色导航栏底带。这里统一改为透明底 + 按应用主题控制图标亮暗；
+    // 26-28 没有对比度开关，透明底会让三键导航键不可见，退回半透明纱罩。
     val view = LocalView.current
     if (!view.isInEditMode) { // 避免在预览模式下执行
         SideEffect {
             val window = view.context.findActivity()?.window ?: return@SideEffect
-//            window.statusBarColor = colorScheme.primary.toArgb() // 将状态栏颜色设置为主题主色
-            // 控制状态栏图标颜色，根据主题亮暗调整
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).apply {
+                // 控制状态栏/导航栏图标颜色，根据应用主题亮暗调整
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
             // 页面自身不画背景（透出 window），必须跟随应用主题而非系统 DayNight
             window.decorView.setBackgroundColor(colorScheme.background.toArgb())
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                window.isNavigationBarContrastEnforced = false
+            } else {
+                window.navigationBarColor =
+                    if (darkTheme) DarkSystemBarScrim else LightSystemBarScrim
+            }
         }
     }
 
@@ -79,3 +93,7 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is ContextWrapper -> baseContext.findActivity()
     else -> null
 }
+
+/** 与 androidx.activity EdgeToEdge 默认纱罩一致：26-28 三键导航下代替透明底，保证导航键可见。 */
+private const val LightSystemBarScrim = 0xE6FFFFFF.toInt()
+private const val DarkSystemBarScrim = 0x801B1B1B.toInt()
