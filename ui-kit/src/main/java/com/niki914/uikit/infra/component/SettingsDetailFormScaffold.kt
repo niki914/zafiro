@@ -94,6 +94,10 @@ fun SettingsDetailFormScaffold(
         var frames = 0
         var settledFrames = 0
         var lastImePx = -1
+        // 上次滚动时依据的 bounds 底边。bounds 要等下一次布局才回填（低端机滞后 1-2 帧），
+        // 若每帧都按旧 bounds 累加 delta，一次避让会被重复施加 2-3 次，页面冲过头甚至顶到
+        // maxValue。只允许在 bounds 刷新过之后再次滚动，把累加控制器变成反馈闭环。
+        var actedBoundsBottom = Float.NaN
         while (frames < MaxAvoidanceFrames && settledFrames < SettledFramesToStop) {
             withFrameNanos { }
             frames++
@@ -107,10 +111,15 @@ fun SettingsDetailFormScaffold(
             } else {
                 0f
             }
-            if (deltaPx > 0f) {
-                val target = (scrollState.value + deltaPx).toInt()
+            if (deltaPx > 0f && bounds != null && bounds.bottom != actedBoundsBottom) {
+                val beforeScroll = scrollState.value
+                val target = (beforeScroll + deltaPx).toInt()
                     .coerceIn(0, scrollState.maxValue)
                 scrollState.scrollTo(target)
+                // 只有真的滚动了才登记。滚动被 maxValue 截断时不登记，保留重试资格：
+                // 键盘动画期间视口还在收窄，余量稍后会出现。
+                actedBoundsBottom =
+                    if (scrollState.value != beforeScroll) bounds.bottom else Float.NaN
             }
             if (imePx > 0 && !keyboardMoving && deltaPx <= 0f) {
                 settledFrames++
