@@ -8,6 +8,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -64,6 +65,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -81,6 +83,7 @@ import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
+import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.chat.LlmErrorCode
 
@@ -415,9 +418,11 @@ fun LiquidChatComposer(
     isGenerating: Boolean,
     modifier: Modifier = Modifier,
     pendingImages: List<HomeChatImage> = emptyList(),
+    pendingFiles: List<HomeChatFile> = emptyList(),
     onAttachImageClick: () -> Unit = {},
 ) {
-    val canSend = !isGenerating && (value.isNotBlank() || pendingImages.isNotEmpty())
+    val canSend = !isGenerating &&
+            (value.isNotBlank() || pendingImages.isNotEmpty() || pendingFiles.isNotEmpty())
     val buttonEnabled = isGenerating || canSend
     val stopContentDescription = stringResource(R.string.ui_home_stop_content_description)
     val contentColor = if (buttonEnabled) {
@@ -628,6 +633,46 @@ private fun rememberPathBitmap(path: String): ImageBitmap? =
     }.value
 
 /**
+ * 卡片的顶部遮罩 + 右上角关闭钮（图片卡 / 文件卡共用）。
+ *
+ * BoxScope 扩展：调用方是卡片的 Box，两者都对齐在卡片里。遮罩是卡片高度 30% 的
+ * 纵向渐变（black 50% → 0%），用来衬出白色关闭钮。
+ */
+@Composable
+private fun BoxScope.CardRemoveOverlay(
+    size: Dp,
+    contentDescription: String,
+    onRemove: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(size * 0.3f)
+            .drawBehind {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent),
+                    ),
+                )
+            },
+    )
+    Icon(
+        imageVector = Icons.Default.Close,
+        contentDescription = contentDescription,
+        tint = Color.White,
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .padding(horizontal = 6.dp, vertical = 6.dp)
+            .size(16.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onRemove,
+            ),
+    )
+}
+
+/**
  * 单张图片卡。尺寸由调用方决定（composer 待发 60dp / 消息内大图卡 / 工具结果预览）。
  * 顶部 30% 纵向渐变遮罩（black 50% → 0%），右上角白色关闭钮（可选），无圆形背景。
  * 供本文件与 ToolChain（工具结果图片预览）共用。
@@ -657,49 +702,83 @@ internal fun HomeChatImageCard(
             )
         }
         if (onRemove != null) {
-            // 顶部 30% 渐变遮罩：顶部 black 50% → 底部 black 0%，衬出白色关闭钮
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(size * 0.3f)
-                    .drawBehind {
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent),
-                            ),
-                        )
-                    },
-            )
-            Icon(
-                imageVector = Icons.Default.Close,
+            CardRemoveOverlay(
+                size = size,
                 contentDescription = stringResource(R.string.ui_home_image_remove_content_description),
-                tint = Color.White,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(horizontal = 6.dp, vertical = 6.dp)
-                    .size(16.dp)
-                    .clickable(onClick = onRemove),
+                onRemove = onRemove,
             )
         }
     }
 }
 
 /**
- * 图片行（composer 待发条 / 用户消息图片区共用）：横向滚动，外层以与卡片
- * 相同的 G2 圆角 clip——边缘图片被裁切时仍呈现圆角形态。宽度约束由调用方给。
+ * 单个文件 / 文件夹卡。
+ *
+ * 形状与图片卡同源（同一个 [G2CardShape] + 同一圆角参数）、纯色底（取 M3 scheme）、
+ * 同款顶部 30% 遮罩 + 右上角白色关闭钮，里面只有**纯文件名**（不显示路径）。
+ * 文件名是可变长文本，所以宽度给上限、单行省略；尺寸由调用方决定。
+ *
+ * TODO 打磨 UI
  */
 @Composable
-fun HomeChatImageRow(
+internal fun HomeChatFileCard(
+    file: HomeChatFile,
+    size: Dp,
+    cornerRadius: Dp,
+    onRemove: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val shape = G2CardShape(cornerRadius)
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        // 贴底两行：避开右上角的关闭钮，也避开头部的遮罩
+        Text(
+            text = file.name,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+        )
+        if (onRemove != null) {
+            CardRemoveOverlay(
+                size = size,
+                contentDescription = stringResource(
+                    R.string.ui_home_file_remove_content_description,
+                ),
+                onRemove = onRemove,
+            )
+        }
+    }
+}
+
+/**
+ * 附件行（composer 待发条 / 用户消息附件区共用）：图片与文件**同一行**横向滚动。
+ *
+ * 两种卡**同尺寸同形状**（同一个 [G2CardShape]、同一圆角、同一方形边长）：
+ * 预览区尺寸不一很跳跃，而文件名可以在卡内省略。
+ * 外层以与卡片相同的 G2 圆角 clip——边缘卡被裁切时仍呈现圆角形态。宽度约束由调用方给。
+ */
+@Composable
+fun HomeChatAttachmentRow(
     images: List<HomeChatImage>,
+    files: List<HomeChatFile>,
     cardSize: Dp,
     cornerRadius: Dp,
     modifier: Modifier = Modifier,
     onRemoveImage: ((String) -> Unit)? = null,
+    onRemoveFile: ((String) -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
             // 宽度由调用方决定（贴内容宽或撑满）：不加 fillMaxWidth，
-            // 否则消息图片行无法右对齐贴内容宽
+            // 否则消息附件行无法右对齐贴内容宽
             .clip(G2CardShape(cornerRadius))
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -710,6 +789,14 @@ fun HomeChatImageRow(
                 size = cardSize,
                 cornerRadius = cornerRadius,
                 onRemove = onRemoveImage?.let { remove -> { remove(image.id) } },
+            )
+        }
+        files.forEach { file ->
+            HomeChatFileCard(
+                file = file,
+                size = cardSize,
+                cornerRadius = cornerRadius,
+                onRemove = onRemoveFile?.let { remove -> { remove(file.id) } },
             )
         }
     }

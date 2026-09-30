@@ -23,7 +23,7 @@ class ConversationUiMapperTest {
                 ConversationTurn(
                     id = TurnId("t0"),
                     userText = "look",
-                    attachments = listOf(Attachment("/user.png", "image/png")),
+                    images = listOf(Attachment("/user.png", "image/png")),
                     blocks = listOf(
                         TurnBlock.Thinking("t0:0", "reasoning", isComplete = true),
                         TurnBlock.Tool(

@@ -3,6 +3,7 @@ package com.niki914.zafiro.business.permission
 import android.content.ComponentName
 import android.content.Context
 import android.os.Build
+import android.os.Environment
 import android.provider.Settings
 
 /**
@@ -33,7 +34,20 @@ internal object TargetStatus {
         Permission.OVERLAY -> overlay(context)
         Permission.NOTIFICATION -> notification(context)
         Permission.ACCESSIBILITY -> accessibility(context, accessibilityService)
+        Permission.EXTERNAL_STORAGE -> externalStorage()
         Permission.ROOT, Permission.SHIZUKU -> PermissionState.UNKNOWN
+    }
+
+    /**
+     * 全局文件访问的真实状态。
+     *
+     * <30 无这个概念（D22 里选项单也直接不放出入口），报 UNAVAILABLE 而不是 DENIED，
+     * 免得调用方以为「用户拒绝了」。
+     */
+    fun externalStorage(): PermissionState = when {
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.R -> PermissionState.UNAVAILABLE
+        Environment.isExternalStorageManager() -> PermissionState.GRANTED
+        else -> PermissionState.DENIED_BY_USER
     }
 
     fun overlay(context: Context): PermissionState =

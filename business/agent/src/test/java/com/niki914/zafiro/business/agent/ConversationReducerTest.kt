@@ -228,7 +228,7 @@ class ConversationReducerTest {
         ConversationReducer.startTurn(
             conversation = Conversation(),
             userText = query,
-            attachments = listOf(Attachment(path = "/tmp/a.jpg")),
+            images = listOf(Attachment(path = "/tmp/a.jpg")),
         )
 
     private fun reduce(state: Reduced, vararg events: LlmStreamEvent): Reduced =

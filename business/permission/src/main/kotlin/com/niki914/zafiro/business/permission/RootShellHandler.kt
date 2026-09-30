@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
  * - status：Shell.isAppGrantedRoot()（未建 shell 时返回 null → UNKNOWN，静默契约）
  * - request：Shell.getShell() 阻塞拉起 su 授权，完成后 shell.isRoot 判定
  *
- * 支持 ROOT / OVERLAY / ACCESSIBILITY / NOTIFICATION，其余 permission 返回 UNAVAILABLE。
+ * 支持 ROOT / OVERLAY / ACCESSIBILITY / NOTIFICATION / EXTERNAL_STORAGE，其余 permission 返回 UNAVAILABLE。
  */
 internal class RootShellHandler(
     private val context: Context,
@@ -71,6 +71,17 @@ internal class RootShellHandler(
                         run = { cmd -> run(cmd) },
                         packageName = packageName,
                         verify = { TargetStatus.notification(context) },
+                    )
+                }
+            Permission.EXTERNAL_STORAGE ->
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                    // <30 无全局文件访问（D22 里 UI 也不放出入口），不把「不存在」报成 FAILED
+                    PermissionState.UNAVAILABLE
+                } else {
+                    ShellGrants.grantExternalStorage(
+                        run = { cmd -> run(cmd) },
+                        packageName = packageName,
+                        verify = { TargetStatus.externalStorage() },
                     )
                 }
             else -> PermissionState.UNAVAILABLE

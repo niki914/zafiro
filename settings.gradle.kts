@@ -45,6 +45,7 @@ include(":xsettings")
 // Business 层：契约（api）与实现（agent）分离，业务方只依赖 api。
 include(":business:api")
 include(":business:agent")
+include(":business:files")
 include(":business:notification")
 include(":business:application")
 include(":business:permission")

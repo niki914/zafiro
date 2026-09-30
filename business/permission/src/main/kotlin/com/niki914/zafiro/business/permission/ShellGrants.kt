@@ -66,6 +66,24 @@ internal object ShellGrants {
         return if (anyAccepted) PermissionState.DENIED_BY_USER else PermissionState.FAILED
     }
 
+    /**
+     * 全局文件访问（`MANAGE_EXTERNAL_STORAGE`）：只有 appops 能代授权，`pm grant` 不适用
+     * （它不是运行时权限）。同 NOTIFICATION：退出码不等于系统里的真实状态，用 [verify] 复查收尾。
+     *
+     * 版本门在调用方（shell handler）与 [TargetStatus.externalStorage]：<30 无这个概念。
+     */
+    suspend fun grantExternalStorage(
+        run: suspend (String) -> ShellOutcome?,
+        packageName: String,
+        verify: () -> PermissionState,
+    ): PermissionState {
+        val command = "appops set $packageName MANAGE_EXTERNAL_STORAGE allow"
+        val outcome = run(command)
+        Logger.d(TAG, "exec [$command] exit=${outcome?.exitCode} stdoutLines=${outcome?.stdout?.size}")
+        if (verify() == PermissionState.GRANTED) return PermissionState.GRANTED
+        return if (outcome?.isSuccess == true) PermissionState.DENIED_BY_USER else PermissionState.FAILED
+    }
+
     private fun mergeServices(stdout: List<String>, service: ComponentName): String =
         stdout.joinToString("").trim()
             .takeUnless { it.isBlank() || it == "null" }

@@ -28,6 +28,8 @@ import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.xposed.api.util.LockState
+import com.niki914.zafiro.api.model.FileRef
+import com.niki914.zafiro.api.text.FilesBlock
 import com.niki914.zafiro.chat.agentic.AndroidImageLoader
 import com.niki914.zafiro.chat.agentic.IngestedImage
 import com.niki914.zafiro.chat.agentic.LocalToolExecutor
@@ -379,6 +381,7 @@ object LLMController {
     fun stream(
         query: String,
         images: List<ContentBlock.Image> = emptyList(),
+        files: List<FileRef> = emptyList(),
     ): Flow<LlmStreamEvent> = channelFlow {
         try {
             val state = try {
@@ -439,14 +442,33 @@ object LLMController {
                     LOG_TAG,
                     "round started queryLength=${query.length} isUnlocked=${LockState.isUnlocked()}"
                 )
-                // 异步任务完成通知注入（PRD okia §5.10）：host 侧拼进 send 文本，
-                // 不进 hook、不进会话树（通知进树即污染历史）；MCP 发现失败
-                // 说明同样前置（Failed 服务器工具不可用，模型需知）
+                // 异步任务完成通知注入（PRD okia §5.10）：host 侧在 send 文本前面拼一段说明。
+                // 注意：它**会**随 send 文本落进会话树（RealOkia 把整段文本 append 成 Message.User），
+                // 冷启动后仍看得到——旧注释写的「不进会话树」是错的，实现从来没做到过。
+                // MCP 发现失败说明同样前置（Failed 服务器工具不可用，模型需知）。
+                //
+                // TODO(瞬态通知不应落盘)：本次不 special treatment，只在注入时打日志（下面那条），
+                //  以便日后判断现实中到底有没有人真的踩到。方向是探索真正不持久化的方案，
+                //  并让通知也走 zfr-xml 链路（见 TurnTextComposer）——那样它就有统一的可判定边界、
+                //  也能像文件块一样被切掉。
                 val notifications = TerminalSessionPool.drainPendingNotifications()
                 val mcpNotice = mcpFailureNotice()
+                // 顺序不是随意的：带 tag 的注入块必须排在**不带 tag 的**通知之前。
+                // cutLeadingBlocks 只能从开头吃，撞上通知那行就停手——排到后面就永远切不掉，
+                // rewind 时就会把 <zfr-files> 灌进输入框。通知也走 zfr-xml 之后约束才消失。
+                val filesBlock = FilesBlock.block(files)
                 val prefixes = buildList {
+                    filesBlock?.let { add(it) }
                     mcpNotice?.let { add(it) }
                     addAll(notifications)
+                }
+                if (prefixes.isNotEmpty()) {
+                    Logger.i(
+                        LOG_TAG,
+                        "prefixes injected files=${files.size} mcp=${mcpNotice != null} " +
+                                "notifications=${notifications.size} " +
+                                "chars=${prefixes.sumOf { it.length }}"
+                    )
                 }
                 val effectiveQuery = if (prefixes.isNotEmpty()) {
                     prefixes.joinToString("\n\n") + "\n\n" + query

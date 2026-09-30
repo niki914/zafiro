@@ -91,6 +91,9 @@ class PermissionManagerImpl : PermissionManager {
                 // 有 root / Shizuku 时优先静默授权（shell 执行 pm grant / appops），
                 // 不可用或命令被系统拒纳时降级到系统弹窗与跳设置页
                 listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS)
+            Permission.EXTERNAL_STORAGE ->
+                // 没有系统弹窗（all-files 只能跳设置页），shell 侧一条 appops 就能静默拿到
+                listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.JUMP_SETTINGS)
             Permission.ROOT -> listOf(Channel.ROOT_SHELL)
             Permission.SHIZUKU -> listOf(Channel.SHIZUKU)
         }

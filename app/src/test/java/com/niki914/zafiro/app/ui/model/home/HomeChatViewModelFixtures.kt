@@ -104,7 +104,7 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
             turns = turns + ConversationTurn(
                 id = turnIdAt(turnIndex),
                 userText = draft.text,
-                attachments = draft.images.filterIsInstance<DraftImage.Ready>().map { it.attachment },
+                images = draft.images.filterIsInstance<DraftImage.Ready>().map { it.attachment },
                 blocks = streamText?.let { listOf(TurnBlock.Text("t$turnIndex:0", it)) }.orEmpty(),
             ),
         )
@@ -270,7 +270,7 @@ internal class FakeHomeConversationStore(
             newConversationId = id,
             promptText = userMessage.content
                 .filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text },
-            attachments = userMessage.content
+            images = userMessage.content
                 .filterIsInstance<ContentBlock.Image>().map { Attachment(it.path, it.mimeType) },
         )
     }

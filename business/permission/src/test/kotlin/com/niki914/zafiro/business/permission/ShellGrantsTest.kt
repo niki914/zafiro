@@ -24,6 +24,46 @@ class ShellGrantsTest {
     }
 
     @Test
+    fun `grantExternalStorage sends the appops command and succeeds on verified grant`() = runBlocking {
+        val commands = mutableListOf<String>()
+
+        val state = ShellGrants.grantExternalStorage(
+            run = { command ->
+                commands += command
+                ShellOutcome(exitCode = 0)
+            },
+            packageName = "com.niki914.zafiro",
+            verify = { PermissionState.GRANTED },
+        )
+
+        assertEquals(PermissionState.GRANTED, state)
+        assertEquals(listOf("appops set com.niki914.zafiro MANAGE_EXTERNAL_STORAGE allow"), commands)
+    }
+
+    @Test
+    fun `grantExternalStorage reports denied when appops ran but the state stays denied`() = runBlocking {
+        val state = ShellGrants.grantExternalStorage(
+            run = { ShellOutcome(exitCode = 0) },
+            packageName = "com.niki914.zafiro",
+            // 退出码为 0 但系统里仍没授权：链必须靠 DENIED_BY_USER 继续降级，报 FAILED 会掉链
+            verify = { PermissionState.DENIED_BY_USER },
+        )
+
+        assertEquals(PermissionState.DENIED_BY_USER, state)
+    }
+
+    @Test
+    fun `grantExternalStorage reports failed when the command did not run`() = runBlocking {
+        val state = ShellGrants.grantExternalStorage(
+            run = { null },
+            packageName = "com.niki914.zafiro",
+            verify = { PermissionState.DENIED_BY_USER },
+        )
+
+        assertEquals(PermissionState.FAILED, state)
+    }
+
+    @Test
     fun `grantNotification records pm grant and appops commands and succeeds on verified grant`() = runBlocking {
         val commands = mutableListOf<String>()
         var verifyCalls = 0

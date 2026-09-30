@@ -3,6 +3,7 @@ package com.niki914.zafiro.app.ui.model.home
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.DraftImage
+import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.model.ToolInvocation
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
@@ -25,7 +26,8 @@ internal fun Conversation.toHomeTurns(): List<HomeChatTurn> =
         HomeChatTurn(
             id = turnIndex.toLong(),
             userText = turn.userText,
-            images = turn.attachments.map { it.toHomeImage() },
+            images = turn.images.map { it.toHomeImage() },
+            files = turn.files.map { it.toHomeFile() },
             blocks = turn.blocks.mapIndexed { blockIndex, block -> block.toHomeBlock(blockIndex) },
         )
     }
@@ -39,6 +41,10 @@ internal fun DraftImage.toHomeImage(): HomeChatImage? = when (this) {
 
 internal fun Attachment.toHomeImage(): HomeChatImage =
     HomeChatImage(id = path.hashCode().toString(), path = path)
+
+/** 文件引用的 key 与图片同口径（路径 hashCode）：同一个东西不搞两套。 */
+internal fun FileRef.toHomeFile(): HomeChatFile =
+    HomeChatFile(id = path.hashCode().toString(), path = path)
 
 private fun TurnBlock.toHomeBlock(blockIndex: Int): HomeChatBlock = when (this) {
     is TurnBlock.Text -> HomeChatBlock.Text(text)

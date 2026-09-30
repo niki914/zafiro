@@ -7,6 +7,18 @@ enum class Permission {
     NOTIFICATION,
     OVERLAY,
     ACCESSIBILITY,
+
+    /**
+     * 能按路径读写外部文件（“真的能读写用户文件”这件事的语义目标）。
+     *
+     * TODO(改名 STORAGE + 补齐 <30)：这个枚举项表达的是**语义**而不是某个 manifest 权限，
+     *  所以更贴切的名字是 `STORAGE`（`EXTERNAL_STORAGE` 命名的是一个具体机制）。改名要连
+     *  30 以下的实现一起做：那一步没有 all-files，对应语义是 `READ_EXTERNAL_STORAGE`
+     *  运行时权限，需要在 SYSTEM_DIALOG 通道里新开一条「运行时权限」申请路径
+     *  （可复用 `MainActivity` 的 RequestPermission → ApplicationService 结果路由）。
+     *  在那之前 <30 一律报 UNAVAILABLE（见 TargetStatus.externalStorage）。
+     */
+    EXTERNAL_STORAGE,
 }
 
 /** 怎么拿。scope = 通道优先级链 */

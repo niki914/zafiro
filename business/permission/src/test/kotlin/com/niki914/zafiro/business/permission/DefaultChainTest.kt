@@ -24,6 +24,15 @@ class DefaultChainTest {
     }
 
     @Test
+    fun `external storage tries shell channels before jumping to settings`() {
+        // 没有系统弹窗：all-files 只能跳设置页，而 shell 侧一条 appops 就能静默拿到
+        assertEquals(
+            listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.JUMP_SETTINGS),
+            PermissionManagerImpl.defaultChain(Permission.EXTERNAL_STORAGE),
+        )
+    }
+
+    @Test
     fun `capability permissions default to own channel`() {
         assertEquals(listOf(Channel.ROOT_SHELL), PermissionManagerImpl.defaultChain(Permission.ROOT))
         assertEquals(listOf(Channel.SHIZUKU), PermissionManagerImpl.defaultChain(Permission.SHIZUKU))

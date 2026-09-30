@@ -130,6 +130,19 @@ internal class JumpSettingsHandler(
                 Uri.parse("package:$packageName"),
             )
             Permission.ACCESSIBILITY -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            // 全局文件访问：跳本应用的「所有文件访问权限」页（仅 30+ 有这个概念，见 D22）
+            Permission.EXTERNAL_STORAGE ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        Uri.parse("package:$packageName"),
+                    )
+                } else {
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:$packageName"),
+                    )
+                }
             Permission.NOTIFICATION ->
                 if (Build.VERSION.SDK_INT >= 26) {
                     Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)

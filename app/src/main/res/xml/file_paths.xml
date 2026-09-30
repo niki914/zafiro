@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 相机输出：临时写进 cache/capture，ingest 完成（或失败）后由 VM 删掉。
+         用 FileProvider 而不是 MediaStore：刚 insert 的 MediaStore 记录是 IS_PENDING=1，
+         pending 项对非所有者是 owner-only，相机（另一个 uid）写不进去。 -->
+    <cache-path
+        name="camera_capture"
+        path="capture/" />
+</paths>

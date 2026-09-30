@@ -51,6 +51,10 @@
     <string name="ui_home_attach_camera">相机</string>
     <string name="ui_home_attach_file">文件</string>
     <string name="ui_home_attach_folder">文件夹</string>
+    <string name="ui_home_attach_unresolvable">无法获取该文件的本地路径</string>
+    <string name="ui_home_attach_no_permission">请先授予所有文件访问权限</string>
+    <string name="ui_home_attach_unreadable">无法读取该文件</string>
+    <string name="ui_home_file_remove_content_description">移除文件</string>
     <string name="ui_home_image_remove_content_description">移除图片</string>
     <string name="ui_home_scroll_to_bottom_content_description">滚动到底部</string>
     <string name="ui_home_stop_content_description">停止生成</string>

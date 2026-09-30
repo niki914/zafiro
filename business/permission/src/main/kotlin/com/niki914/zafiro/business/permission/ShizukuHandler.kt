@@ -29,7 +29,7 @@ import kotlin.coroutines.resumeWithException
  * 内部仅转发 IShizukuService.newProcess → ShizukuRemoteProcess）。
  * 升级 shizuku-api 前先确认 newProcess 可见性。
  *
- * 支持 ROOT / SHIZUKU（能力自查）/ OVERLAY / ACCESSIBILITY / NOTIFICATION，其余返回 UNAVAILABLE。
+ * 支持 ROOT / SHIZUKU（能力自查）/ OVERLAY / ACCESSIBILITY / NOTIFICATION / EXTERNAL_STORAGE，其余返回 UNAVAILABLE。
  */
 internal class ShizukuHandler(
     private val context: Context,
@@ -116,6 +116,17 @@ internal class ShizukuHandler(
                         run = ::run,
                         packageName = packageName,
                         verify = { TargetStatus.notification(context) },
+                    )
+                }
+            Permission.EXTERNAL_STORAGE ->
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                    // <30 无全局文件访问（D22 里 UI 也不放出入口），不把「不存在」报成 FAILED
+                    PermissionState.UNAVAILABLE
+                } else {
+                    ShellGrants.grantExternalStorage(
+                        run = ::run,
+                        packageName = packageName,
+                        verify = { TargetStatus.externalStorage() },
                     )
                 }
         }

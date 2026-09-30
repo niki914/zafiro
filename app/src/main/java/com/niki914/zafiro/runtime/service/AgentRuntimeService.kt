@@ -201,7 +201,7 @@ class AgentRuntimeService : Service() {
                 return
             }
 
-            agent.updateDraft { it.copy(text = q, images = emptyList()) }
+            agent.updateDraft { it.copy(text = q, images = emptyList(), files = emptyList()) }
             when (val startResult = agent.stream()) {
                 TurnStart.Busy -> {
                     try {

@@ -11,11 +11,15 @@ import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.DraftImage
+import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.ui.model.TextPacer
+import com.niki914.zafiro.business.files.FileAttachResult
+import com.niki914.zafiro.business.files.FilesService
 import com.niki914.zafiro.service.requireService
+import java.io.File
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -45,8 +49,9 @@ class HomeChatViewModel internal constructor(
     private val textPacer: TextPacer = TextPacer(),
     // thinking 与正文在流中交织（thinking → tool → text），坐标系独立，单独实例
     private val thinkingPacer: TextPacer = TextPacer(),
-) : ComposeMVIViewModel<HomeChatIntent, HomeChatUiState, Nothing>() {
+) : ComposeMVIViewModel<HomeChatIntent, HomeChatUiState, HomeChatEffect>() {
     private val agent: Agent get() = requireService()
+    private val files: FilesService get() = requireService()
     private var draftSaveJob: Job? = null
     private var startupRestoreAttempted = false
 
@@ -81,6 +86,9 @@ class HomeChatViewModel internal constructor(
             HomeChatIntent.Send -> sendCurrentInput()
             is HomeChatIntent.ImageAttached -> attachImage(intent.uri)
             is HomeChatIntent.ImageRemoved -> removeImage(intent.id)
+            is HomeChatIntent.FileAttached -> attachFile(intent.uri)
+            is HomeChatIntent.FileRemoved -> removeFile(intent.id)
+            is HomeChatIntent.CameraCaptured -> attachCameraImage(intent.uri, intent.path)
             HomeChatIntent.StopGenerating -> stopGenerating()
             HomeChatIntent.NewConversation -> startNewConversation()
             is HomeChatIntent.LoadConversation -> loadConversation(intent.id)
@@ -118,7 +126,10 @@ class HomeChatViewModel internal constructor(
             agent.draft.collect { draft ->
                 if (!currentState.isLoadingConversation) {
                     val pendingImages = draft.images.mapNotNull { it.toHomeImage() }
-                    updateState { copy(pendingImages = pendingImages) }
+                    val pendingFiles = draft.files.map { it.toHomeFile() }
+                    updateState {
+                        copy(pendingImages = pendingImages, pendingFiles = pendingFiles)
+                    }
                 }
             }
         }
@@ -305,6 +316,68 @@ class HomeChatViewModel internal constructor(
         }
     }
 
+    /**
+     * 附件：解析路径 → 缺全局文件访问权就跳设置页申请 → 拿到才加卡片。
+     *
+     * 挂起可能长达 60s（等用户从设置页回来），所以放在本协程里而不是 Compose 回调里。
+     * 失败经 effect 回吐一句 toast，不占状态。
+     */
+    private suspend fun attachFile(uri: String) {
+        if (currentState.isGenerating) return
+        val result = try {
+            files.attach(uri)
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "attach file failed uri=$uri reason=${throwable.message}")
+            FileAttachResult.Unreadable
+        }
+        Logger.i(LOG_TAG, "attach file result=${result::class.simpleName}")
+        when (result) {
+            is FileAttachResult.Ok -> addFile(result.file)
+            FileAttachResult.Unresolvable ->
+                sendEffect(HomeChatEffect.FileAttachFailed(FileAttachReason.Unresolvable))
+            FileAttachResult.NoPermission ->
+                sendEffect(HomeChatEffect.FileAttachFailed(FileAttachReason.NoPermission))
+            FileAttachResult.Unreadable ->
+                sendEffect(HomeChatEffect.FileAttachFailed(FileAttachReason.Unreadable))
+        }
+    }
+
+    /** 按 path 去重（同图片按 uri/path 去重）。 */
+    private fun addFile(file: FileRef) {
+        agent.updateDraft { draft ->
+            if (draft.files.any { it.path == file.path }) draft
+            else draft.copy(files = draft.files + file)
+        }
+    }
+
+    private fun removeFile(id: String) {
+        agent.updateDraft { draft ->
+            draft.copy(files = draft.files.filterNot { it.path.hashCode().toString() == id })
+        }
+    }
+
+    /**
+     * 相机拍完：先走既有图片链路，等 ingest 把字节拷进沙箱之后再删 cache 里那份原图。
+     *
+     * 不能像入口层那样当场删：那时字节还没被拷走，删了就没源可读了。
+     * ingest 失败也删：它只是给相机写字节的落点，留着就是重复占盘，而 cache 目录
+     * 不归任何清理逻辑管。
+     */
+    private suspend fun attachCameraImage(uri: String, path: String) {
+        if (currentState.isGenerating) return
+        val before = agent.draft.value.images.count { it is DraftImage.Ready }
+        attachImage(uri)
+        val settled = agent.draft.first { draft ->
+            draft.images.none { it is DraftImage.Pending && it.uri == uri }
+        }
+        if (settled.images.count { it is DraftImage.Ready } == before) {
+            Logger.w(LOG_TAG, "camera ingest failed uri=$uri")
+        }
+        runCatching { File(path).delete() }
+            .onFailure { Logger.w(LOG_TAG, "camera temp file delete failed path=$path") }
+    }
+
     private suspend fun sendCurrentInput() {
         agent.updateDraft { it.copy(text = currentState.input.trim()) }
         // stream() is synchronous; don't let it consume Pending images before AgentImpl finishes ingest.
@@ -325,6 +398,7 @@ class HomeChatViewModel internal constructor(
             copy(
                 input = "",
                 pendingImages = emptyList(),
+                pendingFiles = emptyList(),
                 activeThinkingKey = null,
                 autoExpandedThinking = emptySet(),
                 // 旧回合的操作行随新回合消失：旧 turn 失去 isLastTurn 后
@@ -448,7 +522,8 @@ class HomeChatViewModel internal constructor(
         agent.updateDraft { draft ->
             draft.copy(
                 text = result.promptText,
-                images = result.attachments.map { DraftImage.Ready(it) },
+                images = result.images.map { DraftImage.Ready(it) },
+                files = result.files,
             )
         }
         if (agent.stream() == TurnStart.Started) {
@@ -475,13 +550,15 @@ class HomeChatViewModel internal constructor(
         agent.updateDraft { draft ->
             draft.copy(
                 text = result.promptText,
-                images = result.attachments.map { DraftImage.Ready(it) },
+                images = result.images.map { DraftImage.Ready(it) },
+                files = result.files,
             )
         }
         updateState {
             copy(
                 input = result.promptText,
-                pendingImages = result.attachments.map { it.toHomeImage() },
+                pendingImages = result.images.map { it.toHomeImage() },
+                pendingFiles = result.files.map { it.toHomeFile() },
                 expandedActionTurnId = null,
                 expandedActionSource = null,
             )

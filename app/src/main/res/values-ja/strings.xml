@@ -51,6 +51,10 @@
     <string name="ui_home_attach_camera">カメラ</string>
     <string name="ui_home_attach_file">ファイル</string>
     <string name="ui_home_attach_folder">フォルダ</string>
+    <string name="ui_home_attach_unresolvable">このファイルのローカルパスを取得できません</string>
+    <string name="ui_home_attach_no_permission">すべてのファイルへのアクセス権限を許可してください</string>
+    <string name="ui_home_attach_unreadable">このファイルを読み取れません</string>
+    <string name="ui_home_file_remove_content_description">ファイルを削除</string>
     <string name="ui_home_image_remove_content_description">画像を削除</string>
     <string name="ui_home_scroll_to_bottom_content_description">一番下へスクロール</string>
     <string name="ui_home_stop_content_description">生成を停止</string>

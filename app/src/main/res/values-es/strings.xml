@@ -52,6 +52,10 @@
     <string name="ui_home_attach_camera">Cámara</string>
     <string name="ui_home_attach_file">Archivo</string>
     <string name="ui_home_attach_folder">Carpeta</string>
+    <string name="ui_home_attach_unresolvable">No se pudo obtener la ruta local de ese archivo</string>
+    <string name="ui_home_attach_no_permission">Concede el permiso de acceso a todos los archivos</string>
+    <string name="ui_home_attach_unreadable">No se pudo leer ese archivo</string>
+    <string name="ui_home_file_remove_content_description">Eliminar archivo</string>
     <string name="ui_home_image_remove_content_description">Eliminar imagen</string>
     <string name="ui_home_scroll_to_bottom_content_description">Ir al final</string>
     <string name="ui_home_stop_content_description">Detener generación</string>

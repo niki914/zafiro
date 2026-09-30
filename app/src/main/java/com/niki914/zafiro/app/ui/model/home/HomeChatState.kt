@@ -77,6 +77,7 @@ data class HomeChatTurn(
     val id: Long,
     val userText: String,
     val images: List<HomeChatImage> = emptyList(),
+    val files: List<HomeChatFile> = emptyList(),
     val blocks: List<HomeChatBlock> = emptyList(),
 )
 
@@ -90,10 +91,26 @@ data class HomeChatImage(
     val path: String,
 )
 
+/**
+ * 用户消息附带的文件 / 文件夹引用（**真实路径**，不是沙箱路径 —— 文件不拷贝）。
+ * 待发送与已发送共用：send 时 pendingFiles 移入 turn.files，字段语义不变。
+ *
+ * 显示名是路径的 basename（「诚实的文件命名」）：不另存名字字段，
+ * 免得名字和硬盘上的东西脱钩。目录靠末尾 `/` 识别，[name] 会把它去掉。
+ */
+data class HomeChatFile(
+    val id: String,
+    val path: String,
+) {
+    val name: String get() = path.trimEnd('/').substringAfterLast('/')
+}
+
 data class HomeChatUiState(
     val input: String = "",
     /** 待发送图片（composer 上方图片条）。send 时移入新 turn.images 并清空。 */
     val pendingImages: List<HomeChatImage> = emptyList(),
+    /** 待发送文件 / 文件夹（composer 上方文件条）。send 时移入新 turn.files 并清空。 */
+    val pendingFiles: List<HomeChatFile> = emptyList(),
     val turns: List<HomeChatTurn> = emptyList(),
     val isGenerating: Boolean = false,
     val isLoadingConversation: Boolean = false,
@@ -127,6 +144,7 @@ data class HomeChatUiState(
  */
 fun HomeChatUiState.withClearedTransient() = copy(
     pendingImages = emptyList(),
+    pendingFiles = emptyList(),
     expandedToolRuns = emptySet(),
     expandedToolResults = emptySet(),
     expandedThinking = emptySet(),
@@ -143,6 +161,21 @@ sealed interface HomeChatIntent {
     /** 相册选图完成：追加一个待落盘项，实现侧完成后从 draft 读回。失败时该项消失。 */
     data class ImageAttached(val uri: String) : HomeChatIntent
     data class ImageRemoved(val id: String) : HomeChatIntent
+
+    /**
+     * 文件 / 文件夹选择完成（SAF 返回的 `content://`）。
+     *
+     * 解析路径、要全局文件访问权都在 VM 侧跑完（可能要跳设置页等用户回来）：
+     * 拿到才把卡片加进草稿，拿不到经 [HomeChatEffect.FileAttachFailed] 回吐 toast。
+     */
+    data class FileAttached(val uri: String) : HomeChatIntent
+    data class FileRemoved(val id: String) : HomeChatIntent
+
+    /**
+     * 相机拍完（uri 是给相机写的 FileProvider 临时文件，path 是它在 cache 里的位置）。
+     * 与 [ImageAttached] 的差别：原图在**我们自己的 cache** 里，ingest 完成后要把它删掉。
+     */
+    data class CameraCaptured(val uri: String, val path: String) : HomeChatIntent
     data object StopGenerating : HomeChatIntent
     data object NewConversation : HomeChatIntent
     data class LoadConversation(val id: String) : HomeChatIntent
@@ -159,4 +192,28 @@ sealed interface HomeChatIntent {
 
     /** 前台对话框的裁决回灌；由 [com.niki914.zafiro.api.Approver] 实现侧等待。 */
     data class ResolveApproval(val decision: ApprovalDecision) : HomeChatIntent
+}
+
+/**
+ * 一次性效果。**持久**的状态（对话框、展开态）继续走 [HomeChatUiState]；
+ * 用过即弃的提示走这里，不污染状态。
+ */
+sealed interface HomeChatEffect {
+    data class FileAttachFailed(val reason: FileAttachReason) : HomeChatEffect
+}
+
+/**
+ * 附件失败的原因，与 `business:files` 的 `FileAttachResult` 一一对应。
+ * 定义在这里而不是直接用那个类型：content 包不依赖 `business:api` / `business:files`，
+ * 契约类型到 UI 模型的翻译只发生在 mapper 与 ViewModel 里。
+ */
+enum class FileAttachReason {
+    /** 解析不出真实路径（云盘 / SD 卡 / 其它 provider）。 */
+    Unresolvable,
+
+    /** 没拿到全局文件访问权。 */
+    NoPermission,
+
+    /** 权限拿到了但路径读不到。 */
+    Unreadable,
 }
