@@ -146,8 +146,10 @@ private data object GoogleSpec : ProviderSpec {
     override val exampleModelId: String = "gemini-3.5-flash"
     override val allowsCustomEndpointInNewConfig: Boolean = true
 
-    // Google 品牌走官方 OpenAI 兼容端点，如实展示 openai 协议（不提供 gemini-native）
-    override val defaultProtocol: String = "openai-chat-completions"
+    // Google 品牌走官方 OpenAI 兼容端点，如实展示 google-openai 协议
+    // （不提供 gemini-native；google-openai 与 openai-chat-completions 同壳，
+    //  差异是工具调用签名回带，故 Google 必须预填 google-openai）
+    override val defaultProtocol: String = "google-openai"
     override val iconRes: Int = R.drawable.gemini
     override val tintIcon: Boolean = false
     override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(

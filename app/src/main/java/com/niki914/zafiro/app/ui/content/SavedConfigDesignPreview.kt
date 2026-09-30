@@ -59,6 +59,7 @@ import com.niki914.uikit.infra.rememberLiquidScreenState
 private val MOCK_PROTOCOLS = listOf(
     "deepseek",
     "openai-chat-completions",
+    "google-openai",
     "openai-responses",
     "anthropic-messages",
 )

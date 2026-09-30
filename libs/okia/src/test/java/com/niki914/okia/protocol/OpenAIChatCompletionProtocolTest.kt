@@ -412,6 +412,77 @@ class OpenAIChatCompletionProtocolTest {
     }
 
     @Test
+    fun geminiStopSettlesAccumulatedToolCallAndReportsToolUse() = runTest {
+        // 回归（#256）：Gemini 兼容端点用 finish_reason=stop 收尾工具回合，
+        // tool_calls delta 不带 index（issue 里的真实抓包）。签名读取不依赖 compat。
+        val events = parse(
+            """{"choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"extra_content":{"google":{"thought_signature":"sig-a"}},"function":{"arguments":"{\"name\":\"Calculator\"}","name":"open_app"},"id":"call_2209771","type":"function"}]},"finish_reason":null}]}""",
+            """{"choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":"stop","index":0}]}"""
+        )
+        assertEquals(
+            listOf(
+                ProtocolEvent.ToolCallStarted("call_2209771", "open_app"),
+                ProtocolEvent.ToolCallDelta(
+                    "call_2209771",
+                    "open_app",
+                    """{"name":"Calculator"}"""
+                ),
+                ProtocolEvent.ToolCallReady(
+                    "call_2209771",
+                    "open_app",
+                    """{"name":"Calculator"}""",
+                    "sig-a"
+                ),
+                ProtocolEvent.Completed(null, null, StopReason.ToolUse)
+            ),
+            events
+        )
+    }
+
+    @Test
+    fun indexlessParallelToolCallsKeepSeparateSlotsById() = runTest {
+        // 无 index 的并行调用按 id 分槽；带 id 的参数续传回到原槽（vercel/ai 同判据）
+        val events = parse(
+            """{"choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_a","function":{"name":"a","arguments":"{\"x\":"}},{"id":"call_b","function":{"name":"b","arguments":"{\"y\":"}}]},"finish_reason":null}]}""",
+            """{"choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_a","function":{"arguments":"1}"}}]},"finish_reason":null}]}""",
+            """{"choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_b","function":{"arguments":"2}"}}]},"finish_reason":null}]}""",
+            """{"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}"""
+        )
+        assertEquals(
+            listOf(
+                ProtocolEvent.ToolCallStarted("call_a", "a"),
+                ProtocolEvent.ToolCallDelta("call_a", "a", """{"x":"""),
+                ProtocolEvent.ToolCallStarted("call_b", "b"),
+                ProtocolEvent.ToolCallDelta("call_b", "b", """{"y":"""),
+                ProtocolEvent.ToolCallDelta("call_a", "a", "1}"),
+                ProtocolEvent.ToolCallDelta("call_b", "b", "2}"),
+                ProtocolEvent.ToolCallReady("call_a", "a", """{"x":1}"""),
+                ProtocolEvent.ToolCallReady("call_b", "b", """{"y":2}"""),
+                ProtocolEvent.Completed(null, null, StopReason.ToolUse)
+            ),
+            events
+        )
+    }
+
+    @Test
+    fun truncatedToolCallIsSettledOnLength() = runTest {
+        // length 截断：调用照样落到消息里，loop 才能补配对失败结果（卡片不再转圈）
+        val events = parse(
+            """{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_t","function":{"name":"t","arguments":"{\"q\":12"}}]},"finish_reason":null}]}""",
+            """{"choices":[{"index":0,"delta":{},"finish_reason":"length"}]}"""
+        )
+        assertEquals(
+            listOf(
+                ProtocolEvent.ToolCallStarted("call_t", "t"),
+                ProtocolEvent.ToolCallDelta("call_t", "t", """{"q":12"""),
+                ProtocolEvent.ToolCallReady("call_t", "t", """{"q":12"""),
+                ProtocolEvent.Completed(null, null, StopReason.Length)
+            ),
+            events
+        )
+    }
+
+    @Test
     fun toolCallsWithNoFinishReasonIsError() = runTest {
         val events = parse(
             """{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"c","function":{"name":"t","arguments":"{}"}}]},"finish_reason":null}]}"""
@@ -532,6 +603,7 @@ class OpenAIChatCompletionProtocolTest {
     // ── OpenAI 官方 compat 形态 ───────────────────────────────────────────
 
     private val openai = OpenAIChatCompletionProtocol(compat = OpenAIChatCompletionCompat())
+    private val google = OpenAIChatCompletionProtocol(compat = GoogleOpenAiCompat())
 
     @Test
     fun openaiCompatCarriesIdentityAndEndpoint() {
@@ -590,6 +662,82 @@ class OpenAIChatCompletionProtocolTest {
         val msg = messagesOf(request).single()
         assertEquals("答案", msg["content"]!!.jsonPrimitive.content)
         assertNull(msg["reasoning_content"])
+    }
+
+    /** assistant 历史里首个 tool_call 对象。 */
+    private fun firstToolCallOf(request: HttpRequest): JsonObject =
+        messagesOf(request).single()["tool_calls"]!!.jsonArray[0].jsonObject
+
+    @Test
+    fun googleCompatCarriesIdentityAndEndpoint() {
+        assertEquals("google-openai", google.id)
+        assertEquals(
+            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+            google.defaultEndpoint
+        )
+    }
+
+    @Test
+    fun googleCompatReplaysThoughtSignatureOnAssistantToolCall() = runBlocking {
+        // Gemini 3：assistant 历史的 tool_calls 必须原样回带签名，否则下一轮 400
+        val request = google.buildRequest(
+            snapshot(),
+            listOf(
+                assistant(
+                    listOf(
+                        ContentBlock.ToolCall(
+                            "call_1",
+                            "get_weather",
+                            """{"city":"北京"}""",
+                            "sig-a"
+                        )
+                    )
+                )
+            )
+        )
+        assertEquals(
+            "sig-a",
+            firstToolCallOf(request)["extra_content"]!!.jsonObject["google"]!!
+                .jsonObject["thought_signature"]!!.jsonPrimitive.content
+        )
+    }
+
+    @Test
+    fun nonGoogleCompatDoesNotWriteExtraContent() = runBlocking {
+        // extra_content 不在 OpenAI 规范内：换 Provider 回放同一段历史时不带上，
+        // 严格网关（OpenAI 官方 / 百炼 / Kimi 等）会拒绝未知字段
+        val request = openai.buildRequest(
+            snapshot(),
+            listOf(
+                assistant(
+                    listOf(
+                        ContentBlock.ToolCall(
+                            "call_1",
+                            "get_weather",
+                            """{"city":"北京"}""",
+                            "sig-a"
+                        )
+                    )
+                )
+            )
+        )
+        assertNull(firstToolCallOf(request)["extra_content"])
+    }
+
+    @Test
+    fun googleCompatOmitsExtraContentWhenSignatureAbsent() = runBlocking {
+        // 无签名（Gemini 2.5 等非思维内工具调用）不凭空造字段
+        val request = google.buildRequest(
+            snapshot(),
+            listOf(
+                assistant(
+                    listOf(
+                        ContentBlock.ToolCall("call_1", "get_weather", """{"city":"北京"}""")
+                    )
+                )
+            )
+        )
+        assertNull(firstToolCallOf(request)["extra_content"])
     }
 
     @Test

@@ -18,6 +18,8 @@ import com.niki914.okia.message.Message
 import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.protocol.AnthropicMessagesProtocol
+import com.niki914.okia.protocol.ChatProtocol
+import com.niki914.okia.protocol.GoogleOpenAiCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
 import com.niki914.okia.ImageSaver
@@ -637,11 +639,14 @@ object LLMController {
         restore: SessionSnapshot?,
     ): Okia = okiaFactory.create(protocol, restore, config)
 
-    /** 端点留空时的兑底：OpenAI Responses / Anthropic / DeepSeek 协议自带官方端点。 */
+    /** 端点留空时的兑底：各协议自带的官方端点（与 compat.defaultEndpoint 同值）。 */
     private fun protocolDefaultEndpointFallback(protocol: LlmProtocol): String {
         return when (protocol) {
             LlmProtocol.DeepSeek -> "https://api.deepseek.com/chat/completions"
             LlmProtocol.OpenAiChatCompletions -> "https://api.openai.com/v1/chat/completions"
+            LlmProtocol.GoogleOpenAi ->
+                "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+
             LlmProtocol.OpenAiResponses -> "https://api.openai.com/v1/responses"
             LlmProtocol.AnthropicMessages -> "https://api.anthropic.com/v1/messages"
         }
@@ -653,14 +658,7 @@ object LLMController {
         config: ResolvedLlmConfig,
     ): Okia {
         val endpoint = config.endpoint.ifBlank { protocolDefaultEndpointFallback(protocol) }
-        val wireProtocol = when (protocol) {
-            LlmProtocol.DeepSeek -> OpenAIChatCompletionProtocol()
-            LlmProtocol.OpenAiChatCompletions ->
-                OpenAIChatCompletionProtocol(Json, OpenAIChatCompletionCompat())
-
-            LlmProtocol.OpenAiResponses -> OpenAIResponsesProtocol()
-            LlmProtocol.AnthropicMessages -> AnthropicMessagesProtocol()
-        }
+        val wireProtocol = wireProtocolFor(protocol)
         val saver = ensureImageSaver()
         return Okia.open(wireProtocol, restore) {
             this.endpoint = endpoint
@@ -685,6 +683,20 @@ object LLMController {
     }
 
     // ── T2a 工具注册 ────────────────────────────────────────────────────────
+
+    /** 协议实例装配：okia ChatProtocol 由 LlmProtocol 唯一决定。 */
+    private fun wireProtocolFor(protocol: LlmProtocol): ChatProtocol = when (protocol) {
+        LlmProtocol.DeepSeek -> OpenAIChatCompletionProtocol()
+        LlmProtocol.OpenAiChatCompletions ->
+            OpenAIChatCompletionProtocol(Json, OpenAIChatCompletionCompat())
+
+        // Google：同壳 + 工具调用签名回带（extra_content.google.thought_signature）
+        LlmProtocol.GoogleOpenAi ->
+            OpenAIChatCompletionProtocol(Json, GoogleOpenAiCompat())
+
+        LlmProtocol.OpenAiResponses -> OpenAIResponsesProtocol()
+        LlmProtocol.AnthropicMessages -> AnthropicMessagesProtocol()
+    }
 
     /**
      * 全量重建本地工具注册：registry 中所有 Local 工具先移除（含 inline 的，
