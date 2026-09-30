@@ -6,22 +6,42 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
+
+/** 输入框底边与键盘顶边之间保留的边距。 */
+private val SettingsFormAvoidanceMargin = 12.dp
+
+/** 避让循环的帧数上限（~2s），避免键盘一直不出现时无限循环。 */
+private const val MaxAvoidanceFrames = 120
+
+/** 连续多少帧「键盘不动且输入框已在键盘之上」后结束避让。 */
+private const val SettledFramesToStop = 3
 
 /**
  * 设置详情表单脚手架，必须运行在 `LiquidScreen` 内容树内。
@@ -57,6 +77,49 @@ fun SettingsDetailFormScaffold(
     // 自带的内部滚动会作为已消费增量冒泡到壳层，被误计入页面滚离量（页面停在顶部、
     // 顶栏却变实体）。用自身的滚动状态精确接管，输入框内部滚动不再参与。
     ReportTitleBarCollapsed { scrollState.value > 0 }
+
+    // 键盘避让：表单输入框展开并获焦时，把内容滚到键盘之上。
+    // 只收窄视口是不够的——视口变矮只是提供了可滚余量，没有任何东西会去滚它；
+    // Compose 自带的 bringIntoView 只在获焦瞬间请求一次，而键盘是之后才长出来的，
+    // 请求早已结束。这里自己按 IME inset 逐帧收敛，滚定即停（不锁，之后可手动滚动）。
+    val keyboardAvoidance = remember { SettingsFormKeyboardAvoidance() }
+    val hostView = LocalView.current
+    val density = LocalDensity.current
+    val imeBottomPx = WindowInsets.ime.getBottom(density)
+    val latestImeBottomPx by rememberUpdatedState(imeBottomPx)
+    val avoidanceMarginPx = with(density) { SettingsFormAvoidanceMargin.toPx() }
+    val activeAvoidanceKey = keyboardAvoidance.activeKey
+    LaunchedEffect(activeAvoidanceKey) {
+        if (activeAvoidanceKey == null) return@LaunchedEffect
+        var frames = 0
+        var settledFrames = 0
+        var lastImePx = -1
+        while (frames < MaxAvoidanceFrames && settledFrames < SettledFramesToStop) {
+            withFrameNanos { }
+            frames++
+            val imePx = latestImeBottomPx
+            val bounds = keyboardAvoidance.activeBounds
+            val keyboardMoving = imePx != lastImePx
+            lastImePx = imePx
+            // 输入框底边需要高出键盘顶边一个边距；未超出则无需滚动。
+            val deltaPx = if (imePx > 0 && bounds != null) {
+                bounds.bottom + avoidanceMarginPx - (hostView.height - imePx)
+            } else {
+                0f
+            }
+            if (deltaPx > 0f) {
+                val target = (scrollState.value + deltaPx).toInt()
+                    .coerceIn(0, scrollState.maxValue)
+                scrollState.scrollTo(target)
+            }
+            if (imePx > 0 && !keyboardMoving && deltaPx <= 0f) {
+                settledFrames++
+            } else {
+                settledFrames = 0
+            }
+        }
+    }
+
     val resolvedContentBottomPadding = contentBottomPadding ?: liquidScreenBottomPadding()
     val resolvedActionButtonBottomPadding =
         actionButtonBottomPadding ?: liquidScreenBottomPadding()
@@ -75,6 +138,10 @@ fun SettingsDetailFormScaffold(
         Column(
             modifier = contentModifier
                 .fillMaxSize()
+                // 键盘弹起时收窄本滑动列的可视区（inset 加在 verticalScroll 之前，
+                // 只缩滚动视口，不缩吸底按钮）：视口变矮后，内容可以真实滚动到
+                // 键盘上方，上方的卡片也能滚回来；顶栏随之按真实滚动变实体。
+                .imePadding()
                 .verticalScroll(scrollState)
                 .padding(
                     horizontal = SettingsDetailPageDefaults.HorizontalPadding,
@@ -96,7 +163,11 @@ fun SettingsDetailFormScaffold(
             if (!description.isNullOrBlank()) {
                 PageDescriptionText(text = description)
             }
-            content()
+            CompositionLocalProvider(
+                LocalSettingsFormKeyboardAvoidance provides keyboardAvoidance,
+            ) {
+                content()
+            }
             if (!inlineErrorText.isNullOrBlank()) {
                 Text(
                     text = inlineErrorText,

@@ -48,7 +48,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -84,7 +83,6 @@ import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
-import com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
@@ -645,36 +643,34 @@ private fun HomePageContentBody(
             )
         }
 
-        CompositionLocalProvider(LocalLiquidViewportAvoidanceController provides null) {
-            LiquidChatComposer(
-                value = uiState.input,
-                onValueChange = onInputChange,
-                onSendClick = onSendClick,
-                onStopClick = onStopClick,
-                isGenerating = uiState.isGenerating,
-                pendingImages = pendingImages,
-                onAttachImageClick = {
-                    photoPicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
+        LiquidChatComposer(
+            value = uiState.input,
+            onValueChange = onInputChange,
+            onSendClick = onSendClick,
+            onStopClick = onStopClick,
+            isGenerating = uiState.isGenerating,
+            pendingImages = pendingImages,
+            onAttachImageClick = {
+                photoPicker.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .onFocusChanged { focusState ->
+                    onComposerFocusChanged(focusState.hasFocus)
+                }
+                .focusRequester(composerFocusRequester)
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    bottom = composerBottomPadding,
+                )
+                // 放在 padding 之后：只测 composer 本体高度，不含底边距
+                .onSizeChanged { size ->
+                    composerHeight.value = with(density) { size.height.toDp() }
                 },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .onFocusChanged { focusState ->
-                        onComposerFocusChanged(focusState.hasFocus)
-                    }
-                    .focusRequester(composerFocusRequester)
-                    .padding(
-                        start = 20.dp,
-                        end = 20.dp,
-                        bottom = composerBottomPadding,
-                    )
-                    // 放在 padding 之后：只测 composer 本体高度，不含底边距
-                    .onSizeChanged { size ->
-                        composerHeight.value = with(density) { size.height.toDp() }
-                    },
-            )
-        }
+        )
 
         // 解除贴底锚定且不在底部时出现：点击恢复跟随并平滑滚回底部
         val scrollToBottomScope = rememberCoroutineScope()
