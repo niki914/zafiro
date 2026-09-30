@@ -41,6 +41,7 @@ import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SwipeDismissSettingsItemCard
+import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.zafiro.app.R
@@ -128,7 +129,7 @@ private fun ConversationHistoryListContent(
             start = 16.dp,
             top = liquidScreenTopPadding(24.dp),
             end = 16.dp,
-            bottom = 24.dp,
+            bottom = liquidScreenBottomPadding(),
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -292,7 +293,7 @@ private fun ConversationHistoryMessageContent(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
-            .padding(top = liquidScreenTopPadding(24.dp), bottom = 24.dp),
+            .padding(top = liquidScreenTopPadding(24.dp), bottom = liquidScreenBottomPadding()),
         contentAlignment = Alignment.TopCenter,
     ) {
         SettingsGroupCard {

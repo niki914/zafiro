@@ -15,16 +15,59 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.niki914.uikit.infra.TitleDirection
 
+/**
+ * 顶栏折叠信号：内容滚离顶部的累积量 + 折叠布尔。
+ *
+ * 默认由 `LiquidScreen` 的 nestedScroll 自动写入，页面不参与；归属导航条目
+ * → 切页天然隔离（新条目从 0 起算）、条目存活期保留，返回本页时首帧即恢复。
+ *
+ * 累积量只能反映**手势**产生的位移。页面若含程序化定位（自动贴底、恢复位置）
+ * 或页内嵌套滚动子树，可用 `ReportTitleBarCollapsed` 改用自身滚动状态接管。
+ */
+@Stable
+class TitleBarScrollState {
+    /**
+     * 累积滚离量（px）。
+     *
+     * 故意用普通字段：滚动时每帧都在变，若做成 Compose 状态会让 `LiquidScreen`
+     * 连同内容层逐帧重组。对外只暴露 [collapsed] 布尔，写入相同值时
+     * `mutableStateOf` 的结构相等策略会跳过通知，因此不会产生无效重组。
+     */
+    private var offsetPx: Float = 0f
+
+    /** 页面是否已用精确信号接管（见 `ReportTitleBarCollapsed`）。 */
+    private var isOwnedByPage = false
+
+    /** 内容是否已滚离顶部（超过传入的阈值）。 */
+    var collapsed: Boolean by mutableStateOf(false)
+        private set
+
+    /**
+     * 累加内容滚离量并重算折叠态。页面接管后本路径失效。
+     *
+     * @param scrolledDownPx 向下滚离的像素量，正数表示滚离顶部。
+     * @param thresholdPx 折叠阈值，达此值即折叠；等于阈值时不算折叠。
+     */
+    internal fun addScroll(scrolledDownPx: Float, thresholdPx: Float) {
+        if (isOwnedByPage) return
+        offsetPx = (offsetPx + scrolledDownPx).coerceAtLeast(0f)
+        collapsed = offsetPx > thresholdPx
+    }
+
+    /** 页面用自身滚动状态提供的精确折叠信号，接管后累积量不再参与。 */
+    internal fun setFromPage(isCollapsed: Boolean) {
+        isOwnedByPage = true
+        collapsed = isCollapsed
+    }
+}
+
 data class NavigationEntry<P : Page>(
     val id: String,
     val page: P,
     override val viewModelStore: ViewModelStore = ViewModelStore(),
 ) : ViewModelStoreOwner {
-    /** 本页内容是否已滚离顶部（驱动 action bar 背景板渐显与小标题浮现）。
-     * 由页面自己写入（ReportTitleBarCollapsed）；状态归属条目：
-     * 条目在栈内存活期间保留，返回本页时 bar 首帧即取到离开前的状态，
-     * 过渡期退场页写的是自己的槽，bar 只读当前条目，无共享竞争。 */
-    var titleCollapsed: Boolean by mutableStateOf(false)
+    /** 本页顶栏折叠信号（驱动 action bar 背景板渐显与小标题浮现）。 */
+    val titleBarScroll = TitleBarScrollState()
 }
 
 @Stable

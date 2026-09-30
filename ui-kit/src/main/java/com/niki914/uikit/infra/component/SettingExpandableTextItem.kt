@@ -30,12 +30,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 
 @Composable
 fun SettingExpandableTextItem(
@@ -132,6 +137,22 @@ internal fun SettingExpandableTextItemContent(
             toggleSecretHiddenContentDescription != null
     val singleLine = maxLines == 1
     val fieldMinHeight = if (singleLine) 52.dp else 136.dp
+
+    // 键盘避让登记：展开并获焦时把真实矩形交给脚手架（只服务表单，不经过公共输入框容器）。
+    val keyboardAvoidance = LocalSettingsFormKeyboardAvoidance.current
+    val avoidanceKey = remember { Any() }
+    var fieldBounds by remember { mutableStateOf<Rect?>(null) }
+    var fieldFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(keyboardAvoidance, expanded, fieldFocused, fieldBounds) {
+        val avoidance = keyboardAvoidance ?: return@LaunchedEffect
+        if (!expanded || !fieldFocused) {
+            avoidance.release(avoidanceKey)
+        } else {
+            avoidance.request(avoidanceKey)
+            fieldBounds?.let { avoidance.activeBounds = it }
+        }
+    }
+
     val titleColor = if (enabled) {
         colorScheme.onSurface
     } else {
@@ -216,6 +237,12 @@ internal fun SettingExpandableTextItemContent(
                         moveCursorToEndOnFocus = true,
                         modifier = fieldModifier
                             .heightIn(min = fieldMinHeight)
+                            .onFocusChanged { fieldFocused = it.isFocused }
+                            .onGloballyPositioned { coordinates ->
+                                fieldBounds = coordinates.takeIf { it.isAttached }?.let {
+                                    Rect(it.positionInRoot(), it.size.toSize())
+                                }
+                            }
                             .focusRequester(focusRequester),
                     )
                 } else {
@@ -230,6 +257,12 @@ internal fun SettingExpandableTextItemContent(
                         moveCursorToEndOnFocus = true,
                         modifier = fieldModifier
                             .heightIn(min = fieldMinHeight)
+                            .onFocusChanged { fieldFocused = it.isFocused }
+                            .onGloballyPositioned { coordinates ->
+                                fieldBounds = coordinates.takeIf { it.isAttached }?.let {
+                                    Rect(it.positionInRoot(), it.size.toSize())
+                                }
+                            }
                             .focusRequester(focusRequester),
                     )
                 }

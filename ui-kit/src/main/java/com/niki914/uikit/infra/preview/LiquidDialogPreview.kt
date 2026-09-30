@@ -20,6 +20,7 @@ import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.LiquidScreen
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.uikit.infra.nav.TitleBarScrollState
 import com.niki914.uikit.infra.rememberLiquidScreenState
 import kotlinx.coroutines.delay
 
@@ -42,7 +43,10 @@ private fun LiquidDialogPreviewContent() {
         }
     }
 
-    LiquidScreen(state = screenState, collapsed = false) {
+    LiquidScreen(
+        state = screenState,
+        titleBarScroll = remember { TitleBarScrollState() },
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()

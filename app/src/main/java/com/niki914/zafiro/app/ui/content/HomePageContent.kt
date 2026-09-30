@@ -48,7 +48,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -84,7 +83,6 @@ import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
-import com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
@@ -154,11 +152,12 @@ fun HomePageContent(
     val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
 
-    // Home Chat 是可 saveable 恢复滚动位置的 Pinned 页：折叠状态写入当前条目，
-    // 返回时（scroll 恢复但不产生滚动事件）背景板由条目保留的状态立即动画恢复。
+    // Home 必须显式接管顶栏折叠信号：列表位置会由程序化驱动（自动贴底），且工具结果框
+    // 自带滚动子树——两者都是壳层累积量看不见的位移。其余页面保持自动感知。
     ReportTitleBarCollapsed {
         listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
     }
+
     val imeBottom = with(density) { WindowInsets.ime.getBottom(this).toDp() }
     val navigationBottom = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
     var isComposerFocused by remember { mutableStateOf(false) }
@@ -644,36 +643,34 @@ private fun HomePageContentBody(
             )
         }
 
-        CompositionLocalProvider(LocalLiquidViewportAvoidanceController provides null) {
-            LiquidChatComposer(
-                value = uiState.input,
-                onValueChange = onInputChange,
-                onSendClick = onSendClick,
-                onStopClick = onStopClick,
-                isGenerating = uiState.isGenerating,
-                pendingImages = pendingImages,
-                onAttachImageClick = {
-                    photoPicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
+        LiquidChatComposer(
+            value = uiState.input,
+            onValueChange = onInputChange,
+            onSendClick = onSendClick,
+            onStopClick = onStopClick,
+            isGenerating = uiState.isGenerating,
+            pendingImages = pendingImages,
+            onAttachImageClick = {
+                photoPicker.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .onFocusChanged { focusState ->
+                    onComposerFocusChanged(focusState.hasFocus)
+                }
+                .focusRequester(composerFocusRequester)
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    bottom = composerBottomPadding,
+                )
+                // 放在 padding 之后：只测 composer 本体高度，不含底边距
+                .onSizeChanged { size ->
+                    composerHeight.value = with(density) { size.height.toDp() }
                 },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .onFocusChanged { focusState ->
-                        onComposerFocusChanged(focusState.hasFocus)
-                    }
-                    .focusRequester(composerFocusRequester)
-                    .padding(
-                        start = 20.dp,
-                        end = 20.dp,
-                        bottom = composerBottomPadding,
-                    )
-                    // 放在 padding 之后：只测 composer 本体高度，不含底边距
-                    .onSizeChanged { size ->
-                        composerHeight.value = with(density) { size.height.toDp() }
-                    },
-            )
-        }
+        )
 
         // 解除贴底锚定且不在底部时出现：点击恢复跟随并平滑滚回底部
         val scrollToBottomScope = rememberCoroutineScope()

@@ -6,10 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -19,7 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
@@ -37,8 +33,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -52,7 +46,6 @@ import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
-import com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController
 import com.niki914.uikit.infra.interaction.InteractiveHighlight
 import com.niki914.uikit.infra.interaction.LiquidInteractiveStyle
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
@@ -89,12 +82,7 @@ internal fun LiquidTextFieldContainer(
 ) {
     val backdrop = rememberLayerBackdrop()
     val animationScope = rememberCoroutineScope()
-    val focusManager = LocalFocusManager.current
-    val density = LocalDensity.current
-    val viewportAvoidanceController = LocalLiquidViewportAvoidanceController.current
-    val viewportAvoidanceRequestId = remember { Any() }
     var isFocused by remember { mutableStateOf(false) }
-    var imeWasVisibleWhileFocused by remember { mutableStateOf(false) }
     var boundsInRoot by remember { mutableStateOf<Rect?>(null) }
     var trailingBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
     val interactiveHighlight = remember(animationScope) {
@@ -117,7 +105,6 @@ internal fun LiquidTextFieldContainer(
         )
     }
     val interactiveEffectsEnabled = enabled && (!isFocused || textFieldValue.text.isEmpty())
-    val imeVisible = WindowInsets.ime.getBottom(density) > 0
     val fieldShape = G2FieldShape(36.dp)
 
     LaunchedEffect(value) {
@@ -126,41 +113,6 @@ internal fun LiquidTextFieldContainer(
                 text = value,
                 selection = TextRange(value.length),
             )
-        }
-    }
-
-    LaunchedEffect(isFocused, imeVisible) {
-        syncLiquidTextFieldFocusWithImeVisibility(
-            isFocused = isFocused,
-            imeVisible = imeVisible,
-            imeWasVisibleWhileFocused = imeWasVisibleWhileFocused,
-            onImeVisibilityTracked = { imeWasVisibleWhileFocused = it },
-            focusManager = focusManager,
-        )
-    }
-
-    LaunchedEffect(
-        enabled,
-        isFocused,
-        imeVisible,
-        boundsInRoot,
-        viewportAvoidanceController,
-        viewportAvoidanceRequestId,
-    ) {
-        val currentBounds = boundsInRoot
-        if (enabled && isFocused && imeVisible && currentBounds != null) {
-            viewportAvoidanceController?.request(
-                id = viewportAvoidanceRequestId,
-                boundsInRoot = currentBounds,
-            )
-        } else {
-            viewportAvoidanceController?.release(viewportAvoidanceRequestId)
-        }
-    }
-
-    DisposableEffect(viewportAvoidanceController, viewportAvoidanceRequestId) {
-        onDispose {
-            viewportAvoidanceController?.release(viewportAvoidanceRequestId)
         }
     }
 
@@ -338,29 +290,4 @@ internal fun LiquidTextFieldContainer(
             }
         },
     )
-}
-
-private fun syncLiquidTextFieldFocusWithImeVisibility(
-    isFocused: Boolean,
-    imeVisible: Boolean,
-    imeWasVisibleWhileFocused: Boolean,
-    onImeVisibilityTracked: (Boolean) -> Unit,
-    focusManager: FocusManager,
-) {
-    if (!isFocused) {
-        if (imeWasVisibleWhileFocused) {
-            onImeVisibilityTracked(false)
-        }
-        return
-    }
-    if (imeVisible) {
-        if (!imeWasVisibleWhileFocused) {
-            onImeVisibilityTracked(true)
-        }
-        return
-    }
-    if (imeWasVisibleWhileFocused) {
-        onImeVisibilityTracked(false)
-        focusManager.clearFocus(force = true)
-    }
 }

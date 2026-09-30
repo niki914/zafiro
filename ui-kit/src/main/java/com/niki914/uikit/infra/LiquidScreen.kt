@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
@@ -38,14 +37,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -57,12 +60,17 @@ import androidx.compose.ui.zIndex
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.infra.nav.TitleBarScrollState
 import kotlinx.coroutines.delay
+
+/** 底部安全距离中，系统导航栏 inset 之外额外留出的设计间距。 */
+private val BottomInsetSpacing = 50.dp
 
 @Composable
 fun LiquidScreen(
     state: LiquidScreenState,
-    collapsed: Boolean,
+    /** 当前导航条目的折叠信号载体：壳层经 nestedScroll 写入，页面不参与。 */
+    titleBarScroll: TitleBarScrollState,
     modifier: Modifier = Modifier,
     actionsEnabled: Boolean = true,
     leftButton: (@Composable () -> Unit)? = null,
@@ -81,14 +89,36 @@ fun LiquidScreen(
     val buttonSlotHeight = 72.dp
     val actionBarHeight = topInset + titleBarHeight
     val chromeHeight = topInset + buttonSlotHeight
-    val activeAvoidanceRequest = state.viewportAvoidanceController.activeRequest
-    val imeBottomPx = WindowInsets.ime.getBottom(density)
     val navigationBottomPx = WindowInsets.navigationBars.getBottom(density)
-    var screenHeightPx by remember { mutableStateOf(0) }
+    val navigationBottom = with(density) { navigationBottomPx.toDp() }
 
-    // 背景板/小标题折叠状态唯一来源：当前导航条目的 titleCollapsed
-    // （页面经 ReportTitleBarCollapsed 写入）。bar 拉取，无导航清零、
-    // 无共享状态、无退场页竞争；条目存活期状态保留，返回时首帧恢复。
+    // 折叠信号唯一来源：当前条目上的 titleBarScroll，由下方 nestedScroll 自动写入。
+    // 无页面参与、无导航清零、无共享状态；条目存活期累积量保留，返回时首帧恢复。
+
+    // 折叠阈值：Collapsible 页与大标题滚走的距离一致；Pinned 页小标题常驻，
+    // 内容一滑到栏下就该有背景，故取 0。
+    val collapseThreshold = if (state.isTitleCollapsible) TitleBarCollapseThreshold else 0.dp
+    val collapseThresholdPx = with(density) { collapseThreshold.toPx() }
+    val latestCollapseThresholdPx by rememberUpdatedState(collapseThresholdPx)
+    // 捕获子级滚动容器（verticalScroll / LazyColumn）向上冒泡的已消费增量，
+    // 累积到当前条目；切页时新条目自带独立累积量，天然隔离。
+    val titleBarScrollConnection = remember(titleBarScroll) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                // Compose 中内容向下滚离时 consumed.y 为负，取负号让累积量随滚离增大。
+                val scrolledDownPx = -consumed.y
+                if (scrolledDownPx != 0f) {
+                    titleBarScroll.addScroll(scrolledDownPx, latestCollapseThresholdPx)
+                }
+                return Offset.Zero
+            }
+        }
+    }
+    val collapsed = titleBarScroll.collapsed
 
     // 动画时长与 action bar 左右按钮显隐动画一致，页面切换时两页滚动状态
     // 不同也不会闪变：alpha 总是从当前值动画到目标值。
@@ -107,46 +137,27 @@ fun LiquidScreen(
         animationSpec = collapseAnimSpec,
         label = "topBarTitleAlpha",
     )
-    val targetAvoidanceOffsetPx = with(density) {
-        calculateLiquidViewportAvoidanceOffsetPx(
-            screenHeightPx = screenHeightPx.toFloat(),
-            topSafePx = actionBarHeight.toPx(),
-            bottomBlockedInsetPx = maxOf(imeBottomPx, navigationBottomPx).toFloat(),
-            request = activeAvoidanceRequest,
-            topMarginPx = activeAvoidanceRequest?.topMargin?.toPx() ?: 0f,
-            bottomMarginPx = activeAvoidanceRequest?.bottomMargin?.toPx() ?: 0f,
-        )
-    }
-    val avoidanceOffsetPx by animateFloatAsState(
-        targetValue = targetAvoidanceOffsetPx,
-        animationSpec = tween(33, easing = FastOutSlowInEasing),
-        label = "viewportAvoidanceOffset",
-    )
-
     SideEffect {
         state.setActionBarHeight(actionBarHeight)
-        state.viewportAvoidanceController.setContentOffsetPx(avoidanceOffsetPx)
     }
 
     Box(
         modifier
-            .fillMaxSize()
-            .onSizeChanged { size -> screenHeightPx = size.height },
+            .fillMaxSize(),
     ) {
         // Layer 1: page content.
         CompositionLocalProvider(
             LocalLiquidScreenContentContext provides LiquidScreenContentContext(
                 topPadding = actionBarHeight,
+                bottomPadding = navigationBottom + BottomInsetSpacing,
             ),
-            LocalLiquidViewportAvoidanceController provides state.viewportAvoidanceController,
             LocalLiquidDialogHostState provides dialogHostState,
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer {
-                        translationY = avoidanceOffsetPx
-                    },
+                    // 自动感知内容滚动：任何滚动容器冒泡上来的已消费增量都累积到当前条目。
+                    .nestedScroll(titleBarScrollConnection),
             ) {
                 content()
             }
@@ -351,30 +362,5 @@ fun LiquidScreen(
                 }
             }
         }
-    }
-}
-
-private fun calculateLiquidViewportAvoidanceOffsetPx(
-    screenHeightPx: Float,
-    topSafePx: Float,
-    bottomBlockedInsetPx: Float,
-    request: LiquidViewportAvoidanceRequest?,
-    topMarginPx: Float,
-    bottomMarginPx: Float,
-): Float {
-    if (request == null || screenHeightPx <= 0f) {
-        return 0f
-    }
-
-    val safeTopPx = topSafePx + topMarginPx
-    val safeBottomPx = screenHeightPx - bottomBlockedInsetPx - bottomMarginPx
-    if (safeBottomPx <= safeTopPx) {
-        return 0f
-    }
-
-    return when {
-        request.boundsInRoot.bottom > safeBottomPx -> safeBottomPx - request.boundsInRoot.bottom
-        request.boundsInRoot.top < safeTopPx -> safeTopPx - request.boundsInRoot.top
-        else -> 0f
     }
 }
