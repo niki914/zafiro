@@ -406,6 +406,8 @@ class AgentRuntimeService : Service() {
         fun resolveErrorMessage(code: TurnFailureCode?): String = when (code) {
             TurnFailureCode.ConfigRequired -> getString(AppR.string.ui_home_error_config_required_title)
             TurnFailureCode.IdleTimeout -> getString(AppR.string.ui_home_error_idle_timeout_title)
+            TurnFailureCode.OutputTruncated ->
+                getString(AppR.string.ui_home_error_output_truncated_title)
             else -> getString(AppR.string.runtime_error_internal)
         }
 

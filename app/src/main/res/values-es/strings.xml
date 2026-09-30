@@ -70,6 +70,8 @@
     <string name="ui_home_error_config_required_body">Complete la configuración del modelo antes de continuar.</string>
     <string name="ui_home_error_network_title">Error de red</string>
     <string name="ui_home_error_idle_timeout_title">Tiempo de espera agotado</string>
+    <string name="ui_home_error_output_truncated_title">Salida truncada</string>
+    <string name="ui_home_error_output_truncated_body">Se alcanzó el límite de salida por respuesta y la respuesta quedó incompleta. Aumente Max Tokens en la configuración del modelo y vuelva a generar.</string>
     <string name="ui_home_error_retry_exhausted_title">Reintentos automáticos agotados</string>
     <string name="ui_home_error_internal_title">Error interno</string>
     <string name="ui_home_retrying_title">Problema de red, reintentando…</string>
@@ -430,6 +432,10 @@
     <string name="ui_settings_configure_protocol_hint">Tras cambiar el protocolo, asegúrese de que el endpoint sea compatible con dicho protocolo.</string>
     <string name="ui_settings_configure_thinking_label">Esfuerzo de razonamiento</string>
     <string name="ui_settings_configure_thinking_hint">Deje en Provider Default para usar el comportamiento predeterminado del proveedor; redúzcalo si el proveedor rechaza un nivel alto.</string>
+    <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
+    <string name="ui_settings_configure_max_tokens_placeholder">Por ejemplo: %1$d</string>
+    <string name="ui_settings_configure_max_tokens_hint">Máximo de tokens que puede generar una sola solicitud. Déjelo vacío para usar el valor predeterminado; redúzcalo si el servidor indica que se superó el límite.</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">Introduzca un número entero de al menos 256</string>
 
     <string name="ui_settings_appearance">Apariencia</string>
     <string name="ui_theme_mode_system">Según el sistema</string>

@@ -8,7 +8,7 @@
 
 ### 宿主 / Host
 
-本项目通过 LSPosed 对 com.heytap.speechassist 等应用做 Hook，将系统语音助手的回答换成 Zafiro Agent 回答，具体实现是通过 Binder + AgentRuntimeService。当前的实现重点是，复杂的数据结构从不穿过 Binder，即，复杂的数据结构留在主进程，在 map 后喂给宿主，而宿主侧 Binder Client 得到纯文本，直接无脑 render，通过这种方式，我们降低了在数据库所需要投入的成本
+本项目通过 LSPosed 对 com.heytap.speechassist 等应用做 Hook，将系统语音助手的回答换成 Zafiro Agent 回答，具体实现是通过 Binder + AgentRuntimeService。当前的实现重点是，复杂的数据结构从不穿过 Binder，即，复杂的数据结构留在主进程，在 map 后喂给宿主，而宿主侧 Binder Client 得到纯文本，直接无脑 render，通过这种方式，我们降低了在数据结构所需要投入的成本
 
 我们把取代原生 agent 的功能称为 takeover / 接管。宿主是比较边缘的业务，在重要决策时，不应该为了宿主的业务而去妥协，应该牺牲宿主
 
@@ -51,6 +51,7 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 - 若某项功能实现难度高（难度评分超过 6/10）且 ROI 较低，在着手开发前应先与用户协商功能范围
 - 没有明确要求提交时，不提交。等待用户验收
 - 提交信息和 PR 标题均使用英文，采用 `feat: did something` 这样的格式；标题简洁明了，不带模块名，补充说明写在正文中
+- 未经允许禁止对做安卓做安装应用等写操作
 
 ### 架构决策
 

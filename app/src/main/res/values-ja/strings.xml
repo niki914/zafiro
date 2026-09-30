@@ -69,6 +69,8 @@
     <string name="ui_home_error_config_required_body">モデル設定を完了してください。</string>
     <string name="ui_home_error_network_title">ネットワークエラー</string>
     <string name="ui_home_error_idle_timeout_title">応答がタイムアウトしました</string>
+    <string name="ui_home_error_output_truncated_title">出力が打ち切られました</string>
+    <string name="ui_home_error_output_truncated_body">1 回の出力上限に達したため、返信は未完成です。モデル設定で Max Tokens を大きくしてから、もう一度生成してください。</string>
     <string name="ui_home_error_retry_exhausted_title">自動リトライがすべて失敗しました</string>
     <string name="ui_home_error_internal_title">内部エラー</string>
     <string name="ui_home_retrying_title">ネットワーク障害のため再試行中…</string>
@@ -429,6 +431,10 @@
     <string name="ui_settings_configure_protocol_hint">プロトコル切り替え後、エンドポイントがプロトコルと一致しているか確認してください。</string>
     <string name="ui_settings_configure_thinking_label">思考強度</string>
     <string name="ui_settings_configure_thinking_hint">Provider Default のままにするとプロバイダーのデフォルト動作になります。高いレベルが拒否された場合は自分で下げてください。</string>
+    <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
+    <string name="ui_settings_configure_max_tokens_placeholder">例：%1$d</string>
+    <string name="ui_settings_configure_max_tokens_hint">1 回のリクエストで出力できる最大トークン数。空欄なら既定値を使用します。サーバーが出力長の超過を報告する場合は小さくしてください。</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">256 以上の整数を入力してください</string>
 
     <string name="ui_settings_appearance">外観</string>
     <string name="ui_theme_mode_system">システムに従う</string>

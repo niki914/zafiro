@@ -175,7 +175,10 @@ object AgentImpl : Agent {
     override fun stop() {
         if (!roundActive.value || statusFlow.value is AgentState.Stopping) return
 
-        conversationFlow.value = ConversationReducer.interrupt(conversationFlow.value)
+        // 写回唯一真源 reduced（不是只改派生流）：只写 conversationFlow 的话，之后
+        // 任何一条 fold（如流终态守卫那条 Error）都会按旧快照重算整棵树，把刚标记为
+        // 打断的工具块复活成转圈。
+        foldWith(reduced.copy(conversation = ConversationReducer.interrupt(reduced.conversation)))
         reducedStatus = AgentStateReducer.stopping(reducedStatus)
         emitStatus(reducedStatus.status)
 

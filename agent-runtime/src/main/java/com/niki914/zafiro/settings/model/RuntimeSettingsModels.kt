@@ -1,5 +1,12 @@
 package com.niki914.zafiro.settings.model
 
+/**
+ * 单次输出上限默认值（max_output_tokens / max_tokens）。
+ * 旧默认是 okia 骨架里的 4096，会把长回答和带大参数的工具调用从中间切断
+ * （截断的工具调用无法执行，是「工具块一直转圈」的根因）。
+ */
+const val DEFAULT_MAX_TOKENS: Int = 128_000
+
 data class RuntimeLlmConfig(
     val provider: String = "",
     val endpoint: String = "",
@@ -18,6 +25,8 @@ data class RuntimeLlmConfig(
     val idleTimeoutSeconds: Long? = 60L,
     /** 传输层自动重试次数。 */
     val retryMaxAttempts: Int = 3,
+    /** 单次输出上限（max_output_tokens / max_tokens）。 */
+    val maxTokens: Int = DEFAULT_MAX_TOKENS,
     /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: String = "",
 )

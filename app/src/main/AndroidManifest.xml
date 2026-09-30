@@ -16,6 +16,7 @@
     <queries>
         <package android:name="com.heytap.speechassist" />
         <package android:name="com.miui.voiceassist" />
+        <!-- 权限链的 Shizuku 通道：30+ 要这里开口才看得到它装没装（见 ShizukuHandler） -->
         <package android:name="moe.shizuku.privileged.api" />
 
         <intent>
@@ -69,7 +70,7 @@
             android:name="com.niki914.zafiro.app.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:windowSoftInputMode="adjustNothing">
+            android:windowSoftInputMode="adjustResize">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

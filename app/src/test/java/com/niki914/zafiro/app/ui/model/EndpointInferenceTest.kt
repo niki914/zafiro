@@ -295,6 +295,21 @@ class EndpointInferenceTest {
     }
 
     @Test
+    fun `google spec endpoint matches its default protocol`() {
+        // Google 端点与 chat-completions 同壳，但预填必须是 google-openai：
+        // 退回通用协议就丢失工具调用签名回带（400），且端点后缀仍会误判为匹配
+        val google = ProviderSpecs.find("google")
+        assertEquals(LlmProtocol.GoogleOpenAi.wireId, google.defaultProtocol)
+        assertEquals(LlmProtocol.GoogleOpenAi, LlmProtocol.fromWire(google.defaultProtocol))
+        assertTrue(
+            EndpointInference.endpointMatchesProtocol(
+                google.officialEndpoint,
+                LlmProtocol.fromWire(google.defaultProtocol),
+            )
+        )
+    }
+
+    @Test
     fun `volcengine coding plan spec uses dedicated coding endpoint`() {
         val spec = ProviderSpecs.find("volcengine")
 

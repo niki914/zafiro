@@ -70,6 +70,8 @@
     <string name="ui_home_error_config_required_body">Please go fill in the model configuration.</string>
     <string name="ui_home_error_network_title">Network error</string>
     <string name="ui_home_error_idle_timeout_title">Response timed out</string>
+    <string name="ui_home_error_output_truncated_title">Output truncated</string>
+    <string name="ui_home_error_output_truncated_body">The single-response output limit was reached and the reply is incomplete. Raise Max Tokens in the model configuration and regenerate.</string>
     <string name="ui_home_error_retry_exhausted_title">Automatic retries exhausted</string>
     <string name="ui_home_error_internal_title">Internal error</string>
     <string name="ui_home_retrying_title">Network hiccup, retrying…</string>
@@ -430,6 +432,10 @@
     <string name="ui_settings_configure_protocol_hint">After switching protocols, confirm the endpoint matches the protocol.</string>
     <string name="ui_settings_configure_thinking_label">Thinking Effort</string>
     <string name="ui_settings_configure_thinking_hint">Leave as Provider Default to use the provider default behavior; lower it yourself if the provider rejects a high level.</string>
+    <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
+    <string name="ui_settings_configure_max_tokens_placeholder">For example: %1$d</string>
+    <string name="ui_settings_configure_max_tokens_hint">Maximum tokens a single request may output. Leave empty to use the default; lower it if the server reports the output limit is exceeded.</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">Enter an integer of at least 256</string>
 
     <string name="ui_settings_appearance">Appearance</string>
     <string name="ui_theme_mode_system">Follow system</string>

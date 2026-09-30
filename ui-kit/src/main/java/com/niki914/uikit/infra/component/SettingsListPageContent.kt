@@ -11,17 +11,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.niki914.uikit.infra.ReportTitleBarCollapsed
+import com.niki914.uikit.infra.TitleBarCollapseThreshold
+import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.LocalPageTitle
 
@@ -29,32 +28,38 @@ import com.niki914.uikit.infra.nav.LocalPageTitle
  * 设置列表页容器，必须运行在 `LiquidScreen` 内容树内。
  *
  * 内容顶部渲染页面大标题（`LocalPageTitle`，由页面宿主按 entry 提供），
- * 随滚动淡出并经 `ReportTitleBarCollapsed` 把折叠状态写入当前导航条目，
- * 由 `LiquidScreen` 驱动顶栏小标题浮现与背景色渐显。
+ * 随滚动淡出；顶栏背景渐显与小标题浮现由 `LiquidScreen` 经 nestedScroll 自动感知，
+ * 页面无需上报。
  *
  * Preview 或独立样例请用 `ProvideLiquidScreenContentForPreview` 提供壳层上下文。
+ *
+ * @param contentBottomPadding 内容区底部安全距离。null（默认）走壳层下发的
+ * `liquidScreenBottomPadding()`；非空则严格使用传入值，供业务主动覆盖重写。
  */
 @Composable
 fun SettingsListPageContent(
     description: String? = null,
     modifier: Modifier = Modifier,
+    contentBottomPadding: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState =
         rememberSaveable(saver = ScrollState.Saver, init = { ScrollState(initial = 0) })
-    val collapseRangePx = with(LocalDensity.current) { 96.dp.toPx() }
-    // 大标题完全滚离的布尔判定；derivedStateOf 避免逐帧重组。
-    val isCollapsed by remember { derivedStateOf { scrollState.value > collapseRangePx } }
+    val collapseRangePx = with(LocalDensity.current) { TitleBarCollapseThreshold.toPx() }
 
-    // 折叠状态写入当前导航条目，action bar 拉取；返回本页时立即恢复离开前状态。
-    ReportTitleBarCollapsed { isCollapsed }
+    val resolvedBottomPadding = contentBottomPadding ?: liquidScreenBottomPadding()
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(top = liquidScreenTopPadding())
-            .padding(horizontal = 16.dp, vertical = 24.dp),
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                // 顶部原来为 topPadding 与 24dp 两层叠加，此处保持等价
+                top = liquidScreenTopPadding(24.dp),
+                bottom = resolvedBottomPadding,
+            ),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         val pageTitle = LocalPageTitle.current

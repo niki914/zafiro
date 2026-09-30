@@ -80,4 +80,22 @@ class ConversationUiMapperTest {
             turn.blocks.single(),
         )
     }
+
+    @Test
+    fun mapsOutputTruncatedFailureCode() {
+        val turn = Conversation(
+            turns = listOf(
+                ConversationTurn(
+                    id = TurnId("t0"),
+                    userText = "q",
+                    blocks = listOf(TurnBlock.Failure("t0:0", null, TurnFailureCode.OutputTruncated)),
+                ),
+            ),
+        ).toHomeTurns().single()
+
+        assertEquals(
+            HomeChatBlock.Error(null, LlmErrorCode.OutputTruncated),
+            turn.blocks.single(),
+        )
+    }
 }

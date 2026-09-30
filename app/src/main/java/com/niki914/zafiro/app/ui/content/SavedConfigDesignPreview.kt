@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.LiquidScreen
+import com.niki914.uikit.infra.nav.TitleBarScrollState
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingToggleItem
@@ -59,6 +60,7 @@ import com.niki914.uikit.infra.rememberLiquidScreenState
 private val MOCK_PROTOCOLS = listOf(
     "deepseek",
     "openai-chat-completions",
+    "google-openai",
     "openai-responses",
     "anthropic-messages",
 )
@@ -353,7 +355,10 @@ private fun SingleChoiceDialogPreview() {
             showBlurLayer = false,
         )
         var selectedProtocol by remember { mutableStateOf("openai-responses") }
-        LiquidScreen(state = screenState, collapsed = false) {
+        LiquidScreen(
+            state = screenState,
+            titleBarScroll = remember { TitleBarScrollState() },
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

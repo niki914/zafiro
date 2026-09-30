@@ -10,6 +10,7 @@ import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.ModelCatalogApi
 import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.settings.model.DEFAULT_MAX_TOKENS
 import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -58,6 +59,9 @@ data class ConfigureUiState(
     @param:StringRes val apiKeyErrorResId: Int? = null,
     val proxyInput: String = "",
     @param:StringRes val proxyErrorResId: Int? = null,
+    /** 单次输出上限输入框；未设置时回显默认值，清空 = 不设置（落默认值）。 */
+    val maxTokensInput: String = "",
+    @param:StringRes val maxTokensErrorResId: Int? = null,
     val isSaving: Boolean = false,
     val inlineError: ConfigureInlineError? = null,
     val initialSettingsSnapshot: ConfigureSnapshot? = null,
@@ -81,6 +85,7 @@ data class ConfigureSnapshot(
     val thinkingLevelWire: String,
     val supportsImages: Boolean,
     val proxy: String,
+    val maxTokens: String,
 )
 
 val ConfigureUiState.hasUnsavedChanges: Boolean
@@ -116,6 +121,7 @@ sealed interface ConfigureIntent {
     data class UpdateThinkingLevel(val wireValue: String) : ConfigureIntent
     data class UpdateSupportsImages(val enabled: Boolean) : ConfigureIntent
     data class UpdateProxy(val value: String) : ConfigureIntent
+    data class UpdateMaxTokens(val value: String) : ConfigureIntent
     data object ToggleApiKeyVisibility : ConfigureIntent
     data class ActivateConfig(val configId: String) : ConfigureIntent
     data class DeleteConfig(val configId: String) : ConfigureIntent
@@ -231,6 +237,10 @@ class ConfigureViewModel internal constructor(
                 copy(proxyInput = intent.value, proxyErrorResId = null, inlineError = null)
             }
 
+            is ConfigureIntent.UpdateMaxTokens -> updateState {
+                copy(maxTokensInput = intent.value, maxTokensErrorResId = null, inlineError = null)
+            }
+
             ConfigureIntent.ToggleApiKeyVisibility -> updateState {
                 copy(apiKeyVisible = !apiKeyVisible)
             }
@@ -334,6 +344,8 @@ class ConfigureViewModel internal constructor(
                 apiKeyErrorResId = null,
                 proxyInput = "",
                 proxyErrorResId = null,
+                maxTokensInput = DEFAULT_MAX_TOKENS.toString(),
+                maxTokensErrorResId = null,
                 isSaving = false,
                 inlineError = null,
                 initialSettingsSnapshot = null,
@@ -370,6 +382,8 @@ class ConfigureViewModel internal constructor(
                 apiKeyErrorResId = null,
                 proxyInput = "",
                 proxyErrorResId = null,
+                maxTokensInput = DEFAULT_MAX_TOKENS.toString(),
+                maxTokensErrorResId = null,
                 isSaving = false,
                 inlineError = null,
                 savedConfigs = summariesOf(document),
@@ -413,6 +427,9 @@ class ConfigureViewModel internal constructor(
                 apiKeyErrorResId = null,
                 proxyInput = target.proxy,
                 proxyErrorResId = null,
+                // 0/缺省 = 未设置：输入框回显默认值（不留空白，用户看得见当前生效的值）
+                maxTokensInput = (target.maxTokens.takeIf { it > 0 } ?: DEFAULT_MAX_TOKENS).toString(),
+                maxTokensErrorResId = null,
                 isSaving = false,
                 inlineError = null,
                 savedConfigs = summariesOf(document),
@@ -671,6 +688,13 @@ class ConfigureViewModel internal constructor(
                 return false
             }
 
+            ConfigureFieldTarget.MaxTokens -> {
+                updateState {
+                    copy(maxTokensErrorResId = R.string.ui_settings_configure_error_max_tokens_invalid)
+                }
+                return false
+            }
+
             null -> Unit
         }
         return true
@@ -743,6 +767,7 @@ private fun ConfigureUiState.toSavedLlmConfig(): SavedLlmConfig {
         thinkingLevel = thinkingLevelWire,
         supportsImages = supportsImages,
         proxy = proxyInput,
+        maxTokens = maxTokensInput.trim().toIntOrNull() ?: 0,
         createdAt = 0L,
         updatedAt = 0L,
     )
@@ -763,6 +788,7 @@ private fun ConfigureUiState.toSettingsSnapshot(): ConfigureSnapshot {
         thinkingLevelWire = thinkingLevelWire,
         supportsImages = supportsImages,
         proxy = proxyInput.trim(),
+        maxTokens = maxTokensInput.trim(),
     )
 }
 
@@ -771,18 +797,32 @@ private enum class ConfigureFieldTarget {
     Model,
     ApiKey,
     Proxy,
+    MaxTokens,
 }
 
 private fun ConfigureUiState.firstInvalidField(): ConfigureFieldTarget? {
     return when {
-        // 与填写顺序一致：API Key → Model → Endpoint → Proxy
+        // 与填写顺序一致：API Key → Model → Endpoint → Proxy → MaxTokens
         apiKeyInput.trim().isBlank() -> ConfigureFieldTarget.ApiKey
         modelInput.trim().isBlank() -> ConfigureFieldTarget.Model
         endpointOverrideEnabled && endpointInput.trim().isBlank() -> ConfigureFieldTarget.Endpoint
         isValidProxy(proxyInput).not() -> ConfigureFieldTarget.Proxy
+        isValidMaxTokens(maxTokensInput).not() -> ConfigureFieldTarget.MaxTokens
         else -> null
     }
 }
+
+/** 单次输出上限：留空 = 不设置（由 gateway 落默认值）；填了就必须是 ≥ [MIN_MAX_TOKENS] 的整数。 */
+private fun isValidMaxTokens(value: String): Boolean {
+    val trimmedValue = value.trim()
+    if (trimmedValue.isBlank()) {
+        return true
+    }
+    val parsed = trimmedValue.toIntOrNull() ?: return false
+    return parsed >= MIN_MAX_TOKENS
+}
+
+private const val MIN_MAX_TOKENS = 256
 
 private fun isValidProxy(value: String): Boolean {
     val trimmedValue = value.trim()

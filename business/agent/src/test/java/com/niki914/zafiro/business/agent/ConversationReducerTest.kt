@@ -192,6 +192,16 @@ class ConversationReducerTest {
     }
 
     @Test
+    fun outputTruncatedErrorMapsToTruncatedFailureCode() {
+        val state = reduce(
+            startTurn("q"),
+            LlmStreamEvent.Error(message = null, code = LlmErrorCode.OutputTruncated),
+        )
+        val failure = state.conversation.turns.last().blocks.single() as TurnBlock.Failure
+        assertEquals(TurnFailureCode.OutputTruncated, failure.code)
+    }
+
+    @Test
     fun interruptMarksUnsettledToolsFailed() {
         val running = reduce(
             startTurn("q"),

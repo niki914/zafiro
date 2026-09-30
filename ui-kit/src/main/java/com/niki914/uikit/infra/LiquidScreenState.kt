@@ -24,7 +24,6 @@ class LiquidScreenState(
 ) {
     private val _actionBarHeight = mutableStateOf(0.dp)
     val actionBarHeight: State<Dp> = _actionBarHeight
-    val viewportAvoidanceController = LiquidViewportAvoidanceController()
 
     internal var title by mutableStateOf(initialTitle)
     internal var isTitleCollapsible by mutableStateOf(initialIsTitleCollapsible)
