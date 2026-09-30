@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 
@@ -52,7 +53,10 @@ fun SettingsDetailFormScaffold(
 ) {
     val scrollState =
         rememberSaveable(saver = ScrollState.Saver, init = { ScrollState(initial = 0) })
-    // 折叠状态由 LiquidScreen 经 nestedScroll 自动感知，页面不再上报。
+    // 表单脚手架含多行输入框（如自定义 Python 代码），BasicTextField 行数封顶后
+    // 自带的内部滚动会作为已消费增量冒泡到壳层，被误计入页面滚离量（页面停在顶部、
+    // 顶栏却变实体）。用自身的滚动状态精确接管，输入框内部滚动不再参与。
+    ReportTitleBarCollapsed { scrollState.value > 0 }
     val resolvedContentBottomPadding = contentBottomPadding ?: liquidScreenBottomPadding()
     val resolvedActionButtonBottomPadding =
         actionButtonBottomPadding ?: liquidScreenBottomPadding()
