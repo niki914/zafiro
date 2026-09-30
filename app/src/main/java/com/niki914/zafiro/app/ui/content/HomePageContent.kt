@@ -620,7 +620,13 @@ private fun HomePageContentBody(
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
     ) { uris ->
-        uris.forEach { onFileAttached(it.toString()) }
+        uris.forEach { uri ->
+            // 图片走图片管线（不需要路径、不需要存储权限），其余仍走文件引用
+            val type = context.contentResolver.getType(uri)
+            val asImage = isImportableImage(context, uri, type)
+            Logger.i(ATTACH_LOG_TAG, "file picked uri=$uri type=$type asImage=$asImage")
+            if (asImage) onImageAttached(uri.toString()) else onFileAttached(uri.toString())
+        }
     }
     val folderPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -880,6 +886,41 @@ private data class CameraTarget(val uri: Uri, val file: File)
 
 /** cache 下専给相机输出的子目录（与 `file_paths.xml` 的 `path` 一致）。 */
 private const val CAMERA_CAPTURE_DIR = "capture"
+
+/**
+ * 文件入口分流：这个 uri 能不能走图片管线。
+ *
+ * 判据优先看后缀（docId 通常就带着文件名），没有后缀才回落到 provider 报的 MIME——
+ * 「下载」抽屉里在 DownloadManager 数据库中的文件就是裸数字 docId，只能靠 MIME。
+ */
+private fun isImportableImage(context: Context, uri: Uri, declaredType: String?): Boolean {
+    val extension = uri.lastPathSegment.orEmpty()
+        .substringAfterLast('.', missingDelimiterValue = "")
+        .lowercase()
+    val isImage = if (extension.isNotEmpty()) {
+        extension in IMPORTABLE_IMAGE_EXTENSIONS
+    } else {
+        declaredType?.startsWith("image/") == true
+    }
+    if (!isImage) return false
+    // 超过图片管线上限的图会被 ingest 拒，而拒了之后草稿项是**静默消失**的，
+    // 比「当一个文件附件」更糟。体积未知（-1）时放行，交给一致的上限去判。
+    val size = runCatching {
+        context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+    }.getOrNull()
+    return size == null || size <= IMAGE_MAX_BYTES
+}
+
+/**
+ * 分流时认作图片的后缀。
+ *
+ * 不含 HEIC / HEIF：26/27 的 `BitmapFactory` 解不了，进来会在图片管线里静默失败，
+ * 所以让它们继续走文件路径（= 今天的形态）。
+ */
+private val IMPORTABLE_IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp")
+
+/** 与图片管线的 `ImageFormat.MAX_IMAGE_BYTES` 同口径（那个常数在 agent-runtime 内部）。 */
+private const val IMAGE_MAX_BYTES = 12 * 1024 * 1024L
 
 /**
  * 造一个相机可以写的输出目标。路径与 provider 都对不上时返回 null（理论上不会）。
