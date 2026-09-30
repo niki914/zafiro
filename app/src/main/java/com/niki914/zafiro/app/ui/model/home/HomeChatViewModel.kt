@@ -322,6 +322,7 @@ class HomeChatViewModel internal constructor(
      * 失败经 effect 回吐一句 toast，不占状态。
      */
     private suspend fun attachFile(uri: String) {
+        val startedAt = System.currentTimeMillis()
         val result = try {
             files.attach(uri)
         } catch (throwable: Throwable) {
@@ -329,7 +330,11 @@ class HomeChatViewModel internal constructor(
             Logger.w(LOG_TAG, "attach file failed uri=$uri reason=${throwable.message}")
             FileAttachResult.Unreadable
         }
-        Logger.i(LOG_TAG, "attach file result=${result::class.simpleName}")
+        // uri 带着 authority + docId，ms 是用户实际感受到的耗时（权限链最长可达分钟级）
+        Logger.i(
+            LOG_TAG,
+            "attach file result=${result::class.simpleName} ms=${System.currentTimeMillis() - startedAt} uri=$uri",
+        )
         when (result) {
             is FileAttachResult.Ok -> addFile(result.file)
             FileAttachResult.Unresolvable ->
