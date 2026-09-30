@@ -115,7 +115,9 @@ object AgentImpl : Agent {
 
     override fun stream(): TurnStart {
         val draft = draftFlow.value
-        if (draft.text.isBlank() && draft.images.isEmpty()) return TurnStart.DraftEmpty
+        if (draft.text.isBlank() && draft.images.isEmpty() && draft.files.isEmpty()) {
+            return TurnStart.DraftEmpty
+        }
         if (!roundActive.compareAndSet(expect = false, update = true)) return TurnStart.Busy
 
         val query = draft.text
