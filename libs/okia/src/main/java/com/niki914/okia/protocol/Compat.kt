@@ -37,6 +37,14 @@ interface Compat {
     // 是否要求工具结果携带名称
     val requiresToolResultName: Boolean
 
+    // 是否回带工具调用的 Provider 私有签名。Google（Gemini 3 思维内工具调用）在
+    // tool_calls 上携带 extra_content.google.thought_signature，assistant 历史必须
+    // 原样回带，缺失时下一轮 400 "Function call is missing a thought_signature"。
+    // 该字段不在 OpenAI 规范内，非 Google Provider 一律不写（中途切 Provider 后
+    // 回放同一段历史时，严格网关会拒绝未知字段）。
+    // Design source: vercel/ai openai-compatible thoughtSignature（PR #11745）。
+    val replaysToolCallSignature: Boolean get() = false
+
     // 流式响应是否支持 usage
     val supportsUsageInStreaming: Boolean
 
@@ -103,7 +111,7 @@ class DeepSeekCompat : Compat {
  * 与 DeepSeek 的差异：max_completion_tokens 字段、thinking 走 reasoning_effort
  * 且内容不可原样回放（加密，历史转文本）、assistant 不接受 reasoning_content 字段。
  */
-class OpenAIChatCompletionCompat : Compat {
+open class OpenAIChatCompletionCompat : Compat {
     override val id: String = "openai"
     override val defaultEndpoint: String? = "https://api.openai.com/v1/chat/completions"
     override val maxTokensField: MaxTokensField = MaxTokensField.MaxCompletionTokens
@@ -116,6 +124,22 @@ class OpenAIChatCompletionCompat : Compat {
     override val supportsUsageInStreaming: Boolean = true
     override val supportsFinishReason: Boolean = true
     override val retryableStatusCodes: Set<Int> = setOf(408, 409, 429) + (500..599).toSet()
+}
+
+/**
+ * Google Gemini 官方 OpenAI 兼容端点
+ * （generativelanguage.googleapis.com/v1beta/openai/chat/completions）。
+ * 与 OpenAI 官方的差异只有工具调用签名：Gemini 3 的思维内工具调用在 tool_calls 上
+ * 携带 extra_content.google.thought_signature，assistant 历史必须回带。
+ * 其余事实与 OpenAI 官方一致（实测兼容端点接受 max_completion_tokens /
+ * reasoning_effort）。
+ * 边界：并行工具调用时签名只挂在第一个调用上（per-call 存储，不向兄弟调用扩散）。
+ */
+class GoogleOpenAiCompat : OpenAIChatCompletionCompat() {
+    override val id: String = "google-openai"
+    override val defaultEndpoint: String? =
+        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    override val replaysToolCallSignature: Boolean = true
 }
 
 /** OpenAI Responses API（Messages 形态）兼容配置。 */

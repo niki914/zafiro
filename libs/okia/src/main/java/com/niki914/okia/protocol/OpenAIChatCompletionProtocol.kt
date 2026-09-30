@@ -36,6 +36,8 @@ import kotlinx.serialization.json.put
  *   assistant 历史必须带 reasoning_content（可为空串）
  * - OpenAIChatCompletionCompat：max_completion_tokens、reasoning_effort 思考
  *   （delta.reasoning 对象）、assistant 历史不接受 reasoning_content（思考转文本）
+ * - GoogleOpenAiCompat（继承上者）：额外要求工具调用签名回带
+ *   （extra_content.google.thought_signature）
  * 其他 OpenAI 兼容厂商（xAI / Groq / Kimi / qwen / OpenRouter 等）用 compat
  * 表达差异，协议本体不感知厂商（对齐 pi openai-completions 单实现 26 厂商）。
  * 产品策略不包含（重试 / 缓存 / 成本在框架其他层或下游）。
@@ -312,6 +314,16 @@ class OpenAIChatCompletionProtocol(
                                 put("name", call.name)
                                 put("arguments", call.argumentsJson)
                             })
+                            // Google：思维内工具调用的签名必须原样回带（缺失 → 400）。
+                            // 非 Google compat 不写这个非规范字段。
+                            val signature = call.signature
+                            if (compat.replaysToolCallSignature && signature != null) {
+                                put("extra_content", buildJsonObject {
+                                    put("google", buildJsonObject {
+                                        put("thought_signature", signature)
+                                    })
+                                })
+                            }
                         })
                     }
                 })
@@ -358,14 +370,24 @@ class OpenAIChatCompletionProtocol(
         state: StreamState,
         emit: suspend (ProtocolEvent) -> Unit
     ) {
-        val index = (delta["index"] as? JsonPrimitive)?.int ?: 0
+        val index = (delta["index"] as? JsonPrimitive)?.int
         val id = (delta["id"] as? JsonPrimitive)?.contentOrNull
         val function = delta["function"] as? JsonObject
         val name = function?.let { (it["name"] as? JsonPrimitive)?.contentOrNull }
         val args = function?.let { (it["arguments"] as? JsonPrimitive)?.contentOrNull }
+        // Provider 私有签名（Google thought_signature）：只读取透传，回带由 compat 决定
+        val signature = ((delta["extra_content"] as? JsonObject)?.get("google") as? JsonObject)
+            ?.let { (it["thought_signature"] as? JsonPrimitive)?.contentOrNull }
 
-        val call = state.toolCalls.getOrPut(index) {
-            PartialToolCall(index).also {
+        // 槽位归属：index 缺省（Gemini 兼容端点不发 index）时按 id 认领——同 id 复用
+        // 已有槽（参数续传），新 id 开新槽（同一 chunk 内的并行调用），无 id 的续传
+        // 追加到最后一个槽。
+        val slot = index
+            ?: state.toolCalls.entries.firstOrNull { id != null && it.value.id == id }?.key
+            ?: if (id != null) state.toolCalls.size else state.toolCalls.keys.lastOrNull() ?: 0
+
+        val call = state.toolCalls.getOrPut(slot) {
+            PartialToolCall(slot).also {
                 emit(
                     ProtocolEvent.ToolCallStarted(
                         id ?: "",
@@ -376,6 +398,7 @@ class OpenAIChatCompletionProtocol(
         }
         if (id != null && call.id.isEmpty()) call.id = id
         if (name != null && call.name.isEmpty()) call.name = name
+        if (signature != null && call.signature == null) call.signature = signature
         // 空 arguments 分片无信息量，不产出 Delta（对齐 pi 行为）
         if (args != null && args.isNotEmpty()) {
             call.arguments.append(args)
@@ -386,31 +409,53 @@ class OpenAIChatCompletionProtocol(
     private suspend fun finishStream(state: StreamState, emit: suspend (ProtocolEvent) -> Unit) {
         when (state.finishReason) {
             null -> emit(ProtocolEvent.Error(IllegalStateException("stream ended without finish_reason")))
-            "stop", "end" -> emit(
-                ProtocolEvent.Completed(
-                    state.usage,
-                    state.responseModel,
-                    StopReason.Stop
+            // stop / end：流正常收尾。Gemini 兼容端点用 stop 收尾工具回合，此处
+            // 必须结算已累积的调用，否则调用被静默丢弃（工具卡片亮起、消息为空）。
+            "stop", "end" -> {
+                settleToolCalls(state, emit)
+                emit(
+                    ProtocolEvent.Completed(
+                        state.usage,
+                        state.responseModel,
+                        if (state.toolCalls.isEmpty()) StopReason.Stop else StopReason.ToolUse
+                    )
                 )
-            )
+            }
 
-            "length" -> emit(
-                ProtocolEvent.Completed(
-                    state.usage,
-                    state.responseModel,
-                    StopReason.Length
+            "length" -> {
+                // 截断的调用同样结算：loop 据 Length 补配对失败结果，
+                // UI 工具卡片才不会一直转圈
+                settleToolCalls(state, emit)
+                emit(
+                    ProtocolEvent.Completed(
+                        state.usage,
+                        state.responseModel,
+                        StopReason.Length
+                    )
                 )
-            )
+            }
 
             "function_call", "tool_calls" -> {
-                state.toolCalls.values.forEach { call ->
-                    emit(ProtocolEvent.ToolCallReady(call.id, call.name, call.arguments.toString()))
-                }
+                settleToolCalls(state, emit)
                 emit(ProtocolEvent.Completed(state.usage, state.responseModel, StopReason.ToolUse))
             }
 
             else -> emit(
                 ProtocolEvent.Error(IllegalStateException("unsupported finish_reason: ${state.finishReason}"))
+            )
+        }
+    }
+
+    /** 已累积的工具调用 → ToolCallReady（终态参数 + Provider 私有签名）。 */
+    private suspend fun settleToolCalls(state: StreamState, emit: suspend (ProtocolEvent) -> Unit) {
+        state.toolCalls.values.forEach { call ->
+            emit(
+                ProtocolEvent.ToolCallReady(
+                    call.id,
+                    call.name,
+                    call.arguments.toString(),
+                    call.signature
+                )
             )
         }
     }
@@ -428,6 +473,7 @@ class OpenAIChatCompletionProtocol(
         val index: Int,
         var id: String = "",
         var name: String = "",
+        var signature: String? = null,
         val arguments: StringBuilder = StringBuilder()
     )
 
