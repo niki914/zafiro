@@ -25,7 +25,7 @@ internal interface ChannelHandler {
  */
 internal fun Permission.isAppLevelGrantable(accessibilityServiceAvailable: Boolean): Boolean =
     when (this) {
-        Permission.OVERLAY, Permission.NOTIFICATION, Permission.EXTERNAL_STORAGE -> true
+        Permission.OVERLAY, Permission.NOTIFICATION, Permission.STORAGE -> true
         Permission.ACCESSIBILITY -> accessibilityServiceAvailable
         Permission.ROOT, Permission.SHIZUKU -> false
     }

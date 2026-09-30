@@ -2,18 +2,16 @@ package com.niki914.zafiro.business.permission
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 
 /**
- * POST_NOTIFICATIONS 引入的 API 级别；低于此值时通知恒可用，不能也不需要申请。
- */
-internal const val NOTIFICATION_API = 33
-
-/**
  * 目标权限的真实状态静默查询（PRD：status() 报真实权限，Context 注入）。
  * 各通道 handler 共用；查询只读系统状态，不拉任何授权。
+ *
+ * 「哪个 API 上算什么机制」全在 [PermissionSpec]；这里只管机制对应的系统查询怎么写。
  *
  * 模块私有：业务方一律经 PermissionManager.status()，禁止直连此处与原生权限 API。
  */
@@ -21,34 +19,48 @@ internal object TargetStatus {
 
     /**
      * 「要什么」→ 真实状态的唯一分派点。RootShell/Shizuku handler 的 status 与
-     * JUMP_SETTINGS 的复查都走这里，保证三处口径不分叉。
-     *
-     * 能力型目标（ROOT/SHIZUKU）静默嗅探会拉起授权，不查，返回 UNKNOWN，
-     * 由各 shell 通道自己判定。
+     * SYSTEM_DIALOG / JUMP_SETTINGS 的复查都走这里，保证各处口径不分叉。
      */
     fun query(
         context: Context,
         permission: Permission,
         accessibilityService: ComponentName?,
-    ): PermissionState = when (permission) {
-        Permission.OVERLAY -> overlay(context)
-        Permission.NOTIFICATION -> notification(context)
-        Permission.ACCESSIBILITY -> accessibility(context, accessibilityService)
-        Permission.EXTERNAL_STORAGE -> externalStorage()
-        Permission.ROOT, Permission.SHIZUKU -> PermissionState.UNKNOWN
+    ): PermissionState =
+        when (val mechanism = PermissionSpec.appLevelMechanism(permission, Build.VERSION.SDK_INT)) {
+            // 能力型目标（ROOT/SHIZUKU）静默嗅探会拉起授权，不查，由各 shell 通道自己判定
+            null -> PermissionState.UNKNOWN
+            GrantMechanism.None -> PermissionState.GRANTED
+            is GrantMechanism.Runtime -> runtimePermission(context, mechanism)
+            is GrantMechanism.AppOp -> when (permission) {
+                Permission.STORAGE -> storage()
+                Permission.OVERLAY -> overlay(context)
+                else -> PermissionState.UNKNOWN
+            }
+
+            GrantMechanism.Accessibility -> accessibility(context, accessibilityService)
+        }
+
+    /** 一组运行时权限全部到手才算 GRANTED（同权限组的成员系统会一起给）。 */
+    private fun runtimePermission(
+        context: Context,
+        mechanism: GrantMechanism.Runtime,
+    ): PermissionState {
+        val granted = mechanism.names.all {
+            context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+        }
+        return if (granted) PermissionState.GRANTED else PermissionState.DENIED_BY_USER
     }
 
     /**
-     * 全局文件访问的真实状态。
-     *
-     * <30 无这个概念（D22 里选项单也直接不放出入口），报 UNAVAILABLE 而不是 DENIED，
-     * 免得调用方以为「用户拒绝了」。
+     * 全局文件访问的真实状态。这是 30+ 的概念：版本门在 [PermissionSpec]（<30 报运行时权限），
+     * 这里的 SDK 判断只是给 lint(NewApi=error) 与「spec 万一判错」兜底，不是第二个分叉点。
      */
-    fun externalStorage(): PermissionState = when {
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.R -> PermissionState.UNAVAILABLE
-        Environment.isExternalStorageManager() -> PermissionState.GRANTED
-        else -> PermissionState.DENIED_BY_USER
-    }
+    fun storage(): PermissionState =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+            PermissionState.GRANTED
+        } else {
+            PermissionState.DENIED_BY_USER
+        }
 
     fun overlay(context: Context): PermissionState =
         if (Settings.canDrawOverlays(context)) {
@@ -56,13 +68,6 @@ internal object TargetStatus {
         } else {
             PermissionState.DENIED_BY_USER
         }
-
-    fun notification(context: Context): PermissionState {
-        if (Build.VERSION.SDK_INT < NOTIFICATION_API) return PermissionState.GRANTED
-        val granted = context.checkSelfPermission("android.permission.POST_NOTIFICATIONS") ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-        return if (granted) PermissionState.GRANTED else PermissionState.DENIED_BY_USER
-    }
 
     /**
      * [service] 传 ComponentName（调用方用 ComponentName(pkg, cls) 构造即可，

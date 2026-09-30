@@ -36,10 +36,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     // launcher 必须在 STARTED 前注册：MainActivity 预注册 → ApplicationService 持有结果路由
-    private val notificationPermissionLauncher = registerForActivityResult(
+    private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        requireService<ApplicationService>().onNotificationResult(granted)
+        requireService<ApplicationService>().onRuntimePermissionResult(granted)
     }
 
 
@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
 
         // launcher 必须在 STARTED 前注册：预注册后装进 ApplicationService
         requireService<ApplicationService>()
-            .installNotificationLauncher(notificationPermissionLauncher)
+            .installPermissionLauncher(permissionLauncher)
         val startupAssistantUi = resolveStartupAssistantUi()
         val launchDecision = runBlocking {
             val decision = AppLaunchDecision.resolve(startupAssistantUi)

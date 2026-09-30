@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -145,6 +144,9 @@ private const val AUTO_FOCUS_RETRY_INTERVAL_MILLIS = 150L
 
 /** 附件入口的日志 TAG（只在相机失败这类异常路径上用）。 */
 private const val ATTACH_LOG_TAG = "niki914_zafiro_Attach"
+
+/** 图片多选的张数上限。远低于系统的 getPickImagesMaxLimit()，取一个够用且不炸上下文的数。 */
+private const val PHOTO_PICK_MAX_ITEMS = 10
 
 @Composable
 fun HomePageContent(
@@ -602,27 +604,23 @@ private fun HomePageContentBody(
     val density = LocalDensity.current
 
     // 附件入口：加号 → 选项单（Photos / Camera / File / Folder）。
-    // File / Folder 只在 30+ 出现：全局文件访问是 API 30 才有的概念；
-    // 相机项同样看版本（D13，29+）。
     val context = LocalContext.current
     var attachSheetVisible by remember { mutableStateOf(false) }
     var pendingCapture by remember { mutableStateOf<CameraTarget?>(null) }
 
-    // 系统图片选择器（photo picker，无权限）：选图 → ingest 落盘 → pendingImages
+    // 系统图片选择器（photo picker，无权限）：可多选，选完逐张 ingest 落盘 → pendingImages
     val photoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-    ) { uri ->
-        if (uri != null) {
-            onImageAttached(uri.toString())
-        }
+        contract = ActivityResultContracts.PickMultipleVisualMedia(PHOTO_PICK_MAX_ITEMS),
+    ) { uris ->
+        uris.forEach { onImageAttached(it.toString()) }
     }
 
-    // SAF 文档 / 目录选择器：把 content uri 原样交给 VM，
-    // 由 business:files 解析路径 + 要全局文件访问权，这里不做判断
+    // SAF 文档 / 目录选择器：可多选；把 content uri 原样交给 VM，
+    // 由 business:files 逐个解析路径 + 要全局文件访问权，这里不做判断
     val filePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        uri?.let { onFileAttached(it.toString()) }
+        contract = ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris ->
+        uris.forEach { onFileAttached(it.toString()) }
     }
     val folderPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -859,20 +857,17 @@ private fun HomePageContentBody(
                     }
                 },
             )
-            // File / Folder 只在 30+ 出现：全局文件访问（all-files）是 API 30 才有的概念，
-            // <30 上 agent 拿到的路径大概率读不了，藏掉入口比给一个必败的入口诚实
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                OptionRow(
-                    title = stringResource(R.string.ui_home_attach_file),
-                    leadingContent = { Icon(Icons.Default.Description, contentDescription = null) },
-                    onClick = { dismissThen { filePicker.launch(arrayOf("*/*")) } },
-                )
-                OptionRow(
-                    title = stringResource(R.string.ui_home_attach_folder),
-                    leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
-                    onClick = { dismissThen { folderPicker.launch(null) } },
-                )
-            }
+            // File / Folder 全版本放出：30+ 走 all-files，<30 走运行时权限（机制与版本分叉见 PermissionSpec）
+            OptionRow(
+                title = stringResource(R.string.ui_home_attach_file),
+                leadingContent = { Icon(Icons.Default.Description, contentDescription = null) },
+                onClick = { dismissThen { filePicker.launch(arrayOf("*/*")) } },
+            )
+            OptionRow(
+                title = stringResource(R.string.ui_home_attach_folder),
+                leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
+                onClick = { dismissThen { folderPicker.launch(null) } },
+            )
         }
     }
 }

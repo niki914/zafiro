@@ -34,8 +34,8 @@ interface FilesService {
     fun resolve(uri: String): FileRef?
 
     /**
-     * 「选完文件之后」的完整流程：解析 → 缺全局文件访问权就申请
-     * （默认链可能跳设置页，最长等 60s）→ 复查可达性。**拿到权限才返回 [FileAttachResult.Ok]**。
+     * 「选完文件之后」的完整流程：解析 → 缺存储权限就申请
+     * （默认链可能弹框 / 跳设置页，最长等 60s）→ 复查可达性。**拿到权限才返回 [FileAttachResult.Ok]**。
      *
      * 挂起是必需的：跳设置页那条路要等用户回来。调用点不要用 `runBlocking` 包它。
      */
@@ -57,7 +57,7 @@ class FilesServiceImpl : FilesService {
 
     override suspend fun attach(uri: String): FileAttachResult {
         val file = resolve(uri) ?: return FileAttachResult.Unresolvable
-        if (!ensureGlobalFileAccess()) return FileAttachResult.NoPermission
+        if (!ensureStorageAccess()) return FileAttachResult.NoPermission
         return when (FileProbe.probe(file.path)) {
             FileReachability.Reachable -> FileAttachResult.Ok(file)
             FileReachability.Missing, FileReachability.PermissionDenied -> FileAttachResult.Unreadable
@@ -65,14 +65,15 @@ class FilesServiceImpl : FilesService {
     }
 
     /**
-     * 已有权限直接放行；否则跑默认链（root / Shizuku 静默，或跳设置页等用户回来）。
+     * 已有权限直接放行；否则跑默认链（root / Shizuku 静默，或弹框 / 跳设置页等用户回来）。
+     * 「存储」在各 API 上是 all-files 还是运行时权限由权限层判断，这里只管语义。
      * 抛异常与 `UNKNOWN` 都按「没拿到」收尾 —— 上层只有「加卡片 / toast 拒绝」两个动作，
      * 不需要区分「用户拒绝」与「拿不到结果」。
      */
-    private suspend fun ensureGlobalFileAccess(): Boolean {
-        if (permissions.status(Permission.EXTERNAL_STORAGE) == PermissionState.GRANTED) return true
+    private suspend fun ensureStorageAccess(): Boolean {
+        if (permissions.status(Permission.STORAGE) == PermissionState.GRANTED) return true
         val result = try {
-            permissions.request(Permission.EXTERNAL_STORAGE)
+            permissions.request(Permission.STORAGE)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {

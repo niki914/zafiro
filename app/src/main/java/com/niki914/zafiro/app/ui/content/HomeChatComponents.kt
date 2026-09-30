@@ -447,13 +447,13 @@ fun LiquidChatComposer(
 
     @Composable
     fun attachButton() {
-        // add 按钮恒亮：不随 canSend 变灰（只有 send 随发送态变化）
+        // add 按钮不限时机：回合进行中加附件也只是进草稿，随下一次发送走。
+        // （禁用态在 ActionBarButton 里是「静默吞掉点击且无视觉差异」，所以这里绝不能设 enabled=false）
         CompositionLocalProvider(
             LocalContentColor provides MaterialTheme.colorScheme.primary,
         ) {
             ActionBarButton(
                 onClick = onAttachImageClick,
-                enabled = !isGenerating,
                 modifier = Modifier.offset(x = (-6).dp),
             ) {
                 Icon(

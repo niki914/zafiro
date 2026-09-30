@@ -298,7 +298,6 @@ class HomeChatViewModel internal constructor(
 
     /** 选图：追加一个待落盘项，实现侧完成后归约成 Ready，图片条从 `draft` 读回。 */
     private fun attachImage(uri: String) {
-        if (currentState.isGenerating) return
         agent.updateDraft { draft ->
             if (draft.images.any { it is DraftImage.Pending && it.uri == uri }) draft
             else draft.copy(images = draft.images + DraftImage.Pending(uri))
@@ -323,7 +322,6 @@ class HomeChatViewModel internal constructor(
      * 失败经 effect 回吐一句 toast，不占状态。
      */
     private suspend fun attachFile(uri: String) {
-        if (currentState.isGenerating) return
         val result = try {
             files.attach(uri)
         } catch (throwable: Throwable) {
@@ -365,7 +363,6 @@ class HomeChatViewModel internal constructor(
      * 不归任何清理逻辑管。
      */
     private suspend fun attachCameraImage(uri: String, path: String) {
-        if (currentState.isGenerating) return
         val before = agent.draft.value.images.count { it is DraftImage.Ready }
         attachImage(uri)
         val settled = agent.draft.first { draft ->

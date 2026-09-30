@@ -29,7 +29,10 @@ import kotlin.coroutines.resumeWithException
  * 内部仅转发 IShizukuService.newProcess → ShizukuRemoteProcess）。
  * 升级 shizuku-api 前先确认 newProcess 可见性。
  *
- * 支持 ROOT / SHIZUKU（能力自查）/ OVERLAY / ACCESSIBILITY / NOTIFICATION / EXTERNAL_STORAGE，其余返回 UNAVAILABLE。
+ * TODO 全局五秒内，如果 root 或者 S Z K 已经失败过，那就静默忽略。
+ *
+ * 支持的权限集见 `isSupported`；每种权限怎么授、哪个 API 上是什么机制，全在
+ * [PermissionSpec] 与 [ShellGrants]，本类只负责 Shizuku 授权与执行器。
  */
 internal class ShizukuHandler(
     private val context: Context,
@@ -103,33 +106,19 @@ internal class ShizukuHandler(
             if (!authorized) return PermissionState.DENIED_BY_USER
         }
 
-        return when (permission) {
-            Permission.ROOT, Permission.SHIZUKU -> PermissionState.GRANTED
-            Permission.OVERLAY -> ShellGrants.grantOverlay(::run, packageName)
-            Permission.ACCESSIBILITY -> ShellGrants.grantAccessibility(::run, accessibilityService)
-            Permission.NOTIFICATION ->
-                if (Build.VERSION.SDK_INT < NOTIFICATION_API) {
-                    // <33 无 POST_NOTIFICATIONS 权限，通知恒可用（同 TargetStatus.notification）
-                    PermissionState.GRANTED
-                } else {
-                    ShellGrants.grantNotification(
-                        run = ::run,
-                        packageName = packageName,
-                        verify = { TargetStatus.notification(context) },
-                    )
-                }
-            Permission.EXTERNAL_STORAGE ->
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                    // <30 无全局文件访问（D22 里 UI 也不放出入口），不把「不存在」报成 FAILED
-                    PermissionState.UNAVAILABLE
-                } else {
-                    ShellGrants.grantExternalStorage(
-                        run = ::run,
-                        packageName = packageName,
-                        verify = { TargetStatus.externalStorage() },
-                    )
-                }
+        // 能力型目标：Shizuku 自身已授权，即达成（机制表不管能力型权限）
+        if (permission == Permission.ROOT || permission == Permission.SHIZUKU) {
+            return PermissionState.GRANTED
         }
+        val mechanism = PermissionSpec.appLevelMechanism(permission, Build.VERSION.SDK_INT)
+            ?: return PermissionState.UNAVAILABLE
+        return ShellGrants.grant(
+            mechanism = mechanism,
+            run = ::run,
+            packageName = packageName,
+            accessibilityService = accessibilityService,
+            verify = { TargetStatus.query(context, permission, accessibilityService) },
+        )
     }
 
     /** 等 binder 异步到达。sticky 监听已到达时立即回放，顺带处理注册竞态。 */

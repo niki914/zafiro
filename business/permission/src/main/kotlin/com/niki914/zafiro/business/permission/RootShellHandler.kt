@@ -14,7 +14,8 @@ import kotlinx.coroutines.withContext
  * - status：Shell.isAppGrantedRoot()（未建 shell 时返回 null → UNKNOWN，静默契约）
  * - request：Shell.getShell() 阻塞拉起 su 授权，完成后 shell.isRoot 判定
  *
- * 支持 ROOT / OVERLAY / ACCESSIBILITY / NOTIFICATION / EXTERNAL_STORAGE，其余 permission 返回 UNAVAILABLE。
+ * 支持的权限集见 `isSupported`；每种权限怎么授、哪个 API 上是什么机制，全在
+ * [PermissionSpec] 与 [ShellGrants]，本类只负责拉起 su 并出 shell 执行器。
  */
 internal class RootShellHandler(
     private val context: Context,
@@ -55,37 +56,17 @@ internal class RootShellHandler(
             return PermissionState.DENIED_BY_USER
         }
 
-        // ponytail: 授权命令文本与 merge 逻辑收敛到 ShellGrants，两个 shell 通道不再各抄一份
-        return when (permission) {
-            Permission.ROOT -> PermissionState.GRANTED
-            Permission.OVERLAY ->
-                ShellGrants.grantOverlay({ cmd -> run(cmd) }, packageName)
-            Permission.ACCESSIBILITY ->
-                ShellGrants.grantAccessibility({ cmd -> run(cmd) }, accessibilityService)
-            Permission.NOTIFICATION ->
-                if (Build.VERSION.SDK_INT < NOTIFICATION_API) {
-                    // <33 无 POST_NOTIFICATIONS 权限，通知恒可用（同 TargetStatus.notification）
-                    PermissionState.GRANTED
-                } else {
-                    ShellGrants.grantNotification(
-                        run = { cmd -> run(cmd) },
-                        packageName = packageName,
-                        verify = { TargetStatus.notification(context) },
-                    )
-                }
-            Permission.EXTERNAL_STORAGE ->
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                    // <30 无全局文件访问（D22 里 UI 也不放出入口），不把「不存在」报成 FAILED
-                    PermissionState.UNAVAILABLE
-                } else {
-                    ShellGrants.grantExternalStorage(
-                        run = { cmd -> run(cmd) },
-                        packageName = packageName,
-                        verify = { TargetStatus.externalStorage() },
-                    )
-                }
-            else -> PermissionState.UNAVAILABLE
-        }
+        // 能力型目标：shell 已是 root，即达成（机制表不管能力型权限）
+        if (permission == Permission.ROOT) return PermissionState.GRANTED
+        val mechanism = PermissionSpec.appLevelMechanism(permission, Build.VERSION.SDK_INT)
+            ?: return PermissionState.UNAVAILABLE
+        return ShellGrants.grant(
+            mechanism = mechanism,
+            run = { cmd -> run(cmd) },
+            packageName = packageName,
+            accessibilityService = accessibilityService,
+            verify = { TargetStatus.query(context, permission, accessibilityService) },
+        )
     }
 
     private suspend fun run(command: String): ShellOutcome = withContext(Dispatchers.IO) {

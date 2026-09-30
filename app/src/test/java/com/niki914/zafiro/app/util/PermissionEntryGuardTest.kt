@@ -34,11 +34,8 @@ class PermissionEntryGuardTest {
             AllowRule("permission/TargetStatus.kt", ""),
             AllowRule("permission/ShizukuHandler.kt", "Shizuku.checkSelfPermission"),
         ),
-        // 系统弹窗的 launcher 调用 + Manifest 文本
+        // Manifest 里声明的权限名（弹窗权限名现在全在 business:permission 的 PermissionSpec）
         "POST_NOTIFICATIONS" to listOf(
-            AllowRule("ApplicationServiceImpl.kt", ""),
-            AllowRule("permission/TargetStatus.kt", ""),
-            AllowRule("MainActivity.kt", "RequestPermission"),
             AllowRule("AndroidManifest.xml", ""),
         ),
         // seed py 脚本是 py 工具层自身能力（py 进程无 PermissionManager 可用），显式排除
