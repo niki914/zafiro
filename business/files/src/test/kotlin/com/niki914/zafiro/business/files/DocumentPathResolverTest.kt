@@ -49,14 +49,33 @@ class DocumentPathResolverTest {
     }
 
     @Test
-    fun `raw and other volume prefixes are rejected`() {
-        assertNull(doc("raw:/storage/emulated/0/x"))
-        assertNull(doc("home:whatever"))
+    fun `raw document uses the absolute path the provider gave us`() {
+        assertEquals("/storage/emulated/0/Download/report.pdf", doc("raw:/storage/emulated/0/Download/report.pdf"))
+    }
+
+    @Test
+    fun `raw tree keeps a trailing slash`() {
+        assertEquals("/storage/emulated/0/Download/", tree("raw:/storage/emulated/0/Download"))
+    }
+
+    @Test
+    fun `raw docIds that are not absolute paths are rejected`() {
+        assertNull(doc("raw:relative/report.pdf"))
+        assertNull(doc("raw:"))
+        assertNull(doc("raw:/"))
+    }
+
+    @Test
+    fun `download manager record ids are rejected`() {
+        // 下载抽屉里在 DownloadManager 数据库中的文件：裸数字 id，路径只有该 provider 自己知道
+        assertNull(doc("5"))
+        assertNull(tree("5"))
     }
 
     @Test
     fun `docId without a volume separator is rejected`() {
         assertNull(doc("nocolon"))
         assertNull(doc(""))
+        assertNull(doc("home:whatever"))
     }
 }
