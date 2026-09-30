@@ -15,6 +15,7 @@ import com.niki914.zafiro.api.model.ConversationTurn
 import com.niki914.zafiro.api.model.ToolInvocation
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
+import com.niki914.zafiro.api.text.FilesBlock
 import com.niki914.zafiro.business.agent.blockIdAt
 import com.niki914.zafiro.business.agent.turnIdAt
 
@@ -59,7 +60,9 @@ object ConversationFormatter {
 
     private fun previewTextOf(message: Message?): String {
         val text = when (message) {
-            is Message.User -> message.textBlocks().joinToString("\n")
+            // 用户文本先在头部切掉注入块：切出来的那段是给 agent 看的机器文本，
+            // 拿它当预览会把 <zfr-files> 摆到对话列表里
+            is Message.User -> FilesBlock.strip(message.textBlocks().joinToString("\n")).text
             is Message.Assistant -> message.message.textBlocks().joinToString("\n")
             else -> ""
         }
@@ -92,12 +95,18 @@ object ConversationFormatter {
 
         history.forEach { entry ->
             when (val message = entry.message) {
-                is Message.User -> turns += ConversationTurn(
-                    id = turnIdAt(turns.size),
-                    userText = message.textBlocks().joinToString("\n"),
-                    attachments = message.content.filterIsInstance<ContentBlock.Image>()
-                        .map { Attachment(path = it.path, mimeType = it.mimeType) },
-                )
+                is Message.User -> {
+                    // 展示路径上的切头：落盘的这条消息带着注入块，
+                    // 切掉后才是用户当时真正打的话
+                    val stripped = FilesBlock.strip(message.textBlocks().joinToString("\n"))
+                    turns += ConversationTurn(
+                        id = turnIdAt(turns.size),
+                        userText = stripped.text,
+                        images = message.content.filterIsInstance<ContentBlock.Image>()
+                            .map { Attachment(path = it.path, mimeType = it.mimeType) },
+                        files = stripped.files,
+                    )
+                }
 
                 is Message.Assistant -> {
                     val target = turns.lastOrNull()

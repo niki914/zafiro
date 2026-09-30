@@ -134,7 +134,7 @@ class ConversationRepoTest {
         assertEquals(entries[1].id, newRecord.snapshot.leafId)
         // Fork 不回填草稿
         assertEquals("", result.promptText)
-        assertTrue(result.attachments.isEmpty())
+        assertTrue(result.images.isEmpty())
         // 源会话不受影响
         assertEquals(3, ConversationRepo.countEntries(sourceId))
     }
@@ -177,7 +177,7 @@ class ConversationRepoTest {
         // 截在该回合用户条目之前（不含）：turn 0 → 0 条
         assertTrue(newRecord.snapshot.entries.isEmpty())
         assertEquals("u1", result.promptText)
-        assertEquals(listOf("/image.jpg"), result.attachments.map { it.path })
+        assertEquals(listOf("/image.jpg"), result.images.map { it.path })
     }
 
     @Test
@@ -198,7 +198,7 @@ class ConversationRepoTest {
         // turn 1 的用户条目在投影下标 2：保留前两条（turn 0 完整）
         assertEquals(2, newRecord.snapshot.entries.size)
         assertEquals("u2", result.promptText)
-        assertTrue(result.attachments.isEmpty())
+        assertTrue(result.images.isEmpty())
     }
 
     @Test

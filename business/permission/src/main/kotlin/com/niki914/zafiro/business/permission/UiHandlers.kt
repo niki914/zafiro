@@ -8,56 +8,97 @@ import android.os.Build
 import android.provider.Settings
 import com.niki914.logging.Logger
 import com.niki914.zafiro.business.application.ApplicationService
-import com.niki914.zafiro.business.application.NotificationDialogResult
+import com.niki914.zafiro.business.application.RuntimeDialogResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * SYSTEM_DIALOG 通道（minSdk 33；<33 的 NOTIFICATION 恒 GRANTED，request 走不到这）。
- * - 只支持 NOTIFICATION：经 ApplicationService.requestPostNotifications 弹窗，结果回调确定状态。
- * - 其余 permission：UNAVAILABLE（弹窗能力只覆盖通知）。
+ * SYSTEM_DIALOG 通道（minSdk 26：运行时权限弹框从 23 起就有，通知只是其中一例）。
+ * 机制是 [GrantMechanism.Runtime] 的权限经 ApplicationService 弹框，一次一个、串行；
+ * 其余（特殊权限 / 无障碍）没有系统弹框，报 UNAVAILABLE 让链降级。
  */
 internal class SystemDialogHandler(
     private val appService: ApplicationService,
 ) : ChannelHandler {
 
-    override val channel = Channel.SYSTEM_DIALOG
-    override val minSdk = MinSdk(33)
+    private val app: Context = appService.getApplication()
 
-    /** 申请状态无法静默得知（弹窗还没弹），固定 UNKNOWN；由调用方先 status() 查 TargetStatus。 */
+    override val channel = Channel.SYSTEM_DIALOG
+    override val minSdk = MinSdk(26)
+
+    /** 申请状态无法静默得知（弹窗还没弹）；有弹框可弹的报 UNKNOWN，其余的明确 UNAVAILABLE。 */
     override fun status(permission: Permission): PermissionState =
-        PermissionState.UNKNOWN
+        if (PermissionSpec.appLevelMechanism(permission, Build.VERSION.SDK_INT) is GrantMechanism.Runtime) {
+            PermissionState.UNKNOWN
+        } else {
+            PermissionState.UNAVAILABLE
+        }
 
     override suspend fun request(permission: Permission): PermissionState {
-        if (permission != Permission.NOTIFICATION) return PermissionState.UNAVAILABLE
-        if (Build.VERSION.SDK_INT < NOTIFICATION_API) return PermissionState.GRANTED
-        if (appService.getActivity() == null) {
-            Logger.d(TAG, "request(NOTIFICATION): no foreground -> UNAVAILABLE")
+        val mechanism = PermissionSpec.appLevelMechanism(permission, Build.VERSION.SDK_INT)
+            ?: return PermissionState.UNAVAILABLE
+        return when (mechanism) {
+            GrantMechanism.None -> PermissionState.GRANTED
+            is GrantMechanism.Runtime -> requestRuntimePermissions(permission, mechanism)
+            is GrantMechanism.AppOp, GrantMechanism.Accessibility -> PermissionState.UNAVAILABLE
+        }
+    }
+
+    private suspend fun requestRuntimePermissions(
+        permission: Permission,
+        mechanism: GrantMechanism.Runtime,
+    ): PermissionState {
+        // 弹框要前台。刚被 su / Shizuku 自己的授权框顶下去过时，我们的 resume 回调要晚几十毫秒
+        // 才到；那一刻判 null 会把这一环整环丢掉（链只给每环一次机会），所以先等一次前台。
+        if (appService.awaitForeground(FOREGROUND_WAIT_MILLIS) == null) {
+            Logger.d(TAG, "request($permission): no foreground -> UNAVAILABLE")
             return PermissionState.UNAVAILABLE
         }
-        // 通知结果槽是单槽的，并发弹窗用 Mutex 串行
+        // 结果槽是单槽的，并发弹窗用 Mutex 串行；同一次申请里的多个权限也逐个弹，不追着用户重复要
         return mutex.withLock {
             try {
-                val result = appService.requestPostNotifications()
-                Logger.d(TAG, "request(NOTIFICATION): $result")
-                when (result) {
-                    NotificationDialogResult.GRANTED -> PermissionState.GRANTED
-                    NotificationDialogResult.DENIED -> PermissionState.DENIED_BY_USER
-                    // 框没弹成 = 本次无结果，继续降级
-                    NotificationDialogResult.NOT_SHOWN -> PermissionState.UNKNOWN
+                var dialogShown = false
+                for (name in mechanism.names) {
+                    val result = requestRuntimePermissionWithRetry(name)
+                    dialogShown = dialogShown || result != RuntimeDialogResult.NOT_SHOWN
+                    if (result != RuntimeDialogResult.GRANTED) break
                 }
+                // 框的返回值只用来分辨「没弹成」；真值以系统里的权限状态收尾（与跳设置页复查同口径）
+                val state = if (dialogShown) {
+                    TargetStatus.query(app, permission, accessibilityService = null)
+                } else {
+                    PermissionState.UNKNOWN
+                }
+                Logger.d(TAG, "request($permission): dialogShown=$dialogShown -> $state")
+                state
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                Logger.d(TAG, "request(NOTIFICATION): threw ${e.javaClass.simpleName} -> UNKNOWN")
+                Logger.d(TAG, "request($permission): threw ${e.javaClass.simpleName} -> UNKNOWN")
                 PermissionState.UNKNOWN
             }
         }
     }
 
+    /**
+     * 弹一次系统框；[RuntimeDialogResult.NOT_SHOWN]（未 RESUMED 导致 launch 抛 / 框没弹成）
+     * 再等一次前台并重试一次——竞态窗口只有几十毫秒，重试一次基本都能落到框上；
+     * 再失败就交回上层降级（本环只给这一次重试）。
+     */
+    private suspend fun requestRuntimePermissionWithRetry(name: String): RuntimeDialogResult {
+        val first = appService.requestRuntimePermission(name)
+        if (first != RuntimeDialogResult.NOT_SHOWN) return first
+        appService.awaitForeground(FOREGROUND_WAIT_MILLIS)
+        return appService.requestRuntimePermission(name)
+    }
+
     private companion object {
         const val TAG = "niki914_zafiro_SystemDialogHandler"
+
+        /** 等前台的短超时：刚从 su / Shizuku 授权框回来时 resume 回调可能迟到。 */
+        const val FOREGROUND_WAIT_MILLIS = 2_000L
+
         val mutex = Mutex()
     }
 }
@@ -124,24 +165,33 @@ internal class JumpSettingsHandler(
     }
 
     private fun defaultIntent(permission: Permission): Intent =
-        when (permission) {
-            Permission.OVERLAY -> Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName"),
-            )
-            Permission.ACCESSIBILITY -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-            Permission.NOTIFICATION ->
-                if (Build.VERSION.SDK_INT >= 26) {
-                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-                } else {
-                    // minSdk=26，此分支到不了；留着防未来降 minSdk
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                        .setData(Uri.parse("package:$packageName"))
-                }
-            Permission.ROOT, Permission.SHIZUKU -> Intent(
-                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.parse("package:$packageName"),
-            )
+        when (PermissionSpec.appLevelMechanism(permission, Build.VERSION.SDK_INT)) {
+            // 运行时权限里只有通知有专属页；存储（<30）只能进应用详情
+            is GrantMechanism.Runtime -> when (permission) {
+                Permission.NOTIFICATION -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                else -> appDetails()
+            }
+            null -> appDetails()
+            // 特殊权限各有专属页；AppOp 机制目前只有存储与悬浮窗
+            is GrantMechanism.AppOp -> when (permission) {
+                Permission.STORAGE -> Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:$packageName"),
+                )
+                Permission.OVERLAY -> Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName"),
+                )
+                else -> appDetails()
+            }
+            GrantMechanism.Accessibility -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            // <33 的通知恒可用，跳页无意义，给一个落脚点
+            GrantMechanism.None -> appDetails()
         }
+
+    private fun appDetails(): Intent = Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.parse("package:$packageName"),
+    )
 }

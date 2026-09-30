@@ -16,6 +16,8 @@
     <queries>
         <package android:name="com.heytap.speechassist" />
         <package android:name="com.miui.voiceassist" />
+        <!-- 权限链的 Shizuku 通道：30+ 要这里开口才看得到它装没装（见 ShizukuHandler） -->
+        <package android:name="moe.shizuku.privileged.api" />
 
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -27,6 +29,7 @@
         android:name="com.niki914.zafiro.app.App"
         android:allowBackup="true"
         android:enableOnBackInvokedCallback="true"
+        android:requestLegacyExternalStorage="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -49,6 +52,19 @@
             android:name="xposedminversion"
             android:value="82" />
         <!--XPOSED-->
+
+        <!-- 相机输出：给系统相机一个我们自己的 content uri（EXTRA_OUTPUT）。
+            不走 MediaStore：刚 insert 的记录是 IS_PENDING=1，pending 项对非所有者是
+            owner-only（URI 授权也压不过），相机（另一个 uid）写不进去。 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <activity
             android:name="com.niki914.zafiro.app.MainActivity"

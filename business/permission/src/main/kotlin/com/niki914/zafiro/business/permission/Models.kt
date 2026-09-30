@@ -7,6 +7,14 @@ enum class Permission {
     NOTIFICATION,
     OVERLAY,
     ACCESSIBILITY,
+
+    /**
+     * 能按路径读写外部文件（“真的能读写用户文件”这件事的语义目标）。
+     *
+     * 命名是语义而不是机制：30+ 的机制是 `MANAGE_EXTERNAL_STORAGE`（all-files），
+     * <30 是 `READ/WRITE_EXTERNAL_STORAGE` 运行时权限。机制与版本的分叉见 [PermissionSpec]。
+     */
+    STORAGE,
 }
 
 /** 怎么拿。scope = 通道优先级链 */

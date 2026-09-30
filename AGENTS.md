@@ -106,3 +106,7 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 [] EAZY: `Build.VERSION.SDK_INT >= Build.VERSION_CODES.O` 这样的版本相关的无用判断
 [] MEDIUM: 内联包名清理，使用默认参数而放在构造函数里面的成员
 [] HARD: 处理散落的 `TODO`
+[] EAZY: Composer 附件多选：Photos 从 `PickVisualMedia` 换到 `PickMultipleVisualMedia`（同一个系统相册，不是自研 picker），Files 侧允许多选
+[] MEDIUM: 附件 Recents：在选项单里列出最近附加过的文件 / 文件夹（需要一份最近附件列表的持久化）
+[] EZAT: 添加一个 runCatching 封装到 :api 专门处理 cancellation exception 等异常，然后全仓搜索 try / runCatching 做清扫
+[] MEDIUM: githooks: 限制监视器锁使用；限制遗留类注释如“不再”，这种 API 修改 / fixes 除了实现需求的人以外，没人需要知道曾经是啥样的；不导入的内联代码；复杂的构造参数；requireService 放在构造参数或者构造参数的调用。只对 diff 生效不对全局代码

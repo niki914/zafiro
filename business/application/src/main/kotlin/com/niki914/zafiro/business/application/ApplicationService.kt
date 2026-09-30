@@ -3,11 +3,10 @@ package com.niki914.zafiro.business.application
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
-import android.Manifest
 import androidx.activity.result.ActivityResultLauncher
 
-/** 系统通知权限框的结果。 */
-enum class NotificationDialogResult {
+/** 系统运行时权限框的结果。 */
+enum class RuntimeDialogResult {
     GRANTED,
     DENIED,
 
@@ -22,7 +21,7 @@ enum class NotificationDialogResult {
  * 前台 Activity 跟踪由实现侧经 Application.registerActivityLifecycleCallbacks
  * 自动维护，确定性设置/清空，不靠 WeakReference 的 GC 时机。
  *
- * 通知权限框是唯一的系统权限弹窗：overlay / accessibility / root / shizuku 都由 shell
+ * 运行时权限框是唯一的系统权限弹窗：overlay / accessibility / all-files 都由 shell
  * 通道或跳设置页解决，而预注册 launcher 只有 Activity 能做，所以这里保留这一个具体方法，
  * 不抽象成通用的权限弹窗分派。
  */
@@ -44,11 +43,12 @@ interface ApplicationService {
     suspend fun awaitForeground(timeoutMs: Long): Activity?
 
     /**
-     * 经 MainActivity 预注册的通知权限 launcher 弹一次系统框并等结果。
+     * 经 MainActivity 预注册的运行时权限 launcher 弹一次系统框并等结果。
+     * 一次只申请一个权限：结果槽只有一个，契约与实现同宽。多个权限由调用方逐个申请（串行弹窗）。
      * launcher 必须在 Activity STARTED 前注册，因此仍由 MainActivity 预注册后装进来，
      * 实现侧只持有结果路由，不认识 launcher 的注册细节。
      */
-    suspend fun requestPostNotifications(): NotificationDialogResult
+    suspend fun requestRuntimePermission(permission: String): RuntimeDialogResult
 
     /**
      * 等下一次 resume（用户从设置页/系统框回来）。超时或取消返回 false。
@@ -57,8 +57,8 @@ interface ApplicationService {
     suspend fun awaitNextResume(timeoutMs: Long): Boolean
 
     /** 装配方法（仅 MainActivity 调）：预注册的 launcher 在 STARTED 前装进来。 */
-    fun installNotificationLauncher(launcher: ActivityResultLauncher<String>)
+    fun installPermissionLauncher(launcher: ActivityResultLauncher<String>)
 
     /** 装配方法（仅 MainActivity 调）：launcher 结果回调转发。 */
-    fun onNotificationResult(granted: Boolean)
+    fun onRuntimePermissionResult(granted: Boolean)
 }

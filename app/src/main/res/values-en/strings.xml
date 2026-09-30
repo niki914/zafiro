@@ -47,6 +47,15 @@
     </plurals>
     <string name="ui_home_send_content_description">Send message</string>
     <string name="ui_home_add_image_content_description">Add image</string>
+    <string name="ui_home_attach_sheet_title">Add to conversation</string>
+    <string name="ui_home_attach_photos">Photos</string>
+    <string name="ui_home_attach_camera">Camera</string>
+    <string name="ui_home_attach_file">File</string>
+    <string name="ui_home_attach_folder">Folder</string>
+    <string name="ui_home_attach_unresolvable">Unable to get a local path for that file</string>
+    <string name="ui_home_attach_no_permission">Grant all files access first</string>
+    <string name="ui_home_attach_unreadable">Unable to read that file</string>
+    <string name="ui_home_file_remove_content_description">Remove file</string>
     <string name="ui_home_image_remove_content_description">Remove image</string>
     <string name="ui_home_scroll_to_bottom_content_description">Scroll to bottom</string>
     <string name="ui_home_stop_content_description">Stop generating</string>

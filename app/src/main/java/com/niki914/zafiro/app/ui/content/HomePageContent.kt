@@ -1,9 +1,16 @@
 package com.niki914.zafiro.app.ui.content
 
+import android.app.Activity
 import android.content.ClipData
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -39,8 +46,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -80,12 +91,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.uikit.infra.component.OptionRow
+import com.niki914.uikit.infra.component.OptionSheet
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
@@ -94,6 +109,9 @@ import com.niki914.zafiro.app.ui.PageChromeMenuItem
 import com.niki914.zafiro.app.ui.RegisterPageChrome
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.home.HomeChatEffect
+import com.niki914.zafiro.app.ui.model.home.HomeChatFile
+import com.niki914.zafiro.app.ui.model.home.FileAttachReason
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
 import com.niki914.zafiro.app.ui.model.home.HomeChatTurn
@@ -112,6 +130,7 @@ import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * 冷启动后仅首次进入 Home 时抢焦点弹键盘；进程内不再重复
@@ -120,6 +139,12 @@ import kotlinx.coroutines.launch
 private var composerAutoFocusDone = false
 private const val AUTO_FOCUS_MAX_ATTEMPTS = 20
 private const val AUTO_FOCUS_RETRY_INTERVAL_MILLIS = 150L
+
+/** 附件入口的日志 TAG（只在相机失败这类异常路径上用）。 */
+private const val ATTACH_LOG_TAG = "niki914_zafiro_Attach"
+
+/** 图片多选的张数上限。远低于系统的 getPickImagesMaxLimit()，取一个够用且不炸上下文的数。 */
+private const val PHOTO_PICK_MAX_ITEMS = 10
 
 @Composable
 fun HomePageContent(
@@ -141,6 +166,25 @@ fun HomePageContent(
     )
     val latestOnActiveConversationChanged by rememberUpdatedState(onActiveConversationChanged)
     val uiState by viewModel.uiStateFlow.collectAsState()
+
+    // 附件失败提示：一次性 effect（不占状态）。
+    // 三条文案按原因分（D22）：解析不出路径 / 没拿到全局文件访问权 / 读不到文件。
+    val attachToastContext = LocalContext.current
+    LaunchedEffect(viewModel) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is HomeChatEffect.FileAttachFailed -> Toast.makeText(
+                    attachToastContext,
+                    when (effect.reason) {
+                        FileAttachReason.Unresolvable -> R.string.ui_home_attach_unresolvable
+                        FileAttachReason.NoPermission -> R.string.ui_home_attach_no_permission
+                        FileAttachReason.Unreadable -> R.string.ui_home_attach_unreadable
+                    },
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
     val alwaysShowActions by XRepo.alwaysShowMessageActionsSetting.collectAsState()
     val actionsDisplay = if (alwaysShowActions) {
         MessageActionsDisplay.Always
@@ -310,11 +354,21 @@ fun HomePageContent(
             viewModel.sendIntent(HomeChatIntent.StopGenerating)
         },
         pendingImages = uiState.pendingImages,
+        pendingFiles = uiState.pendingFiles,
         onImageAttached = { uri ->
             viewModel.sendIntent(HomeChatIntent.ImageAttached(uri))
         },
         onRemoveImage = { id ->
             viewModel.sendIntent(HomeChatIntent.ImageRemoved(id))
+        },
+        onCameraCaptured = { uri, path ->
+            viewModel.sendIntent(HomeChatIntent.CameraCaptured(uri, path))
+        },
+        onFileAttached = { uri ->
+            viewModel.sendIntent(HomeChatIntent.FileAttached(uri))
+        },
+        onRemoveFile = { id ->
+            viewModel.sendIntent(HomeChatIntent.FileRemoved(id))
         },
         onComposerFocusChanged = { focused ->
             isComposerFocused = focused
@@ -520,8 +574,12 @@ private fun HomePageContentBody(
     onSendClick: () -> Unit,
     onStopClick: () -> Unit,
     pendingImages: List<HomeChatImage>,
+    pendingFiles: List<HomeChatFile>,
     onImageAttached: (String) -> Unit,
     onRemoveImage: (String) -> Unit,
+    onCameraCaptured: (String, String) -> Unit,
+    onFileAttached: (String) -> Unit,
+    onRemoveFile: (String) -> Unit,
     onComposerFocusChanged: (Boolean) -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
@@ -544,12 +602,56 @@ private fun HomePageContentBody(
     val bottomClearance = composerBottomPadding + composerHeight.value + composerGap
     val density = LocalDensity.current
 
-    // 系统图片选择器（photo picker，无权限）：选图 → ingest 落盘 → pendingImages
+    // 附件入口：加号 → 选项单（Photos / Camera / File / Folder）。
+    val context = LocalContext.current
+    var attachSheetVisible by remember { mutableStateOf(false) }
+    var pendingCapture by remember { mutableStateOf<CameraTarget?>(null) }
+
+    // 系统图片选择器（photo picker，无权限）：可多选，选完逐张 ingest 落盘 → pendingImages
     val photoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
+        contract = ActivityResultContracts.PickMultipleVisualMedia(PHOTO_PICK_MAX_ITEMS),
+    ) { uris ->
+        uris.forEach { onImageAttached(it.toString()) }
+    }
+
+    // SAF 文档 / 目录选择器：可多选；把 content uri 原样交给 VM，
+    // 由 business:files 逐个解析路径 + 要全局文件访问权，这里不做判断
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris ->
+        uris.forEach { uri ->
+            // 图片走图片管线（不需要路径、不需要存储权限），其余仍走文件引用
+            val type = context.contentResolver.getType(uri)
+            val asImage = isImportableImage(context, uri, type)
+            Logger.i(ATTACH_LOG_TAG, "file picked uri=$uri type=$type asImage=$asImage")
+            if (asImage) onImageAttached(uri.toString()) else onFileAttached(uri.toString())
+        }
+    }
+    val folderPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
     ) { uri ->
-        if (uri != null) {
-            onImageAttached(uri.toString())
+        uri?.let { onFileAttached(it.toString()) }
+    }
+
+    // 系统相机：输出目标是我们自己 cache 里的临时文件（FileProvider uri）。
+    // 删那个临时文件由 VM 在 ingest 完成之后做，这里不能当场删（原文件还没被拷走）。
+    //
+    // 为什么不用 MediaStore：官方 TakePicture contract 只塞 EXTRA_OUTPUT，本就不带
+    // URI 授权；补上 clipData + grant 之后依然不行——我们刚 insert 的记录是
+    // IS_PENDING=1，pending 项对**非所有者**是 owner-only（MediaProvider 自己拦，
+    // URI 授权也压不过），相机是另一个 uid，写不进去。真机实测：相机直接回 NOT_OK。
+    // FileProvider 的 uri 落在我们自己的目录上，授权就是唯一的门槛，也是官方文档的配方。
+    val takePicture = rememberLauncherForActivityResult(
+        contract = GrantingTakePicture(),
+    ) { result ->
+        val target = pendingCapture
+        pendingCapture = null
+        if (result.resultCode == Activity.RESULT_OK && target != null) {
+            onCameraCaptured(target.uri.toString(), target.file.path)
+        } else {
+            // 相机没写成（用户取消 / 相机拒绝）：清掉临时文件
+            Logger.w(ATTACH_LOG_TAG, "camera result not ok resultCode=${result.resultCode}")
+            target?.file?.let { runCatching { it.delete() } }
         }
     }
 
@@ -625,16 +727,18 @@ private fun HomePageContentBody(
             }
         }
 
-        // 待发图片条：宽 = composer 本体，位于 composer 上方 8dp；声明在 composer
-        // 之前，万一重合 composer 层级更高盖住图片。composer 拉长/被 IME 顶起时随
-        // composerHeight/composerBottomPadding 精确跟随。不可点击（TODO: 后续接入点开大图）
-        // TODO: 图片条点击事件（点开大图 / 重选入口），待发送链路落地后接入
-        if (pendingImages.isNotEmpty()) {
-            HomeChatImageRow(
+        // 待发附件条：图片与文件**同一行**（两种卡同尺寸同形状），宽 = composer 本体，
+        // 位于 composer 上方 8dp；声明在 composer 之前，万一重合 composer 层级更高盖住它们。
+        // composer 拉长/被 IME 顶起时随 composerHeight/composerBottomPadding 精确跟随。
+        // 不可点击（TODO: 后续接入点开大图 / 打开文件）
+        if (pendingImages.isNotEmpty() || pendingFiles.isNotEmpty()) {
+            HomeChatAttachmentRow(
                 images = pendingImages,
+                files = pendingFiles,
                 cardSize = 60.dp,
                 cornerRadius = 18.dp,
                 onRemoveImage = onRemoveImage,
+                onRemoveFile = onRemoveFile,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(start = 20.dp, end = 20.dp)
@@ -650,11 +754,8 @@ private fun HomePageContentBody(
             onStopClick = onStopClick,
             isGenerating = uiState.isGenerating,
             pendingImages = pendingImages,
-            onAttachImageClick = {
-                photoPicker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            },
+            pendingFiles = pendingFiles,
+            onAttachImageClick = { attachSheetVisible = true },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .onFocusChanged { focusState ->
@@ -723,7 +824,138 @@ private fun HomePageContentBody(
                 )
             }
         }
+
+        OptionSheet(
+            visible = attachSheetVisible,
+            onDismissRequest = { attachSheetVisible = false },
+            title = stringResource(R.string.ui_home_attach_sheet_title),
+        ) { dismissThen ->
+            OptionRow(
+                title = stringResource(R.string.ui_home_attach_photos),
+                leadingContent = { Icon(Icons.Default.Image, contentDescription = null) },
+                onClick = {
+                    dismissThen {
+                        photoPicker.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
+                    }
+                },
+            )
+            // 相机项：不再有版本门。旧门存在的理由是「MediaStore 的 RELATIVE_PATH/IS_PENDING
+            // 要 29+」，改用 FileProvider 之后这个前提没了，26+ 都能跑。
+            OptionRow(
+                title = stringResource(R.string.ui_home_attach_camera),
+                leadingContent = { Icon(Icons.Default.PhotoCamera, contentDescription = null) },
+                onClick = {
+                    dismissThen {
+                        val target = createCameraTarget(context)
+                        if (target == null) {
+                            Logger.w(ATTACH_LOG_TAG, "camera: output target unavailable")
+                        } else {
+                            pendingCapture = target
+                            takePicture.launch(target.uri)
+                        }
+                    }
+                },
+            )
+            // File / Folder 全版本放出：30+ 走 all-files，<30 走运行时权限（机制与版本分叉见 PermissionSpec）
+            OptionRow(
+                title = stringResource(R.string.ui_home_attach_file),
+                leadingContent = { Icon(Icons.Default.Description, contentDescription = null) },
+                onClick = { dismissThen { filePicker.launch(arrayOf("*/*")) } },
+            )
+            OptionRow(
+                title = stringResource(R.string.ui_home_attach_folder),
+                leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
+                onClick = { dismissThen { folderPicker.launch(null) } },
+            )
+        }
     }
+}
+
+/**
+ * 相机输出目标：FileProvider 的 uri（给相机写）+ 它背后的临时文件（ingest 完成后删）。
+ * 文件落在 `cacheDir/capture/`（见 `res/xml/file_paths.xml`）。
+ */
+private data class CameraTarget(val uri: Uri, val file: File)
+
+/** cache 下専给相机输出的子目录（与 `file_paths.xml` 的 `path` 一致）。 */
+private const val CAMERA_CAPTURE_DIR = "capture"
+
+/**
+ * 文件入口分流：这个 uri 能不能走图片管线。
+ *
+ * 判据优先看后缀（docId 通常就带着文件名），没有后缀才回落到 provider 报的 MIME——
+ * 「下载」抽屉里在 DownloadManager 数据库中的文件就是裸数字 docId，只能靠 MIME。
+ */
+private fun isImportableImage(context: Context, uri: Uri, declaredType: String?): Boolean {
+    val extension = uri.lastPathSegment.orEmpty()
+        .substringAfterLast('.', missingDelimiterValue = "")
+        .lowercase()
+    val isImage = if (extension.isNotEmpty()) {
+        extension in IMPORTABLE_IMAGE_EXTENSIONS
+    } else {
+        declaredType?.startsWith("image/") == true
+    }
+    if (!isImage) return false
+    // 超过图片管线上限的图会被 ingest 拒，而拒了之后草稿项是**静默消失**的，
+    // 比「当一个文件附件」更糟。体积未知（-1）时放行，交给一致的上限去判。
+    val size = runCatching {
+        context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+    }.getOrNull()
+    return size == null || size <= IMAGE_MAX_BYTES
+}
+
+/**
+ * 分流时认作图片的后缀。
+ *
+ * 不含 HEIC / HEIF：26/27 的 `BitmapFactory` 解不了，进来会在图片管线里静默失败，
+ * 所以让它们继续走文件路径（= 今天的形态）。
+ */
+private val IMPORTABLE_IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp")
+
+/** 与图片管线的 `ImageFormat.MAX_IMAGE_BYTES` 同口径（那个常数在 agent-runtime 内部）。 */
+private const val IMAGE_MAX_BYTES = 12 * 1024 * 1024L
+
+/**
+ * 造一个相机可以写的输出目标。路径与 provider 都对不上时返回 null（理论上不会）。
+ */
+private fun createCameraTarget(context: Context): CameraTarget? = runCatching {
+    val dir = File(context.cacheDir, CAMERA_CAPTURE_DIR).apply { mkdirs() }
+    val file = File(dir, "zafiro_capture_${System.currentTimeMillis()}.jpg")
+    CameraTarget(
+        uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file),
+        file = file,
+    )
+}.onFailure {
+    Logger.w(ATTACH_LOG_TAG, "camera target create failed error=${it.message}")
+}.getOrNull()
+
+/**
+ * 带写授权的 [ActivityResultContract]。
+ *
+ * 官方 `TakePicture` 只塞 `EXTRA_OUTPUT`，不带 clipData、不带 grant 标志；FileProvider 的
+ * uri 必须显式授权给相机（另一个 uid），否则相机打开它会被拒。所以这里照官方「Take photos」
+ * 文档补上 clipData + `FLAG_GRANT_READ/WRITE_URI_PERMISSION`。
+ *
+ * 回传原始 [resultCode] 而不是 Boolean：排障时必须区分 CANCELED 与其它码，
+ * 官方 contract 把它丢了。
+ */
+private class GrantingTakePicture : ActivityResultContract<Uri, ActivityResult>() {
+
+    override fun createIntent(context: Context, input: Uri): Intent {
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            .putExtra(MediaStore.EXTRA_OUTPUT, input)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        // setClipData 返回 void，不能链式；grant 标志要配 clipData 才会落到被授的 uri 上
+        intent.clipData = ClipData.newUri(context.contentResolver, "camera_output", input)
+        return intent
+    }
+
+    override fun parseResult(resultCode: Int, intent: Intent?): ActivityResult =
+        ActivityResult(resultCode, intent)
 }
 
 /**
@@ -839,17 +1071,18 @@ private fun HomeChatTurnItem(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(BlockSpacing),
     ) {
-        // 图片行：镜像 UserMessageBubble 的对齐方式——BoxWithConstraints 右对齐，
-        // Row 贴内容宽、max 同 bubble（0.82f）；外层与卡片同圆角 clip——边缘图片被
-        // 裁时仍呈圆角。多图时初始 scroll=0 优先展示左边的图，整行靠右。
-        // 不可点击（TODO: 点开大图）
-        if (turn.images.isNotEmpty()) {
+        // 附件行：图片与文件同一行（同尺寸同形状），镜像 UserMessageBubble 的
+        // 对齐方式——BoxWithConstraints 右对齐，Row 贴内容宽、max 同 bubble（0.82f）；
+        // 外层与卡片同圆角 clip——边缘卡被裁时仍呈圆角。多附件时初始 scroll=0 优先展示左边的，整行靠右。
+        // 不可点击（TODO: 点开大图 / 打开文件）
+        if (turn.images.isNotEmpty() || turn.files.isNotEmpty()) {
             BoxWithConstraints(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.CenterEnd,
             ) {
-                HomeChatImageRow(
+                HomeChatAttachmentRow(
                     images = turn.images,
+                    files = turn.files,
                     cardSize = 120.dp,
                     cornerRadius = UserBubbleCornerRadius,
                     modifier = Modifier.widthIn(max = maxWidth * 0.82f),
@@ -1192,8 +1425,12 @@ private fun HomePageContentPreview() {
                 onSendClick = {},
                 onStopClick = {},
                 pendingImages = emptyList(),
+                pendingFiles = emptyList(),
                 onImageAttached = {},
                 onRemoveImage = {},
+                onCameraCaptured = { _, _ -> },
+                onFileAttached = {},
+                onRemoveFile = {},
                 onComposerFocusChanged = {},
                 onReGenerate = { },
                 onFork = { },

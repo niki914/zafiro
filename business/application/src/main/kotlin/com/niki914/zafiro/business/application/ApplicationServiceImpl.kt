@@ -1,6 +1,5 @@
 package com.niki914.zafiro.business.application
 
-import android.Manifest
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
@@ -26,10 +25,10 @@ class ApplicationServiceImpl(
     private val lock = Any()
     private var resumeGen = 0L
     private val resumeWaiters = mutableListOf<CancellableContinuation<Unit>>()
-    private var notifWaiter: CancellableContinuation<NotificationDialogResult>? = null
+    private var permissionWaiter: CancellableContinuation<RuntimeDialogResult>? = null
 
     /** MainActivity.onCreate：预注册 launcher 后装进来（STARTED 前注册是框架要求）。 */
-    override fun installNotificationLauncher(launcher: ActivityResultLauncher<String>) {
+    override fun installPermissionLauncher(launcher: ActivityResultLauncher<String>) {
         this.launcher = launcher
     }
 
@@ -44,9 +43,9 @@ class ApplicationServiceImpl(
     }
 
     /** launcher 回调转发（MainActivity 预注册的 launcher 回调里调）。 */
-    override fun onNotificationResult(granted: Boolean) {
-        val w = synchronized(lock) { notifWaiter.also { notifWaiter = null } }
-        val result = if (granted) NotificationDialogResult.GRANTED else NotificationDialogResult.DENIED
+    override fun onRuntimePermissionResult(granted: Boolean) {
+        val w = synchronized(lock) { permissionWaiter.also { permissionWaiter = null } }
+        val result = if (granted) RuntimeDialogResult.GRANTED else RuntimeDialogResult.DENIED
         if (w?.isActive == true) w.resume(result)
     }
 
@@ -69,18 +68,18 @@ class ApplicationServiceImpl(
         return getActivity()
     }
 
-    override suspend fun requestPostNotifications(): NotificationDialogResult {
-        val launcher = launcher ?: return NotificationDialogResult.NOT_SHOWN
+    override suspend fun requestRuntimePermission(permission: String): RuntimeDialogResult {
+        val launcher = launcher ?: return RuntimeDialogResult.NOT_SHOWN
         return suspendCancellableCoroutine { cont ->
-            synchronized(lock) { notifWaiter = cont }
+            synchronized(lock) { permissionWaiter = cont }
             cont.invokeOnCancellation {
-                synchronized(lock) { if (notifWaiter === cont) notifWaiter = null }
+                synchronized(lock) { if (permissionWaiter === cont) permissionWaiter = null }
             }
             // 非 resumed 状态 launch 会抛：本次框没弹成，交回 NOT_SHOWN，让链继续降级。
-            runCatching { launcher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+            runCatching { launcher.launch(permission) }
                 .onFailure {
-                    synchronized(lock) { if (notifWaiter === cont) notifWaiter = null }
-                    if (cont.isActive) cont.resume(NotificationDialogResult.NOT_SHOWN)
+                    synchronized(lock) { if (permissionWaiter === cont) permissionWaiter = null }
+                    if (cont.isActive) cont.resume(RuntimeDialogResult.NOT_SHOWN)
                 }
         }
     }
@@ -124,13 +123,13 @@ class ApplicationServiceImpl(
     private fun clearForeground(cause: CancellationException) {
         foreground = null
         val resume: List<CancellableContinuation<Unit>>
-        val notif: CancellableContinuation<NotificationDialogResult>?
+        val waiter: CancellableContinuation<RuntimeDialogResult>?
         synchronized(lock) {
             resume = resumeWaiters.toList().also { resumeWaiters.clear() }
-            notif = notifWaiter.also { notifWaiter = null }
+            waiter = permissionWaiter.also { permissionWaiter = null }
         }
         resume.forEach { it.cancel(cause) }
-        notif?.cancel(cause)
+        waiter?.cancel(cause)
     }
 
     private val callbacks = object : Application.ActivityLifecycleCallbacks {

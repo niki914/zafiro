@@ -3,6 +3,7 @@ package com.niki914.zafiro.business.agent
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationTurn
+import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.model.ToolInvocation
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
@@ -64,7 +65,8 @@ internal object ConversationReducer {
     fun startTurn(
         conversation: Conversation,
         userText: String,
-        attachments: List<Attachment>,
+        images: List<Attachment>,
+        files: List<FileRef> = emptyList(),
     ): Reduced {
         val cleared = conversation.copy(
             turns = conversation.turns.map { turn ->
@@ -76,7 +78,8 @@ internal object ConversationReducer {
                 turns = cleared.turns + ConversationTurn(
                     id = turnIdAt(cleared.turns.size),
                     userText = userText,
-                    attachments = attachments,
+                    images = images,
+                    files = files,
                 ),
             ),
         )

@@ -7,6 +7,8 @@ import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.zafiro.api.model.Attachment
+import com.niki914.zafiro.api.model.FileRef
+import com.niki914.zafiro.api.text.FilesBlock
 import com.niki914.zafiro.app.R
 import kotlinx.serialization.json.Json
 import java.util.UUID
@@ -22,12 +24,15 @@ enum class ForkKind {
  * 派生结果：新会话 id + 需要回填草稿的原用户输入。
  *
  * Fork 不回填（截断保留整轮，草稿为空）；Regenerate / Rewind 回填该回合的
- * 文本与附件（[Attachment] 是契约类型，okia 的 ContentBlock.Image 不出仓储层）。
+ * 文本与图片（[Attachment] 是契约类型，okia 的 ContentBlock.Image 不出仓储层）。
+ * [files] 是从落盘文本里切出来的文件引用：回填草稿时既要把
+ * 注入块从输入框里拿掉，又不能把用户附的文件弄丢。
  */
 data class ForkResult(
     val newConversationId: String,
     val promptText: String = "",
-    val attachments: List<Attachment> = emptyList(),
+    val images: List<Attachment> = emptyList(),
+    val files: List<FileRef> = emptyList(),
 )
 
 object ConversationRepo {
@@ -209,10 +214,13 @@ object ConversationRepo {
         )
         if (kind == ForkKind.Fork) return ForkResult(newId)
         val userMessage = projected[userEntryIndex].message as Message.User
+        // 注入块不进输入框，但里面的文件引用要回填：两者都从同一次切头里拿
+        val stripped = FilesBlock.strip(userMessage.text())
         return ForkResult(
             newConversationId = newId,
-            promptText = userMessage.text(),
-            attachments = userMessage.attachments(),
+            promptText = stripped.text,
+            images = userMessage.images(),
+            files = stripped.files,
         )
     }
 
@@ -239,7 +247,7 @@ object ConversationRepo {
     private fun Message.User.text(): String =
         content.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
 
-    private fun Message.User.attachments(): List<Attachment> =
+    private fun Message.User.images(): List<Attachment> =
         content.filterIsInstance<ContentBlock.Image>().map { Attachment(it.path, it.mimeType) }
 
     /**

@@ -55,6 +55,12 @@ value class TurnId(val value: String)
 data class ConversationTurn(
     val id: TurnId,
     val userText: String,
-    val attachments: List<Attachment> = emptyList(),
+    val images: List<Attachment> = emptyList(),
+    /**
+     * 该回合附带的文件 / 文件夹引用。**派生字段**：源头是用户消息里那段
+     * `<zfr-files>` 注入块，历史恢复时由 `TurnTextComposer` 解回来，
+     * 本类型不额外落盘。
+     */
+    val files: List<FileRef> = emptyList(),
     val blocks: List<TurnBlock> = emptyList(),
 )

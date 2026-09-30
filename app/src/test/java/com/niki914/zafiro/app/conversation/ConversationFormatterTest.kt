@@ -110,7 +110,7 @@ class ConversationFormatterTest {
         val conversation = ConversationFormatter.toConversation(snapshot)
         val turn = conversation.turns.single()
 
-        assertEquals(listOf(Attachment("/files/a.png", "image/png")), turn.attachments)
+        assertEquals(listOf(Attachment("/files/a.png", "image/png")), turn.images)
         val thinking = turn.blocks.single() as TurnBlock.Thinking
         assertEquals("想一想", thinking.text)
         // 恢复后不再流式：块已结束

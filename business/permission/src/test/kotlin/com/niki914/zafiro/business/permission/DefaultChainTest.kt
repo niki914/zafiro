@@ -24,6 +24,16 @@ class DefaultChainTest {
     }
 
     @Test
+    fun `storage tries shell channels before dialog-jump`() {
+        // <30 的存储是运行时权限，能弹系统框；30+ 的 all-files 没有弹框，
+        // SYSTEM_DIALOG 自己报 UNAVAILABLE，链自然降级到跳设置页。
+        assertEquals(
+            listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS),
+            PermissionManagerImpl.defaultChain(Permission.STORAGE),
+        )
+    }
+
+    @Test
     fun `capability permissions default to own channel`() {
         assertEquals(listOf(Channel.ROOT_SHELL), PermissionManagerImpl.defaultChain(Permission.ROOT))
         assertEquals(listOf(Channel.SHIZUKU), PermissionManagerImpl.defaultChain(Permission.SHIZUKU))

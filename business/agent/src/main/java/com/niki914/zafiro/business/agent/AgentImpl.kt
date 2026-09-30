@@ -115,24 +115,29 @@ object AgentImpl : Agent {
 
     override fun stream(): TurnStart {
         val draft = draftFlow.value
-        if (draft.text.isBlank() && draft.images.isEmpty()) return TurnStart.DraftEmpty
+        if (draft.text.isBlank() && draft.images.isEmpty() && draft.files.isEmpty()) {
+            return TurnStart.DraftEmpty
+        }
         if (!roundActive.compareAndSet(expect = false, update = true)) return TurnStart.Busy
 
         val query = draft.text
-        val attachments = draft.images.mapNotNull { image ->
+        val images = draft.images.mapNotNull { image ->
             when (image) {
                 is DraftImage.Pending -> null
                 is DraftImage.Ready -> image.attachment
             }
         }
-        val images = attachments.map {
+        // 文件引用同一次归约里取走：不拷贝、没有异步过程，所以不等待任何东西
+        val files = draft.files
+        // okia 边界上的形态（ContentBlock.Image）；契约侧叫 images，两者不是同一个列表
+        val contentImages = images.map {
             ContentBlock.Image(it.path, it.mimeType ?: USER_IMAGE_MIME)
         }
         // 发起即清空草稿：写入与清空在同一次归约里，覆盖窗口只有一帧
         draftFlow.value = Draft()
         reducedStatus = AgentStateReducer.startRound()
         emitStatus(reducedStatus.status)
-        foldWith(ConversationReducer.startTurn(conversationFlow.value, query, attachments))
+        foldWith(ConversationReducer.startTurn(conversationFlow.value, query, images, files))
 
         val token = ++roundToken
         streamJob = scope.launch {
@@ -140,9 +145,10 @@ object AgentImpl : Agent {
                 val conversationId = ensureConversation(query)
                 store().saveDraft(conversationId, "")
                 Logger.i(LOG_TAG, "round started conversationId=${conversationId.value} queryLength=${query.length}")
-                LLMController.stream(query = query, images = images).collect { event ->
-                    fold(event)
-                }
+                LLMController.stream(query = query, images = contentImages, files = files)
+                    .collect { event ->
+                        fold(event)
+                    }
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
                 Logger.e(LOG_TAG, "round failed errorType=${throwable::class.simpleName} message=${throwable.message}")

@@ -3,6 +3,7 @@ package com.niki914.zafiro.app.ui.model.home
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.DraftImage
+import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.model.ToolInvocation
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
@@ -25,20 +26,32 @@ internal fun Conversation.toHomeTurns(): List<HomeChatTurn> =
         HomeChatTurn(
             id = turnIndex.toLong(),
             userText = turn.userText,
-            images = turn.attachments.map { it.toHomeImage() },
+            images = turn.images.map { it.toHomeImage() },
+            files = turn.files.map { it.toHomeFile() },
             blocks = turn.blocks.mapIndexed { blockIndex, block -> block.toHomeBlock(blockIndex) },
         )
     }
 
-/** 草稿图片 → 待发送图片条。Pending 还没有落盘路径，用 uri 占位，发送时由实现侧跳过。 */
+/**
+ * 草稿图片 → 待发送图片条。
+ *
+ * Pending 现在返回 null：落盘完成前，图条上看不到它。
+ *
+ * TODO(pending 占位)：改成 Pending 期间就直接显示这张图，只叠一个 loading indicator。
+ *  两个前提：`HomeChatImageCard` 目前只认落盘路径（`BitmapFactory.decodeFile`），
+ *  要能解 content uri 才谈得上预览；`HomeChatImage` 也得能表达「加载中」这一态。
+ */
 internal fun DraftImage.toHomeImage(): HomeChatImage? = when (this) {
-    // The existing image row renders file paths. Keep the old behavior (show after ingest).
     is DraftImage.Pending -> null
     is DraftImage.Ready -> attachment.toHomeImage()
 }
 
 internal fun Attachment.toHomeImage(): HomeChatImage =
     HomeChatImage(id = path.hashCode().toString(), path = path)
+
+/** 文件引用的 key 与图片同口径（路径 hashCode）：同一个东西不搞两套。 */
+internal fun FileRef.toHomeFile(): HomeChatFile =
+    HomeChatFile(id = path.hashCode().toString(), path = path)
 
 private fun TurnBlock.toHomeBlock(blockIndex: Int): HomeChatBlock = when (this) {
     is TurnBlock.Text -> HomeChatBlock.Text(text)
