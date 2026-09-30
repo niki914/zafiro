@@ -16,6 +16,7 @@
     <queries>
         <package android:name="com.heytap.speechassist" />
         <package android:name="com.miui.voiceassist" />
+        <package android:name="moe.shizuku.privileged.api" />
 
         <intent>
             <action android:name="android.intent.action.MAIN" />

@@ -13,6 +13,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuProvider
 import java.lang.reflect.Method
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
@@ -40,6 +41,17 @@ internal class ShizukuHandler(
 ) : ChannelHandler {
 
     private val packageName: String = context.packageName
+
+    /**
+     * Shizuku 服务端（Shizuku app）装没装。只用来给「binder 不在」做快速失败：
+     * 没装就没有 binder 可等。30+ 的包可见性靠 manifest 的 `<queries>` 开口。
+     */
+    @Suppress("DEPRECATION")
+    private val shizukuInstalled: Boolean by lazy {
+        runCatching {
+            context.packageManager.getPackageInfo(ShizukuProvider.MANAGER_APPLICATION_ID, 0)
+        }.isSuccess
+    }
 
     override val channel = Channel.SHIZUKU
     override val minSdk = MinSdk(23) // Shizuku 自身要求 23+
@@ -76,6 +88,13 @@ internal class ShizukuHandler(
     override suspend fun request(permission: Permission): PermissionState {
         if (!permission.isSupported) return PermissionState.UNAVAILABLE
         if (!pingBinder()) {
+            // binder 不在时先问「装没装」：没装就不会有 binder 送来，等下去是白等。
+            // 顺序不能反——Sui（Magisk 模块）能让没装 Shizuku app 的机器也拿到 binder，
+            // 所以先放过已经在的 binder，再拿安装状态做快速失败。
+            if (!shizukuInstalled) {
+                Logger.d(TAG, "request($permission): shizuku not installed -> UNAVAILABLE")
+                return PermissionState.UNAVAILABLE
+            }
             Logger.d(TAG, "request($permission): binder absent, waiting up to ${BINDER_TIMEOUT_MILLIS}ms")
             if (!awaitBinder(BINDER_TIMEOUT_MILLIS)) {
                 Logger.d(TAG, "request($permission): binder still absent -> UNAVAILABLE")
