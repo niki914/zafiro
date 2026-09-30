@@ -32,9 +32,16 @@ internal fun Conversation.toHomeTurns(): List<HomeChatTurn> =
         )
     }
 
-/** 草稿图片 → 待发送图片条。Pending 还没有落盘路径，用 uri 占位，发送时由实现侧跳过。 */
+/**
+ * 草稿图片 → 待发送图片条。
+ *
+ * Pending 现在返回 null：落盘完成前，图条上看不到它。
+ *
+ * TODO(pending 占位)：改成 Pending 期间就直接显示这张图，只叠一个 loading indicator。
+ *  两个前提：`HomeChatImageCard` 目前只认落盘路径（`BitmapFactory.decodeFile`），
+ *  要能解 content uri 才谈得上预览；`HomeChatImage` 也得能表达「加载中」这一态。
+ */
 internal fun DraftImage.toHomeImage(): HomeChatImage? = when (this) {
-    // The existing image row renders file paths. Keep the old behavior (show after ingest).
     is DraftImage.Pending -> null
     is DraftImage.Ready -> attachment.toHomeImage()
 }
