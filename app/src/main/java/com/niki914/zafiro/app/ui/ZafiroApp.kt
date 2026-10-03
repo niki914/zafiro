@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -71,6 +72,7 @@ fun ZafiroApp(
     launchDecision: AppLaunchDecision,
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val activity = context as? Activity
     val systemDarkTheme = isSystemInDarkTheme()
     val themePrefs = ThemeController.prefs
@@ -100,6 +102,7 @@ fun ZafiroApp(
 
     fun openChromeMenu() {
         if (currentChrome.menuItems.isNotEmpty()) {
+            focusManager.clearFocus(force = true)
             chromeMenuExpanded = true
         }
     }
