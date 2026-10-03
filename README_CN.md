@@ -152,6 +152,7 @@ keytool -genkeypair -v -keystore my-release.jks \
 ├── business/            # 业务核心层（契约与实现分离）
 │   ├── api/             # 业务对外公共契约接口
 │   ├── agent/           # Agent 核心逻辑、会话编排与状态流
+│   ├── files/           # 文件附件与路径解析
 │   ├── notification/    # 常驻通知、前台服务与通知渠道管理
 │   ├── permission/      # 权限管理中心（Root / Shizuku 自动授权、统一审批）
 │   └── application/     # 应用管理与生命周期

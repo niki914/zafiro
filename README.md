@@ -152,6 +152,7 @@ keytool -genkeypair -v -keystore my-release.jks \
 ├── business/            # Core business layer (separation of contracts and implementations)
 │   ├── api/             # Public business contract interfaces
 │   ├── agent/           # Agent core logic, conversation orchestration & state flow
+│   ├── files/           # File attachments, document path resolution
 │   ├── notification/    # Resident notification, foreground service & channel management
 │   ├── permission/      # Unified permission manager (Root / Shizuku auto-granting, tool approval)
 │   └── application/     # Application management & lifecycle

@@ -32,13 +32,13 @@ The summary comes from what the user asked for. If the user asked for a worktree
 ## 2 — Resolve the paths
 
 ```bash
-REPO=$(git rev-parse --show-toplevel)
+REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")   # primary repo, even from inside a worktree
 WT_ROOT="$(dirname "$REPO")/zafiro-worktrees"
 BRANCH=fix/latex-blank-render          # from step 1
 git worktree list                      # refuse to reuse a path or branch already listed
 ```
 
-Derive `WT_ROOT` from the repo; do not hardcode an absolute path.
+Derive `WT_ROOT` from the primary repo; do not hardcode an absolute path. Use `--git-common-dir`, not `--show-toplevel`: inside a worktree `--show-toplevel` returns that worktree, which nests `zafiro-worktrees/...` inside itself.
 
 ## 3 — Create it
 

@@ -4,7 +4,34 @@
 
 ---
 
-## 项目专有术语
+## 项目知识
+
+### 仓库本体
+
+```
+./
+├── .agents/skills/      # SKILLs 真实目录
+├── .claude/skills/      # .agents/skills 的软链，不用修改这里的文件
+├── app/                 # 主应用：Compose UI、AgentRuntimeService、Xposed 钩子
+├── business/            # 业务核心层（契约与实现分离）
+│   ├── api/             # 业务对外公共契约接口
+│   ├── agent/           # Agent 核心逻辑、会话编排与状态流
+│   ├── files/           # 文件附件与路径解析
+│   ├── notification/    # 常驻通知、前台服务与通知渠道管理
+│   ├── permission/      # 权限管理中心（Root / Shizuku 自动授权、统一审批）
+│   └── application/     # 应用管理与生命周期
+├── agent-runtime/       # Agent 运行时：LLM 调用、工具/Skill/MCP 执行、Python 运行时
+├── xsettings/           # 轻量配置模块（业务按需依赖）
+├── store/               # Store 持久化、IPC 桥（XIpcBridge）
+├── ui-kit/              # 共享 Compose 组件、LiquidScreen 壳、导航
+├── remote-view/         # 跨进程 / 悬浮窗 RemoteView 视图
+├── xposed-api/          # Xposed 事件类型、共享常量（主应用与宿主进程共享）
+├── xposed-runtime/      # Xposed 运行时、Hook 基类
+└── libs/
+    ├── logging/         # 日志库
+    ├── okia/            # Okia Agent 运行时基础库
+    └── libterm/         # 终端库（含多个后端：libsu, shizuku, ssh 等）
+```
 
 ### 宿主 / Host
 
@@ -52,6 +79,7 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 - 没有明确要求提交时，不提交。等待用户验收
 - 提交信息和 PR 标题均使用英文，采用 `feat: did something` 这样的格式；标题简洁明了，不带模块名，补充说明写在正文中
 - 未经允许禁止对做安卓做安装应用等写操作
+- 搜索用 `rg`，不要 `grep -r`。 `rg` 默认读 `.gitignore`，自动排除 `**/build/`；`grep -r` 会扫到 build 与 `.git`
 
 ### 架构决策
 
