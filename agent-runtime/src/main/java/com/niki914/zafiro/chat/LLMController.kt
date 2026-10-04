@@ -32,6 +32,7 @@ import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.xposed.api.util.LockState
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.text.FilesBlock
+import com.niki914.zafiro.api.text.TurnTextComposer
 import com.niki914.zafiro.chat.agentic.AndroidImageLoader
 import com.niki914.zafiro.chat.agentic.IngestedImage
 import com.niki914.zafiro.chat.agentic.LocalToolExecutor
@@ -447,36 +448,27 @@ object LLMController {
                     LOG_TAG,
                     "round started queryLength=${query.length} isUnlocked=${LockState.isUnlocked()}"
                 )
-                // 异步任务完成通知注入（PRD okia §5.10）：host 侧在 send 文本前面拼一段说明。
-                // 注意：它**会**随 send 文本落进会话树（RealOkia 把整段文本 append 成 Message.User），
-                // 冷启动后仍看得到——旧注释写的「不进会话树」是错的，实现从来没做到过。
-                // MCP 发现失败说明同样前置（Failed 服务器工具不可用，模型需知）。
-                //
-                // TODO(瞬态通知不应落盘)：本次不 special treatment，只在注入时打日志（下面那条），
-                //  以便日后判断现实中到底有没有人真的踩到。方向是探索真正不持久化的方案，
-                //  并让通知也走 zfr-xml 链路（见 TurnTextComposer）——那样它就有统一的可判定边界、
-                //  也能像文件块一样被切掉。
+                // 异步任务完成通知（PRD okia §5.10）与 MCP 发现失败说明前置。
+                // 两者都包成 <zfr-notifications> 块，展示 / 预览 / 回填侧由
+                // TurnTextComposer.cutLeadingBlocks 统一切掉，用户看不到。
+                // 它们仍随 send 文本落进会话树（RealOkia 把整段文本 append 成
+                // Message.User，冷启动后仍在）。刻意不落盘要走 okia hook 的请求
+                // 投影，代价是 LLMController 与 hook 之间的隐式状态通道；
+                // 「MCP 失败 + 冷启动复用旧对话 + 被过期通知影响」这条链路极窄，
+                // 接受通知留在历史里（用户不可见，模型可能看到过期通知）。
                 val notifications = TerminalSessionPool.drainPendingNotifications()
                 val mcpNotice = mcpFailureNotice()
-                // 顺序不是随意的：带 tag 的注入块必须排在**不带 tag 的**通知之前。
-                // cutLeadingBlocks 只能从开头吃，撞上通知那行就停手——排到后面就永远切不掉，
-                // rewind 时就会把 <zfr-files> 灌进输入框。通知也走 zfr-xml 之后约束才消失。
-                val filesBlock = FilesBlock.block(files)
-                val prefixes = buildList {
-                    filesBlock?.let { add(it) }
-                    mcpNotice?.let { add(it) }
-                    addAll(notifications)
-                }
-                if (prefixes.isNotEmpty()) {
+                val injection = buildInjectionPrefixes(files, mcpNotice, notifications)
+                if (injection != null) {
                     Logger.i(
                         LOG_TAG,
                         "prefixes injected files=${files.size} mcp=${mcpNotice != null} " +
                                 "notifications=${notifications.size} " +
-                                "chars=${prefixes.sumOf { it.length }}"
+                                "chars=${injection.length}"
                     )
                 }
-                val effectiveQuery = if (prefixes.isNotEmpty()) {
-                    prefixes.joinToString("\n\n") + "\n\n" + query
+                val effectiveQuery = if (injection != null) {
+                    injection + "\n\n" + query
                 } else {
                     query
                 }
@@ -785,6 +777,27 @@ object LLMController {
                     )
             }
         }
+    }
+
+    /**
+     * 拼注入前缀：文件块 + 瞬态通知块，排成「块\n\n块」。
+     *
+     * 两者都带 tag，展示 / 预览 / 回填侧由 [TurnTextComposer.cutLeadingBlocks]
+     * 统一切掉；文件块额外被 [FilesBlock] 解回引用。没有要注入的内容时返回 null
+     * （调用方不拼前缀，用户文本逐字节不变）。
+     */
+    private fun buildInjectionPrefixes(
+        files: List<FileRef>,
+        mcpNotice: String?,
+        notifications: List<String>,
+    ): String? {
+        val noticeBody = (listOfNotNull(mcpNotice) + notifications)
+            .filter { it.isNotBlank() }
+            .joinToString("\n\n")
+        val notificationsBlock = noticeBody.takeIf { it.isNotEmpty() }
+            ?.let { TurnTextComposer.wrapBlock("notifications", it) }  // <zfr-notifications>
+        val prefixes = listOfNotNull(FilesBlock.block(files), notificationsBlock)
+        return prefixes.takeIf { it.isNotEmpty() }?.joinToString("\n\n")
     }
 
     /** 失败注入文案（internal 供单测）；格式对齐终端完成通知的元信息风格。 */
