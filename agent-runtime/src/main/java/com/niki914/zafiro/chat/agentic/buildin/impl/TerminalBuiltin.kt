@@ -8,7 +8,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
-import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.chat.agentic.shell.TerminalAsyncStartOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalCloseOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalCommandOutcome
@@ -35,7 +35,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
 class TerminalBuiltin(
-    private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(),
+    private val preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
     /** 截断导出目录（filesDir/tool_output），测试可注入临时目录；null 时经 ContextProvider 取。 */
     private val exportDirOverride: java.io.File? = null,
 ) : BuiltinTool(), RawJsonBuiltinTool {
@@ -100,13 +100,17 @@ class TerminalBuiltin(
     private suspend fun handleCommand(args: TerminalArgs): String {
         val command = args.requireCommand()
         val timeoutSec = args.resolveTimeout()
-        val decision = safetyPolicy.evaluate(command, toolName = name)
+        val decision = preflight.evaluate(command, toolName = name)
         if (!decision.allowed) {
             return TerminalToolResponse.policyBlocked(decision)
         }
 
         return when (args.backend) {
-            Backend.LOCAL -> handleLocalCommand(args, command, timeoutSec)
+            // LOCAL 才过路径权限：SSH 在远端跑，本地权限帮不上忙
+            Backend.LOCAL -> {
+                preflight.ensurePathAccess(command + " " + args.workdir.orEmpty())
+                handleLocalCommand(args, command, timeoutSec)
+            }
             Backend.SSH -> {
                 if (!args.background) {
                     return TerminalToolResponse.invalidRequest(

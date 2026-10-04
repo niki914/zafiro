@@ -3,6 +3,7 @@ package com.niki914.zafiro.chat.agentic.shell
 import com.niki914.libterm.TerminalFailure
 import com.niki914.libterm.TerminalIdentity
 import com.niki914.libterm.runtime.CommandResult
+import com.niki914.zafiro.chat.agentic.PreflightDecision
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -96,10 +97,10 @@ object TerminalToolResponse {
         return JsonObject(mapOf("closed" to JsonPrimitive(true))).toString()
     }
 
-    fun policyBlocked(decision: ShellCommandPolicyDecision, elapsedSeconds: Long = 0L): String {
+    fun policyBlocked(decision: PreflightDecision, elapsedSeconds: Long = 0L): String {
         return error(
             code = "COMMAND_BLOCKED",
-            message = decision.reason.ifBlank { "Command blocked by safety policy." },
+            message = decision.reason.ifBlank { "Command blocked by execution rule." },
             elapsedSeconds = elapsedSeconds,
             extra = mapOf(
                 "policy_code" to JsonPrimitive(decision.code),

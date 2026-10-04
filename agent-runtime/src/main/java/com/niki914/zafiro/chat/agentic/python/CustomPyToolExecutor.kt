@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic.python
 
 import com.niki914.zafiro.chat.LocalTool
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.util.ToolOutputTruncator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -13,14 +14,27 @@ import kotlinx.serialization.json.JsonPrimitive
  * 交给 [PyRuntime.exec]（:python 进程）。输出即 stdout（截断+导出由
  * [ToolOutputTruncator.filterForAgent] 统一处理）。结果用 {"ok":...} JSON 约定，
  * 与 BuiltinToolResult 对齐，由 LocalToolResultClassifier 拆 Success/Failure。
+ *
+ * 执行前过 [ToolExecutionPreflight]（规则 + 路径权限）：保存期校验过的不算数，
+ * 规则可能事后新增；参数里的路径更是只有执行期才看得到。
  */
 class CustomPyToolExecutor(
     private val exec: suspend (code: String, timeoutMs: Long) -> PyExecOutput = PyRuntime::exec,
+    private val preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
     /** 截断导出目录，测试可注入临时目录；默认 filesDir/tool_output。 */
     private val exportDir: java.io.File? = ToolOutputTruncator.defaultExportDir(),
 ) {
     suspend fun execute(tool: LocalTool.Py, argumentsJson: String): String {
         val args = parseArguments(argumentsJson)
+        val decision = preflight.evaluate(tool.code + "\n" + argumentsJson, toolName = tool.name)
+        if (!decision.allowed) {
+            return failureJson(
+                tool.name,
+                "COMMAND_BLOCKED",
+                decision.reason.ifBlank { "Code blocked by execution rule." },
+            )
+        }
+        preflight.ensurePathAccess(tool.code + "\n" + argumentsJson)
         return try {
             val result = exec(CustomPyToolHarness.buildRunner(tool.code, args), tool.timeoutMs)
             JsonObject(

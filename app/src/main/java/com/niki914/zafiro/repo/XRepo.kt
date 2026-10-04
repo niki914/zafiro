@@ -8,7 +8,7 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolHarness
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
-import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
@@ -1108,7 +1108,7 @@ class McpApi internal constructor(
 
 class CustomPyToolApi internal constructor(
     private val repo: XRepo,
-    private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(
+    private val preflight: ToolExecutionPreflight = ToolExecutionPreflight(
         listExecutionRules = { repo.executionRules.list() },
     ),
     private val builtinToolRegistry: BuiltinToolRegistry = BuiltinToolRegistry.default(),
@@ -1213,7 +1213,7 @@ class CustomPyToolApi internal constructor(
         if (normalized.timeoutMs !in 1_000L..CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS) {
             return ToolValidation("timeout_ms", "Must be between 1000 and 120000.")
         }
-        val decision = safetyPolicy.evaluate(normalized.code, toolName = normalized.name)
+        val decision = preflight.evaluate(normalized.code, toolName = normalized.name)
         if (!decision.allowed) {
             return ToolValidation("code", decision.reason)
         }
