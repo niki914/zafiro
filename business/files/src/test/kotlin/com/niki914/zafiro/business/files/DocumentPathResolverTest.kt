@@ -42,10 +42,9 @@ class DocumentPathResolverTest {
     }
 
     @Test
-    fun `non primary volumes are rejected`() {
-        // SD 卡卷：docId 是 <UUID>:<相对路径>，本次不支持
-        assertNull(doc("1A2B-3C4D:DCIM/photo.jpg"))
-        assertNull(tree("1A2B-3C4D:DCIM"))
+    fun `secondary storage volumes map to storage UUID root`() {
+        assertEquals("/storage/1A2B-3C4D/DCIM/photo.jpg", doc("1A2B-3C4D:DCIM/photo.jpg"))
+        assertEquals("/storage/1A2B-3C4D/DCIM/", tree("1A2B-3C4D:DCIM"))
     }
 
     @Test

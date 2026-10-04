@@ -2,6 +2,7 @@ package com.niki914.zafiro.business.files
 
 import android.net.Uri
 import com.niki914.zafiro.api.model.FileRef
+import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionState
@@ -51,12 +52,21 @@ interface FilesService {
 class FilesServiceImpl : FilesService {
 
     private val permissions: PermissionManager = requireService()
+    private val appService: ApplicationService = requireService()
 
-    override fun resolve(uri: String): FileRef? =
-        DocumentPathResolver.resolve(Uri.parse(uri))?.let(::FileRef)
+    override fun resolve(uri: String): FileRef? {
+        val parsedUri = Uri.parse(uri)
+        val resolver = runCatching { appService.getApplication().contentResolver }.getOrNull()
+        return DocumentPathResolver.resolve(parsedUri, resolver)?.let(::FileRef)
+    }
 
     override suspend fun attach(uri: String): FileAttachResult {
-        val file = resolve(uri) ?: return FileAttachResult.Unresolvable
+        // 解析可能依赖存储权限：「最近 / 下载」的 docId 要查 MediaStore，没权限就查不到。
+        // 所以解不出来时先要一次权限再解，而不是直接判 Unresolvable。
+        val file = resolve(uri) ?: run {
+            if (!ensureStorageAccess()) return FileAttachResult.NoPermission
+            resolve(uri) ?: return FileAttachResult.Unresolvable
+        }
         if (!ensureStorageAccess()) return FileAttachResult.NoPermission
         return when (FileProbe.probe(file.path)) {
             FileReachability.Reachable -> FileAttachResult.Ok(file)
