@@ -1,83 +1,158 @@
 package com.niki914.zafiro.business.files
 
+import android.content.ContentResolver
+import android.content.ContentUris
 import android.net.Uri
 import android.os.Environment
+import android.provider.MediaStore
 
 /**
  * SAF 的 `content://` uri → agent 能按路径读的真实路径。
  *
- * ## 认两类来源
+ * ## 支持的来源
  *
- * 1. **ExternalStorageProvider + `primary:`**：内置存储卷，`primary:a/b` → `<root>/a/b`。
- * 2. **`raw:<绝对路径>`**：provider 把位置直接写进 docId 的形态（下载里不在
- *    DownloadManager 数据库里的文件）。这是对端主动给的路径，不是我们猜的。
+ * 1. **ExternalStorageProvider (`primary:`)**：内置主存储卷，直接映射 `/storage/emulated/0/...`。
+ * 2. **ExternalStorageProvider (`<UUID>:`)**：外置 SD 卡 / U 盘卷，映射 `/storage/<UUID>/...`。
+ * 3. **DownloadsProvider (`msf:<id>`)**：Android 10+ 下载项，通过 ContentResolver 查询 MediaStore 真实路径。
+ * 4. **MediaProvider (`image:`, `video:`, `audio:`, `document:`)**：通过 ContentResolver 查询 MediaStore 真实路径。
+ * 5. **`raw:<绝对路径>`**：provider 把真实位置写进 docId 的形态。
  *
- * 其余一律返回 null，由调用方 toast 拒绝：
- * - **下载里在数据库里的文件**：docId 是 DownloadManager 的记录 id（裸数字），
- *   路径只有该 provider 自己知道，第三方 app 没有 API 可问
- * - **媒体库 / 最近**：docId 是 MediaStore id，同一个道理
- * - **SD 卡 / U 盘卷**：路径形态是 `/storage/<UUID>`，能算，但需要一张
- *   `volume.uuid → root` 表（`StorageVolume.getDirectory()` 是 30+），本次不做
- * - **云盘 provider**：本来就没有本地路径
- * - **其它 provider**：不进这条链
- *
- * ## 为什么必须有这一步
- *
- * `content://` 塞进提示词对 agent 毫无用处：它的 shell 跑在本应用 uid 下，读不了 content URI。
- * 而文件又**不拷贝**（D3），所以只能把路径解出来给它。
- *
- * TODO(SD 卡 / 云盘)：要支持非 primary 卷，就在这里按 `StorageManager.storageVolumes`
- *  建表；云盘没有路径可解，只能走「拷进沙箱」那条被 D3 否决的路。
+ * 云盘等无本地物理路径的 provider 返回 null（由上层提示用户）。
  */
 internal object DocumentPathResolver {
 
-    /** 系统 ExternalStorageProvider 的 authority（SAF 文件选择器背后的 provider）。 */
+    /** 系统 ExternalStorageProvider 的 authority。 */
     private const val EXTERNAL_STORAGE_AUTHORITY = "com.android.externalstorage.documents"
+    private const val DOWNLOADS_AUTHORITY = "com.android.providers.downloads.documents"
+    private const val MEDIA_AUTHORITY = "com.android.providers.media.documents"
 
-    /** 会给出真实路径的 authority：外部存储 + 下载（30+ 的下载根归到 MediaProvider）。 */
     private val PATH_AUTHORITIES = setOf(
         EXTERNAL_STORAGE_AUTHORITY,
-        "com.android.providers.downloads.documents",
-        "com.android.providers.media.documents",
+        DOWNLOADS_AUTHORITY,
+        MEDIA_AUTHORITY,
     )
 
-    /** 内置（主）存储卷的 docId 前缀。 */
     private const val PRIMARY_VOLUME = "primary"
-
-    /** docId 形如 `raw:<绝对路径>`：路径由 provider 给出。 */
     private const val RAW_PREFIX = "raw:"
+    private const val MSF_PREFIX = "msf:"
+    private const val TREE_SEGMENT = "tree"
 
-    /** Android 侧入口：只看 uri，路径规则全在 [toPath]。 */
-    fun resolve(uri: Uri): String? {
-        if (uri.authority !in PATH_AUTHORITIES) return null
-        // 目录选择器（OpenDocumentTree）返回的是 tree uri，末尾补 `/` 表达目录（D7）
+    fun resolve(uri: Uri, contentResolver: ContentResolver? = null): String? {
+        val authority = uri.authority
+        val docId = uri.lastPathSegment
         val isTree = uri.pathSegments.firstOrNull() == TREE_SEGMENT
-        val docId = uri.lastPathSegment ?: return null
-        val root = Environment.getExternalStorageDirectory()?.path ?: return null
+
+        if (authority !in PATH_AUTHORITIES || docId == null) {
+            return null
+        }
+
+        // 1. raw: 绝对路径前缀（provider 主动给出）
+        if (docId.startsWith(RAW_PREFIX)) {
+            return rawPath(docId, isTree)
+        }
+
+        // 2. Android 10+ 下载项 (msf:1000316915)
+        if (authority == DOWNLOADS_AUTHORITY && docId.startsWith(MSF_PREFIX)) {
+            val mediaId = docId.removePrefix(MSF_PREFIX).toLongOrNull()
+            if (mediaId != null && contentResolver != null) {
+                val path = queryMediaStoreData(contentResolver, MediaStore.Files.getContentUri("external"), mediaId)
+                if (path != null) {
+                    return if (isTree) path.trimEnd('/') + "/" else path
+                }
+            }
+        }
+
+        // 3. 媒体库 (image:123, video:123, audio:123, document:123)
+        if (authority == MEDIA_AUTHORITY) {
+            val type = docId.substringBefore(':', missingDelimiterValue = "")
+            val mediaId = docId.substringAfter(':', missingDelimiterValue = "").toLongOrNull()
+            if (mediaId != null && contentResolver != null) {
+                val baseUri = when (type) {
+                    "image" -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                    "video" -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                    "audio" -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                    else -> MediaStore.Files.getContentUri("external")
+                }
+                val path = queryMediaStoreData(contentResolver, baseUri, mediaId)
+                if (path != null) {
+                    return if (isTree) path.trimEnd('/') + "/" else path
+                }
+            }
+        }
+
+        // 4. 下载模块纯数字 ID
+        if (authority == DOWNLOADS_AUTHORITY) {
+            val downloadId = docId.toLongOrNull()
+            if (downloadId != null && contentResolver != null) {
+                val path = queryMediaStoreData(contentResolver, MediaStore.Files.getContentUri("external"), downloadId)
+                    ?: runCatching {
+                        val legacyUri = ContentUris.withAppendedId(
+                            Uri.parse("content://downloads/public_downloads"),
+                            downloadId,
+                        )
+                        queryDataColumn(contentResolver, legacyUri)
+                    }.getOrNull()
+                if (path != null) {
+                    return if (isTree) path.trimEnd('/') + "/" else path
+                }
+            }
+        }
+
+        // 5. 外部存储卷：primary:path 或 <UUID>:path (外置 SD 卡)
+        val root = Environment.getExternalStorageDirectory()?.path
         return toPath(docId = docId, root = root, isTree = isTree)
     }
 
-    /**
-     * 纯字符串部分（单测覆盖这一层）：
-     * `primary:adbi/pkg/logs` + `/storage/emulated/0` → `/storage/emulated/0/adbi/pkg/logs`。
-     *
-     * 非 `primary` 卷、空 docId 返回 null。
-     */
-    internal fun toPath(docId: String, root: String, isTree: Boolean): String? {
+    internal fun toPath(docId: String, root: String?, isTree: Boolean): String? {
         if (docId.startsWith(RAW_PREFIX)) return rawPath(docId, isTree)
         val volume = docId.substringBefore(':', missingDelimiterValue = "")
-        if (volume != PRIMARY_VOLUME) return null
         val relative = docId.substringAfter(':', missingDelimiterValue = "").trim('/')
-        val path = if (relative.isEmpty()) root else "$root/$relative"
-        return if (isTree) path.trimEnd('/') + "/" else path
+
+        val basePath = when {
+            volume == PRIMARY_VOLUME && root != null -> {
+                if (relative.isEmpty()) root else "$root/$relative"
+            }
+            volume.isNotEmpty() && volume != PRIMARY_VOLUME && volume.matches(UUID_PATTERN) -> {
+                // 外置 SD 卡 / U 盘卷：Android 恒定挂载在 /storage/<UUID>
+                val sdRoot = "/storage/$volume"
+                if (relative.isEmpty()) sdRoot else "$sdRoot/$relative"
+            }
+            else -> null
+        } ?: return null
+
+        return if (isTree) basePath.trimEnd('/') + "/" else basePath
     }
 
-    /** `raw:` 段必须是绝对路径（不是我们认识的 provider 形态就退掉），树 uri 同样补 `/`。 */
     private fun rawPath(docId: String, isTree: Boolean): String? {
         val path = docId.removePrefix(RAW_PREFIX).trimEnd('/')
         if (!path.startsWith("/") || path == "/") return null
         return if (isTree) "$path/" else path
     }
 
-    private const val TREE_SEGMENT = "tree"
+    private fun queryMediaStoreData(
+        contentResolver: ContentResolver,
+        baseUri: Uri,
+        id: Long,
+    ): String? = runCatching {
+        val uri = ContentUris.withAppendedId(baseUri, id)
+        queryDataColumn(contentResolver, uri)
+    }.getOrNull()
+
+    private fun queryDataColumn(contentResolver: ContentResolver, uri: Uri): String? = runCatching {
+        contentResolver.query(
+            uri,
+            arrayOf(MediaStore.MediaColumns.DATA),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                if (idx != -1) cursor.getString(idx)?.takeIf { it.isNotEmpty() } else null
+            } else null
+        }
+    }.getOrNull()
+
+    /** 标准外置 SD 卡 UUID 格式（如 1234-5678 或 36 位 UUID）。 */
+    private val UUID_PATTERN = Regex("^[0-9a-fA-F]{4}-[0-9a-fA-F]{4}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 }

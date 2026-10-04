@@ -103,6 +103,7 @@ data class HomeChatFile(
     val path: String,
 ) {
     val name: String get() = path.trimEnd('/').substringAfterLast('/')
+    val category: HomeChatFileCategory get() = HomeChatFileCategory.fromPath(path)
 }
 
 data class HomeChatUiState(
