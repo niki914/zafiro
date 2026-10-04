@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
 import com.niki914.logging.Logger
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
@@ -9,7 +10,6 @@ import com.niki914.zafiro.chat.agentic.python.CustomPyToolHarness
 import com.niki914.zafiro.chat.agentic.python.PyExecOutput
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.util.ToolOutputTruncator
-import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import kotlinx.coroutines.CancellationException
@@ -36,7 +36,7 @@ import kotlinx.serialization.json.put
  */
 class PyMetaToolsBuiltin(
     private val exec: suspend (code: String, timeoutMs: Long) -> PyExecOutput = PyRuntime::exec,
-    private val safetyPolicy: ShellCommandSafetyPolicy = ShellCommandSafetyPolicy(),
+    private val preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
     private val reservedNames: Set<String>? = null,
     /** 截断导出目录，测试可注入临时目录；默认 filesDir/tool_output。 */
     private val exportDir: java.io.File? = ToolOutputTruncator.defaultExportDir(),
@@ -140,10 +140,10 @@ Store the result of a run by printing from main; stdout is returned.
                 fieldErrors = mapOf("name" to "reserved"),
             )
         }
-        safetyPolicy.evaluate(code, toolName = name).takeIf { !it.allowed }?.let { decision ->
+        preflight.evaluate(code, toolName = name).takeIf { !it.allowed }?.let { decision ->
             return BuiltinToolResult.failure(
                 code = "COMMAND_BLOCKED",
-                message = decision.reason.ifBlank { "Code blocked by safety policy." },
+                message = decision.reason.ifBlank { "Code blocked by execution rule." },
             )
         }
 
@@ -204,13 +204,6 @@ Store the result of a run by printing from main; stdout is returned.
                     message = "Provide either 'code' (draft test) or 'name' (existing tool), not both.",
                 )
             }
-            safetyPolicy.evaluate(draftCode, toolName = name).takeIf { !it.allowed }
-                ?.let { decision ->
-                    return BuiltinToolResult.failure(
-                        code = "COMMAND_BLOCKED",
-                        message = decision.reason.ifBlank { "Code blocked by safety policy." },
-                    )
-                }
             code = draftCode
             timeoutMs = (args.timeoutMs ?: RuntimeCustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS)
                 .coerceIn(1_000L, RuntimeCustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS)
@@ -220,6 +213,17 @@ Store the result of a run by printing from main; stdout is returned.
             timeoutMs = (args.timeoutMs ?: tool.timeoutMs)
                 .coerceIn(1_000L, RuntimeCustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS)
         }
+
+        // 草稿与已存工具都实际跑了，同等过 preflight（与 CustomPyToolExecutor 同口径）
+        val evidence = code + "\n" + args.argsJson
+        preflight.evaluate(evidence, toolName = name).takeIf { !it.allowed }
+            ?.let { decision ->
+                return BuiltinToolResult.failure(
+                    code = "COMMAND_BLOCKED",
+                    message = decision.reason.ifBlank { "Code blocked by execution rule." },
+                )
+            }
+        preflight.ensurePathAccess(evidence)
 
         return try {
             val result = exec(CustomPyToolHarness.buildRunner(code, args.argsJson), timeoutMs)

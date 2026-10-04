@@ -16,10 +16,13 @@ import com.niki914.zafiro.chat.agentic.buildin.TextToolResultCodec
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
 import com.niki914.zafiro.chat.agentic.python.PyExecOutput
 import com.niki914.zafiro.chat.util.SilentLoggerRule
+import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -27,6 +30,16 @@ class LocalToolExecutorTest {
 
     @get:Rule
     val silentLogger = SilentLoggerRule()
+
+    @Before
+    fun setUp() {
+        installRuntimeSettingsGatewayForTest()
+    }
+
+    @After
+    fun tearDown() {
+        RuntimeEnvironment.clearForTest()
+    }
 
     private fun descriptor(name: String) =
         ToolDescriptor(name, "desc ${name}", null, ToolKind.Local)

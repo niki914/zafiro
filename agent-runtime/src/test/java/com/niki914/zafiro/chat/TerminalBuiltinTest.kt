@@ -247,6 +247,27 @@ class TerminalBuiltinTest {
     }
 
     @Test
+    fun invokeRawJson_sshCommandAlsoGoesThroughExecutionRules() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(executionRules = dangerousRules())
+        )
+        val fakeRuntime = FakeTerminalRuntime(nextResult = commandResult())
+        installFakeRuntime(fakeRuntime).use {
+            val json = invoke(
+                """{"command":"rm -rf /sdcard/cache","backend":"ssh","background":true,"host":"1.2.3.4","username":"root","password":"x"}"""
+            )
+
+            // 规则检查在 backend 分支之前：SSH 同样被拦，且不会开任何远端会话
+            assertErrorCode("COMMAND_BLOCKED", json)
+            assertEquals(
+                "dangerous-command",
+                json["error"]!!.jsonObject["matched_rule_id"]!!.jsonPrimitive.content,
+            )
+            assertTrue(fakeRuntime.openedSessions.isEmpty())
+        }
+    }
+
+    @Test
     fun invokeRawJson_sshForegroundRejected_returnsInvalidRequest() = runTest {
         installRuntimeSettingsGatewayForTest()
         val fakeRuntime = FakeTerminalRuntime(nextResult = commandResult())

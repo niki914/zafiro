@@ -4,7 +4,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExecutePythonBuiltin
 import com.niki914.zafiro.chat.agentic.python.PyExecOutput
 import com.niki914.zafiro.chat.agentic.python.PyExecResult
-import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
 import kotlinx.coroutines.test.runTest
@@ -19,8 +19,8 @@ class ExecutePythonBuiltinTest {
     @get:Rule
     val silentLogger = com.niki914.zafiro.chat.util.SilentLoggerRule()
 
-    private fun allowAllPolicy(): ShellCommandSafetyPolicy =
-        ShellCommandSafetyPolicy(
+    private fun allowAllPolicy(): ToolExecutionPreflight =
+        ToolExecutionPreflight(
             listExecutionRules = { emptyList() },
             isUnlocked = { true },
         )
@@ -28,12 +28,12 @@ class ExecutePythonBuiltinTest {
     private suspend fun invoke(
         argumentsJson: String,
         executor: suspend (String, Long) -> PyExecOutput = { _, _ -> inlineOutput("") },
-        safetyPolicy: ShellCommandSafetyPolicy = allowAllPolicy(),
+        preflight: ToolExecutionPreflight = allowAllPolicy(),
         exportDir: java.io.File? = null,
     ): String {
         val tool = ExecutePythonBuiltin(
             executor = executor,
-            safetyPolicy = safetyPolicy,
+            preflight = preflight,
             exportDir = exportDir,
         )
         return tool.invokeRaw(BuiltinToolRequest("execute_python", argumentsJson))
@@ -194,7 +194,7 @@ class ExecutePythonBuiltinTest {
 
     @Test
     fun invoke_policyBlocks_returnsFailure() = runTest {
-        val blockingPolicy = ShellCommandSafetyPolicy(
+        val blockingPolicy = ToolExecutionPreflight(
             listExecutionRules = {
                 listOf(
                     RuntimeExecutionRule(
@@ -209,7 +209,7 @@ class ExecutePythonBuiltinTest {
         )
         val result = invoke(
             """{"code":"import os\nos.system('su')"}""",
-            safetyPolicy = blockingPolicy,
+            preflight = blockingPolicy,
         )
         assertTrue(result.contains("#!status: failure"))
         assertTrue(result.contains("#!code: COMMAND_BLOCKED"))
