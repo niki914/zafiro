@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -85,6 +86,7 @@ import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
+import com.niki914.zafiro.app.ui.model.home.formatFileNameMiddleTruncated
 import com.niki914.zafiro.chat.LlmErrorCode
 
 internal data class AssistantErrorUi(
@@ -720,11 +722,8 @@ internal fun HomeChatImageCard(
 /**
  * 单个文件 / 文件夹卡。
  *
- * 形状与图片卡同源（同一个 [G2CardShape] + 同一圆角参数）、纯色底（取 M3 scheme）、
- * 同款顶部 30% 遮罩 + 右上角白色关闭钮，里面只有**纯文件名**（不显示路径）。
- * 文件名是可变长文本，所以宽度给上限、单行省略；尺寸由调用方决定。
- *
- * TODO 打磨 UI
+ * 紧凑态（待发条 60dp）：左上角圆角图标徽章 + 底部居左单行截断文字（加大底部边距）+ 右上角关闭钮。
+ * 展开态（消息气泡 120dp）：左上角 36dp 徽章 + 底部加粗文件名 + 粗粒度分类副标题（多语言）。
  */
 @Composable
 internal fun HomeChatFileCard(
@@ -735,23 +734,77 @@ internal fun HomeChatFileCard(
     modifier: Modifier = Modifier,
 ) {
     val shape = G2CardShape(cornerRadius)
+    val category = file.category
+    val isCompact = size <= 80.dp
+
     Box(
         modifier = modifier
             .size(size)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        // 贴底两行：避开右上角的关闭钮，也避开头部的遮罩
-        Text(
-            text = file.name,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-        )
+        if (isCompact) {
+            // 待发条 60dp：纯图标（无背景容器，尺寸放大至 20dp）+ 底部单行截断文字
+            val displayName = formatFileNameMiddleTruncated(file.name, 11)
+            Icon(
+                imageVector = category.icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 8.dp, top = 8.dp)
+                    .size(20.dp),
+            )
+            Text(
+                text = displayName,
+                fontSize = 9.5.sp,
+                lineHeight = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+            )
+        } else {
+            // 消息卡片 120dp：实心图标（30dp）+ 底部 2 行文件名（字号 12sp）+ 粗粒度分类说明（完全展示不截断）
+            val displayName = formatFileNameMiddleTruncated(file.name, 32)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Icon(
+                    imageVector = category.icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(30.dp),
+                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = displayName,
+                        fontSize = 12.sp,
+                        lineHeight = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(category.labelRes),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+
         if (onRemove != null) {
             CardRemoveOverlay(
                 size = size,

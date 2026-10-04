@@ -57,6 +57,15 @@
     <string name="ui_home_attach_unreadable">Unable to read that file</string>
     <string name="ui_home_file_remove_content_description">Remove file</string>
     <string name="ui_home_image_remove_content_description">Remove image</string>
+    <string name="ui_home_file_category_folder">Folder</string>
+    <string name="ui_home_file_category_code">Code</string>
+    <string name="ui_home_file_category_document">Document</string>
+    <string name="ui_home_file_category_audio">Audio</string>
+    <string name="ui_home_file_category_video">Video</string>
+    <string name="ui_home_file_category_image">Image</string>
+    <string name="ui_home_file_category_archive">Archive</string>
+    <string name="ui_home_file_category_apk">APK</string>
+    <string name="ui_home_file_category_file">File</string>
     <string name="ui_home_scroll_to_bottom_content_description">Scroll to bottom</string>
     <string name="ui_home_stop_content_description">Stop generating</string>
     <string name="ui_home_action_copy_content_description">Copy</string>
