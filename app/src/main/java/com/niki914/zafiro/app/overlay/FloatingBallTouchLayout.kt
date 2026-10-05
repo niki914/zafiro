@@ -77,7 +77,7 @@ internal class FloatingBallTouchLayout(
         val screenWidth = context.resources.displayMetrics.widthPixels
         val targetX = if (dock.isLeft) -submergedPx else screenWidth - (ballWidthPx - submergedPx)
         onDockSideChanged(dock)
-        animateBallTo(targetX, ballY) {
+        animateBallTo(targetX, ballY, targetAlpha = FloatingBallTokens.submergedAlpha) {
             onSnapFinished(dock, true)
         }
     }
@@ -109,6 +109,8 @@ internal class FloatingBallTouchLayout(
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 positionAnimator?.cancel()
+                // 手指按住即回到全不透明：从吸附态往外拖时不会顶着半透明走一路
+                alpha = 1f
                 motionPredictor.reset()
                 motionPredictor.recordPoint(ev.rawX, ev.rawY, ev.eventTime)
                 downRawX = ev.rawX
@@ -192,6 +194,7 @@ internal class FloatingBallTouchLayout(
             targetX = prediction.targetX,
             targetY = prediction.targetY,
             duration = prediction.durationMillis,
+            targetAlpha = if (prediction.willSubmerge) FloatingBallTokens.submergedAlpha else 1f,
         ) {
             val screenHeight = context.resources.displayMetrics.heightPixels
             val currentYRatio = ballY.toFloat() / screenHeight.coerceAtLeast(1)
@@ -223,17 +226,27 @@ internal class FloatingBallTouchLayout(
         }
     }
 
+    /**
+     * 唯一的小球位移动画通道：位置与 alpha 用同一个进度插值。
+     *
+     * alpha 只在这里被写，拖动（[onTouchEvent] 的 ACTION_MOVE）全程不碰它 —— 所以「把球拖到边上」
+     * 不会褪色，只有松手之后真正开始吸附（甩动与落点共用本函数）才渐隐到
+     * [FloatingBallTokens.submergedAlpha]。
+     */
     private fun animateBallTo(
         targetX: Int,
         targetY: Int,
         duration: Long = 200L,
+        targetAlpha: Float = 1f,
         onEnd: () -> Unit = {},
     ) {
         positionAnimator?.cancel()
         val startX = ballX
         val startY = ballY
+        val startAlpha = alpha
 
         if (startX == targetX && startY == targetY) {
+            alpha = targetAlpha
             onEnd()
             return
         }
@@ -245,6 +258,7 @@ internal class FloatingBallTouchLayout(
                 val frac = it.animatedValue as Float
                 ballX = (startX + (targetX - startX) * frac).toInt()
                 ballY = (startY + (targetY - startY) * frac).toInt()
+                this@FloatingBallTouchLayout.alpha = startAlpha + (targetAlpha - startAlpha) * frac
                 lp.x = ballX
                 lp.y = ballY
                 if (isAttachedToWindow) {

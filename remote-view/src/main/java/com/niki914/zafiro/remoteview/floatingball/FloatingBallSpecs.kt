@@ -60,6 +60,8 @@ object FloatingBallTokens {
     const val submergedOffset = 8
     // 脱离吸边区时的安全外距
     const val escapeSnapDistance = 31
+    // 吸附停稳后的不透明度：由吸附动画插值，拖动过程中不生效
+    const val submergedAlpha = 0.6f
 
     // --- Dp 转换便捷访问 ---
     val buttonDiameterDp: Dp get() = buttonDiameter.dp
