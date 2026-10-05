@@ -80,7 +80,7 @@ internal class ImageCodec(private val context: Context) {
 
     // ── 核心管线 ─────────────────────────────────────────────────────────
 
-    private fun ingestBytes(bytes: ByteArray, mimeHint: String): IngestResult {
+    fun ingestBytes(bytes: ByteArray, mimeHint: String): IngestResult {
         if (bytes.size > ImageFormat.MAX_IMAGE_BYTES) {
             return IngestResult.Err(IngestError.TooLarge(bytes.size))
         }

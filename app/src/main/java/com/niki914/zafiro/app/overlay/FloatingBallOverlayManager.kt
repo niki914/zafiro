@@ -281,6 +281,8 @@ object FloatingBallOverlayManager {
                     vmInstance.sendIntent(FloatingBallIntent.UpdatePosition(newYRatio))
                 },
             ).apply {
+                // 冷启动就停在淹没位（initialX 即贴边坐标），与吸附终态的不透明度一致
+                alpha = FloatingBallTokens.submergedAlpha
                 setViewTreeLifecycleOwner(owner)
                 setViewTreeSavedStateRegistryOwner(owner)
                 setViewTreeViewModelStoreOwner(owner)

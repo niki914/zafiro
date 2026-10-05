@@ -1,11 +1,17 @@
 package com.niki914.zafiro.mod.feat
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.ScreenshotResult
+import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
 import android.accessibilityservice.GestureDescription
+import android.graphics.Bitmap
 import android.graphics.Path
+import android.os.Build
 import android.os.Bundle
+import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.niki914.logging.Logger
 import com.niki914.zafiro.app.overlay.PointerOverlay
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.accessibility.IAccessibility
@@ -79,5 +85,33 @@ class ZafiroAccessibilityService : AccessibilityService(), IAccessibility {
         val stroke = GestureDescription.StrokeDescription(path, 0, duration)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
         return super.dispatchGesture(gesture, null, null)
+    }
+
+    override fun captureScreenImage(listener: (Bitmap?) -> Unit) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            Logger.w(TAG, "captureScreenImage needs API 30+")
+            listener(null)
+            return
+        }
+        takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
+            override fun onSuccess(result: ScreenshotResult) {
+                val buffer = result.hardwareBuffer
+                val bitmap = runCatching {
+                    Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
+                }.getOrNull()
+                // Bitmap 自己持有 buffer 引用，这一份引用随即释放
+                runCatching { buffer.close() }
+                listener(bitmap)
+            }
+
+            override fun onFailure(errorCode: Int) {
+                Logger.w(TAG, "takeScreenshot failed: errorCode=$errorCode")
+                listener(null)
+            }
+        })
+    }
+
+    private companion object {
+        private const val TAG = "niki914_zafiro_AccessibilityService"
     }
 }
