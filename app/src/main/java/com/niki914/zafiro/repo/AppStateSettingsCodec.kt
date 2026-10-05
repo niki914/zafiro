@@ -50,6 +50,9 @@ internal data class AppStateSettings(
     /** 悬浮球在回合结束/审批到达时是否自动展开。 */
     @SerialName("floating_ball_auto_expand")
     val floatingBallAutoExpand: Boolean = true,
+    /** 已经向用户弹过更新提示的远端版本号；空串 = 从未弹过。同一版本只提示一次。 */
+    @SerialName("last_notified_update_version")
+    val lastNotifiedUpdateVersion: String = "",
 )
 
 internal object AppStateSettingsCodec {

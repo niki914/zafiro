@@ -314,6 +314,10 @@ object XRepo {
         select = { llmRetryMaxAttempts },
         update = { copy(llmRetryMaxAttempts = it) },
     )
+    private val lastNotifiedUpdateVersionField = PlainAppStateField(
+        select = { lastNotifiedUpdateVersion },
+        update = { copy(lastNotifiedUpdateVersion = it) },
+    )
 
     suspend fun onboardingCompleted(): Boolean = onboardingCompletedField.get()
 
@@ -337,6 +341,11 @@ object XRepo {
     suspend fun llmRetryMaxAttempts(): Int = llmRetryMaxAttemptsField.get()
 
     suspend fun setLlmRetryMaxAttempts(value: Int) = llmRetryMaxAttemptsField.set(value)
+
+    suspend fun lastNotifiedUpdateVersion(): String = lastNotifiedUpdateVersionField.get()
+
+    suspend fun setLastNotifiedUpdateVersion(version: String) =
+        lastNotifiedUpdateVersionField.set(version)
 
     suspend fun setLoadLastConversationOnStartup(value: Boolean) =
         loadLastConversationOnStartupField.set(value)
