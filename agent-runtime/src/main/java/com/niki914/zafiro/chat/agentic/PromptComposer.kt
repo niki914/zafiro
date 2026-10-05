@@ -203,7 +203,8 @@ class PromptComposer {
                     "'submitted PR Y', 'Phase N done', file counts, or any artifact that will be stale " +
                     "in 7 days. If a fact will be stale in a week, it does not belong in memory. " +
                     "If you've discovered a new way to do something, solved a problem that could be " +
-                    "necessary later, save it as a skill with the skill tool.\n" +
+                    "necessary later, save it as a skill with python — write a SKILL.md under " +
+                    "the skills directory (see the skill-creator skill).\n" +
                     "Write memories as declarative facts, not instructions to yourself. " +
                     "'User prefers concise responses' ✓ — 'Always respond concisely' ✗. " +
                     "'Project uses pytest with xdist' ✓ — 'Run tests with pytest -n 4' ✗. " +
