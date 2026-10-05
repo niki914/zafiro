@@ -1,5 +1,5 @@
 ---
-name: Termux
+name: termux
 description: Load this skill for anything involving Termux (com.termux) — first-time SSH setup, connecting to Termux, or a Termux connection that stopped working.
 ---
 
