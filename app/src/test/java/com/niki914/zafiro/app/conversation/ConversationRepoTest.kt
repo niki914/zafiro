@@ -213,6 +213,27 @@ class ConversationRepoTest {
     }
 
     @Test
+    fun forkConversation_createsCompleteCopy() = runTest {
+        val sourceId = ConversationRepo.createConversation("session-src", "original")
+        val entries = linearEntries(
+            Message.User(listOf(ContentBlock.Text("u1"))),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("a1")))),
+            Message.User(listOf(ContentBlock.Text("u2"))),
+        )
+        ConversationRepo.insertEntries(sourceId, entries)
+        ConversationRepo.updateLeafId(sourceId, entries.last().id)
+
+        val newId = ConversationRepo.forkConversation(sourceId)!!
+
+        val newRecord = ConversationRepo.getConversation(newId)!!
+        assertTrue(newRecord.summary.title.startsWith("Fork ·"))
+        assertTrue(newRecord.summary.titleEdited)
+        assertEquals(3, newRecord.snapshot.entries.size)
+        assertEquals(entries.last().id, newRecord.snapshot.leafId)
+        assertEquals(3, ConversationRepo.countEntries(sourceId))
+    }
+
+    @Test
     fun updateDraftAndRename_mutateConversationMetadata() = runTest {
         val id = ConversationRepo.createConversation("session-1", "hi")
         ConversationRepo.updateDraft(id, "draft text")

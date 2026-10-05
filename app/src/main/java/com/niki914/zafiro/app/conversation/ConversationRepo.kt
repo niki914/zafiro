@@ -224,6 +224,42 @@ object ConversationRepo {
         )
     }
 
+    /**
+     * 会话级完整派生：在当前会话的全部历史基础上复制出一条新分支会话。
+     *
+     * @param sourceId 源会话 id
+     * @return 新生成的派生会话 id；源会话不存在时返回 null
+     */
+    suspend fun forkConversation(
+        sourceId: String,
+        now: Long = System.currentTimeMillis(),
+    ): String? {
+        val startedAtMs = System.currentTimeMillis()
+        val source = dao().getConversation(sourceId) ?: return null
+
+        val entries = dao().listEntries(sourceId)
+        val newId = UUID.randomUUID().toString()
+        val cleanTitle = ConversationFormatter.sanitizeDisplayTitle(source.title).ifBlank { source.title }
+        val newTitle = String.format(forkTitleFormat, cleanTitle)
+
+        dao().forkConversationTransaction(
+            conversation = source.copy(
+                id = newId,
+                title = newTitle,
+                titleEdited = true,
+                createdAt = now,
+                updatedAt = now,
+            ),
+            entries = entries.map { it.copy(conversationId = newId) },
+        )
+        Logger.i(
+            LOG_TAG,
+            "fork conversation sourceId=$sourceId newId=$newId entries=${entries.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+        )
+        return newId
+    }
+
     /** 第 [turnIndex] 个 User 条目在 leaf 投影里的下标；不存在返回 -1。 */
     private fun List<ConversationEntry>.indexOfUserTurn(turnIndex: Int): Int {
         var seen = 0

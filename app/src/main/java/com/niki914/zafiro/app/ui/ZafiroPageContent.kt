@@ -109,6 +109,9 @@ fun ZafiroPageContent(
                 onPopToRight()
             },
             onCurrentConversationDeleted = onCurrentConversationDeleted,
+            onActiveConversationRenamed = { newTitle ->
+                onActiveConversationChanged(activeConversationId, newTitle)
+            },
         )
 
         SettingsHomePage -> SettingsHomePageRoute(

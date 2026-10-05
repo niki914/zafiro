@@ -102,6 +102,18 @@
     <string name="ui_conversation_history_delete_dialog_confirm">Delete</string>
     <string name="ui_conversation_history_delete_dialog_cancel">Cancel</string>
     <string name="ui_conversation_history_delete_error">Failed to delete conversation: %1$s</string>
+    <string name="ui_conversation_action_load">Load</string>
+    <string name="ui_conversation_action_fork">Fork from here</string>
+    <string name="ui_conversation_action_rename">Rename</string>
+    <string name="ui_conversation_action_delete">Delete</string>
+    <string name="ui_conversation_rename_dialog_title">Rename conversation</string>
+    <string name="ui_conversation_rename_dialog_hint">Conversation title</string>
+    <string name="ui_conversation_rename_dialog_confirm">Save</string>
+    <string name="ui_conversation_rename_dialog_cancel">Cancel</string>
+    <string name="ui_time_just_now">Just now</string>
+    <string name="ui_time_minutes_ago">%1$dm ago</string>
+    <string name="ui_time_hours_ago">%1$dh ago</string>
+    <string name="ui_time_yesterday">Yesterday</string>
     <string name="ui_root_back_to_home_hint">Press back again to go to the Home screen</string>
 
     <!-- Settings Shell -->

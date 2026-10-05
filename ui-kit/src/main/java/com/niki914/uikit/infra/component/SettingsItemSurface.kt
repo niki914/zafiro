@@ -20,9 +20,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -41,7 +44,9 @@ fun SettingsItemSurface(
     hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.ContextClick,
     highlightPulseKey: Any? = null,
     highlightPulseDurationMillis: Int = 500,
+    shape: Shape = RectangleShape,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     /** 行内次级点击目标（如尾随「编辑」文字）的窗口坐标，命中时优先于 onClick。 */
     onTrailingActionClick: (() -> Unit)? = null,
     trailingActionBoundsInWindow: Rect? = null,
@@ -49,9 +54,14 @@ fun SettingsItemSurface(
 ) {
     val haptics = LocalHapticFeedback.current
     val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongClick by rememberUpdatedState(onLongClick)
     val currentOnTrailingActionClick by rememberUpdatedState(onTrailingActionClick)
     val currentTrailingBounds by rememberUpdatedState(trailingActionBoundsInWindow)
-    val isInteractive = enabled && (currentOnClick != null || currentOnTrailingActionClick != null)
+    val isInteractive = enabled && (
+        currentOnClick != null ||
+            currentOnTrailingActionClick != null ||
+            currentOnLongClick != null
+    )
 
     val restingColor = Color.Transparent
     val pressedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
@@ -79,7 +89,7 @@ fun SettingsItemSurface(
     val interactiveModifier = if (isInteractive) {
         Modifier
             .onGloballyPositioned { surfaceOriginInWindow = it.positionInWindow() }
-            .pointerInput(currentOnClick, currentOnTrailingActionClick, hapticFeedbackType) {
+            .pointerInput(currentOnClick, currentOnLongClick, currentOnTrailingActionClick, hapticFeedbackType) {
                 detectTapGestures(
                     onPress = {
                         backgroundColor = pressedColor
@@ -102,6 +112,12 @@ fun SettingsItemSurface(
                             currentOnClick?.invoke()
                         }
                     },
+                    onLongPress = if (currentOnLongClick != null) {
+                        {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            currentOnLongClick?.invoke()
+                        }
+                    } else null,
                 )
             }
     } else Modifier
@@ -109,7 +125,8 @@ fun SettingsItemSurface(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(animatedBackgroundColor)
+            .clip(shape)
+            .background(animatedBackgroundColor, shape)
             .heightIn(min = minHeight)
             .then(interactiveModifier)
             .padding(contentPadding),
