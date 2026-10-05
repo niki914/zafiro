@@ -92,6 +92,17 @@
     <string name="ui_conversation_history_delete_dialog_confirm">刪除</string>
     <string name="ui_conversation_history_delete_dialog_cancel">取消</string>
     <string name="ui_conversation_history_delete_error">刪除對話失敗：%1$s</string>
+    <string name="ui_conversation_action_load">載入</string>
+    <string name="ui_conversation_action_rename">重新命名</string>
+    <string name="ui_conversation_action_delete">刪除</string>
+    <string name="ui_conversation_rename_dialog_title">重新命名對話</string>
+    <string name="ui_conversation_rename_dialog_hint">對話標題</string>
+    <string name="ui_conversation_rename_dialog_confirm">確定</string>
+    <string name="ui_conversation_rename_dialog_cancel">取消</string>
+    <string name="ui_time_just_now">剛剛</string>
+    <string name="ui_time_minutes_ago">%1$d 分鐘前</string>
+    <string name="ui_time_hours_ago">%1$d 小時前</string>
+    <string name="ui_time_yesterday">昨天</string>
     <string name="ui_root_back_to_home_hint">再按一次返回主畫面</string>
 
     <!-- Settings Shell -->

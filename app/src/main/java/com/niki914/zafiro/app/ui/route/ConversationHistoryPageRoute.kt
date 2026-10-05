@@ -88,6 +88,15 @@ internal fun ConversationHistoryPageRoute(
                 }
             }
         },
+        onConversationRename = { id, newTitle ->
+            scope.launch {
+                runCatching {
+                    ConversationRepo.renameConversation(id, newTitle)
+                }.onSuccess {
+                    uiState = loadConversationHistoryState()
+                }
+            }
+        },
     )
 }
 

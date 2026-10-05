@@ -93,6 +93,17 @@
     <string name="ui_conversation_history_delete_dialog_confirm">Eliminar</string>
     <string name="ui_conversation_history_delete_dialog_cancel">Cancelar</string>
     <string name="ui_conversation_history_delete_error">Error al eliminar la conversación: %1$s</string>
+    <string name="ui_conversation_action_load">Cargar</string>
+    <string name="ui_conversation_action_rename">Renombrar</string>
+    <string name="ui_conversation_action_delete">Eliminar</string>
+    <string name="ui_conversation_rename_dialog_title">Renombrar conversación</string>
+    <string name="ui_conversation_rename_dialog_hint">Título de la conversación</string>
+    <string name="ui_conversation_rename_dialog_confirm">Guardar</string>
+    <string name="ui_conversation_rename_dialog_cancel">Cancelar</string>
+    <string name="ui_time_just_now">Ahora mismo</string>
+    <string name="ui_time_minutes_ago">Hace %1$d m</string>
+    <string name="ui_time_hours_ago">Hace %1$d h</string>
+    <string name="ui_time_yesterday">Ayer</string>
     <string name="ui_root_back_to_home_hint">Presione de nuevo para volver al inicio</string>
 
     <!-- Settings Shell -->

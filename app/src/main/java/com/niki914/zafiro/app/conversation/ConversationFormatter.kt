@@ -19,6 +19,17 @@ import com.niki914.zafiro.api.text.FilesBlock
 import com.niki914.zafiro.business.agent.blockIdAt
 import com.niki914.zafiro.business.agent.turnIdAt
 
+enum class ConversationOriginKind {
+    Regenerate,
+    Fork,
+    Rewind,
+}
+
+data class ParsedConversationTitle(
+    val cleanTitle: String,
+    val originKind: ConversationOriginKind?,
+)
+
 /**
  * T3 重写：消费 OKIA 会话树快照（SessionSnapshot）而非 Kai 时代 ChatTurn。
  * 渲染按 leaf 投影的线性消息列表，turn 边界 = Message.User 分组
@@ -27,8 +38,44 @@ import com.niki914.zafiro.business.agent.turnIdAt
 object ConversationFormatter {
     private const val LOG_TAG = "niki914_zafiro_ConversationFormatter"
     private const val MAX_TITLE_LENGTH = 40
-    private const val MAX_PREVIEW_LENGTH = 20
+    private const val MAX_PREVIEW_LENGTH = 120
     private const val ELLIPSIS = "..."
+
+    private val REGENERATE_KEYWORDS = setOf(
+        "Regenerate",
+        "Regenerated",
+        "Regenerar",
+        "Regenerado",
+        "重新生成",
+        "重新產生",
+        "再生成",
+    )
+
+    private val FORK_KEYWORDS = setOf(
+        "Fork",
+        "Forked",
+        "派生",
+        "分支",
+    )
+
+    private val REWIND_KEYWORDS = setOf(
+        "Rewind",
+        "倒回",
+        "回退",
+    )
+
+    private val ALL_PREFIX_KEYWORDS = (REGENERATE_KEYWORDS + FORK_KEYWORDS + REWIND_KEYWORDS)
+        .sortedByDescending { it.length }
+        .joinToString("|") { Regex.escape(it) }
+
+    /**
+     * 匹配形如 "Regenerate · ", "Fork • ", "Rewind: ", "重新生成 · " 等派生前缀。
+     * 分隔符匹配中点 (·, •) 或冒号 (: , ：)，不包含普通句点以防止误伤文件名。
+     */
+    private val PREFIX_REGEX = Regex(
+        """^\s*($ALL_PREFIX_KEYWORDS)\s*[·•:：]\s*""",
+        RegexOption.IGNORE_CASE,
+    )
 
     /** 没有配对 `ToolResult` 的工具调用：恢复后记为失败，且无失败原因。 */
     private const val UNPAIRED_TOOL_REASON = ""
@@ -37,10 +84,49 @@ object ConversationFormatter {
         return firstUserInput.trim().take(MAX_TITLE_LENGTH)
     }
 
+    /**
+     * 解析标题中的派生前缀并剥除所有嵌套前缀。
+     * 最外层（第一个匹配到）的前缀决定 [ParsedConversationTitle.originKind]。
+     * 若剥除后为空，[ParsedConversationTitle.cleanTitle] 返回空字符串，交由 UI 兜底未命名占位。
+     */
+    fun parseDisplayTitle(rawTitle: String): ParsedConversationTitle {
+        var remainder = rawTitle.trim()
+        var firstKind: ConversationOriginKind? = null
+
+        while (true) {
+            val match = PREFIX_REGEX.find(remainder) ?: break
+            if (match.range.first != 0) break
+
+            val keyword = match.groupValues[1]
+            if (firstKind == null) {
+                firstKind = when {
+                    REGENERATE_KEYWORDS.any { keyword.equals(it, ignoreCase = true) } -> ConversationOriginKind.Regenerate
+                    FORK_KEYWORDS.any { keyword.equals(it, ignoreCase = true) } -> ConversationOriginKind.Fork
+                    REWIND_KEYWORDS.any { keyword.equals(it, ignoreCase = true) } -> ConversationOriginKind.Rewind
+                    else -> null
+                }
+            }
+            remainder = remainder.substring(match.range.last + 1).trimStart()
+        }
+
+        return ParsedConversationTitle(
+            cleanTitle = remainder.trim(),
+            originKind = firstKind,
+        )
+    }
+
+    /**
+     * 过滤标题用于 UI 展示：剥除一层或多层派生前缀（如若干个 "Regenerate ·"）。
+     * 若剥除后为空，返回空字符串交由 UI 兜底未命名占位。
+     */
+    fun sanitizeDisplayTitle(rawTitle: String): String {
+        return parseDisplayTitle(rawTitle).cleanTitle
+    }
+
     fun previewFromText(text: String): String {
-        val trimmed = text.trim()
-        if (trimmed.length <= MAX_PREVIEW_LENGTH) return trimmed
-        return trimmed.take(MAX_PREVIEW_LENGTH) + ELLIPSIS
+        val flattened = text.replace(Regex("""\s+"""), " ").trim()
+        if (flattened.length <= MAX_PREVIEW_LENGTH) return flattened
+        return flattened.take(MAX_PREVIEW_LENGTH) + ELLIPSIS
     }
 
     fun previewFromEntries(entries: List<ConversationEntry>): String {
