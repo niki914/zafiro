@@ -1,9 +1,12 @@
 package com.niki914.zafiro.app.ui.content
 
 import android.text.format.DateUtils
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -285,42 +288,52 @@ private fun ConversationHistoryListContent(
     ) {
         sections.forEach { section ->
             val expanded = section.bucket !in collapsedBuckets
-            item(key = "header_${section.bucket}", contentType = "timeline_header") {
-                TimelineSectionHeader(
-                    title = stringResource(section.bucket.labelRes()),
-                    leadingIcon = if (section.bucket == TimelineBucket.Pinned) {
-                        Icons.Default.PushPin
-                    } else {
-                        null
-                    },
-                    isExpanded = expanded,
-                    onToggle = {
-                        collapsedBuckets = if (section.bucket in collapsedBuckets) {
-                            collapsedBuckets - section.bucket
-                        } else {
-                            collapsedBuckets + section.bucket
-                        }
-                    },
+            // 一个 section = 一个 item：header 与它的行同住一个 item，折叠时靠 item
+            // 自身的高度动画把下方 section 平滑拉上来（布局推挤，不是各行各自补间，故不会互相穿透）。
+            item(key = "section_${section.bucket}", contentType = "timeline_section") {
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            if (expanded) {
-                section.conversations.forEach { conversation ->
-                    // 复合 key：置顶项同时出现在置顶段与时间桶，单用 id 会撞 key
-                    item(
-                        key = "${section.bucket}_${conversation.id}",
-                        contentType = "conversation",
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    TimelineSectionHeader(
+                        title = stringResource(section.bucket.labelRes()),
+                        leadingIcon = if (section.bucket == TimelineBucket.Pinned) {
+                            Icons.Default.PushPin
+                        } else {
+                            null
+                        },
+                        isExpanded = expanded,
+                        onToggle = {
+                            collapsedBuckets = if (section.bucket in collapsedBuckets) {
+                                collapsedBuckets - section.bucket
+                            } else {
+                                collapsedBuckets + section.bucket
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = expandVertically(),
+                        exit = shrinkVertically(),
                     ) {
-                        ConversationHistoryItem(
-                            conversation = conversation,
-                            isPinned = conversation.id in pinnedIds,
-                            inPinnedSection = section.bucket == TimelineBucket.Pinned,
-                            activeConversationId = activeConversationId,
-                            currentTimeMillis = currentTimeMillis,
-                            onClick = { onConversationClick(conversation.id) },
-                            onLongClick = { onConversationLongClick(conversation) },
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                        )
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            section.conversations.forEach { conversation ->
+                                ConversationHistoryItem(
+                                    conversation = conversation,
+                                    isPinned = conversation.id in pinnedIds,
+                                    inPinnedSection = section.bucket == TimelineBucket.Pinned,
+                                    activeConversationId = activeConversationId,
+                                    currentTimeMillis = currentTimeMillis,
+                                    onClick = { onConversationClick(conversation.id) },
+                                    onLongClick = { onConversationLongClick(conversation) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
                     }
                 }
             }
