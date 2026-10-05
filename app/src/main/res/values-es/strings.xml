@@ -94,6 +94,7 @@
     <string name="ui_conversation_history_delete_dialog_cancel">Cancelar</string>
     <string name="ui_conversation_history_delete_error">Error al eliminar la conversación: %1$s</string>
     <string name="ui_conversation_action_load">Cargar</string>
+    <string name="ui_conversation_action_fork">Bifurcar desde aquí</string>
     <string name="ui_conversation_action_rename">Renombrar</string>
     <string name="ui_conversation_action_delete">Eliminar</string>
     <string name="ui_conversation_rename_dialog_title">Renombrar conversación</string>

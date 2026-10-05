@@ -29,6 +29,7 @@ internal fun ConversationHistoryPageRoute(
     onBack: () -> Unit,
     onConversationSelected: (String) -> Unit,
     onCurrentConversationDeleted: suspend (String) -> Unit,
+    onActiveConversationRenamed: ((String) -> Unit)? = null,
 ) {
     var uiState by remember {
         mutableStateOf(ConversationHistoryUiState(isLoading = true))
@@ -37,6 +38,7 @@ internal fun ConversationHistoryPageRoute(
     val latestOnConversationSelected by rememberUpdatedState(onConversationSelected)
     val latestActiveConversationId by rememberUpdatedState(activeConversationId)
     val latestOnCurrentConversationDeleted by rememberUpdatedState(onCurrentConversationDeleted)
+    val latestOnActiveConversationRenamed by rememberUpdatedState(onActiveConversationRenamed)
     val scope = rememberCoroutineScope()
     val backContentDescription = stringResource(
         R.string.ui_conversation_history_back_content_description,
@@ -93,7 +95,21 @@ internal fun ConversationHistoryPageRoute(
                 runCatching {
                     ConversationRepo.renameConversation(id, newTitle)
                 }.onSuccess {
+                    if (id == latestActiveConversationId) {
+                        latestOnActiveConversationRenamed?.invoke(newTitle)
+                    }
                     uiState = loadConversationHistoryState()
+                }
+            }
+        },
+        onConversationFork = { id ->
+            scope.launch {
+                runCatching {
+                    ConversationRepo.forkConversation(id)
+                }.onSuccess { newId ->
+                    if (newId != null) {
+                        latestOnConversationSelected(newId)
+                    }
                 }
             }
         },

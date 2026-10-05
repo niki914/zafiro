@@ -81,6 +81,7 @@ internal fun ConversationHistoryPageContent(
     onConversationClick: (String) -> Unit,
     onConversationDelete: (String) -> Unit,
     onConversationRename: ((String, String) -> Unit)? = null,
+    onConversationFork: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var sheetConversation by remember { mutableStateOf<ConversationSummary?>(null) }
@@ -117,9 +118,9 @@ internal fun ConversationHistoryPageContent(
         )
     }
 
-    // 底部选项单 (OptionSheet)：载入、重命名、删除
+    // 底部选项单 (OptionSheet)：载入、分叉、重命名、删除
     OptionSheet(
-        visible = sheetConversation != null,
+        visible = sheetConversation != null && renamingConversation == null && deleteConfirmation == null,
         onDismissRequest = { sheetConversation = null },
         title = sheetConversation?.let {
             ConversationFormatter.sanitizeDisplayTitle(it.title).ifBlank {
@@ -133,22 +134,37 @@ internal fun ConversationHistoryPageContent(
                 Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null)
             },
             onClick = {
+                val target = sheetConversation
                 dismissThen {
-                    val target = sheetConversation
                     sheetConversation = null
                     target?.let { onConversationClick(it.id) }
                 }
             },
         )
+        if (onConversationFork != null) {
+            OptionRow(
+                title = stringResource(R.string.ui_conversation_action_fork),
+                leadingContent = {
+                    Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null)
+                },
+                onClick = {
+                    val target = sheetConversation
+                    dismissThen {
+                        sheetConversation = null
+                        target?.let { onConversationFork(it.id) }
+                    }
+                },
+            )
+        }
         OptionRow(
             title = stringResource(R.string.ui_conversation_action_rename),
             leadingContent = {
                 Icon(Icons.Default.Edit, contentDescription = null)
             },
             onClick = {
+                val target = sheetConversation
                 dismissThen {
-                    val target = sheetConversation
-                    sheetConversation = null
+                    sheetConversation = target
                     renamingConversation = target
                 }
             },
@@ -159,9 +175,9 @@ internal fun ConversationHistoryPageContent(
                 Icon(Icons.Default.Delete, contentDescription = null)
             },
             onClick = {
+                val target = sheetConversation
                 dismissThen {
-                    val target = sheetConversation
-                    sheetConversation = null
+                    sheetConversation = target
                     deleteConfirmation = target
                 }
             },
@@ -171,9 +187,12 @@ internal fun ConversationHistoryPageContent(
     // 重命名对话框 (LiquidDialog)
     ConversationRenameDialog(
         conversation = renamingConversation,
-        onDismissRequest = { renamingConversation = null },
+        onDismissRequest = {
+            renamingConversation = null
+        },
         onConfirmClick = { conversation, newTitle ->
             renamingConversation = null
+            sheetConversation = null
             onConversationRename?.invoke(conversation.id, newTitle)
         },
     )
@@ -181,9 +200,12 @@ internal fun ConversationHistoryPageContent(
     // 删除确认对话框 (ConfirmationLiquidDialog)
     ConversationDeleteConfirmationDialog(
         conversation = deleteConfirmation,
-        onDismissRequest = { deleteConfirmation = null },
+        onDismissRequest = {
+            deleteConfirmation = null
+        },
         onConfirmClick = { conversation ->
             deleteConfirmation = null
+            sheetConversation = null
             onConversationDelete(conversation.id)
         },
     )
@@ -552,20 +574,20 @@ private fun ConversationRenameDialog(
     onDismissRequest: () -> Unit,
     onConfirmClick: (ConversationSummary, String) -> Unit,
 ) {
-    var titleInput by remember(conversation?.id) {
-        mutableStateOf(
-            conversation?.title?.let { ConversationFormatter.sanitizeDisplayTitle(it) }.orEmpty(),
-        )
-    }
+    var retainedConversation by remember { mutableStateOf<ConversationSummary?>(null) }
+    var titleInput by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(conversation) {
         if (conversation != null) {
+            retainedConversation = conversation
             titleInput = ConversationFormatter.sanitizeDisplayTitle(conversation.title)
             delay(100)
             focusRequester.requestFocus()
         }
     }
+
+    val activeConversation = conversation ?: retainedConversation
 
     LiquidDialog(
         visible = conversation != null,
@@ -614,7 +636,7 @@ private fun ConversationRenameDialog(
                 text = stringResource(R.string.ui_conversation_rename_dialog_confirm),
                 enabled = titleInput.isNotBlank(),
                 onClick = {
-                    conversation?.let { onConfirmClick(it, titleInput.trim()) }
+                    activeConversation?.let { onConfirmClick(it, titleInput.trim()) }
                 },
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -630,8 +652,15 @@ private fun ConversationDeleteConfirmationDialog(
     onDismissRequest: () -> Unit,
     onConfirmClick: (ConversationSummary) -> Unit,
 ) {
+    var retainedConversation by remember { mutableStateOf<ConversationSummary?>(null) }
+    LaunchedEffect(conversation) {
+        if (conversation != null) {
+            retainedConversation = conversation
+        }
+    }
+    val activeConversation = conversation ?: retainedConversation
     val untitledConversation = stringResource(R.string.ui_conversation_history_untitled)
-    val title = conversation?.title?.let { ConversationFormatter.sanitizeDisplayTitle(it) }
+    val title = activeConversation?.title?.let { ConversationFormatter.sanitizeDisplayTitle(it) }
         ?.ifBlank { untitledConversation }
         .orEmpty()
     ConfirmationLiquidDialog(
@@ -643,7 +672,7 @@ private fun ConversationDeleteConfirmationDialog(
         positiveButtonText = stringResource(R.string.ui_conversation_history_delete_dialog_confirm),
         onNegativeClick = onDismissRequest,
         onPositiveClick = {
-            conversation?.let(onConfirmClick)
+            activeConversation?.let(onConfirmClick)
         },
     )
 }

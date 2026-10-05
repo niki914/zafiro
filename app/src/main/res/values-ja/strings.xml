@@ -93,6 +93,7 @@
     <string name="ui_conversation_history_delete_dialog_cancel">キャンセル</string>
     <string name="ui_conversation_history_delete_error">会話の削除に失敗しました：%1$s</string>
     <string name="ui_conversation_action_load">読み込む</string>
+    <string name="ui_conversation_action_fork">ここから分岐</string>
     <string name="ui_conversation_action_rename">名前を変更</string>
     <string name="ui_conversation_action_delete">削除</string>
     <string name="ui_conversation_rename_dialog_title">会話名を変更</string>

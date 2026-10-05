@@ -94,6 +94,7 @@
     <string name="ui_conversation_history_delete_dialog_cancel">Cancel</string>
     <string name="ui_conversation_history_delete_error">Failed to delete conversation: %1$s</string>
     <string name="ui_conversation_action_load">Load</string>
+    <string name="ui_conversation_action_fork">Fork from here</string>
     <string name="ui_conversation_action_rename">Rename</string>
     <string name="ui_conversation_action_delete">Delete</string>
     <string name="ui_conversation_rename_dialog_title">Rename conversation</string>
