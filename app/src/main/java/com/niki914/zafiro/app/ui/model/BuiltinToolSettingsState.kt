@@ -26,7 +26,7 @@ data class BuiltinToolSettingsUiState(
     val standaloneTools: List<BuiltinToolSettingItem> = emptyList(),
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
-    @param:StringRes val descriptionResId: Int = R.string.builtin_tool_loading,
+    @param:StringRes val descriptionResId: Int = R.string.tool_loading,
     val descriptionArg: String? = null,
 )
 
@@ -82,7 +82,7 @@ class BuiltinToolSettingsViewModel :
         updateState {
             copy(
                 isLoading = true,
-                descriptionResId = R.string.builtin_tool_loading,
+                descriptionResId = R.string.tool_loading,
                 descriptionArg = null,
             )
         }
@@ -102,7 +102,7 @@ class BuiltinToolSettingsViewModel :
             updateState {
                 copy(
                     isLoading = false,
-                    descriptionResId = R.string.builtin_tool_load_failed,
+                    descriptionResId = R.string.tool_load_failed,
                     descriptionArg = throwable.message ?: throwable::class.java.simpleName,
                 )
             }
@@ -201,7 +201,7 @@ class BuiltinToolSettingsViewModel :
             fallback.copy(
                 isSaving = false,
                 isLoading = false,
-                descriptionResId = R.string.builtin_tool_save_failed,
+                descriptionResId = R.string.tool_save_failed,
                 descriptionArg = error,
             )
         }
@@ -238,9 +238,9 @@ class BuiltinToolSettingsViewModel :
                 isLoading = false,
                 isSaving = false,
                 descriptionResId = if (isEmpty && !baseState.isLoading) {
-                    R.string.builtin_tool_empty
+                    R.string.tool_empty
                 } else {
-                    R.string.builtin_tool_page_description
+                    R.string.tool_page_description
                 },
             )
         )

@@ -18,10 +18,10 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_memory_summary,
         routeSuffix = "memory",
     ),
-    BuiltinTools(
-        titleRes = R.string.ui_settings_builtin_tools,
-        summaryRes = R.string.ui_settings_builtin_tools_summary,
-        routeSuffix = "builtin-tools",
+    Tools(
+        titleRes = R.string.ui_settings_tools,
+        summaryRes = R.string.ui_settings_tools_summary,
+        routeSuffix = "tools",
     ),
     Skills(
         titleRes = R.string.ui_settings_skills,
