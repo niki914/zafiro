@@ -248,7 +248,7 @@ data class BuiltinToolGroupDetailPage(
     override val routeKey: String = "builtin-tool-group:$groupId"
     override val titleSpec: PageTitleSpec = ResTitle(
         BuiltinToolGroups.find(groupId)?.titleRes
-            ?: R.string.ui_settings_builtin_tools
+            ?: R.string.ui_settings_tools
     )
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)

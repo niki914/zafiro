@@ -46,7 +46,7 @@ fun SettingsDetailPageContent(
         return
     }
 
-    if (group == ZafiroSettingsGroup.BuiltinTools) {
+    if (group == ZafiroSettingsGroup.Tools) {
         BuiltinToolsSettingsContent(
             onOpenGroupDetail = { groupId ->
                 onPush(BuiltinToolGroupDetailPage(groupId))

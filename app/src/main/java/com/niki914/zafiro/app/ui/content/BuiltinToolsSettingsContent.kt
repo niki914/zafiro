@@ -170,22 +170,22 @@ private fun previewUiState(): BuiltinToolSettingsUiState = BuiltinToolSettingsUi
     groups = listOf(
         BuiltinToolGroupUiItem(
             id = "dev_tools",
-            titleRes = R.string.builtin_tool_group_dev_tools,
-            summaryRes = R.string.builtin_tool_group_dev_tools_summary,
+            titleRes = R.string.tool_group_dev_tools,
+            summaryRes = R.string.tool_group_dev_tools_summary,
             mode = BuiltinToolGroupMode.PER_TOOL,
             checked = true,
         ),
         BuiltinToolGroupUiItem(
             id = "android_native",
-            titleRes = R.string.builtin_tool_group_android_native,
-            summaryRes = R.string.builtin_tool_group_android_native_summary,
+            titleRes = R.string.tool_group_android_native,
+            summaryRes = R.string.tool_group_android_native_summary,
             mode = BuiltinToolGroupMode.PER_TOOL,
             checked = true,
         ),
         BuiltinToolGroupUiItem(
             id = "screen_operation",
-            titleRes = R.string.builtin_tool_group_screen_operation,
-            summaryRes = R.string.builtin_tool_group_screen_operation_summary,
+            titleRes = R.string.tool_group_screen_operation,
+            summaryRes = R.string.tool_group_screen_operation_summary,
             mode = BuiltinToolGroupMode.WHOLE,
             checked = true,
         ),
@@ -203,5 +203,5 @@ private fun previewUiState(): BuiltinToolSettingsUiState = BuiltinToolSettingsUi
         ),
     ),
     isLoading = false,
-    descriptionResId = R.string.builtin_tool_page_description,
+    descriptionResId = R.string.tool_page_description,
 )

@@ -80,8 +80,8 @@ private fun builtinToolGroupDetailSpec(uiState: BuiltinToolGroupDetailUiState): 
                     listOf(
                         SettingsRowSpec.Navigation(
                             id = CUSTOM_PY_TOOLS_ENTRY_ROW_ID,
-                            title = stringResource(R.string.builtin_tool_custom_py_tools_entry),
-                            summary = stringResource(R.string.builtin_tool_custom_py_tools_entry_summary),
+                            title = stringResource(R.string.tool_custom_py_tools_entry),
+                            summary = stringResource(R.string.tool_custom_py_tools_entry_summary),
                         ),
                     )
                 } else {
@@ -94,7 +94,7 @@ private fun builtinToolGroupDetailSpec(uiState: BuiltinToolGroupDetailUiState): 
     }
 
     return SettingsPageSpec(
-        description = stringResource(R.string.builtin_tool_page_description),
+        description = stringResource(R.string.tool_page_description),
         sections = sections,
     )
 }
@@ -106,7 +106,7 @@ private fun BuiltinToolGroupDetailContentPreview() {
         ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
             SettingsSpecPageContent(
                 spec = SettingsPageSpec(
-                    description = stringResource(R.string.builtin_tool_group_dev_tools_summary),
+                    description = stringResource(R.string.tool_group_dev_tools_summary),
                     sections = listOf(
                         SettingsSectionSpec(
                             layout = SettingsSectionLayout.GroupedCard,
