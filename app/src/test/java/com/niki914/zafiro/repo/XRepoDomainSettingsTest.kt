@@ -54,6 +54,30 @@ class XRepoDomainSettingsTest {
     }
 
     @Test
+    fun setConversationPinned_addRemoveAndRepinKeepsLatestTimestamp() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        XRepo.setConversationPinned("c1", pinned = true, now = 100L)
+        XRepo.setConversationPinned("c2", pinned = true, now = 200L)
+        assertEquals(
+            listOf(PinnedConversation("c1", 100L), PinnedConversation("c2", 200L)),
+            XRepo.pinnedConversations(),
+        )
+
+        // 重复置顶同一会话：更新时刻，不产生重复项
+        XRepo.setConversationPinned("c1", pinned = true, now = 300L)
+        assertEquals(
+            listOf(PinnedConversation("c2", 200L), PinnedConversation("c1", 300L)),
+            XRepo.pinnedConversations(),
+        )
+
+        XRepo.setConversationPinned("c1", pinned = false)
+        assertEquals(listOf(PinnedConversation("c2", 200L)), XRepo.pinnedConversations())
+    }
+
+    @Test
     fun hydrateSettingsBackfillsAllReactiveFlows() = runTest {
         val store = FakeDomainSettingsStore(
             StoreDescriptorRegistry.APP_STATE_ID to

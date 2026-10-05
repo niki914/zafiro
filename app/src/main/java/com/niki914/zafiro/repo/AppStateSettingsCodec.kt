@@ -53,6 +53,18 @@ internal data class AppStateSettings(
     /** 已经向用户弹过更新提示的远端版本号；空串 = 从未弹过。同一版本只提示一次。 */
     @SerialName("last_notified_update_version")
     val lastNotifiedUpdateVersion: String = "",
+    /** 置顶会话：id + 置顶时刻。数量级 ≤ 20，读取方按会话存在性自行剪枝。 */
+    @SerialName("pinned_conversations")
+    val pinnedConversations: List<PinnedConversation> = emptyList(),
+)
+
+/** 一条置顶记录：置顶时刻用于与最后交互时间取 max 排序（越晚置顶/越晚交互越靠前）。 */
+@Serializable
+internal data class PinnedConversation(
+    @SerialName("id")
+    val id: String = "",
+    @SerialName("pinned_at")
+    val pinnedAt: Long = 0L,
 )
 
 internal object AppStateSettingsCodec {

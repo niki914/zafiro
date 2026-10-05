@@ -20,6 +20,7 @@ import com.niki914.zafiro.app.ui.content.ConversationHistoryPageContent
 import com.niki914.zafiro.app.ui.content.ConversationHistoryUiState
 import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
+import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.launch
 
 @Composable
@@ -82,6 +83,7 @@ internal fun ConversationHistoryPageRoute(
                         ConversationRepo.deleteConversation(id)
                     }
                 }.onSuccess {
+                    runCatching { XRepo.setConversationPinned(id, pinned = false) }
                     uiState = loadConversationHistoryState()
                 }.onFailure { throwable ->
                     uiState = uiState.copy(
@@ -113,15 +115,27 @@ internal fun ConversationHistoryPageRoute(
                 }
             }
         },
+        onConversationPin = { id, pinned ->
+            scope.launch {
+                runCatching {
+                    XRepo.setConversationPinned(id, pinned)
+                }.onSuccess {
+                    uiState = loadConversationHistoryState()
+                }
+            }
+        },
     )
 }
 
 private suspend fun loadConversationHistoryState(): ConversationHistoryUiState {
     return runCatching {
-        ConversationRepo.listConversations()
+        ConversationRepo.listConversations() to XRepo.pinnedConversations()
     }.fold(
-        onSuccess = { conversations ->
-            ConversationHistoryUiState(conversations = conversations)
+        onSuccess = { (conversations, pinnedConversations) ->
+            ConversationHistoryUiState(
+                conversations = conversations,
+                pinnedConversations = pinnedConversations,
+            )
         },
         onFailure = { throwable ->
             ConversationHistoryUiState(

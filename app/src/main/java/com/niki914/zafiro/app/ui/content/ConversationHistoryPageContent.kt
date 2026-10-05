@@ -4,6 +4,7 @@ import android.text.format.DateUtils
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -64,12 +66,14 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationOriginKind
 import com.niki914.zafiro.app.conversation.ConversationSummary
+import com.niki914.zafiro.repo.PinnedConversation
 import kotlinx.coroutines.delay
 import java.util.Calendar
 
 internal data class ConversationHistoryUiState(
     val isLoading: Boolean = false,
     val conversations: List<ConversationSummary> = emptyList(),
+    val pinnedConversations: List<PinnedConversation> = emptyList(),
     val errorMessage: String? = null,
     val deleteErrorMessage: String? = null,
 )
@@ -82,11 +86,15 @@ internal fun ConversationHistoryPageContent(
     onConversationDelete: (String) -> Unit,
     onConversationRename: ((String, String) -> Unit)? = null,
     onConversationFork: ((String) -> Unit)? = null,
+    onConversationPin: ((String, Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var sheetConversation by remember { mutableStateOf<ConversationSummary?>(null) }
     var renamingConversation by remember { mutableStateOf<ConversationSummary?>(null) }
     var deleteConfirmation by remember { mutableStateOf<ConversationSummary?>(null) }
+    val pinnedIdSet = remember(uiState.pinnedConversations) {
+        uiState.pinnedConversations.map { it.id }.toSet()
+    }
 
     when {
         uiState.isLoading -> ConversationHistoryMessageContent(
@@ -108,6 +116,7 @@ internal fun ConversationHistoryPageContent(
 
         else -> ConversationHistoryListContent(
             conversations = uiState.conversations,
+            pinnedConversations = uiState.pinnedConversations,
             activeConversationId = activeConversationId,
             deleteErrorMessage = uiState.deleteErrorMessage,
             onConversationClick = onConversationClick,
@@ -152,6 +161,29 @@ internal fun ConversationHistoryPageContent(
                     dismissThen {
                         sheetConversation = null
                         target?.let { onConversationFork(it.id) }
+                    }
+                },
+            )
+        }
+        if (onConversationPin != null) {
+            val sheetId = sheetConversation?.id
+            val isPinned = sheetId != null && sheetId in pinnedIdSet
+            OptionRow(
+                title = stringResource(
+                    if (isPinned) {
+                        R.string.ui_conversation_action_unpin
+                    } else {
+                        R.string.ui_conversation_action_pin
+                    },
+                ),
+                leadingContent = {
+                    Icon(Icons.Default.PushPin, contentDescription = null)
+                },
+                onClick = {
+                    val target = sheetConversation
+                    dismissThen {
+                        sheetConversation = null
+                        target?.let { onConversationPin(it.id, !isPinned) }
                     }
                 },
             )
@@ -214,6 +246,7 @@ internal fun ConversationHistoryPageContent(
 @Composable
 private fun ConversationHistoryListContent(
     conversations: List<ConversationSummary>,
+    pinnedConversations: List<PinnedConversation>,
     activeConversationId: String?,
     deleteErrorMessage: String?,
     onConversationClick: (String) -> Unit,
@@ -223,7 +256,12 @@ private fun ConversationHistoryListContent(
     val deleteErrorPrefix = deleteErrorMessage?.let {
         stringResource(R.string.ui_conversation_history_delete_error, it)
     }
-    val sections = remember(conversations) { groupByTimeline(conversations) }
+    val sections = remember(conversations, pinnedConversations) {
+        groupByTimeline(conversations, pinnedConversations)
+    }
+    val pinnedIds = remember(pinnedConversations) {
+        pinnedConversations.map { it.id }.toSet()
+    }
     var collapsedBuckets by rememberSaveable { mutableStateOf(emptySet<TimelineBucket>()) }
 
     // 时间基准定时刷新：每 15 秒更新一次当前时间戳，驱动相对时间自然步进
@@ -250,6 +288,11 @@ private fun ConversationHistoryListContent(
             item(key = "header_${section.bucket}", contentType = "timeline_header") {
                 TimelineSectionHeader(
                     title = stringResource(section.bucket.labelRes()),
+                    leadingIcon = if (section.bucket == TimelineBucket.Pinned) {
+                        Icons.Default.PushPin
+                    } else {
+                        null
+                    },
                     isExpanded = expanded,
                     onToggle = {
                         collapsedBuckets = if (section.bucket in collapsedBuckets) {
@@ -263,9 +306,15 @@ private fun ConversationHistoryListContent(
             }
             if (expanded) {
                 section.conversations.forEach { conversation ->
-                    item(key = conversation.id, contentType = "conversation") {
+                    // 复合 key：置顶项同时出现在置顶段与时间桶，单用 id 会撞 key
+                    item(
+                        key = "${section.bucket}_${conversation.id}",
+                        contentType = "conversation",
+                    ) {
                         ConversationHistoryItem(
                             conversation = conversation,
+                            isPinned = conversation.id in pinnedIds,
+                            inPinnedSection = section.bucket == TimelineBucket.Pinned,
                             activeConversationId = activeConversationId,
                             currentTimeMillis = currentTimeMillis,
                             onClick = { onConversationClick(conversation.id) },
@@ -292,12 +341,16 @@ private fun ConversationHistoryListContent(
  * - 按下/长按时采用设置页同款 SettingsItemSurface 平滑渐变卡片圆角背景（G2CardShape(20.dp)）；
  * - 移除右侧 chevron，标题单行加宽；
  * - 标题右侧展示派生图标（Regenerate / Fork / Rewind）+ 相对更新时间，图标与时间浑然一体（同色、居右）；
+ * - 置顶段里的行：独占容器底色 + 右上角只留时间（隐去图钉与派生前缀图标）；
+ *   同一会话在时间桶里仍走普通样式，另用一个图钉标识它是置顶项。
  * - 预览单行截断，填满可用宽度，字体适度调小；
  * - 自动剥除重复的派生前缀。
  */
 @Composable
 private fun ConversationHistoryItem(
     conversation: ConversationSummary,
+    isPinned: Boolean,
+    inPinnedSection: Boolean,
     activeConversationId: String?,
     currentTimeMillis: Long,
     onClick: () -> Unit,
@@ -309,10 +362,18 @@ private fun ConversationHistoryItem(
         ConversationFormatter.parseDisplayTitle(conversation.title)
     }
     val displayTitle = parsedTitle.cleanTitle.ifBlank { untitledConversation }
-    val originIcon = parsedTitle.originKind?.let { originKindToIcon(it) }
+    // 置顶段独占样式：高亮底色 + 隐去派生前缀图标，右上角只留时间；
+    // 时间桶里的同一会话照旧普通样式，另用图钉标识它是置顶项。
+    val originIcon = if (inPinnedSection) null else parsedTitle.originKind?.let { originKindToIcon(it) }
+    val showPinBadge = isPinned && !inPinnedSection
     val relativeTime = formatRelativeTime(conversation.updatedAt, currentTimeMillis)
 
     val cardShape = remember { G2CardShape(20.dp) }
+    val pinnedBackground = if (inPinnedSection) {
+        Modifier.background(MaterialTheme.colorScheme.secondaryContainer, cardShape)
+    } else {
+        Modifier
+    }
 
     SettingsItemSurface(
         onClick = onClick,
@@ -322,7 +383,7 @@ private fun ConversationHistoryItem(
         highlightPulseDurationMillis = 500,
         minHeight = 0.dp,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().then(pinnedBackground),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -341,8 +402,8 @@ private fun ConversationHistoryItem(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                val timeColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                if (originIcon != null || relativeTime.isNotBlank()) {
+                val timeColor = MaterialTheme.colorScheme.tertiary
+                if (originIcon != null || showPinBadge || relativeTime.isNotBlank()) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(start = 8.dp),
@@ -350,6 +411,17 @@ private fun ConversationHistoryItem(
                         if (originIcon != null) {
                             Icon(
                                 imageVector = originIcon,
+                                contentDescription = null,
+                                tint = timeColor,
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .size(13.dp),
+                            )
+                        }
+                        // 时间桶里的置顶标识：与派生前缀图标、时间同色同大小
+                        if (showPinBadge) {
+                            Icon(
+                                imageVector = Icons.Default.PushPin,
                                 contentDescription = null,
                                 tint = timeColor,
                                 modifier = Modifier
@@ -436,12 +508,14 @@ private fun TimelineSectionHeader(
     isExpanded: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    leadingIcon: ImageVector? = null,
 ) {
     val chevronRotation by animateFloatAsState(
         targetValue = if (isExpanded) 90f else 0f,
         animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
         label = "timelineChevron",
     )
+    val titleColor = MaterialTheme.colorScheme.primary
     Row(
         modifier = modifier
             .clip(G2CardShape(14.dp))
@@ -453,16 +527,26 @@ private fun TimelineSectionHeader(
             .padding(horizontal = 4.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (leadingIcon != null) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = titleColor,
+                modifier = Modifier
+                    .padding(end = 6.dp)
+                    .size(16.dp),
+            )
+        }
         Text(
             text = title,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = titleColor,
             modifier = Modifier.weight(1f),
         )
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            tint = titleColor.copy(alpha = 0.6f),
             modifier = Modifier
                 .size(18.dp)
                 .graphicsLayer { rotationZ = chevronRotation },
@@ -472,9 +556,10 @@ private fun TimelineSectionHeader(
 
 // ── 时间线分桶 ────────────────────────────────────────────────────────────
 
-enum class TimelineBucket { Today, ThisWeek, ThisMonth, Older }
+enum class TimelineBucket { Pinned, Today, ThisWeek, ThisMonth, Older }
 
 private fun TimelineBucket.labelRes(): Int = when (this) {
+    TimelineBucket.Pinned -> R.string.ui_conversation_history_pinned_section
     TimelineBucket.Today -> R.string.ui_conversation_history_today
     TimelineBucket.ThisWeek -> R.string.ui_conversation_history_this_week
     TimelineBucket.ThisMonth -> R.string.ui_conversation_history_this_month
@@ -486,16 +571,33 @@ private data class TimelineSection(
     val conversations: List<ConversationSummary>,
 )
 
-private fun groupByTimeline(conversations: List<ConversationSummary>): List<TimelineSection> {
+private fun groupByTimeline(
+    conversations: List<ConversationSummary>,
+    pinnedConversations: List<PinnedConversation>,
+): List<TimelineSection> {
     if (conversations.isEmpty()) return emptyList()
     val now = Calendar.getInstance()
-    return conversations
+    // 置顶段：按 max(置顶时刻, 最后交互时刻) 倒序 —— 越晚置顶、或置顶后又有新消息的越靠前。
+    val pinnedAtById = pinnedConversations.associate { it.id to it.pinnedAt }
+    val pinned = conversations
+        .mapNotNull { conversation ->
+            pinnedAtById[conversation.id]?.let { pinnedAt ->
+                conversation to maxOf(pinnedAt, conversation.updatedAt)
+            }
+        }
+        .sortedByDescending { it.second }
+        .map { it.first }
+    val timeSections = conversations
         .groupBy { bucketOf(it.updatedAt, now) }
         .let { byBucket ->
             TimelineBucket.entries.mapNotNull { bucket ->
                 byBucket[bucket]?.let { TimelineSection(bucket, it) }
             }
         }
+    return buildList {
+        if (pinned.isNotEmpty()) add(TimelineSection(TimelineBucket.Pinned, pinned))
+        addAll(timeSections)
+    }
 }
 
 private fun bucketOf(updatedAt: Long, now: Calendar): TimelineBucket {
