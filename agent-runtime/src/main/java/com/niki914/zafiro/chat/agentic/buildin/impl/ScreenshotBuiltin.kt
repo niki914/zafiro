@@ -1,26 +1,27 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
-import com.niki914.logging.Logger
-import com.niki914.xposed.api.util.ContextProvider
+import android.graphics.Bitmap
+import android.os.Build
+import com.niki914.zafiro.chat.agentic.SharedImageCodec
+import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.zafiro.chat.agentic.image.IngestError
 import com.niki914.zafiro.chat.agentic.image.IngestResult
-import com.niki914.zafiro.chat.agentic.shell.TerminalCommandOutcome
-import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
-import com.niki914.zafiro.chat.agentic.SharedImageCodec
 import com.niki914.zafiro.chat.agentic.toImageToolResult
 import com.niki914.zafiro.chat.agentic.toToolError
-import kotlinx.serialization.json.JsonPrimitive
-import java.io.File
+import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * screenshot 工具：截取整个设备屏幕，ingest 后返回图片引用。
  * 无参数；截屏目标路径由工具自行生成（AI 不感知路径来源）。
  *
- * 截屏通道（MVP）：libterm root → shizuku 逐个尝试，跑 `screencap -p`。
- * 无障碍兜底通道留缝（返回 unsupported），后续作为 root 不可用时的 fallback。
+ * 截屏通道只有一条：官方无障碍截屏 API（[AccessibilityController.captureScreenImage]），不需要 root。
+ * root / Shizuku 的角色只是让 [AccessibilityController.ensureAccessibility] 能静默把无障碍服务打开
+ * （PermissionManager 的默认链），不再有一条 shell `screencap` 通道。安全窗口（DRM / 密码输入）
+ * 会被系统拒绝，这是官方 API 的边界——需要绕过时用 terminal 工具自己截图。
  * 结果契约与 view_image 完全一致：data.image = { path, mime_type, width, height, bytes }。
  */
 class ScreenshotBuiltin : BuiltinTool() {
@@ -28,93 +29,91 @@ class ScreenshotBuiltin : BuiltinTool() {
     override val description: String = """
 Capture the entire device screen as an image so the model can see it.
 Use when the user asks about what is currently on screen, or to verify the visual result of an action.
-Returns an image reference (path, dimensions, size) on success, or an error code if no privileged
-shell (root/shizuku) is available or the capture failed.
+Requires Android 11+ and the Zafiro accessibility service; on older Android versions use the terminal
+shell tool with a privileged shell instead. Returns an error code when unavailable or the capture failed.
+Returns an image reference (path, dimensions, size) on success.
     """.trimIndent()
     override val defaultEnabled: Boolean = true
     override val inputSchemaJson: String? = SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            // API 30 之前系统没有无障碍截屏 API，只有特权 shell 的 `screencap` 能拍：
+            // 直接把模型指向 terminal 工具，别让它在这个工具上反复重试。
+            return BuiltinToolResult.failure(
+                code = "SCREENSHOT_UNSUPPORTED",
+                message = "This device runs Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}); " +
+                        "the accessibility screenshot API requires Android 11 (API 30) or newer.",
+                hint = "Do not retry this tool. Use the 'terminal' tool instead: it needs a privileged shell " +
+                        "(root or shizuku) and can run 'screencap -p <file>', then read that file with 'view_image'."
+            )
+        }
+
         val codec = SharedImageCodec.get() ?: return BuiltinToolResult.failure(
             code = "CODEC_UNAVAILABLE",
             message = "Image codec is not available.",
             hint = "Application context is not initialized yet. Retry later."
         )
 
-        val rawPath = captureRawScreenshot()
-            ?: return BuiltinToolResult.failure(
-                code = "PERMISSION_DENIED",
-                message = "Screen capture requires a privileged shell (root or shizuku); neither is available.",
-                hint = "Grant root or start shizuku, then retry."
+        AccessibilityController.ensureAccessibility().onFailure { error ->
+            return BuiltinToolResult.failure(
+                code = "ACCESSIBILITY_UNAVAILABLE",
+                message = error.message ?: "Screen capture requires the Zafiro accessibility service.",
+                hint = "Tell the user to enable 'Zafiro' in Settings > Accessibility, then retry."
+            )
+        }
+
+        val bitmap = AccessibilityController.captureScreenImage().getOrElse { error ->
+            return BuiltinToolResult.failure(
+                code = "SCREENSHOT_FAILED",
+                message = error.message ?: "Screen capture failed.",
+                hint = "Secure or protected content cannot be captured. Retry when a normal app is on screen."
+            )
+        }
+
+        val bytes = encodePng(bitmap) ?: return BuiltinToolResult.failure(
+            code = "SCREENSHOT_FAILED",
+            message = "The captured frame could not be encoded.",
+            hint = "Retry."
+        )
+
+        return when (val result = withContext(Dispatchers.IO) { codec.ingestBytes(bytes, "image/png") }) {
+            is IngestResult.Ok -> result.toImageToolResult(
+                message = "Screenshot captured: ${result.image.path}",
             )
 
-        try {
-            return when (val result = codec.ingestFile(rawPath)) {
-                is IngestResult.Ok -> result.toImageToolResult(
-                    message = "Screenshot captured: ${result.image.path}",
+            is IngestResult.Err -> {
+                val (code, message) = result.error.toToolError()
+                BuiltinToolResult.failure(
+                    code = code,
+                    message = message,
+                    hint = "The screen was captured but the image could not be processed. Retry."
                 )
-
-                is IngestResult.Err -> {
-                    val (code, message) = result.error.toToolError()
-                    BuiltinToolResult.failure(
-                        code = code,
-                        message = message,
-                        hint = "The screen was captured but the image could not be processed. Retry."
-                    )
-                }
             }
-        } finally {
-            // 原始 PNG 只服务于 ingest，转码 JPEG 落盘后即可删除
-            runCatching { File(rawPath).delete() }
         }
     }
 
     /**
-     * 通过 libterm 截屏到 app 私有目录，返回原始文件绝对路径；失败返回 null。
-     * root → shizuku 逐个尝试（同 AccessibilityController 的降级模式）；
-     * exitCode == 0 且文件真实存在才算成功——denied 的 su 可能返回非 root shell，
-     * 仅凭 TerminalCommandOutcome.Success 不可信。
+     * 官方截屏给出的是 HARDWARE 位图（像素不可直接读）：先拷成软件位图，再无损失编码为 PNG，
+     * 交给统一 ingest 管线收缩转 JPEG。两位图都在这里回收。
      */
-    private suspend fun captureRawScreenshot(): String? {
-        val context = try {
-            ContextProvider.await().applicationContext
-        } catch (e: Exception) {
-            return null
-        } ?: return null
-        val cacheDir = File(context.cacheDir, "screenshot").apply { mkdirs() }
-        val rawFile = File(cacheDir, "capture_${System.currentTimeMillis()}.png")
-
-        for (identity in listOf("root", "shizuku")) {
-            val outcome = TerminalSessionPool.openAndExecute(
-                identity = identity,
-                cwd = null,
-                command = "screencap -p ${rawFile.absolutePath}",
-                timeoutMs = CAPTURE_TIMEOUT_MS,
-            )
-            val session = (outcome as? TerminalCommandOutcome.Success)?.session
-                ?: (outcome as? TerminalCommandOutcome.Timeout)?.session
-            if (session != null) {
-                runCatching { TerminalSessionPool.close(session) }
-            }
-            if (outcome is TerminalCommandOutcome.Success && outcome.result.exitCode == 0) {
-                // cat > file 重定向场景下 shell 退出码可能不可靠，以文件存在为准
-                if (rawFile.exists() && rawFile.length() > 0) {
-                    return rawFile.absolutePath
+    private suspend fun encodePng(bitmap: Bitmap): ByteArray? = withContext(Dispatchers.Default) {
+        try {
+            val software = bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: return@withContext null
+            try {
+                ByteArrayOutputStream().use { out ->
+                    if (!software.compress(Bitmap.CompressFormat.PNG, 100, out)) return@withContext null
+                    out.toByteArray()
                 }
+            } finally {
+                software.recycle()
             }
-            Logger.w(
-                LOG_TAG,
-                "screencap failed identity=$identity outcome=${outcome::class.simpleName}"
-            )
+        } finally {
+            bitmap.recycle()
         }
-        // 无障碍兜底通道留缝：当前未实现，root/shizuku 均不可用时直接失败
-        return null
     }
 
     private companion object {
-        private const val LOG_TAG = "niki914_zafiro_ScreenshotBuiltin"
-        private const val CAPTURE_TIMEOUT_MS = 15_000L
-
         private val SCHEMA = """
 {
   "type": "object",

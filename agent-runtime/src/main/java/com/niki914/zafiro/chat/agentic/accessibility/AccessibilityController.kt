@@ -6,6 +6,7 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
+import android.graphics.Bitmap
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK
@@ -33,9 +34,12 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.resume
 import android.graphics.Rect as AndroidRect
 
 /**
@@ -56,6 +60,12 @@ interface IAccessibility {
         endY: Float,
         duration: Long
     ): Boolean
+
+    /**
+     * 抓一张整屏图（官方无障碍截屏 API，API 30+）；设备不支持或被系统拒绝（安全窗口等）时回调 null。
+     * 回调线程由实现决定。
+     */
+    fun captureScreenImage(listener: (Bitmap?) -> Unit)
 }
 
 enum class NodeAction { CLICK, LONG_CLICK, SET_TEXT, SCROLL_FORWARD, SCROLL_BACKWARD }
@@ -234,18 +244,78 @@ object AccessibilityController {
             )
         }
 
-        // Give the system a moment to bind the service
-        delay(300L)
-        repeat(9) {
-            if (serviceInstance != null) return Result.success(Unit)
-            delay(300L)
-        }
-
-        return if (serviceInstance != null) {
+        return if (awaitServiceConnected()) {
             Result.success(Unit)
         } else {
             Result.failure(RuntimeException("AccessibilityService did not start within 3s"))
         }
+    }
+
+    /**
+     * 确保无障碍服务可用于截屏：只要 [Permission.ACCESSIBILITY]，不要 OVERLAY、不弹屏幕控制同意门。
+     * 缺权限时跑默认链（ROOT_SHELL → SHIZUKU → JUMP_SETTINGS）：后台调用时跳设置页那一环
+     * 会自行跳过（JumpSettingsHandler 只在有前台时跳），前台则是用户就在旁边的一次跳转。
+     */
+    suspend fun ensureAccessibility(): Result<Unit> {
+        if (serviceInstance != null) return Result.success(Unit)
+
+        val failures = ArrayList<String>(1)
+        if (!ensureOne(Permission.ACCESSIBILITY, failures)) {
+            return Result.failure(
+                RuntimeException(
+                    "The Zafiro accessibility service is not available (${failures.joinToString("; ")}). " +
+                            "Tell the user to enable 'Zafiro' in Settings > Accessibility, then retry."
+                )
+            )
+        }
+        return if (awaitServiceConnected()) {
+            Result.success(Unit)
+        } else {
+            Result.failure(RuntimeException("AccessibilityService did not start within 3s"))
+        }
+    }
+
+    /** 抓图整体超时：系统回调不来的话不把工具调用挂死。 */
+    private const val CAPTURE_TIMEOUT_MS = 5_000L
+
+    /**
+     * 用无障碍服务抓一张整屏图（官方 API，不是 shell 截屏）。
+     * 前置：调用方先跑 [ensureAccessibility]。安全窗口 / 受保护内容会被系统拒绝。
+     *
+     * 拿到的是 HARDWARE 位图（像素不可直接读），调用方自行 `copy` 成软件位图并 `recycle`。
+     */
+    suspend fun captureScreenImage(): Result<Bitmap> {
+        val service = serviceInstance
+            ?: return Result.failure(RuntimeException("Accessibility service is not connected."))
+
+        val bitmap = try {
+            withTimeoutOrNull(CAPTURE_TIMEOUT_MS) {
+                suspendCancellableCoroutine<Bitmap?> { cont ->
+                    service.captureScreenImage { bitmap -> cont.resume(bitmap) }
+                }
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            null
+        }
+
+        return if (bitmap != null) {
+            Result.success(bitmap)
+        } else {
+            Result.failure(
+                RuntimeException("Screen capture failed or timed out; secure or protected content cannot be captured.")
+            )
+        }
+    }
+
+    /** 等系统把刚授权的无障碍服务绑定起来：300ms 起步，最多重试 9 次。 */
+    private suspend fun awaitServiceConnected(): Boolean {
+        delay(300L)
+        repeat(9) {
+            if (serviceInstance != null) return true
+            delay(300L)
+        }
+        return serviceInstance != null
     }
 
     /**

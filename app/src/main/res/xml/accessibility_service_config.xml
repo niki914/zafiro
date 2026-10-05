@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <accessibility-service
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:accessibilityEventTypes="typeAllMask"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:canPerformGestures="true"
     android:canRetrieveWindowContent="true"
-    android:notificationTimeout="100" />
+    android:canTakeScreenshot="true"
+    android:notificationTimeout="100"
+    tools:targetApi="30" />
