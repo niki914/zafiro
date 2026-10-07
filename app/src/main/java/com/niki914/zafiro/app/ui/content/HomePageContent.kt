@@ -153,7 +153,7 @@ private const val PHOTO_PICK_MAX_ITEMS = 10
 fun HomePageContent(
     selectedConversationId: String?,
     onConversationSelectionConsumed: (String) -> Unit,
-    onActiveConversationChanged: (String?, String?) -> Unit,
+    onActiveConversationChanged: (String?) -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -271,11 +271,8 @@ fun HomePageContent(
         latestViewModel.sendIntent(HomeChatIntent.LoadConversation(id))
         latestOnConversationSelectionConsumed(id)
     }
-    LaunchedEffect(uiState.currentConversationId, uiState.currentConversationTitle) {
-        latestOnActiveConversationChanged(
-            uiState.currentConversationId,
-            uiState.currentConversationTitle,
-        )
+    LaunchedEffect(uiState.currentConversationId) {
+        latestOnActiveConversationChanged(uiState.currentConversationId)
     }
 
     val pageChromeContribution = remember(

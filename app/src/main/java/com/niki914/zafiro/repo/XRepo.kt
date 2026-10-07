@@ -444,6 +444,33 @@ object XRepo {
 
     suspend fun setThemeSeedColor(hex: String) = themeSeedColorField.set(hex)
 
+    private val pinnedConversationsField = PlainAppStateField(
+        select = { pinnedConversations },
+        update = { copy(pinnedConversations = it) },
+    )
+
+    internal suspend fun pinnedConversations(): List<PinnedConversation> =
+        pinnedConversationsField.get()
+
+    /**
+     * 置顶/取消置顶一条会话。整个文档 read-modify-write 在 writeMutex 内串行，
+     * 同会话重复置顶只保留最新时刻。
+     */
+    internal suspend fun setConversationPinned(
+        conversationId: String,
+        pinned: Boolean,
+        now: Long = System.currentTimeMillis(),
+    ) {
+        val id = conversationId.trim()
+        if (id.isEmpty()) return
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val state = AppStateSettingsCodec.parse(json)
+            val remaining = state.pinnedConversations.filterNot { it.id == id }
+            val updated = if (pinned) remaining + PinnedConversation(id, now) else remaining
+            AppStateSettingsCodec.encode(state.copy(pinnedConversations = updated))
+        }
+    }
+
     private val SCHEMA_WEB_SEARCH =
         """{"type":"object","properties":{"query":{"type":"string"},"engine":{"type":"string","enum":["all","baidu","sogou","ddg"],"description":"search engine; \"all\" (default) merges Baidu + Sogou + DuckDuckGo"},"max_results":{"type":"integer","description":"default: 8"}},"required":["query"]}"""
 

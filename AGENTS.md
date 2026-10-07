@@ -34,6 +34,14 @@
     └── libterm/         # 终端库（含多个后端：libsu, shizuku, ssh 等）
 ```
 
+### MVI 架构
+
+项目强制使用 MVI 心智：UI 只发意图、只读 VM 的 State，VM 通过更新 State 驱动 UI。基类见 ui-kit 的 ComposeMVIViewModel
+
+State 与 Effect 的区别是持久与一次性，分界的判据是「换个时间再读还成立吗」：列表数据、弹窗开关属于 State；Toast、聚焦、退出页面属于 Effect，只发生一次、没接住就没了
+
+弹窗最容易误判：触发弹窗是一次动作，但「弹窗开着」是界面当前的样子，重组、旋转、被压栈后回来都要能读到同一个答案，所以它是 State
+
 ### 宿主 / Host
 
 本项目通过 LSPosed 对 com.heytap.speechassist 等应用做 Hook，将系统语音助手的回答换成 Zafiro Agent 回答，具体实现是通过 Binder + AgentRuntimeService。当前的实现重点是，复杂的数据结构从不穿过 Binder，IPC 传递纯语义数据（Thinking、Tools、Content）。宿主架构采用分层治理：上层 `*Hook`（如 `BreenoHook`）为纯胶水调度层，严禁堆砌反射与类名硬编码
@@ -42,9 +50,35 @@
 
 ### 主界面 / Home / Compose
 
-这些都是指应用的主入口，Compose UI，具体的对话是在 HomChatViewModel 内通过 Agent API 维护
+这些都是指应用的主入口，Compose UI，具体的对话是在 HomChatViewModel 内通过 Agent API 维护。Compose 必须是无状态的，从配套的 MVI ViewModel 里取数据
 
 这是整个应用的根基，它的重要性和优先级最高
+
+### UI 框架 / ui-kit
+
+导航、导航栏、弹窗、设置项都用 ui-kit 里既定的那套，不要另起一套。实现涉及导航、ViewModel、弹窗的业务前 MUST 调研已有代码作为参考
+
+#### 导航
+
+导航是自行实现的（ui-kit 的 nav 包），而不是使用 nav3。每个 entry 自带 viewmodel 生命周期，页面 VM 要通过框架拿，不要自己去取
+
+push 分正推与从左推（onPushFromLeft）两个方向，返回要配对使用；返回按钮的位置也跟着方向走，正向推入在左上角，从左推入在右上角
+
+#### 导航栏与左右上角按钮
+
+导航栏指 LiquidScreen 顶部的动作条，只有左右两个图标槽，内容由页面通过 PageChromeContribution 覆盖，页面不自己画
+
+背景色与标题由滚动状态自行感知切换，大部分页面不需要参与；左右按钮通常指这两个图标槽
+
+#### 弹窗类
+
+约定使用 LiquidDialog（ConfirmationLiquidDialog、SingleChoiceLiquidDialog 等），它必须挂在 LiquidScreen 的内容树里，返回键由弹窗自己接管
+
+BottomSheet 用 OptionSheet
+
+#### 设置项
+
+设置页、设置列表、设置详情统一用 ui-kit 的 Settings* 组件（页面骨架、分组卡片、行、分隔线都有现成的），如无明确要求，禁止手搓
 
 ### 对话列表
 
@@ -124,16 +158,3 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 ### 讲解
 
 - 需要向用户阐述复杂内容时，可以通过 `eli5` 或 `show-me` 帮助解答。eli5 是打比方，show-me 是用前端页面
-
----
-
-## 未完成项目
-
-[x] MEDIUM: 通过参考开源项目重构宿主业务
-[] HARD: 实现一个 Replay 功能，用户可以录制一段操作，作为工具保存下来，Agent 通过调用这个工具来重放用户的操作
-[] EAZY: `Build.VERSION.SDK_INT >= Build.VERSION_CODES.O` 这样的版本相关的无用判断
-[] MEDIUM: 内联包名清理，使用默认参数而放在构造函数里面的成员
-[] HARD: 处理散落的 `TODO`
-[] EAZY: Composer 附件多选：Photos 从 `PickVisualMedia` 换到 `PickMultipleVisualMedia`（同一个系统相册，不是自研 picker），Files 侧允许多选
-[] MEDIUM: 附件 Recents：在选项单里列出最近附加过的文件 / 文件夹（需要一份最近附件列表的持久化）
-[] EZAT: 添加一个 runCatching 封装到 :api 专门处理 cancellation exception 等异常，然后全仓搜索 try / runCatching 做清扫
