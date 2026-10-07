@@ -7,10 +7,6 @@ class FakeClock(initialMillis: Long = 0L) : Clock {
 
     override fun nowMillis(): Long = currentMillis
 
-    fun setNowMillis(value: Long) {
-        currentMillis = value
-    }
-
     fun advanceBy(deltaMillis: Long): Long {
         require(deltaMillis >= 0L) { "deltaMillis must be >= 0" }
         currentMillis += deltaMillis

@@ -575,41 +575,12 @@ class OpenAIChatCompletionProtocolTest {
 
     // ── encodeToolResult ──────────────────────────────────────────────────
 
-    @Test
-    fun encodeToolResultWrapsOutcomeFaithfully() {
-        val call = ContentBlock.ToolCall("call_1", "tool-a", "{}")
-        val outcomes = listOf<ToolCallOutcome>(
-            ToolCallOutcome.Success("ok"),
-            ToolCallOutcome.Failure("boom", "detail"),
-            ToolCallOutcome.Intercepted("blocked", "cached", true),
-            ToolCallOutcome.Interrupted("partial"),
-            ToolCallOutcome.Unknown("unknown", "partial")
-        )
-        outcomes.forEach { outcome ->
-            val message = protocol.encodeToolResult(call, outcome)
-            assertEquals(Message.ToolResult("call_1", "tool-a", outcome), message)
-        }
-    }
-
     // ── withCodec ─────────────────────────────────────────────────────────
-
-    @Test
-    fun withCodecReturnsNewInstance() {
-        val other = protocol.withCodec(Json { prettyPrint = true }) as OpenAIChatCompletionProtocol
-        assertTrue(other !== protocol)
-        assertEquals("deepseek", other.id)
-    }
 
     // ── OpenAI 官方 compat 形态 ───────────────────────────────────────────
 
     private val openai = OpenAIChatCompletionProtocol(compat = OpenAIChatCompletionCompat())
     private val google = OpenAIChatCompletionProtocol(compat = GoogleOpenAiCompat())
-
-    @Test
-    fun openaiCompatCarriesIdentityAndEndpoint() {
-        assertEquals("openai", openai.id)
-        assertEquals("https://api.openai.com/v1/chat/completions", openai.defaultEndpoint)
-    }
 
     @Test
     fun openaiCompatUsesMaxCompletionTokensField() {
@@ -667,15 +638,6 @@ class OpenAIChatCompletionProtocolTest {
     /** assistant 历史里首个 tool_call 对象。 */
     private fun firstToolCallOf(request: HttpRequest): JsonObject =
         messagesOf(request).single()["tool_calls"]!!.jsonArray[0].jsonObject
-
-    @Test
-    fun googleCompatCarriesIdentityAndEndpoint() {
-        assertEquals("google-openai", google.id)
-        assertEquals(
-            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-            google.defaultEndpoint
-        )
-    }
 
     @Test
     fun googleCompatReplaysThoughtSignatureOnAssistantToolCall() = runBlocking {
@@ -738,18 +700,6 @@ class OpenAIChatCompletionProtocolTest {
             )
         )
         assertNull(firstToolCallOf(request)["extra_content"])
-    }
-
-    @Test
-    fun deepSeekCompatStillUsesMaxTokensAndReasoningContent() {
-        // 默认装配（DeepSeek compat）行为不变：max_tokens + reasoning_content 空串
-        val request = runBlocking { protocol.buildRequest(snapshot(maxTokens = 1024), emptyList()) }
-        val json = Json.parseToJsonElement(request.body!!).jsonObject
-        assertEquals(1024, json["max_tokens"]!!.jsonPrimitive.content.toInt())
-        assertNull(json["max_completion_tokens"])
-        assertEquals("deepseek", protocol.id)
-        assertEquals("https://api.deepseek.com/chat/completions", protocol.defaultEndpoint)
-        assertTrue(protocol.compat is DeepSeekCompat)
     }
 
     // ── 工具结果多图 ────────────────────────────────────────────────

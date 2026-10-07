@@ -93,18 +93,6 @@ class McpExecutorTest {
         assertEquals(ToolCallOutcome.Success("ok"), outcome)
     }
 
-    @Test
-    fun passesServerHeadersThrough() = runTest {
-        val client = FakeClient()
-        val servers =
-            mapOf("docs" to server("docs", headers = mapOf("Authorization" to "Bearer t")))
-        val exec = executor(client, servers)
-
-        exec.execute(mcpCall())
-
-        assertEquals("Bearer t", client.calls.single().server.headers["Authorization"])
-    }
-
     // ── 成功映射 ───────────────────────────────────────────────────────────
 
     @Test

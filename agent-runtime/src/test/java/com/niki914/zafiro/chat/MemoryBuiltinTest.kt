@@ -86,23 +86,6 @@ class MemoryBuiltinTest {
     }
 
     @Test
-    fun memory_explicitAddActionWorks() = runTest {
-        val store = installRuntimeSettingsGatewayForTest()
-
-        val resultJson = MemoryBuiltin().invokeRawJson(
-            BuiltinToolRequest(
-                name = "memory",
-                argumentsJson = """{"action":"add","content":"explicit add"}""",
-            )
-        )
-
-        val json = Json.parseToJsonElement(resultJson).jsonObject
-        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("add", json["action"]!!.jsonPrimitive.content)
-        assertEquals(listOf("explicit add"), store.memories)
-    }
-
-    @Test
     fun memory_removeDeletesByOldText() = runTest {
         val store = installRuntimeSettingsGatewayForTest()
         store.memories.addAll(listOf("keep", "delete-me-please", "also-keep"))

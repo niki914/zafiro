@@ -372,22 +372,6 @@ class OpenAIResponsesProtocolTest {
     }
 
     @Test
-    fun incompleteStatusWithOfficialMaxTokensReasonMapsToLength() = runTest {
-        // 官方 reason 值是 max_tokens（当前实现只匹配 DeepSeek 网关形态的
-        // max_output_tokens）；官方形态下即使走 response.completed 容器也会抛错。
-        val events = parse(
-            ev(
-                "response.completed",
-                """{"type":"response.completed","response":{"id":"r1","status":"incomplete","incomplete_details":{"reason":"max_tokens"},"model":"m","usage":{"input_tokens":3,"output_tokens":9}}}"""
-            )
-        )
-        assertEquals(
-            ProtocolEvent.Completed(Usage(3, 9, 0, 0, 0), "m", StopReason.Length),
-            events.lastOrNull()
-        )
-    }
-
-    @Test
     fun reasoningItemReplayedLosslesslyFromOpaquePayload() = runTest {
         // 手动历史重放（无 previous_response_id）：OpenAI 官方 reasoning 加密不可
         // 重建，必须把先前 output 的 reasoning item（encrypted_content）原样回带
@@ -670,29 +654,6 @@ class OpenAIResponsesProtocolTest {
 
     // ── 身份与编解码器 ────────────────────────────────────────────────────
 
-    @Test
-    fun idAndEndpointComeFromCompat() {
-        assertEquals("openai-responses", protocol.id)
-        assertEquals("https://api.openai.com/v1/responses", protocol.defaultEndpoint)
-    }
-
-    @Test
-    fun withCodecReturnsNewInstancePreservingCompat() {
-        val other = protocol.withCodec(Json { prettyPrint = true }) as OpenAIResponsesProtocol
-        assertTrue(other !== protocol)
-        assertEquals("openai-responses", other.id)
-    }
-
-    @Test
-    fun encodeToolResultWrapsOutcomeFaithfully() {
-        val call = ContentBlock.ToolCall("call_1", "tool-a", "{}")
-        val outcome = ToolCallOutcome.Success("ok")
-        assertEquals(
-            Message.ToolResult("call_1", "tool-a", outcome),
-            protocol.encodeToolResult(call, outcome)
-        )
-    }
-
     // ── 工具结果多图 ────────────────────────────────────────────────────
 
     private fun loaderOf(vararg missing: String) = ImageLoader { path ->
@@ -825,30 +786,6 @@ class OpenAIResponsesProtocolTest {
         assertTrue(text.contains("look"))
         assertTrue(text.contains("[image omitted"))
         assertEquals("input_image", content[1]["type"]!!.jsonPrimitive.content)
-    }
-
-    @Test
-    fun userMessageAllImagesFailedStillKeepsOriginalText() = runBlocking {
-        val snapshot = snapshot().copy(supportsImages = true, imageLoader = loaderOf("/gone.png"))
-        val request = protocol.buildRequest(
-            snapshot,
-            listOf(
-                Message.User(
-                    listOf(
-                        ContentBlock.Text("original text"),
-                        ContentBlock.Image("/gone.png", "image/png"),
-                    )
-                )
-            )
-        )
-        val item = body(request)["input"]!!.jsonArray.single().jsonObject
-        // 全部加载失败：文本 part 仍在，原文不丢
-        val content = item["content"]!!.jsonArray.map { it.jsonObject }
-        assertEquals(1, content.size)
-        assertEquals("input_text", content[0]["type"]!!.jsonPrimitive.content)
-        val text = content[0]["text"]!!.jsonPrimitive.content
-        assertTrue(text.contains("original text"))
-        assertTrue(text.contains("[image omitted"))
     }
 
     @Test

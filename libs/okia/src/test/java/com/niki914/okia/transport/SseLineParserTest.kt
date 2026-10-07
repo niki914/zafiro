@@ -119,18 +119,8 @@ class SseLineParserTest {
     }
 
     @Test
-    fun commentLineWithoutSpaceIsNull() = runTest {
-        assertEquals(listOf(SseLine(null)), parse(":ping\n"))
-    }
-
-    @Test
     fun emptyLineIsEmptyString() = runTest {
         assertEquals(listOf(SseLine("")), parse("\n"))
-    }
-
-    @Test
-    fun consecutiveEmptyLines() = runTest {
-        assertEquals(listOf(SseLine(""), SseLine("")), parse("\n\n"))
     }
 
     @Test

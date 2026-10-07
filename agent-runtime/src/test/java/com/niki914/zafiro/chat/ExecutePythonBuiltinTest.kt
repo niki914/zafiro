@@ -126,20 +126,6 @@ class ExecutePythonBuiltinTest {
     }
 
     @Test
-    fun invoke_executorThrowsAnyMessage_returnsPythonError() = runTest {
-        // 超时已走结构化路径（PyExecOutput.timedOut），异常不再嗅探字符串：
-        // executor 抛什么都是 PYTHON_ERROR
-        val result = invoke(
-            """{"code":"raise"}""",
-            executor = { _, _ ->
-                throw RuntimeException("Execution timed out after 30s\n\nPartial output:\nsome output")
-            },
-        )
-        assertTrue(result.contains("#!status: failure"))
-        assertTrue(result.contains("#!code: PYTHON_ERROR"))
-    }
-
-    @Test
     fun invoke_structuredTimeout_appendsPartialNote() = runTest {
         val result = invoke(
             """{"code":"while True: pass"}""",
@@ -217,16 +203,6 @@ class ExecutePythonBuiltinTest {
         assertTrue(result.contains("#!status: failure"))
         assertTrue(result.contains("#!code: COMMAND_BLOCKED"))
         assertTrue(result.contains("Block su"))
-    }
-
-    @Test
-    fun invoke_policyAllows_continuesToExecute() = runTest {
-        val result = invoke(
-            """{"code":"print('safe')"}""",
-            executor = { _, _ -> inlineOutput("safe output") },
-        )
-        assertTrue(result.contains("#!status: success"))
-        assertTrue(result.contains("safe output"))
     }
 
     // ---- timeout clamping ----

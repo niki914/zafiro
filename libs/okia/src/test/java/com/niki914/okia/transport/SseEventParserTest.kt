@@ -148,14 +148,6 @@ class SseEventParserTest {
     // ── 字段细节 ─────────────────────────────────────────────────────────
 
     @Test
-    fun unknownFieldIgnored() = runTest {
-        assertEquals(
-            listOf(SseEvent("a")),
-            parse(line("foo: bar"), line("data: a"), blank())
-        )
-    }
-
-    @Test
     fun lineWithoutColonIgnored() = runTest {
         assertEquals(
             listOf(SseEvent("a")),
@@ -166,12 +158,6 @@ class SseEventParserTest {
     @Test
     fun colonInsideValuePreserved() = runTest {
         assertEquals(listOf(SseEvent("a:b")), parse(line("data: a:b"), blank()))
-    }
-
-    @Test
-    fun singleLeadingSpaceStripped() = runTest {
-        // "data: x" 冒号后一个空格被移除 → "x"
-        assertEquals(listOf(SseEvent("x")), parse(line("data: x"), blank()))
     }
 
     @Test

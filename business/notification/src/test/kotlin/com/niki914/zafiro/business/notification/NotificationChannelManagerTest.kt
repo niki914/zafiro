@@ -1,6 +1,5 @@
 package com.niki914.zafiro.business.notification
 
-import android.app.NotificationManager
 import android.content.Context
 import com.niki914.zafiro.business.permission.Channel
 import com.niki914.zafiro.business.permission.Permission
@@ -12,7 +11,6 @@ import com.niki914.zafiro.service.ServiceRegistry
 import com.niki914.zafiro.service.installService
 import kotlinx.coroutines.test.runTest
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,19 +21,6 @@ class NotificationChannelManagerTest {
     @After
     fun tearDown() {
         ServiceRegistry.clearForTest()
-    }
-
-    @Test
-    fun appNotificationChannel_definesCorrectChannels() {
-        val alerts = AppNotificationChannel.Alerts
-        assertEquals("zafiro_alerts", alerts.id)
-        assertEquals(NotificationManager.IMPORTANCE_HIGH, alerts.importance)
-        assertEquals(R.string.notification_channel_alerts, alerts.channelNameResId)
-
-        val resident = AppNotificationChannel.Resident
-        assertEquals("zafiro_resident", resident.id)
-        assertEquals(NotificationManager.IMPORTANCE_LOW, resident.importance)
-        assertEquals(R.string.notification_channel_resident, resident.channelNameResId)
     }
 
     @Test

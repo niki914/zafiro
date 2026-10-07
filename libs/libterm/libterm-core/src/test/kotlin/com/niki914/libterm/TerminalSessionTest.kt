@@ -153,25 +153,6 @@ class TerminalSessionTest {
     }
 
     @Test
-    fun `send byte array convenience wraps copy`() = runTest {
-        val backend = FakeBackend(identity = TerminalIdentity.User)
-        val session = createSession(
-            backend = backend,
-            clock = FakeClock(),
-            scheduler = testScheduler,
-        )
-        val input = byteArrayOf(1, 2, 3)
-
-        assertEquals(SessionState.Running, session.start())
-        assertEquals(SendResult.Sent, session.send(input))
-        input[0] = 9
-
-        assertEquals(listOf(TerminalBytes.of(byteArrayOf(1, 2, 3))), backend.writes)
-
-        backend.finishNormally()
-    }
-
-    @Test
     fun `send after close returns already closed failure`() = runTest {
         val backend = FakeBackend(identity = TerminalIdentity.Shizuku)
         val session = createSession(

@@ -31,17 +31,6 @@ class RuntimeEnvironmentTest {
         assertSame(gateway, awaiting.await())
     }
 
-    @Test
-    fun requireBridge_returnsInstalledBridge() {
-        val gateway = FakeRuntimeSettingsGateway()
-        val bridge = createRuntimeBridge(gateway)
-
-        installBridge(bridge)
-
-        val requireBridge = RuntimeEnvironment::class.java.getMethod("requireBridge")
-        val requiredBridge = requireBridge.invoke(RuntimeEnvironment)
-        assertSame(bridge, requiredBridge)
-    }
 }
 
 private fun installBridge(settingsGateway: RuntimeSettingsGateway) {

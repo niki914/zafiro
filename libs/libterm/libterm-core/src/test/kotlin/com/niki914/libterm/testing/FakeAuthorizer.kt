@@ -24,16 +24,4 @@ class FakeAuthorizer : PrivilegeAuthorizer {
             TerminalFailure.AuthorizationDenied(identity = identity, message = message),
         )
     }
-
-    fun setUnavailable(identity: TerminalIdentity, message: String? = null) {
-        resultsByIdentity[identity] = AuthorizationResult.Unavailable(
-            TerminalFailure.BackendUnavailable(identity = identity, message = message),
-        )
-    }
-
-    fun setFailed(identity: TerminalIdentity, message: String? = null) {
-        resultsByIdentity[identity] = AuthorizationResult.Failed(
-            TerminalFailure.AuthorizationFailed(identity = identity, message = message),
-        )
-    }
 }
