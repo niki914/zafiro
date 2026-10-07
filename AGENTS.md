@@ -12,6 +12,7 @@
 ./
 ├── .agents/skills/      # SKILLs 真实目录
 ├── .claude/skills/      # .agents/skills 的软链，不用修改这里的文件
+├── .githooks/           # 提交前坏味道检查；规则、放行、清理方式见其 README.md
 ├── app/                 # 主应用：Compose UI、AgentRuntimeService、Xposed 钩子
 ├── business/            # 业务核心层（契约与实现分离）
 │   ├── api/             # 业务对外公共契约接口
@@ -94,15 +95,14 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 
 ### 实现代码
 
+- 坏味道由 `.githooks/` 在提交前拦（监视器锁、变化叙述注释、内联全限定名、绕过 Logger 的日志、日志 TAG 前缀）；规则、放行标记、按模块清理方式见 `.githooks/README.md`。需要提交时，无须提前阅读 Hooks，正常提交即可，有问题会被 Hooks 扫出
 - 不要使用后台任务进行编译或单测，使用同步方法
 - 禁止出现 [改两行 ui 字符串 -> 编译 -> 再改] 的行为，应该在确实需要时（比如做了重型重构后）编译
 - 实现多语言时需通过 ls 等手段确认实际的语言种类
 
 ### 单测
 
-- 允许对 UI 相关的状态机做测试，但禁止给 UI 写单测
-- 禁止给复杂度低、静态分析有足够把握判断的代码写单测
-- 重构代码后，对应的单测如果是针对遗留代码的，应该重写
+- 写或修改任何单测之前，**必须先调用 `test-triage` skill**：先判断这个测试该不该存在（拦截力），通过了再写。单测规则以该 skill 为准
 
 ### requireService<>()
 
@@ -137,4 +137,3 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 [] EAZY: Composer 附件多选：Photos 从 `PickVisualMedia` 换到 `PickMultipleVisualMedia`（同一个系统相册，不是自研 picker），Files 侧允许多选
 [] MEDIUM: 附件 Recents：在选项单里列出最近附加过的文件 / 文件夹（需要一份最近附件列表的持久化）
 [] EZAT: 添加一个 runCatching 封装到 :api 专门处理 cancellation exception 等异常，然后全仓搜索 try / runCatching 做清扫
-[] MEDIUM: githooks: 限制监视器锁使用；限制遗留类注释如“不再”，这种 API 修改 / fixes 除了实现需求的人以外，没人需要知道曾经是啥样的；不导入的内联代码；复杂的构造参数；requireService 放在构造参数或者构造参数的调用。只对 diff 生效不对全局代码
