@@ -9,6 +9,8 @@ import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ConversationTurn
 import com.niki914.zafiro.api.model.TurnBlock
+import com.niki914.zafiro.api.model.ToolInvocation
+import com.niki914.zafiro.app.ui.model.MainDispatcherRule
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.zafiro.business.agent.turnIdAt
 import com.niki914.zafiro.service.ServiceRegistry
@@ -29,7 +31,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeChatViewModelUiStateTest {
     @get:Rule
-    val mainDispatcherRule = com.niki914.zafiro.app.ui.model.MainDispatcherRule(UnconfinedTestDispatcher())
+    val mainDispatcherRule = MainDispatcherRule(UnconfinedTestDispatcher())
 
     @get:Rule
     val silentLoggerRule = SilentLoggerRule()
@@ -51,7 +53,7 @@ class HomeChatViewModelUiStateTest {
                     userText = "question",
                     blocks = listOf(
                         TurnBlock.Text("t0:0", "before"),
-                        TurnBlock.Tool("t0:1", com.niki914.zafiro.api.model.ToolInvocation("tool", "search", "Search")),
+                        TurnBlock.Tool("t0:1", ToolInvocation("tool", "search", "Search")),
                         TurnBlock.Text("t0:2", tail),
                     ),
                 ),

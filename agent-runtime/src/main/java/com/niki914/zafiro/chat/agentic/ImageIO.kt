@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.io.File
+import com.niki914.zafiro.chat.agentic.image.ImageFormat
 
 /**
  * Android ImageLoader 实现：从文件系统读取图片字节（suspend + IO dispatcher）。
@@ -18,7 +19,7 @@ import java.io.File
  * 护栏：文件 ≤12MB（纵深防御，ingest 已保证落盘图小，但历史路径无保证）。
  */
 class AndroidImageLoader(
-    private val maxBytes: Int = com.niki914.zafiro.chat.agentic.image.ImageFormat.MAX_IMAGE_BYTES,
+    private val maxBytes: Int = ImageFormat.MAX_IMAGE_BYTES,
 ) : ImageLoader {
     override suspend fun load(path: String): ByteArray? = withContext(Dispatchers.IO) {
         try {

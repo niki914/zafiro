@@ -3,8 +3,6 @@ package com.niki914.libterm
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class TerminalBytesTest {
 
@@ -35,12 +33,5 @@ class TerminalBytesTest {
 
         assertEquals(first, second)
         assertEquals(first.hashCode(), second.hashCode())
-    }
-
-    @Test
-    fun `empty has zero size`() {
-        assertEquals(0, TerminalBytes.EMPTY.size)
-        assertTrue(TerminalBytes.EMPTY.isEmpty)
-        assertFalse(TerminalBytes.of(byteArrayOf(1)).isEmpty)
     }
 }

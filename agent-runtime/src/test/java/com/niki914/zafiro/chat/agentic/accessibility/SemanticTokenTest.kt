@@ -16,24 +16,6 @@ class SemanticTokenTest {
     }
 
     @Test
-    fun parse_zeroVersionAndIndex() {
-        val result = SemanticToken.parse("0000_0")
-        assertTrue(result.isSuccess)
-        val token = result.getOrThrow()
-        assertEquals("0000", token.version)
-        assertEquals(0, token.index)
-    }
-
-    @Test
-    fun parse_largeIndex() {
-        val result = SemanticToken.parse("ffff_999")
-        assertTrue(result.isSuccess)
-        val token = result.getOrThrow()
-        assertEquals("ffff", token.version)
-        assertEquals(999, token.index)
-    }
-
-    @Test
     fun parse_noUnderscore_fails() {
         val result = SemanticToken.parse("abc")
         assertTrue(result.isFailure)

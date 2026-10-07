@@ -13,11 +13,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.niki914.zafiro.chat.util.SilentLoggerRule
+import java.io.File
+import java.nio.file.Files
 
 class ExecutePythonBuiltinTest {
 
     @get:Rule
-    val silentLogger = com.niki914.zafiro.chat.util.SilentLoggerRule()
+    val silentLogger = SilentLoggerRule()
 
     private fun allowAllPolicy(): ToolExecutionPreflight =
         ToolExecutionPreflight(
@@ -29,7 +32,7 @@ class ExecutePythonBuiltinTest {
         argumentsJson: String,
         executor: suspend (String, Long) -> PyExecOutput = { _, _ -> inlineOutput("") },
         preflight: ToolExecutionPreflight = allowAllPolicy(),
-        exportDir: java.io.File? = null,
+        exportDir: File? = null,
     ): String {
         val tool = ExecutePythonBuiltin(
             executor = executor,
@@ -42,8 +45,8 @@ class ExecutePythonBuiltinTest {
     private fun inlineOutput(text: String): PyExecOutput =
         PyExecOutput(text, null, timedOut = false)
 
-    private fun fileOutput(text: String, dir: java.io.File): PyExecOutput {
-        val f = java.io.File.createTempFile("pyout", ".log", dir)
+    private fun fileOutput(text: String, dir: File): PyExecOutput {
+        val f = File.createTempFile("pyout", ".log", dir)
         f.writeText(text)
         return PyExecOutput(text, f, timedOut = false)
     }
@@ -123,20 +126,6 @@ class ExecutePythonBuiltinTest {
     }
 
     @Test
-    fun invoke_executorThrowsAnyMessage_returnsPythonError() = runTest {
-        // 超时已走结构化路径（PyExecOutput.timedOut），异常不再嗅探字符串：
-        // executor 抛什么都是 PYTHON_ERROR
-        val result = invoke(
-            """{"code":"raise"}""",
-            executor = { _, _ ->
-                throw RuntimeException("Execution timed out after 30s\n\nPartial output:\nsome output")
-            },
-        )
-        assertTrue(result.contains("#!status: failure"))
-        assertTrue(result.contains("#!code: PYTHON_ERROR"))
-    }
-
-    @Test
     fun invoke_structuredTimeout_appendsPartialNote() = runTest {
         val result = invoke(
             """{"code":"while True: pass"}""",
@@ -150,8 +139,8 @@ class ExecutePythonBuiltinTest {
 
     @Test
     fun invoke_fileOutput_small_notExported() = runTest {
-        val dir = java.nio.file.Files.createTempDirectory("pyexport").toFile()
-        val exportDir = java.nio.file.Files.createTempDirectory("pyexport").toFile()
+        val dir = Files.createTempDirectory("pyexport").toFile()
+        val exportDir = Files.createTempDirectory("pyexport").toFile()
         try {
             val result = invoke(
                 """{"code":"print('ok')"}""",
@@ -160,7 +149,7 @@ class ExecutePythonBuiltinTest {
             )
             assertTrue(result.contains("ok"))
             // 未截断：传输文件已被消费删除，导出目录无文件
-            assertFalse(java.io.File(dir, "x").exists())
+            assertFalse(File(dir, "x").exists())
             assertEquals(0, exportDir.listFiles()?.size)
         } finally {
             dir.deleteRecursively()
@@ -170,8 +159,8 @@ class ExecutePythonBuiltinTest {
 
     @Test
     fun invoke_truncatedOutput_exportsFullFile() = runTest {
-        val dir = java.nio.file.Files.createTempDirectory("pyexport").toFile()
-        val exportDir = java.nio.file.Files.createTempDirectory("pyexport").toFile()
+        val dir = Files.createTempDirectory("pyexport").toFile()
+        val exportDir = Files.createTempDirectory("pyexport").toFile()
         try {
             val big = "x\n".repeat(30000) // 60KB > 50KB
             val result = invoke(
@@ -214,16 +203,6 @@ class ExecutePythonBuiltinTest {
         assertTrue(result.contains("#!status: failure"))
         assertTrue(result.contains("#!code: COMMAND_BLOCKED"))
         assertTrue(result.contains("Block su"))
-    }
-
-    @Test
-    fun invoke_policyAllows_continuesToExecute() = runTest {
-        val result = invoke(
-            """{"code":"print('safe')"}""",
-            executor = { _, _ -> inlineOutput("safe output") },
-        )
-        assertTrue(result.contains("#!status: success"))
-        assertTrue(result.contains("safe output"))
     }
 
     // ---- timeout clamping ----

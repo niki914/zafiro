@@ -88,6 +88,7 @@ import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.app.ui.model.home.formatFileNameMiddleTruncated
 import com.niki914.zafiro.chat.LlmErrorCode
+import android.graphics.BitmapFactory
 
 internal data class AssistantErrorUi(
     val titleRes: Int,
@@ -635,7 +636,7 @@ private fun rememberPathBitmap(path: String): ImageBitmap? =
     produceState<ImageBitmap?>(initialValue = null, path) {
         value = withContext(Dispatchers.IO) {
             runCatching {
-                android.graphics.BitmapFactory.decodeFile(path)?.asImageBitmap()
+                BitmapFactory.decodeFile(path)?.asImageBitmap()
             }.getOrNull()
         }
     }.value

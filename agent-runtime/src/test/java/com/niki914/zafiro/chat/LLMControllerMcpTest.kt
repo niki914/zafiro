@@ -38,6 +38,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import com.niki914.okia.protocol.RequestSnapshot
 
 /**
  * T2b MCP 装配与发现时序（方案 B，D-T2B-3）：
@@ -248,7 +249,7 @@ class LLMControllerMcpTest {
         override val compat = DeepSeekCompat()
 
         override suspend fun buildRequest(
-            snapshot: com.niki914.okia.protocol.RequestSnapshot,
+            snapshot: RequestSnapshot,
             history: List<Message>,
         ): HttpRequest = HttpRequest(
             url = snapshot.endpoint,

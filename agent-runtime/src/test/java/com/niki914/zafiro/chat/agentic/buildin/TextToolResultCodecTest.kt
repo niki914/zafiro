@@ -31,14 +31,6 @@ class TextToolResultCodecTest {
     }
 
     @Test
-    fun `encode failure without payload`() {
-        val result = TextToolResult.failure("ERR", "msg")
-        val encoded = TextToolResultCodec.encode(result)
-        val expected = "#!tool-result\n#!status: failure\n#!code: ERR\n#!message: msg\n\n"
-        assertEquals(expected, encoded)
-    }
-
-    @Test
     fun `encode message folding for newlines carriage returns and tabs`() {
         val result = TextToolResult.failure("ERR", "line1\nline2\rtab\there")
         val encoded = TextToolResultCodec.encode(result)

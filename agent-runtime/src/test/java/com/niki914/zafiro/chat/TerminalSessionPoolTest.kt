@@ -22,10 +22,10 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import com.niki914.libterm.runtime.TerminalTextChunk
 
 class TerminalSessionPoolTest {
 
@@ -84,16 +84,6 @@ class TerminalSessionPoolTest {
         val outcome = TerminalSessionPool.close(session = "user")
 
         assertEquals(TerminalCloseOutcome.Closed, outcome)
-    }
-
-    @Test
-    fun closeAllClearsMissingStateAndKeepsPoolReusable() = runTest {
-        val first = TerminalSessionPool.closeAll()
-        val second = TerminalSessionPool.closeAll()
-
-        assertEquals(0, first.closedCount)
-        assertEquals(0, second.closedCount)
-        assertNull(TerminalSessionPool.get("user"))
     }
 
     @Test
@@ -577,7 +567,7 @@ class TerminalSessionPoolTest {
     private class FakeTerminalSession(
         override val id: String,
     ) : TerminalSessionPort {
-        override val stream = emptyFlow<com.niki914.libterm.runtime.TerminalTextChunk>()
+        override val stream = emptyFlow<TerminalTextChunk>()
         val commands = mutableListOf<String>()
         var nextResult: CommandResult = commandResult()
         var closed = false

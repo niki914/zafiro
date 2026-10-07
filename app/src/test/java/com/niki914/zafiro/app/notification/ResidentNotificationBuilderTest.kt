@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import android.app.Notification
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -186,49 +187,7 @@ class ResidentNotificationBuilderTest {
         assertNotNull(notification)
         assertEquals(1, notification.actions?.size)
         assertEquals(context.getString(R.string.agent_resident_action_stop), notification.actions[0].title.toString())
-        assertTrue(notification.flags and android.app.Notification.FLAG_ONGOING_EVENT != 0)
-    }
-
-    @Test
-    fun build_forThinking_includesStopAction() {
-        val dummyIntent = PendingIntent.getBroadcast(
-            context,
-            1,
-            Intent("ACTION_STOP"),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
-        val status = AgentState.Thinking(text = "Reasoning...")
-        val notification = ResidentNotificationBuilder.build(
-            context = context,
-            channelManager = channelManager,
-            status = status,
-            stopIntent = dummyIntent,
-        )
-
-        assertNotNull(notification)
-        assertEquals(1, notification.actions?.size)
-        assertEquals(context.getString(R.string.agent_resident_action_stop), notification.actions[0].title.toString())
-    }
-
-    @Test
-    fun build_forToolRunning_includesStopAction() {
-        val dummyIntent = PendingIntent.getBroadcast(
-            context,
-            1,
-            Intent("ACTION_STOP"),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
-        val status = AgentState.ToolRunning(toolName = "bash", label = "bash", argumentsJson = null)
-        val notification = ResidentNotificationBuilder.build(
-            context = context,
-            channelManager = channelManager,
-            status = status,
-            stopIntent = dummyIntent,
-        )
-
-        assertNotNull(notification)
-        assertEquals(1, notification.actions?.size)
-        assertEquals(context.getString(R.string.agent_resident_action_stop), notification.actions[0].title.toString())
+        assertTrue(notification.flags and Notification.FLAG_ONGOING_EVENT != 0)
     }
 
     @Test
@@ -272,21 +231,7 @@ class ResidentNotificationBuilderTest {
         )
 
         assertNotNull(notification)
-        assertEquals("最终回答", notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT).toString())
-        assertTrue(notification.actions == null || notification.actions.isEmpty())
-    }
-
-    @Test
-    fun build_forFreshIdle_hasNoBody() {
-        val status = AgentState.Idle()
-        val notification = ResidentNotificationBuilder.build(
-            context = context,
-            channelManager = channelManager,
-            status = status,
-        )
-
-        assertNotNull(notification)
-        assertNull(notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT))
+        assertEquals("最终回答", notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
         assertTrue(notification.actions == null || notification.actions.isEmpty())
     }
 

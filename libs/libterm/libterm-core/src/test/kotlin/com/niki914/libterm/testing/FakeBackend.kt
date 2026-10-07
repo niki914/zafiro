@@ -24,8 +24,6 @@ class FakeBackend(
     private val exitResult = CompletableDeferred<TerminalFailure?>()
 
     private var startFailure: TerminalFailure? = null
-    private var closeGate: CompletableDeferred<Unit>? = null
-    private var shouldHoldClose: Boolean = false
 
     override val output: Flow<OutputChunk> = outputEvents.receiveAsFlow()
 
@@ -41,12 +39,8 @@ class FakeBackend(
     var startCallCount: Int = 0
         private set
 
-    var lastStartOptions: TerminalOpenOptions? = null
-        private set
-
     override suspend fun start(openOptions: TerminalOpenOptions): BackendStartResult {
         startCallCount += 1
-        lastStartOptions = openOptions
         val failure = startFailure
         return if (failure == null) {
             BackendStartResult.Started
@@ -64,19 +58,11 @@ class FakeBackend(
     override suspend fun close() {
         closeCallCount += 1
         isClosed = true
-
-        val gate = if (shouldHoldClose) {
-            closeGate ?: CompletableDeferred<Unit>().also { closeGate = it }
-        } else {
-            null
-        }
-
-        gate?.await()
     }
 
     override suspend fun awaitExit(): TerminalFailure? = exitResult.await()
 
-    fun emitOutput(chunk: OutputChunk): Boolean = outputEvents.trySend(chunk).isSuccess
+    private fun emitOutput(chunk: OutputChunk): Boolean = outputEvents.trySend(chunk).isSuccess
 
     fun emitStdout(bytes: TerminalBytes): Boolean {
         return emitOutput(
@@ -104,23 +90,6 @@ class FakeBackend(
 
     fun failOnStart(failure: TerminalFailure) {
         startFailure = failure
-    }
-
-    fun clearStartFailure() {
-        startFailure = null
-    }
-
-    fun holdCloseUntilCompleted() {
-        shouldHoldClose = true
-        val gate = closeGate
-        if (gate == null || gate.isCompleted) {
-            closeGate = CompletableDeferred()
-        }
-    }
-
-    fun completeClose() {
-        shouldHoldClose = false
-        closeGate?.complete(Unit)
     }
 
     fun finishNormally() {

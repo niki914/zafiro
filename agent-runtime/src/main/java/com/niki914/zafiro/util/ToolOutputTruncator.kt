@@ -2,6 +2,7 @@ package com.niki914.zafiro.util
 
 import com.niki914.logging.Logger
 import java.io.File
+import com.niki914.xposed.api.util.ContextProvider
 import kotlin.random.Random
 
 /**
@@ -23,7 +24,7 @@ object ToolOutputTruncator {
      * （不导出），调用方无需各自接 ContextProvider。
      */
     fun defaultExportDir(): File? {
-        val context = com.niki914.xposed.api.util.ContextProvider.awaitIfAvailable() ?: return null
+        val context = ContextProvider.awaitIfAvailable() ?: return null
         return File(context.filesDir, EXPORT_DIR_NAME)
     }
 

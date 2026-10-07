@@ -24,6 +24,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import java.io.File
 
 /**
  * py_meta_tools 元工具（用来创造工具的工具）：CustomPyTool 注册表的增删改查 + 试运行。
@@ -39,7 +40,7 @@ class PyMetaToolsBuiltin(
     private val preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
     private val reservedNames: Set<String>? = null,
     /** 截断导出目录，测试可注入临时目录；默认 filesDir/tool_output。 */
-    private val exportDir: java.io.File? = ToolOutputTruncator.defaultExportDir(),
+    private val exportDir: File? = ToolOutputTruncator.defaultExportDir(),
 ) : BuiltinTool() {
 
     override val name: String = "py_meta_tools"

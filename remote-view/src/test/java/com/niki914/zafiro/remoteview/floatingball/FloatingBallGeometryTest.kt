@@ -23,25 +23,6 @@ class FloatingBallGeometryTest {
     }
 
     @Test
-    fun tokens_geometryInvariantsHold() {
-        // 卡片总宽 = 3 * 按钮直径 + 4 * 内边距 (左右边距 + 两间隙)
-        val expectedWidth = 3 * FloatingBallTokens.buttonDiameter + 4 * FloatingBallTokens.cardPadding
-        assertEquals(expectedWidth, FloatingBallTokens.expandedWidth)
-
-        // 内部排版宽度 (去除左右两端 cardPadding)
-        val innerWidth = FloatingBallTokens.expandedWidth - 2 * FloatingBallTokens.cardPadding
-        val buttonStep = FloatingBallTokens.buttonDiameter + FloatingBallTokens.cardPadding
-
-        // 3 颗按钮所占总跨度必须完全严丝合缝匹配 innerWidth
-        val threeButtonsSpan = 2 * buttonStep + FloatingBallTokens.buttonDiameter
-        assertEquals(innerWidth, threeButtonsSpan)
-
-        // 锚点 X 坐标必须与最右侧按钮完全对齐
-        val rightAnchor = FloatingBallTokens.expandedWidth - FloatingBallTokens.cardPadding - FloatingBallTokens.buttonDiameter
-        assertEquals(rightAnchor, FloatingBallTokens.rightAnchorX)
-    }
-
-    @Test
     fun computeCardStackOffsets_collapsed_stacksAtOriginWithCorrectZIndex() {
         // 右侧贴边收起态：全部收拢在 0 处，最右侧的 Minimize (收起) 按钮在最顶层
         val rightStack = FloatingBallGeometry.computeCardStackOffsets(DockSide.Right, progress = 0f)

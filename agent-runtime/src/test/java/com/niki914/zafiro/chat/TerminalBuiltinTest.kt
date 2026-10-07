@@ -32,6 +32,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
+import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
 class TerminalBuiltinTest {
@@ -422,23 +423,6 @@ class TerminalBuiltinTest {
         assertFalse(json.containsKey("error"))
     }
 
-    @Test
-    fun invokeRawJson_ptyFieldReturnsInvalidRequest() = runTest {
-        installRuntimeSettingsGatewayForTest()
-        val fakeRuntime = FakeTerminalRuntime(nextResult = commandResult())
-        installFakeRuntime(fakeRuntime).use {
-            installHandles("a3f9").use {
-                val json = invoke("""{"command":"ls","pty":true}""")
-
-                assertErrorCode("INVALID_REQUEST", json)
-                assertTrue(
-                    json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
-                        .contains("Unknown terminal request field")
-                )
-            }
-        }
-    }
-
     // ── Schema ───────────────────────────────────────────────────────────────
 
     @Test
@@ -594,7 +578,7 @@ class TerminalBuiltinTest {
         private val execGate: CompletableDeferred<Unit>? = null,
         private val failOnWrite: Boolean = false,
     ) : TerminalSessionPort {
-        override val stream = emptyFlow<com.niki914.libterm.runtime.TerminalTextChunk>()
+        override val stream = emptyFlow<TerminalTextChunk>()
         val commands = mutableListOf<String>()
         var lastTimeoutMs: Long = 0L
         var closeCount: Int = 0

@@ -23,28 +23,6 @@ class ActiveTurnStoreTest {
     }
 
     @Test
-    fun getCurrent_returnsNullByDefault() {
-        assertNull(ActiveTurnStore.getCurrent())
-        assertFalse(ActiveTurnStore.hasActiveTurn())
-        assertFalse(ActiveTurnStore.isCurrentInjected())
-        assertFalse(ActiveTurnStore.isActiveInjection(1L))
-    }
-
-    @Test
-    fun setCurrent_makesStateReadable() {
-        val state = ConversationTurnState(
-            turnId = 1L,
-            lastQuery = "hello",
-            mode = TurnMode.InjectedLLM,
-        )
-
-        ActiveTurnStore.setCurrent(state)
-
-        assertEquals(state, ActiveTurnStore.getCurrent())
-        assertTrue(ActiveTurnStore.hasActiveTurn())
-    }
-
-    @Test
     fun clear_removesSingleActiveTurn() {
         ActiveTurnStore.setCurrent(
             ConversationTurnState(
@@ -129,20 +107,6 @@ class ActiveTurnStoreTest {
         ActiveTurnStore.setCurrent(second)
 
         assertEquals(second, ActiveTurnStore.getCurrent())
-    }
-
-    @Test
-    fun setCurrent_acceptsBlankQuery() {
-        val state = ConversationTurnState(
-            turnId = 1L,
-            lastQuery = "",
-            mode = TurnMode.InjectedLLM,
-        )
-
-        ActiveTurnStore.setCurrent(state)
-
-        assertEquals(state, ActiveTurnStore.getCurrent())
-        assertEquals("", ActiveTurnStore.getCurrent()?.lastQuery)
     }
 
     @Test

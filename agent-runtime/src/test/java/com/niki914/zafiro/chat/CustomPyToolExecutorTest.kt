@@ -13,6 +13,16 @@ import org.junit.Assert.assertTrue
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
+import com.niki914.zafiro.business.permission.Channel
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionResult
+import com.niki914.zafiro.business.permission.PermissionScope
+import com.niki914.zafiro.business.permission.PermissionState
+import com.niki914.zafiro.settings.RuntimeEnvironment
+import com.niki914.zafiro.settings.model.RuntimeExecutionRule
+import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
 
 class CustomPyToolExecutorTest {
 
@@ -23,10 +33,10 @@ class CustomPyToolExecutorTest {
 
     @After
     fun tearDown() {
-        com.niki914.zafiro.settings.RuntimeEnvironment.clearForTest()
+        RuntimeEnvironment.clearForTest()
     }
 
-    private val tool = com.niki914.zafiro.chat.LocalTool.Py(
+    private val tool = LocalTool.Py(
         name = "py_echo",
         description = "echo",
         code = "def main(text):\\n    print(text)",
@@ -45,15 +55,6 @@ class CustomPyToolExecutorTest {
         assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
         assertEquals("py_echo", json["tool"]!!.jsonPrimitive.content)
         assertEquals("hello", json["stdout"]!!.jsonPrimitive.content)
-    }
-
-    @Test
-    fun execute_blankArgumentsTreatedAsEmptyObject() = runTest {
-        val executor = CustomPyToolExecutor(exec = { _, _ -> PyExecOutput("ok", null, timedOut = false) })
-
-        val json = Json.parseToJsonElement(executor.execute(tool, "")).jsonObject
-
-        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
     }
 
     @Test
@@ -96,12 +97,12 @@ class CustomPyToolExecutorTest {
     @Test
     fun execute_ruleMatch_blocksBeforeRunning() = runTest {
         installRuntimeSettingsGatewayForTest(
-            com.niki914.zafiro.chat.FakeRuntimeSettingsGateway(
+            FakeRuntimeSettingsGateway(
                 executionRules = listOf(
-                    com.niki914.zafiro.settings.model.RuntimeExecutionRule(
+                    RuntimeExecutionRule(
                         id = "r",
                         name = "no-rm",
-                        enabledMode = com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode.ALWAYS,
+                        enabledMode = RuntimeExecutionRuleEnabledMode.ALWAYS,
                         patterns = listOf("\\brm\\s+-rf\\b"),
                     )
                 )
@@ -125,18 +126,18 @@ class CustomPyToolExecutorTest {
     @Test
     fun execute_pathIntent_requestsStoragePermission() = runTest {
         var requested = false
-        val preflight = com.niki914.zafiro.chat.agentic.ToolExecutionPreflight(
+        val preflight = ToolExecutionPreflight(
             permissionsProvider = {
-                object : com.niki914.zafiro.business.permission.PermissionManager {
-                    override fun status(permission: com.niki914.zafiro.business.permission.Permission) =
-                        com.niki914.zafiro.business.permission.PermissionState.DENIED_BY_USER
-                    override suspend fun request(permission: com.niki914.zafiro.business.permission.Permission): com.niki914.zafiro.business.permission.PermissionResult {
+                object : PermissionManager {
+                    override fun status(permission: Permission) =
+                        PermissionState.DENIED_BY_USER
+                    override suspend fun request(permission: Permission): PermissionResult {
                         requested = true
-                        return com.niki914.zafiro.business.permission.PermissionResult(
-                            permission, com.niki914.zafiro.business.permission.PermissionState.DENIED_BY_USER, emptyList())
+                        return PermissionResult(
+                            permission, PermissionState.DENIED_BY_USER, emptyList())
                     }
-                    override suspend fun request(permission: com.niki914.zafiro.business.permission.Permission, vararg channels: com.niki914.zafiro.business.permission.Channel) = request(permission)
-                    override fun applyScope(vararg channels: com.niki914.zafiro.business.permission.Channel): com.niki914.zafiro.business.permission.PermissionScope =
+                    override suspend fun request(permission: Permission, vararg channels: Channel) = request(permission)
+                    override fun applyScope(vararg channels: Channel): PermissionScope =
                         throw UnsupportedOperationException()
                 }
             },

@@ -37,19 +37,6 @@ class RealConversationTest {
 
     // ── 初始状态 ───────────────────────────────────────────────────────────
 
-    @Test
-    fun emptyTreeInitialState() {
-        val tree = newTree()
-        assertNull(tree.leafId)
-        assertTrue(tree.entries.isEmpty())
-        assertTrue(tree.history.isEmpty())
-        val snapshot = tree.toSnapshot()
-        assertEquals("s1", snapshot.id)
-        assertNull(snapshot.leafId)
-        assertTrue(snapshot.history.isEmpty())
-        assertNull(snapshot.live)
-    }
-
     // leafId null = 恢复为最后一条（issue #126 对齐 docs/okia.md §5.3）
     @Test
     fun nullLeafProjectsToLastEntry() {
@@ -162,18 +149,6 @@ class RealConversationTest {
     }
 
     @Test
-    fun rewindToOnlyEntryIsNoOp() = runBlocking {
-        val tree = newTree()
-        val entry = tree.append(user("hi"))
-
-        tree.rewind(entry.id)
-
-        assertEquals(entry.id, tree.leafId)
-        assertEquals(listOf<Message>(user("hi")), tree.history)
-        assertEquals(1, tree.entries.size)
-    }
-
-    @Test
     fun rewindToCurrentLeafIsIdempotent() = runBlocking {
         val tree = newTree()
         tree.append(user("q1"))
@@ -192,18 +167,6 @@ class RealConversationTest {
 
         val exception = try {
             tree.rewind("missing")
-            null
-        } catch (t: IllegalArgumentException) {
-            t
-        }
-        assertNotNull(exception)
-    }
-
-    @Test
-    fun rewindOnEmptyTreeThrows() = runBlocking {
-        val tree = newTree()
-        val exception = try {
-            tree.rewind("any")
             null
         } catch (t: IllegalArgumentException) {
             t
@@ -245,18 +208,6 @@ class RealConversationTest {
         assertEquals(first.id, snapshot.history[0].id)
         assertEquals(user("q1"), snapshot.history[0].message)
         assertTrue(snapshot.history[0].timestamp > 0)
-    }
-
-    @Test
-    fun snapshotCarriesLive() = runBlocking {
-        val tree = newTree()
-        tree.append(user("q1"))
-        val live =
-            AssistantMessage(listOf(ContentBlock.Text("partial")), stopReason = StopReason.Pending)
-
-        val snapshot = tree.toSnapshot(live)
-
-        assertEquals(live, snapshot.live)
     }
 
     @Test

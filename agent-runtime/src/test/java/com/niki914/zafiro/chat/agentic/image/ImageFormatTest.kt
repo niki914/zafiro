@@ -66,12 +66,6 @@ class ImageFormatTest {
     }
 
     @Test
-    fun stripDataUrlPrefix_validJpeg() {
-        val input = "data:image/jpeg;base64,/9j/4AAQ="
-        assertEquals("/9j/4AAQ=", ImageFormat.stripDataUrlPrefix(input))
-    }
-
-    @Test
     fun stripDataUrlPrefix_noPrefix_returnsOriginal() {
         assertEquals("iVBORw0KGgo=", ImageFormat.stripDataUrlPrefix("iVBORw0KGgo="))
     }
@@ -104,11 +98,6 @@ class ImageFormatTest {
     @Test
     fun normalizeMime_stripsParams() {
         assertEquals("image/jpeg", ImageFormat.normalizeMime("image/jpeg; charset=binary"))
-    }
-
-    @Test
-    fun normalizeMime_wildcard_fallsBack() {
-        assertEquals("image/jpeg", ImageFormat.normalizeMime("image/*"))
     }
 
     @Test

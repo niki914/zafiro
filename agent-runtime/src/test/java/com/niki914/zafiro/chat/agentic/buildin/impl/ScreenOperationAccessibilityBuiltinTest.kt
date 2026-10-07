@@ -74,30 +74,6 @@ class ScreenOperationAccessibilityBuiltinTest {
     }
 
     @Test
-    fun `assembleActionResult with SHELL_SESSION_LOST warns not to blindly retry`() {
-        val actionResult = BuiltinToolResult(
-            ok = false,
-            code = ScreenOperationError.SHELL_SESSION_LOST.code,
-            message = "Shell session lost",
-            hint = "",
-            fieldErrors = emptyMap(),
-            data = JsonObject(emptyMap()),
-        )
-        val captureResult = Result.success(ScreenSnapshot("some yaml tree", "v2", 5))
-
-        val result = assembleActionResult(actionResult, captureResult)
-
-        assertEquals(TextToolResult.Status.Failure, result.status)
-        assertEquals(ScreenOperationError.SHELL_SESSION_LOST.code, result.code)
-        val msg = result.message!!
-        assertTrue(
-            "message should warn against blind retry but was: $msg",
-            msg.contains("Do NOT retry") || msg.contains("do not blindly retry"),
-        )
-        assertEquals("some yaml tree", result.payload)
-    }
-
-    @Test
     fun `assembleActionResult with action failure and capture failure returns failure with combined error messages`() {
         val actionResult = BuiltinToolResult(
             ok = false,

@@ -20,6 +20,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
 import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
@@ -274,7 +275,7 @@ class XRepoDomainSettingsTest {
 
     @Test
     fun builtinGroupsReferenceRegisteredToolsWithoutOverlap() {
-        val registryNames = com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry.default()
+        val registryNames = BuiltinToolRegistry.default()
             .all().map { it.name }.toSet()
         val groupedNames = BuiltinToolGroups.all.flatMap { it.members }
 

@@ -14,6 +14,8 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
+import android.os.ParcelFileDescriptor
+import java.io.InputStream
 
 /**
  * Android 侧图片 ingest 管线：读源 → 校验 → 收缩 → 重编码 → 落盘。
@@ -240,7 +242,7 @@ internal class ImageCodec(private val context: Context) {
         }
         // 尝试 2：文件描述符（部分 ROM 只支持）
         resolver.openFileDescriptor(uri, "r")?.use { pfd ->
-            android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { input ->
+            ParcelFileDescriptor.AutoCloseInputStream(pfd).use { input ->
                 val read = input.readBytesLimited()
                 if (read.tooLarge) return UriReadResult(null, tooLarge = true)
                 if (read.hasContent()) return read
@@ -250,7 +252,7 @@ internal class ImageCodec(private val context: Context) {
     }
 
     /** 读满流；超 12MB → (null, tooLarge=true)；读失败 → (null, false)。 */
-    private fun java.io.InputStream.readBytesLimited(): UriReadResult {
+    private fun InputStream.readBytesLimited(): UriReadResult {
         return try {
             val output = ByteArrayOutputStream()
             val buffer = ByteArray(8192)

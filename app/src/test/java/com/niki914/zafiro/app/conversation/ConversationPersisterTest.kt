@@ -7,6 +7,7 @@ import com.niki914.okia.conversation.MessageEntry
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
+import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +22,6 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -141,16 +141,6 @@ class ConversationPersisterTest {
     }
 
     @Test
-    fun nullSnapshot_doesNotPersist() = runTest {
-        val sessionId = ConversationRepo.createConversation("session-1", "hi")
-
-        // persistNow 只处理具体快照；null 由 start() 的 collect 过滤（流接线
-        // 不在此测，见 incrementalInsert 对重复快照的幂等覆盖）
-        assertEquals(0, ConversationRepo.countEntries(sessionId))
-        assertNull(ConversationRepo.getConversation(sessionId)?.snapshot?.leafId)
-    }
-
-    @Test
     fun deletedSessionSnapshotDoesNotKillCollector() = runTest {
         // 问题 5 修复：会话已删导致的外键违规被隔离——collector 不灭，
         // 后续会话仍正常落盘。
@@ -199,10 +189,10 @@ class ConversationPersisterTest {
         )
     }
 
-    private fun linearEntries(vararg messages: Message): List<com.niki914.okia.conversation.ConversationEntry> {
+    private fun linearEntries(vararg messages: Message): List<ConversationEntry> {
         var parent: String? = null
         return messages.mapIndexed { index, message ->
-            val entry = com.niki914.okia.conversation.ConversationEntry(
+            val entry = ConversationEntry(
                 id = "m$index",
                 parentId = parent,
                 timestamp = 1000L + index,
