@@ -393,7 +393,7 @@ class AgentRuntimeService : Service() {
         val startedAtMs = System.currentTimeMillis()
         Logger.i(LOG_TAG, "turn started")
         var firstFrameSent = false
-        var lastRenderedText: String? = null
+        var lastProjected: HostConversationProjector.ProjectedFrame? = null
         var frameIndex = 0
 
         val labels = ToolStatusLabels(
@@ -420,22 +420,25 @@ class AgentRuntimeService : Service() {
                     agent.conversation.collect { conv ->
                         val turn = conv.turns.find { it.id == targetTurnId } ?: conv.turns.lastOrNull()
                         if (turn != null) {
-                            val text = HostConversationProjector.render(turn, labels, ::resolveErrorMessage)
-                            if (text != lastRenderedText || !firstFrameSent) {
+                            val projected = HostConversationProjector.project(turn, ::resolveErrorMessage)
+                            if (projected != lastProjected || !firstFrameSent) {
                                 frameIndex++
-                                lastRenderedText = text
+                                lastProjected = projected
                                 val isFirst = !firstFrameSent
                                 firstFrameSent = true
                                 if (isFirst) {
                                     Logger.i(
                                         LOG_TAG,
-                                        "first render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} textLength=${text.length}"
+                                        "first render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} contentLength=${projected.content.length} thinkingLength=${projected.thinking?.length ?: 0} toolsCount=${projected.tools.size}"
                                     )
                                 }
                                 sendFrame(
                                     callback,
                                     RenderFrame(
-                                        text = text,
+                                        content = projected.content,
+                                        thinking = projected.thinking,
+                                        isThinkingComplete = projected.isThinkingComplete,
+                                        tools = projected.tools,
                                         isFirst = isFirst,
                                         isFinal = false,
                                     ),
@@ -451,19 +454,22 @@ class AgentRuntimeService : Service() {
 
             val finalTurn = agent.conversation.value.turns.find { it.id == targetTurnId }
                 ?: agent.conversation.value.turns.lastOrNull()
-            val finalText = if (finalTurn != null) {
-                HostConversationProjector.render(finalTurn, labels, ::resolveErrorMessage)
+            val finalProjected = if (finalTurn != null) {
+                HostConversationProjector.project(finalTurn, ::resolveErrorMessage)
             } else {
-                lastRenderedText.orEmpty()
+                lastProjected ?: HostConversationProjector.ProjectedFrame("")
             }
             Logger.i(
                 LOG_TAG,
-                "final render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} textLength=${finalText.length}"
+                "final render frame elapsedMs=${System.currentTimeMillis() - startedAtMs} contentLength=${finalProjected.content.length}"
             )
             sendFrame(
                 callback,
                 RenderFrame(
-                    text = finalText,
+                    content = finalProjected.content,
+                    thinking = finalProjected.thinking,
+                    isThinkingComplete = true,
+                    tools = finalProjected.tools,
                     isFirst = !firstFrameSent,
                     isFinal = true,
                 ),
@@ -487,7 +493,7 @@ class AgentRuntimeService : Service() {
             sendFrame(
                 callback,
                 RenderFrame(
-                    text = e.message ?: getString(AppR.string.runtime_error_internal),
+                    content = e.message ?: getString(AppR.string.runtime_error_internal),
                     isFirst = !firstFrameSent,
                     isFinal = true,
                 ),
@@ -513,7 +519,7 @@ class AgentRuntimeService : Service() {
 
     private fun sendError(callback: IRenderFrameCallback, message: String) {
         try {
-            callback.onFrame(RenderFrame(text = message, isFirst = true, isFinal = true))
+            callback.onFrame(RenderFrame(content = message, isFirst = true, isFinal = true))
         } catch (_: DeadObjectException) {
         }
     }
