@@ -30,6 +30,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
+import java.nio.file.Files
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GeneralSettingsViewModelTest {
@@ -40,11 +42,11 @@ class GeneralSettingsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val tempDir = java.nio.file.Files.createTempDirectory("test_files").toFile()
+    private val tempDir = Files.createTempDirectory("test_files").toFile()
 
     private val context: Context = object : ContextWrapper(null) {
         override fun getApplicationContext(): Context = this
-        override fun getFilesDir(): java.io.File = tempDir
+        override fun getFilesDir(): File = tempDir
     }
 
     /** 权限结果由注册表里的假实现控制：ViewModel 自己经 ServiceRegistry 取 PermissionManager。 */

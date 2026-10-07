@@ -98,7 +98,7 @@ class BreenoCardRenderer {
         } ?: dcClass.methods.firstOrNull {
             it.parameterTypes.size == 2 &&
                     viewBeanClass?.isAssignableFrom(it.parameterTypes[0]) == true &&
-                    it.parameterTypes[1] == java.lang.Boolean.TYPE
+                    it.parameterTypes[1] == Boolean::class.javaPrimitiveType
         }
 
         Logger.i(

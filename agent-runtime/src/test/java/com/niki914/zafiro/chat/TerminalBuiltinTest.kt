@@ -32,6 +32,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
+import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
 class TerminalBuiltinTest {
@@ -594,7 +595,7 @@ class TerminalBuiltinTest {
         private val execGate: CompletableDeferred<Unit>? = null,
         private val failOnWrite: Boolean = false,
     ) : TerminalSessionPort {
-        override val stream = emptyFlow<com.niki914.libterm.runtime.TerminalTextChunk>()
+        override val stream = emptyFlow<TerminalTextChunk>()
         val commands = mutableListOf<String>()
         var lastTimeoutMs: Long = 0L
         var closeCount: Int = 0

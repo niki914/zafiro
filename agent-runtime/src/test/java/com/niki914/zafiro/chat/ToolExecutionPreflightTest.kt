@@ -7,9 +7,11 @@ import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight.Companion.WATCHED_PREFIXES
+import com.niki914.zafiro.business.permission.Channel
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionResult
+import com.niki914.zafiro.business.permission.PermissionScope
 import com.niki914.zafiro.business.permission.PermissionState
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -410,10 +412,10 @@ private class FakePermissionManager(
         return PermissionResult(permission, PermissionState.DENIED_BY_USER, emptyList())
     }
 
-    override suspend fun request(permission: Permission, vararg channels: com.niki914.zafiro.business.permission.Channel): PermissionResult =
+    override suspend fun request(permission: Permission, vararg channels: Channel): PermissionResult =
         request(permission)
 
-    override fun applyScope(vararg channels: com.niki914.zafiro.business.permission.Channel): com.niki914.zafiro.business.permission.PermissionScope =
+    override fun applyScope(vararg channels: Channel): PermissionScope =
         throw UnsupportedOperationException()
 }
 

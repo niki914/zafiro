@@ -23,6 +23,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 /**
  * McpRefreshScheduler 单测（问题 4 修复，虚拟时间）：失败退避重试、
@@ -76,7 +77,7 @@ class McpRefreshSchedulerTest {
         val okia = FakeOkia(
             refreshResult = {
                 call++
-                if (call == 1) throw java.io.IOException("connection refused")
+                if (call == 1) throw IOException("connection refused")
                 McpRefreshResult(listOf("s1"), emptyList())
             }
         )

@@ -14,6 +14,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import java.io.File
 
 class ExecutePythonBuiltin(
     /**
@@ -26,7 +27,7 @@ class ExecutePythonBuiltin(
     var executor: suspend (code: String, timeoutMs: Long) -> PyExecOutput = PyRuntime::exec,
     private val preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
     /** 截断导出目录（filesDir/tool_output），测试可注入临时目录。 */
-    var exportDir: java.io.File? = ToolOutputTruncator.defaultExportDir(),
+    var exportDir: File? = ToolOutputTruncator.defaultExportDir(),
 ) : TextResultBuiltinTool() {
 
     override val name: String = "execute_python"

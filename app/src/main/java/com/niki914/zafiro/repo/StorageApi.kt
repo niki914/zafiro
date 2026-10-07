@@ -3,6 +3,7 @@ package com.niki914.zafiro.repo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import android.content.Context
 
 enum class StorageKind {
     ToolOutput,
@@ -40,7 +41,7 @@ class StorageApi internal constructor(
         }
     }
 
-    private fun resolveDir(context: android.content.Context, kind: StorageKind): File {
+    private fun resolveDir(context: Context, kind: StorageKind): File {
         return when (kind) {
             StorageKind.ToolOutput -> File(context.filesDir, TOOL_OUTPUT_DIR_NAME)
             StorageKind.ImageCache -> File(context.filesDir, IMAGE_CACHE_DIR_NAME)

@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.net.URI
+import java.util.UUID
 
 enum class ConfigureScene {
     /** 首次引导：保存即创建第一份配置并置 active。 */
@@ -751,7 +752,7 @@ class ConfigureViewModel internal constructor(
     }
 
     private fun newConfigId(): String {
-        return "cfg-" + java.util.UUID.randomUUID().toString().replace("-", "").take(12)
+        return "cfg-" + UUID.randomUUID().toString().replace("-", "").take(12)
     }
 }
 

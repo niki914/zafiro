@@ -62,6 +62,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.io.File
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
+import android.net.Uri
+import com.niki914.zafiro.chat.agentic.image.ImageCodec
+import com.niki914.zafiro.chat.agentic.image.IngestResult
 
 /**
  * Zafiro 的 LLM 回合执行入口。OKIA 接入 T1 重写：
@@ -100,13 +103,13 @@ object LLMController {
         null
     }
 
-    private var imageCodec: com.niki914.zafiro.chat.agentic.image.ImageCodec? = null
+    private var imageCodec: ImageCodec? = null
 
-    private suspend fun ensureImageCodec(): com.niki914.zafiro.chat.agentic.image.ImageCodec? {
+    private suspend fun ensureImageCodec(): ImageCodec? {
         imageCodec?.let { return it }
         // ponytail: 同 sandboxPaths，单测无 provide 时超时兑底
         return withTimeoutOrNull(2_000) { ContextProvider.await().applicationContext }?.let {
-            com.niki914.zafiro.chat.agentic.image.ImageCodec(it).also { codec -> imageCodec = codec }
+            ImageCodec(it).also { codec -> imageCodec = codec }
         }
     }
 
@@ -135,8 +138,8 @@ object LLMController {
         val codec = ensureImageCodec() ?: return null
         return ImageSaver { base64 ->
             when (val result = codec.ingestBase64(base64)) {
-                is com.niki914.zafiro.chat.agentic.image.IngestResult.Ok -> result.image.path
-                is com.niki914.zafiro.chat.agentic.image.IngestResult.Err -> null
+                is IngestResult.Ok -> result.image.path
+                is IngestResult.Err -> null
             }
         }
     }
@@ -144,10 +147,10 @@ object LLMController {
     /** 相册 URI → ingest 落盘 → path。失败返回 null（UI 静默丢弃）。 */
     suspend fun ingestUserImage(uriString: String): IngestedImage? {
         val codec = ensureImageCodec() ?: return null
-        val result = codec.ingestUri(android.net.Uri.parse(uriString))
+        val result = codec.ingestUri(Uri.parse(uriString))
         return when (result) {
-            is com.niki914.zafiro.chat.agentic.image.IngestResult.Ok -> IngestedImage(result.image.path)
-            is com.niki914.zafiro.chat.agentic.image.IngestResult.Err -> null
+            is IngestResult.Ok -> IngestedImage(result.image.path)
+            is IngestResult.Err -> null
         }
     }
 

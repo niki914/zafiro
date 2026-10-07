@@ -9,6 +9,8 @@ import com.niki914.zafiro.api.model.TurnId
 import com.niki914.zafiro.chat.ToolStatusLabels
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import com.niki914.zafiro.runtime.ipc.ToolItem
+import com.niki914.zafiro.runtime.ipc.ToolStatus
 
 class HostConversationProjectorTest {
 
@@ -179,8 +181,8 @@ class HostConversationProjectorTest {
         assertEquals(true, projected.isThinkingComplete)
         assertEquals(
             listOf(
-                com.niki914.zafiro.runtime.ipc.ToolItem("weather", com.niki914.zafiro.runtime.ipc.ToolStatus.SUCCESS),
-                com.niki914.zafiro.runtime.ipc.ToolItem("air_quality", com.niki914.zafiro.runtime.ipc.ToolStatus.RUNNING),
+                ToolItem("weather", ToolStatus.SUCCESS),
+                ToolItem("air_quality", ToolStatus.RUNNING),
             ),
             projected.tools
         )
@@ -205,7 +207,7 @@ class HostConversationProjectorTest {
 
         assertEquals("Thinking deeply...", projected.thinking)
         assertEquals(false, projected.isThinkingComplete)
-        assertEquals(emptyList<com.niki914.zafiro.runtime.ipc.ToolItem>(), projected.tools)
+        assertEquals(emptyList<ToolItem>(), projected.tools)
         assertEquals("", projected.content)
     }
 }

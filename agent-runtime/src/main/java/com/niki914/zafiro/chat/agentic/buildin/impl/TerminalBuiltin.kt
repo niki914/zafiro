@@ -33,11 +33,12 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import java.io.File
 
 class TerminalBuiltin(
     private val preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
     /** 截断导出目录（filesDir/tool_output），测试可注入临时目录；null 时经 ContextProvider 取。 */
-    private val exportDirOverride: java.io.File? = null,
+    private val exportDirOverride: File? = null,
 ) : BuiltinTool(), RawJsonBuiltinTool {
     override val name: String = "terminal"
 
