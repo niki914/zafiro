@@ -8,6 +8,7 @@ import com.niki914.zafiro.mod.feat.hyper.subhooks.BlockNativeTtsPlaybackHook
 import com.niki914.zafiro.mod.feat.hyper.subhooks.CaptureInputHook
 import com.niki914.zafiro.mod.feat.hyper.subhooks.CaptureResponseTargetHook
 import com.niki914.zafiro.mod.feat.hyper.subhooks.RenderTextStreamCardHook
+import com.niki914.zafiro.runtime.client.AssistantFrame
 import com.niki914.zafiro.runtime.client.AssistantTextSource
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CompletableDeferred
@@ -90,15 +91,19 @@ class XiaoaiChatHook(
                     )
                 }
                 if (frame.isFinal) {
+                    val len = when (frame) {
+                        is AssistantFrame.Update -> frame.content.length
+                        is AssistantFrame.Error -> frame.message.length
+                    }
                     Logger.i(
                         LOG_TAG,
                         "dispatch final frame turnId=$turnId " +
                                 "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                "textLength=${frame.text.length}"
+                                "textLength=$len"
                     )
                 }
                 targetReady.await()
-                renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
+                renderStreamCard(turnId, roomId, frame)
             }
             Logger.i(
                 LOG_TAG,
@@ -114,9 +119,7 @@ class XiaoaiChatHook(
             targetReady.await()
             renderStreamCard(
                 turnId, roomId,
-                // Intentionally hardcoded: runs inside host process; must not reference app resources across IPC/Xposed boundary.
-                e.message ?: "Service unavailable",
-                true, true,
+                AssistantFrame.Error(e.message ?: "Service unavailable"),
             )
         }
     }

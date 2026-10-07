@@ -6,7 +6,9 @@ import com.niki914.zafiro.chat.ActiveTurnStore
 import com.niki914.zafiro.chat.ConversationTurnState
 import com.niki914.zafiro.chat.TurnMode
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.runtime.client.AssistantFrame
 import com.niki914.zafiro.runtime.client.AssistantTextSource
+import com.niki914.zafiro.runtime.ipc.ToolItem
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
 import com.niki914.zafiro.takeover.TakeoverDecision
 import com.niki914.zafiro.takeover.TakeoverResolver
@@ -137,14 +139,18 @@ abstract class AbstractAssistantHook(
                     )
                 }
                 if (frame.isFinal) {
+                    val len = when (frame) {
+                        is AssistantFrame.Update -> frame.content.length
+                        is AssistantFrame.Error -> frame.message.length
+                    }
                     Logger.i(
                         LOG_TAG,
                         "dispatch final frame turnId=$turnId " +
                                 "elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                "textLength=${frame.text.length}"
+                                "contentLength=$len"
                     )
                 }
-                renderStreamCard(turnId, roomId, frame.text, frame.isFirst, frame.isFinal)
+                renderStreamCard(turnId, roomId, frame)
             }
             Logger.i(
                 LOG_TAG,
@@ -158,19 +164,70 @@ abstract class AbstractAssistantHook(
             )
             renderStreamCard(
                 turnId, roomId,
-                // Intentionally hardcoded: runs inside host process; must not reference app resources across IPC/Xposed boundary.
-                e.message ?: "Service unavailable",
-                true, true,
+                AssistantFrame.Error(e.message ?: "Service unavailable"),
             )
         }
     }
 
-    /** 将流式文本帧渲染到宿主 UI。Breeno 全量刷新单卡片，XiaoAi 流式注入文本节点。 */
-    protected abstract suspend fun renderStreamCard(
+    /**
+     * 表现层格式化：将纯思考内容格式化为 Markdown 引用块。
+     * 仅供纯文本宿主（如小爱同学）使用，子类可覆盖自定义。
+     */
+    open fun formatThinking(thinking: String): String =
+        thinking.lines().joinToString("\n") { if (it.isEmpty()) ">" else "> $it" }
+
+    /**
+     * 表现层格式化：将工具调用项格式化为 Markdown 状态标签。
+     * 仅供纯文本宿主（如小爱同学）使用，子类可覆盖自定义。
+     */
+    open fun formatTool(tool: ToolItem): String =
+        "`[${tool.name}] ${tool.status.name.lowercase()}`"
+
+    /**
+     * 供旧版/纯文本宿主（如小爱同学）使用的默认降级文本组装器。
+     */
+    protected open fun buildLegacyPlainText(frame: AssistantFrame): String = when (frame) {
+        is AssistantFrame.Update -> {
+            val sb = StringBuilder()
+            if (frame.thinking != null && frame.thinking.text.isNotBlank()) {
+                sb.append(formatThinking(frame.thinking.text)).append("\n\n")
+            }
+            for (tool in frame.tools) {
+                val toolLine = formatTool(tool)
+                if (sb.isNotEmpty() && sb.last() != '\n') sb.append('\n')
+                sb.append(toolLine)
+            }
+            if (frame.content.isNotEmpty()) {
+                if (sb.isNotEmpty() && sb.last() != '\n') sb.append('\n')
+                sb.append(frame.content)
+            }
+            sb.toString().trimEnd()
+        }
+        is AssistantFrame.Error -> frame.message
+    }
+
+    /**
+     * 流式渲染完整语义帧数据 [AssistantFrame]。
+     * 新版 BreenoHook 可直接重写此方法，接收纯粹的 content、thinking 与 tools；
+     * 默认实现将通过 [buildLegacyPlainText] 降级拼装纯文本，以 100% 兼容小爱同学等纯文本宿主。
+     */
+    protected open suspend fun renderStreamCard(
+        turnId: Long,
+        roomId: String,
+        frame: AssistantFrame,
+    ) {
+        val legacyText = buildLegacyPlainText(frame)
+        renderStreamCard(turnId, roomId, legacyText, frame.isFirst, frame.isFinal)
+    }
+
+    /** 将流式文本帧渲染到宿主 UI。旧版 BreenoChatHook 全量刷新单卡片，XiaoAi 流式注入文本节点。 */
+    protected open suspend fun renderStreamCard(
         turnId: Long,
         roomId: String,
         chunk: String,
         isFirst: Boolean,
         isFinal: Boolean
-    )
+    ) {
+        // 默认空实现，供重写 renderStreamCard(turnId, roomId, frame) 的子类兜底
+    }
 }
