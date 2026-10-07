@@ -51,6 +51,9 @@ abstract class BaseConfigProvider {
     fun getInt(path: String): Int =
         getElement(path)?.jsonPrimitive?.intOrNull.orThrowException(path)
 
+    fun getIntOrDefault(path: String, default: Int): Int =
+        getElement(path)?.jsonPrimitive?.intOrNull ?: default
+
     fun getList(path: String): List<JsonElement> =
         ((getElement(path) as? JsonArray)?.toList()).orThrowException(path)
 

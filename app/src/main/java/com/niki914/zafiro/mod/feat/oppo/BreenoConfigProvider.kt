@@ -59,6 +59,14 @@ object BreenoConfigProvider : BaseConfigProvider() {
             get() = parseHookTarget("$P.business.resume_target")
     }
 
+    object FilterNativeDirectives {
+        private const val P = "actions.filter_native_directives"
+        val hookTarget: HookTarget?
+            get() = parseHookTarget("$P.target")
+        val messageContentArgIndex: Int
+            get() = getIntOrDefault("$P.business.message_content_arg_index", 1)
+    }
+
     object SuppressCleanup {
         private const val P = "actions.suppress_cleanup"
         val hookTarget: HookTarget?

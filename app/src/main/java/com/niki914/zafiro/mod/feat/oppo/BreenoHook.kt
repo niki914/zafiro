@@ -6,6 +6,7 @@ import com.niki914.zafiro.chat.TurnMode
 import com.niki914.zafiro.mod.feat.AbstractAssistantHook
 import com.niki914.zafiro.mod.feat.oppo.subhooks.BlockNativeCardHook
 import com.niki914.zafiro.mod.feat.oppo.subhooks.CaptureInputHook
+import com.niki914.zafiro.mod.feat.oppo.subhooks.FilterNativeDirectivesHook
 import com.niki914.zafiro.mod.feat.oppo.subhooks.ResetConversationSignalHook
 import com.niki914.zafiro.mod.feat.oppo.subhooks.SuppressCleanupHook
 import com.niki914.zafiro.runtime.client.AssistantFrame
@@ -65,6 +66,10 @@ class BreenoHook(
     }
 
     override fun installResponseHooks(lpparam: XC_LoadPackage.LoadPackageParam) {
+        FilterNativeDirectivesHook(
+            selfInjectedFlagKey = BreenoConfigProvider.CaptureResponseTarget.selfInjectedFlagKey
+        ).onHook(lpparam)
+
         BlockNativeCardHook(
             selfInjectedFlagKey = BreenoConfigProvider.CaptureResponseTarget.selfInjectedFlagKey
         ).onHook(lpparam)

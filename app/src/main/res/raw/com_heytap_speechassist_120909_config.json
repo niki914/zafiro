@@ -77,6 +77,22 @@
           }
         }
       },
+      "filter_native_directives": {
+        "target": {
+          "owner_class": "com.heytap.speech.engine.connect.core.manager.i",
+          "method_name": "B",
+          "param_types": [
+            "java.lang.String",
+            "java.lang.String"
+          ],
+          "hook_timing": "before",
+          "hook_kind": "method",
+          "return_type": "void"
+        },
+        "business": {
+          "message_content_arg_index": 1
+        }
+      },
       "suppress_cleanup": {
         "target": {
           "owner_class": "bc.e",
