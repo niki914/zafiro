@@ -69,22 +69,14 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationOriginKind
 import com.niki914.zafiro.app.conversation.ConversationSummary
+import com.niki914.zafiro.app.ui.model.conversation.ConversationHistoryUiState
 import com.niki914.zafiro.repo.PinnedConversation
 import kotlinx.coroutines.delay
 import java.util.Calendar
 
-internal data class ConversationHistoryUiState(
-    val isLoading: Boolean = false,
-    val conversations: List<ConversationSummary> = emptyList(),
-    val pinnedConversations: List<PinnedConversation> = emptyList(),
-    val errorMessage: String? = null,
-    val deleteErrorMessage: String? = null,
-)
-
 @Composable
 internal fun ConversationHistoryPageContent(
     uiState: ConversationHistoryUiState,
-    activeConversationId: String?,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (String) -> Unit,
     onConversationRename: ((String, String) -> Unit)? = null,
@@ -120,7 +112,7 @@ internal fun ConversationHistoryPageContent(
         else -> ConversationHistoryListContent(
             conversations = uiState.conversations,
             pinnedConversations = uiState.pinnedConversations,
-            activeConversationId = activeConversationId,
+            activeConversationId = uiState.activeConversationId,
             deleteErrorMessage = uiState.deleteErrorMessage,
             onConversationClick = onConversationClick,
             onConversationLongClick = { conversation ->

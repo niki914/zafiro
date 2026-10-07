@@ -60,7 +60,7 @@ internal data class AppStateSettings(
 
 /** 一条置顶记录：置顶时刻用于与最后交互时间取 max 排序（越晚置顶/越晚交互越靠前）。 */
 @Serializable
-internal data class PinnedConversation(
+data class PinnedConversation(
     @SerialName("id")
     val id: String = "",
     @SerialName("pinned_at")
