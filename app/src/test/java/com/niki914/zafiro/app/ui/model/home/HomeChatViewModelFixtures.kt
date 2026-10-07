@@ -17,6 +17,7 @@ import com.niki914.zafiro.api.model.ConversationTurn
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.TurnBlock
+import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationSummary
@@ -108,7 +109,7 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
                 blocks = streamText?.let { listOf(TurnBlock.Text("t$turnIndex:0", it)) }.orEmpty(),
             ),
         )
-        mutableStatus.value = AgentState.Idle(com.niki914.zafiro.api.model.TurnOutcome.Completed)
+        mutableStatus.value = AgentState.Idle(TurnOutcome.Completed)
         store.recordNewConversation(id.value, draft.text)
         return TurnStart.Started
     }

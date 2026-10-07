@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import java.util.UUID
 import kotlin.random.Random
+import java.io.File
 
 object TerminalSessionPool {
     private const val LOG_TAG = "niki914_zafiro_TerminalSessionPool"
@@ -947,14 +948,14 @@ object TerminalSessionPool {
      * 后台轮询输出统一过滤：截断 + 全量导出（FIXME(async-refactor): 异步
      * 轮询重构时收口此处；DELTA 模式增量导出语义待重新设计）。
      */
-    private fun truncateOutput(text: String, maxBytes: Int, exportDir: java.io.File?): String {
+    private fun truncateOutput(text: String, maxBytes: Int, exportDir: File?): String {
         return ToolOutputTruncator.filterForAgent(fullContent = text, exportDir = exportDir)
     }
 
     /** 截断导出目录（filesDir/tool_output）；无 Context（单测）时返回 null（不导出）。 */
-    internal var exportDirOverride: java.io.File? = null
+    internal var exportDirOverride: File? = null
 
-    private fun exportDir(): java.io.File? =
+    private fun exportDir(): File? =
         exportDirOverride ?: ToolOutputTruncator.defaultExportDir()
 
     private fun mergedOutput(result: CommandResult): String {

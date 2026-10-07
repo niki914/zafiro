@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.RingtoneManager
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.niki914.logging.Logger
@@ -38,7 +37,6 @@ class NotificationChannelManagerImpl(
     }
 
     private fun ensureChannels() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = notificationManager ?: return
 
         for (oldChannelId in OBSOLETE_CHANNELS) {

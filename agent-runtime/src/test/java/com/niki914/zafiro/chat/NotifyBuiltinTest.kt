@@ -24,6 +24,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
+import java.nio.file.Files
 
 class NotifyBuiltinTest {
 
@@ -32,12 +34,12 @@ class NotifyBuiltinTest {
 
     private lateinit var fakeNotiManager: FakeNotificationChannelManager
 
-    private val tempDir = java.nio.file.Files.createTempDirectory("test_notify_builtin").toFile()
+    private val tempDir = Files.createTempDirectory("test_notify_builtin").toFile()
 
     private val testContext: Context = object : ContextWrapper(null) {
         override fun getApplicationContext(): Context = this
         override fun getApplicationInfo(): ApplicationInfo = ApplicationInfo().apply { icon = 0 }
-        override fun getFilesDir(): java.io.File = tempDir
+        override fun getFilesDir(): File = tempDir
     }
 
     @Before

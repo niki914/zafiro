@@ -26,6 +26,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import com.niki914.libterm.runtime.TerminalTextChunk
 
 class TerminalSessionPoolTest {
 
@@ -577,7 +578,7 @@ class TerminalSessionPoolTest {
     private class FakeTerminalSession(
         override val id: String,
     ) : TerminalSessionPort {
-        override val stream = emptyFlow<com.niki914.libterm.runtime.TerminalTextChunk>()
+        override val stream = emptyFlow<TerminalTextChunk>()
         val commands = mutableListOf<String>()
         var nextResult: CommandResult = commandResult()
         var closed = false

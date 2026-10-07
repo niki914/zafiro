@@ -16,6 +16,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import android.content.ContextWrapper
 
 class NotificationChannelManagerTest {
 
@@ -75,5 +76,5 @@ class NotificationChannelManagerTest {
             throw UnsupportedOperationException("not needed in test")
     }
 
-    private class FakeContext : android.content.ContextWrapper(null)
+    private class FakeContext : ContextWrapper(null)
 }

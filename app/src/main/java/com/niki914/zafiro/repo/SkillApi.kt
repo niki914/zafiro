@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
+import java.security.MessageDigest
 
 class SkillApi internal constructor(
     private val repo: XRepo,
@@ -67,7 +69,7 @@ class SkillApi internal constructor(
                 } catch (_: IOException) {
                     emptyList()
                 }
-                val openAsset: (String) -> java.io.InputStream? = { name ->
+                val openAsset: (String) -> InputStream? = { name ->
                     runCatching { context.assets.open("$assetDir/$name") }.getOrNull()
                 }
                 reseedSkill(targetDir, files, openAsset)
@@ -98,7 +100,7 @@ class SkillApi internal constructor(
         internal fun reseedSkill(
             targetDir: File,
             assetFiles: List<String>,
-            openAsset: (String) -> java.io.InputStream?,
+            openAsset: (String) -> InputStream?,
         ) {
             val seedFile = File(targetDir, SEED_MARKER_FILE_NAME)
             val skillFile = File(targetDir, SKILL_FILE_NAME)
@@ -131,7 +133,7 @@ class SkillApi internal constructor(
 
         private fun hashFile(file: File): String? {
             return runCatching {
-                val digest = java.security.MessageDigest.getInstance("SHA-256")
+                val digest = MessageDigest.getInstance("SHA-256")
                 file.inputStream().use { input ->
                     val buffer = ByteArray(8 * 1024)
                     while (true) {

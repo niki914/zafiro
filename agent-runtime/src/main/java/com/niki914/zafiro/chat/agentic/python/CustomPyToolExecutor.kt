@@ -8,6 +8,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.io.File
 
 /**
  * CustomPyTool 执行器：把 LLM 的参数 JSON 经 [CustomPyToolHarness.buildRunner] 拼接后
@@ -22,7 +23,7 @@ class CustomPyToolExecutor(
     private val exec: suspend (code: String, timeoutMs: Long) -> PyExecOutput = PyRuntime::exec,
     private val preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
     /** 截断导出目录，测试可注入临时目录；默认 filesDir/tool_output。 */
-    private val exportDir: java.io.File? = ToolOutputTruncator.defaultExportDir(),
+    private val exportDir: File? = ToolOutputTruncator.defaultExportDir(),
 ) {
     suspend fun execute(tool: LocalTool.Py, argumentsJson: String): String {
         val args = parseArguments(argumentsJson)
