@@ -135,7 +135,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
 
     // --- AssistantTextSource ---
 
-    override fun submit(query: String): Flow<RenderFrame> = callbackFlow {
+    override fun submit(query: String): Flow<AssistantFrame> = callbackFlow {
         val svc = service
         if (svc == null) {
             close(ServiceUnavailableException())
@@ -144,7 +144,7 @@ class AgentRuntimeClient(private val context: Context) : AssistantTextSource,
         val callback = object : IRenderFrameCallback.Stub() {
             override fun onFrame(frame: RenderFrame?) {
                 if (frame != null) {
-                    trySend(frame)
+                    trySend(frame.toAssistantFrame())
                     if (frame.isFinal) {
                         close()
                     }

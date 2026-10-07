@@ -84,6 +84,7 @@
     <string name="ui_home_error_retry_exhausted_title">Automatic retries exhausted</string>
     <string name="ui_home_error_internal_title">Internal error</string>
     <string name="ui_home_retrying_title">Network hiccup, retrying…</string>
+    <string name="ui_home_thinking_title">Thinking</string>
     <string name="ui_home_retrying_attempt">Retrying %1$d/%2$d</string>
     <string name="runtime_error_internal">Internal error</string>
     <string name="ui_home_history_content_description">Conversation history</string>
@@ -315,7 +316,7 @@
     <string name="custom_py_tool_page_empty_description">Let your Agent create one, or tap the top right to add a new tool.</string>
     <string name="custom_py_tool_loading">Loading saved Custom Python tools...</string>
     <string name="custom_py_tool_editor_title_create">New Python Tool</string>
-    <string name="custom_py_tool_editor_description">Configure your Python tool. The description and parameter schema are derived from the main() docstring and type annotations. After saving, the Agent can call it when needed.</string>
+    <string name="custom_py_tool_editor_description">Define a main() entry function.\n\nParameter type annotations decide what the agent can pass in, and the docstring becomes the tool description.</string>
     <string name="custom_py_tool_field_name">Tool Name</string>
     <string name="custom_py_tool_field_name_hint">For example: py_web_search</string>
     <string name="custom_py_tool_field_enabled">Enable Tool</string>
@@ -332,6 +333,17 @@
     <string name="custom_py_tool_error_delete_failed">Failed to delete Python tool: %1$s</string>
     <string name="custom_py_tool_delete_dialog_title">Delete Python Tool</string>
     <string name="custom_py_tool_delete_dialog_text">Are you sure you want to delete the tool \"%1$s\"? This action cannot be undone.</string>
+    <string name="custom_py_tool_save_dialog_checking_title">Checking Tool Code</string>
+    <string name="custom_py_tool_save_dialog_checking_text">The check extracts the main() parameter signature and may take a few seconds.\n\nYou can cancel; nothing is saved if you do.</string>
+    <string name="custom_py_tool_save_dialog_success_title">Tool Saved</string>
+    <string name="custom_py_tool_save_dialog_success_text">Saved to the custom Python tool list.\n\nThe agent can now call it when needed.</string>
+    <string name="custom_py_tool_save_dialog_code_failed_title">Code Check Failed</string>
+    <string name="custom_py_tool_save_dialog_code_failed_text">The error comes from the tool code itself.\n\nFix the code and save again.</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_title">Save Failed</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_text">The error comes from inside the app, not from the tool code.\n\nPlease retry, and report this message if it keeps happening.</string>
+    <string name="custom_py_tool_save_dialog_action_cancel">Cancel</string>
+    <string name="custom_py_tool_save_dialog_action_done">Done</string>
+    <string name="custom_py_tool_save_dialog_action_close">Close</string>
     <string name="custom_py_tool_save_failed">Failed to save: %1$s</string>
 
     <string name="mcp_page_description">Configure connection and authentication for MCP services. After saving, Zafiro will automatically discover available tools at runtime.</string>
@@ -494,4 +506,30 @@
     <string name="agent_resident_action_stop">Stop</string>
     <string name="agent_resident_action_approve">Allow</string>
     <string name="agent_resident_action_decline">Deny</string>
+
+    <!-- Onboarding Preferences -->
+    <string name="ui_onboard_done_advanced_entry">Permissions &amp; execution rules</string>
+    <string name="ui_onboard_preferences_title">Permissions &amp; execution rules</string>
+    <string name="ui_onboard_preferences_permissions_group">Permissions</string>
+    <string name="ui_onboard_preferences_phone_use_title">Phone Use</string>
+    <string name="ui_onboard_preferences_phone_use_desc">Let the Agent control your phone; requires accessibility and overlay permissions</string>
+    <string name="ui_onboard_preferences_floating_ball_title">Floating Ball</string>
+    <string name="ui_onboard_preferences_floating_ball_desc">Show the floating ball in background to follow agent status</string>
+    <string name="ui_onboard_preferences_notification_title">Resident Notification</string>
+    <string name="ui_onboard_preferences_notification_desc">Show live agent status in the notification drawer</string>
+    <string name="ui_onboard_preferences_file_title">File access</string>
+    <string name="ui_onboard_preferences_file_desc">Allow the Agent to read and write files outside the sandbox</string>
+    <string name="ui_onboard_preferences_granted">Granted</string>
+    <string name="ui_onboard_preferences_grant_action">Tap to grant</string>
+    <string name="ui_onboard_preferences_security_group">Execution rules</string>
+    <string name="ui_onboard_preferences_security_hint">Commands that need confirmation before running</string>
+    <string name="ui_onboard_preferences_rule_add_action">Add rule</string>
+    <string name="ui_onboard_preferences_rule_add_title">Add execution rule</string>
+    <string name="ui_onboard_preferences_rule_add_hint">Accepts a keyword or regex, one line only</string>
+    <string name="ui_onboard_preferences_rule_placeholder">Enter a keyword or regex</string>
+    <string name="ui_onboard_preferences_rule_add_confirm">Add</string>
+    <string name="ui_onboard_preferences_rule_delete">Delete %1$s</string>
+    <string name="ui_onboard_preferences_action_grant_all">Grant all</string>
+    <string name="ui_onboard_preferences_action_skip">Skip</string>
+    <string name="ui_onboard_preferences_toast_denied">Permission not granted</string>
 </resources>

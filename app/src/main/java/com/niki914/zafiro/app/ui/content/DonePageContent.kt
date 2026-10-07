@@ -18,6 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextDecoration
 import com.niki914.uikit.infra.component.TintLiquidButton
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.zafiro.app.R
@@ -25,6 +29,7 @@ import com.niki914.zafiro.app.R
 @Composable
 fun DonePageContent(
     onEnterHome: () -> Unit,
+    onOpenPreferences: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -35,6 +40,7 @@ fun DonePageContent(
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(modifier = Modifier.weight(1f))
             Column(
@@ -68,6 +74,19 @@ fun DonePageContent(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = stringResource(R.string.ui_onboard_done_advanced_entry),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                    textDecoration = TextDecoration.Underline,
+                ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onOpenPreferences)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
             TintLiquidButton(
                 text = stringResource(R.string.ui_onboard_done_enter_home),
                 onClick = onEnterHome,

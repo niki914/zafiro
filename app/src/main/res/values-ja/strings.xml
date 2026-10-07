@@ -83,6 +83,7 @@
     <string name="ui_home_error_retry_exhausted_title">自動リトライがすべて失敗しました</string>
     <string name="ui_home_error_internal_title">内部エラー</string>
     <string name="ui_home_retrying_title">ネットワーク障害のため再試行中…</string>
+    <string name="ui_home_thinking_title">思考</string>
     <string name="ui_home_retrying_attempt">再試行 %1$d/%2$d</string>
     <string name="runtime_error_internal">内部エラー</string>
     <string name="ui_home_history_content_description">会話履歴</string>
@@ -314,7 +315,7 @@
     <string name="custom_py_tool_page_empty_description">Agent に作成を依頼するか、右上をタップして新規追加してください。</string>
     <string name="custom_py_tool_loading">保存された カスタム Python ツールを読み込み中...</string>
     <string name="custom_py_tool_editor_title_create">新規 カスタム Python ツール</string>
-    <string name="custom_py_tool_editor_description">カスタム Python ツールを設定します。ツールの説明とパラメータシグネチャは、コード内の main() 関数の docstring と型ヒントから自動的に抽出されます。保存後、Agent は必要に応じてこのツールを呼び出せます。</string>
+    <string name="custom_py_tool_editor_description">main() 入口関数を定義します。\n\n引数の型ヒントが Agent に渡せる値、docstring がツールの説明になります。</string>
     <string name="custom_py_tool_field_name">ツール名</string>
     <string name="custom_py_tool_field_name_hint">例：py_web_search</string>
     <string name="custom_py_tool_field_enabled">ツールを有効化</string>
@@ -331,6 +332,17 @@
     <string name="custom_py_tool_error_delete_failed">カスタム Python ツールの削除に失敗しました：%1$s</string>
     <string name="custom_py_tool_delete_dialog_title">カスタム Python ツールの削除</string>
     <string name="custom_py_tool_delete_dialog_text">ツール「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
+    <string name="custom_py_tool_save_dialog_checking_title">ツールコードを検証中</string>
+    <string name="custom_py_tool_save_dialog_checking_text">検証では main() の引数シグネチャを抽出します。数秒かかる場合があります。\n\nキャンセルできます。その場合、保存は行われません。</string>
+    <string name="custom_py_tool_save_dialog_success_title">ツールを保存しました</string>
+    <string name="custom_py_tool_save_dialog_success_text">カスタム Python ツールの一覧に保存しました。\n\nAgent が必要に応じて呼び出せるようになります。</string>
+    <string name="custom_py_tool_save_dialog_code_failed_title">コード検証に失敗しました</string>
+    <string name="custom_py_tool_save_dialog_code_failed_text">エラーはツールのコード側で発生しています。\n\nコードを修正して再保存してください。</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_title">保存に失敗しました</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_text">エラーはアプリ内部で発生しています。ツールのコードは関係ありません。\n\n再試行してください。繰り返す場合はこのエラーをご報告ください。</string>
+    <string name="custom_py_tool_save_dialog_action_cancel">キャンセル</string>
+    <string name="custom_py_tool_save_dialog_action_done">完了</string>
+    <string name="custom_py_tool_save_dialog_action_close">閉じる</string>
     <string name="custom_py_tool_save_failed">保存失敗：%1$s</string>
 
     <string name="mcp_page_description">MCP サービスの接続方法と認証情報を設定します。保存後、Zafiro は実行時に利用可能なツールを自動検出します。</string>
@@ -493,4 +505,30 @@
     <string name="agent_resident_action_stop">停止</string>
     <string name="agent_resident_action_approve">許可</string>
     <string name="agent_resident_action_decline">拒否</string>
+
+    <!-- Onboarding Preferences -->
+    <string name="ui_onboard_done_advanced_entry">権限と実行ルール</string>
+    <string name="ui_onboard_preferences_title">権限と実行ルール</string>
+    <string name="ui_onboard_preferences_permissions_group">権限</string>
+    <string name="ui_onboard_preferences_phone_use_title">Phone Use</string>
+    <string name="ui_onboard_preferences_phone_use_desc">Agent にスマートフォンの操作を許可します（ユーザー補助とオーバーレイの権限が必要）</string>
+    <string name="ui_onboard_preferences_floating_ball_title">フローティングボール</string>
+    <string name="ui_onboard_preferences_floating_ball_desc">バックグラウンド実行中にフローティングボールで Agent の状態を確認</string>
+    <string name="ui_onboard_preferences_notification_title">常駐通知</string>
+    <string name="ui_onboard_preferences_notification_desc">通知パネルに Agent のリアルタイム状態を表示</string>
+    <string name="ui_onboard_preferences_file_title">ファイルアクセス</string>
+    <string name="ui_onboard_preferences_file_desc">Agent にサンドボックス外のファイルの読み書きを許可</string>
+    <string name="ui_onboard_preferences_granted">許可済み</string>
+    <string name="ui_onboard_preferences_grant_action">タップして許可</string>
+    <string name="ui_onboard_preferences_security_group">実行ルール</string>
+    <string name="ui_onboard_preferences_security_hint">実行前に確認が必要なコマンド</string>
+    <string name="ui_onboard_preferences_rule_add_action">ルールを追加</string>
+    <string name="ui_onboard_preferences_rule_add_title">実行ルールを追加</string>
+    <string name="ui_onboard_preferences_rule_add_hint">キーワードまたは正規表現に対応、1 行のみ</string>
+    <string name="ui_onboard_preferences_rule_placeholder">キーワードまたは正規表現を入力</string>
+    <string name="ui_onboard_preferences_rule_add_confirm">追加</string>
+    <string name="ui_onboard_preferences_rule_delete">%1$s を削除</string>
+    <string name="ui_onboard_preferences_action_grant_all">一括許可</string>
+    <string name="ui_onboard_preferences_action_skip">スキップ</string>
+    <string name="ui_onboard_preferences_toast_denied">権限が許可されていません</string>
 </resources>
