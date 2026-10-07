@@ -97,7 +97,7 @@ python3 .githooks/test_check.py               # 跑测试
 
 - `SEVERITY`：哪条规则阻断、哪条只警告。
 - `EXCLUDE_PREFIXES`：不检查的路径前缀。
-- `NARRATIVE_PATTERNS`：`legacy-comment` 的关键词表，中英混排，正则。
+- `NARRATIVE`：`legacy-comment` 的关键词表，中英混排的一条正则，加词就加一个 `|新词`。
 
 改完跑一遍 `python3 .githooks/test_check.py`。
 
