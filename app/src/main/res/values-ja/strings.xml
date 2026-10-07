@@ -489,29 +489,28 @@
     <string name="agent_resident_action_decline">拒否</string>
 
     <!-- Onboarding Preferences -->
-    <string name="ui_onboard_done_advanced_entry">権限と安全ルール</string>
-    <string name="ui_onboard_preferences_title">権限</string>
+    <string name="ui_onboard_done_advanced_entry">権限と実行ルール</string>
+    <string name="ui_onboard_preferences_title">権限と実行ルール</string>
     <string name="ui_onboard_preferences_permissions_group">権限</string>
     <string name="ui_onboard_preferences_phone_use_title">Phone Use</string>
-    <string name="ui_onboard_preferences_phone_use_desc">Agent にスマートフォンの操作を許可します。ユーザー補助とオーバーレイの権限が必要です。</string>
-    <string name="ui_onboard_preferences_floating_ball_title">オーバーレイとフローティングボール</string>
-    <string name="ui_onboard_preferences_floating_ball_desc">Agent の状態を確認できるフローティングボールを常時表示</string>
-    <string name="ui_onboard_preferences_notification_title">通知とステータスバー</string>
-    <string name="ui_onboard_preferences_notification_desc">ステータスバーに Agent の状態を表示</string>
+    <string name="ui_onboard_preferences_phone_use_desc">Agent にスマートフォンの操作を許可します（ユーザー補助とオーバーレイの権限が必要）</string>
+    <string name="ui_onboard_preferences_floating_ball_title">フローティングボール</string>
+    <string name="ui_onboard_preferences_floating_ball_desc">バックグラウンド実行中にフローティングボールで Agent の状態を確認</string>
+    <string name="ui_onboard_preferences_notification_title">常駐通知</string>
+    <string name="ui_onboard_preferences_notification_desc">通知パネルに Agent のリアルタイム状態を表示</string>
     <string name="ui_onboard_preferences_file_title">ファイルアクセス</string>
     <string name="ui_onboard_preferences_file_desc">Agent にサンドボックス外のファイルの読み書きを許可</string>
     <string name="ui_onboard_preferences_granted">許可済み</string>
     <string name="ui_onboard_preferences_grant_action">タップして許可</string>
-    <string name="ui_onboard_preferences_security_group">安全ルール</string>
+    <string name="ui_onboard_preferences_security_group">実行ルール</string>
     <string name="ui_onboard_preferences_security_hint">実行前に確認が必要なコマンド</string>
     <string name="ui_onboard_preferences_rule_add_action">ルールを追加</string>
-    <string name="ui_onboard_preferences_rule_add_title">安全ルールを追加</string>
-    <string name="ui_onboard_preferences_rule_add_hint">正規表現またはキーワードに対応、改行不可</string>
-    <string name="ui_onboard_preferences_rule_placeholder">正規表現またはキーワードを入力</string>
+    <string name="ui_onboard_preferences_rule_add_title">実行ルールを追加</string>
+    <string name="ui_onboard_preferences_rule_add_hint">キーワードまたは正規表現に対応、1 行のみ</string>
+    <string name="ui_onboard_preferences_rule_placeholder">キーワードまたは正規表現を入力</string>
     <string name="ui_onboard_preferences_rule_add_confirm">追加</string>
     <string name="ui_onboard_preferences_rule_delete">%1$s を削除</string>
     <string name="ui_onboard_preferences_action_grant_all">一括許可</string>
-    <string name="ui_onboard_preferences_action_enter">Zafiro を開く</string>
     <string name="ui_onboard_preferences_action_skip">スキップ</string>
     <string name="ui_onboard_preferences_toast_denied">権限が許可されていません</string>
 </resources>

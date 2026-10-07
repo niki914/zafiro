@@ -49,7 +49,7 @@ fun OnboardingPreferencesContent(
     SettingsDetailFormScaffold(
         actionText = stringResource(
             if (uiState.allGranted) {
-                R.string.ui_onboard_preferences_action_enter
+                R.string.ui_onboard_done_enter_home
             } else {
                 R.string.ui_onboard_preferences_action_grant_all
             }
@@ -112,7 +112,8 @@ fun OnboardingPreferencesContent(
             title = stringResource(R.string.ui_onboard_preferences_security_group),
         ) {
             SettingsListItem(
-                title = stringResource(R.string.ui_onboard_preferences_security_hint),
+                title = stringResource(R.string.ui_onboard_preferences_rule_add_action),
+                summary = stringResource(R.string.ui_onboard_preferences_security_hint),
                 trailingContent = {
                     IconButton(onClick = { onIntent(OnboardingPreferencesIntent.ShowAddRuleDialog) }) {
                         Icon(
