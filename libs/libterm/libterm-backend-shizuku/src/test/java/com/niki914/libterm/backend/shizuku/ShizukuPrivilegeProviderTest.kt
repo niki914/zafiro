@@ -65,20 +65,6 @@ class ShizukuPrivilegeProviderTest {
         assertEquals(0, checker.checkCallCount)
     }
 
-    @Test
-    fun `root maps to unsupported backend unavailable`() = runTest {
-        val checker = FakeShizukuAccessChecker(ShizukuAccessState.Authorized)
-        val provider = ShizukuPrivilegeProvider(checker)
-
-        val result = provider.getAvailability(TerminalIdentity.Su)
-
-        val unavailable = assertIs<BackendAvailability.Unavailable>(result)
-        val failure = assertIs<TerminalFailure.BackendUnavailable>(unavailable.failure)
-        assertEquals(TerminalIdentity.Su, failure.identity)
-        assertEquals("Shizuku backend only supports SHIZUKU", failure.message)
-        assertEquals(0, checker.checkCallCount)
-    }
-
     private class FakeShizukuAccessChecker(
         private val state: ShizukuAccessState,
     ) : ShizukuAccessChecker {

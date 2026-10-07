@@ -12,10 +12,6 @@ class FakeProvider : PrivilegeProvider {
         return availabilityByIdentity[identity] ?: BackendAvailability.Available
     }
 
-    fun setAvailability(identity: TerminalIdentity, availability: BackendAvailability) {
-        availabilityByIdentity[identity] = availability
-    }
-
     fun setAvailable(identity: TerminalIdentity) {
         availabilityByIdentity[identity] = BackendAvailability.Available
     }

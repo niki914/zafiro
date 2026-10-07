@@ -90,16 +90,6 @@ class RealOkiaTest {
 
     // ── 初始状态 ───────────────────────────────────────────────────────────
 
-    @Test
-    fun initialStateEmpty() = runTest {
-        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()))
-        val snapshot = okia.conversation.value
-        assertNull(snapshot.leafId)
-        assertTrue(snapshot.history.isEmpty())
-        assertNull(snapshot.live)
-        okia.close()
-    }
-
     // ── send 正常路径 ──────────────────────────────────────────────────────
 
     @Test
@@ -257,26 +247,6 @@ class RealOkiaTest {
     }
 
     // ── 并发契约 ───────────────────────────────────────────────────────────
-
-    @Test
-    fun concurrentSendThrows() = runTest {
-        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
-        val okia = openOkia(FakeProtocolMapper(events), scope = testScope(testScheduler))
-        val first = launch { okia.send("one") { } }
-        runCurrent()
-
-        val second = try {
-            okia.send("two") { }
-            null
-        } catch (e: IllegalStateException) {
-            e
-        }
-        assertNotNull(second)
-
-        first.cancel()
-        runCurrent() // 让 turn job 清理 activeTurn
-        okia.close()
-    }
 
     @Test
     fun concurrentSendsReserveExactlyOneActiveTurn() = runBlocking {

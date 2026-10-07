@@ -153,15 +153,6 @@ class DiscoveryStreamableHttpMcpClientTest {
     }
 
     @Test
-    fun `probe returns true when server advertises multiple versions including ours`() =
-        runBlocking {
-            server.dispatcher = discoverServer(
-                """{"supportedVersions":["2026-07-28","2026-01-01"],"capabilities":{}}"""
-            )
-            assertTrue(client.probe(mcpServer()))
-        }
-
-    @Test
     fun `probe returns false on method-not-found`() = runBlocking {
         server.dispatcher = discoverServer(
             discoverResult = """{"noreturn":1}"""

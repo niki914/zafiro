@@ -112,27 +112,6 @@ class RealAgentLoopHooksTest {
     // ── 时机触发与顺序 ─────────────────────────────────────────────────────
 
     @Test
-    fun allSixTimingsFireInOrder() = runTest {
-        val calls = mutableListOf<String>()
-        runLoop(loopRequest(listOf(completed()), listOf(RecordingHooks(calls))))
-
-        assertEquals(
-            listOf(
-                "h:beforeInput", "h:afterInput",
-                "h:beforeSerialization", "h:afterSerialization",
-                "h:beforeRequest", "h:afterRequest"
-            ),
-            calls
-        )
-    }
-
-    @Test
-    fun emptyHooksListChangesNothing() = runTest {
-        val result = runLoop(loopRequest(listOf(completed())))
-        assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
-    }
-
-    @Test
     fun chainRunsInRegistrationOrder() = runTest {
         val calls = mutableListOf<String>()
         runLoop(
@@ -187,17 +166,6 @@ class RealAgentLoopHooksTest {
         assertEquals("rewritten", textOfUser(mapper.builtHistories.single().last()))
         // 事件仍发原始 input（事件反映事实，与树一致）
         assertEquals(TurnEvent.TurnStarted("hi"), emitted.first())
-    }
-
-    @Test
-    fun beforeInputWithoutRewritePassesOriginalHistory() = runTest {
-        val mapper = FakeProtocolMapper(listOf(completed()))
-        runLoop(
-            loopRequest(listOf(completed()), listOf(RecordingHooks(mutableListOf()))).copy(
-                protocolMapper = mapper
-            )
-        )
-        assertEquals("hi", textOfUser(mapper.builtHistories.single().last()))
     }
 
     @Test

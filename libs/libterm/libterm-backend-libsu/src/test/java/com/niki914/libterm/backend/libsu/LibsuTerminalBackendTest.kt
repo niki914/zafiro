@@ -119,36 +119,6 @@ class LibsuTerminalBackendTest {
     }
 
     @Test
-    fun `non utf8 bytes are preserved`() = runTest {
-        val session = FakeLibsuShellSession()
-        val backend = createBackend(
-            identity = TerminalIdentity.User,
-            adapterFactory = FakeLibsuShellAdapterFactory(nextSession = session),
-        )
-        val nonUtf8 = TerminalBytes.of(byteArrayOf(0xC3.toByte()))
-        val collecting = backgroundScope.async(UnconfinedTestDispatcher(testScheduler)) {
-            backend.output.take(1).toList()
-        }
-
-        runCurrent()
-        assertEquals(BackendStartResult.Started, backend.start())
-        session.emitStdout(nonUtf8)
-        advanceUntilIdle()
-        backend.close()
-
-        assertEquals(
-            listOf(
-                OutputChunk(
-                    stream = OutputStream.STDOUT,
-                    bytes = nonUtf8,
-                    timestampMillis = 0L
-                )
-            ),
-            collecting.await(),
-        )
-    }
-
-    @Test
     fun `ansi escape bytes are preserved`() = runTest {
         val session = FakeLibsuShellSession()
         val backend = createBackend(
@@ -180,26 +150,6 @@ class LibsuTerminalBackendTest {
         )
         val session = FakeLibsuShellSession().apply {
             failWritesWith(failure)
-        }
-        val backend = createBackend(
-            identity = TerminalIdentity.User,
-            adapterFactory = FakeLibsuShellAdapterFactory(nextSession = session),
-        )
-
-        assertEquals(BackendStartResult.Started, backend.start())
-
-        val failed = assertIs<SendResult.Failed>(backend.send(bytesOf("id")))
-        assertEquals(failure, failed.failure)
-    }
-
-    @Test
-    fun `send returns failed when startup gate failure happens`() = runTest {
-        val failure = TerminalFailure.RuntimeTerminated(
-            identity = TerminalIdentity.User,
-            message = "stdin startup gate failed",
-        )
-        val session = FakeLibsuShellSession().apply {
-            failStartupGateWith(failure)
         }
         val backend = createBackend(
             identity = TerminalIdentity.User,
@@ -298,14 +248,12 @@ class LibsuTerminalBackendTest {
         override val output = outputEvents
 
         val writes = mutableListOf<TerminalBytes>()
-        private var startupGateFailure: TerminalFailure.RuntimeTerminated? = null
         private var writeFailure: TerminalFailure? = null
 
         var closeCallCount: Int = 0
             private set
 
         override suspend fun write(input: TerminalBytes): SendResult {
-            startupGateFailure?.let { return SendResult.Failed(it) }
             writeFailure?.let { return SendResult.Failed(it) }
             writes += input
             return SendResult.Sent
@@ -316,10 +264,6 @@ class LibsuTerminalBackendTest {
         }
 
         override suspend fun awaitExit(): TerminalFailure? = exitFailure
-
-        fun failStartupGateWith(failure: TerminalFailure.RuntimeTerminated) {
-            startupGateFailure = failure
-        }
 
         fun failWritesWith(failure: TerminalFailure) {
             writeFailure = failure

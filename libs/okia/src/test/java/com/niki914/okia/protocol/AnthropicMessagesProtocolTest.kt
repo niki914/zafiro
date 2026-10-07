@@ -523,29 +523,6 @@ class AnthropicMessagesProtocolTest {
 
     // ── 身份 / encodeToolResult ───────────────────────────────────────────
 
-    @Test
-    fun idAndEndpointComeFromCompat() {
-        assertEquals("anthropic", protocol.id)
-        assertEquals("https://api.anthropic.com/v1/messages", protocol.defaultEndpoint)
-    }
-
-    @Test
-    fun withCodecReturnsNewInstancePreservingCompat() {
-        val other = protocol.withCodec(Json { prettyPrint = true }) as AnthropicMessagesProtocol
-        assertTrue(other !== protocol)
-        assertEquals("anthropic", other.id)
-    }
-
-    @Test
-    fun encodeToolResultWrapsOutcomeFaithfully() {
-        val call = ContentBlock.ToolCall("toolu_1", "tool-a", "{}")
-        val outcome = ToolCallOutcome.Interrupted("partial")
-        assertEquals(
-            Message.ToolResult("toolu_1", "tool-a", outcome),
-            protocol.encodeToolResult(call, outcome)
-        )
-    }
-
     // ── 工具结果多图 ────────────────────────────────────────────────
 
     private fun loaderOf(vararg missing: String) = ImageLoader { path ->

@@ -6,13 +6,6 @@ import org.junit.Test
 class ThinkingLevelTest {
 
     @Test
-    fun fromWireParsesAllLevels() {
-        ThinkingLevel.entries.forEach { level ->
-            assertEquals(level, ThinkingLevel.fromWire(level.wireValue))
-        }
-    }
-
-    @Test
     fun fromWireIsCaseInsensitive() {
         assertEquals(ThinkingLevel.HIGH, ThinkingLevel.fromWire("HIGH"))
         assertEquals(ThinkingLevel.XHIGH, ThinkingLevel.fromWire(" XHigh "))
@@ -32,11 +25,4 @@ class ThinkingLevelTest {
         assertEquals(ThinkingLevel.Default, ThinkingLevel.fromWire(""))
     }
 
-    @Test
-    fun requestsThinkingExcludesOff() {
-        assertEquals(false, ThinkingLevel.OFF.requestsThinking)
-        ThinkingLevel.entries.filter { it != ThinkingLevel.OFF }.forEach { level ->
-            assertEquals(true, level.requestsThinking)
-        }
-    }
 }

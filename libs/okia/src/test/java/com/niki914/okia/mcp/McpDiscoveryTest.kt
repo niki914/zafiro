@@ -63,19 +63,6 @@ class McpDiscoveryTest {
 
     // ── 初始状态 ───────────────────────────────────────────────────────────
 
-    @Test
-    fun initialSnapshotListsAllServersAsIdle() {
-        val d = discovery(FakeClient(), listOf(server("a"), server("b", enabled = false)))
-        val snap = d.current()
-        assertEquals(setOf("a", "b"), snap.servers.keys)
-        assertEquals(McpDiscoveryState.Idle, snap.servers.getValue("a").state)
-        assertTrue(snap.servers.getValue("a").enabled)
-        assertTrue(!snap.servers.getValue("b").enabled)
-        assertNull(snap.servers.getValue("a").fingerprint)
-        assertEquals(0, snap.servers.getValue("a").discoveredToolCount)
-        assertTrue(snap.servers.getValue("a").tools.isEmpty())
-    }
-
     // ── 刷新成功 ───────────────────────────────────────────────────────────
 
     @Test

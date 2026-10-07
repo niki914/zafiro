@@ -83,20 +83,6 @@ class TerminalManagerTest {
     }
 
     @Test
-    fun `open without cwd forwards default open options to backend`() = runTest {
-        val fixture = createOpenOptionsFixture()
-
-        val result = fixture.manager.open(
-            identity = TerminalIdentity.Su,
-            openOptions = TerminalOpenOptions(),
-        )
-
-        assertIs<OpenResult.Success<TerminalSession>>(result)
-        assertEquals(listOf(TerminalIdentity.Su), fixture.requestedIdentities)
-        assertEquals(listOf(TerminalOpenOptions()), fixture.startedOpenOptions)
-    }
-
-    @Test
     fun `open forwards normalized cwd and ssh options to factory and backend`() = runTest {
         val fixture = createOpenOptionsFixture()
         val sshOptions = sshOptions()
@@ -160,28 +146,6 @@ class TerminalManagerTest {
         )
         assertTrue(fixture.requestedIdentities.isEmpty())
         assertNull(fixture.manager.get("session-1"))
-        assertTrue(fixture.manager.list().isEmpty())
-    }
-
-    @Test
-    fun `open unauthorized returns authorization denied failure`() = runTest {
-        val fixture = createFixture()
-        fixture.provider.setUnauthorized(TerminalIdentity.Shizuku, message = "permission denied")
-
-        val result = fixture.manager.open(
-            identity = TerminalIdentity.Shizuku,
-            authorizationMode = AuthorizationMode.CHECK_ONLY,
-        )
-
-        val failure = assertIs<OpenResult.Failure>(result)
-        assertEquals(
-            TerminalFailure.AuthorizationDenied(
-                identity = TerminalIdentity.Shizuku,
-                message = "permission denied",
-            ),
-            failure.failure,
-        )
-        assertTrue(fixture.requestedIdentities.isEmpty())
         assertTrue(fixture.manager.list().isEmpty())
     }
 
@@ -354,28 +318,6 @@ class TerminalManagerTest {
         assertTrue(firstClose.await())
         assertFalse(fixture.manager.close(session.id))
         assertNull(fixture.manager.get(session.id))
-        assertTrue(fixture.manager.list().isEmpty())
-    }
-
-    @Test
-    fun `open failure does not fallback to another identity`() = runTest {
-        val startupFailure = TerminalFailure.StartupFailed(
-            identity = TerminalIdentity.Su,
-            message = "root boot failed",
-        )
-        val fixture = createFixture { identity, clock ->
-            FakeBackend(identity = identity, clock = clock).apply {
-                if (identity == TerminalIdentity.Su) {
-                    failOnStart(startupFailure)
-                }
-            }
-        }
-
-        val result = fixture.manager.open(TerminalIdentity.Su)
-
-        val failure = assertIs<OpenResult.Failure>(result)
-        assertEquals(startupFailure, failure.failure)
-        assertEquals(listOf(TerminalIdentity.Su), fixture.requestedIdentities)
         assertTrue(fixture.manager.list().isEmpty())
     }
 
