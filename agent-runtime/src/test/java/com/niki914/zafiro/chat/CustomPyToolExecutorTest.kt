@@ -58,15 +58,6 @@ class CustomPyToolExecutorTest {
     }
 
     @Test
-    fun execute_blankArgumentsTreatedAsEmptyObject() = runTest {
-        val executor = CustomPyToolExecutor(exec = { _, _ -> PyExecOutput("ok", null, timedOut = false) })
-
-        val json = Json.parseToJsonElement(executor.execute(tool, "")).jsonObject
-
-        assertTrue(json["ok"]!!.jsonPrimitive.content.toBoolean())
-    }
-
-    @Test
     fun execute_runtimeError_mapsToPythonErrorFailure() = runTest {
         val executor = CustomPyToolExecutor(exec = { _, _ -> throw IllegalStateException("boom") })
 

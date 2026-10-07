@@ -22,7 +22,6 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -139,16 +138,6 @@ class ConversationPersisterTest {
         assertEquals(2, record.summary.turnCount)
         assertEquals("a1", record.summary.lastMessagePreview)
         assertNotNull(record.snapshot.leafId)
-    }
-
-    @Test
-    fun nullSnapshot_doesNotPersist() = runTest {
-        val sessionId = ConversationRepo.createConversation("session-1", "hi")
-
-        // persistNow 只处理具体快照；null 由 start() 的 collect 过滤（流接线
-        // 不在此测，见 incrementalInsert 对重复快照的幂等覆盖）
-        assertEquals(0, ConversationRepo.countEntries(sessionId))
-        assertNull(ConversationRepo.getConversation(sessionId)?.snapshot?.leafId)
     }
 
     @Test

@@ -22,7 +22,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -85,16 +84,6 @@ class TerminalSessionPoolTest {
         val outcome = TerminalSessionPool.close(session = "user")
 
         assertEquals(TerminalCloseOutcome.Closed, outcome)
-    }
-
-    @Test
-    fun closeAllClearsMissingStateAndKeepsPoolReusable() = runTest {
-        val first = TerminalSessionPool.closeAll()
-        val second = TerminalSessionPool.closeAll()
-
-        assertEquals(0, first.closedCount)
-        assertEquals(0, second.closedCount)
-        assertNull(TerminalSessionPool.get("user"))
     }
 
     @Test

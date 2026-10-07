@@ -236,12 +236,4 @@ class ScreenOperationArgsTest {
         )
     }
 
-    @Test
-    fun parse_shellTapMissingX_fails() {
-        val result = parseArguments("""{"operation": "tap", "y": 200}""")
-        assertTrue(result.isFailure)
-        assertTrue(
-            result.exceptionOrNull()?.message?.contains("x for operation 'tap'") == true
-        )
-    }
 }

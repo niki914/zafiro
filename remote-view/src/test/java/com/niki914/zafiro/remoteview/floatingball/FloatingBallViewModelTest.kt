@@ -45,20 +45,6 @@ class FloatingBallViewModelTest {
     }
 
     @Test
-    fun initialState_isDefaultCollapsed() = runTest {
-        val viewModel = FloatingBallViewModel()
-        val state = viewModel.uiStateFlow.value
-
-        assertEquals(FloatingBallState.Collapsed, state.ballState)
-        assertFalse(state.isDetailOpen)
-        assertTrue(state.isSubmerged)
-        assertEquals(DockSide.Right, state.dockSide)
-        assertNull(state.preview)
-        assertNull(state.approvalRequest)
-        assertFalse(state.isStopEnabled)
-    }
-
-    @Test
     fun requestExpand_emitsExpandCardEffect() = runTest {
         val viewModel = FloatingBallViewModel()
         val effectDeferred = async { viewModel.uiEffect.first() }

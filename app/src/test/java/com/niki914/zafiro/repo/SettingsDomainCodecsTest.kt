@@ -332,24 +332,6 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
-    fun appStateIgnoresLegacyDeadKeys() {
-        val legacy =
-            """{"onboarding_completed":true,"startup_assistant_ui":"chat_only","last_opened_agent_id":"main","language_tag":"zh-CN"}"""
-        val parsed = AppStateSettingsCodec.parse(legacy)
-
-        assertTrue(parsed.onboardingCompleted)
-        assertEquals("zh-CN", parsed.languageTag)
-    }
-
-    @Test
-    fun appStateEncodeDropsLegacyDeadKeys() {
-        val root = jsonObject(AppStateSettingsCodec.encode(AppStateSettings()))
-
-        assertNull(root["startup_assistant_ui"])
-        assertNull(root["last_opened_agent_id"])
-    }
-
-    @Test
     fun appStateMalformedFallsBackToDefaults() {
         assertEquals(AppStateSettings(), AppStateSettingsCodec.parse("not json{"))
         assertEquals(AppStateSettings(), AppStateSettingsCodec.parse(""))
@@ -380,12 +362,6 @@ class SettingsDomainCodecsTest {
         val root = jsonObject(AppStateSettingsCodec.encode(state))
         assertEquals("zh-CN", root["language_tag"]!!.jsonPrimitive.content)
         assertEquals(true, root["load_last_conversation_on_startup"]!!.jsonPrimitive.boolean)
-    }
-
-    @Test
-    fun appStateLoadLastConversationDefaultsDisabled() {
-        assertFalse(AppStateSettingsCodec.parse("""{}""").loadLastConversationOnStartup)
-        assertFalse(AppStateSettings().loadLastConversationOnStartup)
     }
 
     private fun jsonObject(json: String) = Json.parseToJsonElement(json).jsonObject

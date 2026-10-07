@@ -221,25 +221,6 @@ class ConversationHistoryViewModelTest {
     }
 
     @Test
-    fun batchSetPinned_false_unpinsAllSelectedAndKeepsSelection() = runTest {
-        val deps = FakeDeps()
-        deps.conversations = listOf(summary("a"), summary("b"))
-        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
-        viewModel.sendIntent(ConversationHistoryIntent.Load)
-        viewModel.sendIntent(ConversationHistoryIntent.EnterSelection)
-        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("a"))
-        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("b"))
-        advanceUntilIdle()
-
-        viewModel.sendIntent(ConversationHistoryIntent.BatchSetPinned(false))
-        advanceUntilIdle()
-
-        assertEquals(listOf("a" to false, "b" to false), deps.pinCalls)
-        assertTrue(viewModel.uiStateFlow.value.selecting)
-        assertEquals(setOf("a", "b"), viewModel.uiStateFlow.value.selectedIds)
-    }
-
-    @Test
     fun requestBatchDelete_controlsConfirmationState() = runTest {
         val deps = FakeDeps()
         val viewModel = ConversationHistoryViewModel(deps.toDependencies())

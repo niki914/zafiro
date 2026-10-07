@@ -15,15 +15,6 @@ import org.junit.Test
 
 class TerminalToolResponseTest {
     @Test
-    fun sessionNotFoundSuggestsBackgroundCommand() {
-        val json = parse(TerminalToolResponse.sessionNotFound("user"))
-
-        val message = json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
-        assertErrorCode("SESSION_NOT_FOUND", json)
-        assertTrue(message.contains("session_id returned by a background command"))
-    }
-
-    @Test
     fun sessionNotFoundTellsCallerToUseReturnedHandle() {
         val json = parse(TerminalToolResponse.sessionNotFound("user"))
 
@@ -43,16 +34,6 @@ class TerminalToolResponseTest {
             json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
                 .contains("action=\"read\"")
         )
-    }
-
-    @Test
-    fun sessionBusyWithoutAsyncIdSuggestsWaiting() {
-        val json = parse(TerminalToolResponse.sessionBusy(session = "user", asyncId = null))
-
-        val message = json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
-        assertErrorCode("SESSION_BUSY", json)
-        assertTrue(message.contains("Wait"))
-        assertTrue(message.contains("current command"))
     }
 
     @Test

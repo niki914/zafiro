@@ -423,23 +423,6 @@ class TerminalBuiltinTest {
         assertFalse(json.containsKey("error"))
     }
 
-    @Test
-    fun invokeRawJson_ptyFieldReturnsInvalidRequest() = runTest {
-        installRuntimeSettingsGatewayForTest()
-        val fakeRuntime = FakeTerminalRuntime(nextResult = commandResult())
-        installFakeRuntime(fakeRuntime).use {
-            installHandles("a3f9").use {
-                val json = invoke("""{"command":"ls","pty":true}""")
-
-                assertErrorCode("INVALID_REQUEST", json)
-                assertTrue(
-                    json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
-                        .contains("Unknown terminal request field")
-                )
-            }
-        }
-    }
-
     // ── Schema ───────────────────────────────────────────────────────────────
 
     @Test

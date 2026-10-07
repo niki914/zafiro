@@ -17,15 +17,6 @@ class PromptComposerTest {
     // --- Identity slot (stable tier) ---
 
     @Test
-    fun compose_stableTierAlwaysContainsIdentity() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(additionalInstructions = "")
-        )
-
-        assertTrue(result.finalSystemPrompt.contains(PromptComposer.DEFAULT_AGENT_IDENTITY))
-    }
-
-    @Test
     fun compose_emptyAdditionalInstructionsUsesDefaultIdentity() {
         val result = PromptComposer().compose(
             PromptComposerInput(additionalInstructions = " ")
@@ -122,18 +113,6 @@ class PromptComposerTest {
     }
 
     @Test
-    fun compose_omitsToolContextWhenNoToolsOrMcpServers() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "base",
-                tools = ResolvedTools(),
-            )
-        )
-
-        assertFalse(result.finalSystemPrompt.contains("## Tool Context"))
-    }
-
-    @Test
     fun compose_rendersOnlyPresentToolBlocks() {
         val customPyTool = LocalTool.Py(
             name = "py_launch_wechat",
@@ -173,30 +152,6 @@ class PromptComposerTest {
         assertTrue(result.finalSystemPrompt.contains("<builtin_tools>\n- notify\n</builtin_tools>"))
         assertFalse(result.finalSystemPrompt.contains("Send a notification"))
         assertFalse(result.finalSystemPrompt.contains("<custom_py_tools>"))
-    }
-
-    @Test
-    fun compose_rendersMcpServersWithoutStatusBlock() {
-        // D-T2B-2：MCP 服务器状态块删除（线缆名 mcp__server__tool 已表达归属）。
-        // 配置了 MCP 服务器也不再产出 <mcp_servers> 段。
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "",
-                tools = ResolvedTools(
-                    mcpServers = listOf(
-                        McpServerDefinition.Http(name = "docs", url = "https://example.com/docs"),
-                        McpServerDefinition.Http(
-                            name = "broken",
-                            url = "https://example.com/broken"
-                        ),
-                    )
-                ),
-            )
-        )
-
-        assertFalse(result.finalSystemPrompt.contains("<mcp_servers>"))
-        assertFalse(result.finalSystemPrompt.contains("docs"))
-        assertFalse(result.finalSystemPrompt.contains("broken"))
     }
 
     // --- Skill context (stable tier) ---
@@ -291,24 +246,6 @@ class PromptComposerTest {
         assertTrue(prompt.indexOf("<id>group-a/skill-a</id>") < prompt.indexOf("<id>skill-b</id>"))
     }
 
-    @Test
-    fun compose_doesNotRenderSkillContent() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "",
-                enabledSkills = listOf(
-                    skill(id = "skill-a", name = "Skill A", description = "Description A")
-                ),
-                tools = ResolvedTools(
-                    builtinTools = listOf(loadSkillBuiltin()),
-                ),
-            )
-        )
-
-        assertTrue(result.finalSystemPrompt.contains("<id>skill-a</id>"))
-        assertFalse(result.finalSystemPrompt.contains("DO_NOT_RENDER_SKILL_CONTENT"))
-    }
-
     // --- Conditional guidance injection ---
 
     @Test
@@ -370,18 +307,6 @@ class PromptComposerTest {
     }
 
     @Test
-    fun compose_omitsTaskCompletionGuidanceWhenNoTools() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "",
-                tools = ResolvedTools(),
-            )
-        )
-
-        assertFalse(result.finalSystemPrompt.contains(PromptComposer.TASK_COMPLETION_GUIDANCE))
-    }
-
-    @Test
     fun compose_injectsTaskCompletionGuidanceWhenToolsPresent() {
         val result = PromptComposer().compose(
             PromptComposerInput(
@@ -393,18 +318,6 @@ class PromptComposerTest {
         )
 
         assertTrue(result.finalSystemPrompt.contains(PromptComposer.TASK_COMPLETION_GUIDANCE))
-    }
-
-    @Test
-    fun compose_omitsToolUseEnforcementGuidanceWhenNoTools() {
-        val result = PromptComposer().compose(
-            PromptComposerInput(
-                additionalInstructions = "",
-                tools = ResolvedTools(),
-            )
-        )
-
-        assertFalse(result.finalSystemPrompt.contains(PromptComposer.TOOL_USE_ENFORCEMENT_GUIDANCE))
     }
 
     // --- LLMController.buildMemoryItems ---

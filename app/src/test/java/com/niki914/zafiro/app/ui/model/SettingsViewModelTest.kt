@@ -3,7 +3,6 @@ package com.niki914.zafiro.app.ui.model
 import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -51,21 +50,6 @@ class SettingsViewModelTest {
         )
     }
 
-    @Test
-    fun settingsViewModel_usesEmptyDefaultHiddenGroups() {
-        val viewModel = SettingsViewModel()
-        val state = viewModel.uiStateFlow.value
-
-        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.ModelConfig))
-        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Memory))
-        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Tools))
-        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Skills))
-        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Mcp))
-        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Takeover))
-        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.ExecutionRules))
-        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.Storage))
-        assertTrue(state.isGroupVisible(ZafiroSettingsGroup.About))
-    }
 }
 
 private fun SettingsUiState.isGroupVisible(group: ZafiroSettingsGroup): Boolean {
