@@ -21,6 +21,7 @@ data class ConversationHistoryUiState(
     val activeConversationId: String? = null,
     val selecting: Boolean = false,
     val selectedIds: Set<String> = emptySet(),
+    val showBatchDeleteConfirmation: Boolean = false,
 )
 
 sealed interface ConversationHistoryIntent {
@@ -33,6 +34,10 @@ sealed interface ConversationHistoryIntent {
     data class Rename(val id: String, val title: String) : ConversationHistoryIntent
     data class Fork(val id: String) : ConversationHistoryIntent
     data class SetPinned(val id: String, val pinned: Boolean) : ConversationHistoryIntent
+    data class BatchSetPinned(val pinned: Boolean) : ConversationHistoryIntent
+    data object RequestBatchDelete : ConversationHistoryIntent
+    data object DismissBatchDeleteConfirmation : ConversationHistoryIntent
+    data object ConfirmBatchDelete : ConversationHistoryIntent
 
     /** 宿主已删除活动会话：route 转发 [ConversationHistoryEffect.DeleteActiveConversation] 后回报结果。 */
     data class ActiveConversationDeleted(val id: String) : ConversationHistoryIntent
@@ -89,7 +94,11 @@ class ConversationHistoryViewModel internal constructor(
 
             ConversationHistoryIntent.EnterSelection -> updateState { copy(selecting = true) }
             ConversationHistoryIntent.ExitSelection -> updateState {
-                copy(selecting = false, selectedIds = emptySet())
+                copy(
+                    selecting = false,
+                    selectedIds = emptySet(),
+                    showBatchDeleteConfirmation = false,
+                )
             }
 
             is ConversationHistoryIntent.ToggleSelection -> toggleSelection(intent.id)
@@ -97,6 +106,10 @@ class ConversationHistoryViewModel internal constructor(
             is ConversationHistoryIntent.Rename -> rename(intent.id, intent.title)
             is ConversationHistoryIntent.Fork -> fork(intent.id)
             is ConversationHistoryIntent.SetPinned -> setPinned(intent.id, intent.pinned)
+            is ConversationHistoryIntent.BatchSetPinned -> batchSetPinned(intent.pinned)
+            ConversationHistoryIntent.RequestBatchDelete -> requestBatchDelete()
+            ConversationHistoryIntent.DismissBatchDeleteConfirmation -> dismissBatchDeleteConfirmation()
+            ConversationHistoryIntent.ConfirmBatchDelete -> confirmBatchDelete()
             is ConversationHistoryIntent.ActiveConversationDeleted -> afterDelete(intent.id)
             is ConversationHistoryIntent.DeleteFailed -> updateState {
                 copy(deleteErrorMessage = intent.message)
@@ -176,6 +189,66 @@ class ConversationHistoryViewModel internal constructor(
 
     private suspend fun setPinned(id: String, pinned: Boolean) {
         runCatching { dependencies.setConversationPinned(id, pinned) }.onSuccess {
+            load()
+        }
+    }
+
+    private suspend fun batchSetPinned(pinned: Boolean) {
+        val ids = currentState.selectedIds
+        if (ids.isEmpty()) return
+        ids.forEach { id ->
+            runCatching { dependencies.setConversationPinned(id, pinned) }
+        }
+        load()
+    }
+
+    private fun requestBatchDelete() {
+        if (currentState.selectedIds.isEmpty()) return
+        updateState { copy(showBatchDeleteConfirmation = true) }
+    }
+
+    private fun dismissBatchDeleteConfirmation() {
+        updateState { copy(showBatchDeleteConfirmation = false) }
+    }
+
+    private suspend fun confirmBatchDelete() {
+        val targetIds = currentState.selectedIds
+        if (targetIds.isEmpty()) {
+            updateState { copy(showBatchDeleteConfirmation = false) }
+            return
+        }
+        val activeId = currentState.activeConversationId
+        val deleteActive = activeId != null && activeId in targetIds
+        val normalIds = if (deleteActive) targetIds - activeId else targetIds
+
+        updateState {
+            copy(
+                selecting = false,
+                selectedIds = emptySet(),
+                showBatchDeleteConfirmation = false,
+                deleteErrorMessage = null,
+            )
+        }
+
+        var failureMessage: String? = null
+        normalIds.forEach { id ->
+            runCatching {
+                dependencies.deleteConversation(id)
+                dependencies.setConversationPinned(id, false)
+            }.onFailure { throwable ->
+                if (failureMessage == null) {
+                    failureMessage = throwable.message ?: throwable::class.java.simpleName
+                }
+            }
+        }
+
+        if (failureMessage != null) {
+            updateState { copy(deleteErrorMessage = failureMessage) }
+        }
+
+        if (deleteActive) {
+            sendEffect(ConversationHistoryEffect.DeleteActiveConversation(activeId))
+        } else {
             load()
         }
     }

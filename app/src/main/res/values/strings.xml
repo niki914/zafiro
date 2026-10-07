@@ -101,6 +101,7 @@
     <string name="ui_conversation_history_untitled">未命名对话</string>
     <string name="ui_conversation_history_delete_dialog_title">删除对话</string>
     <string name="ui_conversation_history_delete_dialog_text">确定要删除这个对话吗？此操作不可撤销。\n\n%1$s</string>
+    <string name="ui_conversation_history_batch_delete_dialog_text">确定要删除选中的 %1$d 个对话吗？此操作不可撤销。</string>
     <string name="ui_conversation_history_delete_dialog_confirm">删除</string>
     <string name="ui_conversation_history_delete_dialog_cancel">取消</string>
     <string name="ui_conversation_history_delete_error">删除对话失败：%1$s</string>

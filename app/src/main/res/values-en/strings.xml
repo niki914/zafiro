@@ -102,6 +102,7 @@
     <string name="ui_conversation_history_untitled">Untitled conversation</string>
     <string name="ui_conversation_history_delete_dialog_title">Delete conversation</string>
     <string name="ui_conversation_history_delete_dialog_text">Delete this conversation? This cannot be undone.\n\n%1$s</string>
+    <string name="ui_conversation_history_batch_delete_dialog_text">Delete %1$d selected conversations? This cannot be undone.</string>
     <string name="ui_conversation_history_delete_dialog_confirm">Delete</string>
     <string name="ui_conversation_history_delete_dialog_cancel">Cancel</string>
     <string name="ui_conversation_history_delete_error">Failed to delete conversation: %1$s</string>

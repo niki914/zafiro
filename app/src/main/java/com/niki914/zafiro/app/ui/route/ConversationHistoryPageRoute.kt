@@ -101,17 +101,17 @@ internal fun ConversationHistoryPageRoute(
                     PageChromeMenuItem(
                         key = "delete",
                         title = deleteLabel,
-                        onClick = { viewModel.sendIntent(ConversationHistoryIntent.ExitSelection) },
+                        onClick = { viewModel.sendIntent(ConversationHistoryIntent.RequestBatchDelete) },
                     ),
                     PageChromeMenuItem(
                         key = "pin",
                         title = pinLabel,
-                        onClick = { viewModel.sendIntent(ConversationHistoryIntent.ExitSelection) },
+                        onClick = { viewModel.sendIntent(ConversationHistoryIntent.BatchSetPinned(true)) },
                     ),
                     PageChromeMenuItem(
                         key = "unpin",
                         title = unpinLabel,
-                        onClick = { viewModel.sendIntent(ConversationHistoryIntent.ExitSelection) },
+                        onClick = { viewModel.sendIntent(ConversationHistoryIntent.BatchSetPinned(false)) },
                     ),
                 ),
                 backHandler = PageBackHandler(
@@ -160,6 +160,12 @@ internal fun ConversationHistoryPageRoute(
         },
         onConversationToggleSelection = { id ->
             viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection(id))
+        },
+        onConfirmBatchDelete = {
+            viewModel.sendIntent(ConversationHistoryIntent.ConfirmBatchDelete)
+        },
+        onDismissBatchDelete = {
+            viewModel.sendIntent(ConversationHistoryIntent.DismissBatchDeleteConfirmation)
         },
     )
 }

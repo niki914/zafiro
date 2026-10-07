@@ -85,6 +85,8 @@ internal fun ConversationHistoryPageContent(
     onConversationRename: ((String, String) -> Unit)? = null,
     onConversationFork: ((String) -> Unit)? = null,
     onConversationPin: ((String, Boolean) -> Unit)? = null,
+    onConfirmBatchDelete: (() -> Unit)? = null,
+    onDismissBatchDelete: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var sheetConversation by remember { mutableStateOf<ConversationSummary?>(null) }
@@ -241,6 +243,14 @@ internal fun ConversationHistoryPageContent(
             sheetConversation = null
             onConversationDelete(conversation.id)
         },
+    )
+
+    // 批量删除确认对话框 (ConfirmationLiquidDialog)
+    ConversationBatchDeleteConfirmationDialog(
+        visible = uiState.showBatchDeleteConfirmation,
+        count = uiState.selectedIds.size,
+        onDismissRequest = { onDismissBatchDelete?.invoke() },
+        onConfirmClick = { onConfirmBatchDelete?.invoke() },
     )
 }
 
@@ -841,6 +851,34 @@ private fun ConversationDeleteConfirmationDialog(
         onPositiveClick = {
             activeConversation?.let(onConfirmClick)
         },
+    )
+}
+
+@Composable
+private fun ConversationBatchDeleteConfirmationDialog(
+    visible: Boolean,
+    count: Int,
+    onDismissRequest: () -> Unit,
+    onConfirmClick: () -> Unit,
+) {
+    var retainedCount by remember { mutableStateOf(count) }
+    LaunchedEffect(count) {
+        if (count > 0) {
+            retainedCount = count
+        }
+    }
+    ConfirmationLiquidDialog(
+        visible = visible,
+        onDismissRequest = onDismissRequest,
+        title = stringResource(R.string.ui_conversation_history_delete_dialog_title),
+        text = stringResource(
+            R.string.ui_conversation_history_batch_delete_dialog_text,
+            retainedCount,
+        ),
+        negativeButtonText = stringResource(R.string.ui_conversation_history_delete_dialog_cancel),
+        positiveButtonText = stringResource(R.string.ui_conversation_history_delete_dialog_confirm),
+        onNegativeClick = onDismissRequest,
+        onPositiveClick = onConfirmClick,
     )
 }
 

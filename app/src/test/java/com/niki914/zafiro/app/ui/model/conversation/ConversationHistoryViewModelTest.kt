@@ -1,4 +1,4 @@
-// 保护：历史页 ViewModel 的状态计算——加载成败落点、删除的活动/普通分流与收尾、重命名重载、分叉导航。
+// 保护：历史页 ViewModel 的状态计算——加载成败落点、删除的活动/普通分流与收尾、批量置顶/删除状态保持与分流、重命名重载、分叉导航。
 package com.niki914.zafiro.app.ui.model.conversation
 
 import com.niki914.zafiro.app.conversation.ConversationSummary
@@ -197,6 +197,111 @@ class ConversationHistoryViewModelTest {
         viewModel.sendIntent(ConversationHistoryIntent.ExitSelection)
         advanceUntilIdle()
 
+        assertFalse(viewModel.uiStateFlow.value.selecting)
+        assertTrue(viewModel.uiStateFlow.value.selectedIds.isEmpty())
+    }
+
+    @Test
+    fun batchSetPinned_true_pinsAllSelectedAndKeepsSelection() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("a"), summary("b"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        viewModel.sendIntent(ConversationHistoryIntent.EnterSelection)
+        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("a"))
+        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("b"))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConversationHistoryIntent.BatchSetPinned(true))
+        advanceUntilIdle()
+
+        assertEquals(listOf("a" to true, "b" to true), deps.pinCalls)
+        assertTrue(viewModel.uiStateFlow.value.selecting)
+        assertEquals(setOf("a", "b"), viewModel.uiStateFlow.value.selectedIds)
+    }
+
+    @Test
+    fun batchSetPinned_false_unpinsAllSelectedAndKeepsSelection() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("a"), summary("b"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        viewModel.sendIntent(ConversationHistoryIntent.EnterSelection)
+        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("a"))
+        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("b"))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConversationHistoryIntent.BatchSetPinned(false))
+        advanceUntilIdle()
+
+        assertEquals(listOf("a" to false, "b" to false), deps.pinCalls)
+        assertTrue(viewModel.uiStateFlow.value.selecting)
+        assertEquals(setOf("a", "b"), viewModel.uiStateFlow.value.selectedIds)
+    }
+
+    @Test
+    fun requestBatchDelete_controlsConfirmationState() = runTest {
+        val deps = FakeDeps()
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.EnterSelection)
+        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("a"))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConversationHistoryIntent.RequestBatchDelete)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiStateFlow.value.showBatchDeleteConfirmation)
+
+        viewModel.sendIntent(ConversationHistoryIntent.DismissBatchDeleteConfirmation)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiStateFlow.value.showBatchDeleteConfirmation)
+        assertTrue(viewModel.uiStateFlow.value.selecting)
+    }
+
+    @Test
+    fun confirmBatchDelete_normalConversations_deletesUnpinsAndExitsSelection() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("a"), summary("b"), summary("c"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        viewModel.sendIntent(ConversationHistoryIntent.EnterSelection)
+        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("a"))
+        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("b"))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConversationHistoryIntent.ConfirmBatchDelete)
+        advanceUntilIdle()
+
+        assertEquals(listOf("a", "b"), deps.deletedIds)
+        assertEquals(listOf("a" to false, "b" to false), deps.pinCalls)
+        assertFalse(viewModel.uiStateFlow.value.selecting)
+        assertTrue(viewModel.uiStateFlow.value.selectedIds.isEmpty())
+        assertFalse(viewModel.uiStateFlow.value.showBatchDeleteConfirmation)
+        assertEquals(listOf("c"), viewModel.uiStateFlow.value.conversations.map { it.id })
+    }
+
+    @Test
+    fun confirmBatchDelete_includingActiveConversation_deletesNormalAndSendsEffect() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("a"), summary("b"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        viewModel.sendIntent(ConversationHistoryIntent.SetActiveConversation("a"))
+        viewModel.sendIntent(ConversationHistoryIntent.EnterSelection)
+        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("a"))
+        viewModel.sendIntent(ConversationHistoryIntent.ToggleSelection("b"))
+        advanceUntilIdle()
+
+        val effectDeferred = async { viewModel.uiEffect.first() }
+
+        viewModel.sendIntent(ConversationHistoryIntent.ConfirmBatchDelete)
+        advanceUntilIdle()
+
+        assertEquals(listOf("b"), deps.deletedIds)
+        assertEquals(listOf("b" to false), deps.pinCalls)
+        assertEquals(
+            ConversationHistoryEffect.DeleteActiveConversation("a"),
+            effectDeferred.await(),
+        )
         assertFalse(viewModel.uiStateFlow.value.selecting)
         assertTrue(viewModel.uiStateFlow.value.selectedIds.isEmpty())
     }
