@@ -484,4 +484,30 @@
     <string name="agent_resident_action_stop">停止</string>
     <string name="agent_resident_action_approve">允許</string>
     <string name="agent_resident_action_decline">拒絕</string>
+
+    <!-- Onboarding Preferences -->
+    <string name="ui_onboard_done_advanced_entry">權限與執行規則</string>
+    <string name="ui_onboard_preferences_title">權限與執行規則</string>
+    <string name="ui_onboard_preferences_permissions_group">權限</string>
+    <string name="ui_onboard_preferences_phone_use_title">Phone Use</string>
+    <string name="ui_onboard_preferences_phone_use_desc">允許 Agent 操控手機，需要無障礙與懸浮窗權限</string>
+    <string name="ui_onboard_preferences_floating_ball_title">懸浮球</string>
+    <string name="ui_onboard_preferences_floating_ball_desc">後台運行時顯示懸浮球，隨時查看 Agent 狀態</string>
+    <string name="ui_onboard_preferences_notification_title">常駐通知</string>
+    <string name="ui_onboard_preferences_notification_desc">在通知欄顯示 Agent 的即時狀態</string>
+    <string name="ui_onboard_preferences_file_title">檔案權限</string>
+    <string name="ui_onboard_preferences_file_desc">允許 Agent 讀寫沙箱外的檔案</string>
+    <string name="ui_onboard_preferences_granted">已授權</string>
+    <string name="ui_onboard_preferences_grant_action">點擊授權</string>
+    <string name="ui_onboard_preferences_security_group">執行規則</string>
+    <string name="ui_onboard_preferences_security_hint">執行前需要二次確認的命令</string>
+    <string name="ui_onboard_preferences_rule_add_action">新增規則</string>
+    <string name="ui_onboard_preferences_rule_add_title">新增執行規則</string>
+    <string name="ui_onboard_preferences_rule_add_hint">支援關鍵字或正規表達式，僅限一行</string>
+    <string name="ui_onboard_preferences_rule_placeholder">輸入關鍵字或正規表達式</string>
+    <string name="ui_onboard_preferences_rule_add_confirm">新增</string>
+    <string name="ui_onboard_preferences_rule_delete">刪除 %1$s</string>
+    <string name="ui_onboard_preferences_action_grant_all">一鍵授權</string>
+    <string name="ui_onboard_preferences_action_skip">跳過</string>
+    <string name="ui_onboard_preferences_toast_denied">權限未授予</string>
 </resources>

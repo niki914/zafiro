@@ -14,6 +14,7 @@ import com.niki914.zafiro.app.ui.nav.DonePage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
+import com.niki914.zafiro.app.ui.nav.OnboardingPreferencesPage
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
 import com.niki914.zafiro.app.ui.nav.PromptEditPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
@@ -32,6 +33,7 @@ import com.niki914.zafiro.app.ui.route.DonePageRoute
 import com.niki914.zafiro.app.ui.route.ExecutionRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.HomePageRoute
 import com.niki914.zafiro.app.ui.route.McpServerDetailRoute
+import com.niki914.zafiro.app.ui.route.OnboardingPreferencesRoute
 import com.niki914.zafiro.app.ui.route.ProviderPickPageRoute
 import com.niki914.zafiro.app.ui.route.PromptEditRoute
 import com.niki914.zafiro.app.ui.route.SavedConfigDetailRoute
@@ -89,6 +91,11 @@ fun ZafiroPageContent(
         )
 
         DonePage -> DonePageRoute(
+            onPush = onPush,
+            onResetTo = onResetTo,
+        )
+
+        OnboardingPreferencesPage -> OnboardingPreferencesRoute(
             onResetTo = onResetTo,
         )
 

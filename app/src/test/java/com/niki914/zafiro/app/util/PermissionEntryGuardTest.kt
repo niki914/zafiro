@@ -42,6 +42,8 @@ class PermissionEntryGuardTest {
         "\"su\"" to listOf(
             AllowRule("seed_py_launch_wechat.py", ""),
             AllowRule("seed_py_install_apk.py", ""),
+            // onboarding 安全规则的展示文案，不是 su 调用
+            AllowRule("OnboardingPreferencesViewModel.kt", "DefaultSecurityPatterns"),
         ),
         // shell 通道授权命令只出现在 business:permission 内部
         "settings put secure" to listOf(
