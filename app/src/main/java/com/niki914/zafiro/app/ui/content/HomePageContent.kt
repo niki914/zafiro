@@ -1324,9 +1324,11 @@ private fun HomeChatTurnItem(
                                 val blockIndexNow = blockIndex
                                 val thinkingKey = "${turn.id}_$blockIndexNow"
                                 val isThinkingExpanded = thinkingKey in expandedThinking
+                                val thinkingTitle =
+                                    stringResource(R.string.ui_home_thinking_title)
                                 CollapsibleBlock(
                                     icon = ToolPresentation.Thinking,
-                                    title = "Thinking" + ToolPresentation
+                                    title = thinkingTitle + ToolPresentation
                                         .previewOf(block.text)
                                         ?.let { " · $it" }
                                         .orEmpty(),
