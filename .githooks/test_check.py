@@ -6,13 +6,9 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from check import RULE_NAMES, SEVERITY, collect_findings, excluded, parse_diff  # noqa: E402
+from check import RULE_NAMES, SEVERITY, collect_findings, excluded, parse_diff
 
 
 def findings_for(source: str, rules: tuple[str, ...] = RULE_NAMES):

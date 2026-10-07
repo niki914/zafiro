@@ -35,26 +35,12 @@ EXCLUDE_PREFIXES = (
 )
 
 # 变化叙述注释的关键词。描述了"曾经/不再是什么"的注释一律不合格：
-# 注释只描述代码当前是什么样。
-NARRATIVE_PATTERNS = (
-    # 中文
-    r"不再",
-    r"改为",
-    r"改成",
-    r"此前",
-    r"原来",
-    r"原本",
-    r"原先",
-    r"原为",
-    r"曾经",
-    r"旧版",
-    # 英文
-    r"no longer",
-    r"used to\b",
-    r"formerly",
-    r"previously",
-    r"renamed from",
-    r"was renamed",
+# 注释只描述代码当前是什么样。加词就加在这里。
+NARRATIVE = re.compile(
+    r"不再|改为|改成|此前|原来|原本|原先|原为|曾经|旧版"
+    r"|\bno longer\b|\bused to\b|\bformerly\b|\bpreviously\b"
+    r"|\brenamed from\b|\bwas renamed\b",
+    re.IGNORECASE,
 )
 
 TARGET_SUFFIX = ".kt"
@@ -72,7 +58,6 @@ TAGISH_NAMES = ("tag", "log_tag", "logtag", "logging_tag")
 IGNORE_DIRECTIVE = re.compile(r"githooks:ignore(-file)?\s+([\w,\-]+)")
 IMPORT = re.compile(r"^\s*import\s+([\w.]+)")
 MONITOR_LOCK = re.compile(r"\bsynchronized\s*\(|@Synchronized\b")
-NARRATIVE = re.compile("|".join(NARRATIVE_PATTERNS), re.IGNORECASE)
 FQN = re.compile(
     r"(?<![\w.])(?:com|org|android|androidx|java|kotlin|javax)\.(?:[a-z]\w*\.)+([A-Z]\w*)"
 )
@@ -208,6 +193,49 @@ def split_rules(text: str) -> set[str]:
     return {t for t in re.split(r"[,\s]+", text) if t}
 
 
+def file_context(lines: list[str]) -> LineContext:
+    imported = frozenset(
+        m.group(1).rsplit(".", 1)[-1] for m in map(IMPORT.match, lines) if m
+    )
+    return LineContext(imported, any(ANDROID_LOG_IMPORT.match(l) for l in lines))
+
+
+def file_scope_rules(lines: list[str]) -> set[str]:
+    """文件级放行：`githooks:ignore-file <rule>`，写在文件任意位置。"""
+    allowed: set[str] = set()
+    for line in lines:
+        m = IGNORE_DIRECTIVE.search(line)
+        if m and m.group(1):
+            allowed |= split_rules(m.group(2))
+    return allowed
+
+
+def line_scope_rules(lines: list[str], lineno: int) -> set[str]:
+    """行级放行：写在违规行本身，或紧贴其上的上一行。"""
+    allowed: set[str] = set()
+    for probe in (lines[lineno - 1], lines[lineno - 2] if lineno >= 2 else ""):
+        m = IGNORE_DIRECTIVE.search(probe)
+        if m and not m.group(1):
+            allowed |= split_rules(m.group(2))
+    return allowed
+
+
+def findings_in_line(
+    path: str, lineno: int, text: str, ctx: LineContext, allowed: set[str],
+    rules: tuple[str, ...],
+) -> tuple[list[Finding], int]:
+    hits: list[Finding] = []
+    ignored = 0
+    for name, hit, message, hint in RULES:
+        if name not in rules or not hit(text, ctx):
+            continue
+        if name in allowed or "all" in allowed:
+            ignored += 1
+            continue
+        hits.append(Finding(path, lineno, name, message, hint))
+    return hits, ignored
+
+
 def collect_findings(
     files: dict[str, str],
     candidates: dict[str, list[int]],
@@ -221,34 +249,22 @@ def collect_findings(
         if source is None:
             continue
         lines = source.splitlines()
-        imported = frozenset(
-            m.group(1).rsplit(".", 1)[-1] for m in map(IMPORT.match, lines) if m
-        )
-        ctx = LineContext(imported, any(ANDROID_LOG_IMPORT.match(l) for l in lines))
+        ctx = file_context(lines)
         raw = raw_lines(lines)
-        file_scope: set[str] = set()
-        for line in lines:
-            m = IGNORE_DIRECTIVE.search(line)
-            if m and m.group(1):
-                file_scope |= split_rules(m.group(2))
-
+        file_scope = file_scope_rules(lines)
         for lineno in linenos:
             if lineno < 1 or lineno > len(lines) or lineno in raw:
                 continue
-            text = lines[lineno - 1]
-            line_scope: set[str] = set()
-            for probe in (text, lines[lineno - 2] if lineno >= 2 else ""):
-                m = IGNORE_DIRECTIVE.search(probe)
-                if m and not m.group(1):
-                    line_scope |= split_rules(m.group(2))
-            allowed = file_scope | line_scope
-            for name, hit, message, hint in RULES:
-                if name not in rules or not hit(text, ctx):
-                    continue
-                if name in allowed or "all" in allowed:
-                    ignored += 1
-                    continue
-                findings.append(Finding(path, lineno, name, message, hint))
+            hits, skipped = findings_in_line(
+                path,
+                lineno,
+                lines[lineno - 1],
+                ctx,
+                file_scope | line_scope_rules(lines, lineno),
+                rules,
+            )
+            findings.extend(hits)
+            ignored += skipped
     return findings, ignored
 
 
