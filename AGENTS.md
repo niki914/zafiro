@@ -158,16 +158,3 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 ### 讲解
 
 - 需要向用户阐述复杂内容时，可以通过 `eli5` 或 `show-me` 帮助解答。eli5 是打比方，show-me 是用前端页面
-
----
-
-## 未完成项目
-
-[] MEDIUM: 通过参考开源项目重构宿主业务
-[] HARD: 实现一个 Replay 功能，用户可以录制一段操作，作为工具保存下来，Agent 通过调用这个工具来重放用户的操作
-[] EAZY: `Build.VERSION.SDK_INT >= Build.VERSION_CODES.O` 这样的版本相关的无用判断
-[] MEDIUM: 内联包名清理，使用默认参数而放在构造函数里面的成员
-[] HARD: 处理散落的 `TODO`
-[] EAZY: Composer 附件多选：Photos 从 `PickVisualMedia` 换到 `PickMultipleVisualMedia`（同一个系统相册，不是自研 picker），Files 侧允许多选
-[] MEDIUM: 附件 Recents：在选项单里列出最近附加过的文件 / 文件夹（需要一份最近附件列表的持久化）
-[] EZAT: 添加一个 runCatching 封装到 :api 专门处理 cancellation exception 等异常，然后全仓搜索 try / runCatching 做清扫
