@@ -4,12 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import com.niki914.zafiro.app.ui.content.DonePageContent
 import com.niki914.zafiro.app.ui.nav.HomePage
+import com.niki914.zafiro.app.ui.nav.OnboardingPreferencesPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.launch
 
 @Composable
 internal fun DonePageRoute(
+    onPush: (ZafiroPage) -> Unit,
     onResetTo: (ZafiroPage) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -20,6 +22,9 @@ internal fun DonePageRoute(
                 completeOnboarding()
                 onResetTo(HomePage)
             }
+        },
+        onOpenPreferences = {
+            onPush(OnboardingPreferencesPage)
         },
     )
 }

@@ -36,7 +36,7 @@
 
 ### 宿主 / Host
 
-本项目通过 LSPosed 对 com.heytap.speechassist 等应用做 Hook，将系统语音助手的回答换成 Zafiro Agent 回答，具体实现是通过 Binder + AgentRuntimeService。当前的实现重点是，复杂的数据结构从不穿过 Binder，即，复杂的数据结构留在主进程，在 map 后喂给宿主，而宿主侧 Binder Client 得到纯文本，直接无脑 render，通过这种方式，我们降低了在数据结构所需要投入的成本
+本项目通过 LSPosed 对 com.heytap.speechassist 等应用做 Hook，将系统语音助手的回答换成 Zafiro Agent 回答，具体实现是通过 Binder + AgentRuntimeService。当前的实现重点是，复杂的数据结构从不穿过 Binder，IPC 传递纯语义数据（Thinking、Tools、Content）。宿主架构采用分层治理：上层 `*Hook`（如 `BreenoHook`）为纯胶水调度层，严禁堆砌反射与类名硬编码
 
 我们把取代原生 agent 的功能称为 takeover / 接管。宿主是比较边缘的业务，在重要决策时，不应该为了宿主的业务而去妥协，应该牺牲宿主
 
@@ -129,7 +129,7 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 
 ## 未完成项目
 
-[] MEDIUM: 通过参考开源项目重构宿主业务
+[x] MEDIUM: 通过参考开源项目重构宿主业务
 [] HARD: 实现一个 Replay 功能，用户可以录制一段操作，作为工具保存下来，Agent 通过调用这个工具来重放用户的操作
 [] EAZY: `Build.VERSION.SDK_INT >= Build.VERSION_CODES.O` 这样的版本相关的无用判断
 [] MEDIUM: 内联包名清理，使用默认参数而放在构造函数里面的成员

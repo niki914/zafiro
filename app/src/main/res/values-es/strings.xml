@@ -310,7 +310,7 @@
     <string name="custom_py_tool_page_empty_description">Deje que el agente las cree por usted o toque el botón superior derecho para añadir una nueva.</string>
     <string name="custom_py_tool_loading">Cargando herramientas de Python guardadas...</string>
     <string name="custom_py_tool_editor_title_create">Añadir herramienta de Python</string>
-    <string name="custom_py_tool_editor_description">Configure su herramienta de Python. La descripción y la firma de parámetros se extraerán automáticamente de los docstrings y anotaciones de tipo de la función main(). Una vez guardada, el agente podrá llamarla según sea necesario.</string>
+    <string name="custom_py_tool_editor_description">Defina una función de entrada main().\n\nLas anotaciones de tipo de los parámetros determinan lo que el agente puede pasar y el docstring se convierte en la descripción de la herramienta.</string>
     <string name="custom_py_tool_field_name">Nombre de la herramienta</string>
     <string name="custom_py_tool_field_name_hint">Ejemplo: py_web_search</string>
     <string name="custom_py_tool_field_enabled">Activar herramienta</string>
@@ -327,6 +327,17 @@
     <string name="custom_py_tool_error_delete_failed">Error al eliminar la herramienta de Python: %1$s</string>
     <string name="custom_py_tool_delete_dialog_title">Eliminar herramienta de Python</string>
     <string name="custom_py_tool_delete_dialog_text">¿Está seguro de que desea eliminar la herramienta «%1$s»? Esta acción no se puede deshacer.</string>
+    <string name="custom_py_tool_save_dialog_checking_title">Verificando el código</string>
+    <string name="custom_py_tool_save_dialog_checking_text">La verificación extrae la firma de parámetros de main() y puede tardar unos segundos.\n\nPuede cancelarla; en ese caso no se guarda nada.</string>
+    <string name="custom_py_tool_save_dialog_success_title">Herramienta guardada</string>
+    <string name="custom_py_tool_save_dialog_success_text">Guardada en la lista de herramientas de Python.\n\nEl agente ya puede llamarla cuando la necesite.</string>
+    <string name="custom_py_tool_save_dialog_code_failed_title">La verificación del código falló</string>
+    <string name="custom_py_tool_save_dialog_code_failed_text">El error proviene del propio código de la herramienta.\n\nCorrija el código y vuelva a guardar.</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_title">Error al guardar</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_text">El error proviene del interior de la aplicación, no del código de la herramienta.\n\nReintente y, si persiste, infórmenos con este mensaje.</string>
+    <string name="custom_py_tool_save_dialog_action_cancel">Cancelar</string>
+    <string name="custom_py_tool_save_dialog_action_done">Listo</string>
+    <string name="custom_py_tool_save_dialog_action_close">Cerrar</string>
     <string name="custom_py_tool_save_failed">Error al guardar: %1$s</string>
 
     <string name="mcp_page_description">Configure los métodos de conexión y autenticación para servicios MCP. Tras guardar, Zafiro descubrirá automáticamente las herramientas disponibles en tiempo de ejecución.</string>
@@ -489,4 +500,30 @@
     <string name="agent_resident_action_stop">Detener</string>
     <string name="agent_resident_action_approve">Permitir</string>
     <string name="agent_resident_action_decline">Rechazar</string>
+
+    <!-- Onboarding Preferences -->
+    <string name="ui_onboard_done_advanced_entry">Permisos y reglas de ejecución</string>
+    <string name="ui_onboard_preferences_title">Permisos y reglas de ejecución</string>
+    <string name="ui_onboard_preferences_permissions_group">Permisos</string>
+    <string name="ui_onboard_preferences_phone_use_title">Phone Use</string>
+    <string name="ui_onboard_preferences_phone_use_desc">Permite que el agente controle tu teléfono; requiere permisos de accesibilidad y superposición</string>
+    <string name="ui_onboard_preferences_floating_ball_title">Bola flotante</string>
+    <string name="ui_onboard_preferences_floating_ball_desc">Mostrar la bola flotante en segundo plano para seguir el estado del agente</string>
+    <string name="ui_onboard_preferences_notification_title">Notificación residente</string>
+    <string name="ui_onboard_preferences_notification_desc">Mostrar el estado del agente en vivo en el panel de notificaciones</string>
+    <string name="ui_onboard_preferences_file_title">Acceso a archivos</string>
+    <string name="ui_onboard_preferences_file_desc">Permitir que el agente lea y escriba archivos fuera del sandbox</string>
+    <string name="ui_onboard_preferences_granted">Concedido</string>
+    <string name="ui_onboard_preferences_grant_action">Tocar para conceder</string>
+    <string name="ui_onboard_preferences_security_group">Reglas de ejecución</string>
+    <string name="ui_onboard_preferences_security_hint">Comandos que requieren confirmación antes de ejecutarse</string>
+    <string name="ui_onboard_preferences_rule_add_action">Añadir regla</string>
+    <string name="ui_onboard_preferences_rule_add_title">Añadir regla de ejecución</string>
+    <string name="ui_onboard_preferences_rule_add_hint">Acepta una palabra clave o expresión regular, solo una línea</string>
+    <string name="ui_onboard_preferences_rule_placeholder">Introduce una palabra clave o expresión regular</string>
+    <string name="ui_onboard_preferences_rule_add_confirm">Añadir</string>
+    <string name="ui_onboard_preferences_rule_delete">Eliminar %1$s</string>
+    <string name="ui_onboard_preferences_action_grant_all">Conceder todo</string>
+    <string name="ui_onboard_preferences_action_skip">Omitir</string>
+    <string name="ui_onboard_preferences_toast_denied">Permiso no concedido</string>
 </resources>

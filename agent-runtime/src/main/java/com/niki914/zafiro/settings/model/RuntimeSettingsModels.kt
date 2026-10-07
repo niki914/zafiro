@@ -151,7 +151,14 @@ data class RuntimeTakeoverRuleValidation(
     val message: String,
 )
 
+/** 工具校验错误的来源：Code = 用户代码/配置问题，Internal = 应用内部问题。UI 据此选择提示文案。 */
+enum class RuntimeToolValidationOrigin {
+    Code,
+    Internal,
+}
+
 data class RuntimeToolValidation(
     val field: String,
     val message: String,
+    val origin: RuntimeToolValidationOrigin = RuntimeToolValidationOrigin.Code,
 )

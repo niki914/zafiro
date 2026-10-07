@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -152,6 +153,16 @@ private fun LiquidDialogSurface(
     LaunchedEffect(Unit) {
         withFrameNanos { }
         dialogMounted = true
+    }
+
+    // LiquidDialog 是 portal overlay 而不是 Dialog，不会自动接管焦点：显示时必须主动
+    // 释放页面上残留的输入焦点，否则键盘会继续顶在弹窗上、焦点也仍留在背后的输入框里。
+    // （弹窗自带输入框的调用方在更晚的时机 requestFocus，仍然能拿到焦点。）
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(effectiveVisible) {
+        if (effectiveVisible) {
+            focusManager.clearFocus()
+        }
     }
 
     // 弹窗可见时消费系统返回键（issue：语言/协议弹窗按返回直接弹页）。

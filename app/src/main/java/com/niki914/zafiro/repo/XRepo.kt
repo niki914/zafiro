@@ -35,6 +35,7 @@ import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRuleValidation as TakeoverRuleValidation
 import com.niki914.zafiro.settings.model.RuntimeToolValidation as ToolValidation
+import com.niki914.zafiro.settings.model.RuntimeToolValidationOrigin as ToolValidationOrigin
 
 object XRepo {
     private const val LOG_TAG = "niki914_zafiro_XRepo"
@@ -1163,41 +1164,51 @@ class CustomPyToolApi internal constructor(
     }
 
     /**
-     * UI 保存入口：与 py_meta_tools write 同管线，先对 code 做签名反射，
-     * 用结果回填 description/schemaJson 缓存，再走 validate/save。
-     * 反射失败（语法错误、缺 main、注解缺失等）返回 field="code" 的 validation。
+     * 签名反射（纯读，不写盘）：提取 main 的基本类型标注与 docstring。
+     * 供上游自由编排顺序与取消——反射与写盘之间没有任何副作用，
+     * 因此取消掉这次调用等于这次保存从未发生。
+     *
+     * 失败时区分来源：脚本结构化报错与"代码没跑完"算代码问题，
+     * worker 不可用、客户端超时、返回不是 JSON 算应用内部问题。
      */
-    suspend fun saveIntrospected(tool: CustomPyTool): ToolValidation? {
-        val introspection = introspectMain(tool.code)
-        introspection.error?.let { error -> return ToolValidation("code", error) }
-        return save(
-            tool.copy(
-                description = introspection.description.orEmpty(),
-                schemaJson = introspection.schemaJson.orEmpty(),
-            ),
-        )
-    }
-
-    private suspend fun introspectMain(code: String): PyIntrospection {
-        val output = try {
+    suspend fun introspect(code: String): CustomPyToolIntrospection {
+        val executed = try {
             PyRuntime.exec(CustomPyToolHarness.buildIntrospection(code), INTROSPECTION_TIMEOUT_MS)
-                .output
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
-            return PyIntrospection(error = t.message ?: "Python signature check failed.")
+            // worker 不可用 / 客户端超时 / Binder 异常：应用侧问题，非用户代码问题
+            return CustomPyToolIntrospection(
+                error = t.message ?: "Python signature check failed.",
+                origin = ToolValidationOrigin.Internal,
+            )
         }
+        if (executed.timedOut) {
+            // worker 侧 join 超时（解释器还活着，是这段代码自己没有返回）：代码侧问题
+            return CustomPyToolIntrospection(
+                error = "Signature check timed out. The tool code must return promptly.",
+                origin = ToolValidationOrigin.Code,
+            )
+        }
+        val output = executed.output
         val json = try {
             Json.parseToJsonElement(output.trim()).jsonObject
         } catch (_: Exception) {
-            return PyIntrospection(error = "Unexpected signature check output: ${output.take(200)}")
+            return CustomPyToolIntrospection(
+                error = "Unexpected signature check output: ${output.take(200)}",
+                origin = ToolValidationOrigin.Internal,
+            )
         }
         json["error"]?.jsonPrimitive?.contentOrNull?.let { type ->
             val line = json["line"]?.jsonPrimitive?.longOrNull
             val message = json["message"]?.jsonPrimitive?.contentOrNull ?: "Invalid tool code."
-            return PyIntrospection(error = if (line != null) "$message (line $line)" else message)
+            // 脚本结构化报错：语法错误、缺 main、注解缺失、顶层代码抛异常 —— 代码侧问题
+            return CustomPyToolIntrospection(
+                error = if (line != null) "$message (line $line)" else message,
+                origin = ToolValidationOrigin.Code,
+            )
         }
-        return PyIntrospection(
+        return CustomPyToolIntrospection(
             description = json["description"]?.jsonPrimitive?.contentOrNull.orEmpty(),
             schemaJson = json["schema"]?.jsonObject?.toString().orEmpty(),
         )
@@ -1240,18 +1251,22 @@ class CustomPyToolApi internal constructor(
         )
     }
 
-    private data class PyIntrospection(
-        val description: String? = null,
-        val schemaJson: String? = null,
-        val error: String? = null,
-    )
-
     companion object {
         private const val PY_PREFIX = "py_"
         private const val INTROSPECTION_TIMEOUT_MS = 30_000L
         private val NAME_PATTERN = Regex("^py_[a-z][a-z0-9_]{0,63}$")
     }
 }
+
+/**
+ * 签名反射结果：成功时带 description/schemaJson，失败时带 [error] 与 [origin]。
+ */
+data class CustomPyToolIntrospection(
+    val description: String? = null,
+    val schemaJson: String? = null,
+    val error: String? = null,
+    val origin: ToolValidationOrigin = ToolValidationOrigin.Code,
+)
 
 class BuiltinToolApi internal constructor(
     private val repo: XRepo,
