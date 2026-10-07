@@ -670,7 +670,7 @@ private fun groupByTimeline(
             }
         }
     return buildList {
-        if (pinned.isNotEmpty()) add(TimelineSection(TimelineBucket.Pinned, pinned))
+        add(TimelineSection(TimelineBucket.Pinned, pinned))
         addAll(timeSections)
     }
 }
