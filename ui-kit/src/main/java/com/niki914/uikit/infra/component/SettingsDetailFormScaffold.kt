@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -62,6 +64,9 @@ fun SettingsDetailFormScaffold(
     description: String? = null,
     inlineErrorText: String? = null,
     actionEnabled: Boolean = true,
+    secondaryActionText: String? = null,
+    secondaryActionEnabled: Boolean = true,
+    onSecondaryActionClick: (() -> Unit)? = null,
     onBackgroundTap: (() -> Unit)? = null,
     contentBottomPadding: Dp? = null,
     actionButtonBottomPadding: Dp? = null,
@@ -189,22 +194,58 @@ fun SettingsDetailFormScaffold(
             }
         }
 
-        TintLiquidButton(
-            text = actionText,
-            enabled = actionEnabled,
-            onClick = onActionClick,
-            buttonHeight = 56.dp,
-            darkContainerColor = actionButtonDarkContainerColor,
-            lightContainerColor = actionButtonLightContainerColor,
-            darkContentColor = actionButtonDarkContentColor,
-            lightContentColor = actionButtonLightContentColor,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(
-                    start = SettingsDetailPageDefaults.HorizontalPadding,
-                    end = SettingsDetailPageDefaults.HorizontalPadding,
-                    bottom = resolvedActionButtonBottomPadding,
-                ),
-        )
+        if (secondaryActionText != null && onSecondaryActionClick != null) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(
+                        start = SettingsDetailPageDefaults.HorizontalPadding,
+                        end = SettingsDetailPageDefaults.HorizontalPadding,
+                        bottom = resolvedActionButtonBottomPadding,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                TintLiquidButton(
+                    text = actionText,
+                    enabled = actionEnabled,
+                    onClick = onActionClick,
+                    buttonHeight = 56.dp,
+                    darkContainerColor = actionButtonDarkContainerColor,
+                    lightContainerColor = actionButtonLightContainerColor,
+                    darkContentColor = actionButtonDarkContentColor,
+                    lightContentColor = actionButtonLightContentColor,
+                    modifier = Modifier.weight(1f),
+                )
+                TintLiquidButton(
+                    text = secondaryActionText,
+                    enabled = secondaryActionEnabled,
+                    onClick = onSecondaryActionClick,
+                    buttonHeight = 56.dp,
+                    darkContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    lightContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        } else {
+            TintLiquidButton(
+                text = actionText,
+                enabled = actionEnabled,
+                onClick = onActionClick,
+                buttonHeight = 56.dp,
+                darkContainerColor = actionButtonDarkContainerColor,
+                lightContainerColor = actionButtonLightContainerColor,
+                darkContentColor = actionButtonDarkContentColor,
+                lightContentColor = actionButtonLightContentColor,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(
+                        start = SettingsDetailPageDefaults.HorizontalPadding,
+                        end = SettingsDetailPageDefaults.HorizontalPadding,
+                        bottom = resolvedActionButtonBottomPadding,
+                    ),
+            )
+        }
     }
 }

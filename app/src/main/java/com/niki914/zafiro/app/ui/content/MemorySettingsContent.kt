@@ -1,9 +1,7 @@
 package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -14,23 +12,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
-import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
-import com.niki914.uikit.infra.component.LiquidTextField
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.component.SwipeDismissSettingsItemCard
@@ -40,13 +29,11 @@ import com.niki914.zafiro.app.ui.PageBackHandler
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.RegisterPageChrome
 import com.niki914.zafiro.app.ui.model.MemoryDeleteConfirmationState
-import com.niki914.zafiro.app.ui.model.MemoryEditDialogState
 import com.niki914.zafiro.app.ui.model.MemoryInlineError
 import com.niki914.zafiro.app.ui.model.MemorySettingsIntent
 import com.niki914.zafiro.app.ui.model.MemorySettingsUiState
 import com.niki914.zafiro.app.ui.model.MemorySettingsViewModel
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
-import kotlinx.coroutines.delay
 
 @Composable
 fun MemorySettingsContent() {
@@ -159,12 +146,24 @@ private fun MemorySettingsContentBody(
         }
     }
 
-    MemoryEditDialog(
-        state = uiState.editingDialog,
-        isSaving = uiState.isSaving,
-        onValueChange = onDialogValueChange,
+    InputLiquidDialog(
+        visible = uiState.editingDialog != null,
         onDismissRequest = onDialogDismiss,
-        onSaveClick = onDialogSave,
+        title = stringResource(
+            if (uiState.editingDialog?.index == null) {
+                R.string.memory_editor_title_create
+            } else {
+                R.string.memory_editor_title_edit
+            }
+        ),
+        hint = stringResource(R.string.memory_field_content),
+        value = uiState.editingDialog?.value.orEmpty(),
+        onValueChange = onDialogValueChange,
+        placeholder = stringResource(R.string.memory_field_content_hint),
+        positiveButtonText = stringResource(R.string.memory_save_action),
+        positiveEnabled = !uiState.isSaving,
+        enabled = !uiState.isSaving,
+        onPositiveClick = onDialogSave,
     )
 
     MemoryDeleteConfirmationDialog(
@@ -190,91 +189,6 @@ private fun MemoryDeleteConfirmationDialog(
         positiveButtonText = stringResource(R.string.memory_delete_dialog_confirm),
         onNegativeClick = onDismissRequest,
         onPositiveClick = onConfirmClick,
-    )
-}
-
-@Composable
-private fun MemoryEditDialog(
-    state: MemoryEditDialogState?,
-    isSaving: Boolean,
-    onValueChange: (String) -> Unit,
-    onDismissRequest: () -> Unit,
-    onSaveClick: () -> Unit,
-) {
-    var retainedState by remember { mutableStateOf<MemoryEditDialogState?>(null) }
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(state) {
-        if (state != null) {
-            retainedState = state
-            delay(100)
-            focusRequester.requestFocus()
-        }
-    }
-    val dialogState = state ?: retainedState
-    LiquidDialog(
-        visible = state != null,
-        onDismissRequest = onDismissRequest,
-        title = {
-            Text(
-                text = stringResource(
-                    if (dialogState?.index == null) {
-                        R.string.memory_editor_title_create
-                    } else {
-                        R.string.memory_editor_title_edit
-                    }
-                ),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Start,
-                maxLines = 5,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        },
-        content = {
-            Box(modifier = Modifier.padding(horizontal = 2.dp)) {
-                Text(
-                    text = stringResource(R.string.memory_field_content),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Start,
-                    maxLines = 8,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            LiquidTextField(
-                value = dialogState?.value.orEmpty(),
-                onValueChange = onValueChange,
-                placeholder = stringResource(R.string.memory_field_content_hint),
-                enabled = !isSaving,
-                singleLine = true,
-                minLines = 1,
-                maxLines = 1,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester),
-            )
-        },
-        actions = {
-            MaterialTintLiquidButton(
-                text = stringResource(R.string.memory_save_action),
-                enabled = !isSaving,
-                onClick = onSaveClick,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            )
-            MaterialTintLiquidButton(
-                text = stringResource(R.string.memory_cancel_action),
-                enabled = !isSaving,
-                onClick = onDismissRequest,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            )
-        },
     )
 }
 
@@ -318,15 +232,16 @@ private fun MemoryInlineErrorText(error: MemoryInlineError) {
 private fun MemoryEditDialogPreview() {
     MaterialTheme {
         ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
-            MemoryEditDialog(
-                state = MemoryEditDialogState(
-                    index = 0,
-                    value = "回答要简洁、直接、偏工程化。",
-                ),
-                isSaving = false,
-                onValueChange = {},
+            InputLiquidDialog(
+                visible = true,
                 onDismissRequest = {},
-                onSaveClick = {},
+                title = stringResource(R.string.memory_editor_title_edit),
+                hint = stringResource(R.string.memory_field_content),
+                value = "回答要简洁、直接、偏工程化。",
+                onValueChange = {},
+                placeholder = stringResource(R.string.memory_field_content_hint),
+                positiveButtonText = stringResource(R.string.memory_save_action),
+                onPositiveClick = {},
             )
         }
     }

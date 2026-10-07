@@ -115,6 +115,15 @@ data object DonePage : ZafiroPage {
     override val rightAction: TopBarActionSpec? = null
 }
 
+data object OnboardingPreferencesPage : ZafiroPage {
+    override val routeKey: String = "onboarding-preferences"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_onboard_preferences_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}
+
 data object HomePage : ZafiroPage {
     override val routeKey: String = "home"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_home_title)

@@ -488,4 +488,31 @@
     <string name="agent_resident_action_stop">Stop</string>
     <string name="agent_resident_action_approve">Allow</string>
     <string name="agent_resident_action_decline">Deny</string>
+
+    <!-- Onboarding Preferences -->
+    <string name="ui_onboard_done_advanced_entry">Permissions &amp; safety rules</string>
+    <string name="ui_onboard_preferences_title">Permissions</string>
+    <string name="ui_onboard_preferences_permissions_group">Permissions</string>
+    <string name="ui_onboard_preferences_phone_use_title">Phone Use</string>
+    <string name="ui_onboard_preferences_phone_use_desc">Let the Agent control your phone. This needs accessibility and overlay permissions.</string>
+    <string name="ui_onboard_preferences_floating_ball_title">Overlay &amp; floating ball</string>
+    <string name="ui_onboard_preferences_floating_ball_desc">Show a global floating ball to follow the Agent\'s status</string>
+    <string name="ui_onboard_preferences_notification_title">Notifications &amp; status bar</string>
+    <string name="ui_onboard_preferences_notification_desc">Show the Agent\'s status in the status bar</string>
+    <string name="ui_onboard_preferences_file_title">File access</string>
+    <string name="ui_onboard_preferences_file_desc">Allow the Agent to read and write files outside the sandbox</string>
+    <string name="ui_onboard_preferences_granted">Granted</string>
+    <string name="ui_onboard_preferences_grant_action">Tap to grant</string>
+    <string name="ui_onboard_preferences_security_group">Safety rules</string>
+    <string name="ui_onboard_preferences_security_hint">Commands that need confirmation before running</string>
+    <string name="ui_onboard_preferences_rule_add_action">Add rule</string>
+    <string name="ui_onboard_preferences_rule_add_title">Add safety rule</string>
+    <string name="ui_onboard_preferences_rule_add_hint">Accepts a regex or keyword, single line only</string>
+    <string name="ui_onboard_preferences_rule_placeholder">Enter a regex or keyword</string>
+    <string name="ui_onboard_preferences_rule_add_confirm">Add</string>
+    <string name="ui_onboard_preferences_rule_delete">Delete %1$s</string>
+    <string name="ui_onboard_preferences_action_grant_all">Grant all</string>
+    <string name="ui_onboard_preferences_action_enter">Open Zafiro</string>
+    <string name="ui_onboard_preferences_action_skip">Skip</string>
+    <string name="ui_onboard_preferences_toast_denied">Permission not granted</string>
 </resources>
