@@ -5,9 +5,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +81,7 @@ internal fun ConversationHistoryPageContent(
     uiState: ConversationHistoryUiState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (String) -> Unit,
+    onConversationToggleSelection: (String) -> Unit,
     onConversationRename: ((String, String) -> Unit)? = null,
     onConversationFork: ((String) -> Unit)? = null,
     onConversationPin: ((String, Boolean) -> Unit)? = null,
@@ -114,7 +117,10 @@ internal fun ConversationHistoryPageContent(
             pinnedConversations = uiState.pinnedConversations,
             activeConversationId = uiState.activeConversationId,
             deleteErrorMessage = uiState.deleteErrorMessage,
+            selecting = uiState.selecting,
+            selectedIds = uiState.selectedIds,
             onConversationClick = onConversationClick,
+            onConversationToggleSelection = onConversationToggleSelection,
             onConversationLongClick = { conversation ->
                 sheetConversation = conversation
             },
@@ -244,7 +250,10 @@ private fun ConversationHistoryListContent(
     pinnedConversations: List<PinnedConversation>,
     activeConversationId: String?,
     deleteErrorMessage: String?,
+    selecting: Boolean,
+    selectedIds: Set<String>,
     onConversationClick: (String) -> Unit,
+    onConversationToggleSelection: (String) -> Unit,
     onConversationLongClick: (ConversationSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -320,8 +329,21 @@ private fun ConversationHistoryListContent(
                                     inPinnedSection = section.bucket == TimelineBucket.Pinned,
                                     activeConversationId = activeConversationId,
                                     currentTimeMillis = currentTimeMillis,
-                                    onClick = { onConversationClick(conversation.id) },
-                                    onLongClick = { onConversationLongClick(conversation) },
+                                    selected = conversation.id in selectedIds,
+                                    onClick = {
+                                        if (selecting) {
+                                            onConversationToggleSelection(conversation.id)
+                                        } else {
+                                            onConversationClick(conversation.id)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        if (selecting) {
+                                            onConversationToggleSelection(conversation.id)
+                                        } else {
+                                            onConversationLongClick(conversation)
+                                        }
+                                    },
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
@@ -358,6 +380,7 @@ private fun ConversationHistoryItem(
     inPinnedSection: Boolean,
     activeConversationId: String?,
     currentTimeMillis: Long,
+    selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -374,87 +397,124 @@ private fun ConversationHistoryItem(
     val relativeTime = formatRelativeTime(conversation.updatedAt, currentTimeMillis)
 
     val cardShape = remember { G2CardShape(20.dp) }
+    // 选中态 = 描边 + 0.98 微缩，与 bukit 的 item 多选同构；置顶段的底色不动，靠描边区分选中。
+    val selectionProgress by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = tween(durationMillis = 250),
+        label = "conversationItemSelection",
+    )
+    val selectionScale by animateFloatAsState(
+        targetValue = if (selected) 0.98f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow,
+        ),
+        label = "conversationItemSelectionScale",
+        visibilityThreshold = 0.0001f,
+    )
     val pinnedBackground = if (inPinnedSection) {
         Modifier.background(MaterialTheme.colorScheme.secondaryContainer, cardShape)
     } else {
         Modifier
     }
+    val selectionBorder = if (selectionProgress > 0f) {
+        Modifier.border(
+            width = 2.dp * selectionProgress,
+            color = MaterialTheme.colorScheme.primary,
+            shape = cardShape,
+        )
+    } else {
+        Modifier
+    }
 
-    SettingsItemSurface(
-        onClick = onClick,
-        onLongClick = onLongClick,
-        shape = cardShape,
-        highlightPulseKey = activeConversationId?.takeIf { it == conversation.id },
-        highlightPulseDurationMillis = 500,
-        minHeight = 0.dp,
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-        modifier = modifier.fillMaxWidth().then(pinnedBackground),
+    // 描边与底色都画在行外层：SettingsItemSurface 内部自带按压底色，边框放在它外层才不会被盖。
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = selectionScale
+                scaleY = selectionScale
+            }
+            .clip(cardShape)
+            .then(pinnedBackground)
+            .then(selectionBorder),
     ) {
-        Column(
+        SettingsItemSurface(
+            onClick = onClick,
+            onLongClick = onLongClick,
+            shape = cardShape,
+            highlightPulseKey = activeConversationId?.takeIf { it == conversation.id },
+            highlightPulseDurationMillis = 500,
+            minHeight = 0.dp,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(
-                    text = displayTitle,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                val timeColor = MaterialTheme.colorScheme.tertiary
-                if (originIcon != null || showPinBadge || relativeTime.isNotBlank()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(start = 8.dp),
-                    ) {
-                        if (originIcon != null) {
-                            Icon(
-                                imageVector = originIcon,
-                                contentDescription = null,
-                                tint = timeColor,
-                                modifier = Modifier
-                                    .padding(end = 4.dp)
-                                    .size(13.dp),
-                            )
-                        }
-                        // 时间桶里的置顶标识：与派生前缀图标、时间同色同大小
-                        if (showPinBadge) {
-                            Icon(
-                                imageVector = Icons.Default.PushPin,
-                                contentDescription = null,
-                                tint = timeColor,
-                                modifier = Modifier
-                                    .padding(end = 4.dp)
-                                    .size(13.dp),
-                            )
-                        }
-                        if (relativeTime.isNotBlank()) {
-                            Text(
-                                text = relativeTime,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = timeColor,
-                                maxLines = 1,
-                            )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = displayTitle,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    val timeColor = MaterialTheme.colorScheme.tertiary
+                    if (originIcon != null || showPinBadge || relativeTime.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(start = 8.dp),
+                        ) {
+                            if (originIcon != null) {
+                                Icon(
+                                    imageVector = originIcon,
+                                    contentDescription = null,
+                                    tint = timeColor,
+                                    modifier = Modifier
+                                        .padding(end = 4.dp)
+                                        .size(13.dp),
+                                )
+                            }
+                            // 时间桶里的置顶标识：与派生前缀图标、时间同色同大小
+                            if (showPinBadge) {
+                                Icon(
+                                    imageVector = Icons.Default.PushPin,
+                                    contentDescription = null,
+                                    tint = timeColor,
+                                    modifier = Modifier
+                                        .padding(end = 4.dp)
+                                        .size(13.dp),
+                                )
+                            }
+                            if (relativeTime.isNotBlank()) {
+                                Text(
+                                    text = relativeTime,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = timeColor,
+                                    maxLines = 1,
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            if (conversation.lastMessagePreview.isNotBlank()) {
-                Text(
-                    text = conversation.lastMessagePreview,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                if (conversation.lastMessagePreview.isNotBlank()) {
+                    Text(
+                        text = conversation.lastMessagePreview,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
     }

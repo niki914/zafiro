@@ -86,7 +86,6 @@ fun ZafiroApp(
     var isPageTransitioning by remember { mutableStateOf(false) }
     var selectedConversationId by remember { mutableStateOf<String?>(null) }
     var activeConversationId by remember { mutableStateOf<String?>(null) }
-    var activeConversationTitle by remember { mutableStateOf<String?>(null) }
     val initialPage = launchDecision.initialPage
     val controller = rememberNavigationController<ZafiroPage>(initialPage = initialPage)
     val navigator = controller.navigator
@@ -182,7 +181,6 @@ fun ZafiroApp(
         homeViewModel.deleteConversationNow(id)
         if (activeConversationId == id) {
             activeConversationId = null
-            activeConversationTitle = null
         }
     }
 
@@ -346,10 +344,8 @@ fun ZafiroApp(
                                         }
                                     },
                                     activeConversationId = activeConversationId,
-                                    activeConversationTitle = activeConversationTitle,
-                                    onActiveConversationChanged = { id, title ->
+                                    onActiveConversationChanged = { id ->
                                         activeConversationId = id
-                                        activeConversationTitle = title
                                     },
                                     onCurrentConversationDeleted = { id ->
                                         deleteActiveConversation(id)

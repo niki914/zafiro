@@ -45,8 +45,6 @@ sealed interface ConversationHistoryEffect {
     data class OpenConversation(val id: String) : ConversationHistoryEffect
     /** 删除的是当前活动会话，须交由 route 转给宿主（ZafiroApp）处理。 */
     data class DeleteActiveConversation(val id: String) : ConversationHistoryEffect
-    /** 活动会话被重命名，route 同步给宿主。 */
-    data class ActiveConversationRenamed(val title: String) : ConversationHistoryEffect
 }
 
 internal data class ConversationHistoryViewModelDependencies(
@@ -123,6 +121,7 @@ class ConversationHistoryViewModel internal constructor(
                         conversations = conversations,
                         pinnedConversations = pinnedConversations,
                         errorMessage = null,
+                        deleteErrorMessage = null,
                     )
                 }
             },
@@ -163,9 +162,6 @@ class ConversationHistoryViewModel internal constructor(
 
     private suspend fun rename(id: String, title: String) {
         runCatching { dependencies.renameConversation(id, title) }.onSuccess {
-            if (id == currentState.activeConversationId) {
-                sendEffect(ConversationHistoryEffect.ActiveConversationRenamed(title))
-            }
             load()
         }
     }

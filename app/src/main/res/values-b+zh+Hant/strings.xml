@@ -86,6 +86,8 @@
     <string name="ui_home_retrying_attempt">重試 %1$d/%2$d</string>
     <string name="runtime_error_internal">內部錯誤</string>
     <string name="ui_home_history_content_description">對話歷史</string>
+    <string name="ui_conversation_history_title">歷史對話</string>
+    <string name="ui_conversation_selection_count">已選取 %1$d 項</string>
     <string name="ui_conversation_history_today">今天</string>
     <string name="ui_conversation_history_this_week">本週</string>
     <string name="ui_conversation_history_this_month">本月</string>

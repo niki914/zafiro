@@ -57,8 +57,7 @@ fun ZafiroPageContent(
     onConversationSelected: (String) -> Unit,
     onConversationSelectionConsumed: (String) -> Unit,
     activeConversationId: String?,
-    activeConversationTitle: String?,
-    onActiveConversationChanged: (String?, String?) -> Unit,
+    onActiveConversationChanged: (String?) -> Unit,
     onCurrentConversationDeleted: suspend (String) -> Unit,
 ) {
     when (val page = entry.page) {
@@ -102,16 +101,12 @@ fun ZafiroPageContent(
 
         ConversationHistoryPage -> ConversationHistoryPageRoute(
             activeConversationId = activeConversationId,
-            activeConversationTitle = activeConversationTitle,
             onBack = onPopToRight,
             onConversationSelected = { id ->
                 onConversationSelected(id)
                 onPopToRight()
             },
             onCurrentConversationDeleted = onCurrentConversationDeleted,
-            onActiveConversationRenamed = { newTitle ->
-                onActiveConversationChanged(activeConversationId, newTitle)
-            },
         )
 
         SettingsHomePage -> SettingsHomePageRoute(

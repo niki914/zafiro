@@ -1,4 +1,4 @@
-// 保护：历史页 ViewModel 的状态计算——加载成败落点、删除的活动/普通分流与收尾、重命名回报、分叉导航。
+// 保护：历史页 ViewModel 的状态计算——加载成败落点、删除的活动/普通分流与收尾、重命名重载、分叉导航。
 package com.niki914.zafiro.app.ui.model.conversation
 
 import com.niki914.zafiro.app.conversation.ConversationSummary
@@ -8,7 +8,6 @@ import com.niki914.zafiro.repo.PinnedConversation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -46,7 +45,12 @@ class ConversationHistoryViewModelTest {
                     deletedIds += id
                     conversations = conversations.filterNot { it.id == id }
                 },
-                renameConversation = { id, title -> renamed += id to title },
+                renameConversation = { id, title ->
+                    renamed += id to title
+                    conversations = conversations.map { conversation ->
+                        if (conversation.id == id) conversation.copy(title = title) else conversation
+                    }
+                },
                 forkConversation = { forkResult },
                 setConversationPinned = { id, pinned -> pinCalls += id to pinned },
             )
@@ -136,36 +140,18 @@ class ConversationHistoryViewModelTest {
     }
 
     @Test
-    fun renameActiveConversation_notifiesHost() = runTest {
+    fun rename_reloadsConversationsWithNewTitle() = runTest {
         val deps = FakeDeps()
+        deps.conversations = listOf(summary("a"))
         val viewModel = ConversationHistoryViewModel(deps.toDependencies())
-        viewModel.sendIntent(ConversationHistoryIntent.SetActiveConversation("a"))
-        val effectDeferred = async { viewModel.uiEffect.first() }
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        advanceUntilIdle()
 
         viewModel.sendIntent(ConversationHistoryIntent.Rename("a", "新名字"))
         advanceUntilIdle()
 
-        assertEquals(
-            ConversationHistoryEffect.ActiveConversationRenamed("新名字"),
-            effectDeferred.await(),
-        )
         assertEquals(listOf("a" to "新名字"), deps.renamed)
-    }
-
-    @Test
-    fun renameOtherConversation_doesNotNotifyHost() = runTest {
-        val deps = FakeDeps()
-        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
-        viewModel.sendIntent(ConversationHistoryIntent.SetActiveConversation("a"))
-        val effects = mutableListOf<ConversationHistoryEffect>()
-        backgroundScope.launch { viewModel.uiEffect.collect { effects += it } }
-        advanceUntilIdle()
-
-        viewModel.sendIntent(ConversationHistoryIntent.Rename("b", "新名字"))
-        advanceUntilIdle()
-
-        assertEquals(listOf("b" to "新名字"), deps.renamed)
-        assertTrue(effects.isEmpty())
+        assertEquals("新名字", viewModel.uiStateFlow.value.conversations.single().title)
     }
 
     @Test

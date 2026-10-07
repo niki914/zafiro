@@ -12,7 +12,7 @@ internal fun HomePageRoute(
     onPushFromLeft: (ZafiroPage) -> Unit,
     selectedConversationId: String?,
     onConversationSelectionConsumed: (String) -> Unit,
-    onActiveConversationChanged: (String?, String?) -> Unit,
+    onActiveConversationChanged: (String?) -> Unit,
 ) {
     HomePageContent(
         selectedConversationId = selectedConversationId,
