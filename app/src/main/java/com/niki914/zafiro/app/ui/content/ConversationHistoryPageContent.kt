@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
+import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.LiquidTextField
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.component.OptionRow
@@ -278,6 +280,13 @@ private fun ConversationHistoryListContent(
     }
     var collapsedBuckets by rememberSaveable { mutableStateOf(emptySet<TimelineBucket>()) }
 
+    val listState = rememberLazyListState()
+    // 折叠信号取自列表自身的整数位置：壳层累加量是手势增量之和，与真实位置有亚像素
+    // 差，而本页阈值为 0.dp，半像素正残差就会让背景板永久不透明。
+    ReportTitleBarCollapsed {
+        listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+    }
+
     // 时间基准定时刷新：每 15 秒更新一次当前时间戳，驱动相对时间自然步进
     var currentTimeMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
@@ -288,6 +297,7 @@ private fun ConversationHistoryListContent(
     }
 
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 16.dp,
