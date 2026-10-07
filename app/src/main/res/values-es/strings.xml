@@ -84,6 +84,7 @@
     <string name="ui_home_error_retry_exhausted_title">Reintentos automáticos agotados</string>
     <string name="ui_home_error_internal_title">Error interno</string>
     <string name="ui_home_retrying_title">Problema de red, reintentando…</string>
+    <string name="ui_home_thinking_title">Pensando</string>
     <string name="ui_home_retrying_attempt">Reintento %1$d/%2$d</string>
     <string name="runtime_error_internal">Error interno</string>
     <string name="ui_home_history_content_description">Historial de conversaciones</string>
@@ -309,7 +310,7 @@
     <string name="custom_py_tool_page_empty_description">Deje que el agente las cree por usted o toque el botón superior derecho para añadir una nueva.</string>
     <string name="custom_py_tool_loading">Cargando herramientas de Python guardadas...</string>
     <string name="custom_py_tool_editor_title_create">Añadir herramienta de Python</string>
-    <string name="custom_py_tool_editor_description">Configure su herramienta de Python. La descripción y la firma de parámetros se extraerán automáticamente de los docstrings y anotaciones de tipo de la función main(). Una vez guardada, el agente podrá llamarla según sea necesario.</string>
+    <string name="custom_py_tool_editor_description">Defina una función de entrada main().\n\nLas anotaciones de tipo de los parámetros determinan lo que el agente puede pasar y el docstring se convierte en la descripción de la herramienta.</string>
     <string name="custom_py_tool_field_name">Nombre de la herramienta</string>
     <string name="custom_py_tool_field_name_hint">Ejemplo: py_web_search</string>
     <string name="custom_py_tool_field_enabled">Activar herramienta</string>
@@ -326,6 +327,17 @@
     <string name="custom_py_tool_error_delete_failed">Error al eliminar la herramienta de Python: %1$s</string>
     <string name="custom_py_tool_delete_dialog_title">Eliminar herramienta de Python</string>
     <string name="custom_py_tool_delete_dialog_text">¿Está seguro de que desea eliminar la herramienta «%1$s»? Esta acción no se puede deshacer.</string>
+    <string name="custom_py_tool_save_dialog_checking_title">Verificando el código</string>
+    <string name="custom_py_tool_save_dialog_checking_text">La verificación extrae la firma de parámetros de main() y puede tardar unos segundos.\n\nPuede cancelarla; en ese caso no se guarda nada.</string>
+    <string name="custom_py_tool_save_dialog_success_title">Herramienta guardada</string>
+    <string name="custom_py_tool_save_dialog_success_text">Guardada en la lista de herramientas de Python.\n\nEl agente ya puede llamarla cuando la necesite.</string>
+    <string name="custom_py_tool_save_dialog_code_failed_title">La verificación del código falló</string>
+    <string name="custom_py_tool_save_dialog_code_failed_text">El error proviene del propio código de la herramienta.\n\nCorrija el código y vuelva a guardar.</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_title">Error al guardar</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_text">El error proviene del interior de la aplicación, no del código de la herramienta.\n\nReintente y, si persiste, infórmenos con este mensaje.</string>
+    <string name="custom_py_tool_save_dialog_action_cancel">Cancelar</string>
+    <string name="custom_py_tool_save_dialog_action_done">Listo</string>
+    <string name="custom_py_tool_save_dialog_action_close">Cerrar</string>
     <string name="custom_py_tool_save_failed">Error al guardar: %1$s</string>
 
     <string name="mcp_page_description">Configure los métodos de conexión y autenticación para servicios MCP. Tras guardar, Zafiro descubrirá automáticamente las herramientas disponibles en tiempo de ejecución.</string>

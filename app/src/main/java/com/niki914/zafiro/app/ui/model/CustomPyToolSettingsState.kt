@@ -6,7 +6,11 @@ import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.settings.model.RuntimeToolValidationOrigin
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
@@ -42,11 +46,31 @@ data class CustomPyToolDeleteConfirmationState(
     val value: String,
 )
 
+/**
+ * 保存进度，驱动保存弹窗的三态。
+ *
+ * 失败分两类：
+ * - [CodeRejected]：工具代码自身的问题（语法错误、缺 main、参数缺标注、顶层代码抛异常等）；
+ * - [InternalError]：应用侧问题（Python 运行时不可用、超时、写盘失败等）。
+ *
+ * 这两类需要让用户一眼分得清，所以不用一个 message 字符串带过，而是拆成两个状态。
+ */
+sealed interface CustomPyToolSaveProgress {
+    data object Checking : CustomPyToolSaveProgress
+
+    data object Succeeded : CustomPyToolSaveProgress
+
+    data class CodeRejected(val message: String) : CustomPyToolSaveProgress
+
+    data class InternalError(val message: String?) : CustomPyToolSaveProgress
+}
+
 data class CustomPyToolSettingsUiState(
     val items: List<CustomPyToolItem> = emptyList(),
     val formState: CustomPyToolFormState = CustomPyToolFormState(),
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
+    val saveProgress: CustomPyToolSaveProgress? = null,
     val inlineError: CustomPyToolInlineError? = null,
     val deleteConfirmation: CustomPyToolDeleteConfirmationState? = null,
 )
@@ -59,6 +83,9 @@ sealed interface CustomPyToolSettingsIntent {
     data class CodeChanged(val value: String) : CustomPyToolSettingsIntent
     data class EnabledChanged(val value: Boolean) : CustomPyToolSettingsIntent
     data object Save : CustomPyToolSettingsIntent
+    data object CancelSave : CustomPyToolSettingsIntent
+    data object ConfirmSaveSucceeded : CustomPyToolSettingsIntent
+    data object DismissSaveFailed : CustomPyToolSettingsIntent
     data object RequestDelete : CustomPyToolSettingsIntent
     data object DismissDeleteConfirmation : CustomPyToolSettingsIntent
     data object ConfirmDelete : CustomPyToolSettingsIntent
@@ -98,6 +125,9 @@ class CustomPyToolSettingsViewModel :
 
     override fun initUiState(): CustomPyToolSettingsUiState = CustomPyToolSettingsUiState()
 
+    /** 在途保存。取消 = 取消这个 Job；反射与写盘之间无副作用，所以取消不会留下半个工具。 */
+    private var saveJob: Job? = null
+
     override suspend fun handleIntent(intent: CustomPyToolSettingsIntent) {
         when (intent) {
             CustomPyToolSettingsIntent.Load -> load()
@@ -132,6 +162,9 @@ class CustomPyToolSettingsViewModel :
             }
 
             CustomPyToolSettingsIntent.Save -> save()
+            CustomPyToolSettingsIntent.CancelSave -> cancelSave()
+            CustomPyToolSettingsIntent.ConfirmSaveSucceeded -> confirmSaveSucceeded()
+            CustomPyToolSettingsIntent.DismissSaveFailed -> dismissSaveFailed()
             CustomPyToolSettingsIntent.RequestDelete -> requestDelete()
             CustomPyToolSettingsIntent.DismissDeleteConfirmation -> updateState {
                 copy(deleteConfirmation = null)
@@ -218,7 +251,7 @@ class CustomPyToolSettingsViewModel :
         }
     }
 
-    private suspend fun save() {
+    private fun save() {
         val formState = currentState.formState
         val normalizedFormState = formState.copy(
             name = formState.name.trim(),
@@ -233,52 +266,109 @@ class CustomPyToolSettingsViewModel :
             return
         }
 
+        // 反射要起 Python（秒级），所以放到独立协程里跑，不占 intent 通道，也能被取消。
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch { runSave(normalizedFormState) }
+    }
+
+    private suspend fun runSave(formState: CustomPyToolFormState) {
         updateState {
             copy(
-                formState = normalizedFormState.copy(
+                formState = formState.copy(
                     nameErrorResId = null,
                     codeErrorResId = null,
                     codeErrorMessage = null,
                 ),
-                isSaving = true,
                 inlineError = null,
             )
         }
         try {
             // timeoutMs 不在 UI 编辑：编辑时保留原值，新建用默认值
             val previousTool = XRepo.customPyTools.get(
-                normalizedFormState.previousName ?: normalizedFormState.name
+                formState.previousName ?: formState.name
             )
             val nextTool = CustomPyTool(
-                name = normalizedFormState.name,
-                code = normalizedFormState.code,
-                enabled = normalizedFormState.enabled,
+                name = formState.name,
+                code = formState.code,
+                enabled = formState.enabled,
                 timeoutMs = previousTool?.timeoutMs
                     ?: CustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS,
             )
-            val validation = XRepo.customPyTools.saveIntrospected(nextTool)
+            // 便宜校验（名字、保留名、安全策略）先于耗时的反射，也先于弹窗：
+            // 毫秒级的失败不该让弹窗闪一下
+            XRepo.customPyTools.validate(nextTool)?.let { validation ->
+                handleValidationError(formState, validation)
+                return
+            }
+            // 到这里才真的要起 Python（秒级），弹窗与表单禁用同步开启
+            updateState {
+                copy(
+                    isSaving = true,
+                    saveProgress = CustomPyToolSaveProgress.Checking,
+                )
+            }
+            val introspection = XRepo.customPyTools.introspect(nextTool.code)
+            // 取消是協作式的，而这次调用打不断（Binder 调用）：它可能在用户点了取消之后才返回。
+            // 所以任何结果落地之前都再确认一次——取消之后这次保存不该再打扰用户。
+            currentCoroutineContext().ensureActive()
+            introspection.error?.let { message ->
+                Logger.w(
+                    LOG_TAG,
+                    "introspect rejected tool=${nextTool.name} " +
+                            "origin=${introspection.origin}:$message"
+                )
+                val internalError = introspection.origin == RuntimeToolValidationOrigin.Internal
+                val saveError = CustomPyToolInlineError.SaveFailed(
+                    message = message,
+                    fallbackResId = R.string.error_custom_py_tool_save_failed,
+                )
+                updateState {
+                    copy(
+                        // 代码问题标在代码框下方（带行号）；应用问题不冒充代码错误，只保留底部行内提示
+                        formState = if (internalError) {
+                            formState
+                        } else {
+                            formState.copy(codeErrorMessage = message, codeErrorResId = null)
+                        },
+                        isSaving = false,
+                        inlineError = saveError.takeIf { internalError },
+                        saveProgress = if (internalError) {
+                            CustomPyToolSaveProgress.InternalError(message)
+                        } else {
+                            CustomPyToolSaveProgress.CodeRejected(message)
+                        },
+                    )
+                }
+                return
+            }
+            val validation = XRepo.customPyTools.save(
+                nextTool.copy(
+                    description = introspection.description.orEmpty(),
+                    schemaJson = introspection.schemaJson.orEmpty(),
+                ),
+            )
             if (validation != null) {
                 Logger.w(
                     LOG_TAG,
                     "save rejected tool=${nextTool.name} " +
                             "validation=${validation.field}:${validation.message}"
                 )
-                handleValidationError(normalizedFormState, validation)
+                handleValidationError(formState, validation)
                 return
             }
-            if (normalizedFormState.previousName != null &&
-                normalizedFormState.previousName != nextTool.name
+            if (formState.previousName != null &&
+                formState.previousName != nextTool.name
             ) {
-                XRepo.customPyTools.delete(normalizedFormState.previousName)
+                XRepo.customPyTools.delete(formState.previousName)
             }
             Logger.i(LOG_TAG, "save succeeded tool=${nextTool.name}")
 
             val nextItem = nextTool.toItem()
-            val updatedItems = buildUpdatedItems(normalizedFormState.editingIndex, nextItem)
+            val updatedItems = buildUpdatedItems(formState.editingIndex, nextItem)
             updateState {
                 copy(
                     items = updatedItems,
-                    formState = normalizedFormState.copy(
+                    formState = formState.copy(
                         editingIndex = updatedItems.indexOf(nextItem),
                         previousName = nextTool.name,
                         nameErrorResId = null,
@@ -287,10 +377,10 @@ class CustomPyToolSettingsViewModel :
                     ).withCurrentSnapshotAsInitial(),
                     isSaving = false,
                     inlineError = null,
+                    saveProgress = CustomPyToolSaveProgress.Succeeded,
                 )
             }
             notifySettingsChanged()
-            sendEffect(CustomPyToolSettingsEffect.ExitDetail)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) throw throwable
             Logger.w(LOG_TAG, "save failed reason=${throwable.message}")
@@ -301,9 +391,44 @@ class CustomPyToolSettingsViewModel :
                         message = throwable.message,
                         fallbackResId = R.string.error_custom_py_tool_save_failed,
                     ),
+                    saveProgress = CustomPyToolSaveProgress.InternalError(throwable.message),
                 )
             }
         }
+    }
+
+    /**
+     * 取消保存：留在原页面，关掉弹窗，不写盘。
+     * 状态收尾由本 intent 完成，不依赖已被取消的协程。
+     */
+    private fun cancelSave() {
+        if (currentState.saveProgress != CustomPyToolSaveProgress.Checking) return
+        saveJob?.cancel()
+        saveJob = null
+        updateState {
+            copy(
+                isSaving = false,
+                saveProgress = null,
+            )
+        }
+    }
+
+    private fun confirmSaveSucceeded() {
+        if (currentState.saveProgress != CustomPyToolSaveProgress.Succeeded) return
+        updateState { copy(saveProgress = null) }
+        sendEffect(CustomPyToolSettingsEffect.ExitDetail)
+    }
+
+    /**
+     * 关闭失败弹窗。失败来自工具代码时，再展开代码框并把光标放进去。
+     *
+     * 展开会顺带拉起键盘（SettingExpandableTextItem 把展开与 requestFocus 绑在一起），
+     * 所以必须等弹窗关掉之后再做：否则键盘会顶在还开着的弹窗上。
+     */
+    private fun dismissSaveFailed() {
+        val codeRejected = currentState.saveProgress is CustomPyToolSaveProgress.CodeRejected
+        updateState { copy(saveProgress = null) }
+        if (codeRejected) sendEffect(CustomPyToolSettingsEffect.FocusCode)
     }
 
     private fun requestDelete() {
@@ -380,6 +505,8 @@ class CustomPyToolSettingsViewModel :
                         validation.message,
                         fallbackResId = R.string.error_custom_py_tool_save_failed
                     ),
+                    // 校验结果一律走行内；弹窗只由反射结果与写盘异常触发
+                    saveProgress = null,
                 )
             }
         }
@@ -398,6 +525,8 @@ class CustomPyToolSettingsViewModel :
                 ),
                 isSaving = false,
                 inlineError = null,
+                // 弹窗只能由反射/写盘的结果关闭：校验失败在这里收尾，别把弹窗留在屏幕上
+                saveProgress = null,
             )
         }
     }
