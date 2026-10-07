@@ -387,48 +387,9 @@ class RealOkiaTest {
         okia.close()
     }
 
-    @Test
-    fun stopWithoutActiveTurnIsNoop() = runTest {
-        val okia = openOkia(
-            FakeProtocolMapper(emptyList<ProtocolEvent>()),
-            scope = testScope(testScheduler)
-        )
-        okia.stop()
-        okia.close()
-    }
-
-    @Test
-    fun stopThenImmediateSendWorks() = runTest {
-        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
-        val okia = openOkia(FakeProtocolMapper(events), scope = testScope(testScheduler))
-
-        val first = async { okia.send("one") { } }
-        runCurrent()
-        okia.stop()
-        assertEquals(TurnResult.Aborted(StopCause.UserStop), first.await())
-
-        // stop 返回后立即再 send：activeTurn 已清空，不抛
-        val second = async { okia.send("two") { } }
-        runCurrent()
-        events.emit(completed())
-        runCurrent()
-        assertEquals(TurnResult.Completed(CompletionReason.Stop), second.await())
-        okia.close()
-    }
-
-    @Test
-    fun externalCancellationPropagates() = runTest {
-        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
-        val okia = openOkia(FakeProtocolMapper(events), scope = testScope(testScheduler))
-        val job = launch { okia.send("hi") { } }
-        runCurrent()
-
-        job.cancel()
-        runCurrent()
-
-        assertTrue(job.isCancelled)
-        okia.close()
-    }
+    // （stop 无活跃回合 / stop 后立刻再 send / 外部取消传播：由 RealOkiaStopTest
+    //  的 stopWithNoActiveTurnIsNoOp、stopThenSendStartsFreshTurn、
+    //  externalCancellationTriggersBeforeStopAndRethrows 覆盖，此处不重复）
 
     // ── 会话操作 ───────────────────────────────────────────────────────────
 
