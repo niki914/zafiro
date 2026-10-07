@@ -42,6 +42,7 @@ private const val LANGUAGE_TAG_ZH_TW = "zh-TW"
 private const val LANGUAGE_TAG_EN = "en"
 private const val LANGUAGE_TAG_ES = "es"
 private const val LANGUAGE_TAG_JA = "ja"
+private const val LANGUAGE_TAG_RU = "ru"
 
 data class LanguageOption(
     /** BCP-47 tag；空串 = 跟随系统。 */
@@ -62,6 +63,7 @@ private fun languageOptions(): List<LanguageOption> {
         LanguageOption(tag = LANGUAGE_TAG_EN, label = "English"),
         LanguageOption(tag = LANGUAGE_TAG_ES, label = "Español"),
         LanguageOption(tag = LANGUAGE_TAG_JA, label = "日本語"),
+        LanguageOption(tag = LANGUAGE_TAG_RU, label = "Русский"),
     )
 }
 
