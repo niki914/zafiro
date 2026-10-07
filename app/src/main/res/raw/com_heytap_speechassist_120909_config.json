@@ -101,7 +101,7 @@
         "business": {
           "view_bean_class": "com.heytap.speechassist.aichat.bean.AIChatViewBean",
           "data_center_insert_message_method": "r",
-          "data_center_update_message_method": "i1",
+          "data_center_update_message_method": "h1",
           "bean_set_chat_type_method": "setChatType",
           "bean_set_room_id_method": "setRoomId",
           "bean_set_content_method": "setContent",
@@ -109,6 +109,13 @@
           "bean_set_final_method": "setFinal",
           "bean_set_first_slice_method": "setFirstSlice",
           "bean_add_client_local_data_method": "addClientLocalData",
+          "bean_set_reasoning_content_method": "setReasoningContent",
+          "bean_set_reasoning_state_method": "setReasoningState",
+          "bean_set_has_reasoning_anim_played_method": "setHasReasoningAnimPlayed",
+          "reasoning_state_thinking_default": "思考中...",
+          "reasoning_state_complete_default": "已深度思考",
+          "reasoning_local_data_start_key": "reasoningStart",
+          "reasoning_local_data_exposure_key": "reasoningCardExposure",
           "chat_type_answer": 2,
           "hide_feedback_view_local_data_key": "bean_client_key_hide_feedback_view",
           "mock_bean_methods": {

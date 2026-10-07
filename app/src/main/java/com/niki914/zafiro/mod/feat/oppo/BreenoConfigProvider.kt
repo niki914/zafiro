@@ -91,6 +91,20 @@ object BreenoConfigProvider : BaseConfigProvider() {
             get() = getString("$P.business.bean_set_first_slice_method")
         val beanAddClientLocalDataMethod: String
             get() = getString("$P.business.bean_add_client_local_data_method")
+        val beanSetReasoningContentMethod: String
+            get() = getStringOrDefault("$P.business.bean_set_reasoning_content_method", "setReasoningContent")
+        val beanSetReasoningStateMethod: String
+            get() = getStringOrDefault("$P.business.bean_set_reasoning_state_method", "setReasoningState")
+        val beanSetHasReasoningAnimPlayedMethod: String
+            get() = getStringOrDefault("$P.business.bean_set_has_reasoning_anim_played_method", "setHasReasoningAnimPlayed")
+        val reasoningStateThinkingDefault: String
+            get() = getStringOrDefault("$P.business.reasoning_state_thinking_default", "思考中...")
+        val reasoningStateCompleteDefault: String
+            get() = getStringOrDefault("$P.business.reasoning_state_complete_default", "已深度思考")
+        val reasoningLocalDataStartKey: String
+            get() = getStringOrDefault("$P.business.reasoning_local_data_start_key", "reasoningStart")
+        val reasoningLocalDataExposureKey: String
+            get() = getStringOrDefault("$P.business.reasoning_local_data_exposure_key", "reasoningCardExposure")
         val chatTypeAnswer: Int
             get() = getInt("$P.business.chat_type_answer")
         val hideFeedbackViewLocalDataKey: String
