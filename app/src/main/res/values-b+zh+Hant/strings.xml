@@ -309,7 +309,7 @@
     <string name="custom_py_tool_page_empty_description">讓你的 Agent 幫你建立，或點擊右上角新增。</string>
     <string name="custom_py_tool_loading">正在讀取已儲存的 自定义 Python 工具…</string>
     <string name="custom_py_tool_editor_title_create">新增 自定义 Python 工具</string>
-    <string name="custom_py_tool_editor_description">設定你的 自定义 Python 工具。工具說明與參數簽名由程式碼中 main() 函式的 docstring 與型別標註自動擷取。儲存後，Agent 可在需要時呼叫此工具。</string>
+    <string name="custom_py_tool_editor_description">寫一個 main() 入口函式。\n\n參數的型別標註決定 Agent 能傳什麼，docstring 會成為工具說明。</string>
     <string name="custom_py_tool_field_name">工具名稱</string>
     <string name="custom_py_tool_field_name_hint">例如：py_web_search</string>
     <string name="custom_py_tool_field_enabled">啟用工具</string>
@@ -326,6 +326,17 @@
     <string name="custom_py_tool_error_delete_failed">刪除 自定义 Python 工具失敗：%1$s</string>
     <string name="custom_py_tool_delete_dialog_title">刪除 自定义 Python 工具</string>
     <string name="custom_py_tool_delete_dialog_text">確定要刪除工具「%1$s」嗎？此操作不可撤銷。</string>
+    <string name="custom_py_tool_save_dialog_checking_title">正在驗證工具程式碼</string>
+    <string name="custom_py_tool_save_dialog_checking_text">驗證會擷取 main() 的參數簽名，可能需要數秒。\n\n可以取消，取消後本次儲存不會生效。</string>
+    <string name="custom_py_tool_save_dialog_success_title">工具已儲存</string>
+    <string name="custom_py_tool_save_dialog_success_text">已儲存到工具清單。\n\nAgent 現在可以依需要呼叫這個工具。</string>
+    <string name="custom_py_tool_save_dialog_code_failed_title">程式碼驗證未通過</string>
+    <string name="custom_py_tool_save_dialog_code_failed_text">報錯來自工具程式碼本身。\n\n修正程式碼後重新儲存即可。</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_title">儲存失敗</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_text">報錯來自應用程式內部，與工具程式碼無關。\n\n請重試；若持續發生，請把這個彈窗裡的報錯回報給我們。</string>
+    <string name="custom_py_tool_save_dialog_action_cancel">取消</string>
+    <string name="custom_py_tool_save_dialog_action_done">完成</string>
+    <string name="custom_py_tool_save_dialog_action_close">關閉</string>
     <string name="custom_py_tool_save_failed">儲存失敗：%1$s</string>
 
     <string name="mcp_page_description">設定 MCP 服務的連線方式與驗證資訊。儲存後，Zafiro 會在執行時自動發現可用工具。</string>

@@ -310,7 +310,7 @@
     <string name="custom_py_tool_page_empty_description">Let your Agent create one, or tap the top right to add a new tool.</string>
     <string name="custom_py_tool_loading">Loading saved Custom Python tools...</string>
     <string name="custom_py_tool_editor_title_create">New Python Tool</string>
-    <string name="custom_py_tool_editor_description">Configure your Python tool. The description and parameter schema are derived from the main() docstring and type annotations. After saving, the Agent can call it when needed.</string>
+    <string name="custom_py_tool_editor_description">Define a main() entry function.\n\nParameter type annotations decide what the agent can pass in, and the docstring becomes the tool description.</string>
     <string name="custom_py_tool_field_name">Tool Name</string>
     <string name="custom_py_tool_field_name_hint">For example: py_web_search</string>
     <string name="custom_py_tool_field_enabled">Enable Tool</string>
@@ -327,6 +327,17 @@
     <string name="custom_py_tool_error_delete_failed">Failed to delete Python tool: %1$s</string>
     <string name="custom_py_tool_delete_dialog_title">Delete Python Tool</string>
     <string name="custom_py_tool_delete_dialog_text">Are you sure you want to delete the tool \"%1$s\"? This action cannot be undone.</string>
+    <string name="custom_py_tool_save_dialog_checking_title">Checking Tool Code</string>
+    <string name="custom_py_tool_save_dialog_checking_text">The check extracts the main() parameter signature and may take a few seconds.\n\nYou can cancel; nothing is saved if you do.</string>
+    <string name="custom_py_tool_save_dialog_success_title">Tool Saved</string>
+    <string name="custom_py_tool_save_dialog_success_text">Saved to the custom Python tool list.\n\nThe agent can now call it when needed.</string>
+    <string name="custom_py_tool_save_dialog_code_failed_title">Code Check Failed</string>
+    <string name="custom_py_tool_save_dialog_code_failed_text">The error comes from the tool code itself.\n\nFix the code and save again.</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_title">Save Failed</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_text">The error comes from inside the app, not from the tool code.\n\nPlease retry, and report this message if it keeps happening.</string>
+    <string name="custom_py_tool_save_dialog_action_cancel">Cancel</string>
+    <string name="custom_py_tool_save_dialog_action_done">Done</string>
+    <string name="custom_py_tool_save_dialog_action_close">Close</string>
     <string name="custom_py_tool_save_failed">Failed to save: %1$s</string>
 
     <string name="mcp_page_description">Configure connection and authentication for MCP services. After saving, Zafiro will automatically discover available tools at runtime.</string>
