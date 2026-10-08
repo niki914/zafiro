@@ -74,21 +74,23 @@ Confirm once more before anything irreversible. Then:
    ```
    It recounts production Kotlin + Python lines (excluding tests / build / generated) and rewrites the `kotlin-XX.Xk` badge in both READMEs. Include the README changes in the release commit.
 2. Update `versionCode = <new code>`, `versionName = "<new name>"` in `app/build.gradle.kts`, plus any other files from the approved list. Do not touch any other build config.
-3. Commit: `release: bump to <new name>`, push to `origin main`.
-4. Tag and push:
+3. Update module structure in both READMEs (`README.md` and `README_CN.md`) and AGENTS.md if modules were refactored or new modules were added.
+4. Audit and complete multilingual string parity across all modules. Daily development only implements English, leaving other locales incomplete. Inspect the actual supported locales across modules (e.g. via `ls` on `res/values-*`) and fill in missing strings. Translate contextually based on UI placement and function; avoid blind machine translation.
+5. Commit: `release: bump to <new name>`, push to `origin main`.
+6. Tag and push:
    ```bash
    git tag v<code>-<name>
    git push origin v<code>-<name>
    ```
    Tag push triggers CI: build → sign → create Release. CI reads signing config from GitHub Secrets; do not expect signing to work anywhere else.
-5. Wait for CI:
+7. Wait for CI:
    ```bash
    gh run list --workflow=release.yml --limit=1    # find the latest run
    gh run watch <run-id> --exit-status             # wait for it to finish
    gh run view <run-id> --log-failed               # on failure, read only the failed steps
    gh run rerun <run-id>                           # rerun after fixing
    ```
-6. Replace CI-generated release notes (they are a PR list) with the approved draft:
+8. Replace CI-generated release notes (they are a PR list) with the approved draft:
    ```bash
    gh release edit <tag> -R niki914/zafiro --title "Release - <name>" --notes "<approved notes>"
    ```
@@ -100,7 +102,7 @@ Historical releases follow this format strictly (no deviations):
 
 - **English first, Chinese after, separated by a single `---` line.** Never reverse the order.
 - **No language headers** (no `**English**` / `**中文**` labels) — the notes start directly with the numbered list. Blank line separates the `---` from the lists.
-- The `--title "Release - <name>"` from step 6 is part of the format, not optional.
+- The `--title "Release - <name>"` from step 8 is part of the format, not optional. Set the title via `--title`, never inside the release note body.
 
 ## Phase 5 — Xposed repo (optional, ask first)
 
