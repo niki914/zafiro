@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_permission_dialog_title">ИИ запрашивает выполнение операции</string>
+    <string name="tool_permission_request_intro">Инструмент Zafiro «%1$s» хочет выполнить команду:</string>
+    <string name="tool_permission_matched_rule">Сработало правило «%1$s»</string>
+    <string name="tool_permission_allow">Разрешить один раз</string>
+    <string name="tool_permission_deny">Запретить</string>
+    <string name="floating_ball_approval_pending">Действие ждёт подтверждения (%1$s)</string>
+    <string name="floating_ball_approval_reason_unknown">Ожидание</string>
+    <string name="floating_ball_approval_view_details">Нажмите, чтобы посмотреть подробности</string>
+    <string name="floating_ball_tool_running">Выполняется %1$s</string>
+    <string name="screen_control_consent_title">Запрос разрешения на управление экраном</string>
+    <string name="screen_control_consent_body">Для управления экраном Zafiro нужны разрешения: служба специальных возможностей и показ поверх других приложений.</string>
+    <string name="screen_control_consent_agree">Согласен</string>
+</resources>
