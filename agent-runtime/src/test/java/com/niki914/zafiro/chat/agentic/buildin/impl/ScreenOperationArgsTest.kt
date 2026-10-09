@@ -111,6 +111,35 @@ class ScreenOperationArgsTest {
     }
 
     @Test
+    fun parse_search_stringKeywords() {
+        val result = parseArguments("""{"operation": "search", "keywords": "settings"}""")
+        assertTrue(result.isSuccess)
+        val args = result.getOrThrow()
+        assertTrue(args.operation is ScreenOp.Search)
+        val search = args.operation as ScreenOp.Search
+        assertEquals(listOf("settings"), search.keywords)
+    }
+
+    @Test
+    fun parse_search_fallbackText() {
+        val result = parseArguments("""{"operation": "search", "text": "settings"}""")
+        assertTrue(result.isSuccess)
+        val args = result.getOrThrow()
+        assertTrue(args.operation is ScreenOp.Search)
+        val search = args.operation as ScreenOp.Search
+        assertEquals(listOf("settings"), search.keywords)
+    }
+
+    @Test
+    fun parse_search_missingKeywordsAndText_fails() {
+        val result = parseArguments("""{"operation": "search"}""")
+        assertTrue(result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message?.contains("Missing required field: keywords for operation 'search'") == true
+        )
+    }
+
+    @Test
     fun parse_shellTap() {
         val result = parseArguments("""{"operation": "tap", "x": 100, "y": 200}""")
         assertTrue(result.isSuccess)

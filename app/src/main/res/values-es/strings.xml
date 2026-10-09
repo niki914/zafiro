@@ -532,4 +532,27 @@
     <string name="ui_onboard_preferences_action_grant_all">Conceder todo</string>
     <string name="ui_onboard_preferences_action_skip">Omitir</string>
     <string name="ui_onboard_preferences_toast_denied">Permiso no concedido</string>
+
+    <!-- MCP Host Settings -->
+    <string name="ui_settings_mcp_host">Servidor MCP</string>
+    <string name="ui_settings_mcp_host_summary">Exponer herramientas de Zafiro a agentes externos mediante MCP</string>
+    <string name="mcp_host_section_service">Servicio</string>
+    <string name="mcp_host_section_connection">Conexión y seguridad</string>
+    <string name="mcp_host_section_tools">Herramientas expuestas</string>
+    <string name="mcp_host_enable_title">Habilitar servidor MCP</string>
+    <string name="mcp_host_enable_summary">Permitir que clientes externos controlen este dispositivo mediante MCP</string>
+    <string name="mcp_host_status_title">Estado</string>
+    <string name="mcp_host_status_running">En ejecución</string>
+    <string name="mcp_host_status_stopped">Detenido</string>
+    <string name="mcp_host_status_starting">Iniciando…</string>
+    <string name="mcp_host_status_error">Error: %1$s</string>
+    <string name="mcp_host_port_title">Puerto</string>
+    <string name="mcp_host_port_placeholder">8791</string>
+    <string name="mcp_host_port_error_invalid">El puerto debe estar entre 1024 y 65535</string>
+    <string name="mcp_host_token_title">Token Bearer</string>
+    <string name="mcp_host_token_placeholder">Dejar vacío para permitir todo</string>
+    <string name="mcp_host_token_description_empty">No se requiere autenticación</string>
+    <string name="mcp_host_token_description_configured">Se requiere Authorization: Bearer &lt;token&gt;</string>
+    <string name="mcp_host_token_show">Mostrar token Bearer</string>
+    <string name="mcp_host_token_hide">Ocultar token Bearer</string>
 </resources>

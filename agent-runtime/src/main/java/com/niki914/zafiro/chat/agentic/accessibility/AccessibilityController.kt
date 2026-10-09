@@ -93,7 +93,6 @@ object AccessibilityController {
     @Volatile
     var pointerOverlay: IPointerOverlay? = null
 
-    private var pointerShown = false
     private var cachedScreenWidth: Int = 0
     private var cachedScreenHeight: Int = 0
 
@@ -106,21 +105,24 @@ object AccessibilityController {
 
     /** Reset pointer state and hide overlay at end of an agent turn. */
     fun onTurnEnd() {
-        pointerShown = false
         pointerOverlay?.hide()
     }
 
-    /** Reveal pointer overlay at a random centre-area position, once per agent turn. */
+    /**
+     * Reveal pointer overlay at a random centre-area position if not already visible,
+     * or refresh its auto-hide timeout if it is already displayed.
+     */
     fun ensurePointerShown() {
-        if (pointerShown) return
-        pointerShown = true
-        pointerOverlay?.let { overlay ->
-            val w = if (cachedScreenWidth > 0) cachedScreenWidth else 1080
-            val h = if (cachedScreenHeight > 0) cachedScreenHeight else 2400
-            val rx = w / 3f + Math.random().toFloat() * (w / 3f)
-            val ry = h / 3f + Math.random().toFloat() * (h / 3f)
-            overlay.show(rx, ry)
+        val overlay = pointerOverlay ?: return
+        if (overlay.isShowing) {
+            overlay.keepAlive()
+            return
         }
+        val w = if (cachedScreenWidth > 0) cachedScreenWidth else 1080
+        val h = if (cachedScreenHeight > 0) cachedScreenHeight else 2400
+        val rx = w / 3f + Math.random().toFloat() * (w / 3f)
+        val ry = h / 3f + Math.random().toFloat() * (h / 3f)
+        overlay.show(rx, ry)
     }
 
     private val versionRng = SecureRandom()
@@ -166,7 +168,6 @@ object AccessibilityController {
     fun clearPointerOverlay() {
         pointerOverlay?.dispose()
         pointerOverlay = null
-        pointerShown = false
     }
 
     private suspend fun ensureShellSession(): ShellIdentity {

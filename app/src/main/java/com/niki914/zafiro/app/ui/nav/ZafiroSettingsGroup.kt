@@ -33,6 +33,11 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_mcp_summary,
         routeSuffix = "mcp",
     ),
+    McpHost(
+        titleRes = R.string.ui_settings_mcp_host,
+        summaryRes = R.string.ui_settings_mcp_host_summary,
+        routeSuffix = "mcp-host",
+    ),
     Takeover(
         titleRes = R.string.ui_settings_takeover,
         summaryRes = R.string.ui_settings_takeover_summary,

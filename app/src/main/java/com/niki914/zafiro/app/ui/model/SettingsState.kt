@@ -81,6 +81,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
                 ZafiroSettingsGroup.Tools,
                 ZafiroSettingsGroup.Skills,
                 ZafiroSettingsGroup.Mcp,
+                ZafiroSettingsGroup.McpHost,
             ),
         ),
         SettingsSectionDefinition(

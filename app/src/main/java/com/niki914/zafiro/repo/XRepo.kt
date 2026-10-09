@@ -14,7 +14,9 @@ import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_PATTERNS
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
@@ -31,6 +33,7 @@ import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToo
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
+import com.niki914.zafiro.settings.model.RuntimeMcpHostConfig
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRuleValidation as TakeoverRuleValidation
@@ -41,6 +44,7 @@ object XRepo {
     private const val LOG_TAG = "niki914_zafiro_XRepo"
 
     val mcp: McpApi = McpApi(this)
+    val mcpHost: McpHostApi = McpHostApi(this)
     val customPyTools: CustomPyToolApi = CustomPyToolApi(this)
     val builtinTools: BuiltinToolApi = BuiltinToolApi(this)
     val memory: MemoryApi = MemoryApi(this)
@@ -85,6 +89,7 @@ object XRepo {
         floatingBallEnabledField.flow.value = false
         residentNotificationEnabledField.flow.value = false
         floatingBallAutoExpandField.flow.value = true
+        mcpHost.resetForTest()
     }
 
     internal suspend fun context(): Context {
@@ -1140,6 +1145,50 @@ class McpApi internal constructor(
                 },
             )
         }
+    }
+}
+
+class McpHostApi internal constructor(
+    private val repo: XRepo,
+) {
+    private val _configFlow = MutableStateFlow<RuntimeMcpHostConfig?>(null)
+    val configFlow: Flow<RuntimeMcpHostConfig> = _configFlow.filterNotNull()
+
+    suspend fun get(): RuntimeMcpHostConfig {
+        _configFlow.value?.let { return it }
+        val parsed = McpHostSettingsCodec.parse(repo.readJson(StoreDescriptorRegistry.TOOLS_MCP_HOST_ID))
+        _configFlow.value = parsed
+        return parsed
+    }
+
+    suspend fun update(transform: (RuntimeMcpHostConfig) -> RuntimeMcpHostConfig): RuntimeMcpHostConfig {
+        var updated = RuntimeMcpHostConfig()
+        repo.updateJson(StoreDescriptorRegistry.TOOLS_MCP_HOST_ID) { json ->
+            val current = McpHostSettingsCodec.parse(json)
+            updated = transform(current)
+            McpHostSettingsCodec.encode(updated)
+        }
+        _configFlow.value = updated
+        return updated
+    }
+
+    suspend fun setEnabled(enabled: Boolean): RuntimeMcpHostConfig =
+        update { it.copy(enabled = enabled) }
+
+    suspend fun setPort(port: Int): RuntimeMcpHostConfig =
+        update { it.copy(port = port) }
+
+    suspend fun setHost(host: String): RuntimeMcpHostConfig =
+        update { it.copy(host = host) }
+
+    suspend fun setBearerToken(token: String): RuntimeMcpHostConfig =
+        update { it.copy(bearerToken = token) }
+
+    suspend fun setExposedTools(tools: Set<String>): RuntimeMcpHostConfig =
+        update { it.copy(exposedTools = tools) }
+
+    internal fun resetForTest() {
+        _configFlow.value = null
     }
 }
 

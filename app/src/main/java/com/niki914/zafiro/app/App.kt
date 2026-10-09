@@ -11,6 +11,7 @@ import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
+import com.niki914.zafiro.api.McpHostService
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionState
@@ -67,6 +68,28 @@ class App : Application() {
 
         observeFloatingBall()
         observeResidentNotification()
+        observeMcpHost()
+    }
+
+    private fun observeMcpHost() {
+        applicationScope.launch {
+            val service = requireService<McpHostService>()
+            val initialConfig = XRepo.mcpHost.get()
+            if (initialConfig.enabled) {
+                service.start()
+            }
+            var lastConfig = initialConfig
+            XRepo.mcpHost.configFlow.collect { config ->
+                if (config != lastConfig) {
+                    lastConfig = config
+                    if (config.enabled) {
+                        service.restart()
+                    } else {
+                        service.stop()
+                    }
+                }
+            }
+        }
     }
 
     private fun observeResidentNotification() = launchFeatureFlagObserver(

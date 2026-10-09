@@ -162,3 +162,40 @@ data class RuntimeToolValidation(
     val message: String,
     val origin: RuntimeToolValidationOrigin = RuntimeToolValidationOrigin.Code,
 )
+
+/**
+ * Zafiro 作为 MCP Server 暴露给外部客户端（如桌面 Claude Code、Cursor）的配置。
+ * 默认关闭服务，且仅在白名单内的安全工具默认开放；高危工具（terminal/python）默认关闭。
+ */
+data class RuntimeMcpHostConfig(
+    val enabled: Boolean = false,
+    val port: Int = DEFAULT_PORT,
+    val host: String = DEFAULT_HOST,
+    val bearerToken: String = "",
+    val exposedTools: Set<String> = DEFAULT_EXPOSED_TOOLS,
+) {
+    fun isToolExposed(toolName: String): Boolean {
+        if (toolName.startsWith("mcp__")) {
+            return false
+        }
+        return toolName in exposedTools
+    }
+
+    companion object {
+        const val DEFAULT_PORT: Int = 8791
+        const val DEFAULT_HOST: String = "127.0.0.1"
+
+        val DEFAULT_EXPOSED_TOOLS: Set<String> = setOf(
+            "screen_operation_accessibility",
+            "screen_operation_shell",
+            "screenshot",
+            "launch_app",
+            "find_installed_apps",
+            "open_uri",
+            "load_skill",
+            "notify",
+            "view_image",
+            "memory",
+        )
+    }
+}

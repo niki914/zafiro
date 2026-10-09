@@ -4,6 +4,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -174,19 +175,23 @@ fun parseArguments(argumentsJson: String): Result<ScreenOpArgs> {
 
         "search" -> {
             val keywordsElement = obj["keywords"]
-                ?: return Result.failure(
-                    IllegalArgumentException("Missing required field: keywords for operation 'search'.")
-                )
-            if (keywordsElement !is JsonArray) {
-                return Result.failure(
-                    IllegalArgumentException("keywords must be a JSON array for operation 'search'.")
-                )
+            val keywords: List<String> = when (keywordsElement) {
+                is JsonArray -> keywordsElement.mapNotNull { it.jsonPrimitive.contentOrNull }
+                    .filter { it.isNotBlank() }
+
+                is JsonPrimitive -> {
+                    val single = keywordsElement.contentOrNull
+                    if (!single.isNullOrBlank()) listOf(single) else emptyList()
+                }
+
+                else -> {
+                    val fallbackText = obj["text"]?.jsonPrimitive?.contentOrNull
+                    if (!fallbackText.isNullOrBlank()) listOf(fallbackText) else emptyList()
+                }
             }
-            val keywords = keywordsElement.map { it.jsonPrimitive.contentOrNull ?: "" }
-                .filter { it.isNotBlank() }
             if (keywords.isEmpty()) {
                 return Result.failure(
-                    IllegalArgumentException("keywords must be a non-empty array of strings for operation 'search'.")
+                    IllegalArgumentException("Missing required field: keywords for operation 'search'.")
                 )
             }
             val matchMode = obj["match_mode"]?.jsonPrimitive?.contentOrNull ?: "any"

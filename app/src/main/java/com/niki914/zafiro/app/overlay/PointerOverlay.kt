@@ -23,6 +23,7 @@ class PointerOverlay : IPointerOverlay {
     companion object {
         private const val FADE_DURATION_MS = 300L
         private const val POINTER_SIZE_DP = 80
+        private const val AUTO_HIDE_TIMEOUT_MS = 60_000L
     }
 
     // Android overlay infrastructure.
@@ -37,6 +38,10 @@ class PointerOverlay : IPointerOverlay {
     private var density = 2f
 
     // Mutable state
+    @Volatile
+    override var isShowing = false
+        private set
+
     private var curX = 0f
     private var curY = 0f
     private var curHeading = PointerCurveMath.IDLE_HEADING_RAD
@@ -45,6 +50,19 @@ class PointerOverlay : IPointerOverlay {
     private var runningAnim: ValueAnimator? = null
 
     private val handler = Handler(Looper.getMainLooper())
+
+    private val autoHideRunnable = Runnable {
+        hide()
+    }
+
+    private fun scheduleAutoHide() {
+        handler.removeCallbacks(autoHideRunnable)
+        handler.postDelayed(autoHideRunnable, AUTO_HIDE_TIMEOUT_MS)
+    }
+
+    private fun cancelAutoHide() {
+        handler.removeCallbacks(autoHideRunnable)
+    }
 
     // Tracks the unwrapped heading across frames to prevent ±180° jumps
     private var prevAngleDeg =
@@ -89,6 +107,7 @@ class PointerOverlay : IPointerOverlay {
     // ============================================================
 
     override fun show(x: Float, y: Float) {
+        isShowing = true
         handler.post {
             view?.animate()?.cancel()
             tryAttach()
@@ -98,19 +117,32 @@ class PointerOverlay : IPointerOverlay {
             prevAngleDeg = Math.toDegrees(curHeading.toDouble()).toFloat()
             applyTransform(x, y, curHeading)
             view?.animate()?.alpha(1f)?.setDuration(FADE_DURATION_MS)?.start()
+            scheduleAutoHide()
         }
     }
 
     override fun hide() {
+        isShowing = false
         handler.post {
+            cancelAutoHide()
             view?.animate()?.cancel()
             cancelAnim()
             view?.animate()?.alpha(0f)?.setDuration(FADE_DURATION_MS)?.start()
         }
     }
 
-    override fun dispose() {
+    override fun keepAlive() {
         handler.post {
+            if (isShowing) {
+                scheduleAutoHide()
+            }
+        }
+    }
+
+    override fun dispose() {
+        isShowing = false
+        handler.post {
+            cancelAutoHide()
             view?.animate()?.cancel()
             cancelAnim()
             if (attached) {
@@ -127,17 +159,30 @@ class PointerOverlay : IPointerOverlay {
         x: Float, y: Float, mode: MovementMode,
     ) {
         if (!attached) return
+        isShowing = true
+        handler.post {
+            scheduleAutoHide()
+            view?.animate()?.cancel()
+            view?.alpha = 1f
+        }
         cancelAnim()
         val t = PointerCurveMath.buildTrajectory(
             curX, curY, curHeading, x, y, mode, screenW, screenH,
         )
         animateAlong(t)
+        handler.post { if (isShowing) scheduleAutoHide() }
     }
 
     override suspend fun showSwipe(
         sx: Float, sy: Float, ex: Float, ey: Float, duration: Long,
     ) {
         if (!attached) return
+        isShowing = true
+        handler.post {
+            scheduleAutoHide()
+            view?.animate()?.cancel()
+            view?.alpha = 1f
+        }
         cancelAnim()
 
         // Phase 1: fly to swipe start (organic curve, tangent-following)
@@ -155,6 +200,7 @@ class PointerOverlay : IPointerOverlay {
         )
         // Override duration to match the requested swipe duration
         animateAlongRaw(swipe, duration)
+        handler.post { if (isShowing) scheduleAutoHide() }
     }
 
     // ============================================================
