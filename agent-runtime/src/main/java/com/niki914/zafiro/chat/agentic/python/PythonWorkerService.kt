@@ -42,7 +42,9 @@ class PythonWorkerService : Service() {
         super.onCreate()
         pythonHandler.post {
             try {
-                Python.start(AndroidPlatform(applicationContext))
+                if (!Python.isStarted()) {
+                    Python.start(AndroidPlatform(applicationContext))
+                }
                 // runtime.py 从这里拿传输文件目录（cacheDir/py_output）；
                 // 不设则缺省 /tmp，Android 上不可写 → 写盘降级全量走 inline
                 Python.getInstance()

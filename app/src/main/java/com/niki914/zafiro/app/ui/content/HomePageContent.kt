@@ -98,6 +98,7 @@ import androidx.core.content.FileProvider
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.LiquidDialog
+import com.niki914.uikit.infra.LocalHasActiveDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
@@ -310,11 +311,12 @@ fun HomePageContent(
 
     RegisterPageChrome(pageChromeContribution)
 
-    // 冷启动键盘焦点：仅进程内首次进入 Home、无草稿输入且不在加载中时抢焦点。
+    val hasActiveDialog = LocalHasActiveDialog.current
+    // 冷启动键盘焦点：仅进程内首次进入 Home、无草稿输入、不在加载中且当前无弹窗时抢焦点。
     // 标志在首次 effect 执行后即置位：无论聚焦成功、attempts 耗尽还是条件不满足
     // （有草稿/正在生成），都不再重试 —— 否则回答完成时 isGenerating 翻转会重启
     // 本 effect，导致"回答完成后自动弹键盘"（冷启动时未成功聚焦过的场景）。
-    if (!composerAutoFocusDone && !uiState.isLoadingConversation) {
+    if (!composerAutoFocusDone && !uiState.isLoadingConversation && !hasActiveDialog) {
         LaunchedEffect(uiState.input.isBlank(), uiState.isGenerating) {
             if (uiState.input.isBlank() && !uiState.isGenerating) {
                 repeat(AUTO_FOCUS_MAX_ATTEMPTS) {

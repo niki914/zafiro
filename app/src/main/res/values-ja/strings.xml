@@ -554,4 +554,10 @@
     <string name="mcp_host_token_description_configured">Authorization: Bearer &lt;token&gt; が必要です</string>
     <string name="mcp_host_token_show">Bearer トークンを表示</string>
     <string name="mcp_host_token_hide">Bearer トークンを非表示</string>
+
+    <!-- Crash Protection -->
+    <string name="crash_dialog_title">前回の実行時に予期せず終了しました</string>
+    <string name="crash_dialog_copy">ログをコピー</string>
+    <string name="crash_dialog_close">閉じる</string>
+    <string name="crash_copied_toast">クラッシュログをコピーしました</string>
 </resources>

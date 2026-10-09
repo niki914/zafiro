@@ -152,6 +152,7 @@ fun LiquidScreen(
                 bottomPadding = navigationBottom + BottomInsetSpacing,
             ),
             LocalLiquidDialogHostState provides dialogHostState,
+            LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
         ) {
             Box(
                 modifier = Modifier

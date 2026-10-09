@@ -554,4 +554,10 @@
     <string name="mcp_host_token_description_configured">请求需携带 Authorization: Bearer &lt;token&gt;</string>
     <string name="mcp_host_token_show">显示 Bearer Token</string>
     <string name="mcp_host_token_hide">隐藏 Bearer Token</string>
+
+    <!-- Crash Protection -->
+    <string name="crash_dialog_title">上次运行异常退出</string>
+    <string name="crash_dialog_copy">复制日志</string>
+    <string name="crash_dialog_close">关闭</string>
+    <string name="crash_copied_toast">已复制崩溃日志</string>
 </resources>

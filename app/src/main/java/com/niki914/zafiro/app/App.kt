@@ -9,6 +9,7 @@ import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
+import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
 import com.niki914.zafiro.api.McpHostService
@@ -34,6 +35,7 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashRecorder.install(this)
         // 日志 debug 门控：release 构建 DEBUG/VERBOSE 全停，仅 INFO+ 输出
         Logger.setDebugProvider { BuildConfig.DEBUG }
         // 非主进程（目前只有 `:python`）不初始化主进程状态：上下文与持久化只属于主进程
