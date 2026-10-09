@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -55,9 +56,12 @@ import java.util.concurrent.atomic.AtomicLong
 
 internal class LiquidDialogHostEntry(
     val id: Long,
+    initialVisible: Boolean,
     content: @Composable () -> Unit,
 ) {
     var content by mutableStateOf(content)
+        internal set
+    var visible by mutableStateOf(initialVisible)
         internal set
 }
 
@@ -67,12 +71,16 @@ internal class LiquidDialogHostState {
     val entries: List<LiquidDialogHostEntry>
         get() = mutableEntries
 
-    internal fun upsert(id: Long, content: @Composable () -> Unit) {
+    val hasActiveDialog: Boolean
+        get() = mutableEntries.any { it.visible }
+
+    internal fun upsert(id: Long, visible: Boolean, content: @Composable () -> Unit) {
         val entry = mutableEntries.firstOrNull { it.id == id }
         if (entry != null) {
             entry.content = content
+            entry.visible = visible
         } else {
-            mutableEntries += LiquidDialogHostEntry(id = id, content = content)
+            mutableEntries += LiquidDialogHostEntry(id = id, initialVisible = visible, content = content)
         }
     }
 
@@ -80,6 +88,9 @@ internal class LiquidDialogHostState {
         mutableEntries.removeAll { it.id == id }
     }
 }
+
+val LocalHasActiveDialog: ProvidableCompositionLocal<Boolean> =
+    staticCompositionLocalOf { false }
 
 internal val LocalLiquidDialogHostState: ProvidableCompositionLocal<LiquidDialogHostState> =
     staticCompositionLocalOf {
@@ -105,7 +116,7 @@ fun LiquidDialog(
     val dialogId = remember { nextLiquidDialogHostEntryId() }
 
     SideEffect {
-        hostState.upsert(dialogId) {
+        hostState.upsert(dialogId, visible) {
             LiquidDialogSurface(
                 visible = visible,
                 onDismissRequest = onDismissRequest,
@@ -159,9 +170,11 @@ private fun LiquidDialogSurface(
     // 释放页面上残留的输入焦点，否则键盘会继续顶在弹窗上、焦点也仍留在背后的输入框里。
     // （弹窗自带输入框的调用方在更晚的时机 requestFocus，仍然能拿到焦点。）
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(effectiveVisible) {
         if (effectiveVisible) {
-            focusManager.clearFocus()
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
         }
     }
 
