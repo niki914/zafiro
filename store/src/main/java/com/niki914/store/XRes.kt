@@ -29,7 +29,8 @@ object XValues {
 
     fun getAppTypeOf(context: Context): AppType = when {
         context.packageName in appList -> AppType.Host
-        context.packageName == BuildConfig.APPLICATION_ID -> AppType.Me
+        context.packageName == BuildConfig.APPLICATION_ID ||
+            context.packageName.startsWith("${BuildConfig.APPLICATION_ID}.") -> AppType.Me
         else -> AppType.Unknown
     }
 }
