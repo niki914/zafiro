@@ -320,11 +320,11 @@ class PromptComposerTest {
         assertTrue(result.finalSystemPrompt.contains(PromptComposer.TASK_COMPLETION_GUIDANCE))
     }
 
-    // --- LLMController.buildMemoryItems ---
+    // --- PromptComposer.buildMemoryItems ---
 
     @Test
-    fun llmController_prefersMemoriesOverMemoryPrompt() {
-        val items = buildMemoryItems(
+    fun promptComposer_prefersMemoriesOverMemoryPrompt() {
+        val items = PromptComposer.buildMemoryItems(
             RuntimeLlmConfig(
                 memoryPrompt = "legacy",
                 memories = listOf(" A ", "B", " "),
@@ -336,16 +336,6 @@ class PromptComposerTest {
     }
 
     // --- Helpers ---
-
-    private fun buildMemoryItems(config: RuntimeLlmConfig): List<String> {
-        val method = LLMController::class.java.getDeclaredMethod(
-            "buildMemoryItems",
-            RuntimeLlmConfig::class.java,
-        )
-        method.isAccessible = true
-        @Suppress("UNCHECKED_CAST")
-        return method.invoke(LLMController, config) as List<String>
-    }
 
     private fun skill(
         id: String,
