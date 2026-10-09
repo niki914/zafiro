@@ -555,4 +555,10 @@
     <string name="mcp_host_token_description_configured">Se requiere Authorization: Bearer &lt;token&gt;</string>
     <string name="mcp_host_token_show">Mostrar token Bearer</string>
     <string name="mcp_host_token_hide">Ocultar token Bearer</string>
+
+    <!-- Crash Protection -->
+    <string name="crash_dialog_title">La aplicación se cerró de forma inesperada</string>
+    <string name="crash_dialog_copy">Copiar registro</string>
+    <string name="crash_dialog_close">Cerrar</string>
+    <string name="crash_copied_toast">Registro de bloqueo copiado</string>
 </resources>

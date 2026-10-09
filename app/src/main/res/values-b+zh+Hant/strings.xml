@@ -539,4 +539,10 @@
     <string name="mcp_host_token_description_configured">請求需攜帶 Authorization: Bearer &lt;token&gt;</string>
     <string name="mcp_host_token_show">顯示 Bearer Token</string>
     <string name="mcp_host_token_hide">隱藏 Bearer Token</string>
+
+    <!-- Crash Protection -->
+    <string name="crash_dialog_title">上次執行異常結束</string>
+    <string name="crash_dialog_copy">複製日誌</string>
+    <string name="crash_dialog_close">關閉</string>
+    <string name="crash_copied_toast">已複製崩潰日誌</string>
 </resources>

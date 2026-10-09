@@ -555,4 +555,10 @@
     <string name="mcp_host_token_description_configured">Authorization: Bearer &lt;token&gt; required</string>
     <string name="mcp_host_token_show">Show Bearer Token</string>
     <string name="mcp_host_token_hide">Hide Bearer Token</string>
+
+    <!-- Crash Protection -->
+    <string name="crash_dialog_title">App Crashed Last Time</string>
+    <string name="crash_dialog_copy">Copy Log</string>
+    <string name="crash_dialog_close">Close</string>
+    <string name="crash_copied_toast">Crash report copied to clipboard</string>
 </resources>

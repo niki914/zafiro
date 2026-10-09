@@ -19,6 +19,7 @@ class I18nAlignmentTest {
         "values-b+zh+Hant/strings.xml",
         "values-es/strings.xml",
         "values-ja/strings.xml",
+        "values-ru/strings.xml",
     )
 
     private fun stringNames(relativePath: String): Set<String> {

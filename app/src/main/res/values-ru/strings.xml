@@ -508,4 +508,10 @@
     <string name="mcp_host_token_description_configured">Требуется заголовок Authorization: Bearer &lt;token&gt;</string>
     <string name="mcp_host_token_show">Показать Bearer Token</string>
     <string name="mcp_host_token_hide">Скрыть Bearer Token</string>
+
+    <!-- Crash Protection -->
+    <string name="crash_dialog_title">Приложение аварийно завершило работу</string>
+    <string name="crash_dialog_copy">Копировать отчет</string>
+    <string name="crash_dialog_close">Закрыть</string>
+    <string name="crash_copied_toast">Отчет о сбое скопирован в буфер обмена</string>
 </resources>
