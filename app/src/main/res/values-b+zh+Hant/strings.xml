@@ -518,25 +518,25 @@
     <string name="ui_onboard_preferences_toast_denied">權限未授予</string>
 
     <!-- MCP Host Settings -->
-    <string name="ui_settings_mcp_host">Host as MCP Server</string>
-    <string name="ui_settings_mcp_host_summary">Expose Zafiro tools to external agents via MCP</string>
-    <string name="mcp_host_section_service">Service</string>
-    <string name="mcp_host_section_connection">Connection &amp; Security</string>
-    <string name="mcp_host_section_tools">Exposed Tools</string>
-    <string name="mcp_host_enable_title">Enable MCP Server</string>
-    <string name="mcp_host_enable_summary">Allow external clients to control this device via MCP protocol</string>
-    <string name="mcp_host_status_title">Status</string>
-    <string name="mcp_host_status_running">Running</string>
-    <string name="mcp_host_status_stopped">Stopped</string>
-    <string name="mcp_host_status_starting">Starting…</string>
-    <string name="mcp_host_status_error">Error: %1$s</string>
-    <string name="mcp_host_port_title">Port</string>
+    <string name="ui_settings_mcp_host">MCP 服務</string>
+    <string name="ui_settings_mcp_host_summary">將 Zafiro 裝置能力作為 MCP 服務暴露給外部 Agent</string>
+    <string name="mcp_host_section_service">服務</string>
+    <string name="mcp_host_section_connection">連線與認證</string>
+    <string name="mcp_host_section_tools">暴露的工具</string>
+    <string name="mcp_host_enable_title">啟用 MCP 服務</string>
+    <string name="mcp_host_enable_summary">允許外部客戶端透過 MCP 協定控制此裝置</string>
+    <string name="mcp_host_status_title">執行狀態</string>
+    <string name="mcp_host_status_running">執行中</string>
+    <string name="mcp_host_status_stopped">已停止</string>
+    <string name="mcp_host_status_starting">啟動中…</string>
+    <string name="mcp_host_status_error">錯誤：%1$s</string>
+    <string name="mcp_host_port_title">連接埠</string>
     <string name="mcp_host_port_placeholder">8791</string>
-    <string name="mcp_host_port_error_invalid">Port must be between 1024 and 65535</string>
+    <string name="mcp_host_port_error_invalid">連接埠必須在 1024 到 65535 之間</string>
     <string name="mcp_host_token_title">Bearer Token</string>
-    <string name="mcp_host_token_placeholder">Leave empty to allow all</string>
-    <string name="mcp_host_token_description_empty">No authentication required</string>
-    <string name="mcp_host_token_description_configured">Authorization: Bearer &lt;token&gt; required</string>
-    <string name="mcp_host_token_show">Show Bearer Token</string>
-    <string name="mcp_host_token_hide">Hide Bearer Token</string>
+    <string name="mcp_host_token_placeholder">留空表示不驗證</string>
+    <string name="mcp_host_token_description_empty">無需身分驗證</string>
+    <string name="mcp_host_token_description_configured">請求需攜帶 Authorization: Bearer &lt;token&gt;</string>
+    <string name="mcp_host_token_show">顯示 Bearer Token</string>
+    <string name="mcp_host_token_hide">隱藏 Bearer Token</string>
 </resources>

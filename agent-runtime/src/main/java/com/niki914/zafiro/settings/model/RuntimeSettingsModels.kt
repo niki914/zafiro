@@ -175,7 +175,7 @@ data class RuntimeMcpHostConfig(
     val exposedTools: Set<String> = DEFAULT_EXPOSED_TOOLS,
 ) {
     fun isToolExposed(toolName: String): Boolean {
-        if (toolName.startsWith("mcp_") || toolName.startsWith("mcp__")) {
+        if (toolName.startsWith("mcp__")) {
             return false
         }
         return toolName in exposedTools

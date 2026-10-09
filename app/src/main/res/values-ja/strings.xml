@@ -533,25 +533,25 @@
     <string name="ui_onboard_preferences_toast_denied">権限が許可されていません</string>
 
     <!-- MCP Host Settings -->
-    <string name="ui_settings_mcp_host">Host as MCP Server</string>
-    <string name="ui_settings_mcp_host_summary">Expose Zafiro tools to external agents via MCP</string>
-    <string name="mcp_host_section_service">Service</string>
-    <string name="mcp_host_section_connection">Connection &amp; Security</string>
-    <string name="mcp_host_section_tools">Exposed Tools</string>
-    <string name="mcp_host_enable_title">Enable MCP Server</string>
-    <string name="mcp_host_enable_summary">Allow external clients to control this device via MCP protocol</string>
-    <string name="mcp_host_status_title">Status</string>
-    <string name="mcp_host_status_running">Running</string>
-    <string name="mcp_host_status_stopped">Stopped</string>
-    <string name="mcp_host_status_starting">Starting…</string>
-    <string name="mcp_host_status_error">Error: %1$s</string>
-    <string name="mcp_host_port_title">Port</string>
+    <string name="ui_settings_mcp_host">MCP サーバー公開</string>
+    <string name="ui_settings_mcp_host_summary">Zafiro のツールを MCP 経由で外部エージェントに公開</string>
+    <string name="mcp_host_section_service">サービス</string>
+    <string name="mcp_host_section_connection">接続とセキュリティ</string>
+    <string name="mcp_host_section_tools">公開ツール</string>
+    <string name="mcp_host_enable_title">MCP サーバーを有効化</string>
+    <string name="mcp_host_enable_summary">外部クライアントが MCP 経由で本端末を操作することを許可</string>
+    <string name="mcp_host_status_title">状態</string>
+    <string name="mcp_host_status_running">実行中</string>
+    <string name="mcp_host_status_stopped">停止</string>
+    <string name="mcp_host_status_starting">起動中…</string>
+    <string name="mcp_host_status_error">エラー: %1$s</string>
+    <string name="mcp_host_port_title">ポート</string>
     <string name="mcp_host_port_placeholder">8791</string>
-    <string name="mcp_host_port_error_invalid">Port must be between 1024 and 65535</string>
-    <string name="mcp_host_token_title">Bearer Token</string>
-    <string name="mcp_host_token_placeholder">Leave empty to allow all</string>
-    <string name="mcp_host_token_description_empty">No authentication required</string>
-    <string name="mcp_host_token_description_configured">Authorization: Bearer &lt;token&gt; required</string>
-    <string name="mcp_host_token_show">Show Bearer Token</string>
-    <string name="mcp_host_token_hide">Hide Bearer Token</string>
+    <string name="mcp_host_port_error_invalid">ポートは 1024 から 65535 の間である必要があります</string>
+    <string name="mcp_host_token_title">Bearer トークン</string>
+    <string name="mcp_host_token_placeholder">空白のままにすると認証なし</string>
+    <string name="mcp_host_token_description_empty">認証は不要です</string>
+    <string name="mcp_host_token_description_configured">Authorization: Bearer &lt;token&gt; が必要です</string>
+    <string name="mcp_host_token_show">Bearer トークンを表示</string>
+    <string name="mcp_host_token_hide">Bearer トークンを非表示</string>
 </resources>

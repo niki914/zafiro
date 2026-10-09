@@ -51,7 +51,6 @@ class McpToolAdapter(
         )
 
         val exposedTools = builtinRegistry.all().filter { tool ->
-            !tool.name.startsWith("mcp_") &&
             !tool.name.startsWith("mcp__") &&
             config.isToolExposed(tool.name)
         }

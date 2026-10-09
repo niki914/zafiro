@@ -179,7 +179,7 @@ class McpHostSettingsViewModel :
     private suspend fun buildSortedToolList(): List<McpHostToolItemUi> {
         val builtinRegistry = BuiltinToolRegistry.default()
         val registeredBuiltins = builtinRegistry.all()
-            .filter { !it.name.startsWith("mcp_") && !it.name.startsWith("mcp__") }
+            .filter { !it.name.startsWith("mcp__") }
             .associateBy { it.name }
 
         val safeTools = SAFE_BUILTIN_TOOL_ORDER.mapNotNull { name ->
@@ -220,7 +220,7 @@ class McpHostSettingsViewModel :
 
         val customPyTools = runCatching { XRepo.customPyTools.list() }
             .getOrDefault(emptyList())
-            .filter { !it.name.startsWith("mcp_") && !it.name.startsWith("mcp__") }
+            .filter { !it.name.startsWith("mcp__") }
             .sortedBy { it.name }
             .map { custom ->
                 McpHostToolItemUi(
