@@ -10,6 +10,7 @@ object StoreDescriptorRegistry {
     const val TOOLS_BUILTIN_ID = "tools.builtin"
     const val TOOLS_PY_ID = "tools.py"
     const val TOOLS_MCP_SERVERS_ID = "tools.mcp.servers"
+    const val TOOLS_MCP_HOST_ID = "tools.mcp.host"
     const val RULES_EXECUTION_ID = "rules.execution"
     const val RULES_TAKEOVER_ID = "rules.takeover"
     const val APP_STATE_ID = "app.state"
@@ -38,6 +39,11 @@ object StoreDescriptorRegistry {
             TOOLS_MCP_SERVERS_ID,
             "settings/tools/mcp/servers.json",
             """{"servers":[]}"""
+        ),
+        StoreDescriptor(
+            TOOLS_MCP_HOST_ID,
+            "settings/tools/mcp/host.json",
+            """{"enabled":true,"port":8791,"host":"127.0.0.1","bearerToken":"","exposedTools":[]}"""
         ),
         StoreDescriptor(
             RULES_EXECUTION_ID,

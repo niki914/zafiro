@@ -14,6 +14,9 @@ import com.niki914.zafiro.business.notification.NotificationChannelManager
 import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionManagerImpl
+import com.niki914.zafiro.api.McpHostService
+import com.niki914.zafiro.mcp.host.McpHostServiceImpl
+import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.repo.XSettingsImpl
 import com.niki914.zafiro.service.installService
 import com.niki914.xsettings.XSettings
@@ -53,5 +56,8 @@ object AppServices {
 
         // 本地配置读取口：给 app 以外的模块按需取用
         installService<XSettings>(XSettingsImpl)
+
+        // MCP Server 宿主服务：对外提供标准 MCP Streamable HTTP 协议端点
+        installService<McpHostService>(McpHostServiceImpl { XRepo.mcpHost.get() })
     }
 }
