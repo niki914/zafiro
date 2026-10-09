@@ -1,0 +1,144 @@
+---
+name: jugg-android-dev-loop
+version: 1.0.31
+date: 2026-09-24
+description: >-
+  Use when editing source files (Java/Kotlin/XML/layout/AndroidManifest/Gradle)
+  in a Android project, or when user asks to build/deploy/verify an Android app.
+  Don't trigger on a non-Android project e.g. IntelliJ plugin project or common java/kotlin project.
+---
+
+# Jugg Android Dev Loop
+
+**What is Jugg?** Jugg is an Android tools that bypasses full Gradle builds via incremental compilation and deployment, reducing build frequency while preserving Gradle artifacts.
+
+This skill use Jugg CLI to drive development loop for Android: modify → build → deploy → verify → iterate.
+
+---
+
+## Definition - Auto-Run Entry
+
+An **auto-run entry** is a user-designated method (e.g. `com.myapp.Test.run`) that runs automatically after app launch. Agent writes verification code into it and inspects logs/UI to confirm behavior. It is the primary verification mechanism in the Jugg dev loop.
+
+> **⚠️ Entry location is NOT auto-discoverable.** The user must declare the fully-qualified method name in the prompt (中文或 English 均可). If not declared and not visible in context, **stop and ask** — do not guess or search the codebase. To author the entry body, see `references/guide_write_auto_run_entry_code.md`.
+
+---
+
+## Phase 0 — Context Interview
+
+Collect mandatory variables before any action. For install-only requests, skip Jugg project status collection.
+
+| Variable | Source | Fallback |
+|----------|--------|----------|
+| `projectDir` | CLI auto-resolved from `$PWD`, or explicit `--project-dir <path>` when provided | Ask user only if neither current directory nor provided path identifies the target project |
+| `hasAutoRunEntry` | `true` only when the user has **explicitly declared** the entry's fully-qualified method (e.g. `com.myapp.Test.run`) in the prompt or current context. See **§ Auto-Run Entry**. | Default `false`. Never infer from code search. |
+| `enabledAndroidTest` | Project status context. Reuse existing credible context first, e.g. a hook block's `Jugg status` plain key-value output. If absent, run `python3 {SKILL_DIR}/scripts/jugg.py --console=json status` and read `data.enabledAndroidTest`. | Default unknown. Do not assume. |
+
+---
+
+## Phase 1 — Scenario Route & Load
+
+Route based on context, then load primary reference:
+
+```
+if user asks to install jugg CLI (e.g. "install jugg cli", "add jugg cli to PATH"):
+  → references/guide_install_cli.md
+elif user asks to run androidTest / instrumented unit tests, or the task is anchored in src/androidTest:
+  → references/flow_android_test.md
+elif hasAutoRunEntry == true:
+  → references/flow_with_auto_run.md
+else:
+  → references/flow_compile_deploy.md
+```
+
+| Scenario | Primary Reference | Supplementary (on-demand) |
+|----------|-------------------|---------------------------|
+| install jugg CLI | `references/guide_install_cli.md` | — |
+| androidTest / instrumented unit tests | `references/flow_android_test.md` | `references/error_patterns.md`, `references/cli_manual.md` |
+| compile/deploy | `references/flow_compile_deploy.md` | `references/error_patterns.md`, `references/policy_incremental_compile_limits.md` |
+| verify with auto-run entry | `references/flow_with_auto_run.md` | `references/guide_write_auto_run_entry_code.md`, `references/error_patterns.md` |
+
+Supplementary references load on-demand at the step that needs them.
+
+---
+
+## Mandatory Rules
+
+| # | Rule |
+|---|------|
+| 1 | Route by scenario first; do not mix flows |
+| 2 | Complete **all** source file edits first, then trigger compile/deploy **once**. Never compile after each individual file edit. |
+| 3 | Any source modification must pass compilation before task is done |
+
+---
+
+## CLI Quick Reference
+
+### Entry
+
+```
+python3 {SKILL_DIR}/scripts/jugg.py [--project-dir <path>] <subcommand> [options]
+python3 {SKILL_DIR}/scripts/jugg.py help <subcommand>
+```
+
+### Output Format
+
+### Build & Deploy Commands
+
+All build commands **block** until completion. Run compile-class commands (`compile`, `deploy`, `gradle-build`, and `instrument`) as a single foreground CLI call, wait for that process to exit, then parse its output once. These commands may trigger Gradle internally; do not start them in the background or poll `status`, processes, logs, files, or Git state to infer progress. Process exit is the only completion signal.
+Completion means the compile/deploy job reached a terminal state; CLI does not add an extra app-ready wait.
+
+**Block the agent loop as well as the CLI.** A terminal tool may return a running session before the foreground command exits. Keep waiting for that same session inside one long-running tool invocation until the process exits; do not return control to the agent after short waits. In Codex, use one `functions.exec` call with an outer `yield_time_ms` long enough for the expected build, and await `exec_command` plus any required `write_stdin` session waits inside that call. Do not set a short outer yield (such as 1–30 seconds), repeatedly call wait tools from the agent loop, send progress messages, or inspect status/logs while the command is running. If the tool forces an early yield, use its longest supported blocking wait on the same session until exit. Parse the final output once.
+
+| Command | Purpose | When to Use |
+|---------|---------|-------------|
+| `compile` | Compile modified sources, skip deploy | Default after ordinary source edits, including generic "verify/check modification" |
+| `deploy` | Compile + deploy to device | Need to launch/run app to inspect runtime/UI state, or perform device-side verification |
+| `gradle-build` | Full Gradle compile fallback | After `deploy`/`compile` **retries exhausted and still failed** |
+| `clean-reinstall` | Clear app data(compat with apply changes) + launch device | **Only** for clean APP data |
+| `instrument` | Run androidTest | Verify android test result |
+
+```
+python3 {SKILL_DIR}/scripts/jugg.py compile
+python3 {SKILL_DIR}/scripts/jugg.py deploy
+python3 {SKILL_DIR}/scripts/jugg.py gradle-build
+python3 {SKILL_DIR}/scripts/jugg.py clean-reinstall
+```
+
+```
+python3 {SKILL_DIR}/scripts/jugg.py instrument --source-path library1/src/androidTest/kotlin/com/example/FooTest.kt
+python3 {SKILL_DIR}/scripts/jugg.py instrument --source-path library1/src/androidTest/kotlin/com/example/FooTest.kt --class com.example.FooTest
+python3 {SKILL_DIR}/scripts/jugg.py instrument --source-path library1/src/androidTest/kotlin/com/example/FooTest.kt --class com.example.FooTest --method testSomething
+python3 {SKILL_DIR}/scripts/jugg.py instrument --source-path library1/src/androidTest/kotlin/com/example/FooTest.kt --extras 'size=large;clearPackageData=true'
+```
+
+### Runtime Basic Commands
+
+```
+python3 {SKILL_DIR}/scripts/jugg.py restart              # restart app
+python3 {SKILL_DIR}/scripts/jugg.py status               # refresh changed files and show status summary
+python3 {SKILL_DIR}/scripts/jugg.py status --refresh-changes false  # skip changed-file refresh
+python3 {SKILL_DIR}/scripts/jugg.py status --full-info true  # return full status information and all file paths
+python3 {SKILL_DIR}/scripts/jugg.py activity-stack       # show current Activity stack
+python3 {SKILL_DIR}/scripts/jugg.py devices              # list connected devices
+python3 {SKILL_DIR}/scripts/jugg.py wait-logs --marker '\[JUGG_AR\] DONE'  # --marker: Java Pattern regex matched against log message; block until marker/crash/timeout
+```
+
+```
+python3 {SKILL_DIR}/scripts/jugg.py wait-logs --marker '<regex>' [--tags t1,t2] [--timeout-ms ms]
+# stopReason: marker → parse logs; crash → FAIL; timeout → INCONCLUSIVE → see references/cli_manual.md §wait-logs for flags
+```
+
+### UI Commands (low-frequency)
+
+For UI interaction/inspection (tap, view-locate, view-inspect, layout-dump) → load `references/cli_manual.md`.
+
+## Build Fallback Chain
+
+On compile/deploy failure, follow this order:
+
+1. Read error detail.
+2. Modify source and retry the selected command (`compile` or `deploy`) up to 3 times.
+3. If still failing → `gradle-build`.
+4. Call `ssh-info` (requires explicit user consent) when `gradle-build` is remote compile and still failing.
+5. Still unclear → stop, ask user.
