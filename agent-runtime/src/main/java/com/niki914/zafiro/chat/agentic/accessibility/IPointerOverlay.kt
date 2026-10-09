@@ -3,6 +3,9 @@ package com.niki914.zafiro.chat.agentic.accessibility
 import com.niki914.zafiro.animation.PointerCurveMath.MovementMode
 
 interface IPointerOverlay {
+    /** True if the pointer overlay is currently visible or active. */
+    val isShowing: Boolean
+
     /** Fade in at [x],[y] with default idle heading. Non-blocking. */
     fun show(x: Float, y: Float)
 
@@ -14,6 +17,9 @@ interface IPointerOverlay {
 
     /** Fade out and remove from window. Non-blocking. */
     fun hide()
+
+    /** Postpone the inactivity auto-hide timer. Non-blocking. */
+    fun keepAlive()
 
     /** Cancel all animations and remove the view from the window immediately. */
     fun dispose()

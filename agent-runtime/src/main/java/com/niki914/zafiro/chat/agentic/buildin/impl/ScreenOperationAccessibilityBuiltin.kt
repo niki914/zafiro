@@ -189,7 +189,14 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
                 },
                 "text": {
                   "type": "string",
-                  "description": "Text to type into the field. Required for set_text."
+                  "description": "Text to type into the field. Required for set_text (or fallback keyword for search)."
+                },
+                "keywords": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Keywords to match against node text and content descriptions. Used for search."
                 },
                 "match_mode": {
                   "type": "string",
