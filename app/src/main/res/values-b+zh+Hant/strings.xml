@@ -516,4 +516,27 @@
     <string name="ui_onboard_preferences_action_grant_all">一鍵授權</string>
     <string name="ui_onboard_preferences_action_skip">跳過</string>
     <string name="ui_onboard_preferences_toast_denied">權限未授予</string>
+
+    <!-- MCP Host Settings -->
+    <string name="ui_settings_mcp_host">Host as MCP Server</string>
+    <string name="ui_settings_mcp_host_summary">Expose Zafiro tools to external agents via MCP</string>
+    <string name="mcp_host_section_service">Service</string>
+    <string name="mcp_host_section_connection">Connection &amp; Security</string>
+    <string name="mcp_host_section_tools">Exposed Tools</string>
+    <string name="mcp_host_enable_title">Enable MCP Server</string>
+    <string name="mcp_host_enable_summary">Allow external clients to control this device via MCP protocol</string>
+    <string name="mcp_host_status_title">Status</string>
+    <string name="mcp_host_status_running">Running</string>
+    <string name="mcp_host_status_stopped">Stopped</string>
+    <string name="mcp_host_status_starting">Starting…</string>
+    <string name="mcp_host_status_error">Error: %1$s</string>
+    <string name="mcp_host_port_title">Port</string>
+    <string name="mcp_host_port_placeholder">8791</string>
+    <string name="mcp_host_port_error_invalid">Port must be between 1024 and 65535</string>
+    <string name="mcp_host_token_title">Bearer Token</string>
+    <string name="mcp_host_token_placeholder">Leave empty to allow all</string>
+    <string name="mcp_host_token_description_empty">No authentication required</string>
+    <string name="mcp_host_token_description_configured">Authorization: Bearer &lt;token&gt; required</string>
+    <string name="mcp_host_token_show">Show Bearer Token</string>
+    <string name="mcp_host_token_hide">Hide Bearer Token</string>
 </resources>

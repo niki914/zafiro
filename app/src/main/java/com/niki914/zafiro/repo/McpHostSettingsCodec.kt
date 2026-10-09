@@ -19,11 +19,12 @@ internal object McpHostSettingsCodec {
 
     fun parse(json: String): RuntimeMcpHostConfig {
         val obj = parseObject(json)
-        val enabled = obj.boolean(KEY_ENABLED, default = true)
-        val port = obj.int(KEY_PORT, default = 8791)
-        val host = obj.string(KEY_HOST).ifBlank { "127.0.0.1" }
+        val enabled = obj.boolean(KEY_ENABLED, default = false)
+        val port = obj.int(KEY_PORT, default = RuntimeMcpHostConfig.DEFAULT_PORT)
+        val host = obj.string(KEY_HOST).ifBlank { RuntimeMcpHostConfig.DEFAULT_HOST }
         val token = obj.string(KEY_BEARER_TOKEN)
-        val exposedTools = (obj[KEY_EXPOSED_TOOLS] as? JsonArray)?.stringValues()?.toSet() ?: emptySet()
+        val exposedTools = (obj[KEY_EXPOSED_TOOLS] as? JsonArray)?.stringValues()?.toSet()
+            ?: RuntimeMcpHostConfig.DEFAULT_EXPOSED_TOOLS
         return RuntimeMcpHostConfig(
             enabled = enabled,
             port = port,
