@@ -230,9 +230,7 @@ object PyRuntime {
         withTimeoutOrNull(pingTimeoutMs()) {
             try {
                 withContext(Dispatchers.IO) { svc.ping() } != null
-            } catch (_: RemoteException) {
-                false
-            } catch (_: DeadObjectException) {
+            } catch (_: Exception) {
                 false
             }
         } ?: false
