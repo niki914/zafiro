@@ -88,6 +88,7 @@ object XRepo {
         // 响应式 flow 是进程内单例状态：重置回声明默认值，测试互不污染。
         keepScreenOnField.flow.value = true
         alwaysShowMessageActionsField.flow.value = true
+        voiceAssistantIsolatedSessionField.flow.value = true
         floatingBallEnabledField.flow.value = false
         residentNotificationEnabledField.flow.value = false
         floatingBallAutoExpandField.flow.value = true
@@ -384,6 +385,20 @@ object XRepo {
 
     suspend fun setAlwaysShowMessageActions(value: Boolean) =
         alwaysShowMessageActionsField.set(value)
+
+    /** 语音助手独享会话开关的进程内热更新通道：读时回填初值，写时同步。默认开启。 */
+    private val voiceAssistantIsolatedSessionField = ReactiveAppStateField(
+        default = true,
+        select = { voiceAssistantIsolatedSession },
+        update = { copy(voiceAssistantIsolatedSession = it) },
+    )
+    val voiceAssistantIsolatedSessionSetting: MutableStateFlow<Boolean>
+        get() = voiceAssistantIsolatedSessionField.flow
+
+    suspend fun voiceAssistantIsolatedSession(): Boolean = voiceAssistantIsolatedSessionField.get()
+
+    suspend fun setVoiceAssistantIsolatedSession(value: Boolean) =
+        voiceAssistantIsolatedSessionField.set(value)
 
     /** 悬浮球开关的进程内热更新通道：读时回填初值，写时同步。 */
     private val floatingBallEnabledField = ReactiveAppStateField(

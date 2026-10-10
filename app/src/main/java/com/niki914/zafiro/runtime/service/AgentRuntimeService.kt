@@ -21,6 +21,7 @@ import com.niki914.logging.Logger
 import com.niki914.store.HostApp
 import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.store.XIpcStoreRepository
+import com.niki914.zafiro.repo.XRepo
 
 import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.AgentManager
@@ -204,11 +205,18 @@ class AgentRuntimeService : Service() {
                 return
             }
 
-            val hostAgent = currentHostAgent ?: agentManager.createTaskAgent("host").also {
-                currentHostAgent = it
+            val isIsolated = runBlocking { XRepo.voiceAssistantIsolatedSession() }
+            val targetAgent = if (isIsolated) {
+                currentHostAgent ?: agentManager.createTaskAgent("host").also {
+                    currentHostAgent = it
+                }
+            } else {
+                currentHostAgent?.discard()
+                currentHostAgent = null
+                agentManager.main
             }
-            hostAgent.updateDraft { it.copy(text = q, images = emptyList(), files = emptyList()) }
-            when (val startResult = hostAgent.stream()) {
+            targetAgent.updateDraft { it.copy(text = q, images = emptyList(), files = emptyList()) }
+            when (val startResult = targetAgent.stream()) {
                 TurnStart.Busy -> {
                     try {
                         cb.asBinder().unlinkToDeath(deathRecipient, 0)
@@ -227,14 +235,14 @@ class AgentRuntimeService : Service() {
                     return
                 }
                 TurnStart.Started -> {
-                    Logger.i(LOG_TAG, "hostAgent.stream started successfully")
+                    Logger.i(LOG_TAG, "targetAgent.stream started successfully isolated=$isIsolated")
                 }
             }
 
-            val job = scope.launch { executeTurn(cb, hostAgent) }
-            val turn = ActiveTurn(cb, job, hostAgent)
+            val job = scope.launch { executeTurn(cb, targetAgent) }
+            val turn = ActiveTurn(cb, job, targetAgent)
             activeTurn.set(turn)
-            Logger.i(LOG_TAG, "turn registered callbackLinked=true")
+            Logger.i(LOG_TAG, "turn registered callbackLinked=true isolated=$isIsolated")
         }
 
         override fun cancel() {
@@ -255,9 +263,14 @@ class AgentRuntimeService : Service() {
         }
 
         override fun resetConversation() {
-            Logger.i(LOG_TAG, "reset conversation requested by host")
-            currentHostAgent?.discard()
-            currentHostAgent = null
+            val isIsolated = runBlocking { XRepo.voiceAssistantIsolatedSession() }
+            if (isIsolated) {
+                Logger.i(LOG_TAG, "reset conversation requested by host (isolated mode)")
+                currentHostAgent?.discard()
+                currentHostAgent = null
+            } else {
+                Logger.i(LOG_TAG, "reset conversation requested by host (ignored to protect shared conversation)")
+            }
         }
     }
 

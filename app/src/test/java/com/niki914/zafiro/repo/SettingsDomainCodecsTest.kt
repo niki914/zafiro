@@ -318,6 +318,15 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
+    fun appStateVoiceAssistantIsolatedSessionDefaultsEnabledAndRoundTrips() {
+        assertTrue(AppStateSettingsCodec.parse("""{}""").voiceAssistantIsolatedSession)
+
+        val json = AppStateSettingsCodec.encode(AppStateSettings(voiceAssistantIsolatedSession = false))
+        assertFalse(jsonObject(json)["voice_assistant_isolated_session"]!!.jsonPrimitive.boolean)
+        assertFalse(AppStateSettingsCodec.parse(json).voiceAssistantIsolatedSession)
+    }
+
+    @Test
     fun appStateRoundTripUsesSnakeCaseKeys() {
         val state = AppStateSettings(
             onboardingCompleted = true,

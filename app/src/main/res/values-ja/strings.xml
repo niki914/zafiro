@@ -452,6 +452,8 @@
     <string name="ui_settings_general_keep_screen_on">回答中は画面をオンに保つ</string>
     <string name="ui_settings_general_keep_screen_on_summary">エージェントの応答とツール実行中は画面をオフにしません</string>
     <string name="ui_settings_general_always_show_message_actions">メッセージ操作を常に表示</string>
+    <string name="ui_settings_general_voice_assistant_isolated_session">音声アシスタント専用セッション</string>
+    <string name="ui_settings_general_voice_assistant_isolated_session_summary">有効にすると音声アシスタントの会話が独立し、メイン画面の履歴に影響しません</string>
     <string name="ui_settings_saved_configuration_title">保存済みの設定</string>
     <string name="ui_settings_saved_configuration_delete_title">設定の削除</string>
     <string name="ui_settings_saved_configuration_delete_text">この設定は削除されます。この操作は元に戻せません。</string>
