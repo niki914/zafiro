@@ -220,7 +220,7 @@ abstract class AbstractAssistantHook(
         renderStreamCard(turnId, roomId, legacyText, frame.isFirst, frame.isFinal)
     }
 
-    /** 将流式文本帧渲染到宿主 UI。旧版 BreenoChatHook 全量刷新单卡片，XiaoAi 流式注入文本节点。 */
+    /** 将流式文本帧渲染到宿主 UI。XiaoAi 流式注入文本节点。 */
     protected open suspend fun renderStreamCard(
         turnId: Long,
         roomId: String,
