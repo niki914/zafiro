@@ -104,6 +104,14 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 
 项目通过 Chaquopy 实现 Python 能力支持，在单独的 py 进程中运行代码
 
+### 日志与调试
+
+调试构建额外把同一条日志落到沙箱，如果 logcat 被冲掉了可以用 adb 把日志拉出来看
+
+- 调试版包名带 `.debug` 后缀（`com.niki914.zafiro.debug`），有独立沙箱与独立数据。release 版可提供 zafiro-mcp 用于真机调试。需要时先通过 mcp load_skill('phone-use')
+- 落盘目录 `filesDir/logs/`，每次运行产生一个文件，文件名是 `<进程>-<MMdd-HHmmss>.log`：主进程 `main-*`，Chaquopy 进程 `python-*`
+- 单文件满 8MB 换下一个文件，目录内最多保留 10 个
+
 ---
 
 ## HARD GATE | MUST FOLLOW

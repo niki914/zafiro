@@ -10,6 +10,7 @@ import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.crash.CrashRecorder
+import com.niki914.zafiro.app.debug.DebugLogFile
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
 import com.niki914.zafiro.api.McpHostService
@@ -38,6 +39,8 @@ class App : Application() {
         CrashRecorder.install(this)
         // 日志 debug 门控：release 构建 DEBUG/VERBOSE 全停，仅 INFO+ 输出
         Logger.setDebugProvider { BuildConfig.DEBUG }
+        // 调试构建额外把日志落到 filesDir/logs/（release 不装文件后端）
+        DebugLogFile.install(this)
         // 非主进程（目前只有 `:python`）不初始化主进程状态：上下文与持久化只属于主进程
         //（否则 ContextProvider 从未 provide，PyRuntime.warmUp 会永远挂起）
         if (!isMainProcess()) return
