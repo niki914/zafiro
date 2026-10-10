@@ -328,6 +328,10 @@ object XRepo {
         select = { lastNotifiedUpdateVersion },
         update = { copy(lastNotifiedUpdateVersion = it) },
     )
+    private val draftTextField = PlainAppStateField(
+        select = { draftText },
+        update = { copy(draftText = it) },
+    )
 
     suspend fun onboardingCompleted(): Boolean = onboardingCompletedField.get()
 
@@ -359,6 +363,11 @@ object XRepo {
 
     suspend fun setLoadLastConversationOnStartup(value: Boolean) =
         loadLastConversationOnStartupField.set(value)
+
+    /** 全局输入框草稿文本（跨会话/新建会话保持，冷启动自动恢复）。 */
+    suspend fun draftText(): String = draftTextField.get()
+
+    suspend fun setDraftText(text: String) = draftTextField.set(text)
 
     /** Keep Alive 设置的进程内热更新通道：读时回填初值，写时同步。 */
     private val keepScreenOnField = ReactiveAppStateField(

@@ -20,9 +20,9 @@ object DefaultHomeConversationStore : HomeConversationStore {
         return ConversationRepo.getConversation(id)
     }
 
-    override suspend fun updateDraft(conversationId: String, draftText: String) {
-        ConversationRepo.updateDraft(conversationId = conversationId, draftText = draftText)
-    }
+    override suspend fun draftText(): String = XRepo.draftText()
+
+    override suspend fun setDraftText(value: String) = XRepo.setDraftText(value)
 
     override suspend fun deleteConversation(id: String) {
         ConversationRepo.deleteConversation(id)

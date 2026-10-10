@@ -24,8 +24,9 @@ interface ConversationStore_Tmp {
     /** 首次建档：会话 id 与首条提问（树 id 即 Room id）。 */
     suspend fun create(id: ConversationId, firstUserInput: String)
 
-    /** 草稿文本落盘（Room 的 `draft_text` 列）。 */
-    suspend fun saveDraft(id: ConversationId, draftText: String)
+    /** 死接口（T3 遗留）：草稿已改用 XRepo 全局管理，禁止再按会话保存草稿。 */
+    @Deprecated("Dead method: draft has migrated to XRepo global storage.")
+    suspend fun saveDraft(id: ConversationId, draftText: String) {}
 
     /** 记录最后打开的会话；null = 清空。 */
     suspend fun setLastOpened(id: ConversationId?)
@@ -36,10 +37,10 @@ interface ConversationStore_Tmp {
  *
  * @property snapshot 引擎恢复快照（`open(restore)` 的入参）。
  * @property conversation 装配好的回合列表（历史恢复与流式归约共用同一 id 规则）。
- * @property draftText 该会话的草稿文本。
+ * @property draftText 死字段：草稿已改由 XRepo 全局管理，始终为空串，禁止消费。
  */
 data class StoredConversation_Tmp(
     val snapshot: SessionSnapshot,
     val conversation: Conversation,
-    val draftText: String,
+    val draftText: String = "",
 )

@@ -122,9 +122,6 @@ class AgentImpl(
         streamJob = scope.launch {
             try {
                 val conversationId = ensureConversation(query)
-                if (isPersistent) {
-                    store().saveDraft(conversationId, "")
-                }
                 Logger.i(LOG_TAG, "round started conversationId=${conversationId.value} queryLength=${query.length}")
                 engine.stream(query = query, images = contentImages, files = files)
                     .collect { event ->
@@ -208,7 +205,6 @@ class AgentImpl(
         store().setLastOpened(id)
         reduced = Reduced(stored.conversation.copy(id = id))
         conversationFlow.value = stored.conversation.copy(id = id)
-        draftFlow.value = Draft(text = stored.draftText)
         Logger.i(LOG_TAG, "loaded id=${id.value} turns=${stored.conversation.turns.size}")
     }
 

@@ -137,7 +137,6 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
         val record = store.getConversation(id.value)
         mutableConversation.value = record?.let { ConversationFormatter.toConversation(it.snapshot) }
             ?: Conversation(id = id)
-        mutableDraft.value = record?.let { Draft(it.draftText) } ?: Draft()
         mutableStatus.value = AgentState.Idle()
         store.setLastOpenedConversationId(id.value)
     }
@@ -206,14 +205,14 @@ internal class FakeHomeConversationStore(
 ) : HomeConversationStore {
     private val records = linkedMapOf<String, ConversationRecord>()
     private var lastOpened = ""
+    private var draft = ""
 
     override suspend fun lastOpenedConversationId() = lastOpened
     override suspend fun setLastOpenedConversationId(value: String) { lastOpened = value }
     override suspend fun loadLastConversationOnStartup() = restoreOnStartup
     override suspend fun getConversation(id: String) = records[id]
-    override suspend fun updateDraft(conversationId: String, draftText: String) {
-        records[conversationId]?.let { records[conversationId] = it.copy(draftText = draftText) }
-    }
+    override suspend fun draftText(): String = draft
+    override suspend fun setDraftText(value: String) { draft = value }
     override suspend fun deleteConversation(id: String) { records.remove(id) }
 
     fun recordNewConversation(id: String, title: String) {

@@ -19,7 +19,7 @@ class RoomConversationStore_Tmp : ConversationStore_Tmp {
         return StoredConversation_Tmp(
             snapshot = record.snapshot,
             conversation = ConversationFormatter.toConversation(record.snapshot),
-            draftText = record.draftText,
+            draftText = "", // 死字段：不再消费
         )
     }
 
@@ -29,8 +29,9 @@ class RoomConversationStore_Tmp : ConversationStore_Tmp {
         ConversationRepo.createConversation(id = id.value, firstUserInput = firstUserInput)
     }
 
+    @Deprecated("Dead method: draft has migrated to XRepo global storage.")
     override suspend fun saveDraft(id: ConversationId, draftText: String) {
-        ConversationRepo.updateDraft(conversationId = id.value, draftText = draftText)
+        // no-op: 草稿已改由 XRepo 全局管理
     }
 
     override suspend fun setLastOpened(id: ConversationId?) {

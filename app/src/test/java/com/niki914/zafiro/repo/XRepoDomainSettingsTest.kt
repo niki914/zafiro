@@ -60,6 +60,17 @@ class XRepoDomainSettingsTest {
     }
 
     @Test
+    fun draftText_persistsAndRecoversDefault() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        assertEquals("", XRepo.draftText())
+        XRepo.setDraftText("my global draft")
+        assertEquals("my global draft", XRepo.draftText())
+    }
+
+    @Test
     fun setConversationPinned_addRemoveAndRepinKeepsLatestTimestamp() = runTest {
         val store = FakeDomainSettingsStore()
         XRepo.installStoreForTest(store)

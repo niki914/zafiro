@@ -234,13 +234,11 @@ class ConversationRepoTest {
     }
 
     @Test
-    fun updateDraftAndRename_mutateConversationMetadata() = runTest {
+    fun rename_mutatesConversationTitle() = runTest {
         val id = ConversationRepo.createConversation("session-1", "hi")
-        ConversationRepo.updateDraft(id, "draft text")
         ConversationRepo.renameConversation(id, "new title")
 
         val record = ConversationRepo.getConversation(id)!!
-        assertEquals("draft text", record.draftText)
         assertEquals("new title", record.summary.title)
         assertTrue(record.summary.titleEdited)
     }

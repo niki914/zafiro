@@ -76,7 +76,7 @@ class HomeChatViewModel internal constructor(
     init {
         agent.addApprover(approvalApprover)
         observeAgent()
-        restoreLastConversationOnStartup()
+        restoreStartupState()
     }
 
     override fun initUiState(): HomeChatUiState = HomeChatUiState()
@@ -289,11 +289,10 @@ class HomeChatViewModel internal constructor(
     private fun onInputChanged(value: String) {
         updateState { copy(input = value) }
         agent.updateDraft { it.copy(text = value) }
-        val conversationId = agent.conversation.value.id ?: return
         draftSaveJob?.cancel()
         draftSaveJob = viewModelScope.launch {
             kotlinx.coroutines.delay(DRAFT_SAVE_DEBOUNCE_MS)
-            conversations.updateDraft(conversationId = conversationId.value, draftText = value)
+            conversations.setDraftText(value)
         }
     }
 
@@ -396,6 +395,7 @@ class HomeChatViewModel internal constructor(
         }
         draftSaveJob?.cancel()
         draftSaveJob = null
+        viewModelScope.launch { conversations.setDraftText("") }
         // 输入框以本类为准：发起即清空，不从 draft 读回
         updateState {
             copy(
@@ -428,11 +428,15 @@ class HomeChatViewModel internal constructor(
         resetPacers()
         conversationBeingLoaded = null
         seenThinkingKeys.clear()
-        updateState { HomeChatUiState() }
+        val currentInput = currentState.input
+        updateState { HomeChatUiState(input = currentInput) }
         viewModelScope.launch {
             val startedAtMs = System.currentTimeMillis()
             try {
                 agent.discard()
+                if (currentInput.isNotEmpty()) {
+                    agent.updateDraft { it.copy(text = currentInput) }
+                }
                 conversations.setLastOpenedConversationId("")
                 Logger.i(
                     LOG_TAG,
@@ -444,10 +448,15 @@ class HomeChatViewModel internal constructor(
         }
     }
 
-    private fun restoreLastConversationOnStartup() {
+    private fun restoreStartupState() {
         if (startupRestoreAttempted) return
         startupRestoreAttempted = true
         viewModelScope.launch {
+            val draft = runCatching { conversations.draftText() }.getOrDefault("")
+            if (draft.isNotEmpty()) {
+                updateState { copy(input = draft) }
+                agent.updateDraft { it.copy(text = draft) }
+            }
             val shouldRestore = runCatching { conversations.loadLastConversationOnStartup() }
                 .getOrDefault(false)
             if (!shouldRestore) {
@@ -459,11 +468,11 @@ class HomeChatViewModel internal constructor(
                 Logger.d(LOG_TAG, "restore skipped lastOpenedConversationBlank")
                 return@launch
             }
-            loadConversation(conversationId, restoreDraft = true)
+            loadConversation(conversationId)
         }
     }
 
-    private suspend fun loadConversation(id: String, restoreDraft: Boolean = false) {
+    private suspend fun loadConversation(id: String) {
         val startedAtMs = System.currentTimeMillis()
         Logger.i(LOG_TAG, "load conversation id=$id started")
         draftSaveJob?.cancel()
@@ -486,12 +495,9 @@ class HomeChatViewModel internal constructor(
             seenThinkingKeys.clear()
             conversationBeingLoaded = id
             agent.load(ConversationId(id))
-            if (!restoreDraft) agent.clearDraft()
             updateState {
                 copy(
                     turns = emptyList(),
-                    input = record.draftText.takeIf { restoreDraft }.orEmpty(),
-                    pendingImages = if (restoreDraft) agent.draft.value.images.mapNotNull { it.toHomeImage() } else emptyList(),
                     currentConversationId = id,
                     currentConversationTitle = title,
                 ).withClearedTransient()
@@ -579,11 +585,15 @@ class HomeChatViewModel internal constructor(
         draftSaveJob?.cancel()
         draftSaveJob = null
         resetPacers()
+        val currentInput = currentState.input
         agent.discard()
+        if (currentInput.isNotEmpty()) {
+            agent.updateDraft { it.copy(text = currentInput) }
+        }
         conversationBeingLoaded = null
         seenThinkingKeys.clear()
         conversations.setLastOpenedConversationId("")
-        updateState { HomeChatUiState() }
+        updateState { HomeChatUiState(input = currentInput) }
         Logger.i(
             LOG_TAG,
             "delete conversation done id=$id elapsedMs=${System.currentTimeMillis() - startedAtMs}",

@@ -59,6 +59,9 @@ internal data class AppStateSettings(
     /** 置顶会话：id + 置顶时刻。数量级 ≤ 20，读取方按会话存在性自行剪枝。 */
     @SerialName("pinned_conversations")
     val pinnedConversations: List<PinnedConversation> = emptyList(),
+    /** 全局输入框草稿文本（跨会话/新建会话保持，冷启动自动恢复）。 */
+    @SerialName("draft_text")
+    val draftText: String = "",
 )
 
 /** 一条置顶记录：置顶时刻用于与最后交互时间取 max 排序（越晚置顶/越晚交互越靠前）。 */

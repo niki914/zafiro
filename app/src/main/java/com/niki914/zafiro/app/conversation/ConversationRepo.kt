@@ -109,7 +109,7 @@ object ConversationRepo {
         val snapshot = readSnapshot(id, conversation.leafId)
         return ConversationRecord(
             summary = conversation.toSummary(),
-            draftText = conversation.draftText,
+            draftText = "", // 死字段：不读取旧库会话草稿，改由 XRepo 全局接管
             snapshot = snapshot,
         ).also {
             Logger.i(
@@ -341,6 +341,10 @@ object ConversationRepo {
         )
     }
 
+    /**
+     * 死字段操作（T3 遗留）：保留仅防破坏旧调用编译，业务层严禁再调用。草稿已改用 XRepo 全局管理。
+     */
+    @Deprecated("Dead method: draft has migrated to XRepo global storage.")
     suspend fun updateDraft(conversationId: String, draftText: String) {
         dao().updateDraft(conversationId = conversationId, draftText = draftText)
     }

@@ -122,7 +122,7 @@ class HomeChatViewModelTest {
             Message.User(listOf(ContentBlock.Text("hello"))),
             Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
         ))
-        store.updateDraft("saved", "unfinished")
+        store.setDraftText("unfinished")
         store.setLastOpenedConversationId("saved")
         val fixture = fixture(store = store)
         advanceUntilIdle()
@@ -131,12 +131,26 @@ class HomeChatViewModelTest {
         assertEquals("saved", fixture.agent.lastLoadedId?.value)
         assertEquals("saved", state.currentConversationId)
         assertEquals("unfinished", state.input)
+        assertEquals("unfinished", fixture.agent.draft.value.text)
         assertEquals("hello", state.turns.single().userText)
         assertEquals(listOf(HomeChatBlock.Text("answer")), state.turns.single().blocks)
     }
 
     @Test
-    fun switchingConversationLoadsAgentAndClearsUnrestoredDraft() = runTest {
+    fun startupRestoresGlobalDraftEvenWithoutHistoryRestore() = runTest {
+        val store = FakeHomeConversationStore(restoreOnStartup = false)
+        store.setDraftText("pending idea")
+        val fixture = fixture(store = store)
+        advanceUntilIdle()
+
+        val state = fixture.vm.uiStateFlow.value
+        assertNull(state.currentConversationId)
+        assertEquals("pending idea", state.input)
+        assertEquals("pending idea", fixture.agent.draft.value.text)
+    }
+
+    @Test
+    fun switchingConversationPreservesCurrentDraft() = runTest {
         val store = FakeHomeConversationStore()
         store.createRecord("first", "one")
         store.setSnapshot("first", snapshotOf(Message.User(listOf(ContentBlock.Text("one")))))
@@ -145,8 +159,9 @@ class HomeChatViewModelTest {
             Message.User(listOf(ContentBlock.Text("two"))),
             Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("reply")))),
         ))
-        store.updateDraft("second", "should not restore")
         val fixture = fixture(store = store)
+        fixture.vm.sendIntent(HomeChatIntent.InputChanged("draft to keep"))
+        runCurrent()
 
         fixture.vm.sendIntent(HomeChatIntent.LoadConversation("second"))
         advanceUntilIdle()
@@ -154,9 +169,29 @@ class HomeChatViewModelTest {
         val state = fixture.vm.uiStateFlow.value
         assertEquals("second", fixture.agent.lastLoadedId?.value)
         assertEquals("second", state.currentConversationId)
-        assertEquals("", state.input)
+        assertEquals("draft to keep", state.input)
+        assertEquals("draft to keep", fixture.agent.draft.value.text)
         assertEquals("two", state.turns.single().userText)
         assertEquals("second", store.lastOpenedConversationId())
+    }
+
+    @Test
+    fun newConversationPreservesCurrentDraft() = runTest {
+        val store = FakeHomeConversationStore()
+        store.createRecord("saved", "old")
+        val fixture = fixture(store = store)
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("saved"))
+        advanceUntilIdle()
+
+        fixture.vm.sendIntent(HomeChatIntent.InputChanged("keep this in new chat"))
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.NewConversation)
+        advanceUntilIdle()
+
+        assertEquals(1, fixture.agent.discardCount)
+        assertNull(fixture.vm.uiStateFlow.value.currentConversationId)
+        assertEquals("keep this in new chat", fixture.vm.uiStateFlow.value.input)
+        assertEquals("keep this in new chat", fixture.agent.draft.value.text)
     }
 
     @Test
