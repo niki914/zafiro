@@ -209,6 +209,11 @@ fun ZafiroApp(
         requestBack()
     }
 
+    // 上次已做过标题动画的条目：标题滑动只表达「换了页面」这一空间语义。
+    // 同一条目内的标题刷新（会话标题出现、选中数量变化、切换配置）是活内容变了，
+    // 不是位移，走 update 瞬切；否则它们会沿用上一次的导航方向反复左右滑。
+    var lastAnimatedEntryId by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(
         currentEntry.id,
         controller.lastDirection,
@@ -224,7 +229,12 @@ fun ZafiroApp(
         val onLeftClick = bindAction(currentLeftAction, fallback = ::requestBack)
         val onRightClick = bindAction(currentRightAction)
 
-        when (controller.lastDirection) {
+        val isPageChange = lastAnimatedEntryId != currentEntry.id
+        lastAnimatedEntryId = currentEntry.id
+        val titleDirection =
+            if (isPageChange) controller.lastDirection else TitleDirection.None
+
+        when (titleDirection) {
             TitleDirection.Forward -> screenState.navigateForward(
                 title = currentTitle,
                 isTitleCollapsible = isTitleCollapsible,
