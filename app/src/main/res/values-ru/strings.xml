@@ -411,6 +411,8 @@
     <string name="ui_settings_general_keep_screen_on">Не гасить экран во время ответа</string>
     <string name="ui_settings_general_keep_screen_on_summary">Не гасить экран, пока агент отвечает и выполняет инструменты</string>
     <string name="ui_settings_general_always_show_message_actions">Всегда показывать действия с сообщением</string>
+    <string name="ui_settings_general_voice_assistant_isolated_session">Выделенная сессия голосового ассистента</string>
+    <string name="ui_settings_general_voice_assistant_isolated_session_summary">Изолировать диалоги голосового ассистента от истории основного чата</string>
     <string name="ui_settings_saved_configuration_title">Сохранённые конфигурации</string>
     <string name="ui_settings_saved_configuration_delete_title">Удалить конфигурацию</string>
     <string name="ui_settings_saved_configuration_delete_text">Конфигурация будет удалена без возможности восстановления.</string>

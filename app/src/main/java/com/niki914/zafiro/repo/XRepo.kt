@@ -16,6 +16,8 @@ import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_PATTERNS
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -86,10 +88,12 @@ object XRepo {
         // 响应式 flow 是进程内单例状态：重置回声明默认值，测试互不污染。
         keepScreenOnField.flow.value = true
         alwaysShowMessageActionsField.flow.value = true
+        voiceAssistantIsolatedSessionField.flow.value = true
         floatingBallEnabledField.flow.value = false
         residentNotificationEnabledField.flow.value = false
         floatingBallAutoExpandField.flow.value = true
         mcpHost.resetForTest()
+        llmConfigs.resetForTest()
     }
 
     internal suspend fun context(): Context {
@@ -381,6 +385,20 @@ object XRepo {
 
     suspend fun setAlwaysShowMessageActions(value: Boolean) =
         alwaysShowMessageActionsField.set(value)
+
+    /** 语音助手独享会话开关的进程内热更新通道：读时回填初值，写时同步。默认开启。 */
+    private val voiceAssistantIsolatedSessionField = ReactiveAppStateField(
+        default = true,
+        select = { voiceAssistantIsolatedSession },
+        update = { copy(voiceAssistantIsolatedSession = it) },
+    )
+    val voiceAssistantIsolatedSessionSetting: MutableStateFlow<Boolean>
+        get() = voiceAssistantIsolatedSessionField.flow
+
+    suspend fun voiceAssistantIsolatedSession(): Boolean = voiceAssistantIsolatedSessionField.get()
+
+    suspend fun setVoiceAssistantIsolatedSession(value: Boolean) =
+        voiceAssistantIsolatedSessionField.set(value)
 
     /** 悬浮球开关的进程内热更新通道：读时回填初值，写时同步。 */
     private val floatingBallEnabledField = ReactiveAppStateField(
@@ -674,6 +692,17 @@ class AgentApi internal constructor(
 class LlmConfigsApi internal constructor(
     private val repo: XRepo,
 ) {
+    private val _revision = MutableStateFlow(0L)
+    val revision: StateFlow<Long> = _revision.asStateFlow()
+
+    private fun bumpRevision() {
+        _revision.value += 1L
+    }
+
+    internal fun resetForTest() {
+        _revision.value = 0L
+    }
+
     suspend fun document(): LlmConfigsDocument {
         return LlmConfigsSettingsCodec.parse(repo.readJson(StoreDescriptorRegistry.LLM_CONFIGS_ID))
     }
@@ -692,14 +721,18 @@ class LlmConfigsApi internal constructor(
             if (doc.prompt == normalizedPrompt) return@updateJson json
             LlmConfigsSettingsCodec.encode(doc.copy(prompt = normalizedPrompt))
         }
+        bumpRevision()
     }
 
     suspend fun setActive(id: String) {
-        repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+        val updated = repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
             val doc = LlmConfigsSettingsCodec.parse(json)
             if (doc.configs.none { it.id == id.trim() }) return@updateJsonOrFalse null
             if (doc.activeId == id.trim()) return@updateJsonOrFalse null
             LlmConfigsSettingsCodec.encode(doc.copy(activeId = id.trim()))
+        }
+        if (updated) {
+            bumpRevision()
         }
     }
 
@@ -743,6 +776,7 @@ class LlmConfigsApi internal constructor(
                 )
             )
         }
+        bumpRevision()
         return null
     }
 
@@ -762,6 +796,7 @@ class LlmConfigsApi internal constructor(
             LlmConfigsSettingsCodec.encode(doc.copy(configs = remaining, activeId = nextActiveId))
         }
         if (!deleted) return
+        bumpRevision()
         // 删除后若无任何配置：回 onboarding 态（下次冷启动重新引导）
         if (list().isEmpty()) {
             repo.setOnboardingCompleted(false)

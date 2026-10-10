@@ -21,6 +21,7 @@ data class GeneralSettingsUiState(
     val residentNotificationEnabled: Boolean = false,
     val loadLastConversation: Boolean = false,
     val alwaysShowMessageActions: Boolean = true,
+    val voiceAssistantIsolatedSession: Boolean = true,
     val idleTimeoutSeconds: Long = 60L,
     val retryMaxAttempts: Int = 3,
     val keepScreenOn: Boolean = true,
@@ -38,6 +39,7 @@ sealed interface GeneralSettingsIntent {
     data class ToggleResidentNotification(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleLoadLastConversation(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleAlwaysShowMessageActions(val enabled: Boolean) : GeneralSettingsIntent
+    data class ToggleVoiceAssistantIsolatedSession(val enabled: Boolean) : GeneralSettingsIntent
     data class SelectIdleTimeout(val seconds: Long) : GeneralSettingsIntent
     data class SelectRetryMaxAttempts(val attempts: Int) : GeneralSettingsIntent
     data class ToggleKeepScreenOn(val enabled: Boolean) : GeneralSettingsIntent
@@ -63,6 +65,8 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
             is GeneralSettingsIntent.ToggleResidentNotification -> toggleResidentNotification(intent.enabled)
             is GeneralSettingsIntent.ToggleLoadLastConversation -> toggleLoadLastConversation(intent.enabled)
             is GeneralSettingsIntent.ToggleAlwaysShowMessageActions -> toggleAlwaysShowMessageActions(intent.enabled)
+            is GeneralSettingsIntent.ToggleVoiceAssistantIsolatedSession ->
+                toggleVoiceAssistantIsolatedSession(intent.enabled)
             is GeneralSettingsIntent.SelectIdleTimeout -> selectIdleTimeout(intent.seconds)
             is GeneralSettingsIntent.SelectRetryMaxAttempts -> selectRetryMaxAttempts(intent.attempts)
             is GeneralSettingsIntent.ToggleKeepScreenOn -> toggleKeepScreenOn(intent.enabled)
@@ -75,6 +79,7 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
             val languageTag = XRepo.languageTag()
             val loadLastConversation = XRepo.loadLastConversationOnStartup()
             val alwaysShowMessageActions = XRepo.alwaysShowMessageActions()
+            val voiceAssistantIsolatedSession = XRepo.voiceAssistantIsolatedSession()
             val idleTimeoutSeconds = XRepo.llmIdleTimeoutSeconds()
             val retryMaxAttempts = XRepo.llmRetryMaxAttempts()
             val keepScreenOn = XRepo.keepScreenOn()
@@ -86,6 +91,7 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
                     languageTag = languageTag,
                     loadLastConversation = loadLastConversation,
                     alwaysShowMessageActions = alwaysShowMessageActions,
+                    voiceAssistantIsolatedSession = voiceAssistantIsolatedSession,
                     idleTimeoutSeconds = idleTimeoutSeconds,
                     retryMaxAttempts = retryMaxAttempts,
                     keepScreenOn = keepScreenOn,
@@ -163,6 +169,16 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
         updateState { copy(alwaysShowMessageActions = enabled) }
         try {
             XRepo.setAlwaysShowMessageActions(enabled)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    private suspend fun toggleVoiceAssistantIsolatedSession(enabled: Boolean) {
+        updateState { copy(voiceAssistantIsolatedSession = enabled) }
+        try {
+            XRepo.setVoiceAssistantIsolatedSession(enabled)
         } catch (e: Throwable) {
             e.printStackTrace()
             throw e

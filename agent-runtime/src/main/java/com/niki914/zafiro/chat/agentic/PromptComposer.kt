@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic
 
 import com.niki914.zafiro.chat.ResolvedTools
+import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 
 data class PromptComposeResult(
@@ -151,6 +152,14 @@ class PromptComposer {
     // --- Guidance constants ---
 
     companion object {
+        fun buildMemoryItems(config: RuntimeLlmConfig): List<String> {
+            val memories = config.memories.map(String::trim).filter(String::isNotBlank)
+            if (memories.isNotEmpty()) {
+                return memories
+            }
+            return listOfNotNull(config.memoryPrompt.trim().takeIf { it.isNotBlank() })
+        }
+
         internal const val DEFAULT_AGENT_IDENTITY =
             "You are Zafiro, an intelligent AI assistant. " +
                     "You are helpful, knowledgeable, and direct. " +

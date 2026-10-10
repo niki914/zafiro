@@ -52,6 +52,11 @@ class XRepoDomainSettingsTest {
         assertTrue(XRepo.loadLastConversationOnStartup())
         assertEquals("zh-CN", XRepo.languageTag())
         assertTrue(XRepo.onboardingCompleted())
+        assertTrue(XRepo.voiceAssistantIsolatedSession())
+
+        XRepo.setVoiceAssistantIsolatedSession(false)
+        assertFalse(XRepo.voiceAssistantIsolatedSession())
+        assertFalse(XRepo.voiceAssistantIsolatedSessionSetting.value)
     }
 
     @Test

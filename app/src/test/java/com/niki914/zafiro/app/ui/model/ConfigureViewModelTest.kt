@@ -7,6 +7,7 @@ import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -391,6 +392,7 @@ class ConfigureViewModelTest {
         val viewModel = ConfigureViewModel(deps.toDependencies())
         viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
         advanceUntilIdle()
+        val effectDeferred = async { viewModel.uiEffect.first() }
 
         viewModel.sendIntent(ConfigureIntent.UpdateName("Taken"))
         viewModel.sendIntent(ConfigureIntent.Save)
@@ -401,6 +403,52 @@ class ConfigureViewModelTest {
             R.string.ui_settings_configure_error_name_duplicate,
             viewModel.uiStateFlow.value.nameErrorResId,
         )
+        assertEquals(ConfigureEffect.FocusName, effectDeferred.await())
+    }
+
+    @Test
+    fun initializeNew_withExistingName_picksUniqueName() = runTest {
+        val deps = RecordingDeps()
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            configs = listOf(savedLlmConfig("cfg-a").copy(name = "DeepSeek")),
+        )
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.SettingsNew,
+                providerId = "deepseek",
+            )
+        )
+        advanceUntilIdle()
+        assertEquals("DeepSeek 2", viewModel.uiStateFlow.value.configNameInput)
+    }
+
+    @Test
+    fun revisions_updatesSavedConfigsAndActiveConfigId() = runTest {
+        val revisionFlow = MutableSharedFlow<Long>()
+        val deps = RecordingDeps()
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            configs = listOf(savedLlmConfig("cfg-a")),
+        )
+        val baseDeps = deps.toDependencies()
+        val depsWithRevisions = baseDeps.copy(revisions = revisionFlow)
+        val viewModel = ConfigureViewModel(depsWithRevisions)
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit, configId = "cfg-a"))
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiStateFlow.value.savedConfigs.size)
+
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-b",
+            configs = listOf(savedLlmConfig("cfg-a"), savedLlmConfig("cfg-b")),
+        )
+        revisionFlow.emit(1L)
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiStateFlow.value.savedConfigs.size)
+        assertEquals("cfg-b", viewModel.uiStateFlow.value.activeConfigId)
     }
 
     @Test

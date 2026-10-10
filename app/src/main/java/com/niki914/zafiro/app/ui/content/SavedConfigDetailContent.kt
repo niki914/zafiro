@@ -61,6 +61,7 @@ fun SavedConfigDetailContent(
                 ConfigureEffect.SettingsSaveSucceeded -> onSaveCompleted()
                 ConfigureEffect.ConfigDeleted -> onBack()
 
+                ConfigureEffect.FocusName -> pendingFocusField = ConfigureEditableField.Name
                 ConfigureEffect.FocusModel -> pendingFocusField = ConfigureEditableField.Model
                 ConfigureEffect.FocusApiKey -> pendingFocusField = ConfigureEditableField.ApiKey
                 ConfigureEffect.FocusEndpoint -> pendingFocusField = ConfigureEditableField.Endpoint

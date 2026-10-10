@@ -1,10 +1,10 @@
 package com.niki914.zafiro.app
 
 import android.app.Application
-import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.app.conversation.RoomConversationStore_Tmp
-import com.niki914.zafiro.business.agent.AgentImpl
+import com.niki914.zafiro.business.agent.AgentManagerImpl
 import com.niki914.zafiro.business.agent.ConversationStore_Tmp
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.business.application.ApplicationServiceImpl
@@ -40,9 +40,9 @@ object AppServices {
     fun install(application: Application) {
         // 会话持久化端口：Room 在 app 侧，实现侧经它读写会话记录
         installService<ConversationStore_Tmp>(RoomConversationStore_Tmp())
-        // 会话门面：宽接口与窄接口指向同一实例
-        installService<Agent>(AgentImpl)
-        installService<AgentControl>(AgentImpl)
+        val agentManager = AgentManagerImpl()
+        installService<AgentManager>(agentManager)
+        installService<AgentControl>(agentManager.control)
 
         // 前台能力：必须在 PermissionManager 之前装（它经注册表取 ApplicationService）
         val appService = ApplicationServiceImpl(application)

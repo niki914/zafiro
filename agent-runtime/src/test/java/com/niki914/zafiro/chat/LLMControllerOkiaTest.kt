@@ -496,6 +496,44 @@ class LLMControllerOkiaTest {
         assertTrue(LLMController.currentConversation.value == null)
     }
 
+    @Test
+    fun openSession_afterConfigChanged_usesUpdatedConfig() = runTest {
+        val gateway = FakeRuntimeSettingsGateway(
+            llmConfig = validLlmConfig().copy(model = "model-v1")
+        )
+        installRuntimeSettingsGatewayForTest(gateway)
+        var lastCreatedConfig: ResolvedLlmConfig? = null
+        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, config ->
+            lastCreatedConfig = config
+            openOkiaWithStubLoop(
+                stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)),
+                restore
+            )
+        }
+        LLMController.refresh()
+        assertEquals("model-v1", lastCreatedConfig?.model)
+
+        // 外部新配置为 model-v2
+        gateway.llmConfig = validLlmConfig().copy(model = "model-v2")
+
+        val snapshot = SessionSnapshot(
+            id = "session-restored",
+            leafId = "e0",
+            version = 1,
+            entries = listOf(
+                ConversationEntry(
+                    id = "e0",
+                    parentId = null,
+                    timestamp = 1L,
+                    message = Message.User(listOf(ContentBlock.Text("a"))),
+                ),
+            ),
+        )
+        LLMController.openSession(snapshot)
+
+        assertEquals("model-v2", lastCreatedConfig?.model)
+    }
+
     // ── helpers ─────────────────────────────────────────────────────────────
 
     private fun validLlmConfig(

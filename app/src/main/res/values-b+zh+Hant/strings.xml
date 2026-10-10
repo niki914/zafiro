@@ -415,6 +415,8 @@
     <string name="ui_settings_general_keep_screen_on">回應期間保持螢幕常亮</string>
     <string name="ui_settings_general_keep_screen_on_summary">回應與工具執行期間保持螢幕常亮</string>
     <string name="ui_settings_general_always_show_message_actions">總是顯示訊息操作</string>
+    <string name="ui_settings_general_voice_assistant_isolated_session">語音助理獨享一個對話</string>
+    <string name="ui_settings_general_voice_assistant_isolated_session_summary">開啟後語音助理對話不影響主畫面歷史；關閉則與主畫面共用當前對話</string>
     <string name="ui_settings_saved_configuration_title">已儲存配置</string>
     <string name="ui_settings_saved_configuration_delete_title">刪除配置</string>
     <string name="ui_settings_saved_configuration_delete_text">該配置將被刪除，此操作無法復原。</string>

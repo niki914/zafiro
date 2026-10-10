@@ -72,6 +72,7 @@ class GeneralSettingsViewModelTest {
         XRepo.setLanguageTag("zh-CN")
         XRepo.setLoadLastConversationOnStartup(true)
         XRepo.setAlwaysShowMessageActions(false)
+        XRepo.setVoiceAssistantIsolatedSession(false)
         XRepo.setLlmIdleTimeoutSeconds(90L)
         XRepo.setLlmRetryMaxAttempts(5)
         XRepo.setKeepScreenOn(false)
@@ -86,6 +87,7 @@ class GeneralSettingsViewModelTest {
         assertEquals("zh-CN", state.languageTag)
         assertTrue(state.loadLastConversation)
         assertFalse(state.alwaysShowMessageActions)
+        assertFalse(state.voiceAssistantIsolatedSession)
         assertEquals(90L, state.idleTimeoutSeconds)
         assertEquals(5, state.retryMaxAttempts)
         assertFalse(state.keepScreenOn)
@@ -214,6 +216,20 @@ class GeneralSettingsViewModelTest {
         advanceUntilIdle()
         assertEquals(2, viewModel.uiStateFlow.value.retryMaxAttempts)
         assertEquals(2, XRepo.llmRetryMaxAttempts())
+    }
+
+    @Test
+    fun toggleVoiceAssistantIsolatedSession_updatesStateAndRepo() = runTest {
+        val viewModel = GeneralSettingsViewModel()
+
+        assertTrue(viewModel.uiStateFlow.value.voiceAssistantIsolatedSession)
+        assertTrue(XRepo.voiceAssistantIsolatedSession())
+
+        viewModel.sendIntent(GeneralSettingsIntent.ToggleVoiceAssistantIsolatedSession(false))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiStateFlow.value.voiceAssistantIsolatedSession)
+        assertFalse(XRepo.voiceAssistantIsolatedSession())
     }
 
     private fun TestScope.collectEffects(

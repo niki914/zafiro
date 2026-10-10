@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.api.Agent
+import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.ApprovalDecision
@@ -50,7 +51,7 @@ class HomeChatViewModel internal constructor(
     // thinking 与正文在流中交织（thinking → tool → text），坐标系独立，单独实例
     private val thinkingPacer: TextPacer = TextPacer(),
 ) : ComposeMVIViewModel<HomeChatIntent, HomeChatUiState, HomeChatEffect>() {
-    private val agent: Agent get() = requireService()
+    private val agent: Agent get() = requireService<AgentManager>().main
     private val files: FilesService get() = requireService()
     private var draftSaveJob: Job? = null
     private var startupRestoreAttempted = false
