@@ -1,76 +1,41 @@
 package com.niki914.zafiro.chat
 
-import com.niki914.logging.Logger
 import com.niki914.okia.Okia
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.SessionSnapshot
-import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.mcp.McpServerDiscoverySnapshot
 import com.niki914.okia.message.ContentBlock
-import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.chat.agentic.IngestedImage
-import com.niki914.zafiro.chat.agentic.PromptComposer
-import com.niki914.zafiro.chat.agentic.PromptComposerInput
-import com.niki914.zafiro.chat.agentic.ToolManager
-import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
-import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.flowOn
 
 /**
- * Zafiro 的 LLM 回合调度胶水层。
+ * Zafiro 的遗留 LLM 回合调度门面。
  *
- * 自身不包含具体的协议构建、图片编解码、工具同步或文本注入逻辑，
- * 仅负责将配置、工具与底层会话协同驱动：
- * - 会话装配与生命周期由 [OkiaSessionAssembler] 维护；
- * - 工具注册与 MCP 发现由 [ToolRegistrySynchronizer] 维护；
- * - 注入前缀由 [TurnPrefixComposer] 维护；
- * - 图片落盘由 [ImageIngestionManager] 维护；
- * - 流式执行管道由 [LlmStreamPipeline] 维护。
+ * 实体能力已全部下沉至可多实例化的 [AgentSessionEngine]。
+ * 本门面仅代理默认实例，随 M10 演进逐步淘汰。
  */
 object LLMController {
-    private const val LOG_TAG = "niki914_zafiro_LLMController"
     internal const val NO_IDLE_TIMEOUT_SECONDS = Long.MAX_VALUE / 1000
 
-    private val promptComposer = PromptComposer()
-    private val toolManager = ToolManager()
-    private val mcpRefreshScheduler =
-        McpRefreshScheduler(CoroutineScope(SupervisorJob() + Dispatchers.IO))
+    val defaultEngine = AgentSessionEngine()
 
-    private val imageManager = ImageIngestionManager()
-    private val toolSynchronizer = ToolRegistrySynchronizer { runtimeState?.snapshot?.tools }
-    private val prefixComposer = TurnPrefixComposer()
-    private val sessionAssembler = OkiaSessionAssembler(
-        toolRegistry = toolSynchronizer.toolRegistry,
-        imageLoader = imageManager.imageLoader,
-        ensureImageSaver = imageManager::ensureImageSaver,
-    )
-    private val streamPipeline = LlmStreamPipeline()
-
-    internal val toolRegistry: ToolRegistry get() = toolSynchronizer.toolRegistry
+    internal val toolRegistry: ToolRegistry get() = defaultEngine.toolRegistry
 
     internal var okia: Okia?
-        get() = sessionAssembler.activeSession
-        set(value) { sessionAssembler.activeSession = value }
+        get() = defaultEngine.okia
+        set(value) { defaultEngine.okia = value }
 
     internal var okiaFactory: OkiaFactory
-        get() = sessionAssembler.okiaFactory
-        set(value) { sessionAssembler.okiaFactory = value }
+        get() = defaultEngine.okiaFactory
+        set(value) { defaultEngine.okiaFactory = value }
 
-    val currentConversation: StateFlow<Conversation?> get() = sessionAssembler.currentConversation
-    val keepScreenOn: StateFlow<Boolean> get() = streamPipeline.turnActive
-
-    private var runtimeState: RuntimeState? = null
+    val currentConversation: StateFlow<Conversation?> get() = defaultEngine.currentConversation
+    val keepScreenOn: StateFlow<Boolean> get() = defaultEngine.keepScreenOn
 
     internal fun interface OkiaFactory {
         suspend fun create(
@@ -81,261 +46,35 @@ object LLMController {
     }
 
     internal fun resetForTest() {
-        sessionAssembler.resetForTest()
-        runtimeState = null
-        toolSynchronizer.reset()
-        mcpRefreshScheduler.reset()
-        prefixComposer.reset()
+        defaultEngine.resetForTest()
     }
 
-    suspend fun refresh(): LlmRuntimeSnapshot {
-        val refreshStartedAtMs = System.currentTimeMillis()
-        val gateway = RuntimeEnvironment.awaitSettingsGateway()
-        val llmConfig = gateway.readLlmConfig()
-        validateLlmConfig(llmConfig)
-        Logger.i(
-            LOG_TAG,
-            "config read provider=${llmConfig.provider} model=${llmConfig.model} " +
-                    "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
-        )
-        val protocol = LlmProtocol.fromWire(llmConfig.protocol)
-        val runtimeMcpServers = gateway.listMcpServers()
-        val customPyTools = gateway.listCustomPyTools()
-        val builtinSettings = gateway.listBuiltinToolSettings()
-        val enabledSkills = gateway.listEnabledSkills()
-        val resolvedTools = toolManager.resolve(
-            customPyTools = customPyTools,
-            mcpServers = runtimeMcpServers,
-            builtinSettings = builtinSettings,
-        )
-        Logger.i(
-            LOG_TAG,
-            "tools resolved builtin=${resolvedTools.builtinTools.size} " +
-                    "py=${resolvedTools.customPyTools.size} " +
-                    "mcpServers=${resolvedTools.mcpServers.size}"
-        )
-        val configWithoutRuntimePrompt = ResolvedLlmConfig(
-            endpoint = llmConfig.endpoint,
-            apiKey = llmConfig.apiKey,
-            model = llmConfig.model,
-            baseSystemPrompt = llmConfig.prompt,
-            finalSystemPrompt = llmConfig.prompt,
-            proxy = llmConfig.proxy,
-            supportsImages = llmConfig.supportsImages,
-            idleTimeoutSeconds = llmConfig.idleTimeoutSeconds,
-            retryMaxAttempts = llmConfig.retryMaxAttempts,
-            maxTokens = llmConfig.maxTokens,
-            thinkingLevel = llmConfig.thinkingLevel.takeIf(String::isNotBlank)
-                ?.let(ThinkingLevel::fromWire),
-        )
-
-        val previousSession = runtimeState?.okia
-        val activeSession = sessionAssembler.obtainSession(protocol, configWithoutRuntimePrompt)
-        activeSession.update {
-            endpoint = configWithoutRuntimePrompt.endpoint
-            apiKey = configWithoutRuntimePrompt.apiKey
-            model = configWithoutRuntimePrompt.model
-            idleTimeoutSeconds = configWithoutRuntimePrompt.idleTimeoutSeconds
-                ?: NO_IDLE_TIMEOUT_SECONDS
-            retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts)
-            maxTokens = configWithoutRuntimePrompt.maxTokens
-            thinkingLevel = configWithoutRuntimePrompt.thinkingLevel
-            proxy = configWithoutRuntimePrompt.proxy
-            mcpServers = toolSynchronizer.toOkiaMcpServers(resolvedTools.mcpServers)
-        }
-        toolSynchronizer.syncLocalTools(resolvedTools)
-        val mcpSignature = toolSynchronizer.mcpServersSignature(resolvedTools.mcpServers)
-        mcpRefreshScheduler.schedule(
-            activeSession,
-            mcpSignature,
-            force = activeSession !== previousSession,
-        )
-        val prompt = promptComposer.compose(
-            PromptComposerInput(
-                additionalInstructions = llmConfig.prompt,
-                memoryItems = PromptComposer.buildMemoryItems(llmConfig),
-                tools = resolvedTools,
-                enabledSkills = enabledSkills,
-                sandboxPaths = imageManager.sandboxPaths(),
-            )
-        )
-        val finalConfig =
-            configWithoutRuntimePrompt.copy(finalSystemPrompt = prompt.finalSystemPrompt)
-
-        return LlmRuntimeSnapshot(finalConfig, resolvedTools, prompt).also { snapshot ->
-            runtimeState = RuntimeState(
-                snapshot = snapshot,
-                okia = activeSession,
-                sessionProtocol = protocol,
-            )
-            Logger.i(
-                LOG_TAG,
-                "refresh done elapsedMs=${System.currentTimeMillis() - refreshStartedAtMs} " +
-                        "model=${snapshot.config.model}"
-            )
-        }
-    }
+    suspend fun refresh(): LlmRuntimeSnapshot = defaultEngine.refresh()
 
     suspend fun refreshFromHookContext(): LlmRuntimeSnapshot = refresh()
 
-    suspend fun snapshot(): LlmRuntimeSnapshot? = runtimeState?.snapshot
+    suspend fun snapshot(): LlmRuntimeSnapshot? = defaultEngine.snapshot()
 
-    /**
-     * 确保存在一个可用会话实例（无则建空实例）并返回其树 id（T3）。
-     */
-    suspend fun ensureSession(): String {
-        if (okia == null) {
-            refresh()
-        }
-        return okia?.conversation?.value?.id
-            ?: error("session not available")
-    }
+    suspend fun ensureSession(): String = defaultEngine.ensureSession()
 
-    /**
-     * 恢复会话（T3）：关闭当前实例，以 Room 读出的树快照重建实例。
-     */
-    suspend fun openSession(restore: SessionSnapshot) {
-        val startedAtMs = System.currentTimeMillis()
-        Logger.i(
-            LOG_TAG,
-            "open session id=${restore.id} entries=${restore.entries.size} started"
-        )
-        if (runtimeState == null) {
-            refresh()
-        }
-        val current = runtimeState ?: return
-        val newSession = sessionAssembler.obtainSession(
-            protocol = current.sessionProtocol,
-            config = current.snapshot.config,
-            restore = restore,
-            forceNew = true,
-        )
-        runtimeState = current.copy(okia = newSession)
-        val switchMcpServers = current.snapshot.tools.mcpServers
-        newSession.update { mcpServers = toolSynchronizer.toOkiaMcpServers(switchMcpServers) }
-        mcpRefreshScheduler.schedule(
-            newSession,
-            toolSynchronizer.mcpServersSignature(switchMcpServers),
-            force = true,
-        )
-        Logger.i(
-            LOG_TAG,
-            "open session done id=${restore.id} " +
-                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-        )
-    }
+    suspend fun openSession(restore: SessionSnapshot) = defaultEngine.openSession(restore)
 
     fun stream(
         query: String,
         images: List<ContentBlock.Image> = emptyList(),
         files: List<FileRef> = emptyList(),
-    ): Flow<LlmStreamEvent> = channelFlow {
-        try {
-            val state = try {
-                refresh()
-                runtimeState
-            } catch (throwable: Throwable) {
-                if (throwable is CancellationException) {
-                    throw throwable
-                }
-                runtimeState ?: run {
-                    val code = throwable.toUserErrorCode()
-                    val message = throwable.message?.trim()?.ifEmpty { null }
-                    Logger.e(
-                        LOG_TAG,
-                        "refresh failed errorType=${throwable.eventTypeName()} message=$message"
-                    )
-                    send(
-                        LlmStreamEvent.Error(
-                            message = message,
-                            throwable = throwable,
-                            code = code,
-                        )
-                    )
-                    return@channelFlow
-                }
-            }
-            if (state == null) {
-                send(LlmStreamEvent.Error(message = null, code = null))
-                return@channelFlow
-            }
-            Logger.i(
-                LOG_TAG,
-                "refresh ok model=${state.snapshot.config.model} " +
-                        "builtin=${state.snapshot.tools.builtinTools.size} " +
-                        "py=${state.snapshot.tools.customPyTools.size} " +
-                        "mcp=${state.snapshot.tools.mcpServers.size}"
-            )
+    ): Flow<LlmStreamEvent> = defaultEngine.stream(query, images, files)
 
-            val notifications = TerminalSessionPool.drainPendingNotifications()
-            val mcpNotice = prefixComposer.mcpFailureNotice(state.okia)
-            val injection = prefixComposer.buildInjectionPrefixes(files, mcpNotice, notifications)
-            if (injection != null) {
-                Logger.i(
-                    LOG_TAG,
-                    "prefixes injected files=${files.size} mcp=${mcpNotice != null} " +
-                            "notifications=${notifications.size} " +
-                            "chars=${injection.length}"
-                )
-            }
-            val effectiveQuery = if (injection != null) {
-                injection + "\n\n" + query
-            } else {
-                query
-            }
+    suspend fun resetConversation() = defaultEngine.resetConversation()
 
-            streamPipeline.execute(
-                session = state.okia,
-                query = effectiveQuery,
-                images = images,
-                systemPrompt = state.snapshot.config.finalSystemPrompt,
-                channel = this,
-            )
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) {
-                throw throwable
-            }
-            Logger.e(
-                LOG_TAG,
-                "stream error stage=outer code=${throwable.toUserErrorCode()} " +
-                        "errorType=${throwable.eventTypeName()} " +
-                        "message=${throwable.message}"
-            )
-            send(
-                LlmStreamEvent.Error(
-                    message = throwable.message?.trim()?.ifEmpty { null },
-                    throwable = throwable,
-                    code = throwable.toUserErrorCode(),
-                )
-            )
-        }
-    }.flowOn(Dispatchers.IO)
-
-    suspend fun resetConversation() {
-        Logger.i(LOG_TAG, "reset conversation requested")
-        sessionAssembler.resetConversation()
-        runtimeState = null
-        Logger.i(LOG_TAG, "reset conversation done")
-    }
-
-    suspend fun stopCurrentRound() {
-        Logger.i(LOG_TAG, "stop round requested")
-        sessionAssembler.stopCurrentRound()
-        Logger.i(LOG_TAG, "stop round done")
-    }
+    suspend fun stopCurrentRound() = defaultEngine.stopCurrentRound()
 
     suspend fun ingestUserImage(uriString: String): IngestedImage? =
-        imageManager.ingestUserImage(uriString)
+        defaultEngine.ingestUserImage(uriString)
 
     internal fun buildMcpFailureNotice(failed: List<McpServerDiscoverySnapshot>): String =
-        prefixComposer.buildMcpFailureNotice(failed)
+        TurnPrefixComposer().buildMcpFailureNotice(failed)
 
     internal fun validateLlmConfig(config: LlmConfig) =
-        sessionAssembler.validateLlmConfig(config)
-
-    private data class RuntimeState(
-        val snapshot: LlmRuntimeSnapshot,
-        val okia: Okia,
-        val sessionProtocol: LlmProtocol?,
-    )
+        defaultEngine.sessionAssembler.validateLlmConfig(config)
 }

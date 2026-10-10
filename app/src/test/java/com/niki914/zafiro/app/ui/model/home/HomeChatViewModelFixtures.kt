@@ -5,6 +5,8 @@ import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.zafiro.api.Agent
+import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.AgentState
@@ -34,7 +36,11 @@ internal fun fixture(
     store: FakeHomeConversationStore = FakeHomeConversationStore(),
 ): Fixture {
     val agent = FakeHomeAgent(store)
-    installService<Agent>(agent)
+    installService<AgentManager>(object : AgentManager {
+        override val main: Agent = agent
+        override fun createTaskAgent(tag: String): Agent = agent
+        override val control: AgentControl = agent
+    })
     return Fixture(
         store = store,
         agent = agent,

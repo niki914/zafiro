@@ -150,7 +150,11 @@ internal class OkiaSessionAssembler(
         }
     }
 
-    private fun protocolDefaultEndpointFallback(protocol: LlmProtocol): String {
+    internal fun isImageSupported(configSupportsImages: Boolean): Boolean {
+        return imageLoader != null && configSupportsImages
+    }
+
+    internal fun protocolDefaultEndpointFallback(protocol: LlmProtocol): String {
         return when (protocol) {
             LlmProtocol.DeepSeek -> "https://api.deepseek.com/chat/completions"
             LlmProtocol.OpenAiChatCompletions -> "https://api.openai.com/v1/chat/completions"
