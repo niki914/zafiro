@@ -121,7 +121,7 @@ class LLMControllerOkiaTest {
             FakeRuntimeSettingsGateway(
                 llmConfig = validLlmConfig(),
                 builtinTools = listOf(
-                    RuntimeBuiltinToolSetting("terminal", "t", enabled = true),
+                    RuntimeBuiltinToolSetting("shell", "t", enabled = true),
                     RuntimeBuiltinToolSetting("memory", "m", enabled = false),
                 ),
                 customPyTools = listOf(
@@ -150,7 +150,7 @@ class LLMControllerOkiaTest {
         val names = LLMController.toolRegistry.snapshot()
             .map { it.descriptor.name }
             .toSet()
-        assertEquals(setOf("terminal", "py_x"), names)
+        assertEquals(setOf("shell", "py_x"), names)
     }
 
     @Test
@@ -159,7 +159,7 @@ class LLMControllerOkiaTest {
             FakeRuntimeSettingsGateway(
                 llmConfig = validLlmConfig(),
                 builtinTools = listOf(
-                    RuntimeBuiltinToolSetting("terminal", "t", enabled = true),
+                    RuntimeBuiltinToolSetting("shell", "t", enabled = true),
                 ),
             )
         )
@@ -169,12 +169,12 @@ class LLMControllerOkiaTest {
 
         LLMController.refresh()
 
-        val terminal = LLMController.toolRegistry.snapshot()
-            .firstOrNull { it.descriptor.name == "terminal" }
-        assertNotNull(terminal)
+        val shell = LLMController.toolRegistry.snapshot()
+            .firstOrNull { it.descriptor.name == "shell" }
+        assertNotNull(shell)
         // 内置工具携带 inputSchemaJson（D25 描述合法性）；kind = Local
-        assertNotNull(terminal!!.descriptor.inputSchemaJson)
-        assertEquals(ToolKind.Local, terminal.descriptor.kind)
+        assertNotNull(shell!!.descriptor.inputSchemaJson)
+        assertEquals(ToolKind.Local, shell.descriptor.kind)
     }
 
     // ── stream：文本流与终态 ─────────────────────────────────────────────────

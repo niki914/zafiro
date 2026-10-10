@@ -230,7 +230,7 @@ class PromptComposer {
                     "and quality standards — load them even for tasks you already know how " +
                     "to do, because the skill defines how it should be done here.\n" +
                     "load_skill returns the skill's SKILL.md content; if it exceeds the limit, " +
-                    "the result ends with the absolute path to the file — use terminal to read " +
+                    "the result ends with the absolute path to the file — use shell to read " +
                     "the full content from there."
     }
 }

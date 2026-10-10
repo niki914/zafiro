@@ -76,7 +76,6 @@ class McpHostSettingsViewModel :
             "notify" to ("System Notification" to "Post notifications to the Android status bar"),
             "view_image" to ("View Image" to "Read and inspect image files from storage"),
             "memory" to ("Agent Memory" to "Store and recall persistent memory facts"),
-            "terminal" to ("Terminal Shell" to "Execute shell commands with root/shizuku privileges"),
             "shell" to ("Shell" to "Local Android persistent shell environment"),
             "ssh" to ("SSH" to "Remote SSH persistent terminal"),
             "execute_python" to ("Execute Python" to "Execute arbitrary Python code in python process"),
@@ -196,7 +195,7 @@ class McpHostSettingsViewModel :
             }
         }
 
-        val terminalTools = listOf("terminal", "shell", "ssh").mapNotNull { name ->
+        val sessionTools = listOf("shell", "ssh").mapNotNull { name ->
             registeredBuiltins[name]?.let { tool ->
                 val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[tool.name] ?: (tool.name to tool.description)
                 McpHostToolItemUi(
@@ -233,6 +232,6 @@ class McpHostSettingsViewModel :
                 )
             }
 
-        return safeTools + terminalTools + pythonTools + customPyTools
+        return safeTools + sessionTools + pythonTools + customPyTools
     }
 }

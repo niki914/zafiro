@@ -29,7 +29,6 @@ class BuiltinToolTest {
                 "screenshot",
                 "shell",
                 "ssh",
-                "terminal",
                 "view_image",
             ),
             registry.all().map { it.name }.sorted()
@@ -48,7 +47,6 @@ class BuiltinToolTest {
         assertEquals("find_installed_apps", registry.find("find_installed_apps")?.name)
         assertEquals("shell", registry.find("shell")?.name)
         assertEquals("ssh", registry.find("ssh")?.name)
-        assertEquals("terminal", registry.find("terminal")?.name)
     }
 
     @Test
