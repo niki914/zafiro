@@ -121,6 +121,7 @@ class Entrance : IXposed() {
             120803L -> R.raw.com_heytap_speechassist_120803_config
             120906L -> R.raw.com_heytap_speechassist_120906_config
             120909L -> R.raw.com_heytap_speechassist_120909_config
+            130302L -> R.raw.com_heytap_speechassist_130302_config
             else -> null
         }
         "com.miui.voiceassist" -> when (versionCode) {
