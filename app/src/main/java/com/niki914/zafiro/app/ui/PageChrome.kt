@@ -10,6 +10,14 @@ import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 
 data class PageChromeContribution(
     val titleSpec: PageTitleSpec? = null,
+    /**
+     * 自定义标题槽：非空时顶掉 [titleSpec]，渲染任意 composable。
+     *
+     * 供页面活着时随时会变的活内容使用（配置切换器等）。实例必须由提供方
+     * `remember` 住 —— 壳层以实例相等判断标题是否变化，每次重组新建实例会
+     * 反复重放切页动画。
+     */
+    val titleContent: (@Composable () -> Unit)? = null,
     val leftAction: TopBarActionSpec? = null,
     val rightAction: TopBarActionSpec? = null,
     val menuItems: List<PageChromeMenuItem> = emptyList(),

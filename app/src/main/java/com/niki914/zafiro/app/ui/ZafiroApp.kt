@@ -47,6 +47,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.LiquidScreen
 import com.niki914.uikit.infra.LiquidScreenSwipeContent
+import com.niki914.uikit.infra.LiquidScreenTitle
 import com.niki914.uikit.infra.TitleDirection
 import com.niki914.uikit.infra.nav.LocalNavigationEntry
 import com.niki914.uikit.infra.nav.LocalPageTitle
@@ -134,7 +135,7 @@ fun ZafiroApp(
     val showLeftButton =
         currentLeftAction != null && (currentLeftAction.onClick != null || controller.canGoBack)
     val showRightButton = currentRightAction != null
-    val currentTitle = resolveTitle(currentChrome.titleSpec ?: currentPage.titleSpec)
+    val currentTitle = resolveScreenTitle(currentChrome, currentPage)
     val isTitleCollapsible = currentPage.titleMode == TitleBarMode.Collapsible
     val screenState = rememberLiquidScreenState(
         title = currentTitle,
@@ -408,6 +409,15 @@ fun ZafiroApp(
             currentChrome.overlay?.invoke()
         }
     }
+}
+
+@Composable
+private fun resolveScreenTitle(
+    chrome: PageChromeContribution,
+    page: ZafiroPage,
+): LiquidScreenTitle {
+    chrome.titleContent?.let { return LiquidScreenTitle.Content(it) }
+    return LiquidScreenTitle.Text(resolveTitle(chrome.titleSpec ?: page.titleSpec))
 }
 
 @Composable

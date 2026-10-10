@@ -277,18 +277,24 @@ fun LiquidScreen(
                         .alpha(titleAlpha),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = title,
-                        modifier = Modifier.fillMaxWidth(),
-                        style = TextStyle(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isDarkTheme) Color.White else Color.Black
-                        ),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    when (title) {
+                        is LiquidScreenTitle.Text -> Text(
+                            text = title.value,
+                            modifier = Modifier.fillMaxWidth(),
+                            style = TextStyle(
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isDarkTheme) Color.White else Color.Black
+                            ),
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        // 自定义槽：按 entry 各自渲染（切页时退场帧与入场帧各拿自己的那份），
+                        // 是否参与左右滑由调用方经 navigate*/update 声明，与本分支无关。
+                        is LiquidScreenTitle.Content -> title.content()
+                    }
                 }
             }
 

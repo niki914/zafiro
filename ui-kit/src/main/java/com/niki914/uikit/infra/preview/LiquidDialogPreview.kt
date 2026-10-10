@@ -28,7 +28,6 @@ import kotlinx.coroutines.delay
 private fun LiquidDialogPreviewContent() {
     var visible by remember { mutableStateOf(false) }
     val screenState = rememberLiquidScreenState(
-        title = "",
         showLeftButton = false,
         showRightButton = false,
         showBlurLayer = false,

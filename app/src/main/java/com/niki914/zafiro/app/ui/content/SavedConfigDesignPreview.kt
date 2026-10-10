@@ -349,7 +349,6 @@ private fun GeneralSettingsRedesignPreview() {
 private fun SingleChoiceDialogPreview() {
     BaseTheme {
         val screenState = rememberLiquidScreenState(
-            title = "",
             showLeftButton = false,
             showRightButton = false,
             showBlurLayer = false,
