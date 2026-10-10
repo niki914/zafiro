@@ -27,6 +27,8 @@ class BuiltinToolTest {
                 "screen_operation_accessibility",
                 "screen_operation_shell",
                 "screenshot",
+                "shell",
+                "ssh",
                 "terminal",
                 "view_image",
             ),
@@ -44,6 +46,8 @@ class BuiltinToolTest {
         )
         assertEquals("screen_operation_shell", registry.find("screen_operation_shell")?.name)
         assertEquals("find_installed_apps", registry.find("find_installed_apps")?.name)
+        assertEquals("shell", registry.find("shell")?.name)
+        assertEquals("ssh", registry.find("ssh")?.name)
         assertEquals("terminal", registry.find("terminal")?.name)
     }
 

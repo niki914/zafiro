@@ -77,6 +77,8 @@ class McpHostSettingsViewModel :
             "view_image" to ("View Image" to "Read and inspect image files from storage"),
             "memory" to ("Agent Memory" to "Store and recall persistent memory facts"),
             "terminal" to ("Terminal Shell" to "Execute shell commands with root/shizuku privileges"),
+            "shell" to ("Shell" to "Local Android persistent shell environment"),
+            "ssh" to ("SSH" to "Remote SSH persistent terminal"),
             "execute_python" to ("Execute Python" to "Execute arbitrary Python code in python process"),
             "py_meta_tools" to ("Python Meta Tools" to "Dynamically register and manage custom python tools"),
         )
@@ -194,17 +196,17 @@ class McpHostSettingsViewModel :
             }
         }
 
-        val terminalTool = registeredBuiltins["terminal"]?.let { tool ->
-            val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[tool.name] ?: (tool.name to tool.description)
-            listOf(
+        val terminalTools = listOf("terminal", "shell", "ssh").mapNotNull { name ->
+            registeredBuiltins[name]?.let { tool ->
+                val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[tool.name] ?: (tool.name to tool.description)
                 McpHostToolItemUi(
                     name = tool.name,
                     displayName = displayTitle,
                     description = displayDesc,
                     isDangerous = true,
                 )
-            )
-        }.orEmpty()
+            }
+        }
 
         val pythonTools = listOf("execute_python", "py_meta_tools").mapNotNull { name ->
             registeredBuiltins[name]?.let { tool ->
@@ -231,6 +233,6 @@ class McpHostSettingsViewModel :
                 )
             }
 
-        return safeTools + terminalTool + pythonTools + customPyTools
+        return safeTools + terminalTools + pythonTools + customPyTools
     }
 }

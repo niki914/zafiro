@@ -339,4 +339,25 @@ class BaseSessionBuiltinTest {
         assertNull(tool.sessionRegistry.resolveSessionId("temp"))
         assertNull(tool.sessionRegistry.findById("close_me"))
     }
+
+    @Test
+    fun handleSubmit_clearsExitedCommandStateToAllowSubsequentInteractiveReads() = runTest {
+        val tool = TestSessionBuiltin().apply {
+            autoRespondExitCode = 0
+            autoRespondOutput = "initial_output\n"
+        }
+        tool.sessionRegistry.register(sessionId = "s1", alias = "repl")
+
+        // 1. 发送普通命令并执行完毕 (status="exited")
+        tool.invokeRawJson(
+            BuiltinToolRequest(name = "test_session", argumentsJson = """{"command":"ls","session":"repl"}""")
+        )
+        assertEquals("exited", tool.sessionRegistry.getCommandState("s1")?.status)
+
+        // 2. 发送 action="submit"，由于前一命令已退出，必须清除旧的 commandState
+        tool.invokeRawJson(
+            BuiltinToolRequest(name = "test_session", argumentsJson = """{"action":"submit","session":"repl","text":"q"}""")
+        )
+        assertNull(tool.sessionRegistry.getCommandState("s1"))
+    }
 }

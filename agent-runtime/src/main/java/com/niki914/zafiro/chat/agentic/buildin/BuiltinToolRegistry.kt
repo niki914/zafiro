@@ -11,6 +11,8 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationAccessibilityBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationShellBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenshotBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.ShellBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.SshBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.TerminalBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ViewImageBuiltin
 
@@ -34,6 +36,8 @@ class BuiltinToolRegistry(
                 OpenUriBuiltin(),
                 LoadSkillBuiltin(),
                 TerminalBuiltin(),
+                ShellBuiltin(),
+                SshBuiltin(),
                 FindInstalledAppsBuiltin(),
                 ScreenOperationAccessibilityBuiltin(),
                 ScreenOperationShellBuiltin(),

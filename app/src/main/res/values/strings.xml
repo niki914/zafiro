@@ -413,6 +413,8 @@
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
     <string name="ui_tool_display_terminal">终端</string>
+    <string name="ui_tool_display_shell">Shell</string>
+    <string name="ui_tool_display_ssh">SSH</string>
     <string name="ui_tool_display_load_skill">加载技能</string>
     <string name="ui_tool_display_execute_python">Python</string>
     <string name="ui_tool_display_create_custom_tool">创建自定义工具</string>

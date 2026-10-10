@@ -14,6 +14,7 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -45,6 +46,8 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             dispatchRequest(args)
         } catch (error: CancellationException) {
             throw error
+        } catch (error: SerializationException) {
+            TerminalToolResponse.invalidRequest(error.message ?: "Invalid JSON arguments.")
         } catch (error: IllegalArgumentException) {
             TerminalToolResponse.invalidRequest(error.message ?: "Invalid request.")
         } catch (error: Throwable) {
@@ -79,6 +82,14 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     protected open suspend fun onDefaultSession(): String? = null
 
     /**
+     * 会话解析结果，封装目标 session_id 或格式化好的错误回执。
+     */
+    sealed interface SessionTarget {
+        data class Resolved(val sessionId: String) : SessionTarget
+        data class Error(val responseJson: String) : SessionTarget
+    }
+
+    /**
      * 解析目标 session_id。
      * 优先通过 SessionRegistry 查找别名或 ID，未传时尝试落入 onDefaultSession。
      */
@@ -90,14 +101,40 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         return onDefaultSession()
     }
 
+    /**
+     * 根据请求参数解析目标 session_id。
+     */
+    protected open suspend fun resolveTargetSessionId(args: BaseSessionArgs): String? {
+        val target = args.session ?: args.alias
+        return resolveTargetSessionId(target)
+    }
+
+    /**
+     * 根据请求参数解析目标 session 句柄。
+     * 子类（如 ShellBuiltin, SshBuiltin）可重写此方法以定制会话寻址、按需新建、凭据校验及错误回执。
+     */
+    protected open suspend fun resolveSessionTarget(args: BaseSessionArgs): SessionTarget {
+        val target = args.session ?: args.alias
+        val resolved = resolveTargetSessionId(target)
+        return if (resolved != null) {
+            SessionTarget.Resolved(resolved)
+        } else {
+            val errorMsg = if (args.action != null) {
+                "Field 'session' is required for action='${args.action.name.lowercase()}'."
+            } else {
+                "Field 'session' is required (or specify connection parameters)."
+            }
+            SessionTarget.Error(TerminalToolResponse.invalidRequest(errorMsg))
+        }
+    }
+
     // ── 通用命令执行引擎 (Sentinel + 同步等待 + 超时降级 + 异步后台) ───────────
 
     protected open suspend fun handleCommand(args: BaseSessionArgs): String {
-        val target = args.session ?: args.alias
-        val sessionId = resolveTargetSessionId(target)
-            ?: return TerminalToolResponse.invalidRequest(
-                "Field 'session' is required (or specify connection parameters)."
-            )
+        val sessionId = when (val target = resolveSessionTarget(args)) {
+            is SessionTarget.Resolved -> target.sessionId
+            is SessionTarget.Error -> return target.responseJson
+        }
         val command = args.command?.takeIf(String::isNotBlank)
             ?: return TerminalToolResponse.invalidRequest("Field 'command' must not be blank.")
         val timeoutSec = (args.timeout ?: DEFAULT_TIMEOUT_SEC).coerceAtLeast(1)
@@ -255,13 +292,14 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     }
 
     protected open suspend fun handleRead(args: BaseSessionArgs): String {
-        val target = args.session ?: args.alias
-        val sessionId = resolveTargetSessionId(target)
-            ?: return TerminalToolResponse.invalidRequest("Field 'session' is required for action='read'.")
+        val sessionId = when (val target = resolveSessionTarget(args)) {
+            is SessionTarget.Resolved -> target.sessionId
+            is SessionTarget.Error -> return target.responseJson
+        }
         val meta = sessionRegistry.findById(sessionId)
         val activeCommand = meta?.activeCommand
 
-        // 若会话此前通过 Sentinel 下发了命令，以 Sentinel 状态机检测为准
+        // 若会话通过 Sentinel 下发了命令，以 Sentinel 状态机检测为准
         if (activeCommand != null) {
             val rawFull = readRawOutput(sessionId)
             val raw = if (rawFull != null && rawFull.length >= activeCommand.initialOffset) {
@@ -318,27 +356,38 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     }
 
     protected open suspend fun handleSubmit(args: BaseSessionArgs): String {
-        val target = args.session ?: args.alias
-        val sessionId = resolveTargetSessionId(target)
-            ?: return TerminalToolResponse.invalidRequest("Field 'session' is required for action='submit'.")
+        val sessionId = when (val target = resolveSessionTarget(args)) {
+            is SessionTarget.Resolved -> target.sessionId
+            is SessionTarget.Error -> return target.responseJson
+        }
         val text = args.text
             ?: return TerminalToolResponse.invalidRequest("Field 'text' is required for submit.")
+        val meta = sessionRegistry.findById(sessionId)
+        if (meta?.activeCommand?.status != "running") {
+            sessionRegistry.updateCommandState(sessionId, null)
+        }
         return writeInteractivePayload(sessionId, "$text\n")
     }
 
     protected open suspend fun handleWrite(args: BaseSessionArgs): String {
-        val target = args.session ?: args.alias
-        val sessionId = resolveTargetSessionId(target)
-            ?: return TerminalToolResponse.invalidRequest("Field 'session' is required for action='write'.")
+        val sessionId = when (val target = resolveSessionTarget(args)) {
+            is SessionTarget.Resolved -> target.sessionId
+            is SessionTarget.Error -> return target.responseJson
+        }
         val text = args.text
             ?: return TerminalToolResponse.invalidRequest("Field 'text' is required for write.")
+        val meta = sessionRegistry.findById(sessionId)
+        if (meta?.activeCommand?.status != "running") {
+            sessionRegistry.updateCommandState(sessionId, null)
+        }
         return writeInteractivePayload(sessionId, text)
     }
 
     protected open suspend fun handleClose(args: BaseSessionArgs): String {
-        val target = args.session ?: args.alias
-        val sessionId = resolveTargetSessionId(target)
-            ?: return TerminalToolResponse.invalidRequest("Field 'session' is required for action='close'.")
+        val sessionId = when (val target = resolveSessionTarget(args)) {
+            is SessionTarget.Resolved -> target.sessionId
+            is SessionTarget.Error -> return target.responseJson
+        }
         sessionRegistry.unregister(sessionId)
         return when (val outcome = TerminalSessionPool.close(sessionId)) {
             TerminalCloseOutcome.Closed -> JsonObject(
@@ -390,6 +439,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             "elapsed_seconds" to JsonPrimitive(elapsedSeconds),
         )
         meta?.alias?.let { payload["alias"] = JsonPrimitive(it) }
+        meta?.metadata?.get("identity")?.let { payload["identity"] = JsonPrimitive(it) }
         exitCode?.let { payload["exit_code"] = JsonPrimitive(it) }
         return JsonObject(payload).toString()
     }
@@ -401,6 +451,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             "bytes_written" to JsonPrimitive(bytesWritten),
         )
         meta?.alias?.let { payload["alias"] = JsonPrimitive(it) }
+        meta?.metadata?.get("identity")?.let { payload["identity"] = JsonPrimitive(it) }
         return JsonObject(payload).toString()
     }
 
@@ -411,6 +462,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         exitCode: Int,
         extra: Map<String, JsonElement> = emptyMap(),
     ): String {
+        val meta = sessionRegistry.findById(sessionId)
         val payload = linkedMapOf<String, JsonElement>(
             "session_id" to JsonPrimitive(sessionId),
             "output" to JsonPrimitive(output),
@@ -418,6 +470,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             "status" to JsonPrimitive(if (exitCode == 0) "exited" else "failed"),
         )
         alias?.let { payload["alias"] = JsonPrimitive(it) }
+        meta?.metadata?.get("identity")?.let { payload["identity"] = JsonPrimitive(it) }
         payload.putAll(extra)
         return JsonObject(payload).toString()
     }
@@ -427,6 +480,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         alias: String?,
         message: String,
     ): String {
+        val meta = sessionRegistry.findById(sessionId)
         val payload = linkedMapOf<String, JsonElement>(
             "session_id" to JsonPrimitive(sessionId),
             "background" to JsonPrimitive(true),
@@ -434,6 +488,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             "output" to JsonPrimitive(message),
         )
         alias?.let { payload["alias"] = JsonPrimitive(it) }
+        meta?.metadata?.get("identity")?.let { payload["identity"] = JsonPrimitive(it) }
         return JsonObject(payload).toString()
     }
 
@@ -443,6 +498,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         output: String,
         timeoutSec: Long,
     ): String {
+        val meta = sessionRegistry.findById(sessionId)
         val payload = linkedMapOf<String, JsonElement>(
             "session_id" to JsonPrimitive(sessionId),
             "status" to JsonPrimitive("running"),
@@ -453,6 +509,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             ),
         )
         alias?.let { payload["alias"] = JsonPrimitive(it) }
+        meta?.metadata?.get("identity")?.let { payload["identity"] = JsonPrimitive(it) }
         return JsonObject(payload).toString()
     }
 
@@ -628,7 +685,6 @@ open class BaseSessionArgs(
     val text: String? = null,
     val timeout: Long? = null,
     val background: Boolean = false,
-    val notifyOnComplete: Boolean = false,
     val mode: TerminalReadMode? = null,
     val maxBytes: Int? = null,
 )

@@ -372,6 +372,8 @@
     <string name="conversation_regenerate_title">Новый ответ · %1$s</string>
     <string name="conversation_rewind_title">Откат · %1$s</string>
     <string name="ui_tool_display_terminal">Терминал</string>
+    <string name="ui_tool_display_shell">Shell</string>
+    <string name="ui_tool_display_ssh">SSH</string>
     <string name="ui_tool_display_load_skill">Загрузка навыка</string>
     <string name="ui_tool_display_execute_python">Python</string>
     <string name="ui_tool_display_create_custom_tool">Создание своего инструмента</string>

@@ -51,6 +51,9 @@ object ToolPresentation {
             name.contains("terminal", ignoreCase = true) || name.contains(
                 "shell",
                 ignoreCase = true
+            ) || name.contains(
+                "ssh",
+                ignoreCase = true
             ) -> TerminalIcon
 
             name == "screenshot" -> Camera
@@ -63,6 +66,8 @@ object ToolPresentation {
     /** 内置工具 → 本地化显示名 res id；Custom Tool / MCP 命中不了 → null（回退原始名）。 */
     fun displayNameResOf(name: String): Int? = when (name) {
         "terminal" -> R.string.ui_tool_display_terminal
+        "shell" -> R.string.ui_tool_display_shell
+        "ssh" -> R.string.ui_tool_display_ssh
         "load_skill" -> R.string.ui_tool_display_load_skill
         "execute_python" -> R.string.ui_tool_display_execute_python
         "create_custom_tool" -> R.string.ui_tool_display_create_custom_tool
@@ -110,7 +115,7 @@ object ToolPresentation {
             return null
         }
         return when (name) {
-            "terminal" -> args["command"]
+            "terminal", "shell", "ssh" -> args["command"] ?: args["action"]
             "load_skill" -> args["id"]
             "execute_python" -> args["code"]
             else -> null

@@ -414,6 +414,8 @@
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
     <string name="ui_tool_display_terminal">Terminal</string>
+    <string name="ui_tool_display_shell">Shell</string>
+    <string name="ui_tool_display_ssh">SSH</string>
     <string name="ui_tool_display_load_skill">Load Skill</string>
     <string name="ui_tool_display_execute_python">Python</string>
     <string name="ui_tool_display_create_custom_tool">Create Custom Tool</string>
