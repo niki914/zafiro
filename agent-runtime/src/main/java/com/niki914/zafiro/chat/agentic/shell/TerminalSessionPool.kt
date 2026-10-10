@@ -55,7 +55,11 @@ object TerminalSessionPool {
     private var runtimePortFactory: suspend (CoroutineScope) -> TerminalRuntimePort =
         ::createLibTermRuntimePort
 
-    suspend fun open(identity: String, cwd: String? = null): TerminalOpenOutcome {
+    suspend fun open(
+        identity: String,
+        cwd: String? = null,
+        collectOutput: Boolean = false,
+    ): TerminalOpenOutcome {
         val mappedIdentity = try {
             mapIdentity(identity)
         } catch (error: IllegalArgumentException) {
@@ -66,7 +70,7 @@ object TerminalSessionPool {
             terminalIdentity = mappedIdentity,
             cwd = cwd,
             sshOptions = null,
-            collectOutput = false,
+            collectOutput = collectOutput,
         )
     }
 

@@ -28,7 +28,7 @@ class BuiltinToolSettingsManagerTest {
         val items = manager.load()
 
         assertEquals(
-            listOf("load_skill", "memory", "notify", "py_meta_tools", "terminal"),
+            listOf("load_skill", "memory", "notify", "py_meta_tools", "shell"),
             items.map { it.name }.sorted()
         )
         assertTrue(items.all { it.enabled })
@@ -74,19 +74,19 @@ class BuiltinToolSettingsManagerTest {
     }
 
     @Test
-    fun setEnabled_acceptsTerminalBuiltin() = runTest {
+    fun setEnabled_acceptsShellBuiltin() = runTest {
         val gateway =
             installRuntimeSettingsGatewayForTest()
 
         val result = manager.setEnabled(
-            name = "terminal",
+            name = "shell",
             enabled = false,
         )
 
         assertTrue(result.ok)
-        assertEquals("terminal", result.data["name"]!!.jsonPrimitive.content)
+        assertEquals("shell", result.data["name"]!!.jsonPrimitive.content)
         assertFalse(result.data["enabled"]!!.jsonPrimitive.boolean)
-        assertFalse(gateway.builtinTools.single { it.name == "terminal" }.enabled)
+        assertFalse(gateway.builtinTools.single { it.name == "shell" }.enabled)
     }
 
     @Test

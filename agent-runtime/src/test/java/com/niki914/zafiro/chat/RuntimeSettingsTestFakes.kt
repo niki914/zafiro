@@ -201,6 +201,6 @@ private fun defaultBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> {
         RuntimeBuiltinToolSetting("load_skill", "Load a skill by id.", enabled = true),
         RuntimeBuiltinToolSetting("memory", "Add a memory item.", enabled = true),
         RuntimeBuiltinToolSetting("notify", "Post host notifications.", enabled = true),
-        RuntimeBuiltinToolSetting("terminal", "Manage Android terminal sessions.", enabled = true),
+        RuntimeBuiltinToolSetting("shell", "Manage Android shell sessions.", enabled = true),
     )
 }

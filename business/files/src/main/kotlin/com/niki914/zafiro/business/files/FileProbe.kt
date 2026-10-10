@@ -6,7 +6,7 @@ import java.io.File
  * 一个路径对**本应用**的可达性。
  *
  * 只反映 app 自己的读权：agent 的 shell 可以跑 root / shizuku
- * （见 `TerminalBuiltin` 的 identity 枚举），那时候它读得到而这里可能报
+ * （见 `ShellBuiltin` 的 identity 枚举），那时候它读得到而这里可能报
  * [PermissionDenied]。所以这是保守信号，不是权威结论。
  */
 enum class FileReachability {

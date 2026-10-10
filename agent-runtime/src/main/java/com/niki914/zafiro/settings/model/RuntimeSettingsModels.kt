@@ -196,6 +196,8 @@ data class RuntimeMcpHostConfig(
             "notify",
             "view_image",
             "memory",
+            "shell",
+            "ssh",
         )
     }
 }

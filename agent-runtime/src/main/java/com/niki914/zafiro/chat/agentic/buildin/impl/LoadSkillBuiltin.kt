@@ -17,7 +17,7 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
 
     override val description: String =
         "Load a Zafiro skill by id. Returns the skill's SKILL.md content; if it exceeds " +
-                "the limit, the result ends with the absolute path to the file — use terminal " +
+                "the limit, the result ends with the absolute path to the file — use shell " +
                 "to read the full content from there."
 
     override val defaultEnabled: Boolean = true
@@ -102,7 +102,7 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
             append(truncation.content)
             append("\n\n[Content truncated: full SKILL.md is at ")
             append(absolutePath)
-            append(" — use terminal to read it.]")
+            append(" — use shell to read it.]")
         }
     }
 
