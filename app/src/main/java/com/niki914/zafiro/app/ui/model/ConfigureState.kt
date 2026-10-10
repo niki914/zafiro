@@ -15,6 +15,8 @@ import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import java.net.URI
 import java.util.UUID
@@ -142,6 +144,7 @@ sealed interface ConfigureEffect {
     data object OnboardingSaveSucceeded : ConfigureEffect
     data object SettingsSaveSucceeded : ConfigureEffect
     data class SaveFailed(val reason: ConfigureErrorReason) : ConfigureEffect
+    data object FocusName : ConfigureEffect
     data object FocusModel : ConfigureEffect
     data object FocusApiKey : ConfigureEffect
     data object FocusEndpoint : ConfigureEffect
@@ -168,6 +171,7 @@ internal data class ConfigureViewModelDependencies(
     val deleteConfig: suspend (String) -> Unit,
     val setActiveConfig: suspend (String) -> Unit,
     val fetchModelCatalog: suspend (modelsUrl: String, apiKey: String, protocol: LlmProtocol) -> List<String>,
+    val revisions: Flow<Long> = emptyFlow(),
 ) {
     companion object {
         val Default = ConfigureViewModelDependencies(
@@ -178,6 +182,7 @@ internal data class ConfigureViewModelDependencies(
             fetchModelCatalog = { modelsUrl, apiKey, protocol ->
                 ModelCatalogApi.fetch(modelsUrl, apiKey, protocol)
             },
+            revisions = XRepo.llmConfigs.revision,
         )
     }
 }
@@ -186,6 +191,28 @@ class ConfigureViewModel internal constructor(
     private val dependencies: ConfigureViewModelDependencies,
 ) : ComposeMVIViewModel<ConfigureIntent, ConfigureUiState, ConfigureEffect>() {
     constructor() : this(ConfigureViewModelDependencies.Default)
+
+    init {
+        viewModelScope.launch {
+            dependencies.revisions.collect {
+                refreshSavedConfigs()
+            }
+        }
+    }
+
+    private suspend fun refreshSavedConfigs() {
+        try {
+            val document = dependencies.loadDocument()
+            updateState {
+                copy(
+                    savedConfigs = summariesOf(document),
+                    activeConfigId = document.activeId,
+                )
+            }
+        } catch (_: Throwable) {
+            // 忽略失败，保留当前状态
+        }
+    }
 
     override fun initUiState(): ConfigureUiState = ConfigureUiState()
 
@@ -360,15 +387,26 @@ class ConfigureViewModel internal constructor(
         }
     }
 
+    private fun defaultUniqueConfigName(brandName: String, existing: List<SavedLlmConfig>): String {
+        val existingNames = existing.map { it.name.trim() }.toSet()
+        if (brandName !in existingNames) return brandName
+        var counter = 2
+        while ("$brandName $counter" in existingNames) {
+            counter++
+        }
+        return "$brandName $counter"
+    }
+
     private fun initializeNew(document: LlmConfigsDocument, initialProviderId: String?) {
         val providerSpec = ProviderSpecs.find(initialProviderId)
+        val defaultName = defaultUniqueConfigName(providerSpec.brandName, document.configs)
         updateState {
             val next = copy(
                 scene = ConfigureScene.SettingsNew,
                 providerSpec = providerSpec,
                 editingConfigId = null,
-                // 默认名 = 品牌名，用户可改
-                configNameInput = providerSpec.brandName,
+                // 默认名 = 品牌名（若重名则带编号），用户可改
+                configNameInput = defaultName,
                 endpointOverrideEnabled = false,
                 endpointInput = providerSpec.officialEndpoint,
                 // 个别 Provider 可提供稳定别名作为默认值；仍可在输入框中手动修改
@@ -658,6 +696,7 @@ class ConfigureViewModel internal constructor(
             updateState {
                 copy(nameErrorResId = R.string.ui_settings_configure_error_name_duplicate)
             }
+            sendEffect(ConfigureEffect.FocusName)
             return false
         }
         when (val invalidField = currentState.firstInvalidField()) {
