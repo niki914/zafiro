@@ -32,7 +32,8 @@ open class ShellBuiltin(
                 "Identity: Choose 'user' (default local shell), 'root' (via su), or 'shizuku'.\n\n" +
                 "IMPORTANT RULES:\n" +
                 "1. Never run blocking interactive commands without non-interactive flags (e.g. do not run top, vim, nano, or unmetered ping).\n" +
-                "2. To send interactive input to a running session, use action='write' or action='submit'."
+                "2. For long-running tasks, prefer setting a larger 'timeout' upfront (e.g. timeout=60). If running in background, do NOT busy-poll with action='read' immediately; wait sensibly (e.g. run a blocking 'sleep 5' to 'sleep 30' depending on task scale) before reading output.\n" +
+                "3. To send interactive input to a running session, use action='write' or action='submit'."
 
     override val inputSchemaJson: String get() = SHELL_SCHEMA
 
@@ -182,11 +183,11 @@ open class ShellBuiltin(
                 "timeout": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "Max seconds to wait before degrading to background (default 30)."
+                  "description": "Max seconds to wait synchronously before degrading to background (default 30). Set larger (e.g. 60 or 120) for known longer operations."
                 },
                 "background": {
                   "type": "boolean",
-                  "description": "Run the command in background immediately and return status='running'."
+                  "description": "Run the command in background immediately and return status='running'. Avoid immediate tight polling; wait with blocking sleep (e.g. sleep 5-30s) before reading."
                 },
                 "action": {
                   "type": "string",

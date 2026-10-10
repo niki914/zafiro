@@ -182,7 +182,9 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             return formatBackgroundAccepted(
                 sessionId = sessionId,
                 alias = meta?.alias,
-                message = "Background command started. Use action='read' to poll output.",
+                message = "Background command started. Do NOT poll immediately in a tight loop. " +
+                        "Estimate task duration and wait sensibly (e.g. run a blocking 'sleep 5' to 'sleep 30' " +
+                        "depending on task scale, or specify a larger 'timeout' upfront) before reading output.",
             )
         }
 
@@ -505,7 +507,10 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             "timed_out" to JsonPrimitive(true),
             "output" to JsonPrimitive(output),
             "message" to JsonPrimitive(
-                "Command did not finish within ${timeoutSec}s. It continues running in the background; use action='read' to poll output."
+                "Command did not finish within ${timeoutSec}s. It continues running in the background. " +
+                        "Do NOT poll immediately in a tight loop. Depending on how long this task normally takes " +
+                        "(e.g. package installs or builds), wait a sensible interval using a blocking sleep command " +
+                        "(e.g. 'sleep 10' to 'sleep 30') before checking with action='read', or specify a larger 'timeout' upfront."
             ),
         )
         alias?.let { payload["alias"] = JsonPrimitive(it) }

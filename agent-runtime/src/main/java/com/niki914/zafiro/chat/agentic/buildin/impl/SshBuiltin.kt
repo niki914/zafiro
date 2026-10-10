@@ -35,7 +35,8 @@ open class SshBuiltin : BaseSessionBuiltin() {
                 "STRICT RULES:\n" +
                 "1. When targeting an existing session via 'session' or 'alias', NEVER pass connection credentials ('host', 'username', 'password'). Doing so will be rejected.\n" +
                 "2. Never run blocking interactive commands without non-interactive flags (e.g. do not run top, vim, nano, or unmetered ping).\n" +
-                "3. By default, commands run synchronously and return upon completion. If execution exceeds 'timeout' seconds, it degrades to background execution (status='running', timed_out=true)."
+                "3. By default, commands run synchronously and return upon completion. If execution exceeds 'timeout' seconds, it degrades to background execution (status='running', timed_out=true).\n" +
+                "4. For long-running tasks, prefer setting a larger 'timeout' upfront (e.g. timeout=60). If running in background, do NOT busy-poll with action='read' immediately; wait sensibly (e.g. run a blocking 'sleep 5' to 'sleep 30' depending on task scale) before reading output."
 
     override val inputSchemaJson: String get() = SSH_SCHEMA
 
@@ -256,11 +257,11 @@ open class SshBuiltin : BaseSessionBuiltin() {
                 "timeout": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "Max seconds to wait for command execution before degrading to background (default 30)."
+                  "description": "Max seconds to wait for command execution before degrading to background (default 30). Set larger (e.g. 60 or 120) for longer commands."
                 },
                 "background": {
                   "type": "boolean",
-                  "description": "Run the command in background immediately and return status='running'."
+                  "description": "Run the command in background immediately and return status='running'. Avoid tight polling; use sensible sleep intervals (e.g. 5-30s) before checking."
                 },
                 "action": {
                   "type": "string",
