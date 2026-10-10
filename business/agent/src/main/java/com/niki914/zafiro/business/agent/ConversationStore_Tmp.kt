@@ -43,4 +43,5 @@ data class StoredConversation_Tmp(
     val snapshot: SessionSnapshot,
     val conversation: Conversation,
     val draftText: String = "",
+    val configId: String = "",
 )

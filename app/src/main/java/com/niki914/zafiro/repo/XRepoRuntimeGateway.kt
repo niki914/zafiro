@@ -1,5 +1,6 @@
 package com.niki914.zafiro.repo
 
+import com.niki914.logging.Logger
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.RuntimeSettingsGateway
 import com.niki914.zafiro.settings.model.DEFAULT_MAX_TOKENS
@@ -15,9 +16,19 @@ import com.niki914.zafiro.settings.model.RuntimeToolValidation
 class XRepoRuntimeGateway(
     private val repo: XRepo = XRepo,
 ) : RuntimeSettingsGateway {
-    override suspend fun readLlmConfig(agentId: String): RuntimeLlmConfig {
+    private companion object {
+        const val LOG_TAG = "niki914_zafiro_XRepoRuntimeGateway"
+    }
+
+    override suspend fun readLlmConfig(agentId: String, configId: String?): RuntimeLlmConfig {
         val doc = repo.llmConfigs.document()
-        val active = doc.activeConfig()
+        val target = configId?.takeIf { it.isNotBlank() }?.let { id ->
+            doc.configs.firstOrNull { it.id == id } ?: run {
+                Logger.w(LOG_TAG, "Config id=$id not found, falling back to active config")
+                null
+            }
+        }
+        val active = target ?: doc.activeConfig()
         val memories = repo.agents.memoriesFor(agentId)
         return RuntimeLlmConfig(
             provider = active?.provider.orEmpty(),

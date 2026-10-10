@@ -64,6 +64,55 @@ class XRepoRuntimeGatewayTest {
     }
 
     @Test
+    fun readLlmConfig_withConfigId_usesTargetOrFallsBackToActive() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        XRepo.llmConfigs.upsert(
+            SavedLlmConfig(
+                id = "cfg-active",
+                name = "ActiveModel",
+                provider = "openai",
+                endpoint = "https://api.openai.com",
+                apiKey = "secret1",
+                model = "gpt-active",
+                protocol = "openai-chat-completions",
+                proxy = "",
+            )
+        )
+        XRepo.llmConfigs.upsert(
+            SavedLlmConfig(
+                id = "cfg-other",
+                name = "OtherModel",
+                provider = "anthropic",
+                endpoint = "https://api.anthropic.com",
+                apiKey = "secret2",
+                model = "claude-other",
+                protocol = "anthropic",
+                proxy = "",
+            )
+        )
+        XRepo.llmConfigs.setActive("cfg-active")
+
+        val gateway = XRepoRuntimeGateway(XRepo)
+
+        // 1. 指定有效 configId -> 使用该配置
+        val targetConfig = gateway.readLlmConfig(configId = "cfg-other")
+        assertEquals("claude-other", targetConfig.model)
+        assertEquals("anthropic", targetConfig.provider)
+
+        // 2. 指定不存在的 configId -> 回落全局 active
+        val fallbackConfig = gateway.readLlmConfig(configId = "cfg-deleted")
+        assertEquals("gpt-active", fallbackConfig.model)
+        assertEquals("openai", fallbackConfig.provider)
+
+        // 3. 空白 / null configId -> 默认使用全局 active
+        val defaultConfig = gateway.readLlmConfig(configId = "")
+        assertEquals("gpt-active", defaultConfig.model)
+    }
+
+    @Test
     fun skillMethods_proxyEnabledListAndDetailFromXRepoSkills() = runTest {
         XRepo.installStoreForTest(FakeDomainSettingsStore())
         XRepo.init(context)

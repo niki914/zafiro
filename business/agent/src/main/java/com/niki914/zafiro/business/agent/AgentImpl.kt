@@ -179,6 +179,7 @@ class AgentImpl(
 
     override fun discard() {
         releaseRound()
+        engine.bindConfig("")
         reduced = Reduced(Conversation())
         conversationFlow.value = Conversation()
         draftFlow.value = Draft()
@@ -201,6 +202,7 @@ class AgentImpl(
             Logger.w(LOG_TAG, "load skipped notFound id=${id.value}")
             return
         }
+        engine.bindConfig(stored.configId)
         engine.openSession(stored.snapshot)
         store().setLastOpened(id)
         reduced = Reduced(stored.conversation.copy(id = id))
@@ -268,6 +270,7 @@ class AgentImpl(
         reducedStatus = AgentStateReducer.reset()
         statusFlow.value = reducedStatus.status
         lastStatusEmitMs = 0L
+        engine.bindConfig("")
     }
 
     // ── 内部 ────────────────────────────────────────────────────────────────

@@ -210,6 +210,55 @@ class HomeChatViewModelTest {
     }
 
     @Test
+    fun switchingConversationBindsActiveConfigToLeavingConversation() = runTest {
+        val store = FakeHomeConversationStore()
+        store.currentActiveConfigId = "active-m1"
+        store.createRecord("first", "one")
+        store.createRecord("second", "two")
+        val fixture = fixture(store = store)
+
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("first"))
+        advanceUntilIdle()
+        assertEquals(emptyMap<String, String>(), store.boundConfigs)
+
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("second"))
+        advanceUntilIdle()
+
+        assertEquals("active-m1", store.boundConfigs["first"])
+        assertEquals("active-m1", store.getConversation("first")?.configId)
+    }
+
+    @Test
+    fun newConversationBindsActiveConfigToLeavingConversation() = runTest {
+        val store = FakeHomeConversationStore()
+        store.currentActiveConfigId = "active-m2"
+        store.createRecord("active-chat", "hello")
+        val fixture = fixture(store = store)
+
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("active-chat"))
+        advanceUntilIdle()
+        assertEquals(emptyMap<String, String>(), store.boundConfigs)
+
+        fixture.vm.sendIntent(HomeChatIntent.NewConversation)
+        advanceUntilIdle()
+
+        assertEquals("active-m2", store.boundConfigs["active-chat"])
+        assertEquals("active-m2", store.getConversation("active-chat")?.configId)
+    }
+
+    @Test
+    fun blankConversationLeavingDoesNotBindConfig() = runTest {
+        val store = FakeHomeConversationStore()
+        store.createRecord("other", "other")
+        val fixture = fixture(store = store)
+        assertNull(fixture.agent.conversation.value.id)
+
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("other"))
+        advanceUntilIdle()
+        assertEquals(emptyMap<String, String>(), store.boundConfigs)
+    }
+
+    @Test
     fun deleteActiveConversationDeletesHistoryAndDiscardsAgent() = runTest {
         val fixture = fixture()
         fixture.store.createRecord("saved", "old")

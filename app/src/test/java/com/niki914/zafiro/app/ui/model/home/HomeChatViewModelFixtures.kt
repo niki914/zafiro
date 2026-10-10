@@ -211,8 +211,17 @@ internal class FakeHomeConversationStore(
     override suspend fun setLastOpenedConversationId(value: String) { lastOpened = value }
     override suspend fun loadLastConversationOnStartup() = restoreOnStartup
     override suspend fun getConversation(id: String) = records[id]
+    val boundConfigs = linkedMapOf<String, String>()
+    var currentActiveConfigId = "active-default"
+
     override suspend fun draftText(): String = draft
     override suspend fun setDraftText(value: String) { draft = value }
+    override suspend fun bindConfig(conversationId: String) {
+        boundConfigs[conversationId] = currentActiveConfigId
+        records[conversationId]?.let {
+            records[conversationId] = it.copy(configId = currentActiveConfigId)
+        }
+    }
     override suspend fun deleteConversation(id: String) { records.remove(id) }
 
     fun recordNewConversation(id: String, title: String) {

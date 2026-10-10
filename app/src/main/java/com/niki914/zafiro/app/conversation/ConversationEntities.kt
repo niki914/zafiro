@@ -35,6 +35,9 @@ data class ConversationEntity(
     val draftText: String = "",
     @ColumnInfo(name = "leaf_id")
     val leafId: String?,
+    /** 绑定的 LLM 配置 id。空串表示未绑定（跟随全局活跃配置）。 */
+    @ColumnInfo(name = "config_id", defaultValue = "''")
+    val configId: String = "",
 )
 
 /**
@@ -93,4 +96,6 @@ data class ConversationRecord(
      */
     val draftText: String = "",
     val snapshot: SessionSnapshot,
+    /** 绑定的 LLM 配置 id。空串表示未绑定（跟随全局活跃配置）。 */
+    val configId: String = "",
 )

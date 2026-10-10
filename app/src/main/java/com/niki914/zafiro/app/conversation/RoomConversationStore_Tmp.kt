@@ -20,6 +20,7 @@ class RoomConversationStore_Tmp : ConversationStore_Tmp {
             snapshot = record.snapshot,
             conversation = ConversationFormatter.toConversation(record.snapshot),
             draftText = "", // 死字段：不再消费
+            configId = record.configId,
         )
     }
 

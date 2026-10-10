@@ -423,6 +423,7 @@ class HomeChatViewModel internal constructor(
 
     private fun startNewConversation() {
         Logger.d(LOG_TAG, "start new conversation")
+        val leavingId = agent.conversation.value.id?.value
         draftSaveJob?.cancel()
         draftSaveJob = null
         resetPacers()
@@ -433,6 +434,12 @@ class HomeChatViewModel internal constructor(
         viewModelScope.launch {
             val startedAtMs = System.currentTimeMillis()
             try {
+                if (!leavingId.isNullOrBlank()) {
+                    runCatching { conversations.bindConfig(leavingId) }
+                        .onFailure { throwable ->
+                            Logger.w(LOG_TAG, "bindConfig failed leavingId=$leavingId", throwable)
+                        }
+                }
                 agent.discard()
                 if (currentInput.isNotEmpty()) {
                     agent.updateDraft { it.copy(text = currentInput) }
@@ -475,6 +482,13 @@ class HomeChatViewModel internal constructor(
     private suspend fun loadConversation(id: String) {
         val startedAtMs = System.currentTimeMillis()
         Logger.i(LOG_TAG, "load conversation id=$id started")
+        val leavingId = agent.conversation.value.id?.value
+        if (!leavingId.isNullOrBlank() && leavingId != id) {
+            runCatching { conversations.bindConfig(leavingId) }
+                .onFailure { throwable ->
+                    Logger.w(LOG_TAG, "bindConfig failed leavingId=$leavingId", throwable)
+                }
+        }
         draftSaveJob?.cancel()
         draftSaveJob = null
         resetPacers()

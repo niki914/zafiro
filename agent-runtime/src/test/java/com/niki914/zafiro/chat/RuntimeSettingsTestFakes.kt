@@ -26,7 +26,7 @@ internal fun installRuntimeSettingsGatewayForTest(
     return gateway
 }
 
-internal class FakeRuntimeSettingsGateway(
+internal open class FakeRuntimeSettingsGateway(
     var llmConfig: RuntimeLlmConfig = RuntimeLlmConfig(),
     customPyTools: List<RuntimeCustomPyTool> = emptyList(),
     builtinTools: List<RuntimeBuiltinToolSetting> = defaultBuiltinToolSettings(),
@@ -55,7 +55,10 @@ internal class FakeRuntimeSettingsGateway(
     var failListEnabledSkills: Throwable? = null
     var failLoadSkill: Throwable? = null
 
-    override suspend fun readLlmConfig(agentId: String): RuntimeLlmConfig = llmConfig
+    open override suspend fun readLlmConfig(
+        agentId: String,
+        configId: String?,
+    ): RuntimeLlmConfig = llmConfig
 
     override suspend fun listEnabledSkills(): List<RuntimeSkillMetadata> {
         listEnabledSkillsCallCount++

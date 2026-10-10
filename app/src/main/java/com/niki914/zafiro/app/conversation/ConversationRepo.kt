@@ -111,6 +111,7 @@ object ConversationRepo {
             summary = conversation.toSummary(),
             draftText = "", // 死字段：不读取旧库会话草稿，改由 XRepo 全局接管
             snapshot = snapshot,
+            configId = conversation.configId,
         ).also {
             Logger.i(
                 LOG_TAG,
@@ -140,6 +141,7 @@ object ConversationRepo {
                 turnCount = 0,
                 draftText = "",
                 leafId = null,
+                configId = "",
             ),
         )
         Logger.i(
@@ -203,6 +205,7 @@ object ConversationRepo {
                 turnCount = truncated.size,
                 draftText = "",
                 leafId = truncated.lastOrNull()?.id,
+                configId = source.configId,
             ),
             entries = truncated.map { entry -> entry.toEntity(newId) },
         )
@@ -347,6 +350,10 @@ object ConversationRepo {
     @Deprecated("Dead method: draft has migrated to XRepo global storage.")
     suspend fun updateDraft(conversationId: String, draftText: String) {
         dao().updateDraft(conversationId = conversationId, draftText = draftText)
+    }
+
+    suspend fun updateConfigId(conversationId: String, configId: String) {
+        dao().updateConfigId(conversationId = conversationId, configId = configId)
     }
 
     suspend fun deleteConversation(id: String) {

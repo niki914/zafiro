@@ -38,6 +38,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -532,6 +533,31 @@ class LLMControllerOkiaTest {
         LLMController.openSession(snapshot)
 
         assertEquals("model-v2", lastCreatedConfig?.model)
+    }
+
+    @Test
+    fun refresh_withBoundConfig_passesConfigIdToGateway() = runTest {
+        var requestedConfigId: String? = null
+        val gateway = object : FakeRuntimeSettingsGateway() {
+            override suspend fun readLlmConfig(agentId: String, configId: String?): RuntimeLlmConfig {
+                requestedConfigId = configId
+                return validLlmConfig()
+            }
+        }
+        installRuntimeSettingsGatewayForTest(gateway)
+
+        val engine = AgentSessionEngine()
+        engine.okiaFactory = LLMController.OkiaFactory { _, _, _ ->
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
+        }
+
+        engine.bindConfig("cfg-my-bound")
+        engine.refresh()
+        assertEquals("cfg-my-bound", requestedConfigId)
+
+        engine.bindConfig("")
+        engine.refresh()
+        assertNull(requestedConfigId)
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────

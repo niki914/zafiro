@@ -68,6 +68,13 @@ class AgentSessionEngine {
 
     val currentConversation: StateFlow<Conversation?> get() = sessionAssembler.currentConversation
     val keepScreenOn: StateFlow<Boolean> get() = streamPipeline.turnActive
+    @Volatile
+    var boundConfigId: String = ""
+        private set
+
+    fun bindConfig(configId: String) {
+        boundConfigId = configId
+    }
 
     internal fun resetForTest() {
         sessionAssembler.resetForTest()
@@ -75,12 +82,13 @@ class AgentSessionEngine {
         toolSynchronizer.reset()
         mcpRefreshScheduler.reset()
         prefixComposer.reset()
+        boundConfigId = ""
     }
 
     suspend fun refresh(restore: SessionSnapshot? = null): LlmRuntimeSnapshot {
         val refreshStartedAtMs = System.currentTimeMillis()
         val gateway = RuntimeEnvironment.awaitSettingsGateway()
-        val llmConfig = gateway.readLlmConfig()
+        val llmConfig = gateway.readLlmConfig(configId = boundConfigId.takeIf { it.isNotBlank() })
         sessionAssembler.validateLlmConfig(llmConfig)
         Logger.i(
             LOG_TAG,
@@ -293,6 +301,7 @@ class AgentSessionEngine {
         Logger.i(LOG_TAG, "reset conversation requested")
         sessionAssembler.resetConversation()
         runtimeState = null
+        boundConfigId = ""
         Logger.i(LOG_TAG, "reset conversation done")
     }
 

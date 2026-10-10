@@ -58,6 +58,7 @@ class ConversationRepoTest {
         assertEquals("hello world", record.summary.lastMessagePreview)
         assertTrue(record.snapshot.entries.isEmpty())
         assertNull(record.snapshot.leafId)
+        assertEquals("", record.configId)
     }
 
     @Test
@@ -268,6 +269,26 @@ class ConversationRepoTest {
         assertEquals(1234L, record.summary.updatedAt)
         assertEquals("preview", record.summary.lastMessagePreview)
         assertEquals(5, record.summary.turnCount)
+    }
+
+    @Test
+    fun updateConfigId_persistsAndRoundTripsConfigId() = runTest {
+        val id = ConversationRepo.createConversation("session-1", "hi")
+        assertEquals("", ConversationRepo.getConversation(id)!!.configId)
+
+        ConversationRepo.updateConfigId(id, "cfg-custom-1")
+        val record = ConversationRepo.getConversation(id)!!
+        assertEquals("cfg-custom-1", record.configId)
+    }
+
+    @Test
+    fun forkConversation_copiesSourceConfigId() = runTest {
+        val sourceId = ConversationRepo.createConversation("session-source", "source prompt")
+        ConversationRepo.updateConfigId(sourceId, "cfg-source")
+
+        val forkedId = ConversationRepo.forkConversation(sourceId)!!
+        val forkedRecord = ConversationRepo.getConversation(forkedId)!!
+        assertEquals("cfg-source", forkedRecord.configId)
     }
 
     private fun linearEntries(vararg messages: Message): List<ConversationEntry> {

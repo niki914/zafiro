@@ -14,6 +14,7 @@ internal interface HomeConversationStore {
     suspend fun getConversation(id: String): ConversationRecord?
     suspend fun draftText(): String
     suspend fun setDraftText(value: String)
+    suspend fun bindConfig(conversationId: String)
     suspend fun deleteConversation(id: String)
 
     // TODO(收进 Agent)：历史派生操作（reGenerate / fork / rewind）本轮留在业务侧自己组合
