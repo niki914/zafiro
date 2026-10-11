@@ -1,3 +1,4 @@
+// 保护：常驻通知在各运行阶段（生成/思考/工具/审批/失败/待命）的文案、操作按钮、底色与整卡着色标记映射，避免错误配置导致用户无法操作或界面混乱。
 package com.niki914.zafiro.app.notification
 
 import android.app.PendingIntent
@@ -253,5 +254,62 @@ class ResidentNotificationBuilderTest {
 
         assertNotNull(notification)
         assertTrue(notification.actions == null || notification.actions.isEmpty())
+    }
+
+    @Test
+    fun resolveColor_mapsStatesToExpectedColors() {
+        assertEquals(
+            ResidentNotificationBuilder.COLOR_RUNNING,
+            ResidentNotificationBuilder.resolveColor(AgentState.Generating(text = null)),
+        )
+        assertEquals(
+            ResidentNotificationBuilder.COLOR_RUNNING,
+            ResidentNotificationBuilder.resolveColor(AgentState.Thinking(text = null)),
+        )
+        assertEquals(
+            ResidentNotificationBuilder.COLOR_RUNNING,
+            ResidentNotificationBuilder.resolveColor(
+                AgentState.ToolRunning(toolName = "bash", label = "bash", argumentsJson = null),
+            ),
+        )
+        assertEquals(
+            ResidentNotificationBuilder.COLOR_RUNNING,
+            ResidentNotificationBuilder.resolveColor(AgentState.Stopping),
+        )
+        assertEquals(
+            ResidentNotificationBuilder.COLOR_WAITING_APPROVAL,
+            ResidentNotificationBuilder.resolveColor(
+                AgentState.WaitingApproval(ApprovalRequest.ToolExecution("cmd", "echo 1", "RULE")),
+            ),
+        )
+        assertEquals(
+            ResidentNotificationBuilder.COLOR_FAILED,
+            ResidentNotificationBuilder.resolveColor(AgentState.Idle(lastOutcome = TurnOutcome.Failed)),
+        )
+        assertEquals(
+            ResidentNotificationBuilder.COLOR_IDLE,
+            ResidentNotificationBuilder.resolveColor(AgentState.Idle(lastOutcome = TurnOutcome.Completed)),
+        )
+        assertEquals(
+            ResidentNotificationBuilder.COLOR_IDLE,
+            ResidentNotificationBuilder.resolveColor(AgentState.Idle(lastOutcome = null)),
+        )
+        assertEquals(
+            ResidentNotificationBuilder.COLOR_IDLE,
+            ResidentNotificationBuilder.resolveColor(AgentState.Idle(lastOutcome = TurnOutcome.Interrupted)),
+        )
+    }
+
+    @Test
+    fun build_appliesColorAndColorizedFlag() {
+        val runningStatus = AgentState.Generating(text = "Generating response")
+        val notification = ResidentNotificationBuilder.build(
+            context = context,
+            channelManager = channelManager,
+            status = runningStatus,
+        )
+
+        assertEquals(ResidentNotificationBuilder.COLOR_RUNNING, notification.color)
+        assertTrue(notification.extras.getBoolean(Notification.EXTRA_COLORIZED))
     }
 }

@@ -37,10 +37,36 @@ object ResidentNotificationBuilder {
     private const val REQUEST_CODE_APPROVE = 103
     private const val REQUEST_CODE_DECLINE = 104
 
+    const val COLOR_RUNNING: Int = 0xFF22C55E.toInt()
+    const val COLOR_WAITING_APPROVAL: Int = 0xFFD97706.toInt()
+    const val COLOR_FAILED: Int = 0xFFEF4444.toInt()
+    const val COLOR_IDLE: Int = 0xFF2563EB.toInt()
+
     /** state 存 500，通知取一行 120（单行化后裁剪，不切开代理对；超长补显式 …）。 */
     private const val BODY_MAX_CHARS = 120
 
     private val WHITESPACE = Regex("\\s+")
+
+    /**
+     * 解析当前 [AgentState] 对应的常驻通知底色。
+     * - 生成/运行中 (Thinking / Generating / ToolRunning / Stopping)：绿 (#22C55E)；
+     * - 等待审批 (WaitingApproval)：橙 (#D97706)；
+     * - 失败 (Idle.Failed)：红 (#EF4444)；
+     * - 完成/待命 (Idle.Completed / Idle.null / Idle.Interrupted)：Zafiro 蓝 (#2563EB)。
+     */
+    fun resolveColor(status: AgentState): Int = when (status) {
+        is AgentState.Thinking,
+        is AgentState.Generating,
+        is AgentState.ToolRunning,
+        AgentState.Stopping -> COLOR_RUNNING
+
+        is AgentState.WaitingApproval -> COLOR_WAITING_APPROVAL
+
+        is AgentState.Idle -> when (status.lastOutcome) {
+            TurnOutcome.Failed -> COLOR_FAILED
+            null, TurnOutcome.Completed, TurnOutcome.Interrupted -> COLOR_IDLE
+        }
+    }
 
     /**
      * 解析当前 [AgentState] 对应的本地化标题资源 ID。
@@ -158,6 +184,8 @@ object ResidentNotificationBuilder {
             setOngoing(true)
             setOnlyAlertOnce(true)
             setCategory(NotificationCompat.CATEGORY_SERVICE)
+            setColor(resolveColor(status))
+            setColorized(true)
 
             when (status) {
                 is AgentState.Generating,

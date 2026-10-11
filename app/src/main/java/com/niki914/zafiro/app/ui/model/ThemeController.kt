@@ -1,9 +1,14 @@
 package com.niki914.zafiro.app.ui.model
 
+import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.niki914.logging.Logger
+import com.niki914.uikit.base.resolveThemeColorScheme
 import com.niki914.zafiro.app.ui.model.ThemeController.load
 import com.niki914.zafiro.app.ui.model.ThemeController.setMode
 import com.niki914.zafiro.app.ui.model.ThemeController.setSeedColor
@@ -78,5 +83,22 @@ object ThemeController {
                     "persist seed failed ${it.message}"
                 )
             }
+    }
+
+    /**
+     * 解析当前主题对应的 [androidx.compose.material3.ColorScheme.primaryContainer] ARGB 整数值。
+     * 与悬浮球 [FloatingBallCollapsedBall] 底色及 [BaseTheme] 保持完全同口径。
+     */
+    fun resolvePrimaryContainer(context: Context): Int {
+        val isSystemDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val isDark = prefs.resolveDarkTheme(isSystemDark)
+        val seed = prefs.seedColor?.let { Color(it) }
+        val scheme = resolveThemeColorScheme(
+            context = context,
+            darkTheme = isDark,
+            dynamicColor = prefs.seedColor == null,
+            seedColor = seed,
+        )
+        return scheme.primaryContainer.toArgb()
     }
 }

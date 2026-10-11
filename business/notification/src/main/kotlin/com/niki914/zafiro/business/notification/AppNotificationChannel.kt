@@ -31,7 +31,7 @@ enum class AppNotificationChannel(
      * 重要性为 [NotificationManager.IMPORTANCE_LOW]，静默展示在通知抽屉中，不弹横幅、不产生声音干扰。
      */
     Resident(
-        id = "zafiro_resident",
+        id = "zafiro_resident_v2",
         channelNameResId = R.string.notification_channel_resident,
         importance = NotificationManager.IMPORTANCE_LOW,
     );
