@@ -58,7 +58,7 @@ class AgentImpl(
 
     private companion object {
         const val LOG_TAG = "niki914_zafiro_AgentImpl"
-        const val STATUS_TEXT_THROTTLE_MS = 500L
+        const val STATUS_TEXT_THROTTLE_MS = 100L
         const val USER_IMAGE_MIME = "image/jpeg"
     }
 
@@ -410,7 +410,7 @@ class AgentImpl(
         lastStatusEmitMs = nowMs()
     }
 
-    /** 节流时钟（JVM 可测；500ms 粒度下 NTP 跳变可忽略），仅供 [publishStatus]/[emitStatus] 用。 */
+    /** 节流时钟（JVM 可测；100ms 粒度下 NTP 跳变可忽略），仅供 [publishStatus]/[emitStatus] 用。 */
     private fun nowMs(): Long = System.currentTimeMillis()
 
     /** 状态机外事件（发起/停止/打断/重置）：换态直通，不走文本节流。 */
