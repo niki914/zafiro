@@ -433,7 +433,7 @@
     <string name="dialog_confirm_delete">Eliminar</string>
     <string name="ui_settings_section_general">General</string>
     <string name="ui_settings_general">Ajustes generales</string>
-    <string name="ui_settings_general_summary">Idioma y comportamiento de inicio</string>
+    <string name="ui_settings_general_summary">Comportamiento de inicio y ejecución</string>
     <string name="ui_settings_general_group_appearance">Apariencia e idioma</string>
     <string name="ui_settings_general_group_floating_notification">Flotante y notificaciones</string>
     <string name="ui_settings_general_group_conversation">Conversación e interacción</string>
@@ -480,7 +480,6 @@
     <string name="ui_settings_configure_max_tokens_hint">Máximo de tokens que puede generar una sola solicitud. Déjelo vacío para usar el valor predeterminado; redúzcalo si el servidor indica que se superó el límite.</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Introduzca un número entero de al menos 256</string>
 
-    <string name="ui_settings_appearance">Apariencia</string>
     <string name="ui_theme_mode_system">Según el sistema</string>
     <string name="ui_theme_mode_light">Claro</string>
     <string name="ui_theme_mode_dark">Oscuro</string>

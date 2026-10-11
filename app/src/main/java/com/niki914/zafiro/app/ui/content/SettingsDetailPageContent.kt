@@ -80,8 +80,13 @@ fun SettingsDetailPageContent(
         return
     }
 
+    if (group == ZafiroSettingsGroup.Theme) {
+        ThemeSettingsContent()
+        return
+    }
+
     if (group == ZafiroSettingsGroup.GeneralSettings) {
-        GeneralSettingsContent(onPush = onPush)
+        GeneralSettingsContent()
         return
     }
 

@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
+// 保护：通用设置的分组列表与隐藏分组过滤（改了分组成员/顺序而没同步隐藏规则会被拦下）。
 class SettingsViewModelTest {
 
     @get:Rule
@@ -28,7 +29,7 @@ class SettingsViewModelTest {
             state.sections[0].groups,
         )
         assertEquals(
-            listOf(ZafiroSettingsGroup.GeneralSettings),
+            listOf(ZafiroSettingsGroup.Theme, ZafiroSettingsGroup.GeneralSettings),
             state.sections[1].groups,
         )
         assertEquals(
@@ -50,9 +51,4 @@ class SettingsViewModelTest {
             state.sections[4].groups,
         )
     }
-
-}
-
-private fun SettingsUiState.isGroupVisible(group: ZafiroSettingsGroup): Boolean {
-    return sections.any { section -> group in section.groups }
 }

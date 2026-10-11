@@ -1,22 +1,50 @@
 package com.niki914.zafiro.app.ui.content
 
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.core.os.LocaleListCompat
 import com.niki914.uikit.base.LocalAppDarkTheme
-import com.niki914.uikit.infra.component.SettingsListPageContent
+import com.niki914.uikit.infra.component.settings.SettingsPageSpec
+import com.niki914.uikit.infra.component.settings.SettingsRowAction
+import com.niki914.uikit.infra.component.settings.SettingsRowLeadingIcon
+import com.niki914.uikit.infra.component.settings.SettingsRowSpec
+import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
+import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
+import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
+import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.app.ui.model.ThemeMode
+import com.niki914.zafiro.app.ui.model.ThemeSettingsEffect
+import com.niki914.zafiro.app.ui.model.ThemeSettingsIntent
+import com.niki914.zafiro.app.ui.model.ThemeSettingsViewModel
 import kotlinx.coroutines.launch
 
-/** 主题预设种子色（ARGB），顺序与 [themeColorLabelRes] 一一对应。 */
+/**
+ * 外观与语言：深浅色模式、配色（[ThemeController] 驱动）+ 语言（[ThemeSettingsViewModel] 驱动）。
+ */
+private const val LANGUAGE_ROW_ID = "theme.language"
+
+private const val LANGUAGE_TAG_ZH_CN = "zh-CN"
+private const val LANGUAGE_TAG_ZH_TW = "zh-TW"
+private const val LANGUAGE_TAG_EN = "en"
+private const val LANGUAGE_TAG_ES = "es"
+private const val LANGUAGE_TAG_JA = "ja"
+private const val LANGUAGE_TAG_RU = "ru"
+
+/** 主题预设种子色（ARGB），顺序与 [ThemeColorLabelRes] 一一对应。 */
 internal val ThemeSeedColors: List<Int> = listOf(
     0xFFFEB4A7.toInt(), 0xFFFFB3C0.toInt(), 0xFFFCAAFF.toInt(), 0xFFB9C3FF.toInt(),
     0xFF62D3FF.toInt(), 0xFF44D9F1.toInt(), 0xFF52DBC9.toInt(), 0xFF78DD77.toInt(),
@@ -38,56 +66,142 @@ internal val ThemeColorLabelRes: List<Int> = listOf(
     R.string.ui_theme_color_sunset,
 )
 
+data class LanguageOption(
+    /** BCP-47 tag；空串 = 跟随系统。 */
+    val tag: String,
+    /** 选项自身语言的显示名（跟随系统项用 res）。 */
+    val label: String,
+)
+
 @Composable
-fun ThemeSettingsContent() {
+private fun languageOptions(): List<LanguageOption> {
+    return listOf(
+        LanguageOption(
+            tag = "",
+            label = stringResource(R.string.ui_settings_general_language_follow_system)
+        ),
+        LanguageOption(tag = LANGUAGE_TAG_ZH_CN, label = "简体中文"),
+        LanguageOption(tag = LANGUAGE_TAG_ZH_TW, label = "繁體中文"),
+        LanguageOption(tag = LANGUAGE_TAG_EN, label = "English"),
+        LanguageOption(tag = LANGUAGE_TAG_ES, label = "Español"),
+        LanguageOption(tag = LANGUAGE_TAG_JA, label = "日本語"),
+        LanguageOption(tag = LANGUAGE_TAG_RU, label = "Русский"),
+    )
+}
+
+@Composable
+fun ThemeSettingsContent(
+    viewModel: ThemeSettingsViewModel = pageViewModel(),
+) {
+    val uiState by viewModel.uiStateFlow.collectAsState()
     val scope = rememberCoroutineScope()
     val prefs = ThemeController.prefs
     val isDarkTheme = LocalAppDarkTheme.current
+
+    LaunchedEffect(Unit) {
+        viewModel.sendIntent(ThemeSettingsIntent.Load)
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is ThemeSettingsEffect.ApplyApplicationLocales -> {
+                    AppCompatDelegate.setApplicationLocales(
+                        if (effect.languageTag.isBlank()) {
+                            LocaleListCompat.getEmptyLocaleList()
+                        } else {
+                            LocaleListCompat.forLanguageTags(effect.languageTag)
+                        }
+                    )
+                }
+            }
+        }
+    }
 
     val modeOptions = listOf(
         Triple(ThemeMode.System, Icons.Rounded.BrightnessAuto, R.string.ui_theme_mode_system),
         Triple(ThemeMode.Light, Icons.Rounded.LightMode, R.string.ui_theme_mode_light),
         Triple(ThemeMode.Dark, Icons.Rounded.DarkMode, R.string.ui_theme_mode_dark),
     )
+    val languageOptionList = languageOptions()
 
-    SettingsListPageContent {
-        SelectionGroupCard(
-            options = modeOptions.map { (mode, icon, labelRes) ->
-                SelectionOption(
-                    id = mode.storageKey,
-                    title = stringResource(labelRes),
-                    selected = prefs.mode == mode,
-                    onClick = { scope.launch { ThemeController.setMode(mode) } },
-                    leadingIconVector = icon,
-                )
-            },
-            isDarkTheme = isDarkTheme,
-        )
+    val spec = SettingsPageSpec(
+        sections = listOf(
+            SettingsSectionSpec(
+                layout = SettingsSectionLayout.GroupedCard,
+                rows = listOf(
+                    SettingsRowSpec.Navigation(
+                        id = LANGUAGE_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_language),
+                        currentState = languageOptionList
+                            .firstOrNull { it.tag == uiState.languageTag }
+                            ?.label,
+                        leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Rounded.Translate),
+                    ),
+                ),
+            ),
+        ),
+    )
 
-        SelectionGroupCard(
-            options = buildList {
-                add(
+    SettingsSpecPageContent(
+        spec = spec,
+        contentAfterSections = {
+            SelectionGroupCard(
+                options = modeOptions.map { (mode, icon, labelRes) ->
                     SelectionOption(
-                        id = "dynamic",
-                        title = stringResource(R.string.ui_theme_color_dynamic),
-                        selected = prefs.seedColor == null,
-                        onClick = { scope.launch { ThemeController.setSeedColor(null) } },
-                        leadingIconVector = Icons.Rounded.Palette,
+                        id = mode.storageKey,
+                        title = stringResource(labelRes),
+                        selected = prefs.mode == mode,
+                        onClick = { scope.launch { ThemeController.setMode(mode) } },
+                        leadingIconVector = icon,
                     )
-                )
-                ThemeSeedColors.forEachIndexed { index, argb ->
+                },
+                isDarkTheme = isDarkTheme,
+            )
+
+            SelectionGroupCard(
+                options = buildList {
                     add(
                         SelectionOption(
-                            id = "seed-$argb",
-                            title = stringResource(ThemeColorLabelRes[index]),
-                            leadingSwatchColor = Color(argb),
-                            selected = prefs.seedColor == argb,
-                            onClick = { scope.launch { ThemeController.setSeedColor(argb) } },
+                            id = "dynamic",
+                            title = stringResource(R.string.ui_theme_color_dynamic),
+                            selected = prefs.seedColor == null,
+                            onClick = { scope.launch { ThemeController.setSeedColor(null) } },
+                            leadingIconVector = Icons.Rounded.Palette,
                         )
                     )
-                }
-            },
-            isDarkTheme = isDarkTheme,
-        )
-    }
+                    ThemeSeedColors.forEachIndexed { index, argb ->
+                        add(
+                            SelectionOption(
+                                id = "seed-$argb",
+                                title = stringResource(ThemeColorLabelRes[index]),
+                                leadingSwatchColor = Color(argb),
+                                selected = prefs.seedColor == argb,
+                                onClick = { scope.launch { ThemeController.setSeedColor(argb) } },
+                            )
+                        )
+                    }
+                },
+                isDarkTheme = isDarkTheme,
+            )
+        },
+        onAction = { action ->
+            if (action is SettingsRowAction.Navigate && action.id == LANGUAGE_ROW_ID) {
+                viewModel.sendIntent(ThemeSettingsIntent.OpenLanguageDialog)
+            }
+        },
+    )
+
+    SingleChoiceLiquidDialog(
+        visible = uiState.languageDialogVisible,
+        onDismissRequest = { viewModel.sendIntent(ThemeSettingsIntent.DismissLanguageDialog) },
+        title = stringResource(R.string.ui_settings_general_language),
+        options = languageOptionList,
+        selectedId = uiState.languageTag,
+        optionId = LanguageOption::tag,
+        optionLabel = LanguageOption::label,
+        onSelect = { option ->
+            viewModel.sendIntent(ThemeSettingsIntent.SelectLanguage(option.tag))
+        },
+    )
 }

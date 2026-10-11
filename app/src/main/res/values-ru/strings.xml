@@ -391,7 +391,7 @@
     <string name="dialog_confirm_delete">Удалить</string>
     <string name="ui_settings_section_general">Общие</string>
     <string name="ui_settings_general">Общие настройки</string>
-    <string name="ui_settings_general_summary">Язык и поведение при запуске</string>
+    <string name="ui_settings_general_summary">Поведение при запуске и работе</string>
     <string name="ui_settings_general_group_appearance">Оформление и язык</string>
     <string name="ui_settings_general_group_floating_notification">Плавающий шар и уведомления</string>
     <string name="ui_settings_general_group_conversation">Диалог и взаимодействие</string>
@@ -437,7 +437,6 @@
     <string name="ui_settings_configure_max_tokens_placeholder">Например: %1$d</string>
     <string name="ui_settings_configure_max_tokens_hint">Максимальное число токенов в одном ответе. Оставьте пустым, чтобы использовать значение по умолчанию; уменьшите, если сервер сообщает о превышении лимита.</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Введите целое число не меньше 256</string>
-    <string name="ui_settings_appearance">Оформление</string>
     <string name="ui_theme_mode_system">Как в системе</string>
     <string name="ui_theme_mode_light">Светлая</string>
     <string name="ui_theme_mode_dark">Тёмная</string>

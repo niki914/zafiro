@@ -1,6 +1,7 @@
 package com.niki914.zafiro.app
 
 import android.app.Application
+import android.content.ComponentName
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.app.conversation.RoomConversationStore_Tmp
@@ -14,6 +15,7 @@ import com.niki914.zafiro.business.notification.NotificationChannelManager
 import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionManagerImpl
+import com.niki914.zafiro.mod.feat.ZafiroAccessibilityService
 import com.niki914.zafiro.api.McpHostService
 import com.niki914.zafiro.mcp.host.McpHostServiceImpl
 import com.niki914.zafiro.repo.XRepo
@@ -49,7 +51,12 @@ object AppServices {
         appService.attach()
         installService<ApplicationService>(appService)
 
-        installService<PermissionManager>(PermissionManagerImpl())
+        // 无障碍组件名只能由 app 侧给出：类名不随 applicationId（`.debug` 后缀）改变
+        installService<PermissionManager>(
+            PermissionManagerImpl(
+                ComponentName(application, ZafiroAccessibilityService::class.java),
+            )
+        )
         // 附件落地（SAF uri → 真实路径 + 全局文件访问权）：自持 PermissionManager，零构造参数
         installService<FilesService>(FilesServiceImpl())
         installService<NotificationChannelManager>(NotificationChannelManagerImpl(application))
