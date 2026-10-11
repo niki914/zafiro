@@ -4,9 +4,13 @@ import com.niki914.libterm.SshAuth
 import com.niki914.libterm.SshHostKeyPolicy
 import com.niki914.libterm.SshOpenOptions
 import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
+import com.niki914.zafiro.chat.agentic.shell.SessionRegistry
+import com.niki914.zafiro.chat.agentic.shell.TerminalInteractiveReadOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
+import com.niki914.zafiro.chat.agentic.shell.TerminalReadMode
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -36,7 +40,7 @@ open class SshBuiltin(
                 "3. Multi-Session: Multiple concurrent SSH connections to different remote hosts can be maintained. Use action='list' to see all active sessions.\n" +
                 "4. Stream & Input: Use action='read' to poll output, action='write' or action='submit' to send stdin, and action='close' to disconnect.\n\n" +
                 "STRICT RULES:\n" +
-                "1. When targeting an existing session via 'session' or 'alias', NEVER pass connection credentials ('host', 'username', 'password'). Doing so will be rejected.\n" +
+                "1. When targeting a LIVE session via 'session' or 'alias', NEVER pass connection credentials. If a connection was dropped, reconnect by passing credentials with the SAME alias — the dead session is replaced automatically.\n" +
                 "2. Never run blocking interactive commands without non-interactive flags (e.g. do not run top, vim, nano, or unmetered ping).\n" +
                 "3. By default, commands run synchronously and return upon completion. If execution exceeds 'timeout' seconds, it degrades to background execution (status='running', timed_out=true).\n" +
                 "4. A session with a command still in flight rejects new commands. If that command is stuck, abandon it with action='write' + text \"\\u0003\" (Ctrl-C); if you just need the session now, run the next command in a new session (new alias)."
@@ -107,7 +111,9 @@ open class SshBuiltin(
             is SessionTarget.Error -> return target.responseJson
         }
         val meta = sessionRegistry.findById(sessionId)
-        val allSessions = sessionRegistry.all().map { entry ->
+        val allSessions = sessionRegistry.all()
+            .filter { it.scope == sessionScope && isSessionAlive(it.sessionId) }
+            .map { entry ->
             val item = linkedMapOf<String, JsonElement>(
                 "session_id" to JsonPrimitive(entry.sessionId),
                 "created_at" to JsonPrimitive(entry.createdAt),
@@ -135,37 +141,63 @@ open class SshBuiltin(
 
     override suspend fun onDefaultSession(): String? = null
 
+    override val supportsCtrlCAbort: Boolean get() = true
+
+    override val sessionScope: String get() = SessionRegistry.SCOPE_SSH
+
     override suspend fun resolveSessionTarget(args: BaseSessionArgs): SessionTarget {
         val sshArgs = args as? SshArgs
         val hasCredentials = sshArgs?.host != null || sshArgs?.username != null || sshArgs?.password != null
 
         val explicitSession = args.session
         if (explicitSession != null) {
-            if (hasCredentials) {
-                return SessionTarget.Error(
-                    TerminalToolResponse.invalidRequest(
-                        "Cannot specify connection credentials ('host', 'username', 'password') when targeting an existing session."
-                    )
-                )
+            val registered = sessionRegistry.resolveSessionId(explicitSession, sessionScope)
+            if (registered != null) {
+                if (isSessionAlive(registered)) {
+                    if (hasCredentials) {
+                        return SessionTarget.Error(
+                            TerminalToolResponse.invalidRequest(
+                                "Cannot specify connection credentials ('host', 'username', 'password') when targeting a live session."
+                            )
+                        )
+                    }
+                    return SessionTarget.Resolved(registered)
+                }
+                // 登记项是僵尸（连接已断）：释放句柄与别名，带凭据则落到下方重建
+                sessionRegistry.unregister(registered)
+                TerminalSessionPool.close(registered)
+                if (!hasCredentials) {
+                    return SessionTarget.Error(TerminalToolResponse.sessionGone(explicitSession))
+                }
+            } else {
+                // 句柄不在本域登记里（含别的工具的句柄）：不带凭据就是找不到；带凭据按新连接处理，
+                // 否则模型只能对着一个用不了的句柄反复试
+                if (!hasCredentials) {
+                    return SessionTarget.Error(TerminalToolResponse.sessionNotFound(explicitSession))
+                }
             }
-            val resolved = sessionRegistry.resolveSessionId(explicitSession)
-            if (resolved != null) return SessionTarget.Resolved(resolved)
-            if (TerminalSessionPool.get(explicitSession) != null) return SessionTarget.Resolved(explicitSession)
-            return SessionTarget.Error(TerminalToolResponse.invalidRequest("Session '$explicitSession' not found."))
         }
 
         val explicitAlias = args.alias
         if (explicitAlias != null) {
-            val existing = sessionRegistry.findByAlias(explicitAlias)
+            val existing = sessionRegistry.findByAlias(explicitAlias, sessionScope)
             if (existing != null) {
-                if (hasCredentials) {
-                    return SessionTarget.Error(
-                        TerminalToolResponse.invalidRequest(
-                            "Cannot specify connection credentials ('host', 'username', 'password') when targeting an existing session alias '$explicitAlias'."
+                if (isSessionAlive(existing.sessionId)) {
+                    if (hasCredentials) {
+                        return SessionTarget.Error(
+                            TerminalToolResponse.invalidRequest(
+                                "Cannot specify connection credentials ('host', 'username', 'password') when targeting a live session alias '$explicitAlias'."
+                            )
                         )
-                    )
+                    }
+                    return SessionTarget.Resolved(existing.sessionId)
                 }
-                return SessionTarget.Resolved(existing.sessionId)
+                sessionRegistry.unregister(existing.sessionId)
+                TerminalSessionPool.close(existing.sessionId)
+                if (!hasCredentials) {
+                    return SessionTarget.Error(TerminalToolResponse.sessionGone(explicitAlias))
+                }
+                // 带凭据：落到下方重新建联，register 会重新占用该别名
             }
         }
 
@@ -192,9 +224,11 @@ open class SshBuiltin(
 
         return when (val outcome = openSshSession(options, sshArgs.workdir)) {
             is TerminalOpenOutcome.Success -> {
+                awaitShellSettled(outcome.session)
                 sessionRegistry.register(
                     sessionId = outcome.session,
                     alias = explicitAlias,
+                    scope = sessionScope,
                     metadata = mapOf("identity" to "ssh", "host" to host, "user" to username),
                 )
                 SessionTarget.Resolved(outcome.session)
@@ -218,6 +252,35 @@ open class SshBuiltin(
         return TerminalSessionPool.openSsh(options = options, cwd = cwd)
     }
 
+    /**
+     * 建联后等登录输出（banner/提示符）安静下来再放行第一条命令：否则命令写入时远端
+     * shell 未就绪，回显与 banner 交错（实测新会话首条命令输出必丢的触发条件）。
+     * 静默窗口 150ms，上限 2s；会话不在池里（测试 fake）直接放行。
+     */
+    private suspend fun awaitShellSettled(sessionId: String) {
+        val deadline = System.currentTimeMillis() + 2_000L
+        var lastSequence = -1L
+        var lastChangeAt = System.currentTimeMillis()
+        while (System.currentTimeMillis() < deadline) {
+            val sequence = when (val outcome = TerminalSessionPool.readInteractive(
+                session = sessionId,
+                mode = TerminalReadMode.SNAPSHOT,
+                maxBytes = Int.MAX_VALUE,
+            )) {
+                is TerminalInteractiveReadOutcome.Success -> outcome.sequence
+                else -> return
+            }
+            val now = System.currentTimeMillis()
+            if (sequence != lastSequence) {
+                lastSequence = sequence
+                lastChangeAt = now
+            } else if (now - lastChangeAt >= 150L) {
+                return
+            }
+            delay(25L)
+        }
+    }
+
     companion object {
         private const val DEFAULT_TIMEOUT_SEC = 30L
 
@@ -231,11 +294,11 @@ open class SshBuiltin(
                 },
                 "session": {
                   "type": "string",
-                  "description": "Target session ID or alias. If provided, connection credentials must NOT be included."
+                  "description": "Target session ID or alias. While the session is alive, connection credentials must NOT be included; pass them again (with the same alias) to rebuild a session that was dropped."
                 },
                 "alias": {
                   "type": "string",
-                  "description": "Human-friendly alias for session naming (e.g. 'nas', 'prod-db'). Registers alias during connect, or targets existing."
+                  "description": "Human-friendly alias for session naming (e.g. 'nas', 'prod-db'). Alias names are scoped to ssh sessions, so a local shell alias with the same name is unrelated. Registers alias during connect, or targets existing."
                 },
                 "host": {
                   "type": "string",

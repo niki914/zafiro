@@ -19,6 +19,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -107,6 +108,8 @@ class McpToolAdapter(
                 content = listOf(TextContent(text = jsonText)),
                 isError = isError,
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             val durationMs = System.currentTimeMillis() - startTime
             Logger.e(LOG_TAG, "tool invoke exception: ${tool.name}: ${e.message} durationMs=$durationMs", e)
