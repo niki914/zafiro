@@ -502,7 +502,7 @@ class XRepoTest {
         val store = installStore(FakeDomainSettingsStore())
 
         val validation = XRepo.customPyTools.save(
-            CustomPyTool(name = "py_terminal", code = "def main():\n    pass")
+            CustomPyTool(name = "py_shell", code = "def main():\n    pass")
         )
 
         assertNotNull(validation)

@@ -281,7 +281,7 @@ class XRepoDomainSettingsTest {
         val settings = XRepo.builtinTools.list().associateBy { it.name }
         assertFalse(settings.getValue("screen_operation_accessibility").enabled)
         assertFalse(settings.getValue("screen_operation_shell").enabled)
-        assertTrue(settings.getValue("terminal").enabled)
+        assertTrue(settings.getValue("shell").enabled)
 
         // 未知的组返回校验错误且不写盘
         val unknown = XRepo.builtinTools.setGroupEnabled("no_such_group", true)

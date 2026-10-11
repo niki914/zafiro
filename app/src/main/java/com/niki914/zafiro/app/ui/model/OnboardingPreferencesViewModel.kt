@@ -156,6 +156,12 @@ class OnboardingPreferencesViewModel :
             }
         }
         refreshPermissions()
+        if (pm.status(Permission.OVERLAY) == PermissionState.GRANTED) {
+            XRepo.setFloatingBallEnabled(true)
+        }
+        if (pm.status(Permission.NOTIFICATION) == PermissionState.GRANTED) {
+            XRepo.setResidentNotificationEnabled(true)
+        }
         updateState { copy(isRequesting = false) }
         if (!uiStateFlow.value.allGranted) toastDenied()
     }
@@ -176,6 +182,13 @@ class OnboardingPreferencesViewModel :
     }
 
     private suspend fun complete() {
+        val pm = requireService<PermissionManager>()
+        if (pm.status(Permission.OVERLAY) == PermissionState.GRANTED && !XRepo.floatingBallEnabled()) {
+            XRepo.setFloatingBallEnabled(true)
+        }
+        if (pm.status(Permission.NOTIFICATION) == PermissionState.GRANTED && !XRepo.residentNotificationEnabled()) {
+            XRepo.setResidentNotificationEnabled(true)
+        }
         XRepo.executionRules.save(
             RuntimeExecutionRule(
                 id = LocalSettingsDefaults.DEFAULT_EXECUTION_RULE_ID,
