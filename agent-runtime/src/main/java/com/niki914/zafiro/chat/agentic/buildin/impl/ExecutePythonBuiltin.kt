@@ -42,7 +42,7 @@ changes, open handles, or background tasks. Persist intentionally through files 
 
 Limits: timeout 30 s default, 120 s max. Output over 2000 lines / 50 KB is
 truncated; the full output is saved to a file whose absolute path is included
-in the result — read it back with terminal commands (e.g. cat) when needed.
+in the result — read it back with shell commands (e.g. cat) when needed.
     """.trimIndent()
 
     override val defaultEnabled: Boolean = true

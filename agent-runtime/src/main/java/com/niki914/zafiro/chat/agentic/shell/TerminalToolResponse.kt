@@ -118,6 +118,25 @@ object TerminalToolResponse {
         )
     }
 
+    /** 掉线/被回收的僵尸会话：给可行动的错误，而不是谎报 connected 或白等超时。 */
+    fun sessionGone(session: String): String {
+        return error(
+            code = "INVALID_REQUEST",
+            message = "Session '$session' is gone (connection dropped or closed elsewhere). " +
+                "Reconnect by passing 'host'/'username'/'password' again; add the same 'alias' to keep the alias. " +
+                "Run action='close' on it if you only want to drop the registration.",
+        )
+    }
+
+    fun sessionBusyWithPendingCommand(session: String, abandonHint: String): String {
+        return error(
+            code = "SESSION_BUSY",
+            message = "Session '$session' still has a command in flight. Collect its output with " +
+                "action=\"read\" first. If that command is stuck, $abandonHint Sending a command now " +
+                "would make both outputs interleave and get lost.",
+        )
+    }
+
     fun sessionBusy(session: String, asyncId: String?): String {
         val message = if (asyncId.isNullOrBlank()) {
             "Session '$session' is busy. Wait for the current command to complete."

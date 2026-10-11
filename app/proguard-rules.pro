@@ -63,6 +63,11 @@
 -dontwarn org.ietf.jgss.MessageProp
 -dontwarn org.ietf.jgss.Oid
 
+# ktor JVM 调试检测器（IntellijIdeaDebugDetector）读取 java.lang.management，Android 上不存在。
+# 它内部 catch(Throwable)，NoClassDefFoundError 会退化为 false，仅需忽略缺失告警。
+-dontwarn java.lang.management.ManagementFactory
+-dontwarn java.lang.management.RuntimeMXBean
+
 # =================== 必要的框架和库规则 ===================
 
 # Xposed Framework (保留核心接口即可)

@@ -150,8 +150,8 @@
     <string name="skill_import_overwrite">Перезаписать</string>
     <string name="skill_import_cancel">Отмена</string>
     <string name="skill_import_resolve_failed">Нет доступа к выбранной папке</string>
-    <string name="ui_settings_mcp">Сервер MCP</string>
-    <string name="ui_settings_mcp_summary">Подключение внешних MCP-серверов и инструментов</string>
+    <string name="ui_settings_mcp">MCP</string>
+    <string name="ui_settings_mcp_summary">Подключение внешних MCP и инструментов</string>
     <string name="ui_settings_takeover">Правила перехвата</string>
     <string name="ui_settings_takeover_summary">Куда направлять совпавшие запросы — штатному ассистенту или Zafiro</string>
     <string name="ui_settings_execution_rules">Правила выполнения</string>
@@ -200,7 +200,7 @@
     <string name="ui_settings_configure_error_required">Поле не может быть пустым</string>
     <string name="ui_settings_configure_error_name_duplicate">Такое название уже есть. Укажите другое.</string>
     <string name="ui_settings_configure_error_proxy_invalid">Адрес прокси не является корректным URI</string>
-    <string name="ui_settings_mcp_config">Настройка сервера MCP</string>
+    <string name="ui_settings_mcp_config">Настройка MCP</string>
     <string name="memory_page_description">Сохранённые факты. Смахните влево или вправо, чтобы удалить, либо нажмите на запись, чтобы изменить. После добавления агент будет помнить это даже в новых диалогах.</string>
     <string name="memory_page_empty_description">Пока ничего не сохранено. Нажмите на значок справа сверху, чтобы добавить первую запись.</string>
     <string name="memory_loading">Загрузка памяти…</string>
@@ -321,10 +321,10 @@
     <string name="custom_py_tool_save_dialog_action_done">Готово</string>
     <string name="custom_py_tool_save_dialog_action_close">Закрыть</string>
     <string name="custom_py_tool_save_failed">Не удалось сохранить: %1$s</string>
-    <string name="mcp_page_description">Настройка подключения и авторизации для сервисов MCP. После сохранения Zafiro сам найдёт доступные инструменты.</string>
-    <string name="mcp_page_empty_description">Нажмите на значок справа сверху, чтобы добавить первый сервер.</string>
-    <string name="mcp_loading">Загрузка сохранённых сервисов MCP…</string>
-    <string name="mcp_editor_title_create">Новый сервис MCP</string>
+    <string name="mcp_page_description">Настройка подключения и авторизации для MCP. После сохранения Zafiro сам найдёт доступные инструменты.</string>
+    <string name="mcp_page_empty_description">Нажмите на значок справа сверху, чтобы добавить первый сервер MCP.</string>
+    <string name="mcp_loading">Загрузка сохранённых серверов MCP…</string>
+    <string name="mcp_editor_title_create">Новый сервер MCP</string>
     <string name="mcp_field_name">Название</string>
     <string name="mcp_field_name_hint">Например: my-xxx-mcp-server</string>
     <string name="mcp_field_url">URL</string>
@@ -332,7 +332,7 @@
     <string name="mcp_field_enabled">Включить сервис</string>
     <string name="mcp_field_headers">Свои заголовки</string>
     <string name="mcp_field_headers_hint">{\n  \"Authorization\": \"Bearer xxx\"\n}</string>
-    <string name="mcp_save_action">Сохранить сервис MCP</string>
+    <string name="mcp_save_action">Сохранить сервер MCP</string>
     <string name="mcp_error_name_required">Введите название</string>
     <string name="mcp_error_name_duplicate">Такое название уже есть. Выберите другое и попробуйте снова</string>
     <string name="mcp_error_url_required">Введите URL</string>
@@ -372,6 +372,8 @@
     <string name="conversation_regenerate_title">Новый ответ · %1$s</string>
     <string name="conversation_rewind_title">Откат · %1$s</string>
     <string name="ui_tool_display_terminal">Терминал</string>
+    <string name="ui_tool_display_shell">Shell</string>
+    <string name="ui_tool_display_ssh">SSH</string>
     <string name="ui_tool_display_load_skill">Загрузка навыка</string>
     <string name="ui_tool_display_execute_python">Python</string>
     <string name="ui_tool_display_create_custom_tool">Создание своего инструмента</string>
@@ -389,7 +391,7 @@
     <string name="dialog_confirm_delete">Удалить</string>
     <string name="ui_settings_section_general">Общие</string>
     <string name="ui_settings_general">Общие настройки</string>
-    <string name="ui_settings_general_summary">Язык и поведение при запуске</string>
+    <string name="ui_settings_general_summary">Поведение при запуске и работе</string>
     <string name="ui_settings_general_group_appearance">Оформление и язык</string>
     <string name="ui_settings_general_group_floating_notification">Плавающий шар и уведомления</string>
     <string name="ui_settings_general_group_conversation">Диалог и взаимодействие</string>
@@ -437,7 +439,6 @@
     <string name="ui_settings_configure_max_tokens_placeholder">Например: %1$d</string>
     <string name="ui_settings_configure_max_tokens_hint">Максимальное число токенов в одном ответе. Оставьте пустым, чтобы использовать значение по умолчанию; уменьшите, если сервер сообщает о превышении лимита.</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Введите целое число не меньше 256</string>
-    <string name="ui_settings_appearance">Оформление</string>
     <string name="ui_theme_mode_system">Как в системе</string>
     <string name="ui_theme_mode_light">Светлая</string>
     <string name="ui_theme_mode_dark">Тёмная</string>
@@ -490,28 +491,28 @@
     <string name="ui_onboard_preferences_action_skip">Пропустить</string>
     <string name="ui_onboard_preferences_toast_denied">Разрешение не выдано</string>
 
-    <!-- MCP Host Settings -->
-    <string name="ui_settings_mcp_host">Сервер MCP</string>
-    <string name="ui_settings_mcp_host_summary">Предоставление инструментов Zafiro внешним агентам через MCP</string>
-    <string name="mcp_host_section_service">Служба</string>
-    <string name="mcp_host_section_connection">Подключение и безопасность</string>
-    <string name="mcp_host_section_tools">Доступные инструменты</string>
-    <string name="mcp_host_enable_title">Включить сервер MCP</string>
-    <string name="mcp_host_enable_summary">Разрешить внешним клиентам управлять устройством по протоколу MCP</string>
-    <string name="mcp_host_status_title">Состояние</string>
-    <string name="mcp_host_status_running">Запущен</string>
-    <string name="mcp_host_status_stopped">Остановлен</string>
-    <string name="mcp_host_status_starting">Запуск…</string>
-    <string name="mcp_host_status_error">Ошибка: %1$s</string>
-    <string name="mcp_host_port_title">Порт</string>
-    <string name="mcp_host_port_placeholder">8791</string>
-    <string name="mcp_host_port_error_invalid">Порт должен быть в диапазоне от 1024 до 65535</string>
-    <string name="mcp_host_token_title">Bearer Token</string>
-    <string name="mcp_host_token_placeholder">Оставьте пустым для доступа без авторизации</string>
-    <string name="mcp_host_token_description_empty">Аутентификация не требуется</string>
-    <string name="mcp_host_token_description_configured">Требуется заголовок Authorization: Bearer &lt;token&gt;</string>
-    <string name="mcp_host_token_show">Показать Bearer Token</string>
-    <string name="mcp_host_token_hide">Скрыть Bearer Token</string>
+    <!-- MCP Service Settings -->
+    <string name="ui_settings_mcp_service">Сервис MCP</string>
+    <string name="ui_settings_mcp_service_summary">Предоставление инструментов Zafiro внешним агентам через MCP</string>
+    <string name="mcp_service_section_service">Служба</string>
+    <string name="mcp_service_section_connection">Подключение и безопасность</string>
+    <string name="mcp_service_section_tools">Доступные инструменты</string>
+    <string name="mcp_service_enable_title">Включить сервис MCP</string>
+    <string name="mcp_service_enable_summary">Разрешить внешним агентам доступ к инструментам Zafiro через MCP</string>
+    <string name="mcp_service_status_title">Состояние</string>
+    <string name="mcp_service_status_running">Запущен</string>
+    <string name="mcp_service_status_stopped">Остановлен</string>
+    <string name="mcp_service_status_starting">Запуск…</string>
+    <string name="mcp_service_status_error">Ошибка</string>
+    <string name="mcp_service_port_title">Порт</string>
+    <string name="mcp_service_port_placeholder">8791</string>
+    <string name="mcp_service_port_error_invalid">Порт должен быть в диапазоне от 1024 до 65535</string>
+    <string name="mcp_service_token_title">Bearer Token</string>
+    <string name="mcp_service_token_placeholder">Оставьте пустым для доступа без авторизации</string>
+    <string name="mcp_service_token_description_empty">Аутентификация не требуется</string>
+    <string name="mcp_service_token_description_configured">Требуется заголовок Authorization: Bearer &lt;token&gt;</string>
+    <string name="mcp_service_token_show">Показать Bearer Token</string>
+    <string name="mcp_service_token_hide">Скрыть Bearer Token</string>
 
     <!-- Crash Protection -->
     <string name="crash_dialog_title">Приложение аварийно завершило работу</string>

@@ -35,7 +35,7 @@ import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToo
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
-import com.niki914.zafiro.settings.model.RuntimeMcpHostConfig
+import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRuleValidation as TakeoverRuleValidation
@@ -46,7 +46,7 @@ object XRepo {
     private const val LOG_TAG = "niki914_zafiro_XRepo"
 
     val mcp: McpApi = McpApi(this)
-    val mcpHost: McpHostApi = McpHostApi(this)
+    val mcpService: McpServiceApi = McpServiceApi(this)
     val customPyTools: CustomPyToolApi = CustomPyToolApi(this)
     val builtinTools: BuiltinToolApi = BuiltinToolApi(this)
     val memory: MemoryApi = MemoryApi(this)
@@ -93,7 +93,7 @@ object XRepo {
         residentNotificationEnabledField.flow.value = false
         turnNotificationEnabledField.flow.value = false
         floatingBallAutoExpandField.flow.value = true
-        mcpHost.resetForTest()
+        mcpService.resetForTest()
         llmConfigs.resetForTest()
     }
 
@@ -1207,43 +1207,43 @@ class McpApi internal constructor(
     }
 }
 
-class McpHostApi internal constructor(
+class McpServiceApi internal constructor(
     private val repo: XRepo,
 ) {
-    private val _configFlow = MutableStateFlow<RuntimeMcpHostConfig?>(null)
-    val configFlow: Flow<RuntimeMcpHostConfig> = _configFlow.filterNotNull()
+    private val _configFlow = MutableStateFlow<RuntimeMcpServiceConfig?>(null)
+    val configFlow: Flow<RuntimeMcpServiceConfig> = _configFlow.filterNotNull()
 
-    suspend fun get(): RuntimeMcpHostConfig {
+    suspend fun get(): RuntimeMcpServiceConfig {
         _configFlow.value?.let { return it }
-        val parsed = McpHostSettingsCodec.parse(repo.readJson(StoreDescriptorRegistry.TOOLS_MCP_HOST_ID))
+        val parsed = McpServiceSettingsCodec.parse(repo.readJson(StoreDescriptorRegistry.TOOLS_MCP_SERVICE_ID))
         _configFlow.value = parsed
         return parsed
     }
 
-    suspend fun update(transform: (RuntimeMcpHostConfig) -> RuntimeMcpHostConfig): RuntimeMcpHostConfig {
-        var updated = RuntimeMcpHostConfig()
-        repo.updateJson(StoreDescriptorRegistry.TOOLS_MCP_HOST_ID) { json ->
-            val current = McpHostSettingsCodec.parse(json)
+    suspend fun update(transform: (RuntimeMcpServiceConfig) -> RuntimeMcpServiceConfig): RuntimeMcpServiceConfig {
+        var updated = RuntimeMcpServiceConfig()
+        repo.updateJson(StoreDescriptorRegistry.TOOLS_MCP_SERVICE_ID) { json ->
+            val current = McpServiceSettingsCodec.parse(json)
             updated = transform(current)
-            McpHostSettingsCodec.encode(updated)
+            McpServiceSettingsCodec.encode(updated)
         }
         _configFlow.value = updated
         return updated
     }
 
-    suspend fun setEnabled(enabled: Boolean): RuntimeMcpHostConfig =
+    suspend fun setEnabled(enabled: Boolean): RuntimeMcpServiceConfig =
         update { it.copy(enabled = enabled) }
 
-    suspend fun setPort(port: Int): RuntimeMcpHostConfig =
+    suspend fun setPort(port: Int): RuntimeMcpServiceConfig =
         update { it.copy(port = port) }
 
-    suspend fun setHost(host: String): RuntimeMcpHostConfig =
+    suspend fun setHost(host: String): RuntimeMcpServiceConfig =
         update { it.copy(host = host) }
 
-    suspend fun setBearerToken(token: String): RuntimeMcpHostConfig =
+    suspend fun setBearerToken(token: String): RuntimeMcpServiceConfig =
         update { it.copy(bearerToken = token) }
 
-    suspend fun setExposedTools(tools: Set<String>): RuntimeMcpHostConfig =
+    suspend fun setExposedTools(tools: Set<String>): RuntimeMcpServiceConfig =
         update { it.copy(exposedTools = tools) }
 
     internal fun resetForTest() {

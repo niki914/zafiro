@@ -15,8 +15,7 @@ import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
 import com.niki914.zafiro.app.wakelock.AgentWakeLockController
-import com.niki914.zafiro.api.AgentManager
-import com.niki914.zafiro.api.McpHostService
+import com.niki914.zafiro.api.McpService
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionState
@@ -76,7 +75,7 @@ class App : Application() {
 
         observeFloatingBall()
         observeResidentNotification()
-        observeMcpHost()
+        observeMcpService()
         observeAgentWakeLock()
         TurnNotificationManager.init(this)
     }
@@ -85,15 +84,15 @@ class App : Application() {
         AgentWakeLockController.start(this, applicationScope)
     }
 
-    private fun observeMcpHost() {
+    private fun observeMcpService() {
         applicationScope.launch {
-            val service = requireService<McpHostService>()
-            val initialConfig = XRepo.mcpHost.get()
+            val service = requireService<McpService>()
+            val initialConfig = XRepo.mcpService.get()
             if (initialConfig.enabled) {
                 service.start()
             }
             var lastConfig = initialConfig
-            XRepo.mcpHost.configFlow.collect { config ->
+            XRepo.mcpService.configFlow.collect { config ->
                 if (config != lastConfig) {
                     lastConfig = config
                     if (config.enabled) {

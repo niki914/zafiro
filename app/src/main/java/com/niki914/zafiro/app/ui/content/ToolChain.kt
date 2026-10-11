@@ -92,7 +92,7 @@ private val BlockFlingScrollPropagation: NestedScrollConnection = object : Neste
 // ── ToolChain — stateless, state driven by ViewModel ────────────────────
 
 /** 命令型工具（精确匹配）：结果体为「命令单行 + 输出」上下分段样式。 */
-private val CommandToolNames = setOf("terminal", "execute_python")
+private val CommandToolNames = setOf("shell", "ssh", "execute_python")
 
 /** 结果文本型工具（精确匹配）：结果体为等宽结果文本（可选中、无复制按钮）。 */
 private val ResultTextToolNames = setOf("load_skill")

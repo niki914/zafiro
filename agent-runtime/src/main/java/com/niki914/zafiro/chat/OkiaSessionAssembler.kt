@@ -20,6 +20,7 @@ import com.niki914.okia.protocol.OpenAIResponsesProtocol
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.zafiro.chat.agentic.AndroidImageLoader
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
+import com.niki914.zafiro.chat.agentic.shell.SessionRegistry
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
@@ -121,6 +122,7 @@ internal class OkiaSessionAssembler(
     suspend fun resetConversation() {
         PyRuntime.kill()
         TerminalSessionPool.closeAll()
+        SessionRegistry.clear()
         closeSession()
     }
 
@@ -244,6 +246,7 @@ internal class OkiaSessionAssembler(
             Logger.i(LOG_TAG, "beforeStop killing tool resources dispatchedCalls=${calls.size}")
             PyRuntime.kill()
             TerminalSessionPool.closeAll()
+            SessionRegistry.clear()
         }
     }
 }

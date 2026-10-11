@@ -3,6 +3,7 @@ package com.niki914.zafiro.chat.agentic.shell
 
 import com.niki914.libterm.OpenResult
 import com.niki914.libterm.OutputStream
+import com.niki914.libterm.SessionState
 import com.niki914.libterm.SshAuth
 import com.niki914.libterm.SshOpenOptions
 import com.niki914.libterm.TerminalFailure
@@ -57,7 +58,11 @@ object TerminalSessionPool {
     private var runtimePortFactory: suspend (CoroutineScope) -> TerminalRuntimePort =
         ::createLibTermRuntimePort
 
-    suspend fun open(identity: String, cwd: String? = null): TerminalOpenOutcome {
+    suspend fun open(
+        identity: String,
+        cwd: String? = null,
+        collectOutput: Boolean = false,
+    ): TerminalOpenOutcome {
         val mappedIdentity = try {
             mapIdentity(identity)
         } catch (error: IllegalArgumentException) {
@@ -68,7 +73,7 @@ object TerminalSessionPool {
             terminalIdentity = mappedIdentity,
             cwd = cwd,
             sshOptions = null,
-            collectOutput = false,
+            collectOutput = collectOutput,
         )
     }
 
@@ -380,28 +385,21 @@ object TerminalSessionPool {
         }
         val maxChars = maxBytes.coerceAtLeast(1)
         val snapshot = synchronized(state.lock) {
-            val rawStdout = when (mode) {
-                TerminalReadMode.DELTA -> state.stdout.substring(state.stdoutDeltaOffset)
-                TerminalReadMode.SNAPSHOT -> state.stdout.toString()
-            }
-            val rawStderr = when (mode) {
-                TerminalReadMode.DELTA -> state.stderr.substring(state.stderrDeltaOffset)
-                TerminalReadMode.SNAPSHOT -> state.stderr.toString()
+            val raw = when (mode) {
+                TerminalReadMode.DELTA -> state.text.substring(state.deltaOffset)
+                TerminalReadMode.SNAPSHOT -> state.text.toString()
             }
             if (mode == TerminalReadMode.DELTA) {
-                state.stdoutDeltaOffset = state.stdout.length
-                state.stderrDeltaOffset = state.stderr.length
+                state.deltaOffset = state.text.length
             }
             InteractiveReadSnapshot(
-                stdout = rawStdout.takeLast(maxChars),
-                stderr = rawStderr.takeLast(maxChars),
+                text = raw.takeLast(maxChars),
                 sequence = state.outputSequence,
-                truncated = rawStdout.length > maxChars || rawStderr.length > maxChars,
+                truncated = raw.length > maxChars,
             )
         }
         return TerminalInteractiveReadOutcome.Success(
-            stdout = snapshot.stdout,
-            stderr = snapshot.stderr,
+            text = snapshot.text,
             mode = mode,
             sequence = snapshot.sequence,
             truncated = snapshot.truncated,
@@ -411,6 +409,21 @@ object TerminalSessionPool {
     internal fun get(session: String): TerminalSessionEntry? {
         return synchronized(lock) {
             sessions[session]
+        }
+    }
+
+    /**
+     * 会话生死：池里还在，且交互流没有终结，且底层会话未退出。
+     * SSH 远端掉线 / 本地 shell 退出时，仅靠池条目存在与否会把僵尸会话当成活的。
+     */
+    fun isSessionAlive(session: String): Boolean {
+        // githooks:ignore monitor-lock 与既有锁域同源：sessions / interactiveStates / ended 都由本对象锁保护
+        return synchronized(lock) {
+            val entry = sessions[session] ?: return@synchronized false
+            if (!entry.session.isAlive) return@synchronized false
+            val state = interactiveStates[session] ?: return@synchronized true
+            // githooks:ignore monitor-lock state.ended 由 interactiveState 自己的锁保护，与既有采集处一致
+            synchronized(state.lock) { !state.ended }
         }
     }
 
@@ -891,14 +904,24 @@ object TerminalSessionPool {
             interactiveStates[entry.handle] = state
         }
         val collectorJob = holder.scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            entry.session.stream.collect { chunk ->
-                synchronized(state.lock) {
-                    when (chunk.stream) {
-                        OutputStream.STDOUT -> state.stdout.append(chunk.text)
-                        OutputStream.STDERR -> state.stderr.append(chunk.text)
+            try {
+                entry.session.stream.collect { chunk ->
+                    // githooks:ignore monitor-lock 采集缓冲由 interactiveState 自己的锁保护，与读取侧同源
+                    synchronized(state.lock) {
+                        // stdout/stderr 按到达顺序写进同一条流：读取与偏移都只建立在这一条流上。
+                        // 分两个缓冲再由上层拼接时，两侧各自增长会让绝对偏移互相平移，哨兵窗口错位。
+                        state.text.append(chunk.text)
+                        state.outputSequence += 1L
                     }
-                    state.outputSequence += 1L
                 }
+                // githooks:ignore monitor-lock 同上
+                synchronized(state.lock) { state.ended = true }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                // 流异常结束同样视为会话终结（SSH 断连等）
+                // githooks:ignore monitor-lock 同上
+                synchronized(state.lock) { state.ended = true }
             }
         }
         synchronized(state.lock) {
@@ -1054,6 +1077,10 @@ internal interface TerminalRuntimePort {
 internal interface TerminalSessionPort {
     val id: String
     val stream: Flow<TerminalTextChunk>
+
+    /** 会话是否仍活着（shell 退出 / SSH 断连后为 false）。默认 true，兼容不感知状态的实现。 */
+    val isAlive: Boolean get() = true
+
     suspend fun exec(command: String, timeoutMillis: Long): TermResult<CommandResult>
     suspend fun write(text: String)
     suspend fun close()
@@ -1107,6 +1134,9 @@ private class LibTermTerminalSessionPort(
     override val id: String
         get() = delegate.id
 
+    override val isAlive: Boolean
+        get() = delegate.state.value is SessionState.Running || delegate.state.value is SessionState.Starting
+
     override val stream: Flow<TerminalTextChunk>
         get() = delegate.stream
 
@@ -1142,12 +1172,13 @@ private data class AsyncState(
 private data class InteractiveState(
     val inputLock: Mutex,
     val lock: Any,
-    val stdout: StringBuilder = StringBuilder(),
-    val stderr: StringBuilder = StringBuilder(),
+    /** 到达序合并输出流。 */
+    val text: StringBuilder = StringBuilder(),
     val writeResults: MutableMap<String, InteractiveWriteResult> = linkedMapOf(),
     var collectorJob: Job? = null,
-    var stdoutDeltaOffset: Int = 0,
-    var stderrDeltaOffset: Int = 0,
+    /** 输出流已完结（会话退出/断连）。 */
+    var ended: Boolean = false,
+    var deltaOffset: Int = 0,
     var inputSequence: Long = 0L,
     var outputSequence: Long = 0L,
 )
@@ -1158,8 +1189,7 @@ private data class InteractiveWriteResult(
 )
 
 private data class InteractiveReadSnapshot(
-    val stdout: String,
-    val stderr: String,
+    val text: String,
     val sequence: Long,
     val truncated: Boolean,
 )
@@ -1233,8 +1263,7 @@ sealed interface TerminalInteractiveWriteOutcome {
 
 sealed interface TerminalInteractiveReadOutcome {
     data class Success(
-        val stdout: String,
-        val stderr: String,
+        val text: String,
         val mode: TerminalReadMode,
         val sequence: Long,
         val truncated: Boolean,

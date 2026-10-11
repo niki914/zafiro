@@ -30,6 +30,9 @@ class LiquidScreenContentContext internal constructor(
      * 由 `LiquidScreen` 计算并下发，业务经 `liquidScreenBottomPadding` 读取，
      * 不自行读取 WindowInsets，避免多来源漂移。 */
     val bottomPadding: Dp,
+    /** 吸底动作按钮的底边距 = 系统导航栏 inset + 更小的设计间距。
+     * 与内容留白分开：内容末尾留白要能“推”出一屏，按钮则要贴底不上浮。 */
+    val actionButtonBottomPadding: Dp,
 )
 
 /** Collapsible 页的顶栏折叠阈值：与大标题滚走的距离一致（页面大标题淡出同用此值）。 */
@@ -85,6 +88,17 @@ fun liquidScreenBottomPadding(extra: Dp = 0.dp): Dp {
     return LocalLiquidScreenContentContext.current.bottomPadding + extra
 }
 
+/**
+ * 吸底动作按钮的底边距（已含系统导航栏 inset）。
+ *
+ * 不要用 [liquidScreenBottomPadding] 给按钮定位：那是内容留白，比按钮位大，
+ * 按钮会浮在半空。两者的载体都是壳层，别在页面里自己减。
+ */
+@Composable
+fun liquidScreenActionButtonBottomPadding(extra: Dp = 0.dp): Dp {
+    return LocalLiquidScreenContentContext.current.actionButtonBottomPadding + extra
+}
+
 private object PreviewPage : Page {
     override val routeKey: String = "preview"
 }
@@ -93,12 +107,14 @@ private object PreviewPage : Page {
 fun ProvideLiquidScreenContentForPreview(
     topPadding: Dp = 0.dp,
     bottomPadding: Dp = 0.dp,
+    actionButtonBottomPadding: Dp = 24.dp,
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(
         LocalLiquidScreenContentContext provides LiquidScreenContentContext(
             topPadding = topPadding,
             bottomPadding = bottomPadding,
+            actionButtonBottomPadding = actionButtonBottomPadding,
         ),
         LocalNavigationEntry provides NavigationEntry(id = "preview", page = PreviewPage),
         content = content,

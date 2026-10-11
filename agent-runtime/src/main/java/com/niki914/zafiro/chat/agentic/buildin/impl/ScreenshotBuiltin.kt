@@ -29,8 +29,8 @@ class ScreenshotBuiltin : BuiltinTool() {
     override val description: String = """
 Capture the entire device screen as an image so the model can see it.
 Use when the user asks about what is currently on screen, or to verify the visual result of an action.
-Requires Android 11+ and the Zafiro accessibility service; on older Android versions use the terminal
-shell tool with a privileged shell instead. Returns an error code when unavailable or the capture failed.
+Requires Android 11+ and the Zafiro accessibility service; on older Android versions use the shell
+tool with a privileged identity instead. Returns an error code when unavailable or the capture failed.
 Returns an image reference (path, dimensions, size) on success.
     """.trimIndent()
     override val defaultEnabled: Boolean = true
@@ -39,12 +39,12 @@ Returns an image reference (path, dimensions, size) on success.
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             // API 30 之前系统没有无障碍截屏 API，只有特权 shell 的 `screencap` 能拍：
-            // 直接把模型指向 terminal 工具，别让它在这个工具上反复重试。
+            // 直接把模型指向 shell 工具，别让它在这个工具上反复重试。
             return BuiltinToolResult.failure(
                 code = "SCREENSHOT_UNSUPPORTED",
                 message = "This device runs Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}); " +
                         "the accessibility screenshot API requires Android 11 (API 30) or newer.",
-                hint = "Do not retry this tool. Use the 'terminal' tool instead: it needs a privileged shell " +
+                hint = "Do not retry this tool. Use the 'shell' tool instead: it needs a privileged identity " +
                         "(root or shizuku) and can run 'screencap -p <file>', then read that file with 'view_image'."
             )
         }
