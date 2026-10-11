@@ -46,7 +46,7 @@ fun TintLiquidButton(
     darkContentColor: Color = Color.Unspecified,
     lightContentColor: Color = Color.Unspecified,
     contentColor: Color = Color.Unspecified,
-    buttonHeight: Dp = 48.dp,
+    buttonHeight: Dp = 56.dp,
     isLoading: Boolean = false,
 ) {
     val isDarkTheme = LocalAppDarkTheme.current

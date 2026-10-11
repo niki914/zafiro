@@ -38,19 +38,21 @@ interface PermissionScope {
 }
 
 /**
- * 生产实现，零构造参数：协作者自己经注册表取，组合根只负责登记（见 AppServices）。
+ * 生产实现：协作者自己经注册表取，组合根只负责登记（见 AppServices）。
+ *
+ * [accessibilityService] 由组合根传入而不是在这里拼：无障碍服务的类名不受 applicationId
+ * 影响（debug 包名带 `.debug` 后缀，类名仍是 `com.niki914.zafiro.mod.feat.*`），
+ * 只有声明它的 app 模块知道真值，所以用 `ComponentName(context, 类引用)` 构造。
  *
  * 仅主进程可用：ApplicationService 只装在主进程组合根，宿主进程取不到即构造失败——
  * 宿主进程的 packageName 是宿主包（Breeno/XiaoAi），拿它拼 ComponentName 与 shell 命令会错包。
  */
-class PermissionManagerImpl : PermissionManager {
+class PermissionManagerImpl(
+    private val accessibilityService: ComponentName,
+) : PermissionManager {
 
     private val appService: ApplicationService = requireService()
     private val app: Context = appService.getApplication()
-    private val accessibilityService = ComponentName(
-        app.packageName,
-        "${app.packageName}.mod.feat.ZafiroAccessibilityService",
-    )
 
     private val engine = PermissionEngine(
         currentApi = Build.VERSION.SDK_INT,

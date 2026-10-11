@@ -1,4 +1,4 @@
-package com.niki914.zafiro.mcp.host
+package com.niki914.zafiro.mcp.service
 
 import android.util.Base64
 import com.niki914.logging.Logger
@@ -6,7 +6,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.zafiro.settings.model.RuntimeMcpHostConfig
+import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.stream.ParsedToolResult
@@ -37,7 +37,7 @@ class McpToolAdapter(
 
     private val globalToolMutex = Mutex()
 
-    fun buildServer(config: RuntimeMcpHostConfig): Server {
+    fun buildServer(config: RuntimeMcpServiceConfig): Server {
         val server = Server(
             serverInfo = Implementation(
                 name = "zafiro-mcp-server",

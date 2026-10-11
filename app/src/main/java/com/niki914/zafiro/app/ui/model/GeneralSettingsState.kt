@@ -9,13 +9,11 @@ import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
 
 sealed interface GeneralSettingsDialog {
-    data object Language : GeneralSettingsDialog
     data object IdleTimeout : GeneralSettingsDialog
     data object RetryAttempts : GeneralSettingsDialog
 }
 
 data class GeneralSettingsUiState(
-    val languageTag: String = "",
     val floatingBallEnabled: Boolean = false,
     val floatingBallAutoExpand: Boolean = true,
     val residentNotificationEnabled: Boolean = false,
@@ -33,7 +31,6 @@ sealed interface GeneralSettingsIntent {
     data object Load : GeneralSettingsIntent
     data class OpenDialog(val dialog: GeneralSettingsDialog) : GeneralSettingsIntent
     data object DismissDialog : GeneralSettingsIntent
-    data class SelectLanguage(val tag: String) : GeneralSettingsIntent
     data class ToggleFloatingBall(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleFloatingBallAutoExpand(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleResidentNotification(val enabled: Boolean) : GeneralSettingsIntent
@@ -45,11 +42,8 @@ sealed interface GeneralSettingsIntent {
     data class ToggleKeepScreenOn(val enabled: Boolean) : GeneralSettingsIntent
 }
 
-sealed interface GeneralSettingsEffect {
-    data class ApplyApplicationLocales(val languageTag: String) : GeneralSettingsEffect
-}
-
-class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, GeneralSettingsUiState, GeneralSettingsEffect>() {
+class GeneralSettingsViewModel :
+    ComposeMVIViewModel<GeneralSettingsIntent, GeneralSettingsUiState, Nothing>() {
 
     override fun initUiState(): GeneralSettingsUiState = GeneralSettingsUiState()
 
@@ -58,7 +52,6 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
             GeneralSettingsIntent.Load -> loadSettings()
             is GeneralSettingsIntent.OpenDialog -> updateState { copy(activeDialog = intent.dialog) }
             GeneralSettingsIntent.DismissDialog -> updateState { copy(activeDialog = null) }
-            is GeneralSettingsIntent.SelectLanguage -> selectLanguage(intent.tag)
             is GeneralSettingsIntent.ToggleFloatingBall -> toggleFloatingBall(intent.enabled)
             is GeneralSettingsIntent.ToggleFloatingBallAutoExpand ->
                 toggleFloatingBallAutoExpand(intent.enabled)
@@ -76,7 +69,6 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
     private suspend fun loadSettings() {
         updateState { copy(isLoading = true) }
         runCatching {
-            val languageTag = XRepo.languageTag()
             val loadLastConversation = XRepo.loadLastConversationOnStartup()
             val alwaysShowMessageActions = XRepo.alwaysShowMessageActions()
             val voiceAssistantIsolatedSession = XRepo.voiceAssistantIsolatedSession()
@@ -88,7 +80,6 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
             val residentNotificationEnabled = XRepo.residentNotificationEnabled()
             updateState {
                 copy(
-                    languageTag = languageTag,
                     loadLastConversation = loadLastConversation,
                     alwaysShowMessageActions = alwaysShowMessageActions,
                     voiceAssistantIsolatedSession = voiceAssistantIsolatedSession,
@@ -105,17 +96,6 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
             Logger.w(TAG, "load failed ${it.message}")
             updateState { copy(isLoading = false) }
         }
-    }
-
-    private suspend fun selectLanguage(tag: String) {
-        updateState { copy(languageTag = tag, activeDialog = null) }
-        try {
-            XRepo.setLanguageTag(tag)
-        } catch (e: Throwable) {
-            e.printStackTrace()
-            throw e
-        }
-        sendEffect(GeneralSettingsEffect.ApplyApplicationLocales(tag))
     }
 
     /**

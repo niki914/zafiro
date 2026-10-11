@@ -66,6 +66,9 @@ import kotlinx.coroutines.delay
 /** 底部安全距离中，系统导航栏 inset 之外额外留出的设计间距。 */
 private val BottomInsetSpacing = 50.dp
 
+/** 吸底动作按钮距屏幕底边的设计间距。比内容留白小：按钮贴底，内容末尾留白更大。 */
+private val ActionButtonBottomSpacing = 24.dp
+
 @Composable
 fun LiquidScreen(
     state: LiquidScreenState,
@@ -150,6 +153,7 @@ fun LiquidScreen(
             LocalLiquidScreenContentContext provides LiquidScreenContentContext(
                 topPadding = actionBarHeight,
                 bottomPadding = navigationBottom + BottomInsetSpacing,
+                actionButtonBottomPadding = navigationBottom + ActionButtonBottomSpacing,
             ),
             LocalLiquidDialogHostState provides dialogHostState,
             LocalHasActiveDialog provides dialogHostState.hasActiveDialog,

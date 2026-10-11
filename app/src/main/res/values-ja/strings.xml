@@ -158,8 +158,8 @@
     <string name="skill_import_overwrite">上書き</string>
     <string name="skill_import_cancel">キャンセル</string>
     <string name="skill_import_resolve_failed">選択したフォルダにアクセスできません</string>
-    <string name="ui_settings_mcp">MCP Server</string>
-    <string name="ui_settings_mcp_summary">外部 MCP サーバーとツールを連携</string>
+    <string name="ui_settings_mcp">MCP</string>
+    <string name="ui_settings_mcp_summary">外部 MCP とツールを連携</string>
     <string name="ui_settings_takeover">制御ルール</string>
     <string name="ui_settings_takeover_summary">入力に応じてネイティブアシスタントと Zafiro のどちらが応答するかを設定</string>
     <string name="ui_settings_execution_rules">実行ルール</string>
@@ -213,7 +213,7 @@
     <string name="ui_settings_configure_error_required">必須項目を入力してください</string>
     <string name="ui_settings_configure_error_name_duplicate">この設定名は既に存在します。別の名前を試してください</string>
     <string name="ui_settings_configure_error_proxy_invalid">プロキシアドレスが有効な URI ではありません</string>
-    <string name="ui_settings_mcp_config">MCP Server 設定</string>
+    <string name="ui_settings_mcp_config">MCP 設定</string>
 
     <!-- Memory Module -->
     <string name="memory_page_description">メモリを管理します。左右にスワイプして削除、タップして単一のメモリを編集できます。追加された内容は、新しい会話でも Agent に記憶されます。</string>
@@ -345,10 +345,10 @@
     <string name="custom_py_tool_save_dialog_action_close">閉じる</string>
     <string name="custom_py_tool_save_failed">保存失敗：%1$s</string>
 
-    <string name="mcp_page_description">MCP サービスの接続方法と認証情報を設定します。保存後、Zafiro は実行時に利用可能なツールを自動検出します。</string>
-    <string name="mcp_page_empty_description">右上をタップして、最初のサーバーを追加してください。</string>
-    <string name="mcp_loading">保存された MCP サービスを読み込み中...</string>
-    <string name="mcp_editor_title_create">新規 MCP サービス</string>
+    <string name="mcp_page_description">MCP の接続方法と認証情報を設定します。保存後、Zafiro は実行時に利用可能なツールを自動検出します。</string>
+    <string name="mcp_page_empty_description">右上をタップして、最初の MCP サーバーを追加してください。</string>
+    <string name="mcp_loading">保存された MCP サーバーを読み込み中...</string>
+    <string name="mcp_editor_title_create">MCP サーバーを追加</string>
     <string name="mcp_field_name">名前</string>
     <string name="mcp_field_name_hint">例：my-xxx-mcp-server</string>
     <string name="mcp_field_url">URL</string>
@@ -356,7 +356,7 @@
     <string name="mcp_field_enabled">サービスを有効化</string>
     <string name="mcp_field_headers">カスタムリクエストヘッダー</string>
     <string name="mcp_field_headers_hint">{\n  \"Authorization\": \"Bearer xxx\"\n}</string>
-    <string name="mcp_save_action">MCP サービスを保存</string>
+    <string name="mcp_save_action">MCP サーバーを保存</string>
     <string name="mcp_error_name_required">名前を入力してください</string>
     <string name="mcp_error_name_duplicate">名前が既に存在します。変更して再試行してください</string>
     <string name="mcp_error_url_required">URL を入力してください</string>
@@ -432,7 +432,7 @@
     <string name="dialog_confirm_delete">削除</string>
     <string name="ui_settings_section_general">一般</string>
     <string name="ui_settings_general">一般設定</string>
-    <string name="ui_settings_general_summary">言語と起動時の動作</string>
+    <string name="ui_settings_general_summary">起動と実行時の動作</string>
     <string name="ui_settings_general_group_appearance">外観と言語</string>
     <string name="ui_settings_general_group_floating_notification">フローティングと通知</string>
     <string name="ui_settings_general_group_conversation">会話と操作</string>
@@ -479,7 +479,6 @@
     <string name="ui_settings_configure_max_tokens_hint">1 回のリクエストで出力できる最大トークン数。空欄なら既定値を使用します。サーバーが出力長の超過を報告する場合は小さくしてください。</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">256 以上の整数を入力してください</string>
 
-    <string name="ui_settings_appearance">外観</string>
     <string name="ui_theme_mode_system">システムに従う</string>
     <string name="ui_theme_mode_light">ライト</string>
     <string name="ui_theme_mode_dark">ダーク</string>
@@ -536,28 +535,28 @@
     <string name="ui_onboard_preferences_action_skip">スキップ</string>
     <string name="ui_onboard_preferences_toast_denied">権限が許可されていません</string>
 
-    <!-- MCP Host Settings -->
-    <string name="ui_settings_mcp_host">MCP サーバー公開</string>
-    <string name="ui_settings_mcp_host_summary">Zafiro のツールを MCP 経由で外部エージェントに公開</string>
-    <string name="mcp_host_section_service">サービス</string>
-    <string name="mcp_host_section_connection">接続とセキュリティ</string>
-    <string name="mcp_host_section_tools">公開ツール</string>
-    <string name="mcp_host_enable_title">MCP サーバーを有効化</string>
-    <string name="mcp_host_enable_summary">外部クライアントが MCP 経由で本端末を操作することを許可</string>
-    <string name="mcp_host_status_title">状態</string>
-    <string name="mcp_host_status_running">実行中</string>
-    <string name="mcp_host_status_stopped">停止</string>
-    <string name="mcp_host_status_starting">起動中…</string>
-    <string name="mcp_host_status_error">エラー</string>
-    <string name="mcp_host_port_title">ポート</string>
-    <string name="mcp_host_port_placeholder">8791</string>
-    <string name="mcp_host_port_error_invalid">ポートは 1024 から 65535 の間である必要があります</string>
-    <string name="mcp_host_token_title">Bearer トークン</string>
-    <string name="mcp_host_token_placeholder">空白のままにすると認証なし</string>
-    <string name="mcp_host_token_description_empty">認証は不要です</string>
-    <string name="mcp_host_token_description_configured">Authorization: Bearer &lt;token&gt; が必要です</string>
-    <string name="mcp_host_token_show">Bearer トークンを表示</string>
-    <string name="mcp_host_token_hide">Bearer トークンを非表示</string>
+    <!-- MCP Service Settings -->
+    <string name="ui_settings_mcp_service">MCP サービス</string>
+    <string name="ui_settings_mcp_service_summary">Zafiro のツールを MCP 経由で外部エージェントに公開</string>
+    <string name="mcp_service_section_service">サービス</string>
+    <string name="mcp_service_section_connection">接続とセキュリティ</string>
+    <string name="mcp_service_section_tools">公開ツール</string>
+    <string name="mcp_service_enable_title">MCP サービスを有効化</string>
+    <string name="mcp_service_enable_summary">外部エージェントが MCP 経由で Zafiro のツールにアクセスすることを許可</string>
+    <string name="mcp_service_status_title">状態</string>
+    <string name="mcp_service_status_running">実行中</string>
+    <string name="mcp_service_status_stopped">停止</string>
+    <string name="mcp_service_status_starting">起動中…</string>
+    <string name="mcp_service_status_error">エラー</string>
+    <string name="mcp_service_port_title">ポート</string>
+    <string name="mcp_service_port_placeholder">8791</string>
+    <string name="mcp_service_port_error_invalid">ポートは 1024 から 65535 の間である必要があります</string>
+    <string name="mcp_service_token_title">Bearer トークン</string>
+    <string name="mcp_service_token_placeholder">空白のままにすると認証なし</string>
+    <string name="mcp_service_token_description_empty">認証は不要です</string>
+    <string name="mcp_service_token_description_configured">Authorization: Bearer &lt;token&gt; が必要です</string>
+    <string name="mcp_service_token_show">Bearer トークンを表示</string>
+    <string name="mcp_service_token_hide">Bearer トークンを非表示</string>
 
     <!-- Crash Protection -->
     <string name="crash_dialog_title">前回の実行時に予期せず終了しました</string>

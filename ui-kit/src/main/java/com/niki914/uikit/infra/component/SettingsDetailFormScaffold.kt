@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
+import com.niki914.uikit.infra.liquidScreenActionButtonBottomPadding
 import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 
@@ -53,7 +54,7 @@ private const val SettledFramesToStop = 3
  * @param contentBottomPadding 滚动内容区底部安全距离。null（默认）走壳层下发的
  * `liquidScreenBottomPadding()`；非空则覆盖重写。
  * @param actionButtonBottomPadding 吸底按钮的底边距。null（默认）走壳层下发的
- * `liquidScreenBottomPadding()`；非空则覆盖重写。与 `contentBottomPadding`
+ * `liquidScreenActionButtonBottomPadding()`；非空则覆盖重写。与 `contentBottomPadding`
  * 分开暴露：内容区预留与按钮位置是两个独立诉求。
  */
 @Composable
@@ -136,7 +137,7 @@ fun SettingsDetailFormScaffold(
 
     val resolvedContentBottomPadding = contentBottomPadding ?: liquidScreenBottomPadding()
     val resolvedActionButtonBottomPadding =
-        actionButtonBottomPadding ?: liquidScreenBottomPadding()
+        actionButtonBottomPadding ?: liquidScreenActionButtonBottomPadding()
     val contentModifier = if (onBackgroundTap != null) {
         Modifier.pointerInput(onBackgroundTap) {
             detectTapGestures(onTap = { onBackgroundTap() })
@@ -210,7 +211,7 @@ fun SettingsDetailFormScaffold(
                     text = actionText,
                     enabled = actionEnabled,
                     onClick = onActionClick,
-                    buttonHeight = 56.dp,
+                    buttonHeight = SettingsDetailPageDefaults.ActionButtonReservedHeight,
                     darkContainerColor = actionButtonDarkContainerColor,
                     lightContainerColor = actionButtonLightContainerColor,
                     darkContentColor = actionButtonDarkContentColor,
@@ -221,7 +222,7 @@ fun SettingsDetailFormScaffold(
                     text = secondaryActionText,
                     enabled = secondaryActionEnabled,
                     onClick = onSecondaryActionClick,
-                    buttonHeight = 56.dp,
+                    buttonHeight = SettingsDetailPageDefaults.ActionButtonReservedHeight,
                     darkContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     lightContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -233,7 +234,7 @@ fun SettingsDetailFormScaffold(
                 text = actionText,
                 enabled = actionEnabled,
                 onClick = onActionClick,
-                buttonHeight = 56.dp,
+                buttonHeight = SettingsDetailPageDefaults.ActionButtonReservedHeight,
                 darkContainerColor = actionButtonDarkContainerColor,
                 lightContainerColor = actionButtonLightContainerColor,
                 darkContentColor = actionButtonDarkContentColor,

@@ -1,12 +1,10 @@
 package com.niki914.zafiro.app.ui.content
 
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
-import androidx.core.os.LocaleListCompat
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
 import com.niki914.uikit.infra.component.settings.SettingsRowSpec
@@ -16,18 +14,13 @@ import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.GeneralSettingsDialog
-import com.niki914.zafiro.app.ui.model.GeneralSettingsEffect
 import com.niki914.zafiro.app.ui.model.GeneralSettingsIntent
 import com.niki914.zafiro.app.ui.model.GeneralSettingsViewModel
-import com.niki914.zafiro.app.ui.nav.ThemeSettingsPage
-import com.niki914.zafiro.app.ui.nav.ZafiroPage
 
 /**
- * General Settings：外观与语言、悬浮与通知、对话与交互、运行与控制 4 个分组。
+ * General Settings：悬浮与通知、对话与交互、运行与控制 3 个分组。
  * 容器使用 SettingsSpecPageContent + GroupedCard，弹窗状态由 ViewModel 驱动。
  */
-private const val LANGUAGE_ROW_ID = "general.language"
-private const val APPEARANCE_ROW_ID = "general.appearance"
 private const val FLOATING_BALL_ROW_ID = "general.floating_ball"
 private const val FLOATING_BALL_AUTO_EXPAND_ROW_ID = "general.floating_ball_auto_expand"
 private const val RESIDENT_NOTIFICATION_ROW_ID = "general.resident_notification"
@@ -38,39 +31,8 @@ private const val IDLE_TIMEOUT_ROW_ID = "general.idle_timeout"
 private const val RETRY_ATTEMPTS_ROW_ID = "general.retry_attempts"
 private const val KEEP_SCREEN_ON_ROW_ID = "general.keep_screen_on"
 
-private const val LANGUAGE_TAG_ZH_CN = "zh-CN"
-private const val LANGUAGE_TAG_ZH_TW = "zh-TW"
-private const val LANGUAGE_TAG_EN = "en"
-private const val LANGUAGE_TAG_ES = "es"
-private const val LANGUAGE_TAG_JA = "ja"
-private const val LANGUAGE_TAG_RU = "ru"
-
-data class LanguageOption(
-    /** BCP-47 tag；空串 = 跟随系统。 */
-    val tag: String,
-    /** 选项自身语言的显示名（跟随系统项用 res）。 */
-    val label: String,
-)
-
-@Composable
-private fun languageOptions(): List<LanguageOption> {
-    return listOf(
-        LanguageOption(
-            tag = "",
-            label = stringResource(R.string.ui_settings_general_language_follow_system)
-        ),
-        LanguageOption(tag = LANGUAGE_TAG_ZH_CN, label = "简体中文"),
-        LanguageOption(tag = LANGUAGE_TAG_ZH_TW, label = "繁體中文"),
-        LanguageOption(tag = LANGUAGE_TAG_EN, label = "English"),
-        LanguageOption(tag = LANGUAGE_TAG_ES, label = "Español"),
-        LanguageOption(tag = LANGUAGE_TAG_JA, label = "日本語"),
-        LanguageOption(tag = LANGUAGE_TAG_RU, label = "Русский"),
-    )
-}
-
 @Composable
 fun GeneralSettingsContent(
-    onPush: (ZafiroPage) -> Unit = {},
     viewModel: GeneralSettingsViewModel = pageViewModel(),
 ) {
     val uiState by viewModel.uiStateFlow.collectAsState()
@@ -79,41 +41,10 @@ fun GeneralSettingsContent(
         viewModel.sendIntent(GeneralSettingsIntent.Load)
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.uiEffect.collect { effect ->
-            when (effect) {
-                is GeneralSettingsEffect.ApplyApplicationLocales -> {
-                    AppCompatDelegate.setApplicationLocales(
-                        if (effect.languageTag.isBlank()) {
-                            LocaleListCompat.getEmptyLocaleList()
-                        } else {
-                            LocaleListCompat.forLanguageTags(effect.languageTag)
-                        }
-                    )
-                }
-            }
-        }
-    }
-
     val spec = SettingsPageSpec(
         description = null,
         sections = listOf(
-            // 分组 1：外观与语言
-            SettingsSectionSpec(
-                title = stringResource(R.string.ui_settings_general_group_appearance),
-                layout = SettingsSectionLayout.GroupedCard,
-                rows = listOf(
-                    SettingsRowSpec.Navigation(
-                        id = LANGUAGE_ROW_ID,
-                        title = stringResource(R.string.ui_settings_general_language),
-                    ),
-                    SettingsRowSpec.Navigation(
-                        id = APPEARANCE_ROW_ID,
-                        title = stringResource(R.string.ui_settings_appearance),
-                    ),
-                ),
-            ),
-            // 分组 2：悬浮与通知
+            // 分组 1：悬浮与通知
             SettingsSectionSpec(
                 title = stringResource(R.string.ui_settings_general_group_floating_notification),
                 layout = SettingsSectionLayout.GroupedCard,
@@ -192,8 +123,6 @@ fun GeneralSettingsContent(
             when (action) {
                 is SettingsRowAction.Navigate ->
                     when (action.id) {
-                        LANGUAGE_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.Language))
-                        APPEARANCE_ROW_ID -> onPush(ThemeSettingsPage)
                         IDLE_TIMEOUT_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.IdleTimeout))
                         RETRY_ATTEMPTS_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.RetryAttempts))
                     }
@@ -211,19 +140,6 @@ fun GeneralSettingsContent(
 
                 else -> Unit
             }
-        },
-    )
-
-    SingleChoiceLiquidDialog(
-        visible = uiState.activeDialog == GeneralSettingsDialog.Language,
-        onDismissRequest = { viewModel.sendIntent(GeneralSettingsIntent.DismissDialog) },
-        title = stringResource(R.string.ui_settings_general_language),
-        options = languageOptions(),
-        selectedId = uiState.languageTag,
-        optionId = LanguageOption::tag,
-        optionLabel = LanguageOption::label,
-        onSelect = { option ->
-            viewModel.sendIntent(GeneralSettingsIntent.SelectLanguage(option.tag))
         },
     )
 

@@ -60,14 +60,23 @@ data object StartupPage : ZafiroPage {
     override val showBlurLayer: Boolean = false
 }
 
-data object ProviderPickPage : ZafiroPage {
-    override val routeKey: String = "provider-pick"
-    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_onboard_provider_pick_title)
+data object OnboardingThemePage : ZafiroPage {
+    override val routeKey: String = "onboarding-theme"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_general_group_appearance)
 
-    // onboarding 首次流程不可返回 StartupPage：隐藏左上角按钮 + 拦截返回键。
+    // onboarding 首次流程单向推进：隐藏左上角按钮 + 拦截返回键。
     override val leftAction: TopBarActionSpec? = null
     override val rightAction: TopBarActionSpec? = null
     override val backEnabled: Boolean = false
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}
+
+data object ProviderPickPage : ZafiroPage {
+    override val routeKey: String = "provider-pick"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_onboard_provider_pick_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
 }
 
 data object SettingsProviderPickPage : ZafiroPage {
@@ -138,15 +147,6 @@ data object ConversationHistoryPage : ZafiroPage {
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_conversation_history_title)
     override val leftAction: TopBarActionSpec? = null
     override val rightAction: TopBarActionSpec? = null
-}
-
-data object ThemeSettingsPage : ZafiroPage {
-    override val routeKey: String = "theme-settings"
-    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_appearance)
-    override val leftAction: TopBarActionSpec =
-        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
-    override val rightAction: TopBarActionSpec? = null
-    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
 }
 
 data object SettingsHomePage : ZafiroPage {

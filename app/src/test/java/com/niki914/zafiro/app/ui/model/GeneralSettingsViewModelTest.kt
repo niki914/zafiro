@@ -15,11 +15,6 @@ import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.ServiceRegistry
 import com.niki914.zafiro.service.installService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -33,6 +28,7 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
+// 保护：通用设置的加载与开关落盘；权限未授时开关不亮、不写仓；弹窗开关状态。
 @OptIn(ExperimentalCoroutinesApi::class)
 class GeneralSettingsViewModelTest {
 
@@ -69,7 +65,6 @@ class GeneralSettingsViewModelTest {
 
     @Test
     fun load_populatesSettingsFromRepo() = runTest {
-        XRepo.setLanguageTag("zh-CN")
         XRepo.setLoadLastConversationOnStartup(true)
         XRepo.setAlwaysShowMessageActions(false)
         XRepo.setVoiceAssistantIsolatedSession(false)
@@ -84,7 +79,6 @@ class GeneralSettingsViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiStateFlow.value
-        assertEquals("zh-CN", state.languageTag)
         assertTrue(state.loadLastConversation)
         assertFalse(state.alwaysShowMessageActions)
         assertFalse(state.voiceAssistantIsolatedSession)
@@ -101,10 +95,6 @@ class GeneralSettingsViewModelTest {
     fun dialogState_openAndDismissWorkAsExpected() = runTest {
         val viewModel = GeneralSettingsViewModel()
 
-        viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.Language))
-        advanceUntilIdle()
-        assertEquals(GeneralSettingsDialog.Language, viewModel.uiStateFlow.value.activeDialog)
-
         viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.IdleTimeout))
         advanceUntilIdle()
         assertEquals(GeneralSettingsDialog.IdleTimeout, viewModel.uiStateFlow.value.activeDialog)
@@ -112,24 +102,6 @@ class GeneralSettingsViewModelTest {
         viewModel.sendIntent(GeneralSettingsIntent.DismissDialog)
         advanceUntilIdle()
         assertNull(viewModel.uiStateFlow.value.activeDialog)
-    }
-
-    @Test
-    fun selectLanguage_updatesStateRepoAndEmitsEffect() = runTest {
-        val viewModel = GeneralSettingsViewModel()
-        val effects = collectEffects(viewModel, count = 1)
-
-        viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.Language))
-        viewModel.sendIntent(GeneralSettingsIntent.SelectLanguage("en"))
-        advanceUntilIdle()
-
-        assertEquals("en", viewModel.uiStateFlow.value.languageTag)
-        assertNull(viewModel.uiStateFlow.value.activeDialog)
-        assertEquals("en", XRepo.languageTag())
-        assertEquals(
-            listOf(GeneralSettingsEffect.ApplyApplicationLocales("en")),
-            effects,
-        )
     }
 
     @Test
@@ -157,13 +129,11 @@ class GeneralSettingsViewModelTest {
     fun toggleFloatingBall_whenPermissionMissing_staysOffAndEmitsNoEffect() = runTest {
         installPermission(PermissionState.DENIED_BY_USER)
         val viewModel = GeneralSettingsViewModel()
-        val effects = collectEffects(viewModel, count = 1)
 
         viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBall(true))
         advanceUntilIdle()
 
-        // 申请在 ViewModel 内完成，UI 层不再参与，所以既没有 effect，也不会亮开关
-        assertTrue(effects.isEmpty())
+        // 申请在 ViewModel 内完成，UI 层不参与；没授上则开关不亮、不落盘
         assertFalse(viewModel.uiStateFlow.value.floatingBallEnabled)
         assertFalse(XRepo.floatingBallEnabled())
     }
@@ -193,12 +163,10 @@ class GeneralSettingsViewModelTest {
     fun toggleResidentNotification_whenPermissionMissing_staysOffAndEmitsNoEffect() = runTest {
         installPermission(PermissionState.DENIED_BY_USER)
         val viewModel = GeneralSettingsViewModel()
-        val effects = collectEffects(viewModel, count = 1)
 
         viewModel.sendIntent(GeneralSettingsIntent.ToggleResidentNotification(true))
         advanceUntilIdle()
 
-        assertTrue(effects.isEmpty())
         assertFalse(viewModel.uiStateFlow.value.residentNotificationEnabled)
         assertFalse(XRepo.residentNotificationEnabled())
     }
@@ -230,17 +198,6 @@ class GeneralSettingsViewModelTest {
 
         assertFalse(viewModel.uiStateFlow.value.voiceAssistantIsolatedSession)
         assertFalse(XRepo.voiceAssistantIsolatedSession())
-    }
-
-    private fun TestScope.collectEffects(
-        viewModel: GeneralSettingsViewModel,
-        count: Int,
-    ): MutableList<GeneralSettingsEffect> {
-        val effects = mutableListOf<GeneralSettingsEffect>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.uiEffect.take(count).toList(effects)
-        }
-        return effects
     }
 
     private class FakePermissionManager(

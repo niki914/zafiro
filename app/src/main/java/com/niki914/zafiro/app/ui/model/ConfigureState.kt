@@ -222,6 +222,8 @@ class ConfigureViewModel internal constructor(
         private const val CATALOG_DEBOUNCE_MS = 50L
     }
 
+    /** 已初始化过的入参；重进本页（返回上一页再回来）不重置已填内容。 */
+    private var initializedKey: Triple<ConfigureScene, String?, String?>? = null
     /** 在途的目录拉取（防抖 + 可取消）。 */
     private var catalogFetchJob: Job? = null
     /** 上次已拉取的三元组（endpoint/apiKey/protocol），去重用。 */
@@ -300,6 +302,10 @@ class ConfigureViewModel internal constructor(
         initialProviderId: String?,
         configId: String?,
     ) {
+        // 页面离开组合后返回会重新触发 Initialize；同一个 VM（= 同一条导航条目）
+        // 只认第一次，否则 onboarding 填好的草稿会被抹掉、保存时还会撞上重名校验。
+        val key = Triple(scene, initialProviderId, configId)
+        if (key == initializedKey) return
         // 拉取三元组跨初始化重置：不同配置页实例互不污染
         lastCatalogKey = null
         catalogFetchJob?.cancel()
@@ -318,6 +324,8 @@ class ConfigureViewModel internal constructor(
                     // configId 缺省时编辑当前生效配置；不存在则回落新建
                     initializeEdit(document, configId ?: document.activeId)
             }
+            // 成功才登记：读取失败时重进本页仍可重试
+            initializedKey = key
             // 进页拉一次（Key 为空时内部短路，不发请求）
             scheduleCatalogFetch(immediate = true)
         } catch (throwable: Throwable) {
