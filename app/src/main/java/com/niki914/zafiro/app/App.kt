@@ -13,6 +13,7 @@ import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.debug.DebugLogFile
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
+import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.McpHostService
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
@@ -53,6 +54,13 @@ class App : Application() {
         RuntimeEnvironment.install(createAppRuntimeBridge())
         // 依赖装配只发生在 AppServices（主进程组合根）
         AppServices.install(this)
+        // 会话列表的排序时间只在两个边界刷新：等待审批、回合结束（见 trackActivity）
+        val mainAgent = requireService<AgentManager>().main
+        ConversationPersister.trackActivity(
+            scope = applicationScope,
+            status = mainAgent.status,
+            conversationId = { mainAgent.conversation.value.id?.value },
+        )
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         DynamicColors.applyToActivitiesIfAvailable(this)
         applicationScope.launch {

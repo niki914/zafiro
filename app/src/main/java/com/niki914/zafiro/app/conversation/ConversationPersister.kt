@@ -3,10 +3,12 @@ package com.niki914.zafiro.app.conversation
 import com.niki914.logging.Logger
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.ConversationEntry
+import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.chat.LLMController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
@@ -63,6 +65,33 @@ object ConversationPersister {
         persistedCountBySession.clear()
     }
 
+    /**
+     * 生命周期边界刷新：进入等待审批、或回合结束落回 [AgentState.Idle] 时更新会话的
+     * 最近活跃时间，把它顶到列表最前。
+     *
+     * - 生成中的增量落盘不碰时间戳（多会话并发时列表会上下跳）；
+     * - 不带 [AgentState.Idle.lastOutcome] 的空闲态不算边界：启动、载入会话、
+     *   重命名都会落回空闲，否则打开一个旧会话就会把它顶到最前。
+     */
+    fun trackActivity(
+        scope: CoroutineScope,
+        status: Flow<AgentState>,
+        conversationId: () -> String?,
+    ) {
+        scope.launch {
+            status.distinctUntilChanged().collect { state ->
+                val boundary = when (state) {
+                    is AgentState.WaitingApproval -> true
+                    is AgentState.Idle -> state.lastOutcome != null
+                    else -> false
+                }
+                if (boundary) {
+                    conversationId()?.let { ConversationRepo.touchConversation(it) }
+                }
+            }
+        }
+    }
+
     /** 单条快照的增量落盘（internal 供测试直接调用，绕开流接线与 Room IO 时序）。 */
     internal suspend fun persistNow(conversation: Conversation) {
         val sessionId = conversation.id
@@ -86,7 +115,6 @@ object ConversationPersister {
             conversationId = sessionId,
             entries = newEntries,
             leafId = conversation.leafId ?: newEntries.last().id,
-            updatedAt = System.currentTimeMillis(),
             lastMessagePreview = ConversationFormatter.previewFromMessages(history),
             turnCount = history.size,
         )

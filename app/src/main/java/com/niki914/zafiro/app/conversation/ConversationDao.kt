@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import com.niki914.logging.Logger
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ConversationDao {
@@ -14,18 +15,7 @@ interface ConversationDao {
     }
 
     @Query("SELECT * FROM conversation ORDER BY updated_at DESC")
-    suspend fun listConversationsQuery(): List<ConversationEntity>
-
-    suspend fun listConversations(): List<ConversationEntity> {
-        val startedAtMs = System.currentTimeMillis()
-        return listConversationsQuery().also { rows ->
-            Logger.i(
-                LOG_TAG,
-                "query listConversations rows=${rows.size} " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-            )
-        }
-    }
+    fun observeConversations(): Flow<List<ConversationEntity>>
 
     @Query("SELECT * FROM conversation WHERE id = :id LIMIT 1")
     suspend fun getConversationQuery(id: String): ConversationEntity?
@@ -76,17 +66,21 @@ interface ConversationDao {
     @Query(
         """
         UPDATE conversation
-        SET updated_at = :updatedAt,
-            last_message_preview = :lastMessagePreview,
+        SET last_message_preview = :lastMessagePreview,
             turn_count = :turnCount
         WHERE id = :conversationId
         """,
     )
-    suspend fun updateConversationMetadata(
+    suspend fun updateConversationProgress(
         conversationId: String,
-        updatedAt: Long,
         lastMessagePreview: String,
         turnCount: Int,
+    ): Int
+
+    @Query("UPDATE conversation SET updated_at = :updatedAt WHERE id = :conversationId")
+    suspend fun updateConversationUpdatedAt(
+        conversationId: String,
+        updatedAt: Long,
     ): Int
 
     @Query("UPDATE conversation SET leaf_id = :leafId WHERE id = :conversationId")
@@ -109,22 +103,24 @@ interface ConversationDao {
     suspend fun renameConversation(id: String, title: String): Int
 
     /**
-     * 消息增量落盘原子化（问题 5 修复）：entry insert + leaf + metadata
+     * 消息增量落盘原子化（问题 5 修复）：entry insert + leaf + 进度
      * 一个事务完成——进程死亡不会留下「entries 已插入但 leaf_id 陈旧」
      * 的不可达节点中间态。
+     *
+     * 只写进度不写 `updated_at`（防多会话并发时列表上下跳动）；时间戳由
+     * [updateConversationUpdatedAt] 在会话的生命周期边界单独刷新。
      */
     @Transaction
     suspend fun appendEntriesTransaction(
         conversationId: String,
         entries: List<ConversationEntryEntity>,
         leafId: String,
-        updatedAt: Long,
         lastMessagePreview: String,
         turnCount: Int,
     ) {
         insertEntries(entries)
         updateLeafId(conversationId, leafId)
-        updateConversationMetadata(conversationId, updatedAt, lastMessagePreview, turnCount)
+        updateConversationProgress(conversationId, lastMessagePreview, turnCount)
     }
 
     /** fork/regenerate 的 conversation row + entries 一个事务完成（问题 5 修复）。 */

@@ -7,7 +7,10 @@ import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.zafiro.repo.PinnedConversation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -27,7 +30,11 @@ class ConversationHistoryViewModelTest {
 
     /** 记录式依赖：删除会同步改动内存列表，便于断言删除后的重载结果。 */
     private class FakeDeps {
-        var conversations: List<ConversationSummary> = emptyList()
+        private val conversationsFlow = MutableStateFlow<List<ConversationSummary>>(emptyList())
+        var conversations: List<ConversationSummary>
+            get() = conversationsFlow.value
+            set(value) { conversationsFlow.value = value }
+
         var pinnedConversations: List<PinnedConversation> = emptyList()
         val deletedIds = mutableListOf<String>()
         val renamed = mutableListOf<Pair<String, String>>()
@@ -38,7 +45,12 @@ class ConversationHistoryViewModelTest {
 
         fun toDependencies(): ConversationHistoryViewModelDependencies =
             ConversationHistoryViewModelDependencies(
-                loadConversations = { loadError?.let { throw it } ?: conversations },
+                observeConversations = {
+                    flow {
+                        loadError?.let { throw it }
+                        emitAll(conversationsFlow)
+                    }
+                },
                 loadPinnedConversations = { pinnedConversations },
                 deleteConversation = { id ->
                     deleteError?.let { throw it }
@@ -78,6 +90,22 @@ class ConversationHistoryViewModelTest {
         val state = viewModel.uiStateFlow.value
         assertFalse(state.isLoading)
         assertEquals(listOf("a"), state.conversations.map { it.id })
+    }
+
+    @Test
+    fun observeConversations_automaticallyUpdatesUiWhenSourceEmits() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("a"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        advanceUntilIdle()
+        assertEquals(listOf("a"), viewModel.uiStateFlow.value.conversations.map { it.id })
+
+        // 底层 Flow 产生新发射（如后台落盘或外部删除/重命名）：UI 自动更新，无须再发 Load
+        deps.conversations = listOf(summary("b"), summary("a"))
+        advanceUntilIdle()
+        assertEquals(listOf("b", "a"), viewModel.uiStateFlow.value.conversations.map { it.id })
     }
 
     @Test

@@ -10,6 +10,8 @@ import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.text.FilesBlock
 import com.niki914.zafiro.app.R
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
@@ -76,14 +78,9 @@ object ConversationRepo {
         }
     }
 
-    suspend fun listConversations(): List<ConversationSummary> {
-        val startedAtMs = System.currentTimeMillis()
-        return dao().listConversations().map { it.toSummary() }.also { summaries ->
-            Logger.i(
-                LOG_TAG,
-                "list conversations count=${summaries.size} " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-            )
+    fun observeConversations(): Flow<List<ConversationSummary>> {
+        return dao().observeConversations().map { rows ->
+            rows.map { it.toSummary() }
         }
     }
 
@@ -309,7 +306,6 @@ object ConversationRepo {
         conversationId: String,
         entries: List<ConversationEntry>,
         leafId: String,
-        updatedAt: Long,
         lastMessagePreview: String,
         turnCount: Int,
     ) {
@@ -318,30 +314,20 @@ object ConversationRepo {
             conversationId = conversationId,
             entries = entries.map { it.toEntity(conversationId) },
             leafId = leafId,
-            updatedAt = updatedAt,
             lastMessagePreview = lastMessagePreview,
             turnCount = turnCount,
         )
     }
+
+    suspend fun touchConversation(
+        conversationId: String,
+        now: Long = System.currentTimeMillis(),
+    ): Boolean = dao().updateConversationUpdatedAt(conversationId, now) > 0
 
     suspend fun countEntries(conversationId: String): Int = dao().countEntries(conversationId)
 
     suspend fun updateLeafId(conversationId: String, leafId: String) {
         dao().updateLeafId(conversationId, leafId)
-    }
-
-    suspend fun updateConversationMetadata(
-        conversationId: String,
-        updatedAt: Long,
-        lastMessagePreview: String,
-        turnCount: Int,
-    ) {
-        dao().updateConversationMetadata(
-            conversationId = conversationId,
-            updatedAt = updatedAt,
-            lastMessagePreview = lastMessagePreview,
-            turnCount = turnCount,
-        )
     }
 
     /**
