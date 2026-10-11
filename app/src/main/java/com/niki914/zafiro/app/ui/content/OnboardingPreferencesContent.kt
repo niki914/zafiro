@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.Notifications
@@ -17,7 +19,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +39,7 @@ import com.niki914.zafiro.app.ui.model.OnboardingPreferencesUiState
 
 /**
  * onboarding 权限配置页：四项权限（点击授权）+ 安全规则（可增删）。
- * 权限行与文件权限同一形态：右侧只显示「已开启 / 点击授权」，点击即申请，不用开关。
+ * 权限行右侧用勾/叉图标表示状态，点击即申请，不用开关。
  * 底部动作由 [SettingsDetailFormScaffold] 提供，固定在框架内、不随内容滚动。
  */
 @Composable
@@ -166,7 +167,7 @@ fun OnboardingPreferencesContent(
     )
 }
 
-/** 点击授权型设置项：左圆形图标 + 右侧「已开启 / 点击授权」，点击即申请。 */
+/** 点击授权型设置项：左圆形图标 + 右侧勾/叉状态图标，点击即申请。 */
 @Composable
 private fun PermissionRow(
     icon: ImageVector,
@@ -182,16 +183,17 @@ private fun PermissionRow(
         enabled = enabled,
         leadingContent = { RowLeadingIcon(icon) },
         trailingContent = {
-            Text(
-                text = stringResource(
+            Icon(
+                imageVector = if (granted) Icons.Rounded.Check else Icons.Rounded.Close,
+                contentDescription = stringResource(
                     if (granted) {
                         R.string.ui_onboard_preferences_granted
                     } else {
                         R.string.ui_onboard_preferences_grant_action
                     }
                 ),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp),
             )
         },
         onClick = onGrantClick,

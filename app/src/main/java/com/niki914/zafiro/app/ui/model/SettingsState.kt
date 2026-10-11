@@ -72,6 +72,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
         SettingsSectionDefinition(
             titleRes = R.string.ui_settings_section_general,
             groups = listOf(
+                ZafiroSettingsGroup.Theme,
                 ZafiroSettingsGroup.GeneralSettings,
             ),
         ),
@@ -81,7 +82,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
                 ZafiroSettingsGroup.Tools,
                 ZafiroSettingsGroup.Skills,
                 ZafiroSettingsGroup.Mcp,
-                ZafiroSettingsGroup.McpHost,
+                ZafiroSettingsGroup.McpService,
             ),
         ),
         SettingsSectionDefinition(

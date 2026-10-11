@@ -5,7 +5,7 @@ import com.niki914.zafiro.app.R
 
 enum class ZafiroSettingsGroup(
     @StringRes val titleRes: Int,
-    @StringRes val summaryRes: Int,
+    @StringRes val summaryRes: Int?,
     val routeSuffix: String,
 ) {
     ModelConfig(
@@ -33,10 +33,10 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_mcp_summary,
         routeSuffix = "mcp",
     ),
-    McpHost(
-        titleRes = R.string.ui_settings_mcp_host,
-        summaryRes = R.string.ui_settings_mcp_host_summary,
-        routeSuffix = "mcp-host",
+    McpService(
+        titleRes = R.string.ui_settings_mcp_service,
+        summaryRes = R.string.ui_settings_mcp_service_summary,
+        routeSuffix = "mcp-service",
     ),
     Takeover(
         titleRes = R.string.ui_settings_takeover,
@@ -47,6 +47,11 @@ enum class ZafiroSettingsGroup(
         titleRes = R.string.ui_settings_execution_rules,
         summaryRes = R.string.ui_settings_execution_rules_summary,
         routeSuffix = "execution-rules",
+    ),
+    Theme(
+        titleRes = R.string.ui_settings_general_group_appearance,
+        summaryRes = null,
+        routeSuffix = "theme",
     ),
     GeneralSettings(
         titleRes = R.string.ui_settings_general,

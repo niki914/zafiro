@@ -1,9 +1,9 @@
-package com.niki914.zafiro.mcp.host
+package com.niki914.zafiro.mcp.service
 
 import com.niki914.logging.Logger
-import com.niki914.zafiro.api.McpHostService
-import com.niki914.zafiro.api.McpHostStatus
-import com.niki914.zafiro.settings.model.RuntimeMcpHostConfig
+import com.niki914.zafiro.api.McpService
+import com.niki914.zafiro.api.McpServiceStatus
+import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCallPipeline
@@ -22,20 +22,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class McpHostServiceImpl(
+class McpServiceImpl(
     private val toolAdapter: McpToolAdapter = McpToolAdapter(),
-    private val configProvider: suspend () -> RuntimeMcpHostConfig,
-) : McpHostService {
+    private val configProvider: suspend () -> RuntimeMcpServiceConfig,
+) : McpService {
 
     private companion object {
-        private const val LOG_TAG = "niki914_zafiro_McpHostService"
+        private const val LOG_TAG = "niki914_zafiro_McpService"
     }
 
     private val lifecycleMutex = Mutex()
     private var serverEngine: EmbeddedServer<*, *>? = null
 
-    private val _status = MutableStateFlow<McpHostStatus>(McpHostStatus.Stopped)
-    override val status: StateFlow<McpHostStatus> = _status.asStateFlow()
+    private val _status = MutableStateFlow<McpServiceStatus>(McpServiceStatus.Stopped)
+    override val status: StateFlow<McpServiceStatus> = _status.asStateFlow()
 
     override suspend fun start() {
         lifecycleMutex.withLock {
@@ -68,15 +68,15 @@ class McpHostServiceImpl(
         }
     }
 
-    private fun startInternal(config: RuntimeMcpHostConfig) {
-        _status.value = McpHostStatus.Starting
+    private fun startInternal(config: RuntimeMcpServiceConfig) {
+        _status.value = McpServiceStatus.Starting
         Logger.i(LOG_TAG, "starting MCP server on ${config.host}:${config.port} (tokenConfigured=${config.bearerToken.isNotBlank()})")
         // Ktor 引擎的 accept 循环跑在自己的 CoroutineScope 里，绑定失败会绕过这里的 try/catch
         // 变成未捕获异常，落到 Thread.uncaughtExceptionHandler（release 下是 CrashRecorder）直接杀进程。
         val engineScope = CoroutineScope(
             CoroutineExceptionHandler { _, throwable ->
                 Logger.e(LOG_TAG, "MCP server engine failed: ${throwable.message}", throwable)
-                _status.value = McpHostStatus.Error(
+                _status.value = McpServiceStatus.Error(
                     message = throwable.message ?: "MCP server engine failed",
                     stackTrace = throwable.stackTraceToString(),
                 )
@@ -112,12 +112,12 @@ class McpHostServiceImpl(
             }
             engine.start(wait = false)
             serverEngine = engine
-            _status.value = McpHostStatus.Running(config.host, config.port)
+            _status.value = McpServiceStatus.Running(config.host, config.port)
             Logger.i(LOG_TAG, "MCP server successfully started and listening on http://${config.host}:${config.port}/mcp")
         } catch (e: Exception) {
             val cause = e.cause ?: e
             Logger.e(LOG_TAG, "failed to start MCP server: ${cause.message}", cause)
-            _status.value = McpHostStatus.Error(
+            _status.value = McpServiceStatus.Error(
                 message = cause.message ?: "Failed to start server",
                 stackTrace = cause.stackTraceToString(),
             )
@@ -134,7 +134,7 @@ class McpHostServiceImpl(
                 Logger.w(LOG_TAG, "error stopping server engine: ${e.message}")
             }
             serverEngine = null
-            _status.value = McpHostStatus.Stopped
+            _status.value = McpServiceStatus.Stopped
             Logger.i(LOG_TAG, "MCP server stopped")
         }
     }

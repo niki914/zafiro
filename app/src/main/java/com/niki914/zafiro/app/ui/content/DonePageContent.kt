@@ -22,7 +22,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextDecoration
+import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
 import com.niki914.uikit.infra.component.TintLiquidButton
+import com.niki914.uikit.infra.liquidScreenActionButtonBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.zafiro.app.R
 
@@ -35,7 +37,12 @@ fun DonePageContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(top = liquidScreenTopPadding())
-            .padding(horizontal = 24.dp, vertical = 24.dp),
+            .padding(
+                start = SettingsDetailPageDefaults.HorizontalPadding,
+                end = SettingsDetailPageDefaults.HorizontalPadding,
+                top = 24.dp,
+                bottom = liquidScreenActionButtonBottomPadding(),
+            ),
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

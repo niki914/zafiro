@@ -1,3 +1,5 @@
+// 保护：配置页 ViewModel 的状态计算——初始化只认第一次（重进页面不丢草稿）、
+// 保存校验与重名拦截的落点、目录扫描的覆盖/保留策略。
 package com.niki914.zafiro.app.ui.model
 
 import com.niki914.zafiro.app.R
@@ -449,6 +451,39 @@ class ConfigureViewModelTest {
 
         assertEquals(2, viewModel.uiStateFlow.value.savedConfigs.size)
         assertEquals("cfg-b", viewModel.uiStateFlow.value.activeConfigId)
+    }
+
+    @Test
+    fun reenteringPage_keepsOnboardingDraftAndStillSaves() = runTest {
+        val deps = RecordingDeps()
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.Onboarding,
+                providerId = "volcengine",
+            )
+        )
+        advanceUntilIdle()
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-onboarding"))
+        viewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+        val savedId = deps.upserted.single().id
+
+        // 离开本页再返回会重发同参 Initialize：草稿与已存归属必须留住
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.Onboarding,
+                providerId = "volcengine",
+            )
+        )
+        advanceUntilIdle()
+        val effectDeferred = async { viewModel.uiEffect.first() }
+        viewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+
+        assertEquals("sk-onboarding", viewModel.uiStateFlow.value.apiKeyInput)
+        assertEquals(savedId, viewModel.uiStateFlow.value.editingConfigId)
+        assertEquals(ConfigureEffect.OnboardingSaveSucceeded, effectDeferred.await())
     }
 
     @Test

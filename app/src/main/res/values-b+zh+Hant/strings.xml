@@ -158,8 +158,8 @@
     <string name="skill_import_overwrite">覆蓋</string>
     <string name="skill_import_cancel">取消</string>
     <string name="skill_import_resolve_failed">無法存取所選文件夾</string>
-    <string name="ui_settings_mcp">MCP Server</string>
-    <string name="ui_settings_mcp_summary">連接外部 MCP Server 與工具</string>
+    <string name="ui_settings_mcp">MCP</string>
+    <string name="ui_settings_mcp_summary">連接外部 MCP 與工具</string>
     <string name="ui_settings_takeover">接管規則</string>
     <string name="ui_settings_takeover_summary">設定哪些輸入交給原生助理或 Zafiro</string>
     <string name="ui_settings_execution_rules">執行規則</string>
@@ -213,7 +213,7 @@
     <string name="ui_settings_configure_error_required">必填欄位不能為空</string>
     <string name="ui_settings_configure_error_name_duplicate">配置名稱已存在，請更換後重試</string>
     <string name="ui_settings_configure_error_proxy_invalid">代理位址不是有效的 URI</string>
-    <string name="ui_settings_mcp_config">MCP Server 設定</string>
+    <string name="ui_settings_mcp_config">MCP 設定</string>
 
     <!-- Memory Module -->
     <string name="memory_page_description">管理記憶。你可以左右滑動以刪除，點擊以編輯單條記憶。新增後，Agent 即使在新對話中也會記得這些內容。</string>
@@ -345,10 +345,10 @@
     <string name="custom_py_tool_save_dialog_action_close">關閉</string>
     <string name="custom_py_tool_save_failed">儲存失敗：%1$s</string>
 
-    <string name="mcp_page_description">設定 MCP 服務的連線方式與驗證資訊。儲存後，Zafiro 會在執行時自動發現可用工具。</string>
-    <string name="mcp_page_empty_description">點擊右上角以新增第一個伺服器。</string>
-    <string name="mcp_loading">正在讀取已儲存的 MCP 服務…</string>
-    <string name="mcp_editor_title_create">新增 MCP 服務</string>
+    <string name="mcp_page_description">設定 MCP 的連線方式與驗證資訊。儲存後，Zafiro 會在執行時自動發現可用工具。</string>
+    <string name="mcp_page_empty_description">點擊右上角以新增第一個 MCP 伺服器。</string>
+    <string name="mcp_loading">正在讀取已儲存的 MCP 伺服器…</string>
+    <string name="mcp_editor_title_create">新增 MCP 伺服器</string>
     <string name="mcp_field_name">名稱</string>
     <string name="mcp_field_name_hint">例如：my-xxx-mcp-server</string>
     <string name="mcp_field_url">URL</string>
@@ -356,7 +356,7 @@
     <string name="mcp_field_enabled">啟用服務</string>
     <string name="mcp_field_headers">自訂請求標頭</string>
     <string name="mcp_field_headers_hint">{\n  \"Authorization\": \"Bearer xxx\"\n}</string>
-    <string name="mcp_save_action">儲存 MCP 服務</string>
+    <string name="mcp_save_action">儲存 MCP 伺服器</string>
     <string name="mcp_error_name_required">請輸入名稱</string>
     <string name="mcp_error_name_duplicate">名稱已存在，請更換後重試</string>
     <string name="mcp_error_url_required">請輸入 URL</string>
@@ -395,7 +395,7 @@
     <string name="dialog_confirm_delete">刪除</string>
     <string name="ui_settings_section_general">一般</string>
     <string name="ui_settings_general">通用設定</string>
-    <string name="ui_settings_general_summary">語言與啟動行為</string>
+    <string name="ui_settings_general_summary">啟動與運行行為</string>
     <string name="ui_settings_general_group_appearance">外觀與語言</string>
     <string name="ui_settings_general_group_floating_notification">懸浮與通知</string>
     <string name="ui_settings_general_group_conversation">對話與互動</string>
@@ -464,7 +464,6 @@
     <string name="host_xiaoai_display_name">小愛同學</string>
     <string name="feedback_bug_template">## 問題描述\n\n## 復現步驟\n\n## 預期行為\n\n## 實際行為\n\n## 設備資訊\n- Android 版本：\n- 助手（小布或其他）：\n- 模組版本：\n\n## 更多\n可以補充日誌、截圖錄屏等資訊，以便於我們理解</string>
 
-    <string name="ui_settings_appearance">外觀</string>
     <string name="ui_theme_mode_system">跟隨系統</string>
     <string name="ui_theme_mode_light">淺色</string>
     <string name="ui_theme_mode_dark">深色</string>
@@ -521,28 +520,28 @@
     <string name="ui_onboard_preferences_action_skip">跳過</string>
     <string name="ui_onboard_preferences_toast_denied">權限未授予</string>
 
-    <!-- MCP Host Settings -->
-    <string name="ui_settings_mcp_host">MCP 服務</string>
-    <string name="ui_settings_mcp_host_summary">將 Zafiro 裝置能力作為 MCP 服務暴露給外部 Agent</string>
-    <string name="mcp_host_section_service">服務</string>
-    <string name="mcp_host_section_connection">連線與認證</string>
-    <string name="mcp_host_section_tools">暴露的工具</string>
-    <string name="mcp_host_enable_title">啟用 MCP 服務</string>
-    <string name="mcp_host_enable_summary">允許外部客戶端透過 MCP 協定控制此裝置</string>
-    <string name="mcp_host_status_title">執行狀態</string>
-    <string name="mcp_host_status_running">執行中</string>
-    <string name="mcp_host_status_stopped">已停止</string>
-    <string name="mcp_host_status_starting">啟動中…</string>
-    <string name="mcp_host_status_error">錯誤</string>
-    <string name="mcp_host_port_title">連接埠</string>
-    <string name="mcp_host_port_placeholder">8791</string>
-    <string name="mcp_host_port_error_invalid">連接埠必須在 1024 到 65535 之間</string>
-    <string name="mcp_host_token_title">Bearer Token</string>
-    <string name="mcp_host_token_placeholder">留空表示不驗證</string>
-    <string name="mcp_host_token_description_empty">無需身分驗證</string>
-    <string name="mcp_host_token_description_configured">請求需攜帶 Authorization: Bearer &lt;token&gt;</string>
-    <string name="mcp_host_token_show">顯示 Bearer Token</string>
-    <string name="mcp_host_token_hide">隱藏 Bearer Token</string>
+    <!-- MCP Service Settings -->
+    <string name="ui_settings_mcp_service">MCP 服務</string>
+    <string name="ui_settings_mcp_service_summary">把 Zafiro 的工具暴露給外部 Agent</string>
+    <string name="mcp_service_section_service">服務</string>
+    <string name="mcp_service_section_connection">連線與認證</string>
+    <string name="mcp_service_section_tools">暴露的工具</string>
+    <string name="mcp_service_enable_title">啟用 MCP 服務</string>
+    <string name="mcp_service_enable_summary">允許外部 Agent 透過 MCP 存取 Zafiro 的工具</string>
+    <string name="mcp_service_status_title">執行狀態</string>
+    <string name="mcp_service_status_running">執行中</string>
+    <string name="mcp_service_status_stopped">已停止</string>
+    <string name="mcp_service_status_starting">啟動中…</string>
+    <string name="mcp_service_status_error">錯誤</string>
+    <string name="mcp_service_port_title">連接埠</string>
+    <string name="mcp_service_port_placeholder">8791</string>
+    <string name="mcp_service_port_error_invalid">連接埠必須在 1024 到 65535 之間</string>
+    <string name="mcp_service_token_title">Bearer Token</string>
+    <string name="mcp_service_token_placeholder">留空表示不驗證</string>
+    <string name="mcp_service_token_description_empty">無需身分驗證</string>
+    <string name="mcp_service_token_description_configured">請求需攜帶 Authorization: Bearer &lt;token&gt;</string>
+    <string name="mcp_service_token_show">顯示 Bearer Token</string>
+    <string name="mcp_service_token_hide">隱藏 Bearer Token</string>
 
     <!-- Crash Protection -->
     <string name="crash_dialog_title">上次執行異常結束</string>

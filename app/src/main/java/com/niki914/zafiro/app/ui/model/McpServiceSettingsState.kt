@@ -3,52 +3,52 @@ package com.niki914.zafiro.app.ui.model
 import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
-import com.niki914.zafiro.api.McpHostService
-import com.niki914.zafiro.api.McpHostStatus
+import com.niki914.zafiro.api.McpService
+import com.niki914.zafiro.api.McpServiceStatus
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
-import com.niki914.zafiro.settings.model.RuntimeMcpHostConfig
+import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-data class McpHostToolItemUi(
+data class McpServiceToolItemUi(
     val name: String,
     val displayName: String,
     val description: String,
     val isDangerous: Boolean = false,
 )
 
-data class McpHostSettingsUiState(
+data class McpServiceSettingsUiState(
     val isLoading: Boolean = false,
     val enabled: Boolean = false,
-    val status: McpHostStatus = McpHostStatus.Stopped,
-    val port: Int = RuntimeMcpHostConfig.DEFAULT_PORT,
-    val portInput: String = RuntimeMcpHostConfig.DEFAULT_PORT.toString(),
+    val status: McpServiceStatus = McpServiceStatus.Stopped,
+    val port: Int = RuntimeMcpServiceConfig.DEFAULT_PORT,
+    val portInput: String = RuntimeMcpServiceConfig.DEFAULT_PORT.toString(),
     val portError: String? = null,
-    val host: String = RuntimeMcpHostConfig.DEFAULT_HOST,
+    val host: String = RuntimeMcpServiceConfig.DEFAULT_HOST,
     val tokenInput: String = "",
     val tokenVisible: Boolean = false,
-    val exposedTools: Set<String> = RuntimeMcpHostConfig.DEFAULT_EXPOSED_TOOLS,
-    val tools: List<McpHostToolItemUi> = emptyList(),
+    val exposedTools: Set<String> = RuntimeMcpServiceConfig.DEFAULT_EXPOSED_TOOLS,
+    val tools: List<McpServiceToolItemUi> = emptyList(),
 )
 
-sealed interface McpHostSettingsIntent {
-    data object Load : McpHostSettingsIntent
-    data class ToggleServer(val enabled: Boolean) : McpHostSettingsIntent
-    data class PortChanged(val portString: String) : McpHostSettingsIntent
-    data class TokenChanged(val token: String) : McpHostSettingsIntent
-    data object ToggleTokenVisibility : McpHostSettingsIntent
-    data class ToggleTool(val toolName: String, val checked: Boolean) : McpHostSettingsIntent
+sealed interface McpServiceSettingsIntent {
+    data object Load : McpServiceSettingsIntent
+    data class ToggleServer(val enabled: Boolean) : McpServiceSettingsIntent
+    data class PortChanged(val portString: String) : McpServiceSettingsIntent
+    data class TokenChanged(val token: String) : McpServiceSettingsIntent
+    data object ToggleTokenVisibility : McpServiceSettingsIntent
+    data class ToggleTool(val toolName: String, val checked: Boolean) : McpServiceSettingsIntent
 }
 
-sealed interface McpHostSettingsEffect
+sealed interface McpServiceSettingsEffect
 
-class McpHostSettingsViewModel :
-    ComposeMVIViewModel<McpHostSettingsIntent, McpHostSettingsUiState, McpHostSettingsEffect>() {
+class McpServiceSettingsViewModel :
+    ComposeMVIViewModel<McpServiceSettingsIntent, McpServiceSettingsUiState, McpServiceSettingsEffect>() {
 
     private companion object {
-        private const val LOG_TAG = "niki914_zafiro_McpHostSettingsViewModel"
+        private const val LOG_TAG = "niki914_zafiro_McpServiceSettingsViewModel"
         private const val MIN_PORT = 1024
         private const val MAX_PORT = 65535
 
@@ -83,7 +83,7 @@ class McpHostSettingsViewModel :
         )
     }
 
-    private val hostService = requireService<McpHostService>()
+    private val hostService = requireService<McpService>()
 
     init {
         viewModelScope.launch {
@@ -92,7 +92,7 @@ class McpHostSettingsViewModel :
             }
         }
         viewModelScope.launch {
-            XRepo.mcpHost.configFlow.collectLatest { config ->
+            XRepo.mcpService.configFlow.collectLatest { config ->
                 updateState {
                     copy(
                         enabled = config.enabled,
@@ -105,23 +105,23 @@ class McpHostSettingsViewModel :
         }
     }
 
-    override fun initUiState(): McpHostSettingsUiState = McpHostSettingsUiState()
+    override fun initUiState(): McpServiceSettingsUiState = McpServiceSettingsUiState()
 
-    override suspend fun handleIntent(intent: McpHostSettingsIntent) {
+    override suspend fun handleIntent(intent: McpServiceSettingsIntent) {
         when (intent) {
-            McpHostSettingsIntent.Load -> load()
-            is McpHostSettingsIntent.ToggleServer -> toggleServer(intent.enabled)
-            is McpHostSettingsIntent.PortChanged -> updatePort(intent.portString)
-            is McpHostSettingsIntent.TokenChanged -> updateToken(intent.token)
-            McpHostSettingsIntent.ToggleTokenVisibility -> updateState {
+            McpServiceSettingsIntent.Load -> load()
+            is McpServiceSettingsIntent.ToggleServer -> toggleServer(intent.enabled)
+            is McpServiceSettingsIntent.PortChanged -> updatePort(intent.portString)
+            is McpServiceSettingsIntent.TokenChanged -> updateToken(intent.token)
+            McpServiceSettingsIntent.ToggleTokenVisibility -> updateState {
                 copy(tokenVisible = !tokenVisible)
             }
-            is McpHostSettingsIntent.ToggleTool -> toggleTool(intent.toolName, intent.checked)
+            is McpServiceSettingsIntent.ToggleTool -> toggleTool(intent.toolName, intent.checked)
         }
     }
 
     private suspend fun load() {
-        val config = XRepo.mcpHost.get()
+        val config = XRepo.mcpService.get()
         val allTools = buildSortedToolList()
         updateState {
             copy(
@@ -139,7 +139,7 @@ class McpHostSettingsViewModel :
 
     private suspend fun toggleServer(enabled: Boolean) {
         Logger.i(LOG_TAG, "user toggled MCP server enabled: $enabled")
-        XRepo.mcpHost.setEnabled(enabled)
+        XRepo.mcpService.setEnabled(enabled)
     }
 
     private suspend fun updatePort(portString: String) {
@@ -159,12 +159,12 @@ class McpHostSettingsViewModel :
                 portError = null,
             )
         }
-        XRepo.mcpHost.setPort(parsedPort)
+        XRepo.mcpService.setPort(parsedPort)
     }
 
     private suspend fun updateToken(token: String) {
         updateState { copy(tokenInput = token) }
-        XRepo.mcpHost.setBearerToken(token.trim())
+        XRepo.mcpService.setBearerToken(token.trim())
     }
 
     private suspend fun toggleTool(toolName: String, checked: Boolean) {
@@ -174,10 +174,10 @@ class McpHostSettingsViewModel :
         } else {
             current - toolName
         }
-        XRepo.mcpHost.setExposedTools(updated)
+        XRepo.mcpService.setExposedTools(updated)
     }
 
-    private suspend fun buildSortedToolList(): List<McpHostToolItemUi> {
+    private suspend fun buildSortedToolList(): List<McpServiceToolItemUi> {
         val builtinRegistry = BuiltinToolRegistry.default()
         val registeredBuiltins = builtinRegistry.all()
             .filter { !it.name.startsWith("mcp__") }
@@ -186,7 +186,7 @@ class McpHostSettingsViewModel :
         val safeTools = SAFE_BUILTIN_TOOL_ORDER.mapNotNull { name ->
             registeredBuiltins[name]?.let { tool ->
                 val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[name] ?: (tool.name to tool.description)
-                McpHostToolItemUi(
+                McpServiceToolItemUi(
                     name = tool.name,
                     displayName = displayTitle,
                     description = displayDesc,
@@ -198,7 +198,7 @@ class McpHostSettingsViewModel :
         val sessionTools = listOf("shell", "ssh").mapNotNull { name ->
             registeredBuiltins[name]?.let { tool ->
                 val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[tool.name] ?: (tool.name to tool.description)
-                McpHostToolItemUi(
+                McpServiceToolItemUi(
                     name = tool.name,
                     displayName = displayTitle,
                     description = displayDesc,
@@ -210,7 +210,7 @@ class McpHostSettingsViewModel :
         val pythonTools = listOf("execute_python", "py_meta_tools").mapNotNull { name ->
             registeredBuiltins[name]?.let { tool ->
                 val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[name] ?: (tool.name to tool.description)
-                McpHostToolItemUi(
+                McpServiceToolItemUi(
                     name = tool.name,
                     displayName = displayTitle,
                     description = displayDesc,
@@ -224,7 +224,7 @@ class McpHostSettingsViewModel :
             .filter { !it.name.startsWith("mcp__") }
             .sortedBy { it.name }
             .map { custom ->
-                McpHostToolItemUi(
+                McpServiceToolItemUi(
                     name = custom.name,
                     displayName = custom.name,
                     description = custom.description.ifBlank { "Custom Python tool" },
