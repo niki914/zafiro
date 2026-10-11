@@ -54,6 +54,7 @@ internal fun fixture(
         }
         override val activeStates: StateFlow<Map<String, AgentState>> = MutableStateFlow(emptyMap())
         override fun createTaskAgent(tag: String): Agent = agent
+        override fun destroy(conversationId: String) {}
         override val control: AgentControl = agent
     })
     return Fixture(
@@ -243,6 +244,7 @@ internal class FakeHomeConversationStore(
         }
     }
     override suspend fun deleteConversation(id: String) { records.remove(id) }
+    override suspend fun clearUnread(conversationId: String) {}
 
     fun recordNewConversation(id: String, title: String) {
         if (id in records) return

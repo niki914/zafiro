@@ -95,7 +95,10 @@ object ConversationPersister {
                     else -> false
                 }
                 if (boundary) {
-                    conversationId()?.let { ConversationRepo.touchConversation(it) }
+                    conversationId()?.let { id ->
+                        ConversationRepo.touchConversation(id)
+                        ConversationRepo.setHasUnread(id, true)
+                    }
                 }
             }
         }

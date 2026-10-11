@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -111,5 +112,18 @@ class AgentManagerImplTest {
         manager.switchTo("conv-1")
         delay(50)
         assertTrue(manager.activeStates.value.containsKey("conv-1"))
+    }
+
+    @Test
+    fun destroy_removesAgentFromContainerAndForcesNewInstanceOnNextSwitch() = runBlocking {
+        val manager = AgentManagerImpl()
+        val agent1 = manager.switchTo("conv-1")
+        assertSame(agent1, manager.main)
+
+        manager.destroy("conv-1")
+        assertFalse(manager.activeStates.value.containsKey("conv-1"))
+
+        val agentAfterDestroy = manager.switchTo("conv-1")
+        assertNotSame(agent1, agentAfterDestroy)
     }
 }

@@ -89,6 +89,9 @@ interface ConversationDao {
     @Query("UPDATE conversation SET config_id = :configId WHERE id = :conversationId")
     suspend fun updateConfigId(conversationId: String, configId: String): Int
 
+    @Query("UPDATE conversation SET has_unread = :hasUnread WHERE id = :conversationId")
+    suspend fun updateHasUnread(conversationId: String, hasUnread: Boolean): Int
+
     /**
      * 死字段操作（T3 遗留）：保留仅防编译破坏，业务层严禁再调用。草稿已改用 XRepo 全局管理。
      */

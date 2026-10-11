@@ -38,6 +38,9 @@ data class ConversationEntity(
     /** 绑定的 LLM 配置 id。空串表示未绑定（跟随全局活跃配置）。 */
     @ColumnInfo(name = "config_id", defaultValue = "''")
     val configId: String = "",
+    /** 后台执行完成或等待审批时的未读标记。 */
+    @ColumnInfo(name = "has_unread", defaultValue = "0")
+    val hasUnread: Boolean = false,
 )
 
 /**
@@ -81,6 +84,7 @@ data class ConversationSummary(
     val updatedAt: Long,
     val lastMessagePreview: String,
     val turnCount: Int,
+    val hasUnread: Boolean = false,
 )
 
 /**

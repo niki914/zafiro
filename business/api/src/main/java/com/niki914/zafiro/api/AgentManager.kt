@@ -45,6 +45,12 @@ interface AgentManager {
      */
     fun createTaskAgent(tag: String = "task"): Agent
 
+    /**
+     * 显式销毁并释放指定会话的 Agent 实例。
+     * 若该会话处于活跃容器中，将立即中断其执行（stop）、安全释放外部资源（release）并移出内存映射。
+     */
+    fun destroy(conversationId: String)
+
     /** 全局聚合状态控制面（始终跟随当前 [main]）。 */
     val control: AgentControl
 }

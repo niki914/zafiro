@@ -145,7 +145,10 @@ internal fun ConversationHistoryPageRoute(
 
     ConversationHistoryPageContent(
         uiState = uiState,
-        onConversationClick = { id -> latestOnConversationSelected(id) },
+        onConversationClick = { id ->
+            viewModel.sendIntent(ConversationHistoryIntent.ClearUnread(id))
+            latestOnConversationSelected(id)
+        },
         onConversationDelete = { id ->
             viewModel.sendIntent(ConversationHistoryIntent.Delete(id))
         },

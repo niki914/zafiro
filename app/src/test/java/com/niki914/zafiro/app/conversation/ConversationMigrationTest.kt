@@ -99,6 +99,7 @@ class ConversationMigrationTest {
             assertEquals("c1", entity!!.id)
             assertEquals("Title 1", entity.title)
             assertEquals("", entity.configId)
+            assertEquals(false, entity.hasUnread)
 
             val entries = roomDb.conversationDao().listEntries("c1")
             assertEquals(1, entries.size)

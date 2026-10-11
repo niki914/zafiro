@@ -49,6 +49,7 @@ import com.niki914.zafiro.app.ui.route.ThemeSettingsPageRoute
 fun ZafiroPageContent(
     entry: NavigationEntry<ZafiroPage>,
     startupAssistantUi: StartupAssistantUi,
+    isTopPage: Boolean = true,
     onPush: (ZafiroPage) -> Unit,
     onPushFromLeft: (ZafiroPage) -> Unit,
     onPop: () -> Unit,
@@ -99,6 +100,7 @@ fun ZafiroPageContent(
         )
 
         HomePage -> HomePageRoute(
+            isCurrentPage = isTopPage,
             onPush = onPush,
             onPushFromLeft = onPushFromLeft,
             selectedConversationId = selectedConversationId,

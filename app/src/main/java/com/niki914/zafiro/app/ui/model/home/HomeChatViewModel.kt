@@ -7,6 +7,7 @@ import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
+import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Conversation
@@ -95,6 +96,7 @@ class HomeChatViewModel internal constructor(
             HomeChatIntent.StopGenerating -> stopGenerating()
             HomeChatIntent.NewConversation -> startNewConversation()
             is HomeChatIntent.LoadConversation -> loadConversation(intent.id)
+            is HomeChatIntent.ClearUnread -> clearUnread(intent.conversationId)
             is HomeChatIntent.DeleteConversation -> deleteConversationNow(intent.id)
             is HomeChatIntent.ToggleToolRun -> toggleToolRun(intent.turnId, intent.runStartIndex)
             is HomeChatIntent.ToggleToolResult -> toggleToolResult(
@@ -537,6 +539,7 @@ class HomeChatViewModel internal constructor(
             }
             applyConversation(targetAgent.conversation.value, animateTail = false)
             conversations.setLastOpenedConversationId(id)
+            conversations.clearUnread(id)
             Logger.i(
                 LOG_TAG,
                 "load conversation done id=$id elapsedMs=${System.currentTimeMillis() - startedAtMs}",
@@ -548,6 +551,10 @@ class HomeChatViewModel internal constructor(
             updateState { copy(isLoadingConversation = false) }
             if (agent.conversation.value.id?.value != id) conversationBeingLoaded = null
         }
+    }
+
+    private suspend fun clearUnread(id: String) {
+        conversations.clearUnread(id)
     }
 
     // ── 历史派生操作 ────────────────────────────────────────────────────────
@@ -611,6 +618,7 @@ class HomeChatViewModel internal constructor(
     internal suspend fun deleteConversationNow(id: String) {
         val startedAtMs = System.currentTimeMillis()
         Logger.i(LOG_TAG, "delete conversation id=$id started")
+        runCatching { agentManager.destroy(id) }
         conversations.deleteConversation(id)
         if (id != agent.conversation.value.id?.value) {
             Logger.d(LOG_TAG, "delete conversation id=$id notCurrent skipped")

@@ -33,6 +33,10 @@ object DefaultHomeConversationStore : HomeConversationStore {
         ConversationRepo.deleteConversation(id)
     }
 
+    override suspend fun clearUnread(conversationId: String) {
+        ConversationRepo.setHasUnread(conversationId, false)
+    }
+
     override suspend fun forkAtTurn(
         sourceId: String,
         turnIndex: Int,

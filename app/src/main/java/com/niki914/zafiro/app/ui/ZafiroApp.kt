@@ -341,6 +341,7 @@ fun ZafiroApp(
                                 ZafiroPageContent(
                                     entry = entry,
                                     startupAssistantUi = startupAssistantUi,
+                                    isTopPage = (currentEntry.id == entry.id),
                                     onPush = ::push,
                                     onPushFromLeft = ::pushFromLeft,
                                     onPop = { navigator.pop() },

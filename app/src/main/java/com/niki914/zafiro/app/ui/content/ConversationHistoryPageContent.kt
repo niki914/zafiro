@@ -32,12 +32,16 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.niki914.zafiro.app.ui.model.conversation.ConversationRunState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -119,6 +123,7 @@ internal fun ConversationHistoryPageContent(
         else -> ConversationHistoryListContent(
             conversations = uiState.conversations,
             pinnedConversations = uiState.pinnedConversations,
+            runStates = uiState.runStates,
             activeConversationId = uiState.activeConversationId,
             deleteErrorMessage = uiState.deleteErrorMessage,
             selecting = uiState.selecting,
@@ -260,6 +265,7 @@ internal fun ConversationHistoryPageContent(
 private fun ConversationHistoryListContent(
     conversations: List<ConversationSummary>,
     pinnedConversations: List<PinnedConversation>,
+    runStates: Map<String, ConversationRunState>,
     activeConversationId: String?,
     deleteErrorMessage: String?,
     selecting: Boolean,
@@ -279,6 +285,15 @@ private fun ConversationHistoryListContent(
         pinnedConversations.map { it.id }.toSet()
     }
     var collapsedBuckets by rememberSaveable { mutableStateOf(emptySet<TimelineBucket>()) }
+    var initialPulseConsumed by rememberSaveable { mutableStateOf(false) }
+    val initialPulsedId = remember {
+        if (!initialPulseConsumed) {
+            initialPulseConsumed = true
+            activeConversationId
+        } else {
+            null
+        }
+    }
 
     val listState = rememberLazyListState()
     // 折叠信号取自列表自身的整数位置：壳层累加量是手势增量之和，与真实位置有亚像素
@@ -343,29 +358,32 @@ private fun ConversationHistoryListContent(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             section.conversations.forEach { conversation ->
-                                ConversationHistoryItem(
-                                    conversation = conversation,
-                                    isPinned = conversation.id in pinnedIds,
-                                    inPinnedSection = section.bucket == TimelineBucket.Pinned,
-                                    activeConversationId = activeConversationId,
-                                    currentTimeMillis = currentTimeMillis,
-                                    selected = conversation.id in selectedIds,
-                                    onClick = {
-                                        if (selecting) {
-                                            onConversationToggleSelection(conversation.id)
-                                        } else {
-                                            onConversationClick(conversation.id)
-                                        }
-                                    },
-                                    onLongClick = {
-                                        if (selecting) {
-                                            onConversationToggleSelection(conversation.id)
-                                        } else {
-                                            onConversationLongClick(conversation)
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
+                                key(conversation.id) {
+                                    ConversationHistoryItem(
+                                        conversation = conversation,
+                                        isPinned = conversation.id in pinnedIds,
+                                        inPinnedSection = section.bucket == TimelineBucket.Pinned,
+                                        initialPulsed = conversation.id == initialPulsedId,
+                                        currentTimeMillis = currentTimeMillis,
+                                        selected = conversation.id in selectedIds,
+                                        runState = runStates[conversation.id] ?: ConversationRunState.Idle,
+                                        onClick = {
+                                            if (selecting) {
+                                                onConversationToggleSelection(conversation.id)
+                                            } else {
+                                                onConversationClick(conversation.id)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            if (selecting) {
+                                                onConversationToggleSelection(conversation.id)
+                                            } else {
+                                                onConversationLongClick(conversation)
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
                             }
                         }
                     }
@@ -398,9 +416,10 @@ private fun ConversationHistoryItem(
     conversation: ConversationSummary,
     isPinned: Boolean,
     inPinnedSection: Boolean,
-    activeConversationId: String?,
+    initialPulsed: Boolean,
     currentTimeMillis: Long,
     selected: Boolean,
+    runState: ConversationRunState,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -415,6 +434,21 @@ private fun ConversationHistoryItem(
     val originIcon = if (inPinnedSection) null else parsedTitle.originKind?.let { originKindToIcon(it) }
     val showPinBadge = isPinned && !inPinnedSection
     val relativeTime = formatRelativeTime(conversation.updatedAt, currentTimeMillis)
+
+    var previousRunState by remember { mutableStateOf(runState) }
+    var transitionPulseKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(runState) {
+        val justTransitioned = previousRunState != runState &&
+                (runState == ConversationRunState.UnreadCompleted || runState == ConversationRunState.WaitingApproval)
+        if (justTransitioned) {
+            transitionPulseKey = "transition_${conversation.id}_${System.currentTimeMillis()}"
+        }
+        previousRunState = runState
+    }
+
+    val pulseKey = remember(initialPulsed, transitionPulseKey) {
+        transitionPulseKey ?: if (initialPulsed) "initial_${conversation.id}" else null
+    }
 
     val cardShape = remember { G2CardShape(20.dp) }
     // 选中态 = 描边 + 0.98 微缩，与 bukit 的 item 多选同构；置顶段的底色不动，靠描边区分选中。
@@ -463,7 +497,7 @@ private fun ConversationHistoryItem(
             onClick = onClick,
             onLongClick = onLongClick,
             shape = cardShape,
-            highlightPulseKey = activeConversationId?.takeIf { it == conversation.id },
+            highlightPulseKey = pulseKey,
             highlightPulseDurationMillis = 500,
             minHeight = 0.dp,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
@@ -487,11 +521,30 @@ private fun ConversationHistoryItem(
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     val timeColor = MaterialTheme.colorScheme.tertiary
-                    if (originIcon != null || showPinBadge || relativeTime.isNotBlank()) {
+                    val showRunIndicator = runState != ConversationRunState.Idle
+                    if (showRunIndicator || originIcon != null || showPinBadge || relativeTime.isNotBlank()) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(start = 8.dp),
                         ) {
+                            if (runState == ConversationRunState.Running) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .padding(end = 4.dp)
+                                        .size(11.dp),
+                                    strokeWidth = 1.2.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            } else if (runState == ConversationRunState.WaitingApproval || runState == ConversationRunState.UnreadCompleted) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Notifications,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier
+                                        .padding(end = 4.dp)
+                                        .size(13.dp),
+                                )
+                            }
                             if (originIcon != null) {
                                 Icon(
                                     imageVector = originIcon,

@@ -1,6 +1,8 @@
 // 保护：历史页 ViewModel 的状态计算——加载成败落点、删除的活动/普通分流与收尾、批量置顶/删除状态保持与分流、重命名重载、分叉导航。
 package com.niki914.zafiro.app.ui.model.conversation
 
+import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.ui.model.MainDispatcherRule
 import com.niki914.zafiro.app.util.SilentLoggerRule
@@ -15,6 +17,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -37,8 +40,11 @@ class ConversationHistoryViewModelTest {
 
         var pinnedConversations: List<PinnedConversation> = emptyList()
         val deletedIds = mutableListOf<String>()
+        val destroyedIds = mutableListOf<String>()
+        val activeStatesFlow = MutableStateFlow<Map<String, AgentState>>(emptyMap())
         val renamed = mutableListOf<Pair<String, String>>()
         val pinCalls = mutableListOf<Pair<String, Boolean>>()
+        val clearedUnreadIds = mutableListOf<String>()
         var forkResult: String? = null
         var loadError: Throwable? = null
         var deleteError: Throwable? = null
@@ -57,6 +63,14 @@ class ConversationHistoryViewModelTest {
                     deletedIds += id
                     conversations = conversations.filterNot { it.id == id }
                 },
+                destroyAgent = { id -> destroyedIds += id },
+                setHasUnread = { id, unread ->
+                    if (!unread) clearedUnreadIds += id
+                    conversations = conversations.map {
+                        if (it.id == id) it.copy(hasUnread = unread) else it
+                    }
+                },
+                observeActiveStates = { activeStatesFlow },
                 renameConversation = { id, title ->
                     renamed += id to title
                     conversations = conversations.map { conversation ->
@@ -313,5 +327,46 @@ class ConversationHistoryViewModelTest {
         )
         assertFalse(viewModel.uiStateFlow.value.selecting)
         assertTrue(viewModel.uiStateFlow.value.selectedIds.isEmpty())
+    }
+
+    @Test
+    fun runState_derivesRunningApprovalAndUnreadFromDependencies() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(
+            summary("a"),
+            summary("b").copy(hasUnread = true),
+        )
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        advanceUntilIdle()
+
+        assertEquals(ConversationRunState.UnreadCompleted, viewModel.uiStateFlow.value.runStates["b"])
+
+        deps.activeStatesFlow.value = mapOf(
+            "a" to AgentState.Generating("thinking..."),
+            "b" to AgentState.WaitingApproval(ApprovalRequest.ScreenControlConsent),
+        )
+        advanceUntilIdle()
+        assertEquals(ConversationRunState.Running, viewModel.uiStateFlow.value.runStates["a"])
+        assertEquals(ConversationRunState.WaitingApproval, viewModel.uiStateFlow.value.runStates["b"])
+
+        viewModel.sendIntent(ConversationHistoryIntent.ClearUnread("b"))
+        advanceUntilIdle()
+        assertEquals(listOf("b"), deps.clearedUnreadIds)
+    }
+
+    @Test
+    fun delete_invokesDestroyAgentBeforeDeletingConversation() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("a"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConversationHistoryIntent.Delete("a"))
+        advanceUntilIdle()
+
+        assertEquals(listOf("a"), deps.destroyedIds)
+        assertEquals(listOf("a"), deps.deletedIds)
     }
 }

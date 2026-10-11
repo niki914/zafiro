@@ -2,13 +2,19 @@ package com.niki914.zafiro.app.ui.model.conversation
 
 import androidx.lifecycle.viewModelScope
 import com.niki914.uikit.base.ComposeMVIViewModel
+import com.niki914.zafiro.api.AgentManager
+import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.repo.PinnedConversation
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -22,6 +28,7 @@ data class ConversationHistoryUiState(
     val isLoading: Boolean = false,
     val conversations: List<ConversationSummary> = emptyList(),
     val pinnedConversations: List<PinnedConversation> = emptyList(),
+    val runStates: Map<String, ConversationRunState> = emptyMap(),
     val errorMessage: String? = null,
     val deleteErrorMessage: String? = null,
     val activeConversationId: String? = null,
@@ -33,6 +40,7 @@ data class ConversationHistoryUiState(
 sealed interface ConversationHistoryIntent {
     data object Load : ConversationHistoryIntent
     data class SetActiveConversation(val id: String?) : ConversationHistoryIntent
+    data class ClearUnread(val id: String) : ConversationHistoryIntent
     data object EnterSelection : ConversationHistoryIntent
     data object ExitSelection : ConversationHistoryIntent
     data class ToggleSelection(val id: String) : ConversationHistoryIntent
@@ -65,6 +73,14 @@ internal data class ConversationHistoryViewModelDependencies(
     val renameConversation: suspend (String, String) -> Unit,
     val forkConversation: suspend (String) -> String?,
     val setConversationPinned: suspend (String, Boolean) -> Unit,
+    val destroyAgent: (String) -> Unit = { id -> runCatching { requireService<AgentManager>().destroy(id) } },
+    val setHasUnread: suspend (String, Boolean) -> Unit = { id, unread ->
+        ConversationRepo.setHasUnread(id, unread)
+    },
+    val observeActiveStates: () -> Flow<Map<String, AgentState>> = {
+        runCatching { requireService<AgentManager>().activeStates }
+            .getOrDefault(MutableStateFlow(emptyMap()))
+    },
 ) {
     companion object {
         val Default = ConversationHistoryViewModelDependencies(
@@ -74,6 +90,12 @@ internal data class ConversationHistoryViewModelDependencies(
             renameConversation = { id, title -> ConversationRepo.renameConversation(id, title) },
             forkConversation = { id -> ConversationRepo.forkConversation(id) },
             setConversationPinned = { id, pinned -> XRepo.setConversationPinned(id, pinned) },
+            destroyAgent = { id -> runCatching { requireService<AgentManager>().destroy(id) } },
+            setHasUnread = { id, unread -> ConversationRepo.setHasUnread(id, unread) },
+            observeActiveStates = {
+                runCatching { requireService<AgentManager>().activeStates }
+                    .getOrDefault(MutableStateFlow(emptyMap()))
+            },
         )
     }
 }
@@ -98,6 +120,7 @@ class ConversationHistoryViewModel internal constructor(
                 copy(activeConversationId = intent.id)
             }
 
+            is ConversationHistoryIntent.ClearUnread -> clearUnread(intent.id)
             ConversationHistoryIntent.EnterSelection -> updateState { copy(selecting = true) }
             ConversationHistoryIntent.ExitSelection -> updateState {
                 copy(
@@ -134,8 +157,12 @@ class ConversationHistoryViewModel internal constructor(
     private fun load() {
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
-            dependencies.observeConversations()
-                .distinctUntilChanged()
+            combine(
+                dependencies.observeConversations().distinctUntilChanged(),
+                dependencies.observeActiveStates(),
+            ) { conversations, activeStates ->
+                conversations to activeStates
+            }
                 .catch { throwable ->
                     updateState {
                         copy(
@@ -144,19 +171,48 @@ class ConversationHistoryViewModel internal constructor(
                         )
                     }
                 }
-                .collect { conversations ->
+                .collect { (conversations, activeStates) ->
+                    val runStates = calculateRunStates(
+                        conversations = conversations,
+                        activeStates = activeStates,
+                    )
                     val pinnedConversations = loadPinnedSafely()
                     updateState {
                         copy(
                             isLoading = false,
                             conversations = conversations,
                             pinnedConversations = pinnedConversations,
+                            runStates = runStates,
                             errorMessage = null,
                             deleteErrorMessage = null,
                         )
                     }
                 }
         }
+    }
+
+    private fun calculateRunStates(
+        conversations: List<ConversationSummary>,
+        activeStates: Map<String, AgentState>,
+    ): Map<String, ConversationRunState> {
+        val result = mutableMapOf<String, ConversationRunState>()
+        for (summary in conversations) {
+            val state = activeStates[summary.id]
+            val runState = when {
+                state is AgentState.WaitingApproval -> ConversationRunState.WaitingApproval
+                state?.isRunning == true -> ConversationRunState.Running
+                summary.hasUnread -> ConversationRunState.UnreadCompleted
+                else -> ConversationRunState.Idle
+            }
+            if (runState != ConversationRunState.Idle) {
+                result[summary.id] = runState
+            }
+        }
+        return result
+    }
+
+    private suspend fun clearUnread(id: String) {
+        runCatching { dependencies.setHasUnread(id, false) }
     }
 
     private suspend fun loadPinnedSafely(): List<PinnedConversation> =
@@ -169,6 +225,7 @@ class ConversationHistoryViewModel internal constructor(
 
     private suspend fun delete(id: String) {
         updateState { copy(deleteErrorMessage = null) }
+        runCatching { dependencies.destroyAgent(id) }
         if (id == currentState.activeConversationId) {
             sendEffect(ConversationHistoryEffect.DeleteActiveConversation(id))
             return
@@ -249,6 +306,7 @@ class ConversationHistoryViewModel internal constructor(
         var failureMessage: String? = null
         normalIds.forEach { id ->
             runCatching {
+                dependencies.destroyAgent(id)
                 dependencies.deleteConversation(id)
                 dependencies.setConversationPinned(id, false)
             }.onFailure { throwable ->
@@ -263,6 +321,7 @@ class ConversationHistoryViewModel internal constructor(
         }
 
         if (deleteActive) {
+            runCatching { dependencies.destroyAgent(activeId) }
             sendEffect(ConversationHistoryEffect.DeleteActiveConversation(activeId))
         } else {
             refreshPinned()

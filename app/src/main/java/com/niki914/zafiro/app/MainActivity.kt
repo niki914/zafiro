@@ -14,6 +14,7 @@ import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.repo.XRepo
@@ -80,17 +81,20 @@ class MainActivity : AppCompatActivity() {
             // 设置初值：读盘失败按开启兑底（默认开）
             runCatching { XRepo.keepScreenOn() }
             val agentControl = requireService<AgentControl>()
+            val agentManager = requireService<AgentManager>()
             combine(
                 XRepo.keepScreenOnSetting,
                 agentControl.status,
-            ) { settingOn, status -> settingOn && status.isRunning }
-                .collect { keepOn ->
-                    if (keepOn) {
-                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                    } else {
-                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                    }
+                agentManager.activeStates,
+            ) { settingOn, mainStatus, activeStates ->
+                settingOn && (mainStatus.isRunning || activeStates.values.any { it.isRunning })
+            }.collect { keepOn ->
+                if (keepOn) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
+            }
         }
     }
 

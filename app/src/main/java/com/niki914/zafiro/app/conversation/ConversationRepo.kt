@@ -324,6 +324,11 @@ object ConversationRepo {
         now: Long = System.currentTimeMillis(),
     ): Boolean = dao().updateConversationUpdatedAt(conversationId, now) > 0
 
+    suspend fun setHasUnread(
+        conversationId: String,
+        hasUnread: Boolean,
+    ): Boolean = dao().updateHasUnread(conversationId, hasUnread) > 0
+
     suspend fun countEntries(conversationId: String): Int = dao().countEntries(conversationId)
 
     suspend fun updateLeafId(conversationId: String, leafId: String) {
@@ -411,6 +416,7 @@ object ConversationRepo {
             updatedAt = updatedAt,
             lastMessagePreview = lastMessagePreview,
             turnCount = turnCount,
+            hasUnread = hasUnread,
         )
     }
 }

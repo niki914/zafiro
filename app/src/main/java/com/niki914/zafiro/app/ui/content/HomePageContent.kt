@@ -152,6 +152,7 @@ private const val PHOTO_PICK_MAX_ITEMS = 10
 
 @Composable
 fun HomePageContent(
+    isCurrentPage: Boolean = true,
     selectedConversationId: String?,
     onConversationSelectionConsumed: (String) -> Unit,
     onActiveConversationChanged: (String?) -> Unit,
@@ -274,6 +275,14 @@ fun HomePageContent(
     }
     LaunchedEffect(uiState.currentConversationId) {
         latestOnActiveConversationChanged(uiState.currentConversationId)
+    }
+    LaunchedEffect(isCurrentPage, uiState.currentConversationId, uiState.isGenerating) {
+        if (isCurrentPage && !uiState.isGenerating) {
+            val id = uiState.currentConversationId
+            if (!id.isNullOrBlank()) {
+                latestViewModel.sendIntent(HomeChatIntent.ClearUnread(id))
+            }
+        }
     }
 
     val pageChromeContribution = remember(

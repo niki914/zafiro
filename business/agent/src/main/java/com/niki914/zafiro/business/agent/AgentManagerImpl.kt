@@ -9,6 +9,7 @@ import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.chat.AgentSessionEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -30,10 +33,13 @@ class AgentManagerImpl(
 
     private companion object {
         const val LOG_TAG = "niki914_zafiro_AgentManagerImpl"
+        const val MAX_IDLE_BACKGROUND_AGENTS = 3
     }
 
     private val activeAgents = ConcurrentHashMap<String, Agent>()
     private val trackedAgentIds = ConcurrentHashMap.newKeySet<String>()
+    private val statusTrackingJobs = ConcurrentHashMap<String, Job>()
+    private val lastAccessedMs = ConcurrentHashMap<String, Long>()
     private var scratchAgent: Agent = createPersistentAgent()
 
     private val _mainFlow = MutableStateFlow(scratchAgent)
@@ -60,7 +66,9 @@ class AgentManagerImpl(
             registerActiveAgent(conversationId, newAgent)
             newAgent
         }
+        lastAccessedMs[conversationId] = System.currentTimeMillis()
         _mainFlow.value = target
+        trimIdleBackgroundAgents()
         return target
     }
 
@@ -86,16 +94,65 @@ class AgentManagerImpl(
         return taskAgent
     }
 
+    override fun destroy(conversationId: String) {
+        Logger.i(LOG_TAG, "destroy conversation agent id=$conversationId")
+        val agent = activeAgents.remove(conversationId)
+        statusTrackingJobs.remove(conversationId)?.cancel()
+        trackedAgentIds.remove(conversationId)
+        lastAccessedMs.remove(conversationId)
+        _activeStates.update { current -> current - conversationId }
+
+        agent?.let {
+            it.stop()
+            it.release()
+        }
+
+        if (_mainFlow.value === agent) {
+            startNewConversation()
+        }
+    }
+
+    private val trimMutex = Mutex()
+
+    private suspend fun trimIdleBackgroundAgents() {
+        trimMutex.withLock {
+            val currentMainId = _mainFlow.value.conversation.value.id?.value
+            val idleBackgroundCandidates = activeAgents.entries
+                .filter { (id, agent) ->
+                    id != currentMainId && agent.status.value is AgentState.Idle
+                }
+                .sortedBy { (id, _) -> lastAccessedMs[id] ?: 0L }
+
+            val excessCount = idleBackgroundCandidates.size - MAX_IDLE_BACKGROUND_AGENTS
+            if (excessCount > 0) {
+                idleBackgroundCandidates.take(excessCount).forEach { (id, agent) ->
+                    Logger.i(LOG_TAG, "evicting idle background agent id=$id")
+                    activeAgents.remove(id)
+                    statusTrackingJobs.remove(id)?.cancel()
+                    trackedAgentIds.remove(id)
+                    lastAccessedMs.remove(id)
+                    _activeStates.update { it - id }
+                    agent.release()
+                }
+            }
+        }
+    }
+
     private fun registerActiveAgent(id: String, agent: Agent) {
         activeAgents[id] = agent
+        lastAccessedMs[id] = System.currentTimeMillis()
         if (trackedAgentIds.add(id)) {
-            scope.launch {
+            val job = scope.launch {
                 agent.status.collect { state ->
                     _activeStates.update { current ->
                         current + (id to state)
                     }
+                    if (state is AgentState.Idle) {
+                        trimIdleBackgroundAgents()
+                    }
                 }
             }
+            statusTrackingJobs[id] = job
         }
     }
 
