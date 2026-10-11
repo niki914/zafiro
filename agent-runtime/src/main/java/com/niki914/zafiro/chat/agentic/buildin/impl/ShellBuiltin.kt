@@ -18,8 +18,8 @@ import kotlinx.serialization.json.longOrNull
  * 同时支持通过 alias 开辟独立隔离会话，并通过 ToolExecutionPreflight 进行权限前检。
  */
 open class ShellBuiltin(
-    private val preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
-) : BaseSessionBuiltin() {
+    preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
+) : BaseSessionBuiltin(preflight) {
 
     override val name: String = "shell"
 
@@ -32,8 +32,9 @@ open class ShellBuiltin(
                 "Identity: Choose 'user' (default local shell), 'root' (via su), or 'shizuku'.\n\n" +
                 "IMPORTANT RULES:\n" +
                 "1. Never run blocking interactive commands without non-interactive flags (e.g. do not run top, vim, nano, or unmetered ping).\n" +
-                "2. For long-running tasks, prefer setting a larger 'timeout' upfront (e.g. timeout=60). If running in background, do NOT busy-poll with action='read' immediately; wait sensibly (e.g. run a blocking 'sleep 5' to 'sleep 30' depending on task scale) before reading output.\n" +
-                "3. To send interactive input to a running session, use action='write' or action='submit'."
+                "2. For long-running tasks, prefer setting a larger 'timeout' upfront (e.g. timeout=60). A command that exceeds 'timeout' keeps running in the background; collect its output later with action='read' instead of polling in a tight loop.\n" +
+                "3. A session with a command still in flight rejects new commands. If that command is stuck, abandon it with action='write' + text \"\\u0003\" (Ctrl-C); if you just need the session now, run the next command in a new session with a different alias.\n" +
+                "4. To send interactive input to a running session, use action='write' or action='submit'."
 
     override val inputSchemaJson: String get() = SHELL_SCHEMA
 
@@ -61,17 +62,8 @@ open class ShellBuiltin(
         )
     }
 
-    override suspend fun dispatchRequest(args: BaseSessionArgs): String {
-        val shellArgs = args as? ShellArgs
-        val command = args.command
-        if (command != null) {
-            val decision = preflight.evaluate(command, toolName = name)
-            if (!decision.allowed) {
-                return TerminalToolResponse.policyBlocked(decision)
-            }
-            preflight.ensurePathAccess(command + " " + shellArgs?.workdir.orEmpty())
-        }
-        return super.dispatchRequest(args)
+    override suspend fun preflightPathAccess(command: String, args: BaseSessionArgs) {
+        preflight.ensurePathAccess(command + " " + (args as? ShellArgs)?.workdir.orEmpty())
     }
 
     override suspend fun resolveSessionTarget(args: BaseSessionArgs): SessionTarget {
@@ -187,7 +179,7 @@ open class ShellBuiltin(
                 },
                 "background": {
                   "type": "boolean",
-                  "description": "Run the command in background immediately and return status='running'. Avoid immediate tight polling; wait with blocking sleep (e.g. sleep 5-30s) before reading."
+                  "description": "Run the command in background immediately and return status='running'. Avoid tight polling; use action='read' to collect output when the task should be done."
                 },
                 "action": {
                   "type": "string",

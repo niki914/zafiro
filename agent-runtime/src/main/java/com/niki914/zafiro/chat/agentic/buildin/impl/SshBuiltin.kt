@@ -3,6 +3,7 @@ package com.niki914.zafiro.chat.agentic.buildin.impl
 import com.niki914.libterm.SshAuth
 import com.niki914.libterm.SshHostKeyPolicy
 import com.niki914.libterm.SshOpenOptions
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse
@@ -21,7 +22,9 @@ import kotlinx.serialization.json.longOrNull
  * 远程 SSH 持久化会话终端工具 (ssh)。
  * 支持多机器显式寻址与凭据建联，严禁默认落入本地环境，严禁对已有会话重复携带连接凭据。
  */
-open class SshBuiltin : BaseSessionBuiltin() {
+open class SshBuiltin(
+    preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
+) : BaseSessionBuiltin(preflight) {
 
     override val name: String = "ssh"
 
@@ -36,7 +39,7 @@ open class SshBuiltin : BaseSessionBuiltin() {
                 "1. When targeting an existing session via 'session' or 'alias', NEVER pass connection credentials ('host', 'username', 'password'). Doing so will be rejected.\n" +
                 "2. Never run blocking interactive commands without non-interactive flags (e.g. do not run top, vim, nano, or unmetered ping).\n" +
                 "3. By default, commands run synchronously and return upon completion. If execution exceeds 'timeout' seconds, it degrades to background execution (status='running', timed_out=true).\n" +
-                "4. For long-running tasks, prefer setting a larger 'timeout' upfront (e.g. timeout=60). If running in background, do NOT busy-poll with action='read' immediately; wait sensibly (e.g. run a blocking 'sleep 5' to 'sleep 30' depending on task scale) before reading output."
+                "4. A session with a command still in flight rejects new commands. If that command is stuck, abandon it with action='write' + text \"\\u0003\" (Ctrl-C); if you just need the session now, run the next command in a new session (new alias)."
 
     override val inputSchemaJson: String get() = SSH_SCHEMA
 
@@ -261,7 +264,7 @@ open class SshBuiltin : BaseSessionBuiltin() {
                 },
                 "background": {
                   "type": "boolean",
-                  "description": "Run the command in background immediately and return status='running'. Avoid tight polling; use sensible sleep intervals (e.g. 5-30s) before checking."
+                  "description": "Run the command in background immediately and return status='running'. Avoid tight polling; use action='read' to collect output when the task should be done."
                 },
                 "action": {
                   "type": "string",

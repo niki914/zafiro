@@ -7,6 +7,7 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.BaseSessionBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.SessionAction
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.util.SilentLoggerRule
+import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -19,8 +20,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
 
 class BaseSessionBuiltinTest {
@@ -28,11 +31,18 @@ class BaseSessionBuiltinTest {
     @get:Rule
     val silentLogger = SilentLoggerRule()
 
+    @Before
+    fun setUp() {
+        // base 现在统一跑执行规则前检，前检依赖 settings gateway
+        installRuntimeSettingsGatewayForTest()
+    }
+
     @After
     fun tearDown() {
         runBlocking {
             TerminalSessionPool.closeAll()
         }
+        RuntimeEnvironment.clearForTest()
     }
 
     private class TestSessionBuiltin(
@@ -359,5 +369,178 @@ class BaseSessionBuiltinTest {
             BuiltinToolRequest(name = "test_session", argumentsJson = """{"action":"submit","session":"repl","text":"q"}""")
         )
         assertNull(tool.sessionRegistry.getCommandState("s1"))
+    }
+
+    // ── 回执卫生：NUL 填充与超长输出 ──────────────────────────────────────
+
+    @Test
+    fun handleRead_stripsNulPaddingFromTerminalOutput() = runTest {
+        val tool = TestSessionBuiltin()
+        tool.sessionRegistry.register(sessionId = "s1", alias = "noisy_pty")
+        tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"job","session":"noisy_pty","background":true}""",
+            )
+        )
+        // PTY 会在提示符后写入 NUL 填充
+        tool.appendOutput("s1", "hello\u0000\u0000\u0000world")
+
+        val readResponse = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"action":"read","session":"noisy_pty"}""",
+            )
+        )
+        val output = Json.parseToJsonElement(readResponse).jsonObject["output"]!!.jsonPrimitive.content
+
+        assertEquals("helloworld", output)
+    }
+
+    @Test
+    fun handleCommand_truncatesOversizedOutputAndExportsFullText() = runTest {
+        val exportDir = Files.createTempDirectory("zafiro-tool-output").toFile()
+        try {
+            val tool = TestSessionBuiltin().apply {
+                exportDirOverride = exportDir
+                autoRespondExitCode = 0
+                autoRespondOutput = "line\n".repeat(3000)
+            }
+            tool.sessionRegistry.register(sessionId = "s1", alias = "loud")
+
+            val rawResponse = tool.invokeRawJson(
+                BuiltinToolRequest(
+                    name = "test_session",
+                    argumentsJson = """{"command":"noisy","session":"loud"}""",
+                )
+            )
+            val output = Json.parseToJsonElement(rawResponse).jsonObject["output"]!!.jsonPrimitive.content
+
+            assertTrue(output.contains("[Output truncated:"))
+            assertTrue(output.contains(exportDir.absolutePath))
+            assertTrue(exportDir.listFiles().orEmpty().isNotEmpty())
+        } finally {
+            exportDir.deleteRecursively()
+        }
+    }
+
+    // ── action='read' 的差分语义 ────────────────────────────────────────────
+
+    @Test
+    fun handleRead_returnsOnlyOutputAppendedSincePreviousRead() = runTest {
+        val tool = TestSessionBuiltin()
+        tool.sessionRegistry.register(sessionId = "s1", alias = "stream")
+        tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"job","session":"stream","background":true}""",
+            )
+        )
+
+        tool.appendOutput("s1", "first_batch\n")
+        val first = tool.invokeRawJson(
+            BuiltinToolRequest(name = "test_session", argumentsJson = """{"action":"read","session":"stream"}""")
+        )
+        assertEquals(
+            "first_batch",
+            Json.parseToJsonElement(first).jsonObject["output"]!!.jsonPrimitive.content.trim(),
+        )
+
+        // 第二次读只能看到新增部分，不能把第一段重新发一遍
+        tool.appendOutput("s1", "second_batch\n")
+        val second = tool.invokeRawJson(
+            BuiltinToolRequest(name = "test_session", argumentsJson = """{"action":"read","session":"stream"}""")
+        )
+        assertEquals(
+            "second_batch",
+            Json.parseToJsonElement(second).jsonObject["output"]!!.jsonPrimitive.content.trim(),
+        )
+    }
+
+    // ── 忙会话拒绝新命令 ────────────────────────────────────────────────────
+
+    @Test
+    fun handleCommand_rejectsNewCommandWhilePreviousOneIsInFlight() = runTest {        val tool = TestSessionBuiltin()
+        tool.sessionRegistry.register(sessionId = "s1", alias = "busy")
+        tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"slow_job","session":"busy","background":true}""",
+            )
+        )
+
+        val response = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"second_job","session":"busy"}""",
+            )
+        )
+        val error = Json.parseToJsonElement(response).jsonObject["error"]!!.jsonObject
+
+        assertEquals("SESSION_BUSY", error["code"]!!.jsonPrimitive.content)
+        // 第二条命令根本不该被下发到终端
+        assertEquals(1, tool.sentPayloads.size)
+    }
+
+    @Test
+    fun handleWrite_withCtrlCAbandonsPendingCommandAndFreesSession() = runTest {
+        val tool = TestSessionBuiltin()
+        tool.sessionRegistry.register(sessionId = "s1", alias = "stuck")
+        tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"slow_job","session":"stuck","background":true}""",
+            )
+        )
+        assertNotNull(tool.sessionRegistry.getCommandState("s1"))
+
+        // Ctrl-C 之后 sentinel 标记不会回来（tty 输入队列被 flush），只能靠显式作废放行
+        tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = "{\"action\":\"write\",\"session\":\"stuck\",\"text\":\"\\u0003\"}",
+            )
+        )
+        assertNull(tool.sessionRegistry.getCommandState("s1"))
+
+        val response = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"next_job","session":"stuck"}""",
+            )
+        )
+
+        assertNull(Json.parseToJsonElement(response).jsonObject["error"])
+        assertEquals(2, tool.sentPayloads.size)
+    }
+
+    // ── 会话缓冲消失时的读安全 ──────────────────────────────────────────────
+
+    @Test
+    fun handleRead_survivesSessionBufferDisappearingMidCommand() = runTest {
+        val tool = TestSessionBuiltin()
+        tool.sessionRegistry.register(sessionId = "s1", alias = "vanishing")
+        // 先让缓冲里有内容，下一条命令的 initialOffset 必然 > 0
+        tool.appendOutput("s1", "pre_existing_output\n")
+        tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"slow_job","session":"vanishing","background":true}""",
+            )
+        )
+
+        // pool 侧的会话没了（closeAll / 远端断开 / UI 关掉终端），而 registry 还留着它
+        tool.sessionBuffers.remove("s1")
+        val response = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"action":"read","session":"vanishing"}""",
+            )
+        )
+        val json = Json.parseToJsonElement(response).jsonObject
+
+        // 差分窗口的区间不能倒置，否则 coerceIn 抛异常被兜成一条无意义的 "invalid request"
+        assertNull(json["error"])
+        assertEquals("running", json["status"]!!.jsonPrimitive.content)
     }
 }

@@ -118,6 +118,18 @@ object TerminalToolResponse {
         )
     }
 
+    fun sessionBusyWithPendingCommand(session: String): String {
+        return error(
+            code = "SESSION_BUSY",
+            message = "Session '$session' still has a command in flight. Collect its output with " +
+                "action=\"read\" first. Two ways out: if that command is stuck, abandon it with " +
+                "action=\"write\" and text \"\\u0003\" (Ctrl-C) — that frees this session for the next " +
+                "command; if you only need a shell right now, leave this session alone and run your next " +
+                "command in a new session with a different alias. Sending a command now would make both " +
+                "outputs interleave and get lost.",
+        )
+    }
+
     fun sessionBusy(session: String, asyncId: String?): String {
         val message = if (asyncId.isNullOrBlank()) {
             "Session '$session' is busy. Wait for the current command to complete."

@@ -10,6 +10,9 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.SshBuiltin
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.util.SilentLoggerRule
+import com.niki914.zafiro.settings.RuntimeEnvironment
+import com.niki914.zafiro.settings.model.RuntimeExecutionRule
+import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -20,6 +23,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.util.concurrent.ConcurrentHashMap
@@ -30,11 +34,18 @@ class SshBuiltinTest {
     @get:Rule
     val silentLogger = SilentLoggerRule()
 
+    @Before
+    fun setUp() {
+        // base 现在统一跑执行规则前检，前检依赖 settings gateway
+        installRuntimeSettingsGatewayForTest()
+    }
+
     @After
     fun tearDown() {
         runBlocking {
             TerminalSessionPool.closeAll()
         }
+        RuntimeEnvironment.clearForTest()
     }
 
     private class TestSshBuiltin : SshBuiltin() {
@@ -214,5 +225,42 @@ class SshBuiltinTest {
         val error = json["error"]?.jsonObject
         assertNotNull(error)
         assertEquals("SSH_AUTHENTICATION_FAILED", error?.get("code")?.jsonPrimitive?.content)
+    }
+
+    // ── 6. 执行规则对 SSH 命令同样生效 (防止约束只留在本地 shell) ────────
+
+    @Test
+    fun executionRule_blocksRemoteCommand() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                executionRules = listOf(
+                    RuntimeExecutionRule(
+                        id = "rule-rm",
+                        name = "Block rm -rf",
+                        enabledMode = RuntimeExecutionRuleEnabledMode.ALWAYS,
+                        patterns = listOf("""rm\s+-rf.*"""),
+                    )
+                )
+            )
+        )
+        val tool = TestSshBuiltin()
+        tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "ssh",
+                argumentsJson = """{"host":"10.0.0.9","username":"ops","password":"p","alias":"edge"}""",
+            )
+        )
+
+        val resp = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "ssh",
+                argumentsJson = """{"alias":"edge","command":"rm -rf /var/tmp/thing"}""",
+            )
+        )
+        val error = Json.parseToJsonElement(resp).jsonObject["error"]?.jsonObject
+
+        assertNotNull(error)
+        assertEquals("COMMAND_BLOCKED", error?.get("code")?.jsonPrimitive?.content)
+        assertTrue(error?.get("message")?.jsonPrimitive?.content?.contains("Block rm -rf") == true)
     }
 }
