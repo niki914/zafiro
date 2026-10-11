@@ -18,7 +18,7 @@ class SettingsViewModelTest {
             hiddenGroups = setOf(
                 ZafiroSettingsGroup.Memory,
                 ZafiroSettingsGroup.Mcp,
-                ZafiroSettingsGroup.McpHost,
+                ZafiroSettingsGroup.McpService,
                 ZafiroSettingsGroup.About,
             )
         )

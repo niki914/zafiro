@@ -159,7 +159,7 @@
     <string name="skill_import_overwrite">Overwrite</string>
     <string name="skill_import_cancel">Cancel</string>
     <string name="skill_import_resolve_failed">Unable to access the selected folder</string>
-    <string name="ui_settings_mcp">MCP Server</string>
+    <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">Connect external MCP servers and tools</string>
     <string name="ui_settings_takeover">Takeover Rules</string>
     <string name="ui_settings_takeover_summary">Route matched requests to the native assistant or Zafiro</string>
@@ -214,7 +214,7 @@
     <string name="ui_settings_configure_error_required">This field cannot be empty</string>
     <string name="ui_settings_configure_error_name_duplicate">Configuration name already exists. Please use a different name.</string>
     <string name="ui_settings_configure_error_proxy_invalid">Proxy address is not a valid URI</string>
-    <string name="ui_settings_mcp_config">MCP Server Configuration</string>
+    <string name="ui_settings_mcp_config">MCP Configuration</string>
 
     <!-- Memory Module -->
     <string name="memory_page_description">Manage saved memories. Swipe left or right to delete, or tap an item to edit it. Once added, the Agent will remember this information even in new conversations.</string>
@@ -346,10 +346,10 @@
     <string name="custom_py_tool_save_dialog_action_close">Close</string>
     <string name="custom_py_tool_save_failed">Failed to save: %1$s</string>
 
-    <string name="mcp_page_description">Configure connection and authentication for MCP services. After saving, Zafiro will automatically discover available tools at runtime.</string>
-    <string name="mcp_page_empty_description">Tap the top right to add your first server.</string>
-    <string name="mcp_loading">Loading saved MCP services...</string>
-    <string name="mcp_editor_title_create">New MCP Service</string>
+    <string name="mcp_page_description">Configure connection and authentication for MCP. After saving, Zafiro will automatically discover available tools at runtime.</string>
+    <string name="mcp_page_empty_description">Tap the top right to add your first MCP server.</string>
+    <string name="mcp_loading">Loading saved MCP servers...</string>
+    <string name="mcp_editor_title_create">New MCP Server</string>
     <string name="mcp_field_name">Name</string>
     <string name="mcp_field_name_hint">For example: my-xxx-mcp-server</string>
     <string name="mcp_field_url">URL</string>
@@ -357,7 +357,7 @@
     <string name="mcp_field_enabled">Enable Service</string>
     <string name="mcp_field_headers">Custom Headers</string>
     <string name="mcp_field_headers_hint">{\n  \"Authorization\": \"Bearer xxx\"\n}</string>
-    <string name="mcp_save_action">Save MCP Service</string>
+    <string name="mcp_save_action">Save MCP Server</string>
     <string name="mcp_error_name_required">Please enter a name</string>
     <string name="mcp_error_name_duplicate">This name already exists. Please choose another one and try again</string>
     <string name="mcp_error_url_required">Please enter a URL</string>
@@ -366,7 +366,7 @@
     <string name="mcp_error_headers_not_object">Headers must be a JSON object</string>
     <string name="mcp_error_headers_empty_key">Header names cannot be empty</string>
     <string name="mcp_delete_dialog_title">Delete MCP Server</string>
-    <string name="mcp_delete_dialog_text">Are you sure you want to delete the MCP server \"%1$s\"? This action cannot be undone.</string>
+    <string name="mcp_delete_dialog_text">Are you sure you want to delete the MCP server &quot;%1$s&quot;? This action cannot be undone.</string>
     <string name="mcp_error_headers_non_string">Header values must be strings</string>
     <string name="update_dialog_title">New Version Available</string>
     <string name="update_dialog_text">v%1$s is now available. Upgrade to get the latest features and fixes.</string>
@@ -536,28 +536,28 @@
     <string name="ui_onboard_preferences_action_skip">Skip</string>
     <string name="ui_onboard_preferences_toast_denied">Permission not granted</string>
 
-    <!-- MCP Host Settings -->
-    <string name="ui_settings_mcp_host">Host as MCP Server</string>
-    <string name="ui_settings_mcp_host_summary">Expose Zafiro tools to external agents via MCP</string>
-    <string name="mcp_host_section_service">Service</string>
-    <string name="mcp_host_section_connection">Connection &amp; Security</string>
-    <string name="mcp_host_section_tools">Exposed Tools</string>
-    <string name="mcp_host_enable_title">Enable MCP Server</string>
-    <string name="mcp_host_enable_summary">Allow external clients to control this device via MCP protocol</string>
-    <string name="mcp_host_status_title">Status</string>
-    <string name="mcp_host_status_running">Running</string>
-    <string name="mcp_host_status_stopped">Stopped</string>
-    <string name="mcp_host_status_starting">Starting…</string>
-    <string name="mcp_host_status_error">Error</string>
-    <string name="mcp_host_port_title">Port</string>
-    <string name="mcp_host_port_placeholder">8791</string>
-    <string name="mcp_host_port_error_invalid">Port must be between 1024 and 65535</string>
-    <string name="mcp_host_token_title">Bearer Token</string>
-    <string name="mcp_host_token_placeholder">Leave empty to allow all</string>
-    <string name="mcp_host_token_description_empty">No authentication required</string>
-    <string name="mcp_host_token_description_configured">Authorization: Bearer &lt;token&gt; required</string>
-    <string name="mcp_host_token_show">Show Bearer Token</string>
-    <string name="mcp_host_token_hide">Hide Bearer Token</string>
+    <!-- MCP Service Settings -->
+    <string name="ui_settings_mcp_service">MCP Service</string>
+    <string name="ui_settings_mcp_service_summary">Expose Zafiro tools to external agents via MCP</string>
+    <string name="mcp_service_section_service">Service</string>
+    <string name="mcp_service_section_connection">Connection &amp; Security</string>
+    <string name="mcp_service_section_tools">Exposed Tools</string>
+    <string name="mcp_service_enable_title">Enable MCP Service</string>
+    <string name="mcp_service_enable_summary">Allow external agents to access Zafiro tools via MCP</string>
+    <string name="mcp_service_status_title">Status</string>
+    <string name="mcp_service_status_running">Running</string>
+    <string name="mcp_service_status_stopped">Stopped</string>
+    <string name="mcp_service_status_starting">Starting…</string>
+    <string name="mcp_service_status_error">Error</string>
+    <string name="mcp_service_port_title">Port</string>
+    <string name="mcp_service_port_placeholder">8791</string>
+    <string name="mcp_service_port_error_invalid">Port must be between 1024 and 65535</string>
+    <string name="mcp_service_token_title">Bearer Token</string>
+    <string name="mcp_service_token_placeholder">Leave empty to allow all</string>
+    <string name="mcp_service_token_description_empty">No authentication required</string>
+    <string name="mcp_service_token_description_configured">Authorization: Bearer &lt;token&gt; required</string>
+    <string name="mcp_service_token_show">Show Bearer Token</string>
+    <string name="mcp_service_token_hide">Hide Bearer Token</string>
 
     <!-- Crash Protection -->
     <string name="crash_dialog_title">App Crashed Last Time</string>

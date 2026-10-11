@@ -164,10 +164,10 @@ data class RuntimeToolValidation(
 )
 
 /**
- * Zafiro 作为 MCP Server 暴露给外部客户端（如桌面 Claude Code、Cursor）的配置。
+ * Zafiro 把自己作为 MCP 服务对外暴露的配置。
  * 默认关闭服务，且仅在白名单内的安全工具默认开放；高危工具（terminal/python）默认关闭。
  */
-data class RuntimeMcpHostConfig(
+data class RuntimeMcpServiceConfig(
     val enabled: Boolean = false,
     val port: Int = DEFAULT_PORT,
     val host: String = DEFAULT_HOST,

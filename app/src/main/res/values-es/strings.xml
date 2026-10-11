@@ -159,8 +159,8 @@
     <string name="skill_import_overwrite">Sobrescribir</string>
     <string name="skill_import_cancel">Cancelar</string>
     <string name="skill_import_resolve_failed">No se puede acceder a la carpeta seleccionada</string>
-    <string name="ui_settings_mcp">MCP Server</string>
-    <string name="ui_settings_mcp_summary">Conectar servidores y herramientas MCP externos</string>
+    <string name="ui_settings_mcp">MCP</string>
+    <string name="ui_settings_mcp_summary">Conectar MCP y herramientas externas</string>
     <string name="ui_settings_takeover">Reglas de control</string>
     <string name="ui_settings_takeover_summary">Configurar qué entradas procesa el asistente nativo o Zafiro</string>
     <string name="ui_settings_execution_rules">Reglas de ejecución</string>
@@ -214,7 +214,7 @@
     <string name="ui_settings_configure_error_required">Los campos obligatorios no pueden estar vacíos</string>
     <string name="ui_settings_configure_error_name_duplicate">El nombre de la configuración ya existe. Elija otro nombre.</string>
     <string name="ui_settings_configure_error_proxy_invalid">La dirección del proxy no es un URI válido</string>
-    <string name="ui_settings_mcp_config">Configuración de MCP Server</string>
+    <string name="ui_settings_mcp_config">Configuración de MCP</string>
 
     <!-- Memory Module -->
     <string name="memory_page_description">Gestione memorias guardadas. Deslice a la izquierda o derecha para eliminar, o toque para editar. Una vez añadidas, el agente las recordará en todas las conversaciones.</string>
@@ -346,10 +346,10 @@
     <string name="custom_py_tool_save_dialog_action_close">Cerrar</string>
     <string name="custom_py_tool_save_failed">Error al guardar: %1$s</string>
 
-    <string name="mcp_page_description">Configure los métodos de conexión y autenticación para servicios MCP. Tras guardar, Zafiro descubrirá automáticamente las herramientas disponibles en tiempo de ejecución.</string>
-    <string name="mcp_page_empty_description">Toque en la esquina superior derecha para añadir su primer servidor.</string>
+    <string name="mcp_page_description">Configure los métodos de conexión y autenticación para MCP. Tras guardar, Zafiro descubrirá automáticamente las herramientas disponibles en tiempo de ejecución.</string>
+    <string name="mcp_page_empty_description">Toque en la esquina superior derecha para añadir su primer servidor MCP.</string>
     <string name="mcp_loading">Cargando servidores MCP guardados...</string>
-    <string name="mcp_editor_title_create">Añadir servicio MCP</string>
+    <string name="mcp_editor_title_create">Añadir servidor MCP</string>
     <string name="mcp_field_name">Nombre</string>
     <string name="mcp_field_name_hint">Ejemplo: mi-servidor-mcp</string>
     <string name="mcp_field_url">URL</string>
@@ -357,7 +357,7 @@
     <string name="mcp_field_enabled">Activar servicio</string>
     <string name="mcp_field_headers">Encabezados personalizados</string>
     <string name="mcp_field_headers_hint">{\n  \"Authorization\": \"Bearer xxx\"\n}</string>
-    <string name="mcp_save_action">Guardar servicio MCP</string>
+    <string name="mcp_save_action">Guardar servidor MCP</string>
     <string name="mcp_error_name_required">Introduzca un nombre</string>
     <string name="mcp_error_name_duplicate">El nombre ya existe. Elija otro nombre.</string>
     <string name="mcp_error_url_required">Introduzca una URL</string>
@@ -536,28 +536,28 @@
     <string name="ui_onboard_preferences_action_skip">Omitir</string>
     <string name="ui_onboard_preferences_toast_denied">Permiso no concedido</string>
 
-    <!-- MCP Host Settings -->
-    <string name="ui_settings_mcp_host">Servidor MCP</string>
-    <string name="ui_settings_mcp_host_summary">Exponer herramientas de Zafiro a agentes externos mediante MCP</string>
-    <string name="mcp_host_section_service">Servicio</string>
-    <string name="mcp_host_section_connection">Conexión y seguridad</string>
-    <string name="mcp_host_section_tools">Herramientas expuestas</string>
-    <string name="mcp_host_enable_title">Habilitar servidor MCP</string>
-    <string name="mcp_host_enable_summary">Permitir que clientes externos controlen este dispositivo mediante MCP</string>
-    <string name="mcp_host_status_title">Estado</string>
-    <string name="mcp_host_status_running">En ejecución</string>
-    <string name="mcp_host_status_stopped">Detenido</string>
-    <string name="mcp_host_status_starting">Iniciando…</string>
-    <string name="mcp_host_status_error">Error</string>
-    <string name="mcp_host_port_title">Puerto</string>
-    <string name="mcp_host_port_placeholder">8791</string>
-    <string name="mcp_host_port_error_invalid">El puerto debe estar entre 1024 y 65535</string>
-    <string name="mcp_host_token_title">Token Bearer</string>
-    <string name="mcp_host_token_placeholder">Dejar vacío para permitir todo</string>
-    <string name="mcp_host_token_description_empty">No se requiere autenticación</string>
-    <string name="mcp_host_token_description_configured">Se requiere Authorization: Bearer &lt;token&gt;</string>
-    <string name="mcp_host_token_show">Mostrar token Bearer</string>
-    <string name="mcp_host_token_hide">Ocultar token Bearer</string>
+    <!-- MCP Service Settings -->
+    <string name="ui_settings_mcp_service">Servicio MCP</string>
+    <string name="ui_settings_mcp_service_summary">Exponer herramientas de Zafiro a agentes externos mediante MCP</string>
+    <string name="mcp_service_section_service">Servicio</string>
+    <string name="mcp_service_section_connection">Conexión y seguridad</string>
+    <string name="mcp_service_section_tools">Herramientas expuestas</string>
+    <string name="mcp_service_enable_title">Habilitar servicio MCP</string>
+    <string name="mcp_service_enable_summary">Permitir que agentes externos accedan a las herramientas de Zafiro mediante MCP</string>
+    <string name="mcp_service_status_title">Estado</string>
+    <string name="mcp_service_status_running">En ejecución</string>
+    <string name="mcp_service_status_stopped">Detenido</string>
+    <string name="mcp_service_status_starting">Iniciando…</string>
+    <string name="mcp_service_status_error">Error</string>
+    <string name="mcp_service_port_title">Puerto</string>
+    <string name="mcp_service_port_placeholder">8791</string>
+    <string name="mcp_service_port_error_invalid">El puerto debe estar entre 1024 y 65535</string>
+    <string name="mcp_service_token_title">Token Bearer</string>
+    <string name="mcp_service_token_placeholder">Dejar vacío para permitir todo</string>
+    <string name="mcp_service_token_description_empty">No se requiere autenticación</string>
+    <string name="mcp_service_token_description_configured">Se requiere Authorization: Bearer &lt;token&gt;</string>
+    <string name="mcp_service_token_show">Mostrar token Bearer</string>
+    <string name="mcp_service_token_hide">Ocultar token Bearer</string>
 
     <!-- Crash Protection -->
     <string name="crash_dialog_title">La aplicación se cerró de forma inesperada</string>

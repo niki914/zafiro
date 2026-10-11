@@ -28,26 +28,26 @@ import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
-import com.niki914.zafiro.api.McpHostStatus
+import com.niki914.zafiro.api.McpServiceStatus
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.content.SettingControlledExpandableTextItem
 import com.niki914.zafiro.app.ui.content.rememberEditableDetailFieldController
-import com.niki914.zafiro.app.ui.model.McpHostSettingsIntent
-import com.niki914.zafiro.app.ui.model.McpHostSettingsViewModel
+import com.niki914.zafiro.app.ui.model.McpServiceSettingsIntent
+import com.niki914.zafiro.app.ui.model.McpServiceSettingsViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private enum class McpHostEditableField {
+private enum class McpServiceEditableField {
     Port,
     Token,
 }
 
 @Composable
-fun McpHostSettingsContent(
-    viewModel: McpHostSettingsViewModel = pageViewModel(),
+fun McpServiceSettingsContent(
+    viewModel: McpServiceSettingsViewModel = pageViewModel(),
 ) {
     val uiState by viewModel.uiStateFlow.collectAsState()
-    val fieldController = rememberEditableDetailFieldController<McpHostEditableField>(
+    val fieldController = rememberEditableDetailFieldController<McpServiceEditableField>(
         requestedFocusField = null,
         onRequestedFocusHandled = {},
     )
@@ -60,16 +60,16 @@ fun McpHostSettingsContent(
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        viewModel.sendIntent(McpHostSettingsIntent.Load)
+        viewModel.sendIntent(McpServiceSettingsIntent.Load)
     }
 
     LaunchedEffect(fieldController.expandedField) {
         when (fieldController.expandedField) {
-            McpHostEditableField.Port -> {
+            McpServiceEditableField.Port -> {
                 delay(150)
                 portBringIntoViewRequester.bringIntoView()
             }
-            McpHostEditableField.Token -> {
+            McpServiceEditableField.Token -> {
                 delay(150)
                 tokenBringIntoViewRequester.bringIntoView()
             }
@@ -82,8 +82,8 @@ fun McpHostSettingsContent(
     LaunchedEffect(imeBottomPx) {
         if (imeBottomPx > 0) {
             when (fieldController.expandedField) {
-                McpHostEditableField.Port -> portBringIntoViewRequester.bringIntoView()
-                McpHostEditableField.Token -> tokenBringIntoViewRequester.bringIntoView()
+                McpServiceEditableField.Port -> portBringIntoViewRequester.bringIntoView()
+                McpServiceEditableField.Token -> tokenBringIntoViewRequester.bringIntoView()
                 null -> Unit
             }
         }
@@ -99,38 +99,38 @@ fun McpHostSettingsContent(
             },
     ) {
         // Block 1: 服务开关与运行状态
-        SettingsGroupCard(title = stringResource(R.string.mcp_host_section_service)) {
+        SettingsGroupCard(title = stringResource(R.string.mcp_service_section_service)) {
             SettingToggleItem(
-                title = stringResource(R.string.mcp_host_enable_title),
-                description = stringResource(R.string.mcp_host_enable_summary),
+                title = stringResource(R.string.mcp_service_enable_title),
+                description = stringResource(R.string.mcp_service_enable_summary),
                 checked = uiState.enabled,
                 onCheckedChange = { checked ->
                     fieldController.clearActiveField()
-                    viewModel.sendIntent(McpHostSettingsIntent.ToggleServer(checked))
+                    viewModel.sendIntent(McpServiceSettingsIntent.ToggleServer(checked))
                 },
             )
             SettingsItemDivider()
-            val runningUrl = (uiState.status as? McpHostStatus.Running)
+            val runningUrl = (uiState.status as? McpServiceStatus.Running)
                 ?.let { "http://${it.host}:${it.port}/mcp" }
             val statusState = when (val s = uiState.status) {
-                is McpHostStatus.Running -> stringResource(R.string.mcp_host_status_running)
-                McpHostStatus.Starting -> stringResource(R.string.mcp_host_status_starting)
-                McpHostStatus.Stopped -> stringResource(R.string.mcp_host_status_stopped)
-                is McpHostStatus.Error -> stringResource(R.string.mcp_host_status_error)
+                is McpServiceStatus.Running -> stringResource(R.string.mcp_service_status_running)
+                McpServiceStatus.Starting -> stringResource(R.string.mcp_service_status_starting)
+                McpServiceStatus.Stopped -> stringResource(R.string.mcp_service_status_stopped)
+                is McpServiceStatus.Error -> stringResource(R.string.mcp_service_status_error)
             }
             // 与运行中的 URL 同位置：出错时换成原因，点整行复制完整的错误栈
             val statusSummary = when (val s = uiState.status) {
-                is McpHostStatus.Running -> runningUrl
-                is McpHostStatus.Error -> s.message
+                is McpServiceStatus.Running -> runningUrl
+                is McpServiceStatus.Error -> s.message
                 else -> null
             }
             val statusCopyText = when (val s = uiState.status) {
-                is McpHostStatus.Running -> runningUrl
-                is McpHostStatus.Error -> s.stackTrace
+                is McpServiceStatus.Running -> runningUrl
+                is McpServiceStatus.Error -> s.stackTrace
                 else -> null
             }
             SettingsListItem(
-                title = stringResource(R.string.mcp_host_status_title),
+                title = stringResource(R.string.mcp_service_status_title),
                 currentState = statusState,
                 summary = statusSummary,
                 onClick = statusCopyText?.let { text ->
@@ -145,18 +145,18 @@ fun McpHostSettingsContent(
         }
 
         // Block 2: 连接与鉴权
-        SettingsGroupCard(title = stringResource(R.string.mcp_host_section_connection)) {
+        SettingsGroupCard(title = stringResource(R.string.mcp_service_section_connection)) {
             Box(modifier = Modifier.bringIntoViewRequester(portBringIntoViewRequester)) {
                 SettingControlledExpandableTextItem(
-                    field = McpHostEditableField.Port,
+                    field = McpServiceEditableField.Port,
                     controller = fieldController,
-                    title = stringResource(R.string.mcp_host_port_title),
+                    title = stringResource(R.string.mcp_service_port_title),
                     value = uiState.portInput,
                     onValueChange = { newPort ->
-                        viewModel.sendIntent(McpHostSettingsIntent.PortChanged(newPort))
+                        viewModel.sendIntent(McpServiceSettingsIntent.PortChanged(newPort))
                     },
-                    placeholder = stringResource(R.string.mcp_host_port_placeholder),
-                    description = uiState.portError?.let { stringResource(R.string.mcp_host_port_error_invalid) },
+                    placeholder = stringResource(R.string.mcp_service_port_placeholder),
+                    description = uiState.portError?.let { stringResource(R.string.mcp_service_port_error_invalid) },
                     enabled = true,
                     minLines = 1,
                     maxLines = 1,
@@ -165,34 +165,34 @@ fun McpHostSettingsContent(
             SettingsItemDivider()
             Box(modifier = Modifier.bringIntoViewRequester(tokenBringIntoViewRequester)) {
                 SettingControlledExpandableTextItem(
-                    field = McpHostEditableField.Token,
+                    field = McpServiceEditableField.Token,
                     controller = fieldController,
-                    title = stringResource(R.string.mcp_host_token_title),
+                    title = stringResource(R.string.mcp_service_token_title),
                     value = uiState.tokenInput,
                     onValueChange = { newToken ->
-                        viewModel.sendIntent(McpHostSettingsIntent.TokenChanged(newToken))
+                        viewModel.sendIntent(McpServiceSettingsIntent.TokenChanged(newToken))
                     },
-                    placeholder = stringResource(R.string.mcp_host_token_placeholder),
+                    placeholder = stringResource(R.string.mcp_service_token_placeholder),
                     description = if (uiState.tokenInput.isBlank()) {
-                        stringResource(R.string.mcp_host_token_description_empty)
+                        stringResource(R.string.mcp_service_token_description_empty)
                     } else {
-                        stringResource(R.string.mcp_host_token_description_configured)
+                        stringResource(R.string.mcp_service_token_description_configured)
                     },
                     enabled = true,
                     minLines = 1,
                     maxLines = 1,
                     secretVisible = uiState.tokenVisible,
                     onToggleSecretVisibility = {
-                        viewModel.sendIntent(McpHostSettingsIntent.ToggleTokenVisibility)
+                        viewModel.sendIntent(McpServiceSettingsIntent.ToggleTokenVisibility)
                     },
-                    toggleSecretVisibleContentDescription = stringResource(R.string.mcp_host_token_show),
-                    toggleSecretHiddenContentDescription = stringResource(R.string.mcp_host_token_hide),
+                    toggleSecretVisibleContentDescription = stringResource(R.string.mcp_service_token_show),
+                    toggleSecretHiddenContentDescription = stringResource(R.string.mcp_service_token_hide),
                 )
             }
         }
 
         // Block 3: 工具集合
-        SettingsGroupCard(title = stringResource(R.string.mcp_host_section_tools)) {
+        SettingsGroupCard(title = stringResource(R.string.mcp_service_section_tools)) {
             uiState.tools.forEachIndexed { index, tool ->
                 if (index > 0) {
                     SettingsItemDivider()
@@ -203,7 +203,7 @@ fun McpHostSettingsContent(
                     checked = tool.name in uiState.exposedTools,
                     onCheckedChange = { checked ->
                         fieldController.clearActiveField()
-                        viewModel.sendIntent(McpHostSettingsIntent.ToggleTool(tool.name, checked))
+                        viewModel.sendIntent(McpServiceSettingsIntent.ToggleTool(tool.name, checked))
                     },
                 )
             }
