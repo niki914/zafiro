@@ -13,6 +13,7 @@ import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.debug.DebugLogFile
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
+import com.niki914.zafiro.app.wakelock.AgentWakeLockController
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.McpHostService
 import com.niki914.zafiro.business.permission.Permission
@@ -75,6 +76,11 @@ class App : Application() {
         observeFloatingBall()
         observeResidentNotification()
         observeMcpHost()
+        observeAgentWakeLock()
+    }
+
+    private fun observeAgentWakeLock() {
+        AgentWakeLockController.start(this, applicationScope)
     }
 
     private fun observeMcpHost() {

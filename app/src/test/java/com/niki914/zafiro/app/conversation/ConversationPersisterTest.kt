@@ -176,6 +176,10 @@ class ConversationPersisterTest {
         status.value = AgentState.Idle(lastOutcome = TurnOutcome.Completed)
 
         awaitUpdatedAtAbove(sessionId, initialTime)
+        repeat(50) {
+            if (touched.get() >= 2) return@repeat
+            delay(10)
+        }
         assertEquals(2, touched.get())
         scope.cancel()
     }
