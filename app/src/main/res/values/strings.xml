@@ -447,6 +447,8 @@
     <string name="ui_settings_general_floating_ball_auto_expand_summary">回答结束或需要授权时自动展开悬浮球</string>
     <string name="ui_settings_general_resident_notification">常驻通知</string>
     <string name="ui_settings_general_resident_notification_summary">在通知栏显示实时状态与控制入口</string>
+    <string name="ui_settings_general_turn_notification">回合事件提醒</string>
+    <string name="ui_settings_general_turn_notification_summary">回合完成或需要审批时发送即时通知</string>
     <string name="ui_settings_general_language">语言</string>
     <string name="ui_settings_general_language_follow_system">跟随系统</string>
     <string name="ui_settings_general_load_last_conversation">启动时载入上次对话</string>

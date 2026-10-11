@@ -53,6 +53,7 @@ import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.app.notification.ResidentNotificationBuilder
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
+import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.business.notification.NotificationChannelManager
 
 class AgentRuntimeService : Service() {
@@ -235,6 +236,10 @@ class AgentRuntimeService : Service() {
                     return
                 }
                 TurnStart.Started -> {
+                    val convId = targetAgent.conversation.value.id?.value ?: if (isIsolated) "host" else ""
+                    if (convId.isNotBlank()) {
+                        TurnNotificationManager.markHostTurnStarted(convId)
+                    }
                     Logger.i(LOG_TAG, "targetAgent.stream started successfully isolated=$isIsolated")
                 }
             }
@@ -522,6 +527,10 @@ class AgentRuntimeService : Service() {
                 ),
             )
         } finally {
+            val convId = turnAgent.conversation.value.id?.value ?: ""
+            if (convId.isNotBlank()) {
+                TurnNotificationManager.markHostTurnEnded(convId)
+            }
             try {
                 callback.asBinder().unlinkToDeath(deathRecipient, 0)
             } catch (_: Exception) {

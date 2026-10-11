@@ -12,6 +12,7 @@ import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.debug.DebugLogFile
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
+import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
 import com.niki914.zafiro.app.wakelock.AgentWakeLockController
 import com.niki914.zafiro.api.AgentManager
@@ -77,6 +78,7 @@ class App : Application() {
         observeResidentNotification()
         observeMcpHost()
         observeAgentWakeLock()
+        TurnNotificationManager.init(this)
     }
 
     private fun observeAgentWakeLock() {

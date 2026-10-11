@@ -442,6 +442,8 @@
     <string name="ui_settings_general_floating_ball_auto_expand_summary">Expandir la bola flotante al terminar una respuesta o al requerir aprobación</string>
     <string name="ui_settings_general_resident_notification">Notificación residente</string>
     <string name="ui_settings_general_resident_notification_summary">Mostrar estado en vivo y accesos directos en el panel de notificaciones</string>
+    <string name="ui_settings_general_turn_notification">Notificaciones de eventos de turnos</string>
+    <string name="ui_settings_general_turn_notification_summary">Enviar notificaciones emergentes cuando se completa un turno o se requiere aprobación</string>
     <string name="ui_settings_general_language">Idioma</string>
     <string name="ui_settings_general_language_follow_system">Usar el del sistema</string>
     <string name="ui_settings_general_load_last_conversation">Cargar la última conversación al iniciar</string>

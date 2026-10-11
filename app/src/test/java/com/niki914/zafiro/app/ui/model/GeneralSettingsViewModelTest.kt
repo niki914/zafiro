@@ -204,6 +204,39 @@ class GeneralSettingsViewModelTest {
     }
 
     @Test
+    fun toggleTurnNotification_whenPermissionGranted_updatesStateAndRepo() = runTest {
+        installPermission(PermissionState.GRANTED)
+        val viewModel = GeneralSettingsViewModel()
+
+        assertFalse(viewModel.uiStateFlow.value.turnNotificationEnabled)
+        assertFalse(XRepo.turnNotificationEnabled())
+
+        viewModel.sendIntent(GeneralSettingsIntent.ToggleTurnNotification(true))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiStateFlow.value.turnNotificationEnabled)
+        assertTrue(XRepo.turnNotificationEnabled())
+
+        viewModel.sendIntent(GeneralSettingsIntent.ToggleTurnNotification(false))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiStateFlow.value.turnNotificationEnabled)
+        assertFalse(XRepo.turnNotificationEnabled())
+    }
+
+    @Test
+    fun toggleTurnNotification_whenPermissionMissing_staysOff() = runTest {
+        installPermission(PermissionState.DENIED_BY_USER)
+        val viewModel = GeneralSettingsViewModel()
+
+        viewModel.sendIntent(GeneralSettingsIntent.ToggleTurnNotification(true))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiStateFlow.value.turnNotificationEnabled)
+        assertFalse(XRepo.turnNotificationEnabled())
+    }
+
+    @Test
     fun selectTimeoutsAndAttempts_updatesStateAndRepo() = runTest {
         val viewModel = GeneralSettingsViewModel()
 

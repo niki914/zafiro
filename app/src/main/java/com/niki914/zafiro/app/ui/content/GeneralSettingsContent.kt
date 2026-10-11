@@ -31,6 +31,7 @@ private const val APPEARANCE_ROW_ID = "general.appearance"
 private const val FLOATING_BALL_ROW_ID = "general.floating_ball"
 private const val FLOATING_BALL_AUTO_EXPAND_ROW_ID = "general.floating_ball_auto_expand"
 private const val RESIDENT_NOTIFICATION_ROW_ID = "general.resident_notification"
+private const val TURN_NOTIFICATION_ROW_ID = "general.turn_notification"
 private const val LOAD_LAST_ROW_ID = "general.load_last"
 private const val ALWAYS_SHOW_ACTIONS_ROW_ID = "general.always_show_message_actions"
 private const val VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID = "general.voice_assistant_isolated_session"
@@ -136,6 +137,12 @@ fun GeneralSettingsContent(
                         summary = stringResource(R.string.ui_settings_general_resident_notification_summary),
                         checked = uiState.residentNotificationEnabled,
                     ),
+                    SettingsRowSpec.Toggle(
+                        id = TURN_NOTIFICATION_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_turn_notification),
+                        summary = stringResource(R.string.ui_settings_general_turn_notification_summary),
+                        checked = uiState.turnNotificationEnabled,
+                    ),
                 ),
             ),
             // 分组 3：对话与交互
@@ -203,6 +210,7 @@ fun GeneralSettingsContent(
                         FLOATING_BALL_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBall(action.checked))
                         FLOATING_BALL_AUTO_EXPAND_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBallAutoExpand(action.checked))
                         RESIDENT_NOTIFICATION_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleResidentNotification(action.checked))
+                        TURN_NOTIFICATION_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleTurnNotification(action.checked))
                         LOAD_LAST_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleLoadLastConversation(action.checked))
                         ALWAYS_SHOW_ACTIONS_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleAlwaysShowMessageActions(action.checked))
                         VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleVoiceAssistantIsolatedSession(action.checked))

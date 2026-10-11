@@ -19,6 +19,7 @@ data class GeneralSettingsUiState(
     val floatingBallEnabled: Boolean = false,
     val floatingBallAutoExpand: Boolean = true,
     val residentNotificationEnabled: Boolean = false,
+    val turnNotificationEnabled: Boolean = false,
     val loadLastConversation: Boolean = false,
     val alwaysShowMessageActions: Boolean = true,
     val voiceAssistantIsolatedSession: Boolean = true,
@@ -37,6 +38,7 @@ sealed interface GeneralSettingsIntent {
     data class ToggleFloatingBall(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleFloatingBallAutoExpand(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleResidentNotification(val enabled: Boolean) : GeneralSettingsIntent
+    data class ToggleTurnNotification(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleLoadLastConversation(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleAlwaysShowMessageActions(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleVoiceAssistantIsolatedSession(val enabled: Boolean) : GeneralSettingsIntent
@@ -63,6 +65,7 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
             is GeneralSettingsIntent.ToggleFloatingBallAutoExpand ->
                 toggleFloatingBallAutoExpand(intent.enabled)
             is GeneralSettingsIntent.ToggleResidentNotification -> toggleResidentNotification(intent.enabled)
+            is GeneralSettingsIntent.ToggleTurnNotification -> toggleTurnNotification(intent.enabled)
             is GeneralSettingsIntent.ToggleLoadLastConversation -> toggleLoadLastConversation(intent.enabled)
             is GeneralSettingsIntent.ToggleAlwaysShowMessageActions -> toggleAlwaysShowMessageActions(intent.enabled)
             is GeneralSettingsIntent.ToggleVoiceAssistantIsolatedSession ->
@@ -86,6 +89,7 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
             val floatingBallEnabled = XRepo.floatingBallEnabled()
             val floatingBallAutoExpand = XRepo.floatingBallAutoExpand()
             val residentNotificationEnabled = XRepo.residentNotificationEnabled()
+            val turnNotificationEnabled = XRepo.turnNotificationEnabled()
             updateState {
                 copy(
                     languageTag = languageTag,
@@ -98,6 +102,7 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
                     floatingBallEnabled = floatingBallEnabled,
                     floatingBallAutoExpand = floatingBallAutoExpand,
                     residentNotificationEnabled = residentNotificationEnabled,
+                    turnNotificationEnabled = turnNotificationEnabled,
                     isLoading = false,
                 )
             }
@@ -153,6 +158,17 @@ class GeneralSettingsViewModel : ComposeMVIViewModel<GeneralSettingsIntent, Gene
         if (!ensurePermission(Permission.NOTIFICATION)) return
         updateState { copy(residentNotificationEnabled = true) }
         XRepo.setResidentNotificationEnabled(true)
+    }
+
+    private suspend fun toggleTurnNotification(enabled: Boolean) {
+        if (!enabled) {
+            updateState { copy(turnNotificationEnabled = false) }
+            XRepo.setTurnNotificationEnabled(false)
+            return
+        }
+        if (!ensurePermission(Permission.NOTIFICATION)) return
+        updateState { copy(turnNotificationEnabled = true) }
+        XRepo.setTurnNotificationEnabled(true)
     }
 
     private suspend fun toggleLoadLastConversation(enabled: Boolean) {

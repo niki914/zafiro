@@ -4,6 +4,7 @@ import com.niki914.logging.Logger
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.chat.LLMController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -98,6 +99,7 @@ object ConversationPersister {
                     conversationId()?.let { id ->
                         ConversationRepo.touchConversation(id)
                         ConversationRepo.setHasUnread(id, true)
+                        TurnNotificationManager.onTurnEvent(id, state)
                     }
                 }
             }
