@@ -37,3 +37,7 @@ inline fun <reified T : Any> installService(service: T) {
 inline fun <reified T : Any> requireService(): T =
     ServiceRegistry.find(T::class) as? T
         ?: error("Service ${T::class.qualifiedName} is not installed")
+
+/** 可选查找服务，未安装时返回 null。 */
+inline fun <reified T : Any> findService(): T? =
+    ServiceRegistry.find(T::class) as? T

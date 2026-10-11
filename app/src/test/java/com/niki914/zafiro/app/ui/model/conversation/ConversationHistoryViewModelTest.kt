@@ -1,17 +1,23 @@
 // 保护：历史页 ViewModel 的状态计算——加载成败落点、删除的活动/普通分流与收尾、批量置顶/删除状态保持与分流、重命名重载、分叉导航。
 package com.niki914.zafiro.app.ui.model.conversation
 
+import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.ui.model.MainDispatcherRule
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.zafiro.repo.PinnedConversation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -27,24 +33,44 @@ class ConversationHistoryViewModelTest {
 
     /** 记录式依赖：删除会同步改动内存列表，便于断言删除后的重载结果。 */
     private class FakeDeps {
-        var conversations: List<ConversationSummary> = emptyList()
+        private val conversationsFlow = MutableStateFlow<List<ConversationSummary>>(emptyList())
+        var conversations: List<ConversationSummary>
+            get() = conversationsFlow.value
+            set(value) { conversationsFlow.value = value }
+
         var pinnedConversations: List<PinnedConversation> = emptyList()
         val deletedIds = mutableListOf<String>()
+        val destroyedIds = mutableListOf<String>()
+        val activeStatesFlow = MutableStateFlow<Map<String, AgentState>>(emptyMap())
         val renamed = mutableListOf<Pair<String, String>>()
         val pinCalls = mutableListOf<Pair<String, Boolean>>()
+        val clearedUnreadIds = mutableListOf<String>()
         var forkResult: String? = null
         var loadError: Throwable? = null
         var deleteError: Throwable? = null
 
         fun toDependencies(): ConversationHistoryViewModelDependencies =
             ConversationHistoryViewModelDependencies(
-                loadConversations = { loadError?.let { throw it } ?: conversations },
+                observeConversations = {
+                    flow {
+                        loadError?.let { throw it }
+                        emitAll(conversationsFlow)
+                    }
+                },
                 loadPinnedConversations = { pinnedConversations },
                 deleteConversation = { id ->
                     deleteError?.let { throw it }
                     deletedIds += id
                     conversations = conversations.filterNot { it.id == id }
                 },
+                destroyAgent = { id -> destroyedIds += id },
+                setHasUnread = { id, unread ->
+                    if (!unread) clearedUnreadIds += id
+                    conversations = conversations.map {
+                        if (it.id == id) it.copy(hasUnread = unread) else it
+                    }
+                },
+                observeActiveStates = { activeStatesFlow },
                 renameConversation = { id, title ->
                     renamed += id to title
                     conversations = conversations.map { conversation ->
@@ -78,6 +104,22 @@ class ConversationHistoryViewModelTest {
         val state = viewModel.uiStateFlow.value
         assertFalse(state.isLoading)
         assertEquals(listOf("a"), state.conversations.map { it.id })
+    }
+
+    @Test
+    fun observeConversations_automaticallyUpdatesUiWhenSourceEmits() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("a"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        advanceUntilIdle()
+        assertEquals(listOf("a"), viewModel.uiStateFlow.value.conversations.map { it.id })
+
+        // 底层 Flow 产生新发射（如后台落盘或外部删除/重命名）：UI 自动更新，无须再发 Load
+        deps.conversations = listOf(summary("b"), summary("a"))
+        advanceUntilIdle()
+        assertEquals(listOf("b", "a"), viewModel.uiStateFlow.value.conversations.map { it.id })
     }
 
     @Test
@@ -285,5 +327,46 @@ class ConversationHistoryViewModelTest {
         )
         assertFalse(viewModel.uiStateFlow.value.selecting)
         assertTrue(viewModel.uiStateFlow.value.selectedIds.isEmpty())
+    }
+
+    @Test
+    fun runState_derivesRunningApprovalAndUnreadFromDependencies() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(
+            summary("a"),
+            summary("b").copy(hasUnread = true),
+        )
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        advanceUntilIdle()
+
+        assertEquals(ConversationRunState.UnreadCompleted, viewModel.uiStateFlow.value.runStates["b"])
+
+        deps.activeStatesFlow.value = mapOf(
+            "a" to AgentState.Generating("thinking..."),
+            "b" to AgentState.WaitingApproval(ApprovalRequest.ScreenControlConsent),
+        )
+        advanceUntilIdle()
+        assertEquals(ConversationRunState.Running, viewModel.uiStateFlow.value.runStates["a"])
+        assertEquals(ConversationRunState.WaitingApproval, viewModel.uiStateFlow.value.runStates["b"])
+
+        viewModel.sendIntent(ConversationHistoryIntent.ClearUnread("b"))
+        advanceUntilIdle()
+        assertEquals(listOf("b"), deps.clearedUnreadIds)
+    }
+
+    @Test
+    fun delete_invokesDestroyAgentBeforeDeletingConversation() = runTest {
+        val deps = FakeDeps()
+        deps.conversations = listOf(summary("a"))
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConversationHistoryIntent.Load)
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConversationHistoryIntent.Delete("a"))
+        advanceUntilIdle()
+
+        assertEquals(listOf("a"), deps.destroyedIds)
+        assertEquals(listOf("a"), deps.deletedIds)
     }
 }

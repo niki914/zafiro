@@ -306,7 +306,7 @@ abstract class BaseSessionBuiltin(
         return lastParse(sessionId, token, initialOffset, echoCommand)
     }
 
-    private fun lastParse(
+    private suspend fun lastParse(
         sessionId: String,
         token: String,
         initialOffset: Int,
@@ -328,7 +328,7 @@ abstract class BaseSessionBuiltin(
         }
     }
 
-    protected open fun readRawOutput(sessionId: String): String? {
+    protected open suspend fun readRawOutput(sessionId: String): String? {
         val outcome = TerminalSessionPool.readInteractive(
             session = sessionId,
             mode = TerminalReadMode.SNAPSHOT,

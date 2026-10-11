@@ -10,6 +10,8 @@ import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.text.FilesBlock
 import com.niki914.zafiro.app.R
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
@@ -76,14 +78,9 @@ object ConversationRepo {
         }
     }
 
-    suspend fun listConversations(): List<ConversationSummary> {
-        val startedAtMs = System.currentTimeMillis()
-        return dao().listConversations().map { it.toSummary() }.also { summaries ->
-            Logger.i(
-                LOG_TAG,
-                "list conversations count=${summaries.size} " +
-                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-            )
+    fun observeConversations(): Flow<List<ConversationSummary>> {
+        return dao().observeConversations().map { rows ->
+            rows.map { it.toSummary() }
         }
     }
 
@@ -109,8 +106,9 @@ object ConversationRepo {
         val snapshot = readSnapshot(id, conversation.leafId)
         return ConversationRecord(
             summary = conversation.toSummary(),
-            draftText = conversation.draftText,
+            draftText = "", // 死字段：不读取旧库会话草稿，改由 XRepo 全局接管
             snapshot = snapshot,
+            configId = conversation.configId,
         ).also {
             Logger.i(
                 LOG_TAG,
@@ -140,6 +138,7 @@ object ConversationRepo {
                 turnCount = 0,
                 draftText = "",
                 leafId = null,
+                configId = "",
             ),
         )
         Logger.i(
@@ -203,6 +202,7 @@ object ConversationRepo {
                 turnCount = truncated.size,
                 draftText = "",
                 leafId = truncated.lastOrNull()?.id,
+                configId = source.configId,
             ),
             entries = truncated.map { entry -> entry.toEntity(newId) },
         )
@@ -306,7 +306,6 @@ object ConversationRepo {
         conversationId: String,
         entries: List<ConversationEntry>,
         leafId: String,
-        updatedAt: Long,
         lastMessagePreview: String,
         turnCount: Int,
     ) {
@@ -315,11 +314,20 @@ object ConversationRepo {
             conversationId = conversationId,
             entries = entries.map { it.toEntity(conversationId) },
             leafId = leafId,
-            updatedAt = updatedAt,
             lastMessagePreview = lastMessagePreview,
             turnCount = turnCount,
         )
     }
+
+    suspend fun touchConversation(
+        conversationId: String,
+        now: Long = System.currentTimeMillis(),
+    ): Boolean = dao().updateConversationUpdatedAt(conversationId, now) > 0
+
+    suspend fun setHasUnread(
+        conversationId: String,
+        hasUnread: Boolean,
+    ): Boolean = dao().updateHasUnread(conversationId, hasUnread) > 0
 
     suspend fun countEntries(conversationId: String): Int = dao().countEntries(conversationId)
 
@@ -327,22 +335,16 @@ object ConversationRepo {
         dao().updateLeafId(conversationId, leafId)
     }
 
-    suspend fun updateConversationMetadata(
-        conversationId: String,
-        updatedAt: Long,
-        lastMessagePreview: String,
-        turnCount: Int,
-    ) {
-        dao().updateConversationMetadata(
-            conversationId = conversationId,
-            updatedAt = updatedAt,
-            lastMessagePreview = lastMessagePreview,
-            turnCount = turnCount,
-        )
-    }
-
+    /**
+     * 死字段操作（T3 遗留）：保留仅防破坏旧调用编译，业务层严禁再调用。草稿已改用 XRepo 全局管理。
+     */
+    @Deprecated("Dead method: draft has migrated to XRepo global storage.")
     suspend fun updateDraft(conversationId: String, draftText: String) {
         dao().updateDraft(conversationId = conversationId, draftText = draftText)
+    }
+
+    suspend fun updateConfigId(conversationId: String, configId: String) {
+        dao().updateConfigId(conversationId = conversationId, configId = configId)
     }
 
     suspend fun deleteConversation(id: String) {
@@ -414,6 +416,7 @@ object ConversationRepo {
             updatedAt = updatedAt,
             lastMessagePreview = lastMessagePreview,
             turnCount = turnCount,
+            hasUnread = hasUnread,
         )
     }
 }

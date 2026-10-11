@@ -53,6 +53,7 @@ import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.app.notification.ResidentNotificationBuilder
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
+import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.business.notification.NotificationChannelManager
 
 class AgentRuntimeService : Service() {
@@ -211,7 +212,7 @@ class AgentRuntimeService : Service() {
                     currentHostAgent = it
                 }
             } else {
-                currentHostAgent?.discard()
+                currentHostAgent?.release()
                 currentHostAgent = null
                 agentManager.main
             }
@@ -235,6 +236,10 @@ class AgentRuntimeService : Service() {
                     return
                 }
                 TurnStart.Started -> {
+                    val convId = targetAgent.conversation.value.id?.value ?: if (isIsolated) "host" else ""
+                    if (convId.isNotBlank()) {
+                        TurnNotificationManager.markHostTurnStarted(convId)
+                    }
                     Logger.i(LOG_TAG, "targetAgent.stream started successfully isolated=$isIsolated")
                 }
             }
@@ -266,7 +271,7 @@ class AgentRuntimeService : Service() {
             val isIsolated = runBlocking { XRepo.voiceAssistantIsolatedSession() }
             if (isIsolated) {
                 Logger.i(LOG_TAG, "reset conversation requested by host (isolated mode)")
-                currentHostAgent?.discard()
+                currentHostAgent?.release()
                 currentHostAgent = null
             } else {
                 Logger.i(LOG_TAG, "reset conversation requested by host (ignored to protect shared conversation)")
@@ -522,6 +527,10 @@ class AgentRuntimeService : Service() {
                 ),
             )
         } finally {
+            val convId = turnAgent.conversation.value.id?.value ?: ""
+            if (convId.isNotBlank()) {
+                TurnNotificationManager.markHostTurnEnded(convId)
+            }
             try {
                 callback.asBinder().unlinkToDeath(deathRecipient, 0)
             } catch (_: Exception) {

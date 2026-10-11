@@ -20,12 +20,21 @@ object DefaultHomeConversationStore : HomeConversationStore {
         return ConversationRepo.getConversation(id)
     }
 
-    override suspend fun updateDraft(conversationId: String, draftText: String) {
-        ConversationRepo.updateDraft(conversationId = conversationId, draftText = draftText)
+    override suspend fun draftText(): String = XRepo.draftText()
+
+    override suspend fun setDraftText(value: String) = XRepo.setDraftText(value)
+
+    override suspend fun bindConfig(conversationId: String) {
+        val activeId = XRepo.llmConfigs.document().activeId.orEmpty()
+        ConversationRepo.updateConfigId(conversationId, activeId)
     }
 
     override suspend fun deleteConversation(id: String) {
         ConversationRepo.deleteConversation(id)
+    }
+
+    override suspend fun clearUnread(conversationId: String) {
+        ConversationRepo.setHasUnread(conversationId, false)
     }
 
     override suspend fun forkAtTurn(

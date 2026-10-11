@@ -10,6 +10,7 @@ import com.niki914.libterm.TerminalIdentity
 import com.niki914.libterm.runtime.CommandResult
 import com.niki914.libterm.runtime.TermResult
 import com.niki914.libterm.runtime.TerminalTextChunk
+import com.niki914.zafiro.chat.agentic.AgentTenantContext
 import com.niki914.zafiro.chat.agentic.shell.SessionRegistry
 import com.niki914.zafiro.chat.agentic.shell.TerminalAsyncStartOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalCloseOutcome
@@ -534,6 +535,43 @@ class TerminalSessionPoolTest {
                 val notifications = TerminalSessionPool.drainPendingNotifications()
                 assertTrue("Notification enqueued", notifications.isNotEmpty())
                 assertTrue(notifications.single().contains("crash-boom"))
+            }
+        }
+    }
+
+    @Test
+    fun tenantIsolation_preventsCrossTenantAccessAndAllowsTargetedClose() = runTest {
+        val fakeRuntime = FakeTerminalRuntime()
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a001", "b002").use {
+                // Tenant 1 打开 session a001
+                kotlinx.coroutines.withContext(AgentTenantContext("tenant-1")) {
+                    val outcome = TerminalSessionPool.open(identity = "user")
+                    assertTrue(outcome is TerminalOpenOutcome.Success)
+                    assertEquals("a001", (outcome as TerminalOpenOutcome.Success).session)
+                }
+
+                // Tenant 2 打开 session b002
+                kotlinx.coroutines.withContext(AgentTenantContext("tenant-2")) {
+                    val outcome = TerminalSessionPool.open(identity = "user")
+                    assertTrue(outcome is TerminalOpenOutcome.Success)
+                    assertEquals("b002", (outcome as TerminalOpenOutcome.Success).session)
+
+                    // Tenant 2 尝试读取或执行 Tenant 1 的 a001 -> 必须报 SessionNotFound
+                    val readCross = TerminalSessionPool.readSession("a001")
+                    assertTrue(readCross is TerminalReadOutcome.SessionNotFound)
+
+                    val execCross = TerminalSessionPool.executeBlocking("a001", "echo hi", 1000L)
+                    assertTrue(execCross is TerminalCommandOutcome.SessionNotFound)
+                }
+
+                // 释放 Tenant 1 的终端 -> 仅关闭 a001，b002 依然存活
+                TerminalSessionPool.closeTenantSessions("tenant-1")
+
+                kotlinx.coroutines.withContext(AgentTenantContext("tenant-2")) {
+                    val execTenant2 = TerminalSessionPool.executeBlocking("b002", "echo ok", 1000L)
+                    assertTrue(execTenant2 is TerminalCommandOutcome.Success)
+                }
             }
         }
     }

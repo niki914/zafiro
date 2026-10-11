@@ -10,7 +10,10 @@ import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 import com.niki914.zafiro.settings.model.RuntimeToolValidation
 
 interface RuntimeSettingsGateway {
-    suspend fun readLlmConfig(agentId: String = "main"): RuntimeLlmConfig
+    suspend fun readLlmConfig(
+        agentId: String = "main",
+        configId: String? = null,
+    ): RuntimeLlmConfig
 
     suspend fun listEnabledSkills(): List<RuntimeSkillMetadata> = emptyList()
 

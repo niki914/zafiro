@@ -402,6 +402,8 @@
     <string name="ui_settings_general_floating_ball_auto_expand_summary">Раскрывать плавающий шар, когда ответ готов или нужно подтверждение</string>
     <string name="ui_settings_general_resident_notification">Постоянное уведомление</string>
     <string name="ui_settings_general_resident_notification_summary">Показывает текущее состояние и кнопки управления в шторке уведомлений</string>
+    <string name="ui_settings_general_turn_notification">Уведомления о событиях раунда</string>
+    <string name="ui_settings_general_turn_notification_summary">Отправлять всплывающие уведомления при завершении раунда или необходимости подтверждения</string>
     <string name="ui_settings_general_language">Язык</string>
     <string name="ui_settings_general_language_follow_system">Как в системе</string>
     <string name="ui_settings_general_load_last_conversation">Открывать последний диалог при запуске</string>

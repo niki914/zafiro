@@ -76,7 +76,7 @@ class ShellBuiltinTest {
             return true
         }
 
-        override fun readRawOutput(sessionId: String): String? {
+        override suspend fun readRawOutput(sessionId: String): String? {
             return sessionBuffers[sessionId]?.toString()
         }
 

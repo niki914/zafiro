@@ -77,7 +77,7 @@ class PermissionEntryGuardTest {
             .filter { it.isFile }
             .filter { it.extension in setOf("kt", "java", "py", "xml") }
             .filter { "src/main/" in it.path || "src/main" in it.path || it.name == "AndroidManifest.xml" }
-            .filterNot { "/build/" in it.path }
+            .filterNot { "/build/" in it.path || "/.apk_decs/" in it.path }
             .forEach { file ->
                 val relative = file.relativeTo(repoRoot).path
                 file.readLines().forEachIndexed { index, line ->

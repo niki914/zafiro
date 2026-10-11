@@ -12,8 +12,11 @@ internal interface HomeConversationStore {
     suspend fun setLastOpenedConversationId(value: String)
     suspend fun loadLastConversationOnStartup(): Boolean
     suspend fun getConversation(id: String): ConversationRecord?
-    suspend fun updateDraft(conversationId: String, draftText: String)
+    suspend fun draftText(): String
+    suspend fun setDraftText(value: String)
+    suspend fun bindConfig(conversationId: String)
     suspend fun deleteConversation(id: String)
+    suspend fun clearUnread(conversationId: String)
 
     // TODO(收进 Agent)：历史派生操作（reGenerate / fork / rewind）本轮留在业务侧自己组合
     //  fork（仓储）→ load（Agent）→ stream（Agent）。契约暂无 fork / delete 命令，为此不改。
@@ -180,6 +183,7 @@ sealed interface HomeChatIntent {
     data object StopGenerating : HomeChatIntent
     data object NewConversation : HomeChatIntent
     data class LoadConversation(val id: String) : HomeChatIntent
+    data class ClearUnread(val conversationId: String) : HomeChatIntent
     data class DeleteConversation(val id: String) : HomeChatIntent
     data class ToggleToolRun(val turnId: Long, val runStartIndex: Int) : HomeChatIntent
     data class ToggleToolResult(val turnId: Long, val runStartIndex: Int, val toolIndex: Int) :

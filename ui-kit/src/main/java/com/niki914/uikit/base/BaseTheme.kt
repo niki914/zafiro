@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -17,10 +18,30 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.materialkolor.dynamicColorScheme
 import com.materialkolor.rememberDynamicColorScheme
 import com.niki914.uikit.base.theme.DarkColorScheme
 import com.niki914.uikit.base.theme.LightColorScheme
 import com.niki914.uikit.base.theme.Typography
+
+/**
+ * 依据上下文、昼夜模式与种子色解析对应的 [androidx.compose.material3.ColorScheme]（供 Compose 外部使用，如常驻通知）。
+ */
+fun resolveThemeColorScheme(
+    context: Context,
+    darkTheme: Boolean,
+    dynamicColor: Boolean = true,
+    seedColor: Color? = null,
+): ColorScheme {
+    return when {
+        seedColor != null -> dynamicColorScheme(seedColor = seedColor, isDark = darkTheme, isAmoled = false)
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
+    }
+}
 
 /** 全局深色模式单一来源，由 BaseTheme 提供；所有深色判断必须读它而非 isSystemInDarkTheme。 */
 val LocalAppDarkTheme = staticCompositionLocalOf { true }

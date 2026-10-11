@@ -47,6 +47,9 @@ internal data class AppStateSettings(
     /** 是否启用常驻通知栏。 */
     @SerialName("resident_notification_enabled")
     val residentNotificationEnabled: Boolean = false,
+    /** 是否启用回合事件通知（完成/需要审批时发送即时横幅）。 */
+    @SerialName("turn_notification_enabled")
+    val turnNotificationEnabled: Boolean = false,
     /** 悬浮球在回合结束/审批到达时是否自动展开。 */
     @SerialName("floating_ball_auto_expand")
     val floatingBallAutoExpand: Boolean = true,
@@ -59,6 +62,9 @@ internal data class AppStateSettings(
     /** 置顶会话：id + 置顶时刻。数量级 ≤ 20，读取方按会话存在性自行剪枝。 */
     @SerialName("pinned_conversations")
     val pinnedConversations: List<PinnedConversation> = emptyList(),
+    /** 全局输入框草稿文本（跨会话/新建会话保持，冷启动自动恢复）。 */
+    @SerialName("draft_text")
+    val draftText: String = "",
 )
 
 /** 一条置顶记录：置顶时刻用于与最后交互时间取 max 排序（越晚置顶/越晚交互越靠前）。 */

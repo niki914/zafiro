@@ -62,6 +62,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -107,6 +108,7 @@ import com.niki914.uikit.infra.component.OptionSheet
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.PageChromeMenuItem
 import com.niki914.zafiro.app.ui.RegisterPageChrome
@@ -152,6 +154,7 @@ private const val PHOTO_PICK_MAX_ITEMS = 10
 
 @Composable
 fun HomePageContent(
+    isCurrentPage: Boolean = true,
     selectedConversationId: String?,
     onConversationSelectionConsumed: (String) -> Unit,
     onActiveConversationChanged: (String?) -> Unit,
@@ -271,9 +274,26 @@ fun HomePageContent(
         val id = selectedConversationId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         latestViewModel.sendIntent(HomeChatIntent.LoadConversation(id))
         latestOnConversationSelectionConsumed(id)
+        TurnNotificationManager.cancelNotification(id)
     }
     LaunchedEffect(uiState.currentConversationId) {
         latestOnActiveConversationChanged(uiState.currentConversationId)
+    }
+    DisposableEffect(isCurrentPage, uiState.currentConversationId) {
+        TurnNotificationManager.visibleConversationId = if (isCurrentPage) uiState.currentConversationId else null
+        onDispose {
+            if (TurnNotificationManager.visibleConversationId == uiState.currentConversationId) {
+                TurnNotificationManager.visibleConversationId = null
+            }
+        }
+    }
+    LaunchedEffect(isCurrentPage, uiState.currentConversationId, uiState.isGenerating) {
+        if (isCurrentPage && !uiState.isGenerating) {
+            val id = uiState.currentConversationId
+            if (!id.isNullOrBlank()) {
+                latestViewModel.sendIntent(HomeChatIntent.ClearUnread(id))
+            }
+        }
     }
 
     val pageChromeContribution = remember(

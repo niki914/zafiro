@@ -91,6 +91,7 @@ object XRepo {
         voiceAssistantIsolatedSessionField.flow.value = true
         floatingBallEnabledField.flow.value = false
         residentNotificationEnabledField.flow.value = false
+        turnNotificationEnabledField.flow.value = false
         floatingBallAutoExpandField.flow.value = true
         mcpService.resetForTest()
         llmConfigs.resetForTest()
@@ -328,6 +329,10 @@ object XRepo {
         select = { lastNotifiedUpdateVersion },
         update = { copy(lastNotifiedUpdateVersion = it) },
     )
+    private val draftTextField = PlainAppStateField(
+        select = { draftText },
+        update = { copy(draftText = it) },
+    )
 
     suspend fun onboardingCompleted(): Boolean = onboardingCompletedField.get()
 
@@ -359,6 +364,11 @@ object XRepo {
 
     suspend fun setLoadLastConversationOnStartup(value: Boolean) =
         loadLastConversationOnStartupField.set(value)
+
+    /** 全局输入框草稿文本（跨会话/新建会话保持，冷启动自动恢复）。 */
+    suspend fun draftText(): String = draftTextField.get()
+
+    suspend fun setDraftText(text: String) = draftTextField.set(text)
 
     /** Keep Alive 设置的进程内热更新通道：读时回填初值，写时同步。 */
     private val keepScreenOnField = ReactiveAppStateField(
@@ -426,6 +436,20 @@ object XRepo {
 
     suspend fun setResidentNotificationEnabled(value: Boolean) =
         residentNotificationEnabledField.set(value)
+
+    /** 回合事件通知开关的进程内热更新通道 */
+    private val turnNotificationEnabledField = ReactiveAppStateField(
+        default = false,
+        select = { turnNotificationEnabled },
+        update = { copy(turnNotificationEnabled = it) },
+    )
+    val turnNotificationEnabledSetting: MutableStateFlow<Boolean>
+        get() = turnNotificationEnabledField.flow
+
+    suspend fun turnNotificationEnabled(): Boolean = turnNotificationEnabledField.get()
+
+    suspend fun setTurnNotificationEnabled(value: Boolean) =
+        turnNotificationEnabledField.set(value)
 
     /** 悬浮球自动展开开关的进程内热更新通道（app 以外的消费方经 XSettings 读）。 */
     private val floatingBallAutoExpandField = ReactiveAppStateField(

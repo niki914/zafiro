@@ -169,5 +169,5 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 
 ### 其他
 
-- 单元测试: 写或修改单测前调用 `test-triage`
+- 单元测试: 写或修改单测前调用 `test-triage`；测试执行超过 30s 或疑似挂起时调用 `test-hang-watchdog`
 - 发版: 准备发布新版本时使用 `release-new-version`

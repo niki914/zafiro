@@ -36,9 +36,25 @@ internal fun fixture(
     store: FakeHomeConversationStore = FakeHomeConversationStore(),
 ): Fixture {
     val agent = FakeHomeAgent(store)
+    val agentFlow = MutableStateFlow<Agent>(agent)
     installService<AgentManager>(object : AgentManager {
-        override val main: Agent = agent
+        override val main: Agent get() = agentFlow.value
+        override val mainFlow: StateFlow<Agent> = agentFlow.asStateFlow()
+        override suspend fun switchTo(conversationId: String): Agent {
+            agent.load(ConversationId(conversationId))
+            agentFlow.value = agent
+            return agent
+        }
+        override fun startNewConversation(): Agent {
+            agent.mutableDraft.value = Draft()
+            agent.mutableConversation.value = Conversation()
+            agent.mutableStatus.value = AgentState.Idle()
+            agentFlow.value = agent
+            return agent
+        }
+        override val activeStates: StateFlow<Map<String, AgentState>> = MutableStateFlow(emptyMap())
         override fun createTaskAgent(tag: String): Agent = agent
+        override fun destroy(conversationId: String) {}
         override val control: AgentControl = agent
     })
     return Fixture(
@@ -59,9 +75,9 @@ internal data class Fixture(
 )
 
 internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Agent {
-    private val mutableDraft = MutableStateFlow(Draft())
-    private val mutableConversation = MutableStateFlow(Conversation())
-    private val mutableStatus = MutableStateFlow<AgentState>(AgentState.Idle())
+    val mutableDraft = MutableStateFlow(Draft())
+    val mutableConversation = MutableStateFlow(Conversation())
+    val mutableStatus = MutableStateFlow<AgentState>(AgentState.Idle())
     override val draft: StateFlow<Draft> = mutableDraft.asStateFlow()
     override val conversation: StateFlow<Conversation> = mutableConversation.asStateFlow()
     override val status: StateFlow<AgentState> = mutableStatus.asStateFlow()
@@ -132,12 +148,16 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
         mutableStatus.value = AgentState.Idle()
     }
 
+    var releaseCount = 0
+    override fun release() {
+        releaseCount++
+    }
+
     override suspend fun load(id: ConversationId) {
         lastLoadedId = id
         val record = store.getConversation(id.value)
         mutableConversation.value = record?.let { ConversationFormatter.toConversation(it.snapshot) }
             ?: Conversation(id = id)
-        mutableDraft.value = record?.let { Draft(it.draftText) } ?: Draft()
         mutableStatus.value = AgentState.Idle()
         store.setLastOpenedConversationId(id.value)
     }
@@ -206,15 +226,25 @@ internal class FakeHomeConversationStore(
 ) : HomeConversationStore {
     private val records = linkedMapOf<String, ConversationRecord>()
     private var lastOpened = ""
+    private var draft = ""
 
     override suspend fun lastOpenedConversationId() = lastOpened
     override suspend fun setLastOpenedConversationId(value: String) { lastOpened = value }
     override suspend fun loadLastConversationOnStartup() = restoreOnStartup
     override suspend fun getConversation(id: String) = records[id]
-    override suspend fun updateDraft(conversationId: String, draftText: String) {
-        records[conversationId]?.let { records[conversationId] = it.copy(draftText = draftText) }
+    val boundConfigs = linkedMapOf<String, String>()
+    var currentActiveConfigId = "active-default"
+
+    override suspend fun draftText(): String = draft
+    override suspend fun setDraftText(value: String) { draft = value }
+    override suspend fun bindConfig(conversationId: String) {
+        boundConfigs[conversationId] = currentActiveConfigId
+        records[conversationId]?.let {
+            records[conversationId] = it.copy(configId = currentActiveConfigId)
+        }
     }
     override suspend fun deleteConversation(id: String) { records.remove(id) }
+    override suspend fun clearUnread(conversationId: String) {}
 
     fun recordNewConversation(id: String, title: String) {
         if (id in records) return

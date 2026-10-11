@@ -118,6 +118,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core:1.7.8")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     debugImplementation("androidx.compose.ui:ui-tooling:1.4.0")
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
     implementation("androidx.compose.ui:ui-tooling-preview-android:1.8.3")
 
     testImplementation("junit:junit:4.13.2")

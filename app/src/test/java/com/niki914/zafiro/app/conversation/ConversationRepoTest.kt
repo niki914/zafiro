@@ -1,3 +1,5 @@
+// 保护：会话仓储的持久化读写契约——建档/读回、leaf 与进度落盘、fork 派生、
+// 删除级联、configId 往返，以及列表 Flow 随会话变更重新发射。
 package com.niki914.zafiro.app.conversation
 
 import android.content.Context
@@ -7,6 +9,7 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -58,6 +61,7 @@ class ConversationRepoTest {
         assertEquals("hello world", record.summary.lastMessagePreview)
         assertTrue(record.snapshot.entries.isEmpty())
         assertNull(record.snapshot.leafId)
+        assertEquals("", record.configId)
     }
 
     @Test
@@ -234,13 +238,11 @@ class ConversationRepoTest {
     }
 
     @Test
-    fun updateDraftAndRename_mutateConversationMetadata() = runTest {
+    fun rename_mutatesConversationTitle() = runTest {
         val id = ConversationRepo.createConversation("session-1", "hi")
-        ConversationRepo.updateDraft(id, "draft text")
         ConversationRepo.renameConversation(id, "new title")
 
         val record = ConversationRepo.getConversation(id)!!
-        assertEquals("draft text", record.draftText)
         assertEquals("new title", record.summary.title)
         assertTrue(record.summary.titleEdited)
     }
@@ -257,19 +259,38 @@ class ConversationRepoTest {
     }
 
     @Test
-    fun updateConversationMetadata_updatesPreviewAndCount() = runTest {
+    fun updateConfigId_persistsAndRoundTripsConfigId() = runTest {
         val id = ConversationRepo.createConversation("session-1", "hi")
-        ConversationRepo.updateConversationMetadata(
-            conversationId = id,
-            updatedAt = 1234L,
-            lastMessagePreview = "preview",
-            turnCount = 5,
-        )
+        assertEquals("", ConversationRepo.getConversation(id)!!.configId)
 
+        ConversationRepo.updateConfigId(id, "cfg-custom-1")
         val record = ConversationRepo.getConversation(id)!!
-        assertEquals(1234L, record.summary.updatedAt)
-        assertEquals("preview", record.summary.lastMessagePreview)
-        assertEquals(5, record.summary.turnCount)
+        assertEquals("cfg-custom-1", record.configId)
+    }
+
+    @Test
+    fun forkConversation_copiesSourceConfigId() = runTest {
+        val sourceId = ConversationRepo.createConversation("session-source", "source prompt")
+        ConversationRepo.updateConfigId(sourceId, "cfg-source")
+
+        val forkedId = ConversationRepo.forkConversation(sourceId)!!
+        val forkedRecord = ConversationRepo.getConversation(forkedId)!!
+        assertEquals("cfg-source", forkedRecord.configId)
+    }
+
+    @Test
+    fun observeConversations_emitsWheneverConversationsAreMutated() = runTest {
+        val list1 = ConversationRepo.observeConversations().first()
+        assertTrue(list1.isEmpty())
+
+        ConversationRepo.createConversation("session-1", "first")
+        val list2 = ConversationRepo.observeConversations().first()
+        assertEquals(1, list2.size)
+        assertEquals("session-1", list2[0].id)
+
+        ConversationRepo.deleteConversation("session-1")
+        val list3 = ConversationRepo.observeConversations().first()
+        assertTrue(list3.isEmpty())
     }
 
     private fun linearEntries(vararg messages: Message): List<ConversationEntry> {

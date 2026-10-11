@@ -21,6 +21,7 @@ class NotificationChannelManagerImpl(
     companion object {
         private const val TAG = "niki914_zafiro_NotificationChannelManager"
         private val OBSOLETE_CHANNELS = listOf(
+            "zafiro_resident",
             "zafiro_alerts_v1",
             "zafiro_alerts_v2",
             "zafiro_alerts_v3",

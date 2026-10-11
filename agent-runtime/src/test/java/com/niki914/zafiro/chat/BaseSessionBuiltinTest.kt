@@ -107,7 +107,7 @@ class BaseSessionBuiltinTest {
             return true
         }
 
-        override fun readRawOutput(sessionId: String): String? {
+        override suspend fun readRawOutput(sessionId: String): String? {
             // 模拟采集管道有延迟：前 N 次读还看不到已经 append 的内容
             val visibleAfter = bufferVisibleAfterReads
             if (visibleAfter != null) {

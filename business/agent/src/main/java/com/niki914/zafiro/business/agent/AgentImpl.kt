@@ -16,6 +16,7 @@ import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.chat.AgentSessionEngine
 import com.niki914.zafiro.chat.LlmStreamEvent
+import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -23,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,8 +33,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -54,7 +58,7 @@ class AgentImpl(
 
     private companion object {
         const val LOG_TAG = "niki914_zafiro_AgentImpl"
-        const val STATUS_TEXT_THROTTLE_MS = 500L
+        const val STATUS_TEXT_THROTTLE_MS = 100L
         const val USER_IMAGE_MIME = "image/jpeg"
     }
 
@@ -79,11 +83,22 @@ class AgentImpl(
             pending?.let { AgentState.WaitingApproval(it) } ?: engineState
         }.stateIn(scope, SharingStarted.Eagerly, AgentState.Idle())
 
+    private val approvalMutex = Mutex()
+
     init {
+        engine.agentControlProvider = { this }
         scope.launch {
             draftFlow.collect { draft ->
                 for (pending in draft.images.filterIsInstance<DraftImage.Pending>()) ingest(pending)
             }
+        }
+        if (isPersistent) {
+            findService<ConversationStore_Tmp>()?.track(
+                agentScope = scope,
+                source = engine.currentConversation,
+                status = status,
+                conversationId = { conversation.value.id?.value },
+            )
         }
     }
 
@@ -122,9 +137,6 @@ class AgentImpl(
         streamJob = scope.launch {
             try {
                 val conversationId = ensureConversation(query)
-                if (isPersistent) {
-                    store().saveDraft(conversationId, "")
-                }
                 Logger.i(LOG_TAG, "round started conversationId=${conversationId.value} queryLength=${query.length}")
                 engine.stream(query = query, images = contentImages, files = files)
                     .collect { event ->
@@ -156,6 +168,8 @@ class AgentImpl(
     override fun stop() {
         if (!roundActive.value || statusFlow.value is AgentState.Stopping) return
 
+        activeApproval?.result?.complete(ApprovalDecision.Deny)
+
         // 写回唯一真源 reduced（不是只改派生流）：只写 conversationFlow 的话，之后
         // 任何一条 fold（如流终态守卫那条 Error）都会按旧快照重算整棵树，把刚标记为
         // 打断的工具块复活成转圈。
@@ -182,6 +196,7 @@ class AgentImpl(
 
     override fun discard() {
         releaseRound()
+        engine.bindConfig("")
         reduced = Reduced(Conversation())
         conversationFlow.value = Conversation()
         draftFlow.value = Draft()
@@ -191,6 +206,26 @@ class AgentImpl(
             engine.stopCurrentRound()
             engine.resetConversation()
         }
+    }
+
+    override fun release() {
+        releaseRound()
+        engine.bindConfig("")
+        reduced = Reduced(Conversation())
+        conversationFlow.value = Conversation()
+        draftFlow.value = Draft()
+        reducedStatus = AgentStateReducer.reset()
+        emitStatus(reducedStatus.status)
+        val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        cleanupScope.launch {
+            try {
+                engine.stopCurrentRound()
+                engine.closeSession()
+            } catch (t: Throwable) {
+                Logger.w(LOG_TAG, "release session cleanup failed", t)
+            }
+        }
+        scope.cancel()
     }
 
     override suspend fun load(id: ConversationId) {
@@ -204,60 +239,91 @@ class AgentImpl(
             Logger.w(LOG_TAG, "load skipped notFound id=${id.value}")
             return
         }
+        engine.bindConfig(stored.configId)
         engine.openSession(stored.snapshot)
         store().setLastOpened(id)
         reduced = Reduced(stored.conversation.copy(id = id))
         conversationFlow.value = stored.conversation.copy(id = id)
-        draftFlow.value = Draft(text = stored.draftText)
         Logger.i(LOG_TAG, "loaded id=${id.value} turns=${stored.conversation.turns.size}")
     }
 
     private val approvers = CopyOnWriteArrayList<Approver>()
 
+    private class ActiveApproval(
+        val request: ApprovalRequest,
+        val result: CompletableDeferred<ApprovalDecision>,
+        val scope: CoroutineScope,
+    ) {
+        val jobs = ConcurrentHashMap<Approver, Job>()
+        val decisions = ConcurrentHashMap<Approver, ApprovalDecision>()
+
+        fun attach(approver: Approver) {
+            jobs.computeIfAbsent(approver) { app ->
+                scope.launch {
+                    try {
+                        val decision = app.decide(request)
+                        decisions[app] = decision
+                        if (decision != ApprovalDecision.Abstain) {
+                            result.complete(decision)
+                        } else {
+                            checkAllAbstained()
+                        }
+                    } catch (t: Throwable) {
+                        if (t is CancellationException) throw t
+                        decisions[app] = ApprovalDecision.Abstain
+                        checkAllAbstained()
+                    }
+                }
+            }
+        }
+
+        fun detach(approver: Approver) {
+            jobs.remove(approver)?.cancel()
+            decisions.remove(approver)
+        }
+
+        private fun checkAllAbstained() {
+            if (jobs.isNotEmpty() && jobs.keys.all { decisions[it] == ApprovalDecision.Abstain } && !result.isCompleted) {
+                result.complete(ApprovalDecision.Deny)
+            }
+        }
+    }
+
+    @Volatile
+    private var activeApproval: ActiveApproval? = null
+
     override fun addApprover(approver: Approver) {
         if (!approvers.contains(approver)) {
             approvers.add(approver)
         }
+        activeApproval?.attach(approver)
     }
 
     override fun removeApprover(approver: Approver) {
         approvers.remove(approver)
+        activeApproval?.detach(approver)
     }
 
     /**
-     * 并发询问所有已注册的 Approver，首个非 Abstain 决策胜出，其余来源随之取消。
-     * 无 Approver 或全部弃权则 Deny。
+     * 并发询问所有已注册的 Approver，首个非 Abstain 决策胜出。
+     * 若当前在后台运行（无 Approver 接入），则挂起等待，直到前台换绑或外部接入裁决。
      */
-    override suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision = coroutineScope {
-        val currentApprovers = approvers.toList()
-        if (currentApprovers.isEmpty()) return@coroutineScope ApprovalDecision.Deny
+    override suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision = approvalMutex.withLock {
+        coroutineScope {
+            val deferred = CompletableDeferred<ApprovalDecision>()
+            val approval = ActiveApproval(request, deferred, this)
+            activeApproval = approval
+            approvalFlow.value = request
 
-        approvalFlow.value = request
-        val deferred = CompletableDeferred<ApprovalDecision>()
-        val jobs = currentApprovers.map { approver ->
-            launch {
-                try {
-                    val decision = approver.decide(request)
-                    if (decision != ApprovalDecision.Abstain) {
-                        deferred.complete(decision)
-                    }
-                } catch (t: Throwable) {
-                    if (t is CancellationException) throw t
-                }
+            approvers.forEach { approval.attach(it) }
+
+            try {
+                deferred.await()
+            } finally {
+                approvalFlow.value = null
+                activeApproval = null
+                approval.jobs.values.forEach { it.cancel() }
             }
-        }
-        // 全部来源都结束仍无人结算（全弃权）→ 拒绝：弃权不是裁决，不能把请求悬在那里
-        val allAbstained = launch {
-            jobs.joinAll()
-            deferred.complete(ApprovalDecision.Deny)
-        }
-
-        try {
-            deferred.await()
-        } finally {
-            approvalFlow.value = null
-            jobs.forEach { it.cancel() }
-            allAbstained.cancel()
         }
     }
 
@@ -265,6 +331,7 @@ class AgentImpl(
     internal fun clearForTest() {
         releaseRound()
         approvers.clear()
+        activeApproval = null
         approvalFlow.value = null
         reduced = Reduced(Conversation())
         conversationFlow.value = Conversation()
@@ -272,6 +339,7 @@ class AgentImpl(
         reducedStatus = AgentStateReducer.reset()
         statusFlow.value = reducedStatus.status
         lastStatusEmitMs = 0L
+        engine.bindConfig("")
     }
 
     // ── 内部 ────────────────────────────────────────────────────────────────
@@ -280,6 +348,7 @@ class AgentImpl(
     private fun releaseRound() {
         roundToken++
         roundActive.value = false
+        activeApproval?.result?.complete(ApprovalDecision.Deny)
         streamJob?.cancel()
         streamJob = null
     }
@@ -341,7 +410,7 @@ class AgentImpl(
         lastStatusEmitMs = nowMs()
     }
 
-    /** 节流时钟（JVM 可测；500ms 粒度下 NTP 跳变可忽略），仅供 [publishStatus]/[emitStatus] 用。 */
+    /** 节流时钟（JVM 可测；100ms 粒度下 NTP 跳变可忽略），仅供 [publishStatus]/[emitStatus] 用。 */
     private fun nowMs(): Long = System.currentTimeMillis()
 
     /** 状态机外事件（发起/停止/打断/重置）：换态直通，不走文本节流。 */

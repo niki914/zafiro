@@ -443,6 +443,8 @@
     <string name="ui_settings_general_floating_ball_auto_expand_summary">応答の完了時や承認が必要なときにフローティングボールを自動的に展開</string>
     <string name="ui_settings_general_resident_notification">常駐通知</string>
     <string name="ui_settings_general_resident_notification_summary">通知パネルにリアルタイムの状態とコントロールを表示</string>
+    <string name="ui_settings_general_turn_notification">ターン通知</string>
+    <string name="ui_settings_general_turn_notification_summary">ターンの完了時または承認が必要な場合に通知を送信します</string>
     <string name="ui_settings_general_language">言語</string>
     <string name="ui_settings_general_language_follow_system">システムに従う</string>
     <string name="ui_settings_general_load_last_conversation">起動時に前回の会話を読み込む</string>

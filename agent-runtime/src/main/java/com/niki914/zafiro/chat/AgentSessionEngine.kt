@@ -8,6 +8,7 @@ import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.chat.agentic.IngestedImage
 import com.niki914.zafiro.chat.agentic.PromptComposer
@@ -17,6 +18,7 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
+import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,10 +41,17 @@ class AgentSessionEngine {
         const val LOG_TAG = "niki914_zafiro_AgentSessionEngine"
     }
 
+    val tenantId: String = UUID.randomUUID().toString()
+
+    var agentControlProvider: (() -> AgentControl?)? = null
+
     private var runtimeState: RuntimeState? = null
 
     private val imageManager = ImageIngestionManager()
-    private val toolSynchronizer = ToolRegistrySynchronizer { runtimeState?.snapshot?.tools }
+    private val toolSynchronizer = ToolRegistrySynchronizer(
+        tenantId = tenantId,
+        agentControlProvider = { agentControlProvider?.invoke() },
+    ) { runtimeState?.snapshot?.tools }
     private val prefixComposer = TurnPrefixComposer()
     internal val sessionAssembler = OkiaSessionAssembler(
         toolRegistry = toolSynchronizer.toolRegistry,
@@ -68,6 +77,13 @@ class AgentSessionEngine {
 
     val currentConversation: StateFlow<Conversation?> get() = sessionAssembler.currentConversation
     val keepScreenOn: StateFlow<Boolean> get() = streamPipeline.turnActive
+    @Volatile
+    var boundConfigId: String = ""
+        private set
+
+    fun bindConfig(configId: String) {
+        boundConfigId = configId
+    }
 
     internal fun resetForTest() {
         sessionAssembler.resetForTest()
@@ -75,12 +91,13 @@ class AgentSessionEngine {
         toolSynchronizer.reset()
         mcpRefreshScheduler.reset()
         prefixComposer.reset()
+        boundConfigId = ""
     }
 
     suspend fun refresh(restore: SessionSnapshot? = null): LlmRuntimeSnapshot {
         val refreshStartedAtMs = System.currentTimeMillis()
         val gateway = RuntimeEnvironment.awaitSettingsGateway()
-        val llmConfig = gateway.readLlmConfig()
+        val llmConfig = gateway.readLlmConfig(configId = boundConfigId.takeIf { it.isNotBlank() })
         sessionAssembler.validateLlmConfig(llmConfig)
         Logger.i(
             LOG_TAG,
@@ -289,10 +306,20 @@ class AgentSessionEngine {
         }
     }.flowOn(Dispatchers.IO)
 
+    suspend fun closeSession() {
+        Logger.i(LOG_TAG, "close session requested tenantId=$tenantId")
+        TerminalSessionPool.closeTenantSessions(tenantId)
+        sessionAssembler.closeSession()
+        runtimeState = null
+        boundConfigId = ""
+        Logger.i(LOG_TAG, "close session done")
+    }
+
     suspend fun resetConversation() {
         Logger.i(LOG_TAG, "reset conversation requested")
         sessionAssembler.resetConversation()
         runtimeState = null
+        boundConfigId = ""
         Logger.i(LOG_TAG, "reset conversation done")
     }
 
