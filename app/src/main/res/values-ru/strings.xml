@@ -502,7 +502,7 @@
     <string name="mcp_host_status_running">Запущен</string>
     <string name="mcp_host_status_stopped">Остановлен</string>
     <string name="mcp_host_status_starting">Запуск…</string>
-    <string name="mcp_host_status_error">Ошибка: %1$s</string>
+    <string name="mcp_host_status_error">Ошибка</string>
     <string name="mcp_host_port_title">Порт</string>
     <string name="mcp_host_port_placeholder">8791</string>
     <string name="mcp_host_port_error_invalid">Порт должен быть в диапазоне от 1024 до 65535</string>

@@ -533,7 +533,7 @@
     <string name="mcp_host_status_running">執行中</string>
     <string name="mcp_host_status_stopped">已停止</string>
     <string name="mcp_host_status_starting">啟動中…</string>
-    <string name="mcp_host_status_error">錯誤：%1$s</string>
+    <string name="mcp_host_status_error">錯誤</string>
     <string name="mcp_host_port_title">連接埠</string>
     <string name="mcp_host_port_placeholder">8791</string>
     <string name="mcp_host_port_error_invalid">連接埠必須在 1024 到 65535 之間</string>

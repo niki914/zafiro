@@ -6,7 +6,7 @@ sealed interface McpHostStatus {
     object Stopped : McpHostStatus
     object Starting : McpHostStatus
     data class Running(val host: String, val port: Int) : McpHostStatus
-    data class Error(val message: String) : McpHostStatus
+    data class Error(val message: String, val stackTrace: String) : McpHostStatus
 }
 
 interface McpHostService {

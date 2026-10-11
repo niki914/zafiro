@@ -549,7 +549,7 @@
     <string name="mcp_host_status_running">En ejecución</string>
     <string name="mcp_host_status_stopped">Detenido</string>
     <string name="mcp_host_status_starting">Iniciando…</string>
-    <string name="mcp_host_status_error">Error: %1$s</string>
+    <string name="mcp_host_status_error">Error</string>
     <string name="mcp_host_port_title">Puerto</string>
     <string name="mcp_host_port_placeholder">8791</string>
     <string name="mcp_host_port_error_invalid">El puerto debe estar entre 1024 y 65535</string>

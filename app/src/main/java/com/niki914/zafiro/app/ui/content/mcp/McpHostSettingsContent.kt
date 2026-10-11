@@ -1,5 +1,7 @@
 package com.niki914.zafiro.app.ui.content.mcp
 
+import android.content.ClipData
+import android.widget.Toast
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -12,8 +14,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.infra.component.SettingToggleItem
@@ -29,6 +35,7 @@ import com.niki914.zafiro.app.ui.content.rememberEditableDetailFieldController
 import com.niki914.zafiro.app.ui.model.McpHostSettingsIntent
 import com.niki914.zafiro.app.ui.model.McpHostSettingsViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private enum class McpHostEditableField {
     Port,
@@ -47,6 +54,10 @@ fun McpHostSettingsContent(
 
     val portBringIntoViewRequester = remember { BringIntoViewRequester() }
     val tokenBringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.sendIntent(McpHostSettingsIntent.Load)
@@ -99,21 +110,37 @@ fun McpHostSettingsContent(
                 },
             )
             SettingsItemDivider()
+            val runningUrl = (uiState.status as? McpHostStatus.Running)
+                ?.let { "http://${it.host}:${it.port}/mcp" }
             val statusState = when (val s = uiState.status) {
                 is McpHostStatus.Running -> stringResource(R.string.mcp_host_status_running)
                 McpHostStatus.Starting -> stringResource(R.string.mcp_host_status_starting)
                 McpHostStatus.Stopped -> stringResource(R.string.mcp_host_status_stopped)
-                is McpHostStatus.Error -> stringResource(R.string.mcp_host_status_error, s.message)
+                is McpHostStatus.Error -> stringResource(R.string.mcp_host_status_error)
             }
+            // 与运行中的 URL 同位置：出错时换成原因，点整行复制完整的错误栈
             val statusSummary = when (val s = uiState.status) {
-                is McpHostStatus.Running -> "http://${s.host}:${s.port}/mcp"
+                is McpHostStatus.Running -> runningUrl
+                is McpHostStatus.Error -> s.message
+                else -> null
+            }
+            val statusCopyText = when (val s = uiState.status) {
+                is McpHostStatus.Running -> runningUrl
+                is McpHostStatus.Error -> s.stackTrace
                 else -> null
             }
             SettingsListItem(
                 title = stringResource(R.string.mcp_host_status_title),
                 currentState = statusState,
                 summary = statusSummary,
-                enabled = false,
+                onClick = statusCopyText?.let { text ->
+                    {
+                        scope.launch {
+                            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
+                        }
+                        Toast.makeText(context, R.string.ui_toast_copied, Toast.LENGTH_SHORT).show()
+                    }
+                },
             )
         }
 

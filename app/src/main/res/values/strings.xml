@@ -548,7 +548,7 @@
     <string name="mcp_host_status_running">运行中</string>
     <string name="mcp_host_status_stopped">已停止</string>
     <string name="mcp_host_status_starting">启动中…</string>
-    <string name="mcp_host_status_error">出错：%1$s</string>
+    <string name="mcp_host_status_error">出错</string>
     <string name="mcp_host_port_title">端口</string>
     <string name="mcp_host_port_placeholder">8791</string>
     <string name="mcp_host_port_error_invalid">端口必须在 1024 到 65535 之间</string>

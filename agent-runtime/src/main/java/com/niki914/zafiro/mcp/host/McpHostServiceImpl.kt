@@ -14,6 +14,8 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.request.header
 import io.ktor.server.response.respondText
 import io.modelcontextprotocol.kotlin.sdk.server.mcpStatelessStreamableHttp
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -69,8 +71,19 @@ class McpHostServiceImpl(
     private fun startInternal(config: RuntimeMcpHostConfig) {
         _status.value = McpHostStatus.Starting
         Logger.i(LOG_TAG, "starting MCP server on ${config.host}:${config.port} (tokenConfigured=${config.bearerToken.isNotBlank()})")
+        // Ktor 引擎的 accept 循环跑在自己的 CoroutineScope 里，绑定失败会绕过这里的 try/catch
+        // 变成未捕获异常，落到 Thread.uncaughtExceptionHandler（release 下是 CrashRecorder）直接杀进程。
+        val engineScope = CoroutineScope(
+            CoroutineExceptionHandler { _, throwable ->
+                Logger.e(LOG_TAG, "MCP server engine failed: ${throwable.message}", throwable)
+                _status.value = McpHostStatus.Error(
+                    message = throwable.message ?: "MCP server engine failed",
+                    stackTrace = throwable.stackTraceToString(),
+                )
+            }
+        )
         try {
-            val engine = embeddedServer(CIO, port = config.port, host = config.host) {
+            val engine = engineScope.embeddedServer(CIO, port = config.port, host = config.host) {
                 // Bearer Token 拦截验证：当且仅当配置了非空 token 时才强制校验；留空则直接放行
                 intercept(ApplicationCallPipeline.Plugins) {
                     val expectedToken = config.bearerToken.trim()
@@ -102,8 +115,12 @@ class McpHostServiceImpl(
             _status.value = McpHostStatus.Running(config.host, config.port)
             Logger.i(LOG_TAG, "MCP server successfully started and listening on http://${config.host}:${config.port}/mcp")
         } catch (e: Exception) {
-            Logger.e(LOG_TAG, "failed to start MCP server: ${e.message}", e)
-            _status.value = McpHostStatus.Error(e.message ?: "Failed to start server")
+            val cause = e.cause ?: e
+            Logger.e(LOG_TAG, "failed to start MCP server: ${cause.message}", cause)
+            _status.value = McpHostStatus.Error(
+                message = cause.message ?: "Failed to start server",
+                stackTrace = cause.stackTraceToString(),
+            )
             serverEngine = null
         }
     }
