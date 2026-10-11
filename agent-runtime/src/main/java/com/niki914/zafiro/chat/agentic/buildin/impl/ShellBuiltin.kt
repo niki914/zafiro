@@ -18,8 +18,8 @@ import kotlinx.serialization.json.longOrNull
  * 同时支持通过 alias 开辟独立隔离会话，并通过 ToolExecutionPreflight 进行权限前检。
  */
 open class ShellBuiltin(
-    private val preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
-) : BaseSessionBuiltin() {
+    preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
+) : BaseSessionBuiltin(preflight) {
 
     override val name: String = "shell"
 
@@ -32,8 +32,9 @@ open class ShellBuiltin(
                 "Identity: Choose 'user' (default local shell), 'root' (via su), or 'shizuku'.\n\n" +
                 "IMPORTANT RULES:\n" +
                 "1. Never run blocking interactive commands without non-interactive flags (e.g. do not run top, vim, nano, or unmetered ping).\n" +
-                "2. For long-running tasks, prefer setting a larger 'timeout' upfront (e.g. timeout=60). If running in background, do NOT busy-poll with action='read' immediately; wait sensibly (e.g. run a blocking 'sleep 5' to 'sleep 30' depending on task scale) before reading output.\n" +
-                "3. To send interactive input to a running session, use action='write' or action='submit'."
+                "2. For long-running tasks, prefer setting a larger 'timeout' upfront (e.g. timeout=60). A command that exceeds 'timeout' keeps running in the background; collect its output later with action='read' instead of polling in a tight loop.\n" +
+                "3. A session with a command still in flight rejects new commands. The local shell has no PTY, so Ctrl-C (\\u0003) is NOT a real interrupt here; if a command is stuck, close the session with action='close' and start a new one with a different alias.\n" +
+                "4. To send interactive input to a running session, use action='write' or action='submit'."
 
     override val inputSchemaJson: String get() = SHELL_SCHEMA
 
@@ -61,33 +62,38 @@ open class ShellBuiltin(
         )
     }
 
-    override suspend fun dispatchRequest(args: BaseSessionArgs): String {
-        val shellArgs = args as? ShellArgs
-        val command = args.command
-        if (command != null) {
-            val decision = preflight.evaluate(command, toolName = name)
-            if (!decision.allowed) {
-                return TerminalToolResponse.policyBlocked(decision)
-            }
-            preflight.ensurePathAccess(command + " " + shellArgs?.workdir.orEmpty())
-        }
-        return super.dispatchRequest(args)
+    override suspend fun preflightPathAccess(command: String, args: BaseSessionArgs) {
+        preflight.ensurePathAccess(command + " " + (args as? ShellArgs)?.workdir.orEmpty())
     }
 
     override suspend fun resolveSessionTarget(args: BaseSessionArgs): SessionTarget {
         val shellArgs = args as? ShellArgs
         val explicitSession = args.session
         if (explicitSession != null) {
-            val resolved = sessionRegistry.resolveSessionId(explicitSession)
-            if (resolved != null) return SessionTarget.Resolved(resolved)
-            if (TerminalSessionPool.get(explicitSession) != null) return SessionTarget.Resolved(explicitSession)
-            return SessionTarget.Error(TerminalToolResponse.invalidRequest("Session '$explicitSession' not found."))
+            // 只认本域句柄：池是进程共享的，回查池会把 ssh 会话交给本地 shell 工具执行
+            val resolved = sessionRegistry.resolveSessionId(explicitSession, sessionScope)
+                ?: return SessionTarget.Error(
+                    TerminalToolResponse.invalidRequest("Session '$explicitSession' not found.")
+                )
+            if (!isSessionAlive(resolved)) {
+                sessionRegistry.unregister(resolved)
+                TerminalSessionPool.close(resolved)
+                return SessionTarget.Error(TerminalToolResponse.sessionGone(explicitSession))
+            }
+            return SessionTarget.Resolved(resolved)
         }
 
         val explicitAlias = args.alias
         if (explicitAlias != null) {
-            val existing = sessionRegistry.findByAlias(explicitAlias)
-            if (existing != null) return SessionTarget.Resolved(existing.sessionId)
+            val existing = sessionRegistry.findByAlias(explicitAlias, sessionScope)
+            if (existing != null) {
+                if (isSessionAlive(existing.sessionId)) {
+                    return SessionTarget.Resolved(existing.sessionId)
+                }
+                // 登记项是僵尸（会话被回收/池被清）：释放别名后走下方重新开辟，本地会话重建零成本
+                sessionRegistry.unregister(existing.sessionId)
+                TerminalSessionPool.close(existing.sessionId)
+            }
 
             val identity = shellArgs?.identity ?: DEFAULT_IDENTITY
             val workdir = shellArgs?.workdir
@@ -122,9 +128,13 @@ open class ShellBuiltin(
     }
 
     override suspend fun onDefaultSession(): String? {
-        val existing = sessionRegistry.findByAlias(DEFAULT_ALIAS)
+        val existing = sessionRegistry.findByAlias(DEFAULT_ALIAS, sessionScope)
         if (existing != null) {
-            return existing.sessionId
+            if (isSessionAlive(existing.sessionId)) {
+                return existing.sessionId
+            }
+            sessionRegistry.unregister(existing.sessionId)
+            TerminalSessionPool.close(existing.sessionId)
         }
 
         return when (val outcome = openLocalSession(identity = DEFAULT_IDENTITY, workdir = null)) {
@@ -187,7 +197,7 @@ open class ShellBuiltin(
                 },
                 "background": {
                   "type": "boolean",
-                  "description": "Run the command in background immediately and return status='running'. Avoid immediate tight polling; wait with blocking sleep (e.g. sleep 5-30s) before reading."
+                  "description": "Run the command in background immediately and return status='running'. Avoid tight polling; use action='read' to collect output when the task should be done."
                 },
                 "action": {
                   "type": "string",

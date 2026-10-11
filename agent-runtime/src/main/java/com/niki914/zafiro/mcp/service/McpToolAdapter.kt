@@ -19,8 +19,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -34,8 +33,6 @@ class McpToolAdapter(
     private companion object {
         private const val LOG_TAG = "niki914_zafiro_McpToolAdapter"
     }
-
-    private val globalToolMutex = Mutex()
 
     fun buildServer(config: RuntimeMcpServiceConfig): Server {
         val server = Server(
@@ -77,42 +74,42 @@ class McpToolAdapter(
         val startTime = System.currentTimeMillis()
 
         return try {
-            globalToolMutex.withLock {
-                val req = BuiltinToolRequest(name = tool.name, argumentsJson = argsJson)
-                val (output, isError) = if (tool is RawJsonBuiltinTool) {
-                    val raw = tool.invokeRawJson(req)
-                    val parsed = ParsedToolResult.decode(raw, tool.name)
-                    val isFail = parsed.status == TextToolResult.Status.Failure
-                    raw to isFail
+            val req = BuiltinToolRequest(name = tool.name, argumentsJson = argsJson)
+            val (output, isError) = if (tool is RawJsonBuiltinTool) {
+                val raw = tool.invokeRawJson(req)
+                val parsed = ParsedToolResult.decode(raw, tool.name)
+                val isFail = parsed.status == TextToolResult.Status.Failure
+                raw to isFail
+            } else {
+                val result = tool.invoke(req)
+                if (!result.ok) {
+                    result.toJsonString() to true
                 } else {
-                    val result = tool.invoke(req)
-                    if (!result.ok) {
-                        result.toJsonString() to true
-                    } else {
-                        val imageContent = tryExtractImageContent(result)
-                        if (imageContent != null) {
-                            val durationMs = System.currentTimeMillis() - startTime
-                            Logger.i(LOG_TAG, "tool invoke end: ${tool.name} ok=true image=true durationMs=$durationMs")
-                            return CallToolResult(
-                                content = listOf(
-                                    imageContent,
-                                    TextContent(text = result.message.ifBlank { "Image loaded" }),
-                                ),
-                                isError = false,
-                            )
-                        }
-                        result.toJsonString() to false
+                    val imageContent = tryExtractImageContent(result)
+                    if (imageContent != null) {
+                        val durationMs = System.currentTimeMillis() - startTime
+                        Logger.i(LOG_TAG, "tool invoke end: ${tool.name} ok=true image=true durationMs=$durationMs")
+                        return CallToolResult(
+                            content = listOf(
+                                imageContent,
+                                TextContent(text = result.message.ifBlank { "Image loaded" }),
+                            ),
+                            isError = false,
+                        )
                     }
+                    result.toJsonString() to false
                 }
-
-                val jsonText = ensureJson(output)
-                val durationMs = System.currentTimeMillis() - startTime
-                Logger.i(LOG_TAG, "tool invoke end: ${tool.name} isError=$isError durationMs=$durationMs")
-                CallToolResult(
-                    content = listOf(TextContent(text = jsonText)),
-                    isError = isError,
-                )
             }
+
+            val jsonText = ensureJson(output)
+            val durationMs = System.currentTimeMillis() - startTime
+            Logger.i(LOG_TAG, "tool invoke end: ${tool.name} isError=$isError durationMs=$durationMs")
+            CallToolResult(
+                content = listOf(TextContent(text = jsonText)),
+                isError = isError,
+            )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             val durationMs = System.currentTimeMillis() - startTime
             Logger.e(LOG_TAG, "tool invoke exception: ${tool.name}: ${e.message} durationMs=$durationMs", e)

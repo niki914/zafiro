@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat
 
 import com.niki914.libterm.OpenResult
+import com.niki914.libterm.OutputStream
 import com.niki914.libterm.SshAuth
 import com.niki914.libterm.SshHostKeyPolicy
 import com.niki914.libterm.SshOpenOptions
@@ -8,15 +9,21 @@ import com.niki914.libterm.TerminalBytes
 import com.niki914.libterm.TerminalIdentity
 import com.niki914.libterm.runtime.CommandResult
 import com.niki914.libterm.runtime.TermResult
+import com.niki914.libterm.runtime.TerminalTextChunk
+import com.niki914.zafiro.chat.agentic.shell.SessionRegistry
 import com.niki914.zafiro.chat.agentic.shell.TerminalAsyncStartOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalCloseOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalCommandOutcome
+import com.niki914.zafiro.chat.agentic.shell.TerminalInteractiveReadOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
+import com.niki914.zafiro.chat.agentic.shell.TerminalReadMode
 import com.niki914.zafiro.chat.agentic.shell.TerminalReadOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalRuntimePort
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPort
 import com.niki914.zafiro.chat.util.SilentLoggerRule
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -25,7 +32,6 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import com.niki914.libterm.runtime.TerminalTextChunk
 
 class TerminalSessionPoolTest {
 
@@ -36,6 +42,43 @@ class TerminalSessionPoolTest {
     fun tearDown() {
         runTest {
             TerminalSessionPool.closeAll()
+        }
+        SessionRegistry.clear()
+    }
+
+    @Test
+    fun interactiveReadsPreserveStdoutStderrArrivalOrder() = runTest {
+        // stdout/stderr 分两个 buffer 再拼接会让偏移互相平移、顺序被销毁（真机复现过挂死）。
+        // 采集必须按到达序进同一条流：交替 chunk 读回来必须仍是交替序。
+        val chunks = MutableSharedFlow<TerminalTextChunk>(extraBufferCapacity = 64)
+        val fakeRuntime = FakeTerminalRuntime().apply { streamForNextOpen = chunks }
+        installFakeRuntime(fakeRuntime).use {
+            installHandles("a1b2").use {
+                val outcome = TerminalSessionPool.open(identity = "user", collectOutput = true)
+                assertTrue(outcome is TerminalOpenOutcome.Success)
+                val session = (outcome as TerminalOpenOutcome.Success).session
+
+                chunks.tryEmit(TerminalTextChunk(OutputStream.STDOUT, "out1\n", 0L))
+                chunks.tryEmit(TerminalTextChunk(OutputStream.STDERR, "err1\n", 1L))
+                chunks.tryEmit(TerminalTextChunk(OutputStream.STDOUT, "out2\n", 2L))
+
+                // 采集跑在池自己的 IO 作用域上，轮询等它追上（与 waitForAsyncCompletion 同理）
+                val deadline = System.currentTimeMillis() + 2_000L
+                var text: String? = null
+                while (System.currentTimeMillis() < deadline) {
+                    val read = TerminalSessionPool.readInteractive(
+                        session = session,
+                        mode = TerminalReadMode.SNAPSHOT,
+                        maxBytes = Int.MAX_VALUE,
+                    )
+                    if (read is TerminalInteractiveReadOutcome.Success && read.sequence >= 3L) {
+                        text = read.text
+                        break
+                    }
+                    Thread.sleep(5L)
+                }
+                assertEquals("out1\nerr1\nout2\n", text)
+            }
         }
     }
 
@@ -542,6 +585,9 @@ class TerminalSessionPoolTest {
         val openedCwds = mutableListOf<String?>()
         var closeAllCount = 0
 
+        /** 下一次 open() 的会话用这条输出流（供交互式采集测试注入）。 */
+        var streamForNextOpen: Flow<TerminalTextChunk>? = null
+
         override suspend fun open(
             identity: TerminalIdentity,
             cwd: String?,
@@ -550,7 +596,11 @@ class TerminalSessionPoolTest {
             openedIdentities.add(identity)
             openedSshOptions.add(sshOptions)
             openedCwds.add(cwd)
-            val session = FakeTerminalSession(id = "runtime-${openedSessions.size + 1}")
+            val session = FakeTerminalSession(
+                id = "runtime-${openedSessions.size + 1}",
+                streamOverride = streamForNextOpen,
+            )
+            streamForNextOpen = null
             openedSessions.add(session)
             return OpenResult.Success(session)
         }
@@ -566,8 +616,9 @@ class TerminalSessionPoolTest {
 
     private class FakeTerminalSession(
         override val id: String,
+        streamOverride: Flow<TerminalTextChunk>? = null,
     ) : TerminalSessionPort {
-        override val stream = emptyFlow<TerminalTextChunk>()
+        override val stream: Flow<TerminalTextChunk> = streamOverride ?: emptyFlow()
         val commands = mutableListOf<String>()
         var nextResult: CommandResult = commandResult()
         var closed = false

@@ -5,6 +5,7 @@ import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.impl.BaseSessionBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ShellBuiltin
+import com.niki914.zafiro.chat.agentic.shell.SessionRegistry
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.util.SilentLoggerRule
@@ -35,6 +36,7 @@ class ShellBuiltinTest {
         runBlocking {
             TerminalSessionPool.closeAll()
         }
+        SessionRegistry.clear()
     }
 
     private class TestShellBuiltin(
@@ -48,6 +50,10 @@ class ShellBuiltinTest {
         val sessionBuffers = ConcurrentHashMap<String, StringBuilder>()
         val openedIdentities = mutableListOf<String>()
 
+        var sessionsAlive: Boolean = true
+
+        override fun isSessionAlive(sessionId: String): Boolean = sessionsAlive
+
         override suspend fun openLocalSession(identity: String, workdir: String?): TerminalOpenOutcome {
             val handle = "shell_session_${sessionCounter.getAndIncrement()}"
             openedIdentities.add(identity)
@@ -58,14 +64,13 @@ class ShellBuiltinTest {
         }
 
         override suspend fun sendInput(sessionId: String, text: String): Boolean {
-            val prefix = BaseSessionBuiltin.SessionSentinel.MARKER_PREFIX
-            val markerIdx = text.indexOf(prefix)
-            if (markerIdx >= 0) {
-                val token = text.substring(markerIdx + prefix.length).substringBefore(":")
+            // token 位于 payload 的 "$__t" "<token>" 处
+            val token = text.substringAfter("\"\$__t\" \"", "").substringBefore("\"")
+            if (token.isNotEmpty()) {
                 val output = "output_of_$sessionId"
                 appendOutput(
                     sessionId,
-                    "$output\n$prefix$token:0${BaseSessionBuiltin.SessionSentinel.MARKER_SUFFIX}\n"
+                    "$output\n${BaseSessionBuiltin.SessionSentinel.MARKER_PREFIX}$token:0${BaseSessionBuiltin.SessionSentinel.MARKER_SUFFIX}\n"
                 )
             }
             return true
@@ -186,5 +191,32 @@ class ShellBuiltinTest {
         assertEquals("root", json["identity"]!!.jsonPrimitive.content)
         assertEquals("exited", json["status"]!!.jsonPrimitive.content)
         assertEquals("0", json["exit_code"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun explicitSession_rejectsAndCleansDeadSession() = runTest {
+        val tool = TestShellBuiltin()
+        // 先开一个会话
+        val resp1 = tool.invokeRawJson(
+            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"echo 1","alias":"test_dead"}""")
+        )
+        val json1 = Json.parseToJsonElement(resp1).jsonObject
+        val sessionId = json1["session_id"]!!.jsonPrimitive.content
+        assertNotNull(SessionRegistry.findById(sessionId))
+
+        // 会话死掉
+        tool.sessionsAlive = false
+
+        // 显式传入 session 调用
+        val resp2 = tool.invokeRawJson(
+            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"echo 2","session":"$sessionId"}""")
+        )
+        val json2 = Json.parseToJsonElement(resp2).jsonObject
+        val errorObj = json2["error"]?.jsonObject ?: json2
+
+        assertEquals("INVALID_REQUEST", errorObj["code"]?.jsonPrimitive?.content)
+        assertTrue(errorObj["message"]!!.jsonPrimitive.content.contains("is gone"))
+        // 验证僵尸会话已经被 unregister
+        assertTrue(SessionRegistry.findById(sessionId) == null)
     }
 }

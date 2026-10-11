@@ -1,10 +1,13 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
 import com.niki914.logging.Logger
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
+import com.niki914.zafiro.chat.agentic.shell.SessionCommandState
+import com.niki914.zafiro.chat.agentic.shell.SessionRegistry
 import com.niki914.zafiro.chat.agentic.shell.TerminalCloseOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalInteractiveReadOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalInteractiveWriteOutcome
@@ -12,6 +15,7 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalReadMode
 import com.niki914.zafiro.chat.agentic.shell.TerminalReadOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse
+import com.niki914.zafiro.util.ToolOutputTruncator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.SerializationException
@@ -19,16 +23,47 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.io.File
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 会话式终端工具的统一抽象基类。
  * 负责别名管理 (Session Registry)、Sentinel 退出码解析、同步超时优雅降级、异步后台监听、通用 Action 分发以及回执自证。
  */
-abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
+abstract class BaseSessionBuiltin(
+    protected val preflight: ToolExecutionPreflight = ToolExecutionPreflight(),
+) : BuiltinTool(), RawJsonBuiltinTool {
 
-    val sessionRegistry = SessionRegistry()
+    val sessionRegistry: SessionRegistry get() = SessionRegistry
+
+    /**
+     * 会话生死以池为准：登记只记「开过」。SSH 掉线 / 本地会话被回收后，
+     * 登记命中只是僵尸，寻址时必须回查，否则 alias 永远指向死会话。
+     * 测试的假会话不进池，子类（含测试 fake）可覆写。
+     */
+    protected open fun isSessionAlive(sessionId: String): Boolean =
+        TerminalSessionPool.isSessionAlive(sessionId)
+
+    /**
+     * Ctrl-C (\u0003) 是否是真实信号。只有 PTY 会话（SSH）成立；
+     * 本地 shell 走 libsu 管道没有 PTY，\u0003 只是输入字节，还会污染下一条命令。
+     */
+    protected open val supportsCtrlCAbort: Boolean get() = false
+
+    /** 别名域，本地 shell 与 ssh 各自一套命名空间，避免别名跨工具解析到对方的会话。 */
+    protected open val sessionScope: String get() = SessionRegistry.SCOPE_LOCAL
+
+    /** 卡死命令的脱困指引，按是否有 PTY 分流（写入超时/忙拒绝/后台受理三处共用）。 */
+    protected val abandonHint: String
+        get() = if (supportsCtrlCAbort) {
+            "abandon it with action=\"write\" and text \"\\u0003\" (Ctrl-C) — that frees this session for the next command; " +
+                "if you only need a shell right now, leave this session alone and run your next command in a new session with a different alias."
+        } else {
+            "close the session with action='close' and start a new one with a different alias."
+        }
+
+    /** 回执截断时的全量导出目录；null 时取沙箱默认目录（单测注入临时目录）。 */
+    internal var exportDirOverride: File? = null
 
     override val defaultEnabled: Boolean = true
 
@@ -96,7 +131,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     protected open suspend fun resolveTargetSessionId(explicitTarget: String?): String? {
         val trimmed = explicitTarget?.trim()?.takeIf(String::isNotBlank)
         if (trimmed != null) {
-            return sessionRegistry.resolveSessionId(trimmed) ?: trimmed
+            return sessionRegistry.resolveSessionId(trimmed, sessionScope) ?: trimmed
         }
         return onDefaultSession()
     }
@@ -137,6 +172,11 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         }
         val command = args.command?.takeIf(String::isNotBlank)
             ?: return TerminalToolResponse.invalidRequest("Field 'command' must not be blank.")
+        val decision = preflight.evaluate(command, toolName = name)
+        if (!decision.allowed) {
+            return TerminalToolResponse.policyBlocked(decision)
+        }
+        preflightPathAccess(command, args)
         val timeoutSec = (args.timeout ?: DEFAULT_TIMEOUT_SEC).coerceAtLeast(1)
 
         return executeSentinelCommand(
@@ -147,6 +187,12 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         )
     }
 
+    /**
+     * 命令执行前的路径权限前检。远端 SSH 命令跑在别的机器上，本地沙箱权限帮不上忙，
+     * 因此默认不申请，只有本地 shell 覆写它。
+     */
+    protected open suspend fun preflightPathAccess(command: String, args: BaseSessionArgs) = Unit
+
     protected open suspend fun executeSentinelCommand(
         sessionId: String,
         command: String,
@@ -154,6 +200,10 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         background: Boolean,
     ): String {
         val meta = sessionRegistry.findById(sessionId)
+        // 同一 PTY 里塞第二条命令会让它排在未完成的命令后面执行，两边的输出都会错位丢失
+        if (meta?.activeCommand?.status == "running") {
+            return TerminalToolResponse.sessionBusyWithPendingCommand(sessionId, abandonHint)
+        }
         val token = randomToken()
         val payload = SessionSentinel.buildPayload(command, token)
 
@@ -163,7 +213,6 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             command = command,
             token = token,
             startTimeMs = System.currentTimeMillis(),
-            timeoutMs = timeoutSec * 1000L,
             initialOffset = initialOffset,
             status = "running",
         )
@@ -182,9 +231,6 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             return formatBackgroundAccepted(
                 sessionId = sessionId,
                 alias = meta?.alias,
-                message = "Background command started. Do NOT poll immediately in a tight loop. " +
-                        "Estimate task duration and wait sensibly (e.g. run a blocking 'sleep 5' to 'sleep 30' " +
-                        "depending on task scale, or specify a larger 'timeout' upfront) before reading output.",
             )
         }
 
@@ -194,12 +240,21 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             commandState.status = if (parsed.exitCode == 0) "exited" else "failed"
             commandState.exitCode = parsed.exitCode
             commandState.cleanOutput = parsed.cleanOutput
+            commandState.endTimestampMs = System.currentTimeMillis()
+            // 全量输出已随本条回执交付，后续重复 read 只回 already_read
+            commandState.outputDelivered = true
             formatCommandResult(
                 sessionId = sessionId,
                 alias = meta?.alias,
                 output = parsed.cleanOutput,
                 exitCode = parsed.exitCode,
             )
+        } else if (!isSessionAlive(sessionId)) {
+            // 连接已断：写入会「成功」但哨兵永远不回，等满超时只能拿到空输出。
+            // 立刻给出可行动的错误，并清掉卡死的在途状态。
+            commandState.status = "failed"
+            sessionRegistry.updateCommandState(sessionId, null)
+            TerminalToolResponse.sessionGone(sessionId)
         } else {
             // 超时到达：优雅降级为后台运行，不杀会话与进程
             commandState.status = "running"
@@ -224,20 +279,46 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         initialOffset: Int = 0,
     ): SessionSentinel.Parsed? {
         val deadline = System.currentTimeMillis() + timeoutMs
+        val echoCommand = sessionRegistry.getCommandState(sessionId)?.command
+        var lastLength = -1
+        var deadQuietTicks = 0
         while (System.currentTimeMillis() < deadline) {
             val rawFull = readRawOutput(sessionId)
             if (rawFull != null) {
-                val raw = if (rawFull.length >= initialOffset) rawFull.substring(initialOffset) else rawFull
-                val parsed = SessionSentinel.parseOutput(raw, token)
+                val parsed = SessionSentinel.parseOutput(
+                    rawFull.windowFrom(initialOffset),
+                    token,
+                    echoCommand = echoCommand,
+                )
                 if (parsed != null) return parsed
             }
-            delay(50L)
+            // 会话内的 exit / 自杀命令会先打标记再退出，而标记可能还在采集管道里往外走。
+            // 所以判死不能一拍定论：等缓冲连续两拍没有新数据（尾部已收完）才认掉线——
+            // 真断连时缓冲本就没有数据，代价也就两拍，仍比等满超时快得多。
+            if (!isSessionAlive(sessionId)) {
+                val length = rawFull?.length ?: -1
+                deadQuietTicks = if (length == lastLength) deadQuietTicks + 1 else 0
+                lastLength = length
+                if (deadQuietTicks >= DEAD_QUIET_TICKS) return null
+            }
+            delay(POLL_INTERVAL_MS)
         }
-        val finalRaw = readRawOutput(sessionId)
-        val raw = if (finalRaw != null && finalRaw.length >= initialOffset) {
-            finalRaw.substring(initialOffset)
-        } else finalRaw
-        return if (raw != null) SessionSentinel.parseOutput(raw, token) else null
+        return lastParse(sessionId, token, initialOffset, echoCommand)
+    }
+
+    private fun lastParse(
+        sessionId: String,
+        token: String,
+        initialOffset: Int,
+        echoCommand: String?,
+    ): SessionSentinel.Parsed? {
+        return readRawOutput(sessionId)?.let {
+            SessionSentinel.parseOutput(
+                it.windowFrom(initialOffset),
+                token,
+                echoCommand = echoCommand,
+            )
+        }
     }
 
     protected open suspend fun sendInput(sessionId: String, text: String): Boolean {
@@ -253,10 +334,48 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             mode = TerminalReadMode.SNAPSHOT,
             maxBytes = Int.MAX_VALUE,
         )
+        // 这里保持原样不清洗 NUL：偏移量(initialOffset / lastReadOffset)与 sentinel 解析都
+        // 建立在这个原始视图上，NUL 既不影响标记匹配、也不影响偏移自洽；清洗统一放到回执出口。
         return if (outcome is TerminalInteractiveReadOutcome.Success) {
-            outcome.stdout + outcome.stderr
+            outcome.text
         } else null
     }
+
+    /**
+     * 终端流里夹带的 NUL 填充对模型没有意义，只烧 token。
+     */
+    protected fun sanitizeTerminalText(text: String): String {
+        if (text.isEmpty()) return text
+        val withoutNul = if ('\u0000' in text) text.filter { it != '\u0000' } else text
+        // 哨兵管线自己写进去的行（payload 回显、标记行）对模型没有任何信息量。交互式 read 走的是
+        // 原始流、不经过 parseOutput，抹不掉就只能在这里兜
+        val needsPlumbingFilter = "__sess_status" in withoutNul || "\$__t" in withoutNul ||
+            SessionSentinel.MARKER_PREFIX in withoutNul
+        if (!needsPlumbingFilter) return withoutNul
+        return withoutNul.split('\n')
+            .filterNot(::isSentinelPlumbingLine)
+            .joinToString("\n")
+    }
+
+    private fun isSentinelPlumbingLine(line: String): Boolean {
+        if ("__sess_status" in line || "\$__t" in line) return true
+        return SessionSentinel.MARKER_PREFIX in line
+    }
+
+    /**
+     * 回执里的终端文本统一出口：剔 NUL，再超限截断并把全量落盘。
+     */
+    protected fun prepareReceiptOutput(text: String): String {
+        val sanitized = sanitizeTerminalText(text)
+        if (sanitized.isEmpty()) return sanitized
+        return ToolOutputTruncator.filterForAgent(
+            fullContent = sanitized,
+            exportDir = exportDirOverride ?: ToolOutputTruncator.defaultExportDir(),
+        )
+    }
+
+    /** 增量窗口：从指定偏移取到末尾；偏移越界时退回全文。 */
+    protected fun String.windowFrom(offset: Int): String = if (length >= offset) substring(offset) else this
 
     // ── 通用动作分发 ────────────────────────────────────────────────────────
 
@@ -272,7 +391,10 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     }
 
     protected open fun handleList(): String {
+        // 只报本域、且真的还活着的会话：跨域句柄会诱使模型把它交给另一个工具执行，
+        // 已断连的死会话列出来则是谎报健康（模型会拿它去发命令，只能拿到 gone）
         val sessions = sessionRegistry.all()
+            .filter { it.scope == sessionScope && isSessionAlive(it.sessionId) }
         val items = sessions.map { entry ->
             val payload = linkedMapOf<String, JsonElement>(
                 "session_id" to JsonPrimitive(entry.sessionId),
@@ -303,33 +425,49 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
 
         // 若会话通过 Sentinel 下发了命令，以 Sentinel 状态机检测为准
         if (activeCommand != null) {
-            val rawFull = readRawOutput(sessionId)
-            val raw = if (rawFull != null && rawFull.length >= activeCommand.initialOffset) {
-                rawFull.substring(activeCommand.initialOffset)
-            } else rawFull.orEmpty()
+            val rawFull = readRawOutput(sessionId).orEmpty()
 
-            if (activeCommand.status == "running" && raw.isNotEmpty()) {
-                val parsed = SessionSentinel.parseOutput(raw, activeCommand.token)
+            if (activeCommand.status == "running" && rawFull.isNotEmpty()) {
+                val parsed = SessionSentinel.parseOutput(
+                    rawFull.windowFrom(activeCommand.initialOffset),
+                    activeCommand.token,
+                    echoCommand = activeCommand.command,
+                )
                 if (parsed != null) {
                     activeCommand.status = if (parsed.exitCode == 0) "exited" else "failed"
                     activeCommand.exitCode = parsed.exitCode
                     activeCommand.cleanOutput = parsed.cleanOutput
+                    activeCommand.endTimestampMs = System.currentTimeMillis()
                 }
             }
-            val elapsed = ((System.currentTimeMillis() - activeCommand.startTimeMs) / 1000L).coerceAtLeast(0L)
+            val elapsed = (
+                (activeCommand.endTimestampMs ?: System.currentTimeMillis()) - activeCommand.startTimeMs
+                ) / 1000L
             return if (activeCommand.status != "running") {
+                // 已退出的命令全量输出只交付一次；再次 read 回 already_read，上下文不反复膨胀
+                val alreadyRead = activeCommand.outputDelivered
+                activeCommand.outputDelivered = true
                 formatReadResult(
                     sessionId = sessionId,
                     status = activeCommand.status,
-                    output = activeCommand.cleanOutput,
+                    output = if (alreadyRead) "" else activeCommand.cleanOutput,
                     exitCode = activeCommand.exitCode,
                     elapsedSeconds = elapsed,
+                    extra = if (alreadyRead) mapOf("already_read" to JsonPrimitive(true)) else emptyMap(),
                 )
             } else {
+                // 只给上次读之后的新增部分，避免反复把同一段输出重新塞进上下文。
+                // 下界要跟着实际长度收：缓冲被重建时 rawFull 可能短于 initialOffset，
+                // 区间倒置会让 coerceIn 直接抛异常
+                val start = activeCommand.lastReadOffset.coerceIn(
+                    minOf(activeCommand.initialOffset, rawFull.length),
+                    rawFull.length,
+                )
+                activeCommand.lastReadOffset = rawFull.length
                 formatReadResult(
                     sessionId = sessionId,
                     status = "running",
-                    output = raw,
+                    output = rawFull.substring(start),
                     exitCode = null,
                     elapsedSeconds = elapsed,
                 )
@@ -337,14 +475,17 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         }
 
         // 兜底：直接从 TerminalSessionPool 中读交互式输出
-        val mode = args.mode ?: TerminalReadMode.DELTA
-        val maxBytes = args.maxBytes ?: DEFAULT_MAX_BYTES
-
-        return when (val interactiveOutcome = TerminalSessionPool.readInteractive(sessionId, mode, maxBytes)) {
+        return when (
+            val interactiveOutcome = TerminalSessionPool.readInteractive(
+                session = sessionId,
+                mode = TerminalReadMode.DELTA,
+                maxBytes = Int.MAX_VALUE,
+            )
+        ) {
             is TerminalInteractiveReadOutcome.Success -> formatReadResult(
                 sessionId = sessionId,
                 status = "running",
-                output = interactiveOutcome.stdout + interactiveOutcome.stderr,
+                output = interactiveOutcome.text,
                 exitCode = null,
                 elapsedSeconds = 0L,
             )
@@ -364,6 +505,12 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         }
         val text = args.text
             ?: return TerminalToolResponse.invalidRequest("Field 'text' is required for submit.")
+        // submit 会追换行立即执行，与 command 同等受执行规则约束（\u0003 永不拦）
+        val decision = preflight.evaluate(text, toolName = name)
+        if (!decision.allowed) {
+            return TerminalToolResponse.policyBlocked(decision)
+        }
+        preflightPathAccess(text, args)
         val meta = sessionRegistry.findById(sessionId)
         if (meta?.activeCommand?.status != "running") {
             sessionRegistry.updateCommandState(sessionId, null)
@@ -378,8 +525,30 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         }
         val text = args.text
             ?: return TerminalToolResponse.invalidRequest("Field 'text' is required for write.")
-        val meta = sessionRegistry.findById(sessionId)
-        if (meta?.activeCommand?.status != "running") {
+        // 含换行的 write 等同于让 shell 执行脚本，同样过前检；纯交互片段与 Ctrl-C 不拦
+        if (ABORT_SEQUENCE !in text && '\n' in text) {
+            val decision = preflight.evaluate(text, toolName = name)
+            if (!decision.allowed) {
+                return TerminalToolResponse.policyBlocked(decision)
+            }
+            preflightPathAccess(text, args)
+        }
+        val pending = sessionRegistry.findById(sessionId)?.activeCommand
+        if (pending == null || pending.status != "running") {
+            sessionRegistry.updateCommandState(sessionId, null)
+        } else if (ABORT_SEQUENCE in text) {
+            // 非 PTY 会话里 \u0003 只是输入字节：杀不掉进程，还会污染下一条命令行，
+            // 所以这里拒绝作废，让模型走 close + 新 alias（此时下一条命令会排在旧进程后面白等超时）
+            if (!supportsCtrlCAbort) {
+                return TerminalToolResponse.invalidRequest(
+                    "Session '$sessionId' has no PTY: \"\\u0003\" is not an interrupt here. " +
+                        "Close it with action='close' and start a new session with a different alias."
+                )
+            }
+            // PTY 上 Ctrl-C 会连带冲掉输入队列里那行 sentinel 标记（NOFLSH 未置位 → 输入队列被 flush），
+            // 标记不会回来，状态就永远卡在 running。模型显式发 Ctrl-C 即宣布这条命令作废，
+            // 直接放行后续命令。残留进程若还活着，其输出只会混进下一次读的文本，
+            // 不会污染后续命令的 exit code（每次命令用各自的 token 解析）。
             sessionRegistry.updateCommandState(sessionId, null)
         }
         return writeInteractivePayload(sessionId, text)
@@ -432,17 +601,19 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         output: String,
         exitCode: Int?,
         elapsedSeconds: Long,
+        extra: Map<String, JsonElement> = emptyMap(),
     ): String {
         val meta = sessionRegistry.findById(sessionId)
         val payload = linkedMapOf<String, JsonElement>(
             "session_id" to JsonPrimitive(sessionId),
             "status" to JsonPrimitive(status),
-            "output" to JsonPrimitive(output),
+            "output" to JsonPrimitive(prepareReceiptOutput(output)),
             "elapsed_seconds" to JsonPrimitive(elapsedSeconds),
         )
         meta?.alias?.let { payload["alias"] = JsonPrimitive(it) }
         meta?.metadata?.get("identity")?.let { payload["identity"] = JsonPrimitive(it) }
         exitCode?.let { payload["exit_code"] = JsonPrimitive(it) }
+        payload.putAll(extra)
         return JsonObject(payload).toString()
     }
 
@@ -467,7 +638,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         val meta = sessionRegistry.findById(sessionId)
         val payload = linkedMapOf<String, JsonElement>(
             "session_id" to JsonPrimitive(sessionId),
-            "output" to JsonPrimitive(output),
+            "output" to JsonPrimitive(prepareReceiptOutput(output)),
             "exit_code" to JsonPrimitive(exitCode),
             "status" to JsonPrimitive(if (exitCode == 0) "exited" else "failed"),
         )
@@ -480,14 +651,17 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
     protected fun formatBackgroundAccepted(
         sessionId: String,
         alias: String?,
-        message: String,
     ): String {
         val meta = sessionRegistry.findById(sessionId)
         val payload = linkedMapOf<String, JsonElement>(
             "session_id" to JsonPrimitive(sessionId),
             "background" to JsonPrimitive(true),
             "status" to JsonPrimitive("running"),
-            "output" to JsonPrimitive(message),
+            "output" to JsonPrimitive(
+                "Background command started. It runs with status='running'; collect its output later " +
+                    "with action='read' instead of polling in a tight loop. If it is stuck, $abandonHint " +
+                    "A session with a command still in flight rejects new commands."
+            ),
         )
         alias?.let { payload["alias"] = JsonPrimitive(it) }
         meta?.metadata?.get("identity")?.let { payload["identity"] = JsonPrimitive(it) }
@@ -505,12 +679,11 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             "session_id" to JsonPrimitive(sessionId),
             "status" to JsonPrimitive("running"),
             "timed_out" to JsonPrimitive(true),
-            "output" to JsonPrimitive(output),
+            "output" to JsonPrimitive(prepareReceiptOutput(output)),
             "message" to JsonPrimitive(
-                "Command did not finish within ${timeoutSec}s. It continues running in the background. " +
-                        "Do NOT poll immediately in a tight loop. Depending on how long this task normally takes " +
-                        "(e.g. package installs or builds), wait a sensible interval using a blocking sleep command " +
-                        "(e.g. 'sleep 10' to 'sleep 30') before checking with action='read', or specify a larger 'timeout' upfront."
+                "Command did not finish within ${timeoutSec}s. It keeps running in the background with " +
+                    "status='running'; collect its output later with action='read' instead of polling in a tight loop. " +
+                    "If it is stuck, $abandonHint"
             ),
         )
         alias?.let { payload["alias"] = JsonPrimitive(it) }
@@ -522,85 +695,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
         return UUID.randomUUID().toString().replace("-", "").take(8)
     }
 
-    // ── 内部类型与对象 ──────────────────────────────────────────────────────
-
-    data class SessionCommandState(
-        val command: String,
-        val token: String,
-        val startTimeMs: Long,
-        val timeoutMs: Long,
-        val initialOffset: Int = 0,
-        @Volatile var status: String = "running",
-        @Volatile var exitCode: Int? = null,
-        @Volatile var cleanOutput: String = "",
-        @Volatile var timedOut: Boolean = false,
-    )
-
-    data class SessionMeta(
-        val sessionId: String,
-        val alias: String?,
-        val createdAt: Long = System.currentTimeMillis(),
-        val metadata: Map<String, String> = emptyMap(),
-        @Volatile var activeCommand: SessionCommandState? = null,
-    )
-
-    class SessionRegistry {
-        private val byId = ConcurrentHashMap<String, SessionMeta>()
-        private val byAlias = ConcurrentHashMap<String, String>()
-
-        fun register(
-            sessionId: String,
-            alias: String?,
-            metadata: Map<String, String> = emptyMap(),
-        ): SessionMeta {
-            if (alias != null) {
-                val existingSession = byAlias.putIfAbsent(alias, sessionId)
-                if (existingSession != null && existingSession != sessionId) {
-                    throw IllegalArgumentException(
-                        "Session alias '$alias' is already in use by session '$existingSession'."
-                    )
-                }
-            }
-            val meta = SessionMeta(sessionId = sessionId, alias = alias, metadata = metadata)
-            byId[sessionId] = meta
-            return meta
-        }
-
-        fun resolveSessionId(target: String?): String? {
-            if (target.isNullOrBlank()) return null
-            return byAlias[target] ?: if (byId.containsKey(target)) target else null
-        }
-
-        fun findById(sessionId: String): SessionMeta? = byId[sessionId]
-
-        fun findByAlias(alias: String): SessionMeta? {
-            val id = byAlias[alias] ?: return null
-            return byId[id]
-        }
-
-        fun updateCommandState(sessionId: String, state: SessionCommandState?) {
-            byId[sessionId]?.activeCommand = state
-        }
-
-        fun getCommandState(sessionId: String): SessionCommandState? {
-            return byId[sessionId]?.activeCommand
-        }
-
-        fun unregister(sessionId: String): SessionMeta? {
-            val meta = byId.remove(sessionId)
-            if (meta?.alias != null) {
-                byAlias.remove(meta.alias, sessionId)
-            }
-            return meta
-        }
-
-        fun all(): List<SessionMeta> = byId.values.toList()
-
-        fun clear() {
-            byId.clear()
-            byAlias.clear()
-        }
-    }
+    // ── 内部类型与对象（SessionRegistry / SessionMeta / SessionCommandState 已上移至 shell 包，进程级单例）──
 
     object SessionSentinel {
         const val MARKER_PREFIX = "__SESSION_EXIT_"
@@ -610,12 +705,13 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             val normalizedCommand = if (command.endsWith('\n')) command else "$command\n"
             return buildString {
                 append(normalizedCommand)
-                append("__sess_status=$?; printf '\\n")
+                // 标记由 $__t 与 token 在 shell 内拼装：输入文本里不出现完整标记，
+                // tty 回显因此伪造不出真标记，parseOutput 直接按真标记切分。
+                append("__sess_status=$?; __t=\"")
                 append(MARKER_PREFIX)
+                append("\"; printf '\\n%s%s:%s__\\n' \"\$__t\" \"")
                 append(token)
-                append(":%s")
-                append(MARKER_SUFFIX)
-                append("\\n' \"\$__sess_status\"\n")
+                append("\" \"\$__sess_status\"\n")
             }
         }
 
@@ -624,7 +720,7 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             val cleanOutput: String,
         )
 
-        fun parseOutput(rawOutput: String, token: String): Parsed? {
+        fun parseOutput(rawOutput: String, token: String, echoCommand: String? = null): Parsed? {
             val tokenPrefix = "$MARKER_PREFIX$token:"
             val prefixIndex = rawOutput.lastIndexOf(tokenPrefix)
             if (prefixIndex < 0) return null
@@ -634,14 +730,11 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
             val exitCodeStr = rawOutput.substring(prefixIndex + tokenPrefix.length, suffixIndex)
             val exitCode = exitCodeStr.trim().toIntOrNull() ?: return null
 
-            var cleanBefore = rawOutput.substring(0, prefixIndex).trimEnd('\r', '\n')
-
-            val echoPattern = "$MARKER_PREFIX$token:%s$MARKER_SUFFIX"
-            val echoIndex = cleanBefore.lastIndexOf(echoPattern)
-            if (echoIndex >= 0) {
-                val lineStart = cleanBefore.lastIndexOf('\n', echoIndex).let { if (it < 0) 0 else it + 1 }
-                cleanBefore = cleanBefore.substring(0, lineStart).trimEnd('\r', '\n')
-            }
+            val cleanBefore = stripEcho(
+                rawOutput.substring(0, prefixIndex).trimEnd('\r', '\n'),
+                token,
+                echoCommand,
+            )
 
             val cleanAfter = rawOutput.substring(suffixIndex + MARKER_SUFFIX.length).trimStart('\r', '\n')
             val clean = when {
@@ -652,12 +745,48 @@ abstract class BaseSessionBuiltin : BuiltinTool(), RawJsonBuiltinTool {
 
             return Parsed(exitCode = exitCode, cleanOutput = clean)
         }
+
+        /**
+         * 回执去噪：tty 会把输入 payload 原样回显。只处理首尾，不碰中间，真实输出零风险：
+         * ① 首行的命令回显（命令文本已知，前后留 24 字符给提示符）；
+         * ② 哨兵行的回显残片 —— 含我们的私有变量名 / 裸 token / 纯引号碎片（如 `~ $ "`）；
+         * 裸提示符行（`~ $ `）保留，它是「shell 还活着」的唯一视觉信号。
+         */
+        private fun stripEcho(cleanBefore: String, token: String, echoCommand: String?): String {
+            val lines = cleanBefore.split('\n').toMutableList()
+            if (echoCommand != null && '\n' !in echoCommand) {
+                val cmd = echoCommand.trim()
+                val first = lines.firstOrNull()?.trimEnd('\r').orEmpty()
+                val prompt = if (first.endsWith(cmd)) first.dropLast(cmd.length) else null
+                // 只剥「提示符 + 命令」形态的回显：本地 shell 根本没有回显，只看「行尾等于命令」
+                // 会把真实输出的首行当回显吃掉（如 pwd 输出 /data/.../pwd）
+                if (prompt != null && prompt.length <= 24 && prompt.any { it in "~\$#>%" }) {
+                    lines.removeAt(0)
+                }
+            }
+            fun isEchoFragment(line: String): Boolean {
+                val l = line.trim()
+                if (l.isEmpty()) return false
+                if ("\$__sess_status" in l || "\$__t" in l) return true
+                if (token in l && !l.contains("$MARKER_PREFIX$token:")) return true
+                val junk = l.filter { it !in " ~\$#>" }
+                return junk.isNotEmpty() && junk.all { it in "\"'%:" } && junk.any { it in "\"'%" }
+            }
+            while (lines.isNotEmpty() && isEchoFragment(lines.first())) lines.removeAt(0)
+            while (lines.isNotEmpty() && isEchoFragment(lines.last())) lines.removeAt(lines.lastIndex)
+            return lines.joinToString("\n").trimEnd('\r', '\n')
+        }
     }
 
     companion object {
         private const val LOG_TAG = "niki914_zafiro_BaseSessionBuiltin"
         private const val DEFAULT_TIMEOUT_SEC = 30L
-        private const val DEFAULT_MAX_BYTES = 8192
+        private const val POLL_INTERVAL_MS = 50L
+
+        /** 会话已死且缓冲连续这么多拍没有新数据，才判定哨兵不会再来。 */
+        private const val DEAD_QUIET_TICKS = 2
+        /** 终端中断符 (Ctrl-C)，作为「作废当前命令」的显式信号。 */
+        private const val ABORT_SEQUENCE = '\u0003'
     }
 }
 
@@ -690,6 +819,4 @@ open class BaseSessionArgs(
     val text: String? = null,
     val timeout: Long? = null,
     val background: Boolean = false,
-    val mode: TerminalReadMode? = null,
-    val maxBytes: Int? = null,
 )
