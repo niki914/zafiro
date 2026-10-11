@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import com.niki914.uikit.infra.component.PageDescriptionText
 import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
 import com.niki914.uikit.infra.component.TintLiquidButton
+import com.niki914.uikit.infra.liquidScreenActionButtonBottomPadding
 import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 
@@ -83,7 +84,7 @@ internal fun FullScreenContentEditor(
                 .padding(
                     start = SettingsDetailPageDefaults.HorizontalPadding,
                     end = SettingsDetailPageDefaults.HorizontalPadding,
-                    bottom = liquidScreenBottomPadding(),
+                    bottom = liquidScreenActionButtonBottomPadding(),
                 ),
         )
     }

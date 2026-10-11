@@ -29,6 +29,8 @@ import com.niki914.uikit.infra.component.SettingsToggleListItemCard
 fun SettingsSpecPageContent(
     spec: SettingsPageSpec,
     modifier: Modifier = Modifier,
+    /** 内容区底部安全距离。null = 走壳层下发的 `liquidScreenBottomPadding()`；吸底按钮的页面传入加大值。 */
+    contentBottomPadding: Dp? = null,
     contentBeforeSections: @Composable ColumnScope.() -> Unit = {},
     contentAfterSections: @Composable ColumnScope.() -> Unit = {},
     onAction: (SettingsRowAction) -> Unit,
@@ -36,6 +38,7 @@ fun SettingsSpecPageContent(
     SettingsListPageContent(
         description = spec.description,
         modifier = modifier,
+        contentBottomPadding = contentBottomPadding,
     ) {
         contentBeforeSections()
         spec.sections.forEach { section ->

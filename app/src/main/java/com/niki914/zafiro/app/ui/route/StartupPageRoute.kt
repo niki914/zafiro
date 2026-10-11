@@ -12,7 +12,7 @@ import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.zafiro.app.ui.content.StartupPageContent
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
-import com.niki914.zafiro.app.ui.nav.ProviderPickPage
+import com.niki914.zafiro.app.ui.nav.OnboardingThemePage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 
 @Composable
@@ -25,7 +25,7 @@ internal fun StartupPageRoute(
     fun enterNextPage() {
         if (isEntering) return
         isEntering = true
-        onPush(ProviderPickPage)
+        onPush(OnboardingThemePage)
     }
 
     StartupPageContent(

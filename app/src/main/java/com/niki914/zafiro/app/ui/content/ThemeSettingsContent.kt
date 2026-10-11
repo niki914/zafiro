@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.core.os.LocaleListCompat
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
@@ -34,6 +35,8 @@ import kotlinx.coroutines.launch
 
 /**
  * 外观与语言：深浅色模式、配色（[ThemeController] 驱动）+ 语言（[ThemeSettingsViewModel] 驱动）。
+ *
+ * 两项都是选中即落盘；onboarding 首次配置需要吸底按钮时，由调用方传 [contentBottomPadding] 留位。
  */
 private const val LANGUAGE_ROW_ID = "theme.language"
 
@@ -92,6 +95,7 @@ private fun languageOptions(): List<LanguageOption> {
 @Composable
 fun ThemeSettingsContent(
     viewModel: ThemeSettingsViewModel = pageViewModel(),
+    contentBottomPadding: Dp? = null,
 ) {
     val uiState by viewModel.uiStateFlow.collectAsState()
     val scope = rememberCoroutineScope()
@@ -145,6 +149,7 @@ fun ThemeSettingsContent(
 
     SettingsSpecPageContent(
         spec = spec,
+        contentBottomPadding = contentBottomPadding,
         contentAfterSections = {
             SelectionGroupCard(
                 options = modeOptions.map { (mode, icon, labelRes) ->
