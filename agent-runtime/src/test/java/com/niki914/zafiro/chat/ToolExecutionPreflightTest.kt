@@ -5,6 +5,7 @@ import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.chat.agentic.AgentTenantContext
 import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight.Companion.WATCHED_PREFIXES
 import com.niki914.zafiro.business.permission.Channel
@@ -244,6 +245,35 @@ class ToolExecutionPreflightTest {
         assertTrue(decision.allowed)
         assertEquals("OK", decision.code)
         assertTrue(receivedRequest is ApprovalRequest.ToolExecution)
+    }
+
+    @Test
+    fun evaluate_confirmRulePrefersCurrentAgentControlFromCoroutineContext() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                executionRules = listOf(dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM))
+            )
+        )
+        val globalAgentControl = FakeAgentControl(decision = ApprovalDecision.Deny)
+        var targetedRequested = false
+        val targetedAgentControl = FakeAgentControl(
+            decision = ApprovalDecision.Allow,
+            onRequest = { targetedRequested = true }
+        )
+
+        val preflight = ToolExecutionPreflight(agentControlProvider = { globalAgentControl })
+        val decision = kotlinx.coroutines.withContext(
+            AgentTenantContext(
+                tenantId = "tenant-test",
+                agentControl = targetedAgentControl
+            )
+        ) {
+            preflight.evaluate("rm -rf /data/local/tmp/cache", toolName = "terminal")
+        }
+
+        assertTrue(decision.allowed)
+        assertEquals("OK", decision.code)
+        assertTrue(targetedRequested)
     }
 
     // ── ensurePathAccess：提取 + 申请，拒绝照常放行 ────────────────────────

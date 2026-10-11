@@ -176,7 +176,7 @@ class HomeChatViewModelTest {
     }
 
     @Test
-    fun newConversationPreservesCurrentDraft() = runTest {
+    fun newConversationPreservesCurrentDraftWithoutDiscardingAgent() = runTest {
         val store = FakeHomeConversationStore()
         store.createRecord("saved", "old")
         val fixture = fixture(store = store)
@@ -188,14 +188,14 @@ class HomeChatViewModelTest {
         fixture.vm.sendIntent(HomeChatIntent.NewConversation)
         advanceUntilIdle()
 
-        assertEquals(1, fixture.agent.discardCount)
+        assertEquals(0, fixture.agent.discardCount)
         assertNull(fixture.vm.uiStateFlow.value.currentConversationId)
         assertEquals("keep this in new chat", fixture.vm.uiStateFlow.value.input)
         assertEquals("keep this in new chat", fixture.agent.draft.value.text)
     }
 
     @Test
-    fun newConversationDiscardsAgentButLeavesSavedHistory() = runTest {
+    fun newConversationSwitchesToBlankStateWithoutKillingSavedHistory() = runTest {
         val fixture = fixture()
         fixture.store.createRecord("saved", "old")
         fixture.vm.sendIntent(HomeChatIntent.LoadConversation("saved"))
@@ -203,7 +203,7 @@ class HomeChatViewModelTest {
         fixture.vm.sendIntent(HomeChatIntent.NewConversation)
         advanceUntilIdle()
 
-        assertEquals(1, fixture.agent.discardCount)
+        assertEquals(0, fixture.agent.discardCount)
         assertEquals(null, fixture.vm.uiStateFlow.value.currentConversationId)
         assertEquals("", fixture.store.lastOpenedConversationId())
         assertTrue(fixture.store.getConversation("saved") != null)
@@ -259,7 +259,7 @@ class HomeChatViewModelTest {
     }
 
     @Test
-    fun deleteActiveConversationDeletesHistoryAndDiscardsAgent() = runTest {
+    fun deleteActiveConversationDeletesHistoryAndStartsNewConversation() = runTest {
         val fixture = fixture()
         fixture.store.createRecord("saved", "old")
         fixture.vm.sendIntent(HomeChatIntent.LoadConversation("saved"))
@@ -267,7 +267,6 @@ class HomeChatViewModelTest {
         fixture.vm.sendIntent(HomeChatIntent.DeleteConversation("saved"))
         advanceUntilIdle()
 
-        assertEquals(1, fixture.agent.discardCount)
         assertNull(fixture.store.getConversation("saved"))
         assertEquals(null, fixture.vm.uiStateFlow.value.currentConversationId)
     }

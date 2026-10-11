@@ -116,6 +116,14 @@ interface Agent : AgentControl {
      * **不动持久化记录**，删除历史会话是仓储的事。
      */
     fun discard()
+
+    /**
+     * 释放当前 Agent 实例持有的运行时资源（关闭会话、取消自身协程）。
+     *
+     * 与 [discard] 的区别：**不杀死进程级共享资源**（不调用 PyRuntime.kill() 与
+     * TerminalSessionPool.closeAll()），防止破坏其它正在后台并发运行的 Agent。
+     */
+    fun release()
 }
 
 /**

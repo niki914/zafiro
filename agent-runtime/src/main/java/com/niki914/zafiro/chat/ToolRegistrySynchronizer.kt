@@ -7,6 +7,7 @@ import com.niki914.okia.tooling.DefaultToolRegistry
 import com.niki914.okia.tooling.ToolDescriptor
 import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.chat.agentic.LocalToolExecutor
 
 /**
@@ -16,6 +17,8 @@ import com.niki914.zafiro.chat.agentic.LocalToolExecutor
  * 支持回合内动态注册自定义 py 工具，以及 MCP 服务器数据结构的转换与签名计算。
  */
 internal class ToolRegistrySynchronizer(
+    private val tenantId: String = "",
+    private val agentControlProvider: (() -> AgentControl?)? = null,
     private val currentTools: () -> ResolvedTools?,
 ) {
     private companion object {
@@ -30,6 +33,8 @@ internal class ToolRegistrySynchronizer(
         currentTools = currentTools,
         inlineCustomPyTools = inlineCustomPyTools,
         onCustomPyToolWritten = { tool -> registerCustomPyToolNow(tool) },
+        tenantId = tenantId,
+        agentControlProvider = agentControlProvider,
     )
 
     fun reset() {

@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 消息级增量持久化器（T3，D3-1/D3-2/D3-8）。
@@ -31,7 +32,7 @@ object ConversationPersister {
     private const val LOG_TAG = "niki914_zafiro_ConversationPersister"
 
     /** 已持久化条数（按会话 id 隔离）。内存态，重启后按 Room 现有条数重建。 */
-    private val persistedCountBySession = mutableMapOf<String, Int>()
+    private val persistedCountBySession = ConcurrentHashMap<String, Int>()
 
     fun start(
         scope: CoroutineScope,
@@ -59,6 +60,14 @@ object ConversationPersister {
             }
         }
         Logger.i(LOG_TAG, "persister started")
+    }
+
+    /** 观察指定 Agent 引擎的会话快照流并增量落盘（支持多 Agent 并发）。 */
+    fun trackEngine(
+        scope: CoroutineScope,
+        source: Flow<Conversation?>,
+    ) {
+        start(scope, source)
     }
 
     internal fun resetForTest() {

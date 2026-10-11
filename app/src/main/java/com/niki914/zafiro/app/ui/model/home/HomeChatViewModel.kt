@@ -51,10 +51,13 @@ class HomeChatViewModel internal constructor(
     // thinking 与正文在流中交织（thinking → tool → text），坐标系独立，单独实例
     private val thinkingPacer: TextPacer = TextPacer(),
 ) : ComposeMVIViewModel<HomeChatIntent, HomeChatUiState, HomeChatEffect>() {
-    private val agent: Agent get() = requireService<AgentManager>().main
+    private val agentManager: AgentManager get() = requireService()
+    private val agent: Agent get() = agentManager.main
     private val files: FilesService get() = requireService()
     private var draftSaveJob: Job? = null
     private var startupRestoreAttempted = false
+    private var agentObserveJob: Job? = null
+    private var currentBoundAgent: Agent? = null
 
     /**
      * 前台审批来源：请求落到 [HomeChatUiState.pendingApproval]，
@@ -74,7 +77,6 @@ class HomeChatViewModel internal constructor(
     private val seenThinkingKeys = mutableSetOf<String>()
 
     init {
-        agent.addApprover(approvalApprover)
         observeAgent()
         restoreStartupState()
     }
@@ -112,24 +114,41 @@ class HomeChatViewModel internal constructor(
 
     private fun observeAgent() {
         viewModelScope.launch {
-            agent.status.collect { status ->
-                updateState { copy(isGenerating = status.isRunning) }
-            }
-        }
-        viewModelScope.launch {
-            agent.conversation.collectLatest { conversation ->
-                if (!currentState.isLoadingConversation) {
-                    applyConversation(conversation, animateTail = true)
+            agentManager.mainFlow.collect { newAgent ->
+                val prev = currentBoundAgent
+                if (prev !== newAgent) {
+                    prev?.removeApprover(approvalApprover)
+                    newAgent.addApprover(approvalApprover)
+                    currentBoundAgent = newAgent
+                    bindAgent(newAgent)
                 }
             }
         }
-        viewModelScope.launch {
-            agent.draft.collect { draft ->
-                if (!currentState.isLoadingConversation) {
-                    val pendingImages = draft.images.mapNotNull { it.toHomeImage() }
-                    val pendingFiles = draft.files.map { it.toHomeFile() }
-                    updateState {
-                        copy(pendingImages = pendingImages, pendingFiles = pendingFiles)
+    }
+
+    private fun bindAgent(targetAgent: Agent) {
+        agentObserveJob?.cancel()
+        agentObserveJob = viewModelScope.launch {
+            launch {
+                targetAgent.status.collect { status ->
+                    updateState { copy(isGenerating = status.isRunning) }
+                }
+            }
+            launch {
+                targetAgent.conversation.collectLatest { conversation ->
+                    if (!currentState.isLoadingConversation) {
+                        applyConversation(conversation, animateTail = true)
+                    }
+                }
+            }
+            launch {
+                targetAgent.draft.collect { draft ->
+                    if (!currentState.isLoadingConversation) {
+                        val pendingImages = draft.images.mapNotNull { it.toHomeImage() }
+                        val pendingFiles = draft.files.map { it.toHomeFile() }
+                        updateState {
+                            copy(pendingImages = pendingImages, pendingFiles = pendingFiles)
+                        }
                     }
                 }
             }
@@ -440,9 +459,9 @@ class HomeChatViewModel internal constructor(
                             Logger.w(LOG_TAG, "bindConfig failed leavingId=$leavingId", throwable)
                         }
                 }
-                agent.discard()
+                val newAgent = agentManager.startNewConversation()
                 if (currentInput.isNotEmpty()) {
-                    agent.updateDraft { it.copy(text = currentInput) }
+                    newAgent.updateDraft { it.copy(text = currentInput) }
                 }
                 conversations.setLastOpenedConversationId("")
                 Logger.i(
@@ -508,7 +527,7 @@ class HomeChatViewModel internal constructor(
             val title = record.summary.title.takeIf { it.isNotBlank() }
             seenThinkingKeys.clear()
             conversationBeingLoaded = id
-            agent.load(ConversationId(id))
+            val targetAgent = agentManager.switchTo(id)
             updateState {
                 copy(
                     turns = emptyList(),
@@ -516,7 +535,8 @@ class HomeChatViewModel internal constructor(
                     currentConversationTitle = title,
                 ).withClearedTransient()
             }
-            applyConversation(agent.conversation.value, animateTail = false)
+            applyConversation(targetAgent.conversation.value, animateTail = false)
+            conversations.setLastOpenedConversationId(id)
             Logger.i(
                 LOG_TAG,
                 "load conversation done id=$id elapsedMs=${System.currentTimeMillis() - startedAtMs}",
@@ -600,9 +620,9 @@ class HomeChatViewModel internal constructor(
         draftSaveJob = null
         resetPacers()
         val currentInput = currentState.input
-        agent.discard()
+        val newAgent = agentManager.startNewConversation()
         if (currentInput.isNotEmpty()) {
-            agent.updateDraft { it.copy(text = currentInput) }
+            newAgent.updateDraft { it.copy(text = currentInput) }
         }
         conversationBeingLoaded = null
         seenThinkingKeys.clear()
@@ -680,7 +700,8 @@ class HomeChatViewModel internal constructor(
         draftSaveJob = null
         // 在途请求交给其他来源（或按拒绝结算）；本类不再持有来源身份
         approvalApprover.detach()
-        agent.removeApprover(approvalApprover)
+        currentBoundAgent?.removeApprover(approvalApprover)
+        agentObserveJob?.cancel()
         super.onCleared()
     }
 

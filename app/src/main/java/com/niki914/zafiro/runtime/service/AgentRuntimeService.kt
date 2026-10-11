@@ -211,7 +211,7 @@ class AgentRuntimeService : Service() {
                     currentHostAgent = it
                 }
             } else {
-                currentHostAgent?.discard()
+                currentHostAgent?.release()
                 currentHostAgent = null
                 agentManager.main
             }
@@ -266,7 +266,7 @@ class AgentRuntimeService : Service() {
             val isIsolated = runBlocking { XRepo.voiceAssistantIsolatedSession() }
             if (isIsolated) {
                 Logger.i(LOG_TAG, "reset conversation requested by host (isolated mode)")
-                currentHostAgent?.discard()
+                currentHostAgent?.release()
                 currentHostAgent = null
             } else {
                 Logger.i(LOG_TAG, "reset conversation requested by host (ignored to protect shared conversation)")

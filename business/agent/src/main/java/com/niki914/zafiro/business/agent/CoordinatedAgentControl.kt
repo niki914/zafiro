@@ -32,26 +32,45 @@ import java.util.concurrent.CopyOnWriteArrayList
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class CoordinatedAgentControl(
-    private val mainAgent: Agent,
+    private val mainFlow: StateFlow<Agent>,
     private val scope: CoroutineScope,
 ) : AgentControl {
+
+    constructor(mainAgent: Agent, scope: CoroutineScope) : this(
+        mainFlow = MutableStateFlow(mainAgent),
+        scope = scope,
+    )
 
     private companion object {
         const val LOG_TAG = "niki914_zafiro_CoordinatedAgentControl"
     }
 
-    private val activeFocus = MutableStateFlow<AgentControl>(mainAgent)
+    private val activeFocus = MutableStateFlow<AgentControl>(mainFlow.value)
     private val registeredApprovers = CopyOnWriteArrayList<Approver>()
 
     override val status: StateFlow<AgentState> = activeFocus
         .flatMapLatest { it.status }
-        .stateIn(scope, SharingStarted.Eagerly, mainAgent.status.value)
+        .stateIn(scope, SharingStarted.Eagerly, mainFlow.value.status.value)
 
     init {
-        // 监控 mainAgent 的状态变化
+        var currentMain = mainFlow.value
         scope.launch {
-            mainAgent.status.collect { state ->
+            mainFlow.collect { newMain ->
+                val prev = currentMain
+                if (prev !== newMain) {
+                    registeredApprovers.forEach { prev.removeApprover(it) }
+                    registeredApprovers.forEach { newMain.addApprover(it) }
+                    currentMain = newMain
+                    if (activeFocus.value === prev) {
+                        switchFocus(newMain)
+                    }
+                }
+            }
+        }
+        scope.launch {
+            mainFlow.flatMapLatest { it.status }.collect { state ->
                 val current = activeFocus.value
+                val mainAgent = mainFlow.value
                 if (current !== mainAgent && !current.status.value.isRunning && state.isRunning) {
                     Logger.i(LOG_TAG, "mainAgent reclaimed focus (running)")
                     switchFocus(mainAgent)
@@ -68,7 +87,7 @@ internal class CoordinatedAgentControl(
         return scope.launch {
             statusFlow.collect { state ->
                 val agent = agentRef.get() ?: run {
-                    switchFocus(mainAgent)
+                    switchFocus(mainFlow.value)
                     cancel()
                     return@collect
                 }
@@ -80,9 +99,9 @@ internal class CoordinatedAgentControl(
                         switchFocus(agent)
                     }
                 } else if (current === agent) {
-                    // 当前持焦点的任务结束，焦点归还给 mainAgent
-                    Logger.i(LOG_TAG, "taskAgent completed, focus returned to mainAgent")
-                    switchFocus(mainAgent)
+                    // 当前持焦点的任务结束，焦点归还给 main
+                    Logger.i(LOG_TAG, "taskAgent completed, focus returned to main")
+                    switchFocus(mainFlow.value)
                 }
             }
         }
@@ -101,14 +120,18 @@ internal class CoordinatedAgentControl(
         if (!registeredApprovers.contains(approver)) {
             registeredApprovers.add(approver)
         }
-        mainAgent.addApprover(approver)
-        activeFocus.value.addApprover(approver)
+        mainFlow.value.addApprover(approver)
+        if (activeFocus.value !== mainFlow.value) {
+            activeFocus.value.addApprover(approver)
+        }
     }
 
     override fun removeApprover(approver: Approver) {
         registeredApprovers.remove(approver)
-        mainAgent.removeApprover(approver)
-        activeFocus.value.removeApprover(approver)
+        mainFlow.value.removeApprover(approver)
+        if (activeFocus.value !== mainFlow.value) {
+            activeFocus.value.removeApprover(approver)
+        }
     }
 
     override suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision {

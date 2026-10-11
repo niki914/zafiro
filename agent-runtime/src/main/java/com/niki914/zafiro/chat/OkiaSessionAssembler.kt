@@ -109,15 +109,19 @@ internal class OkiaSessionAssembler(
         }
     }
 
-    suspend fun resetConversation() {
-        PyRuntime.kill()
-        TerminalSessionPool.closeAll()
+    suspend fun closeSession() {
         activeSession?.close()
         activeSession = null
         sessionProtocol = null
         sessionForwardJob?.cancel()
         sessionForwardJob = null
         conversationFlow.value = null
+    }
+
+    suspend fun resetConversation() {
+        PyRuntime.kill()
+        TerminalSessionPool.closeAll()
+        closeSession()
     }
 
     suspend fun stopCurrentRound() {

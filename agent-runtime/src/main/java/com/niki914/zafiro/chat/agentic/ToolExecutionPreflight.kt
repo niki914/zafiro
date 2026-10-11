@@ -86,7 +86,7 @@ class ToolExecutionPreflight(
                 ExecutionRuleEnabledMode.ALWAYS, ExecutionRuleEnabledMode.LOCKED_ONLY -> return blocked
                 ExecutionRuleEnabledMode.DISABLED -> {}
                 ExecutionRuleEnabledMode.CONFIRM -> {
-                    val agentControl = agentControlProvider()
+                    val agentControl = currentAgentControl() ?: agentControlProvider()
                     val decision = agentControl?.decideApproval(
                         ApprovalRequest.ToolExecution(
                             toolName = toolName,

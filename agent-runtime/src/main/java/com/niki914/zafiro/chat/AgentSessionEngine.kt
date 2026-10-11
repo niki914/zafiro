@@ -8,6 +8,7 @@ import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.chat.agentic.IngestedImage
 import com.niki914.zafiro.chat.agentic.PromptComposer
@@ -17,6 +18,7 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
+import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,10 +41,17 @@ class AgentSessionEngine {
         const val LOG_TAG = "niki914_zafiro_AgentSessionEngine"
     }
 
+    val tenantId: String = UUID.randomUUID().toString()
+
+    var agentControlProvider: (() -> AgentControl?)? = null
+
     private var runtimeState: RuntimeState? = null
 
     private val imageManager = ImageIngestionManager()
-    private val toolSynchronizer = ToolRegistrySynchronizer { runtimeState?.snapshot?.tools }
+    private val toolSynchronizer = ToolRegistrySynchronizer(
+        tenantId = tenantId,
+        agentControlProvider = { agentControlProvider?.invoke() },
+    ) { runtimeState?.snapshot?.tools }
     private val prefixComposer = TurnPrefixComposer()
     internal val sessionAssembler = OkiaSessionAssembler(
         toolRegistry = toolSynchronizer.toolRegistry,
@@ -296,6 +305,15 @@ class AgentSessionEngine {
             )
         }
     }.flowOn(Dispatchers.IO)
+
+    suspend fun closeSession() {
+        Logger.i(LOG_TAG, "close session requested tenantId=$tenantId")
+        TerminalSessionPool.closeTenantSessions(tenantId)
+        sessionAssembler.closeSession()
+        runtimeState = null
+        boundConfigId = ""
+        Logger.i(LOG_TAG, "close session done")
+    }
 
     suspend fun resetConversation() {
         Logger.i(LOG_TAG, "reset conversation requested")

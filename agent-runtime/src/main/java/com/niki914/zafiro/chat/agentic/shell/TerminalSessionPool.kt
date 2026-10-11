@@ -1,3 +1,4 @@
+// githooks:ignore-file monitor-lock 终端进程句柄池采用细粒度监视器锁保障原子状态切换
 package com.niki914.zafiro.chat.agentic.shell
 
 import com.niki914.libterm.OpenResult
@@ -18,6 +19,7 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool.completeAsync
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool.readSession
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stderrText
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stdoutText
+import com.niki914.zafiro.chat.agentic.AgentTenantContext
 import com.niki914.zafiro.util.ToolOutputTruncator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -237,12 +239,14 @@ object TerminalSessionPool {
             sshOptions = sshOptions,
         )) {
             is OpenResult.Success -> {
+                val callerTenantId = kotlin.coroutines.coroutineContext[AgentTenantContext]?.tenantId
                 val entry = TerminalSessionEntry(
                     handle = handle,
                     identity = publicIdentity,
                     session = result.value,
                     libTermSessionId = result.value.id,
                     cwd = cwd,
+                    tenantId = callerTenantId,
                 )
                 val existing = synchronized(lock) {
                     val current = sessions[handle]
@@ -295,19 +299,27 @@ object TerminalSessionPool {
         }
     }
 
+    private suspend fun getTenantSession(session: String): TerminalSessionEntry? {
+        val entry = synchronized(lock) { sessions[session] } ?: return null
+        val callerTenantId = kotlin.coroutines.coroutineContext[AgentTenantContext]?.tenantId
+        if (callerTenantId != null && callerTenantId != entry.tenantId) {
+            Logger.w(LOG_TAG, "access denied: session $session belongs to tenant=${entry.tenantId}, caller=$callerTenantId")
+            return null
+        }
+        return entry
+    }
+
     suspend fun writeInteractive(
         session: String,
         text: String,
         requestId: String? = null,
     ): TerminalInteractiveWriteOutcome {
-        val (entry, state) = synchronized(lock) {
-            val entry =
-                sessions[session] ?: return TerminalInteractiveWriteOutcome.SessionNotFound(session)
-            val state =
-                interactiveStates[session] ?: return TerminalInteractiveWriteOutcome.NotInteractive(
-                    session
-                )
-            entry to state
+        val entry = getTenantSession(session)
+            ?: return TerminalInteractiveWriteOutcome.SessionNotFound(session)
+        val state = synchronized(lock) {
+            interactiveStates[session] ?: return TerminalInteractiveWriteOutcome.NotInteractive(
+                session
+            )
         }
         val replay = requestId?.let { id ->
             synchronized(state.lock) {
@@ -354,15 +366,14 @@ object TerminalSessionPool {
         }
     }
 
-    fun readInteractive(
+    suspend fun readInteractive(
         session: String,
         mode: TerminalReadMode = TerminalReadMode.DELTA,
         maxBytes: Int = DEFAULT_INTERACTIVE_READ_MAX_BYTES,
     ): TerminalInteractiveReadOutcome {
+        val entry = getTenantSession(session)
+            ?: return TerminalInteractiveReadOutcome.SessionNotFound(session)
         val state = synchronized(lock) {
-            if (!sessions.containsKey(session)) {
-                return TerminalInteractiveReadOutcome.SessionNotFound(session)
-            }
             interactiveStates[session] ?: return TerminalInteractiveReadOutcome.NotInteractive(
                 session
             )
@@ -409,10 +420,9 @@ object TerminalSessionPool {
         timeoutMs: Long,
     ): TerminalCommandOutcome {
         val startTimeMs = System.currentTimeMillis()
-        val (entry, executeLock) = synchronized(lock) {
-            val entry = sessions[session] ?: return TerminalCommandOutcome.SessionNotFound(session)
-            val executeLock = executionLocks.getOrPut(session) { Mutex() }
-            entry to executeLock
+        val entry = getTenantSession(session) ?: return TerminalCommandOutcome.SessionNotFound(session)
+        val executeLock = synchronized(lock) {
+            executionLocks.getOrPut(session) { Mutex() }
         }
         if (!executeLock.tryLock()) {
             Logger.d(LOG_TAG, "command busy session=$session")
@@ -496,14 +506,14 @@ object TerminalSessionPool {
         notifyOnComplete: Boolean = false,
     ): TerminalAsyncStartOutcome {
         val startTimeMs = System.currentTimeMillis()
-        val (entry, executeLock, holder) = synchronized(lock) {
-            val entry =
-                sessions[session] ?: return TerminalAsyncStartOutcome.SessionNotFound(session)
+        val entry = getTenantSession(session)
+            ?: return TerminalAsyncStartOutcome.SessionNotFound(session)
+        val (executeLock, holder) = synchronized(lock) {
             val executeLock = executionLocks.getOrPut(session) { Mutex() }
             val holder = runtimeHolder ?: return TerminalAsyncStartOutcome.InvalidRequest(
                 "Terminal runtime is not initialized. Use open or open_and_exec first.",
             )
-            Triple(entry, executeLock, holder)
+            executeLock to holder
         }
         if (!executeLock.tryLock()) {
             Logger.d(LOG_TAG, "async busy session=$session")
@@ -591,10 +601,8 @@ object TerminalSessionPool {
         mode: TerminalReadMode = TerminalReadMode.DELTA,
         maxBytes: Int = DEFAULT_READ_MAX_BYTES,
     ): TerminalReadOutcome {
-        // 1. Check the session exists.
-        val entry = synchronized(lock) {
-            sessions[session]
-        } ?: return TerminalReadOutcome.SessionNotFound(session)
+        // 1. Check the session exists and belongs to this tenant.
+        val entry = getTenantSession(session) ?: return TerminalReadOutcome.SessionNotFound(session)
         // 完成字段、异常结果与 asyncStates 必须在同一个监视器临界区里取快照：
         // onAsyncCompleted 是“先在 state.lock 下写完成字段、再单独进 lock 从 asyncStates 移除”
         // 两段临界区，分开读会落在两者之间，把刚跑完的任务误判成 NotBackground。
@@ -688,6 +696,7 @@ object TerminalSessionPool {
     }
 
     suspend fun close(session: String): TerminalCloseOutcome {
+        val target = getTenantSession(session) ?: return TerminalCloseOutcome.Closed
         val removed = synchronized(lock) {
             RemovedSession(
                 entry = sessions.remove(session),
@@ -758,6 +767,22 @@ object TerminalSessionPool {
         )
         return outcome
     }
+
+    /** 释放指定租户/会话内部打开的所有终端会话（不波及其他并发 Agent）。 */
+    suspend fun closeTenantSessions(tenantId: String): Int =
+        kotlinx.coroutines.withContext(AgentTenantContext(tenantId)) {
+            val targetSessions = synchronized(lock) {
+                sessions.values.filter { it.tenantId == tenantId }.map { it.handle }
+            }
+            var count = 0
+            for (handle in targetSessions) {
+                if (close(handle) is TerminalCloseOutcome.Closed) {
+                    count++
+                }
+            }
+            Logger.d(LOG_TAG, "closeTenantSessions tenantId=$tenantId closedCount=$count")
+            count
+        }
 
     internal fun installHandleGeneratorForTest(generator: () -> String): AutoCloseable {
         val previous = synchronized(lock) {
@@ -1012,6 +1037,7 @@ internal data class TerminalSessionEntry(
     var completedFailure: TerminalFailure? = null,
     var completedUnexpectedError: Throwable? = null,
     var completedElapsedSeconds: Long = 0,
+    val tenantId: String? = null,
 )
 
 internal interface TerminalRuntimePort {

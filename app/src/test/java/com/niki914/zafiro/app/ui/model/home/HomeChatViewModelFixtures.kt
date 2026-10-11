@@ -36,8 +36,23 @@ internal fun fixture(
     store: FakeHomeConversationStore = FakeHomeConversationStore(),
 ): Fixture {
     val agent = FakeHomeAgent(store)
+    val agentFlow = MutableStateFlow<Agent>(agent)
     installService<AgentManager>(object : AgentManager {
-        override val main: Agent = agent
+        override val main: Agent get() = agentFlow.value
+        override val mainFlow: StateFlow<Agent> = agentFlow.asStateFlow()
+        override suspend fun switchTo(conversationId: String): Agent {
+            agent.load(ConversationId(conversationId))
+            agentFlow.value = agent
+            return agent
+        }
+        override fun startNewConversation(): Agent {
+            agent.mutableDraft.value = Draft()
+            agent.mutableConversation.value = Conversation()
+            agent.mutableStatus.value = AgentState.Idle()
+            agentFlow.value = agent
+            return agent
+        }
+        override val activeStates: StateFlow<Map<String, AgentState>> = MutableStateFlow(emptyMap())
         override fun createTaskAgent(tag: String): Agent = agent
         override val control: AgentControl = agent
     })
@@ -59,9 +74,9 @@ internal data class Fixture(
 )
 
 internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Agent {
-    private val mutableDraft = MutableStateFlow(Draft())
-    private val mutableConversation = MutableStateFlow(Conversation())
-    private val mutableStatus = MutableStateFlow<AgentState>(AgentState.Idle())
+    val mutableDraft = MutableStateFlow(Draft())
+    val mutableConversation = MutableStateFlow(Conversation())
+    val mutableStatus = MutableStateFlow<AgentState>(AgentState.Idle())
     override val draft: StateFlow<Draft> = mutableDraft.asStateFlow()
     override val conversation: StateFlow<Conversation> = mutableConversation.asStateFlow()
     override val status: StateFlow<AgentState> = mutableStatus.asStateFlow()
@@ -130,6 +145,11 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
         mutableDraft.value = Draft()
         mutableConversation.value = Conversation()
         mutableStatus.value = AgentState.Idle()
+    }
+
+    var releaseCount = 0
+    override fun release() {
+        releaseCount++
     }
 
     override suspend fun load(id: ConversationId) {

@@ -28,6 +28,10 @@ import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeMcpServer
 import com.niki914.zafiro.settings.model.RuntimeToolValidation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -83,11 +87,6 @@ class AgentImplTest {
         assertEquals(AgentState.Idle(), agent.status.value)
     }
 
-    @Test
-    fun decideApproval_whenNoApprovers_returnsDeny() = runBlocking {
-        val decision = agent.decideApproval(toolRequest("rm -rf /"))
-        assertEquals(ApprovalDecision.Deny, decision)
-    }
 
     @Test
     fun decideApproval_whenAllApproversAbstain_returnsDeny() = runBlocking {
@@ -121,13 +120,45 @@ class AgentImplTest {
 
     @Test
     fun removeApprover_removesRegisteredApprover() = runBlocking {
-        val approver = approverOf(ApprovalDecision.Allow)
-        agent.addApprover(approver)
-        agent.removeApprover(approver)
+        val approver1 = approverOf(ApprovalDecision.Allow)
+        val approver2 = approverOf(ApprovalDecision.Deny)
+        agent.addApprover(approver1)
+        agent.addApprover(approver2)
+        agent.removeApprover(approver1)
 
         val decision = agent.decideApproval(toolRequest("pwd"))
 
         assertEquals(ApprovalDecision.Deny, decision)
+    }
+
+    @Test
+    fun decideApproval_whenNoApprover_waitsAndResolvesUponLateAttach() = runBlocking {
+        val request = toolRequest("rm -rf /")
+        val scope = CoroutineScope(Dispatchers.Default)
+        val deferred = scope.async {
+            agent.decideApproval(request)
+        }
+
+        // 此时尚无 Approver，状态为 WaitingApproval 且协程持续挂起
+        delay(50)
+        assertTrue(deferred.isActive)
+        assertTrue(agent.status.value is AgentState.WaitingApproval)
+
+        // 外部（如切换到前台后）接入 Approver
+        agent.addApprover(approverOf(ApprovalDecision.Allow))
+
+        val decision = deferred.await()
+        assertEquals(ApprovalDecision.Allow, decision)
+        scope.cancel()
+    }
+
+    @Test
+    fun release_resetsStateAndEmitsIdle() = runBlocking {
+        agent.updateDraft { it.copy(text = "draft") }
+        agent.release()
+
+        assertEquals("", agent.draft.value.text)
+        assertTrue(agent.status.value is AgentState.Idle)
     }
 
     @Test

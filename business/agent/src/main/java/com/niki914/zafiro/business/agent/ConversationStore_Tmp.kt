@@ -1,8 +1,12 @@
 package com.niki914.zafiro.business.agent
 
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import com.niki914.okia.conversation.Conversation as OkiaConversation
 
 // 存废：阶段 3 替换（临时存储端口：Room 只在 app，本端口把 app 的读出面接给实现侧；
 // M7 定案会话实例落点后换成正式端口）
@@ -30,6 +34,14 @@ interface ConversationStore_Tmp {
 
     /** 记录最后打开的会话；null = 清空。 */
     suspend fun setLastOpened(id: ConversationId?)
+
+    /** 观察并跟踪持久化 Agent 的底层消息快照流与生命周期状态（生命周期跟随 agentScope）。 */
+    fun track(
+        agentScope: CoroutineScope,
+        source: Flow<OkiaConversation?>,
+        status: Flow<AgentState>,
+        conversationId: () -> String?,
+    ) {}
 }
 
 /**
