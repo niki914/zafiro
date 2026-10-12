@@ -116,16 +116,16 @@ class TextActionActivity : ComponentActivity() {
      */
     private fun dispatch(action: RuntimeTextAction, selectedText: String, clickedAt: Long) {
         scope.launch {
-            val readyImage = if (action.requiresScreenshot) {
-                captureScreenshotSafely(clickedAt)
-            } else {
-                null
-            }
+            val capture = if (action.requiresScreenshot) captureScreenshotSafely(clickedAt) else null
+            val captureErr = capture as? ScreenCaptureIngestor.CaptureResult.Err
+            val readyImage = (capture as? ScreenCaptureIngestor.CaptureResult.Ok)
+                ?.let { DraftImage.Ready(Attachment(path = it.path, mimeType = "image/jpeg")) }
 
             val prompt = TextActionPromptComposer.compose(
                 template = action.prompt,
                 selectedText = selectedText,
-                captureFailed = action.requiresScreenshot && readyImage == null,
+                captureFailed = captureErr != null,
+                captureFailure = captureErr?.message,
             )
             val conversationId = UUID.randomUUID().toString()
             val prepared = runCatching {
@@ -168,19 +168,16 @@ class TextActionActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun captureScreenshotSafely(clickedAt: Long): DraftImage.Ready? {
+    /** 失败原因原样带回：文案（含开无障碍的指引）要进 prompt 交给模型转告用户。 */
+    private suspend fun captureScreenshotSafely(clickedAt: Long): ScreenCaptureIngestor.CaptureResult {
         val elapsed = SystemClock.uptimeMillis() - clickedAt
         if (elapsed < MIN_DISMISS_DELAY_MS) {
             delay(MIN_DISMISS_DELAY_MS - elapsed)
         }
 
-        return when (val result = ScreenCaptureIngestor.captureAndIngest()) {
-            is ScreenCaptureIngestor.CaptureResult.Ok ->
-                DraftImage.Ready(Attachment(path = result.path, mimeType = "image/jpeg"))
-
-            is ScreenCaptureIngestor.CaptureResult.Err -> {
+        return ScreenCaptureIngestor.captureAndIngest().also { result ->
+            if (result is ScreenCaptureIngestor.CaptureResult.Err) {
                 Logger.w(LOG_TAG, "screenshot failed stage=${result.stage} message=${result.message}")
-                null
             }
         }
     }

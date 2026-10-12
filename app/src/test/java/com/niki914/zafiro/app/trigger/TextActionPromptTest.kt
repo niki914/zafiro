@@ -1,4 +1,4 @@
-// 保护：选中文本清洗（BOM、零宽、换行归一）、Prompt 引用格式拼接契约、截图失败 NOTE 前置
+// 保护：选中文本清洗（BOM、零宽、换行归一）、Prompt 引用格式拼接契约、截图失败 NOTE 前置及其失败原因回传
 package com.niki914.zafiro.app.trigger
 
 import org.junit.Assert.assertEquals
@@ -78,6 +78,32 @@ class TextActionPromptComposerTest {
         assertEquals(
             """
             > [NOTE]: Zafiro's screen capture failed; no screenshot is attached.
+
+            Explain the screen.
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun compose_captureFailureReasonJoinsCaptureNote() {
+        // 无障碍不可用时，失败原因里那句“指引用户去开无障碍”必须原样进 prompt，
+        // 否则模型只会说“截图失败了”，用户不知道该怎么办。
+        val result = TextActionPromptComposer.compose(
+            template = "Explain the screen.",
+            selectedText = "Hello world",
+            captureFailed = true,
+            captureFailure =
+            "The Zafiro accessibility service is not available. " +
+                    "Tell the user to enable 'Zafiro' in Settings > Accessibility, then retry.",
+        )
+
+        assertEquals(
+            """
+            > [NOTE]: Zafiro's screen capture failed; no screenshot is attached. The Zafiro accessibility service is not available. Tell the user to enable 'Zafiro' in Settings > Accessibility, then retry.
+            > [NOTE]: The text below was copied from another app.
+            >
+            > Hello world
 
             Explain the screen.
             """.trimIndent(),

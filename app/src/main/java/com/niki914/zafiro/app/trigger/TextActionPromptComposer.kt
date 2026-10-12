@@ -16,10 +16,20 @@ object TextActionPromptComposer {
      * @param template 动作提示词，如 "Translate the following text into English."
      * @param selectedText 选中的文本；null 或空白时不出现引用块。
      * @param captureFailed 动作要求截图但抓图失败时为 true，产出对应的 NOTE 行。
+     * @param captureFailure 失败原因（如无障碍服务不可用），模型据此转告用户该如何补救；
+     *   null 或空白时只保留通用文案。
      */
-    fun compose(template: String, selectedText: String?, captureFailed: Boolean = false): String {
+    fun compose(
+        template: String,
+        selectedText: String?,
+        captureFailed: Boolean = false,
+        captureFailure: String? = null,
+    ): String {
         val notes = buildList {
-            if (captureFailed) add(CAPTURE_FAILED_NOTE_LINE)
+            if (captureFailed) {
+                val detail = captureFailure?.takeIf { it.isNotBlank() }
+                add(if (detail == null) CAPTURE_FAILED_NOTE_LINE else "$CAPTURE_FAILED_NOTE_LINE $detail")
+            }
             if (!selectedText.isNullOrBlank()) add(NOTE_LINE)
         }
         if (notes.isEmpty()) return template.trim()
