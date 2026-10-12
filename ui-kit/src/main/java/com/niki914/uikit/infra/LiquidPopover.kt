@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,6 +26,8 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.HorizontalDivider
@@ -41,8 +44,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -91,6 +96,7 @@ fun LiquidPopover(
     modifier: Modifier = Modifier,
     alignment: PopoverAlignment = PopoverAlignment.BottomEnd,
     containerColor: Color? = null,
+    scrollable: Boolean = false,
     onProgressChanged: ((Float) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -107,6 +113,7 @@ fun LiquidPopover(
                     alignment = alignment,
                     modifier = modifier,
                     containerColor = containerColor,
+                    scrollable = scrollable,
                     onProgressChanged = onProgressChanged,
                     content = content,
                 )
@@ -126,6 +133,7 @@ fun LiquidPopover(
             alignment = alignment,
             modifier = modifier,
             containerColor = containerColor,
+            scrollable = scrollable,
             onProgressChanged = onProgressChanged,
             content = content,
         )
@@ -148,6 +156,7 @@ internal fun LiquidPopoverSurface(
     alignment: PopoverAlignment,
     modifier: Modifier = Modifier,
     containerColor: Color? = null,
+    scrollable: Boolean = false,
     onProgressChanged: ((Float) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -234,15 +243,28 @@ internal fun LiquidPopoverSurface(
             val contentMeasurables = subcompose("menu_content_measurement") {
                 Column(
                     modifier = Modifier
-                        .widthIn(min = 180.dp, max = 260.dp)
+                        .widthIn(min = 180.dp, max = 300.dp)
                         .then(modifier)
+                        .then(
+                            if (scrollable) {
+                                Modifier.verticalScroll(rememberScrollState())
+                            } else {
+                                Modifier
+                            }
+                        )
                         .padding(vertical = 4.dp),
                     content = content,
                 )
             }
 
-            val maxAvailableHeightPx = (constraints.maxHeight - anchor.top.toInt() - with(density) { 16.dp.roundToPx() })
+            val screenAvailableHeightPx = (constraints.maxHeight - anchor.top.toInt() - with(density) { 16.dp.roundToPx() })
                 .coerceAtLeast(with(density) { 100.dp.roundToPx() })
+            // 超过 5 项滚动时，将展开卡片高度约束在约 5.5 项高度（256.dp），使底部露半截提示可滚动，并激活内部纵向滚动
+            val maxAvailableHeightPx = if (scrollable) {
+                minOf(screenAvailableHeightPx, with(density) { 256.dp.roundToPx() })
+            } else {
+                screenAvailableHeightPx
+            }
 
             val contentPlaceable = contentMeasurables.first().measure(
                 constraints.copy(
@@ -300,12 +322,14 @@ internal fun LiquidPopoverSurface(
                                 )
                             },
                             layerBlock = {
-                                applyLiquidInteractiveTransform(
-                                    style = PopoverInteractiveStyle,
-                                    pressProgress = interactiveHighlight.pressProgress,
-                                    offset = interactiveHighlight.offset,
-                                    size = size,
-                                )
+                                if (!scrollable) {
+                                    applyLiquidInteractiveTransform(
+                                        style = PopoverInteractiveStyle,
+                                        pressProgress = interactiveHighlight.pressProgress,
+                                        offset = interactiveHighlight.offset,
+                                        size = size,
+                                    )
+                                }
                             },
                             effects = {
                                 lens(
@@ -320,7 +344,7 @@ internal fun LiquidPopoverSurface(
                             },
                         )
                         .clip(panelShape)
-                        .then(interactiveHighlight.gestureModifier)
+                        .then(if (scrollable) Modifier else interactiveHighlight.gestureModifier)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -335,6 +359,13 @@ internal fun LiquidPopoverSurface(
                         Column(
                             modifier = Modifier
                                 .width(with(density) { targetWidthPx.toDp() })
+                                .then(
+                                    if (scrollable) {
+                                        Modifier.verticalScroll(rememberScrollState())
+                                    } else {
+                                        Modifier
+                                    }
+                                )
                                 .padding(vertical = 4.dp),
                             content = content,
                         )
@@ -363,7 +394,7 @@ fun LiquidMenuItem(
     leadingIcon: ImageVector? = null,
     trailingText: String? = null,
 ) {
-    val itemShape = G2FieldShape(22.dp)
+    val itemShape = G2FieldShape(16.dp)
     val colorScheme = MaterialTheme.colorScheme
     val isDarkTheme = LocalAppDarkTheme.current
     val isChecked = checked == true
@@ -400,7 +431,7 @@ fun LiquidMenuItem(
             )
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (leadingIcon != null) {
             Icon(
@@ -423,9 +454,9 @@ fun LiquidMenuItem(
             } else {
                 colorScheme.onSurface.copy(alpha = 0.38f)
             },
-            modifier = Modifier.weight(1f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 160.dp),
         )
 
         if (trailingText != null) {
@@ -433,8 +464,13 @@ fun LiquidMenuItem(
                 text = trailingText,
                 style = MaterialTheme.typography.labelMedium,
                 color = colorScheme.onSurfaceVariant.copy(alpha = 0.70f),
+                textAlign = TextAlign.End,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
+        } else {
+            Spacer(modifier = Modifier.weight(1f))
         }
 
         if (isChecked) {

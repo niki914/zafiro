@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.LiquidScreen__V2
+import com.niki914.uikit.infra.LiquidScreen
 import com.niki914.uikit.infra.LiquidScreenSwipeContent
 import com.niki914.uikit.infra.LiquidScreenTitle
 import com.niki914.uikit.infra.TitleDirection
@@ -291,9 +291,9 @@ fun ZafiroApp(
             dynamicColor = themePrefs.seedColor == null,
             seedColor = seedColor,
         ) {
-            LiquidScreen__V2(
+            LiquidScreen(
                 state = screenState,
-                // 折叠信号载体归属当前导航条目，由 LiquidScreen__V2 经 nestedScroll 自动写入；
+                // 折叠信号载体归属当前导航条目，由 LiquidScreen 经 nestedScroll 自动写入；
                 // 条目存活期保留，导航切页同帧隔离，返回时首帧恢复离开前状态。
                 titleBarScroll = currentEntry.titleBarScroll,
                 actionsEnabled = !isPageTransitioning,

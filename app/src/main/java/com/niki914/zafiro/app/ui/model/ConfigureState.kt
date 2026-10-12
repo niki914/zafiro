@@ -35,6 +35,7 @@ enum class ConfigureScene {
 data class SavedConfigSummary(
     val id: String,
     val name: String,
+    val providerBrandName: String = "",
     val modelId: String,
     val isActive: Boolean,
 )
@@ -43,9 +44,11 @@ internal fun summariesOf(document: LlmConfigsDocument): List<SavedConfigSummary>
     return document.configs
         .sortedBy(SavedLlmConfig::createdAt)
         .map { config ->
+            val providerSpec = ProviderSpecs.find(config.provider)
             SavedConfigSummary(
                 id = config.id,
-                name = config.name.ifBlank { config.model },
+                name = config.name.ifBlank { providerSpec.brandName },
+                providerBrandName = providerSpec.brandName,
                 modelId = config.model,
                 isActive = config.id == document.activeId,
             )

@@ -405,19 +405,13 @@ fun HomePageContent(
 
     RegisterPageChrome(pageChromeContribution)
 
-    val displayConfigs = remember(uiState.savedConfigs, uiState.activeConfigId) {
-        val configs = uiState.savedConfigs
-        if (configs.size <= 5) {
-            configs
+    val configs = remember(uiState.savedConfigs, uiState.activeConfigId) {
+        val activeId = uiState.activeConfigId
+        if (activeId.isNullOrBlank()) {
+            uiState.savedConfigs
         } else {
-            val activeIndex = configs.indexOfFirst { it.id == uiState.activeConfigId }
-            if (activeIndex in 0 until 5) {
-                configs.take(5)
-            } else if (activeIndex >= 5) {
-                configs.take(4) + configs[activeIndex]
-            } else {
-                configs.take(5)
-            }
+            val (active, rest) = uiState.savedConfigs.partition { it.id == activeId }
+            active + rest
         }
     }
 
@@ -428,8 +422,9 @@ fun HomePageContent(
         },
         anchorBounds = titleAnchorBounds,
         alignment = PopoverAlignment.BottomCenter,
+        scrollable = configs.size > 5,
     ) {
-        displayConfigs.forEach { config ->
+        configs.forEach { config ->
             LiquidMenuItem(
                 title = config.name,
                 trailingText = config.modelId.takeIf { it != config.name },

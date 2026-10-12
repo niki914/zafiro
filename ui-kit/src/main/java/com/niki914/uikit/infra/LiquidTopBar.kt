@@ -46,7 +46,7 @@ import com.niki914.uikit.base.LocalAppDarkTheme
 import kotlinx.coroutines.delay
 
 /**
- * 顶栏 V2 前景组件：基于插槽解耦与三大正交因子（滚动、遮挡、覆盖）驱动。
+ * 顶栏前景组件：基于插槽解耦与三大正交因子（滚动、遮挡、覆盖）驱动。
  *
  * 核心职责：
  * 1. 基础三槽（Leading 左按钮、Center 居中标题、Trailing 右按钮）布局与几何测量。
@@ -55,7 +55,7 @@ import kotlinx.coroutines.delay
  * 3. 跨页导航滑动位移与同页就地瞬切解耦。
  */
 @Composable
-fun LiquidTopBar__V2(
+fun LiquidTopBar(
     title: LiquidScreenTitle,
     titleDirection: TitleDirection,
     baseTitleAlpha: Float,
@@ -163,7 +163,7 @@ fun LiquidTopBar__V2(
                     }
                 }.using(SizeTransform(clip = false))
             },
-            label = "titleV2",
+            label = "title",
         ) { targetTitle ->
             Box(
                 modifier = Modifier
