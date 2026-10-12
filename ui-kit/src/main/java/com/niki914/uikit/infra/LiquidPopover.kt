@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -239,11 +240,34 @@ internal fun LiquidPopoverSurface(
                 }
             }
 
+            // 参考长标题避让边距（4dp 顶栏外边距 + ActionBarButton 占宽：12dp 内边距 × 2 + 48sp 按钮），
+            // 确保右侧或左侧 Popover 不会侵占相对侧按钮区域
+            val titleButtonClearancePx = with(density) { (4.dp + 12.dp * 2 + 48.sp.toDp()).toPx() }
+            val minPopoverWidthPx = with(density) { 180.dp.toPx() }
+
+            val maxAllowedWidthPx = when (alignment) {
+                PopoverAlignment.BottomEnd -> {
+                    (anchor.right - titleButtonClearancePx).coerceAtLeast(minPopoverWidthPx)
+                }
+                PopoverAlignment.BottomStart -> {
+                    (constraints.maxWidth - titleButtonClearancePx - anchor.left).coerceAtLeast(minPopoverWidthPx)
+                }
+                PopoverAlignment.BottomCenter -> {
+                    val availableHalf = minOf(
+                        anchor.center.x - titleButtonClearancePx,
+                        constraints.maxWidth - titleButtonClearancePx - anchor.center.x,
+                    ).coerceAtLeast(0f)
+                    (availableHalf * 2f).coerceAtLeast(minPopoverWidthPx)
+                }
+            }
+
+            val dynamicMaxWidthDp = with(density) { minOf(300.dp.toPx(), maxAllowedWidthPx).toDp() }
+
             // 先测量菜单内容自然尺寸
             val contentMeasurables = subcompose("menu_content_measurement") {
                 Column(
                     modifier = Modifier
-                        .widthIn(min = 180.dp, max = 300.dp)
+                        .widthIn(min = 180.dp, max = dynamicMaxWidthDp)
                         .then(modifier)
                         .then(
                             if (scrollable) {

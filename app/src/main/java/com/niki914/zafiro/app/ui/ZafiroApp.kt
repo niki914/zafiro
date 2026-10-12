@@ -148,9 +148,9 @@ fun ZafiroApp(
         chrome = currentChrome,
         onOpenChromeMenu = ::openChromeMenu,
     )
-    val showLeftButton =
+    val showLeftButton = currentChrome.actionsVisible &&
         currentLeftAction != null && (currentLeftAction.onClick != null || controller.canGoBack)
-    val showRightButton = currentRightAction != null
+    val showRightButton = currentChrome.actionsVisible && currentRightAction != null
     val currentTitle = resolveScreenTitle(currentChrome, currentPage, currentEntry.id)
     val isTitleCollapsible = currentPage.titleMode == TitleBarMode.Collapsible
     val screenState = rememberLiquidScreenState(
@@ -238,6 +238,7 @@ fun ZafiroApp(
         currentRightAction,
         currentChrome.menuItems,
         currentChrome.backHandler,
+        currentChrome.actionsVisible,
     ) {
         if (currentChrome.menuItems.isEmpty()) {
             closeChromeMenu()

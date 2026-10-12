@@ -25,6 +25,7 @@ data class PageChromeContribution(
     val backHandler: PageBackHandler? = null,
     val overlay: (@Composable () -> Unit)? = null,
     val isTitleOccluded: Boolean = false,
+    val actionsVisible: Boolean = true,
 ) {
     companion object {
         val Empty = PageChromeContribution()

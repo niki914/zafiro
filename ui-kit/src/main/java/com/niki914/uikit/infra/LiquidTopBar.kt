@@ -60,12 +60,14 @@ fun LiquidTopBar(
     titleDirection: TitleDirection,
     baseTitleAlpha: Float,
     isOccluded: Boolean = false,
+    leftButtonAlpha: Float = 1f,
     rightButtonAlpha: Float = 1f,
     showLeftButton: Boolean = true,
     showRightButton: Boolean = true,
     actionsEnabled: Boolean = true,
     onLeftClick: (() -> Unit)? = null,
     onRightClick: (() -> Unit)? = null,
+    onLeftButtonBoundsChanged: ((Rect) -> Unit)? = null,
     onRightButtonBoundsChanged: ((Rect) -> Unit)? = null,
     backdrop: LayerBackdrop,
     topInset: Dp,
@@ -209,12 +211,14 @@ fun LiquidTopBar(
                     Modifier.graphicsLayer {
                         scaleX = leftButtonScale
                         scaleY = leftButtonScale
+                        alpha = leftButtonAlpha
                     },
                 ) {
                     ActionBarButton(
                         onClick = { onLeftClick?.invoke() },
                         enabled = actionsEnabled,
                         backdrop = backdrop,
+                        onButtonBoundsChanged = onLeftButtonBoundsChanged,
                         content = buttonContent,
                     )
                 }

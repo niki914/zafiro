@@ -367,6 +367,7 @@ fun HomePageContent(
         PageChromeContribution(
             titleContent = titleContent,
             isTitleOccluded = uiState.isConfigMenuVisible,
+            actionsVisible = !uiState.isConfigMenuVisible,
             leftAction = TopBarActionSpec(
                 icon = Icons.Default.History,
                 onClick = {
