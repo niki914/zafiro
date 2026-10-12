@@ -13,6 +13,7 @@ import com.niki914.zafiro.app.ui.nav.CustomPyToolsPage
 import com.niki914.zafiro.app.ui.nav.DonePage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.HomePage
+import com.niki914.zafiro.app.ui.nav.MarkdownScalePage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
 import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
 import com.niki914.zafiro.app.ui.nav.OnboardingPreferencesPage
@@ -33,6 +34,7 @@ import com.niki914.zafiro.app.ui.route.ConversationHistoryPageRoute
 import com.niki914.zafiro.app.ui.route.DonePageRoute
 import com.niki914.zafiro.app.ui.route.ExecutionRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.HomePageRoute
+import com.niki914.zafiro.app.ui.route.MarkdownScalePageRoute
 import com.niki914.zafiro.app.ui.route.McpServerDetailRoute
 import com.niki914.zafiro.app.ui.route.TextActionDetailRoute
 import com.niki914.zafiro.app.ui.route.OnboardingPreferencesRoute
@@ -177,5 +179,7 @@ fun ZafiroPageContent(
                 onPush(CustomPyToolDetailPage(name, index, isCreating))
             },
         )
+
+        MarkdownScalePage -> MarkdownScalePageRoute()
     }
 }
