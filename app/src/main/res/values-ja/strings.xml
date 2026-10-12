@@ -565,4 +565,5 @@
     <string name="crash_dialog_copy">ログをコピー</string>
     <string name="crash_dialog_close">閉じる</string>
     <string name="crash_copied_toast">クラッシュログをコピーしました</string>
+    <string name="crash_startup_copied_toast">スタックトレースをコピーしました。開発者に送信してください。</string>
 </resources>
