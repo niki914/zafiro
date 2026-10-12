@@ -86,6 +86,7 @@
         -->
         <activity
             android:name="com.niki914.zafiro.app.trigger.TextActionActivity"
+            android:label="@string/text_action_menu_label"
             android:exported="true"
             android:excludeFromRecents="true"
             android:theme="@style/Theme.AppDefault.TextAction">

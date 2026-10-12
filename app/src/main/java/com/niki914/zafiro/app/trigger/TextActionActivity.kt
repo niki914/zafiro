@@ -5,7 +5,13 @@ import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.component.OptionRow
@@ -18,13 +24,15 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.chat.agentic.ScreenCaptureIngestor
-import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
+import com.niki914.zafiro.repo.RuntimeTextAction
+import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.UUID
 
 /**
@@ -54,10 +62,16 @@ class TextActionActivity : ComponentActivity() {
             return
         }
 
-        showActionSheet(BuiltinTextAction.ALL, selectedText)
+        val actions = runBlocking {
+            runCatching { XRepo.textActions.list() }
+                .onFailure { Logger.w(LOG_TAG, "load actions failed reason=${it.message}") }
+                .getOrDefault(emptyList())
+        }.filter { it.enabled }
+
+        showActionSheet(actions, selectedText)
     }
 
-    private fun showActionSheet(actions: List<BuiltinTextAction>, selectedText: String) {
+    private fun showActionSheet(actions: List<RuntimeTextAction>, selectedText: String) {
         setContent {
             BaseTheme(paintWindowBackground = false) {
                 OptionSheet(
@@ -67,9 +81,19 @@ class TextActionActivity : ComponentActivity() {
                         if (!dispatched) finish()
                     },
                 ) { dismissThen ->
+                    if (actions.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.text_actions_sheet_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 12.dp),
+                        )
+                    }
                     actions.forEach { action ->
                         OptionRow(
-                            title = stringResource(action.titleRes),
+                            title = action.name,
                             onClick = {
                                 val clickedAt = SystemClock.uptimeMillis()
                                 dispatched = true
@@ -90,7 +114,7 @@ class TextActionActivity : ComponentActivity() {
      * 2. 会话建档并启动持久化 Task Agent；
      * 3. 前台动作经 ApplicationService 统一入口置前；后台动作直接静默完成。
      */
-    private fun dispatch(action: BuiltinTextAction, selectedText: String, clickedAt: Long) {
+    private fun dispatch(action: RuntimeTextAction, selectedText: String, clickedAt: Long) {
         scope.launch {
             val readyImage = if (action.requiresScreenshot) {
                 captureScreenshotSafely(clickedAt)
@@ -98,13 +122,17 @@ class TextActionActivity : ComponentActivity() {
                 null
             }
 
-            val prompt = TextActionPromptComposer.compose(action.promptTemplate, selectedText)
+            val prompt = TextActionPromptComposer.compose(
+                template = action.prompt,
+                selectedText = selectedText,
+                captureFailed = action.requiresScreenshot && readyImage == null,
+            )
             val conversationId = UUID.randomUUID().toString()
             val prepared = runCatching {
                 ConversationRepo.createConversation(
                     id = conversationId,
                     firstUserInput = prompt,
-                    title = action.title,
+                    title = action.name,
                 )
             }
             if (prepared.isFailure) {
@@ -114,7 +142,7 @@ class TextActionActivity : ComponentActivity() {
             }
 
             val agentManager = requireService<AgentManager>()
-            val taskAgent = agentManager.createTaskAgent(tag = "text-action", isPersistent = true)
+            val taskAgent = agentManager.createTaskAgent(isPersistent = true)
             taskAgent.load(ConversationId(conversationId))
             val initialImages = if (readyImage != null) listOf(readyImage) else emptyList()
             taskAgent.updateDraft {
@@ -128,7 +156,7 @@ class TextActionActivity : ComponentActivity() {
             val startResult = taskAgent.stream()
             Logger.i(
                 LOG_TAG,
-                "dispatch action=${action.id} result=$startResult runInBackground=${action.runInBackground} promptLen=${prompt.length}",
+                "dispatch action=${action.name} result=$startResult runInBackground=${action.runInBackground} promptLen=${prompt.length}",
             )
 
             runOnUiThread {
@@ -141,23 +169,20 @@ class TextActionActivity : ComponentActivity() {
     }
 
     private suspend fun captureScreenshotSafely(clickedAt: Long): DraftImage.Ready? {
-        val hasPermission = AccessibilityController.ensureAccessibility().isSuccess
-        if (!hasPermission) {
-            Logger.w(LOG_TAG, "screenshot skipped: accessibility permission not granted")
-            return null
-        }
-
         val elapsed = SystemClock.uptimeMillis() - clickedAt
         if (elapsed < MIN_DISMISS_DELAY_MS) {
             delay(MIN_DISMISS_DELAY_MS - elapsed)
         }
 
-        val path = ScreenCaptureIngestor.captureAndIngest() ?: run {
-            Logger.w(LOG_TAG, "ScreenCaptureIngestor captureAndIngest returned null")
-            return null
-        }
+        return when (val result = ScreenCaptureIngestor.captureAndIngest()) {
+            is ScreenCaptureIngestor.CaptureResult.Ok ->
+                DraftImage.Ready(Attachment(path = result.path, mimeType = "image/jpeg"))
 
-        return DraftImage.Ready(Attachment(path = path, mimeType = "image/jpeg"))
+            is ScreenCaptureIngestor.CaptureResult.Err -> {
+                Logger.w(LOG_TAG, "screenshot failed stage=${result.stage} message=${result.message}")
+                null
+            }
+        }
     }
 
     private companion object {

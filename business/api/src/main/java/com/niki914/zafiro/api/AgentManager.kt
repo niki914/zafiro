@@ -45,7 +45,7 @@ interface AgentManager {
      * - [isPersistent] 为 false 时：纯内存运行。
      * 调用方按需持有；未被持有时随协程或 GC 释放。
      */
-    fun createTaskAgent(tag: String = "task", isPersistent: Boolean = false): Agent
+    fun createTaskAgent(isPersistent: Boolean = false): Agent
 
     /**
      * 显式销毁并释放指定会话的 Agent 实例。

@@ -14,6 +14,7 @@ import com.niki914.zafiro.app.ui.nav.DonePage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
+import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
 import com.niki914.zafiro.app.ui.nav.OnboardingPreferencesPage
 import com.niki914.zafiro.app.ui.nav.OnboardingThemePage
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
@@ -33,6 +34,7 @@ import com.niki914.zafiro.app.ui.route.DonePageRoute
 import com.niki914.zafiro.app.ui.route.ExecutionRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.HomePageRoute
 import com.niki914.zafiro.app.ui.route.McpServerDetailRoute
+import com.niki914.zafiro.app.ui.route.TextActionDetailRoute
 import com.niki914.zafiro.app.ui.route.OnboardingPreferencesRoute
 import com.niki914.zafiro.app.ui.route.OnboardingThemeRoute
 import com.niki914.zafiro.app.ui.route.ProviderPickPageRoute
@@ -135,6 +137,11 @@ fun ZafiroPageContent(
         )
 
         is McpServerDetailPage -> McpServerDetailRoute(
+            page = page,
+            onBack = onPop,
+        )
+
+        is TextActionDetailPage -> TextActionDetailRoute(
             page = page,
             onBack = onPop,
         )

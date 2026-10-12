@@ -1,4 +1,4 @@
-// 保护：选中文本清洗（BOM、零宽、换行归一）与 Prompt 引用格式拼接契约
+// 保护：选中文本清洗（BOM、零宽、换行归一）、Prompt 引用格式拼接契约、截图失败 NOTE 前置
 package com.niki914.zafiro.app.trigger
 
 import org.junit.Assert.assertEquals
@@ -41,6 +41,45 @@ class TextActionPromptComposerTest {
             > line two
 
             Summarize.
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun compose_captureFailedPrependsNoteBeforeQuote() {
+        val result = TextActionPromptComposer.compose(
+            template = "Explain the screen.",
+            selectedText = "Hello world",
+            captureFailed = true,
+        )
+
+        assertEquals(
+            """
+            > [NOTE]: Zafiro's screen capture failed; no screenshot is attached.
+            > [NOTE]: The text below was copied from another app.
+            >
+            > Hello world
+
+            Explain the screen.
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun compose_captureFailedWithoutSelectionStillNotes() {
+        val result = TextActionPromptComposer.compose(
+            template = "Explain the screen.",
+            selectedText = null,
+            captureFailed = true,
+        )
+
+        assertEquals(
+            """
+            > [NOTE]: Zafiro's screen capture failed; no screenshot is attached.
+
+            Explain the screen.
             """.trimIndent(),
             result,
         )

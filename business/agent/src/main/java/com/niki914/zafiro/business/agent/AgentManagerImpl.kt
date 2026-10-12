@@ -85,21 +85,15 @@ class AgentManagerImpl(
         return target
     }
 
-    override fun createTaskAgent(tag: String, isPersistent: Boolean): Agent {
-        val taskAgent = AgentImpl(
-            engine = AgentSessionEngine(),
-            isPersistent = isPersistent,
-        )
-        if (isPersistent) {
-            scope.launch {
-                val conv = taskAgent.conversation.first { !it.id?.value.isNullOrBlank() }
-                val id = conv.id?.value
-                if (!id.isNullOrBlank()) {
-                    registerActiveAgent(id, taskAgent)
-                }
-            }
+    override fun createTaskAgent(isPersistent: Boolean): Agent {
+        return if (isPersistent) {
+            createPersistentAgent()
+        } else {
+            AgentImpl(
+                engine = AgentSessionEngine(),
+                isPersistent = false,
+            )
         }
-        return taskAgent
     }
 
     override fun destroy(conversationId: String) {

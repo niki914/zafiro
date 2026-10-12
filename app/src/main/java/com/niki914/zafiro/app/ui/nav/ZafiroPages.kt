@@ -185,6 +185,19 @@ data class McpServerDetailPage(
         if (isCreating) null else TopBarActionSpec(Icons.Default.Delete)
 }
 
+data class TextActionDetailPage(
+    val actionName: String,
+    val actionIndex: Int,
+    val isCreating: Boolean = false,
+) : ZafiroPage {
+    override val routeKey: String = "text-action-detail:$actionIndex:$actionName"
+    override val titleSpec: PageTitleSpec = TextTitle(actionName)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? =
+        if (isCreating) null else TopBarActionSpec(Icons.Default.Delete)
+}
+
 data class ExecutionRuleDetailPage(
     val ruleName: String,
     val ruleIndex: Int,

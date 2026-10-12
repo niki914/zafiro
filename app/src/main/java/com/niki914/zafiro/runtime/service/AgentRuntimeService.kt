@@ -208,7 +208,7 @@ class AgentRuntimeService : Service() {
 
             val isIsolated = runBlocking { XRepo.voiceAssistantIsolatedSession() }
             val targetAgent = if (isIsolated) {
-                currentHostAgent ?: agentManager.createTaskAgent("host").also {
+                currentHostAgent ?: agentManager.createTaskAgent(isPersistent = false).also {
                     currentHostAgent = it
                 }
             } else {

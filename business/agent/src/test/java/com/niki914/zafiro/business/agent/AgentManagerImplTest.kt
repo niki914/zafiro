@@ -130,7 +130,7 @@ class AgentManagerImplTest {
     @Test
     fun createTaskAgent_persistentRegistersIntoActiveStatesAndCanBeSwitchedTo() = runBlocking {
         val manager = AgentManagerImpl()
-        val taskAgent = manager.createTaskAgent(tag = "text-action", isPersistent = true)
+        val taskAgent = manager.createTaskAgent(isPersistent = true)
         taskAgent.load(ConversationId("conv-task"))
         delay(50)
         assertTrue(manager.activeStates.value.containsKey("conv-task"))
@@ -143,7 +143,7 @@ class AgentManagerImplTest {
     @Test
     fun createTaskAgent_nonPersistentDoesNotRegisterIntoActiveStates() = runBlocking {
         val manager = AgentManagerImpl()
-        val taskAgent = manager.createTaskAgent(tag = "transient", isPersistent = false)
+        val taskAgent = manager.createTaskAgent(isPersistent = false)
         taskAgent.load(ConversationId("conv-transient"))
         delay(50)
         assertFalse(manager.activeStates.value.containsKey("conv-transient"))
