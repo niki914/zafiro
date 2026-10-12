@@ -478,13 +478,13 @@
     <string name="ui_settings_configure_thinking_label">思考强度</string>
     <string name="ui_settings_configure_thinking_hint">留空（Provider Default）时使用 Provider 默认行为；过高时若 Provider 拒绝请自行调低。</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
-    <string name="ui_settings_configure_max_tokens_placeholder">例如：%1$d</string>
-    <string name="ui_settings_configure_max_tokens_hint">单次请求最多输出多少 token。留空使用默认值；服务端报输出长度超限时调小。</string>
-    <string name="ui_settings_configure_error_max_tokens_invalid">请填写不小于 256 的整数</string>
+    <string name="ui_settings_configure_max_tokens_placeholder">例如：200000 或 200k</string>
+    <string name="ui_settings_configure_max_tokens_hint">单次请求最多输出多少 token。留空时优先使用云端值，否则用默认值；服务端报输出长度超限时调小。支持 k/m/b 后缀（如 128k）。</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">请填写有效数值（支持 k/m/b 后缀），不小于 256</string>
     <string name="ui_settings_configure_context_window_label">上下文窗口</string>
-    <string name="ui_settings_configure_context_window_placeholder">例如：%1$d</string>
-    <string name="ui_settings_configure_context_window_hint">该模型的上下文窗口大小，影响上下文用量的显示比例。留空使用默认值。</string>
-    <string name="ui_settings_configure_error_context_window_invalid">请填写不小于 1000 的整数</string>
+    <string name="ui_settings_configure_context_window_placeholder">例如：1000000 或 1M</string>
+    <string name="ui_settings_configure_context_window_hint">该模型的上下文窗口大小，影响上下文用量的显示比例。留空时优先使用云端值，否则用默认值。</string>
+    <string name="ui_settings_configure_error_context_window_invalid">请填写有效数值（支持 k/m/b 后缀），不小于 1000</string>
 
     <string name="ui_theme_mode_system">跟随系统</string>
     <string name="ui_theme_mode_light">浅色</string>

@@ -4,7 +4,9 @@ package com.niki914.zafiro.app.ui.model
 
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.util.SilentLoggerRule
+import com.niki914.zafiro.repo.CloudModelFacts
 import com.niki914.zafiro.repo.LlmConfigsDocument
+import com.niki914.zafiro.repo.ModelCatalog
 import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,8 +38,9 @@ class ConfigureViewModelTest {
         val upserted = mutableListOf<SavedLlmConfig>()
         val deletedIds = mutableListOf<String>()
         val activatedIds = mutableListOf<String>()
-        var catalogResult: List<String> = emptyList()
+        var catalogResult: ModelCatalog = ModelCatalog(emptyList())
         var catalogError: Throwable? = null
+        val savedFacts = mutableListOf<Pair<String, Map<String, CloudModelFacts>>>()
 
         fun toDependencies(): ConfigureViewModelDependencies =
             ConfigureViewModelDependencies(
@@ -74,6 +77,9 @@ class ConfigureViewModelTest {
                 fetchModelCatalog = { _, _, _ ->
                     catalogError?.let { throw it }
                     catalogResult
+                },
+                saveModelFacts = { endpoint, factsByModel ->
+                    savedFacts += endpoint to factsByModel
                 },
             )
     }
@@ -257,7 +263,7 @@ class ConfigureViewModelTest {
     @Test
     fun catalogFetch_successOverwritesIncludingEmpty() = runTest {
         val deps = RecordingDeps()
-        deps.catalogResult = listOf("m-1")
+        deps.catalogResult = ModelCatalog(listOf("m-1"))
         val viewModel = ConfigureViewModel(deps.toDependencies())
         viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
         advanceUntilIdle()
@@ -267,7 +273,7 @@ class ConfigureViewModelTest {
         assertEquals(listOf("m-1"), viewModel.uiStateFlow.value.modelCatalog)
 
         // 成功空结果也覆盖：按钮藏起，不残留旧名单
-        deps.catalogResult = emptyList()
+        deps.catalogResult = ModelCatalog(emptyList())
         viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-2"))
         advanceUntilIdle()
         assertTrue(viewModel.uiStateFlow.value.modelCatalog.isEmpty())
@@ -276,7 +282,7 @@ class ConfigureViewModelTest {
     @Test
     fun catalogFetch_failureKeepsOldCache() = runTest {
         val deps = RecordingDeps()
-        deps.catalogResult = listOf("m-1")
+        deps.catalogResult = ModelCatalog(listOf("m-1"))
         val viewModel = ConfigureViewModel(deps.toDependencies())
         viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
         advanceUntilIdle()
@@ -290,6 +296,84 @@ class ConfigureViewModelTest {
         viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-2"))
         advanceUntilIdle()
         assertEquals(listOf("m-1"), viewModel.uiStateFlow.value.modelCatalog)
+    }
+
+    @Test
+    fun catalogFetch_successSavesFactsOnlyWhenPresent() = runTest {
+        val deps = RecordingDeps()
+        deps.catalogResult = ModelCatalog(
+            ids = listOf("m-1"),
+            facts = mapOf("m-1" to CloudModelFacts(windowTokens = 1_048_576L)),
+        )
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsNew))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-1"))
+        advanceUntilIdle()
+
+        val (endpoint, facts) = deps.savedFacts.single()
+        assertEquals("https://api.deepseek.com/responses", endpoint)
+        assertEquals(1_048_576L, facts["m-1"]?.windowTokens)
+
+        // 全缺字段（如 Google）：facts 为空，不写，旧缓存保留
+        deps.savedFacts.clear()
+        deps.catalogResult = ModelCatalog(ids = listOf("m-2"))
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-2"))
+        advanceUntilIdle()
+        assertTrue(deps.savedFacts.isEmpty())
+    }
+
+    @Test
+    fun initializeOnboarding_leavesTokenFieldsEmptyForCloudResolution() = runTest {
+        // 不预填：预填会钉死用户值，云端/默认永远不生效
+        val deps = RecordingDeps()
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.Onboarding))
+        advanceUntilIdle()
+
+        val state = viewModel.uiStateFlow.value
+        assertEquals("", state.maxTokensInput)
+        assertEquals("", state.contextWindowInput)
+    }
+
+    @Test
+    fun save_looseTokenInputs_persistAsRawText() = runTest {
+        val deps = RecordingDeps()
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.Onboarding))
+        advanceUntilIdle()
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-1"))
+        viewModel.sendIntent(ConfigureIntent.UpdateModel("m-1"))
+        viewModel.sendIntent(ConfigureIntent.UpdateMaxTokens("1M"))
+        viewModel.sendIntent(ConfigureIntent.UpdateContextWindow("200k"))
+
+        viewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+
+        val saved = deps.upserted.single()
+        assertEquals("1M", saved.maxTokensText)
+        assertEquals("200k", saved.contextWindowText)
+    }
+
+    @Test
+    fun save_invalidLooseTokenInputs_rejectsWithoutWriting() = runTest {
+        val deps = RecordingDeps()
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.Onboarding))
+        advanceUntilIdle()
+        viewModel.sendIntent(ConfigureIntent.UpdateApiKey("sk-1"))
+        viewModel.sendIntent(ConfigureIntent.UpdateModel("m-1"))
+        viewModel.sendIntent(ConfigureIntent.UpdateMaxTokens("1.5k"))
+
+        viewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+
+        assertTrue(deps.upserted.isEmpty())
+        assertEquals(
+            R.string.ui_settings_configure_error_max_tokens_invalid,
+            viewModel.uiStateFlow.value.maxTokensErrorResId,
+        )
     }
 
     @Test

@@ -6,6 +6,8 @@ object StoreDescriptorRegistry {
     const val LOCAL_SETTINGS_ID = "local_settings"
     const val AGENT_REGISTRY_ID = "agents.registry"
     const val LLM_CONFIGS_ID = "llm.saved_configs"
+    const val LLM_MODEL_FACTS_ID = "llm.model_facts"
+    const val OPENROUTER_CATALOG_ID = "llm.openrouter_catalog"
     const val AGENT_MAIN_MEMORY_ID = "agent.main.memory"
     const val TOOLS_BUILTIN_ID = "tools.builtin"
     const val TOOLS_PY_ID = "tools.py"
@@ -25,6 +27,16 @@ object StoreDescriptorRegistry {
         StoreDescriptor(LOCAL_SETTINGS_ID, "local_settings.json"),
         StoreDescriptor(AGENT_REGISTRY_ID, "settings/agents/registry.json", """{"agents":[]}"""),
         StoreDescriptor(LLM_CONFIGS_ID, "settings/llm/saved_configs.json"),
+        StoreDescriptor(
+            LLM_MODEL_FACTS_ID,
+            "settings/llm/model_facts.json",
+            """{"facts":{}}"""
+        ),
+        StoreDescriptor(
+            OPENROUTER_CATALOG_ID,
+            "settings/llm/openrouter_catalog.json",
+            """{"fetched_at":0,"models":{}}"""
+        ),
         StoreDescriptor(
             AGENT_MAIN_MEMORY_ID,
             "settings/agents/main/memory.json",

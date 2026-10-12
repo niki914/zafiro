@@ -19,6 +19,10 @@ class XRepoRuntimeGateway(
 ) : RuntimeSettingsGateway {
     private companion object {
         const val LOG_TAG = "niki914_zafiro_XRepoRuntimeGateway"
+        const val SOURCE_USER = "user"
+        const val SOURCE_PROVIDER = "provider"
+        const val SOURCE_OPENROUTER = "openrouter"
+        const val SOURCE_DEFAULT = "default"
     }
 
     override suspend fun readLlmConfig(agentId: String, configId: String?): RuntimeLlmConfig {
@@ -31,6 +35,35 @@ class XRepoRuntimeGateway(
         }
         val active = target ?: doc.activeConfig()
         val memories = repo.agents.memoriesFor(agentId)
+        // 四级解析链（全查本地，零网络）：用户 > provider /models > OpenRouter > 兜底。
+        // 逐级按需：用户填了就完全不碰两个缓存 store，缺哪层才读哪层。
+        suspend fun providerFacts(): CloudModelFacts? {
+            return repo.cloudFacts.providerFacts(active?.endpoint, active?.model)
+        }
+        suspend fun openRouterFacts(): CloudModelFacts? {
+            return OpenRouterCatalogApi.match(repo.cloudFacts.openRouter().models, active?.model.orEmpty())
+        }
+        val maxTokensLimit = resolveTokenCount(
+            userText = active?.maxTokensText,
+            providerValue = { providerFacts()?.maxOutputTokens },
+            openRouterValue = { openRouterFacts()?.maxOutputTokens },
+            fallback = DEFAULT_MAX_TOKENS.toLong(),
+        )
+        val contextWindowLimit = resolveTokenCount(
+            userText = active?.contextWindowText,
+            providerValue = { providerFacts()?.windowTokens },
+            openRouterValue = { openRouterFacts()?.windowTokens },
+            fallback = DEFAULT_CONTEXT_WINDOW_TOKENS,
+        )
+        val maxTokens = maxTokensLimit.first.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        // 取值来源必须打进日志：UI 不展示来源，而云端值常常与默认值接近（1M vs 1048576），
+        // 只看数字无法判断哪一层赢。
+        Logger.i(
+            LOG_TAG,
+            "token limits model=${active?.model} " +
+                    "maxTokens=$maxTokens(${maxTokensLimit.second}) " +
+                    "contextWindow=${contextWindowLimit.first}(${contextWindowLimit.second})"
+        )
         return RuntimeLlmConfig(
             provider = active?.provider.orEmpty(),
             endpoint = active?.endpoint.orEmpty(),
@@ -44,11 +77,25 @@ class XRepoRuntimeGateway(
             memories = memories,
             idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },
             retryMaxAttempts = repo.llmRetryMaxAttempts(),
-            // 0/缺键 = 未设置：落默认值（不是 okia 骨架的 4096）
-            maxTokens = active?.maxTokens?.takeIf { it > 0 } ?: DEFAULT_MAX_TOKENS,
-            contextWindowTokens = active?.contextWindowTokens?.takeIf { it > 0 }
-                ?: DEFAULT_CONTEXT_WINDOW_TOKENS,
+            // 空串/旧格式的 0 = 未设置：用户 > 云端 > 默认
+            maxTokens = maxTokens,
+            contextWindowTokens = contextWindowLimit.first,
         )
+    }
+
+    /** 用户 > provider /models > OpenRouter > fallback；空串/0/负值一律视为未设置。
+     *  返回「值 to 取值来源」，来源只用于日志。 */
+    private suspend fun resolveTokenCount(
+        userText: String?,
+        providerValue: suspend () -> Long?,
+        openRouterValue: suspend () -> Long?,
+        fallback: Long,
+    ): Pair<Long, String> {
+        userText?.let(TokenCountText::parse)?.takeIf { it > 0L }
+            ?.let { return it to SOURCE_USER }
+        providerValue()?.takeIf { it > 0L }?.let { return it to SOURCE_PROVIDER }
+        openRouterValue()?.takeIf { it > 0L }?.let { return it to SOURCE_OPENROUTER }
+        return fallback to SOURCE_DEFAULT
     }
 
     override suspend fun listMcpServers(): List<RuntimeMcpServer> = repo.mcp.list()
