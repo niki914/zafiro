@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,8 +21,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.geometry.Rect
+import com.niki914.uikit.infra.LiquidMenuItem
+import com.niki914.uikit.infra.LiquidPopover
+import com.niki914.uikit.infra.PopoverAlignment
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -47,6 +50,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.LiquidScreen
 import com.niki914.uikit.infra.LiquidScreenSwipeContent
+import com.niki914.uikit.infra.LiquidScreenTitle
 import com.niki914.uikit.infra.TitleDirection
 import com.niki914.uikit.infra.nav.LocalNavigationEntry
 import com.niki914.uikit.infra.nav.LocalPageTitle
@@ -89,6 +93,7 @@ fun ZafiroApp(
     val rootBackToHomeHint = stringResource(R.string.ui_root_back_to_home_hint)
     val pageChromeHost = rememberPageChromeHost()
     var chromeMenuExpanded by remember { mutableStateOf(false) }
+    var rightButtonBounds by remember { mutableStateOf<Rect?>(null) }
     var lastRootBackPressedAt by remember { mutableStateOf(0L) }
     var isPageTransitioning by remember { mutableStateOf(false) }
     var pendingCrashReport by remember { mutableStateOf<CrashReport?>(null) }
@@ -110,9 +115,21 @@ fun ZafiroApp(
     val controller = rememberNavigationController<ZafiroPage>(initialPage = initialPage)
     val navigator = controller.navigator
     val saveableStateHolder = rememberSaveableStateHolder()
+
+    LaunchedEffect(controller.stack) {
+        val activeIds = controller.stack.map { it.id }.toSet()
+        pageChromeHost.syncWithStack(activeIds)
+    }
+
     val currentEntry = controller.currentEntry
     val currentPage = currentEntry.page
     val currentChrome = pageChromeHost.stateFor(currentEntry.id)
+    val isChromeMenuOpen = chromeMenuExpanded && currentChrome.menuItems.isNotEmpty()
+    val rightButtonAlpha by animateFloatAsState(
+        targetValue = if (isChromeMenuOpen) 0f else 1f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "rightButtonAlpha",
+    )
     val currentLeftAction = currentChrome.leftAction ?: currentPage.leftAction
     val latestCurrentChrome by rememberUpdatedState(currentChrome)
     fun closeChromeMenu() {
@@ -131,10 +148,10 @@ fun ZafiroApp(
         chrome = currentChrome,
         onOpenChromeMenu = ::openChromeMenu,
     )
-    val showLeftButton =
+    val showLeftButton = currentChrome.actionsVisible &&
         currentLeftAction != null && (currentLeftAction.onClick != null || controller.canGoBack)
-    val showRightButton = currentRightAction != null
-    val currentTitle = resolveTitle(currentChrome.titleSpec ?: currentPage.titleSpec)
+    val showRightButton = currentChrome.actionsVisible && currentRightAction != null
+    val currentTitle = resolveScreenTitle(currentChrome, currentPage, currentEntry.id)
     val isTitleCollapsible = currentPage.titleMode == TitleBarMode.Collapsible
     val screenState = rememberLiquidScreenState(
         title = currentTitle,
@@ -208,6 +225,11 @@ fun ZafiroApp(
         requestBack()
     }
 
+    // 上次已做过标题动画的条目：标题滑动只表达「换了页面」这一空间语义。
+    // 同一条目内的标题刷新（会话标题出现、选中数量变化、切换配置）是活内容变了，
+    // 不是位移，走 update 瞬切；否则它们会沿用上一次的导航方向反复左右滑。
+    var lastAnimatedEntryId by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(
         currentEntry.id,
         controller.lastDirection,
@@ -216,6 +238,7 @@ fun ZafiroApp(
         currentRightAction,
         currentChrome.menuItems,
         currentChrome.backHandler,
+        currentChrome.actionsVisible,
     ) {
         if (currentChrome.menuItems.isEmpty()) {
             closeChromeMenu()
@@ -223,7 +246,12 @@ fun ZafiroApp(
         val onLeftClick = bindAction(currentLeftAction, fallback = ::requestBack)
         val onRightClick = bindAction(currentRightAction)
 
-        when (controller.lastDirection) {
+        val isPageChange = lastAnimatedEntryId != currentEntry.id
+        lastAnimatedEntryId = currentEntry.id
+        val titleDirection =
+            if (isPageChange) controller.lastDirection else TitleDirection.None
+
+        when (titleDirection) {
             TitleDirection.Forward -> screenState.navigateForward(
                 title = currentTitle,
                 isTitleCollapsible = isTitleCollapsible,
@@ -270,6 +298,9 @@ fun ZafiroApp(
                 // 条目存活期保留，导航切页同帧隔离，返回时首帧恢复离开前状态。
                 titleBarScroll = currentEntry.titleBarScroll,
                 actionsEnabled = !isPageTransitioning,
+                isOccluded = isChromeMenuOpen || currentChrome.isTitleOccluded,
+                rightButtonAlpha = rightButtonAlpha,
+                onRightButtonBoundsChanged = { rightButtonBounds = it },
                 leftButton = currentLeftAction?.let { action ->
                     {
                         AnimatedContent(
@@ -376,24 +407,20 @@ fun ZafiroApp(
                         }
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = screenState.actionBarHeight.value, end = 12.dp),
+                    LiquidPopover(
+                        expanded = isChromeMenuOpen,
+                        onDismissRequest = ::closeChromeMenu,
+                        anchorBounds = rightButtonBounds,
+                        alignment = PopoverAlignment.BottomEnd,
                     ) {
-                        DropdownMenu(
-                            expanded = chromeMenuExpanded && currentChrome.menuItems.isNotEmpty(),
-                            onDismissRequest = ::closeChromeMenu,
-                        ) {
-                            currentChrome.menuItems.forEach { item ->
-                                DropdownMenuItem(
-                                    text = { Text(item.title) },
-                                    onClick = {
-                                        closeChromeMenu()
-                                        item.onClick()
-                                    },
-                                )
-                            }
+                        currentChrome.menuItems.forEach { item ->
+                            LiquidMenuItem(
+                                title = item.title,
+                                onClick = {
+                                    closeChromeMenu()
+                                    item.onClick()
+                                },
+                            )
                         }
                     }
 
@@ -408,6 +435,17 @@ fun ZafiroApp(
             currentChrome.overlay?.invoke()
         }
     }
+}
+
+@Composable
+private fun resolveScreenTitle(
+    chrome: PageChromeContribution,
+    page: ZafiroPage,
+    entryId: String,
+): LiquidScreenTitle {
+    val key = chrome.titleKey ?: entryId
+    chrome.titleContent?.let { return LiquidScreenTitle.Content(content = it, key = key) }
+    return LiquidScreenTitle.Text(value = resolveTitle(chrome.titleSpec ?: page.titleSpec), key = key)
 }
 
 @Composable

@@ -20,7 +20,6 @@ import com.niki914.uikit.infra.rememberLiquidScreenState
 @Composable
 private fun ConfirmationLiquidDialogPreviewContent() {
     val screenState = rememberLiquidScreenState(
-        title = "",
         showLeftButton = false,
         showRightButton = false,
         showBlurLayer = false,

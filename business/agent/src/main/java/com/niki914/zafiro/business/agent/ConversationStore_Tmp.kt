@@ -26,7 +26,7 @@ interface ConversationStore_Tmp {
     suspend fun exists(id: ConversationId): Boolean
 
     /** 首次建档：会话 id 与首条提问（树 id 即 Room id）。 */
-    suspend fun create(id: ConversationId, firstUserInput: String)
+    suspend fun create(id: ConversationId, firstUserInput: String, configId: String = "")
 
     /** 死接口（T3 遗留）：草稿已改用 XRepo 全局管理，禁止再按会话保存草稿。 */
     @Deprecated("Dead method: draft has migrated to XRepo global storage.")

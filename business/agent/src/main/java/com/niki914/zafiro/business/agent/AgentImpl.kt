@@ -228,6 +228,10 @@ class AgentImpl(
         scope.cancel()
     }
 
+    override fun bindConfig(configId: String) {
+        engine.bindConfig(configId)
+    }
+
     override suspend fun load(id: ConversationId) {
         releaseRound()
         reducedStatus = AgentStateReducer.reset()
@@ -361,7 +365,7 @@ class AgentImpl(
             if (store().exists(sessionId)) {
                 Logger.i(LOG_TAG, "conversation reused id=${sessionId.value}")
             } else {
-                store().create(sessionId, firstUserInput)
+                store().create(sessionId, firstUserInput, engine.boundConfigId)
                 Logger.i(LOG_TAG, "conversation created id=${sessionId.value}")
             }
             store().setLastOpened(sessionId)

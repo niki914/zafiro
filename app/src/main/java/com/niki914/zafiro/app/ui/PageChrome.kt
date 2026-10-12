@@ -10,11 +10,22 @@ import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 
 data class PageChromeContribution(
     val titleSpec: PageTitleSpec? = null,
+    val titleKey: Any? = null,
+    /**
+     * 自定义标题槽：非空时顶掉 [titleSpec]，渲染任意 composable。
+     *
+     * 供页面活着时随时会变的活内容使用（配置切换器等）。实例必须由提供方
+     * `remember` 住 —— 壳层以实例相等判断标题是否变化，每次重组新建实例会
+     * 反复重放切页动画。
+     */
+    val titleContent: (@Composable () -> Unit)? = null,
     val leftAction: TopBarActionSpec? = null,
     val rightAction: TopBarActionSpec? = null,
     val menuItems: List<PageChromeMenuItem> = emptyList(),
     val backHandler: PageBackHandler? = null,
     val overlay: (@Composable () -> Unit)? = null,
+    val isTitleOccluded: Boolean = false,
+    val actionsVisible: Boolean = true,
 ) {
     companion object {
         val Empty = PageChromeContribution()
@@ -50,6 +61,10 @@ class PageChromeHost {
     internal fun clearContribution(entryId: String) {
         contributions.remove(entryId)
     }
+
+    internal fun syncWithStack(activeEntryIds: Set<String>) {
+        contributions.keys.retainAll(activeEntryIds)
+    }
 }
 
 class PageChromeRegistrar internal constructor(
@@ -81,7 +96,9 @@ fun RegisterPageChrome(contribution: PageChromeContribution) {
     DisposableEffect(registrar, contribution) {
         registrar.setContribution(contribution)
         onDispose {
-            registrar.clearContribution()
+            // 不在页面暂时离开组合树时清空：保留栈中条目的 PageChromeContribution，
+            // 保证返回时首帧即可拿到正确标题与动作，由切页动画统一平滑滚动进场。
+            // 实际已出栈条目由 PageChromeHost.syncWithStack 统一清理。
         }
     }
 }

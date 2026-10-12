@@ -12,9 +12,43 @@ import androidx.compose.ui.unit.dp
 
 enum class TitleDirection { Forward, Back, None }
 
+/**
+ * 顶栏标题内容，两种职能：
+ *
+ * - [Text] 页面标识：随导航变化，切页时按方向左右滑。
+ * - [Content] 自定义槽：页面活着时随时可换的活内容（会话标题、选中数量、配置切换器）。
+ *
+ * 两种都参与切页动画，退场帧与入场帧各渲染自己那一份 —— 不会两帧同屏渲染同一个标题。
+ * 命中动画的相等判据是实例本身，所以 [Content] 里的 composable 必须由调用方
+ * `remember` 住：每次重组新建实例会被当成一次新的标题变化，反复重放切页动画。
+ */
+sealed interface LiquidScreenTitle {
+    val key: Any?
+
+    data class Text(
+        val value: String,
+        override val key: Any? = null,
+    ) : LiquidScreenTitle
+
+    class Content(
+        val content: @Composable () -> Unit,
+        override val key: Any? = null,
+    ) : LiquidScreenTitle {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is Content) return false
+            return key == other.key && content == other.content
+        }
+
+        override fun hashCode(): Int {
+            return 31 * (key?.hashCode() ?: 0) + content.hashCode()
+        }
+    }
+}
+
 @Stable
 class LiquidScreenState(
-    initialTitle: String = "",
+    initialTitle: LiquidScreenTitle = LiquidScreenTitle.Text(""),
     initialIsTitleCollapsible: Boolean = false,
     initialShowLeftButton: Boolean = true,
     initialShowRightButton: Boolean = true,
@@ -40,8 +74,9 @@ class LiquidScreenState(
         _actionBarHeight.value = h
     }
 
+    /** 切页（正向）：标题按 Forward 方向滑。 */
     fun navigateForward(
-        title: String,
+        title: LiquidScreenTitle,
         isTitleCollapsible: Boolean = this.isTitleCollapsible,
         showLeftButton: Boolean = this.showLeftButton,
         showRightButton: Boolean = this.showRightButton,
@@ -61,8 +96,9 @@ class LiquidScreenState(
         )
     }
 
+    /** 切页（反向）：标题按 Back 方向滑。 */
     fun navigateBack(
-        title: String,
+        title: LiquidScreenTitle,
         isTitleCollapsible: Boolean = this.isTitleCollapsible,
         showLeftButton: Boolean = this.showLeftButton,
         showRightButton: Boolean = this.showRightButton,
@@ -82,8 +118,9 @@ class LiquidScreenState(
         )
     }
 
+    /** 同页刷新（非切页）：标题瞬切，不参与左右滑。 */
     fun update(
-        title: String,
+        title: LiquidScreenTitle,
         isTitleCollapsible: Boolean = this.isTitleCollapsible,
         showLeftButton: Boolean = this.showLeftButton,
         showRightButton: Boolean = this.showRightButton,
@@ -104,7 +141,7 @@ class LiquidScreenState(
     }
 
     private fun apply(
-        title: String,
+        title: LiquidScreenTitle,
         isTitleCollapsible: Boolean,
         showLeftButton: Boolean,
         showRightButton: Boolean,
@@ -124,7 +161,7 @@ class LiquidScreenState(
 
 @Composable
 fun rememberLiquidScreenState(
-    title: String = "",
+    title: LiquidScreenTitle = LiquidScreenTitle.Text(""),
     isTitleCollapsible: Boolean = false,
     showLeftButton: Boolean = true,
     showRightButton: Boolean = true,

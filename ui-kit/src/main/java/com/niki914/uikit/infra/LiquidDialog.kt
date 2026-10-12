@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -92,14 +93,12 @@ internal class LiquidDialogHostState {
 val LocalHasActiveDialog: ProvidableCompositionLocal<Boolean> =
     staticCompositionLocalOf { false }
 
-internal val LocalLiquidDialogHostState: ProvidableCompositionLocal<LiquidDialogHostState> =
-    staticCompositionLocalOf {
-        error("LiquidDialog must be used inside LiquidScreen")
-    }
+internal val LocalLiquidDialogHostState: ProvidableCompositionLocal<LiquidDialogHostState?> =
+    compositionLocalOf { null }
 
-private val liquidDialogHostEntryId = AtomicLong(0L)
+internal val liquidDialogHostEntryId = AtomicLong(0L)
 
-private fun nextLiquidDialogHostEntryId(): Long = liquidDialogHostEntryId.incrementAndGet()
+internal fun nextLiquidDialogHostEntryId(): Long = liquidDialogHostEntryId.incrementAndGet()
 
 @Composable
 fun LiquidDialog(
@@ -113,6 +112,7 @@ fun LiquidDialog(
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val hostState = LocalLiquidDialogHostState.current
+        ?: error("LiquidDialog must be used inside LiquidScreen")
     val dialogId = remember { nextLiquidDialogHostEntryId() }
 
     SideEffect {

@@ -1,90 +1,77 @@
 package com.niki914.uikit.infra
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.nav.TitleBarScrollState
-import kotlinx.coroutines.delay
 
 /** 底部安全距离中，系统导航栏 inset 之外额外留出的设计间距。 */
 private val BottomInsetSpacing = 50.dp
 
-/** 吸底动作按钮距屏幕底边的设计间距。比内容留白小：按钮贴底，内容末尾留白更大。 */
+/** 吸底动作按钮距屏幕底边的设计间距。 */
 private val ActionButtonBottomSpacing = 24.dp
 
+/**
+ * LiquidScreen 页面容器壳层：负责分层架构、滚动感知、毛玻璃背景与顶栏组装。
+ *
+ * 分层治理：
+ * Layer 1 (zIndex 0) - Page content + nestedScroll
+ * Layer 2 (zIndex 2) - Action bar background (毛玻璃 + surface 渐变底色)
+ * Layer 3 (zIndex 3) - Action bar foreground (LiquidTopBar)
+ * Layer 4 (zIndex 4) - LiquidDialogHost 浮层与弹窗
+ */
 @Composable
 fun LiquidScreen(
     state: LiquidScreenState,
-    /** 当前导航条目的折叠信号载体：壳层经 nestedScroll 写入，页面不参与。 */
     titleBarScroll: TitleBarScrollState,
     modifier: Modifier = Modifier,
     actionsEnabled: Boolean = true,
+    isOccluded: Boolean = false,
+    leftButtonAlpha: Float = 1f,
+    rightButtonAlpha: Float = 1f,
+    onLeftButtonBoundsChanged: ((Rect) -> Unit)? = null,
+    onRightButtonBoundsChanged: ((Rect) -> Unit)? = null,
     leftButton: (@Composable () -> Unit)? = null,
     rightButton: (@Composable () -> Unit)? = null,
+    overlayContent: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    val isDarkTheme = LocalAppDarkTheme.current
     val density = LocalDensity.current
     val chromeBackdrop = rememberLayerBackdrop()
-    // 标题两侧预留 = ActionBarButton 占宽（12dp 内边距 ×2 + 48sp 按钮）。
-    // 随系统字体缩放同步放大，防止长标题压到左右按钮下方。
     val titleHorizontalPadding = with(density) { 12.dp * 2 + 48.sp.toDp() }
     val dialogHostState = remember { LiquidDialogHostState() }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -95,16 +82,10 @@ fun LiquidScreen(
     val navigationBottomPx = WindowInsets.navigationBars.getBottom(density)
     val navigationBottom = with(density) { navigationBottomPx.toDp() }
 
-    // 折叠信号唯一来源：当前条目上的 titleBarScroll，由下方 nestedScroll 自动写入。
-    // 无页面参与、无导航清零、无共享状态；条目存活期累积量保留，返回时首帧恢复。
-
-    // 折叠阈值：Collapsible 页与大标题滚走的距离一致；Pinned 页小标题常驻，
-    // 内容一滑到栏下就该有背景，故取 0。
     val collapseThreshold = if (state.isTitleCollapsible) TitleBarCollapseThreshold else 0.dp
     val collapseThresholdPx = with(density) { collapseThreshold.toPx() }
     val latestCollapseThresholdPx by rememberUpdatedState(collapseThresholdPx)
-    // 捕获子级滚动容器（verticalScroll / LazyColumn）向上冒泡的已消费增量，
-    // 累积到当前条目；切页时新条目自带独立累积量，天然隔离。
+
     val titleBarScrollConnection = remember(titleBarScroll) {
         object : NestedScrollConnection {
             override fun onPostScroll(
@@ -112,7 +93,6 @@ fun LiquidScreen(
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
-                // Compose 中内容向下滚离时 consumed.y 为负，取负号让累积量随滚离增大。
                 val scrolledDownPx = -consumed.y
                 if (scrolledDownPx != 0f) {
                     titleBarScroll.addScroll(scrolledDownPx, latestCollapseThresholdPx)
@@ -123,32 +103,29 @@ fun LiquidScreen(
     }
     val collapsed = titleBarScroll.collapsed
 
-    // 动画时长与 action bar 左右按钮显隐动画一致，页面切换时两页滚动状态
-    // 不同也不会闪变：alpha 总是从当前值动画到目标值。
     val collapseAnimSpec = tween<Float>(durationMillis = 280, easing = LinearOutSlowInEasing)
-    // 背景与小标题共用同一信号源，保证两者同步动画；
-    // 小标题仅在 Collapsible 页随折叠浮现，Pinned 页常驻。
     val barTarget = collapsed
     val titleTarget = if (state.isTitleCollapsible) collapsed else true
+
     val barAlpha by animateFloatAsState(
         targetValue = if (barTarget) 1f else 0f,
         animationSpec = collapseAnimSpec,
         label = "topBarAlpha",
     )
-    val titleAlpha by animateFloatAsState(
+    val baseTitleAlpha by animateFloatAsState(
         targetValue = if (titleTarget) 1f else 0f,
         animationSpec = collapseAnimSpec,
-        label = "topBarTitleAlpha",
+        label = "topBarBaseTitleAlpha",
     )
+
     SideEffect {
         state.setActionBarHeight(actionBarHeight)
     }
 
     Box(
-        modifier
-            .fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
     ) {
-        // Layer 1: page content.
+        // Layer 1: page content
         CompositionLocalProvider(
             LocalLiquidScreenContentContext provides LiquidScreenContentContext(
                 topPadding = actionBarHeight,
@@ -161,14 +138,13 @@ fun LiquidScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    // 自动感知内容滚动：任何滚动容器冒泡上来的已消费增量都累积到当前条目。
                     .nestedScroll(titleBarScrollConnection),
             ) {
                 content()
             }
         }
 
-        // Layer 2: action bar background，颜色随内容滚动渐显。
+        // Layer 2: action bar background
         AnimatedVisibility(
             visible = state.showBlurLayer,
             modifier = Modifier
@@ -183,7 +159,7 @@ fun LiquidScreen(
                     .height(chromeHeight)
                     .layerBackdrop(chromeBackdrop)
                     .background(
-                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = barAlpha)
+                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = barAlpha),
                     ),
             )
         }
@@ -194,168 +170,32 @@ fun LiquidScreen(
                 .zIndex(3f)
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .height(chromeHeight)
-                // 吞掉顶栏区域的点按，防止穿透到下层内容（如滚动到顶栏下方的列表行）。
-                // detectTapGestures 只消费 tap 不消费拖动，从顶栏起手的滚动仍能落到下层滚动容器。
-                .pointerInput(Unit) { detectTapGestures { } }
-                .padding(horizontal = 4.dp),
+                .height(chromeHeight),
         ) {
-            // Title — always centered in the full bar width
-            val buttonDuration = 280
-            val titleDuration = 320
-            var retainedLeftButton by remember { mutableStateOf(leftButton) }
-            var retainedRightButton by remember { mutableStateOf(rightButton) }
-            val displayedLeftButton = leftButton ?: retainedLeftButton
-            val displayedRightButton = rightButton ?: retainedRightButton
-
-            LaunchedEffect(leftButton, state.showLeftButton) {
-                if (leftButton != null) {
-                    retainedLeftButton = leftButton
-                } else if (!state.showLeftButton) {
-                    delay(buttonDuration.toLong())
-                    if (!state.showLeftButton) {
-                        retainedLeftButton = null
-                    }
-                }
-            }
-
-            LaunchedEffect(rightButton, state.showRightButton) {
-                if (rightButton != null) {
-                    retainedRightButton = rightButton
-                } else if (!state.showRightButton) {
-                    delay(buttonDuration.toLong())
-                    if (!state.showRightButton) {
-                        retainedRightButton = null
-                    }
-                }
-            }
-
-            AnimatedContent(
-                targetState = state.title,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .padding(top = topInset)
-                    .fillMaxHeight()
-                    .padding(horizontal = titleHorizontalPadding),
-                transitionSpec = {
-                    val titleEasing = FastOutSlowInEasing
-                    val enterForward = slideInHorizontally(
-                        animationSpec = tween(titleDuration, easing = titleEasing),
-                        initialOffsetX = { fullWidth -> fullWidth }
-                    ) + fadeIn(tween(titleDuration, easing = titleEasing))
-                    val exitForward = slideOutHorizontally(
-                        animationSpec = tween(titleDuration, easing = titleEasing),
-                        targetOffsetX = { fullWidth -> -fullWidth }
-                    ) + fadeOut(tween(titleDuration, easing = titleEasing))
-                    val enterBack = slideInHorizontally(
-                        animationSpec = tween(titleDuration, easing = titleEasing),
-                        initialOffsetX = { fullWidth -> -fullWidth }
-                    ) + fadeIn(tween(titleDuration, easing = titleEasing))
-                    val exitBack = slideOutHorizontally(
-                        animationSpec = tween(titleDuration, easing = titleEasing),
-                        targetOffsetX = { fullWidth -> fullWidth }
-                    ) + fadeOut(tween(titleDuration, easing = titleEasing))
-
-                    when (state.titleDirection) {
-                        TitleDirection.Forward -> enterForward togetherWith exitForward
-                        TitleDirection.Back -> enterBack togetherWith exitBack
-                        TitleDirection.None -> {
-                            ContentTransform(
-                                targetContentEnter = EnterTransition.None,
-                                initialContentExit = ExitTransition.None,
-                                sizeTransform = SizeTransform(clip = false),
-                            )
-                        }
-                    }.using(SizeTransform(clip = false))
-                },
-                label = "title",
-            ) { title ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(titleAlpha),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = title,
-                        modifier = Modifier.fillMaxWidth(),
-                        style = TextStyle(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isDarkTheme) Color.White else Color.Black
-                        ),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            displayedLeftButton?.let { buttonContent ->
-                // Left button
-                val leftButtonScale = animateFloatAsState(
-                    targetValue = if (state.showLeftButton) 1f else 0f,
-                    animationSpec = tween(buttonDuration, easing = LinearOutSlowInEasing),
-                    label = "leftButtonScale",
-                )
-                AnimatedVisibility(
-                    visible = state.showLeftButton,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(top = topInset),
-                    enter = fadeIn(tween(buttonDuration, easing = LinearOutSlowInEasing)),
-                    exit = fadeOut(tween(buttonDuration, easing = LinearOutSlowInEasing)),
-                ) {
-                    Box(
-                        Modifier.graphicsLayer {
-                            scaleX = leftButtonScale.value
-                            scaleY = leftButtonScale.value
-                        }
-                    ) {
-                        ActionBarButton(
-                            onClick = { state.onLeftClick?.invoke() },
-                            enabled = actionsEnabled,
-                            backdrop = chromeBackdrop,
-                            content = buttonContent,
-                        )
-                    }
-                }
-            }
-
-            displayedRightButton?.let { buttonContent ->
-                // Right button
-                val rightButtonScale = animateFloatAsState(
-                    targetValue = if (state.showRightButton) 1f else 0f,
-                    animationSpec = tween(buttonDuration, easing = LinearOutSlowInEasing),
-                    label = "rightButtonScale",
-                )
-                AnimatedVisibility(
-                    visible = state.showRightButton,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = topInset),
-                    enter = fadeIn(tween(buttonDuration, easing = LinearOutSlowInEasing)),
-                    exit = fadeOut(tween(buttonDuration, easing = LinearOutSlowInEasing)),
-                ) {
-                    Box(
-                        Modifier.graphicsLayer {
-                            scaleX = rightButtonScale.value
-                            scaleY = rightButtonScale.value
-                        }
-                    ) {
-                        ActionBarButton(
-                            onClick = { state.onRightClick?.invoke() },
-                            enabled = actionsEnabled,
-                            backdrop = chromeBackdrop,
-                            content = buttonContent,
-                        )
-                    }
-                }
-            }
+            LiquidTopBar(
+                title = state.title,
+                titleDirection = state.titleDirection,
+                baseTitleAlpha = baseTitleAlpha,
+                isOccluded = isOccluded,
+                leftButtonAlpha = leftButtonAlpha,
+                rightButtonAlpha = rightButtonAlpha,
+                showLeftButton = state.showLeftButton,
+                showRightButton = state.showRightButton,
+                actionsEnabled = actionsEnabled,
+                onLeftClick = state.onLeftClick,
+                onRightClick = state.onRightClick,
+                onLeftButtonBoundsChanged = onLeftButtonBoundsChanged,
+                onRightButtonBoundsChanged = onRightButtonBoundsChanged,
+                backdrop = chromeBackdrop,
+                topInset = topInset,
+                titleHorizontalPadding = titleHorizontalPadding,
+                leftButton = leftButton,
+                rightButton = rightButton,
+                overlayContent = overlayContent,
+            )
         }
 
-        // 第 4 层：Dialog host 必须高于顶栏按钮层，避免点击穿透。
+        // Layer 4: dialog & popover host
         Box(
             modifier = Modifier
                 .fillMaxSize()

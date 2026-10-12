@@ -124,6 +124,13 @@ interface Agent : AgentControl {
      * TerminalSessionPool.closeAll()），防止破坏其它正在后台并发运行的 Agent。
      */
     fun release()
+
+    /**
+     * 绑定当前会话执行所使用的 LLM 配置 ID。
+     *
+     * 传空串表示清除会话级专属绑定，由底层引擎回退读取全局激活配置。
+     */
+    fun bindConfig(configId: String)
 }
 
 /**

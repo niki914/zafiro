@@ -125,6 +125,7 @@ object ConversationRepo {
         id: String,
         firstUserInput: String,
         title: String? = null,
+        configId: String = "",
         now: Long = System.currentTimeMillis(),
     ): String {
         val startedAtMs = System.currentTimeMillis()
@@ -142,7 +143,7 @@ object ConversationRepo {
                 turnCount = 0,
                 draftText = "",
                 leafId = null,
-                configId = "",
+                configId = configId,
             ),
         )
         Logger.i(

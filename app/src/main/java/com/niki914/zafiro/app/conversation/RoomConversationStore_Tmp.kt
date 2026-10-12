@@ -30,8 +30,12 @@ class RoomConversationStore_Tmp : ConversationStore_Tmp {
 
     override suspend fun exists(id: ConversationId): Boolean = ConversationRepo.exists(id.value)
 
-    override suspend fun create(id: ConversationId, firstUserInput: String) {
-        ConversationRepo.createConversation(id = id.value, firstUserInput = firstUserInput)
+    override suspend fun create(id: ConversationId, firstUserInput: String, configId: String) {
+        ConversationRepo.createConversation(
+            id = id.value,
+            firstUserInput = firstUserInput,
+            configId = configId,
+        )
     }
 
     @Deprecated("Dead method: draft has migrated to XRepo global storage.")
