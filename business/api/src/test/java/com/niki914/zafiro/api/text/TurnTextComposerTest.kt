@@ -23,7 +23,10 @@ class TurnTextComposerTest {
         val cut = TurnTextComposer.cutLeadingBlocks("$block\n\n看一下这个")
         assertEquals("看一下这个", cut.text)
         assertEquals(listOf("files"), cut.blocks.map { it.tag })
-        assertEquals(listOf(FileRef(pdf), FileRef(logsDir)), FilesBlock.parse(cut.blocks.single().body))
+        assertEquals(
+            listOf(FileRef(pdf), FileRef(logsDir)),
+            FilesBlock.parse(cut.blocks.single().body)
+        )
     }
 
     @Test
@@ -42,7 +45,10 @@ class TurnTextComposerTest {
     @Test
     fun `block with a single file still parses`() {
         val block = FilesBlock.block(listOf(FileRef(pdf)))!!
-        assertEquals(listOf(FileRef(pdf)), FilesBlock.parse(TurnTextComposer.cutLeadingBlocks(block).blocks.single().body))
+        assertEquals(
+            listOf(FileRef(pdf)),
+            FilesBlock.parse(TurnTextComposer.cutLeadingBlocks(block).blocks.single().body)
+        )
     }
 
     @Test
@@ -139,6 +145,9 @@ class TurnTextComposerTest {
     @Test
     fun `hand written payloads without prefixes are ignored`() {
         // 用户自己在正文里敲的裸列表不是引用：没有前缀就不认
-        assertEquals(emptyList<FileRef>(), FilesBlock.parse("The user attached these paths:\n- $pdf\n- "))
+        assertEquals(
+            emptyList<FileRef>(),
+            FilesBlock.parse("The user attached these paths:\n- $pdf\n- ")
+        )
     }
 }

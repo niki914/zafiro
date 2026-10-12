@@ -152,8 +152,8 @@ class LaunchAppBuiltin : BuiltinTool() {
                 val stderr = outcome.result.stderr.toByteArray().decodeToString()
                 val output = "$stdout\n$stderr"
                 val hasError = output.contains("Error:", ignoreCase = true) ||
-                    output.contains("Permission Denial", ignoreCase = true) ||
-                    output.contains("SecurityException", ignoreCase = true)
+                        output.contains("Permission Denial", ignoreCase = true) ||
+                        output.contains("SecurityException", ignoreCase = true)
                 if (!hasError) {
                     Logger.d(LOG_TAG, "startApp succeeded via identity=$identity")
                     return LaunchEvent.Launched

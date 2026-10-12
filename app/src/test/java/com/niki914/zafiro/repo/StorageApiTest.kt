@@ -56,7 +56,10 @@ class StorageApiTest {
         val dir = File(filesDir, "downloads")
         assertTrue(dir.exists())
         assertEquals(0, dir.walkTopDown().count { it.isFile })
-        assertEquals(0L, XRepo.storage.usage().associateBy { it.kind }[StorageKind.Downloads]?.bytes)
+        assertEquals(
+            0L,
+            XRepo.storage.usage().associateBy { it.kind }[StorageKind.Downloads]?.bytes
+        )
     }
 
     @Test

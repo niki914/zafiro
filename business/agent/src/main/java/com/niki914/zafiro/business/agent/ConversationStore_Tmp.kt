@@ -30,7 +30,8 @@ interface ConversationStore_Tmp {
 
     /** 死接口（T3 遗留）：草稿已改用 XRepo 全局管理，禁止再按会话保存草稿。 */
     @Deprecated("Dead method: draft has migrated to XRepo global storage.")
-    suspend fun saveDraft(id: ConversationId, draftText: String) {}
+    suspend fun saveDraft(id: ConversationId, draftText: String) {
+    }
 
     /** 记录最后打开的会话；null = 清空。 */
     suspend fun setLastOpened(id: ConversationId?)
@@ -41,7 +42,8 @@ interface ConversationStore_Tmp {
         source: Flow<OkiaConversation?>,
         status: Flow<AgentState>,
         conversationId: () -> String?,
-    ) {}
+    ) {
+    }
 }
 
 /**

@@ -10,14 +10,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -44,27 +42,26 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
 import com.niki914.uikit.base.LocalAppDarkTheme
@@ -227,15 +224,32 @@ internal fun LiquidPopoverSurface(
                 when (alignment) {
                     PopoverAlignment.BottomCenter -> {
                         val left = (screenWidthPx - defaultTitleWidthPx) / 2f
-                        Rect(left, statusBarTopPx + 4f, left + defaultTitleWidthPx, statusBarTopPx + 4f + defaultButtonSizePx)
+                        Rect(
+                            left,
+                            statusBarTopPx + 4f,
+                            left + defaultTitleWidthPx,
+                            statusBarTopPx + 4f + defaultButtonSizePx
+                        )
                     }
+
                     PopoverAlignment.BottomEnd -> {
                         val right = screenWidthPx - with(density) { 12.dp.toPx() }
-                        Rect(right - defaultButtonSizePx, statusBarTopPx + 4f, right, statusBarTopPx + 4f + defaultButtonSizePx)
+                        Rect(
+                            right - defaultButtonSizePx,
+                            statusBarTopPx + 4f,
+                            right,
+                            statusBarTopPx + 4f + defaultButtonSizePx
+                        )
                     }
+
                     PopoverAlignment.BottomStart -> {
                         val left = with(density) { 12.dp.toPx() }
-                        Rect(left, statusBarTopPx + 4f, left + defaultButtonSizePx, statusBarTopPx + 4f + defaultButtonSizePx)
+                        Rect(
+                            left,
+                            statusBarTopPx + 4f,
+                            left + defaultButtonSizePx,
+                            statusBarTopPx + 4f + defaultButtonSizePx
+                        )
                     }
                 }
             }
@@ -249,9 +263,13 @@ internal fun LiquidPopoverSurface(
                 PopoverAlignment.BottomEnd -> {
                     (anchor.right - titleButtonClearancePx).coerceAtLeast(minPopoverWidthPx)
                 }
+
                 PopoverAlignment.BottomStart -> {
-                    (constraints.maxWidth - titleButtonClearancePx - anchor.left).coerceAtLeast(minPopoverWidthPx)
+                    (constraints.maxWidth - titleButtonClearancePx - anchor.left).coerceAtLeast(
+                        minPopoverWidthPx
+                    )
                 }
+
                 PopoverAlignment.BottomCenter -> {
                     val availableHalf = minOf(
                         anchor.center.x - titleButtonClearancePx,
@@ -281,8 +299,9 @@ internal fun LiquidPopoverSurface(
                 )
             }
 
-            val screenAvailableHeightPx = (constraints.maxHeight - anchor.top.toInt() - with(density) { 16.dp.roundToPx() })
-                .coerceAtLeast(with(density) { 100.dp.roundToPx() })
+            val screenAvailableHeightPx =
+                (constraints.maxHeight - anchor.top.toInt() - with(density) { 16.dp.roundToPx() })
+                    .coerceAtLeast(with(density) { 100.dp.roundToPx() })
             // 超过 5 项滚动时，将展开卡片高度约束在约 5.5 项高度（256.dp），使底部露半截提示可滚动，并激活内部纵向滚动
             val maxAvailableHeightPx = if (scrollable) {
                 minOf(screenAvailableHeightPx, with(density) { 256.dp.roundToPx() })
@@ -301,13 +320,16 @@ internal fun LiquidPopoverSurface(
             val targetWidthPx = contentPlaceable.width.toFloat()
             val targetHeightPx = contentPlaceable.height.toFloat()
 
-            val anchorWidthPx = if (anchor.width > 0f) anchor.width else with(density) { 48.dp.toPx() }
-            val anchorHeightPx = if (anchor.height > 0f) anchor.height else with(density) { 48.dp.toPx() }
+            val anchorWidthPx =
+                if (anchor.width > 0f) anchor.width else with(density) { 48.dp.toPx() }
+            val anchorHeightPx =
+                if (anchor.height > 0f) anchor.height else with(density) { 48.dp.toPx() }
 
             // 尺寸与圆角在锚点与菜单之间平滑演变（悬浮球同款 Morph 算法）
             val currentWidthPx = lerp(anchorWidthPx, targetWidthPx, progress)
             val currentHeightPx = lerp(anchorHeightPx, targetHeightPx, progress)
-            val currentRadiusPx = lerp(anchorHeightPx / 2f, with(density) { 20.dp.toPx() }, progress)
+            val currentRadiusPx =
+                lerp(anchorHeightPx / 2f, with(density) { 20.dp.toPx() }, progress)
 
             // 绝对锚点贴齐：BottomEnd 严格锁定在 (anchor.right, anchor.top)，不加额外位移 margin
             val currentLeft = when (alignment) {
@@ -321,13 +343,14 @@ internal fun LiquidPopoverSurface(
             // 构造展开态形态卡片
             val cardMeasurables = subcompose("menu_surface_card") {
                 val panelShape = G2FieldShape(with(density) { currentRadiusPx.toDp() })
-                val contentAlpha = if (progress > 0.25f) ((progress - 0.25f) / 0.75f).coerceIn(0f, 1f) else 0f
+                val contentAlpha =
+                    if (progress > 0.25f) ((progress - 0.25f) / 0.75f).coerceIn(0f, 1f) else 0f
 
                 // 默认颜色与 ActionBarButton 保持 100% 一致（透明白/灰色），支持自定义传入
                 val resolvedSurfaceColor = containerColor ?: (
-                    if (isDarkTheme) Color(0xFFAFAFAF).copy(alpha = 0.15f)
-                    else Color.White.copy(alpha = 0.22f)
-                )
+                        if (isDarkTheme) Color(0xFFAFAFAF).copy(alpha = 0.15f)
+                        else Color.White.copy(alpha = 0.22f)
+                        )
 
                 Box(
                     modifier = Modifier

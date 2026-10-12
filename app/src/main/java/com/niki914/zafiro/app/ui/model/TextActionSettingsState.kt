@@ -64,9 +64,14 @@ sealed interface TextActionSettingsIntent {
 }
 
 sealed interface TextActionInlineError {
-    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) : TextActionInlineError
-    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) : TextActionInlineError
-    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) : TextActionInlineError
+    data class LoadFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        TextActionInlineError
+
+    data class SaveFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        TextActionInlineError
+
+    data class DeleteFailed(val message: String?, @StringRes val fallbackResId: Int) :
+        TextActionInlineError
 }
 
 sealed interface TextActionSettingsEffect {
@@ -364,7 +369,8 @@ class TextActionSettingsViewModel :
         val currentItem = currentState.items.getOrNull(editingIndex) ?: return
         updateState { copy(isSaving = true) }
         try {
-            val updatedItems = currentState.items.filterIndexed { index, _ -> index != editingIndex }
+            val updatedItems =
+                currentState.items.filterIndexed { index, _ -> index != editingIndex }
             XRepo.textActions.delete(editingIndex)
             Logger.i(LOG_TAG, "deleteCurrent succeeded action=${currentItem.name}")
             updateState {

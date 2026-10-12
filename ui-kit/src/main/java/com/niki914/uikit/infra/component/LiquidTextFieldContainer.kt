@@ -30,12 +30,12 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -207,7 +207,8 @@ internal fun LiquidTextFieldContainer(
                 // 展开态文本区 top padding = 按钮自身 bottom padding
                 //（ActionBarButton 内建 vertical 12dp），上下留白对称
                 Row(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .then(if (expandedLayout) Modifier.padding(top = 12.dp) else Modifier),
                     verticalAlignment = contentVerticalAlignment,
                 ) {

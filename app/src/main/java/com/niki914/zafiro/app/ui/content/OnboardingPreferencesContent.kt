@@ -225,7 +225,12 @@ private fun previewState() = OnboardingPreferencesUiState(
     storageGranted = false,
 )
 
-@Preview(name = "Onboarding Permissions Light", showBackground = true, widthDp = 420, heightDp = 900)
+@Preview(
+    name = "Onboarding Permissions Light",
+    showBackground = true,
+    widthDp = 420,
+    heightDp = 900
+)
 @Composable
 private fun OnboardingPreferencesLightPreview() {
     BaseTheme(darkTheme = false, dynamicColor = false) {

@@ -115,7 +115,14 @@ fun CrashReportDialog(
                 text = stringResource(R.string.crash_dialog_copy),
                 onClick = {
                     scope.launch {
-                        clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, report.formatAsMarkdown())))
+                        clipboard.setClipEntry(
+                            ClipEntry(
+                                ClipData.newPlainText(
+                                    null,
+                                    report.formatAsMarkdown()
+                                )
+                            )
+                        )
                     }
                     Toast.makeText(
                         context,

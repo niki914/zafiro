@@ -46,7 +46,8 @@ class TurnNotificationManagerTest {
         context = ApplicationProvider.getApplicationContext()
         fakeChannelManager = FakeNotificationChannelManager(context)
         mockActivity = Robolectric.buildActivity(Activity::class.java).setup().get()
-        fakeAppService = FakeApplicationService(context as Application, currentActivity = mockActivity)
+        fakeAppService =
+            FakeApplicationService(context as Application, currentActivity = mockActivity)
 
         TurnNotificationManager.init(context as Application)
         XRepo.installStoreForTest(FakeDomainSettingsStore())
@@ -99,7 +100,10 @@ class TurnNotificationManagerTest {
         )
 
         assertEquals(1, fakeChannelManager.postedNotifications.size)
-        assertEquals(AppNotificationChannel.Alerts, fakeChannelManager.postedNotifications.first().channel)
+        assertEquals(
+            AppNotificationChannel.Alerts,
+            fakeChannelManager.postedNotifications.first().channel
+        )
     }
 
     @Test
@@ -147,7 +151,9 @@ class TurnNotificationManagerTest {
         override fun getActivity(): Activity? = currentActivity
         override suspend fun awaitForeground(timeoutMs: Long): Activity? = currentActivity
         override suspend fun awaitNextResume(timeoutMs: Long): Boolean = true
-        override suspend fun requestRuntimePermission(permission: String): RuntimeDialogResult = RuntimeDialogResult.GRANTED
+        override suspend fun requestRuntimePermission(permission: String): RuntimeDialogResult =
+            RuntimeDialogResult.GRANTED
+
         override fun installPermissionLauncher(launcher: ActivityResultLauncher<String>) = Unit
         override fun onRuntimePermissionResult(granted: Boolean) = Unit
     }
@@ -156,6 +162,7 @@ class TurnNotificationManagerTest {
         private val appContext: Context,
     ) : NotificationChannelManager {
         data class PostCall(val channel: AppNotificationChannel, val notificationId: Int)
+
         val postedNotifications = mutableListOf<PostCall>()
         val cancelledNotifications = mutableListOf<Int>()
 

@@ -16,11 +16,11 @@ import com.niki914.libterm.runtime.TermResult
 import com.niki914.libterm.runtime.TerminalTextChunk
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.chat.agentic.AgentTenantContext
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool.completeAsync
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool.readSession
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stderrText
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stdoutText
-import com.niki914.zafiro.chat.agentic.AgentTenantContext
 import com.niki914.zafiro.util.ToolOutputTruncator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -31,9 +31,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import java.io.File
 import java.util.UUID
 import kotlin.random.Random
-import java.io.File
 
 object TerminalSessionPool {
     private const val LOG_TAG = "niki914_zafiro_TerminalSessionPool"
@@ -42,6 +42,7 @@ object TerminalSessionPool {
     private const val PUBLIC_HANDLE_LENGTH = 4
     private const val MAX_HANDLE_GENERATION_ATTEMPTS = 64
     private const val DEFAULT_INTERACTIVE_READ_MAX_BYTES = 8192
+
     // 与 ToolOutputTruncator.DEFAULT_MAX_BYTES 对齐；readSession 截断由统一入口处理并导出全量
     // FIXME(async-refactor): 异步轮询链路重构时一并收口 readSession 的上限与导出语义
     private const val DEFAULT_READ_MAX_BYTES = ToolOutputTruncator.DEFAULT_MAX_BYTES
@@ -244,7 +245,8 @@ object TerminalSessionPool {
             sshOptions = sshOptions,
         )) {
             is OpenResult.Success -> {
-                val callerTenantId = kotlin.coroutines.coroutineContext[AgentTenantContext]?.tenantId
+                val callerTenantId =
+                    kotlin.coroutines.coroutineContext[AgentTenantContext]?.tenantId
                 val entry = TerminalSessionEntry(
                     handle = handle,
                     identity = publicIdentity,
@@ -308,7 +310,10 @@ object TerminalSessionPool {
         val entry = synchronized(lock) { sessions[session] } ?: return null
         val callerTenantId = kotlin.coroutines.coroutineContext[AgentTenantContext]?.tenantId
         if (callerTenantId != null && callerTenantId != entry.tenantId) {
-            Logger.w(LOG_TAG, "access denied: session $session belongs to tenant=${entry.tenantId}, caller=$callerTenantId")
+            Logger.w(
+                LOG_TAG,
+                "access denied: session $session belongs to tenant=${entry.tenantId}, caller=$callerTenantId"
+            )
             return null
         }
         return entry
@@ -433,7 +438,8 @@ object TerminalSessionPool {
         timeoutMs: Long,
     ): TerminalCommandOutcome {
         val startTimeMs = System.currentTimeMillis()
-        val entry = getTenantSession(session) ?: return TerminalCommandOutcome.SessionNotFound(session)
+        val entry =
+            getTenantSession(session) ?: return TerminalCommandOutcome.SessionNotFound(session)
         val executeLock = synchronized(lock) {
             executionLocks.getOrPut(session) { Mutex() }
         }

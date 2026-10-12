@@ -86,7 +86,8 @@ internal object HostConversationProjector {
         val projected = project(turn, resolveErrorMessage)
         val sb = StringBuilder()
         if (!projected.thinking.isNullOrBlank()) {
-            val quoted = projected.thinking.lines().joinToString("\n") { if (it.isEmpty()) ">" else "> $it" }
+            val quoted =
+                projected.thinking.lines().joinToString("\n") { if (it.isEmpty()) ">" else "> $it" }
             sb.append(quoted).append("\n\n")
         }
         for (tool in projected.tools) {

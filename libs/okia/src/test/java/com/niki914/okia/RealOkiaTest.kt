@@ -12,8 +12,8 @@ import com.niki914.okia.fake.FakeProtocolMapper
 import com.niki914.okia.fake.StubMcpClient
 import com.niki914.okia.loop.AgentLoop
 import com.niki914.okia.loop.CompletionReason
-import com.niki914.okia.loop.LoopRequest
 import com.niki914.okia.loop.LoopOptions
+import com.niki914.okia.loop.LoopRequest
 import com.niki914.okia.loop.RealAgentLoop
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.message.AssistantMessage
@@ -107,7 +107,13 @@ class RealOkiaTest {
         )
         val result = okia.send(
             "hi",
-            options = TurnOptions(loopOptions = LoopOptions(turnRetryPolicy = RetryPolicy(maxAttempts = 3)))
+            options = TurnOptions(
+                loopOptions = LoopOptions(
+                    turnRetryPolicy = RetryPolicy(
+                        maxAttempts = 3
+                    )
+                )
+            )
         ) { event ->
             if (event is TurnEvent.TextDelta) throw IllegalStateException("ui boom")
         }

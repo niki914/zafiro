@@ -7,32 +7,29 @@ import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
-import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Conversation
-import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.ui.model.TextPacer
+import com.niki914.zafiro.app.ui.model.summariesOf
 import com.niki914.zafiro.business.files.FileAttachResult
 import com.niki914.zafiro.business.files.FilesService
-import com.niki914.zafiro.app.ui.model.summariesOf
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
-import java.io.File
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.io.File
 import kotlin.coroutines.resume
 
 internal data class HomeChatConfigDependencies(
@@ -130,9 +127,11 @@ class HomeChatViewModel internal constructor(
                 refreshSavedConfigs()
                 updateState { copy(isConfigMenuVisible = true) }
             }
+
             HomeChatIntent.DismissConfigMenu -> {
                 updateState { copy(isConfigMenuVisible = false) }
             }
+
             is HomeChatIntent.SelectConfig -> {
                 updateState {
                     copy(
@@ -147,11 +146,15 @@ class HomeChatViewModel internal constructor(
                         runCatching {
                             conversations.updateConfigId(currentId, intent.id)
                         }.onFailure { throwable ->
-                            Logger.w(LOG_TAG, "updateConfigId failed id=$currentId: ${throwable.message}")
+                            Logger.w(
+                                LOG_TAG,
+                                "updateConfigId failed id=$currentId: ${throwable.message}"
+                            )
                         }
                     }
                 }
             }
+
             HomeChatIntent.RefreshConfigs -> {
                 refreshSavedConfigs()
             }
@@ -277,10 +280,12 @@ class HomeChatViewModel internal constructor(
                         textPacer.syncReleased((last.blocks[index] as HomeChatBlock.Text).text.length)
                         pacedTextBlockId = "${last.id}:$index"
                     }
+
                     is HomeChatBlock.Thinking -> {
                         thinkingPacer.syncReleased((last.blocks[index] as HomeChatBlock.Thinking).text.length)
                         pacedThinkingBlockId = "${last.id}:$index"
                     }
+
                     else -> Unit
                 }
             }
@@ -292,6 +297,7 @@ class HomeChatViewModel internal constructor(
             isLoadedConversation -> currentState.currentConversationTitle
             id != currentState.currentConversationId -> conversation.turns.firstOrNull()?.userText
                 ?.let(ConversationFormatter::titleFromFirstInput)?.takeIf { it.isNotBlank() }
+
             else -> currentState.currentConversationTitle
         }
         val isFirstConversationAssignment = currentState.currentConversationId == null && id != null
@@ -342,7 +348,9 @@ class HomeChatViewModel internal constructor(
             val turnIndex = turns.indexOfLast { it.id == turnId }
             if (turnIndex < 0) return@updateState this
             val turn = turns[turnIndex]
-            if (turn.blocks.getOrNull(blockIndex)?.let { (it is HomeChatBlock.Text) == isText } != true) {
+            if (turn.blocks.getOrNull(blockIndex)
+                    ?.let { (it is HomeChatBlock.Text) == isText } != true
+            ) {
                 return@updateState this
             }
             copy(
@@ -374,7 +382,9 @@ class HomeChatViewModel internal constructor(
             copy(
                 expandedThinking = if (newActiveKey == null) expandedThinking
                 else (expandedThinking - autoExpandedThinking) + newActiveKey,
-                autoExpandedThinking = if (newActiveKey == null) autoExpandedThinking else setOf(newActiveKey),
+                autoExpandedThinking = if (newActiveKey == null) autoExpandedThinking else setOf(
+                    newActiveKey
+                ),
                 activeThinkingKey = activeKeys.lastOrNull(),
             )
         }
@@ -435,8 +445,10 @@ class HomeChatViewModel internal constructor(
             is FileAttachResult.Ok -> addFile(result.file)
             FileAttachResult.Unresolvable ->
                 sendEffect(HomeChatEffect.FileAttachFailed(FileAttachReason.Unresolvable))
+
             FileAttachResult.NoPermission ->
                 sendEffect(HomeChatEffect.FileAttachFailed(FileAttachReason.NoPermission))
+
             FileAttachResult.Unreadable ->
                 sendEffect(HomeChatEffect.FileAttachFailed(FileAttachReason.Unreadable))
         }
@@ -658,7 +670,10 @@ class HomeChatViewModel internal constructor(
         val currentId = agent.conversation.value.id?.value ?: return
         val result = conversations.forkAtTurn(currentId, turnId.toInt(), ForkKind.Regenerate)
             ?: return
-        Logger.i(LOG_TAG, "regenerate fork sourceId=$currentId turnId=$turnId newId=${result.newConversationId}")
+        Logger.i(
+            LOG_TAG,
+            "regenerate fork sourceId=$currentId turnId=$turnId newId=${result.newConversationId}"
+        )
         loadConversation(result.newConversationId)
         agent.updateDraft { draft ->
             draft.copy(
@@ -677,7 +692,10 @@ class HomeChatViewModel internal constructor(
         val currentId = agent.conversation.value.id?.value ?: return
         val result = conversations.forkAtTurn(currentId, turnId.toInt(), ForkKind.Fork)
             ?: return
-        Logger.i(LOG_TAG, "fork sourceId=$currentId turnId=$turnId newId=${result.newConversationId}")
+        Logger.i(
+            LOG_TAG,
+            "fork sourceId=$currentId turnId=$turnId newId=${result.newConversationId}"
+        )
         loadConversation(result.newConversationId)
     }
 
@@ -686,7 +704,10 @@ class HomeChatViewModel internal constructor(
         val currentId = agent.conversation.value.id?.value ?: return
         val result = conversations.forkAtTurn(currentId, turnId.toInt(), ForkKind.Rewind)
             ?: return
-        Logger.i(LOG_TAG, "rewind sourceId=$currentId turnId=$turnId newId=${result.newConversationId}")
+        Logger.i(
+            LOG_TAG,
+            "rewind sourceId=$currentId turnId=$turnId newId=${result.newConversationId}"
+        )
         loadConversation(result.newConversationId)
         agent.updateDraft { draft ->
             draft.copy(

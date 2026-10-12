@@ -31,13 +31,17 @@ internal class PermissionEngine(
         for (channel in channels) {
             val handler = handlers[channel]
             if (handler == null) {
-                attempts += Attempt(permission, channel, PermissionState.UNAVAILABLE,
-                    detail = "handler not registered")
+                attempts += Attempt(
+                    permission, channel, PermissionState.UNAVAILABLE,
+                    detail = "handler not registered"
+                )
                 continue
             }
             if (currentApi < handler.minSdk.api) {
-                attempts += Attempt(permission, channel, PermissionState.UNAVAILABLE,
-                    detail = "requires API ${handler.minSdk.api} (device: $currentApi)")
+                attempts += Attempt(
+                    permission, channel, PermissionState.UNAVAILABLE,
+                    detail = "requires API ${handler.minSdk.api} (device: $currentApi)"
+                )
                 continue
             }
             val state = try {

@@ -30,7 +30,7 @@ class LlmStreamEventMapperTest {
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnStarted("hello"),
             startedAtMs = 0L,
-            )
+        )
         assertEquals(LlmStreamEvent.RoundStarted, result)
     }
 
@@ -40,13 +40,13 @@ class LlmStreamEventMapperTest {
         LlmStreamEventMapper.map(
             TurnEvent.TextStarted(0, AssistantMessage(content = listOf(ContentBlock.Text("he")))),
             startedAtMs = 0L,
-            )
+        )
         val partial = AssistantMessage(content = listOf(ContentBlock.Text("helo")))
         val startedAtMs = System.currentTimeMillis() - 500L
         val result = LlmStreamEventMapper.map(
             TurnEvent.TextDelta(index = 0, delta = "lo", partial = partial),
             startedAtMs = startedAtMs,
-            )
+        )
         val delta = result as LlmStreamEvent.TextDelta
         assertEquals("lo", delta.delta)
         assertEquals("helo", delta.fullText)
@@ -60,7 +60,7 @@ class LlmStreamEventMapperTest {
         val started = LlmStreamEventMapper.map(
             TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("你好")))),
             0L,
-                    ) as LlmStreamEvent.TextDelta
+        ) as LlmStreamEvent.TextDelta
         assertEquals("你好", started.delta)
         assertEquals("你好", started.fullText)
 
@@ -72,7 +72,7 @@ class LlmStreamEventMapperTest {
                 AssistantMessage(listOf(ContentBlock.Text("你好！有什么")))
             ),
             0L,
-                    ) as LlmStreamEvent.TextDelta
+        ) as LlmStreamEvent.TextDelta
         assertEquals("！有什么", next.delta)
         assertEquals("你好！有什么", next.fullText)
 
@@ -86,14 +86,14 @@ class LlmStreamEventMapperTest {
         val result = LlmStreamEventMapper.map(
             TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("hi")))),
             0L,
-                    ) as LlmStreamEvent.TextDelta
+        ) as LlmStreamEvent.TextDelta
         assertTrue(result.isSegmentStart)
 
         // 后续 Delta 非段起点
         val next = LlmStreamEventMapper.map(
             TurnEvent.TextDelta(0, "!", AssistantMessage(listOf(ContentBlock.Text("hi!")))),
             0L,
-                    ) as LlmStreamEvent.TextDelta
+        ) as LlmStreamEvent.TextDelta
         assertFalse(next.isSegmentStart)
     }
 
@@ -102,7 +102,7 @@ class LlmStreamEventMapperTest {
         LlmStreamEventMapper.map(
             TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("first")))),
             0L,
-                    )
+        )
         assertNull(
             LlmStreamEventMapper.map(
                 TurnEvent.TextEnded(
@@ -117,7 +117,7 @@ class LlmStreamEventMapperTest {
         val next = LlmStreamEventMapper.map(
             TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("second")))),
             0L,
-                    ) as LlmStreamEvent.TextDelta
+        ) as LlmStreamEvent.TextDelta
         assertEquals("second", next.delta)
     }
 
@@ -126,16 +126,16 @@ class LlmStreamEventMapperTest {
         LlmStreamEventMapper.map(
             TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("answer1")))),
             0L,
-                    )
+        )
         LlmStreamEventMapper.map(
             TurnEvent.TurnCompleted(AssistantMessage(listOf(ContentBlock.Text("answer1")))),
             0L,
-                    )
+        )
 
         val next = LlmStreamEventMapper.map(
             TurnEvent.TextStarted(0, AssistantMessage(listOf(ContentBlock.Text("answer2")))),
             0L,
-                    ) as LlmStreamEvent.TextDelta
+        ) as LlmStreamEvent.TextDelta
         assertEquals("answer2", next.delta)
         assertEquals("answer2", next.fullText)
     }
@@ -148,7 +148,7 @@ class LlmStreamEventMapperTest {
         val result = LlmStreamEventMapper.map(
             TurnEvent.ToolRunning(0, call, AssistantMessage(emptyList())),
             0L,
-                    )
+        )
         val running = result as LlmStreamEvent.ToolRunning
         assertEquals("c1", running.call.callId)
         assertEquals("search", running.call.name)
@@ -165,7 +165,7 @@ class LlmStreamEventMapperTest {
                 AssistantMessage(emptyList())
             ),
             0L,
-                    )
+        )
         val succeeded = result as LlmStreamEvent.ToolSucceeded
         assertEquals("payload", succeeded.outputText)
     }
@@ -181,7 +181,7 @@ class LlmStreamEventMapperTest {
                 AssistantMessage(emptyList())
             ),
             0L,
-                    )
+        )
         assertEquals(LlmStreamEvent.ToolSucceeded::class, result!!::class)
     }
 
@@ -196,7 +196,7 @@ class LlmStreamEventMapperTest {
                 AssistantMessage(emptyList())
             ),
             0L,
-                    )
+        )
         val failed = result as LlmStreamEvent.ToolFailed
         assertEquals("denied", failed.message)
     }
@@ -212,7 +212,7 @@ class LlmStreamEventMapperTest {
                 AssistantMessage(emptyList())
             ),
             0L,
-                    )
+        )
         val failed = result as LlmStreamEvent.ToolFailed
         assertEquals("boom", failed.message)
         assertEquals("detail", failed.resultText)
@@ -229,7 +229,7 @@ class LlmStreamEventMapperTest {
                 AssistantMessage(emptyList())
             ),
             0L,
-                    )
+        )
         assertEquals("failed", (result as LlmStreamEvent.ToolFailed).message)
     }
 
@@ -243,7 +243,7 @@ class LlmStreamEventMapperTest {
         val started = LlmStreamEventMapper.map(
             TurnEvent.ToolCallStarted(0, partial, callId = "c1", toolName = "terminal"),
             0L,
-                    )
+        )
         val pending = started as LlmStreamEvent.ToolPending
         assertEquals("c1", pending.call.callId)
         assertEquals("terminal", pending.call.name)
@@ -262,7 +262,7 @@ class LlmStreamEventMapperTest {
         val result = LlmStreamEventMapper.map(
             TurnEvent.RetryScheduled(1, 3, 100L, "rate limit"),
             0L,
-                    )
+        )
         val mapped = result as LlmStreamEvent.Retrying
         assertEquals(1, mapped.attempt)
         assertEquals(3, mapped.maxAttempts)
@@ -308,7 +308,7 @@ class LlmStreamEventMapperTest {
         val replay = LlmStreamEventMapper.map(
             TurnEvent.TextStarted(0, assistantPartial("fresh text")),
             0L,
-                    ) as LlmStreamEvent.TextDelta
+        ) as LlmStreamEvent.TextDelta
         assertEquals("fresh text", replay.delta)
     }
 
@@ -326,7 +326,7 @@ class LlmStreamEventMapperTest {
         val result = LlmStreamEventMapper.map(
             TurnEvent.ThinkingStarted(1, thinkingPartial("deep think")),
             0L,
-                    )
+        )
         assertEquals(LlmStreamEvent.ThinkingStarted(0, "deep think"), result)
     }
 
@@ -336,11 +336,11 @@ class LlmStreamEventMapperTest {
         LlmStreamEventMapper.map(
             TurnEvent.ThinkingStarted(1, thinkingPartial("dee")),
             0L,
-                    )
+        )
         val result = LlmStreamEventMapper.map(
             TurnEvent.ThinkingDelta(1, "p", thinkingPartial("deep think")),
             0L,
-                    )
+        )
         assertEquals(LlmStreamEvent.ThinkingStarted(0, "deep think"), result)
     }
 
@@ -350,11 +350,11 @@ class LlmStreamEventMapperTest {
         LlmStreamEventMapper.map(
             TurnEvent.ThinkingStarted(1, thinkingPartial("deep think")),
             0L,
-                    )
+        )
         val result = LlmStreamEventMapper.map(
             TurnEvent.ThinkingEnded(1, "deep think", thinkingPartial("deep think")),
             0L,
-                    )
+        )
         assertEquals(LlmStreamEvent.ThinkingEnded(0, "deep think"), result)
     }
 
@@ -365,16 +365,16 @@ class LlmStreamEventMapperTest {
         val first = LlmStreamEventMapper.map(
             TurnEvent.ThinkingStarted(0, thinkingPartial("first block")),
             0L,
-                    )
+        )
         LlmStreamEventMapper.map(
             TurnEvent.ThinkingEnded(0, "first block", thinkingPartial("first block")),
             0L,
-                    )
+        )
         // 第二轮（工具轮后 StreamState 重建）：index 又回到 0，必须是新 id
         val second = LlmStreamEventMapper.map(
             TurnEvent.ThinkingStarted(0, thinkingPartial("second block")),
             0L,
-                    )
+        )
         assertEquals(LlmStreamEvent.ThinkingStarted(0, "first block"), first)
         assertEquals(LlmStreamEvent.ThinkingStarted(1, "second block"), second)
     }
@@ -386,19 +386,19 @@ class LlmStreamEventMapperTest {
             LlmStreamEventMapper.map(
                 TurnEvent.ThinkingStarted(0, thinkingPartial("")),
                 0L,
-                            )
+            )
         )
         assertNull(
             LlmStreamEventMapper.map(
                 TurnEvent.ThinkingDelta(0, "", thinkingPartial("  ")),
                 0L,
-                            )
+            )
         )
         assertNull(
             LlmStreamEventMapper.map(
                 TurnEvent.ThinkingEnded(0, "", thinkingPartial("")),
                 0L,
-                            )
+            )
         )
     }
 
@@ -408,11 +408,11 @@ class LlmStreamEventMapperTest {
         LlmStreamEventMapper.map(
             TurnEvent.ThinkingStarted(3, thinkingPartial("half thought")),
             0L,
-                    )
+        )
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnAborted(AssistantMessage(emptyList()), StopCause.UserStop),
             0L,
-                    )
+        )
         assertEquals(LlmStreamEvent.ThinkingEnded(0, "half thought"), result)
     }
 
@@ -421,7 +421,7 @@ class LlmStreamEventMapperTest {
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnAborted(AssistantMessage(emptyList()), StopCause.UserStop),
             0L,
-                    )
+        )
         assertNull(result)
     }
 
@@ -432,7 +432,7 @@ class LlmStreamEventMapperTest {
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnCompleted(AssistantMessage(content = listOf(ContentBlock.Text("answer")))),
             0L,
-                    )
+        )
         assertEquals(LlmStreamEvent.Completed, result)
     }
 
@@ -446,7 +446,7 @@ class LlmStreamEventMapperTest {
                 )
             ),
             0L,
-                    )
+        )
         val mapped = result as LlmStreamEvent.Error
         assertNull(mapped.message)
         assertEquals(LlmErrorCode.OutputTruncated, mapped.code)
@@ -458,7 +458,7 @@ class LlmStreamEventMapperTest {
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnFailed(AssistantMessage(emptyList()), error),
             0L,
-                    )
+        )
         val mapped = result as LlmStreamEvent.Error
         assertEquals("boom", mapped.message)
         assertEquals(LlmErrorCode.Transport, mapped.code)
@@ -470,7 +470,7 @@ class LlmStreamEventMapperTest {
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnFailed(AssistantMessage(emptyList()), error),
             0L,
-                    )
+        )
         assertEquals(LlmErrorCode.Auth, (result as LlmStreamEvent.Error).code)
     }
 
@@ -480,7 +480,7 @@ class LlmStreamEventMapperTest {
         val result = LlmStreamEventMapper.map(
             TurnEvent.TurnFailed(AssistantMessage(emptyList()), error),
             0L,
-                    )
+        )
         assertEquals(LlmErrorCode.Parse, (result as LlmStreamEvent.Error).code)
     }
 
@@ -525,7 +525,7 @@ class LlmStreamEventMapperTest {
             LlmStreamEventMapper.map(
                 TurnEvent.TurnAborted(AssistantMessage(emptyList()), StopCause.UserStop),
                 0L,
-                            )
+            )
         )
     }
 }

@@ -1,5 +1,6 @@
 package com.niki914.zafiro.app.ui.content
 
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -36,16 +37,14 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,10 +62,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -91,12 +90,13 @@ import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.home.ActionSource
-import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
+import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import com.niki914.zafiro.app.ui.model.home.formatFileNameMiddleTruncated
 import com.niki914.zafiro.chat.LlmErrorCode
-import android.graphics.BitmapFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal data class AssistantErrorUi(
     val titleRes: Int,
@@ -104,7 +104,11 @@ internal data class AssistantErrorUi(
     val body: String? = null,
 )
 
-internal fun toAssistantErrorUi(message: String?, code: LlmErrorCode?, attempts: Int? = null): AssistantErrorUi {
+internal fun toAssistantErrorUi(
+    message: String?,
+    code: LlmErrorCode?,
+    attempts: Int? = null
+): AssistantErrorUi {
     return when (code) {
         // 配置问题：用户可行动的引导（唯一本地化正文）
         LlmErrorCode.ConfigRequired -> AssistantErrorUi(
@@ -254,12 +258,36 @@ private fun assistantMarkdownTypography(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     return markdownTypography(
-        h1 = bodyStyle.copy(fontSize = (20f * scale).sp, lineHeight = (26f * scale).sp, fontWeight = FontWeight.SemiBold),
-        h2 = bodyStyle.copy(fontSize = (18f * scale).sp, lineHeight = (24f * scale).sp, fontWeight = FontWeight.SemiBold),
-        h3 = bodyStyle.copy(fontSize = (16f * scale).sp, lineHeight = (22f * scale).sp, fontWeight = FontWeight.SemiBold),
-        h4 = bodyStyle.copy(fontSize = (14.5f * scale).sp, lineHeight = (20f * scale).sp, fontWeight = FontWeight.Medium),
-        h5 = bodyStyle.copy(fontSize = (13f * scale).sp, lineHeight = (18f * scale).sp, fontWeight = FontWeight.Medium),
-        h6 = bodyStyle.copy(fontSize = (12f * scale).sp, lineHeight = (16f * scale).sp, fontWeight = FontWeight.Medium),
+        h1 = bodyStyle.copy(
+            fontSize = (20f * scale).sp,
+            lineHeight = (26f * scale).sp,
+            fontWeight = FontWeight.SemiBold
+        ),
+        h2 = bodyStyle.copy(
+            fontSize = (18f * scale).sp,
+            lineHeight = (24f * scale).sp,
+            fontWeight = FontWeight.SemiBold
+        ),
+        h3 = bodyStyle.copy(
+            fontSize = (16f * scale).sp,
+            lineHeight = (22f * scale).sp,
+            fontWeight = FontWeight.SemiBold
+        ),
+        h4 = bodyStyle.copy(
+            fontSize = (14.5f * scale).sp,
+            lineHeight = (20f * scale).sp,
+            fontWeight = FontWeight.Medium
+        ),
+        h5 = bodyStyle.copy(
+            fontSize = (13f * scale).sp,
+            lineHeight = (18f * scale).sp,
+            fontWeight = FontWeight.Medium
+        ),
+        h6 = bodyStyle.copy(
+            fontSize = (12f * scale).sp,
+            lineHeight = (16f * scale).sp,
+            fontWeight = FontWeight.Medium
+        ),
         text = bodyStyle,
         code = codeStyle,
         inlineCode = codeStyle,
@@ -514,7 +542,9 @@ fun LiquidChatComposer(
                 onClick = if (isGenerating) onStopClick else onSendClick,
                 enabled = true,
                 // 环画在按钮自己的 modifier 上：与按钮同心，跟着 offset 一起走。
-                modifier = Modifier.offset(x = 6.dp).then(ringModifier),
+                modifier = Modifier
+                    .offset(x = 6.dp)
+                    .then(ringModifier),
             ) {
                 if (isGenerating) {
                     LoadingIndicator(
@@ -539,25 +569,25 @@ fun LiquidChatComposer(
 
     // 唯一 BasicTextField 实例：expandedLayout 只切换容器内部布局，不重建字段
     LiquidTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = if (expanded) null else stringResource(R.string.ui_home_input_placeholder),
-            enabled = true,
-            singleLine = false,
-            // 紧凑态恒单行；任何换行（wrap 或 \n）立即切展开态
-            maxLines = if (expanded) EXPANDED_MAX_LINES else 1,
-            contentVerticalAlignment = if (expanded) Alignment.Top else Alignment.CenterVertically,
-            minHeight = COMPACT_COMPOSER_MIN_HEIGHT,
-            onTextLayout = onLayout,
-            expandedLayout = expanded,
-            expandedActionsRow = {
-                attachButton()
-                sendButton()
-            },
-            modifier = modifier.fillMaxWidth(),
-            leadingContent = { attachButton() },
-            trailingContent = { sendButton() },
-        )
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = if (expanded) null else stringResource(R.string.ui_home_input_placeholder),
+        enabled = true,
+        singleLine = false,
+        // 紧凑态恒单行；任何换行（wrap 或 \n）立即切展开态
+        maxLines = if (expanded) EXPANDED_MAX_LINES else 1,
+        contentVerticalAlignment = if (expanded) Alignment.Top else Alignment.CenterVertically,
+        minHeight = COMPACT_COMPOSER_MIN_HEIGHT,
+        onTextLayout = onLayout,
+        expandedLayout = expanded,
+        expandedActionsRow = {
+            attachButton()
+            sendButton()
+        },
+        modifier = modifier.fillMaxWidth(),
+        leadingContent = { attachButton() },
+        trailingContent = { sendButton() },
+    )
 }
 
 /** 上下文环底轨的不透明度。 */

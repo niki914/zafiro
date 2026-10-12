@@ -1,44 +1,26 @@
 package com.niki914.zafiro.app.ui.model.home
 
-import com.niki914.okia.conversation.ConversationEntry
-import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
-import com.niki914.zafiro.api.Agent
-import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
-import com.niki914.zafiro.api.model.Attachment
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ConversationTurn
-import com.niki914.zafiro.api.model.ContextUsage
-import com.niki914.zafiro.api.model.Draft
-import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.TurnBlock
+import com.niki914.zafiro.app.ui.model.MainDispatcherRule
 import com.niki914.zafiro.business.agent.turnIdAt
-import com.niki914.zafiro.app.conversation.ConversationFormatter
-import com.niki914.zafiro.app.conversation.ConversationRecord
-import com.niki914.zafiro.app.conversation.ConversationSummary
-import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.SavedLlmConfig
-import com.niki914.zafiro.app.ui.model.TextPacer
-import com.niki914.zafiro.app.ui.model.MainDispatcherRule
-import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.service.ServiceRegistry
-import com.niki914.zafiro.service.installService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -74,7 +56,10 @@ class HomeChatViewModelTest {
         assertEquals("hello", fixture.agent.sentDrafts.single().text)
         assertEquals("", fixture.vm.uiStateFlow.value.input)
         assertEquals("hello", fixture.vm.uiStateFlow.value.turns.single().userText)
-        assertEquals(listOf(HomeChatBlock.Text("answer")), fixture.vm.uiStateFlow.value.turns.single().blocks)
+        assertEquals(
+            listOf(HomeChatBlock.Text("answer")),
+            fixture.vm.uiStateFlow.value.turns.single().blocks
+        )
         assertFalse(fixture.vm.uiStateFlow.value.isGenerating)
     }
 
@@ -104,7 +89,9 @@ class HomeChatViewModelTest {
 
         assertEquals("", fixture.agent.sentDrafts.single().text)
         assertEquals(listOf(image.path), fixture.agent.sentImages.single().map { it.path })
-        assertEquals(listOf(image.path), fixture.vm.uiStateFlow.value.turns.single().images.map { it.path })
+        assertEquals(
+            listOf(image.path),
+            fixture.vm.uiStateFlow.value.turns.single().images.map { it.path })
     }
 
     @Test
@@ -118,7 +105,13 @@ class HomeChatViewModelTest {
         fixture.agent.publishConversation(
             Conversation(
                 id = ConversationId("session-1"),
-                turns = listOf(ConversationTurn(id = turnIdAt(0), userText = "question", blocks = listOf(TurnBlock.Text("t0:0", "partial")))),
+                turns = listOf(
+                    ConversationTurn(
+                        id = turnIdAt(0),
+                        userText = "question",
+                        blocks = listOf(TurnBlock.Text("t0:0", "partial"))
+                    )
+                ),
             ),
         )
         fixture.agent.publishStatus(AgentState.Generating(text = null))
@@ -128,7 +121,10 @@ class HomeChatViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, fixture.agent.stopCount)
-        assertEquals(listOf(HomeChatBlock.Text("partial")), fixture.vm.uiStateFlow.value.turns.single().blocks)
+        assertEquals(
+            listOf(HomeChatBlock.Text("partial")),
+            fixture.vm.uiStateFlow.value.turns.single().blocks
+        )
         assertFalse(fixture.vm.uiStateFlow.value.isGenerating)
     }
 
@@ -136,10 +132,12 @@ class HomeChatViewModelTest {
     fun startupRestoreUsesAgentStateAndRestoresUiDraft() = runTest {
         val store = FakeHomeConversationStore(restoreOnStartup = true)
         store.createRecord("saved", "hello")
-        store.setSnapshot("saved", snapshotOf(
-            Message.User(listOf(ContentBlock.Text("hello"))),
-            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
-        ))
+        store.setSnapshot(
+            "saved", snapshotOf(
+                Message.User(listOf(ContentBlock.Text("hello"))),
+                Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
+            )
+        )
         store.setDraftText("unfinished")
         store.setLastOpenedConversationId("saved")
         val fixture = fixture(store = store)
@@ -173,10 +171,12 @@ class HomeChatViewModelTest {
         store.createRecord("first", "one")
         store.setSnapshot("first", snapshotOf(Message.User(listOf(ContentBlock.Text("one")))))
         store.createRecord("second", "two")
-        store.setSnapshot("second", snapshotOf(
-            Message.User(listOf(ContentBlock.Text("two"))),
-            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("reply")))),
-        ))
+        store.setSnapshot(
+            "second", snapshotOf(
+                Message.User(listOf(ContentBlock.Text("two"))),
+                Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("reply")))),
+            )
+        )
         val fixture = fixture(store = store)
         fixture.vm.sendIntent(HomeChatIntent.InputChanged("draft to keep"))
         runCurrent()
@@ -293,11 +293,13 @@ class HomeChatViewModelTest {
     fun forkRetainsExistingAppOwnedHistoryPath() = runTest {
         val fixture = fixture()
         fixture.store.createRecord("source", "first")
-        fixture.store.setSnapshot("source", snapshotOf(
-            Message.User(listOf(ContentBlock.Text("first"))),
-            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
-            Message.User(listOf(ContentBlock.Text("second"))),
-        ))
+        fixture.store.setSnapshot(
+            "source", snapshotOf(
+                Message.User(listOf(ContentBlock.Text("first"))),
+                Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
+                Message.User(listOf(ContentBlock.Text("second"))),
+            )
+        )
         fixture.vm.sendIntent(HomeChatIntent.LoadConversation("source"))
         advanceUntilIdle()
         fixture.vm.sendIntent(HomeChatIntent.ForkAt(0))
@@ -313,11 +315,18 @@ class HomeChatViewModelTest {
     fun regenerateKeepsSelectedQueryAndImages() = runTest {
         val fixture = fixture()
         fixture.store.createRecord("source", "first")
-        fixture.store.setSnapshot("source", snapshotOf(
-            Message.User(listOf(ContentBlock.Text("first"), ContentBlock.Image("/image.jpg", "image/jpeg"))),
-            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
-            Message.User(listOf(ContentBlock.Text("second"))),
-        ))
+        fixture.store.setSnapshot(
+            "source", snapshotOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("first"),
+                        ContentBlock.Image("/image.jpg", "image/jpeg")
+                    )
+                ),
+                Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
+                Message.User(listOf(ContentBlock.Text("second"))),
+            )
+        )
         fixture.vm.sendIntent(HomeChatIntent.LoadConversation("source"))
         advanceUntilIdle()
 
@@ -331,11 +340,18 @@ class HomeChatViewModelTest {
     fun rewindKeepsSelectedQueryAndImages() = runTest {
         val fixture = fixture()
         fixture.store.createRecord("source", "first")
-        fixture.store.setSnapshot("source", snapshotOf(
-            Message.User(listOf(ContentBlock.Text("first"), ContentBlock.Image("/image.jpg", "image/jpeg"))),
-            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
-            Message.User(listOf(ContentBlock.Text("second"))),
-        ))
+        fixture.store.setSnapshot(
+            "source", snapshotOf(
+                Message.User(
+                    listOf(
+                        ContentBlock.Text("first"),
+                        ContentBlock.Image("/image.jpg", "image/jpeg")
+                    )
+                ),
+                Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("answer")))),
+                Message.User(listOf(ContentBlock.Text("second"))),
+            )
+        )
         fixture.vm.sendIntent(HomeChatIntent.LoadConversation("source"))
         advanceUntilIdle()
 
@@ -369,7 +385,10 @@ class HomeChatViewModelTest {
 
         val decision = async { approver.decide(ApprovalRequest.ScreenControlConsent) }
         advanceUntilIdle()
-        assertEquals(ApprovalRequest.ScreenControlConsent, fixture.vm.uiStateFlow.value.pendingApproval)
+        assertEquals(
+            ApprovalRequest.ScreenControlConsent,
+            fixture.vm.uiStateFlow.value.pendingApproval
+        )
 
         decision.cancel()
         advanceUntilIdle()
@@ -431,62 +450,67 @@ class HomeChatViewModelTest {
     }
 
     @Test
-    fun loadConversationWithBoundConfigDisplaysBoundConfigOtherwiseFallsBackToGlobalActive() = runTest {
-        val config1 = SavedLlmConfig(
-            id = "c1",
-            name = "Claude",
-            provider = "anthropic",
-            endpoint = "https://api.anthropic.com",
-            apiKey = "key1",
-            model = "claude-3-5-sonnet",
-            protocol = "",
-            proxy = "",
-        )
-        val config2 = SavedLlmConfig(
-            id = "c2",
-            name = "DeepSeek",
-            provider = "deepseek",
-            endpoint = "https://api.deepseek.com",
-            apiKey = "key2",
-            model = "deepseek-chat",
-            protocol = "",
-            proxy = "",
-        )
-        val fixture = fixture(
-            configDependencies = HomeChatConfigDependencies(
-                loadConfigs = {
-                    LlmConfigsDocument(
-                        activeId = "c1",
-                        configs = listOf(config1, config2),
-                    )
-                },
-            ),
-        )
-        fixture.store.createRecord("conv-bound", "Bound session", configId = "c2")
-        fixture.store.createRecord("conv-unbound", "Unbound session", configId = "")
-        fixture.store.createRecord("conv-deleted", "Deleted config session", configId = "c-deleted")
+    fun loadConversationWithBoundConfigDisplaysBoundConfigOtherwiseFallsBackToGlobalActive() =
+        runTest {
+            val config1 = SavedLlmConfig(
+                id = "c1",
+                name = "Claude",
+                provider = "anthropic",
+                endpoint = "https://api.anthropic.com",
+                apiKey = "key1",
+                model = "claude-3-5-sonnet",
+                protocol = "",
+                proxy = "",
+            )
+            val config2 = SavedLlmConfig(
+                id = "c2",
+                name = "DeepSeek",
+                provider = "deepseek",
+                endpoint = "https://api.deepseek.com",
+                apiKey = "key2",
+                model = "deepseek-chat",
+                protocol = "",
+                proxy = "",
+            )
+            val fixture = fixture(
+                configDependencies = HomeChatConfigDependencies(
+                    loadConfigs = {
+                        LlmConfigsDocument(
+                            activeId = "c1",
+                            configs = listOf(config1, config2),
+                        )
+                    },
+                ),
+            )
+            fixture.store.createRecord("conv-bound", "Bound session", configId = "c2")
+            fixture.store.createRecord("conv-unbound", "Unbound session", configId = "")
+            fixture.store.createRecord(
+                "conv-deleted",
+                "Deleted config session",
+                configId = "c-deleted"
+            )
 
-        // 1. Bound to valid config -> shows bound config
-        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-bound"))
-        advanceUntilIdle()
-        assertEquals("c2", fixture.vm.uiStateFlow.value.boundConfigId)
-        assertEquals("c2", fixture.vm.uiStateFlow.value.activeConfigId)
-        assertEquals("DeepSeek", fixture.vm.uiStateFlow.value.displayConfig?.name)
+            // 1. Bound to valid config -> shows bound config
+            fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-bound"))
+            advanceUntilIdle()
+            assertEquals("c2", fixture.vm.uiStateFlow.value.boundConfigId)
+            assertEquals("c2", fixture.vm.uiStateFlow.value.activeConfigId)
+            assertEquals("DeepSeek", fixture.vm.uiStateFlow.value.displayConfig?.name)
 
-        // 2. Unbound (empty string) -> fallback to global active config (c1)
-        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-unbound"))
-        advanceUntilIdle()
-        assertEquals("", fixture.vm.uiStateFlow.value.boundConfigId)
-        assertEquals("c1", fixture.vm.uiStateFlow.value.activeConfigId)
-        assertEquals("Claude", fixture.vm.uiStateFlow.value.displayConfig?.name)
+            // 2. Unbound (empty string) -> fallback to global active config (c1)
+            fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-unbound"))
+            advanceUntilIdle()
+            assertEquals("", fixture.vm.uiStateFlow.value.boundConfigId)
+            assertEquals("c1", fixture.vm.uiStateFlow.value.activeConfigId)
+            assertEquals("Claude", fixture.vm.uiStateFlow.value.displayConfig?.name)
 
-        // 3. Bound to deleted config -> fallback to global active config (c1)
-        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-deleted"))
-        advanceUntilIdle()
-        assertEquals("c-deleted", fixture.vm.uiStateFlow.value.boundConfigId)
-        assertEquals("c1", fixture.vm.uiStateFlow.value.activeConfigId)
-        assertEquals("Claude", fixture.vm.uiStateFlow.value.displayConfig?.name)
-    }
+            // 3. Bound to deleted config -> fallback to global active config (c1)
+            fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-deleted"))
+            advanceUntilIdle()
+            assertEquals("c-deleted", fixture.vm.uiStateFlow.value.boundConfigId)
+            assertEquals("c1", fixture.vm.uiStateFlow.value.activeConfigId)
+            assertEquals("Claude", fixture.vm.uiStateFlow.value.displayConfig?.name)
+        }
 
     @Test
     fun newConversationResetsBoundConfigToFallbackToGlobalActive() = runTest {

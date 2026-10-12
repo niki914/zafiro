@@ -1,7 +1,6 @@
 package com.niki914.zafiro.app.ui.model
 
 import androidx.annotation.StringRes
-import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
@@ -10,7 +9,6 @@ import com.niki914.zafiro.repo.StorageKind
 import com.niki914.zafiro.repo.StorageUsage
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 
 enum class StorageCategory(
     val kind: StorageKind,
@@ -93,9 +91,11 @@ class StorageSettingsViewModel(
             is StorageSettingsIntent.RequestClear -> updateState {
                 copy(confirmation = StorageConfirmationState(intent.category), inlineError = null)
             }
+
             StorageSettingsIntent.DismissConfirmation -> updateState {
                 copy(confirmation = null, inlineError = null)
             }
+
             StorageSettingsIntent.ConfirmClear -> confirmClear()
         }
     }

@@ -1,5 +1,8 @@
 package com.niki914.zafiro.api.text
 
+import com.niki914.zafiro.api.text.TurnTextComposer.cutLeadingBlocks
+
+
 /**
  * 注入块与用户正文之间的编解码。
  *
@@ -63,8 +66,12 @@ object TurnTextComposer {
         while (index < lines.size) {
             val tag = openTagOrNull(lines[index]) ?: break
             val close = "</$TAG_PREFIX$tag>"
-            val closeIndex = (index + 1 until lines.size).firstOrNull { lines[it] == close } ?: break
-            blocks += Block(tag = tag, body = lines.subList(index + 1, closeIndex).joinToString("\n"))
+            val closeIndex =
+                (index + 1 until lines.size).firstOrNull { lines[it] == close } ?: break
+            blocks += Block(
+                tag = tag,
+                body = lines.subList(index + 1, closeIndex).joinToString("\n")
+            )
             index = closeIndex + 1
             // 块与正文之间的那个空行是拼装时加的，一起吃掉
             if (index < lines.size && lines[index].isBlank()) index++

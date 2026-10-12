@@ -187,18 +187,33 @@ class AgentImplTest {
             var stored: StoredConversation_Tmp? = null
             override suspend fun load(id: ConversationId) = stored
             override suspend fun exists(id: ConversationId) = stored != null
-            override suspend fun create(id: ConversationId, firstUserInput: String, configId: String) {}
+            override suspend fun create(
+                id: ConversationId,
+                firstUserInput: String,
+                configId: String
+            ) {
+            }
+
             override suspend fun setLastOpened(id: ConversationId?) {}
         }
         val fakeGateway = StubRuntimeSettingsGateway()
         val fakeHost = object : RuntimeHostGateway {
-            override suspend fun postNotification(title: String, content: String, uri: String?): Boolean = true
+            override suspend fun postNotification(
+                title: String,
+                content: String,
+                uri: String?
+            ): Boolean = true
         }
         installService<ConversationStore_Tmp>(fakeStore)
         RuntimeEnvironment.install(RuntimeBridge(settings = fakeGateway, host = fakeHost))
         try {
             fakeStore.stored = StoredConversation_Tmp(
-                snapshot = SessionSnapshot(id = "conv-1", leafId = null, version = 1, entries = emptyList()),
+                snapshot = SessionSnapshot(
+                    id = "conv-1",
+                    leafId = null,
+                    version = 1,
+                    entries = emptyList()
+                ),
                 conversation = Conversation(),
                 configId = "cfg-persisted",
             )
@@ -229,16 +244,33 @@ class AgentImplTest {
 private class StubRuntimeSettingsGateway : RuntimeSettingsGateway {
     override suspend fun readLlmConfig(agentId: String, configId: String?): RuntimeLlmConfig =
         RuntimeLlmConfig(endpoint = "https://api.openai.com", model = "gpt-4o")
+
     override suspend fun listMcpServers(): List<RuntimeMcpServer> = emptyList()
     override suspend fun addMemory(value: String) = Unit
-    override suspend fun removeMemory(oldText: String): MemoryMutationResult = MemoryMutationResult.Ok
-    override suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult = MemoryMutationResult.Ok
+    override suspend fun removeMemory(oldText: String): MemoryMutationResult =
+        MemoryMutationResult.Ok
+
+    override suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult =
+        MemoryMutationResult.Ok
+
     override suspend fun listCustomPyTools(): List<RuntimeCustomPyTool> = emptyList()
-    override suspend fun saveCustomPyTool(tool: RuntimeCustomPyTool, overwrite: Boolean): RuntimeToolValidation? = null
+    override suspend fun saveCustomPyTool(
+        tool: RuntimeCustomPyTool,
+        overwrite: Boolean
+    ): RuntimeToolValidation? = null
+
     override suspend fun deleteCustomPyTool(name: String) = Unit
     override suspend fun setCustomPyToolEnabled(name: String, enabled: Boolean) = Unit
     override suspend fun listBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> = emptyList()
-    override suspend fun setBuiltinToolEnabled(name: String, enabled: Boolean): RuntimeToolValidation? = null
-    override suspend fun setBuiltinToolGroupEnabled(groupId: String, enabled: Boolean): RuntimeToolValidation? = null
+    override suspend fun setBuiltinToolEnabled(
+        name: String,
+        enabled: Boolean
+    ): RuntimeToolValidation? = null
+
+    override suspend fun setBuiltinToolGroupEnabled(
+        groupId: String,
+        enabled: Boolean
+    ): RuntimeToolValidation? = null
+
     override suspend fun listExecutionRules(): List<RuntimeExecutionRule> = emptyList()
 }

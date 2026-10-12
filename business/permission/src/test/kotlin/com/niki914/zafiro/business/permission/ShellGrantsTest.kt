@@ -51,7 +51,10 @@ class ShellGrantsTest {
         )
 
         assertEquals(PermissionState.GRANTED, state)
-        assertEquals(listOf("appops set com.niki914.zafiro MANAGE_EXTERNAL_STORAGE allow"), commands)
+        assertEquals(
+            listOf("appops set com.niki914.zafiro MANAGE_EXTERNAL_STORAGE allow"),
+            commands
+        )
     }
 
     @Test

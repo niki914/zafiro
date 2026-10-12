@@ -7,10 +7,10 @@ import com.niki914.zafiro.api.model.TurnBlock
 import com.niki914.zafiro.api.model.TurnFailureCode
 import com.niki914.zafiro.api.model.TurnId
 import com.niki914.zafiro.chat.ToolStatusLabels
-import org.junit.Assert.assertEquals
-import org.junit.Test
 import com.niki914.zafiro.runtime.ipc.ToolItem
 import com.niki914.zafiro.runtime.ipc.ToolStatus
+import org.junit.Assert.assertEquals
+import org.junit.Test
 
 class HostConversationProjectorTest {
 
@@ -71,12 +71,22 @@ class HostConversationProjectorTest {
                 ),
                 TurnBlock.Tool(
                     id = "b1",
-                    invocation = ToolInvocation(id = "c1", name = "weather", label = "weather", argumentsJson = "{}"),
+                    invocation = ToolInvocation(
+                        id = "c1",
+                        name = "weather",
+                        label = "weather",
+                        argumentsJson = "{}"
+                    ),
                     outcome = ToolOutcome.Succeeded("Sunny 25C"),
                 ),
                 TurnBlock.Tool(
                     id = "b2",
-                    invocation = ToolInvocation(id = "c2", name = "air_quality", label = "air_quality", argumentsJson = "{}"),
+                    invocation = ToolInvocation(
+                        id = "c2",
+                        name = "air_quality",
+                        label = "air_quality",
+                        argumentsJson = "{}"
+                    ),
                     outcome = null, // running
                 ),
                 TurnBlock.Text(
@@ -105,7 +115,12 @@ class HostConversationProjectorTest {
             blocks = listOf(
                 TurnBlock.Tool(
                     id = "b0",
-                    invocation = ToolInvocation(id = "c1", name = "search", label = "search", argumentsJson = "{}"),
+                    invocation = ToolInvocation(
+                        id = "c1",
+                        name = "search",
+                        label = "search",
+                        argumentsJson = "{}"
+                    ),
                     outcome = ToolOutcome.Failed("Network error"),
                 ),
                 TurnBlock.Failure(
@@ -160,12 +175,22 @@ class HostConversationProjectorTest {
                 ),
                 TurnBlock.Tool(
                     id = "b1",
-                    invocation = ToolInvocation(id = "c1", name = "weather", label = "weather", argumentsJson = "{}"),
+                    invocation = ToolInvocation(
+                        id = "c1",
+                        name = "weather",
+                        label = "weather",
+                        argumentsJson = "{}"
+                    ),
                     outcome = ToolOutcome.Succeeded("Sunny 25C"),
                 ),
                 TurnBlock.Tool(
                     id = "b2",
-                    invocation = ToolInvocation(id = "c2", name = "air_quality", label = "air_quality", argumentsJson = "{}"),
+                    invocation = ToolInvocation(
+                        id = "c2",
+                        name = "air_quality",
+                        label = "air_quality",
+                        argumentsJson = "{}"
+                    ),
                     outcome = null, // running
                 ),
                 TurnBlock.Text(

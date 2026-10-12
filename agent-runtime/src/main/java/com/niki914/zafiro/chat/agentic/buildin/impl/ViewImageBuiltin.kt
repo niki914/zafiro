@@ -1,15 +1,14 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
+import com.niki914.zafiro.chat.agentic.SharedImageCodec
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.image.IngestError
 import com.niki914.zafiro.chat.agentic.image.IngestResult
-import com.niki914.zafiro.chat.agentic.SharedImageCodec
 import com.niki914.zafiro.chat.agentic.toImageToolResult
 import com.niki914.zafiro.chat.agentic.toToolError
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -60,6 +59,7 @@ Returns the normalized file path if the image was ingested successfully, or an e
             is IngestResult.Ok -> result.toImageToolResult(
                 message = "Image ingested: ${result.image.path}",
             )
+
             is IngestResult.Err -> {
                 val (code, message) = result.error.toToolError()
                 val hint = when (result.error) {
@@ -69,6 +69,7 @@ Returns the normalized file path if the image was ingested successfully, or an e
                                 "the app does not have - copy the file into app private storage " +
                                 "first (e.g. with a root shell), or ask the user to grant storage " +
                                 "permission, or download it again into a private directory."
+
                     IngestError.EmptyContent -> "The file is empty. Check the source and re-download it."
                     is IngestError.TooLarge -> "Try a smaller image or compress it first."
                     IngestError.UnsupportedFormat -> "Convert the image to JPEG or PNG first."

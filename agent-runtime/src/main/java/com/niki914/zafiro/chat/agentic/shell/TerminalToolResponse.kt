@@ -123,8 +123,8 @@ object TerminalToolResponse {
         return error(
             code = "INVALID_REQUEST",
             message = "Session '$session' is gone (connection dropped or closed elsewhere). " +
-                "Reconnect by passing 'host'/'username'/'password' again; add the same 'alias' to keep the alias. " +
-                "Run action='close' on it if you only want to drop the registration.",
+                    "Reconnect by passing 'host'/'username'/'password' again; add the same 'alias' to keep the alias. " +
+                    "Run action='close' on it if you only want to drop the registration.",
         )
     }
 
@@ -132,8 +132,8 @@ object TerminalToolResponse {
         return error(
             code = "SESSION_BUSY",
             message = "Session '$session' still has a command in flight. Collect its output with " +
-                "action=\"read\" first. If that command is stuck, $abandonHint Sending a command now " +
-                "would make both outputs interleave and get lost.",
+                    "action=\"read\" first. If that command is stuck, $abandonHint Sending a command now " +
+                    "would make both outputs interleave and get lost.",
         )
     }
 

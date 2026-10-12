@@ -18,7 +18,8 @@ sealed interface ToolCallOutcome {
      * images：工具返回的图片列表（view_image / MCP 图片等），path 引用。
      */
     @Serializable
-    data class Success(val content: String, val images: List<ContentBlock.Image> = emptyList()) : ToolCallOutcome
+    data class Success(val content: String, val images: List<ContentBlock.Image> = emptyList()) :
+        ToolCallOutcome
 
     /** 工具已运行但失败。 */
     @Serializable

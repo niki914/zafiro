@@ -49,7 +49,10 @@ class DocumentPathResolverTest {
 
     @Test
     fun `raw document uses the absolute path the provider gave us`() {
-        assertEquals("/storage/emulated/0/Download/report.pdf", doc("raw:/storage/emulated/0/Download/report.pdf"))
+        assertEquals(
+            "/storage/emulated/0/Download/report.pdf",
+            doc("raw:/storage/emulated/0/Download/report.pdf")
+        )
     }
 
     @Test

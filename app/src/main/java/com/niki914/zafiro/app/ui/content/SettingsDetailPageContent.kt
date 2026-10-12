@@ -4,8 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.app.ui.content.mcp.McpServiceSettingsContent
 import com.niki914.zafiro.app.ui.content.mcp.McpSettingsContent
-import com.niki914.zafiro.app.ui.content.TextActionsSettingsContent
 import com.niki914.zafiro.app.ui.model.SettingsViewModel
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
@@ -18,8 +18,6 @@ import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
-
-import com.niki914.zafiro.app.ui.content.mcp.McpServiceSettingsContent
 
 @Composable
 fun SettingsDetailPageContent(

@@ -2,6 +2,7 @@ package com.niki914.zafiro.business.permission
 
 import android.content.ComponentName
 import com.niki914.logging.Logger
+import com.niki914.zafiro.business.permission.ShellGrants.grant
 
 /**
  * shell 通道共用的授权命令（RootShell / Shizuku 共用，命令文本与分叉逻辑只此一份）。
@@ -42,12 +43,15 @@ internal object ShellGrants {
         verify: () -> PermissionState,
     ): PermissionState {
         val commands = mechanism.names.map { "pm grant $packageName $it" } +
-            mechanism.appOps.map { "appops set $packageName $it allow" }
+                mechanism.appOps.map { "appops set $packageName $it allow" }
         var anyAccepted = false
         for (command in commands) {
             val outcome = run(command) ?: continue
             anyAccepted = anyAccepted || outcome.isSuccess
-            Logger.d(TAG, "exec [$command] exit=${outcome.exitCode} stdoutLines=${outcome.stdout.size}")
+            Logger.d(
+                TAG,
+                "exec [$command] exit=${outcome.exitCode} stdoutLines=${outcome.stdout.size}"
+            )
             if (verify() == PermissionState.GRANTED) return PermissionState.GRANTED
         }
         return if (anyAccepted) PermissionState.DENIED_BY_USER else PermissionState.FAILED
@@ -62,7 +66,10 @@ internal object ShellGrants {
     ): PermissionState {
         val command = "appops set $packageName $op allow"
         val outcome = run(command)
-        Logger.d(TAG, "exec [$command] exit=${outcome?.exitCode} stdoutLines=${outcome?.stdout?.size}")
+        Logger.d(
+            TAG,
+            "exec [$command] exit=${outcome?.exitCode} stdoutLines=${outcome?.stdout?.size}"
+        )
         if (verify() == PermissionState.GRANTED) return PermissionState.GRANTED
         return if (outcome?.isSuccess == true) PermissionState.DENIED_BY_USER else PermissionState.FAILED
     }

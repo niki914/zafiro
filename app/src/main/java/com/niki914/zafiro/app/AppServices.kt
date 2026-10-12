@@ -2,8 +2,10 @@ package com.niki914.zafiro.app
 
 import android.app.Application
 import android.content.ComponentName
+import com.niki914.xsettings.XSettings
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.AgentManager
+import com.niki914.zafiro.api.McpService
 import com.niki914.zafiro.app.conversation.RoomConversationStore_Tmp
 import com.niki914.zafiro.business.agent.AgentManagerImpl
 import com.niki914.zafiro.business.agent.ConversationStore_Tmp
@@ -15,13 +17,11 @@ import com.niki914.zafiro.business.notification.NotificationChannelManager
 import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionManagerImpl
-import com.niki914.zafiro.mod.feat.ZafiroAccessibilityService
-import com.niki914.zafiro.api.McpService
 import com.niki914.zafiro.mcp.service.McpServiceImpl
+import com.niki914.zafiro.mod.feat.ZafiroAccessibilityService
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.repo.XSettingsImpl
 import com.niki914.zafiro.service.installService
-import com.niki914.xsettings.XSettings
 
 /**
  * 主进程的组合根：`installService` 只在这里出现。

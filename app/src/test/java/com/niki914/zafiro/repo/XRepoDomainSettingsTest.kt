@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.zafiro.app.util.SilentLoggerRule
+import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -20,7 +21,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
 import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
@@ -98,7 +98,7 @@ class XRepoDomainSettingsTest {
     fun hydrateSettingsBackfillsAllReactiveFlows() = runTest {
         val store = FakeDomainSettingsStore(
             StoreDescriptorRegistry.APP_STATE_ID to
-                """{"keep_screen_on":false,"always_show_message_actions":false,"floating_ball_enabled":true,"resident_notification_enabled":true,"floating_ball_auto_expand":false}""",
+                    """{"keep_screen_on":false,"always_show_message_actions":false,"floating_ball_enabled":true,"resident_notification_enabled":true,"floating_ball_auto_expand":false}""",
         )
         XRepo.installStoreForTest(store)
         XRepo.init(context)

@@ -67,7 +67,8 @@ class ApplicationServiceImpl(
 
     // 待处理目标：元素被收集消费一次即消失，Activity 重建后重新 collect 不会重放旧目标。
     private val _conversationSwitchRequests = Channel<String>(Channel.CONFLATED)
-    override val conversationSwitchRequests: Flow<String> = _conversationSwitchRequests.receiveAsFlow()
+    override val conversationSwitchRequests: Flow<String> =
+        _conversationSwitchRequests.receiveAsFlow()
 
     @Volatile
     private var homeChatActive: Boolean = false
@@ -79,12 +80,13 @@ class ApplicationServiceImpl(
     }
 
     override fun launchMainActivity(targetConversationId: String?) {
-        val intent = application.packageManager.getLaunchIntentForPackage(application.packageName)?.apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            if (!targetConversationId.isNullOrBlank()) {
-                putExtra(ApplicationService.EXTRA_TARGET_CONVERSATION_ID, targetConversationId)
-            }
-        } ?: return
+        val intent =
+            application.packageManager.getLaunchIntentForPackage(application.packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                if (!targetConversationId.isNullOrBlank()) {
+                    putExtra(ApplicationService.EXTRA_TARGET_CONVERSATION_ID, targetConversationId)
+                }
+            } ?: return
         application.startActivity(intent)
     }
 
@@ -96,7 +98,10 @@ class ApplicationServiceImpl(
                 Logger.i(TAG, "navigation intent: switching to conversation $targetConversationId")
                 _conversationSwitchRequests.trySend(targetConversationId)
             } else {
-                Logger.i(TAG, "navigation intent: on secondary page, foregrounding without switching")
+                Logger.i(
+                    TAG,
+                    "navigation intent: on secondary page, foregrounding without switching"
+                )
             }
         }
     }
@@ -178,13 +183,18 @@ class ApplicationServiceImpl(
     }
 
     private val callbacks = object : Application.ActivityLifecycleCallbacks {
-        override fun onActivityResumed(activity: Activity) = this@ApplicationServiceImpl.onActivityResumed(activity)
-        override fun onActivityPaused(activity: Activity) = this@ApplicationServiceImpl.onActivityPaused(activity)
+        override fun onActivityResumed(activity: Activity) =
+            this@ApplicationServiceImpl.onActivityResumed(activity)
+
+        override fun onActivityPaused(activity: Activity) =
+            this@ApplicationServiceImpl.onActivityPaused(activity)
+
         override fun onActivityDestroyed(activity: Activity) {
             if (foreground === activity) {
                 clearForeground(CancellationException("activity destroyed"))
             }
         }
+
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
         override fun onActivityStarted(activity: Activity) = Unit
         override fun onActivityStopped(activity: Activity) = Unit

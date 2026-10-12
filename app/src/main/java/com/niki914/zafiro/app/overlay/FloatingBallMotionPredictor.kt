@@ -93,7 +93,11 @@ class FloatingBallMotionPredictor(
         }
 
         // 强阻尼非线性映射（指数 1.25，低速阻尼更大，滑行极克制）
-        val speedRatio = ((velocity - minVelocityThreshold) / (maxVelocityThreshold - minVelocityThreshold)).coerceIn(0f, 1f)
+        val speedRatio =
+            ((velocity - minVelocityThreshold) / (maxVelocityThreshold - minVelocityThreshold)).coerceIn(
+                0f,
+                1f
+            )
         val glideScale = speedRatio.pow(1.25f)
         val glideDistance = maxGlideDistancePx * glideScale
 
@@ -101,7 +105,8 @@ class FloatingBallMotionPredictor(
         val dirY = dy / distance
 
         val projectedX = currentBallX + (glideDistance * dirX).toInt()
-        val projectedY = (currentBallY + (glideDistance * dirY).toInt()).coerceIn(minBallY, maxBallY)
+        val projectedY =
+            (currentBallY + (glideDistance * dirY).toInt()).coerceIn(minBallY, maxBallY)
 
         val landing = evaluateLanding(projectedX, projectedY)
 
@@ -146,6 +151,7 @@ class FloatingBallMotionPredictor(
                     durationMillis = 200L,
                 )
             }
+
             distanceToRight < snapThresholdPx -> {
                 PredictionResult(
                     targetX = rightSubmergedX,
@@ -155,6 +161,7 @@ class FloatingBallMotionPredictor(
                     durationMillis = 200L,
                 )
             }
+
             else -> {
                 val dock = if (distanceToLeft < distanceToRight) DockSide.Left else DockSide.Right
                 PredictionResult(

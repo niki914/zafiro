@@ -1,5 +1,7 @@
 package com.niki914.zafiro.repo
 
+import com.niki914.logging.Logger
+import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -10,8 +12,6 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
-import com.niki914.logging.Logger
-import com.niki914.zafiro.settings.model.LlmProtocol
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 

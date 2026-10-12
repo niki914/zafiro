@@ -58,7 +58,8 @@ internal fun AssistantMarkdownTable(
     val gridThickness = LocalMarkdownDimens.current.dividerThickness
     val tableBackground = LocalMarkdownColors.current.tableBackground
     val gridColor = LocalMarkdownColors.current.dividerColor
-    val gridStroke = if (gridThickness == Dp.Hairline) 1f else with(density) { gridThickness.toPx() }
+    val gridStroke =
+        if (gridThickness == Dp.Hairline) 1f else with(density) { gridThickness.toPx() }
 
     val hasHeader = remember(node) { node.findChildOfType(HEADER) != null }
     val rows = remember(node) {
@@ -121,14 +122,24 @@ internal fun AssistantMarkdownTable(
                         val halfStroke = gridStroke / 2f
                         val rightEdge = size.width - halfStroke
                         val bottomEdge = size.height - halfStroke
-                        drawLine(gridColor, Offset(halfStroke, 0f), Offset(halfStroke, size.height), gridStroke)
+                        drawLine(
+                            gridColor,
+                            Offset(halfStroke, 0f),
+                            Offset(halfStroke, size.height),
+                            gridStroke
+                        )
                         var edge = 0f
                         columnWidths.forEachIndexed { columnIndex, columnWidth ->
                             edge += columnWidth.toPx()
                             val x = if (columnIndex == columnWidths.lastIndex) rightEdge else edge
                             drawLine(gridColor, Offset(x, 0f), Offset(x, size.height), gridStroke)
                         }
-                        drawLine(gridColor, Offset(halfStroke, bottomEdge), Offset(rightEdge, bottomEdge), gridStroke)
+                        drawLine(
+                            gridColor,
+                            Offset(halfStroke, bottomEdge),
+                            Offset(rightEdge, bottomEdge),
+                            gridStroke
+                        )
                     },
             ) {
                 for (columnIndex in 0 until columnCount) {

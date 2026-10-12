@@ -5,11 +5,12 @@ import com.niki914.logging.Logger
 import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolHarness
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
-import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.settings.MemoryMutationResult
+import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_PATTERNS
@@ -25,8 +26,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.io.File
 import kotlinx.serialization.json.longOrNull
+import java.io.File
 import java.util.UUID
 import com.niki914.zafiro.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
 import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
@@ -35,7 +36,6 @@ import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToo
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
-import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRuleValidation as TakeoverRuleValidation
@@ -1287,7 +1287,8 @@ class McpServiceApi internal constructor(
 
     suspend fun get(): RuntimeMcpServiceConfig {
         _configFlow.value?.let { return it }
-        val parsed = McpServiceSettingsCodec.parse(repo.readJson(StoreDescriptorRegistry.TOOLS_MCP_SERVICE_ID))
+        val parsed =
+            McpServiceSettingsCodec.parse(repo.readJson(StoreDescriptorRegistry.TOOLS_MCP_SERVICE_ID))
         _configFlow.value = parsed
         return parsed
     }

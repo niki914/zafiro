@@ -58,10 +58,10 @@ fun SettingsItemSurface(
     val currentOnTrailingActionClick by rememberUpdatedState(onTrailingActionClick)
     val currentTrailingBounds by rememberUpdatedState(trailingActionBoundsInWindow)
     val isInteractive = enabled && (
-        currentOnClick != null ||
-            currentOnTrailingActionClick != null ||
-            currentOnLongClick != null
-    )
+            currentOnClick != null ||
+                    currentOnTrailingActionClick != null ||
+                    currentOnLongClick != null
+            )
 
     val restingColor = Color.Transparent
     val pressedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
@@ -89,7 +89,12 @@ fun SettingsItemSurface(
     val interactiveModifier = if (isInteractive) {
         Modifier
             .onGloballyPositioned { surfaceOriginInWindow = it.positionInWindow() }
-            .pointerInput(currentOnClick, currentOnLongClick, currentOnTrailingActionClick, hapticFeedbackType) {
+            .pointerInput(
+                currentOnClick,
+                currentOnLongClick,
+                currentOnTrailingActionClick,
+                hapticFeedbackType
+            ) {
                 detectTapGestures(
                     onPress = {
                         backgroundColor = pressedColor

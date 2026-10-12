@@ -1,8 +1,8 @@
 package com.niki914.zafiro.util
 
 import com.niki914.logging.Logger
-import java.io.File
 import com.niki914.xposed.api.util.ContextProvider
+import java.io.File
 import kotlin.random.Random
 
 /**
@@ -152,7 +152,10 @@ object ToolOutputTruncator {
             } else {
                 target.writeText(fullContent, Charsets.UTF_8)
             }
-            Logger.d(LOG_TAG, "tool output exported bytes=${target.length()} path=${target.absolutePath}")
+            Logger.d(
+                LOG_TAG,
+                "tool output exported bytes=${target.length()} path=${target.absolutePath}"
+            )
             target.absolutePath
         } catch (e: Exception) {
             // 导出失败不阻断主链路：截断提示照常返回，只是没有全量文件可回读

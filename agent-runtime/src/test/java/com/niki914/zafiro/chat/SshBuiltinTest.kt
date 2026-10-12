@@ -55,12 +55,16 @@ class SshBuiltinTest {
         private val sessionCounter = AtomicInteger(1)
         val sessionBuffers = ConcurrentHashMap<String, StringBuilder>()
         val openedOptions = mutableListOf<SshOpenOptions>()
+
         /** 默认全部存活；掉线用例拨到 false 模拟连接已断。 */
         var sessionsAlive = true
 
         override fun isSessionAlive(sessionId: String): Boolean = sessionsAlive
 
-        override suspend fun openSshSession(options: SshOpenOptions, cwd: String?): TerminalOpenOutcome {
+        override suspend fun openSshSession(
+            options: SshOpenOptions,
+            cwd: String?
+        ): TerminalOpenOutcome {
             openedOptions.add(options)
             val auth = options.auth
             if (auth is SshAuth.Password && auth.value == "bad_pass") {
@@ -165,7 +169,8 @@ class SshBuiltinTest {
                 argumentsJson = """{"host":"10.0.0.1","username":"root","password":"pwd","alias":"my_node"}"""
             )
         )
-        val sessId = Json.parseToJsonElement(connectResp).jsonObject["session_id"]!!.jsonPrimitive.content
+        val sessId =
+            Json.parseToJsonElement(connectResp).jsonObject["session_id"]!!.jsonPrimitive.content
 
         // 试图携带 session 句柄的同时，又传 host 凭据 -> 必须被立即拦截
         val conflictResp = tool.invokeRawJson(
@@ -277,7 +282,10 @@ class SshBuiltinTest {
         val newSessionId = json["session_id"]!!.jsonPrimitive.content
         assertTrue(newSessionId != oldSessionId)
         assertEquals("n1", json["alias"]?.jsonPrimitive?.content)
-        assertEquals(newSessionId, tool.sessionRegistry.resolveSessionId("n1", SessionRegistry.SCOPE_SSH))
+        assertEquals(
+            newSessionId,
+            tool.sessionRegistry.resolveSessionId("n1", SessionRegistry.SCOPE_SSH)
+        )
     }
 
     @Test
@@ -320,7 +328,10 @@ class SshBuiltinTest {
         val tool = TestSshBuiltin()
 
         val resp = tool.invokeRawJson(
-            BuiltinToolRequest(name = "ssh", argumentsJson = """{"alias":"shared","command":"whoami"}""")
+            BuiltinToolRequest(
+                name = "ssh",
+                argumentsJson = """{"alias":"shared","command":"whoami"}"""
+            )
         )
         val error = Json.parseToJsonElement(resp).jsonObject["error"]?.jsonObject
 
@@ -342,7 +353,10 @@ class SshBuiltinTest {
         val tool = TestSshBuiltin()
 
         val resp = tool.invokeRawJson(
-            BuiltinToolRequest(name = "ssh", argumentsJson = """{"session":"local_1","command":"whoami"}""")
+            BuiltinToolRequest(
+                name = "ssh",
+                argumentsJson = """{"session":"local_1","command":"whoami"}"""
+            )
         )
         val error = Json.parseToJsonElement(resp).jsonObject["error"]?.jsonObject
 
@@ -353,7 +367,11 @@ class SshBuiltinTest {
     @Test
     fun actionList_reportsOnlySshScopedSessions() = runTest {
         // list 把别的工具的会话一起报出来，等于给模型发一个注定用不了的句柄
-        SessionRegistry.register(sessionId = "local_1", alias = "l", scope = SessionRegistry.SCOPE_LOCAL)
+        SessionRegistry.register(
+            sessionId = "local_1",
+            alias = "l",
+            scope = SessionRegistry.SCOPE_LOCAL
+        )
         val tool = TestSshBuiltin()
         tool.invokeRawJson(
             BuiltinToolRequest(
@@ -363,7 +381,12 @@ class SshBuiltinTest {
         )
 
         val listJson = Json.parseToJsonElement(
-            tool.invokeRawJson(BuiltinToolRequest(name = "ssh", argumentsJson = """{"action":"list"}"""))
+            tool.invokeRawJson(
+                BuiltinToolRequest(
+                    name = "ssh",
+                    argumentsJson = """{"action":"list"}"""
+                )
+            )
         ).jsonObject
 
         assertEquals("1", listJson["total"]?.jsonPrimitive?.content)
@@ -382,7 +405,12 @@ class SshBuiltinTest {
         tool.sessionsAlive = false
 
         val listJson = Json.parseToJsonElement(
-            tool.invokeRawJson(BuiltinToolRequest(name = "ssh", argumentsJson = """{"action":"list"}"""))
+            tool.invokeRawJson(
+                BuiltinToolRequest(
+                    name = "ssh",
+                    argumentsJson = """{"action":"list"}"""
+                )
+            )
         ).jsonObject
 
         assertEquals("0", listJson["total"]?.jsonPrimitive?.content)

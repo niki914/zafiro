@@ -55,7 +55,11 @@ internal object DocumentPathResolver {
         if (authority == DOWNLOADS_AUTHORITY && docId.startsWith(MSF_PREFIX)) {
             val mediaId = docId.removePrefix(MSF_PREFIX).toLongOrNull()
             if (mediaId != null && contentResolver != null) {
-                val path = queryMediaStoreData(contentResolver, MediaStore.Files.getContentUri("external"), mediaId)
+                val path = queryMediaStoreData(
+                    contentResolver,
+                    MediaStore.Files.getContentUri("external"),
+                    mediaId
+                )
                 if (path != null) {
                     return if (isTree) path.trimEnd('/') + "/" else path
                 }
@@ -84,7 +88,11 @@ internal object DocumentPathResolver {
         if (authority == DOWNLOADS_AUTHORITY) {
             val downloadId = docId.toLongOrNull()
             if (downloadId != null && contentResolver != null) {
-                val path = queryMediaStoreData(contentResolver, MediaStore.Files.getContentUri("external"), downloadId)
+                val path = queryMediaStoreData(
+                    contentResolver,
+                    MediaStore.Files.getContentUri("external"),
+                    downloadId
+                )
                     ?: runCatching {
                         val legacyUri = ContentUris.withAppendedId(
                             Uri.parse("content://downloads/public_downloads"),
@@ -112,11 +120,13 @@ internal object DocumentPathResolver {
             volume == PRIMARY_VOLUME && root != null -> {
                 if (relative.isEmpty()) root else "$root/$relative"
             }
+
             volume.isNotEmpty() && volume != PRIMARY_VOLUME && volume.matches(UUID_PATTERN) -> {
                 // 外置 SD 卡 / U 盘卷：Android 恒定挂载在 /storage/<UUID>
                 val sdRoot = "/storage/$volume"
                 if (relative.isEmpty()) sdRoot else "$sdRoot/$relative"
             }
+
             else -> null
         } ?: return null
 
@@ -154,5 +164,6 @@ internal object DocumentPathResolver {
     }.getOrNull()
 
     /** 标准外置 SD 卡 UUID 格式（如 1234-5678 或 36 位 UUID）。 */
-    private val UUID_PATTERN = Regex("^[0-9a-fA-F]{4}-[0-9a-fA-F]{4}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+    private val UUID_PATTERN =
+        Regex("^[0-9a-fA-F]{4}-[0-9a-fA-F]{4}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 }

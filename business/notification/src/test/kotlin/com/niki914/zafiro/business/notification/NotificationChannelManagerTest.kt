@@ -1,6 +1,6 @@
 package com.niki914.zafiro.business.notification
 
-import android.content.Context
+import android.content.ContextWrapper
 import com.niki914.zafiro.business.permission.Channel
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
@@ -14,7 +14,6 @@ import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import android.content.ContextWrapper
 
 class NotificationChannelManagerTest {
 
@@ -46,7 +45,10 @@ class NotificationChannelManagerTest {
         }
 
         assertFalse("When permission is denied, post must return false", result)
-        assertFalse("Builder block must not be executed when permission is denied", builderBlockExecuted)
+        assertFalse(
+            "Builder block must not be executed when permission is denied",
+            builderBlockExecuted
+        )
     }
 
     private class FakePermissionManager(
@@ -55,8 +57,13 @@ class NotificationChannelManagerTest {
         override fun status(permission: Permission): PermissionState = state
         override suspend fun request(permission: Permission): PermissionResult =
             PermissionResult(permission, state, emptyList())
-        override suspend fun request(permission: Permission, vararg channels: Channel): PermissionResult =
+
+        override suspend fun request(
+            permission: Permission,
+            vararg channels: Channel
+        ): PermissionResult =
             PermissionResult(permission, state, emptyList())
+
         override fun applyScope(vararg channels: Channel): PermissionScope =
             throw UnsupportedOperationException("not needed in test")
     }

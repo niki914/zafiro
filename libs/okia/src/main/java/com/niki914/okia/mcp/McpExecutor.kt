@@ -62,6 +62,7 @@ class McpExecutor(
                         if (textContent.isNotEmpty()) textContent.append("\n")
                         textContent.append(block.text)
                     }
+
                     is McpContentBlock.Image -> {
                         val saver = imageSaver
                         if (saver == null) {

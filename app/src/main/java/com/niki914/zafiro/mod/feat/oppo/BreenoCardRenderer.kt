@@ -142,9 +142,17 @@ class BreenoCardRenderer {
             }
 
             // 基础元信息配置
-            invokeCall(bean, BreenoConfigProvider.RenderCard.beanSetChatTypeMethod, BreenoConfigProvider.RenderCard.chatTypeAnswer)
+            invokeCall(
+                bean,
+                BreenoConfigProvider.RenderCard.beanSetChatTypeMethod,
+                BreenoConfigProvider.RenderCard.chatTypeAnswer
+            )
             invokeCall(bean, BreenoConfigProvider.RenderCard.beanSetRoomIdMethod, roomId)
-            invokeCall(bean, BreenoConfigProvider.RenderCard.beanSetRecordIdMethod, session.recordId)
+            invokeCall(
+                bean,
+                BreenoConfigProvider.RenderCard.beanSetRecordIdMethod,
+                session.recordId
+            )
 
             // 默认 Mock 方法集注入
             BreenoConfigProvider.RenderCard.mockBeanMethodsUnit.forEach { (methodName, value) ->
@@ -153,7 +161,12 @@ class BreenoCardRenderer {
 
             // 默认 Mock LocalData 注入（标记自注入、防拦截）
             BreenoConfigProvider.RenderCard.mockBeanLocalDataUnit.forEach { (key, value) ->
-                invokeCall(bean, BreenoConfigProvider.RenderCard.beanAddClientLocalDataMethod, key, value)
+                invokeCall(
+                    bean,
+                    BreenoConfigProvider.RenderCard.beanAddClientLocalDataMethod,
+                    key,
+                    value
+                )
             }
 
             // 挂载点赞与复制操作栏
@@ -171,15 +184,33 @@ class BreenoCardRenderer {
 
             // 首次出现思考内容时，重置动画标志并触发官方 reasoningStart 状态
             if (!session.isThinkingAnimInitialized) {
-                invokeCall(bean, BreenoConfigProvider.RenderCard.beanSetHasReasoningAnimPlayedMethod, false)
-                invokeCall(bean, BreenoConfigProvider.RenderCard.beanAddClientLocalDataMethod, BreenoConfigProvider.RenderCard.reasoningLocalDataStartKey, true)
-                invokeCall(bean, BreenoConfigProvider.RenderCard.beanAddClientLocalDataMethod, BreenoConfigProvider.RenderCard.reasoningLocalDataExposureKey, true)
+                invokeCall(
+                    bean,
+                    BreenoConfigProvider.RenderCard.beanSetHasReasoningAnimPlayedMethod,
+                    false
+                )
+                invokeCall(
+                    bean,
+                    BreenoConfigProvider.RenderCard.beanAddClientLocalDataMethod,
+                    BreenoConfigProvider.RenderCard.reasoningLocalDataStartKey,
+                    true
+                )
+                invokeCall(
+                    bean,
+                    BreenoConfigProvider.RenderCard.beanAddClientLocalDataMethod,
+                    BreenoConfigProvider.RenderCard.reasoningLocalDataExposureKey,
+                    true
+                )
                 session.isThinkingAnimInitialized = true
                 Logger.i(LOG_TAG, "Initialized thinking animation for turnId=$turnId")
             }
 
             // 注入思考正文
-            invokeCall(bean, BreenoConfigProvider.RenderCard.beanSetReasoningContentMethod, thinkingText)
+            invokeCall(
+                bean,
+                BreenoConfigProvider.RenderCard.beanSetReasoningContentMethod,
+                thinkingText
+            )
 
             // 注入思考状态标题
             val runningTool = frame.tools.lastOrNull { it.status == ToolStatus.RUNNING }
@@ -188,7 +219,11 @@ class BreenoCardRenderer {
                 isThinkingComplete -> BreenoConfigProvider.RenderCard.reasoningStateCompleteDefault
                 else -> BreenoConfigProvider.RenderCard.reasoningStateThinkingDefault
             }
-            invokeCall(bean, BreenoConfigProvider.RenderCard.beanSetReasoningStateMethod, reasoningStateText)
+            invokeCall(
+                bean,
+                BreenoConfigProvider.RenderCard.beanSetReasoningStateMethod,
+                reasoningStateText
+            )
 
             Logger.d(
                 LOG_TAG,
@@ -213,7 +248,10 @@ class BreenoCardRenderer {
         if (!session.isFirstInsertDone) {
             dispatchInsert(bean)
             session.isFirstInsertDone = true
-            Logger.i(LOG_TAG, "Inserted card turnId=$turnId elapsedMs=${System.currentTimeMillis() - startedAtMs}")
+            Logger.i(
+                LOG_TAG,
+                "Inserted card turnId=$turnId elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
         } else {
             dispatchUpdate(bean, false)
             Logger.d(
@@ -226,7 +264,12 @@ class BreenoCardRenderer {
         // 4. 终态收尾
         if (frame.isFinal) {
             val hideKey = BreenoConfigProvider.RenderCard.hideFeedbackViewLocalDataKey
-            invokeCall(bean, BreenoConfigProvider.RenderCard.beanAddClientLocalDataMethod, hideKey, false)
+            invokeCall(
+                bean,
+                BreenoConfigProvider.RenderCard.beanAddClientLocalDataMethod,
+                hideKey,
+                false
+            )
             dispatchUpdate(bean, false)
             clearSession(turnId)
             Logger.i(
@@ -249,11 +292,24 @@ class BreenoCardRenderer {
         val session = obtainRenderSession(turnId, roomId)
         val bean = session.bean ?: try {
             beanClass.getDeclaredConstructor().newInstance().also {
-                invokeCall(it, BreenoConfigProvider.RenderCard.beanSetChatTypeMethod, BreenoConfigProvider.RenderCard.chatTypeAnswer)
+                invokeCall(
+                    it,
+                    BreenoConfigProvider.RenderCard.beanSetChatTypeMethod,
+                    BreenoConfigProvider.RenderCard.chatTypeAnswer
+                )
                 invokeCall(it, BreenoConfigProvider.RenderCard.beanSetRoomIdMethod, roomId)
-                invokeCall(it, BreenoConfigProvider.RenderCard.beanSetRecordIdMethod, session.recordId)
+                invokeCall(
+                    it,
+                    BreenoConfigProvider.RenderCard.beanSetRecordIdMethod,
+                    session.recordId
+                )
                 BreenoConfigProvider.RenderCard.mockBeanLocalDataUnit.forEach { (key, value) ->
-                    invokeCall(it, BreenoConfigProvider.RenderCard.beanAddClientLocalDataMethod, key, value)
+                    invokeCall(
+                        it,
+                        BreenoConfigProvider.RenderCard.beanAddClientLocalDataMethod,
+                        key,
+                        value
+                    )
                 }
             }
         } catch (e: Throwable) {
@@ -329,7 +385,12 @@ class BreenoCardRenderer {
             }
         }
         // 反射兜底
-        invokeCall(dc, BreenoConfigProvider.RenderCard.dataCenterUpdateMessageMethod, bean, notifyOnly)
+        invokeCall(
+            dc,
+            BreenoConfigProvider.RenderCard.dataCenterUpdateMessageMethod,
+            bean,
+            notifyOnly
+        )
     }
 
     private fun invokeCall(target: Any, methodName: String, vararg args: Any?) {

@@ -12,8 +12,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import com.niki914.uikit.infra.ActionBarButton
 import com.niki914.okia.message.ThinkingLevel
+import com.niki914.uikit.infra.ActionBarButton
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
@@ -136,7 +136,7 @@ internal fun ConfigureConnectionSettingsBlock(
         if (policy.showEndpointSection) {
             SettingsItemDivider()
             val endpointEditable = policy.endpointEditable &&
-                (!policy.showEndpointOverrideToggle || uiState.endpointOverrideEnabled)
+                    (!policy.showEndpointOverrideToggle || uiState.endpointOverrideEnabled)
             SettingControlledExpandableTextItem(
                 field = ConfigureEditableField.Endpoint,
                 controller = fieldController,
@@ -317,7 +317,7 @@ private data class ThinkingLevelOption(val wire: String, val label: String)
 
 private fun thinkingLevelOptions(): List<ThinkingLevelOption> =
     listOf(ThinkingLevelOption("", "Provider Default")) +
-        ThinkingLevel.entries.map { ThinkingLevelOption(it.wireValue, it.wireValue) }
+            ThinkingLevel.entries.map { ThinkingLevelOption(it.wireValue, it.wireValue) }
 
 private fun thinkingLevelLabel(wire: String): String =
     thinkingLevelOptions().firstOrNull { it.wire == wire }?.label ?: "Provider Default"

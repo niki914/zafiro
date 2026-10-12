@@ -90,7 +90,10 @@ in the result — read it back with shell commands (e.g. cat) when needed.
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
-            TextToolResult.failure(code = "PYTHON_ERROR", message = t.message ?: "Python execution failed.")
+            TextToolResult.failure(
+                code = "PYTHON_ERROR",
+                message = t.message ?: "Python execution failed."
+            )
         }
     }
 

@@ -24,9 +24,18 @@ class ConversationFormatterTest {
     @Test
     fun sanitizeDisplayTitle_stripsSingleAndRepeatedRegeneratePrefixes() {
         assertEquals("原标题", ConversationFormatter.sanitizeDisplayTitle("Regenerate · 原标题"))
-        assertEquals("原标题", ConversationFormatter.sanitizeDisplayTitle("Regenerate · Regenerate · 原标题"))
-        assertEquals("原标题", ConversationFormatter.sanitizeDisplayTitle("Regenerate · Regenerate · Regenerate · 原标题"))
-        assertEquals("原标题", ConversationFormatter.sanitizeDisplayTitle("  Regenerate ·   Regenerate · 原标题  "))
+        assertEquals(
+            "原标题",
+            ConversationFormatter.sanitizeDisplayTitle("Regenerate · Regenerate · 原标题")
+        )
+        assertEquals(
+            "原标题",
+            ConversationFormatter.sanitizeDisplayTitle("Regenerate · Regenerate · Regenerate · 原标题")
+        )
+        assertEquals(
+            "原标题",
+            ConversationFormatter.sanitizeDisplayTitle("  Regenerate ·   Regenerate · 原标题  ")
+        )
         assertEquals("", ConversationFormatter.sanitizeDisplayTitle("Regenerate · "))
         assertEquals("", ConversationFormatter.sanitizeDisplayTitle("Regenerate ·"))
         assertEquals("普通标题", ConversationFormatter.sanitizeDisplayTitle("普通标题"))
@@ -40,12 +49,14 @@ class ConversationFormatterTest {
         assertEquals(ConversationOriginKind.Regenerate, regen.originKind)
 
         // 嵌套多层相同前缀
-        val nestedRegen = ConversationFormatter.parseDisplayTitle("Regenerate · Regenerate · 深度测试")
+        val nestedRegen =
+            ConversationFormatter.parseDisplayTitle("Regenerate · Regenerate · 深度测试")
         assertEquals("深度测试", nestedRegen.cleanTitle)
         assertEquals(ConversationOriginKind.Regenerate, nestedRegen.originKind)
 
         // 嵌套不同前缀：以最外层（第一个）为准
-        val forkThenRegen = ConversationFormatter.parseDisplayTitle("Fork · Regenerate · 派生后重新生成")
+        val forkThenRegen =
+            ConversationFormatter.parseDisplayTitle("Fork · Regenerate · 派生后重新生成")
         assertEquals("派生后重新生成", forkThenRegen.cleanTitle)
         assertEquals(ConversationOriginKind.Fork, forkThenRegen.originKind)
 
@@ -98,7 +109,10 @@ class ConversationFormatterTest {
     @Test
     fun previewFromText_flattensWhitespaceAndAllowsLongerText() {
         val multiline = "第一行内容\n\n第二行内容\t第三行"
-        assertEquals("第一行内容 第二行内容 第三行", ConversationFormatter.previewFromText(multiline))
+        assertEquals(
+            "第一行内容 第二行内容 第三行",
+            ConversationFormatter.previewFromText(multiline)
+        )
 
         val longText = "a".repeat(150)
         val preview = ConversationFormatter.previewFromText(longText)

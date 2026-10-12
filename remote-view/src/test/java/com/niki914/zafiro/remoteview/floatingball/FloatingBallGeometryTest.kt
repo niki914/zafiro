@@ -13,12 +13,20 @@ class FloatingBallGeometryTest {
         // 左半边中心点位于左侧
         assertEquals(
             DockSide.Left,
-            FloatingBallGeometry.resolveDockSide(currentXPx = 100f, cardWidthPx = cardWidth, screenWidthPx = screenWidth),
+            FloatingBallGeometry.resolveDockSide(
+                currentXPx = 100f,
+                cardWidthPx = cardWidth,
+                screenWidthPx = screenWidth
+            ),
         )
         // 右半边中心点位于右侧
         assertEquals(
             DockSide.Right,
-            FloatingBallGeometry.resolveDockSide(currentXPx = 800f, cardWidthPx = cardWidth, screenWidthPx = screenWidth),
+            FloatingBallGeometry.resolveDockSide(
+                currentXPx = 800f,
+                cardWidthPx = cardWidth,
+                screenWidthPx = screenWidth
+            ),
         )
     }
 
@@ -51,7 +59,8 @@ class FloatingBallGeometryTest {
         assertEquals(FloatingBallTokens.buttonStepDp.value * 2f, expanded.minimizeX.value, 0.001f)
 
         // Minimize 按钮右边界必须严丝合缝匹配卡片内部内容宽度
-        val innerContentWidth = FloatingBallTokens.expandedWidthDp.value - 2 * FloatingBallTokens.cardPaddingDp.value
+        val innerContentWidth =
+            FloatingBallTokens.expandedWidthDp.value - 2 * FloatingBallTokens.cardPaddingDp.value
         val rightEdge = expanded.minimizeX.value + FloatingBallTokens.buttonDiameterDp.value
         assertEquals(innerContentWidth, rightEdge, 0.001f)
     }
@@ -71,10 +80,12 @@ class FloatingBallGeometryTest {
 
     @Test
     fun computeCardStackOffsets_clampsProgressOutOfBounds() {
-        val clampedLower = FloatingBallGeometry.computeCardStackOffsets(DockSide.Right, progress = -0.5f)
+        val clampedLower =
+            FloatingBallGeometry.computeCardStackOffsets(DockSide.Right, progress = -0.5f)
         assertEquals(0f, clampedLower.stopX.value, 0.001f)
 
-        val clampedUpper = FloatingBallGeometry.computeCardStackOffsets(DockSide.Right, progress = 1.5f)
+        val clampedUpper =
+            FloatingBallGeometry.computeCardStackOffsets(DockSide.Right, progress = 1.5f)
         assertEquals(FloatingBallTokens.buttonStepDp.value, clampedUpper.stopX.value, 0.001f)
     }
 

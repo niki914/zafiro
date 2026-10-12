@@ -118,7 +118,8 @@ class McpExecutorTest {
 
     // ── 多图收集 ───────────────────────────────────────────────────────
 
-    private fun ImageBlock(data: String, mime: String = "image/png") = McpContentBlock.Image(data, mime)
+    private fun ImageBlock(data: String, mime: String = "image/png") =
+        McpContentBlock.Image(data, mime)
 
     @Test
     fun collectsAllImagesWithSaver() = runTest {
@@ -130,7 +131,8 @@ class McpExecutorTest {
         }
         val saved = mutableListOf<String>()
         val saver = ImageSaver { base64 -> saved += base64; "/img/${saved.size}.jpg" }
-        val outcome = executor(client, imageSaver = saver).execute(mcpCall()) as ToolCallOutcome.Success
+        val outcome =
+            executor(client, imageSaver = saver).execute(mcpCall()) as ToolCallOutcome.Success
         assertEquals(listOf("aaa", "bbb"), saved)
         assertEquals(
             listOf("/img/1.jpg", "/img/2.jpg"),
@@ -149,7 +151,8 @@ class McpExecutorTest {
         }
         var count = 0
         val saver = ImageSaver { ++count; if (count == 2) null else "/img/$count.jpg" }
-        val outcome = executor(client, imageSaver = saver).execute(mcpCall()) as ToolCallOutcome.Success
+        val outcome =
+            executor(client, imageSaver = saver).execute(mcpCall()) as ToolCallOutcome.Success
         assertEquals(1, outcome.images.size)
         assertEquals("/img/1.jpg", outcome.images[0].path)
         // 存图失败注记进 content，模型可见，且不毁掉成功那张

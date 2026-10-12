@@ -148,6 +148,7 @@ private fun StorageInlineErrorText(error: StorageInlineError) {
             R.string.ui_settings_storage_error_load_failed,
             error.message ?: "",
         )
+
         is StorageInlineError.ClearFailed -> stringResource(
             R.string.ui_settings_storage_error_clear_failed,
             error.message ?: "",

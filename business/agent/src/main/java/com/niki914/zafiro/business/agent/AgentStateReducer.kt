@@ -45,6 +45,7 @@ internal object AgentStateReducer {
                         ),
                     )
                 }
+
                 is LlmStreamEvent.Error -> {
                     current.copy(
                         status = AgentState.Idle(
@@ -53,6 +54,7 @@ internal object AgentStateReducer {
                         ),
                     )
                 }
+
                 else -> current
             }
         }
@@ -94,6 +96,7 @@ internal object AgentStateReducer {
                     ),
                 )
             }
+
             is LlmStreamEvent.ToolRunning -> {
                 current.copy(
                     status = AgentState.ToolRunning(

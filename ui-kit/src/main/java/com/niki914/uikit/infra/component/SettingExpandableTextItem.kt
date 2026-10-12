@@ -274,6 +274,7 @@ internal fun SettingExpandableTextItemContent(
                     )
                 }
             }
+
             val trailing = fieldTrailingContent
             if (trailing != null) {
                 Row(

@@ -93,8 +93,13 @@ class OnboardingPreferencesViewModelTest {
         override fun status(permission: Permission): PermissionState = state
         override suspend fun request(permission: Permission): PermissionResult =
             PermissionResult(permission, state, emptyList())
-        override suspend fun request(permission: Permission, vararg channels: Channel): PermissionResult =
+
+        override suspend fun request(
+            permission: Permission,
+            vararg channels: Channel
+        ): PermissionResult =
             PermissionResult(permission, state, emptyList())
+
         override fun applyScope(vararg channels: Channel): PermissionScope =
             object : PermissionScope {
                 override suspend fun request(permission: Permission): PermissionResult =

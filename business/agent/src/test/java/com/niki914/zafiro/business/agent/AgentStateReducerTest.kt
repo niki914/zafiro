@@ -96,7 +96,11 @@ class AgentStateReducerTest {
             ),
         )
         assertEquals(
-            AgentState.ToolRunning(toolName = "bash", label = "bash", argumentsJson = "{\"cmd\":\"ls\"}"),
+            AgentState.ToolRunning(
+                toolName = "bash",
+                label = "bash",
+                argumentsJson = "{\"cmd\":\"ls\"}"
+            ),
             state.status,
         )
 
@@ -106,7 +110,11 @@ class AgentStateReducerTest {
             LlmStreamEvent.ToolSucceeded(ToolCallStatus(name = "bash")),
         )
         assertEquals(
-            AgentState.ToolRunning(toolName = "bash", label = "bash", argumentsJson = "{\"cmd\":\"ls\"}"),
+            AgentState.ToolRunning(
+                toolName = "bash",
+                label = "bash",
+                argumentsJson = "{\"cmd\":\"ls\"}"
+            ),
             state.status,
         )
 
@@ -192,7 +200,10 @@ class AgentStateReducerTest {
         )
         val interrupted = AgentStateReducer.interrupt(state)
 
-        assertEquals(AgentState.Idle(TurnOutcome.Interrupted, lastText = "说到一半"), interrupted.status)
+        assertEquals(
+            AgentState.Idle(TurnOutcome.Interrupted, lastText = "说到一半"),
+            interrupted.status
+        )
     }
 
     @Test
@@ -241,7 +252,10 @@ class AgentStateReducerTest {
         state = AgentStateReducer.stopping(state)
 
         val completed = AgentStateReducer.reduce(state, LlmStreamEvent.Completed)
-        assertEquals(AgentState.Idle(TurnOutcome.Completed, lastText = "停止前的话"), completed.status)
+        assertEquals(
+            AgentState.Idle(TurnOutcome.Completed, lastText = "停止前的话"),
+            completed.status
+        )
 
         val failed = AgentStateReducer.reduce(state, LlmStreamEvent.Error(message = "err"))
         assertEquals(AgentState.Idle(TurnOutcome.Failed, lastText = "停止前的话"), failed.status)

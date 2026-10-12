@@ -1,10 +1,10 @@
 package com.niki914.zafiro.app.ui.model
 
 import com.niki914.logging.Logger
+import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionState
-import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
 
@@ -57,12 +57,17 @@ class GeneralSettingsViewModel :
             is GeneralSettingsIntent.ToggleFloatingBall -> toggleFloatingBall(intent.enabled)
             is GeneralSettingsIntent.ToggleFloatingBallAutoExpand ->
                 toggleFloatingBallAutoExpand(intent.enabled)
+
             is GeneralSettingsIntent.ToggleResidentNotification -> toggleResidentNotification(intent.enabled)
             is GeneralSettingsIntent.ToggleTurnNotification -> toggleTurnNotification(intent.enabled)
             is GeneralSettingsIntent.ToggleLoadLastConversation -> toggleLoadLastConversation(intent.enabled)
-            is GeneralSettingsIntent.ToggleAlwaysShowMessageActions -> toggleAlwaysShowMessageActions(intent.enabled)
+            is GeneralSettingsIntent.ToggleAlwaysShowMessageActions -> toggleAlwaysShowMessageActions(
+                intent.enabled
+            )
+
             is GeneralSettingsIntent.ToggleVoiceAssistantIsolatedSession ->
                 toggleVoiceAssistantIsolatedSession(intent.enabled)
+
             is GeneralSettingsIntent.SelectIdleTimeout -> selectIdleTimeout(intent.seconds)
             is GeneralSettingsIntent.SelectRetryMaxAttempts -> selectRetryMaxAttempts(intent.attempts)
             is GeneralSettingsIntent.ToggleKeepScreenOn -> toggleKeepScreenOn(intent.enabled)

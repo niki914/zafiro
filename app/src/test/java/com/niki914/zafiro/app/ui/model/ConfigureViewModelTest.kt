@@ -521,7 +521,12 @@ class ConfigureViewModelTest {
         val baseDeps = deps.toDependencies()
         val depsWithRevisions = baseDeps.copy(revisions = revisionFlow)
         val viewModel = ConfigureViewModel(depsWithRevisions)
-        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit, configId = "cfg-a"))
+        viewModel.sendIntent(
+            ConfigureIntent.Initialize(
+                ConfigureScene.SettingsEdit,
+                configId = "cfg-a"
+            )
+        )
         advanceUntilIdle()
 
         assertEquals(1, viewModel.uiStateFlow.value.savedConfigs.size)

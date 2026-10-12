@@ -332,7 +332,8 @@ class SettingsDomainCodecsTest {
     fun appStateResidentNotificationDefaultsDisabledAndRoundTrips() {
         assertFalse(AppStateSettingsCodec.parse("""{}""").residentNotificationEnabled)
 
-        val json = AppStateSettingsCodec.encode(AppStateSettings(residentNotificationEnabled = true))
+        val json =
+            AppStateSettingsCodec.encode(AppStateSettings(residentNotificationEnabled = true))
         assertTrue(jsonObject(json)["resident_notification_enabled"]!!.jsonPrimitive.boolean)
         assertTrue(AppStateSettingsCodec.parse(json).residentNotificationEnabled)
     }
@@ -350,7 +351,8 @@ class SettingsDomainCodecsTest {
     fun appStateVoiceAssistantIsolatedSessionDefaultsEnabledAndRoundTrips() {
         assertTrue(AppStateSettingsCodec.parse("""{}""").voiceAssistantIsolatedSession)
 
-        val json = AppStateSettingsCodec.encode(AppStateSettings(voiceAssistantIsolatedSession = false))
+        val json =
+            AppStateSettingsCodec.encode(AppStateSettings(voiceAssistantIsolatedSession = false))
         assertFalse(jsonObject(json)["voice_assistant_isolated_session"]!!.jsonPrimitive.boolean)
         assertFalse(AppStateSettingsCodec.parse(json).voiceAssistantIsolatedSession)
     }

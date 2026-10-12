@@ -63,9 +63,10 @@ internal class OkiaSessionAssembler(
 
     val currentConversation: StateFlow<Conversation?> get() = conversationFlow
 
-    var okiaFactory: LLMController.OkiaFactory = LLMController.OkiaFactory { protocol, restore, config ->
-        openOkiaWithDefaultProtocol(protocol, restore, config)
-    }
+    var okiaFactory: LLMController.OkiaFactory =
+        LLMController.OkiaFactory { protocol, restore, config ->
+            openOkiaWithDefaultProtocol(protocol, restore, config)
+        }
 
     fun resetForTest() {
         kotlinx.coroutines.runBlocking { activeSession?.close() }
@@ -166,6 +167,7 @@ internal class OkiaSessionAssembler(
             LlmProtocol.OpenAiChatCompletions -> "https://api.openai.com/v1/chat/completions"
             LlmProtocol.GoogleOpenAi ->
                 "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+
             LlmProtocol.OpenAiResponses -> "https://api.openai.com/v1/responses"
             LlmProtocol.AnthropicMessages -> "https://api.anthropic.com/v1/messages"
         }
@@ -175,8 +177,10 @@ internal class OkiaSessionAssembler(
         LlmProtocol.DeepSeek -> OpenAIChatCompletionProtocol()
         LlmProtocol.OpenAiChatCompletions ->
             OpenAIChatCompletionProtocol(Json, OpenAIChatCompletionCompat())
+
         LlmProtocol.GoogleOpenAi ->
             OpenAIChatCompletionProtocol(Json, GoogleOpenAiCompat())
+
         LlmProtocol.OpenAiResponses -> OpenAIResponsesProtocol()
         LlmProtocol.AnthropicMessages -> AnthropicMessagesProtocol()
     }
@@ -197,13 +201,17 @@ internal class OkiaSessionAssembler(
             val fixed = withMissingToolResultsFilled(history)
             if (fixed != history) {
                 request.write(request.snapshot, fixed, "fix_incomplete_tool_calls")
-                Logger.i(LOG_TAG, "fixIncompleteToolCalls patched ${fixed.size - history.size} results")
+                Logger.i(
+                    LOG_TAG,
+                    "fixIncompleteToolCalls patched ${fixed.size - history.size} results"
+                )
             }
         }
     }
 
     private fun countMissingToolResults(history: List<Message>): Int {
-        val answered = history.filterIsInstance<Message.ToolResult>().mapTo(mutableSetOf()) { it.callId }
+        val answered =
+            history.filterIsInstance<Message.ToolResult>().mapTo(mutableSetOf()) { it.callId }
         var missing = 0
         for (message in history) {
             if (message !is Message.Assistant) continue
@@ -215,7 +223,8 @@ internal class OkiaSessionAssembler(
     }
 
     private fun withMissingToolResultsFilled(history: List<Message>): List<Message> {
-        val answered = history.filterIsInstance<Message.ToolResult>().mapTo(mutableSetOf()) { it.callId }
+        val answered =
+            history.filterIsInstance<Message.ToolResult>().mapTo(mutableSetOf()) { it.callId }
         if (answered.isEmpty() && history.none { it is Message.Assistant }) return history
         val patched = mutableListOf<Message>()
         var changed = false

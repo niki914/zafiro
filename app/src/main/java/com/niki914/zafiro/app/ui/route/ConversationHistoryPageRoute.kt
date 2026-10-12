@@ -106,12 +106,24 @@ internal fun ConversationHistoryPageRoute(
                     PageChromeMenuItem(
                         key = "pin",
                         title = pinLabel,
-                        onClick = { viewModel.sendIntent(ConversationHistoryIntent.BatchSetPinned(true)) },
+                        onClick = {
+                            viewModel.sendIntent(
+                                ConversationHistoryIntent.BatchSetPinned(
+                                    true
+                                )
+                            )
+                        },
                     ),
                     PageChromeMenuItem(
                         key = "unpin",
                         title = unpinLabel,
-                        onClick = { viewModel.sendIntent(ConversationHistoryIntent.BatchSetPinned(false)) },
+                        onClick = {
+                            viewModel.sendIntent(
+                                ConversationHistoryIntent.BatchSetPinned(
+                                    false
+                                )
+                            )
+                        },
                     ),
                 ),
                 backHandler = PageBackHandler(

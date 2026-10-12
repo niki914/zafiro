@@ -23,4 +23,5 @@ class AgentTenantContext(
 suspend inline fun currentAgentTenantId(): String? = coroutineContext[AgentTenantContext]?.tenantId
 
 /** 获取当前协程上下文中的 Agent 控制面，若脱离 Agent 运行环境则返回 null。 */
-suspend inline fun currentAgentControl(): AgentControl? = coroutineContext[AgentTenantContext]?.agentControl
+suspend inline fun currentAgentControl(): AgentControl? =
+    coroutineContext[AgentTenantContext]?.agentControl

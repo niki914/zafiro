@@ -2,11 +2,11 @@ package com.niki914.zafiro.app
 
 import android.app.ActivityManager
 import android.app.Application
-import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.api.McpService
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.crash.CrashRecorder
@@ -15,7 +15,6 @@ import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
 import com.niki914.zafiro.app.wakelock.AgentWakeLockController
-import com.niki914.zafiro.api.McpService
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionState
@@ -114,7 +113,9 @@ class App : Application() {
         permission = Permission.NOTIFICATION,
         onPermissionMissing = { XRepo.setResidentNotificationEnabled(false) },
     ) { enabled ->
-        if (enabled) ResidentNotificationManager.start(this) else ResidentNotificationManager.stop(this)
+        if (enabled) ResidentNotificationManager.start(this) else ResidentNotificationManager.stop(
+            this
+        )
     }
 
     private fun observeFloatingBall() = launchFeatureFlagObserver(

@@ -47,6 +47,7 @@ sealed interface FloatingBallIntent {
         val isRunning: Boolean,
         val lastOutcome: TurnOutcome? = null,
     ) : FloatingBallIntent
+
     data class UpdateApprovalRequest(val request: ApprovalRequest?) : FloatingBallIntent
 }
 

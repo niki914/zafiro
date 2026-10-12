@@ -55,6 +55,7 @@ sealed interface ConversationHistoryIntent {
 
     /** 宿主已删除活动会话：route 转发 [ConversationHistoryEffect.DeleteActiveConversation] 后回报结果。 */
     data class ActiveConversationDeleted(val id: String) : ConversationHistoryIntent
+
     /** 会话删除失败（含活动会话删除失败）。 */
     data class DeleteFailed(val message: String) : ConversationHistoryIntent
 }
@@ -62,6 +63,7 @@ sealed interface ConversationHistoryIntent {
 sealed interface ConversationHistoryEffect {
     /** 打开某个会话；分叉产生的新会话也走这里。 */
     data class OpenConversation(val id: String) : ConversationHistoryEffect
+
     /** 删除的是当前活动会话，须交由 route 转给宿主（ZafiroApp）处理。 */
     data class DeleteActiveConversation(val id: String) : ConversationHistoryEffect
 }
@@ -73,7 +75,13 @@ internal data class ConversationHistoryViewModelDependencies(
     val renameConversation: suspend (String, String) -> Unit,
     val forkConversation: suspend (String) -> String?,
     val setConversationPinned: suspend (String, Boolean) -> Unit,
-    val destroyAgent: (String) -> Unit = { id -> runCatching { requireService<AgentManager>().destroy(id) } },
+    val destroyAgent: (String) -> Unit = { id ->
+        runCatching {
+            requireService<AgentManager>().destroy(
+                id
+            )
+        }
+    },
     val setHasUnread: suspend (String, Boolean) -> Unit = { id, unread ->
         ConversationRepo.setHasUnread(id, unread)
     },
@@ -103,10 +111,10 @@ internal data class ConversationHistoryViewModelDependencies(
 class ConversationHistoryViewModel internal constructor(
     private val dependencies: ConversationHistoryViewModelDependencies,
 ) : ComposeMVIViewModel<
-    ConversationHistoryIntent,
-    ConversationHistoryUiState,
-    ConversationHistoryEffect,
-    >() {
+        ConversationHistoryIntent,
+        ConversationHistoryUiState,
+        ConversationHistoryEffect,
+        >() {
 
     constructor() : this(ConversationHistoryViewModelDependencies.Default)
 

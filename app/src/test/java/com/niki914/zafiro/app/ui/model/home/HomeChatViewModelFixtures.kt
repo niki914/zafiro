@@ -13,10 +13,10 @@ import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ConversationTurn
-import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.TurnBlock
@@ -50,6 +50,7 @@ internal fun fixture(
             agentFlow.value = agent
             return agent
         }
+
         override fun startNewConversation(): Agent {
             agent.mutableDraft.value = Draft()
             agent.mutableConversation.value = Conversation()
@@ -57,6 +58,7 @@ internal fun fixture(
             agentFlow.value = agent
             return agent
         }
+
         override val activeStates: StateFlow<Map<String, AgentState>> = MutableStateFlow(emptyMap())
         override fun createTaskAgent(isPersistent: Boolean): Agent = agent
         override fun destroy(conversationId: String) {}
@@ -169,8 +171,9 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
     override suspend fun load(id: ConversationId) {
         lastLoadedId = id
         val record = store.getConversation(id.value)
-        mutableConversation.value = record?.let { ConversationFormatter.toConversation(it.snapshot) }
-            ?: Conversation(id = id)
+        mutableConversation.value =
+            record?.let { ConversationFormatter.toConversation(it.snapshot) }
+                ?: Conversation(id = id)
         mutableStatus.value = AgentState.Idle()
         store.setLastOpenedConversationId(id.value)
     }
@@ -242,14 +245,20 @@ internal class FakeHomeConversationStore(
     private var draft = ""
 
     override suspend fun lastOpenedConversationId() = lastOpened
-    override suspend fun setLastOpenedConversationId(value: String) { lastOpened = value }
+    override suspend fun setLastOpenedConversationId(value: String) {
+        lastOpened = value
+    }
+
     override suspend fun loadLastConversationOnStartup() = restoreOnStartup
     override suspend fun getConversation(id: String) = records[id]
     val boundConfigs = linkedMapOf<String, String>()
     var currentActiveConfigId = "active-default"
 
     override suspend fun draftText(): String = draft
-    override suspend fun setDraftText(value: String) { draft = value }
+    override suspend fun setDraftText(value: String) {
+        draft = value
+    }
+
     override suspend fun bindConfig(conversationId: String) {
         if (records[conversationId]?.configId?.isNotBlank() == true) return
         boundConfigs[conversationId] = currentActiveConfigId
@@ -265,13 +274,24 @@ internal class FakeHomeConversationStore(
         }
     }
 
-    override suspend fun deleteConversation(id: String) { records.remove(id) }
+    override suspend fun deleteConversation(id: String) {
+        records.remove(id)
+    }
+
     override suspend fun clearUnread(conversationId: String) {}
 
     fun recordNewConversation(id: String, title: String) {
         if (id in records) return
         records[id] = ConversationRecord(
-            summary = ConversationSummary(id, title, false, records.size.toLong(), records.size.toLong(), title, 0),
+            summary = ConversationSummary(
+                id,
+                title,
+                false,
+                records.size.toLong(),
+                records.size.toLong(),
+                title,
+                0
+            ),
             draftText = "",
             snapshot = SessionSnapshot(id, null, 1, emptyList()),
         )
@@ -301,7 +321,8 @@ internal class FakeHomeConversationStore(
 
     override suspend fun forkAtTurn(sourceId: String, turnIndex: Int, kind: ForkKind): ForkResult? {
         val source = records[sourceId] ?: return null
-        val projected = ConversationFormatter.projectLeaf(source.snapshot.entries, source.snapshot.leafId)
+        val projected =
+            ConversationFormatter.projectLeaf(source.snapshot.entries, source.snapshot.leafId)
         val userEntryIndex = projected.withIndex()
             .filter { (_, entry) -> entry.message is Message.User }
             .let { users -> users.getOrNull(turnIndex)?.index ?: -1 }
@@ -310,6 +331,7 @@ internal class FakeHomeConversationStore(
             ForkKind.Fork -> (userEntryIndex + 1 until projected.size)
                 .firstOrNull { projected[it].message is Message.User }
                 ?: projected.size
+
             ForkKind.Regenerate, ForkKind.Rewind -> userEntryIndex
         }
         val entries = projected.take(keepEntryCount)

@@ -14,6 +14,7 @@ import android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT
+import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
@@ -21,9 +22,8 @@ import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionResult
 import com.niki914.zafiro.business.permission.PermissionState
-import com.niki914.zafiro.service.requireService
-import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.currentVersion
+import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.ensureAccessibility
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.ensureService
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.nodeCache
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.refreshNodeCache
@@ -32,6 +32,7 @@ import com.niki914.zafiro.chat.agentic.buildin.ScreenOperationError
 import com.niki914.zafiro.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
+import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine

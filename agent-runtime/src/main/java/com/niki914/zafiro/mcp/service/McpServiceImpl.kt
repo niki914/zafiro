@@ -70,7 +70,10 @@ class McpServiceImpl(
 
     private fun startInternal(config: RuntimeMcpServiceConfig) {
         _status.value = McpServiceStatus.Starting
-        Logger.i(LOG_TAG, "starting MCP server on ${config.host}:${config.port} (tokenConfigured=${config.bearerToken.isNotBlank()})")
+        Logger.i(
+            LOG_TAG,
+            "starting MCP server on ${config.host}:${config.port} (tokenConfigured=${config.bearerToken.isNotBlank()})"
+        )
         // Ktor 引擎的 accept 循环跑在自己的 CoroutineScope 里，绑定失败会绕过这里的 try/catch
         // 变成未捕获异常，落到 Thread.uncaughtExceptionHandler（release 下是 CrashRecorder）直接杀进程。
         val engineScope = CoroutineScope(
@@ -91,7 +94,10 @@ class McpServiceImpl(
                         val authHeader = call.request.header(HttpHeaders.Authorization)?.trim()
                         val expectedHeader = "Bearer $expectedToken"
                         if (authHeader == null || authHeader != expectedHeader) {
-                            Logger.w(LOG_TAG, "unauthorized MCP request rejected: missing or invalid Bearer token")
+                            Logger.w(
+                                LOG_TAG,
+                                "unauthorized MCP request rejected: missing or invalid Bearer token"
+                            )
                             call.respondText(
                                 text = "Unauthorized: Invalid or missing Bearer token",
                                 status = HttpStatusCode.Unauthorized,
@@ -113,7 +119,10 @@ class McpServiceImpl(
             engine.start(wait = false)
             serverEngine = engine
             _status.value = McpServiceStatus.Running(config.host, config.port)
-            Logger.i(LOG_TAG, "MCP server successfully started and listening on http://${config.host}:${config.port}/mcp")
+            Logger.i(
+                LOG_TAG,
+                "MCP server successfully started and listening on http://${config.host}:${config.port}/mcp"
+            )
         } catch (e: Exception) {
             val cause = e.cause ?: e
             Logger.e(LOG_TAG, "failed to start MCP server: ${cause.message}", cause)

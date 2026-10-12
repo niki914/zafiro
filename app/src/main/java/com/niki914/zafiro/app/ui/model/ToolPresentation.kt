@@ -14,11 +14,11 @@ import androidx.compose.ui.res.vectorResource
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ToolPresentation.inputOf
 import com.niki914.zafiro.app.ui.model.ToolPresentation.previewOf
-import com.niki914.zafiro.remoteview.R as RemoteViewR
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.niki914.zafiro.remoteview.R as RemoteViewR
 
 /**
  * 折叠块 UI 展示数据：图标、显示名（本地化 res id）、输入预览。纯函数对象。

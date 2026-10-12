@@ -12,7 +12,6 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalCloseOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalInteractiveReadOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalInteractiveWriteOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalReadMode
-import com.niki914.zafiro.chat.agentic.shell.TerminalReadOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse
 import com.niki914.zafiro.util.ToolOutputTruncator
@@ -57,7 +56,7 @@ abstract class BaseSessionBuiltin(
     protected val abandonHint: String
         get() = if (supportsCtrlCAbort) {
             "abandon it with action=\"write\" and text \"\\u0003\" (Ctrl-C) — that frees this session for the next command; " +
-                "if you only need a shell right now, leave this session alone and run your next command in a new session with a different alias."
+                    "if you only need a shell right now, leave this session alone and run your next command in a new session with a different alias."
         } else {
             "close the session with action='close' and start a new one with a different alias."
         }
@@ -235,7 +234,12 @@ abstract class BaseSessionBuiltin(
         }
 
         // 同步等待 Sentinel
-        val parsed = awaitSentinel(sessionId, token, timeoutMs = timeoutSec * 1000L, initialOffset = initialOffset)
+        val parsed = awaitSentinel(
+            sessionId,
+            token,
+            timeoutMs = timeoutSec * 1000L,
+            initialOffset = initialOffset
+        )
         return if (parsed != null) {
             commandState.status = if (parsed.exitCode == 0) "exited" else "failed"
             commandState.exitCode = parsed.exitCode
@@ -350,7 +354,7 @@ abstract class BaseSessionBuiltin(
         // 哨兵管线自己写进去的行（payload 回显、标记行）对模型没有任何信息量。交互式 read 走的是
         // 原始流、不经过 parseOutput，抹不掉就只能在这里兜
         val needsPlumbingFilter = "__sess_status" in withoutNul || "\$__t" in withoutNul ||
-            SessionSentinel.MARKER_PREFIX in withoutNul
+                SessionSentinel.MARKER_PREFIX in withoutNul
         if (!needsPlumbingFilter) return withoutNul
         return withoutNul.split('\n')
             .filterNot(::isSentinelPlumbingLine)
@@ -375,7 +379,8 @@ abstract class BaseSessionBuiltin(
     }
 
     /** 增量窗口：从指定偏移取到末尾；偏移越界时退回全文。 */
-    protected fun String.windowFrom(offset: Int): String = if (length >= offset) substring(offset) else this
+    protected fun String.windowFrom(offset: Int): String =
+        if (length >= offset) substring(offset) else this
 
     // ── 通用动作分发 ────────────────────────────────────────────────────────
 
@@ -402,7 +407,8 @@ abstract class BaseSessionBuiltin(
             )
             entry.alias?.let { payload["alias"] = JsonPrimitive(it) }
             if (entry.metadata.isNotEmpty()) {
-                payload["metadata"] = JsonObject(entry.metadata.mapValues { JsonPrimitive(it.value) })
+                payload["metadata"] =
+                    JsonObject(entry.metadata.mapValues { JsonPrimitive(it.value) })
             }
             JsonObject(payload)
         }
@@ -441,8 +447,9 @@ abstract class BaseSessionBuiltin(
                 }
             }
             val elapsed = (
-                (activeCommand.endTimestampMs ?: System.currentTimeMillis()) - activeCommand.startTimeMs
-                ) / 1000L
+                    (activeCommand.endTimestampMs
+                        ?: System.currentTimeMillis()) - activeCommand.startTimeMs
+                    ) / 1000L
             return if (activeCommand.status != "running") {
                 // 已退出的命令全量输出只交付一次；再次 read 回 already_read，上下文不反复膨胀
                 val alreadyRead = activeCommand.outputDelivered
@@ -489,9 +496,11 @@ abstract class BaseSessionBuiltin(
                 exitCode = null,
                 elapsedSeconds = 0L,
             )
+
             is TerminalInteractiveReadOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
                 interactiveOutcome.session
             )
+
             is TerminalInteractiveReadOutcome.NotInteractive -> TerminalToolResponse.invalidRequest(
                 "Session '$sessionId' is not an interactive terminal."
             )
@@ -542,7 +551,7 @@ abstract class BaseSessionBuiltin(
             if (!supportsCtrlCAbort) {
                 return TerminalToolResponse.invalidRequest(
                     "Session '$sessionId' has no PTY: \"\\u0003\" is not an interrupt here. " +
-                        "Close it with action='close' and start a new session with a different alias."
+                            "Close it with action='close' and start a new session with a different alias."
                 )
             }
             // PTY 上 Ctrl-C 会连带冲掉输入队列里那行 sentinel 标记（NOFLSH 未置位 → 输入队列被 flush），
@@ -567,6 +576,7 @@ abstract class BaseSessionBuiltin(
                     "closed" to JsonPrimitive(true),
                 )
             ).toString()
+
             is TerminalCloseOutcome.UnexpectedError -> TerminalToolResponse.internalError(outcome.throwable)
         }
     }
@@ -577,16 +587,20 @@ abstract class BaseSessionBuiltin(
                 sessionId = sessionId,
                 bytesWritten = outcome.bytesWritten,
             )
+
             is TerminalInteractiveWriteOutcome.SessionNotFound -> TerminalToolResponse.sessionNotFound(
                 outcome.session
             )
+
             is TerminalInteractiveWriteOutcome.NotInteractive -> TerminalToolResponse.invalidRequest(
                 "Session '${outcome.session}' is not an interactive terminal."
             )
+
             is TerminalInteractiveWriteOutcome.Busy -> TerminalToolResponse.sessionBusy(
                 outcome.session,
                 asyncId = null,
             )
+
             is TerminalInteractiveWriteOutcome.UnexpectedError -> TerminalToolResponse.internalError(
                 outcome.throwable
             )
@@ -659,8 +673,8 @@ abstract class BaseSessionBuiltin(
             "status" to JsonPrimitive("running"),
             "output" to JsonPrimitive(
                 "Background command started. It runs with status='running'; collect its output later " +
-                    "with action='read' instead of polling in a tight loop. If it is stuck, $abandonHint " +
-                    "A session with a command still in flight rejects new commands."
+                        "with action='read' instead of polling in a tight loop. If it is stuck, $abandonHint " +
+                        "A session with a command still in flight rejects new commands."
             ),
         )
         alias?.let { payload["alias"] = JsonPrimitive(it) }
@@ -682,8 +696,8 @@ abstract class BaseSessionBuiltin(
             "output" to JsonPrimitive(prepareReceiptOutput(output)),
             "message" to JsonPrimitive(
                 "Command did not finish within ${timeoutSec}s. It keeps running in the background with " +
-                    "status='running'; collect its output later with action='read' instead of polling in a tight loop. " +
-                    "If it is stuck, $abandonHint"
+                        "status='running'; collect its output later with action='read' instead of polling in a tight loop. " +
+                        "If it is stuck, $abandonHint"
             ),
         )
         alias?.let { payload["alias"] = JsonPrimitive(it) }
@@ -736,7 +750,8 @@ abstract class BaseSessionBuiltin(
                 echoCommand,
             )
 
-            val cleanAfter = rawOutput.substring(suffixIndex + MARKER_SUFFIX.length).trimStart('\r', '\n')
+            val cleanAfter =
+                rawOutput.substring(suffixIndex + MARKER_SUFFIX.length).trimStart('\r', '\n')
             val clean = when {
                 cleanBefore.isEmpty() -> cleanAfter
                 cleanAfter.isEmpty() -> cleanBefore
@@ -785,6 +800,7 @@ abstract class BaseSessionBuiltin(
 
         /** 会话已死且缓冲连续这么多拍没有新数据，才判定哨兵不会再来。 */
         private const val DEAD_QUIET_TICKS = 2
+
         /** 终端中断符 (Ctrl-C)，作为「作废当前命令」的显式信号。 */
         private const val ABORT_SEQUENCE = '\u0003'
     }

@@ -94,8 +94,8 @@ class TextActionPromptComposerTest {
             selectedText = "Hello world",
             captureFailed = true,
             captureFailure =
-            "The Zafiro accessibility service is not available. " +
-                    "Tell the user to enable 'Zafiro' in Settings > Accessibility, then retry.",
+                "The Zafiro accessibility service is not available. " +
+                        "Tell the user to enable 'Zafiro' in Settings > Accessibility, then retry.",
         )
 
         assertEquals(

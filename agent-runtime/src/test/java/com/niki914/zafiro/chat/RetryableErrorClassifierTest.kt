@@ -25,7 +25,10 @@ class RetryableErrorClassifierTest {
             LlmErrorCode.Parse,
             classify(LLMErrorCode.ContextOverflow, "context too long"),
         )
-        assertEquals(LlmErrorCode.RetryExhausted, classify(LLMErrorCode.RetryExhausted, "retry exhausted (Transport)"))
+        assertEquals(
+            LlmErrorCode.RetryExhausted,
+            classify(LLMErrorCode.RetryExhausted, "retry exhausted (Transport)")
+        )
         assertEquals(LlmErrorCode.HookFailed, classify(LLMErrorCode.HookFailed, "hook"))
         assertEquals(
             LlmErrorCode.ToolExecutionFailed,
@@ -43,27 +46,45 @@ class RetryableErrorClassifierTest {
             LlmErrorCode.Overloaded,
             classify(LLMErrorCode.Transport, "service temporarily unavailable"),
         )
-        assertEquals(LlmErrorCode.Overloaded, classify(LLMErrorCode.Transport, "upstream error", statusCode = 503))
+        assertEquals(
+            LlmErrorCode.Overloaded,
+            classify(LLMErrorCode.Transport, "upstream error", statusCode = 503)
+        )
     }
 
     @Test
     fun `Transport rate limits classify as RateLimit`() {
-        assertEquals(LlmErrorCode.RateLimit, classify(LLMErrorCode.Transport, "rate limit exceeded"))
-        assertEquals(LlmErrorCode.RateLimit, classify(LLMErrorCode.Transport, "HTTP 429", statusCode = 429))
+        assertEquals(
+            LlmErrorCode.RateLimit,
+            classify(LLMErrorCode.Transport, "rate limit exceeded")
+        )
+        assertEquals(
+            LlmErrorCode.RateLimit,
+            classify(LLMErrorCode.Transport, "HTTP 429", statusCode = 429)
+        )
         assertEquals(LlmErrorCode.RateLimit, classify(LLMErrorCode.Transport, "too many requests"))
     }
 
     @Test
     fun `Transport timeouts classify as IdleTimeout`() {
         assertEquals(LlmErrorCode.IdleTimeout, classify(LLMErrorCode.Transport, "request timeout"))
-        assertEquals(LlmErrorCode.IdleTimeout, classify(LLMErrorCode.Transport, "connection timed out"))
-        assertEquals(LlmErrorCode.IdleTimeout, classify(LLMErrorCode.Transport, "ETIMEDOUT", cause = RuntimeException("ETIMEDOUT")))
+        assertEquals(
+            LlmErrorCode.IdleTimeout,
+            classify(LLMErrorCode.Transport, "connection timed out")
+        )
+        assertEquals(
+            LlmErrorCode.IdleTimeout,
+            classify(LLMErrorCode.Transport, "ETIMEDOUT", cause = RuntimeException("ETIMEDOUT"))
+        )
     }
 
     @Test
     fun `Transport connection errors classify as Transport`() {
         assertEquals(LlmErrorCode.Transport, classify(LLMErrorCode.Transport, "socket hang up"))
-        assertEquals(LlmErrorCode.Transport, classify(LLMErrorCode.Transport, "ECONNRESET", cause = RuntimeException("ECONNRESET")))
+        assertEquals(
+            LlmErrorCode.Transport,
+            classify(LLMErrorCode.Transport, "ECONNRESET", cause = RuntimeException("ECONNRESET"))
+        )
         assertEquals(LlmErrorCode.Transport, classify(LLMErrorCode.Transport, "connection refused"))
     }
 
@@ -77,12 +98,18 @@ class RetryableErrorClassifierTest {
 
     @Test
     fun `auth keywords in transport message classify as Auth`() {
-        assertEquals(LlmErrorCode.Auth, classify(LLMErrorCode.Transport, "HTTP 401", statusCode = 401))
+        assertEquals(
+            LlmErrorCode.Auth,
+            classify(LLMErrorCode.Transport, "HTTP 401", statusCode = 401)
+        )
         assertEquals(LlmErrorCode.Auth, classify(LLMErrorCode.Transport, "invalid api key"))
     }
 
     @Test
     fun `unrecognized transport message stays Transport`() {
-        assertEquals(LlmErrorCode.Transport, classify(LLMErrorCode.Transport, "something weird happened"))
+        assertEquals(
+            LlmErrorCode.Transport,
+            classify(LLMErrorCode.Transport, "something weird happened")
+        )
     }
 }

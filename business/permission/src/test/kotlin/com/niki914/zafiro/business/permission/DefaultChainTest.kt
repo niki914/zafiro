@@ -18,7 +18,12 @@ class DefaultChainTest {
         // 有 root / Shizuku 时先静默授权（handler 内部走 pm grant / appops），
         // 不可用时降级到系统弹窗与跳设置页。
         assertEquals(
-            listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS),
+            listOf(
+                Channel.ROOT_SHELL,
+                Channel.SHIZUKU,
+                Channel.SYSTEM_DIALOG,
+                Channel.JUMP_SETTINGS
+            ),
             PermissionManagerImpl.defaultChain(Permission.NOTIFICATION),
         )
     }
@@ -28,15 +33,26 @@ class DefaultChainTest {
         // <30 的存储是运行时权限，能弹系统框；30+ 的 all-files 没有弹框，
         // SYSTEM_DIALOG 自己报 UNAVAILABLE，链自然降级到跳设置页。
         assertEquals(
-            listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS),
+            listOf(
+                Channel.ROOT_SHELL,
+                Channel.SHIZUKU,
+                Channel.SYSTEM_DIALOG,
+                Channel.JUMP_SETTINGS
+            ),
             PermissionManagerImpl.defaultChain(Permission.STORAGE),
         )
     }
 
     @Test
     fun `capability permissions default to own channel`() {
-        assertEquals(listOf(Channel.ROOT_SHELL), PermissionManagerImpl.defaultChain(Permission.ROOT))
-        assertEquals(listOf(Channel.SHIZUKU), PermissionManagerImpl.defaultChain(Permission.SHIZUKU))
+        assertEquals(
+            listOf(Channel.ROOT_SHELL),
+            PermissionManagerImpl.defaultChain(Permission.ROOT)
+        )
+        assertEquals(
+            listOf(Channel.SHIZUKU),
+            PermissionManagerImpl.defaultChain(Permission.SHIZUKU)
+        )
     }
 }
 // JumpSettings 复查语义（startActivity → resume → 复查 status）需 Activity，真机冒烟覆盖，

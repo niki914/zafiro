@@ -64,6 +64,7 @@ object DebugLogFile {
                 .toByteArray()
                 .decodeToString()
         }.getOrNull()
-        return name?.takeIf { it.isNotBlank() }?.substringAfter(':', "main") ?: "proc${Process.myPid()}"
+        return name?.takeIf { it.isNotBlank() }?.substringAfter(':', "main")
+            ?: "proc${Process.myPid()}"
     }
 }

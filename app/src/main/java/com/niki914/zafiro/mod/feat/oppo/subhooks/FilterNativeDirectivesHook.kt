@@ -58,7 +58,10 @@ class FilterNativeDirectivesHook(
             val json = JSONObject(rawContent)
             // 若包含自身注入标记，直接放行
             if (json.optJSONObject("extend")?.optString(selfInjectedFlagKey) == "true") {
-                Logger.d(LOG_TAG, "native directives pass host=breeno source=$name reason=self_injected")
+                Logger.d(
+                    LOG_TAG,
+                    "native directives pass host=breeno source=$name reason=self_injected"
+                )
                 return
             }
 
@@ -121,6 +124,7 @@ class FilterNativeDirectivesHook(
         "PhoneCall",
         "Ocr",
         "AnalogClick" -> true
+
         "MyAI" -> name == "LoadingStateCard" || name == "StreamTextCard"
         "Tracking" -> name == "BreenoFeedback"
         "SpeechRecognizer" -> name == "ExpectSpeech"

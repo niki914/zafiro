@@ -2,7 +2,6 @@ package com.niki914.zafiro.app.overlay
 
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
@@ -35,12 +34,10 @@ import com.niki914.zafiro.remoteview.floatingball.DockSide
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallCollapsedBall
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallDetailMorphCard
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallEffect
-import com.niki914.zafiro.remoteview.floatingball.FloatingBallGeometry
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallIntent
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallMorphCard
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallTokens
-import com.niki914.zafiro.remoteview.floatingball.FloatingBallUiState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallViewModel
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellableContinuation
@@ -205,12 +202,15 @@ object FloatingBallOverlayManager {
                         FloatingBallEffect.ExpandCard -> {
                             ballLayout.requestExpand()
                         }
+
                         is FloatingBallEffect.CollapseCard -> {
                             cardLayout.requestCollapse(effect.snapDock)
                         }
+
                         FloatingBallEffect.ShowDetail -> {
                             showDetailWindow(appContext, wm, owner)
                         }
+
                         FloatingBallEffect.DismissDetail -> {
                             if (detailRootView != null) {
                                 cardRootView?.makeVisibleAndNotifyDrawn {
@@ -218,15 +218,19 @@ object FloatingBallOverlayManager {
                                 } ?: removeDetailWindow()
                             }
                         }
+
                         is FloatingBallEffect.SettleApproval -> {
                             resolveApproval(effect.decision)
                         }
+
                         FloatingBallEffect.RequestStopAgent -> {
                             runCatching { requireService<AgentControl>() }.getOrNull()?.stop()
                         }
+
                         FloatingBallEffect.LaunchApp -> {
                             val intent = Intent(appContext, MainActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                flags =
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
                             appContext.startActivity(intent)
                         }
@@ -245,7 +249,12 @@ object FloatingBallOverlayManager {
                                 is AgentState.Thinking -> state.text
                                 is AgentState.Idle -> state.lastText
                                 is AgentState.ToolRunning ->
-                                    ToolPresentation.runningText(appContext, state.toolName, state.label)
+                                    ToolPresentation.runningText(
+                                        appContext,
+                                        state.toolName,
+                                        state.label
+                                    )
+
                                 is AgentState.WaitingApproval,
                                 AgentState.Stopping -> null
                             },
@@ -468,7 +477,11 @@ object FloatingBallOverlayManager {
     }
 
 
-    private fun showDetailWindow(appContext: Context, wm: WindowManager, owner: OverlayLifecycleOwner) {
+    private fun showDetailWindow(
+        appContext: Context,
+        wm: WindowManager,
+        owner: OverlayLifecycleOwner
+    ) {
         if (detailRootView != null) return
         val vm = viewModel ?: return
         val request = vm.uiStateFlow.value.approvalRequest ?: return

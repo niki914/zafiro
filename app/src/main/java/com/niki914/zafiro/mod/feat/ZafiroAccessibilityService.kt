@@ -1,8 +1,6 @@
 package com.niki914.zafiro.mod.feat
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.AccessibilityService.ScreenshotResult
-import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
 import android.accessibilityservice.GestureDescription
 import android.graphics.Bitmap
 import android.graphics.Path

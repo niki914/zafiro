@@ -245,14 +245,17 @@ class ConfigureViewModel internal constructor(
 
     private companion object {
         private const val LOG_TAG = "niki914_zafiro_ConfigureViewModel"
+
         /** 输入防抖：停手 50ms 才发； trailing + 取消在途 + 三元组去重。 */
         private const val CATALOG_DEBOUNCE_MS = 50L
     }
 
     /** 已初始化过的入参；重进本页（返回上一页再回来）不重置已填内容。 */
     private var initializedKey: Triple<ConfigureScene, String?, String?>? = null
+
     /** 在途的目录拉取（防抖 + 可取消）。 */
     private var catalogFetchJob: Job? = null
+
     /** 上次已拉取的三元组（endpoint/apiKey/protocol），去重用。 */
     private var lastCatalogKey: CatalogKey? = null
 
@@ -318,9 +321,11 @@ class ConfigureViewModel internal constructor(
             ConfigureIntent.ShowModelCatalogSheet -> updateState {
                 copy(showModelCatalogSheet = true)
             }
+
             ConfigureIntent.HideModelCatalogSheet -> updateState {
                 copy(showModelCatalogSheet = false)
             }
+
             is ConfigureIntent.SelectCatalogModel -> updateState {
                 copy(
                     modelInput = intent.modelId,
@@ -659,7 +664,10 @@ class ConfigureViewModel internal constructor(
             copy(
                 pendingEndpointMismatch = EndpointMismatch(
                     protocol = newProtocolWireId,
-                    expectedEndpoint = EndpointInference.replaceSuffix(currentEndpoint, newProtocol),
+                    expectedEndpoint = EndpointInference.replaceSuffix(
+                        currentEndpoint,
+                        newProtocol
+                    ),
                     currentEndpoint = currentEndpoint,
                     origin = EndpointMismatch.Origin.SwitchProtocol,
                 )
@@ -679,7 +687,12 @@ class ConfigureViewModel internal constructor(
         // 预置官方端点：静默更新后缀，不弹窗；自定义端点：确认后只换后缀
         if (EndpointInference.isPresetEndpoint(currentEndpoint)) {
             updateState {
-                copy(endpointInput = EndpointInference.replaceSuffix(currentEndpoint, currentProtocol))
+                copy(
+                    endpointInput = EndpointInference.replaceSuffix(
+                        currentEndpoint,
+                        currentProtocol
+                    )
+                )
             }
             saveConfig()
             return
@@ -688,7 +701,10 @@ class ConfigureViewModel internal constructor(
             copy(
                 pendingEndpointMismatch = EndpointMismatch(
                     protocol = currentState.protocolWireId,
-                    expectedEndpoint = EndpointInference.replaceSuffix(currentEndpoint, currentProtocol),
+                    expectedEndpoint = EndpointInference.replaceSuffix(
+                        currentEndpoint,
+                        currentProtocol
+                    ),
                     currentEndpoint = currentEndpoint,
                     origin = EndpointMismatch.Origin.Save,
                 )
@@ -722,6 +738,7 @@ class ConfigureViewModel internal constructor(
             EndpointMismatch.Origin.SwitchProtocol -> {
                 switchProtocolQuietly(pending.protocol)
             }
+
             EndpointMismatch.Origin.Save -> {
                 save()
             }

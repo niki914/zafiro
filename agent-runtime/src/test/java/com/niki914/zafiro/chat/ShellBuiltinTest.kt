@@ -54,7 +54,10 @@ class ShellBuiltinTest {
 
         override fun isSessionAlive(sessionId: String): Boolean = sessionsAlive
 
-        override suspend fun openLocalSession(identity: String, workdir: String?): TerminalOpenOutcome {
+        override suspend fun openLocalSession(
+            identity: String,
+            workdir: String?
+        ): TerminalOpenOutcome {
             val handle = "shell_session_${sessionCounter.getAndIncrement()}"
             openedIdentities.add(identity)
             return TerminalOpenOutcome.Success(
@@ -126,7 +129,10 @@ class ShellBuiltinTest {
 
         // 显式指定 alias="worker_a"，开辟独立会话
         val respCustom = tool.invokeRawJson(
-            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"echo custom","alias":"worker_a"}""")
+            BuiltinToolRequest(
+                name = "shell",
+                argumentsJson = """{"command":"echo custom","alias":"worker_a"}"""
+            )
         )
         val jsonCustom = Json.parseToJsonElement(respCustom).jsonObject
         val customId = jsonCustom["session_id"]!!.jsonPrimitive.content
@@ -136,7 +142,10 @@ class ShellBuiltinTest {
 
         // 再次调用 alias="worker_a"，必须命中同一个 customId
         val respCustomAgain = tool.invokeRawJson(
-            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"echo custom2","alias":"worker_a"}""")
+            BuiltinToolRequest(
+                name = "shell",
+                argumentsJson = """{"command":"echo custom2","alias":"worker_a"}"""
+            )
         )
         val jsonCustomAgain = Json.parseToJsonElement(respCustomAgain).jsonObject
         assertEquals(customId, jsonCustomAgain["session_id"]!!.jsonPrimitive.content)
@@ -163,7 +172,10 @@ class ShellBuiltinTest {
         val tool = TestShellBuiltin(preflight = blockingPreflight)
 
         val resp = tool.invokeRawJson(
-            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"rm -rf /data/local/tmp"}""")
+            BuiltinToolRequest(
+                name = "shell",
+                argumentsJson = """{"command":"rm -rf /data/local/tmp"}"""
+            )
         )
         val json = Json.parseToJsonElement(resp).jsonObject
         val errorObj = json["error"]?.jsonObject ?: json
@@ -198,7 +210,10 @@ class ShellBuiltinTest {
         val tool = TestShellBuiltin()
         // 先开一个会话
         val resp1 = tool.invokeRawJson(
-            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"echo 1","alias":"test_dead"}""")
+            BuiltinToolRequest(
+                name = "shell",
+                argumentsJson = """{"command":"echo 1","alias":"test_dead"}"""
+            )
         )
         val json1 = Json.parseToJsonElement(resp1).jsonObject
         val sessionId = json1["session_id"]!!.jsonPrimitive.content
@@ -209,7 +224,10 @@ class ShellBuiltinTest {
 
         // 显式传入 session 调用
         val resp2 = tool.invokeRawJson(
-            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"echo 2","session":"$sessionId"}""")
+            BuiltinToolRequest(
+                name = "shell",
+                argumentsJson = """{"command":"echo 2","session":"$sessionId"}"""
+            )
         )
         val json2 = Json.parseToJsonElement(resp2).jsonObject
         val errorObj = json2["error"]?.jsonObject ?: json2

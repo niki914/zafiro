@@ -1,6 +1,5 @@
 package com.niki914.okia.protocol
 
-import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -13,7 +12,6 @@ import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.CancellationException
-import kotlin.io.encoding.Base64
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
@@ -25,6 +23,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import kotlin.io.encoding.Base64
 
 /**
  * Anthropic Messages API 协议。真实流格式经 DeepSeek /anthropic 网关实测
@@ -53,7 +52,10 @@ class AnthropicMessagesProtocol(
     override fun useApiKey(apiKey: String): Map<String, String> =
         if (apiKey.isEmpty()) emptyMap() else mapOf("x-api-key" to apiKey)
 
-    override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
+    override suspend fun buildRequest(
+        snapshot: RequestSnapshot,
+        history: List<Message>
+    ): HttpRequest =
         HttpRequest(
             url = snapshot.endpoint,
             method = "POST",
@@ -115,7 +117,10 @@ class AnthropicMessagesProtocol(
     /** 每条真实消息：role + content 块数组（合并后的最终形态）。 */
     private class MergedMessage(val role: String, val blocks: MutableList<JsonObject>)
 
-    private suspend fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
+    private suspend fun buildRequestBody(
+        snapshot: RequestSnapshot,
+        history: List<Message>
+    ): JsonObject =
         buildJsonObject {
             put("model", snapshot.model)
             put("max_tokens", snapshot.maxTokens)  // Anthropic 必填
@@ -195,7 +200,10 @@ class AnthropicMessagesProtocol(
      * 工具结果映射为 user 消息的 tool_result 块；连续同角色消息合并
      * （Anthropic 严格交替）。工具结果与后续用户输入合并进同一 user 消息。
      */
-    private suspend fun mergeMessages(snapshot: RequestSnapshot, history: List<Message>): List<MergedMessage> {
+    private suspend fun mergeMessages(
+        snapshot: RequestSnapshot,
+        history: List<Message>
+    ): List<MergedMessage> {
         val merged = mutableListOf<MergedMessage>()
         for (message in history) {
             val (role, blocks) = when (message) {
@@ -213,7 +221,10 @@ class AnthropicMessagesProtocol(
         return merged
     }
 
-    private suspend fun userBlocks(snapshot: RequestSnapshot, blocks: List<ContentBlock>): List<JsonObject> {
+    private suspend fun userBlocks(
+        snapshot: RequestSnapshot,
+        blocks: List<ContentBlock>
+    ): List<JsonObject> {
         val textBlocks = blocks.filterIsInstance<ContentBlock.Text>()
         val images = blocks.filterIsInstance<ContentBlock.Image>()
         // 无图：纯文本
@@ -235,7 +246,10 @@ class AnthropicMessagesProtocol(
             } + images.map { img ->
                 buildJsonObject {
                     put("type", "text")
-                    put("text", "[image omitted: ${if (snapshot.supportsImages) "file not found" else "model does not support images"}]")
+                    put(
+                        "text",
+                        "[image omitted: ${if (snapshot.supportsImages) "file not found" else "model does not support images"}]"
+                    )
                 }
             }
         }
@@ -300,7 +314,10 @@ class AnthropicMessagesProtocol(
             }
         }
 
-    private suspend fun toolResultBlock(snapshot: RequestSnapshot, result: Message.ToolResult): JsonObject {
+    private suspend fun toolResultBlock(
+        snapshot: RequestSnapshot,
+        result: Message.ToolResult
+    ): JsonObject {
         val images = (result.outcome as? ToolCallOutcome.Success)?.images.orEmpty()
         val (loaded, notes) = loadToolImages(snapshot, images)
         val text = buildString {

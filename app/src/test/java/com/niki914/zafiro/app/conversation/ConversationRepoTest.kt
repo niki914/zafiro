@@ -174,7 +174,8 @@ class ConversationRepoTest {
         ConversationRepo.insertEntries(sourceId, entries)
         ConversationRepo.updateLeafId(sourceId, entries.last().id)
 
-        val result = ConversationRepo.forkAtTurn(sourceId, turnIndex = 0, kind = ForkKind.Regenerate)!!
+        val result =
+            ConversationRepo.forkAtTurn(sourceId, turnIndex = 0, kind = ForkKind.Regenerate)!!
 
         val newRecord = ConversationRepo.getConversation(result.newConversationId)!!
         assertTrue(newRecord.summary.title.startsWith("Regenerate ·"))

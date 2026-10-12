@@ -327,7 +327,8 @@ internal class RealAgentLoop : AgentLoop {
                 when (resp) {
                     is StreamResponse.Error -> LLMError(
                         code = classifyStatus(resp.statusCode),
-                        message = resp.body.take(MAX_ERROR_BODY_CHARS).ifBlank { "HTTP ${resp.statusCode}" },
+                        message = resp.body.take(MAX_ERROR_BODY_CHARS)
+                            .ifBlank { "HTTP ${resp.statusCode}" },
                         statusCode = resp.statusCode,
                         retryDelayMs = parseRetryAfter(resp.headers)
                     )

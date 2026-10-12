@@ -8,8 +8,6 @@ import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
 import com.niki914.zafiro.api.model.TurnFailureCode
 import com.niki914.zafiro.api.model.TurnId
-import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
-import com.niki914.zafiro.app.ui.model.home.HomeToolState
 import com.niki914.zafiro.chat.LlmErrorCode
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -70,7 +68,13 @@ class ConversationUiMapperTest {
                 ConversationTurn(
                     id = TurnId("t0"),
                     userText = "q",
-                    blocks = listOf(TurnBlock.Failure("t0:0", "network", TurnFailureCode.Transport)),
+                    blocks = listOf(
+                        TurnBlock.Failure(
+                            "t0:0",
+                            "network",
+                            TurnFailureCode.Transport
+                        )
+                    ),
                 ),
             ),
         ).toHomeTurns().single()
@@ -88,7 +92,13 @@ class ConversationUiMapperTest {
                 ConversationTurn(
                     id = TurnId("t0"),
                     userText = "q",
-                    blocks = listOf(TurnBlock.Failure("t0:0", null, TurnFailureCode.OutputTruncated)),
+                    blocks = listOf(
+                        TurnBlock.Failure(
+                            "t0:0",
+                            null,
+                            TurnFailureCode.OutputTruncated
+                        )
+                    ),
                 ),
             ),
         ).toHomeTurns().single()

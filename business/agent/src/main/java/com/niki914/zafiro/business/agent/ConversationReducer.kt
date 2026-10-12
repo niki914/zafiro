@@ -103,7 +103,13 @@ internal object ConversationReducer {
                 thinking(state, turnIndex, event.id, event.text, isComplete = true)
 
             is LlmStreamEvent.ToolPending ->
-                state.upsertTool(turnIndex, turn.clearRetrying(), event.call, outcome = null, pending = true)
+                state.upsertTool(
+                    turnIndex,
+                    turn.clearRetrying(),
+                    event.call,
+                    outcome = null,
+                    pending = true
+                )
 
             is LlmStreamEvent.ToolRunning ->
                 state.upsertTool(turnIndex, turn.clearRetrying(), event.call, outcome = null)
@@ -229,12 +235,12 @@ internal object ConversationReducer {
             else -> pendingToolIds.firstNotNullOfOrNull { pendingId ->
                 turn.blocks.indexOfFirst { block ->
                     block is TurnBlock.Tool && block.id == pendingId &&
-                        block.invocation.argumentsJson == null && block.invocation.name == call.name
+                            block.invocation.argumentsJson == null && block.invocation.name == call.name
                 }.takeIf { it >= 0 }
             } ?: turn.blocks.indexOfLast { block ->
                 call.callId == null && block is TurnBlock.Tool &&
-                    block.invocation.id == block.invocation.name &&
-                    block.invocation.argumentsJson == null && block.invocation.name == call.name
+                        block.invocation.id == block.invocation.name &&
+                        block.invocation.argumentsJson == null && block.invocation.name == call.name
             }
         }
         if (index < 0) {

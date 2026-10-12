@@ -90,7 +90,8 @@ object ThemeController {
      * 与悬浮球 [FloatingBallCollapsedBall] 底色及 [BaseTheme] 保持完全同口径。
      */
     fun resolvePrimaryContainer(context: Context): Int {
-        val isSystemDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val isSystemDark =
+            (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val isDark = prefs.resolveDarkTheme(isSystemDark)
         val seed = prefs.seedColor?.let { Color(it) }
         val scheme = resolveThemeColorScheme(

@@ -58,13 +58,14 @@ Returns an image reference (path, dimensions, size) on success.
 
                 Stage.ACCESSIBILITY_UNAVAILABLE -> BuiltinToolResult.failure(
                     code = "ACCESSIBILITY_UNAVAILABLE",
-                    message = result.message ?: "Screen capture requires the Zafiro accessibility service.",
+                    message = result.message
+                        ?: "Screen capture requires the Zafiro accessibility service.",
                     hint = "Tell the user to enable 'Zafiro' in Settings > Accessibility, then retry."
                 )
 
                 Stage.CAPTURE_FAILED,
                 Stage.ENCODE_FAILED,
-                -> BuiltinToolResult.failure(
+                    -> BuiltinToolResult.failure(
                     code = "SCREENSHOT_FAILED",
                     message = result.message ?: "Screen capture failed.",
                     hint = "Secure or protected content cannot be captured. Retry when a normal app is on screen."

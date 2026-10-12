@@ -26,8 +26,14 @@ class OpenRouterCatalogApiTest {
     @Test
     fun catalogKey_stripsVariantSuffix() {
         assertEquals("openaigpt4o", OpenRouterCatalogApi.catalogKey("openai/gpt-4o:extended"))
-        assertEquals("deepseekdeepseekchat", OpenRouterCatalogApi.catalogKey("deepseek/deepseek-chat:free"))
-        assertEquals("deepseekdeepseekchat", OpenRouterCatalogApi.catalogKey("deepseek/deepseek-chat"))
+        assertEquals(
+            "deepseekdeepseekchat",
+            OpenRouterCatalogApi.catalogKey("deepseek/deepseek-chat:free")
+        )
+        assertEquals(
+            "deepseekdeepseekchat",
+            OpenRouterCatalogApi.catalogKey("deepseek/deepseek-chat")
+        )
     }
 
     @Test

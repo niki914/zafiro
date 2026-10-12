@@ -32,12 +32,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -81,7 +81,11 @@ internal class LiquidDialogHostState {
             entry.content = content
             entry.visible = visible
         } else {
-            mutableEntries += LiquidDialogHostEntry(id = id, initialVisible = visible, content = content)
+            mutableEntries += LiquidDialogHostEntry(
+                id = id,
+                initialVisible = visible,
+                content = content
+            )
         }
     }
 

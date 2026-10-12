@@ -1,28 +1,28 @@
 package com.niki914.zafiro.chat
 
-import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
-import com.niki914.zafiro.chat.agentic.python.PyExecOutput
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
-import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.business.permission.Channel
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionResult
 import com.niki914.zafiro.business.permission.PermissionScope
 import com.niki914.zafiro.business.permission.PermissionState
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
+import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
+import com.niki914.zafiro.chat.agentic.python.PyExecOutput
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
 
 class CustomPyToolExecutorTest {
 
@@ -115,7 +115,10 @@ class CustomPyToolExecutorTest {
         })
 
         val json = Json.parseToJsonElement(
-            executor.execute(tool.copy(code = "import os\nos.system('rm -rf /data/x')"), "{\"text\":\"x\"}")
+            executor.execute(
+                tool.copy(code = "import os\nos.system('rm -rf /data/x')"),
+                "{\"text\":\"x\"}"
+            )
         ).jsonObject
 
         assertFalse(json["ok"]!!.jsonPrimitive.content.toBoolean())
@@ -131,12 +134,17 @@ class CustomPyToolExecutorTest {
                 object : PermissionManager {
                     override fun status(permission: Permission) =
                         PermissionState.DENIED_BY_USER
+
                     override suspend fun request(permission: Permission): PermissionResult {
                         requested = true
                         return PermissionResult(
-                            permission, PermissionState.DENIED_BY_USER, emptyList())
+                            permission, PermissionState.DENIED_BY_USER, emptyList()
+                        )
                     }
-                    override suspend fun request(permission: Permission, vararg channels: Channel) = request(permission)
+
+                    override suspend fun request(permission: Permission, vararg channels: Channel) =
+                        request(permission)
+
                     override fun applyScope(vararg channels: Channel): PermissionScope =
                         throw UnsupportedOperationException()
                 }

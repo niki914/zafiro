@@ -40,7 +40,10 @@ class BreenoHook(
 
     override suspend fun onTurnStateChanged(state: ConversationTurnState) {
         if (state.mode == TurnMode.NativeTakeover) {
-            Logger.i(LOG_TAG, "Turn switched to NativeTakeover, clearing render session turnId=${state.turnId}")
+            Logger.i(
+                LOG_TAG,
+                "Turn switched to NativeTakeover, clearing render session turnId=${state.turnId}"
+            )
             cardRenderer.clearSession(state.turnId)
         }
     }

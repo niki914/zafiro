@@ -35,14 +35,20 @@ class XRepoRuntimeGateway(
         }
         val active = target ?: doc.activeConfig()
         val memories = repo.agents.memoriesFor(agentId)
+
         // 四级解析链（全查本地，零网络）：用户 > provider /models > OpenRouter > 兜底。
         // 逐级按需：用户填了就完全不碰两个缓存 store，缺哪层才读哪层。
         suspend fun providerFacts(): CloudModelFacts? {
             return repo.cloudFacts.providerFacts(active?.endpoint, active?.model)
         }
+
         suspend fun openRouterFacts(): CloudModelFacts? {
-            return OpenRouterCatalogApi.match(repo.cloudFacts.openRouter().models, active?.model.orEmpty())
+            return OpenRouterCatalogApi.match(
+                repo.cloudFacts.openRouter().models,
+                active?.model.orEmpty()
+            )
         }
+
         val maxTokensLimit = resolveTokenCount(
             userText = active?.maxTokensText,
             providerValue = { providerFacts()?.maxOutputTokens },

@@ -18,6 +18,7 @@ import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.protocol.DeepSeekCompat
 import com.niki914.okia.protocol.ProtocolCompatMapper
 import com.niki914.okia.protocol.ProtocolEvent
+import com.niki914.okia.protocol.RequestSnapshot
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.SseLine
@@ -38,7 +39,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import com.niki914.okia.protocol.RequestSnapshot
 
 /**
  * T2b MCP 装配与发现时序（方案 B，D-T2B-3）：

@@ -29,6 +29,7 @@ internal object EndpointInference {
     private fun apiTailOf(protocol: LlmProtocol): String = when (protocol) {
         LlmProtocol.OpenAiChatCompletions, LlmProtocol.DeepSeek, LlmProtocol.GoogleOpenAi ->
             "/chat/completions"
+
         LlmProtocol.OpenAiResponses -> "/responses"
         LlmProtocol.AnthropicMessages -> "/messages"
     }
@@ -41,6 +42,7 @@ internal object EndpointInference {
             return when (protocol) {
                 LlmProtocol.OpenAiChatCompletions, LlmProtocol.DeepSeek, LlmProtocol.GoogleOpenAi ->
                     e.endsWith("/chat/completions")
+
                 LlmProtocol.OpenAiResponses -> e.endsWith("/responses")
                 LlmProtocol.AnthropicMessages -> e.endsWith("/anthropic/v1/messages")
             }
@@ -48,6 +50,7 @@ internal object EndpointInference {
         return when (protocol) {
             LlmProtocol.OpenAiChatCompletions, LlmProtocol.DeepSeek, LlmProtocol.GoogleOpenAi ->
                 e.endsWith("/chat/completions")
+
             LlmProtocol.OpenAiResponses -> e.endsWith("/responses")
             LlmProtocol.AnthropicMessages -> e.endsWith("/v1/messages")
         }

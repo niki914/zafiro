@@ -79,7 +79,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIncomingIntent(intent: Intent?) {
-        val targetConversationId = intent?.getStringExtra(ApplicationService.EXTRA_TARGET_CONVERSATION_ID)
+        val targetConversationId =
+            intent?.getStringExtra(ApplicationService.EXTRA_TARGET_CONVERSATION_ID)
         findService<ApplicationService>()?.handleNavigationIntent(targetConversationId)
     }
 

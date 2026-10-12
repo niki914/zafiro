@@ -51,7 +51,10 @@ class PermissionSpecTest {
     @Test
     fun `overlay and accessibility do not change with api`() {
         for (api in listOf(26, 30, 34)) {
-            assertEquals(GrantMechanism.AppOp("SYSTEM_ALERT_WINDOW"), mechanism(Permission.OVERLAY, api))
+            assertEquals(
+                GrantMechanism.AppOp("SYSTEM_ALERT_WINDOW"),
+                mechanism(Permission.OVERLAY, api)
+            )
             assertEquals(GrantMechanism.Accessibility, mechanism(Permission.ACCESSIBILITY, api))
         }
     }

@@ -5,9 +5,6 @@ import com.niki914.logging.Backend
 import com.niki914.logging.Level
 import com.niki914.logging.Logger
 import com.niki914.okia.conversation.SessionSnapshot
-import com.niki914.okia.message.ContentBlock
-import com.niki914.okia.message.Message
-import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.service.ServiceRegistry
@@ -45,31 +42,71 @@ class AgentManagerImplTest {
             val sessions = mutableMapOf<String, StoredConversation_Tmp>()
             override suspend fun load(id: ConversationId): StoredConversation_Tmp? =
                 sessions[id.value] ?: StoredConversation_Tmp(
-                    snapshot = SessionSnapshot(id = id.value, leafId = null, version = 1, entries = emptyList()),
+                    snapshot = SessionSnapshot(
+                        id = id.value,
+                        leafId = null,
+                        version = 1,
+                        entries = emptyList()
+                    ),
                     conversation = Conversation(id = id),
                 )
+
             override suspend fun exists(id: ConversationId): Boolean = true
-            override suspend fun create(id: ConversationId, firstUserInput: String, configId: String) {}
+            override suspend fun create(
+                id: ConversationId,
+                firstUserInput: String,
+                configId: String
+            ) {
+            }
+
             override suspend fun setLastOpened(id: ConversationId?) {}
         }
         val fakeGateway = object : RuntimeSettingsGateway {
-            override suspend fun readLlmConfig(agentId: String, configId: String?): RuntimeLlmConfig =
+            override suspend fun readLlmConfig(
+                agentId: String,
+                configId: String?
+            ): RuntimeLlmConfig =
                 RuntimeLlmConfig(endpoint = "https://api.openai.com", model = "gpt-4o")
+
             override suspend fun listMcpServers(): List<RuntimeMcpServer> = emptyList()
             override suspend fun addMemory(value: String) = Unit
-            override suspend fun removeMemory(oldText: String): MemoryMutationResult = MemoryMutationResult.Ok
-            override suspend fun replaceMemory(oldText: String, content: String): MemoryMutationResult = MemoryMutationResult.Ok
+            override suspend fun removeMemory(oldText: String): MemoryMutationResult =
+                MemoryMutationResult.Ok
+
+            override suspend fun replaceMemory(
+                oldText: String,
+                content: String
+            ): MemoryMutationResult = MemoryMutationResult.Ok
+
             override suspend fun listCustomPyTools(): List<RuntimeCustomPyTool> = emptyList()
-            override suspend fun saveCustomPyTool(tool: RuntimeCustomPyTool, overwrite: Boolean): RuntimeToolValidation? = null
+            override suspend fun saveCustomPyTool(
+                tool: RuntimeCustomPyTool,
+                overwrite: Boolean
+            ): RuntimeToolValidation? = null
+
             override suspend fun deleteCustomPyTool(name: String) = Unit
             override suspend fun setCustomPyToolEnabled(name: String, enabled: Boolean) = Unit
-            override suspend fun listBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> = emptyList()
-            override suspend fun setBuiltinToolEnabled(name: String, enabled: Boolean): RuntimeToolValidation? = null
-            override suspend fun setBuiltinToolGroupEnabled(groupId: String, enabled: Boolean): RuntimeToolValidation? = null
+            override suspend fun listBuiltinToolSettings(): List<RuntimeBuiltinToolSetting> =
+                emptyList()
+
+            override suspend fun setBuiltinToolEnabled(
+                name: String,
+                enabled: Boolean
+            ): RuntimeToolValidation? = null
+
+            override suspend fun setBuiltinToolGroupEnabled(
+                groupId: String,
+                enabled: Boolean
+            ): RuntimeToolValidation? = null
+
             override suspend fun listExecutionRules(): List<RuntimeExecutionRule> = emptyList()
         }
         val fakeHost = object : RuntimeHostGateway {
-            override suspend fun postNotification(title: String, content: String, uri: String?): Boolean = true
+            override suspend fun postNotification(
+                title: String,
+                content: String,
+                uri: String?
+            ): Boolean = true
         }
         installService<ConversationStore_Tmp>(fakeStore)
         RuntimeEnvironment.install(RuntimeBridge(settings = fakeGateway, host = fakeHost))

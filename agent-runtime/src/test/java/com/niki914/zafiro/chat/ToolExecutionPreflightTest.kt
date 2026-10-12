@@ -5,19 +5,18 @@ import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
-import com.niki914.zafiro.chat.agentic.AgentTenantContext
-import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
-import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight.Companion.WATCHED_PREFIXES
 import com.niki914.zafiro.business.permission.Channel
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionResult
 import com.niki914.zafiro.business.permission.PermissionScope
 import com.niki914.zafiro.business.permission.PermissionState
+import com.niki914.zafiro.chat.agentic.AgentTenantContext
+import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
-import com.niki914.zafiro.chat.util.SilentLoggerRule
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -280,7 +279,8 @@ class ToolExecutionPreflightTest {
 
     @Test
     fun extractExternalPathIntents_findsWatchedPaths() = runTest {
-        val sandbox = setOf("/data/data/com.niki914.zafiro/files", "/data/user/0/com.niki914.zafiro")
+        val sandbox =
+            setOf("/data/data/com.niki914.zafiro/files", "/data/user/0/com.niki914.zafiro")
         val preflight = ToolExecutionPreflight()
 
         assertEquals(
@@ -362,7 +362,8 @@ class ToolExecutionPreflightTest {
 
     @Test
     fun ensurePathAccess_requestThrows_swallowsAndProceeds() = runTest {
-        val permissions = FakePermissionManager(status = PermissionState.DENIED_BY_USER, throwOnRequest = true)
+        val permissions =
+            FakePermissionManager(status = PermissionState.DENIED_BY_USER, throwOnRequest = true)
         val preflight = ToolExecutionPreflight(
             permissionsProvider = { permissions },
             sandboxRootsProvider = { emptySet() },
@@ -442,7 +443,10 @@ private class FakePermissionManager(
         return PermissionResult(permission, PermissionState.DENIED_BY_USER, emptyList())
     }
 
-    override suspend fun request(permission: Permission, vararg channels: Channel): PermissionResult =
+    override suspend fun request(
+        permission: Permission,
+        vararg channels: Channel
+    ): PermissionResult =
         request(permission)
 
     override fun applyScope(vararg channels: Channel): PermissionScope =

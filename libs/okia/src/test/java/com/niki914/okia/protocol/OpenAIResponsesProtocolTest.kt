@@ -1,7 +1,7 @@
 package com.niki914.okia.protocol
 
-import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.ImageLoader
+import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
@@ -120,7 +120,8 @@ class OpenAIResponsesProtocolTest {
 
     @Test
     fun requestShellCarriesEndpointAndBearer() {
-        val request = runBlocking { protocol.buildRequest(snapshot(apiKey = "sk-abc"), emptyList()) }
+        val request =
+            runBlocking { protocol.buildRequest(snapshot(apiKey = "sk-abc"), emptyList()) }
         assertEquals("https://api.deepseek.com/responses", request.url)
         assertEquals("POST", request.method)
         assertEquals("Bearer sk-abc", request.headers["Authorization"])
@@ -128,15 +129,17 @@ class OpenAIResponsesProtocolTest {
 
     @Test
     fun requestBodyCarriesResponsesFields() {
-        val request = runBlocking { protocol.buildRequest(
-            snapshot(
-                model = "deepseek-v4-flash",
-                maxTokens = 512,
-                temperature = 0.3f,
-                systemPrompt = "你简短"
-            ),
-            listOf(user("你好"))
-        ) }
+        val request = runBlocking {
+            protocol.buildRequest(
+                snapshot(
+                    model = "deepseek-v4-flash",
+                    maxTokens = 512,
+                    temperature = 0.3f,
+                    systemPrompt = "你简短"
+                ),
+                listOf(user("你好"))
+            )
+        }
         val json = body(request)
         assertEquals("deepseek-v4-flash", json["model"]!!.jsonPrimitive.content)
         assertEquals(512, json["max_output_tokens"]!!.jsonPrimitive.content.toInt())
@@ -147,23 +150,25 @@ class OpenAIResponsesProtocolTest {
 
     @Test
     fun inputMapsUserAndAssistantAndToolRoundtrip() {
-        val request = runBlocking { protocol.buildRequest(
-            snapshot(),
-            listOf(
-                user("你好"),
-                assistant(listOf(ContentBlock.Text("收到"))),
-                assistant(
-                    listOf(
-                        ContentBlock.ToolCall(
-                            "call_1",
-                            "get_weather",
-                            """{"city":"北京"}"""
+        val request = runBlocking {
+            protocol.buildRequest(
+                snapshot(),
+                listOf(
+                    user("你好"),
+                    assistant(listOf(ContentBlock.Text("收到"))),
+                    assistant(
+                        listOf(
+                            ContentBlock.ToolCall(
+                                "call_1",
+                                "get_weather",
+                                """{"city":"北京"}"""
+                            )
                         )
-                    )
-                ),
-                toolResult("call_1", ToolCallOutcome.Success("""{"temp":26}"""))
+                    ),
+                    toolResult("call_1", ToolCallOutcome.Success("""{"temp":26}"""))
+                )
             )
-        ) }
+        }
         val input = body(request)["input"]!!.jsonArray.map { it.jsonObject }
         assertEquals(
             listOf("user", "assistant", "function_call", "function_call_output"),
@@ -183,10 +188,12 @@ class OpenAIResponsesProtocolTest {
     @Test
     fun thinkingConvertsToTextOnReplay() {
         // OpenAI Responses reasoning 加密不可回放：思考块按 requiresThinkingAsText 转文本
-        val request = runBlocking { protocol.buildRequest(
-            snapshot(),
-            listOf(assistant(listOf(ContentBlock.Thinking("推导"), ContentBlock.Text("答案"))))
-        ) }
+        val request = runBlocking {
+            protocol.buildRequest(
+                snapshot(),
+                listOf(assistant(listOf(ContentBlock.Thinking("推导"), ContentBlock.Text("答案"))))
+            )
+        }
         val input = body(request)["input"]!!.jsonArray
         assertEquals(1, input.size)
         assertEquals("assistant", input[0].jsonObject["role"]!!.jsonPrimitive.content)
@@ -201,7 +208,8 @@ class OpenAIResponsesProtocolTest {
             inputSchemaJson = """{"type":"object","properties":{"city":{"type":"string"}}}""",
             kind = ToolKind.Local
         )
-        val request = runBlocking { protocol.buildRequest(snapshot(tools = listOf(tool)), emptyList()) }
+        val request =
+            runBlocking { protocol.buildRequest(snapshot(tools = listOf(tool)), emptyList()) }
         val t = body(request)["tools"]!!.jsonArray[0].jsonObject
         assertEquals("function", t["type"]!!.jsonPrimitive.content)
         assertEquals("get_weather", t["name"]!!.jsonPrimitive.content)
@@ -380,17 +388,19 @@ class OpenAIResponsesProtocolTest {
         val reasoningItem =
             """{"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"摘要"}],"content":[{"type":"reasoning_text","text":"推导"}],"encrypted_content":"U2FsdGVkX1=="}"""
         val payload = "openai-responses:reasoning:v1:" + """{"items":[$reasoningItem]}"""
-        val request = runBlocking { protocol.buildRequest(
-            snapshot(),
-            listOf(
-                assistant(
-                    listOf(
-                        ContentBlock.Thinking("推导", opaquePayload = payload),
-                        ContentBlock.Text("答案")
+        val request = runBlocking {
+            protocol.buildRequest(
+                snapshot(),
+                listOf(
+                    assistant(
+                        listOf(
+                            ContentBlock.Thinking("推导", opaquePayload = payload),
+                            ContentBlock.Text("答案")
+                        )
                     )
                 )
             )
-        ) }
+        }
         val input = body(request)["input"]!!.jsonArray
         // 期望：reasoning item 单独成条（encrypted_content 原样），文本 message 条并存
         assertEquals(2, input.size)
@@ -407,17 +417,22 @@ class OpenAIResponsesProtocolTest {
     @Test
     fun unknownOpaquePayloadPrefixFallsBackToPlainText() = runTest {
         // 前缀不认识（未来其他 provider 的 payload）：忽略 payload，思考文本按明文合并
-        val request = runBlocking { protocol.buildRequest(
-            snapshot(),
-            listOf(
-                assistant(
-                    listOf(
-                        ContentBlock.Thinking("推导", opaquePayload = "other-provider:v9:whatever"),
-                        ContentBlock.Text("答案")
+        val request = runBlocking {
+            protocol.buildRequest(
+                snapshot(),
+                listOf(
+                    assistant(
+                        listOf(
+                            ContentBlock.Thinking(
+                                "推导",
+                                opaquePayload = "other-provider:v9:whatever"
+                            ),
+                            ContentBlock.Text("答案")
+                        )
                     )
                 )
             )
-        ) }
+        }
         val input = body(request)["input"]!!.jsonArray
         assertEquals(1, input.size)
         assertEquals("推导\n答案", input[0].jsonObject["content"]!!.jsonPrimitive.content)

@@ -76,13 +76,17 @@ class OnboardingPreferencesViewModel :
             OnboardingPreferencesIntent.RequestAll -> requestAll()
             OnboardingPreferencesIntent.ShowAddRuleDialog ->
                 updateState { copy(addRuleDialogVisible = true, newRuleText = "") }
+
             OnboardingPreferencesIntent.DismissAddRuleDialog ->
                 updateState { copy(addRuleDialogVisible = false, newRuleText = "") }
+
             is OnboardingPreferencesIntent.SetNewRuleText ->
                 updateState { copy(newRuleText = intent.text) }
+
             OnboardingPreferencesIntent.ConfirmAddRule -> confirmAddRule()
             is OnboardingPreferencesIntent.RemoveRule ->
                 updateState { copy(securityPatterns = securityPatterns - intent.pattern) }
+
             OnboardingPreferencesIntent.Complete -> complete()
         }
     }

@@ -32,6 +32,6 @@ object TextSelectionInput {
     /** 零宽与 bidi/format 字符：视觉上不存在，不算有意义内容。 */
     private fun isInvisible(c: Char): Boolean =
         c == ZERO_WIDTH_SPACE || c == ZWNJ || c == ZWJ || c == WORD_JOINER ||
-            c == SOFT_HYPHEN || c == BOM ||
-            c.category == CharCategory.FORMAT
+                c == SOFT_HYPHEN || c == BOM ||
+                c.category == CharCategory.FORMAT
 }

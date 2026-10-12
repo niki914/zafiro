@@ -4,7 +4,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.RemoteException
 import com.niki914.logging.Logger
@@ -263,6 +262,7 @@ object PyRuntime {
                 // 若未来需要处理超大输出应改为流式读取
                 file.readText(Charsets.UTF_8)
             }
+
             result.inlineText != null -> result.inlineText
             else -> ""
         }

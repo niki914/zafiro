@@ -1,12 +1,12 @@
 package com.niki914.zafiro.util
 
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
-import com.niki914.zafiro.chat.util.SilentLoggerRule
 import java.nio.file.Files
 
 class ToolOutputTruncatorTest {
@@ -134,7 +134,8 @@ class ToolOutputTruncatorTest {
         val exportDir = tempDir()
         val big = "y".repeat(60_000)
 
-        val result = ToolOutputTruncator.filterForAgent(big, existingFile = null, exportDir = exportDir)
+        val result =
+            ToolOutputTruncator.filterForAgent(big, existingFile = null, exportDir = exportDir)
 
         assertTrue(result.contains("[Full output: "))
         val exported = exportDir.listFiles()!!.single()

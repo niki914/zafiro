@@ -11,9 +11,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
+import com.niki914.uikit.infra.component.SettingNavigationItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsListPageContent
-import com.niki914.uikit.infra.component.SettingNavigationItem
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureIntent

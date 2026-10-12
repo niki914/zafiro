@@ -1,9 +1,7 @@
 package com.niki914.zafiro.app.ui.model
 
-import androidx.annotation.StringRes
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
-import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.CancellationException
 

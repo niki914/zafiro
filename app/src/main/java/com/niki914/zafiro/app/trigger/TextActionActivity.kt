@@ -7,9 +7,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.niki914.logging.Logger
@@ -116,7 +116,8 @@ class TextActionActivity : ComponentActivity() {
      */
     private fun dispatch(action: RuntimeTextAction, selectedText: String, clickedAt: Long) {
         scope.launch {
-            val capture = if (action.requiresScreenshot) captureScreenshotSafely(clickedAt) else null
+            val capture =
+                if (action.requiresScreenshot) captureScreenshotSafely(clickedAt) else null
             val captureErr = capture as? ScreenCaptureIngestor.CaptureResult.Err
             val readyImage = (capture as? ScreenCaptureIngestor.CaptureResult.Ok)
                 ?.let { DraftImage.Ready(Attachment(path = it.path, mimeType = "image/jpeg")) }
@@ -136,7 +137,10 @@ class TextActionActivity : ComponentActivity() {
                 )
             }
             if (prepared.isFailure) {
-                Logger.w(LOG_TAG, "create conversation failed reason=${prepared.exceptionOrNull()?.message}")
+                Logger.w(
+                    LOG_TAG,
+                    "create conversation failed reason=${prepared.exceptionOrNull()?.message}"
+                )
                 runOnUiThread { finish() }
                 return@launch
             }
@@ -177,7 +181,10 @@ class TextActionActivity : ComponentActivity() {
 
         return ScreenCaptureIngestor.captureAndIngest().also { result ->
             if (result is ScreenCaptureIngestor.CaptureResult.Err) {
-                Logger.w(LOG_TAG, "screenshot failed stage=${result.stage} message=${result.message}")
+                Logger.w(
+                    LOG_TAG,
+                    "screenshot failed stage=${result.stage} message=${result.message}"
+                )
             }
         }
     }

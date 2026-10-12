@@ -56,10 +56,13 @@ object FloatingBallTokens {
     // --- 贴边吸附与淹没 ---
     // 距离屏幕边缘小于该阈值时触发自动吸附收起
     const val snapThreshold = 30
+
     // 靠边时隐藏靠边的部分宽度，屏幕上露出剩余部分作为抓手
     const val submergedOffset = 8
+
     // 脱离吸边区时的安全外距
     const val escapeSnapDistance = 31
+
     // 吸附停稳后的不透明度：由吸附动画插值，拖动过程中不生效
     const val submergedAlpha = 0.6f
 
@@ -141,7 +144,12 @@ object FloatingBallGeometry {
     /**
      * 计算指定贴边侧向下的稳定停靠坐标（位于贴边吸附阈值外，不触发自动淹没）。
      */
-    fun calculateStableDockX(dockSide: DockSide, screenWidthPx: Int, ballWidthPx: Int, escapeDistancePx: Int): Int {
+    fun calculateStableDockX(
+        dockSide: DockSide,
+        screenWidthPx: Int,
+        ballWidthPx: Int,
+        escapeDistancePx: Int
+    ): Int {
         return if (dockSide.isRight) {
             screenWidthPx - ballWidthPx - escapeDistancePx
         } else {

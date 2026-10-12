@@ -1,9 +1,7 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
-import com.niki914.logging.Logger
 import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
-import com.niki914.zafiro.chat.agentic.shell.TerminalReadMode
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse
 import kotlinx.serialization.json.Json
@@ -44,7 +42,8 @@ open class ShellBuiltin(
         val session = obj["session"]?.jsonPrimitive?.content?.trim()?.takeIf(String::isNotBlank)
         val alias = obj["alias"]?.jsonPrimitive?.content?.trim()?.takeIf(String::isNotBlank)
         val command = obj["command"]?.jsonPrimitive?.content
-        val identity = obj["identity"]?.jsonPrimitive?.content?.trim()?.lowercase()?.takeIf(String::isNotBlank)
+        val identity =
+            obj["identity"]?.jsonPrimitive?.content?.trim()?.lowercase()?.takeIf(String::isNotBlank)
         val workdir = obj["workdir"]?.jsonPrimitive?.content?.trim()?.takeIf(String::isNotBlank)
         val text = obj["text"]?.jsonPrimitive?.content
         val background = obj["background"]?.jsonPrimitive?.booleanOrNull ?: false
@@ -106,13 +105,16 @@ open class ShellBuiltin(
                     )
                     SessionTarget.Resolved(outcome.session)
                 }
+
                 is TerminalOpenOutcome.Failure -> {
                     SessionTarget.Error(
                         TerminalToolResponse.invalidRequest(
-                            outcome.failure.message ?: "Failed to open shell session for alias '$explicitAlias'."
+                            outcome.failure.message
+                                ?: "Failed to open shell session for alias '$explicitAlias'."
                         )
                     )
                 }
+
                 is TerminalOpenOutcome.InvalidRequest -> {
                     SessionTarget.Error(TerminalToolResponse.invalidRequest(outcome.message))
                 }
@@ -146,12 +148,16 @@ open class ShellBuiltin(
                 )
                 outcome.session
             }
+
             is TerminalOpenOutcome.Failure -> null
             is TerminalOpenOutcome.InvalidRequest -> null
         }
     }
 
-    protected open suspend fun openLocalSession(identity: String, workdir: String?): TerminalOpenOutcome {
+    protected open suspend fun openLocalSession(
+        identity: String,
+        workdir: String?
+    ): TerminalOpenOutcome {
         return TerminalSessionPool.open(
             identity = identity,
             cwd = workdir,

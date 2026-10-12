@@ -2,7 +2,6 @@ package com.niki914.zafiro.app.notification
 
 import android.app.Application
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.niki914.logging.Logger
@@ -64,23 +63,32 @@ object TurnNotificationManager {
             return
         }
         if (conversationId == "host" || conversationId == hostActiveConversationId) {
-            Logger.d(TAG, "skipping notification: conversation $conversationId is triggered by host")
+            Logger.d(
+                TAG,
+                "skipping notification: conversation $conversationId is triggered by host"
+            )
             return
         }
         if (isConversationVisible(conversationId)) {
-            Logger.d(TAG, "skipping notification: conversation $conversationId is currently visible in foreground")
+            Logger.d(
+                TAG,
+                "skipping notification: conversation $conversationId is currently visible in foreground"
+            )
             return
         }
         if (state is AgentState.Idle && state.lastOutcome == null) {
             return
         }
 
-        val context = app ?: runCatching { requireService<ApplicationService>().getApplication() }.getOrNull() ?: return
+        val context =
+            app ?: runCatching { requireService<ApplicationService>().getApplication() }.getOrNull()
+            ?: return
         val titleRes = ResidentNotificationBuilder.resolveTitleResId(state)
         val title = context.getString(titleRes)
         val body = ResidentNotificationBuilder.resolveBody(state, context) ?: title
 
-        val conversationRecord = runCatching { ConversationRepo.getConversation(conversationId) }.getOrNull()
+        val conversationRecord =
+            runCatching { ConversationRepo.getConversation(conversationId) }.getOrNull()
         val subText = conversationRecord?.summary?.title?.takeIf { it.isNotBlank() }
 
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -96,7 +104,8 @@ object TurnNotificationManager {
 
         val channelManager = findService<NotificationChannelManager>() ?: return
         channelManager.post(AppNotificationChannel.Alerts, conversationId.hashCode()) {
-            val icon = context.applicationInfo.icon.takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
+            val icon =
+                context.applicationInfo.icon.takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
             setSmallIcon(icon)
             setContentTitle(title)
             subText?.let { setSubText(it) }

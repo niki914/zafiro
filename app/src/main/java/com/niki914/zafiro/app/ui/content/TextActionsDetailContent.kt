@@ -108,8 +108,11 @@ fun TextActionsDetailContent(
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 TextActionSettingsEffect.ExitDetail -> onBack()
-                TextActionSettingsEffect.FocusName -> requestedFocusField = TextActionEditableField.Name
-                TextActionSettingsEffect.FocusPrompt -> requestedFocusField = TextActionEditableField.Prompt
+                TextActionSettingsEffect.FocusName -> requestedFocusField =
+                    TextActionEditableField.Name
+
+                TextActionSettingsEffect.FocusPrompt -> requestedFocusField =
+                    TextActionEditableField.Prompt
             }
         }
     }
@@ -207,7 +210,8 @@ private fun textActionInlineErrorText(error: TextActionInlineError?): String? {
         null -> null
         is TextActionInlineError.LoadFailed -> error.message ?: stringResource(error.fallbackResId)
         is TextActionInlineError.SaveFailed -> error.message ?: stringResource(error.fallbackResId)
-        is TextActionInlineError.DeleteFailed -> error.message ?: stringResource(error.fallbackResId)
+        is TextActionInlineError.DeleteFailed -> error.message
+            ?: stringResource(error.fallbackResId)
     }
 }
 

@@ -116,6 +116,7 @@ class McpServiceSettingsViewModel :
             McpServiceSettingsIntent.ToggleTokenVisibility -> updateState {
                 copy(tokenVisible = !tokenVisible)
             }
+
             is McpServiceSettingsIntent.ToggleTool -> toggleTool(intent.toolName, intent.checked)
         }
     }
@@ -185,7 +186,8 @@ class McpServiceSettingsViewModel :
 
         val safeTools = SAFE_BUILTIN_TOOL_ORDER.mapNotNull { name ->
             registeredBuiltins[name]?.let { tool ->
-                val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[name] ?: (tool.name to tool.description)
+                val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[name]
+                    ?: (tool.name to tool.description)
                 McpServiceToolItemUi(
                     name = tool.name,
                     displayName = displayTitle,
@@ -197,7 +199,8 @@ class McpServiceSettingsViewModel :
 
         val sessionTools = listOf("shell", "ssh").mapNotNull { name ->
             registeredBuiltins[name]?.let { tool ->
-                val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[tool.name] ?: (tool.name to tool.description)
+                val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[tool.name]
+                    ?: (tool.name to tool.description)
                 McpServiceToolItemUi(
                     name = tool.name,
                     displayName = displayTitle,
@@ -209,7 +212,8 @@ class McpServiceSettingsViewModel :
 
         val pythonTools = listOf("execute_python", "py_meta_tools").mapNotNull { name ->
             registeredBuiltins[name]?.let { tool ->
-                val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[name] ?: (tool.name to tool.description)
+                val (displayTitle, displayDesc) = TOOL_DISPLAY_INFO[name]
+                    ?: (tool.name to tool.description)
                 McpServiceToolItemUi(
                     name = tool.name,
                     displayName = displayTitle,

@@ -37,7 +37,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import com.niki914.zafiro.app.ui.model.conversation.ConversationRunState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,6 +77,7 @@ import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationOriginKind
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.ui.model.conversation.ConversationHistoryUiState
+import com.niki914.zafiro.app.ui.model.conversation.ConversationRunState
 import com.niki914.zafiro.repo.PinnedConversation
 import kotlinx.coroutines.delay
 import java.util.Calendar
@@ -366,7 +366,8 @@ private fun ConversationHistoryListContent(
                                         initialPulsed = conversation.id == initialPulsedId,
                                         currentTimeMillis = currentTimeMillis,
                                         selected = conversation.id in selectedIds,
-                                        runState = runStates[conversation.id] ?: ConversationRunState.Idle,
+                                        runState = runStates[conversation.id]
+                                            ?: ConversationRunState.Idle,
                                         onClick = {
                                             if (selecting) {
                                                 onConversationToggleSelection(conversation.id)
@@ -431,7 +432,8 @@ private fun ConversationHistoryItem(
     val displayTitle = parsedTitle.cleanTitle.ifBlank { untitledConversation }
     // 置顶段独占样式：高亮底色 + 隐去派生前缀图标，右上角只留时间；
     // 时间桶里的同一会话照旧普通样式，另用图钉标识它是置顶项。
-    val originIcon = if (inPinnedSection) null else parsedTitle.originKind?.let { originKindToIcon(it) }
+    val originIcon =
+        if (inPinnedSection) null else parsedTitle.originKind?.let { originKindToIcon(it) }
     val showPinBadge = isPinned && !inPinnedSection
     val relativeTime = formatRelativeTime(conversation.updatedAt, currentTimeMillis)
 
@@ -612,8 +614,16 @@ private fun formatRelativeTime(
 
     return when {
         diff < 60_000L -> stringResource(R.string.ui_time_just_now)
-        diff < 3_600_000L -> stringResource(R.string.ui_time_minutes_ago, (diff / 60_000L).coerceAtLeast(1))
-        sameDay(time, now) -> stringResource(R.string.ui_time_hours_ago, (diff / 3_600_000L).coerceAtLeast(1))
+        diff < 3_600_000L -> stringResource(
+            R.string.ui_time_minutes_ago,
+            (diff / 60_000L).coerceAtLeast(1)
+        )
+
+        sameDay(time, now) -> stringResource(
+            R.string.ui_time_hours_ago,
+            (diff / 3_600_000L).coerceAtLeast(1)
+        )
+
         isYesterday(time, now) -> stringResource(R.string.ui_time_yesterday)
         time.get(Calendar.YEAR) == now.get(Calendar.YEAR) -> {
             DateUtils.formatDateTime(
@@ -622,6 +632,7 @@ private fun formatRelativeTime(
                 DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_NO_YEAR,
             )
         }
+
         else -> {
             DateUtils.formatDateTime(
                 LocalContext.current,
@@ -751,11 +762,11 @@ private fun bucketOf(updatedAt: Long, now: Calendar): TimelineBucket {
 
 private fun sameDay(a: Calendar, b: Calendar): Boolean =
     a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
-        a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
+            a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
 
 private fun sameMonth(a: Calendar, b: Calendar): Boolean =
     a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
-        a.get(Calendar.MONTH) == b.get(Calendar.MONTH)
+            a.get(Calendar.MONTH) == b.get(Calendar.MONTH)
 
 private fun withinThisWeek(time: Calendar, now: Calendar): Boolean {
     val weekStart = (now.clone() as Calendar).apply {

@@ -16,7 +16,6 @@ import com.niki914.zafiro.app.ui.model.ConfigureIntent
 import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
 import com.niki914.zafiro.app.ui.model.ConfigureViewModel
-import com.niki914.zafiro.app.ui.model.EndpointMismatch
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 

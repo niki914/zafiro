@@ -4,6 +4,8 @@ import com.niki914.okia.Okia
 import com.niki914.okia.OkiaDependencies
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.error.LLMError
+import com.niki914.okia.error.LLMErrorCode
 import com.niki914.okia.event.StopCause
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.AgentLoop
@@ -21,6 +23,8 @@ import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.protocol.DeepSeekCompat
 import com.niki914.okia.protocol.ProtocolCompatMapper
 import com.niki914.okia.protocol.ProtocolEvent
+import com.niki914.okia.protocol.RequestSnapshot
+import com.niki914.okia.tooling.ToolKind
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.HttpTimeouts
 import com.niki914.okia.transport.SseLine
@@ -43,10 +47,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import com.niki914.okia.error.LLMError
-import com.niki914.okia.error.LLMErrorCode
-import com.niki914.okia.protocol.RequestSnapshot
-import com.niki914.okia.tooling.ToolKind
 
 class LLMControllerOkiaTest {
 
@@ -539,7 +539,10 @@ class LLMControllerOkiaTest {
     fun refresh_withBoundConfig_passesConfigIdToGateway() = runTest {
         var requestedConfigId: String? = null
         val gateway = object : FakeRuntimeSettingsGateway() {
-            override suspend fun readLlmConfig(agentId: String, configId: String?): RuntimeLlmConfig {
+            override suspend fun readLlmConfig(
+                agentId: String,
+                configId: String?
+            ): RuntimeLlmConfig {
                 requestedConfigId = configId
                 return validLlmConfig()
             }

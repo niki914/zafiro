@@ -27,7 +27,8 @@ private const val RESIDENT_NOTIFICATION_ROW_ID = "general.resident_notification"
 private const val TURN_NOTIFICATION_ROW_ID = "general.turn_notification"
 private const val LOAD_LAST_ROW_ID = "general.load_last"
 private const val ALWAYS_SHOW_ACTIONS_ROW_ID = "general.always_show_message_actions"
-private const val VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID = "general.voice_assistant_isolated_session"
+private const val VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID =
+    "general.voice_assistant_isolated_session"
 private const val IDLE_TIMEOUT_ROW_ID = "general.idle_timeout"
 private const val RETRY_ATTEMPTS_ROW_ID = "general.retry_attempts"
 private const val KEEP_SCREEN_ON_ROW_ID = "general.keep_screen_on"
@@ -130,20 +131,64 @@ fun GeneralSettingsContent(
             when (action) {
                 is SettingsRowAction.Navigate ->
                     when (action.id) {
-                        IDLE_TIMEOUT_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.IdleTimeout))
-                        RETRY_ATTEMPTS_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.RetryAttempts))
+                        IDLE_TIMEOUT_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.OpenDialog(
+                                GeneralSettingsDialog.IdleTimeout
+                            )
+                        )
+
+                        RETRY_ATTEMPTS_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.OpenDialog(
+                                GeneralSettingsDialog.RetryAttempts
+                            )
+                        )
                     }
 
                 is SettingsRowAction.ToggleChanged ->
                     when (action.id) {
-                        FLOATING_BALL_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBall(action.checked))
-                        FLOATING_BALL_AUTO_EXPAND_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBallAutoExpand(action.checked))
-                        RESIDENT_NOTIFICATION_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleResidentNotification(action.checked))
-                        TURN_NOTIFICATION_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleTurnNotification(action.checked))
-                        LOAD_LAST_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleLoadLastConversation(action.checked))
-                        ALWAYS_SHOW_ACTIONS_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleAlwaysShowMessageActions(action.checked))
-                        VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleVoiceAssistantIsolatedSession(action.checked))
-                        KEEP_SCREEN_ON_ROW_ID -> viewModel.sendIntent(GeneralSettingsIntent.ToggleKeepScreenOn(action.checked))
+                        FLOATING_BALL_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.ToggleFloatingBall(
+                                action.checked
+                            )
+                        )
+
+                        FLOATING_BALL_AUTO_EXPAND_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.ToggleFloatingBallAutoExpand(action.checked)
+                        )
+
+                        RESIDENT_NOTIFICATION_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.ToggleResidentNotification(
+                                action.checked
+                            )
+                        )
+
+                        TURN_NOTIFICATION_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.ToggleTurnNotification(
+                                action.checked
+                            )
+                        )
+
+                        LOAD_LAST_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.ToggleLoadLastConversation(
+                                action.checked
+                            )
+                        )
+
+                        ALWAYS_SHOW_ACTIONS_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.ToggleAlwaysShowMessageActions(
+                                action.checked
+                            )
+                        )
+
+                        VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.ToggleVoiceAssistantIsolatedSession(action.checked)
+                        )
+
+                        KEEP_SCREEN_ON_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.ToggleKeepScreenOn(
+                                action.checked
+                            )
+                        )
                     }
 
                 else -> Unit

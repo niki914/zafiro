@@ -6,11 +6,11 @@ package com.niki914.zafiro.app.conversation
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.niki914.okia.conversation.Conversation
+import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.MessageEntry
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
-import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.TurnOutcome
@@ -246,7 +246,9 @@ class ConversationPersisterTest {
     private suspend fun awaitUpdatedAtAbove(sessionId: String, timestamp: Long) {
         withContext(Dispatchers.Default) {
             withTimeout(5_000) {
-                while ((ConversationRepo.getConversation(sessionId)?.summary?.updatedAt ?: 0L) <= timestamp) {
+                while ((ConversationRepo.getConversation(sessionId)?.summary?.updatedAt
+                        ?: 0L) <= timestamp
+                ) {
                     delay(10)
                 }
             }

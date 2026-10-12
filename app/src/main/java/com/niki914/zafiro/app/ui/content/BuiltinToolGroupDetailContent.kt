@@ -70,7 +70,9 @@ private fun builtinToolGroupDetailSpec(uiState: BuiltinToolGroupDetailUiState): 
             SettingsSectionSpec(
                 layout = SettingsSectionLayout.GroupedCard,
                 rows = uiState.members.map { item ->
-                    val displayName = ToolPresentation.displayNameResOf(item.name)?.let { stringResource(it) } ?: item.name
+                    val displayName =
+                        ToolPresentation.displayNameResOf(item.name)?.let { stringResource(it) }
+                            ?: item.name
                     SettingsRowSpec.Toggle(
                         id = item.name,
                         title = displayName,

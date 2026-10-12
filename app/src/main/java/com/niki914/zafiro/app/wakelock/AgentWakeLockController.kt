@@ -66,7 +66,8 @@ object AgentWakeLockController {
             setReferenceCounted(false)
         }
 
-        application?.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+        application?.registerActivityLifecycleCallbacks(object :
+            Application.ActivityLifecycleCallbacks {
             override fun onActivityResumed(activity: Activity) {
                 currentForegroundActivity = WeakReference(activity)
                 applyWindowKeepScreenOn(activity, isKeepAliveActive)
@@ -135,7 +136,10 @@ object AgentWakeLockController {
             mutex.withLock {
                 val lock = wakeLock ?: return
                 if (!lock.isHeld) {
-                    Logger.i(LOG_TAG, "acquiring partial wake lock (timeout=${MAX_WAKE_LOCK_TIMEOUT_MS}ms)")
+                    Logger.i(
+                        LOG_TAG,
+                        "acquiring partial wake lock (timeout=${MAX_WAKE_LOCK_TIMEOUT_MS}ms)"
+                    )
                     lock.acquire(MAX_WAKE_LOCK_TIMEOUT_MS)
                 }
             }

@@ -49,6 +49,7 @@ internal fun ConfigurePageRoute(
                 ConfigureEffect.FocusName -> {
                     pendingFocusField = ConfigureEditableField.Name
                 }
+
                 ConfigureEffect.FocusModel -> {
                     pendingFocusField = ConfigureEditableField.Model
                 }

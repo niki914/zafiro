@@ -1,11 +1,11 @@
 package com.niki914.zafiro.remoteview.floatingball
 
+import com.niki914.xsettings.XSettings
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.service.ServiceRegistry
 import com.niki914.zafiro.service.installService
-import com.niki914.xsettings.XSettings
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -142,7 +142,10 @@ class FloatingBallViewModelTest {
         val state = viewModel.uiStateFlow.value
         assertFalse(state.isDetailOpen)
         assertNull(state.approvalRequest)
-        assertEquals(FloatingBallEffect.SettleApproval(ApprovalDecision.Allow), effectDeferred.await())
+        assertEquals(
+            FloatingBallEffect.SettleApproval(ApprovalDecision.Allow),
+            effectDeferred.await()
+        )
     }
 
     @Test
@@ -159,7 +162,10 @@ class FloatingBallViewModelTest {
         val state = viewModel.uiStateFlow.value
         assertFalse(state.isDetailOpen)
         assertNull(state.approvalRequest)
-        assertEquals(FloatingBallEffect.SettleApproval(ApprovalDecision.Deny), effectDeferred.await())
+        assertEquals(
+            FloatingBallEffect.SettleApproval(ApprovalDecision.Deny),
+            effectDeferred.await()
+        )
     }
 
     @Test
@@ -184,7 +190,11 @@ class FloatingBallViewModelTest {
 
         val effectDeferred = async { viewModel.uiEffect.first() }
         viewModel.sendIntent(
-            FloatingBallIntent.UpdateAgentStatus("完事", isRunning = false, lastOutcome = TurnOutcome.Completed)
+            FloatingBallIntent.UpdateAgentStatus(
+                "完事",
+                isRunning = false,
+                lastOutcome = TurnOutcome.Completed
+            )
         )
         advanceUntilIdle()
         assertEquals(FloatingBallEffect.ExpandCard, effectDeferred.await())
@@ -198,7 +208,11 @@ class FloatingBallViewModelTest {
         viewModel.sendIntent(FloatingBallIntent.UpdateAgentStatus("跑", true))
         advanceUntilIdle()
         viewModel.sendIntent(
-            FloatingBallIntent.UpdateAgentStatus("完事", isRunning = false, lastOutcome = TurnOutcome.Failed)
+            FloatingBallIntent.UpdateAgentStatus(
+                "完事",
+                isRunning = false,
+                lastOutcome = TurnOutcome.Failed
+            )
         )
         advanceUntilIdle()
 

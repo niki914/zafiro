@@ -17,20 +17,20 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,6 +48,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
@@ -55,6 +56,7 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -83,6 +85,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -93,33 +100,23 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.LiquidMenuItem
 import com.niki914.uikit.infra.LiquidPopover
-import com.niki914.uikit.infra.PopoverAlignment
-import com.niki914.uikit.infra.popoverAnchor
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import com.niki914.uikit.infra.LocalHasActiveDialog
+import com.niki914.uikit.infra.PopoverAlignment
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
@@ -127,29 +124,28 @@ import com.niki914.uikit.infra.component.OptionRow
 import com.niki914.uikit.infra.component.OptionSheet
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.PageChromeMenuItem
 import com.niki914.zafiro.app.ui.RegisterPageChrome
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.app.ui.model.home.ActionSource
+import com.niki914.zafiro.app.ui.model.home.FileAttachReason
 import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
 import com.niki914.zafiro.app.ui.model.home.HomeChatEffect
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
-import com.niki914.zafiro.app.ui.model.home.FileAttachReason
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
 import com.niki914.zafiro.app.ui.model.home.HomeChatTurn
 import com.niki914.zafiro.app.ui.model.home.HomeChatUiState
 import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel
-import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import com.niki914.zafiro.app.ui.model.home.HomeToolState
 import com.niki914.zafiro.app.ui.model.home.HomeToolStatus
-import com.niki914.zafiro.app.ui.model.ToolPresentation
-import com.niki914.zafiro.app.ui.nav.TextTitle
+import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
-import com.niki914.zafiro.api.model.ApprovalDecision
-import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.UpdateCheckResult
@@ -212,6 +208,7 @@ fun HomePageContent(
                     },
                     Toast.LENGTH_SHORT,
                 ).show()
+
                 HomeChatEffect.EmptyInputAttempted -> Toast.makeText(
                     attachToastContext,
                     R.string.ui_toast_empty_input,
@@ -309,7 +306,8 @@ fun HomePageContent(
     }
     DisposableEffect(isCurrentPage, uiState.currentConversationId) {
         findService<ApplicationService>()?.setHomeChatActive(isCurrentPage)
-        TurnNotificationManager.visibleConversationId = if (isCurrentPage) uiState.currentConversationId else null
+        TurnNotificationManager.visibleConversationId =
+            if (isCurrentPage) uiState.currentConversationId else null
         onDispose {
             findService<ApplicationService>()?.setHomeChatActive(false)
             if (TurnNotificationManager.visibleConversationId == uiState.currentConversationId) {
@@ -557,12 +555,14 @@ fun HomePageContent(
                 onDeny = { viewModel.sendIntent(HomeChatIntent.ResolveApproval(ApprovalDecision.Deny)) },
             )
         }
+
         is ApprovalRequest.ScreenControlConsent -> {
             ScreenControlConsentDialog(
                 onAgree = { viewModel.sendIntent(HomeChatIntent.ResolveApproval(ApprovalDecision.Allow)) },
                 onDeny = { viewModel.sendIntent(HomeChatIntent.ResolveApproval(ApprovalDecision.Deny)) },
             )
         }
+
         null -> {}
     }
 }

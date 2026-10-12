@@ -33,7 +33,8 @@ object CrashRecorder {
     private var foregroundActivity: String? = null
 
     fun install(application: Application) {
-        application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+        application.registerActivityLifecycleCallbacks(object :
+            Application.ActivityLifecycleCallbacks {
             override fun onActivityResumed(activity: Activity) {
                 foregroundActivity = activity::class.java.simpleName
             }

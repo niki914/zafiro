@@ -64,7 +64,8 @@ internal class FloatingBallTouchLayout(
         lp.x = ballX
         lp.y = ballY
         val screenWidth = context.resources.displayMetrics.widthPixels
-        val newDock = FloatingBallGeometry.resolveDockSide(ballX.toFloat(), ballWidthPx, screenWidth)
+        val newDock =
+            FloatingBallGeometry.resolveDockSide(ballX.toFloat(), ballWidthPx, screenWidth)
         if (newDock != dockSide) {
             onDockSideChanged(newDock)
         }
@@ -119,14 +120,19 @@ internal class FloatingBallTouchLayout(
                 lastRawY = ev.rawY
                 isDragging = false
             }
+
             MotionEvent.ACTION_MOVE -> {
                 motionPredictor.recordPoint(ev.rawX, ev.rawY, ev.eventTime)
-                val dist = hypot((ev.rawX - downRawX).toDouble(), (ev.rawY - downRawY).toDouble()).toFloat()
+                val dist = hypot(
+                    (ev.rawX - downRawX).toDouble(),
+                    (ev.rawY - downRawY).toDouble()
+                ).toFloat()
                 if (dist > touchSlop) {
                     isDragging = true
                     return true
                 }
             }
+
             MotionEvent.ACTION_CANCEL -> {
                 motionPredictor.reset()
             }
@@ -141,6 +147,7 @@ internal class FloatingBallTouchLayout(
                 motionPredictor.recordPoint(ev.rawX, ev.rawY, ev.eventTime)
                 return true
             }
+
             MotionEvent.ACTION_MOVE -> {
                 motionPredictor.recordPoint(ev.rawX, ev.rawY, ev.eventTime)
                 val dx = ev.rawX - lastRawX
@@ -155,7 +162,8 @@ internal class FloatingBallTouchLayout(
                 lp.x = ballX
                 lp.y = ballY
 
-                val newDock = FloatingBallGeometry.resolveDockSide(ballX.toFloat(), ballWidthPx, screenWidth)
+                val newDock =
+                    FloatingBallGeometry.resolveDockSide(ballX.toFloat(), ballWidthPx, screenWidth)
                 if (newDock != dockSide) {
                     onDockSideChanged(newDock)
                 }
@@ -165,6 +173,7 @@ internal class FloatingBallTouchLayout(
                 }
                 return true
             }
+
             MotionEvent.ACTION_UP -> {
                 if (isDragging) {
                     isDragging = false
@@ -175,6 +184,7 @@ internal class FloatingBallTouchLayout(
                 motionPredictor.reset()
                 return true
             }
+
             MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) {
                     isDragging = false

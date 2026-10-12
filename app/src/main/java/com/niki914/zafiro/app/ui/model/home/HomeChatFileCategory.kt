@@ -42,10 +42,14 @@ enum class HomeChatFileCategory(
             "txt", "md", "markdown", "log", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
             "csv", "tsv", "rtf",
         )
-        private val AUDIO_EXTENSIONS = setOf("mp3", "wav", "flac", "m4a", "aac", "ogg", "opus", "mid", "midi")
-        private val VIDEO_EXTENSIONS = setOf("mp4", "mkv", "avi", "mov", "webm", "flv", "3gp", "wmv")
-        private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "ico", "heic", "heif", "tiff")
-        private val ARCHIVE_EXTENSIONS = setOf("zip", "rar", "7z", "tar", "gz", "bz2", "xz", "jar", "iso")
+        private val AUDIO_EXTENSIONS =
+            setOf("mp3", "wav", "flac", "m4a", "aac", "ogg", "opus", "mid", "midi")
+        private val VIDEO_EXTENSIONS =
+            setOf("mp4", "mkv", "avi", "mov", "webm", "flv", "3gp", "wmv")
+        private val IMAGE_EXTENSIONS =
+            setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "ico", "heic", "heif", "tiff")
+        private val ARCHIVE_EXTENSIONS =
+            setOf("zip", "rar", "7z", "tar", "gz", "bz2", "xz", "jar", "iso")
 
         fun fromPath(path: String): HomeChatFileCategory {
             if (path.endsWith('/')) return Folder

@@ -55,7 +55,12 @@ internal fun FileRef.toHomeFile(): HomeChatFile =
 
 private fun TurnBlock.toHomeBlock(blockIndex: Int): HomeChatBlock = when (this) {
     is TurnBlock.Text -> HomeChatBlock.Text(text)
-    is TurnBlock.Thinking -> HomeChatBlock.Thinking(id = blockIndex, text = text, isComplete = isComplete)
+    is TurnBlock.Thinking -> HomeChatBlock.Thinking(
+        id = blockIndex,
+        text = text,
+        isComplete = isComplete
+    )
+
     is TurnBlock.Tool -> HomeChatBlock.Tool(invocation.toStatus(outcome))
     is TurnBlock.Failure -> HomeChatBlock.Error(
         message = message,

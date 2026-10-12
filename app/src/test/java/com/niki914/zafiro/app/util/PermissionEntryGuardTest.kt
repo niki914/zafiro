@@ -1,9 +1,9 @@
 package com.niki914.zafiro.app.util
 
-import java.io.File
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.io.File
 
 /**
  * 权限入口统一守卫：业务代码禁止直连原生权限 API。
@@ -59,15 +59,15 @@ class PermissionEntryGuardTest {
 
     /** 允许名单之外的任何命中都算私调。扫描范围：全仓 main 源码（build/ 与测试除外）。 */
     private val privateCallPatterns = allowlist.keys +
-        "requestPermissions(" +
-        "Runtime.getRuntime().exec(" +
-        "Settings.Secure.putString" +
-        "Shell.getShell(" +
-        "Shell.cmd(" +
-        "Shell.isAppGrantedRoot" +
-        "com.topjohnwu.superuser" +
-        "rikka.shizuku" +
-        "Shizuku.requestPermission"
+            "requestPermissions(" +
+            "Runtime.getRuntime().exec(" +
+            "Settings.Secure.putString" +
+            "Shell.getShell(" +
+            "Shell.cmd(" +
+            "Shell.isAppGrantedRoot" +
+            "com.topjohnwu.superuser" +
+            "rikka.shizuku" +
+            "Shizuku.requestPermission"
 
     @Test
     fun `no private permission calls outside allowlist`() {
@@ -90,7 +90,7 @@ class PermissionEntryGuardTest {
             }
         assertTrue(
             "业务方直连原生权限 API（收编进 PermissionManager 或加白名单并在 PR 说明）：\n" +
-                violations.joinToString("\n"),
+                    violations.joinToString("\n"),
             violations.isEmpty(),
         )
     }
@@ -130,7 +130,7 @@ class PermissionEntryGuardTest {
         if ("/src/test/" in relative) return true
         return allowlist[pattern].orEmpty().any { rule ->
             relative.endsWith(rule.fileSuffix) &&
-                (rule.marker.isEmpty() || rule.marker in line)
+                    (rule.marker.isEmpty() || rule.marker in line)
         }
     }
 

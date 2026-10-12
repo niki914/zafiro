@@ -203,6 +203,7 @@ abstract class AbstractAssistantHook(
             }
             sb.toString().trimEnd()
         }
+
         is AssistantFrame.Error -> frame.message
     }
 

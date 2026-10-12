@@ -18,8 +18,6 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.DEFAULT_CONTEXT_WINDOW_TOKENS
 import com.niki914.zafiro.settings.model.LlmProtocol
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
-import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
+import java.util.UUID
 
 /**
  * 独立的 Agent 底层会话引擎。
@@ -72,11 +71,15 @@ class AgentSessionEngine {
 
     internal var okia: Okia?
         get() = sessionAssembler.activeSession
-        set(value) { sessionAssembler.activeSession = value }
+        set(value) {
+            sessionAssembler.activeSession = value
+        }
 
     internal var okiaFactory: LLMController.OkiaFactory
         get() = sessionAssembler.okiaFactory
-        set(value) { sessionAssembler.okiaFactory = value }
+        set(value) {
+            sessionAssembler.okiaFactory = value
+        }
 
     val currentConversation: StateFlow<Conversation?> get() = sessionAssembler.currentConversation
     val keepScreenOn: StateFlow<Boolean> get() = streamPipeline.turnActive
@@ -165,7 +168,8 @@ class AgentSessionEngine {
             maxTokens = configWithoutRuntimePrompt.maxTokens
             thinkingLevel = configWithoutRuntimePrompt.thinkingLevel
             proxy = configWithoutRuntimePrompt.proxy
-            supportsImages = sessionAssembler.isImageSupported(configWithoutRuntimePrompt.supportsImages)
+            supportsImages =
+                sessionAssembler.isImageSupported(configWithoutRuntimePrompt.supportsImages)
             mcpServers = toolSynchronizer.toOkiaMcpServers(resolvedTools.mcpServers)
         }
         toolSynchronizer.syncLocalTools(resolvedTools)

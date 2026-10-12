@@ -192,6 +192,7 @@ internal class McpWire(
                         ?: throw McpProtocolException("MCP text content block missing 'text': $block")
                     McpContentBlock.Text(text)
                 }
+
                 "image" -> {
                     val mimeType = block["mimeType"]?.let { it as? JsonPrimitive }?.contentOrNull
                         ?: throw McpProtocolException("MCP image content block missing 'mimeType': $block")
@@ -199,6 +200,7 @@ internal class McpWire(
                         ?: throw McpProtocolException("MCP image content block missing 'data': $block")
                     McpContentBlock.Image(data, mimeType)
                 }
+
                 else -> throw McpProtocolException(
                     "MCP tool result contains unsupported block type '${type ?: "unknown"}'; " +
                             "only text and image blocks are supported"

@@ -2,14 +2,15 @@ package com.niki914.zafiro.mcp.service
 
 import android.util.Base64
 import com.niki914.logging.Logger
+import com.niki914.zafiro.chat.agentic.AgentTenantContext
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
-import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.chat.agentic.stream.ParsedToolResult
+import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
@@ -19,7 +20,6 @@ import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
-import com.niki914.zafiro.chat.agentic.AgentTenantContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -52,7 +52,7 @@ class McpToolAdapter(
 
         val exposedTools = builtinRegistry.all().filter { tool ->
             !tool.name.startsWith("mcp__") &&
-            config.isToolExposed(tool.name)
+                    config.isToolExposed(tool.name)
         }
 
         Logger.i(LOG_TAG, "building MCP server with ${exposedTools.size} exposed tools")
@@ -92,7 +92,10 @@ class McpToolAdapter(
                         val imageContent = tryExtractImageContent(result)
                         if (imageContent != null) {
                             val durationMs = System.currentTimeMillis() - startTime
-                            Logger.i(LOG_TAG, "tool invoke end: ${tool.name} ok=true image=true durationMs=$durationMs")
+                            Logger.i(
+                                LOG_TAG,
+                                "tool invoke end: ${tool.name} ok=true image=true durationMs=$durationMs"
+                            )
                             return@withContext CallToolResult(
                                 content = listOf(
                                     imageContent,
@@ -107,7 +110,10 @@ class McpToolAdapter(
 
                 val jsonText = ensureJson(output)
                 val durationMs = System.currentTimeMillis() - startTime
-                Logger.i(LOG_TAG, "tool invoke end: ${tool.name} isError=$isError durationMs=$durationMs")
+                Logger.i(
+                    LOG_TAG,
+                    "tool invoke end: ${tool.name} isError=$isError durationMs=$durationMs"
+                )
                 CallToolResult(
                     content = listOf(TextContent(text = jsonText)),
                     isError = isError,
@@ -116,7 +122,11 @@ class McpToolAdapter(
                 throw e
             } catch (e: Exception) {
                 val durationMs = System.currentTimeMillis() - startTime
-                Logger.e(LOG_TAG, "tool invoke exception: ${tool.name}: ${e.message} durationMs=$durationMs", e)
+                Logger.e(
+                    LOG_TAG,
+                    "tool invoke exception: ${tool.name}: ${e.message} durationMs=$durationMs",
+                    e
+                )
                 val errJson = JsonObject(
                     mapOf(
                         "ok" to JsonPrimitive(false),
@@ -169,7 +179,8 @@ class McpToolAdapter(
             val obj = jsonElement as? JsonObject ?: return ToolSchema()
             val schema = (obj["\$schema"] as? JsonPrimitive)?.contentOrNull
             val properties = obj["properties"] as? JsonObject
-            val required = (obj["required"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+            val required =
+                (obj["required"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
             val defs = obj["\$defs"] as? JsonObject
             ToolSchema(
                 schema = schema,

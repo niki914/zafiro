@@ -1,5 +1,8 @@
 package com.niki914.zafiro.app.ui.model
 
+import com.niki914.zafiro.app.ui.model.TextPacer.Companion.BASE_CHARS_PER_SECOND
+import com.niki914.zafiro.app.ui.model.TextPacer.Companion.CATCH_UP_SECONDS
+import com.niki914.zafiro.app.ui.model.TextPacer.Companion.MAX_CHARS_PER_SECOND
 import kotlinx.coroutines.delay
 
 /**

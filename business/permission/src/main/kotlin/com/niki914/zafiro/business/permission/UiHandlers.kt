@@ -29,7 +29,11 @@ internal class SystemDialogHandler(
 
     /** 申请状态无法静默得知（弹窗还没弹）；有弹框可弹的报 UNKNOWN，其余的明确 UNAVAILABLE。 */
     override fun status(permission: Permission): PermissionState =
-        if (PermissionSpec.appLevelMechanism(permission, Build.VERSION.SDK_INT) is GrantMechanism.Runtime) {
+        if (PermissionSpec.appLevelMechanism(
+                permission,
+                Build.VERSION.SDK_INT
+            ) is GrantMechanism.Runtime
+        ) {
             PermissionState.UNKNOWN
         } else {
             PermissionState.UNAVAILABLE
@@ -147,10 +151,12 @@ internal class JumpSettingsHandler(
                 Logger.d(TAG, "request($permission): recheck=GRANTED")
                 PermissionState.GRANTED
             }
+
             PermissionState.UNKNOWN -> {
                 Logger.d(TAG, "request($permission): recheck=UNKNOWN")
                 PermissionState.UNKNOWN
             }
+
             else -> {
                 Logger.d(TAG, "request($permission): recheck=$s -> DENIED_BY_USER")
                 PermissionState.DENIED_BY_USER
@@ -170,8 +176,10 @@ internal class JumpSettingsHandler(
             is GrantMechanism.Runtime -> when (permission) {
                 Permission.NOTIFICATION -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                     .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+
                 else -> appDetails()
             }
+
             null -> appDetails()
             // 特殊权限各有专属页；AppOp 机制目前只有存储与悬浮窗
             is GrantMechanism.AppOp -> when (permission) {
@@ -179,12 +187,15 @@ internal class JumpSettingsHandler(
                     Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
                     Uri.parse("package:$packageName"),
                 )
+
                 Permission.OVERLAY -> Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:$packageName"),
                 )
+
                 else -> appDetails()
             }
+
             GrantMechanism.Accessibility -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             // <33 的通知恒可用，跳页无意义，给一个落脚点
             GrantMechanism.None -> appDetails()

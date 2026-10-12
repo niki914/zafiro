@@ -50,7 +50,11 @@ class PythonWorkerService : Service() {
                 Python.getInstance()
                     .getModule("os")
                     .get("environ")!!
-                    .callAttr("__setitem__", "ZAFIRO_CACHE_DIR", applicationContext.cacheDir.absolutePath)
+                    .callAttr(
+                        "__setitem__",
+                        "ZAFIRO_CACHE_DIR",
+                        applicationContext.cacheDir.absolutePath
+                    )
             } catch (t: Throwable) {
                 initFailure = t
             } finally {

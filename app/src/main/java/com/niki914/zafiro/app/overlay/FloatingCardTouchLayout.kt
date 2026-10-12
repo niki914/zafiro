@@ -126,8 +126,12 @@ internal class FloatingCardTouchLayout(
                 lastRawY = ev.rawY
                 isDragging = false
             }
+
             MotionEvent.ACTION_MOVE -> {
-                val dist = hypot((ev.rawX - downRawX).toDouble(), (ev.rawY - downRawY).toDouble()).toFloat()
+                val dist = hypot(
+                    (ev.rawX - downRawX).toDouble(),
+                    (ev.rawY - downRawY).toDouble()
+                ).toFloat()
                 if (dist > touchSlop) {
                     isDragging = true
                     return true
@@ -152,7 +156,8 @@ internal class FloatingCardTouchLayout(
                 lp.x += dx.toInt()
                 lp.y = (lp.y + dy.toInt()).coerceIn(minCardY, maxCardY)
 
-                val newDock = FloatingBallGeometry.resolveDockSide(lp.x.toFloat(), cardWidthPx, screenWidth)
+                val newDock =
+                    FloatingBallGeometry.resolveDockSide(lp.x.toFloat(), cardWidthPx, screenWidth)
 
                 val anchorXPx = if (newDock.isRight) rightAnchorXPx else leftAnchorXPx
                 currentAnchorBallX = lp.x + anchorXPx
@@ -165,6 +170,7 @@ internal class FloatingCardTouchLayout(
                 }
                 return true
             }
+
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) {
                     isDragging = false
@@ -187,14 +193,17 @@ internal class FloatingCardTouchLayout(
                 onCardDragged(currentAnchorBallX, currentAnchorBallY, DockSide.Left)
                 onRequestCollapse(DockSide.Left)
             }
+
             distanceToRight < snapThresholdPx -> {
                 // 拉到右边缘收起：先在原地收缩为小球，完成后平滑吸附到右侧并淹没
                 onCardDragged(currentAnchorBallX, currentAnchorBallY, DockSide.Right)
                 onRequestCollapse(DockSide.Right)
             }
+
             else -> {
                 // 自由悬停：保持展开
-                val finalDock = FloatingBallGeometry.resolveDockSide(lp.x.toFloat(), cardWidthPx, screenWidth)
+                val finalDock =
+                    FloatingBallGeometry.resolveDockSide(lp.x.toFloat(), cardWidthPx, screenWidth)
                 onCardDragged(currentAnchorBallX, currentAnchorBallY, finalDock)
             }
         }

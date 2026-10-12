@@ -17,27 +17,21 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.ui.geometry.Rect
-import com.niki914.uikit.infra.LiquidMenuItem
-import com.niki914.uikit.infra.LiquidPopover
-import com.niki914.uikit.infra.PopoverAlignment
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -49,34 +43,37 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.uikit.infra.LiquidMenuItem
+import com.niki914.uikit.infra.LiquidPopover
 import com.niki914.uikit.infra.LiquidScreen
 import com.niki914.uikit.infra.LiquidScreenSwipeContent
 import com.niki914.uikit.infra.LiquidScreenTitle
+import com.niki914.uikit.infra.PopoverAlignment
 import com.niki914.uikit.infra.TitleDirection
 import com.niki914.uikit.infra.nav.LocalNavigationEntry
 import com.niki914.uikit.infra.nav.LocalPageTitle
 import com.niki914.uikit.infra.nav.rememberNavigationController
 import com.niki914.uikit.infra.rememberLiquidScreenState
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.crash.CrashRecorder
+import com.niki914.zafiro.app.crash.CrashReport
+import com.niki914.zafiro.app.crash.CrashReportDialog
 import com.niki914.zafiro.app.ui.content.LocalMarkdownScale
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
-import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.model.ThemeController
-import com.niki914.zafiro.business.application.ApplicationService
-import com.niki914.zafiro.repo.XRepo
-import com.niki914.zafiro.service.findService
+import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.NoTitle
 import com.niki914.zafiro.app.ui.nav.PageTitleSpec
 import com.niki914.zafiro.app.ui.nav.ResTitle
 import com.niki914.zafiro.app.ui.nav.TextTitle
-import com.niki914.zafiro.app.crash.CrashRecorder
-import com.niki914.zafiro.app.crash.CrashReport
-import com.niki914.zafiro.app.crash.CrashReportDialog
 import com.niki914.zafiro.app.ui.nav.TitleBarMode
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
+import com.niki914.zafiro.business.application.ApplicationService
+import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.service.findService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -153,7 +150,7 @@ fun ZafiroApp(
         onOpenChromeMenu = ::openChromeMenu,
     )
     val showLeftButton = currentChrome.actionsVisible &&
-        currentLeftAction != null && (currentLeftAction.onClick != null || controller.canGoBack)
+            currentLeftAction != null && (currentLeftAction.onClick != null || controller.canGoBack)
     val showRightButton = currentChrome.actionsVisible && currentRightAction != null
     val currentTitle = resolveScreenTitle(currentChrome, currentPage, currentEntry.id)
     val isTitleCollapsible = currentPage.titleMode == TitleBarMode.Collapsible
@@ -453,7 +450,10 @@ private fun resolveScreenTitle(
 ): LiquidScreenTitle {
     val key = chrome.titleKey ?: entryId
     chrome.titleContent?.let { return LiquidScreenTitle.Content(content = it, key = key) }
-    return LiquidScreenTitle.Text(value = resolveTitle(chrome.titleSpec ?: page.titleSpec), key = key)
+    return LiquidScreenTitle.Text(
+        value = resolveTitle(chrome.titleSpec ?: page.titleSpec),
+        key = key
+    )
 }
 
 @Composable

@@ -10,6 +10,7 @@ import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.text.FilesBlock
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.conversation.ConversationRepo.getConversation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
@@ -244,7 +245,8 @@ object ConversationRepo {
 
         val entries = dao().listEntries(sourceId)
         val newId = UUID.randomUUID().toString()
-        val cleanTitle = ConversationFormatter.sanitizeDisplayTitle(source.title).ifBlank { source.title }
+        val cleanTitle =
+            ConversationFormatter.sanitizeDisplayTitle(source.title).ifBlank { source.title }
         val newTitle = String.format(forkTitleFormat, cleanTitle)
 
         dao().forkConversationTransaction(

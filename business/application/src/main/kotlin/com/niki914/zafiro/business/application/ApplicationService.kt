@@ -2,7 +2,6 @@ package com.niki914.zafiro.business.application
 
 import android.app.Activity
 import android.app.Application
-import android.os.Bundle
 import androidx.activity.result.ActivityResultLauncher
 
 /** 系统运行时权限框的结果。 */

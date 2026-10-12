@@ -31,10 +31,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloseFullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
-import com.niki914.zafiro.remoteview.R
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +43,9 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -61,6 +60,7 @@ import androidx.compose.ui.zIndex
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.remoteview.R
 
 /**
  * 卡片独立窗口内部的形态演变组件。
@@ -138,11 +138,14 @@ fun FloatingBallMorphCard(
         1f
     }
 
-    val anchorX = if (dockSide.isRight) FloatingBallTokens.rightAnchorXDp else FloatingBallTokens.leftAnchorXDp
+    val anchorX =
+        if (dockSide.isRight) FloatingBallTokens.rightAnchorXDp else FloatingBallTokens.leftAnchorXDp
     val anchorY = FloatingBallTokens.anchorYDp
 
-    val currentWidth = lerp(FloatingBallTokens.collapsedWidthDp, FloatingBallTokens.expandedWidthDp, progress)
-    val currentHeight = lerp(FloatingBallTokens.collapsedHeightDp, FloatingBallTokens.expandedHeightDp, progress)
+    val currentWidth =
+        lerp(FloatingBallTokens.collapsedWidthDp, FloatingBallTokens.expandedWidthDp, progress)
+    val currentHeight =
+        lerp(FloatingBallTokens.collapsedHeightDp, FloatingBallTokens.expandedHeightDp, progress)
     val currentCardPadding = lerp(0.dp, FloatingBallTokens.cardPaddingDp, progress)
 
     // 计算卡片容器在展开窗口中的偏移，使锚点相对屏幕绝对坐标严格静止
@@ -151,7 +154,8 @@ fun FloatingBallMorphCard(
     } else {
         anchorX - currentCardPadding
     }
-    val containerTop = anchorY + FloatingBallTokens.buttonDiameterDp + currentCardPadding - currentHeight
+    val containerTop =
+        anchorY + FloatingBallTokens.buttonDiameterDp + currentCardPadding - currentHeight
 
     val cardShape = G2CardShape(FloatingBallTokens.cardCornerRadiusDp)
 
@@ -215,7 +219,8 @@ fun FloatingBallMorphCard(
                         .zIndex(offsets.jumpZIndex)
                         .graphicsLayer { alpha = buttonsAlpha },
                 )
-                val centerConfig = resolveCenterButtonConfig(isApprovalPending, isStopEnabled, onAllow, onStop)
+                val centerConfig =
+                    resolveCenterButtonConfig(isApprovalPending, isStopEnabled, onAllow, onStop)
 
                 FloatingBallActionButton(
                     icon = centerConfig.icon,
@@ -301,7 +306,8 @@ fun FloatingBallExpandedCardContent(
                 enabled = buttonsEnabled,
                 modifier = Modifier.offset(x = 0.dp, y = 0.dp),
             )
-            val centerConfig = resolveCenterButtonConfig(isApprovalPending, isStopEnabled, onAllow, onStop)
+            val centerConfig =
+                resolveCenterButtonConfig(isApprovalPending, isStopEnabled, onAllow, onStop)
 
             FloatingBallActionButton(
                 icon = centerConfig.icon,
@@ -360,12 +366,15 @@ private fun FloatingBallPreviewSlot(
             val previewTarget: PreviewTarget = when {
                 isApprovalPending || approvalRequest != null -> {
                     val reason = when (val req = approvalRequest) {
-                        is ApprovalRequest.ToolExecution -> req.ruleName.takeIf { it.isNotBlank() } ?: req.toolName
+                        is ApprovalRequest.ToolExecution -> req.ruleName.takeIf { it.isNotBlank() }
+                            ?: req.toolName
+
                         is ApprovalRequest.ScreenControlConsent -> stringResource(R.string.screen_control_consent_title)
                         null -> ""
                     }
                     PreviewTarget.Approval(reason)
                 }
+
                 preview.isNullOrBlank() -> PreviewTarget.Placeholder
                 else -> PreviewTarget.AgentText(preview)
             }
@@ -374,13 +383,22 @@ private fun FloatingBallPreviewSlot(
                 targetState = previewTarget,
                 transitionSpec = {
                     val floatSpec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
-                    val intOffsetSpec = tween<IntOffset>(durationMillis = 280, easing = FastOutSlowInEasing)
+                    val intOffsetSpec =
+                        tween<IntOffset>(durationMillis = 280, easing = FastOutSlowInEasing)
                     if (targetState.order >= initialState.order) {
-                        (slideInVertically(animationSpec = intOffsetSpec) { it } + fadeIn(animationSpec = floatSpec)) togetherWith
-                                (slideOutVertically(animationSpec = intOffsetSpec) { -it } + fadeOut(animationSpec = floatSpec))
+                        (slideInVertically(animationSpec = intOffsetSpec) { it } + fadeIn(
+                            animationSpec = floatSpec
+                        )) togetherWith
+                                (slideOutVertically(animationSpec = intOffsetSpec) { -it } + fadeOut(
+                                    animationSpec = floatSpec
+                                ))
                     } else {
-                        (slideInVertically(animationSpec = intOffsetSpec) { -it } + fadeIn(animationSpec = floatSpec)) togetherWith
-                                (slideOutVertically(animationSpec = intOffsetSpec) { it } + fadeOut(animationSpec = floatSpec))
+                        (slideInVertically(animationSpec = intOffsetSpec) { -it } + fadeIn(
+                            animationSpec = floatSpec
+                        )) togetherWith
+                                (slideOutVertically(animationSpec = intOffsetSpec) { it } + fadeOut(
+                                    animationSpec = floatSpec
+                                ))
                     }.using(SizeTransform(clip = true))
                 },
                 modifier = Modifier
@@ -395,6 +413,7 @@ private fun FloatingBallPreviewSlot(
                             contentColor = contentColor,
                         )
                     }
+
                     is PreviewTarget.AgentText -> {
                         FloatingBallTextPreview(
                             text = target.text,
@@ -402,6 +421,7 @@ private fun FloatingBallPreviewSlot(
                             contentColor = contentColor,
                         )
                     }
+
                     is PreviewTarget.Approval -> {
                         FloatingBallApprovalPreview(
                             reason = target.reason,

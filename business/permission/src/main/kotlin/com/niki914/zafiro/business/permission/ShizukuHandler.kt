@@ -69,7 +69,7 @@ internal class ShizukuHandler(
                     Logger.d(
                         TAG,
                         "status($permission): checkSelfPermission threw " +
-                            "${e.javaClass.simpleName} -> UNAVAILABLE",
+                                "${e.javaClass.simpleName} -> UNAVAILABLE",
                     )
                     return PermissionState.UNAVAILABLE
                 }
@@ -95,7 +95,10 @@ internal class ShizukuHandler(
                 Logger.d(TAG, "request($permission): shizuku not installed -> UNAVAILABLE")
                 return PermissionState.UNAVAILABLE
             }
-            Logger.d(TAG, "request($permission): binder absent, waiting up to ${BINDER_TIMEOUT_MILLIS}ms")
+            Logger.d(
+                TAG,
+                "request($permission): binder absent, waiting up to ${BINDER_TIMEOUT_MILLIS}ms"
+            )
             if (!awaitBinder(BINDER_TIMEOUT_MILLIS)) {
                 Logger.d(TAG, "request($permission): binder still absent -> UNAVAILABLE")
                 return PermissionState.UNAVAILABLE
@@ -107,7 +110,7 @@ internal class ShizukuHandler(
             Logger.d(
                 TAG,
                 "request($permission): checkSelfPermission threw " +
-                    "${e.javaClass.simpleName} -> UNAVAILABLE",
+                        "${e.javaClass.simpleName} -> UNAVAILABLE",
             )
             return PermissionState.UNAVAILABLE
         }
@@ -118,7 +121,10 @@ internal class ShizukuHandler(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                Logger.d(TAG, "request($permission): auth threw ${e.javaClass.simpleName} -> UNAVAILABLE")
+                Logger.d(
+                    TAG,
+                    "request($permission): auth threw ${e.javaClass.simpleName} -> UNAVAILABLE"
+                )
                 return PermissionState.UNAVAILABLE
             }
             Logger.d(TAG, "request($permission): authorized=$authorized")
@@ -243,8 +249,8 @@ internal class ShizukuHandler(
 
     private val Permission.isSupported: Boolean
         get() = this == Permission.ROOT ||
-            this == Permission.SHIZUKU ||
-            isAppLevelGrantable(accessibilityService != null)
+                this == Permission.SHIZUKU ||
+                isAppLevelGrantable(accessibilityService != null)
 
     companion object {
         const val TAG = "niki914_zafiro_ShizukuHandler"

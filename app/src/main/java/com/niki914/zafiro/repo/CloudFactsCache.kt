@@ -152,7 +152,10 @@ class CloudFactsApi internal constructor(
     }
 
     suspend fun saveOpenRouter(document: OpenRouterCatalogDocument) {
-        repo.writeJson(StoreDescriptorRegistry.OPENROUTER_CATALOG_ID, OpenRouterCatalogSettingsCodec.encode(document))
+        repo.writeJson(
+            StoreDescriptorRegistry.OPENROUTER_CATALOG_ID,
+            OpenRouterCatalogSettingsCodec.encode(document)
+        )
     }
 
     /**

@@ -2,6 +2,8 @@ package com.niki914.zafiro.chat.agentic
 
 import android.graphics.Bitmap
 import com.niki914.logging.Logger
+import com.niki914.zafiro.chat.agentic.ScreenCaptureIngestor.captureAndIngest
+import com.niki914.zafiro.chat.agentic.ScreenCaptureIngestor.captureForTool
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.image.IngestError
 import com.niki914.zafiro.chat.agentic.image.IngestResult
@@ -49,7 +51,10 @@ object ScreenCaptureIngestor {
         is ToolCaptureResult.Ok -> CaptureResult.Ok(result.ingest.image.path)
         is ToolCaptureResult.Err -> CaptureResult.Err(result.stage, result.message)
         is ToolCaptureResult.IngestErr ->
-            CaptureResult.Err(Stage.INGEST_FAILED, "Screen was captured but the image could not be processed.")
+            CaptureResult.Err(
+                Stage.INGEST_FAILED,
+                "Screen was captured but the image could not be processed."
+            )
     }
 
     /** 截屏并写入沙箱，供工具层使用；ingest 失败的原始错误随结果带回。 */
@@ -71,19 +76,27 @@ object ScreenCaptureIngestor {
 
         val bitmap = AccessibilityController.captureScreenImage().getOrElse { error ->
             Logger.w(TAG, "captureScreenImage failed: ${error.message}")
-            return ToolCaptureResult.Err(Stage.CAPTURE_FAILED, error.message ?: "Screen capture failed.")
+            return ToolCaptureResult.Err(
+                Stage.CAPTURE_FAILED,
+                error.message ?: "Screen capture failed."
+            )
         }
 
         return try {
             val bytes = encodePng(bitmap) ?: run {
                 Logger.w(TAG, "encodePng failed")
-                return ToolCaptureResult.Err(Stage.ENCODE_FAILED, "The captured frame could not be encoded.")
+                return ToolCaptureResult.Err(
+                    Stage.ENCODE_FAILED,
+                    "The captured frame could not be encoded."
+                )
             }
-            when (val result = withContext(Dispatchers.IO) { codec.ingestBytes(bytes, "image/png") }) {
+            when (val result =
+                withContext(Dispatchers.IO) { codec.ingestBytes(bytes, "image/png") }) {
                 is IngestResult.Ok -> {
                     Logger.i(TAG, "screen capture ingested successfully path=${result.image.path}")
                     ToolCaptureResult.Ok(result)
                 }
+
                 is IngestResult.Err -> {
                     Logger.w(TAG, "screen capture ingest failed error=${result.error}")
                     ToolCaptureResult.IngestErr(result.error)
@@ -103,7 +116,12 @@ object ScreenCaptureIngestor {
             val software = bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: return@withContext null
             try {
                 ByteArrayOutputStream().use { out ->
-                    if (!software.compress(Bitmap.CompressFormat.PNG, 100, out)) return@withContext null
+                    if (!software.compress(
+                            Bitmap.CompressFormat.PNG,
+                            100,
+                            out
+                        )
+                    ) return@withContext null
                     out.toByteArray()
                 }
             } finally {

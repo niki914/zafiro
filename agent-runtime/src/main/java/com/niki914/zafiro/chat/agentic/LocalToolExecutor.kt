@@ -1,7 +1,6 @@
 package com.niki914.zafiro.chat.agentic
 
 import com.niki914.logging.Logger
-import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.tooling.ToolCallContext
 import com.niki914.okia.tooling.ToolExecutor
@@ -175,8 +174,11 @@ class LocalToolExecutor(
         val imageObj = json["image"] as? JsonObject
             ?: (json["data"] as? JsonObject)?.get("image") as? JsonObject
             ?: return emptyList()
-        val path = (imageObj["path"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: return emptyList()
-        val mimeType = (imageObj["mime_type"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: "image/jpeg"
+        val path = (imageObj["path"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
+            ?: return emptyList()
+        val mimeType =
+            (imageObj["mime_type"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
+                ?: "image/jpeg"
         return listOf(com.niki914.okia.message.ContentBlock.Image(path, mimeType))
     }
 

@@ -74,7 +74,12 @@ class ConversationMigrationTest {
                     db.execSQL(V2_CREATE_INDEX_SQL)
                 }
 
-                override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+                override fun onUpgrade(
+                    db: SupportSQLiteDatabase,
+                    oldVersion: Int,
+                    newVersion: Int
+                ) {
+                }
             })
             .build()
         val helper = FrameworkSQLiteOpenHelperFactory().create(config)

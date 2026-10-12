@@ -80,6 +80,7 @@ object ResidentNotificationBuilder {
             TurnOutcome.Failed -> R.string.agent_resident_title_failed
             TurnOutcome.Interrupted -> R.string.agent_resident_title_interrupted
         }
+
         is AgentState.Thinking -> R.string.agent_resident_title_thinking
         is AgentState.Generating -> R.string.agent_resident_title_generating
         is AgentState.ToolRunning -> R.string.agent_resident_title_tool_running
@@ -104,13 +105,16 @@ object ResidentNotificationBuilder {
             is AgentState.WaitingApproval -> when (val req = state.request) {
                 is ApprovalRequest.ToolExecution ->
                     req.command.takeIf { it.isNotBlank() } ?: req.toolName
+
                 is ApprovalRequest.ScreenControlConsent ->
                     context.getString(R.string.screen_control_consent_title)
             }
+
             is AgentState.Idle -> state.lastText
             AgentState.Stopping -> null
         }
-        val singleLine = raw?.replace(WHITESPACE, " ")?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        val singleLine =
+            raw?.replace(WHITESPACE, " ")?.trim()?.takeIf { it.isNotBlank() } ?: return null
         if (singleLine.length <= BODY_MAX_CHARS) return singleLine
         val end = BODY_MAX_CHARS - 1
         val cut = if (Character.isHighSurrogate(singleLine[end - 1])) end - 1 else end

@@ -48,7 +48,8 @@ import com.niki914.zafiro.app.ui.model.MinScalePercent
 import kotlin.math.roundToInt
 
 private const val ScaleStepPercent = 5
-private const val ScaleIntervals = (MaxScalePercent - MinScalePercent) / ScaleStepPercent // 16 intervals -> 15 steps
+private const val ScaleIntervals =
+    (MaxScalePercent - MinScalePercent) / ScaleStepPercent // 16 intervals -> 15 steps
 
 /** 底部快捷里程碑档位（百分比）。 */
 private val ScaleMilestones = listOf(60, 80, 100, 120, 140)
@@ -143,9 +144,11 @@ fun MarkdownScalePageContent(
                     )
 
                     Slider(
-                        value = uiState.scalePercent.toFloat().coerceIn(MinScalePercent.toFloat(), MaxScalePercent.toFloat()),
+                        value = uiState.scalePercent.toFloat()
+                            .coerceIn(MinScalePercent.toFloat(), MaxScalePercent.toFloat()),
                         onValueChange = { newValue ->
-                            val stepped = ((newValue.roundToInt() - MinScalePercent + ScaleStepPercent / 2) / ScaleStepPercent) * ScaleStepPercent + MinScalePercent
+                            val stepped =
+                                ((newValue.roundToInt() - MinScalePercent + ScaleStepPercent / 2) / ScaleStepPercent) * ScaleStepPercent + MinScalePercent
                             val clamped = stepped.coerceIn(MinScalePercent, MaxScalePercent)
                             viewModel.sendIntent(MarkdownScaleIntent.ChangeScale(clamped))
                         },
@@ -159,7 +162,9 @@ fun MarkdownScalePageContent(
                             activeTrackColor = MaterialTheme.colorScheme.primary,
                             inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                             activeTickColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
-                            inactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                            inactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                alpha = 0.35f
+                            ),
                         ),
                         modifier = Modifier.weight(1f),
                     )

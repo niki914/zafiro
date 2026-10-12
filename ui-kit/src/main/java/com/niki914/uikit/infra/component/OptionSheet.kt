@@ -55,10 +55,17 @@ fun OptionSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         // 只圆上面两角：底边贴在屏幕外
-        shape = G2FieldShape(topStart = 32.dp, topEnd = 32.dp, bottomEnd = 0.dp, bottomStart = 0.dp),
+        shape = G2FieldShape(
+            topStart = 32.dp,
+            topEnd = 32.dp,
+            bottomEnd = 0.dp,
+            bottomStart = 0.dp
+        ),
         modifier = modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Column(Modifier
+            .fillMaxWidth()
+            .padding(bottom = 24.dp)) {
             Column(modifier = bodyModifier.fillMaxWidth()) {
                 if (title != null) {
                     Text(

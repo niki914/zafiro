@@ -1,10 +1,8 @@
 package com.niki914.okia.protocol
 
-import com.niki914.okia.ImageLoader
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.StopReason
-import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.tooling.ToolDescriptor
@@ -12,7 +10,6 @@ import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
 import kotlinx.coroutines.CancellationException
-import kotlin.io.encoding.Base64
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
@@ -26,6 +23,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import kotlin.io.encoding.Base64
 
 /**
  * OpenAI Responses API（Messages 形态）协议。输入是 item 数组（非 messages），
@@ -62,7 +60,10 @@ class OpenAIResponsesProtocol(
     override fun useApiKey(apiKey: String): Map<String, String> =
         if (apiKey.isEmpty()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
 
-    override suspend fun buildRequest(snapshot: RequestSnapshot, history: List<Message>): HttpRequest =
+    override suspend fun buildRequest(
+        snapshot: RequestSnapshot,
+        history: List<Message>
+    ): HttpRequest =
         HttpRequest(
             url = snapshot.endpoint,
             method = "POST",
@@ -160,7 +161,10 @@ class OpenAIResponsesProtocol(
 
     // ── 请求体 ─────────────────────────────────────────────────────────────
 
-    private suspend fun buildRequestBody(snapshot: RequestSnapshot, history: List<Message>): JsonObject =
+    private suspend fun buildRequestBody(
+        snapshot: RequestSnapshot,
+        history: List<Message>
+    ): JsonObject =
         buildJsonObject {
             put("model", snapshot.model)
             put("input", buildJsonArray {
@@ -190,7 +194,10 @@ class OpenAIResponsesProtocol(
      * reasoning item（不把其文本拼进 message，避免重复）；无 payload 或前缀
      * 不认识的思考块继续按明文合并进文本（DeepSeek 网关形态）。
      */
-    private suspend fun addInputItem(snapshot: RequestSnapshot, message: Message): List<JsonObject> = when (message) {
+    private suspend fun addInputItem(
+        snapshot: RequestSnapshot,
+        message: Message
+    ): List<JsonObject> = when (message) {
         is Message.User -> listOf(buildJsonObject {
             put("role", "user")
             put("content", userContent(snapshot, message.content))
@@ -296,7 +303,10 @@ class OpenAIResponsesProtocol(
         state.reasoningItems.clear()
     }
 
-    private suspend fun userContent(snapshot: RequestSnapshot, blocks: List<ContentBlock>): kotlinx.serialization.json.JsonElement {
+    private suspend fun userContent(
+        snapshot: RequestSnapshot,
+        blocks: List<ContentBlock>
+    ): kotlinx.serialization.json.JsonElement {
         val text = blocks.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
         val images = blocks.filterIsInstance<ContentBlock.Image>()
         // 无图：纯文本

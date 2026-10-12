@@ -69,10 +69,12 @@ fun McpServiceSettingsContent(
                 delay(150)
                 portBringIntoViewRequester.bringIntoView()
             }
+
             McpServiceEditableField.Token -> {
                 delay(150)
                 tokenBringIntoViewRequester.bringIntoView()
             }
+
             null -> Unit
         }
     }
@@ -203,7 +205,12 @@ fun McpServiceSettingsContent(
                     checked = tool.name in uiState.exposedTools,
                     onCheckedChange = { checked ->
                         fieldController.clearActiveField()
-                        viewModel.sendIntent(McpServiceSettingsIntent.ToggleTool(tool.name, checked))
+                        viewModel.sendIntent(
+                            McpServiceSettingsIntent.ToggleTool(
+                                tool.name,
+                                checked
+                            )
+                        )
                     },
                 )
             }

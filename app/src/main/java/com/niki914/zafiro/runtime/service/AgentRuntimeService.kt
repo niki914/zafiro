@@ -1,6 +1,5 @@
 package com.niki914.zafiro.runtime.service
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -8,28 +7,31 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
-import android.os.Build
 import android.os.DeadObjectException
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.niki914.zafiro.business.permission.Permission
-import com.niki914.zafiro.business.permission.PermissionManager
-import com.niki914.zafiro.business.permission.PermissionState
 import androidx.core.net.toUri
 import com.niki914.logging.Logger
 import com.niki914.store.HostApp
-import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.store.XIpcStoreRepository
-import com.niki914.zafiro.repo.XRepo
-
 import com.niki914.zafiro.api.Agent
+import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.TurnFailureCode
 import com.niki914.zafiro.app.MainActivity
+import com.niki914.zafiro.app.notification.ResidentNotificationBuilder
+import com.niki914.zafiro.app.notification.ResidentNotificationManager
+import com.niki914.zafiro.app.notification.TurnNotificationManager
+import com.niki914.zafiro.business.notification.NotificationChannelManager
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionState
 import com.niki914.zafiro.chat.ToolStatusLabels
+import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.runtime.ipc.IAgentRuntimeService
 import com.niki914.zafiro.runtime.ipc.IAgentStoreService
 import com.niki914.zafiro.runtime.ipc.IRenderFrameCallback
@@ -43,18 +45,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicReference
 import com.niki914.zafiro.app.R as AppR
-
-import com.niki914.zafiro.api.AgentControl
-import com.niki914.zafiro.api.model.ApprovalDecision
-import com.niki914.zafiro.app.notification.ResidentNotificationBuilder
-import com.niki914.zafiro.app.notification.ResidentNotificationManager
-import com.niki914.zafiro.app.notification.TurnNotificationManager
-import com.niki914.zafiro.business.notification.NotificationChannelManager
 
 class AgentRuntimeService : Service() {
 
@@ -76,18 +70,22 @@ class AgentRuntimeService : Service() {
                 Logger.i(LOG_TAG, "Resident notification: Stop clicked")
                 agentControl.stop()
             }
+
             ResidentNotificationBuilder.ACTION_APPROVE -> {
                 Logger.i(LOG_TAG, "Resident notification: Approve clicked")
                 ResidentNotificationManager.resolveApproval(ApprovalDecision.Allow)
             }
+
             ResidentNotificationBuilder.ACTION_DECLINE -> {
                 Logger.i(LOG_TAG, "Resident notification: Decline clicked")
                 ResidentNotificationManager.resolveApproval(ApprovalDecision.Deny)
             }
+
             ACTION_START_RESIDENT -> {
                 isResidentRequested = true
                 updateResidentNotification()
             }
+
             ACTION_STOP_RESIDENT -> {
                 isResidentRequested = false
                 if (boundClientsCount == 0 && activeTurn.get() == null) {
@@ -227,6 +225,7 @@ class AgentRuntimeService : Service() {
                     sendError(cb, "Another turn is already in progress")
                     return
                 }
+
                 TurnStart.DraftEmpty -> {
                     try {
                         cb.asBinder().unlinkToDeath(deathRecipient, 0)
@@ -235,12 +234,17 @@ class AgentRuntimeService : Service() {
                     sendError(cb, "Query is blank")
                     return
                 }
+
                 TurnStart.Started -> {
-                    val convId = targetAgent.conversation.value.id?.value ?: if (isIsolated) "host" else ""
+                    val convId =
+                        targetAgent.conversation.value.id?.value ?: if (isIsolated) "host" else ""
                     if (convId.isNotBlank()) {
                         TurnNotificationManager.markHostTurnStarted(convId)
                     }
-                    Logger.i(LOG_TAG, "targetAgent.stream started successfully isolated=$isIsolated")
+                    Logger.i(
+                        LOG_TAG,
+                        "targetAgent.stream started successfully isolated=$isIsolated"
+                    )
                 }
             }
 
@@ -274,7 +278,10 @@ class AgentRuntimeService : Service() {
                 currentHostAgent?.release()
                 currentHostAgent = null
             } else {
-                Logger.i(LOG_TAG, "reset conversation requested by host (ignored to protect shared conversation)")
+                Logger.i(
+                    LOG_TAG,
+                    "reset conversation requested by host (ignored to protect shared conversation)"
+                )
             }
         }
     }
@@ -333,7 +340,6 @@ class AgentRuntimeService : Service() {
             val c = content ?: return
             postNotificationImpl(t, c, createContentIntent(uri))
         }
-
 
 
         private fun postNotificationImpl(
@@ -434,6 +440,7 @@ class AgentRuntimeService : Service() {
             TurnFailureCode.IdleTimeout -> getString(AppR.string.ui_home_error_idle_timeout_title)
             TurnFailureCode.OutputTruncated ->
                 getString(AppR.string.ui_home_error_output_truncated_title)
+
             else -> getString(AppR.string.runtime_error_internal)
         }
 
@@ -444,9 +451,11 @@ class AgentRuntimeService : Service() {
             coroutineScope {
                 val conversationJob = launch {
                     turnAgent.conversation.collect { conv ->
-                        val turn = conv.turns.find { it.id == targetTurnId } ?: conv.turns.lastOrNull()
+                        val turn =
+                            conv.turns.find { it.id == targetTurnId } ?: conv.turns.lastOrNull()
                         if (turn != null) {
-                            val projected = HostConversationProjector.project(turn, ::resolveErrorMessage)
+                            val projected =
+                                HostConversationProjector.project(turn, ::resolveErrorMessage)
                             if (projected != lastProjected || !firstFrameSent) {
                                 frameIndex++
                                 lastProjected = projected

@@ -2,19 +2,19 @@ package com.niki914.zafiro.business.agent
 
 // 保护：先到先得仲裁状态机（主对话运行中防抢占、空闲时抢占、结束后归还）
 
+import com.niki914.logging.Backend
+import com.niki914.logging.Level
+import com.niki914.logging.Logger
 import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
-import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Draft
-import com.niki914.logging.Backend
-import com.niki914.logging.Level
-import com.niki914.logging.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,10 +52,19 @@ class CoordinatedAgentControlTest {
         override fun discard() {}
         override fun release() {}
         override fun bindConfig(configId: String) {}
-        override fun stop() { stopCallCount++ }
+        override fun stop() {
+            stopCallCount++
+        }
+
         val registeredApprovers = mutableListOf<Approver>()
-        override fun addApprover(approver: Approver) { registeredApprovers.add(approver) }
-        override fun removeApprover(approver: Approver) { registeredApprovers.remove(approver) }
+        override fun addApprover(approver: Approver) {
+            registeredApprovers.add(approver)
+        }
+
+        override fun removeApprover(approver: Approver) {
+            registeredApprovers.remove(approver)
+        }
+
         override suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision =
             ApprovalDecision.Deny
     }
@@ -69,7 +78,8 @@ class CoordinatedAgentControlTest {
         val coordinator = CoordinatedAgentControl(mainFlow, scope)
 
         val approver = object : Approver {
-            override suspend fun decide(request: ApprovalRequest): ApprovalDecision = ApprovalDecision.Allow
+            override suspend fun decide(request: ApprovalRequest): ApprovalDecision =
+                ApprovalDecision.Allow
         }
         coordinator.addApprover(approver)
         assertEquals(listOf(approver), agent1.registeredApprovers)

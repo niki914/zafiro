@@ -11,10 +11,10 @@ import com.niki914.zafiro.business.permission.PermissionState
 import com.niki914.zafiro.service.requireService
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.util.TextPatternMatcher
+import kotlinx.coroutines.CancellationException
+import java.io.File
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
-import java.io.File
-import kotlinx.coroutines.CancellationException
 
 data class PreflightDecision(
     val allowed: Boolean,
@@ -100,6 +100,7 @@ class ToolExecutionPreflight(
                             code = "CONFIRM_DENIED",
                             reason = "The user denied this operation.",
                         )
+
                         ApprovalDecision.Abstain -> return blocked.copy(
                             code = "CONFIRM_UNAVAILABLE",
                             reason = "Tool execution requires user confirmation, but this session " +
@@ -270,7 +271,8 @@ class ToolExecutionPreflight(
          * 相对分段（`src/main`）与转义（`\/`）；首段至少一个字符，
          * 单独的 `/` 不算路径。段内允许 `.`（文件名）与 `-`。
          */
-        private val ABSOLUTE_PATH = Regex("""(?<![\w.:/])/[A-Za-z0-9_.\-]+(?:/[A-Za-z0-9_.\-]+)*/?""")
+        private val ABSOLUTE_PATH =
+            Regex("""(?<![\w.:/])/[A-Za-z0-9_.\-]+(?:/[A-Za-z0-9_.\-]+)*/?""")
 
         /**
          * app 沙箱的典型指向：真实私有目录 + `/data/data/<pkg>` 与

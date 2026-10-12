@@ -1,6 +1,7 @@
 // 保护：常驻通知在各运行阶段（生成/思考/工具/审批/失败/待命）的文案、操作按钮、底色与整卡着色标记映射，避免错误配置导致用户无法操作或界面混乱。
 package com.niki914.zafiro.app.notification
 
+import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -9,18 +10,16 @@ import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.business.notification.AppNotificationChannel
 import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
-import com.niki914.zafiro.remoteview.R as RemoteViewR
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import android.app.Notification
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.niki914.zafiro.remoteview.R as RemoteViewR
 
 @RunWith(RobolectricTestRunner::class)
 class ResidentNotificationBuilderTest {
@@ -36,7 +35,10 @@ class ResidentNotificationBuilderTest {
 
     @Test
     fun resolveTitleResId_mapsAllStatesCorrectly() {
-        assertEquals(R.string.agent_resident_title_idle, ResidentNotificationBuilder.resolveTitleResId(AgentState.Idle()))
+        assertEquals(
+            R.string.agent_resident_title_idle,
+            ResidentNotificationBuilder.resolveTitleResId(AgentState.Idle())
+        )
         assertEquals(
             R.string.agent_resident_title_idle,
             ResidentNotificationBuilder.resolveTitleResId(
@@ -55,8 +57,14 @@ class ResidentNotificationBuilderTest {
                 AgentState.Idle(lastOutcome = TurnOutcome.Interrupted, lastText = "half"),
             ),
         )
-        assertEquals(R.string.agent_resident_title_thinking, ResidentNotificationBuilder.resolveTitleResId(AgentState.Thinking(text = null)))
-        assertEquals(R.string.agent_resident_title_generating, ResidentNotificationBuilder.resolveTitleResId(AgentState.Generating(text = null)))
+        assertEquals(
+            R.string.agent_resident_title_thinking,
+            ResidentNotificationBuilder.resolveTitleResId(AgentState.Thinking(text = null))
+        )
+        assertEquals(
+            R.string.agent_resident_title_generating,
+            ResidentNotificationBuilder.resolveTitleResId(AgentState.Generating(text = null))
+        )
         assertEquals(
             R.string.agent_resident_title_tool_running,
             ResidentNotificationBuilder.resolveTitleResId(
@@ -69,7 +77,10 @@ class ResidentNotificationBuilderTest {
                 AgentState.WaitingApproval(ApprovalRequest.ToolExecution("terminal", "ls", "RULE")),
             ),
         )
-        assertEquals(R.string.agent_resident_title_stopping, ResidentNotificationBuilder.resolveTitleResId(AgentState.Stopping))
+        assertEquals(
+            R.string.agent_resident_title_stopping,
+            ResidentNotificationBuilder.resolveTitleResId(AgentState.Stopping)
+        )
     }
 
     @Test
@@ -83,7 +94,8 @@ class ResidentNotificationBuilderTest {
 
     @Test
     fun resolveBody_returnsNullWhenBlank() {
-        val body = ResidentNotificationBuilder.resolveBody(AgentState.Idle(lastOutcome = null), context)
+        val body =
+            ResidentNotificationBuilder.resolveBody(AgentState.Idle(lastOutcome = null), context)
         assertNull(body)
     }
 
@@ -126,7 +138,13 @@ class ResidentNotificationBuilderTest {
         assertEquals(
             "rm -rf /tmp",
             ResidentNotificationBuilder.resolveBody(
-                AgentState.WaitingApproval(ApprovalRequest.ToolExecution("terminal", "rm -rf /tmp", "RULE")),
+                AgentState.WaitingApproval(
+                    ApprovalRequest.ToolExecution(
+                        "terminal",
+                        "rm -rf /tmp",
+                        "RULE"
+                    )
+                ),
                 context,
             ),
         )
@@ -158,7 +176,11 @@ class ResidentNotificationBuilderTest {
                 context.getString(R.string.ui_tool_display_terminal),
             ),
             ResidentNotificationBuilder.resolveBody(
-                AgentState.ToolRunning(toolName = "terminal", label = "terminal", argumentsJson = null),
+                AgentState.ToolRunning(
+                    toolName = "terminal",
+                    label = "terminal",
+                    argumentsJson = null
+                ),
                 context,
             ),
         )
@@ -187,7 +209,10 @@ class ResidentNotificationBuilderTest {
 
         assertNotNull(notification)
         assertEquals(1, notification.actions?.size)
-        assertEquals(context.getString(R.string.agent_resident_action_stop), notification.actions[0].title.toString())
+        assertEquals(
+            context.getString(R.string.agent_resident_action_stop),
+            notification.actions[0].title.toString()
+        )
         assertTrue(notification.flags and Notification.FLAG_ONGOING_EVENT != 0)
     }
 
@@ -206,7 +231,11 @@ class ResidentNotificationBuilderTest {
             PendingIntent.FLAG_IMMUTABLE,
         )
         val status = AgentState.WaitingApproval(
-            ApprovalRequest.ToolExecution(toolName = "execute_command", command = "ls /tmp", ruleName = "RULE"),
+            ApprovalRequest.ToolExecution(
+                toolName = "execute_command",
+                command = "ls /tmp",
+                ruleName = "RULE"
+            ),
         )
         val notification = ResidentNotificationBuilder.build(
             context = context,
@@ -218,8 +247,14 @@ class ResidentNotificationBuilderTest {
 
         assertNotNull(notification)
         assertEquals(2, notification.actions?.size)
-        assertEquals(context.getString(R.string.agent_resident_action_approve), notification.actions[0].title.toString())
-        assertEquals(context.getString(R.string.agent_resident_action_decline), notification.actions[1].title.toString())
+        assertEquals(
+            context.getString(R.string.agent_resident_action_approve),
+            notification.actions[0].title.toString()
+        )
+        assertEquals(
+            context.getString(R.string.agent_resident_action_decline),
+            notification.actions[1].title.toString()
+        )
     }
 
     @Test
@@ -232,7 +267,10 @@ class ResidentNotificationBuilderTest {
         )
 
         assertNotNull(notification)
-        assertEquals("最终回答", notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+        assertEquals(
+            "最终回答",
+            notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString()
+        )
         assertTrue(notification.actions == null || notification.actions.isEmpty())
     }
 

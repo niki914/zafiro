@@ -378,7 +378,10 @@ class PromptComposerTest {
             PromptComposerInput(
                 additionalInstructions = "ctx",
                 memoryItems = listOf("mem"),
-                sandboxPaths = setOf("/data/user/0/x/files/image_cache", "/data/user/0/x/files/downloads"),
+                sandboxPaths = setOf(
+                    "/data/user/0/x/files/image_cache",
+                    "/data/user/0/x/files/downloads"
+                ),
             )
         )
 

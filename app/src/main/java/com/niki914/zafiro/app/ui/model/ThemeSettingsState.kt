@@ -33,8 +33,10 @@ class ThemeSettingsViewModel :
             ThemeSettingsIntent.Load -> loadLanguage()
             ThemeSettingsIntent.OpenLanguageDialog ->
                 updateState { copy(languageDialogVisible = true) }
+
             ThemeSettingsIntent.DismissLanguageDialog ->
                 updateState { copy(languageDialogVisible = false) }
+
             is ThemeSettingsIntent.SelectLanguage -> selectLanguage(intent.tag)
         }
     }

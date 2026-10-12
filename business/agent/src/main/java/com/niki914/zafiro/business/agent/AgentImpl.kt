@@ -1,7 +1,6 @@
 package com.niki914.zafiro.business.agent
 
 import com.niki914.logging.Logger
-import com.niki914.okia.conversation.Conversation as OkiaConversation
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.contextTokens
@@ -12,12 +11,13 @@ import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
-import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.isRunning
+import com.niki914.zafiro.business.agent.AgentImpl.Companion.STATUS_TEXT_THROTTLE_MS
 import com.niki914.zafiro.chat.AgentSessionEngine
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.service.findService
@@ -42,6 +42,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import com.niki914.okia.conversation.Conversation as OkiaConversation
 
 /**
  * `Agent` 的实现类。
@@ -153,14 +154,20 @@ class AgentImpl(
         streamJob = scope.launch {
             try {
                 val conversationId = ensureConversation(query)
-                Logger.i(LOG_TAG, "round started conversationId=${conversationId.value} queryLength=${query.length}")
+                Logger.i(
+                    LOG_TAG,
+                    "round started conversationId=${conversationId.value} queryLength=${query.length}"
+                )
                 engine.stream(query = query, images = contentImages, files = files)
                     .collect { event ->
                         fold(event)
                     }
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
-                Logger.e(LOG_TAG, "round failed errorType=${throwable::class.simpleName} message=${throwable.message}")
+                Logger.e(
+                    LOG_TAG,
+                    "round failed errorType=${throwable::class.simpleName} message=${throwable.message}"
+                )
                 val message = throwable.message?.trim()?.takeIf(String::isNotEmpty)
                 if (message != null) fold(LlmStreamEvent.Error(message = message))
                 else {
@@ -328,24 +335,25 @@ class AgentImpl(
      * 并发询问所有已注册的 Approver，首个非 Abstain 决策胜出。
      * 若当前在后台运行（无 Approver 接入），则挂起等待，直到前台换绑或外部接入裁决。
      */
-    override suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision = approvalMutex.withLock {
-        coroutineScope {
-            val deferred = CompletableDeferred<ApprovalDecision>()
-            val approval = ActiveApproval(request, deferred, this)
-            activeApproval = approval
-            approvalFlow.value = request
+    override suspend fun decideApproval(request: ApprovalRequest): ApprovalDecision =
+        approvalMutex.withLock {
+            coroutineScope {
+                val deferred = CompletableDeferred<ApprovalDecision>()
+                val approval = ActiveApproval(request, deferred, this)
+                activeApproval = approval
+                approvalFlow.value = request
 
-            approvers.forEach { approval.attach(it) }
+                approvers.forEach { approval.attach(it) }
 
-            try {
-                deferred.await()
-            } finally {
-                approvalFlow.value = null
-                activeApproval = null
-                approval.jobs.values.forEach { it.cancel() }
+                try {
+                    deferred.await()
+                } finally {
+                    approvalFlow.value = null
+                    activeApproval = null
+                    approval.jobs.values.forEach { it.cancel() }
+                }
             }
         }
-    }
 
     /** 单测复位：进程内单例状态跨用例保留（同 `LLMController.resetForTest`）。 */
     internal fun clearForTest() {
@@ -474,11 +482,17 @@ class AgentImpl(
     private suspend fun ingest(pending: DraftImage.Pending) {
         val ingested = runCatching { engine.ingestUserImage(pending.uri) }.getOrNull()
         updateDraft { current ->
-            val rest = current.images.filterNot { it is DraftImage.Pending && it.uri == pending.uri }
+            val rest =
+                current.images.filterNot { it is DraftImage.Pending && it.uri == pending.uri }
             val images = if (ingested == null) {
                 rest
             } else {
-                rest + DraftImage.Ready(Attachment(path = ingested.path, mimeType = USER_IMAGE_MIME))
+                rest + DraftImage.Ready(
+                    Attachment(
+                        path = ingested.path,
+                        mimeType = USER_IMAGE_MIME
+                    )
+                )
             }
             current.copy(images = images)
         }

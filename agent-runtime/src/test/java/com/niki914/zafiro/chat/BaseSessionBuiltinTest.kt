@@ -59,6 +59,7 @@ class BaseSessionBuiltinTest {
         val sessionBuffers = ConcurrentHashMap<String, StringBuilder>()
         var autoRespondExitCode: Int? = null
         var autoRespondOutput: String = "ok\n"
+
         /** 假死会话：默认全部存活；个别用例把句柄放进来模拟掉线/被回收。 */
         val deadSessions = mutableSetOf<String>()
 
@@ -71,7 +72,8 @@ class BaseSessionBuiltinTest {
 
         override fun parseArguments(argumentsJson: String): BaseSessionArgs {
             val obj = Json.parseToJsonElement(argumentsJson).jsonObject
-            val action = obj["action"]?.jsonPrimitive?.content?.let { SessionAction.fromWireName(it) }
+            val action =
+                obj["action"]?.jsonPrimitive?.content?.let { SessionAction.fromWireName(it) }
             val session = obj["session"]?.jsonPrimitive?.content
             val alias = obj["alias"]?.jsonPrimitive?.content
             val command = obj["command"]?.jsonPrimitive?.content
@@ -199,7 +201,11 @@ class BaseSessionBuiltinTest {
         val echoStream = "~ $ echo hello\n${payload.lines()[1]}\nhello\n~ $ "
 
         assertNull(
-            BaseSessionBuiltin.SessionSentinel.parseOutput(echoStream, token, echoCommand = "echo hello")
+            BaseSessionBuiltin.SessionSentinel.parseOutput(
+                echoStream,
+                token,
+                echoCommand = "echo hello"
+            )
         )
     }
 
@@ -216,7 +222,11 @@ class BaseSessionBuiltinTest {
             append("__SESSION_EXIT_abc123xyz:0__\n~ $ ")
         }
 
-        val result = BaseSessionBuiltin.SessionSentinel.parseOutput(ptyStream, token, echoCommand = "echo hello")
+        val result = BaseSessionBuiltin.SessionSentinel.parseOutput(
+            ptyStream,
+            token,
+            echoCommand = "echo hello"
+        )
 
         assertNotNull(result)
         assertEquals(0, result!!.exitCode)
@@ -301,7 +311,10 @@ class BaseSessionBuiltinTest {
         // 第一条命令
         tool.autoRespondOutput = "first_output\n"
         val resp1 = tool.invokeRawJson(
-            BuiltinToolRequest(name = "test_session", argumentsJson = """{"command":"cmd1","session":"term"}""")
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"cmd1","session":"term"}"""
+            )
         )
         val json1 = Json.parseToJsonElement(resp1).jsonObject
         assertEquals("first_output", json1["output"]!!.jsonPrimitive.content.trim())
@@ -309,7 +322,10 @@ class BaseSessionBuiltinTest {
         // 第二条命令在同一会话中执行，不应夹带第一条命令的输出或其 Sentinel
         tool.autoRespondOutput = "second_output\n"
         val resp2 = tool.invokeRawJson(
-            BuiltinToolRequest(name = "test_session", argumentsJson = """{"command":"cmd2","session":"term"}""")
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"cmd2","session":"term"}"""
+            )
         )
         val json2 = Json.parseToJsonElement(resp2).jsonObject
         val output2 = json2["output"]!!.jsonPrimitive.content.trim()
@@ -374,8 +390,16 @@ class BaseSessionBuiltinTest {
     @Test
     fun handleList_returnsAllRegisteredSessions() = runTest {
         val tool = TestSessionBuiltin()
-        tool.sessionRegistry.register(sessionId = "s1", alias = "web", metadata = mapOf("host" to "1.1.1.1"))
-        tool.sessionRegistry.register(sessionId = "s2", alias = "db", metadata = mapOf("host" to "2.2.2.2"))
+        tool.sessionRegistry.register(
+            sessionId = "s1",
+            alias = "web",
+            metadata = mapOf("host" to "1.1.1.1")
+        )
+        tool.sessionRegistry.register(
+            sessionId = "s2",
+            alias = "db",
+            metadata = mapOf("host" to "2.2.2.2")
+        )
 
         val rawResponse = tool.invokeRawJson(
             BuiltinToolRequest(
@@ -420,13 +444,19 @@ class BaseSessionBuiltinTest {
 
         // 1. 发送普通命令并执行完毕 (status="exited")
         tool.invokeRawJson(
-            BuiltinToolRequest(name = "test_session", argumentsJson = """{"command":"ls","session":"repl"}""")
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"ls","session":"repl"}"""
+            )
         )
         assertEquals("exited", tool.sessionRegistry.getCommandState("s1")?.status)
 
         // 2. 发送 action="submit"，由于前一命令已退出，必须清除旧的 commandState
         tool.invokeRawJson(
-            BuiltinToolRequest(name = "test_session", argumentsJson = """{"action":"submit","session":"repl","text":"q"}""")
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"action":"submit","session":"repl","text":"q"}"""
+            )
         )
         assertNull(tool.sessionRegistry.getCommandState("s1"))
     }
@@ -452,7 +482,8 @@ class BaseSessionBuiltinTest {
                 argumentsJson = """{"action":"read","session":"noisy_pty"}""",
             )
         )
-        val output = Json.parseToJsonElement(readResponse).jsonObject["output"]!!.jsonPrimitive.content
+        val output =
+            Json.parseToJsonElement(readResponse).jsonObject["output"]!!.jsonPrimitive.content
 
         assertEquals("helloworld", output)
     }
@@ -474,7 +505,8 @@ class BaseSessionBuiltinTest {
                     argumentsJson = """{"command":"noisy","session":"loud"}""",
                 )
             )
-            val output = Json.parseToJsonElement(rawResponse).jsonObject["output"]!!.jsonPrimitive.content
+            val output =
+                Json.parseToJsonElement(rawResponse).jsonObject["output"]!!.jsonPrimitive.content
 
             assertTrue(output.contains("[Output truncated:"))
             assertTrue(output.contains(exportDir.absolutePath))
@@ -499,7 +531,10 @@ class BaseSessionBuiltinTest {
 
         tool.appendOutput("s1", "first_batch\n")
         val first = tool.invokeRawJson(
-            BuiltinToolRequest(name = "test_session", argumentsJson = """{"action":"read","session":"stream"}""")
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"action":"read","session":"stream"}"""
+            )
         )
         assertEquals(
             "first_batch",
@@ -509,7 +544,10 @@ class BaseSessionBuiltinTest {
         // 第二次读只能看到新增部分，不能把第一段重新发一遍
         tool.appendOutput("s1", "second_batch\n")
         val second = tool.invokeRawJson(
-            BuiltinToolRequest(name = "test_session", argumentsJson = """{"action":"read","session":"stream"}""")
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"action":"read","session":"stream"}"""
+            )
         )
         assertEquals(
             "second_batch",
@@ -520,7 +558,8 @@ class BaseSessionBuiltinTest {
     // ── 忙会话拒绝新命令 ────────────────────────────────────────────────────
 
     @Test
-    fun handleCommand_rejectsNewCommandWhilePreviousOneIsInFlight() = runTest {        val tool = TestSessionBuiltin()
+    fun handleCommand_rejectsNewCommandWhilePreviousOneIsInFlight() = runTest {
+        val tool = TestSessionBuiltin()
         tool.sessionRegistry.register(sessionId = "s1", alias = "busy")
         tool.invokeRawJson(
             BuiltinToolRequest(
@@ -692,12 +731,18 @@ class BaseSessionBuiltinTest {
         }
         tool.sessionRegistry.register(sessionId = "s1", alias = "once")
         tool.invokeRawJson(
-            BuiltinToolRequest(name = "test_session", argumentsJson = """{"command":"ls","session":"once"}""")
+            BuiltinToolRequest(
+                name = "test_session",
+                argumentsJson = """{"command":"ls","session":"once"}"""
+            )
         )
 
         val second = Json.parseToJsonElement(
             tool.invokeRawJson(
-                BuiltinToolRequest(name = "test_session", argumentsJson = """{"action":"read","session":"once"}""")
+                BuiltinToolRequest(
+                    name = "test_session",
+                    argumentsJson = """{"action":"read","session":"once"}"""
+                )
             )
         ).jsonObject
 
@@ -719,7 +764,7 @@ class BaseSessionBuiltinTest {
         tool.appendOutput(
             "s1",
             "real_line\n__sess_status=\$?; __t=\"__SESSION_EXIT_\"; printf '\\n%s%s:%s__\\n'\n" +
-                "__SESSION_EXIT_deadbeef:0__\n",
+                    "__SESSION_EXIT_deadbeef:0__\n",
         )
 
         val output = Json.parseToJsonElement(

@@ -62,7 +62,10 @@ class ModelCatalogApiTest {
 
     @Test
     fun `parseCatalogFacts returns empty on garbage and rejects non positive values`() {
-        assertEquals(emptyMap<String, CloudModelFacts>(), ModelCatalogApi.parseCatalogFacts("not json"))
+        assertEquals(
+            emptyMap<String, CloudModelFacts>(),
+            ModelCatalogApi.parseCatalogFacts("not json")
+        )
         assertEquals(
             emptyMap<String, CloudModelFacts>(),
             ModelCatalogApi.parseCatalogFacts(

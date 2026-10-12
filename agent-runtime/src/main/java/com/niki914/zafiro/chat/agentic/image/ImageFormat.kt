@@ -1,5 +1,7 @@
 package com.niki914.zafiro.chat.agentic.image
 
+import com.niki914.zafiro.chat.agentic.image.ImageFormat.MAX_LONG_EDGE
+import com.niki914.zafiro.chat.agentic.image.ImageFormat.MAX_PIXELS
 import kotlin.math.max
 import kotlin.math.sqrt
 
@@ -42,7 +44,17 @@ internal object ImageFormat {
             bytes[6] == 'y'.code.toByte() && bytes[7] == 'p'.code.toByte()
         ) {
             val brand = String(bytes, 8, 4, Charsets.US_ASCII)
-            if (brand in setOf("heic", "heix", "hevc", "hevx", "mif1", "msf1", "avif", "avis")) return true
+            if (brand in setOf(
+                    "heic",
+                    "heix",
+                    "hevc",
+                    "hevx",
+                    "mif1",
+                    "msf1",
+                    "avif",
+                    "avis"
+                )
+            ) return true
         }
         return false
     }
@@ -72,7 +84,8 @@ internal object ImageFormat {
         val header = if (comma > 0) trimmed.substring(0, comma) else trimmed
         // 前面已按 ignoreCase 判定过 data: 前缀，直接按固定长度截，避开混合大小写
         val afterData = header.substring(5)
-        return afterData.substringBefore(';').takeIf { it.startsWith("image/", ignoreCase = true) }?.lowercase()
+        return afterData.substringBefore(';').takeIf { it.startsWith("image/", ignoreCase = true) }
+            ?.lowercase()
     }
 
     // ── mime 规范化 ──────────────────────────────────────────────────────

@@ -47,7 +47,10 @@ class CrashRecorderTest {
         assertEquals("java.lang.IllegalStateException", report?.exceptionType)
         assertEquals("Test crash message", report?.message)
 
-        assertFalse("File must be deleted after peek to avoid duplicate prompts", crashFile.exists())
+        assertFalse(
+            "File must be deleted after peek to avoid duplicate prompts",
+            crashFile.exists()
+        )
         assertNull("Subsequent peek must return null", CrashRecorder.peekPendingCrash(context))
     }
 

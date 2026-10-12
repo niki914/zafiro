@@ -9,6 +9,7 @@ sealed interface ProviderSpec {
     val brandName: String
     val officialEndpoint: String
     val exampleModelId: String
+
     /** 新建配置时可选的预填模型；null 表示继续要求用户选择或手填。 */
     val initialModelId: String? get() = null
     val allowsCustomEndpointInNewConfig: Boolean
@@ -160,7 +161,8 @@ private data object GoogleSpec : ProviderSpec {
 private data object BailianSpec : ProviderSpec {
     override val id: String = "bailian"
     override val brandName: String = "阿里百炼"
-    override val officialEndpoint: String = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+    override val officialEndpoint: String =
+        "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
     override val exampleModelId: String = "qwen-max"
     override val allowsCustomEndpointInNewConfig: Boolean = false
     override val defaultProtocol: String = "openai-chat-completions"
@@ -228,7 +230,8 @@ private data object OpenRouterSpec : ProviderSpec {
 private data object CommandCodeSpec : ProviderSpec {
     override val id: String = "command-code"
     override val brandName: String = "Command Code"
-    override val officialEndpoint: String = "https://api.commandcode.ai/provider/v1/chat/completions"
+    override val officialEndpoint: String =
+        "https://api.commandcode.ai/provider/v1/chat/completions"
     override val exampleModelId: String = "z-ai/glm-5.3-flash"
     override val allowsCustomEndpointInNewConfig: Boolean = false
     override val defaultProtocol: String = "openai-chat-completions"

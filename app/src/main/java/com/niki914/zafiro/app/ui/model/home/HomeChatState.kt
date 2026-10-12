@@ -57,7 +57,9 @@ data class HomeToolStatus(
 
 sealed interface HomeChatBlock {
     data class Text(val text: String) : HomeChatBlock
-    data class Thinking(val id: Int, val text: String, val isComplete: Boolean = false) : HomeChatBlock
+    data class Thinking(val id: Int, val text: String, val isComplete: Boolean = false) :
+        HomeChatBlock
+
     data class Tool(val status: HomeToolStatus) : HomeChatBlock
     data class Error(
         val message: String?,

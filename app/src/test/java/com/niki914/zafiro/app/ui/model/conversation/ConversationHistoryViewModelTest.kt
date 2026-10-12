@@ -17,7 +17,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -36,7 +35,9 @@ class ConversationHistoryViewModelTest {
         private val conversationsFlow = MutableStateFlow<List<ConversationSummary>>(emptyList())
         var conversations: List<ConversationSummary>
             get() = conversationsFlow.value
-            set(value) { conversationsFlow.value = value }
+            set(value) {
+                conversationsFlow.value = value
+            }
 
         var pinnedConversations: List<PinnedConversation> = emptyList()
         val deletedIds = mutableListOf<String>()
@@ -340,7 +341,10 @@ class ConversationHistoryViewModelTest {
         viewModel.sendIntent(ConversationHistoryIntent.Load)
         advanceUntilIdle()
 
-        assertEquals(ConversationRunState.UnreadCompleted, viewModel.uiStateFlow.value.runStates["b"])
+        assertEquals(
+            ConversationRunState.UnreadCompleted,
+            viewModel.uiStateFlow.value.runStates["b"]
+        )
 
         deps.activeStatesFlow.value = mapOf(
             "a" to AgentState.Generating("thinking..."),
@@ -348,7 +352,10 @@ class ConversationHistoryViewModelTest {
         )
         advanceUntilIdle()
         assertEquals(ConversationRunState.Running, viewModel.uiStateFlow.value.runStates["a"])
-        assertEquals(ConversationRunState.WaitingApproval, viewModel.uiStateFlow.value.runStates["b"])
+        assertEquals(
+            ConversationRunState.WaitingApproval,
+            viewModel.uiStateFlow.value.runStates["b"]
+        )
 
         viewModel.sendIntent(ConversationHistoryIntent.ClearUnread("b"))
         advanceUntilIdle()

@@ -1,6 +1,9 @@
 package com.niki914.zafiro.api.text
 
 import com.niki914.zafiro.api.model.FileRef
+import com.niki914.zafiro.api.text.FilesBlock.FILE_PREFIX
+import com.niki914.zafiro.api.text.FilesBlock.FOLDER_PREFIX
+import com.niki914.zafiro.api.text.FilesBlock.strip
 
 /**
  * `<zfr-files>` 块的载荷规则。

@@ -55,7 +55,8 @@ fun AboutSettingsContent() {
                 when (effect) {
                     is AboutSettingsEffect.OpenUri -> uriHandler.openUri(effect.uri)
                     is AboutSettingsEffect.OpenFeedbackIssue -> {
-                        val body = context.localizedString(effect.bodyTemplateRes, effect.languageTag)
+                        val body =
+                            context.localizedString(effect.bodyTemplateRes, effect.languageTag)
                         uriHandler.openUri(buildIssueUri(effect.title, body))
                     }
                 }

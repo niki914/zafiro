@@ -101,7 +101,8 @@ class PermissionEngineTest {
                 ),
             ),
         )
-        val r = runBlocking { e.request(perm, listOf(Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS)) }
+        val r =
+            runBlocking { e.request(perm, listOf(Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS)) }
         assertEquals(PermissionState.GRANTED, r.finalState)
         assertEquals(PermissionState.UNAVAILABLE, r.attempts[0].state)
         assertTrue(r.attempts[0].detail?.contains("API 33") == true)

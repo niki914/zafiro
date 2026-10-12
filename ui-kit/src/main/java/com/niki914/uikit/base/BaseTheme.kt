@@ -34,10 +34,16 @@ fun resolveThemeColorScheme(
     seedColor: Color? = null,
 ): ColorScheme {
     return when {
-        seedColor != null -> dynamicColorScheme(seedColor = seedColor, isDark = darkTheme, isAmoled = false)
+        seedColor != null -> dynamicColorScheme(
+            seedColor = seedColor,
+            isDark = darkTheme,
+            isAmoled = false
+        )
+
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
+
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }

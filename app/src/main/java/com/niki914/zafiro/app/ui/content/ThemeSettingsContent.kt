@@ -8,10 +8,6 @@ import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Translate
-import com.niki914.zafiro.app.ui.nav.MarkdownScalePage
-import com.niki914.zafiro.app.ui.nav.ZafiroPage
-import com.niki914.zafiro.repo.XRepo
-import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,7 +32,11 @@ import com.niki914.zafiro.app.ui.model.ThemeMode
 import com.niki914.zafiro.app.ui.model.ThemeSettingsEffect
 import com.niki914.zafiro.app.ui.model.ThemeSettingsIntent
 import com.niki914.zafiro.app.ui.model.ThemeSettingsViewModel
+import com.niki914.zafiro.app.ui.nav.MarkdownScalePage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
+import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * 外观与语言：深浅色模式、配色（[ThemeController] 驱动）+ 语言（[ThemeSettingsViewModel] 驱动）+ Markdown 缩放。

@@ -9,9 +9,9 @@ import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.chat.agentic.IngestedImage
 import com.niki914.zafiro.settings.model.LlmProtocol
-import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 
 /**
  * Zafiro 的遗留 LLM 回合调度门面。
@@ -28,11 +28,15 @@ object LLMController {
 
     internal var okia: Okia?
         get() = defaultEngine.okia
-        set(value) { defaultEngine.okia = value }
+        set(value) {
+            defaultEngine.okia = value
+        }
 
     internal var okiaFactory: OkiaFactory
         get() = defaultEngine.okiaFactory
-        set(value) { defaultEngine.okiaFactory = value }
+        set(value) {
+            defaultEngine.okiaFactory = value
+        }
 
     val currentConversation: StateFlow<Conversation?> get() = defaultEngine.currentConversation
     val keepScreenOn: StateFlow<Boolean> get() = defaultEngine.keepScreenOn

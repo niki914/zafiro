@@ -48,7 +48,10 @@ internal class RootShellHandler(
             runCatching { Shell.getShell() }
         }.getOrElse { e ->
             if (e is CancellationException) throw e
-            Logger.d(TAG, "request($permission): getShell threw ${e.javaClass.simpleName} -> UNAVAILABLE")
+            Logger.d(
+                TAG,
+                "request($permission): getShell threw ${e.javaClass.simpleName} -> UNAVAILABLE"
+            )
             return PermissionState.UNAVAILABLE
         }
         if (!shell.isRoot) {

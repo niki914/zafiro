@@ -114,16 +114,17 @@ open class SshBuiltin(
         val allSessions = sessionRegistry.all()
             .filter { it.scope == sessionScope && isSessionAlive(it.sessionId) }
             .map { entry ->
-            val item = linkedMapOf<String, JsonElement>(
-                "session_id" to JsonPrimitive(entry.sessionId),
-                "created_at" to JsonPrimitive(entry.createdAt),
-            )
-            entry.alias?.let { item["alias"] = JsonPrimitive(it) }
-            if (entry.metadata.isNotEmpty()) {
-                item["metadata"] = JsonObject(entry.metadata.mapValues { JsonPrimitive(it.value) })
+                val item = linkedMapOf<String, JsonElement>(
+                    "session_id" to JsonPrimitive(entry.sessionId),
+                    "created_at" to JsonPrimitive(entry.createdAt),
+                )
+                entry.alias?.let { item["alias"] = JsonPrimitive(it) }
+                if (entry.metadata.isNotEmpty()) {
+                    item["metadata"] =
+                        JsonObject(entry.metadata.mapValues { JsonPrimitive(it.value) })
+                }
+                JsonObject(item)
             }
-            JsonObject(item)
-        }
         val payload = linkedMapOf<String, JsonElement>(
             "status" to JsonPrimitive("connected"),
             "session_id" to JsonPrimitive(sessionId),
@@ -147,7 +148,8 @@ open class SshBuiltin(
 
     override suspend fun resolveSessionTarget(args: BaseSessionArgs): SessionTarget {
         val sshArgs = args as? SshArgs
-        val hasCredentials = sshArgs?.host != null || sshArgs?.username != null || sshArgs?.password != null
+        val hasCredentials =
+            sshArgs?.host != null || sshArgs?.username != null || sshArgs?.password != null
 
         val explicitSession = args.session
         if (explicitSession != null) {
@@ -233,6 +235,7 @@ open class SshBuiltin(
                 )
                 SessionTarget.Resolved(outcome.session)
             }
+
             is TerminalOpenOutcome.Failure -> {
                 SessionTarget.Error(
                     TerminalToolResponse.failure(
@@ -242,13 +245,17 @@ open class SshBuiltin(
                     )
                 )
             }
+
             is TerminalOpenOutcome.InvalidRequest -> {
                 SessionTarget.Error(TerminalToolResponse.invalidRequest(outcome.message))
             }
         }
     }
 
-    protected open suspend fun openSshSession(options: SshOpenOptions, cwd: String?): TerminalOpenOutcome {
+    protected open suspend fun openSshSession(
+        options: SshOpenOptions,
+        cwd: String?
+    ): TerminalOpenOutcome {
         return TerminalSessionPool.openSsh(options = options, cwd = cwd)
     }
 

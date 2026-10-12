@@ -59,7 +59,8 @@ private fun createRuntimeBridge(settingsGateway: RuntimeSettingsGateway): Any {
 }
 
 private class FakeRuntimeSettingsGateway : RuntimeSettingsGateway {
-    override suspend fun readLlmConfig(agentId: String, configId: String?): RuntimeLlmConfig = RuntimeLlmConfig()
+    override suspend fun readLlmConfig(agentId: String, configId: String?): RuntimeLlmConfig =
+        RuntimeLlmConfig()
 
     override suspend fun listEnabledSkills(): List<RuntimeSkillMetadata> = emptyList()
 

@@ -101,9 +101,27 @@ object ConversationFormatter {
             val keyword = match.groupValues[1]
             if (firstKind == null) {
                 firstKind = when {
-                    REGENERATE_KEYWORDS.any { keyword.equals(it, ignoreCase = true) } -> ConversationOriginKind.Regenerate
-                    FORK_KEYWORDS.any { keyword.equals(it, ignoreCase = true) } -> ConversationOriginKind.Fork
-                    REWIND_KEYWORDS.any { keyword.equals(it, ignoreCase = true) } -> ConversationOriginKind.Rewind
+                    REGENERATE_KEYWORDS.any {
+                        keyword.equals(
+                            it,
+                            ignoreCase = true
+                        )
+                    } -> ConversationOriginKind.Regenerate
+
+                    FORK_KEYWORDS.any {
+                        keyword.equals(
+                            it,
+                            ignoreCase = true
+                        )
+                    } -> ConversationOriginKind.Fork
+
+                    REWIND_KEYWORDS.any {
+                        keyword.equals(
+                            it,
+                            ignoreCase = true
+                        )
+                    } -> ConversationOriginKind.Rewind
+
                     else -> null
                 }
             }
@@ -334,7 +352,11 @@ object ConversationFormatter {
             ToolOutcome.Succeeded(resultText = content)
         }
 
-        is ToolCallOutcome.Interrupted -> ToolOutcome.Failed(message = "Interrupted", resultText = content)
+        is ToolCallOutcome.Interrupted -> ToolOutcome.Failed(
+            message = "Interrupted",
+            resultText = content
+        )
+
         is ToolCallOutcome.Unknown -> ToolOutcome.Failed(message = message, resultText = content)
     }
 
