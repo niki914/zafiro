@@ -170,7 +170,10 @@ internal fun SettingExpandableTextItemContent(
             .animateContentSize(animationSpec = animationSpec)
             .padding(16.dp),
     ) {
-        Row(
+        // 提示文本与标题同属「行头部」：点击目标必须整块覆盖，否则点提示会落到
+        // 表单脚手架的 background tap 上，表现为点了没反应。展开后的输入框不在此块内，
+        // 点输入框不会收起本行。
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
@@ -182,37 +185,41 @@ internal fun SettingExpandableTextItemContent(
                         Modifier
                     }
                 ),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                color = titleColor,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = secondaryTextColor,
-                modifier = Modifier
-                    .size(22.dp)
-                    .graphicsLayer {
-                        rotationZ = arrowRotation
-                    },
-            )
-        }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                    color = titleColor,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = secondaryTextColor,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .graphicsLayer {
+                            rotationZ = arrowRotation
+                        },
+                )
+            }
 
-        if (description != null) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = secondaryTextColor,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (description != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = secondaryTextColor,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
 
         if (expanded) {

@@ -594,4 +594,5 @@
     <string name="text_action_error_load_failed">Failed to load actions.</string>
     <string name="text_action_error_save_failed">Failed to save action.</string>
     <string name="text_action_error_delete_failed">Failed to delete action.</string>
+    <string name="crash_startup_copied_toast">スタックトレースをコピーしました。開発者に送信してください。</string>
 </resources>
