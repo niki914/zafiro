@@ -49,7 +49,7 @@ class AgentManagerImplTest {
                     conversation = Conversation(id = id),
                 )
             override suspend fun exists(id: ConversationId): Boolean = true
-            override suspend fun create(id: ConversationId, firstUserInput: String) {}
+            override suspend fun create(id: ConversationId, firstUserInput: String, configId: String) {}
             override suspend fun setLastOpened(id: ConversationId?) {}
         }
         val fakeGateway = object : RuntimeSettingsGateway {

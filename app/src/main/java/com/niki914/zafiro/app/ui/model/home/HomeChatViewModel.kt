@@ -20,6 +20,9 @@ import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.business.files.FileAttachResult
 import com.niki914.zafiro.business.files.FilesService
+import com.niki914.zafiro.app.ui.model.summariesOf
+import com.niki914.zafiro.repo.LlmConfigsDocument
+import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
 import java.io.File
 import kotlinx.coroutines.CancellableContinuation
@@ -31,6 +34,16 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+
+internal data class HomeChatConfigDependencies(
+    val loadConfigs: suspend () -> LlmConfigsDocument,
+) {
+    companion object {
+        val Default = HomeChatConfigDependencies(
+            loadConfigs = { XRepo.llmConfigs.document() },
+        )
+    }
+}
 
 /**
  * 对话页的 UI 状态持有者。
@@ -51,6 +64,7 @@ class HomeChatViewModel internal constructor(
     private val textPacer: TextPacer = TextPacer(),
     // thinking 与正文在流中交织（thinking → tool → text），坐标系独立，单独实例
     private val thinkingPacer: TextPacer = TextPacer(),
+    private val configDependencies: HomeChatConfigDependencies = HomeChatConfigDependencies.Default,
 ) : ComposeMVIViewModel<HomeChatIntent, HomeChatUiState, HomeChatEffect>() {
     private val agentManager: AgentManager get() = requireService()
     private val agent: Agent get() = agentManager.main
@@ -80,6 +94,9 @@ class HomeChatViewModel internal constructor(
     init {
         observeAgent()
         restoreStartupState()
+        viewModelScope.launch {
+            refreshSavedConfigs()
+        }
     }
 
     override fun initUiState(): HomeChatUiState = HomeChatUiState()
@@ -109,6 +126,49 @@ class HomeChatViewModel internal constructor(
             is HomeChatIntent.ForkAt -> forkAt(intent.turnId)
             is HomeChatIntent.RewindAt -> rewindAt(intent.turnId)
             is HomeChatIntent.ResolveApproval -> approvalApprover.settle(intent.decision)
+            HomeChatIntent.OpenConfigMenu -> {
+                refreshSavedConfigs()
+                updateState { copy(isConfigMenuVisible = true) }
+            }
+            HomeChatIntent.DismissConfigMenu -> {
+                updateState { copy(isConfigMenuVisible = false) }
+            }
+            is HomeChatIntent.SelectConfig -> {
+                updateState {
+                    copy(
+                        boundConfigId = intent.id,
+                        isConfigMenuVisible = false,
+                    )
+                }
+                currentBoundAgent?.bindConfig(intent.id)
+                val currentId = currentState.currentConversationId
+                if (!currentId.isNullOrBlank()) {
+                    viewModelScope.launch {
+                        runCatching {
+                            conversations.updateConfigId(currentId, intent.id)
+                        }.onFailure { throwable ->
+                            Logger.w(LOG_TAG, "updateConfigId failed id=$currentId: ${throwable.message}")
+                        }
+                    }
+                }
+            }
+            HomeChatIntent.RefreshConfigs -> {
+                refreshSavedConfigs()
+            }
+        }
+    }
+
+    private suspend fun refreshSavedConfigs() {
+        runCatching {
+            val document = configDependencies.loadConfigs()
+            updateState {
+                copy(
+                    savedConfigs = summariesOf(document),
+                    globalActiveConfigId = document.activeId.orEmpty(),
+                )
+            }
+        }.onFailure { throwable ->
+            Logger.w(LOG_TAG, "refreshSavedConfigs failed: ${throwable.message}")
         }
     }
 
@@ -229,6 +289,7 @@ class HomeChatViewModel internal constructor(
                 ?.let(ConversationFormatter::titleFromFirstInput)?.takeIf { it.isNotBlank() }
             else -> currentState.currentConversationTitle
         }
+        val isFirstConversationAssignment = currentState.currentConversationId == null && id != null
         updateState {
             copy(
                 turns = target,
@@ -236,6 +297,15 @@ class HomeChatViewModel internal constructor(
                 currentConversationTitle = title,
                 conversationVersion = conversationVersion + 1,
             )
+        }
+        if (isFirstConversationAssignment && !currentState.boundConfigId.isNullOrBlank()) {
+            val assignedId = id!!
+            val boundConfig = currentState.boundConfigId!!
+            viewModelScope.launch {
+                runCatching {
+                    conversations.updateConfigId(assignedId, boundConfig)
+                }
+            }
         }
         refreshAutoExpandedThinking()
 
@@ -451,8 +521,16 @@ class HomeChatViewModel internal constructor(
         conversationBeingLoaded = null
         seenThinkingKeys.clear()
         val currentInput = currentState.input
-        updateState { HomeChatUiState(input = currentInput) }
+        updateState {
+            HomeChatUiState(
+                input = currentInput,
+                savedConfigs = currentState.savedConfigs,
+                globalActiveConfigId = currentState.globalActiveConfigId,
+                boundConfigId = null,
+            )
+        }
         viewModelScope.launch {
+            refreshSavedConfigs()
             val startedAtMs = System.currentTimeMillis()
             try {
                 if (!leavingId.isNullOrBlank()) {
@@ -535,6 +613,7 @@ class HomeChatViewModel internal constructor(
                     turns = emptyList(),
                     currentConversationId = id,
                     currentConversationTitle = title,
+                    boundConfigId = record.configId,
                 ).withClearedTransient()
             }
             applyConversation(targetAgent.conversation.value, animateTail = false)
@@ -635,7 +714,17 @@ class HomeChatViewModel internal constructor(
         conversationBeingLoaded = null
         seenThinkingKeys.clear()
         conversations.setLastOpenedConversationId("")
-        updateState { HomeChatUiState(input = currentInput) }
+        updateState {
+            HomeChatUiState(
+                input = currentInput,
+                savedConfigs = currentState.savedConfigs,
+                globalActiveConfigId = currentState.globalActiveConfigId,
+                boundConfigId = null,
+            )
+        }
+        viewModelScope.launch {
+            refreshSavedConfigs()
+        }
         Logger.i(
             LOG_TAG,
             "delete conversation done id=$id elapsedMs=${System.currentTimeMillis() - startedAtMs}",

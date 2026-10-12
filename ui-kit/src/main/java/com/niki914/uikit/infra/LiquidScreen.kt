@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -76,6 +77,8 @@ fun LiquidScreen(
     titleBarScroll: TitleBarScrollState,
     modifier: Modifier = Modifier,
     actionsEnabled: Boolean = true,
+    rightButtonAlpha: Float = 1f,
+    onRightButtonBoundsChanged: ((Rect) -> Unit)? = null,
     leftButton: (@Composable () -> Unit)? = null,
     rightButton: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
@@ -238,6 +241,7 @@ fun LiquidScreen(
                     .padding(top = topInset)
                     .fillMaxHeight()
                     .padding(horizontal = titleHorizontalPadding),
+                contentKey = { it.key ?: it },
                 transitionSpec = {
                     val titleEasing = FastOutSlowInEasing
                     val enterForward = slideInHorizontally(
@@ -348,12 +352,14 @@ fun LiquidScreen(
                         Modifier.graphicsLayer {
                             scaleX = rightButtonScale.value
                             scaleY = rightButtonScale.value
+                            alpha = rightButtonAlpha
                         }
                     ) {
                         ActionBarButton(
                             onClick = { state.onRightClick?.invoke() },
                             enabled = actionsEnabled,
                             backdrop = chromeBackdrop,
+                            onButtonBoundsChanged = onRightButtonBoundsChanged,
                             content = buttonContent,
                         )
                     }

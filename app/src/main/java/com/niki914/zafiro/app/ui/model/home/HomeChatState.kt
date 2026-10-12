@@ -5,6 +5,7 @@ import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.conversation.ForkResult
+import com.niki914.zafiro.app.ui.model.SavedConfigSummary
 import com.niki914.zafiro.chat.LlmErrorCode
 
 internal interface HomeConversationStore {
@@ -15,6 +16,7 @@ internal interface HomeConversationStore {
     suspend fun draftText(): String
     suspend fun setDraftText(value: String)
     suspend fun bindConfig(conversationId: String)
+    suspend fun updateConfigId(conversationId: String, configId: String)
     suspend fun deleteConversation(id: String)
     suspend fun clearUnread(conversationId: String)
 
@@ -140,7 +142,23 @@ data class HomeChatUiState(
      * [HomeChatIntent.ResolveApproval]，结算后归 null。
      */
     val pendingApproval: ApprovalRequest? = null,
-)
+    val savedConfigs: List<SavedConfigSummary> = emptyList(),
+    val globalActiveConfigId: String = "",
+    val boundConfigId: String? = null,
+    val isConfigMenuVisible: Boolean = false,
+) {
+    val displayConfig: SavedConfigSummary?
+        get() {
+            val bound = boundConfigId?.takeIf { it.isNotBlank() }
+                ?.let { id -> savedConfigs.firstOrNull { it.id == id } }
+            if (bound != null) return bound
+            return savedConfigs.firstOrNull { it.id == globalActiveConfigId }
+                ?: savedConfigs.firstOrNull()
+        }
+
+    val activeConfigId: String?
+        get() = displayConfig?.id
+}
 
 /**
  * 会话切换时的统一瞬态清理：三组展开态 + 操作行 + active thinking 指针 + 自动展开记录全清，
@@ -156,6 +174,7 @@ fun HomeChatUiState.withClearedTransient() = copy(
     expandedActionSource = null,
     activeThinkingKey = null,
     autoExpandedThinking = emptySet(),
+    isConfigMenuVisible = false,
 )
 
 sealed interface HomeChatIntent {
@@ -197,6 +216,11 @@ sealed interface HomeChatIntent {
 
     /** 前台对话框的裁决回灌；由 [com.niki914.zafiro.api.Approver] 实现侧等待。 */
     data class ResolveApproval(val decision: ApprovalDecision) : HomeChatIntent
+
+    data object OpenConfigMenu : HomeChatIntent
+    data object DismissConfigMenu : HomeChatIntent
+    data class SelectConfig(val id: String) : HomeChatIntent
+    data object RefreshConfigs : HomeChatIntent
 }
 
 /**

@@ -25,8 +25,16 @@ object DefaultHomeConversationStore : HomeConversationStore {
     override suspend fun setDraftText(value: String) = XRepo.setDraftText(value)
 
     override suspend fun bindConfig(conversationId: String) {
+        val record = ConversationRepo.getConversation(conversationId) ?: return
+        if (record.configId.isNotBlank()) return
         val activeId = XRepo.llmConfigs.document().activeId.orEmpty()
-        ConversationRepo.updateConfigId(conversationId, activeId)
+        if (activeId.isNotBlank()) {
+            ConversationRepo.updateConfigId(conversationId, activeId)
+        }
+    }
+
+    override suspend fun updateConfigId(conversationId: String, configId: String) {
+        ConversationRepo.updateConfigId(conversationId, configId)
     }
 
     override suspend fun deleteConversation(id: String) {

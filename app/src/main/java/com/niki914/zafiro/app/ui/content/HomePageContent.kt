@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -72,6 +73,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -98,7 +101,24 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.LiquidDialog
+import com.niki914.uikit.infra.LiquidMenuItem
+import com.niki914.uikit.infra.LiquidPopover
+import com.niki914.uikit.infra.PopoverAlignment
+import com.niki914.uikit.infra.popoverAnchor
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import com.niki914.uikit.infra.LocalHasActiveDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
@@ -175,6 +195,7 @@ fun HomePageContent(
     )
     val latestOnActiveConversationChanged by rememberUpdatedState(onActiveConversationChanged)
     val uiState by viewModel.uiStateFlow.collectAsState()
+    val latestUiState by rememberUpdatedState(uiState)
 
     // 附件失败提示：一次性 effect（不占状态）。
     // 三条文案按原因分（D22）：解析不出路径 / 没拿到全局文件访问权 / 读不到文件。
@@ -300,19 +321,60 @@ fun HomePageContent(
         }
     }
 
+    LaunchedEffect(Unit) {
+        latestViewModel.sendIntent(HomeChatIntent.RefreshConfigs)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if (latestUiState.isConfigMenuVisible) {
+                latestViewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
+            }
+        }
+    }
+
+    val rectSaver = remember {
+        Saver<Rect?, List<Float>>(
+            save = { rect -> rect?.let { listOf(it.left, it.top, it.right, it.bottom) } },
+            restore = { list -> Rect(list[0], list[1], list[2], list[3]) },
+        )
+    }
+    var titleAnchorBounds by rememberSaveable(stateSaver = rectSaver) {
+        mutableStateOf<Rect?>(null)
+    }
+
+    val titleContent: @Composable () -> Unit = remember {
+        {
+            HomeTitleConfigChip(
+                uiStateProvider = { latestUiState },
+                onChipClick = {
+                    latestViewModel.sendIntent(HomeChatIntent.OpenConfigMenu)
+                },
+                onAnchorBoundsChanged = { bounds ->
+                    titleAnchorBounds = bounds
+                },
+            )
+        }
+    }
+
     val pageChromeContribution = remember(
-        uiState.currentConversationTitle,
         newConversationMenuLabel,
         settingsMenuLabel,
         historyContentDescription,
+        titleContent,
+        uiState.isConfigMenuVisible,
     ) {
         PageChromeContribution(
-            titleSpec = uiState.currentConversationTitle
-                ?.takeIf { it.isNotBlank() }
-                ?.let { TextTitle(it) },
+            titleContent = titleContent,
+            isTitleOccluded = uiState.isConfigMenuVisible,
             leftAction = TopBarActionSpec(
                 icon = Icons.Default.History,
-                onClick = { latestOnOpenHistory() },
+                onClick = {
+                    if (latestUiState.isConfigMenuVisible) {
+                        latestViewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
+                    }
+                    latestOnOpenHistory()
+                },
                 contentDescription = historyContentDescription,
             ),
             menuItems = listOf(
@@ -320,13 +382,21 @@ fun HomePageContent(
                     key = "new_conversation",
                     title = newConversationMenuLabel,
                     onClick = {
+                        if (latestUiState.isConfigMenuVisible) {
+                            latestViewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
+                        }
                         latestViewModel.sendIntent(HomeChatIntent.NewConversation)
                     },
                 ),
                 PageChromeMenuItem(
                     key = "settings",
                     title = settingsMenuLabel,
-                    onClick = { latestOnOpenSettings() },
+                    onClick = {
+                        if (latestUiState.isConfigMenuVisible) {
+                            latestViewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
+                        }
+                        latestOnOpenSettings()
+                    },
                 ),
             ),
         )
@@ -334,6 +404,42 @@ fun HomePageContent(
     val composerFocusRequester = remember { FocusRequester() }
 
     RegisterPageChrome(pageChromeContribution)
+
+    val displayConfigs = remember(uiState.savedConfigs, uiState.activeConfigId) {
+        val configs = uiState.savedConfigs
+        if (configs.size <= 5) {
+            configs
+        } else {
+            val activeIndex = configs.indexOfFirst { it.id == uiState.activeConfigId }
+            if (activeIndex in 0 until 5) {
+                configs.take(5)
+            } else if (activeIndex >= 5) {
+                configs.take(4) + configs[activeIndex]
+            } else {
+                configs.take(5)
+            }
+        }
+    }
+
+    LiquidPopover(
+        expanded = uiState.isConfigMenuVisible,
+        onDismissRequest = {
+            viewModel.sendIntent(HomeChatIntent.DismissConfigMenu)
+        },
+        anchorBounds = titleAnchorBounds,
+        alignment = PopoverAlignment.BottomCenter,
+    ) {
+        displayConfigs.forEach { config ->
+            LiquidMenuItem(
+                title = config.name,
+                trailingText = config.modelId.takeIf { it != config.name },
+                checked = config.id == uiState.activeConfigId,
+                onClick = {
+                    viewModel.sendIntent(HomeChatIntent.SelectConfig(config.id))
+                },
+            )
+        }
+    }
 
     val hasActiveDialog = LocalHasActiveDialog.current
     // 冷启动键盘焦点：仅进程内首次进入 Home、无草稿输入、不在加载中且当前无弹窗时抢焦点。
@@ -1534,3 +1640,66 @@ private fun HomePageContentPreview() {
         }
     }
 }
+
+@Composable
+private fun HomeTitleConfigChip(
+    uiStateProvider: () -> HomeChatUiState,
+    onChipClick: () -> Unit,
+    onAnchorBoundsChanged: (Rect) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val uiState = uiStateProvider()
+    val isDarkTheme = LocalAppDarkTheme.current
+    val activeConfig = uiState.displayConfig
+    val titleText = activeConfig?.name ?: stringResource(R.string.app_name)
+    val hasConfigs = uiState.savedConfigs.isNotEmpty()
+
+    val latestOnAnchorBoundsChanged by rememberUpdatedState(onAnchorBoundsChanged)
+    val latestOnChipClick by rememberUpdatedState(onChipClick)
+    var chipCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+
+    Row(
+        modifier = modifier
+            .onGloballyPositioned { coordinates ->
+                chipCoordinates = coordinates
+                if (coordinates.isAttached) {
+                    latestOnAnchorBoundsChanged(coordinates.boundsInRoot())
+                }
+            }
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                enabled = hasConfigs,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {
+                    chipCoordinates?.takeIf { it.isAttached }?.boundsInRoot()?.let { bounds ->
+                        latestOnAnchorBoundsChanged(bounds)
+                    }
+                    latestOnChipClick()
+                },
+            )
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = titleText,
+            style = TextStyle(
+                fontSize = 19.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isDarkTheme) Color.White else Color.Black,
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (hasConfigs) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = if (isDarkTheme) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f),
+            )
+        }
+    }
+}
+

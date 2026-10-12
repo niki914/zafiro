@@ -27,6 +27,7 @@ import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.conversation.ForkResult
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.business.agent.turnIdAt
+import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.service.installService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,9 @@ import kotlinx.coroutines.flow.asStateFlow
 
 internal fun fixture(
     store: FakeHomeConversationStore = FakeHomeConversationStore(),
+    configDependencies: HomeChatConfigDependencies = HomeChatConfigDependencies(
+        loadConfigs = { LlmConfigsDocument() },
+    ),
 ): Fixture {
     val agent = FakeHomeAgent(store)
     val agentFlow = MutableStateFlow<Agent>(agent)
@@ -64,6 +68,7 @@ internal fun fixture(
             conversations = store,
             textPacer = TextPacer(delayFn = {}),
             thinkingPacer = TextPacer(delayFn = {}),
+            configDependencies = configDependencies,
         ),
     )
 }
@@ -153,6 +158,11 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
         releaseCount++
     }
 
+    var boundConfigId: String = ""
+    override fun bindConfig(configId: String) {
+        boundConfigId = configId
+    }
+
     override suspend fun load(id: ConversationId) {
         lastLoadedId = id
         val record = store.getConversation(id.value)
@@ -238,11 +248,20 @@ internal class FakeHomeConversationStore(
     override suspend fun draftText(): String = draft
     override suspend fun setDraftText(value: String) { draft = value }
     override suspend fun bindConfig(conversationId: String) {
+        if (records[conversationId]?.configId?.isNotBlank() == true) return
         boundConfigs[conversationId] = currentActiveConfigId
         records[conversationId]?.let {
             records[conversationId] = it.copy(configId = currentActiveConfigId)
         }
     }
+
+    override suspend fun updateConfigId(conversationId: String, configId: String) {
+        boundConfigs[conversationId] = configId
+        records[conversationId]?.let {
+            records[conversationId] = it.copy(configId = configId)
+        }
+    }
+
     override suspend fun deleteConversation(id: String) { records.remove(id) }
     override suspend fun clearUnread(conversationId: String) {}
 
@@ -256,7 +275,7 @@ internal class FakeHomeConversationStore(
         lastOpened = id
     }
 
-    suspend fun createRecord(id: String, title: String) {
+    suspend fun createRecord(id: String, title: String, configId: String = "") {
         records[id] = ConversationRecord(
             summary = ConversationSummary(
                 id = id,
@@ -269,6 +288,7 @@ internal class FakeHomeConversationStore(
             ),
             draftText = "",
             snapshot = SessionSnapshot(id = id, leafId = null, version = 1, entries = emptyList()),
+            configId = configId,
         )
     }
 

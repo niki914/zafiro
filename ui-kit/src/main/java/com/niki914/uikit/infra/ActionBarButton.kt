@@ -36,6 +36,9 @@ import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.interaction.ActionBarButtonInteractiveStyle
 import com.niki914.uikit.infra.interaction.InteractiveHighlight
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import kotlinx.coroutines.launch
 
 @Composable
@@ -44,6 +47,7 @@ fun ActionBarButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
     backdrop: LayerBackdrop = rememberLayerBackdrop(),
+    onButtonBoundsChanged: ((Rect) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -65,6 +69,15 @@ fun ActionBarButton(
         modifier = modifier
             .padding(horizontal = 12.dp, vertical = 12.dp)
             .requiredSize(with(density) { 48.sp.toDp() })
+            .then(
+                if (onButtonBoundsChanged != null) {
+                    Modifier.onGloballyPositioned { coordinates ->
+                        onButtonBoundsChanged(coordinates.boundsInRoot())
+                    }
+                } else {
+                    Modifier
+                }
+            )
             .drawBackdrop(
                 backdrop = backdrop,
                 shape = { buttonShape },

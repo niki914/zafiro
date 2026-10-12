@@ -49,6 +49,7 @@ class CoordinatedAgentControlTest {
         override suspend fun load(id: ConversationId) {}
         override fun discard() {}
         override fun release() {}
+        override fun bindConfig(configId: String) {}
         override fun stop() { stopCallCount++ }
         val registeredApprovers = mutableListOf<Approver>()
         override fun addApprover(approver: Approver) { registeredApprovers.add(approver) }

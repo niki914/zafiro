@@ -187,7 +187,7 @@ class AgentImplTest {
             var stored: StoredConversation_Tmp? = null
             override suspend fun load(id: ConversationId) = stored
             override suspend fun exists(id: ConversationId) = stored != null
-            override suspend fun create(id: ConversationId, firstUserInput: String) {}
+            override suspend fun create(id: ConversationId, firstUserInput: String, configId: String) {}
             override suspend fun setLastOpened(id: ConversationId?) {}
         }
         val fakeGateway = StubRuntimeSettingsGateway()

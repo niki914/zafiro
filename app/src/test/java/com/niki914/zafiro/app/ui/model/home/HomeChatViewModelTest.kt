@@ -23,6 +23,8 @@ import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.conversation.ForkKind
+import com.niki914.zafiro.repo.LlmConfigsDocument
+import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.app.ui.model.MainDispatcherRule
 import com.niki914.zafiro.chat.LlmErrorCode
@@ -359,4 +361,158 @@ class HomeChatViewModelTest {
         assertNull(fixture.vm.uiStateFlow.value.pendingApproval)
     }
 
+    @Test
+    fun selectConfigUpdatesBoundConfigAndPersistsToStoreAndAgent() = runTest {
+        val config1 = SavedLlmConfig(
+            id = "c1",
+            name = "Claude",
+            provider = "anthropic",
+            endpoint = "https://api.anthropic.com",
+            apiKey = "key1",
+            model = "claude-3-5-sonnet",
+            protocol = "",
+            proxy = "",
+        )
+        val config2 = SavedLlmConfig(
+            id = "c2",
+            name = "DeepSeek",
+            provider = "deepseek",
+            endpoint = "https://api.deepseek.com",
+            apiKey = "key2",
+            model = "deepseek-chat",
+            protocol = "",
+            proxy = "",
+        )
+        val fixture = fixture(
+            configDependencies = HomeChatConfigDependencies(
+                loadConfigs = {
+                    LlmConfigsDocument(
+                        activeId = "c1",
+                        configs = listOf(config1, config2),
+                    )
+                },
+            ),
+        )
+        fixture.store.createRecord("conv-1", "Hello")
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-1"))
+        advanceUntilIdle()
+
+        assertEquals("conv-1", fixture.vm.uiStateFlow.value.currentConversationId)
+        assertEquals("c1", fixture.vm.uiStateFlow.value.activeConfigId)
+
+        fixture.vm.sendIntent(HomeChatIntent.OpenConfigMenu)
+        advanceUntilIdle()
+        assertTrue(fixture.vm.uiStateFlow.value.isConfigMenuVisible)
+
+        fixture.vm.sendIntent(HomeChatIntent.SelectConfig("c2"))
+        advanceUntilIdle()
+
+        assertEquals("c2", fixture.vm.uiStateFlow.value.boundConfigId)
+        assertEquals("c2", fixture.vm.uiStateFlow.value.activeConfigId)
+        assertEquals("c2", fixture.agent.boundConfigId)
+        assertEquals("c2", fixture.store.boundConfigs["conv-1"])
+        assertFalse(fixture.vm.uiStateFlow.value.isConfigMenuVisible)
+    }
+
+    @Test
+    fun loadConversationWithBoundConfigDisplaysBoundConfigOtherwiseFallsBackToGlobalActive() = runTest {
+        val config1 = SavedLlmConfig(
+            id = "c1",
+            name = "Claude",
+            provider = "anthropic",
+            endpoint = "https://api.anthropic.com",
+            apiKey = "key1",
+            model = "claude-3-5-sonnet",
+            protocol = "",
+            proxy = "",
+        )
+        val config2 = SavedLlmConfig(
+            id = "c2",
+            name = "DeepSeek",
+            provider = "deepseek",
+            endpoint = "https://api.deepseek.com",
+            apiKey = "key2",
+            model = "deepseek-chat",
+            protocol = "",
+            proxy = "",
+        )
+        val fixture = fixture(
+            configDependencies = HomeChatConfigDependencies(
+                loadConfigs = {
+                    LlmConfigsDocument(
+                        activeId = "c1",
+                        configs = listOf(config1, config2),
+                    )
+                },
+            ),
+        )
+        fixture.store.createRecord("conv-bound", "Bound session", configId = "c2")
+        fixture.store.createRecord("conv-unbound", "Unbound session", configId = "")
+        fixture.store.createRecord("conv-deleted", "Deleted config session", configId = "c-deleted")
+
+        // 1. Bound to valid config -> shows bound config
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-bound"))
+        advanceUntilIdle()
+        assertEquals("c2", fixture.vm.uiStateFlow.value.boundConfigId)
+        assertEquals("c2", fixture.vm.uiStateFlow.value.activeConfigId)
+        assertEquals("DeepSeek", fixture.vm.uiStateFlow.value.displayConfig?.name)
+
+        // 2. Unbound (empty string) -> fallback to global active config (c1)
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-unbound"))
+        advanceUntilIdle()
+        assertEquals("", fixture.vm.uiStateFlow.value.boundConfigId)
+        assertEquals("c1", fixture.vm.uiStateFlow.value.activeConfigId)
+        assertEquals("Claude", fixture.vm.uiStateFlow.value.displayConfig?.name)
+
+        // 3. Bound to deleted config -> fallback to global active config (c1)
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-deleted"))
+        advanceUntilIdle()
+        assertEquals("c-deleted", fixture.vm.uiStateFlow.value.boundConfigId)
+        assertEquals("c1", fixture.vm.uiStateFlow.value.activeConfigId)
+        assertEquals("Claude", fixture.vm.uiStateFlow.value.displayConfig?.name)
+    }
+
+    @Test
+    fun newConversationResetsBoundConfigToFallbackToGlobalActive() = runTest {
+        val config1 = SavedLlmConfig(
+            id = "c1",
+            name = "Claude",
+            provider = "anthropic",
+            endpoint = "https://api.anthropic.com",
+            apiKey = "key1",
+            model = "claude-3-5-sonnet",
+            protocol = "",
+            proxy = "",
+        )
+        val config2 = SavedLlmConfig(
+            id = "c2",
+            name = "DeepSeek",
+            provider = "deepseek",
+            endpoint = "https://api.deepseek.com",
+            apiKey = "key2",
+            model = "deepseek-chat",
+            protocol = "",
+            proxy = "",
+        )
+        val fixture = fixture(
+            configDependencies = HomeChatConfigDependencies(
+                loadConfigs = {
+                    LlmConfigsDocument(
+                        activeId = "c1",
+                        configs = listOf(config1, config2),
+                    )
+                },
+            ),
+        )
+        fixture.store.createRecord("conv-bound", "Bound session", configId = "c2")
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("conv-bound"))
+        advanceUntilIdle()
+        assertEquals("c2", fixture.vm.uiStateFlow.value.activeConfigId)
+
+        // Start new conversation: resets bound config to null, falls back to c1
+        fixture.vm.sendIntent(HomeChatIntent.NewConversation)
+        advanceUntilIdle()
+        assertNull(fixture.vm.uiStateFlow.value.boundConfigId)
+        assertEquals("c1", fixture.vm.uiStateFlow.value.activeConfigId)
+    }
 }

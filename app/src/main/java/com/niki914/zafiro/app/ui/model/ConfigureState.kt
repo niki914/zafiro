@@ -39,6 +39,19 @@ data class SavedConfigSummary(
     val isActive: Boolean,
 )
 
+internal fun summariesOf(document: LlmConfigsDocument): List<SavedConfigSummary> {
+    return document.configs
+        .sortedBy(SavedLlmConfig::createdAt)
+        .map { config ->
+            SavedConfigSummary(
+                id = config.id,
+                name = config.name.ifBlank { config.model },
+                modelId = config.model,
+                isActive = config.id == document.activeId,
+            )
+        }
+}
+
 data class ConfigureUiState(
     val scene: ConfigureScene = ConfigureScene.Onboarding,
     val providerSpec: ProviderSpec = ProviderSpecs.default,
@@ -343,18 +356,6 @@ class ConfigureViewModel internal constructor(
         }
     }
 
-    private fun summariesOf(document: LlmConfigsDocument): List<SavedConfigSummary> {
-        return document.configs
-            .sortedBy(SavedLlmConfig::createdAt)
-            .map { config ->
-                SavedConfigSummary(
-                    id = config.id,
-                    name = config.name.ifBlank { config.model },
-                    modelId = config.model,
-                    isActive = config.id == document.activeId,
-                )
-            }
-    }
 
     private fun initializeOnboarding(document: LlmConfigsDocument, initialProviderId: String?) {
         val resolvedProviderId = initialProviderId?.takeIf(String::isNotBlank)

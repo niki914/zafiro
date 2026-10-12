@@ -23,9 +23,27 @@ enum class TitleDirection { Forward, Back, None }
  * `remember` 住：每次重组新建实例会被当成一次新的标题变化，反复重放切页动画。
  */
 sealed interface LiquidScreenTitle {
-    data class Text(val value: String) : LiquidScreenTitle
+    val key: Any?
 
-    data class Content(val content: @Composable () -> Unit) : LiquidScreenTitle
+    data class Text(
+        val value: String,
+        override val key: Any? = null,
+    ) : LiquidScreenTitle
+
+    class Content(
+        val content: @Composable () -> Unit,
+        override val key: Any? = null,
+    ) : LiquidScreenTitle {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is Content) return false
+            return key == other.key && content == other.content
+        }
+
+        override fun hashCode(): Int {
+            return 31 * (key?.hashCode() ?: 0) + content.hashCode()
+        }
+    }
 }
 
 @Stable
