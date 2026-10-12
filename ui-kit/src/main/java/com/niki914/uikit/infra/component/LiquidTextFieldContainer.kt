@@ -27,12 +27,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -83,18 +80,8 @@ internal fun LiquidTextFieldContainer(
     val backdrop = rememberLayerBackdrop()
     val animationScope = rememberCoroutineScope()
     var isFocused by remember { mutableStateOf(false) }
-    var boundsInRoot by remember { mutableStateOf<Rect?>(null) }
-    var trailingBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
     val interactiveHighlight = remember(animationScope) {
-        InteractiveHighlight(
-            animationScope = animationScope,
-            isDragStartIgnored = { position ->
-                val trailing = trailingBoundsInRoot
-                val field = boundsInRoot
-                trailing != null && field != null &&
-                        Rect(trailing.topLeft - field.topLeft, trailing.size).contains(position)
-            },
-        )
+        InteractiveHighlight(animationScope = animationScope)
     }
     var textFieldValue by remember {
         mutableStateOf(
@@ -166,9 +153,6 @@ internal fun LiquidTextFieldContainer(
                         )
                     }
                 }
-            }
-            .onGloballyPositioned { coordinates ->
-                boundsInRoot = coordinates.boundsInRoot()
             }
             .drawBackdrop(
                 backdrop = backdrop,
@@ -253,13 +237,7 @@ internal fun LiquidTextFieldContainer(
 
                     if (trailingContent != null && !expandedLayout) {
                         CompositionLocalProvider(LocalContentColor provides trailingColor) {
-                            Box(
-                                modifier = Modifier.onGloballyPositioned { coordinates ->
-                                    trailingBoundsInRoot = coordinates.boundsInRoot()
-                                },
-                            ) {
-                                trailingContent(this@Row)
-                            }
+                            trailingContent(this@Row)
                         }
                     }
                 }
@@ -276,13 +254,7 @@ internal fun LiquidTextFieldContainer(
                         }
                         if (trailingContent != null) {
                             CompositionLocalProvider(LocalContentColor provides trailingColor) {
-                                Box(
-                                    modifier = Modifier.onGloballyPositioned { coordinates ->
-                                        trailingBoundsInRoot = coordinates.boundsInRoot()
-                                    },
-                                ) {
-                                    trailingContent(this@Row)
-                                }
+                                trailingContent(this@Row)
                             }
                         }
                     }
