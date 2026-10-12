@@ -75,6 +75,7 @@ interface ApplicationService {
 
     /**
      * 观察会话切换请求（仅当在主对话页触发时发射）。HomePage / ZafiroApp 监听此 flow 执行切会话。
+     * 每个元素只投递给一个收集者一次；Activity 重建不会收到已消费的旧目标。
      */
     val conversationSwitchRequests: kotlinx.coroutines.flow.Flow<String>
         get() = kotlinx.coroutines.flow.emptyFlow()

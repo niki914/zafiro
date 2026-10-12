@@ -8,10 +8,9 @@ import androidx.activity.result.ActivityResultLauncher
 import com.niki914.logging.Logger
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
@@ -66,11 +65,9 @@ class ApplicationServiceImpl(
 
     override fun getApplication(): Application = application
 
-    private val _conversationSwitchRequests = MutableSharedFlow<String>(
-        replay = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST,
-    )
-    override val conversationSwitchRequests: Flow<String> = _conversationSwitchRequests.asSharedFlow()
+    // 待处理目标：元素被收集消费一次即消失，Activity 重建后重新 collect 不会重放旧目标。
+    private val _conversationSwitchRequests = Channel<String>(Channel.CONFLATED)
+    override val conversationSwitchRequests: Flow<String> = _conversationSwitchRequests.receiveAsFlow()
 
     @Volatile
     private var homeChatActive: Boolean = false
@@ -97,7 +94,7 @@ class ApplicationServiceImpl(
             val shouldSwitch = homeChatActive || !isFore
             if (shouldSwitch) {
                 Logger.i(TAG, "navigation intent: switching to conversation $targetConversationId")
-                _conversationSwitchRequests.tryEmit(targetConversationId)
+                _conversationSwitchRequests.trySend(targetConversationId)
             } else {
                 Logger.i(TAG, "navigation intent: on secondary page, foregrounding without switching")
             }
