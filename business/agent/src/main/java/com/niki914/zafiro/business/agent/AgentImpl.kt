@@ -14,6 +14,7 @@ import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.isRunning
@@ -80,6 +81,18 @@ class AgentImpl(
 
     override val conversation: StateFlow<Conversation> = conversationFlow.asStateFlow()
     override val draft: StateFlow<Draft> = draftFlow.asStateFlow()
+
+    /**
+     * 分子取 [conversation]（回合结束/载入/重置都会改它），分母取引擎当前生效配置的窗口。
+     * 两者任一变化即重算，不需要在 [stream]/[load]/[bindConfig]/[discard] 里各自记账，
+     * 也不会漏掉 [clearForTest]。
+     */
+    override val contextUsage: StateFlow<ContextUsage?> =
+        combine(conversationFlow, engine.contextWindowTokens) { conversation, windowTokens ->
+            conversation.contextTokens?.let { usedTokens ->
+                ContextUsage(usedTokens = usedTokens, windowTokens = windowTokens)
+            }
+        }.stateIn(scope, SharingStarted.Eagerly, null)
 
     override val status: StateFlow<AgentState> =
         combine(statusFlow, approvalFlow) { engineState, pending ->

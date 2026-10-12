@@ -481,6 +481,10 @@
     <string name="ui_settings_configure_max_tokens_placeholder">例如：%1$d</string>
     <string name="ui_settings_configure_max_tokens_hint">单次请求最多输出多少 token。留空使用默认值；服务端报输出长度超限时调小。</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">请填写不小于 256 的整数</string>
+    <string name="ui_settings_configure_context_window_label">上下文窗口</string>
+    <string name="ui_settings_configure_context_window_placeholder">例如：%1$d</string>
+    <string name="ui_settings_configure_context_window_hint">该模型的上下文窗口大小，影响上下文用量的显示比例。留空使用默认值。</string>
+    <string name="ui_settings_configure_error_context_window_invalid">请填写不小于 1000 的整数</string>
 
     <string name="ui_theme_mode_system">跟随系统</string>
     <string name="ui_theme_mode_light">浅色</string>

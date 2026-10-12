@@ -482,6 +482,10 @@
     <string name="ui_settings_configure_max_tokens_placeholder">For example: %1$d</string>
     <string name="ui_settings_configure_max_tokens_hint">Maximum tokens a single request may output. Leave empty to use the default; lower it if the server reports the output limit is exceeded.</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Enter an integer of at least 256</string>
+    <string name="ui_settings_configure_context_window_label">Context Window</string>
+    <string name="ui_settings_configure_context_window_placeholder">For example: %1$d</string>
+    <string name="ui_settings_configure_context_window_hint">The model\'s context window size, used for the context usage indicator. Leave empty to use the default.</string>
+    <string name="ui_settings_configure_error_context_window_invalid">Enter an integer of at least 1000</string>
 
     <string name="ui_theme_mode_system">Follow system</string>
     <string name="ui_theme_mode_light">Light</string>

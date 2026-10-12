@@ -16,6 +16,7 @@ import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ConversationTurn
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.TurnBlock
@@ -83,8 +84,10 @@ internal class FakeHomeAgent(private val store: FakeHomeConversationStore) : Age
     val mutableDraft = MutableStateFlow(Draft())
     val mutableConversation = MutableStateFlow(Conversation())
     val mutableStatus = MutableStateFlow<AgentState>(AgentState.Idle())
+    val mutableContextUsage = MutableStateFlow<ContextUsage?>(null)
     override val draft: StateFlow<Draft> = mutableDraft.asStateFlow()
     override val conversation: StateFlow<Conversation> = mutableConversation.asStateFlow()
+    override val contextUsage: StateFlow<ContextUsage?> = mutableContextUsage.asStateFlow()
     override val status: StateFlow<AgentState> = mutableStatus.asStateFlow()
 
     var streamResult = TurnStart.Started

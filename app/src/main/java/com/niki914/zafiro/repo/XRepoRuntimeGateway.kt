@@ -3,6 +3,7 @@ package com.niki914.zafiro.repo
 import com.niki914.logging.Logger
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.RuntimeSettingsGateway
+import com.niki914.zafiro.settings.model.DEFAULT_CONTEXT_WINDOW_TOKENS
 import com.niki914.zafiro.settings.model.DEFAULT_MAX_TOKENS
 import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
@@ -45,6 +46,8 @@ class XRepoRuntimeGateway(
             retryMaxAttempts = repo.llmRetryMaxAttempts(),
             // 0/缺键 = 未设置：落默认值（不是 okia 骨架的 4096）
             maxTokens = active?.maxTokens?.takeIf { it > 0 } ?: DEFAULT_MAX_TOKENS,
+            contextWindowTokens = active?.contextWindowTokens?.takeIf { it > 0 }
+                ?: DEFAULT_CONTEXT_WINDOW_TOKENS,
         )
     }
 

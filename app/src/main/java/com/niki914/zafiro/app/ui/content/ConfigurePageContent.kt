@@ -36,6 +36,7 @@ fun ConfigurePageContent(
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit = {},
     onMaxTokensChange: (String) -> Unit = {},
+    onContextWindowChange: (String) -> Unit = {},
     onComplete: () -> Unit,
     onConfirmEndpointMismatch: () -> Unit = {},
     onCancelEndpointMismatch: () -> Unit = {},
@@ -98,6 +99,7 @@ fun ConfigurePageContent(
             onProtocolSelected = onProtocolSelected,
             onThinkingLevelSelected = onThinkingLevelSelected,
             onMaxTokensChange = onMaxTokensChange,
+            onContextWindowChange = onContextWindowChange,
         )
     }
 

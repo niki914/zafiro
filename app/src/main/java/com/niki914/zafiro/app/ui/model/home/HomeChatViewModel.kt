@@ -204,6 +204,11 @@ class HomeChatViewModel internal constructor(
                 }
             }
             launch {
+                targetAgent.contextUsage.collect { usage ->
+                    updateState { copy(contextProgress = usage?.progress) }
+                }
+            }
+            launch {
                 targetAgent.draft.collect { draft ->
                     if (!currentState.isLoadingConversation) {
                         val pendingImages = draft.images.mapNotNull { it.toHomeImage() }
@@ -296,8 +301,6 @@ class HomeChatViewModel internal constructor(
                 currentConversationId = id,
                 currentConversationTitle = title,
                 conversationVersion = conversationVersion + 1,
-                contextProgress = conversation.contextTokens
-                    ?.let { (it.toFloat() / CONTEXT_WINDOW_TOKENS).coerceIn(0f, 1f) },
             )
         }
         if (isFirstConversationAssignment && !currentState.boundConfigId.isNullOrBlank()) {
@@ -814,13 +817,6 @@ class HomeChatViewModel internal constructor(
     companion object {
         private const val LOG_TAG = "niki914_zafiro_HomeChatState"
         private const val DRAFT_SAVE_DEBOUNCE_MS = 350L
-
-        /**
-         * 上下文窗口假定值（环的分母），仅影响显示比例、不影响请求。
-         * 全工程的分母只出现在这一处：将来换成按 provider/模型取值或用户配置，
-         * 只改这一个常量，环与取值逻辑一行不动。
-         */
-        private const val CONTEXT_WINDOW_TOKENS = 200_000L
     }
 }
 

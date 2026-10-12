@@ -15,6 +15,7 @@ import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ConversationTurn
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.TurnBlock
@@ -529,5 +530,19 @@ class HomeChatViewModelTest {
         advanceUntilIdle()
         assertNull(fixture.vm.uiStateFlow.value.boundConfigId)
         assertEquals("c1", fixture.vm.uiStateFlow.value.activeConfigId)
+    }
+
+    @Test
+    fun contextProgressMirrorsAgentContextUsage() = runTest {
+        val fixture = fixture()
+
+        fixture.agent.mutableContextUsage.value =
+            ContextUsage(usedTokens = 50_000L, windowTokens = 200_000L)
+        runCurrent()
+        assertEquals(0.25f, fixture.vm.uiStateFlow.value.contextProgress)
+
+        fixture.agent.mutableContextUsage.value = null
+        runCurrent()
+        assertNull(fixture.vm.uiStateFlow.value.contextProgress)
     }
 }

@@ -2,6 +2,7 @@ package com.niki914.zafiro.api
 
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Draft
 import kotlinx.coroutines.flow.StateFlow
 
@@ -36,6 +37,15 @@ interface Agent : AgentControl {
      * 落盘不读本字段，理由见接口注释的边界说明。
      */
     val conversation: StateFlow<Conversation>
+
+    /**
+     * 当前上下文占用：分子取 [Conversation.contextTokens]（[conversation] 改变即刷新），
+     * 分母取生效配置声明的窗口（配置切换后随下一次装配刷新）。
+     *
+     * 无有效记账时为 null，消费方据此不画环——「暂无」与「0%」是两件事。
+     * 读者：Compose 的上下文环；将来的长对话自动压缩触发点。
+     */
+    val contextUsage: StateFlow<ContextUsage?>
 
     /**
      * 用户输入草稿：一段文本 + N 张图。多客户端共享同一份。

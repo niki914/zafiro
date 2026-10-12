@@ -444,6 +444,10 @@
     <string name="ui_settings_configure_max_tokens_placeholder">例如：%1$d</string>
     <string name="ui_settings_configure_max_tokens_hint">單次請求最多輸出多少 token。留空使用預設值；伺服器回報輸出長度超限時請調小。</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">請填寫不小於 256 的整數</string>
+    <string name="ui_settings_configure_context_window_label">上下文視窗</string>
+    <string name="ui_settings_configure_context_window_placeholder">例如：%1$d</string>
+    <string name="ui_settings_configure_context_window_hint">該模型的上下文視窗大小，影響上下文用量的顯示比例。留空使用預設值。</string>
+    <string name="ui_settings_configure_error_context_window_invalid">請填寫不小於 1000 的整數</string>
     <string name="error_mcp_load_failed">讀取 MCP 配置失敗</string>
     <string name="error_mcp_save_failed">儲存 MCP 配置失敗</string>
     <string name="error_mcp_delete_failed">刪除 MCP 配置失敗</string>

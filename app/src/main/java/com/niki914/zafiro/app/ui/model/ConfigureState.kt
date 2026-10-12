@@ -81,6 +81,9 @@ data class ConfigureUiState(
     /** 单次输出上限输入框；未设置时回显默认值，清空 = 不设置（落默认值）。 */
     val maxTokensInput: String = "",
     @param:StringRes val maxTokensErrorResId: Int? = null,
+    /** 上下文窗口输入框（环的分母）；留空 = 不设置，由 gateway 兜底（默认 1M）。 */
+    val contextWindowInput: String = "",
+    @param:StringRes val contextWindowErrorResId: Int? = null,
     val isSaving: Boolean = false,
     val inlineError: ConfigureInlineError? = null,
     val initialSettingsSnapshot: ConfigureSnapshot? = null,
@@ -105,6 +108,7 @@ data class ConfigureSnapshot(
     val supportsImages: Boolean,
     val proxy: String,
     val maxTokens: String,
+    val contextWindow: String,
 )
 
 val ConfigureUiState.hasUnsavedChanges: Boolean
@@ -141,6 +145,7 @@ sealed interface ConfigureIntent {
     data class UpdateSupportsImages(val enabled: Boolean) : ConfigureIntent
     data class UpdateProxy(val value: String) : ConfigureIntent
     data class UpdateMaxTokens(val value: String) : ConfigureIntent
+    data class UpdateContextWindow(val value: String) : ConfigureIntent
     data object ToggleApiKeyVisibility : ConfigureIntent
     data class ActivateConfig(val configId: String) : ConfigureIntent
     data class DeleteConfig(val configId: String) : ConfigureIntent
@@ -287,6 +292,14 @@ class ConfigureViewModel internal constructor(
                 copy(maxTokensInput = intent.value, maxTokensErrorResId = null, inlineError = null)
             }
 
+            is ConfigureIntent.UpdateContextWindow -> updateState {
+                copy(
+                    contextWindowInput = intent.value,
+                    contextWindowErrorResId = null,
+                    inlineError = null,
+                )
+            }
+
             ConfigureIntent.ToggleApiKeyVisibility -> updateState {
                 copy(apiKeyVisible = !apiKeyVisible)
             }
@@ -386,6 +399,8 @@ class ConfigureViewModel internal constructor(
                 proxyErrorResId = null,
                 maxTokensInput = DEFAULT_MAX_TOKENS.toString(),
                 maxTokensErrorResId = null,
+                contextWindowInput = "",
+                contextWindowErrorResId = null,
                 isSaving = false,
                 inlineError = null,
                 initialSettingsSnapshot = null,
@@ -435,6 +450,8 @@ class ConfigureViewModel internal constructor(
                 proxyErrorResId = null,
                 maxTokensInput = DEFAULT_MAX_TOKENS.toString(),
                 maxTokensErrorResId = null,
+                contextWindowInput = "",
+                contextWindowErrorResId = null,
                 isSaving = false,
                 inlineError = null,
                 savedConfigs = summariesOf(document),
@@ -481,6 +498,10 @@ class ConfigureViewModel internal constructor(
                 // 0/缺省 = 未设置：输入框回显默认值（不留空白，用户看得见当前生效的值）
                 maxTokensInput = (target.maxTokens.takeIf { it > 0 } ?: DEFAULT_MAX_TOKENS).toString(),
                 maxTokensErrorResId = null,
+                // 0/缺省 = 未设置：输入框留空（兜底链生效），填过才回显用户值
+                contextWindowInput = target.contextWindowTokens.takeIf { it > 0 }
+                    ?.toString().orEmpty(),
+                contextWindowErrorResId = null,
                 isSaving = false,
                 inlineError = null,
                 savedConfigs = summariesOf(document),
@@ -747,6 +768,16 @@ class ConfigureViewModel internal constructor(
                 return false
             }
 
+            ConfigureFieldTarget.ContextWindow -> {
+                updateState {
+                    copy(
+                        contextWindowErrorResId =
+                            R.string.ui_settings_configure_error_context_window_invalid,
+                    )
+                }
+                return false
+            }
+
             null -> Unit
         }
         return true
@@ -820,6 +851,7 @@ private fun ConfigureUiState.toSavedLlmConfig(): SavedLlmConfig {
         supportsImages = supportsImages,
         proxy = proxyInput,
         maxTokens = maxTokensInput.trim().toIntOrNull() ?: 0,
+        contextWindowTokens = contextWindowInput.trim().toLongOrNull() ?: 0L,
         createdAt = 0L,
         updatedAt = 0L,
     )
@@ -841,6 +873,7 @@ private fun ConfigureUiState.toSettingsSnapshot(): ConfigureSnapshot {
         supportsImages = supportsImages,
         proxy = proxyInput.trim(),
         maxTokens = maxTokensInput.trim(),
+        contextWindow = contextWindowInput.trim(),
     )
 }
 
@@ -850,19 +883,33 @@ private enum class ConfigureFieldTarget {
     ApiKey,
     Proxy,
     MaxTokens,
+    ContextWindow,
 }
 
 private fun ConfigureUiState.firstInvalidField(): ConfigureFieldTarget? {
     return when {
-        // 与填写顺序一致：API Key → Model → Endpoint → Proxy → MaxTokens
+        // 与填写顺序一致：API Key → Model → Endpoint → Proxy → MaxTokens → ContextWindow
         apiKeyInput.trim().isBlank() -> ConfigureFieldTarget.ApiKey
         modelInput.trim().isBlank() -> ConfigureFieldTarget.Model
         endpointOverrideEnabled && endpointInput.trim().isBlank() -> ConfigureFieldTarget.Endpoint
         isValidProxy(proxyInput).not() -> ConfigureFieldTarget.Proxy
         isValidMaxTokens(maxTokensInput).not() -> ConfigureFieldTarget.MaxTokens
+        isValidContextWindow(contextWindowInput).not() -> ConfigureFieldTarget.ContextWindow
         else -> null
     }
 }
+
+/** 上下文窗口：留空 = 不设置（由 gateway 落默认值）；填了就必须是 ≥ [MIN_CONTEXT_WINDOW] 的整数。 */
+private fun isValidContextWindow(value: String): Boolean {
+    val trimmedValue = value.trim()
+    if (trimmedValue.isBlank()) {
+        return true
+    }
+    val parsed = trimmedValue.toLongOrNull() ?: return false
+    return parsed >= MIN_CONTEXT_WINDOW
+}
+
+private const val MIN_CONTEXT_WINDOW = 1_000L
 
 /** 单次输出上限：留空 = 不设置（由 gateway 落默认值）；填了就必须是 ≥ [MIN_MAX_TOKENS] 的整数。 */
 private fun isValidMaxTokens(value: String): Boolean {

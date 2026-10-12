@@ -440,6 +440,10 @@
     <string name="ui_settings_configure_max_tokens_placeholder">Например: %1$d</string>
     <string name="ui_settings_configure_max_tokens_hint">Максимальное число токенов в одном ответе. Оставьте пустым, чтобы использовать значение по умолчанию; уменьшите, если сервер сообщает о превышении лимита.</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Введите целое число не меньше 256</string>
+    <string name="ui_settings_configure_context_window_label">Контекстное окно</string>
+    <string name="ui_settings_configure_context_window_placeholder">Например: %1$d</string>
+    <string name="ui_settings_configure_context_window_hint">Размер контекстного окна модели; используется для индикатора использования контекста. Оставьте пустым, чтобы использовать значение по умолчанию.</string>
+    <string name="ui_settings_configure_error_context_window_invalid">Введите целое число не меньше 1000</string>
     <string name="ui_theme_mode_system">Как в системе</string>
     <string name="ui_theme_mode_light">Светлая</string>
     <string name="ui_theme_mode_dark">Тёмная</string>

@@ -20,6 +20,7 @@ import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
+import com.niki914.zafiro.settings.model.DEFAULT_CONTEXT_WINDOW_TOKENS
 import com.niki914.zafiro.settings.model.DEFAULT_MAX_TOKENS
 import com.niki914.zafiro.settings.model.LlmProtocol
 
@@ -208,6 +209,7 @@ internal fun ConfigureProtocolSettingsBlock(
     onProtocolSelected: (String) -> Unit,
     onThinkingLevelSelected: (String) -> Unit,
     onMaxTokensChange: (String) -> Unit,
+    onContextWindowChange: (String) -> Unit,
 ) {
     val onClearActiveField = fieldController.clearActiveField
     var showProtocolDialog by rememberSaveable { mutableStateOf(false) }
@@ -261,6 +263,24 @@ internal fun ConfigureProtocolSettingsBlock(
             ),
             description = uiState.maxTokensErrorResId?.let { stringResource(it) }
                 ?: stringResource(R.string.ui_settings_configure_max_tokens_hint),
+            enabled = !uiState.isSaving,
+            minLines = 1,
+            maxLines = 1,
+        )
+        SettingsItemDivider()
+        // 上下文窗口：环的分母；留空由 gateway 兜底。
+        SettingControlledExpandableTextItem(
+            field = ConfigureEditableField.ContextWindow,
+            controller = fieldController,
+            title = stringResource(R.string.ui_settings_configure_context_window_label),
+            value = uiState.contextWindowInput,
+            onValueChange = onContextWindowChange,
+            placeholder = stringResource(
+                R.string.ui_settings_configure_context_window_placeholder,
+                DEFAULT_CONTEXT_WINDOW_TOKENS,
+            ),
+            description = uiState.contextWindowErrorResId?.let { stringResource(it) }
+                ?: stringResource(R.string.ui_settings_configure_context_window_hint),
             enabled = !uiState.isSaving,
             minLines = 1,
             maxLines = 1,

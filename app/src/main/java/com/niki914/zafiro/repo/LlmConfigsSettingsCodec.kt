@@ -31,6 +31,8 @@ data class SavedLlmConfig(
     val thinkingLevel: String = "",
     /** 单次输出上限（max_output_tokens / max_tokens）；0/缺键 = 未设置，由 gateway 落默认值。 */
     val maxTokens: Int = 0,
+    /** 上下文窗口（Composer 环的分母）；0/缺键 = 未设置，由 gateway 落默认值。 */
+    val contextWindowTokens: Long = 0L,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 )
@@ -85,6 +87,7 @@ internal object LlmConfigsSettingsCodec {
             proxy = obj.string(PROXY_KEY),
             thinkingLevel = obj.string(THINKING_LEVEL_KEY),
             maxTokens = obj.long(MAX_TOKENS_KEY, 0L).toInt(),
+            contextWindowTokens = obj.long(CONTEXT_WINDOW_TOKENS_KEY, 0L),
             createdAt = obj.long(CREATED_AT_KEY, 0L),
             updatedAt = obj.long(UPDATED_AT_KEY, 0L),
         )
@@ -104,6 +107,7 @@ internal object LlmConfigsSettingsCodec {
                 PROXY_KEY to JsonPrimitive(config.proxy),
                 THINKING_LEVEL_KEY to JsonPrimitive(config.thinkingLevel),
                 MAX_TOKENS_KEY to JsonPrimitive(config.maxTokens),
+                CONTEXT_WINDOW_TOKENS_KEY to JsonPrimitive(config.contextWindowTokens),
                 CREATED_AT_KEY to JsonPrimitive(config.createdAt),
                 UPDATED_AT_KEY to JsonPrimitive(config.updatedAt),
             )
@@ -132,6 +136,7 @@ internal object LlmConfigsSettingsCodec {
     private const val PROXY_KEY = "proxy"
     private const val THINKING_LEVEL_KEY = "thinking_level"
     private const val MAX_TOKENS_KEY = "max_tokens"
+    private const val CONTEXT_WINDOW_TOKENS_KEY = "context_window_tokens"
     private const val CREATED_AT_KEY = "created_at"
     private const val UPDATED_AT_KEY = "updated_at"
 }

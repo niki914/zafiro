@@ -481,6 +481,10 @@
     <string name="ui_settings_configure_max_tokens_placeholder">例：%1$d</string>
     <string name="ui_settings_configure_max_tokens_hint">1 回のリクエストで出力できる最大トークン数。空欄なら既定値を使用します。サーバーが出力長の超過を報告する場合は小さくしてください。</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">256 以上の整数を入力してください</string>
+    <string name="ui_settings_configure_context_window_label">コンテキストウィンドウ</string>
+    <string name="ui_settings_configure_context_window_placeholder">例：%1$d</string>
+    <string name="ui_settings_configure_context_window_hint">このモデルのコンテキストウィンドウのサイズ。コンテキスト使用量の表示に使われます。空欄なら既定値を使用します。</string>
+    <string name="ui_settings_configure_error_context_window_invalid">1000 以上の整数を入力してください</string>
 
     <string name="ui_theme_mode_system">システムに従う</string>
     <string name="ui_theme_mode_light">ライト</string>
