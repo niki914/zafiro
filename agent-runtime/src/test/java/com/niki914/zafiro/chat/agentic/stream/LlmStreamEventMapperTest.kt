@@ -496,6 +496,16 @@ class LlmStreamEventMapperTest {
     }
 
     @Test
+    fun `TurnFailed with blank message and statusCode carries HTTP status message`() {
+        val error = LLMError(OkiaLLMErrorCode.Parse, " ", statusCode = 404)
+        val result = LlmStreamEventMapper.map(
+            TurnEvent.TurnFailed(AssistantMessage(emptyList()), error),
+            0L,
+        )
+        assertEquals("HTTP 404", (result as LlmStreamEvent.Error).message)
+    }
+
+    @Test
     fun `TurnIdleTimeout maps to Error with null message and IdleTimeout code`() {
         // 文案归 UI 层：mapper 只带类型，message 为空
         val result = LlmStreamEventMapper.map(

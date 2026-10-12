@@ -109,8 +109,10 @@ object LlmStreamEventMapper {
                 accumulatedText = ""
                 resetThinkingState()
                 val classified = RetryableErrorClassifier.classify(event.error)
+                val rawMessage = event.error.message.trim().ifEmpty { null }
+                    ?: event.error.statusCode?.let { "HTTP $it" }
                 LlmStreamEvent.Error(
-                    message = event.error.message.trim().ifEmpty { null },
+                    message = rawMessage,
                     throwable = event.error.cause,
                     code = classified,
                     attempts = if (classified == LlmErrorCode.RetryExhausted) {

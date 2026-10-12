@@ -14,6 +14,18 @@ internal object EndpointInference {
 
     private val VERSION_SEGMENT = Regex("""^v\d+[a-z]*$""")
 
+    private fun isDeepSeekHost(endpoint: String): Boolean {
+        val host = endpoint.substringAfter("://").substringBefore('/').lowercase()
+        return host == "api.deepseek.com" || host.endsWith(".deepseek.com")
+    }
+
+    private fun deepSeekBaseOf(endpoint: String): String {
+        val scheme = if (endpoint.startsWith("http://")) "http://" else "https://"
+        val afterScheme = endpoint.substringAfter("://", endpoint)
+        val host = afterScheme.substringBefore('/')
+        return "$scheme$host"
+    }
+
     private fun apiTailOf(protocol: LlmProtocol): String = when (protocol) {
         LlmProtocol.OpenAiChatCompletions, LlmProtocol.DeepSeek, LlmProtocol.GoogleOpenAi ->
             "/chat/completions"
@@ -25,6 +37,14 @@ internal object EndpointInference {
     fun endpointMatchesProtocol(endpoint: String, protocol: LlmProtocol): Boolean {
         val e = endpoint.trim().trimEnd('/')
         if (e.isBlank()) return false
+        if (isDeepSeekHost(e)) {
+            return when (protocol) {
+                LlmProtocol.OpenAiChatCompletions, LlmProtocol.DeepSeek, LlmProtocol.GoogleOpenAi ->
+                    e.endsWith("/chat/completions")
+                LlmProtocol.OpenAiResponses -> e.endsWith("/responses")
+                LlmProtocol.AnthropicMessages -> e.endsWith("/anthropic/v1/messages")
+            }
+        }
         return when (protocol) {
             LlmProtocol.OpenAiChatCompletions, LlmProtocol.DeepSeek, LlmProtocol.GoogleOpenAi ->
                 e.endsWith("/chat/completions")
@@ -38,11 +58,22 @@ internal object EndpointInference {
      * `.../compatible-mode/v1/chat/completions` → messages → `.../compatible-mode/v1/messages`。
      * 原端点无版本段时：DeepSeek 等无 /v1 形态保持裸追加；
      * Anthropic wire 格式硬要求 /v1 前缀，无版本段时补 /v1。
+     * DeepSeek 的 Anthropic 兼容网关有专属 /anthropic 前缀：
+     * `https://api.deepseek.com/anthropic/v1/messages`。
      * 空白端点原样返回，不生成无 host 的脏 URL。
      */
     fun replaceSuffix(currentEndpoint: String, protocol: LlmProtocol): String {
         val e = currentEndpoint.trim().trimEnd('/')
         if (e.isBlank()) return e
+        if (isDeepSeekHost(e)) {
+            val base = deepSeekBaseOf(e)
+            return when (protocol) {
+                LlmProtocol.AnthropicMessages -> "$base/anthropic/v1/messages"
+                LlmProtocol.OpenAiResponses -> "$base/responses"
+                LlmProtocol.OpenAiChatCompletions, LlmProtocol.DeepSeek, LlmProtocol.GoogleOpenAi ->
+                    "$base/chat/completions"
+            }
+        }
         // 只剥末段 API 路径；/v1/messages 剥成 前缀/v1 + api=/messages，
         // /v1 随后作为版本段被保留，避免 v1 双写
         val remainder = KNOWN_API_TAILS.firstOrNull { e.endsWith(it) }
@@ -63,6 +94,9 @@ internal object EndpointInference {
     fun modelsUrl(currentEndpoint: String, protocol: LlmProtocol): String? {
         val e = currentEndpoint.trim().trimEnd('/')
         if (e.isBlank()) return null
+        if (isDeepSeekHost(e)) {
+            return "${deepSeekBaseOf(e)}/models"
+        }
         val remainder = KNOWN_API_TAILS.firstOrNull { e.endsWith(it) }
             ?.let { e.removeSuffix(it) }
             ?: e

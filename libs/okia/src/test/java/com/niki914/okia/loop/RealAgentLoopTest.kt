@@ -311,6 +311,17 @@ class RealAgentLoopTest {
     }
 
     @Test
+    fun non2xxEmptyBodyFallsBackToHttpStatusMessage() = runTest {
+        val engine = FakeHttpEngine().apply {
+            streamResult = { errorResponse(404, body = "") }
+        }
+        val result = runLoop(loopRequest(listOf(completed()), engine = engine))
+        val failed = result as TurnResult.Failed
+        assertEquals("HTTP 404", failed.error.message)
+        assertEquals(404, failed.error.statusCode)
+    }
+
+    @Test
     fun non2xxSkipsParseStream() = runTest {
         val mapper = FakeProtocolMapper(listOf<ProtocolEvent>())
         val engine = FakeHttpEngine().apply { streamResult = { errorResponse(503) } }
