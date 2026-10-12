@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.niki914.logging.Logger
+import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
@@ -55,6 +56,9 @@ class MainActivity : AppCompatActivity() {
             decision
         }
         applyLanguageTag(launchDecision.languageTag)
+        // 秒崩（启动窗口内崩）的报告不能依赖 UI 去取：首帧前崩掉时弹窗永远没机会出现。
+        // 放在 setContent 之前、语言生效之后：最早期拿到报告，文案语言也对。
+        CrashRecorder.consumeStartupCrash(this)
 
         setContent {
             ZafiroApp(

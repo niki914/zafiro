@@ -550,4 +550,5 @@
     <string name="crash_dialog_copy">複製日誌</string>
     <string name="crash_dialog_close">關閉</string>
     <string name="crash_copied_toast">已複製崩潰日誌</string>
+    <string name="crash_startup_copied_toast">堆疊資訊已複製，請提交給開發者</string>
 </resources>

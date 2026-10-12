@@ -566,4 +566,5 @@
     <string name="crash_dialog_copy">Copy Log</string>
     <string name="crash_dialog_close">Close</string>
     <string name="crash_copied_toast">Crash report copied to clipboard</string>
+    <string name="crash_startup_copied_toast">Stack trace copied to clipboard. Please send it to the developer.</string>
 </resources>

@@ -519,4 +519,5 @@
     <string name="crash_dialog_copy">Копировать отчет</string>
     <string name="crash_dialog_close">Закрыть</string>
     <string name="crash_copied_toast">Отчет о сбое скопирован в буфер обмена</string>
+    <string name="crash_startup_copied_toast">Трассировка стека скопирована. Отправьте её разработчику.</string>
 </resources>
