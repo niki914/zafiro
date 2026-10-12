@@ -124,14 +124,18 @@ object ConversationRepo {
     suspend fun createConversation(
         id: String,
         firstUserInput: String,
+        title: String? = null,
         now: Long = System.currentTimeMillis(),
     ): String {
         val startedAtMs = System.currentTimeMillis()
+        val finalTitle = title?.takeIf { it.isNotBlank() }
+            ?: ConversationFormatter.titleFromFirstInput(firstUserInput)
+        val titleEdited = title?.isNotBlank() == true
         dao().insertConversation(
             ConversationEntity(
                 id = id,
-                title = ConversationFormatter.titleFromFirstInput(firstUserInput),
-                titleEdited = false,
+                title = finalTitle,
+                titleEdited = titleEdited,
                 createdAt = now,
                 updatedAt = now,
                 lastMessagePreview = ConversationFormatter.previewFromText(firstUserInput),

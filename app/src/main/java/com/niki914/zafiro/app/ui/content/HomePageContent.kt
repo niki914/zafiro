@@ -130,9 +130,11 @@ import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.UpdateCheckResult
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.service.findService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -280,8 +282,10 @@ fun HomePageContent(
         latestOnActiveConversationChanged(uiState.currentConversationId)
     }
     DisposableEffect(isCurrentPage, uiState.currentConversationId) {
+        findService<ApplicationService>()?.setHomeChatActive(isCurrentPage)
         TurnNotificationManager.visibleConversationId = if (isCurrentPage) uiState.currentConversationId else null
         onDispose {
+            findService<ApplicationService>()?.setHomeChatActive(false)
             if (TurnNotificationManager.visibleConversationId == uiState.currentConversationId) {
                 TurnNotificationManager.visibleConversationId = null
             }

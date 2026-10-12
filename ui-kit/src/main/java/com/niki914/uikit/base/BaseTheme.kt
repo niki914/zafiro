@@ -53,6 +53,7 @@ fun BaseTheme(
     dynamicColor: Boolean = true, // 启用动态颜色
     /** 非空时从种子色生成 Material 色板，忽略 dynamicColor。 */
     seedColor: Color? = null,
+    paintWindowBackground: Boolean = true,
     content: @Composable () -> Unit, // 实际要应用主题的 Composable 内容
 ) {
     // 根据条件选择颜色方案
@@ -87,7 +88,9 @@ fun BaseTheme(
                 isAppearanceLightNavigationBars = !darkTheme
             }
             // 页面自身不画背景（透出 window），必须跟随应用主题而非系统 DayNight
-            window.decorView.setBackgroundColor(colorScheme.background.toArgb())
+            if (paintWindowBackground) {
+                window.decorView.setBackgroundColor(colorScheme.background.toArgb())
+            }
             window.statusBarColor = android.graphics.Color.TRANSPARENT
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 window.navigationBarColor = android.graphics.Color.TRANSPARENT

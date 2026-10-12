@@ -566,4 +566,9 @@
     <string name="crash_dialog_copy">Copy Log</string>
     <string name="crash_dialog_close">Close</string>
     <string name="crash_copied_toast">Crash report copied to clipboard</string>
+
+    <!-- Text Actions -->
+    <string name="text_actions_sheet_title">Select Action</string>
+    <string name="text_action_explain_screen">Explain Screen</string>
+    <string name="text_action_translate">Translate</string>
 </resources>

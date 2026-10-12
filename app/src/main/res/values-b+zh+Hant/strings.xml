@@ -550,4 +550,9 @@
     <string name="crash_dialog_copy">複製日誌</string>
     <string name="crash_dialog_close">關閉</string>
     <string name="crash_copied_toast">已複製崩潰日誌</string>
+
+    <!-- Text Actions -->
+    <string name="text_actions_sheet_title">Select Action</string>
+    <string name="text_action_explain_screen">Explain Screen</string>
+    <string name="text_action_translate">Translate</string>
 </resources>

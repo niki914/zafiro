@@ -85,10 +85,11 @@ object TurnNotificationManager {
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(ApplicationService.EXTRA_TARGET_CONVERSATION_ID, conversationId)
         }
         val contentIntent = PendingIntent.getActivity(
             context,
-            0,
+            conversationId.hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

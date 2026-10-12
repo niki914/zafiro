@@ -57,6 +57,8 @@ import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.model.ThemeController
+import com.niki914.zafiro.business.application.ApplicationService
+import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.NoTitle
 import com.niki914.zafiro.app.ui.nav.PageTitleSpec
@@ -98,6 +100,11 @@ fun ZafiroApp(
         }
     }
     var selectedConversationId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        findService<ApplicationService>()?.conversationSwitchRequests?.collect { convId ->
+            selectedConversationId = convId
+        }
+    }
     var activeConversationId by remember { mutableStateOf<String?>(null) }
     val initialPage = launchDecision.initialPage
     val controller = rememberNavigationController<ZafiroPage>(initialPage = initialPage)

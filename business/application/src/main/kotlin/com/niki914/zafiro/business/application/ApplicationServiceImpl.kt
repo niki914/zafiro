@@ -2,10 +2,16 @@ package com.niki914.zafiro.business.application
 
 import android.app.Activity
 import android.app.Application
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.result.ActivityResultLauncher
+import com.niki914.logging.Logger
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
@@ -15,6 +21,10 @@ import kotlin.coroutines.resume
 class ApplicationServiceImpl(
     private val application: Application,
 ) : ApplicationService {
+
+    private companion object {
+        const val TAG = "niki914_zafiro_ApplicationService"
+    }
 
     @Volatile
     private var foreground: Activity? = null
@@ -55,6 +65,44 @@ class ApplicationServiceImpl(
     }
 
     override fun getApplication(): Application = application
+
+    private val _conversationSwitchRequests = MutableSharedFlow<String>(
+        replay = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    override val conversationSwitchRequests: Flow<String> = _conversationSwitchRequests.asSharedFlow()
+
+    @Volatile
+    private var homeChatActive: Boolean = false
+
+    override fun isHomeChatActive(): Boolean = homeChatActive
+
+    override fun setHomeChatActive(active: Boolean) {
+        homeChatActive = active
+    }
+
+    override fun launchMainActivity(targetConversationId: String?) {
+        val intent = application.packageManager.getLaunchIntentForPackage(application.packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            if (!targetConversationId.isNullOrBlank()) {
+                putExtra(ApplicationService.EXTRA_TARGET_CONVERSATION_ID, targetConversationId)
+            }
+        } ?: return
+        application.startActivity(intent)
+    }
+
+    override fun handleNavigationIntent(targetConversationId: String?) {
+        if (!targetConversationId.isNullOrBlank()) {
+            val isFore = getActivity() != null
+            val shouldSwitch = homeChatActive || !isFore
+            if (shouldSwitch) {
+                Logger.i(TAG, "navigation intent: switching to conversation $targetConversationId")
+                _conversationSwitchRequests.tryEmit(targetConversationId)
+            } else {
+                Logger.i(TAG, "navigation intent: on secondary page, foregrounding without switching")
+            }
+        }
+    }
 
     override fun getActivity(): Activity? {
         val a = foreground

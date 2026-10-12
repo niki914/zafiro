@@ -126,4 +126,26 @@ class AgentManagerImplTest {
         val agentAfterDestroy = manager.switchTo("conv-1")
         assertNotSame(agent1, agentAfterDestroy)
     }
+
+    @Test
+    fun createTaskAgent_persistentRegistersIntoActiveStatesAndCanBeSwitchedTo() = runBlocking {
+        val manager = AgentManagerImpl()
+        val taskAgent = manager.createTaskAgent(tag = "text-action", isPersistent = true)
+        taskAgent.load(ConversationId("conv-task"))
+        delay(50)
+        assertTrue(manager.activeStates.value.containsKey("conv-task"))
+
+        val switched = manager.switchTo("conv-task")
+        assertSame(taskAgent, switched)
+        assertSame(taskAgent, manager.main)
+    }
+
+    @Test
+    fun createTaskAgent_nonPersistentDoesNotRegisterIntoActiveStates() = runBlocking {
+        val manager = AgentManagerImpl()
+        val taskAgent = manager.createTaskAgent(tag = "transient", isPersistent = false)
+        taskAgent.load(ConversationId("conv-transient"))
+        delay(50)
+        assertFalse(manager.activeStates.value.containsKey("conv-transient"))
+    }
 }

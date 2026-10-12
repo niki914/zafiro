@@ -79,6 +79,36 @@
             </intent-filter>
         </activity>
 
+        <!--
+            文本选择菜单入口。不写 android:label：弹层会回落到应用名，写了只是重复。
+            三个 filter 元素都必需：隐式 intent 需要 category.DEFAULT，text/* 覆盖
+            提供富文本选择的宿主。
+        -->
+        <activity
+            android:name="com.niki914.zafiro.app.trigger.TextActionActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.AppDefault.TextAction">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+            <!--
+                包可见性 workaround，不是链接处理器：某些编辑器自己 query
+                PROCESS_TEXT handlers 但没声明匹配的 <queries>，Android 11+ 下
+                看不到本包，我们会静默地缺席它们的选择菜单。匹配宿主已声明的
+                https 查询即可让本包对它可见（可见性是包级粒度）。
+                刻意不带 DEFAULT：不会进入隐式 VIEW 解析，不会成为 https 链接
+                处理器。参考 SwiftSlate（MIT）的经验，Gmail 是已验证的宿主例。
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+            </intent-filter>
+        </activity>
+
         <activity-alias
             android:name=".Home"
             android:exported="true"

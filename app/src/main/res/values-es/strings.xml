@@ -566,4 +566,9 @@
     <string name="crash_dialog_copy">Copiar registro</string>
     <string name="crash_dialog_close">Cerrar</string>
     <string name="crash_copied_toast">Registro de bloqueo copiado</string>
+
+    <!-- Text Actions -->
+    <string name="text_actions_sheet_title">Select Action</string>
+    <string name="text_action_explain_screen">Explain Screen</string>
+    <string name="text_action_translate">Translate</string>
 </resources>

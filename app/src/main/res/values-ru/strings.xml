@@ -519,4 +519,9 @@
     <string name="crash_dialog_copy">Копировать отчет</string>
     <string name="crash_dialog_close">Закрыть</string>
     <string name="crash_copied_toast">Отчет о сбое скопирован в буфер обмена</string>
+
+    <!-- Text Actions -->
+    <string name="text_actions_sheet_title">Select Action</string>
+    <string name="text_action_explain_screen">Explain Screen</string>
+    <string name="text_action_translate">Translate</string>
 </resources>
