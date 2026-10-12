@@ -31,7 +31,7 @@ package com.niki914.zafiro.api.text
  * ⚠️ 与「不带 tag 的瞬态通知」的耦合：通知（MCP 失败说明 / 终端完成通知）也拼在
  * 用户文本前面，但它们不带 tag。本方法撞上第一行非 tag 文本就停手，所以
  * **带 tag 的块必须排在通知之前**才会被切掉（`LLMController` 里有注释）。
- * 通知将来也走这条链路（见那里的 TODO）之后，这个顺序约束就消失了。
+ * 该顺序约束只要通知尚未统一包进 tag 结构就持续成立。
  */
 object TurnTextComposer {
 
