@@ -16,6 +16,7 @@ import com.niki914.zafiro.chat.agentic.PromptComposerInput
 import com.niki914.zafiro.chat.agentic.ToolManager
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.settings.RuntimeEnvironment
+import com.niki914.zafiro.settings.model.DEFAULT_CONTEXT_WINDOW_TOKENS
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
 import java.util.UUID
@@ -24,7 +25,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 
@@ -77,6 +80,11 @@ class AgentSessionEngine {
 
     val currentConversation: StateFlow<Conversation?> get() = sessionAssembler.currentConversation
     val keepScreenOn: StateFlow<Boolean> get() = streamPipeline.turnActive
+
+    /** 当前生效配置的上下文窗口；[refresh] 时随配置一起落。读者：`AgentImpl.contextUsage` 的分母。 */
+    private val contextWindowFlow = MutableStateFlow(DEFAULT_CONTEXT_WINDOW_TOKENS)
+    val contextWindowTokens: StateFlow<Long> = contextWindowFlow.asStateFlow()
+
     @Volatile
     var boundConfigId: String = ""
         private set
@@ -91,6 +99,7 @@ class AgentSessionEngine {
         toolSynchronizer.reset()
         mcpRefreshScheduler.reset()
         prefixComposer.reset()
+        contextWindowFlow.value = DEFAULT_CONTEXT_WINDOW_TOKENS
         boundConfigId = ""
     }
 
@@ -99,9 +108,11 @@ class AgentSessionEngine {
         val gateway = RuntimeEnvironment.awaitSettingsGateway()
         val llmConfig = gateway.readLlmConfig(configId = boundConfigId.takeIf { it.isNotBlank() })
         sessionAssembler.validateLlmConfig(llmConfig)
+        contextWindowFlow.value = llmConfig.contextWindowTokens
         Logger.i(
             LOG_TAG,
             "config read provider=${llmConfig.provider} model=${llmConfig.model} " +
+                    "maxTokens=${llmConfig.maxTokens} contextWindow=${llmConfig.contextWindowTokens} " +
                     "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
         )
         val protocol = LlmProtocol.fromWire(llmConfig.protocol)

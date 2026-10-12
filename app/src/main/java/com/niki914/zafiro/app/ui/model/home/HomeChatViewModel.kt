@@ -204,6 +204,11 @@ class HomeChatViewModel internal constructor(
                 }
             }
             launch {
+                targetAgent.contextUsage.collect { usage ->
+                    updateState { copy(contextProgress = usage?.progress) }
+                }
+            }
+            launch {
                 targetAgent.draft.collect { draft ->
                     if (!currentState.isLoadingConversation) {
                         val pendingImages = draft.images.mapNotNull { it.toHomeImage() }
@@ -472,7 +477,14 @@ class HomeChatViewModel internal constructor(
     }
 
     private suspend fun sendCurrentInput() {
-        agent.updateDraft { it.copy(text = currentState.input.trim()) }
+        val trimmedInput = currentState.input.trim()
+        val hasAttachments =
+            currentState.pendingImages.isNotEmpty() || currentState.pendingFiles.isNotEmpty()
+        if (trimmedInput.isEmpty() && !hasAttachments) {
+            sendEffect(HomeChatEffect.EmptyInputAttempted)
+            return
+        }
+        agent.updateDraft { it.copy(text = trimmedInput) }
         // stream() is synchronous; don't let it consume Pending images before AgentImpl finishes ingest.
         agent.draft.first { draft -> draft.images.none { it is DraftImage.Pending } }
         updateState { copy(isGenerating = true) }

@@ -74,6 +74,7 @@
     <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">Copiado al portapapeles</string>
     <string name="ui_toast_generating">Generando, espere un momento</string>
+    <string name="ui_toast_empty_input">Por favor ingrese un mensaje</string>
     <string name="ui_home_error_retry_body">Inténtelo de nuevo más tarde.</string>
     <string name="ui_home_error_config_required_title">Configuración del modelo incompleta</string>
     <string name="ui_home_error_config_required_body">Complete la configuración del modelo antes de continuar.</string>
@@ -478,9 +479,13 @@
     <string name="ui_settings_configure_thinking_label">Esfuerzo de razonamiento</string>
     <string name="ui_settings_configure_thinking_hint">Deje en Provider Default para usar el comportamiento predeterminado del proveedor; redúzcalo si el proveedor rechaza un nivel alto.</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
-    <string name="ui_settings_configure_max_tokens_placeholder">Por ejemplo: %1$d</string>
-    <string name="ui_settings_configure_max_tokens_hint">Máximo de tokens que puede generar una sola solicitud. Déjelo vacío para usar el valor predeterminado; redúzcalo si el servidor indica que se superó el límite.</string>
-    <string name="ui_settings_configure_error_max_tokens_invalid">Introduzca un número entero de al menos 256</string>
+    <string name="ui_settings_configure_max_tokens_placeholder">Por ejemplo: 200000 o 200k</string>
+    <string name="ui_settings_configure_max_tokens_hint">Máximo de tokens que puede generar una sola solicitud. Déjelo vacío para usar el valor de la nube si está disponible, o el valor predeterminado; redúzcalo si el servidor indica que se superó el límite. Admite sufijos k/m/b (p. ej., 128k).</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">Introduzca un número válido (sufijos k/m/b admitidos) de al menos 256</string>
+    <string name="ui_settings_configure_context_window_label">Ventana de contexto</string>
+    <string name="ui_settings_configure_context_window_placeholder">Por ejemplo: 1000000 o 1M</string>
+    <string name="ui_settings_configure_context_window_hint">Tamaño de la ventana de contexto del modelo, usado para el indicador de uso de contexto. Déjelo vacío para usar el valor de la nube si está disponible, o el valor predeterminado.</string>
+    <string name="ui_settings_configure_error_context_window_invalid">Introduzca un número válido (sufijos k/m/b admitidos) de al menos 1000</string>
 
     <string name="ui_theme_mode_system">Según el sistema</string>
     <string name="ui_theme_mode_light">Claro</string>

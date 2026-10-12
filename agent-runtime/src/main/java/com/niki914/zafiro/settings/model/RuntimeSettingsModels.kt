@@ -7,6 +7,13 @@ package com.niki914.zafiro.settings.model
  */
 const val DEFAULT_MAX_TOKENS: Int = 128_000
 
+/**
+ * 上下文窗口默认值（环的分母）。配置里留空时用它。
+ * 注意：默认值大于模型真实窗口时，环会显示偏小的占用，压缩门（0.85）迟迟不触发——
+ * 所以真实窗口应当填进配置。
+ */
+const val DEFAULT_CONTEXT_WINDOW_TOKENS: Long = 1_000_000L
+
 data class RuntimeLlmConfig(
     val provider: String = "",
     val endpoint: String = "",
@@ -27,6 +34,8 @@ data class RuntimeLlmConfig(
     val retryMaxAttempts: Int = 3,
     /** 单次输出上限（max_output_tokens / max_tokens）。 */
     val maxTokens: Int = DEFAULT_MAX_TOKENS,
+    /** 上下文窗口（分母）；≤0 由 gateway 落 [DEFAULT_CONTEXT_WINDOW_TOKENS]。 */
+    val contextWindowTokens: Long = DEFAULT_CONTEXT_WINDOW_TOKENS,
     /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: String = "",
 )

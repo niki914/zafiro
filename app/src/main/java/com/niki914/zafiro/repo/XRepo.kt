@@ -58,6 +58,7 @@ object XRepo {
     val skills: SkillApi = SkillApi(this)
     val storage: StorageApi = StorageApi(this)
     val llmConfigs = LlmConfigsApi(this)
+    val cloudFacts = CloudFactsApi(this)
 
     private val writeMutex = Mutex()
     private var appContext: Context? = null

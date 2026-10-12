@@ -560,6 +560,22 @@ class LLMControllerOkiaTest {
         assertNull(requestedConfigId)
     }
 
+    @Test
+    fun refresh_publishesConfiguredContextWindow() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(validLlmConfig(contextWindowTokens = 200_000L)),
+        )
+
+        val engine = AgentSessionEngine()
+        engine.okiaFactory = LLMController.OkiaFactory { _, _, _ ->
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
+        }
+
+        engine.refresh()
+
+        assertEquals(200_000L, engine.contextWindowTokens.value)
+    }
+
     // ── helpers ─────────────────────────────────────────────────────────────
 
     private fun validLlmConfig(
@@ -569,6 +585,7 @@ class LLMControllerOkiaTest {
         idleTimeoutSeconds: Long? = 60L,
         retryMaxAttempts: Int = 3,
         maxTokens: Int = 128_000,
+        contextWindowTokens: Long = 1_000_000L,
     ): RuntimeLlmConfig {
         return RuntimeLlmConfig(
             provider = provider,
@@ -579,6 +596,7 @@ class LLMControllerOkiaTest {
             idleTimeoutSeconds = idleTimeoutSeconds,
             retryMaxAttempts = retryMaxAttempts,
             maxTokens = maxTokens,
+            contextWindowTokens = contextWindowTokens,
         )
     }
 

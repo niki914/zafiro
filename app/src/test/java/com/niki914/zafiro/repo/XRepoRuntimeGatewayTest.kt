@@ -2,10 +2,14 @@ package com.niki914.zafiro.repo
 
 import android.content.Context
 import android.content.ContextWrapper
+import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.zafiro.app.util.SilentLoggerRule
+import com.niki914.zafiro.settings.model.DEFAULT_CONTEXT_WINDOW_TOKENS
+import com.niki914.zafiro.settings.model.DEFAULT_MAX_TOKENS
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
@@ -133,6 +137,113 @@ class XRepoRuntimeGatewayTest {
             loadedSkill?.content
         )
         assertNull(gateway.loadSkill("missing"))
+    }
+
+    @Test
+    fun readLlmConfig_resolvesTokenLimitsThroughFourLevelChain() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        val gateway = XRepoRuntimeGateway(XRepo)
+
+        suspend fun upsertActive(maxTokensText: String, contextWindowText: String) {
+            XRepo.llmConfigs.upsert(
+                SavedLlmConfig(
+                    id = "cfg-1",
+                    name = "DeepSeek",
+                    provider = "deepseek",
+                    endpoint = "https://api.deepseek.com/responses",
+                    apiKey = "secret",
+                    model = "deepseek-chat",
+                    protocol = "openai-responses",
+                    proxy = "",
+                    maxTokensText = maxTokensText,
+                    contextWindowText = contextWindowText,
+                )
+            )
+        }
+
+        // 1. 用户填了 → 用户赢（宽松文本，含后缀），且完全不读两个云端缓存 store
+        upsertActive(maxTokensText = "32k", contextWindowText = "200k")
+        store.readIds.clear()
+        with(gateway.readLlmConfig()) {
+            assertEquals(32_000, maxTokens)
+            assertEquals(200_000L, contextWindowTokens)
+        }
+        assertFalse(
+            "用户填满时不应读云端缓存",
+            store.readIds.any {
+                it == StoreDescriptorRegistry.LLM_MODEL_FACTS_ID ||
+                        it == StoreDescriptorRegistry.OPENROUTER_CATALOG_ID
+            }
+        )
+
+        // 准备两层云端事实：provider 以 endpoint+model 为键；OpenRouter 按归一化名
+        XRepo.cloudFacts.saveProviderFacts(
+            endpoint = "https://api.deepseek.com/responses",
+            factsByModel = mapOf(
+                "deepseek-chat" to CloudModelFacts(
+                    windowTokens = 1_048_576L,
+                    maxOutputTokens = 393_216L,
+                )
+            ),
+        )
+        XRepo.cloudFacts.saveOpenRouter(
+            OpenRouterCatalogDocument(
+                fetchedAtMillis = 1L,
+                models = mapOf(
+                    "deepseekdeepseekchat" to CloudModelFacts(
+                        windowTokens = 128_000L,
+                        maxOutputTokens = 8_192L,
+                    )
+                ),
+            )
+        )
+
+        // 2. 留空 → provider /models 事实赢
+        upsertActive(maxTokensText = "", contextWindowText = "")
+        with(gateway.readLlmConfig()) {
+            assertEquals(393_216, maxTokens)
+            assertEquals(1_048_576L, contextWindowTokens)
+        }
+
+        // 3. 换一个无 provider 事实的 endpoint → OpenRouter 裸名匹配赢
+        upsertActiveOnOtherEndpoint(model = "deepseek-chat")
+        with(gateway.readLlmConfig()) {
+            assertEquals(8_192, maxTokens)
+            assertEquals(128_000L, contextWindowTokens)
+        }
+
+        // 4. 两层都匹配不上 → 兕底默认
+        upsertActiveOnOtherEndpoint(model = "unknown-model")
+        with(gateway.readLlmConfig()) {
+            assertEquals(DEFAULT_MAX_TOKENS, maxTokens)
+            assertEquals(DEFAULT_CONTEXT_WINDOW_TOKENS, contextWindowTokens)
+        }
+
+        // 5. 旧格式的 "0" 与脏文本也当未设置 → 落到云端（provider 缓存仍在），不是直接跳默认
+        upsertActive(maxTokensText = "0", contextWindowText = "garbage")
+        with(gateway.readLlmConfig()) {
+            assertEquals(393_216, maxTokens)
+            assertEquals(1_048_576L, contextWindowTokens)
+        }
+    }
+
+    /** 同一配置 id，但 endpoint/model 不在缓存里：用于探解析链的下层。 */
+    private suspend fun upsertActiveOnOtherEndpoint(model: String) {
+        XRepo.llmConfigs.upsert(
+            SavedLlmConfig(
+                id = "cfg-1",
+                name = "DeepSeek",
+                provider = "deepseek",
+                endpoint = "https://other.example.com",
+                apiKey = "secret",
+                model = model,
+                protocol = "openai-responses",
+                proxy = "",
+            )
+        )
     }
 
     private fun writeSkill(id: String, content: String): File {

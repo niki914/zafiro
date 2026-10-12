@@ -15,6 +15,7 @@ import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ConversationTurn
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.TurnBlock
@@ -35,6 +36,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -73,6 +75,20 @@ class HomeChatViewModelTest {
         assertEquals("", fixture.vm.uiStateFlow.value.input)
         assertEquals("hello", fixture.vm.uiStateFlow.value.turns.single().userText)
         assertEquals(listOf(HomeChatBlock.Text("answer")), fixture.vm.uiStateFlow.value.turns.single().blocks)
+        assertFalse(fixture.vm.uiStateFlow.value.isGenerating)
+    }
+
+    @Test
+    fun sendWithEmptyInputAndNoAttachmentsEmitsEmptyInputEffect() = runTest {
+        val fixture = fixture()
+        val effectDeferred = async { fixture.vm.uiEffect.first() }
+        fixture.vm.sendIntent(HomeChatIntent.InputChanged("   "))
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        assertEquals(HomeChatEffect.EmptyInputAttempted, effectDeferred.await())
+        assertTrue(fixture.agent.sentDrafts.isEmpty())
         assertFalse(fixture.vm.uiStateFlow.value.isGenerating)
     }
 
@@ -514,5 +530,19 @@ class HomeChatViewModelTest {
         advanceUntilIdle()
         assertNull(fixture.vm.uiStateFlow.value.boundConfigId)
         assertEquals("c1", fixture.vm.uiStateFlow.value.activeConfigId)
+    }
+
+    @Test
+    fun contextProgressMirrorsAgentContextUsage() = runTest {
+        val fixture = fixture()
+
+        fixture.agent.mutableContextUsage.value =
+            ContextUsage(usedTokens = 50_000L, windowTokens = 200_000L)
+        runCurrent()
+        assertEquals(0.25f, fixture.vm.uiStateFlow.value.contextProgress)
+
+        fixture.agent.mutableContextUsage.value = null
+        runCurrent()
+        assertNull(fixture.vm.uiStateFlow.value.contextProgress)
     }
 }

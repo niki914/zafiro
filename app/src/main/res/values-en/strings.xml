@@ -74,6 +74,7 @@
     <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">Copied</string>
     <string name="ui_toast_generating">Generating, please wait</string>
+    <string name="ui_toast_empty_input">Please enter a message</string>
     <string name="ui_home_error_retry_body">Please try again later.</string>
     <string name="ui_home_error_config_required_title">Model configuration is incomplete</string>
     <string name="ui_home_error_config_required_body">Please go fill in the model configuration.</string>
@@ -478,9 +479,13 @@
     <string name="ui_settings_configure_thinking_label">Thinking Effort</string>
     <string name="ui_settings_configure_thinking_hint">Leave as Provider Default to use the provider default behavior; lower it yourself if the provider rejects a high level.</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
-    <string name="ui_settings_configure_max_tokens_placeholder">For example: %1$d</string>
-    <string name="ui_settings_configure_max_tokens_hint">Maximum tokens a single request may output. Leave empty to use the default; lower it if the server reports the output limit is exceeded.</string>
-    <string name="ui_settings_configure_error_max_tokens_invalid">Enter an integer of at least 256</string>
+    <string name="ui_settings_configure_max_tokens_placeholder">For example: 200000 or 200k</string>
+    <string name="ui_settings_configure_max_tokens_hint">Maximum tokens a single request may output. Leave empty to use the cloud value when available, otherwise the default; lower it if the server reports the output limit is exceeded. Supports k/m/b suffix (e.g. 128k).</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">Enter a valid number (k/m/b suffix supported) of at least 256</string>
+    <string name="ui_settings_configure_context_window_label">Context Window</string>
+    <string name="ui_settings_configure_context_window_placeholder">For example: 1000000 or 1M</string>
+    <string name="ui_settings_configure_context_window_hint">The model\'s context window size, used for the context usage indicator. Leave empty to use the cloud value when available, otherwise the default.</string>
+    <string name="ui_settings_configure_error_context_window_invalid">Enter a valid number (k/m/b suffix supported) of at least 1000</string>
 
     <string name="ui_theme_mode_system">Follow system</string>
     <string name="ui_theme_mode_light">Light</string>

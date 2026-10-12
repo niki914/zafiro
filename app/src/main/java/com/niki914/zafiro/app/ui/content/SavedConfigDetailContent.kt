@@ -108,6 +108,7 @@ fun SavedConfigDetailContent(
             onToggleApiKeyVisibility = { viewModel.sendIntent(ConfigureIntent.ToggleApiKeyVisibility) },
             onProxyChange = { viewModel.sendIntent(ConfigureIntent.UpdateProxy(it)) },
             onMaxTokensChange = { viewModel.sendIntent(ConfigureIntent.UpdateMaxTokens(it)) },
+            onContextWindowChange = { viewModel.sendIntent(ConfigureIntent.UpdateContextWindow(it)) },
             onSave = { viewModel.sendIntent(ConfigureIntent.Save) },
             onShowModelCatalogSheet = { viewModel.sendIntent(ConfigureIntent.ShowModelCatalogSheet) },
             onHideModelCatalogSheet = { viewModel.sendIntent(ConfigureIntent.HideModelCatalogSheet) },
@@ -161,6 +162,7 @@ private fun SavedConfigDetailContentBody(
     onToggleApiKeyVisibility: () -> Unit,
     onProxyChange: (String) -> Unit,
     onMaxTokensChange: (String) -> Unit,
+    onContextWindowChange: (String) -> Unit,
     onSave: () -> Unit,
     onShowModelCatalogSheet: () -> Unit = {},
     onHideModelCatalogSheet: () -> Unit = {},
@@ -212,6 +214,7 @@ private fun SavedConfigDetailContentBody(
             onProtocolSelected = onProtocolSelected,
             onThinkingLevelSelected = onThinkingLevelSelected,
             onMaxTokensChange = onMaxTokensChange,
+            onContextWindowChange = onContextWindowChange,
         )
     }
 }

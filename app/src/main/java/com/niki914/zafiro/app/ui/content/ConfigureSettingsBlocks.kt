@@ -20,7 +20,6 @@ import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
-import com.niki914.zafiro.settings.model.DEFAULT_MAX_TOKENS
 import com.niki914.zafiro.settings.model.LlmProtocol
 
 @Composable
@@ -208,6 +207,7 @@ internal fun ConfigureProtocolSettingsBlock(
     onProtocolSelected: (String) -> Unit,
     onThinkingLevelSelected: (String) -> Unit,
     onMaxTokensChange: (String) -> Unit,
+    onContextWindowChange: (String) -> Unit,
 ) {
     val onClearActiveField = fieldController.clearActiveField
     var showProtocolDialog by rememberSaveable { mutableStateOf(false) }
@@ -248,19 +248,31 @@ internal fun ConfigureProtocolSettingsBlock(
             },
         )
         SettingsItemDivider()
-        // Max Tokens：未设置时回显默认值，清空 = 落默认值；服务端报输出超限时调小
+        // Max Tokens：留空 = 云端优先，其次默认值；服务端报输出超限时调小
         SettingControlledExpandableTextItem(
             field = ConfigureEditableField.MaxTokens,
             controller = fieldController,
             title = stringResource(R.string.ui_settings_configure_max_tokens_label),
             value = uiState.maxTokensInput,
             onValueChange = onMaxTokensChange,
-            placeholder = stringResource(
-                R.string.ui_settings_configure_max_tokens_placeholder,
-                DEFAULT_MAX_TOKENS,
-            ),
+            placeholder = stringResource(R.string.ui_settings_configure_max_tokens_placeholder),
             description = uiState.maxTokensErrorResId?.let { stringResource(it) }
                 ?: stringResource(R.string.ui_settings_configure_max_tokens_hint),
+            enabled = !uiState.isSaving,
+            minLines = 1,
+            maxLines = 1,
+        )
+        SettingsItemDivider()
+        // 上下文窗口：环的分母；留空由 gateway 兜底。
+        SettingControlledExpandableTextItem(
+            field = ConfigureEditableField.ContextWindow,
+            controller = fieldController,
+            title = stringResource(R.string.ui_settings_configure_context_window_label),
+            value = uiState.contextWindowInput,
+            onValueChange = onContextWindowChange,
+            placeholder = stringResource(R.string.ui_settings_configure_context_window_placeholder),
+            description = uiState.contextWindowErrorResId?.let { stringResource(it) }
+                ?: stringResource(R.string.ui_settings_configure_context_window_hint),
             enabled = !uiState.isSaving,
             minLines = 1,
             maxLines = 1,

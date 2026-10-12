@@ -29,8 +29,11 @@ data class SavedLlmConfig(
     val proxy: String,
     /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: String = "",
-    /** 单次输出上限（max_output_tokens / max_tokens）；0/缺键 = 未设置，由 gateway 落默认值。 */
-    val maxTokens: Int = 0,
+    /** 单次输出上限（max_output_tokens / max_tokens）；落盘原始文本（支持 1M/200k）。
+     *  空串/旧格式的 0/缺键 = 未设置，由 gateway 落云端或默认值。 */
+    val maxTokensText: String = "",
+    /** 上下文窗口（Composer 环的分母）；落盘原始文本。空串/旧格式的 0/缺键 = 未设置。 */
+    val contextWindowText: String = "",
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 )
@@ -84,7 +87,11 @@ internal object LlmConfigsSettingsCodec {
             supportsImages = obj.boolean(SUPPORTS_IMAGES_KEY),
             proxy = obj.string(PROXY_KEY),
             thinkingLevel = obj.string(THINKING_LEVEL_KEY),
-            maxTokens = obj.long(MAX_TOKENS_KEY, 0L).toInt(),
+            // 数字值经 obj.string() 读成字面文本（128000 → "128000"）。
+            // 空串与 0 都视为未设置。
+            maxTokensText = obj.string(MAX_TOKENS_KEY).trim().takeUnless { it == "0" }.orEmpty(),
+            contextWindowText = obj.string(CONTEXT_WINDOW_TOKENS_KEY).trim()
+                .takeUnless { it == "0" }.orEmpty(),
             createdAt = obj.long(CREATED_AT_KEY, 0L),
             updatedAt = obj.long(UPDATED_AT_KEY, 0L),
         )
@@ -103,7 +110,8 @@ internal object LlmConfigsSettingsCodec {
                 SUPPORTS_IMAGES_KEY to JsonPrimitive(config.supportsImages),
                 PROXY_KEY to JsonPrimitive(config.proxy),
                 THINKING_LEVEL_KEY to JsonPrimitive(config.thinkingLevel),
-                MAX_TOKENS_KEY to JsonPrimitive(config.maxTokens),
+                MAX_TOKENS_KEY to JsonPrimitive(config.maxTokensText),
+                CONTEXT_WINDOW_TOKENS_KEY to JsonPrimitive(config.contextWindowText),
                 CREATED_AT_KEY to JsonPrimitive(config.createdAt),
                 UPDATED_AT_KEY to JsonPrimitive(config.updatedAt),
             )
@@ -132,6 +140,7 @@ internal object LlmConfigsSettingsCodec {
     private const val PROXY_KEY = "proxy"
     private const val THINKING_LEVEL_KEY = "thinking_level"
     private const val MAX_TOKENS_KEY = "max_tokens"
+    private const val CONTEXT_WINDOW_TOKENS_KEY = "context_window_tokens"
     private const val CREATED_AT_KEY = "created_at"
     private const val UPDATED_AT_KEY = "updated_at"
 }

@@ -1,7 +1,10 @@
 package com.niki914.zafiro.business.agent
 
 import com.niki914.logging.Logger
+import com.niki914.okia.conversation.Conversation as OkiaConversation
 import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
+import com.niki914.okia.message.contextTokens
 import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
@@ -11,6 +14,7 @@ import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.isRunning
@@ -77,6 +81,18 @@ class AgentImpl(
 
     override val conversation: StateFlow<Conversation> = conversationFlow.asStateFlow()
     override val draft: StateFlow<Draft> = draftFlow.asStateFlow()
+
+    /**
+     * 分子取 [conversation]（回合结束/载入/重置都会改它），分母取引擎当前生效配置的窗口。
+     * 两者任一变化即重算，不需要在 [stream]/[load]/[bindConfig]/[discard] 里各自记账，
+     * 也不会漏掉 [clearForTest]。
+     */
+    override val contextUsage: StateFlow<ContextUsage?> =
+        combine(conversationFlow, engine.contextWindowTokens) { conversation, windowTokens ->
+            conversation.contextTokens?.let { usedTokens ->
+                ContextUsage(usedTokens = usedTokens, windowTokens = windowTokens)
+            }
+        }.stateIn(scope, SharingStarted.Eagerly, null)
 
     override val status: StateFlow<AgentState> =
         combine(statusFlow, approvalFlow) { engineState, pending ->
@@ -380,9 +396,31 @@ class AgentImpl(
     }
 
     private fun fold(event: LlmStreamEvent) {
-        foldWith(ConversationReducer.reduce(reduced, event))
+        var next = ConversationReducer.reduce(reduced, event)
+        if (event is LlmStreamEvent.Completed || event is LlmStreamEvent.Error) {
+            // 回合结束：换成引擎里的最新占用。引擎快照在发事件前已更新，
+            // 此刻取到的一定包含本回合刚提交的 usage。
+            next = next.copy(
+                conversation = next.conversation.copy(
+                    contextTokens = contextTokensOf(engine.currentConversation.value)
+                        ?: next.conversation.contextTokens,
+                ),
+            )
+        }
+        foldWith(next)
         reducedStatus = AgentStateReducer.reduce(reducedStatus, event)
         publishStatus(reducedStatus.status, event)
+    }
+
+    /**
+     * 当前上下文占用：live 优先（本轮流式中的 usage 一旦上报即最新），
+     * 未上报时回落到历史最后一条带记账的助手响应。
+     */
+    private fun contextTokensOf(conversation: OkiaConversation?): Long? {
+        conversation?.live?.usage?.contextTokens?.let { return it }
+        return conversation?.history?.asReversed()?.firstNotNullOfOrNull { entry ->
+            (entry.message as? Message.Assistant)?.message?.usage?.contextTokens
+        }
     }
 
     /**

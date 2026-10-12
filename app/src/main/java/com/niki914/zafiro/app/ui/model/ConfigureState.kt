@@ -6,11 +6,13 @@ import com.niki914.logging.Logger
 import com.niki914.okia.message.ThinkingLevel
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.repo.CloudModelFacts
 import com.niki914.zafiro.repo.LlmConfigsDocument
+import com.niki914.zafiro.repo.ModelCatalog
 import com.niki914.zafiro.repo.ModelCatalogApi
 import com.niki914.zafiro.repo.SavedLlmConfig
+import com.niki914.zafiro.repo.TokenCountText
 import com.niki914.zafiro.repo.XRepo
-import com.niki914.zafiro.settings.model.DEFAULT_MAX_TOKENS
 import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -81,6 +83,9 @@ data class ConfigureUiState(
     /** 单次输出上限输入框；未设置时回显默认值，清空 = 不设置（落默认值）。 */
     val maxTokensInput: String = "",
     @param:StringRes val maxTokensErrorResId: Int? = null,
+    /** 上下文窗口输入框（环的分母）；留空 = 不设置，由 gateway 兜底（默认 1M）。 */
+    val contextWindowInput: String = "",
+    @param:StringRes val contextWindowErrorResId: Int? = null,
     val isSaving: Boolean = false,
     val inlineError: ConfigureInlineError? = null,
     val initialSettingsSnapshot: ConfigureSnapshot? = null,
@@ -105,6 +110,7 @@ data class ConfigureSnapshot(
     val supportsImages: Boolean,
     val proxy: String,
     val maxTokens: String,
+    val contextWindow: String,
 )
 
 val ConfigureUiState.hasUnsavedChanges: Boolean
@@ -141,6 +147,7 @@ sealed interface ConfigureIntent {
     data class UpdateSupportsImages(val enabled: Boolean) : ConfigureIntent
     data class UpdateProxy(val value: String) : ConfigureIntent
     data class UpdateMaxTokens(val value: String) : ConfigureIntent
+    data class UpdateContextWindow(val value: String) : ConfigureIntent
     data object ToggleApiKeyVisibility : ConfigureIntent
     data class ActivateConfig(val configId: String) : ConfigureIntent
     data class DeleteConfig(val configId: String) : ConfigureIntent
@@ -186,7 +193,8 @@ internal data class ConfigureViewModelDependencies(
     val upsertConfig: suspend (SavedLlmConfig) -> String?,
     val deleteConfig: suspend (String) -> Unit,
     val setActiveConfig: suspend (String) -> Unit,
-    val fetchModelCatalog: suspend (modelsUrl: String, apiKey: String, protocol: LlmProtocol) -> List<String>,
+    val fetchModelCatalog: suspend (modelsUrl: String, apiKey: String, protocol: LlmProtocol) -> ModelCatalog,
+    val saveModelFacts: suspend (endpoint: String, factsByModel: Map<String, CloudModelFacts>) -> Unit,
     val revisions: Flow<Long> = emptyFlow(),
 ) {
     companion object {
@@ -197,6 +205,9 @@ internal data class ConfigureViewModelDependencies(
             setActiveConfig = { XRepo.llmConfigs.setActive(it) },
             fetchModelCatalog = { modelsUrl, apiKey, protocol ->
                 ModelCatalogApi.fetch(modelsUrl, apiKey, protocol)
+            },
+            saveModelFacts = { endpoint, factsByModel ->
+                XRepo.cloudFacts.saveProviderFacts(endpoint, factsByModel)
             },
             revisions = XRepo.llmConfigs.revision,
         )
@@ -285,6 +296,14 @@ class ConfigureViewModel internal constructor(
 
             is ConfigureIntent.UpdateMaxTokens -> updateState {
                 copy(maxTokensInput = intent.value, maxTokensErrorResId = null, inlineError = null)
+            }
+
+            is ConfigureIntent.UpdateContextWindow -> updateState {
+                copy(
+                    contextWindowInput = intent.value,
+                    contextWindowErrorResId = null,
+                    inlineError = null,
+                )
             }
 
             ConfigureIntent.ToggleApiKeyVisibility -> updateState {
@@ -384,8 +403,11 @@ class ConfigureViewModel internal constructor(
                 apiKeyErrorResId = null,
                 proxyInput = "",
                 proxyErrorResId = null,
-                maxTokensInput = DEFAULT_MAX_TOKENS.toString(),
+                // 不预填：留空让云端/默认值生效（预填会钉死用户值，云端永远不生效）
+                maxTokensInput = "",
                 maxTokensErrorResId = null,
+                contextWindowInput = "",
+                contextWindowErrorResId = null,
                 isSaving = false,
                 inlineError = null,
                 initialSettingsSnapshot = null,
@@ -433,8 +455,11 @@ class ConfigureViewModel internal constructor(
                 apiKeyErrorResId = null,
                 proxyInput = "",
                 proxyErrorResId = null,
-                maxTokensInput = DEFAULT_MAX_TOKENS.toString(),
+                // 不预填：留空让云端/默认值生效（预填会钉死用户值，云端永远不生效）
+                maxTokensInput = "",
                 maxTokensErrorResId = null,
+                contextWindowInput = "",
+                contextWindowErrorResId = null,
                 isSaving = false,
                 inlineError = null,
                 savedConfigs = summariesOf(document),
@@ -478,9 +503,11 @@ class ConfigureViewModel internal constructor(
                 apiKeyErrorResId = null,
                 proxyInput = target.proxy,
                 proxyErrorResId = null,
-                // 0/缺省 = 未设置：输入框回显默认值（不留空白，用户看得见当前生效的值）
-                maxTokensInput = (target.maxTokens.takeIf { it > 0 } ?: DEFAULT_MAX_TOKENS).toString(),
+                // 落盘原始文本：空串 = 未设置（旧格式的 0 已在 codec 层归一为空），填过才回显用户值
+                maxTokensInput = target.maxTokensText,
                 maxTokensErrorResId = null,
+                contextWindowInput = target.contextWindowText,
+                contextWindowErrorResId = null,
                 isSaving = false,
                 inlineError = null,
                 savedConfigs = summariesOf(document),
@@ -517,7 +544,18 @@ class ConfigureViewModel internal constructor(
                 ?: return@launch
             lastCatalogKey = key
             try {
-                val ids = dependencies.fetchModelCatalog(modelsUrl, key.apiKey, protocol)
+                val catalog = dependencies.fetchModelCatalog(modelsUrl, key.apiKey, protocol)
+                // 云端事实随同一次响应落缓存：以 endpoint+model 为键，与「保存」解耦。
+                // 全缺字段（如 Google）时 facts 为空，不写，旧缓存保留。
+                if (catalog.facts.isNotEmpty()) {
+                    try {
+                        dependencies.saveModelFacts(key.endpoint, catalog.facts)
+                    } catch (throwable: Throwable) {
+                        if (throwable is CancellationException) throw throwable
+                        Logger.w(LOG_TAG, "save model facts failed: ${throwable.message}")
+                    }
+                }
+                val ids = catalog.ids
                 // 成功覆盖：空结果也写入（藏按钮），失败走 catch 保留旧缓存
                 updateState {
                     // 没走 Provider 默认 model ID（编辑区为空）时，拉到的首个直接回填，免开选择单
@@ -747,6 +785,16 @@ class ConfigureViewModel internal constructor(
                 return false
             }
 
+            ConfigureFieldTarget.ContextWindow -> {
+                updateState {
+                    copy(
+                        contextWindowErrorResId =
+                            R.string.ui_settings_configure_error_context_window_invalid,
+                    )
+                }
+                return false
+            }
+
             null -> Unit
         }
         return true
@@ -819,7 +867,8 @@ private fun ConfigureUiState.toSavedLlmConfig(): SavedLlmConfig {
         thinkingLevel = thinkingLevelWire,
         supportsImages = supportsImages,
         proxy = proxyInput,
-        maxTokens = maxTokensInput.trim().toIntOrNull() ?: 0,
+        maxTokensText = maxTokensInput.trim(),
+        contextWindowText = contextWindowInput.trim(),
         createdAt = 0L,
         updatedAt = 0L,
     )
@@ -841,6 +890,7 @@ private fun ConfigureUiState.toSettingsSnapshot(): ConfigureSnapshot {
         supportsImages = supportsImages,
         proxy = proxyInput.trim(),
         maxTokens = maxTokensInput.trim(),
+        contextWindow = contextWindowInput.trim(),
     )
 }
 
@@ -850,28 +900,42 @@ private enum class ConfigureFieldTarget {
     ApiKey,
     Proxy,
     MaxTokens,
+    ContextWindow,
 }
 
 private fun ConfigureUiState.firstInvalidField(): ConfigureFieldTarget? {
     return when {
-        // 与填写顺序一致：API Key → Model → Endpoint → Proxy → MaxTokens
+        // 与填写顺序一致：API Key → Model → Endpoint → Proxy → MaxTokens → ContextWindow
         apiKeyInput.trim().isBlank() -> ConfigureFieldTarget.ApiKey
         modelInput.trim().isBlank() -> ConfigureFieldTarget.Model
         endpointOverrideEnabled && endpointInput.trim().isBlank() -> ConfigureFieldTarget.Endpoint
         isValidProxy(proxyInput).not() -> ConfigureFieldTarget.Proxy
         isValidMaxTokens(maxTokensInput).not() -> ConfigureFieldTarget.MaxTokens
+        isValidContextWindow(contextWindowInput).not() -> ConfigureFieldTarget.ContextWindow
         else -> null
     }
 }
 
-/** 单次输出上限：留空 = 不设置（由 gateway 落默认值）；填了就必须是 ≥ [MIN_MAX_TOKENS] 的整数。 */
+/** 上下文窗口：留空 = 不设置（云端/默认兑底）；填了就必须能解析且 ≥ [MIN_CONTEXT_WINDOW]。 */
+private fun isValidContextWindow(value: String): Boolean {
+    val trimmedValue = value.trim()
+    if (trimmedValue.isBlank()) {
+        return true
+    }
+    val parsed = TokenCountText.parse(trimmedValue) ?: return false
+    return parsed >= MIN_CONTEXT_WINDOW
+}
+
+private const val MIN_CONTEXT_WINDOW = 1_000L
+
+/** 单次输出上限：留空 = 不设置（云端/默认兑底）；填了就必须能解析且 ≥ [MIN_MAX_TOKENS]。 */
 private fun isValidMaxTokens(value: String): Boolean {
     val trimmedValue = value.trim()
     if (trimmedValue.isBlank()) {
         return true
     }
-    val parsed = trimmedValue.toIntOrNull() ?: return false
-    return parsed >= MIN_MAX_TOKENS
+    val parsed = TokenCountText.parse(trimmedValue) ?: return false
+    return parsed >= MIN_MAX_TOKENS && parsed <= Int.MAX_VALUE
 }
 
 private const val MIN_MAX_TOKENS = 256

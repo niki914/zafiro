@@ -41,7 +41,8 @@ class SettingsDomainCodecsTest {
                     protocol = "openai-responses",
                     thinkingLevel = "high",
                     proxy = "http://proxy",
-                    maxTokens = 32_000,
+                    maxTokensText = "32k",
+                    contextWindowText = "1M",
                     createdAt = 1L,
                     updatedAt = 2L,
                 ),
@@ -65,14 +66,42 @@ class SettingsDomainCodecsTest {
 
     @Test
     fun llmConfigsDocumentLegacyConfigWithoutMaxTokensParsesAsUnset() {
-        // 老数据（无 max_tokens 键）：0 = 未设置，由 gateway 落默认值
+        // 老数据（无 max_tokens 键）：空串 = 未设置，由 gateway 落云端/默认值
         val json = """
             {"active_id":"cfg-a","configs":[{"id":"cfg-a","name":"Primary","provider":"openai","endpoint":"https://api.example","api_key":"k","model":"m","protocol":"openai-responses","supports_images":true,"proxy":"","thinking_level":"high","created_at":1,"updated_at":2}]}
         """.trimIndent()
 
         val config = LlmConfigsSettingsCodec.parse(json).configs.single()
 
-        assertEquals(0, config.maxTokens)
+        assertEquals("", config.maxTokensText)
+        assertEquals("", config.contextWindowText)
+    }
+
+    @Test
+    fun llmConfigsDocumentLegacyNumericValuesReadAsText() {
+        // 存量兼容：旧格式存数字，新格式存文本。string() 把数字读成字面文本，无损。
+        // 数字读成字面文本；0 归一为未设置（空串）。
+        val json = """
+            {"active_id":"cfg-a","configs":[{"id":"cfg-a","name":"Primary","provider":"openai","endpoint":"https://api.example","api_key":"k","model":"m","protocol":"openai-responses","proxy":"","max_tokens":128000,"context_window_tokens":0,"created_at":1,"updated_at":2}]}
+        """.trimIndent()
+
+        val config = LlmConfigsSettingsCodec.parse(json).configs.single()
+
+        assertEquals("128000", config.maxTokensText)
+        assertEquals("", config.contextWindowText)
+    }
+
+    @Test
+    fun llmConfigsDocumentCorruptValueFieldsFallBackToUnset() {
+        // 类型不合法（对象/数组）：as? JsonPrimitive 落空 → 空串，不崩
+        val json = """
+            {"active_id":"cfg-a","configs":[{"id":"cfg-a","name":"Primary","provider":"openai","endpoint":"https://api.example","api_key":"k","model":"m","protocol":"openai-responses","proxy":"","max_tokens":{"bad":1},"context_window_tokens":[1],"created_at":1,"updated_at":2}]}
+        """.trimIndent()
+
+        val config = LlmConfigsSettingsCodec.parse(json).configs.single()
+
+        assertEquals("", config.maxTokensText)
+        assertEquals("", config.contextWindowText)
     }
 
     @Test

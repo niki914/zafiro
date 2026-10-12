@@ -10,6 +10,7 @@ import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
+import com.niki914.zafiro.api.model.ContextUsage
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.logging.Backend
 import com.niki914.logging.Level
@@ -42,6 +43,7 @@ class CoordinatedAgentControlTest {
 
         override val status: StateFlow<AgentState> = stateFlow.asStateFlow()
         override val conversation: StateFlow<Conversation> = MutableStateFlow(Conversation())
+        override val contextUsage: StateFlow<ContextUsage?> = MutableStateFlow(null)
         override val draft: StateFlow<Draft> = MutableStateFlow(Draft())
         override fun updateDraft(transform: (Draft) -> Draft) {}
         override fun clearDraft() {}
