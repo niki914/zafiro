@@ -75,7 +75,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mikepenz.markdown.compose.components.MarkdownComponents
+import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.elements.MarkdownCheckBox
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
@@ -199,18 +202,30 @@ fun AssistantOutputText(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    val markdownState = rememberMarkdownState(
-        content = text,
-        immediate = true,
-    )
+    val markdownState = rememberMarkdownState(content = text, retainState = true)
 
     SelectionContainer(modifier = modifier.fillMaxWidth()) {
         Markdown(
             markdownState = markdownState,
             modifier = Modifier.fillMaxWidth(),
             typography = assistantMarkdownTypography(),
+            components = assistantMarkdownComponents(),
         )
     }
+}
+
+@Composable
+private fun assistantMarkdownComponents(): MarkdownComponents = remember {
+    markdownComponents(
+        table = { model ->
+            AssistantMarkdownTable(
+                content = model.content,
+                node = model.node,
+                style = model.typography.table,
+            )
+        },
+        checkbox = { model -> MarkdownCheckBox(model.content, model.node, model.typography.text) },
+    )
 }
 
 @Composable
