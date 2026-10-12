@@ -13,7 +13,7 @@
   <a href="https://deepwiki.com/niki914/zafiro"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/v/release/niki914/zafiro?include_prereleases" alt="release"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/downloads/niki914/zafiro/total" alt="downloads"/></a>
-  <img src="https://img.shields.io/badge/kotlin-71.9k-blue" alt="kotlin lines"/>
+  <img src="https://img.shields.io/badge/kotlin-81.2k-blue" alt="kotlin lines"/>
   <a href="https://app.codacy.com/gh/niki914/zafiro/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade"><img src="https://app.codacy.com/project/badge/Grade/b4cadbe5d2d74e3885106562cbd9715b" alt="Codacy"/></a>
 </p>
 
@@ -49,7 +49,7 @@ Zafiro 是一个运行在 Android 设备上的智能 Agent，完全开源，支�
 
 - **[Material 3 Expressive](https://m3.material.io/) & Apple Liquid Glass** - 现代、精美的界面
 - **个性化主题** - 多种主题色，支持深色模式与动态取色
-- **多语言支持** - English、中文、日本語、Español
+- **多语言支持** - English、中文、日本語、Español、Русский
 - **后台交互** - 支持美观的悬浮窗和通知栏 UI，便于实时跟进 Agent
 
 ### 手机操控
