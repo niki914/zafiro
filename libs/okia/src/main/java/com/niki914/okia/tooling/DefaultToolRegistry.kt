@@ -24,5 +24,10 @@ class DefaultToolRegistry : ToolRegistry {
 
     override fun find(name: String): RegisteredTool? = tools[name]
 
-    override fun snapshot(): List<RegisteredTool> = tools.values.toList()
+    // 按 wireName 排序返回：注册顺序由「谁最后 remove + register」决定
+    // （Host 每次 refresh 都 syncLocalTools、MCP 每次发现都 registerAll，两边
+    // 都会把自己挪到 LinkedHashMap 尾部），不稳定。工具描述排在 prompt 最前，
+    // 顺序抖动会让整个 prompt 前缀失去缓存命中。
+    override fun snapshot(): List<RegisteredTool> =
+        tools.values.sortedBy { it.descriptor.wireName }
 }

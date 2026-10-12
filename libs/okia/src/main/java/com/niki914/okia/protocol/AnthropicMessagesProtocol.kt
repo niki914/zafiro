@@ -140,19 +140,55 @@ class AnthropicMessagesProtocol(
                     }
                 }
             }
-            snapshot.systemPrompt?.let { put("system", it) }
+            snapshot.systemPrompt?.let { prompt ->
+                // system 用块数组形态，唯一目的是挂 cache_control breakpoint
+                // （字符串形态无处可挂）。内容与字符串形态等价。
+                put("system", buildJsonArray {
+                    add(buildJsonObject {
+                        put("type", "text")
+                        put("text", prompt)
+                        put(CACHE_CONTROL, EPHEMERAL_CACHE)
+                    })
+                })
+            }
             if (snapshot.tools.isNotEmpty()) {
-                put("tools", buildJsonArray { snapshot.tools.forEach { add(convertTool(it)) } })
+                // 最后一个 tool 上挂 breakpoint：工具描述与后续会话消息分开缓存，
+                // 会话变长时工具段不必重算。
+                put("tools", buildJsonArray {
+                    snapshot.tools.forEachIndexed { index, tool ->
+                        val json = convertTool(tool)
+                        val marked = if (index == snapshot.tools.lastIndex) {
+                            withCacheControl(json)
+                        } else json
+                        add(marked)
+                    }
+                })
             }
             put("messages", buildJsonArray {
-                mergeMessages(snapshot, history).forEach { merged ->
+                val merged = mergeMessages(snapshot, history)
+                merged.forEachIndexed { index, message ->
+                    // 最后一条消息上挂 breakpoint：下一回合的前缀就是这次的全量
+                    // 输入，标记后本次写入的缓存可直接被 fork / regenerate 复用。
+                    val blocks = if (index == merged.lastIndex && message.blocks.isNotEmpty()) {
+                        val last = message.blocks.last()
+                        message.blocks.dropLast(1) + withCacheControl(last)
+                    } else message.blocks
                     add(buildJsonObject {
-                        put("role", merged.role)
-                        put("content", buildJsonArray { merged.blocks.forEach { add(it) } })
+                        put("role", message.role)
+                        put("content", buildJsonArray { blocks.forEach { add(it) } })
                     })
                 }
             })
         }
+
+    /** 若块类型可缓存（text / tool_result / image / tool 描述），追加 cache_control 标记返回新对象。 */
+    private fun withCacheControl(block: JsonObject): JsonObject {
+        val type = (block["type"] as? JsonPrimitive)?.contentOrNull
+        // tool 描述没有 type 字段；内容块有 type。两者都支持 cache_control
+        val cacheable = type == null || type == "text" || type == "tool_result" || type == "image"
+        if (!cacheable) return block
+        return JsonObject(block + (CACHE_CONTROL to EPHEMERAL_CACHE))
+    }
 
     /**
      * 历史 → Anthropic 消息序列：文本/思考/工具调用各自映射为 content 块；
@@ -541,6 +577,11 @@ class AnthropicMessagesProtocol(
         // 官方临时错误类型（可重试）：overloaded 对应 529、rate_limit 对应 429；
         // 其余（invalid_request_error / authentication_error 等）不可重试
         val RETRYABLE_ERROR_TYPES = setOf("overloaded_error", "rate_limit_error")
+
+        // prompt caching（官方 GA）：缓存标记字段与默认 5 分钟 TTL 的 ephemeral 档。
+        // 单次请求最多 4 个 breakpoint，本类用 3 个（system / 最后一个 tool / 最后一条消息）。
+        const val CACHE_CONTROL = "cache_control"
+        val EPHEMERAL_CACHE = buildJsonObject { put("type", "ephemeral") }
     }
 }
 

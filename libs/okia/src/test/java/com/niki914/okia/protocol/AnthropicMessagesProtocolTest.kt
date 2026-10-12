@@ -136,7 +136,11 @@ class AnthropicMessagesProtocolTest {
         assertEquals("deepseek-v4-flash", json["model"]!!.jsonPrimitive.content)
         assertEquals(512, json["max_tokens"]!!.jsonPrimitive.content.toInt())
         assertEquals(true, json["stream"]!!.jsonPrimitive.content.toBoolean())
-        assertEquals("你简短", json["system"]!!.jsonPrimitive.content)  // system 是顶层字段
+        // system 是顶层字段，用块数组形态承载 cache_control breakpoint（prompt caching）
+        val system = json["system"]!!.jsonArray.single().jsonObject
+        assertEquals("text", system["type"]!!.jsonPrimitive.content)
+        assertEquals("你简短", system["text"]!!.jsonPrimitive.content)
+        assertEquals("ephemeral", system["cache_control"]!!.jsonObject["type"]!!.jsonPrimitive.content)
     }
 
     // ── buildRequest：消息映射与合并 ─────────────────────────────────────
