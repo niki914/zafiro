@@ -133,8 +133,8 @@ internal fun ConfigureConnectionSettingsBlock(
             maxLines = 1,
             fieldTrailingContent = catalogButton,
         )
-        SettingsItemDivider()
         if (policy.showEndpointSection) {
+            SettingsItemDivider()
             val endpointEditable = policy.endpointEditable &&
                 (!policy.showEndpointOverrideToggle || uiState.endpointOverrideEnabled)
             SettingControlledExpandableTextItem(
@@ -170,7 +170,6 @@ internal fun ConfigureConnectionSettingsBlock(
                     },
                 )
             }
-            SettingsItemDivider()
         }
     }
 }
