@@ -46,7 +46,7 @@ object StoreDescriptorRegistry {
             "settings/tools/text_actions.json",
             // 内置两条 action 写在默认文档里：读不到文件时 readJson 直接回落 defaultJson，
             // 用户一改就落盘、删了不会被补回（区别于 seedPyTools 的复活语义）。
-            """{"actions":[{"name":"Explain Screen","prompt":"Explain what is currently on the screen based on the screenshot and selected text.","enabled":true,"requires_screenshot":true,"run_in_background":false},{"name":"Translate","prompt":"Translate the following text into English (or Chinese if already English).","enabled":true,"requires_screenshot":false,"run_in_background":true}]}"""
+            """{"actions":[{"name":"Explain Screen","prompt":"Explain what is currently on the screen based on the screenshot and selected text.","enabled":true,"requires_screenshot":true,"run_in_background":false},{"name":"Translate","prompt":"Translate the following text into English (or Chinese if already English).","enabled":true,"requires_screenshot":false,"run_in_background":false}]}"""
         ),
         StoreDescriptor(
             TOOLS_MCP_SERVICE_ID,
