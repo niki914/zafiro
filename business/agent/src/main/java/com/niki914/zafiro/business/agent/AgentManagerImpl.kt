@@ -85,13 +85,15 @@ class AgentManagerImpl(
         return target
     }
 
-    override fun createTaskAgent(tag: String): Agent {
-        val taskAgent = AgentImpl(
-            engine = AgentSessionEngine(),
-            isPersistent = false,
-        )
-        coordinator.trackTaskAgent(taskAgent)
-        return taskAgent
+    override fun createTaskAgent(isPersistent: Boolean): Agent {
+        return if (isPersistent) {
+            createPersistentAgent()
+        } else {
+            AgentImpl(
+                engine = AgentSessionEngine(),
+                isPersistent = false,
+            )
+        }
     }
 
     override fun destroy(conversationId: String) {

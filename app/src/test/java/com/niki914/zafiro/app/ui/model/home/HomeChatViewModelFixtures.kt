@@ -53,7 +53,7 @@ internal fun fixture(
             return agent
         }
         override val activeStates: StateFlow<Map<String, AgentState>> = MutableStateFlow(emptyMap())
-        override fun createTaskAgent(tag: String): Agent = agent
+        override fun createTaskAgent(isPersistent: Boolean): Agent = agent
         override fun destroy(conversationId: String) {}
         override val control: AgentControl = agent
     })

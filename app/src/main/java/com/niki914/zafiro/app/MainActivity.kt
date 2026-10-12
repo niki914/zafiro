@@ -1,5 +1,6 @@
 package com.niki914.zafiro.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,6 +15,7 @@ import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.runBlocking
 
@@ -60,12 +62,25 @@ class MainActivity : AppCompatActivity() {
         // 放在 setContent 之前、语言生效之后：最早期拿到报告，文案语言也对。
         CrashRecorder.consumeStartupCrash(this)
 
+        handleIncomingIntent(intent)
+
         setContent {
             ZafiroApp(
                 startupAssistantUi = startupAssistantUi,
                 launchDecision = launchDecision,
             )
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        val targetConversationId = intent?.getStringExtra(ApplicationService.EXTRA_TARGET_CONVERSATION_ID)
+        findService<ApplicationService>()?.handleNavigationIntent(targetConversationId)
     }
 
     override fun onResume() {

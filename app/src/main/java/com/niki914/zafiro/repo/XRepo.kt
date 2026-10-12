@@ -46,6 +46,7 @@ object XRepo {
     private const val LOG_TAG = "niki914_zafiro_XRepo"
 
     val mcp: McpApi = McpApi(this)
+    val textActions: TextActionApi = TextActionApi(this)
     val mcpService: McpServiceApi = McpServiceApi(this)
     val customPyTools: CustomPyToolApi = CustomPyToolApi(this)
     val builtinTools: BuiltinToolApi = BuiltinToolApi(this)
@@ -1206,6 +1207,64 @@ class McpApi internal constructor(
         }
     }
 }
+
+/**
+ * 用户自定义的文本快捷动作（Actions 设置页 + TextActionActivity 的 sheet 数据源）。
+ * list 顺序 = 文件顺序，列表页 index 与编辑页 target 一一对应。
+ */
+class TextActionApi internal constructor(
+    private val repo: XRepo,
+) {
+    suspend fun list(): List<RuntimeTextAction> {
+        return TextActionSettingsCodec.parseActions(repo.readJson(StoreDescriptorRegistry.TOOLS_TEXT_ACTIONS_ID))
+    }
+
+    /** previousName 为 null 表示新建；否则先把同名旧项移除再落位，改名不产生重复条目。 */
+    suspend fun replace(previousName: String?, action: RuntimeTextAction) {
+        repo.updateJson(StoreDescriptorRegistry.TOOLS_TEXT_ACTIONS_ID) { json ->
+            val actions = TextActionSettingsCodec.parseActions(json)
+            val withoutPrevious = if (previousName != null && previousName != action.name) {
+                actions.filterNot { it.name == previousName }
+            } else {
+                actions
+            }
+            TextActionSettingsCodec.encodeActions(
+                if (withoutPrevious.any { it.name == action.name }) {
+                    withoutPrevious.map { if (it.name == action.name) action else it }
+                } else {
+                    withoutPrevious + action
+                },
+            )
+        }
+    }
+
+    suspend fun delete(index: Int) {
+        repo.updateJson(StoreDescriptorRegistry.TOOLS_TEXT_ACTIONS_ID) { json ->
+            val actions = TextActionSettingsCodec.parseActions(json)
+            if (index !in actions.indices) return@updateJson json
+            TextActionSettingsCodec.encodeActions(actions.filterIndexed { i, _ -> i != index })
+        }
+    }
+
+    suspend fun setEnabled(index: Int, enabled: Boolean) {
+        repo.updateJson(StoreDescriptorRegistry.TOOLS_TEXT_ACTIONS_ID) { json ->
+            TextActionSettingsCodec.encodeActions(
+                TextActionSettingsCodec.parseActions(json).mapIndexed { i, action ->
+                    if (i == index) action.copy(enabled = enabled) else action
+                },
+            )
+        }
+    }
+}
+
+/** 单条文本快捷动作：名字即会话标题资产，prompt 为动作模板。仅 app 进程内消费，不进 agent-runtime。 */
+data class RuntimeTextAction(
+    val name: String,
+    val prompt: String,
+    val enabled: Boolean = true,
+    val requiresScreenshot: Boolean = false,
+    val runInBackground: Boolean = false,
+)
 
 class McpServiceApi internal constructor(
     private val repo: XRepo,

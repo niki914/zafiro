@@ -519,5 +519,34 @@
     <string name="crash_dialog_copy">Копировать отчет</string>
     <string name="crash_dialog_close">Закрыть</string>
     <string name="crash_copied_toast">Отчет о сбое скопирован в буфер обмена</string>
+
+    <!-- Text Actions -->
+    <string name="text_actions_sheet_title">Select Action</string>
+    <string name="text_actions_sheet_empty">No actions configured. Add one in Settings -> Actions.</string>
+    <string name="text_action_menu_label">Ask Zafiro</string>
+    <string name="ui_settings_actions">Actions</string>
+    <string name="ui_settings_actions_summary">Configure text actions</string>
+    <string name="text_action_page_description">Actions run on text you selected in other apps.</string>
+    <string name="text_action_page_empty_description">Tap the top right to add your first action.</string>
+    <string name="text_action_loading">Loading actions...</string>
+    <string name="text_action_editor_title_create">New Action</string>
+    <string name="text_action_save_action">Save Action</string>
+    <string name="text_action_field_name">Name</string>
+    <string name="text_action_field_name_hint">For example: Translate</string>
+    <string name="text_action_field_prompt">Prompt</string>
+    <string name="text_action_field_prompt_hint">What Zafiro should do with the selected text</string>
+    <string name="text_action_field_enabled">Enabled</string>
+    <string name="text_action_field_screenshot">Attach screenshot</string>
+    <string name="text_action_field_screenshot_description">Capture the screen and attach it to the conversation</string>
+    <string name="text_action_field_background">Run in background</string>
+    <string name="text_action_field_background_description">Run silently and notify when done, without bringing the app to front</string>
+    <string name="text_action_delete_dialog_title">Delete Action</string>
+    <string name="text_action_delete_dialog_text">Delete action "%1$s"? This cannot be undone.</string>
+    <string name="text_action_error_name_required">Name is required.</string>
+    <string name="text_action_error_name_duplicate">An action with this name already exists.</string>
+    <string name="text_action_error_prompt_required">Prompt is required.</string>
+    <string name="text_action_error_load_failed">Failed to load actions.</string>
+    <string name="text_action_error_save_failed">Failed to save action.</string>
+    <string name="text_action_error_delete_failed">Failed to delete action.</string>
     <string name="crash_startup_copied_toast">Трассировка стека скопирована. Отправьте её разработчику.</string>
 </resources>

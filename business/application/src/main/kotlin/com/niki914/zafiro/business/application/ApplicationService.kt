@@ -56,9 +56,37 @@ interface ApplicationService {
      */
     suspend fun awaitNextResume(timeoutMs: Long): Boolean
 
+    /** 当前是否正处于主对话界面（HomeChatScreen / HomePage）。 */
+    fun isHomeChatActive(): Boolean = false
+
+    /** 设置当前主对话界面的活跃态（由 HomePage 维护生命周期）。 */
+    fun setHomeChatActive(active: Boolean) {}
+
+    /**
+     * 拉起应用到前台的主 Activity。
+     * @param targetConversationId 如果不为空，则请求打开此会话（仅当处于主对话页时切换，不在主对话页时仅拉前台）。
+     */
+    fun launchMainActivity(targetConversationId: String? = null) {}
+
+    /**
+     * 处理进入应用时的导航意图（由 MainActivity onCreate / onNewIntent 统一调用）。
+     */
+    fun handleNavigationIntent(targetConversationId: String?) {}
+
+    /**
+     * 观察会话切换请求（仅当在主对话页触发时发射）。HomePage / ZafiroApp 监听此 flow 执行切会话。
+     * 每个元素只投递给一个收集者一次；Activity 重建不会收到已消费的旧目标。
+     */
+    val conversationSwitchRequests: kotlinx.coroutines.flow.Flow<String>
+        get() = kotlinx.coroutines.flow.emptyFlow()
+
     /** 装配方法（仅 MainActivity 调）：预注册的 launcher 在 STARTED 前装进来。 */
     fun installPermissionLauncher(launcher: ActivityResultLauncher<String>)
 
     /** 装配方法（仅 MainActivity 调）：launcher 结果回调转发。 */
     fun onRuntimePermissionResult(granted: Boolean)
+
+    companion object {
+        const val EXTRA_TARGET_CONVERSATION_ID = "com.niki914.zafiro.extra.TARGET_CONVERSATION_ID"
+    }
 }

@@ -5,6 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.ui.content.mcp.McpSettingsContent
+import com.niki914.zafiro.app.ui.content.TextActionsSettingsContent
 import com.niki914.zafiro.app.ui.model.SettingsViewModel
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
@@ -14,6 +15,7 @@ import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
+import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 
@@ -70,6 +72,15 @@ fun SettingsDetailPageContent(
         McpSettingsContent(
             onOpenServerDetail = { name, index, isCreating ->
                 onPush(McpServerDetailPage(name, index, isCreating))
+            },
+        )
+        return
+    }
+
+    if (group == ZafiroSettingsGroup.Actions) {
+        TextActionsSettingsContent(
+            onOpenActionDetail = { title, index, isCreating ->
+                onPush(TextActionDetailPage(title, index, isCreating))
             },
         )
         return
