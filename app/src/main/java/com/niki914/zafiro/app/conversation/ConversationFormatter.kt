@@ -8,6 +8,7 @@ import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
+import com.niki914.okia.message.contextTokens
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
@@ -178,6 +179,8 @@ object ConversationFormatter {
         val startedAtMs = System.currentTimeMillis()
         val history = projectLeaf(snapshot.entries, snapshot.leafId)
         val turns = mutableListOf<ConversationTurn>()
+        // 历史里的 token 记账（与流式路径同源）：取最后一条带记账的助手响应
+        var contextTokens: Long? = null
 
         history.forEach { entry ->
             when (val message = entry.message) {
@@ -195,6 +198,7 @@ object ConversationFormatter {
                 }
 
                 is Message.Assistant -> {
+                    message.message.usage?.contextTokens?.let { contextTokens = it }
                     val target = turns.lastOrNull()
                     if (target == null) {
                         // 没有前置用户消息的助手条目（异常快照）：丢弃，不造空回合
@@ -215,7 +219,11 @@ object ConversationFormatter {
             }
         }
 
-        return Conversation(id = ConversationId(snapshot.id), turns = turns).also { assembled ->
+        return Conversation(
+            id = ConversationId(snapshot.id),
+            turns = turns,
+            contextTokens = contextTokens,
+        ).also { assembled ->
             Logger.i(
                 LOG_TAG,
                 "assemble conversation entries=${history.size} turns=${assembled.turns.size} " +

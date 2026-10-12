@@ -30,6 +30,14 @@ value class ConversationId(val value: String)
 data class Conversation(
     val id: ConversationId? = null,
     val turns: List<ConversationTurn> = emptyList(),
+    /**
+     * 当前上下文占用（最近一次请求的输入总量）；null = 尚无有效记账。
+     *
+     * 派生值，不落盘：流式路径由实现侧在回合结束时从引擎会话树取，
+     * 恢复路径由历史装配在同一个字段位取（`ConversationFormatter`）。
+     * 消费方：Composer 的上下文环。
+     */
+    val contextTokens: Long? = null,
 )
 
 /**

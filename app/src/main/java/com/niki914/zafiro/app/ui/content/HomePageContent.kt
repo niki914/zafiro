@@ -212,6 +212,11 @@ fun HomePageContent(
                     },
                     Toast.LENGTH_SHORT,
                 ).show()
+                HomeChatEffect.EmptyInputAttempted -> Toast.makeText(
+                    attachToastContext,
+                    R.string.ui_toast_empty_input,
+                    Toast.LENGTH_SHORT,
+                ).show()
             }
         }
     }
@@ -474,8 +479,13 @@ fun HomePageContent(
             viewModel.sendIntent(HomeChatIntent.InputChanged(value))
         },
         onSendClick = {
-            dismissInputFocus()
-            shouldFollowBottom = true
+            val query = uiState.input.trim()
+            val hasAttachments =
+                uiState.pendingImages.isNotEmpty() || uiState.pendingFiles.isNotEmpty()
+            if (query.isNotEmpty() || hasAttachments) {
+                dismissInputFocus()
+                shouldFollowBottom = true
+            }
             viewModel.sendIntent(HomeChatIntent.Send)
         },
         onStopClick = {
@@ -939,6 +949,7 @@ private fun HomePageContentBody(
             onSendClick = onSendClick,
             onStopClick = onStopClick,
             isGenerating = uiState.isGenerating,
+            contextProgress = uiState.contextProgress,
             pendingImages = pendingImages,
             pendingFiles = pendingFiles,
             onAttachImageClick = { attachSheetVisible = true },

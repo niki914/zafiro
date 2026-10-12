@@ -1,7 +1,10 @@
 package com.niki914.zafiro.business.agent
 
 import com.niki914.logging.Logger
+import com.niki914.okia.conversation.Conversation as OkiaConversation
 import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
+import com.niki914.okia.message.contextTokens
 import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
@@ -380,9 +383,31 @@ class AgentImpl(
     }
 
     private fun fold(event: LlmStreamEvent) {
-        foldWith(ConversationReducer.reduce(reduced, event))
+        var next = ConversationReducer.reduce(reduced, event)
+        if (event is LlmStreamEvent.Completed || event is LlmStreamEvent.Error) {
+            // 回合结束：换成引擎里的最新占用。引擎快照在发事件前已更新，
+            // 此刻取到的一定包含本回合刚提交的 usage。
+            next = next.copy(
+                conversation = next.conversation.copy(
+                    contextTokens = contextTokensOf(engine.currentConversation.value)
+                        ?: next.conversation.contextTokens,
+                ),
+            )
+        }
+        foldWith(next)
         reducedStatus = AgentStateReducer.reduce(reducedStatus, event)
         publishStatus(reducedStatus.status, event)
+    }
+
+    /**
+     * 当前上下文占用：live 优先（本轮流式中的 usage 一旦上报即最新），
+     * 未上报时回落到历史最后一条带记账的助手响应。
+     */
+    private fun contextTokensOf(conversation: OkiaConversation?): Long? {
+        conversation?.live?.usage?.contextTokens?.let { return it }
+        return conversation?.history?.asReversed()?.firstNotNullOfOrNull { entry ->
+            (entry.message as? Message.Assistant)?.message?.usage?.contextTokens
+        }
     }
 
     /**

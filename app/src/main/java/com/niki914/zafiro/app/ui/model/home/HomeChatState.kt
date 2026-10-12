@@ -146,6 +146,11 @@ data class HomeChatUiState(
     val globalActiveConfigId: String = "",
     val boundConfigId: String? = null,
     val isConfigMenuVisible: Boolean = false,
+    /**
+     * 上下文占用进度（0f..1f），给 Composer 的环用；null = 无数据（首轮之前、
+     * 或模型未上报 usage），此时不画环。
+     */
+    val contextProgress: Float? = null,
 ) {
     val displayConfig: SavedConfigSummary?
         get() {
@@ -229,6 +234,7 @@ sealed interface HomeChatIntent {
  */
 sealed interface HomeChatEffect {
     data class FileAttachFailed(val reason: FileAttachReason) : HomeChatEffect
+    data object EmptyInputAttempted : HomeChatEffect
 }
 
 /**

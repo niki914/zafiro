@@ -49,12 +49,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -426,19 +430,15 @@ fun LiquidChatComposer(
     onStopClick: () -> Unit,
     isGenerating: Boolean,
     modifier: Modifier = Modifier,
+    contextProgress: Float? = null,
     pendingImages: List<HomeChatImage> = emptyList(),
     pendingFiles: List<HomeChatFile> = emptyList(),
     onAttachImageClick: () -> Unit = {},
 ) {
-    val canSend = !isGenerating &&
-            (value.isNotBlank() || pendingImages.isNotEmpty() || pendingFiles.isNotEmpty())
-    val buttonEnabled = isGenerating || canSend
     val stopContentDescription = stringResource(R.string.ui_home_stop_content_description)
-    val contentColor = if (buttonEnabled) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-    }
+    // 发送按钮恒亮：无文本点击时触发 Toast 提示，能不能点不靠颜色表达。
+    // contextProgress 为 null（无记账）时不画环。
+    val contentColor = MaterialTheme.colorScheme.primary
 
     // 展开唯一信号源：布局行数。观测到 lineCount > 1 即锁住展开态；
     // expanded 本身改变测量宽度，对称条件会振荡，故回落只看文本清空。
@@ -477,11 +477,21 @@ fun LiquidChatComposer(
 
     @Composable
     fun sendButton() {
+        val progress = contextProgress
+        val ringModifier = if (progress == null) {
+            Modifier
+        } else {
+            val trackColor =
+                MaterialTheme.colorScheme.primary.copy(alpha = CONTEXT_RING_TRACK_ALPHA)
+            val progressColor = MaterialTheme.colorScheme.primary
+            Modifier.drawBehind { drawContextRing(progress, trackColor, progressColor) }
+        }
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             ActionBarButton(
                 onClick = if (isGenerating) onStopClick else onSendClick,
-                enabled = buttonEnabled,
-                modifier = Modifier.offset(x = 6.dp),
+                enabled = true,
+                // 环画在按钮自己的 modifier 上：与按钮同心，跟着 offset 一起走。
+                modifier = Modifier.offset(x = 6.dp).then(ringModifier),
             ) {
                 if (isGenerating) {
                     LoadingIndicator(
@@ -525,6 +535,48 @@ fun LiquidChatComposer(
             leadingContent = { attachButton() },
             trailingContent = { sendButton() },
         )
+}
+
+/** 上下文环底轨的不透明度。 */
+private const val CONTEXT_RING_TRACK_ALPHA = 0.22f
+
+/** 上下文环线宽。 */
+private val ContextRingStroke = 2.dp
+
+/** 发送按钮的圆直径，与 ActionBarButton 的 requiredSize 同口径（sp 换算）。 */
+private val ContextRingButtonDiameter = 48.sp
+
+/**
+ * 在发送按钮边缘画一圈上下文占用环。
+ *
+ * 环的外围严格等于按钮的外围（外径 = 按钮直径）：Stroke 居中对齐向两侧各占 stroke / 2，
+ * 故中心线直径取 [ContextRingButtonDiameter] - stroke，使整个环紧贴并隐没在按钮轮廓内。
+ */
+private fun DrawScope.drawContextRing(progress: Float, trackColor: Color, progressColor: Color) {
+    val stroke = ContextRingStroke.toPx()
+    val arcDiameter = ContextRingButtonDiameter.toPx() - stroke
+    val topLeft = Offset((size.width - arcDiameter) / 2f, (size.height - arcDiameter) / 2f)
+    val ringSize = Size(arcDiameter, arcDiameter)
+    drawArc(
+        color = trackColor,
+        startAngle = 0f,
+        sweepAngle = 360f,
+        useCenter = false,
+        topLeft = topLeft,
+        size = ringSize,
+        style = Stroke(width = stroke),
+    )
+    if (progress > 0f) {
+        drawArc(
+            color = progressColor,
+            startAngle = -90f,
+            sweepAngle = 360f * progress.coerceIn(0f, 1f),
+            useCenter = false,
+            topLeft = topLeft,
+            size = ringSize,
+            style = Stroke(width = stroke, cap = StrokeCap.Round),
+        )
+    }
 }
 
 @Composable

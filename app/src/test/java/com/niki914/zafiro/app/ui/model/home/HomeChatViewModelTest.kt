@@ -35,6 +35,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -73,6 +74,20 @@ class HomeChatViewModelTest {
         assertEquals("", fixture.vm.uiStateFlow.value.input)
         assertEquals("hello", fixture.vm.uiStateFlow.value.turns.single().userText)
         assertEquals(listOf(HomeChatBlock.Text("answer")), fixture.vm.uiStateFlow.value.turns.single().blocks)
+        assertFalse(fixture.vm.uiStateFlow.value.isGenerating)
+    }
+
+    @Test
+    fun sendWithEmptyInputAndNoAttachmentsEmitsEmptyInputEffect() = runTest {
+        val fixture = fixture()
+        val effectDeferred = async { fixture.vm.uiEffect.first() }
+        fixture.vm.sendIntent(HomeChatIntent.InputChanged("   "))
+        runCurrent()
+        fixture.vm.sendIntent(HomeChatIntent.Send)
+        advanceUntilIdle()
+
+        assertEquals(HomeChatEffect.EmptyInputAttempted, effectDeferred.await())
+        assertTrue(fixture.agent.sentDrafts.isEmpty())
         assertFalse(fixture.vm.uiStateFlow.value.isGenerating)
     }
 

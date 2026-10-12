@@ -71,6 +71,7 @@
     <string name="ui_home_action_rewind_content_description">Откатить</string>
     <string name="ui_toast_copied">Скопировано</string>
     <string name="ui_toast_generating">Идёт генерация, подождите</string>
+    <string name="ui_toast_empty_input">Пожалуйста, введите сообщение</string>
     <string name="ui_home_error_retry_body">Попробуйте позже.</string>
     <string name="ui_home_error_config_required_title">Настройки модели заполнены не полностью</string>
     <string name="ui_home_error_config_required_body">Заполните настройки модели.</string>
