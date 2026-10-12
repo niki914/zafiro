@@ -36,6 +36,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -75,7 +76,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mikepenz.markdown.compose.components.MarkdownComponents
+import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.elements.MarkdownCheckBox
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
@@ -165,32 +169,37 @@ internal fun toAssistantErrorUi(message: String?): AssistantErrorUi {
     return toAssistantErrorUi(message = message, code = null)
 }
 
-private const val AssistantMarkdownPreviewText = """
-# Zafiro 对话排版
+/** 全局 Markdown 排版缩放比例，默认 1.0f (100%)。由全局或局部 [CompositionLocalProvider] 注入。 */
+val LocalMarkdownScale = compositionLocalOf { 1.0f }
 
-这是一段用于观察正文、标题、引用和表格体感的示例内容。标题不应该再像页面 Hero 一样夸张。
+/** 预览样张：同一句 hello 的多文字变体 + 字符表 + 符号，只做字形展示，不作阅读内容。 */
+internal const val AssistantMarkdownPreviewText = """
+# hello
 
-## 标题层级
+HELLO 你好 こんにちは ПРИВЕТ HOLA 안녕하세요 ALLÔ CIAO
 
-- 一级信息要明显
-- 二级信息要克制
-- 列表和正文尽量共用节奏
+## ＡＢＣ あいう 日月山川
 
-### 表格密度
+- ABCDEFGHIJKLMNOPQRSTUVWXYZ
+- abcdefghijklmnopqrstuvwxyz
+- 0123456789 ! ? . , : ; — … · « » 「 」 『 』
+- あいうえお かきくけこ さしすせそ
+- 天地玄黄 宇宙洪荒 日月盈昃 辰宿列张
 
-| 项目 | 目标 |
-| --- | --- |
-| H1 | 明显但不撑爆聊天流 |
-| H2 | 比正文大一档 |
-| Table | 与正文接近，便于连续阅读 |
+### ▲ ● ■ ◆ ★ ♪ ⚡ ⌘
 
-> 这是一段引用文字，用来确认弱化后的信息层级是否还清楚。
+| A | あ | 永 |
+| --- | --- | --- |
+| B | か | 空 |
+| Γ | さ | 海 |
 
-`inline code`
+> ! ? ¿ ¡ : ; ~ ≈ ≠ ∞ °
+
+`Aa` **Aa** *Aa* あ 永 Ж Ω
 
 ```kotlin
-val answer = "markdown preview"
-println(answer)
+val hello = "hello 你好 こんにちは ПРИВЕТ"
+repeat(8) { print(hello) }
 ```
 """
 
@@ -199,44 +208,58 @@ fun AssistantOutputText(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    val markdownState = rememberMarkdownState(
-        content = text,
-        immediate = true,
-    )
+    val markdownState = rememberMarkdownState(content = text, retainState = true)
 
     SelectionContainer(modifier = modifier.fillMaxWidth()) {
         Markdown(
             markdownState = markdownState,
             modifier = Modifier.fillMaxWidth(),
             typography = assistantMarkdownTypography(),
+            components = assistantMarkdownComponents(),
         )
     }
 }
 
 @Composable
-private fun assistantMarkdownTypography(): MarkdownTypography {
+private fun assistantMarkdownComponents(): MarkdownComponents = remember {
+    markdownComponents(
+        table = { model ->
+            AssistantMarkdownTable(
+                content = model.content,
+                node = model.node,
+                style = model.typography.table,
+            )
+        },
+        checkbox = { model -> MarkdownCheckBox(model.content, model.node, model.typography.text) },
+    )
+}
+
+@Composable
+private fun assistantMarkdownTypography(
+    scale: Float = LocalMarkdownScale.current,
+): MarkdownTypography {
     val bodyStyle = MaterialTheme.typography.bodyLarge.copy(
-        fontSize = (MaterialTheme.typography.bodyLarge.fontSize.value + 1f).sp,
-        lineHeight = (MaterialTheme.typography.bodyLarge.lineHeight.value + 2f).sp,
+        fontSize = (17f * scale).sp,
+        lineHeight = (26f * scale).sp,
     )
     val codeStyle = bodyStyle.copy(
-        fontSize = 15.sp,
-        lineHeight = 22.sp,
+        fontSize = (15f * scale).sp,
+        lineHeight = (22f * scale).sp,
         fontFamily = FontFamily.Monospace,
     )
     val quoteStyle = bodyStyle.copy(
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
+        fontSize = (16f * scale).sp,
+        lineHeight = (24f * scale).sp,
         fontStyle = FontStyle.Italic,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     return markdownTypography(
-        h1 = bodyStyle.copy(fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
-        h2 = bodyStyle.copy(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
-        h3 = bodyStyle.copy(fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold),
-        h4 = bodyStyle.copy(fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium),
-        h5 = bodyStyle.copy(fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium),
-        h6 = bodyStyle.copy(fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
+        h1 = bodyStyle.copy(fontSize = (20f * scale).sp, lineHeight = (26f * scale).sp, fontWeight = FontWeight.SemiBold),
+        h2 = bodyStyle.copy(fontSize = (18f * scale).sp, lineHeight = (24f * scale).sp, fontWeight = FontWeight.SemiBold),
+        h3 = bodyStyle.copy(fontSize = (16f * scale).sp, lineHeight = (22f * scale).sp, fontWeight = FontWeight.SemiBold),
+        h4 = bodyStyle.copy(fontSize = (14.5f * scale).sp, lineHeight = (20f * scale).sp, fontWeight = FontWeight.Medium),
+        h5 = bodyStyle.copy(fontSize = (13f * scale).sp, lineHeight = (18f * scale).sp, fontWeight = FontWeight.Medium),
+        h6 = bodyStyle.copy(fontSize = (12f * scale).sp, lineHeight = (16f * scale).sp, fontWeight = FontWeight.Medium),
         text = bodyStyle,
         code = codeStyle,
         inlineCode = codeStyle,
@@ -245,7 +268,7 @@ private fun assistantMarkdownTypography(): MarkdownTypography {
         ordered = bodyStyle,
         bullet = bodyStyle,
         list = bodyStyle,
-        table = bodyStyle.copy(fontSize = 16.sp, lineHeight = 22.sp),
+        table = bodyStyle.copy(fontSize = (13.5f * scale).sp, lineHeight = (18f * scale).sp),
     )
 }
 

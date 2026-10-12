@@ -24,6 +24,7 @@ internal fun OnboardingThemeRoute(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         ThemeSettingsContent(
+            onPush = onPush,
             // 为吸底按钮留位，否则最后一张卡片会被盖住
             contentBottomPadding = liquidScreenBottomPadding() +
                     SettingsDetailPageDefaults.RootVerticalSpacing +

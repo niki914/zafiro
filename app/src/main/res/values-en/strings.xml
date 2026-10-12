@@ -449,6 +449,8 @@
     <string name="ui_settings_general_turn_notification_summary">Send heads-up notifications when a turn completes or needs approval</string>
     <string name="ui_settings_general_language">Language</string>
     <string name="ui_settings_general_language_follow_system">Follow system</string>
+    <string name="ui_settings_markdown_scale_title">Markdown scale</string>
+    <string name="ui_settings_markdown_scale_default">Default</string>
     <string name="ui_settings_general_load_last_conversation">Load last conversation on startup</string>
     <string name="ui_settings_general_idle_timeout">Idle timeout</string>
     <string name="ui_settings_general_idle_timeout_summary">End the turn when the server stays silent too long</string>

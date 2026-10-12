@@ -448,6 +448,8 @@
     <string name="ui_settings_general_turn_notification_summary">ターンの完了時または承認が必要な場合に通知を送信します</string>
     <string name="ui_settings_general_language">言語</string>
     <string name="ui_settings_general_language_follow_system">システムに従う</string>
+    <string name="ui_settings_markdown_scale_title">Markdown 表示倍率</string>
+    <string name="ui_settings_markdown_scale_default">デフォルト</string>
     <string name="ui_settings_general_load_last_conversation">起動時に前回の会話を読み込む</string>
     <string name="ui_settings_general_idle_timeout">応答アイドルタイムアウト</string>
     <string name="ui_settings_general_idle_timeout_summary">サーバーが長時間無応答のときにターンを終了します</string>

@@ -467,6 +467,19 @@ object XRepo {
     suspend fun setFloatingBallAutoExpand(value: Boolean) =
         floatingBallAutoExpandField.set(value)
 
+    /** Markdown 排版缩放比例的进程内热更新通道：基准 1.0f。 */
+    private val markdownScaleField = ReactiveAppStateField(
+        default = 1.0f,
+        select = { markdownScale },
+        update = { copy(markdownScale = it) },
+    )
+    val markdownScaleSetting: MutableStateFlow<Float>
+        get() = markdownScaleField.flow
+
+    suspend fun markdownScale(): Float = markdownScaleField.get()
+
+    suspend fun setMarkdownScale(value: Float) = markdownScaleField.set(value)
+
     /**
      * 回填型设置 flow 的统一冷启动回填：flow 初值是猜的默认值，必须有人调一次
      * 读盘才能对齐真值。MainActivity.onCreate 同步调用。

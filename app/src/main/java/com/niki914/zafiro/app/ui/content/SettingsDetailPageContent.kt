@@ -92,7 +92,7 @@ fun SettingsDetailPageContent(
     }
 
     if (group == ZafiroSettingsGroup.Theme) {
-        ThemeSettingsContent()
+        ThemeSettingsContent(onPush = onPush)
         return
     }
 

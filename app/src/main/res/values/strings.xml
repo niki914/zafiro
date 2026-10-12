@@ -454,6 +454,8 @@
     <string name="ui_settings_general_turn_notification_summary">回合完成或需要审批时发送即时通知</string>
     <string name="ui_settings_general_language">语言</string>
     <string name="ui_settings_general_language_follow_system">跟随系统</string>
+    <string name="ui_settings_markdown_scale_title">Markdown 排版缩放</string>
+    <string name="ui_settings_markdown_scale_default">默认</string>
     <string name="ui_settings_general_load_last_conversation">启动时载入上次对话</string>
     <string name="ui_settings_general_idle_timeout">响应空闲超时</string>
     <string name="ui_settings_general_idle_timeout_summary">服务器长时间无响应时终止回合</string>

@@ -105,7 +105,7 @@ dependencies {
     compileOnly("de.robv.android.xposed:api:82")
 
     // Third-party UI
-    implementation("com.mikepenz:multiplatform-markdown-renderer-m3:0.37.0")
+    implementation("com.mikepenz:multiplatform-markdown-renderer-m3:0.41.0")
 
     // Material & AndroidX
     implementation("com.google.android.material:material:1.12.0")

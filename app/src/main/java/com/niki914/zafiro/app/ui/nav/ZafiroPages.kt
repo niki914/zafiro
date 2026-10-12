@@ -277,3 +277,12 @@ data class BuiltinToolGroupDetailPage(
     override val rightAction: TopBarActionSpec? = null
     override val titleMode: TitleBarMode = TitleBarMode.Collapsible
 }
+
+data object MarkdownScalePage : ZafiroPage {
+    override val routeKey: String = "markdown-scale"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_markdown_scale_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(Icons.AutoMirrored.Filled.ArrowBack)
+    override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}

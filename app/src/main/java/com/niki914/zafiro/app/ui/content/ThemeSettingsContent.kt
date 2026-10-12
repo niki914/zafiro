@@ -4,9 +4,14 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Translate
+import com.niki914.zafiro.app.ui.nav.MarkdownScalePage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
+import com.niki914.zafiro.repo.XRepo
+import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,11 +39,12 @@ import com.niki914.zafiro.app.ui.model.ThemeSettingsViewModel
 import kotlinx.coroutines.launch
 
 /**
- * 外观与语言：深浅色模式、配色（[ThemeController] 驱动）+ 语言（[ThemeSettingsViewModel] 驱动）。
+ * 外观与语言：深浅色模式、配色（[ThemeController] 驱动）+ 语言（[ThemeSettingsViewModel] 驱动）+ Markdown 缩放。
  *
  * 两项都是选中即落盘；onboarding 首次配置需要吸底按钮时，由调用方传 [contentBottomPadding] 留位。
  */
 private const val LANGUAGE_ROW_ID = "theme.language"
+private const val MARKDOWN_SCALE_ROW_ID = "theme.markdown_scale"
 
 private const val LANGUAGE_TAG_ZH_CN = "zh-CN"
 private const val LANGUAGE_TAG_ZH_TW = "zh-TW"
@@ -96,11 +102,14 @@ private fun languageOptions(): List<LanguageOption> {
 fun ThemeSettingsContent(
     viewModel: ThemeSettingsViewModel = pageViewModel(),
     contentBottomPadding: Dp? = null,
+    onPush: (ZafiroPage) -> Unit,
 ) {
     val uiState by viewModel.uiStateFlow.collectAsState()
     val scope = rememberCoroutineScope()
     val prefs = ThemeController.prefs
     val isDarkTheme = LocalAppDarkTheme.current
+    val currentScale by XRepo.markdownScaleSetting.collectAsState()
+    val currentScalePercent = (currentScale * 100).roundToInt()
 
     LaunchedEffect(Unit) {
         viewModel.sendIntent(ThemeSettingsIntent.Load)
@@ -141,6 +150,16 @@ fun ThemeSettingsContent(
                             .firstOrNull { it.tag == uiState.languageTag }
                             ?.label,
                         leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Rounded.Translate),
+                    ),
+                    SettingsRowSpec.Navigation(
+                        id = MARKDOWN_SCALE_ROW_ID,
+                        title = stringResource(R.string.ui_settings_markdown_scale_title),
+                        currentState = if (currentScalePercent == 100) {
+                            stringResource(R.string.ui_settings_markdown_scale_default)
+                        } else {
+                            "$currentScalePercent%"
+                        },
+                        leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Rounded.FormatSize),
                     ),
                 ),
             ),
@@ -191,8 +210,11 @@ fun ThemeSettingsContent(
             )
         },
         onAction = { action ->
-            if (action is SettingsRowAction.Navigate && action.id == LANGUAGE_ROW_ID) {
-                viewModel.sendIntent(ThemeSettingsIntent.OpenLanguageDialog)
+            if (action is SettingsRowAction.Navigate) {
+                when (action.id) {
+                    LANGUAGE_ROW_ID -> viewModel.sendIntent(ThemeSettingsIntent.OpenLanguageDialog)
+                    MARKDOWN_SCALE_ROW_ID -> onPush(MarkdownScalePage)
+                }
             }
         },
     )
