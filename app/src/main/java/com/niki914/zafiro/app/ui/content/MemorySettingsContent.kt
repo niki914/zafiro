@@ -48,6 +48,7 @@ fun MemorySettingsContent() {
                 onClick = {
                     viewModel.sendIntent(MemorySettingsIntent.StartCreate)
                 },
+                contentDescription = "Add Button",
             ),
             backHandler = PageBackHandler(
                 shouldConsumeBack = {

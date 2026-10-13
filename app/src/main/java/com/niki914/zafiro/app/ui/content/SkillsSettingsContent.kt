@@ -94,7 +94,7 @@ fun SkillsSettingsContent(
             rightAction = TopBarActionSpec(
                 icon = Icons.Default.Add,
                 onClick = { launcher.launch(null) },
-                contentDescription = importLabel,
+                contentDescription = "Add Button",
             ),
         )
     }

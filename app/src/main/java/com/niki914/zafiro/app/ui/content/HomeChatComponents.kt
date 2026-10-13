@@ -486,7 +486,7 @@ fun LiquidChatComposer(
     pendingFiles: List<HomeChatFile> = emptyList(),
     onAttachImageClick: () -> Unit = {},
 ) {
-    val stopContentDescription = stringResource(R.string.ui_home_stop_content_description)
+    val stopContentDescription = "Stop Button"
     // 发送按钮恒亮：无文本点击时触发 Toast 提示，能不能点不靠颜色表达。
     // contextProgress 为 null（无记账）时不画环。
     val contentColor = MaterialTheme.colorScheme.primary
@@ -518,9 +518,7 @@ fun LiquidChatComposer(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(
-                        R.string.ui_home_add_image_content_description
-                    ),
+                    contentDescription = "Add Button",
                 )
             }
         }
@@ -558,9 +556,7 @@ fun LiquidChatComposer(
                 } else {
                     Icon(
                         painter = painterResource(R.drawable.ic_arrow_up),
-                        contentDescription = stringResource(
-                            R.string.ui_home_send_content_description
-                        ),
+                        contentDescription = "Send Button",
                     )
                 }
             }
@@ -656,33 +652,33 @@ fun TurnActionRow(
         ) {
             ActionButton(
                 icon = Icons.Default.ContentCopy,
-                contentDescription = stringResource(R.string.ui_home_action_copy_content_description),
+                contentDescription = "Copy Icon",
                 onClick = onCopy,
                 iconOnly = iconOnly,
             )
             if (isAgent) {
                 ActionButton(
                     icon = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.ui_home_action_regenerate_content_description),
+                    contentDescription = "Regenerate Icon",
                     onClick = onReGenerate,
                     iconOnly = iconOnly,
                 )
                 ActionButton(
                     icon = Icons.AutoMirrored.Filled.CallSplit,
-                    contentDescription = stringResource(R.string.ui_home_action_fork_content_description),
+                    contentDescription = "Fork Icon",
                     onClick = onFork,
                     iconOnly = iconOnly,
                 )
             } else {
                 ActionButton(
                     icon = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.ui_home_action_regenerate_content_description),
+                    contentDescription = "Regenerate Icon",
                     onClick = onReGenerate,
                     iconOnly = iconOnly,
                 )
                 ActionButton(
                     icon = Icons.Default.Undo,
-                    contentDescription = stringResource(R.string.ui_home_action_rewind_content_description),
+                    contentDescription = "Rewind Icon",
                     onClick = onRewind,
                     iconOnly = iconOnly,
                 )
@@ -818,7 +814,7 @@ internal fun HomeChatImageCard(
         if (onRemove != null) {
             CardRemoveOverlay(
                 size = size,
-                contentDescription = stringResource(R.string.ui_home_image_remove_content_description),
+                contentDescription = "Remove Image Icon",
                 onRemove = onRemove,
             )
         }
@@ -914,9 +910,7 @@ internal fun HomeChatFileCard(
         if (onRemove != null) {
             CardRemoveOverlay(
                 size = size,
-                contentDescription = stringResource(
-                    R.string.ui_home_file_remove_content_description,
-                ),
+                contentDescription = "Remove File Icon",
                 onRemove = onRemove,
             )
         }

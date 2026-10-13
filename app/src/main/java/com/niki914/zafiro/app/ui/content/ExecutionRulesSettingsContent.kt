@@ -47,7 +47,7 @@ fun ExecutionRulesSettingsContent(
                 onClick = {
                     latestOnOpenRuleDetail(createTitle, -1, true)
                 },
-                contentDescription = createTitle,
+                contentDescription = "Add Button",
             ),
         )
     }

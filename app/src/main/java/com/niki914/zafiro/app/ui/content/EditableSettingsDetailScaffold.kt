@@ -59,6 +59,7 @@ fun EditableSettingsDetailChrome(
                     onClick = {
                         latestOnDelete?.invoke()
                     },
+                    contentDescription = "Delete Button",
                 )
             },
             backHandler = PageBackHandler(

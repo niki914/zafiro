@@ -343,7 +343,7 @@ private fun MiniCopyButton(text: String, modifier: Modifier = Modifier) {
     ) {
         Icon(
             imageVector = Icons.Default.ContentCopy,
-            contentDescription = null,
+            contentDescription = "Copy Icon",
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
             modifier = Modifier.size(CopyIconSize),
         )

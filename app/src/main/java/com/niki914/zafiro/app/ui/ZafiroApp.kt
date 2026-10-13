@@ -328,6 +328,7 @@ fun ZafiroApp(
                             ) { imageVector ->
                                 ActionBarVectorIcon(
                                     imageVector = imageVector,
+                                    contentDescription = action.contentDescription,
                                     tint = actionIconTint,
                                 )
                             }
@@ -356,6 +357,7 @@ fun ZafiroApp(
                             ) { imageVector ->
                                 ActionBarVectorIcon(
                                     imageVector = imageVector,
+                                    contentDescription = action.contentDescription,
                                     tint = actionIconTint,
                                 )
                             }
@@ -480,7 +482,11 @@ private fun resolveRightAction(
     return when {
         chrome.rightAction != null -> chrome.rightAction
         chrome.menuItems.isNotEmpty() -> baseAction?.copy(onClick = onOpenChromeMenu)
-            ?: TopBarActionSpec(icon = Icons.Default.MoreHoriz, onClick = onOpenChromeMenu)
+            ?: TopBarActionSpec(
+                icon = Icons.Default.MoreHoriz,
+                onClick = onOpenChromeMenu,
+                contentDescription = "More Button",
+            )
 
         else -> baseAction
     }
@@ -489,12 +495,13 @@ private fun resolveRightAction(
 @Composable
 private fun ActionBarVectorIcon(
     imageVector: ImageVector,
+    contentDescription: String?,
     tint: Color,
     size: Dp = 20.dp,
 ) {
     Image(
         painter = rememberVectorPainter(imageVector),
-        contentDescription = null,
+        contentDescription = contentDescription,
         modifier = Modifier.size(size),
         colorFilter = ColorFilter.tint(tint),
     )
