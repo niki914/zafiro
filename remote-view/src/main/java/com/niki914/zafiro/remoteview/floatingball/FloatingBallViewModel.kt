@@ -154,9 +154,20 @@ class FloatingBallViewModel :
                 val outcomeArrived = intent.lastOutcome != null &&
                         intent.lastOutcome != currentState.lastOutcome &&
                         wasRunning
+
+                // 到预字上限后上游还会每 250ms 推同一段前缀，内容已无变化时直接不更新状态：
+                // 少一次重组就少一次 500 字文本重排版。
+                val clampedPreview = intent.preview?.clampPreview()
+                if (clampedPreview == currentState.preview &&
+                    intent.isRunning == currentState.isStopEnabled &&
+                    !outcomeArrived
+                ) {
+                    return
+                }
+
                 updateState {
                     copy(
-                        preview = intent.preview,
+                        preview = clampedPreview,
                         isStopEnabled = intent.isRunning,
                         lastOutcome = intent.lastOutcome,
                     )

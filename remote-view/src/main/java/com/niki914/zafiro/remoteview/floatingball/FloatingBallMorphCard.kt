@@ -35,7 +35,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -330,14 +334,52 @@ fun FloatingBallExpandedCardContent(
     }
 }
 
-private sealed class PreviewTarget(val order: Int) {
-    data object Placeholder : PreviewTarget(0)
-    data class AgentText(val text: String) : PreviewTarget(1)
-    data class Approval(val reason: String) : PreviewTarget(2)
+/**
+ * 预览槽位当前展示的「形态」。
+ *
+ * 文本内容刻意不入 key：流式追加（新文本以旧文本为前缀）不改变形态，
+ * 因此不触发任何转场动画，由内层 Text 原地静默重排完成增量更新。
+ * [AgentText.segment] 只在内容发生非追加式替换时推进，用来给转场提供区分度。
+ */
+private sealed class PreviewTarget {
+    data object Placeholder : PreviewTarget()
+
+    /**
+     * @param segment 转场段号，只有非追加式替换才推进。
+     * @param text 该次转场要渲染的文本快照。必须由 target 携带而非闭包读取最新 preview，
+     *   否则滑出的「旧内容」会渲染成新文本，与滑入内容完全重合。
+     */
+    data class AgentText(val segment: Int, val text: String) : PreviewTarget()
+
+    data class Approval(val reason: String) : PreviewTarget()
+
+    /** 只有形态与段号参与转场判定：文本追加不换 key，转场动画自然不会重播。 */
+    val contentKey: Any
+        get() = when (this) {
+            is Placeholder -> this
+            is AgentText -> segment
+            is Approval -> reason
+        }
 }
 
 /**
- * 预览槽位：根据文本有无及待授权状态自动切换展示，支持上下翻折滑入滑出动效。
+ * 判定 [next] 相对 [prev] 是否只是「同一段内容的推进而非真正替换」。
+ *
+ * 包含两种情形：流式追加（新文本以旧文本为前缀），以及文本完全相同（到字数上限后被截成恒值）。
+ * 两者都不应该算作新段，否则每 250ms 就会白翻一次。
+ */
+private fun isSameContentGrowing(prev: String?, next: String?): Boolean {
+    if (prev.isNullOrEmpty() || next.isNullOrEmpty()) return false
+    if (next == prev) return true
+    return next.length > prev.length && next.startsWith(prev)
+}
+
+/**
+ * 预览槽位：根据文本有无及待授权状态自动切换展示，切换时单向向下翻折滑入滑出。
+ *
+ * 动效约定：
+ * - 转场永远单向往前（旧内容上滑淡出、新内容下滑淡入），不存在倒车；
+ * - 流式追加文本完全不动画，只做原地增量重排，避免每个字都闪一次。
  *
  * 核心约束：
  * 外层 Box 必须终生占用 [slotHeight]，绝对禁止在 alpha <= 0f 时提前 return 或移除 Box。
@@ -362,6 +404,18 @@ private fun FloatingBallPreviewSlot(
             .clipToBounds(),
         contentAlignment = Alignment.Center,
     ) {
+        // 段号与上次文本必须活在 alpha 判断之外：否则每次展开/收起都会重置，
+        // 明明没有换内容也会白翻一次。
+        // 段号只在「非追加式替换」时推进：追加不换 key，转场动画自然不会重播。
+        var segment by remember { mutableIntStateOf(0) }
+        var lastText by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(preview) {
+            if (!isSameContentGrowing(lastText, preview)) {
+                segment++
+            }
+            lastText = preview
+        }
+
         if (alpha > 0f) {
             val previewTarget: PreviewTarget = when {
                 isApprovalPending || approvalRequest != null -> {
@@ -376,30 +430,25 @@ private fun FloatingBallPreviewSlot(
                 }
 
                 preview.isNullOrBlank() -> PreviewTarget.Placeholder
-                else -> PreviewTarget.AgentText(preview)
+                else -> PreviewTarget.AgentText(segment, preview.orEmpty())
             }
 
             AnimatedContent(
                 targetState = previewTarget,
+                contentKey = { it.contentKey },
                 transitionSpec = {
                     val floatSpec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
                     val intOffsetSpec =
                         tween<IntOffset>(durationMillis = 280, easing = FastOutSlowInEasing)
-                    if (targetState.order >= initialState.order) {
-                        (slideInVertically(animationSpec = intOffsetSpec) { it } + fadeIn(
-                            animationSpec = floatSpec
-                        )) togetherWith
-                                (slideOutVertically(animationSpec = intOffsetSpec) { -it } + fadeOut(
-                                    animationSpec = floatSpec
-                                ))
-                    } else {
-                        (slideInVertically(animationSpec = intOffsetSpec) { -it } + fadeIn(
-                            animationSpec = floatSpec
-                        )) togetherWith
-                                (slideOutVertically(animationSpec = intOffsetSpec) { it } + fadeOut(
-                                    animationSpec = floatSpec
-                                ))
-                    }.using(SizeTransform(clip = true))
+                    // 永远单向下翻：旧内容上滑淡出，新内容下滑淡入
+                    (
+                            (slideInVertically(animationSpec = intOffsetSpec) { it } + fadeIn(
+                                animationSpec = floatSpec
+                            )) togetherWith
+                                    (slideOutVertically(animationSpec = intOffsetSpec) { -it } + fadeOut(
+                                        animationSpec = floatSpec
+                                    ))
+                            ).using(SizeTransform(clip = true))
                 },
                 modifier = Modifier
                     .fillMaxSize()
@@ -415,6 +464,7 @@ private fun FloatingBallPreviewSlot(
                     }
 
                     is PreviewTarget.AgentText -> {
+                        // 流式增长时这里原地重排，不参与任何转场
                         FloatingBallTextPreview(
                             text = target.text,
                             alpha = 1f,
