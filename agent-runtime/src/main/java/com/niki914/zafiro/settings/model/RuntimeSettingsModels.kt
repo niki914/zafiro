@@ -108,6 +108,7 @@ data class RuntimeCustomPyTool(
 ) {
     companion object {
         const val DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS: Long = 30_000L
+        const val MIN_CUSTOM_PY_TOOL_TIMEOUT_MS: Long = 1_000L
         const val MAX_CUSTOM_PY_TOOL_TIMEOUT_MS: Long = 120_000L
     }
 }
@@ -194,6 +195,8 @@ data class RuntimeMcpServiceConfig(
 
     companion object {
         const val DEFAULT_PORT: Int = 8791
+        const val MIN_PORT: Int = 1024
+        const val MAX_PORT: Int = 65535
         const val DEFAULT_HOST: String = "127.0.0.1"
 
         val DEFAULT_EXPOSED_TOOLS: Set<String> = setOf(

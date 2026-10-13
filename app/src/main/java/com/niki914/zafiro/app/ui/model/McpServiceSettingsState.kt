@@ -51,8 +51,8 @@ class McpServiceSettingsViewModel :
 
     private companion object {
         private const val LOG_TAG = "niki914_zafiro_McpServiceSettingsViewModel"
-        private const val MIN_PORT = 1024
-        private const val MAX_PORT = 65535
+        private const val MIN_PORT = RuntimeMcpServiceConfig.MIN_PORT
+        private const val MAX_PORT = RuntimeMcpServiceConfig.MAX_PORT
 
         private val SAFE_BUILTIN_TOOL_ORDER = listOf(
             "screen_operation_accessibility",

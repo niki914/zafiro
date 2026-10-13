@@ -15,6 +15,7 @@ import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
+import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget as TakeoverTarget
 
@@ -171,6 +172,21 @@ class SettingsDomainCodecsTest {
             ),
             tools,
         )
+    }
+
+    // 保护：手改 tools/custom_py_tools.json 的 timeout_ms 绕过写入口校验。
+    // 负值会走到 PyRuntime 的 withTimeout(negative) 抛 IllegalArgumentException，
+    // 极大值则让工具永不超时，所以读盘侧必须把值夹回 1000..120000。
+    @Test
+    fun customPyToolTimeoutMsIsClampedToWritableRange() {
+        fun timeoutOf(raw: String) = ToolSettingsCodec.parseCustomPyTools(
+            """{"tools":[{"name":"py_x","code":"def main(): pass","timeout_ms":$raw}]}"""
+        ).single().timeoutMs
+
+        assertEquals(CustomPyTool.MIN_CUSTOM_PY_TOOL_TIMEOUT_MS, timeoutOf("-1"))
+        assertEquals(CustomPyTool.MIN_CUSTOM_PY_TOOL_TIMEOUT_MS, timeoutOf("500"))
+        assertEquals(CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS, timeoutOf("999999999"))
+        assertEquals(45_000L, timeoutOf("45000"))
     }
 
     @Test
@@ -402,6 +418,18 @@ class SettingsDomainCodecsTest {
         val root = jsonObject(AppStateSettingsCodec.encode(state))
         assertEquals("zh-CN", root["language_tag"]!!.jsonPrimitive.content)
         assertEquals(true, root["load_last_conversation_on_startup"]!!.jsonPrimitive.boolean)
+    }
+
+    // 保护：手改 tools/mcp/service.json 的 port 绕过设置页校验（1024..65535）。
+    // 越界端口不会崩，但会让 MCP 服务静默起不来，所以读盘侧必须夹回可用区间。
+    @Test
+    fun mcpServicePortIsClampedToWritableRange() {
+        fun portOf(raw: String) = McpServiceSettingsCodec.parse("""{"port":$raw}""").port
+
+        assertEquals(RuntimeMcpServiceConfig.MIN_PORT, portOf("0"))
+        assertEquals(RuntimeMcpServiceConfig.MIN_PORT, portOf("80"))
+        assertEquals(RuntimeMcpServiceConfig.MAX_PORT, portOf("99999"))
+        assertEquals(8791, portOf("8791"))
     }
 
     private fun jsonObject(json: String) = Json.parseToJsonElement(json).jsonObject

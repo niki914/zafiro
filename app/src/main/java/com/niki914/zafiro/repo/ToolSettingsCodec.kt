@@ -45,10 +45,23 @@ internal object ToolSettingsCodec {
                     description = obj.string(DESCRIPTION_KEY),
                     schemaJson = obj.string(SCHEMA_KEY),
                     enabled = (obj[ENABLED_KEY] as? JsonPrimitive)?.booleanOrNull ?: true,
-                    timeoutMs = (obj[TIMEOUT_KEY] as? JsonPrimitive)?.longOrNull
-                        ?: CustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS,
+                    timeoutMs = parseTimeoutMs(obj),
                 )
             }
+    }
+
+    /**
+     * 写入口（CustomPyToolApi.validate / PyMetaToolsBuiltin）都夹了 1000..120000，
+     * 但手改磁盘文件绕过了写入口。负值会让 PyRuntime 的 withTimeout(negative)
+     * 抛 IllegalArgumentException，极大值则让工具永不超时，所以读盘侧也必须夹一次。
+     */
+    private fun parseTimeoutMs(obj: JsonObject): Long {
+        val raw = (obj[TIMEOUT_KEY] as? JsonPrimitive)?.longOrNull
+            ?: return CustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS
+        return raw.coerceIn(
+            CustomPyTool.MIN_CUSTOM_PY_TOOL_TIMEOUT_MS,
+            CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS,
+        )
     }
 
     fun encodeCustomPyTools(tools: List<CustomPyTool>): String {
