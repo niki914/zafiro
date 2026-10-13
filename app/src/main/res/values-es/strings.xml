@@ -241,7 +241,7 @@
     <string name="execution_rules_enabled_mode_confirm">Preguntarme</string>
     <string name="tool_permission_dialog_title">La IA solicita ejecutar una operación</string>
     <string name="tool_permission_request_intro">La herramienta de Zafiro "%1$s" solicita ejecutar el siguiente comando:</string>
-    <string name="tool_permission_matched_rule">Regla alcanzada: "%1$s"</string>
+    <string name="tool_permission_matched_rule">Regla alcanzada: "%1$s": %2$s</string>
     <string name="tool_permission_allow">Permitir una vez</string>
     <string name="tool_permission_deny">Denegar</string>
     <string name="screen_control_consent_title">Solicitud de permisos de control de pantalla</string>
@@ -502,6 +502,7 @@
     <string name="agent_resident_action_stop">Detener</string>
     <string name="agent_resident_action_approve">Permitir</string>
     <string name="agent_resident_action_decline">Rechazar</string>
+    <string name="agent_resident_body_matched_pattern">Coincide con %1$s</string>
 
     <!-- Onboarding Preferences -->
     <string name="ui_onboard_done_advanced_entry">Permisos y reglas de ejecución</string>

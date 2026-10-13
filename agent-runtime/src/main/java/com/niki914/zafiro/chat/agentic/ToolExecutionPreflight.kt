@@ -22,7 +22,10 @@ data class PreflightDecision(
     val reason: String = "",
     val matchedRuleId: String? = null,
     val matchedRuleName: String? = null,
+    /** 命中的规则条目（正则/关键字原文）。 */
     val matchedPattern: String? = null,
+    /** 实际命中的文本片段。展示给用户看「为什么被拦」，比正则好读。 */
+    val matchedText: String? = null,
 )
 
 /**
@@ -50,7 +53,16 @@ class ToolExecutionPreflight(
     },
     private val sandboxRootsProvider: () -> Set<String> = ::defaultSandboxRoots,
 ) {
-    suspend fun evaluate(command: String, toolName: String): PreflightDecision {
+    /**
+     * [identity] 是会话的执行身份（`user` / `root` / `shizuku`）。root 会话本身就等于「用了 su」，
+     * 因此额外把 `su` 当成一个候选：默认规则里的 `\bsu\b` 因此能拦住 root 会话，
+     * 用户删掉那条规则就等于放弃这层管控。
+     */
+    suspend fun evaluate(
+        command: String,
+        toolName: String,
+        identity: String? = null,
+    ): PreflightDecision {
         val rules = listExecutionRules()
         if (rules.isEmpty()) {
             return PreflightDecision(allowed = true)
@@ -60,20 +72,20 @@ class ToolExecutionPreflight(
         } else {
             true
         }
-        val candidates = command.matchCandidates()
+        val candidates = command.matchCandidates().let {
+            if (identity?.trim()?.lowercase() == ROOT_SESSION_IDENTITY) it + SU_TOKEN else it
+        }
         for (rule in rules.filter { it.isActive(unlocked) }) {
-            val pattern = rule.patterns.asSequence()
+            val hit = rule.patterns.asSequence()
                 .map(String::trim)
-                .filter(String::isNotBlank)
-                .firstOrNull { pattern ->
-                    candidates.any { candidate ->
-                        TextPatternMatcher.matches(
-                            candidate,
-                            pattern
-                        )
+                .filter(String::isNotBlank).firstNotNullOfOrNull { pattern ->
+                    val matchedText = candidates.firstNotNullOfOrNull { candidate ->
+                        TextPatternMatcher.find(candidate, pattern)
                     }
+                    matchedText?.let { pattern to it }
                 }
                 ?: continue
+            val (pattern, matchedText) = hit
             val blocked = PreflightDecision(
                 allowed = false,
                 code = "RULE_BLOCKED",
@@ -81,6 +93,7 @@ class ToolExecutionPreflight(
                 matchedRuleId = rule.id,
                 matchedRuleName = rule.name,
                 matchedPattern = pattern,
+                matchedText = matchedText,
             )
             when (rule.enabledMode) {
                 ExecutionRuleEnabledMode.ALWAYS, ExecutionRuleEnabledMode.LOCKED_ONLY -> return blocked
@@ -92,6 +105,7 @@ class ToolExecutionPreflight(
                             toolName = toolName,
                             command = command,
                             ruleName = rule.name,
+                            matchedPattern = matchedText,
                         )
                     ) ?: ApprovalDecision.Abstain
                     when (decision) {
@@ -255,6 +269,10 @@ class ToolExecutionPreflight(
     }
 
     companion object {
+        /** 会话身份为 root 时，把 `su` 注入候选——root 会话本身就等于「用了 su」。 */
+        private const val ROOT_SESSION_IDENTITY = "root"
+        private const val SU_TOKEN = "su"
+
         private const val MAX_SHELL_PAYLOAD_DEPTH = 8
         private val SHELL_TOKEN_SEPARATORS = setOf(';', '&', '|', '`', '$', '(', ')', '<', '>')
         private val SHELL_COMMANDS = setOf("sh", "bash", "mksh")

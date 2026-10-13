@@ -308,7 +308,11 @@ fun FloatingBallDetailCardContent(
 
                 // 命中规则
                 Text(
-                    text = stringResource(R.string.tool_permission_matched_rule, request.ruleName),
+                    text = stringResource(
+                        R.string.tool_permission_matched_rule,
+                        request.ruleName,
+                        request.matchedPattern,
+                    ),
                     color = colors.error,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
@@ -482,6 +486,7 @@ private fun PreviewDetailCard() {
                         toolName = "terminal",
                         command = "rm -rf /data/local/tmp/cache_logs_001.log",
                         ruleName = "危险删除命令",
+                        matchedPattern = "rm -rf",
                     ),
                     onAllow = {},
                     onDeny = {},

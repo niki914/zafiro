@@ -725,7 +725,8 @@ private fun ToolPermissionDialog(
                 Text(
                     text = stringResource(
                         R.string.tool_permission_matched_rule,
-                        request.ruleName
+                        request.ruleName,
+                        request.matchedPattern,
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,

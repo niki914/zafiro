@@ -240,7 +240,7 @@
     <string name="execution_rules_enabled_mode_confirm">询问我</string>
     <string name="tool_permission_dialog_title">AI 请求执行操作</string>
     <string name="tool_permission_request_intro">Zafiro 的工具「%1$s」请求执行以下命令：</string>
-    <string name="tool_permission_matched_rule">命中规则「%1$s」</string>
+    <string name="tool_permission_matched_rule">命中规则「%1$s」：%2$s</string>
     <string name="tool_permission_allow">允许本次</string>
     <string name="tool_permission_deny">拒绝</string>
     <string name="screen_control_consent_title">屏幕控制权限申请</string>
@@ -501,6 +501,7 @@
     <string name="agent_resident_action_stop">停止</string>
     <string name="agent_resident_action_approve">允许</string>
     <string name="agent_resident_action_decline">拒绝</string>
+    <string name="agent_resident_body_matched_pattern">命中 %1$s</string>
 
     <!-- Onboarding Preferences -->
     <string name="ui_onboard_done_advanced_entry">权限与执行规则</string>

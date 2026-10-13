@@ -44,6 +44,8 @@ class PermissionEntryGuardTest {
             AllowRule("seed_py_install_apk.py", ""),
             // onboarding 安全规则的展示文案，不是 su 调用
             AllowRule("OnboardingPreferencesViewModel.kt", "DefaultSecurityPatterns"),
+            // 执行规则里的提权关键字，用于匹配而非调用 su
+            AllowRule("ToolExecutionPreflight.kt", "SU_TOKEN"),
         ),
         // shell 通道授权命令只出现在 business:permission 内部
         "settings put secure" to listOf(

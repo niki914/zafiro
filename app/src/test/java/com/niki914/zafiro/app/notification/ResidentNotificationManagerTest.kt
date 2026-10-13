@@ -27,7 +27,8 @@ class ResidentNotificationManagerTest {
         val request = ApprovalRequest.ToolExecution(
             toolName = "bash",
             command = "ls -la",
-            ruleName = "shell_rule"
+            ruleName = "shell_rule",
+            matchedPattern = "ls",
         )
         val deferred = async {
             ResidentNotificationManager.residentApprover.decide(request)
@@ -49,7 +50,8 @@ class ResidentNotificationManagerTest {
         val request = ApprovalRequest.ToolExecution(
             toolName = "bash",
             command = "rm -rf /",
-            ruleName = "dangerous_rule"
+            ruleName = "dangerous_rule",
+            matchedPattern = "rm -rf",
         )
         val deferred = async {
             ResidentNotificationManager.residentApprover.decide(request)
@@ -69,7 +71,12 @@ class ResidentNotificationManagerTest {
     @Test
     fun decide_cleansUpOnCancellation() = runTest {
         val request =
-            ApprovalRequest.ToolExecution(toolName = "bash", command = "top", ruleName = "monitor")
+            ApprovalRequest.ToolExecution(
+                toolName = "bash",
+                command = "top",
+                ruleName = "monitor",
+                matchedPattern = "top",
+            )
         val job = async {
             ResidentNotificationManager.residentApprover.decide(request)
         }

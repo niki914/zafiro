@@ -240,7 +240,7 @@
     <string name="execution_rules_enabled_mode_confirm">詢問我</string>
     <string name="tool_permission_dialog_title">AI 請求執行操作</string>
     <string name="tool_permission_request_intro">Zafiro 的工具「%1$s」請求執行以下命令：</string>
-    <string name="tool_permission_matched_rule">命中規則「%1$s」</string>
+    <string name="tool_permission_matched_rule">命中規則「%1$s」：%2$s</string>
     <string name="tool_permission_allow">允許本次</string>
     <string name="tool_permission_deny">拒絕</string>
     <string name="screen_control_consent_title">螢幕控制權限申請</string>
@@ -486,6 +486,7 @@
     <string name="agent_resident_action_stop">停止</string>
     <string name="agent_resident_action_approve">允許</string>
     <string name="agent_resident_action_decline">拒絕</string>
+    <string name="agent_resident_body_matched_pattern">命中 %1$s</string>
 
     <!-- Onboarding Preferences -->
     <string name="ui_onboard_done_advanced_entry">權限與執行規則</string>

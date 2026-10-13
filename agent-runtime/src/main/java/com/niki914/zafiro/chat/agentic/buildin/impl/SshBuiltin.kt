@@ -231,7 +231,7 @@ open class SshBuiltin(
                     sessionId = outcome.session,
                     alias = explicitAlias,
                     scope = sessionScope,
-                    metadata = mapOf("identity" to "ssh", "host" to host, "user" to username),
+                    metadata = mapOf(SessionRegistry.META_IDENTITY to "ssh", "host" to host, "user" to username),
                 )
                 SessionTarget.Resolved(outcome.session)
             }

@@ -74,7 +74,9 @@ class ResidentNotificationBuilderTest {
         assertEquals(
             R.string.agent_resident_title_waiting_approval,
             ResidentNotificationBuilder.resolveTitleResId(
-                AgentState.WaitingApproval(ApprovalRequest.ToolExecution("terminal", "ls", "RULE")),
+                AgentState.WaitingApproval(
+                    ApprovalRequest.ToolExecution("terminal", "ls", "RULE", "ls")
+                ),
             ),
         )
         assertEquals(
@@ -134,24 +136,28 @@ class ResidentNotificationBuilderTest {
     }
 
     @Test
-    fun resolveBody_waitingApprovalUsesCommandFallback() {
+    fun resolveBody_waitingApprovalAppendsMatchedPattern() {
         assertEquals(
-            "rm -rf /tmp",
+            "rm -rf /tmp · " + context.getString(R.string.agent_resident_body_matched_pattern, "rm -rf"),
             ResidentNotificationBuilder.resolveBody(
                 AgentState.WaitingApproval(
                     ApprovalRequest.ToolExecution(
                         "terminal",
                         "rm -rf /tmp",
-                        "RULE"
+                        "RULE",
+                        "rm -rf",
                     )
                 ),
                 context,
             ),
         )
+        // 命令为空时回落 toolName，命中条目仍要带上
         assertEquals(
-            "terminal",
+            "terminal · " + context.getString(R.string.agent_resident_body_matched_pattern, "su"),
             ResidentNotificationBuilder.resolveBody(
-                AgentState.WaitingApproval(ApprovalRequest.ToolExecution("terminal", "  ", "RULE")),
+                AgentState.WaitingApproval(
+                    ApprovalRequest.ToolExecution("terminal", "  ", "RULE", "su")
+                ),
                 context,
             ),
         )
@@ -234,7 +240,8 @@ class ResidentNotificationBuilderTest {
             ApprovalRequest.ToolExecution(
                 toolName = "execute_command",
                 command = "ls /tmp",
-                ruleName = "RULE"
+                ruleName = "RULE",
+                matchedPattern = "ls",
             ),
         )
         val notification = ResidentNotificationBuilder.build(
@@ -317,7 +324,7 @@ class ResidentNotificationBuilderTest {
         assertEquals(
             ResidentNotificationBuilder.COLOR_WAITING_APPROVAL,
             ResidentNotificationBuilder.resolveColor(
-                AgentState.WaitingApproval(ApprovalRequest.ToolExecution("cmd", "echo 1", "RULE")),
+                AgentState.WaitingApproval(ApprovalRequest.ToolExecution("cmd", "echo 1", "RULE", "echo")),
             ),
         )
         assertEquals(

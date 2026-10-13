@@ -420,7 +420,7 @@ private fun FloatingBallPreviewSlot(
             val previewTarget: PreviewTarget = when {
                 isApprovalPending || approvalRequest != null -> {
                     val reason = when (val req = approvalRequest) {
-                        is ApprovalRequest.ToolExecution -> req.ruleName.takeIf { it.isNotBlank() }
+                        is ApprovalRequest.ToolExecution -> req.matchedPattern.takeIf { it.isNotBlank() }
                             ?: req.toolName
 
                         is ApprovalRequest.ScreenControlConsent -> stringResource(R.string.screen_control_consent_title)
@@ -655,6 +655,7 @@ private fun PreviewWaitingApproval() {
                     toolName = "terminal",
                     command = "rm -rf /tmp/cache",
                     ruleName = "危险删除命令",
+                    matchedPattern = "rm -rf",
                 ),
                 isApprovalPending = true,
                 modifier = Modifier.padding(16.dp),

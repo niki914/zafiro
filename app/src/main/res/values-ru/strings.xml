@@ -223,7 +223,7 @@
     <string name="execution_rules_enabled_mode_confirm">Спрашивать меня</string>
     <string name="tool_permission_dialog_title">ИИ запрашивает выполнение операции</string>
     <string name="tool_permission_request_intro">Инструмент Zafiro «%1$s» хочет выполнить команду:</string>
-    <string name="tool_permission_matched_rule">Сработало правило «%1$s»</string>
+    <string name="tool_permission_matched_rule">Сработало правило «%1$s»: %2$s</string>
     <string name="tool_permission_allow">Разрешить один раз</string>
     <string name="tool_permission_deny">Запретить</string>
     <string name="screen_control_consent_title">Запрос разрешения на управление экраном</string>
@@ -457,6 +457,7 @@
     <string name="agent_resident_action_stop">Стоп</string>
     <string name="agent_resident_action_approve">Разрешить</string>
     <string name="agent_resident_action_decline">Запретить</string>
+    <string name="agent_resident_body_matched_pattern">Совпадение: %1$s</string>
     <string name="ui_onboard_done_advanced_entry">Разрешения и правила выполнения</string>
     <string name="ui_onboard_preferences_title">Разрешения и правила выполнения</string>
     <string name="ui_onboard_preferences_permissions_group">Разрешения</string>

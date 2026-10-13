@@ -109,8 +109,7 @@ abstract class BaseSessionBuiltin(
     }
 
     /**
-     * 当请求未提供 session 与 alias 时调用。
-     * 子类可重写此方法（例如 ShellBuiltin 自动维护 alias="default" 的会话）。
+     * 当请求未提供 session 与 alias，且子类未重写 [resolveSessionTarget] 时调用。
      * 默认返回 null。
      */
     protected open suspend fun onDefaultSession(): String? = null
@@ -171,7 +170,11 @@ abstract class BaseSessionBuiltin(
         }
         val command = args.command?.takeIf(String::isNotBlank)
             ?: return TerminalToolResponse.invalidRequest("Field 'command' must not be blank.")
-        val decision = preflight.evaluate(command, toolName = name)
+        val decision = preflight.evaluate(
+            command,
+            toolName = name,
+            identity = actualSessionIdentity(sessionId),
+        )
         if (!decision.allowed) {
             return TerminalToolResponse.policyBlocked(decision)
         }
@@ -185,6 +188,13 @@ abstract class BaseSessionBuiltin(
             background = args.background,
         )
     }
+
+    /**
+     * 会话固化下来的执行身份（`user` / `root` / `shizuku`）；未登记的会话返回 null。
+     * 安全前检必须用它而非入参：入参只用于开辟新会话，已有会话的身份在建时已定。
+     */
+    protected fun actualSessionIdentity(sessionId: String): String? =
+        sessionRegistry.findById(sessionId)?.metadata?.get(SessionRegistry.META_IDENTITY)
 
     /**
      * 命令执行前的路径权限前检。远端 SSH 命令跑在别的机器上，本地沙箱权限帮不上忙，
@@ -515,7 +525,11 @@ abstract class BaseSessionBuiltin(
         val text = args.text
             ?: return TerminalToolResponse.invalidRequest("Field 'text' is required for submit.")
         // submit 会追换行立即执行，与 command 同等受执行规则约束（\u0003 永不拦）
-        val decision = preflight.evaluate(text, toolName = name)
+        val decision = preflight.evaluate(
+            text,
+            toolName = name,
+            identity = actualSessionIdentity(sessionId),
+        )
         if (!decision.allowed) {
             return TerminalToolResponse.policyBlocked(decision)
         }
@@ -536,7 +550,11 @@ abstract class BaseSessionBuiltin(
             ?: return TerminalToolResponse.invalidRequest("Field 'text' is required for write.")
         // 含换行的 write 等同于让 shell 执行脚本，同样过前检；纯交互片段与 Ctrl-C 不拦
         if (ABORT_SEQUENCE !in text && '\n' in text) {
-            val decision = preflight.evaluate(text, toolName = name)
+            val decision = preflight.evaluate(
+                text,
+                toolName = name,
+                identity = actualSessionIdentity(sessionId),
+            )
             if (!decision.allowed) {
                 return TerminalToolResponse.policyBlocked(decision)
             }
@@ -835,4 +853,13 @@ open class BaseSessionArgs(
     val text: String? = null,
     val timeout: Long? = null,
     val background: Boolean = false,
-)
+) {
+    /**
+     * 本次调用请求的执行身份，仅本地 shell 有（`user` / `root` / `shizuku`）；
+     * ssh 与 py 工具无此概念，保持 null。
+     *
+     * 它只用于**开辟新会话**：已有会话的身份在创建时固化。安全前检不要读它，
+     * 要用 [BaseSessionBuiltin.actualSessionIdentity] 取会话实际身份。
+     */
+    open val identity: String? get() = null
+}

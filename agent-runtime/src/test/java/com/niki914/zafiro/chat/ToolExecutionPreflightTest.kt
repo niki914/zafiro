@@ -382,6 +382,78 @@ class ToolExecutionPreflightTest {
         preflight.ensurePathAccess("cat /sdcard/x")
     }
 
+    // 保护：root 身份的会话等于「用了 su」，不靠命令文本里的 su 字面量兜底；
+    // 漏了它，identity=root 的 shell 能静默绕开 \bsu\b 拿到 root 权限。
+    @Test
+    fun evaluate_rootIdentityIsBlockedBySuRuleWithoutSuInCommand() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(executionRules = listOf(suRule()))
+        )
+
+        val decision = ToolExecutionPreflight().evaluate(
+            command = "cat /data/local/tmp/report.txt",
+            toolName = "terminal",
+            identity = "root",
+        )
+
+        assertFalse(decision.allowed)
+        assertEquals("RULE_BLOCKED", decision.code)
+        assertEquals("su", decision.matchedRuleId)
+    }
+
+    @Test
+    fun evaluate_userIdentityIsNotBlockedBySuRule() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(executionRules = listOf(suRule()))
+        )
+
+        assertTrue(
+            ToolExecutionPreflight().evaluate(
+                command = "cat /data/local/tmp/report.txt",
+                toolName = "terminal",
+                identity = "user",
+            ).allowed
+        )
+    }
+
+    @Test
+    fun evaluate_userIdentityStillBlockedWhenCommandUsesSu() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(executionRules = listOf(suRule()))
+        )
+
+        assertFalse(
+            ToolExecutionPreflight().evaluate(
+                command = "su -c id",
+                toolName = "terminal",
+                identity = "user",
+            ).allowed
+        )
+    }
+
+    // 保护：弹窗/通知要能回答「到底碰了哪一条」，matchedText 必须是实际命中片段而非正则原文。
+    @Test
+    fun evaluate_reportsMatchedTextRatherThanPattern() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(executionRules = listOf(dangerousRule()))
+        )
+
+        val decision = ToolExecutionPreflight().evaluate(
+            command = "rm -rf /data/local/tmp/cache",
+            toolName = "terminal",
+        )
+
+        assertEquals("rm -rf", decision.matchedText)
+        assertEquals("\\brm\\s+-rf\\b", decision.matchedPattern)
+    }
+
+    private fun suRule(): ExecutionRule = ExecutionRule(
+        id = "su",
+        name = "提权",
+        enabledMode = ExecutionRuleEnabledMode.ALWAYS,
+        patterns = listOf("\\bsu\\b"),
+    )
+
     private fun dangerousRule(
         enabledMode: ExecutionRuleEnabledMode = ExecutionRuleEnabledMode.ALWAYS,
     ): ExecutionRule {

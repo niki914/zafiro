@@ -103,8 +103,11 @@ object ResidentNotificationBuilder {
                 ToolPresentation.runningText(context, state.toolName, state.label)
 
             is AgentState.WaitingApproval -> when (val req = state.request) {
-                is ApprovalRequest.ToolExecution ->
-                    req.command.takeIf { it.isNotBlank() } ?: req.toolName
+                is ApprovalRequest.ToolExecution -> listOfNotNull(
+                    req.command.takeIf { it.isNotBlank() } ?: req.toolName,
+                    req.matchedPattern.takeIf { it.isNotBlank() }
+                        ?.let { context.getString(R.string.agent_resident_body_matched_pattern, it) },
+                ).joinToString(" · ")
 
                 is ApprovalRequest.ScreenControlConsent ->
                     context.getString(R.string.screen_control_consent_title)
