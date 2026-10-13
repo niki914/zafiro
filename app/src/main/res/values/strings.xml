@@ -140,7 +140,6 @@
     <string name="skill_delete_dialog_title">删除 Skill</string>
     <string name="skill_delete_dialog_text">确定要删除 Skill「%1$s」吗？此操作不可撤销。</string>
     <string name="skill_error_delete_failed">删除 Skill 失败：%1$s</string>
-    <string name="skill_import_button">导入 Skill</string>
     <string name="skill_import_no_skill_file">所选文件夹中未找到 SKILL.md，无法导入</string>
     <string name="skill_import_conflict_title">同名 Skill 已存在</string>
     <string name="skill_import_conflict_text">Skill「%1$s」已存在，是否覆盖？</string>
@@ -459,7 +458,6 @@
     <string name="ui_settings_saved_configuration_delete_title">删除配置</string>
     <string name="ui_settings_saved_configuration_delete_text">该配置将被删除，此操作无法恢复。</string>
     <string name="ui_settings_saved_configuration_edit">编辑</string>
-    <string name="ui_settings_configure_add">添加配置</string>
     <string name="ui_settings_configure_name_label">配置名称</string>
     <string name="ui_settings_configure_name_placeholder">例如：DeepSeek 主力</string>
     <string name="ui_settings_configure_vision_label">视觉模型</string>

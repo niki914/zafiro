@@ -132,7 +132,6 @@
     <string name="skill_delete_dialog_title">Удалить навык</string>
     <string name="skill_delete_dialog_text">Удалить навык «%1$s»? Действие необратимо.</string>
     <string name="skill_error_delete_failed">Не удалось удалить навык: %1$s</string>
-    <string name="skill_import_button">Импортировать навык</string>
     <string name="skill_import_no_skill_file">В выбранной папке нет файла SKILL.md — импорт невозможен</string>
     <string name="skill_import_conflict_title">Такой навык уже есть</string>
     <string name="skill_import_conflict_text">Навык «%1$s» уже существует. Перезаписать?</string>
@@ -412,7 +411,6 @@
     <string name="ui_settings_saved_configuration_delete_title">Удалить конфигурацию</string>
     <string name="ui_settings_saved_configuration_delete_text">Конфигурация будет удалена без возможности восстановления.</string>
     <string name="ui_settings_saved_configuration_edit">Изменить</string>
-    <string name="ui_settings_configure_add">Добавить конфигурацию</string>
     <string name="ui_settings_configure_name_label">Название</string>
     <string name="ui_settings_configure_name_placeholder">например, DeepSeek основной</string>
     <string name="ui_settings_configure_vision_label">Модель со зрением</string>

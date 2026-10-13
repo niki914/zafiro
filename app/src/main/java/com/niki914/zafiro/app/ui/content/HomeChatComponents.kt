@@ -486,7 +486,6 @@ fun LiquidChatComposer(
     pendingFiles: List<HomeChatFile> = emptyList(),
     onAttachImageClick: () -> Unit = {},
 ) {
-    val stopContentDescription = "Stop Button"
     // 发送按钮恒亮：无文本点击时触发 Toast 提示，能不能点不靠颜色表达。
     // contextProgress 为 null（无记账）时不画环。
     val contentColor = MaterialTheme.colorScheme.primary
@@ -549,7 +548,7 @@ fun LiquidChatComposer(
                         modifier = Modifier
                             .size(28.dp)
                             .clearAndSetSemantics {
-                                contentDescription = stopContentDescription
+                                contentDescription = "Stop Button"
                             },
                         color = contentColor,
                     )

@@ -140,7 +140,6 @@
     <string name="skill_delete_dialog_title">Skill の削除</string>
     <string name="skill_delete_dialog_text">Skill「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
     <string name="skill_error_delete_failed">Skill の削除に失敗しました：%1$s</string>
-    <string name="skill_import_button">Skill をインポート</string>
     <string name="skill_import_no_skill_file">選択したフォルダ内に SKILL.md が見つからないため、インポートできません</string>
     <string name="skill_import_conflict_title">同名の Skill が既に存在します</string>
     <string name="skill_import_conflict_text">Skill「%1$s」は既に存在します。上書きしますか？</string>
@@ -453,7 +452,6 @@
     <string name="ui_settings_saved_configuration_delete_title">設定の削除</string>
     <string name="ui_settings_saved_configuration_delete_text">この設定は削除されます。この操作は元に戻せません。</string>
     <string name="ui_settings_saved_configuration_edit">編集</string>
-    <string name="ui_settings_configure_add">設定を追加</string>
     <string name="ui_settings_configure_name_label">設定名</string>
     <string name="ui_settings_configure_name_placeholder">例：DeepSeek メイン</string>
     <string name="ui_settings_configure_vision_label">ビジョンモデル</string>
