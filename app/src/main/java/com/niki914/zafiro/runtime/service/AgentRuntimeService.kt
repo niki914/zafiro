@@ -39,6 +39,7 @@ import com.niki914.zafiro.runtime.ipc.RenderFrame
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -47,6 +48,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicReference
 import com.niki914.zafiro.app.R as AppR
 
@@ -215,14 +217,21 @@ class AgentRuntimeService : Service() {
                 agentManager.main
             }
             targetAgent.updateDraft { it.copy(text = q, images = emptyList(), files = emptyList()) }
-            when (val startResult = targetAgent.stream()) {
+            when (targetAgent.stream()) {
                 TurnStart.Busy -> {
-                    try {
-                        cb.asBinder().unlinkToDeath(deathRecipient, 0)
-                    } catch (_: Exception) {
+                    Logger.i(LOG_TAG, "submit preempting activeTurn isolated=$isIsolated")
+                    // 先登记再启动：失败路径会在 job 尾部清 activeTurn，倒序会被它抢先清成空。
+                    val job = scope.launch(start = CoroutineStart.LAZY) {
+                        if (preemptAndStream(targetAgent, isIsolated)) {
+                            executeTurn(cb, targetAgent)
+                        } else {
+                            if (activeTurn.get()?.callback === cb) activeTurn.set(null)
+                            rejectBusy(cb)
+                        }
                     }
-                    Logger.w(LOG_TAG, "submit rejected activeTurnBusy=true")
-                    sendError(cb, "Another turn is already in progress")
+                    activeTurn.set(ActiveTurn(cb, job, targetAgent))
+                    job.start()
+                    Logger.i(LOG_TAG, "turn registered preempting=true isolated=$isIsolated")
                     return
                 }
 
@@ -236,11 +245,7 @@ class AgentRuntimeService : Service() {
                 }
 
                 TurnStart.Started -> {
-                    val convId =
-                        targetAgent.conversation.value.id?.value ?: if (isIsolated) "host" else ""
-                    if (convId.isNotBlank()) {
-                        TurnNotificationManager.markHostTurnStarted(convId)
-                    }
+                    markHostTurnStarted(targetAgent, isIsolated)
                     Logger.i(
                         LOG_TAG,
                         "targetAgent.stream started successfully isolated=$isIsolated"
@@ -252,6 +257,28 @@ class AgentRuntimeService : Service() {
             val turn = ActiveTurn(cb, job, targetAgent)
             activeTurn.set(turn)
             Logger.i(LOG_TAG, "turn registered callbackLinked=true isolated=$isIsolated")
+        }
+
+        /** 抢占上一回合：停止并等它真正结束，再重新发起。有界重试兜住 stop 落地的窗口。 */
+        private suspend fun preemptAndStream(agent: Agent, isIsolated: Boolean): Boolean {
+            val started = preemptPreviousTurn(agent)
+            if (started) markHostTurnStarted(agent, isIsolated)
+            return started
+        }
+
+        private fun rejectBusy(cb: IRenderFrameCallback) {
+            try {
+                cb.asBinder().unlinkToDeath(deathRecipient, 0)
+            } catch (_: Exception) {
+            }
+            sendError(cb, "Another turn is already in progress")
+        }
+
+        private fun markHostTurnStarted(agent: Agent, isIsolated: Boolean) {
+            val convId = agent.conversation.value.id?.value ?: if (isIsolated) "host" else ""
+            if (convId.isNotBlank()) {
+                TurnNotificationManager.markHostTurnStarted(convId)
+            }
         }
 
         override fun cancel() {
@@ -537,14 +564,17 @@ class AgentRuntimeService : Service() {
             )
         } finally {
             val convId = turnAgent.conversation.value.id?.value ?: ""
-            if (convId.isNotBlank()) {
+            // 抢占时旧回合的收尾晚于新回合的 markHostTurnStarted，无条件清理会抹掉新回合的
+            // 宿主标记；只有仍持有 activeTurn 的回合才拥有该标记。
+            val isCurrentTurn = activeTurn.get()?.callback === callback
+            if (isCurrentTurn && convId.isNotBlank()) {
                 TurnNotificationManager.markHostTurnEnded(convId)
             }
             try {
                 callback.asBinder().unlinkToDeath(deathRecipient, 0)
             } catch (_: Exception) {
             }
-            if (activeTurn.get()?.callback === callback) {
+            if (isCurrentTurn) {
                 activeTurn.set(null)
             }
         }
@@ -583,4 +613,62 @@ class AgentRuntimeService : Service() {
         val allowedPackages = setOf(packageName) + HostApp.packageNames.toSet()
         return packages.any { it in allowedPackages }
     }
+}
+
+private const val PREEMPT_TAG = "niki914_zafiro_AgentRuntimeService"
+private const val PREEMPT_MAX_ATTEMPTS = 3
+private const val PREEMPT_STOP_TIMEOUT_MS = 10_000L
+
+/**
+ * 停止正在运行的回合并等它真正落地，再重新发起；有界重试兜住 stop 的异步落地窗口。
+ *
+ * 单独提出是为了可在不依赖 Service 的情况下验证这条重试/取消契约。
+ *
+ * @return 新回合是否已开始。false = 已耗尽重试或草稿为空，调用方应发回忙错误。
+ */
+internal suspend fun preemptPreviousTurn(
+    agent: Agent,
+    maxAttempts: Int = PREEMPT_MAX_ATTEMPTS,
+    stopTimeoutMs: Long = PREEMPT_STOP_TIMEOUT_MS,
+): Boolean {
+    repeat(maxAttempts) { attempt ->
+        val stopStartMs = System.currentTimeMillis()
+        agent.stop()
+        val stopped = withTimeoutOrNull(stopTimeoutMs) {
+            agent.status.first { it is AgentState.Idle }
+        }
+        val stopWaitMs = System.currentTimeMillis() - stopStartMs
+        if (stopped == null) {
+            Logger.w(
+                PREEMPT_TAG,
+                "preempt stop timed out attempt=${attempt + 1} stopWaitMs=$stopWaitMs"
+            )
+            return@repeat
+        }
+        val streamStartMs = System.currentTimeMillis()
+        val result = agent.stream()
+        Logger.i(
+            PREEMPT_TAG,
+            "preempt stage attempt=${attempt + 1} stopWaitMs=$stopWaitMs " +
+                    "streamCallMs=${System.currentTimeMillis() - streamStartMs} result=$result"
+        )
+        when (result) {
+            TurnStart.Started -> {
+                Logger.i(PREEMPT_TAG, "preempt restart started attempt=${attempt + 1}")
+                return true
+            }
+
+            TurnStart.Busy -> Logger.w(
+                PREEMPT_TAG,
+                "preempt restart still busy attempt=${attempt + 1}/$maxAttempts"
+            )
+
+            TurnStart.DraftEmpty -> {
+                Logger.w(PREEMPT_TAG, "preempt restart draftEmpty=true")
+                return false
+            }
+        }
+    }
+    Logger.w(PREEMPT_TAG, "preempt exhausted attempts=$maxAttempts")
+    return false
 }
