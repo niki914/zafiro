@@ -144,6 +144,15 @@ fun McpServiceSettingsContent(
                     }
                 },
             )
+            SettingsItemDivider()
+            SettingToggleItem(
+                title = stringResource(R.string.mcp_service_keep_screen_on_title),
+                checked = uiState.keepScreenOn,
+                onCheckedChange = { checked ->
+                    fieldController.clearActiveField()
+                    viewModel.sendIntent(McpServiceSettingsIntent.ToggleKeepScreenOn(checked))
+                },
+            )
         }
 
         // Block 2: 连接与鉴权

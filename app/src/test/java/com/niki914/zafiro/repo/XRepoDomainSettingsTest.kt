@@ -5,6 +5,7 @@ import android.content.ContextWrapper
 import com.niki914.store.StoreDescriptorRegistry
 import com.niki914.zafiro.app.util.SilentLoggerRule
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -360,6 +361,33 @@ class XRepoDomainSettingsTest {
         }
 
         assertEquals(emptyList<Any>(), XRepo.executionRules.list())
+    }
+
+    // 保护：旧配置文件没有 keepScreenOn 字段时，解析必须兜底为 true。
+    // 写成 false 会让已升级用户的 MCP 常亮静默失效，且不看代码发现不了。
+    @Test
+    fun mcpServiceKeepScreenOnDefaultsTrueAndPersistsExplicitValue() = runTest {
+        val legacyStore = FakeDomainSettingsStore(
+            StoreDescriptorRegistry.TOOLS_MCP_SERVICE_ID to
+                    """{"enabled":true,"port":8791,"host":"127.0.0.1","exposedTools":[]}"""
+        )
+        XRepo.installStoreForTest(legacyStore)
+        XRepo.init(context)
+        assertTrue(XRepo.mcpService.get().keepScreenOn)
+
+        XRepo.mcpService.setKeepScreenOnWhileRunning(false)
+        assertFalse(XRepo.mcpService.get().keepScreenOn)
+    }
+
+    // 保护：configFlow 必须立刻发出一次，而不是等 get() 读完盘。
+    // 它是 AgentWakeLockController 的 combine 上游，任一来源不发射会让整条 combine 永不发射，
+    // 导致唤醒锁静默失效（后台 Agent 被系统休眠掐断）——无异常无日志，只能靠这条契约拦住。
+    @Test
+    fun mcpServiceConfigFlowEmitsBeforeAnyGet() = runTest {
+        // 用全新实例，避开 resetForTest 对单例的赋值，验证的是类自身的种子。
+        val fresh = McpServiceApi(XRepo)
+
+        assertTrue(fresh.configFlow.first().keepScreenOn)
     }
 
     private class FakeDomainSettingsStore(

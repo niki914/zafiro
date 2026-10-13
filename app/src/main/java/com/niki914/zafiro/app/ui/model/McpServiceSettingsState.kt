@@ -30,6 +30,7 @@ data class McpServiceSettingsUiState(
     val tokenInput: String = "",
     val tokenVisible: Boolean = false,
     val exposedTools: Set<String> = RuntimeMcpServiceConfig.DEFAULT_EXPOSED_TOOLS,
+    val keepScreenOn: Boolean = true,
     val tools: List<McpServiceToolItemUi> = emptyList(),
 )
 
@@ -40,6 +41,7 @@ sealed interface McpServiceSettingsIntent {
     data class TokenChanged(val token: String) : McpServiceSettingsIntent
     data object ToggleTokenVisibility : McpServiceSettingsIntent
     data class ToggleTool(val toolName: String, val checked: Boolean) : McpServiceSettingsIntent
+    data class ToggleKeepScreenOn(val enabled: Boolean) : McpServiceSettingsIntent
 }
 
 sealed interface McpServiceSettingsEffect
@@ -99,6 +101,7 @@ class McpServiceSettingsViewModel :
                         port = config.port,
                         host = config.host,
                         exposedTools = config.exposedTools,
+                        keepScreenOn = config.keepScreenOn,
                     )
                 }
             }
@@ -118,6 +121,8 @@ class McpServiceSettingsViewModel :
             }
 
             is McpServiceSettingsIntent.ToggleTool -> toggleTool(intent.toolName, intent.checked)
+            is McpServiceSettingsIntent.ToggleKeepScreenOn ->
+                XRepo.mcpService.setKeepScreenOnWhileRunning(intent.enabled)
         }
     }
 
@@ -133,6 +138,7 @@ class McpServiceSettingsViewModel :
                 host = config.host,
                 tokenInput = config.bearerToken,
                 exposedTools = config.exposedTools,
+                keepScreenOn = config.keepScreenOn,
                 tools = allTools,
             )
         }
