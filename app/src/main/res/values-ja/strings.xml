@@ -71,6 +71,8 @@
     <string name="ui_home_error_idle_timeout_title">応答がタイムアウトしました</string>
     <string name="ui_home_error_output_truncated_title">出力が打ち切られました</string>
     <string name="ui_home_error_output_truncated_body">1 回の出力上限に達したため、返信は未完成です。モデル設定で Max Tokens を大きくしてから、もう一度生成してください。</string>
+    <string name="ui_home_error_repetition_title">出力の繰り返しを検出</string>
+    <string name="ui_home_error_repetition_body">モデルが繰り返しに陥ったのを検知し、会話を終了しました。誤検知の場合は設定で感度を調整してください。</string>
     <string name="ui_home_error_retry_exhausted_title">自動リトライがすべて失敗しました</string>
     <string name="ui_home_error_internal_title">内部エラー</string>
     <string name="ui_home_retrying_title">ネットワーク障害のため再試行中…</string>

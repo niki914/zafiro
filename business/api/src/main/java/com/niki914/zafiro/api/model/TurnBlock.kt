@@ -100,4 +100,7 @@ enum class TurnFailureCode {
 
     /** 单次输出被上限截断：回答没写完，工具参数可能被切断。 */
     OutputTruncated,
+
+    /** 复读/退化熔断：模型输出自重复，框架主动中止。不可重试。 */
+    Repetition,
 }

@@ -69,6 +69,8 @@
     <string name="ui_home_error_idle_timeout_title">Превышено время ожидания ответа</string>
     <string name="ui_home_error_output_truncated_title">Ответ обрезан</string>
     <string name="ui_home_error_output_truncated_body">Достигнут лимит длины одного ответа, поэтому ответ неполный. Увеличьте «Максимум токенов» в настройках модели и сгенерируйте ответ заново.</string>
+    <string name="ui_home_error_repetition_title">Обнаружено повторение вывода</string>
+    <string name="ui_home_error_repetition_body">Обнаружено зацикливание модели на повторах — диалог остановлен. Если это ложное срабатывание, настройте чувствительность в настройках.</string>
     <string name="ui_home_error_retry_exhausted_title">Автоматические повторы исчерпаны</string>
     <string name="ui_home_error_internal_title">Внутренняя ошибка</string>
     <string name="ui_home_retrying_title">Сбой сети, повторяем…</string>

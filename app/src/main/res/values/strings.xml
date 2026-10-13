@@ -71,6 +71,8 @@
     <string name="ui_home_error_idle_timeout_title">响应超时</string>
     <string name="ui_home_error_output_truncated_title">输出被截断</string>
     <string name="ui_home_error_output_truncated_body">单次输出达到上限，回答未完成。请在模型配置中调大 Max Tokens 后重新生成。</string>
+    <string name="ui_home_error_repetition_title">检测到重复输出</string>
+    <string name="ui_home_error_repetition_body">检测到模型陷入重复，已终止对话。如果误判请在设置中调整灵敏度。</string>
     <string name="ui_home_error_retry_exhausted_title">多次自动重试后仍失败</string>
     <string name="ui_home_error_internal_title">内部错误</string>
     <string name="ui_home_retrying_title">网络波动，正在重试…</string>

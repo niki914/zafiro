@@ -440,6 +440,8 @@ class AgentRuntimeService : Service() {
             TurnFailureCode.IdleTimeout -> getString(AppR.string.ui_home_error_idle_timeout_title)
             TurnFailureCode.OutputTruncated ->
                 getString(AppR.string.ui_home_error_output_truncated_title)
+            TurnFailureCode.Repetition ->
+                getString(AppR.string.ui_home_error_repetition_title)
 
             else -> getString(AppR.string.runtime_error_internal)
         }

@@ -34,5 +34,8 @@ enum class LLMErrorCode(val isRetryable: Boolean) {
     Parse(false),
     HookFailed(false),
     ToolExecutionFailed(false),
-    RetryExhausted(false)
+    RetryExhausted(false),
+
+    /** 复读/退化熔断：模型输出自重复，框架主动中止。不可重试（重发只会再复读一遍）。 */
+    Repetition(false)
 }

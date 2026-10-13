@@ -72,6 +72,8 @@
     <string name="ui_home_error_idle_timeout_title">Tiempo de espera agotado</string>
     <string name="ui_home_error_output_truncated_title">Salida truncada</string>
     <string name="ui_home_error_output_truncated_body">Se alcanzó el límite de salida por respuesta y la respuesta quedó incompleta. Aumente Max Tokens en la configuración del modelo y vuelva a generar.</string>
+    <string name="ui_home_error_repetition_title">Salida repetida detectada</string>
+    <string name="ui_home_error_repetition_body">El modelo entró en un bucle de repetición, así que la conversación se detuvo. Si fue un falso positivo, ajuste la sensibilidad en Ajustes.</string>
     <string name="ui_home_error_retry_exhausted_title">Reintentos automáticos agotados</string>
     <string name="ui_home_error_internal_title">Error interno</string>
     <string name="ui_home_retrying_title">Problema de red, reintentando…</string>

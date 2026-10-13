@@ -72,6 +72,8 @@
     <string name="ui_home_error_idle_timeout_title">Response timed out</string>
     <string name="ui_home_error_output_truncated_title">Output truncated</string>
     <string name="ui_home_error_output_truncated_body">The single-response output limit was reached and the reply is incomplete. Raise Max Tokens in the model configuration and regenerate.</string>
+    <string name="ui_home_error_repetition_title">Repeated output detected</string>
+    <string name="ui_home_error_repetition_body">The model fell into a repetition loop, so the conversation was stopped. If this was a false positive, adjust the sensitivity in Settings.</string>
     <string name="ui_home_error_retry_exhausted_title">Automatic retries exhausted</string>
     <string name="ui_home_error_internal_title">Internal error</string>
     <string name="ui_home_retrying_title">Network hiccup, retrying…</string>

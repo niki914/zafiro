@@ -149,6 +149,12 @@ internal fun toAssistantErrorUi(
             bodyRes = R.string.ui_home_error_output_truncated_body,
         )
 
+        // 复读/退化熔断：模型输出陷入重复，框架主动中止。正文告知已中止与应对。
+        LlmErrorCode.Repetition -> AssistantErrorUi(
+            titleRes = R.string.ui_home_error_repetition_title,
+            bodyRes = R.string.ui_home_error_repetition_body,
+        )
+
         // 内部错误（我们的问题 / 未知）：标题分类 + 原始 message 透传，空则兜底
         LlmErrorCode.TurnConflict, LlmErrorCode.HookFailed,
         LlmErrorCode.ToolExecutionFailed, null,

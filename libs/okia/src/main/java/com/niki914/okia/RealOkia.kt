@@ -293,6 +293,7 @@ internal class RealOkia(
             hooks = cfg.hooks,
             httpEngine = engine,
             retryPolicy = cfg.retryPolicy,
+            requestLogger = cfg.requestLogger,
             onCommit = { messages ->
                 tree.appendAll(messages)
                 live = null
