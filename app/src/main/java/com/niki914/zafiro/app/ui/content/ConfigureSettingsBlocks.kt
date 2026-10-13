@@ -255,8 +255,7 @@ internal fun ConfigureProtocolSettingsBlock(
             value = uiState.maxTokensInput,
             onValueChange = onMaxTokensChange,
             placeholder = stringResource(R.string.ui_settings_configure_max_tokens_placeholder),
-            description = uiState.maxTokensErrorResId?.let { stringResource(it) }
-                ?: stringResource(R.string.ui_settings_configure_max_tokens_hint),
+            description = uiState.maxTokensErrorResId?.let { stringResource(it) },
             enabled = !uiState.isSaving,
             minLines = 1,
             maxLines = 1,
@@ -270,8 +269,7 @@ internal fun ConfigureProtocolSettingsBlock(
             value = uiState.contextWindowInput,
             onValueChange = onContextWindowChange,
             placeholder = stringResource(R.string.ui_settings_configure_context_window_placeholder),
-            description = uiState.contextWindowErrorResId?.let { stringResource(it) }
-                ?: stringResource(R.string.ui_settings_configure_context_window_hint),
+            description = uiState.contextWindowErrorResId?.let { stringResource(it) },
             enabled = !uiState.isSaving,
             minLines = 1,
             maxLines = 1,

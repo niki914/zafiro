@@ -16,6 +16,7 @@ internal object McpServiceSettingsCodec {
     private const val KEY_HOST = "host"
     private const val KEY_BEARER_TOKEN = "bearerToken"
     private const val KEY_EXPOSED_TOOLS = "exposedTools"
+    private const val KEY_KEEP_SCREEN_ON = "keepScreenOn"
 
     fun parse(json: String): RuntimeMcpServiceConfig {
         val obj = parseObject(json)
@@ -25,12 +26,14 @@ internal object McpServiceSettingsCodec {
         val token = obj.string(KEY_BEARER_TOKEN)
         val exposedTools = (obj[KEY_EXPOSED_TOOLS] as? JsonArray)?.stringValues()?.toSet()
             ?: RuntimeMcpServiceConfig.DEFAULT_EXPOSED_TOOLS
+        val keepScreenOn = obj.boolean(KEY_KEEP_SCREEN_ON, default = true)
         return RuntimeMcpServiceConfig(
             enabled = enabled,
             port = port,
             host = host,
             bearerToken = token,
             exposedTools = exposedTools,
+            keepScreenOn = keepScreenOn,
         )
     }
 
@@ -42,6 +45,7 @@ internal object McpServiceSettingsCodec {
                 KEY_HOST to JsonPrimitive(config.host),
                 KEY_BEARER_TOKEN to JsonPrimitive(config.bearerToken),
                 KEY_EXPOSED_TOOLS to JsonArray(config.exposedTools.map { JsonPrimitive(it) }),
+                KEY_KEEP_SCREEN_ON to JsonPrimitive(config.keepScreenOn),
             )
         ).toString()
     }

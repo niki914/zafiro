@@ -9,6 +9,8 @@ import android.view.WindowManager
 import com.niki914.logging.Logger
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.AgentManager
+import com.niki914.zafiro.api.McpService
+import com.niki914.zafiro.api.McpServiceStatus
 import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.findService
@@ -33,8 +35,9 @@ import java.lang.ref.WeakReference
  * 2. 窗口级屏幕常亮锁：接管 [WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON]，经 [Application.ActivityLifecycleCallbacks]
  *    自动跟踪前台 Activity，在前台且回答/执行中时保持屏幕常亮，页面退后台/暂停时自动解除。
  *
- * 观察配置开关 [XRepo.keepScreenOnSetting] 与所有活跃会话（前台 [AgentControl] 与后台 [AgentManager.activeStates]），
- * 仅当开关开启且有任意会话正在运行态时激活，实现防休眠与常亮逻辑的单一真源收敛。
+ * 需求方经 [WakeDemand] 收敛：Agent 会话（前台 [AgentControl] 与后台 [AgentManager.activeStates]）
+ * 与 MCP 服务（[McpService.status]，缺失时降级为无需求）各自声明诉求，本控制器按诉求并集持有锁。
+ * CPU 锁只要存在任一需求即持有；屏幕常亮仅在 [WakeDemand.needsScreenOn] 的需求存在时生效。
  */
 object AgentWakeLockController {
 
@@ -54,6 +57,21 @@ object AgentWakeLockController {
 
     private val _shouldKeepScreenOn = MutableStateFlow(false)
     val shouldKeepScreenOn: StateFlow<Boolean> = _shouldKeepScreenOn.asStateFlow()
+
+    /** 从各来源的当前状态算出需求集合。抽成纯函数以便单测直接覆盖分支。 */
+    internal fun demandsOf(
+        agentKeepScreenOn: Boolean,
+        anyAgentRunning: Boolean,
+        mcpKeepScreenOn: Boolean,
+        mcpRunning: Boolean,
+    ): Set<WakeDemand> = buildSet {
+        if (agentKeepScreenOn && anyAgentRunning) {
+            add(WakeDemand.AgentRunning)
+        }
+        if (mcpKeepScreenOn && mcpRunning) {
+            add(WakeDemand.McpServing)
+        }
+    }
 
     fun start(context: Context, scope: CoroutineScope) {
         val application = (context.applicationContext as? Application) ?: (context as? Application)
@@ -96,25 +114,40 @@ object AgentWakeLockController {
             runCatching { XRepo.keepScreenOn() }
             val agentControl = findService<AgentControl>() ?: return@launch
             val agentManager = findService<AgentManager>() ?: return@launch
+            // MCP 为可选需求方：缺失时只降级 MCP 防休眠，不影响 Agent 自身的保活。
+            val mcpService = findService<McpService>()
 
             combine(
                 XRepo.keepScreenOnSetting,
                 agentControl.status,
                 agentManager.activeStates,
-            ) { settingOn, mainStatus, activeStates ->
-                val anyRunning = mainStatus.isRunning || activeStates.values.any { it.isRunning }
-                settingOn && anyRunning
+                XRepo.mcpService.configFlow,
+                mcpService?.status ?: MutableStateFlow(McpServiceStatus.Stopped),
+            ) { agentKeepOn, mainStatus, activeStates, mcpConfig, mcpStatus ->
+                demandsOf(
+                    agentKeepScreenOn = agentKeepOn,
+                    anyAgentRunning = mainStatus.isRunning ||
+                            activeStates.values.any { it.isRunning },
+                    mcpKeepScreenOn = mcpService != null && mcpConfig.keepScreenOn,
+                    mcpRunning = mcpStatus is McpServiceStatus.Running,
+                )
             }
                 .distinctUntilChanged()
-                .collect { shouldKeepAlive ->
-                    isKeepAliveActive = shouldKeepAlive
-                    _shouldKeepScreenOn.value = shouldKeepAlive
-                    applyWindowKeepScreenOn(currentForegroundActivity?.get(), shouldKeepAlive)
-                    if (shouldKeepAlive) {
+                .collect { demands ->
+                    val holdCpu = demands.isNotEmpty()
+                    val keepScreenOn = demands.any { it.needsScreenOn }
+                    isKeepAliveActive = holdCpu
+                    _shouldKeepScreenOn.value = keepScreenOn
+                    applyWindowKeepScreenOn(currentForegroundActivity?.get(), keepScreenOn)
+                    if (holdCpu) {
                         acquireCpuWakeLock()
                     } else {
                         releaseCpuWakeLock()
                     }
+                    Logger.i(
+                        LOG_TAG,
+                        "wake lock updated: demands=$demands cpu=$holdCpu screenOn=$keepScreenOn"
+                    )
                 }
         }
     }

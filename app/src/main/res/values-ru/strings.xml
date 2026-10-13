@@ -440,11 +440,9 @@
     <string name="ui_settings_configure_thinking_hint">Оставьте «Как у провайдера», чтобы использовать его поведение по умолчанию; понизьте уровень, если провайдер отклоняет высокий.</string>
     <string name="ui_settings_configure_max_tokens_label">Максимум токенов</string>
     <string name="ui_settings_configure_max_tokens_placeholder">Например: 200000 или 200k</string>
-    <string name="ui_settings_configure_max_tokens_hint">Максимальное число токенов в одном ответе. Если оставить пустым, используется значение из облака (если доступно) или значение по умолчанию; уменьшите, если сервер сообщает о превышении лимита. Поддерживаются суффиксы k/m/b (например, 128k).</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Введите корректное число (поддерживаются суффиксы k/m/b) не меньше 256</string>
     <string name="ui_settings_configure_context_window_label">Контекстное окно</string>
     <string name="ui_settings_configure_context_window_placeholder">Например: 1000000 или 1M</string>
-    <string name="ui_settings_configure_context_window_hint">Размер контекстного окна модели; используется для индикатора использования контекста. Если оставить пустым, используется значение из облака (если доступно) или значение по умолчанию.</string>
     <string name="ui_settings_configure_error_context_window_invalid">Введите корректное число (поддерживаются суффиксы k/m/b) не меньше 1000</string>
     <string name="ui_theme_mode_system">Как в системе</string>
     <string name="ui_theme_mode_light">Светлая</string>
@@ -505,6 +503,7 @@
     <string name="mcp_service_section_connection">Подключение и безопасность</string>
     <string name="mcp_service_section_tools">Доступные инструменты</string>
     <string name="mcp_service_enable_title">Включить сервис MCP</string>
+    <string name="mcp_service_keep_screen_on_title">Не давать устройству спать при работе</string>
     <string name="mcp_service_enable_summary">Разрешить внешним агентам доступ к инструментам Zafiro через MCP</string>
     <string name="mcp_service_status_title">Состояние</string>
     <string name="mcp_service_status_running">Запущен</string>

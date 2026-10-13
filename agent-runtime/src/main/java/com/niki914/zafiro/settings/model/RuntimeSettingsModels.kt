@@ -175,6 +175,7 @@ data class RuntimeToolValidation(
 /**
  * Zafiro 把自己作为 MCP 服务对外暴露的配置。
  * 默认关闭服务，且仅在白名单内的安全工具默认开放；高危工具（terminal/python）默认关闭。
+ * [keepScreenOn] 只影响服务 Running 时的 CPU 防休眠，MCP 调用不要求屏幕常亮。
  */
 data class RuntimeMcpServiceConfig(
     val enabled: Boolean = false,
@@ -182,6 +183,7 @@ data class RuntimeMcpServiceConfig(
     val host: String = DEFAULT_HOST,
     val bearerToken: String = "",
     val exposedTools: Set<String> = DEFAULT_EXPOSED_TOOLS,
+    val keepScreenOn: Boolean = true,
 ) {
     fun isToolExposed(toolName: String): Boolean {
         if (toolName.startsWith("mcp__")) {

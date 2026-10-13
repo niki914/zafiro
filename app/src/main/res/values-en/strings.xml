@@ -482,11 +482,9 @@
     <string name="ui_settings_configure_thinking_hint">Leave as Provider Default to use the provider default behavior; lower it yourself if the provider rejects a high level.</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">For example: 200000 or 200k</string>
-    <string name="ui_settings_configure_max_tokens_hint">Maximum tokens a single request may output. Leave empty to use the cloud value when available, otherwise the default; lower it if the server reports the output limit is exceeded. Supports k/m/b suffix (e.g. 128k).</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Enter a valid number (k/m/b suffix supported) of at least 256</string>
     <string name="ui_settings_configure_context_window_label">Context Window</string>
     <string name="ui_settings_configure_context_window_placeholder">For example: 1000000 or 1M</string>
-    <string name="ui_settings_configure_context_window_hint">The model\'s context window size, used for the context usage indicator. Leave empty to use the cloud value when available, otherwise the default.</string>
     <string name="ui_settings_configure_error_context_window_invalid">Enter a valid number (k/m/b suffix supported) of at least 1000</string>
 
     <string name="ui_theme_mode_system">Follow system</string>
@@ -552,6 +550,7 @@
     <string name="mcp_service_section_connection">Connection &amp; Security</string>
     <string name="mcp_service_section_tools">Exposed Tools</string>
     <string name="mcp_service_enable_title">Enable MCP Service</string>
+    <string name="mcp_service_keep_screen_on_title">Keep awake while running</string>
     <string name="mcp_service_enable_summary">Allow external agents to access Zafiro tools via MCP</string>
     <string name="mcp_service_status_title">Status</string>
     <string name="mcp_service_status_running">Running</string>
