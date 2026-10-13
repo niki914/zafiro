@@ -39,7 +39,9 @@ abstract class ComposeMVIViewModel<Intent, State, Effect>(
 
     // 副作用 - 用于一次性事件（导航、Toast、SnackBar等）
     private val _uiEffect = MutableSharedFlow<Effect>(
-        extraBufferCapacity = 1 // 防止丢失effect
+        // 无 replay：emit 时若一个订阅者都没有，该 effect 会被直接丢弃（extraBufferCapacity
+        // 只对「订阅者已在、但一时来不及接收」生效）。承载「必须生效」的动作请改用 State。
+        extraBufferCapacity = 1
     )
 
     val uiEffect: SharedFlow<Effect> = _uiEffect.asSharedFlow()
