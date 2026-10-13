@@ -52,7 +52,7 @@ fun ModelConfigSettingsContent(
         onDiscardChanges = onBack,
         rightAction = TopBarActionSpec(
             icon = Icons.Default.Add,
-            contentDescription = stringResource(R.string.ui_settings_configure_add),
+            contentDescription = "Add Button",
             onClick = onOpenProviderPick,
         ),
     ) {

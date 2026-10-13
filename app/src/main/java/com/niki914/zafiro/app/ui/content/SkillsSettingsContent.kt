@@ -88,13 +88,12 @@ fun SkillsSettingsContent(
         }
     }
 
-    val importLabel = stringResource(R.string.skill_import_button)
-    val pageChromeContribution = remember(importLabel) {
+    val pageChromeContribution = remember {
         PageChromeContribution(
             rightAction = TopBarActionSpec(
                 icon = Icons.Default.Add,
                 onClick = { launcher.launch(null) },
-                contentDescription = importLabel,
+                contentDescription = "Add Button",
             ),
         )
     }

@@ -44,8 +44,6 @@
     <plurals name="ui_tool_chain_count">
         <item quantity="other">%d 個工具</item>
     </plurals>
-    <string name="ui_home_send_content_description">傳送訊息</string>
-    <string name="ui_home_add_image_content_description">添加圖片</string>
     <string name="ui_home_attach_sheet_title">加入對話</string>
     <string name="ui_home_attach_photos">照片</string>
     <string name="ui_home_attach_camera">相機</string>
@@ -54,8 +52,6 @@
     <string name="ui_home_attach_unresolvable">無法取得該檔案的本機路徑</string>
     <string name="ui_home_attach_no_permission">請先授予所有檔案存取權限</string>
     <string name="ui_home_attach_unreadable">無法讀取該檔案</string>
-    <string name="ui_home_file_remove_content_description">移除檔案</string>
-    <string name="ui_home_image_remove_content_description">移除圖片</string>
     <string name="ui_home_file_category_folder">資料夾</string>
     <string name="ui_home_file_category_code">程式碼</string>
     <string name="ui_home_file_category_document">文件</string>
@@ -65,12 +61,6 @@
     <string name="ui_home_file_category_archive">壓縮檔</string>
     <string name="ui_home_file_category_apk">安裝包</string>
     <string name="ui_home_file_category_file">檔案</string>
-    <string name="ui_home_scroll_to_bottom_content_description">滾動到底部</string>
-    <string name="ui_home_stop_content_description">停止生成</string>
-    <string name="ui_home_action_copy_content_description">複製</string>
-    <string name="ui_home_action_regenerate_content_description">重新生成</string>
-    <string name="ui_home_action_fork_content_description">分叉對話</string>
-    <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">已複製</string>
     <string name="ui_toast_generating">生成中，請稍後</string>
     <string name="ui_toast_empty_input">請輸入內容</string>
@@ -87,7 +77,6 @@
     <string name="ui_home_thinking_title">思考</string>
     <string name="ui_home_retrying_attempt">重試 %1$d/%2$d</string>
     <string name="runtime_error_internal">內部錯誤</string>
-    <string name="ui_home_history_content_description">對話歷史</string>
     <string name="ui_conversation_history_title">歷史對話</string>
     <string name="ui_conversation_selection_count">已選取 %1$d 項</string>
     <string name="ui_conversation_history_today">今天</string>
@@ -95,7 +84,6 @@
     <string name="ui_conversation_history_this_month">本月</string>
     <string name="ui_conversation_history_older">更早</string>
     <string name="ui_conversation_history_pinned_section">置頂對話</string>
-    <string name="ui_conversation_history_back_content_description">返回</string>
     <string name="ui_conversation_history_loading">正在讀取對話歷史...</string>
     <string name="ui_conversation_history_empty_title">暫無對話歷史</string>
     <string name="ui_conversation_history_empty_body">傳送一則訊息後，對話會顯示在這裡。</string>
@@ -152,7 +140,6 @@
     <string name="skill_delete_dialog_title">刪除 Skill</string>
     <string name="skill_delete_dialog_text">確定要刪除 Skill「%1$s」嗎？此操作不可撤銷。</string>
     <string name="skill_error_delete_failed">刪除 Skill 失敗：%1$s</string>
-    <string name="skill_import_button">匯入 Skill</string>
     <string name="skill_import_no_skill_file">所選文件夾中未找到 SKILL.md，無法匯入</string>
     <string name="skill_import_conflict_title">同名 Skill 已存在</string>
     <string name="skill_import_conflict_text">Skill「%1$s」已存在，是否覆蓋？</string>
@@ -428,7 +415,6 @@
     <string name="ui_settings_saved_configuration_delete_title">刪除配置</string>
     <string name="ui_settings_saved_configuration_delete_text">該配置將被刪除，此操作無法復原。</string>
     <string name="ui_settings_saved_configuration_edit">編輯</string>
-    <string name="ui_settings_configure_add">新增配置</string>
     <string name="ui_settings_configure_name_label">配置名稱</string>
     <string name="ui_settings_configure_name_placeholder">例如：DeepSeek 主力</string>
     <string name="ui_settings_configure_vision_label">視覺模型</string>

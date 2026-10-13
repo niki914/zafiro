@@ -45,8 +45,6 @@
         <item quantity="one">%d herramienta</item>
         <item quantity="other">%d herramientas</item>
     </plurals>
-    <string name="ui_home_send_content_description">Enviar mensaje</string>
-    <string name="ui_home_add_image_content_description">Añadir imagen</string>
     <string name="ui_home_attach_sheet_title">Añadir a la conversación</string>
     <string name="ui_home_attach_photos">Fotos</string>
     <string name="ui_home_attach_camera">Cámara</string>
@@ -55,8 +53,6 @@
     <string name="ui_home_attach_unresolvable">No se pudo obtener la ruta local de ese archivo</string>
     <string name="ui_home_attach_no_permission">Concede el permiso de acceso a todos los archivos</string>
     <string name="ui_home_attach_unreadable">No se pudo leer ese archivo</string>
-    <string name="ui_home_file_remove_content_description">Eliminar archivo</string>
-    <string name="ui_home_image_remove_content_description">Eliminar imagen</string>
     <string name="ui_home_file_category_folder">Carpeta</string>
     <string name="ui_home_file_category_code">Código</string>
     <string name="ui_home_file_category_document">Documento</string>
@@ -66,12 +62,6 @@
     <string name="ui_home_file_category_archive">Archivo comprimido</string>
     <string name="ui_home_file_category_apk">APK</string>
     <string name="ui_home_file_category_file">Archivo</string>
-    <string name="ui_home_scroll_to_bottom_content_description">Ir al final</string>
-    <string name="ui_home_stop_content_description">Detener generación</string>
-    <string name="ui_home_action_copy_content_description">Copiar</string>
-    <string name="ui_home_action_regenerate_content_description">Regenerar</string>
-    <string name="ui_home_action_fork_content_description">Crear bifurcación</string>
-    <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">Copiado al portapapeles</string>
     <string name="ui_toast_generating">Generando, espere un momento</string>
     <string name="ui_toast_empty_input">Por favor ingrese un mensaje</string>
@@ -88,7 +78,6 @@
     <string name="ui_home_thinking_title">Pensando</string>
     <string name="ui_home_retrying_attempt">Reintento %1$d/%2$d</string>
     <string name="runtime_error_internal">Error interno</string>
-    <string name="ui_home_history_content_description">Historial de conversaciones</string>
     <string name="ui_conversation_history_title">Historial</string>
     <string name="ui_conversation_selection_count">%1$d seleccionadas</string>
     <string name="ui_conversation_history_today">Hoy</string>
@@ -96,7 +85,6 @@
     <string name="ui_conversation_history_this_month">Este mes</string>
     <string name="ui_conversation_history_older">Anterior</string>
     <string name="ui_conversation_history_pinned_section">Fijadas</string>
-    <string name="ui_conversation_history_back_content_description">Volver</string>
     <string name="ui_conversation_history_loading">Cargando historial...</string>
     <string name="ui_conversation_history_empty_title">Sin conversaciones</string>
     <string name="ui_conversation_history_empty_body">Envíe un mensaje para comenzar una nueva conversación.</string>
@@ -153,7 +141,6 @@
     <string name="skill_delete_dialog_title">Eliminar Skill</string>
     <string name="skill_delete_dialog_text">¿Está seguro de que desea eliminar la Skill «%1$s»? Esta acción no se puede deshacer.</string>
     <string name="skill_error_delete_failed">Error al eliminar la Skill: %1$s</string>
-    <string name="skill_import_button">Importar Skill</string>
     <string name="skill_import_no_skill_file">No se encontró el archivo SKILL.md en la carpeta seleccionada</string>
     <string name="skill_import_conflict_title">La Skill ya existe</string>
     <string name="skill_import_conflict_text">La Skill «%1$s» ya existe. ¿Desea sobrescribirla?</string>
@@ -466,7 +453,6 @@
     <string name="ui_settings_saved_configuration_delete_title">Eliminar configuración</string>
     <string name="ui_settings_saved_configuration_delete_text">Esta configuración se eliminará y la acción no se podrá deshacer.</string>
     <string name="ui_settings_saved_configuration_edit">Editar</string>
-    <string name="ui_settings_configure_add">Añadir configuración</string>
     <string name="ui_settings_configure_name_label">Nombre de la configuración</string>
     <string name="ui_settings_configure_name_placeholder">Ejemplo: DeepSeek Principal</string>
     <string name="ui_settings_configure_vision_label">Modelo de visión</string>

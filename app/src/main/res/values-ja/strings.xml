@@ -44,8 +44,6 @@
     <plurals name="ui_tool_chain_count">
     <item quantity="other">%d 個のツール</item>
     </plurals>
-    <string name="ui_home_send_content_description">メッセージを送信</string>
-    <string name="ui_home_add_image_content_description">画像を追加</string>
     <string name="ui_home_attach_sheet_title">会話に追加</string>
     <string name="ui_home_attach_photos">写真</string>
     <string name="ui_home_attach_camera">カメラ</string>
@@ -54,8 +52,6 @@
     <string name="ui_home_attach_unresolvable">このファイルのローカルパスを取得できません</string>
     <string name="ui_home_attach_no_permission">すべてのファイルへのアクセス権限を許可してください</string>
     <string name="ui_home_attach_unreadable">このファイルを読み取れません</string>
-    <string name="ui_home_file_remove_content_description">ファイルを削除</string>
-    <string name="ui_home_image_remove_content_description">画像を削除</string>
     <string name="ui_home_file_category_folder">フォルダ</string>
     <string name="ui_home_file_category_code">コード</string>
     <string name="ui_home_file_category_document">ドキュメント</string>
@@ -65,12 +61,6 @@
     <string name="ui_home_file_category_archive">アーカイブ</string>
     <string name="ui_home_file_category_apk">APK</string>
     <string name="ui_home_file_category_file">ファイル</string>
-    <string name="ui_home_scroll_to_bottom_content_description">一番下へスクロール</string>
-    <string name="ui_home_stop_content_description">生成を停止</string>
-    <string name="ui_home_action_copy_content_description">コピー</string>
-    <string name="ui_home_action_regenerate_content_description">再生成</string>
-    <string name="ui_home_action_fork_content_description">会話を分岐</string>
-    <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">コピーしました</string>
     <string name="ui_toast_generating">生成中です、しばらくお待ちください</string>
     <string name="ui_toast_empty_input">メッセージを入力してください</string>
@@ -87,7 +77,6 @@
     <string name="ui_home_thinking_title">思考</string>
     <string name="ui_home_retrying_attempt">再試行 %1$d/%2$d</string>
     <string name="runtime_error_internal">内部エラー</string>
-    <string name="ui_home_history_content_description">会話履歴</string>
     <string name="ui_conversation_history_title">会話履歴</string>
     <string name="ui_conversation_selection_count">%1$d 件選択中</string>
     <string name="ui_conversation_history_today">今日</string>
@@ -95,7 +84,6 @@
     <string name="ui_conversation_history_this_month">今月</string>
     <string name="ui_conversation_history_older">より前</string>
     <string name="ui_conversation_history_pinned_section">固定した会話</string>
-    <string name="ui_conversation_history_back_content_description">戻る</string>
     <string name="ui_conversation_history_loading">会話履歴を読み込み中...</string>
     <string name="ui_conversation_history_empty_title">会話履歴はありません</string>
     <string name="ui_conversation_history_empty_body">メッセージを送信すると、ここに会話が表示されます。</string>
@@ -152,7 +140,6 @@
     <string name="skill_delete_dialog_title">Skill の削除</string>
     <string name="skill_delete_dialog_text">Skill「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
     <string name="skill_error_delete_failed">Skill の削除に失敗しました：%1$s</string>
-    <string name="skill_import_button">Skill をインポート</string>
     <string name="skill_import_no_skill_file">選択したフォルダ内に SKILL.md が見つからないため、インポートできません</string>
     <string name="skill_import_conflict_title">同名の Skill が既に存在します</string>
     <string name="skill_import_conflict_text">Skill「%1$s」は既に存在します。上書きしますか？</string>
@@ -465,7 +452,6 @@
     <string name="ui_settings_saved_configuration_delete_title">設定の削除</string>
     <string name="ui_settings_saved_configuration_delete_text">この設定は削除されます。この操作は元に戻せません。</string>
     <string name="ui_settings_saved_configuration_edit">編集</string>
-    <string name="ui_settings_configure_add">設定を追加</string>
     <string name="ui_settings_configure_name_label">設定名</string>
     <string name="ui_settings_configure_name_placeholder">例：DeepSeek メイン</string>
     <string name="ui_settings_configure_vision_label">ビジョンモデル</string>

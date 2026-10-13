@@ -51,7 +51,7 @@ fun CustomPyToolsSettingsContent(
                 onClick = {
                     latestOnOpenToolDetail(createTitle, -1, true)
                 },
-                contentDescription = createTitle,
+                contentDescription = "Add Button",
             ),
         )
     }

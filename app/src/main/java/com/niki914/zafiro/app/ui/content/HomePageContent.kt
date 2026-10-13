@@ -182,7 +182,6 @@ fun HomePageContent(
     val viewModel = pageViewModel<HomeChatViewModel>()
     val newConversationMenuLabel = stringResource(R.string.ui_home_menu_new_conversation)
     val settingsMenuLabel = stringResource(R.string.ui_settings_menu_entry)
-    val historyContentDescription = stringResource(R.string.ui_home_history_content_description)
     val latestViewModel by rememberUpdatedState(viewModel)
     val latestOnOpenHistory by rememberUpdatedState(onOpenHistory)
     val latestOnOpenSettings by rememberUpdatedState(onOpenSettings)
@@ -363,7 +362,6 @@ fun HomePageContent(
     val pageChromeContribution = remember(
         newConversationMenuLabel,
         settingsMenuLabel,
-        historyContentDescription,
         titleContent,
         uiState.isConfigMenuVisible,
     ) {
@@ -379,7 +377,7 @@ fun HomePageContent(
                     }
                     latestOnOpenHistory()
                 },
-                contentDescription = historyContentDescription,
+                contentDescription = "History Button",
             ),
             menuItems = listOf(
                 PageChromeMenuItem(
@@ -995,9 +993,7 @@ private fun HomePageContentBody(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_down),
-                    contentDescription = stringResource(
-                        R.string.ui_home_scroll_to_bottom_content_description,
-                    ),
+                    contentDescription = "Scroll To Bottom Icon",
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(18.dp),
                 )

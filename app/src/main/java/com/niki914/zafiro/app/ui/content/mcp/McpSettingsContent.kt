@@ -41,7 +41,7 @@ fun McpSettingsContent(
                 onClick = {
                     latestOnOpenServerDetail(createTitle, -1, true)
                 },
-                contentDescription = createTitle,
+                contentDescription = "Add Button",
             ),
         )
     }

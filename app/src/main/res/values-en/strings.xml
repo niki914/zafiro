@@ -45,8 +45,6 @@
         <item quantity="one">%d tool</item>
         <item quantity="other">%d tools</item>
     </plurals>
-    <string name="ui_home_send_content_description">Send message</string>
-    <string name="ui_home_add_image_content_description">Add image</string>
     <string name="ui_home_attach_sheet_title">Add to conversation</string>
     <string name="ui_home_attach_photos">Photos</string>
     <string name="ui_home_attach_camera">Camera</string>
@@ -55,8 +53,6 @@
     <string name="ui_home_attach_unresolvable">Unable to get a local path for that file</string>
     <string name="ui_home_attach_no_permission">Grant all files access first</string>
     <string name="ui_home_attach_unreadable">Unable to read that file</string>
-    <string name="ui_home_file_remove_content_description">Remove file</string>
-    <string name="ui_home_image_remove_content_description">Remove image</string>
     <string name="ui_home_file_category_folder">Folder</string>
     <string name="ui_home_file_category_code">Code</string>
     <string name="ui_home_file_category_document">Document</string>
@@ -66,12 +62,6 @@
     <string name="ui_home_file_category_archive">Archive</string>
     <string name="ui_home_file_category_apk">APK</string>
     <string name="ui_home_file_category_file">File</string>
-    <string name="ui_home_scroll_to_bottom_content_description">Scroll to bottom</string>
-    <string name="ui_home_stop_content_description">Stop generating</string>
-    <string name="ui_home_action_copy_content_description">Copy</string>
-    <string name="ui_home_action_regenerate_content_description">Regenerate</string>
-    <string name="ui_home_action_fork_content_description">Fork conversation</string>
-    <string name="ui_home_action_rewind_content_description">Rewind</string>
     <string name="ui_toast_copied">Copied</string>
     <string name="ui_toast_generating">Generating, please wait</string>
     <string name="ui_toast_empty_input">Please enter a message</string>
@@ -88,7 +78,6 @@
     <string name="ui_home_thinking_title">Thinking</string>
     <string name="ui_home_retrying_attempt">Retrying %1$d/%2$d</string>
     <string name="runtime_error_internal">Internal error</string>
-    <string name="ui_home_history_content_description">Conversation history</string>
     <string name="ui_conversation_history_title">History</string>
     <string name="ui_conversation_selection_count">%1$d selected</string>
     <string name="ui_conversation_history_today">Today</string>
@@ -96,7 +85,6 @@
     <string name="ui_conversation_history_this_month">This month</string>
     <string name="ui_conversation_history_older">Earlier</string>
     <string name="ui_conversation_history_pinned_section">Pinned</string>
-    <string name="ui_conversation_history_back_content_description">Back</string>
     <string name="ui_conversation_history_loading">Loading conversation history...</string>
     <string name="ui_conversation_history_empty_title">No conversation history yet</string>
     <string name="ui_conversation_history_empty_body">Send a message and conversations will appear here.</string>
@@ -153,7 +141,6 @@
     <string name="skill_delete_dialog_title">Delete Skill</string>
     <string name="skill_delete_dialog_text">Are you sure you want to delete the Skill \"%1$s\"? This action cannot be undone.</string>
     <string name="skill_error_delete_failed">Failed to delete Skill: %1$s</string>
-    <string name="skill_import_button">Import Skill</string>
     <string name="skill_import_no_skill_file">SKILL.md not found in the selected folder, cannot import</string>
     <string name="skill_import_conflict_title">Duplicate Skill</string>
     <string name="skill_import_conflict_text">The Skill \"%1$s\" already exists. Overwrite it?</string>
@@ -466,7 +453,6 @@
     <string name="ui_settings_saved_configuration_delete_title">Delete configuration</string>
     <string name="ui_settings_saved_configuration_delete_text">This configuration will be deleted and cannot be recovered.</string>
     <string name="ui_settings_saved_configuration_edit">Edit</string>
-    <string name="ui_settings_configure_add">Add configuration</string>
     <string name="ui_settings_configure_name_label">Name</string>
     <string name="ui_settings_configure_name_placeholder">e.g. DeepSeek primary</string>
     <string name="ui_settings_configure_vision_label">Vision Model</string>
