@@ -167,6 +167,27 @@ val adbReverse = tasks.register("adbReverse") {
     }
 }
 
+val adbForward = tasks.register("adbForward") {
+    group = "custom"
+    description = "Execute adb forward for port 879x"
+
+    doLast {
+        val adbPath = getAdbPath()
+        println("Using ADB path: $adbPath")
+        try {
+            listOf("8791", "8792").forEach { port ->
+                ProcessBuilder(adbPath, "forward", "tcp:$port", "tcp:$port")
+                    .inheritIO()
+                    .start()
+                    .waitFor()
+            }
+            println("ADB forward successful.")
+        } catch (e: Exception) {
+            println("Failed to execute adb forward: ${e.message}")
+        }
+    }
+}
+
 // 注册启动 Python Server 任务
 val startServer = tasks.register("startServer") {
     group = "custom"
@@ -206,6 +227,7 @@ val startServer = tasks.register("startServer") {
 tasks.configureEach {
     // 只要是执行安装或者构建，就尝试运行这两个任务
     if (name.startsWith("install") || name.startsWith("assemble")) {
+        dependsOn(adbForward)
 //        dependsOn(adbReverse)
 //        dependsOn(startServer)
     }
