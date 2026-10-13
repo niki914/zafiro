@@ -92,5 +92,10 @@ class CoordinatedAgentControlTest {
     }
 
     private fun toolRequest(cmd: String): ApprovalRequest =
-        ApprovalRequest.ToolExecution(toolName = "bash", command = cmd, ruleName = "confirm")
+        ApprovalRequest.ToolExecution(
+            toolName = "bash",
+            command = cmd,
+            ruleName = "confirm",
+            matchedPattern = cmd,
+        )
 }

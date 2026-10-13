@@ -24,6 +24,12 @@ sealed interface ApprovalRequest {
 
         /** 命中的执行规则名。消费方：前台对话框、弹窗副标题。 */
         val ruleName: String,
+
+        /**
+         * 实际命中的文本片段（如 `rm -rf`）。消费方：前台对话框、悬浮球卡片、常驻通知正文。
+         * 带上它才能回答「到底碰了哪一条」——[ruleName] 对内置规则恒为 `default`，信息量为零。
+         */
+        val matchedPattern: String,
     ) : ApprovalRequest
 
     /**

@@ -2,7 +2,7 @@
 <resources>
     <string name="tool_permission_dialog_title">ИИ запрашивает выполнение операции</string>
     <string name="tool_permission_request_intro">Инструмент Zafiro «%1$s» хочет выполнить команду:</string>
-    <string name="tool_permission_matched_rule">Сработало правило «%1$s»</string>
+    <string name="tool_permission_matched_rule">Сработало правило «%1$s»: %2$s</string>
     <string name="tool_permission_allow">Разрешить один раз</string>
     <string name="tool_permission_deny">Запретить</string>
     <string name="floating_ball_approval_pending">Действие ждёт подтверждения (%1$s)</string>

@@ -151,6 +151,95 @@ class ShellBuiltinTest {
         assertEquals(customId, jsonCustomAgain["session_id"]!!.jsonPrimitive.content)
     }
 
+    // ── 2b. identity 驱动默认会话：root 真的拿到 root ────────────────────────
+
+    // 保护：identity 必须在「未指定 alias」时驱动会话选择。
+    // 漏了它，identity=root 会静默落到 user 会话，用户以为提权了其实没有。
+    @Test
+    fun defaultSession_withRootIdentity_opensRootSession() = runTest {
+        val tool = TestShellBuiltin()
+
+        val resp = tool.invokeRawJson(
+            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"whoami","identity":"root"}""")
+        )
+        val json = Json.parseToJsonElement(resp).jsonObject
+
+        assertEquals("root", json["alias"]!!.jsonPrimitive.content)
+        assertEquals("root", json["identity"]!!.jsonPrimitive.content)
+        assertEquals(listOf("root"), tool.openedIdentities)
+    }
+
+    // 保护：不同身份的默认会话互不串味，不能共用一个 session_id。
+    // 漏了它，后传的 root 会复用先建的 user 会话，提权依然不生效。
+    @Test
+    fun defaultSession_differentIdentitiesStaySeparate() = runTest {
+        val tool = TestShellBuiltin()
+
+        val userResp = tool.invokeRawJson(
+            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"id"}""")
+        )
+        val rootResp = tool.invokeRawJson(
+            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"id","identity":"root"}""")
+        )
+        val userJson = Json.parseToJsonElement(userResp).jsonObject
+        val rootJson = Json.parseToJsonElement(rootResp).jsonObject
+
+        assertNotEquals(userJson["session_id"], rootJson["session_id"])
+        assertEquals("default", userJson["alias"]!!.jsonPrimitive.content)
+        assertEquals("root", rootJson["alias"]!!.jsonPrimitive.content)
+    }
+
+    // 保护：显式 alias 上的身份与请求不一致时必须报错，不得静默复用。
+    // 漏了它，用户显式要 root 却拿到一个 user 会话，且没有任何提示。
+    @Test
+    fun explicitAlias_withConflictingIdentity_fails() = runTest {
+        val tool = TestShellBuiltin()
+
+        // 先以默认身份建 alias="shared"
+        tool.invokeRawJson(
+            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"id","alias":"shared"}""")
+        )
+        // 再用同一 alias 声明 root：身份在建时已固定，不能提权
+        val resp = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "shell",
+                argumentsJson = """{"command":"id","alias":"shared","identity":"root"}""",
+            )
+        )
+        val json = Json.parseToJsonElement(resp).jsonObject
+        val errorObj = json["error"]?.jsonObject ?: json
+
+        assertEquals("INVALID_REQUEST", errorObj["code"]?.jsonPrimitive?.content)
+        assertTrue(errorObj["message"]!!.jsonPrimitive.content.contains("runs as 'user'"))
+        // 没有多开一个会话
+        assertEquals(listOf("user"), tool.openedIdentities)
+    }
+
+    // 保护：按 session id 精确指定时同样要做身份校验，不能只在 alias 路径上报错。
+    // 漏了它，同一个心智坑会从另一个入口复现：用户以为提权了，命令其实仍以旧身份执行。
+    @Test
+    fun explicitSessionId_withConflictingIdentity_fails() = runTest {
+        val tool = TestShellBuiltin()
+
+        val firstResp = tool.invokeRawJson(
+            BuiltinToolRequest(name = "shell", argumentsJson = """{"command":"id","alias":"shared"}""")
+        )
+        val sessionId = Json.parseToJsonElement(firstResp).jsonObject["session_id"]!!.jsonPrimitive.content
+        // 用 id 而不是 alias 指向同一会话，并声明 root
+        val resp = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "shell",
+                argumentsJson = """{"command":"id","session":"$sessionId","identity":"root"}""",
+            )
+        )
+        val json = Json.parseToJsonElement(resp).jsonObject
+        val errorObj = json["error"]?.jsonObject ?: json
+
+        assertEquals("INVALID_REQUEST", errorObj["code"]?.jsonPrimitive?.content)
+        assertTrue(errorObj["message"]!!.jsonPrimitive.content.contains("runs as 'user'"))
+        assertEquals(listOf("user"), tool.openedIdentities)
+    }
+
     // ── 3. 权限与 Preflight 规则拦截 ─────────────────────────────────────────
 
     @Test
@@ -182,6 +271,47 @@ class ShellBuiltinTest {
 
         assertEquals("COMMAND_BLOCKED", errorObj["code"]?.jsonPrimitive?.content)
         assertTrue(errorObj["message"]!!.jsonPrimitive.content.contains("Block rm -rf"))
+    }
+
+    // 保护：安全前检必须看会话的实际身份，而不是本次入参。
+    // 漏了它，复用 root 会话时不传 identity 就能绕过 \bsu\b 规则。
+    @Test
+    fun preflight_usesSessionIdentityNotRequestParameter() = runTest {
+        val suPreflight = ToolExecutionPreflight(
+            listExecutionRules = {
+                listOf(
+                    RuntimeExecutionRule(
+                        id = "su",
+                        name = "提权",
+                        enabledMode = RuntimeExecutionRuleEnabledMode.ALWAYS,
+                        patterns = listOf("""\bsu\b"""),
+                    )
+                )
+            },
+            isUnlocked = { false },
+            permissionsProvider = { null },
+        )
+        val tool = TestShellBuiltin(preflight = suPreflight)
+
+        // 首次以 root 开辟会话（命令不含 su 字样）
+        tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "shell",
+                argumentsJson = """{"command":"id","alias":"roottest","identity":"root"}""",
+            )
+        )
+        // 复用该会话时不传 identity：身份仍为 root，规则必须拦下
+        val resp = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "shell",
+                argumentsJson = """{"command":"cat /data/local/tmp/x","alias":"roottest"}""",
+            )
+        )
+        val json = Json.parseToJsonElement(resp).jsonObject
+        val errorObj = json["error"]?.jsonObject ?: json
+
+        assertEquals("COMMAND_BLOCKED", errorObj["code"]?.jsonPrimitive?.content)
+        assertEquals("su", errorObj["matched_rule_id"]?.jsonPrimitive?.content)
     }
 
     // ── 4. 回执自证 (Session ID, Alias, Identity) ───────────────────────────

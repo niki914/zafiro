@@ -240,6 +240,7 @@ class ConversationPersisterTest {
         toolName = "run",
         command = "rm -rf /",
         ruleName = "confirm",
+        matchedPattern = "rm -rf",
     )
 
     /** 轮询等待：Room 写入在真实线程上，runTest 的虚拟时间不推进 delay。 */

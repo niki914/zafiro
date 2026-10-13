@@ -72,7 +72,7 @@ class FloatingBallViewModelTest {
         advanceUntilIdle()
         viewModel.sendIntent(
             FloatingBallIntent.UpdateApprovalRequest(
-                ApprovalRequest.ToolExecution("sh", "echo 1", "test_rule")
+                ApprovalRequest.ToolExecution("sh", "echo 1", "test_rule", "echo")
             )
         )
         advanceUntilIdle()
@@ -93,7 +93,7 @@ class FloatingBallViewModelTest {
         assertEquals(FloatingBallState.Collapsed, viewModel.uiStateFlow.value.ballState)
 
         val effectDeferred = async { viewModel.uiEffect.first() }
-        val request = ApprovalRequest.ToolExecution("terminal", "rm -rf /tmp", "dangerous_rm")
+        val request = ApprovalRequest.ToolExecution("terminal", "rm -rf /tmp", "dangerous_rm", "rm -rf")
         viewModel.sendIntent(FloatingBallIntent.UpdateApprovalRequest(request))
         advanceUntilIdle()
 
@@ -111,7 +111,7 @@ class FloatingBallViewModelTest {
     @Test
     fun openAndCloseDetail_togglesState() = runTest {
         val viewModel = FloatingBallViewModel()
-        val request = ApprovalRequest.ToolExecution("terminal", "ls", "safe_ls")
+        val request = ApprovalRequest.ToolExecution("terminal", "ls", "safe_ls", "ls")
         viewModel.sendIntent(FloatingBallIntent.UpdateApprovalRequest(request))
         viewModel.sendIntent(FloatingBallIntent.CommitExpand)
         advanceUntilIdle()
@@ -128,7 +128,7 @@ class FloatingBallViewModelTest {
     @Test
     fun allowApproval_settlesAndClearsRequest() = runTest {
         val viewModel = FloatingBallViewModel()
-        val request = ApprovalRequest.ToolExecution("terminal", "id", "safe_id")
+        val request = ApprovalRequest.ToolExecution("terminal", "id", "safe_id", "id")
         viewModel.sendIntent(FloatingBallIntent.UpdateApprovalRequest(request))
         viewModel.sendIntent(FloatingBallIntent.CommitExpand)
         advanceUntilIdle()
@@ -151,7 +151,7 @@ class FloatingBallViewModelTest {
     @Test
     fun denyApproval_settlesAndClearsRequest() = runTest {
         val viewModel = FloatingBallViewModel()
-        val request = ApprovalRequest.ToolExecution("terminal", "shutdown", "danger")
+        val request = ApprovalRequest.ToolExecution("terminal", "shutdown", "danger", "shutdown")
         viewModel.sendIntent(FloatingBallIntent.UpdateApprovalRequest(request))
         advanceUntilIdle()
 
@@ -228,7 +228,7 @@ class FloatingBallViewModelTest {
 
         viewModel.sendIntent(
             FloatingBallIntent.UpdateApprovalRequest(
-                ApprovalRequest.ToolExecution("terminal", "rm -rf /", "danger")
+                ApprovalRequest.ToolExecution("terminal", "rm -rf /", "danger", "rm -rf")
             )
         )
         advanceUntilIdle()

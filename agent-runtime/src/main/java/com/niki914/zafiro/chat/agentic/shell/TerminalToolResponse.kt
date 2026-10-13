@@ -128,6 +128,16 @@ object TerminalToolResponse {
         )
     }
 
+    /** 会话身份在开辟时固化：显式指定的会话与本次请求身份不一致时报错，不静默复用。 */
+    fun identityMismatch(label: String, actual: String, requested: String): String {
+        return error(
+            code = "INVALID_REQUEST",
+            message = "Session '$label' runs as '$actual', not '$requested'. The identity is fixed " +
+                    "when the session is created and cannot change. Open a new session with a different " +
+                    "'alias' to run as '$requested', or drop 'identity' to reuse this one.",
+        )
+    }
+
     fun sessionBusyWithPendingCommand(session: String, abandonHint: String): String {
         return error(
             code = "SESSION_BUSY",

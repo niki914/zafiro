@@ -1,6 +1,8 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
 import com.niki914.zafiro.chat.agentic.ToolExecutionPreflight
+import com.niki914.zafiro.chat.agentic.shell.SessionRegistry
+import com.niki914.zafiro.chat.agentic.shell.SessionMeta
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse
@@ -27,7 +29,7 @@ open class ShellBuiltin(
                 "Default session: If 'session' and 'alias' are omitted, commands automatically run in a shared default session (alias='default').\n" +
                 "Custom session: Provide 'alias' to create or target an isolated session (e.g. alias='build_worker').\n" +
                 "Execution mode: By default, commands run synchronously and return upon completion. If execution exceeds 'timeout' seconds, it degrades to background execution (status='running', timed_out=true); use action='read' to poll output later.\n" +
-                "Identity: Choose 'user' (default local shell), 'root' (via su), or 'shizuku'.\n\n" +
+                "Identity: Choose 'user' (default local shell), 'root' (via su), or 'shizuku'. The identity is fixed when a session is created; passing it for an existing session reuses that session only if the identity matches, otherwise the call fails.\n\n" +
                 "IMPORTANT RULES:\n" +
                 "1. Never run blocking interactive commands without non-interactive flags (e.g. do not run top, vim, nano, or unmetered ping).\n" +
                 "2. For long-running tasks, prefer setting a larger 'timeout' upfront (e.g. timeout=60). A command that exceeds 'timeout' keeps running in the background; collect its output later with action='read' instead of polling in a tight loop.\n" +
@@ -52,7 +54,7 @@ open class ShellBuiltin(
             command = command,
             session = session,
             alias = alias,
-            identity = identity ?: DEFAULT_IDENTITY,
+            identity = identity,
             workdir = workdir,
             action = action,
             text = text,
@@ -79,14 +81,22 @@ open class ShellBuiltin(
                 TerminalSessionPool.close(resolved)
                 return SessionTarget.Error(TerminalToolResponse.sessionGone(explicitSession))
             }
+            identityMismatchOrNull(
+                sessionRegistry.findById(resolved),
+                explicitSession,
+                shellArgs?.identity,
+            )?.let { return it }
             return SessionTarget.Resolved(resolved)
         }
 
+        // null 表示未指定：既有会话按自身身份复用，新会话按 user 建
+        val identity = shellArgs?.identity ?: DEFAULT_IDENTITY
         val explicitAlias = args.alias
         if (explicitAlias != null) {
             val existing = sessionRegistry.findByAlias(explicitAlias, sessionScope)
             if (existing != null) {
                 if (isSessionAlive(existing.sessionId)) {
+                    identityMismatchOrNull(existing, explicitAlias, shellArgs?.identity)?.let { return it }
                     return SessionTarget.Resolved(existing.sessionId)
                 }
                 // 登记项是僵尸（会话被回收/池被清）：释放别名后走下方重新开辟，本地会话重建零成本
@@ -94,14 +104,13 @@ open class ShellBuiltin(
                 TerminalSessionPool.close(existing.sessionId)
             }
 
-            val identity = shellArgs?.identity ?: DEFAULT_IDENTITY
             val workdir = shellArgs?.workdir
             return when (val outcome = openLocalSession(identity = identity, workdir = workdir)) {
                 is TerminalOpenOutcome.Success -> {
                     sessionRegistry.register(
                         sessionId = outcome.session,
                         alias = explicitAlias,
-                        metadata = mapOf("identity" to identity),
+                        metadata = mapOf(SessionRegistry.META_IDENTITY to identity),
                     )
                     SessionTarget.Resolved(outcome.session)
                 }
@@ -121,36 +130,59 @@ open class ShellBuiltin(
             }
         }
 
-        val defaultSession = onDefaultSession()
-        return if (defaultSession != null) {
-            SessionTarget.Resolved(defaultSession)
+        return openDefaultSession(identity)
+    }
+
+    /**
+     * 会话身份在开辟时固化，后续传 identity 不会提权。显式声明了冲突身份时报错，
+     * 而不是静默复用一个身份不符的会话（用户以为提权了，命令其实仍以旧身份执行）。
+     */
+    private fun identityMismatchOrNull(
+        meta: SessionMeta?,
+        label: String,
+        declared: String?,
+    ): SessionTarget.Error? {
+        val actual = meta?.metadata?.get(SessionRegistry.META_IDENTITY)
+        return if (actual != null && declared != null && declared != actual) {
+            SessionTarget.Error(TerminalToolResponse.identityMismatch(label, actual, declared))
         } else {
-            SessionTarget.Error(TerminalToolResponse.invalidRequest("Failed to open default shell session."))
+            null
         }
     }
 
-    override suspend fun onDefaultSession(): String? {
-        val existing = sessionRegistry.findByAlias(DEFAULT_ALIAS, sessionScope)
+    /**
+     * 未指定 session / alias 时的会话：按身份分池，user 沿用 `default`，其余身份各用一个别名。
+     * 这样 `identity=root` 真的会拿到 root shell，而不是静默复用 user 会话。
+     */
+    private suspend fun openDefaultSession(identity: String): SessionTarget {
+        val alias = defaultAliasFor(identity)
+        val existing = sessionRegistry.findByAlias(alias, sessionScope)
         if (existing != null) {
             if (isSessionAlive(existing.sessionId)) {
-                return existing.sessionId
+                return SessionTarget.Resolved(existing.sessionId)
             }
             sessionRegistry.unregister(existing.sessionId)
             TerminalSessionPool.close(existing.sessionId)
         }
 
-        return when (val outcome = openLocalSession(identity = DEFAULT_IDENTITY, workdir = null)) {
+        return when (val outcome = openLocalSession(identity = identity, workdir = null)) {
             is TerminalOpenOutcome.Success -> {
                 sessionRegistry.register(
                     sessionId = outcome.session,
-                    alias = DEFAULT_ALIAS,
-                    metadata = mapOf("identity" to DEFAULT_IDENTITY),
+                    alias = alias,
+                    metadata = mapOf(SessionRegistry.META_IDENTITY to identity),
                 )
-                outcome.session
+                SessionTarget.Resolved(outcome.session)
             }
 
-            is TerminalOpenOutcome.Failure -> null
-            is TerminalOpenOutcome.InvalidRequest -> null
+            is TerminalOpenOutcome.Failure -> SessionTarget.Error(
+                TerminalToolResponse.invalidRequest(
+                    outcome.failure.message ?: "Failed to open $identity shell session."
+                )
+            )
+
+            is TerminalOpenOutcome.InvalidRequest ->
+                SessionTarget.Error(TerminalToolResponse.invalidRequest(outcome.message))
         }
     }
 
@@ -171,6 +203,10 @@ open class ShellBuiltin(
         const val DEFAULT_IDENTITY = "user"
         private const val DEFAULT_TIMEOUT_SEC = 30L
 
+        /** 未指定 alias 时的会话别名：user 保持 `default`，其余身份各占一个，互不串味。 */
+        private fun defaultAliasFor(identity: String): String =
+            if (identity == DEFAULT_IDENTITY) DEFAULT_ALIAS else identity
+
         private val SHELL_SCHEMA = """
             {
               "type": "object",
@@ -190,7 +226,7 @@ open class ShellBuiltin(
                 "identity": {
                   "type": "string",
                   "enum": ["user", "root", "shizuku"],
-                  "description": "Shell execution identity (default 'user')."
+                  "description": "Identity for a session this call creates (default 'user'). It is fixed at session creation: passing it for an existing session only reuses that session if the identity matches, otherwise the call fails. When 'session'/'alias' are omitted, the default session is chosen by identity (user, root and shizuku each keep their own)."
                 },
                 "workdir": {
                   "type": "string",
@@ -224,7 +260,7 @@ class ShellArgs(
     command: String? = null,
     session: String? = null,
     alias: String? = null,
-    val identity: String = ShellBuiltin.DEFAULT_IDENTITY,
+    override val identity: String? = null,
     val workdir: String? = null,
     action: SessionAction? = null,
     text: String? = null,

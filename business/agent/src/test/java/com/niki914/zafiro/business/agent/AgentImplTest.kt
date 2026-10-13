@@ -228,6 +228,7 @@ class AgentImplTest {
         toolName = "terminal",
         command = command,
         ruleName = "RULE",
+        matchedPattern = command,
     )
 
     private fun approverOf(

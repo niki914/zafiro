@@ -13,17 +13,16 @@ import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
 
 /**
- * onboarding 配置页的默认高危命令列表：进了这个页面并完成，就用这份列表覆盖内置规则；
- * 没进过页面才保留 [LocalSettingsDefaults] 的默认规则。两者是同一个 rule（共用 id 与名字）。
+ * onboarding 配置页是内置默认规则的「减配视图」：初值就是 [LocalSettingsDefaults.defaultExecutionPatterns]，
+ * 用户不动它，完成时写回的就与默认逐字相同；删几条就写回剩下的。
  */
-private val DefaultSecurityPatterns = listOf("rm", "pm", "su", "dd")
-
 data class OnboardingPreferencesUiState(
     val accessibilityGranted: Boolean = false,
     val overlayGranted: Boolean = false,
     val notificationGranted: Boolean = false,
     val storageGranted: Boolean = false,
-    val securityPatterns: List<String> = DefaultSecurityPatterns,
+    val securityPatterns: List<String> = LocalSettingsDefaults.defaultExecutionPatterns,
+    val isSecurityLoaded: Boolean = false,
     val addRuleDialogVisible: Boolean = false,
     val newRuleText: String = "",
     val isRequesting: Boolean = false,
@@ -93,12 +92,21 @@ class OnboardingPreferencesViewModel :
 
     private suspend fun refreshPermissions() {
         val pm = requireService<PermissionManager>()
+        val persisted = runCatching { XRepo.executionRules.get(LocalSettingsDefaults.DEFAULT_EXECUTION_RULE_ID) }
+            .getOrNull()
         updateState {
             copy(
                 accessibilityGranted = pm.status(Permission.ACCESSIBILITY) == PermissionState.GRANTED,
                 overlayGranted = pm.status(Permission.OVERLAY) == PermissionState.GRANTED,
                 notificationGranted = pm.status(Permission.NOTIFICATION) == PermissionState.GRANTED,
                 storageGranted = pm.status(Permission.STORAGE) == PermissionState.GRANTED,
+                // 回显落盘值：存量用户已有一份（可能是旧默认），不能拿新默认无声覆盖他的
+                securityPatterns = if (isSecurityLoaded) {
+                    securityPatterns
+                } else {
+                    persisted?.patterns ?: LocalSettingsDefaults.defaultExecutionPatterns
+                },
+                isSecurityLoaded = true,
             )
         }
     }

@@ -16,6 +16,9 @@ object SessionRegistry {
     /** SSH 会话的别名域。 */
     const val SCOPE_SSH = "ssh"
 
+    /** 会话元数据键：会话固化下来的执行身份（`user` / `root` / `shizuku` / `ssh`）。 */
+    const val META_IDENTITY = "identity"
+
     private val byId = ConcurrentHashMap<String, SessionMeta>()
     private val byAlias = ConcurrentHashMap<String, String>()
 

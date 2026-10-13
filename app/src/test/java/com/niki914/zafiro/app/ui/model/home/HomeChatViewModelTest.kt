@@ -365,7 +365,7 @@ class HomeChatViewModelTest {
     fun approvalRequestSurfacesInUiStateAndSettlesThroughIntent() = runTest {
         val fixture = fixture()
         val approver = requireNotNull(fixture.agent.registeredApprover)
-        val request = ApprovalRequest.ToolExecution("terminal", "rm -rf /tmp", "dangerous_rm")
+        val request = ApprovalRequest.ToolExecution("terminal", "rm -rf /tmp", "dangerous_rm", "rm -rf")
 
         val decision = async { approver.decide(request) }
         advanceUntilIdle()

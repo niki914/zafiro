@@ -253,7 +253,7 @@
     <string name="execution_rules_enabled_mode_confirm">確認を求める</string>
     <string name="tool_permission_dialog_title">AI が操作の実行を要求しています</string>
     <string name="tool_permission_request_intro">Zafiro のツール「%1$s」が次のコマンドの実行を要求しています：</string>
-    <string name="tool_permission_matched_rule">一致したルール「%1$s」</string>
+    <string name="tool_permission_matched_rule">一致したルール「%1$s」：%2$s</string>
     <string name="tool_permission_allow">今回のみ許可</string>
     <string name="tool_permission_deny">拒否</string>
     <string name="screen_control_consent_title">画面操作権限のリクエスト</string>
@@ -517,6 +517,7 @@
     <string name="agent_resident_action_stop">停止</string>
     <string name="agent_resident_action_approve">許可</string>
     <string name="agent_resident_action_decline">拒否</string>
+    <string name="agent_resident_body_matched_pattern">一致 %1$s</string>
 
     <!-- Onboarding Preferences -->
     <string name="ui_onboard_done_advanced_entry">権限と実行ルール</string>
