@@ -4,6 +4,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
+ * 按 [FloatingBallTokens.previewMaxChars] 截断预览文本，不切断代理对（emoji 不会被砍成半个字）。
+ */
+internal fun String.clampPreview(maxChars: Int = FloatingBallTokens.previewMaxChars): String {
+    if (length <= maxChars) return this
+    val end = if (Character.isHighSurrogate(this[maxChars - 1])) maxChars - 1 else maxChars
+    return substring(0, end)
+}
+
+/**
  * 悬浮球贴边侧向。
  */
 enum class DockSide {
@@ -37,6 +46,15 @@ object FloatingBallTokens {
 
     // --- 排版 ---
     const val previewMaxLines = 2
+
+    /**
+     * 悬浮球预览的显示字数上限。
+     *
+     * 与 [com.niki914.zafiro.api.model.AgentState] 的 500 字上游保险丝相互独立：
+     * 那一道是给通知栏 / 宿主共用的全局兜底，这里只是小球卡片两行文字的实际可用量。
+     * 下游超出部分会跑马灯/省略号也无意义，徒增每帧文本排版开销。
+     */
+    const val previewMaxChars = 100
 
     // --- 极值尺寸 (严格受原子尺度与间距约束) ---
     // 展开卡片宽度 = 3 个按钮直径 + 4 个边距 (左右各一外边距 + 两按钮间隙)
