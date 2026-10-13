@@ -37,7 +37,6 @@ the file for the first time is normal and correct.
 | `rules/execution_rules.json` | command safety rules | `{"rules":[{id,name,enabled_mode,patterns}]}` |
 | `rules/takeover_rules.json` | voice-assistant takeover rules | `{"rules":[{id,name,enabled,target,patterns}],"default_target":{...}}` |
 | `agents/registry.json` | agent profiles | `{"agents":[{id,name,alias,enabled,order,memory_mode,created_at,updated_at}]}` |
-| `agents/<id>/config.json` | one agent's own model/prompt overrides | object; only exists for agents that override the shared config |
 | `agents/<id>/memory.json` | one agent's saved memories | `{"memories":[{id,content,created_at,updated_at}]}` |
 | `llm/saved_configs.json` | saved model configs and the active one | `{"active_id":"...","prompt":"...","configs":[{id,name,provider,endpoint,api_key,model,protocol,supports_images,proxy,thinking_level,max_tokens,context_window_tokens,created_at,updated_at}]}` |
 
