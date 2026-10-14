@@ -10,6 +10,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.chat.agentic.python.CustomPyToolHarness
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.settings.MemoryMutationResult
+import com.niki914.zafiro.settings.model.RepetitionSensitivity
 import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
@@ -325,6 +326,10 @@ object XRepo {
         select = { llmRetryMaxAttempts },
         update = { copy(llmRetryMaxAttempts = it) },
     )
+    private val repetitionSensitivityField = PlainAppStateField(
+        select = { repetitionSensitivity },
+        update = { copy(repetitionSensitivity = it) },
+    )
     private val lastNotifiedUpdateVersionField = PlainAppStateField(
         select = { lastNotifiedUpdateVersion },
         update = { copy(lastNotifiedUpdateVersion = it) },
@@ -356,6 +361,12 @@ object XRepo {
     suspend fun llmRetryMaxAttempts(): Int = llmRetryMaxAttemptsField.get()
 
     suspend fun setLlmRetryMaxAttempts(value: Int) = llmRetryMaxAttemptsField.set(value)
+
+    suspend fun repetitionSensitivity(): RepetitionSensitivity =
+        RepetitionSensitivity.fromWire(repetitionSensitivityField.get())
+
+    suspend fun setRepetitionSensitivity(value: RepetitionSensitivity) =
+        repetitionSensitivityField.set(value.wireValue)
 
     suspend fun lastNotifiedUpdateVersion(): String = lastNotifiedUpdateVersionField.get()
 

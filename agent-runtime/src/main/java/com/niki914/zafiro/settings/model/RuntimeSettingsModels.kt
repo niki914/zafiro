@@ -38,6 +38,8 @@ data class RuntimeLlmConfig(
     val contextWindowTokens: Long = DEFAULT_CONTEXT_WINDOW_TOKENS,
     /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: String = "",
+    /** 复读检测灵敏度档位；见 [RepetitionSensitivity]。 */
+    val repetitionSensitivity: RepetitionSensitivity = RepetitionSensitivity.DEFAULT,
 )
 
 enum class RuntimeAgentMemoryMode {

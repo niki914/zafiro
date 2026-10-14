@@ -147,6 +147,7 @@ class AgentSessionEngine {
             maxTokens = llmConfig.maxTokens,
             thinkingLevel = llmConfig.thinkingLevel.takeIf(String::isNotBlank)
                 ?.let(ThinkingLevel::fromWire),
+            repetitionSensitivity = llmConfig.repetitionSensitivity,
         )
 
         val previousSession = runtimeState?.okia
@@ -167,6 +168,7 @@ class AgentSessionEngine {
             retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts)
             maxTokens = configWithoutRuntimePrompt.maxTokens
             thinkingLevel = configWithoutRuntimePrompt.thinkingLevel
+            repetitionConfig = configWithoutRuntimePrompt.repetitionSensitivity.toRepetitionConfig()
             proxy = configWithoutRuntimePrompt.proxy
             supportsImages =
                 sessionAssembler.isImageSupported(configWithoutRuntimePrompt.supportsImages)

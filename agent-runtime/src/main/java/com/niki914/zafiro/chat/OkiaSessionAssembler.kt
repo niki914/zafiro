@@ -8,6 +8,7 @@ import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.hooks.SerializationHolder
+import com.niki914.okia.loop.RequestLogger
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
@@ -51,6 +52,30 @@ internal class OkiaSessionAssembler(
 ) {
     private companion object {
         const val LOG_TAG = "niki914_zafiro_OkiaSessionAssembler"
+
+        /**
+         * 请求级诊断：每段 HTTP 请求一行。出问题时用来区分「一个请求在复读」
+         * 与「app 在反复重发」——okia 无 Logger，由宿主注入实现。
+         */
+        val androidRequestLogger = object : RequestLogger {
+            override fun started(segment: Int, attempt: Int) {
+                Logger.i(LOG_TAG, "request start segment=$segment attempt=$attempt")
+            }
+
+            override fun completed(
+                segment: Int,
+                attempt: Int,
+                elapsedMs: Long,
+                stopReason: String?,
+                failed: Boolean,
+            ) {
+                Logger.i(
+                    LOG_TAG,
+                    "request done segment=$segment attempt=$attempt elapsedMs=$elapsedMs " +
+                            "stopReason=${stopReason ?: "null"} failed=$failed"
+                )
+            }
+        }
     }
 
     var activeSession: Okia? = null
@@ -154,6 +179,8 @@ internal class OkiaSessionAssembler(
             supportsImages = imageLoader != null && config.supportsImages
             thinkingLevel = config.thinkingLevel
             proxy = config.proxy
+            requestLogger = androidRequestLogger
+            repetitionConfig = config.repetitionSensitivity.toRepetitionConfig()
         }
     }
 

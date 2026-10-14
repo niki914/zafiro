@@ -71,6 +71,8 @@
     <string name="ui_home_error_idle_timeout_title">応答がタイムアウトしました</string>
     <string name="ui_home_error_output_truncated_title">出力が打ち切られました</string>
     <string name="ui_home_error_output_truncated_body">1 回の出力上限に達したため、返信は未完成です。モデル設定で Max Tokens を大きくしてから、もう一度生成してください。</string>
+    <string name="ui_home_error_repetition_title">出力の繰り返しを検出</string>
+    <string name="ui_home_error_repetition_body">モデルが繰り返しに陥ったのを検知し、会話を終了しました。誤検知の場合は設定で感度を調整してください。</string>
     <string name="ui_home_error_retry_exhausted_title">自動リトライがすべて失敗しました</string>
     <string name="ui_home_error_internal_title">内部エラー</string>
     <string name="ui_home_retrying_title">ネットワーク障害のため再試行中…</string>
@@ -424,7 +426,6 @@
     <string name="ui_settings_general_group_appearance">外観と言語</string>
     <string name="ui_settings_general_group_floating_notification">フローティングと通知</string>
     <string name="ui_settings_general_group_conversation">会話と操作</string>
-    <string name="ui_settings_general_group_runtime">実行と制御</string>
     <string name="ui_settings_general_floating_ball">フローティングボール</string>
     <string name="ui_settings_general_floating_ball_summary">バックグラウンド実行中にエージェントの状態とクイック操作を表示</string>
     <string name="ui_settings_general_floating_ball_auto_expand">フローティングボールの自動展開</string>
@@ -445,6 +446,19 @@
     <string name="ui_settings_general_retry_summary">リクエスト失敗後の自動リトライ</string>
     <string name="ui_settings_general_keep_screen_on">回答中は画面をオンに保つ</string>
     <string name="ui_settings_general_keep_screen_on_summary">エージェントの応答とツール実行中は画面をオフにしません</string>
+    <string name="ui_settings_runtime_control">実行制御</string>
+    <string name="ui_settings_runtime_control_summary">上限・再試行・繰り返し検出</string>
+    <string name="ui_settings_runtime_group_network">ネットワーク</string>
+    <string name="ui_settings_runtime_group_stability">安定性</string>
+    <string name="ui_settings_runtime_repetition_detection">繰り返し検出</string>
+    <string name="ui_settings_runtime_repetition_summary">モデルが同じ出力を繰り返したとき、ターンを早期に中断します。厳しくするほど感度は上がりますが、正常な内容を中断する可能性も高まります</string>
+    <string name="ui_settings_runtime_sensitivity_relaxed">緩い</string>
+    <string name="ui_settings_runtime_sensitivity_loose">やや緩い</string>
+    <string name="ui_settings_runtime_sensitivity_standard">標準</string>
+    <string name="ui_settings_runtime_sensitivity_strict">厳しい</string>
+    <string name="ui_settings_runtime_sensitivity_stricter">より厳しい</string>
+    <string name="ui_settings_runtime_sensitivity_strictest">最も厳しい</string>
+    <string name="ui_settings_runtime_sensitivity_off">オフ</string>
     <string name="ui_settings_general_always_show_message_actions">メッセージ操作を常に表示</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">音声アシスタント専用セッション</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">有効にすると音声アシスタントの会話が独立し、メイン画面の履歴に影響しません</string>

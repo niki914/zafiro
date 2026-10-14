@@ -67,6 +67,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
             groups = listOf(
                 ZafiroSettingsGroup.ModelConfig,
                 ZafiroSettingsGroup.Memory,
+                ZafiroSettingsGroup.RuntimeControl,
             ),
         ),
         SettingsSectionDefinition(

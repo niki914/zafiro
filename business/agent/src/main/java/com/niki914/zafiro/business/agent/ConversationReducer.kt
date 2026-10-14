@@ -351,6 +351,7 @@ internal object ConversationReducer {
         LlmErrorCode.ToolExecutionFailed -> TurnFailureCode.ToolExecutionFailed
         LlmErrorCode.IdleTimeout -> TurnFailureCode.IdleTimeout
         LlmErrorCode.OutputTruncated -> TurnFailureCode.OutputTruncated
+        LlmErrorCode.Repetition -> TurnFailureCode.Repetition
         // 契约里没有 TurnConflict：已有活跃回合由 stream() 的返回值同步告知
         LlmErrorCode.TurnConflict -> null
     }

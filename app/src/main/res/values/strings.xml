@@ -71,6 +71,8 @@
     <string name="ui_home_error_idle_timeout_title">响应超时</string>
     <string name="ui_home_error_output_truncated_title">输出被截断</string>
     <string name="ui_home_error_output_truncated_body">单次输出达到上限，回答未完成。请在模型配置中调大 Max Tokens 后重新生成。</string>
+    <string name="ui_home_error_repetition_title">检测到重复输出</string>
+    <string name="ui_home_error_repetition_body">检测到模型陷入重复，已终止对话。如果误判请在设置中调整灵敏度。</string>
     <string name="ui_home_error_retry_exhausted_title">多次自动重试后仍失败</string>
     <string name="ui_home_error_internal_title">内部错误</string>
     <string name="ui_home_retrying_title">网络波动，正在重试…</string>
@@ -430,7 +432,6 @@
     <string name="ui_settings_general_group_appearance">外观与语言</string>
     <string name="ui_settings_general_group_floating_notification">悬浮与通知</string>
     <string name="ui_settings_general_group_conversation">对话与交互</string>
-    <string name="ui_settings_general_group_runtime">运行与控制</string>
     <string name="ui_settings_general_floating_ball">悬浮球</string>
     <string name="ui_settings_general_floating_ball_summary">后台运行时展示 Agent 状态与快捷操作</string>
     <string name="ui_settings_general_floating_ball_auto_expand">悬浮球自动展开</string>
@@ -451,6 +452,19 @@
     <string name="ui_settings_general_retry_summary">请求失败后的自动重试</string>
     <string name="ui_settings_general_keep_screen_on">回答期间保持屏幕常亮</string>
     <string name="ui_settings_general_keep_screen_on_summary">回答与工具执行期间保持屏幕常亮</string>
+    <string name="ui_settings_runtime_control">运行控制</string>
+    <string name="ui_settings_runtime_control_summary">上限、重试与复读检测</string>
+    <string name="ui_settings_runtime_group_network">网络</string>
+    <string name="ui_settings_runtime_group_stability">稳定性</string>
+    <string name="ui_settings_runtime_repetition_detection">复读检测</string>
+    <string name="ui_settings_runtime_repetition_summary">模型持续重复输出时提前熔断；越严格越灵敏，但也越可能误判正常内容</string>
+    <string name="ui_settings_runtime_sensitivity_relaxed">宽松</string>
+    <string name="ui_settings_runtime_sensitivity_loose">较宽松</string>
+    <string name="ui_settings_runtime_sensitivity_standard">标准</string>
+    <string name="ui_settings_runtime_sensitivity_strict">严格</string>
+    <string name="ui_settings_runtime_sensitivity_stricter">更严格</string>
+    <string name="ui_settings_runtime_sensitivity_strictest">极严</string>
+    <string name="ui_settings_runtime_sensitivity_off">关闭</string>
     <string name="ui_settings_general_always_show_message_actions">总是显示消息操作</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">语音助手独享一个会话</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">开启后语音助手对话不影响主界面历史；关闭则与主界面共用当前对话</string>

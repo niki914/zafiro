@@ -49,6 +49,7 @@ object RetryableErrorClassifier {
         LLMErrorCode.HookFailed -> LlmErrorCode.HookFailed
         LLMErrorCode.ToolExecutionFailed -> LlmErrorCode.ToolExecutionFailed
         LLMErrorCode.RetryExhausted -> LlmErrorCode.RetryExhausted
+        LLMErrorCode.Repetition -> LlmErrorCode.Repetition
         LLMErrorCode.Transport -> classifyByPattern(error)
     }
 

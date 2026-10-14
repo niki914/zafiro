@@ -18,6 +18,11 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_memory_summary,
         routeSuffix = "memory",
     ),
+    RuntimeControl(
+        titleRes = R.string.ui_settings_runtime_control,
+        summaryRes = R.string.ui_settings_runtime_control_summary,
+        routeSuffix = "runtime-control",
+    ),
     Tools(
         titleRes = R.string.ui_settings_tools,
         summaryRes = R.string.ui_settings_tools_summary,

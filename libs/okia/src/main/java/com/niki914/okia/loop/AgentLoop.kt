@@ -86,5 +86,9 @@ data class LoopRequest(
     val hooks: List<Hooks>,
     val httpEngine: HttpEngine,
     val retryPolicy: RetryPolicy,
+    /** 复读检测阈值；null = 库默认值。 */
+    val repetitionConfig: RepetitionConfig? = null,
+    /** 请求级诊断出口；null = 不打日志。仅用于日志，不参与回合语义。 */
+    val requestLogger: RequestLogger? = null,
     val onCommit: suspend (List<Message>) -> Unit
 )

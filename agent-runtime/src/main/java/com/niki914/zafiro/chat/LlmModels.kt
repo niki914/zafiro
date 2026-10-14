@@ -3,6 +3,7 @@ package com.niki914.zafiro.chat
 import com.niki914.okia.message.ThinkingLevel
 import com.niki914.zafiro.chat.agentic.PromptComposeResult
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
+import com.niki914.zafiro.settings.model.RepetitionSensitivity
 
 data class LlmRuntimeSnapshot(
     val config: ResolvedLlmConfig,
@@ -23,6 +24,8 @@ data class ResolvedLlmConfig(
     val maxTokens: Int,
     /** 思考强度；null = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: ThinkingLevel? = null,
+    /** 复读检测灵敏度档位。 */
+    val repetitionSensitivity: RepetitionSensitivity = RepetitionSensitivity.DEFAULT,
 )
 
 data class ResolvedTools(

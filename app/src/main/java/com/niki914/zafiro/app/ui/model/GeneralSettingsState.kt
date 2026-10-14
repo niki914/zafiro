@@ -8,11 +8,6 @@ import com.niki914.zafiro.business.permission.PermissionState
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
 
-sealed interface GeneralSettingsDialog {
-    data object IdleTimeout : GeneralSettingsDialog
-    data object RetryAttempts : GeneralSettingsDialog
-}
-
 data class GeneralSettingsUiState(
     val floatingBallEnabled: Boolean = false,
     val floatingBallAutoExpand: Boolean = true,
@@ -21,17 +16,11 @@ data class GeneralSettingsUiState(
     val loadLastConversation: Boolean = false,
     val alwaysShowMessageActions: Boolean = true,
     val voiceAssistantIsolatedSession: Boolean = true,
-    val idleTimeoutSeconds: Long = 60L,
-    val retryMaxAttempts: Int = 3,
-    val keepScreenOn: Boolean = true,
-    val activeDialog: GeneralSettingsDialog? = null,
     val isLoading: Boolean = false,
 )
 
 sealed interface GeneralSettingsIntent {
     data object Load : GeneralSettingsIntent
-    data class OpenDialog(val dialog: GeneralSettingsDialog) : GeneralSettingsIntent
-    data object DismissDialog : GeneralSettingsIntent
     data class ToggleFloatingBall(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleFloatingBallAutoExpand(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleResidentNotification(val enabled: Boolean) : GeneralSettingsIntent
@@ -39,9 +28,6 @@ sealed interface GeneralSettingsIntent {
     data class ToggleLoadLastConversation(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleAlwaysShowMessageActions(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleVoiceAssistantIsolatedSession(val enabled: Boolean) : GeneralSettingsIntent
-    data class SelectIdleTimeout(val seconds: Long) : GeneralSettingsIntent
-    data class SelectRetryMaxAttempts(val attempts: Int) : GeneralSettingsIntent
-    data class ToggleKeepScreenOn(val enabled: Boolean) : GeneralSettingsIntent
 }
 
 class GeneralSettingsViewModel :
@@ -52,8 +38,6 @@ class GeneralSettingsViewModel :
     override suspend fun handleIntent(intent: GeneralSettingsIntent) {
         when (intent) {
             GeneralSettingsIntent.Load -> loadSettings()
-            is GeneralSettingsIntent.OpenDialog -> updateState { copy(activeDialog = intent.dialog) }
-            GeneralSettingsIntent.DismissDialog -> updateState { copy(activeDialog = null) }
             is GeneralSettingsIntent.ToggleFloatingBall -> toggleFloatingBall(intent.enabled)
             is GeneralSettingsIntent.ToggleFloatingBallAutoExpand ->
                 toggleFloatingBallAutoExpand(intent.enabled)
@@ -67,10 +51,6 @@ class GeneralSettingsViewModel :
 
             is GeneralSettingsIntent.ToggleVoiceAssistantIsolatedSession ->
                 toggleVoiceAssistantIsolatedSession(intent.enabled)
-
-            is GeneralSettingsIntent.SelectIdleTimeout -> selectIdleTimeout(intent.seconds)
-            is GeneralSettingsIntent.SelectRetryMaxAttempts -> selectRetryMaxAttempts(intent.attempts)
-            is GeneralSettingsIntent.ToggleKeepScreenOn -> toggleKeepScreenOn(intent.enabled)
         }
     }
 
@@ -80,9 +60,6 @@ class GeneralSettingsViewModel :
             val loadLastConversation = XRepo.loadLastConversationOnStartup()
             val alwaysShowMessageActions = XRepo.alwaysShowMessageActions()
             val voiceAssistantIsolatedSession = XRepo.voiceAssistantIsolatedSession()
-            val idleTimeoutSeconds = XRepo.llmIdleTimeoutSeconds()
-            val retryMaxAttempts = XRepo.llmRetryMaxAttempts()
-            val keepScreenOn = XRepo.keepScreenOn()
             val floatingBallEnabled = XRepo.floatingBallEnabled()
             val floatingBallAutoExpand = XRepo.floatingBallAutoExpand()
             val residentNotificationEnabled = XRepo.residentNotificationEnabled()
@@ -92,9 +69,6 @@ class GeneralSettingsViewModel :
                     loadLastConversation = loadLastConversation,
                     alwaysShowMessageActions = alwaysShowMessageActions,
                     voiceAssistantIsolatedSession = voiceAssistantIsolatedSession,
-                    idleTimeoutSeconds = idleTimeoutSeconds,
-                    retryMaxAttempts = retryMaxAttempts,
-                    keepScreenOn = keepScreenOn,
                     floatingBallEnabled = floatingBallEnabled,
                     floatingBallAutoExpand = floatingBallAutoExpand,
                     residentNotificationEnabled = residentNotificationEnabled,
@@ -180,36 +154,6 @@ class GeneralSettingsViewModel :
         updateState { copy(voiceAssistantIsolatedSession = enabled) }
         try {
             XRepo.setVoiceAssistantIsolatedSession(enabled)
-        } catch (e: Throwable) {
-            e.printStackTrace()
-            throw e
-        }
-    }
-
-    private suspend fun selectIdleTimeout(seconds: Long) {
-        updateState { copy(idleTimeoutSeconds = seconds, activeDialog = null) }
-        try {
-            XRepo.setLlmIdleTimeoutSeconds(seconds)
-        } catch (e: Throwable) {
-            e.printStackTrace()
-            throw e
-        }
-    }
-
-    private suspend fun selectRetryMaxAttempts(attempts: Int) {
-        updateState { copy(retryMaxAttempts = attempts, activeDialog = null) }
-        try {
-            XRepo.setLlmRetryMaxAttempts(attempts)
-        } catch (e: Throwable) {
-            e.printStackTrace()
-            throw e
-        }
-    }
-
-    private suspend fun toggleKeepScreenOn(enabled: Boolean) {
-        updateState { copy(keepScreenOn = enabled) }
-        try {
-            XRepo.setKeepScreenOn(enabled)
         } catch (e: Throwable) {
             e.printStackTrace()
             throw e
