@@ -345,12 +345,21 @@ class ConversationRepoTest {
 
     @Test
     fun rename_mutatesConversationTitle() = runTest {
-        val id = ConversationRepo.createConversation("session-1", "hi")
-        ConversationRepo.renameConversation(id, "new title")
+        val rootId = ConversationRepo.createConversation("session-1", "original")
+        val entries = linearEntries(Message.User(listOf(ContentBlock.Text("u1"))))
+        ConversationRepo.insertEntries(rootId, entries)
+        ConversationRepo.updateLeafId(rootId, entries.last().id)
+        val regen = ConversationRepo.forkAtTurn(rootId, turnIndex = 0, kind = ForkKind.Regenerate)!!
+        val branchId = regen.newConversationId
 
-        val record = ConversationRepo.getConversation(id)!!
-        assertEquals("new title", record.summary.title)
-        assertTrue(record.summary.titleEdited)
+        ConversationRepo.renameConversation(branchId, "new title")
+
+        val rootRecord = ConversationRepo.getConversation(rootId)!!
+        val branchRecord = ConversationRepo.getConversation(branchId)!!
+        assertEquals("new title", rootRecord.summary.title)
+        assertEquals("new title", branchRecord.summary.title)
+        assertTrue(rootRecord.summary.titleEdited)
+        assertTrue(branchRecord.summary.titleEdited)
     }
 
     @Test
