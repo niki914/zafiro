@@ -12,6 +12,7 @@ import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ConversationTurn
 import com.niki914.zafiro.api.model.TurnBlock
+import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.ui.model.MainDispatcherRule
 import com.niki914.zafiro.business.agent.turnIdAt
 import com.niki914.zafiro.repo.LlmConfigsDocument
@@ -568,5 +569,35 @@ class HomeChatViewModelTest {
         fixture.agent.mutableContextUsage.value = null
         runCurrent()
         assertNull(fixture.vm.uiStateFlow.value.contextProgress)
+    }
+
+    @Test
+    fun switchTurnBranch_loadsTargetBranchConversation() = runTest {
+        val fixture = fixture()
+        fixture.store.createRecord("c0", "hello")
+        fixture.store.setSnapshot(
+            "c0", snapshotOf(
+                Message.User(listOf(ContentBlock.Text("hello"))),
+                Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("ans0")))),
+            )
+        )
+        fixture.store.forkAtTurn("c0", turnIndex = 0, kind = ForkKind.Regenerate)
+        fixture.store.setSnapshot(
+            "fork-1", snapshotOf(
+                Message.User(listOf(ContentBlock.Text("hello"))),
+                Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("ans1")))),
+            )
+        )
+
+        fixture.vm.sendIntent(HomeChatIntent.LoadConversation("c0"))
+        advanceUntilIdle()
+
+        val turnId = 0L
+        assertEquals(1 to 2, fixture.vm.uiStateFlow.value.turnBranches[turnId]?.let { it.current to it.total })
+
+        fixture.vm.sendIntent(HomeChatIntent.SwitchTurnBranch(turnId = turnId, delta = 1))
+        advanceUntilIdle()
+
+        assertEquals("fork-1", fixture.agent.lastLoadedId?.value)
     }
 }

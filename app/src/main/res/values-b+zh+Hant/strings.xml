@@ -362,7 +362,6 @@
     <string name="update_dialog_confirm">前往更新</string>
     <string name="update_dialog_cancel">稍後</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
-    <string name="conversation_regenerate_title">Regenerate · %1$s</string>
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
     <string name="ui_tool_display_terminal">終端</string>

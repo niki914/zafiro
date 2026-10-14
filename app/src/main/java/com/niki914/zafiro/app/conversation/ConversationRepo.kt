@@ -54,9 +54,6 @@ object ConversationRepo {
     private var forkTitleFormat = "Fork · %1\$s"
 
     @Volatile
-    private var regenerateTitleFormat = "Regenerate · %1\$s"
-
-    @Volatile
     private var rewindTitleFormat = "Rewind · %1\$s"
 
     fun init(context: Context) {
@@ -69,9 +66,6 @@ object ConversationRepo {
                 forkTitleFormat = runCatching {
                     context.getString(R.string.conversation_fork_title)
                 }.getOrDefault(forkTitleFormat)
-                regenerateTitleFormat = runCatching {
-                    context.getString(R.string.conversation_regenerate_title)
-                }.getOrDefault(regenerateTitleFormat)
                 rewindTitleFormat = runCatching {
                     context.getString(R.string.conversation_rewind_title)
                 }.getOrDefault(rewindTitleFormat)
@@ -80,10 +74,22 @@ object ConversationRepo {
     }
 
     fun observeConversations(): Flow<List<ConversationSummary>> {
-        return dao().observeConversations().map { rows ->
+        return dao().observeLatestBranches().map { rows ->
             rows.map { it.toSummary() }
         }
     }
+
+    /**
+     * 分支组信息（供对话页的 `<n/N>` 翻页器与族谱推导）：组内全部成员。
+     */
+    suspend fun branchGroup(conversationId: String): List<ConversationSummary> {
+        val row = dao().getConversation(conversationId) ?: return emptyList()
+        val group = dao().listBranchGroup(row.rootId.ifBlank { row.id })
+        return if (group.size <= 1) emptyList() else group.map { it.toSummary() }
+    }
+
+    /** 组内最新分支的 id（冷启动 / 列表点击都落在这里）。 */
+    suspend fun latestBranchId(rootId: String): String? = dao().latestBranch(rootId)?.id
 
     /**
      * 会话是否已建档（只查行，不读快照与条目；[getConversation] 会装配快照）。
@@ -121,6 +127,7 @@ object ConversationRepo {
 
     /**
      * 显式 id 创建会话（T3：id = OKIA 树 id，保证 Room id == 树 id）。
+     * 新建会话自成一个分支组的根（root_id = 自身，branch_index = 1）。
      */
     suspend fun createConversation(
         id: String,
@@ -145,6 +152,9 @@ object ConversationRepo {
                 draftText = "",
                 leafId = null,
                 configId = configId,
+                rootId = id,
+                parentId = null,
+                forkTurn = null,
             ),
         )
         Logger.i(
@@ -190,18 +200,27 @@ object ConversationRepo {
         val truncated = projected.take(keepEntryCount)
 
         val newId = UUID.randomUUID().toString()
+        val isRegenerate = kind == ForkKind.Regenerate
+        // 重新生成的分支留在同一组内：共享原始标题，「重新生成过」由 branchIndex > 1 表达。
         val titleFormat = when (kind) {
             ForkKind.Fork -> forkTitleFormat
-            ForkKind.Regenerate -> regenerateTitleFormat
-            ForkKind.Rewind -> rewindTitleFormat
+            ForkKind.Regenerate, ForkKind.Rewind -> rewindTitleFormat
         }
+        // 只有 Regenerate 聚成一组；Fork 另起一线，Rewind 仍沿用旧行为（不入组）。
+        val rootId = if (isRegenerate) source.rootId.ifBlank { source.id } else newId
+        val parentId = if (isRegenerate) source.id else null
+        val forkTurn = if (isRegenerate) turnIndex else null
         val preview = ConversationFormatter.previewFromEntries(truncated)
 
         dao().forkConversationTransaction(
             conversation = ConversationEntity(
                 id = newId,
-                title = String.format(titleFormat, source.title),
-                titleEdited = true,
+                title = if (isRegenerate) {
+                    source.title
+                } else {
+                    String.format(titleFormat, source.title)
+                },
+                titleEdited = source.titleEdited || !isRegenerate,
                 createdAt = now,
                 updatedAt = now,
                 lastMessagePreview = preview,
@@ -209,6 +228,9 @@ object ConversationRepo {
                 draftText = "",
                 leafId = truncated.lastOrNull()?.id,
                 configId = source.configId,
+                rootId = rootId,
+                parentId = parentId,
+                forkTurn = forkTurn,
             ),
             entries = truncated.map { entry -> entry.toEntity(newId) },
         )
@@ -256,6 +278,10 @@ object ConversationRepo {
                 titleEdited = true,
                 createdAt = now,
                 updatedAt = now,
+                // 整体派生另起一条线：自己就是新组的根
+                rootId = newId,
+                parentId = null,
+                forkTurn = null,
             ),
             entries = entries.map { it.copy(conversationId = newId) },
         )
@@ -354,8 +380,18 @@ object ConversationRepo {
         dao().updateConfigId(conversationId = conversationId, configId = configId)
     }
 
+    /** 删除会话及其整个重新生成分支组（组内所有版本一起消失）。 */
     suspend fun deleteConversation(id: String) {
-        dao().deleteConversation(id)
+        val row = dao().getConversation(id)
+        val rootId = row?.rootId?.takeIf { it.isNotBlank() } ?: id
+        dao().deleteBranchGroup(rootId)
+    }
+
+    /** 分支组内全部会话 id（删除前需逐个销毁运行中的 Agent）。 */
+    suspend fun branchGroupIds(id: String): List<String> {
+        val row = dao().getConversation(id) ?: return listOf(id)
+        val rootId = row.rootId.ifBlank { id }
+        return dao().listBranchGroupIds(rootId)
     }
 
     suspend fun renameConversation(id: String, title: String) {
@@ -424,6 +460,9 @@ object ConversationRepo {
             lastMessagePreview = lastMessagePreview,
             turnCount = turnCount,
             hasUnread = hasUnread,
+            rootId = rootId.ifBlank { id },
+            parentId = parentId,
+            forkTurn = forkTurn,
         )
     }
 }

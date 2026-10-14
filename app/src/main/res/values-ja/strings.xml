@@ -399,7 +399,6 @@
 
     <string name="feedback_bug_template">## 問題の説明\n\n## 再現手順\n\n## 期待される動作\n\n## 実際の動作\n\n## デバイス情報\n- Android バージョン：\n- アシスタント（Breeno またはその他）：\n- モジュールのバージョン：\n\n## その他\n理解を深めるため、ログやスクリーンショット、画面録画などを添付できます</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
-    <string name="conversation_regenerate_title">Regenerate · %1$s</string>
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
     <string name="ui_tool_display_terminal">ターミナル</string>

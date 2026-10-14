@@ -25,6 +25,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -641,6 +643,9 @@ fun TurnActionRow(
     onReGenerate: () -> Unit,
     onFork: () -> Unit,
     onRewind: () -> Unit = {},
+    branchIndex: Int = 1,
+    branchCount: Int = 1,
+    onSwitchBranch: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val isAgent = source == ActionSource.Agent
@@ -674,6 +679,15 @@ fun TurnActionRow(
                     onClick = onFork,
                     iconOnly = iconOnly,
                 )
+                // 分支翻页器：挂在 Agent 行、排在 Regenerate/Fork 之后
+                if (branchCount > 1) {
+                    BranchPager(
+                        index = branchIndex,
+                        count = branchCount,
+                        iconOnly = iconOnly,
+                        onSwitchBranch = onSwitchBranch,
+                    )
+                }
             } else {
                 ActionButton(
                     icon = Icons.Default.Refresh,
@@ -689,6 +703,92 @@ fun TurnActionRow(
                 )
             }
         }
+    }
+}
+
+/**
+ * 重新生成分支翻页器：‹ n/N ›。
+ * 与相邻按钮同尺寸同颜色、同样无波纹（与 iconOnly 按钮一致）；
+ * 只有一版时不渲染（调用方就不传入）。
+ */
+@Composable
+private fun BranchPager(
+    index: Int,
+    count: Int,
+    iconOnly: Boolean,
+    onSwitchBranch: (Int) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val enabledColor = colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
+    val disabledColor = colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        PagerChevron(
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            contentDescription = "Previous Branch",
+            enabled = index > 1,
+            iconOnly = iconOnly,
+            tint = if (index > 1) enabledColor else disabledColor,
+            onClick = { onSwitchBranch(-1) },
+        )
+        Text(
+            text = "$index/$count",
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+            color = enabledColor,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 6.dp),
+        )
+        PagerChevron(
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = "Next Branch",
+            enabled = index < count,
+            iconOnly = iconOnly,
+            tint = if (index < count) enabledColor else disabledColor,
+            onClick = { onSwitchBranch(1) },
+        )
+    }
+}
+
+@Composable
+private fun PagerChevron(
+    icon: ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    iconOnly: Boolean,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    val shape = G2CardShape(14.dp)
+    Box(
+        modifier = Modifier
+            .size(if (iconOnly) 28.dp else 38.dp)
+            .then(
+                if (iconOnly) {
+                    Modifier
+                } else {
+                    Modifier
+                        .clip(shape)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                            shape,
+                        )
+                }
+            )
+            .clickable(
+                enabled = enabled,
+                interactionSource = remember { MutableInteractionSource() },
+                // 翻页器无波纹：去掉点击指示，不从头像式图标堆里弹出一块矩形
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(if (iconOnly) 16.dp else 20.dp),
+            tint = tint,
+        )
     }
 }
 

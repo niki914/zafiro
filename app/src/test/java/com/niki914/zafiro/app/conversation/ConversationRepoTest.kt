@@ -1,5 +1,5 @@
 // 保护：会话仓储的持久化读写契约——建档/读回、leaf 与进度落盘、fork 派生、
-// 删除级联、configId 往返，以及列表 Flow 随会话变更重新发射。
+// 重新生成分支分组与列表收敛、删除级联、configId 往返，以及列表 Flow 随会话变更重新发射。
 package com.niki914.zafiro.app.conversation
 
 import android.content.Context
@@ -178,11 +178,116 @@ class ConversationRepoTest {
             ConversationRepo.forkAtTurn(sourceId, turnIndex = 0, kind = ForkKind.Regenerate)!!
 
         val newRecord = ConversationRepo.getConversation(result.newConversationId)!!
-        assertTrue(newRecord.summary.title.startsWith("Regenerate ·"))
+        // 分支留在同一组：共享原始标题
+        assertEquals("original", newRecord.summary.title)
+        assertEquals(sourceId, newRecord.summary.rootId)
+        assertEquals(sourceId, newRecord.summary.parentId)
+        assertEquals(0, newRecord.summary.forkTurn)
         // 截在该回合用户条目之前（不含）：turn 0 → 0 条
         assertTrue(newRecord.snapshot.entries.isEmpty())
         assertEquals("u1", result.promptText)
         assertEquals(listOf("/image.jpg"), result.images.map { it.path })
+    }
+
+    @Test
+    fun branchGroup_listsAllRegenerationsAndCollapsesListToLatest() = runTest {
+        val sourceId = ConversationRepo.createConversation("session-src", "original")
+        val entries = linearEntries(
+            Message.User(listOf(ContentBlock.Text("u1"))),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("a1")))),
+        )
+        ConversationRepo.insertEntries(sourceId, entries)
+        ConversationRepo.updateLeafId(sourceId, entries.last().id)
+
+        val first = ConversationRepo.forkAtTurn(sourceId, turnIndex = 0, ForkKind.Regenerate)!!
+        val second = ConversationRepo.forkAtTurn(sourceId, turnIndex = 0, ForkKind.Regenerate)!!
+
+        // 同一组：原始 1 + 两次重新生成
+        val group = ConversationRepo.branchGroup(second.newConversationId)
+        assertEquals(3, group.size)
+        assertEquals(
+            listOf(sourceId, first.newConversationId, second.newConversationId),
+            group.map { it.id },
+        )
+        assertEquals(listOf(null, sourceId, sourceId), group.map { it.parentId })
+        assertEquals(listOf(null, 0, 0), group.map { it.forkTurn })
+        // 组内最新分支
+        assertEquals(second.newConversationId, ConversationRepo.latestBranchId(sourceId))
+    }
+
+    // 保护：单版本会话的分组必须为空，这是「首次不出 <1/1>」的边界。
+    @Test
+    fun branchGroup_singleVersionConversationReturnsEmpty() = runTest {
+        val sourceId = ConversationRepo.createConversation("session-solo", "original")
+        assertTrue(ConversationRepo.branchGroup(sourceId).isEmpty())
+    }
+
+    // 保护：删除一个会话要连它整个分支组一起删——
+    // 只删当前版本会留下隐藏兄弟，列表又把它顶上来。
+    @Test
+    fun deleteConversation_removesWholeBranchGroup() = runTest {
+        val sourceId = ConversationRepo.createConversation("session-src", "original")
+        val entries = linearEntries(
+            Message.User(listOf(ContentBlock.Text("u1"))),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("a1")))),
+        )
+        ConversationRepo.insertEntries(sourceId, entries)
+        ConversationRepo.updateLeafId(sourceId, entries.last().id)
+        val regen = ConversationRepo.forkAtTurn(sourceId, turnIndex = 0, ForkKind.Regenerate)!!
+
+        ConversationRepo.deleteConversation(regen.newConversationId)
+
+        assertFalse(ConversationRepo.exists(sourceId))
+        assertFalse(ConversationRepo.exists(regen.newConversationId))
+    }
+
+    // 保护：fork 会脱钩。删除 B 所在的重新生成组不能伤到 A（B 的 fork 源）
+    // 与 E（从 C fork 出去的独立组）。
+    @Test
+    fun deleteConversation_forkedAncestorAndChildSurvive() = runTest {
+        // A -fork-> B, B -regen-> C、D, C -fork-> E
+        val a = ConversationRepo.createConversation("a", "A")
+        ConversationRepo.insertEntries(a, linearEntries(Message.User(listOf(ContentBlock.Text("u1")))))
+        val b = ConversationRepo.forkAtTurn(a, turnIndex = 0, kind = ForkKind.Fork)!!.newConversationId
+        ConversationRepo.insertEntries(b, linearEntries(Message.User(listOf(ContentBlock.Text("u1")))))
+
+        val c = ConversationRepo.forkAtTurn(b, turnIndex = 0, kind = ForkKind.Regenerate)!!.newConversationId
+        val d = ConversationRepo.forkAtTurn(b, turnIndex = 0, kind = ForkKind.Regenerate)!!.newConversationId
+        ConversationRepo.insertEntries(c, linearEntries(Message.User(listOf(ContentBlock.Text("u1")))))
+        val e = ConversationRepo.forkAtTurn(c, turnIndex = 0, kind = ForkKind.Fork)!!.newConversationId
+
+        ConversationRepo.deleteConversation(d)
+
+        // B、C、D 整组消失
+        assertFalse(ConversationRepo.exists(b))
+        assertFalse(ConversationRepo.exists(c))
+        assertFalse(ConversationRepo.exists(d))
+        // A、E 已脱钩，不受影响
+        assertTrue(ConversationRepo.exists(a))
+        assertTrue(ConversationRepo.exists(e))
+    }
+
+    // 保护：列表收敛取「组内 updated_at 最新」而非「版本序号最大」——
+    // 在老版本里继续对话，该组要浮顶且列表落到那一行。
+    @Test
+    fun observeConversations_collapsesToMostRecentlyUpdatedBranch() = runTest {
+        val sourceId = ConversationRepo.createConversation("session-src", "original")
+        val entries = linearEntries(
+            Message.User(listOf(ContentBlock.Text("u1"))),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("a1")))),
+        )
+        ConversationRepo.insertEntries(sourceId, entries)
+        ConversationRepo.updateLeafId(sourceId, entries.last().id)
+        val regen = ConversationRepo.forkAtTurn(sourceId, turnIndex = 0, ForkKind.Regenerate)!!
+
+        // 重新生成后 V2 更新，列表应当收敛到 V2
+        assertEquals(regen.newConversationId, ConversationRepo.latestBranchId(sourceId))
+        assertEquals(regen.newConversationId, ConversationRepo.observeConversations().first()[0].id)
+
+        // 回到 V1 继续聊：V1 成为最近更新，列表与落点都改回 V1
+        ConversationRepo.touchConversation(sourceId, now = System.currentTimeMillis() + 10_000L)
+        assertEquals(sourceId, ConversationRepo.latestBranchId(sourceId))
+        assertEquals(sourceId, ConversationRepo.observeConversations().first()[0].id)
     }
 
     @Test

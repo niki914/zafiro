@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
         ConversationEntity::class,
         ConversationEntryEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class ConversationDatabase : RoomDatabase() {
@@ -27,7 +27,7 @@ fun buildConversationDatabase(context: Context): ConversationDatabase {
         ConversationDatabase::class.java,
         "conversation_history.db",
     )
-        .addMigrations(MIGRATION_2_3)
+        .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
         .fallbackToDestructiveMigrationOnDowngrade()
         .build()
 }

@@ -1,4 +1,5 @@
-// 保护：Room 数据库从 v2 升级到 v3 时旧会话及 entry 记录完整保留，config_id 字段成功新增且默认为空串
+// 保护：Room 数据库从 v2 升级到 v4 时旧会话及 entry 记录完整保留，
+// config_id / has_unread / root_id / parent_id / fork_turn 字段成功新增且默认值正确。
 package com.niki914.zafiro.app.conversation
 
 import android.content.Context
@@ -91,12 +92,12 @@ class ConversationMigrationTest {
     }
 
     @Test
-    fun migration2To3_addsConfigIdColumnAndPreservesData() = runTest {
+    fun migration2To4_preservesDataAndBackfillsBranchColumns() = runTest {
         createV2Database()
 
-        // 验证 Room 以 v3 打开迁移后的数据库成功（由 Room 执行 MIGRATION_2_3 并校验 schema）
+        // 验证 Room 以 v4 打开迁移后的数据库成功（由 Room 依次执行 MIGRATION_2_3 / 3_4 并校验 schema）
         val roomDb = Room.databaseBuilder(context, ConversationDatabase::class.java, TEST_DB_NAME)
-            .addMigrations(MIGRATION_2_3)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
             .build()
         try {
             val entity = roomDb.conversationDao().getConversation("c1")
@@ -105,6 +106,10 @@ class ConversationMigrationTest {
             assertEquals("Title 1", entity.title)
             assertEquals("", entity.configId)
             assertEquals(false, entity.hasUnread)
+            // 存量会话各自成根，无父节点与分叉轮次
+            assertEquals("c1", entity.rootId)
+            assertEquals(null, entity.parentId)
+            assertEquals(null, entity.forkTurn)
 
             val entries = roomDb.conversationDao().listEntries("c1")
             assertEquals(1, entries.size)

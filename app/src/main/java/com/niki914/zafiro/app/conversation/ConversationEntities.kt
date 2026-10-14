@@ -7,7 +7,11 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.niki914.okia.conversation.SessionSnapshot
 
-@Entity(tableName = "conversation")
+@Entity(
+    tableName = "conversation",
+    // 对话列表按分支组收敛（根 = root_id，取组内 updated_at 最新者）
+    indices = [Index(value = ["root_id"])],
+)
 data class ConversationEntity(
     @PrimaryKey
     @ColumnInfo(name = "id")
@@ -41,6 +45,18 @@ data class ConversationEntity(
     /** 后台执行完成或等待审批时的未读标记。 */
     @ColumnInfo(name = "has_unread", defaultValue = "0")
     val hasUnread: Boolean = false,
+    /**
+     * 重新生成分支组的根会话 id（自身为根时等于 [id]）。
+     * 对话列表按本列分组：一组只显示组内 updated_at 最新的那一行。
+     */
+    @ColumnInfo(name = "root_id", defaultValue = "''")
+    val rootId: String = "",
+    /** 分叉来源的直接父会话 id；自身为根时为 null。 */
+    @ColumnInfo(name = "parent_id")
+    val parentId: String? = null,
+    /** 分叉发生在源会话的哪一个 Turn 下标；自身为根时为 null。 */
+    @ColumnInfo(name = "fork_turn")
+    val forkTurn: Int? = null,
 )
 
 /**
@@ -85,6 +101,12 @@ data class ConversationSummary(
     val lastMessagePreview: String,
     val turnCount: Int,
     val hasUnread: Boolean = false,
+    /** 分支组的根会话 id；自身为根时等于 [id]。 */
+    val rootId: String = id,
+    /** 分叉来源的直接父会话 id；自身为根时为 null。 */
+    val parentId: String? = null,
+    /** 分叉发生在源会话的哪一个 Turn 下标；自身为根时为 null。 */
+    val forkTurn: Int? = null,
 )
 
 /**
