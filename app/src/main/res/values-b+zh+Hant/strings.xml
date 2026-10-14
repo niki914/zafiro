@@ -389,7 +389,6 @@
     <string name="ui_settings_general_group_appearance">外觀與語言</string>
     <string name="ui_settings_general_group_floating_notification">懸浮與通知</string>
     <string name="ui_settings_general_group_conversation">對話與互動</string>
-    <string name="ui_settings_general_group_runtime">運行與控制</string>
     <string name="ui_settings_general_floating_ball">懸浮球</string>
     <string name="ui_settings_general_floating_ball_summary">後台運行時顯示 Agent 狀態與快捷操作</string>
     <string name="ui_settings_general_floating_ball_auto_expand">懸浮球自動展開</string>
@@ -410,6 +409,19 @@
     <string name="ui_settings_general_retry_summary">請求失敗後的自動重試</string>
     <string name="ui_settings_general_keep_screen_on">回應期間保持螢幕常亮</string>
     <string name="ui_settings_general_keep_screen_on_summary">回應與工具執行期間保持螢幕常亮</string>
+    <string name="ui_settings_runtime_control">執行控制</string>
+    <string name="ui_settings_runtime_control_summary">上限、重試與複讀偵測</string>
+    <string name="ui_settings_runtime_group_network">網路</string>
+    <string name="ui_settings_runtime_group_stability">穩定性</string>
+    <string name="ui_settings_runtime_repetition_detection">複讀偵測</string>
+    <string name="ui_settings_runtime_repetition_summary">模型持續重複輸出時提前熔斷；越嚴格越靈敏，但也越可能誤判正常內容</string>
+    <string name="ui_settings_runtime_sensitivity_relaxed">寬鬆</string>
+    <string name="ui_settings_runtime_sensitivity_loose">較寬鬆</string>
+    <string name="ui_settings_runtime_sensitivity_standard">標準</string>
+    <string name="ui_settings_runtime_sensitivity_strict">嚴格</string>
+    <string name="ui_settings_runtime_sensitivity_stricter">更嚴格</string>
+    <string name="ui_settings_runtime_sensitivity_strictest">極嚴</string>
+    <string name="ui_settings_runtime_sensitivity_off">關閉</string>
     <string name="ui_settings_general_always_show_message_actions">總是顯示訊息操作</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">語音助理獨享一個對話</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">開啟後語音助理對話不影響主畫面歷史；關閉則與主畫面共用當前對話</string>

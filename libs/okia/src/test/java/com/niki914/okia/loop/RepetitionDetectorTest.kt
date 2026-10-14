@@ -63,23 +63,59 @@ class RepetitionDetectorTest {
         assertFalse(detector.feed("x".repeat(60) + "tail"))
     }
 
+    // 保护：单字符死循环（如连续输出同一汉字/数字/字母）达到阈值必须熔断，不被误判放行。
     @Test
-    fun typographicRunsDoNotTrigger() {
-        // 单字符长串 + 空白构成的重复是排版（Markdown 分隔线 / 表格边框 /
-        // 省略号 / 前导点），不是模型复读。误判会让正常回答直接熔断。
+    fun singleCharacterRepeatTriggersAtThreshold() {
+        val detector = RepetitionDetector(minUnit = 4, maxRepeats = 10)
+
+        assertFalse(detector.feed("哈".repeat(39)))
+        assertTrue(detector.feed("哈"))
+    }
+
+    // 保护：常规短排版（正常分隔线、表格线、省略号）在未达阈值前不被误杀。
+    @Test
+    fun normalMarkdownElementsDoNotTrigger() {
+        val detector = RepetitionDetector()
         val samples = listOf(
-            "-".repeat(60),
-            "=".repeat(60),
-            ".".repeat(60),
-            "_".repeat(60),
-            "*".repeat(60),
-            " ".repeat(60),
-            "* ".repeat(30),
-            ". . . ".repeat(15),
-            "|" + "-".repeat(20) + "|",
+            "---",
+            "***",
+            "--------------------",
+            "|---|---|",
+            "...",
         )
         for (sample in samples) {
-            assertFalse("should not trigger: <$sample>", RepetitionDetector().feed(sample))
+            assertFalse("should not trigger: <$sample>", detector.feed(sample))
+            detector.reset()
         }
+    }
+
+    // 保护：阈值参数是否真生效（档位传来的 minUnit/maxRepeats 直接决定误熔断与漏检）。
+    @Test
+    fun unreachableThresholdNeverTriggers() {
+        val detector = RepetitionDetector(
+            RepetitionConfig(minUnit = Int.MAX_VALUE, maxRepeats = Int.MAX_VALUE)
+        )
+
+        assertFalse(detector.feed("abcd".repeat(1000)))
+    }
+
+    @Test
+    fun higherThresholdsTolerateWhatLowerAborts() {
+        // 同一段输入：宽松阈值不触发，严格阈值触发——证明两档参数确实分叉
+        val payload = "abcdefgh".repeat(12)
+
+        val relaxed = RepetitionDetector(RepetitionConfig(minUnit = 8, maxRepeats = 24))
+        val strict = RepetitionDetector(RepetitionConfig(minUnit = 4, maxRepeats = 10))
+
+        assertFalse(relaxed.feed(payload))
+        assertTrue(strict.feed(payload))
+    }
+
+    // 保护：宽松档位下窗口是否自适应扩展（否则长单元在固定 200 字符窗口下因 tail.length / maxRepeats < unit 而漏检）。
+    @Test
+    fun adaptiveWindowDetectsLongerUnitsAtRelaxedThreshold() {
+        val detector = RepetitionDetector(RepetitionConfig(minUnit = 8, maxRepeats = 24))
+        val unit = "123456789012"
+        assertTrue(detector.feed(unit.repeat(24)))
     }
 }

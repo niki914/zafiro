@@ -114,6 +114,11 @@ fun SettingsDetailPageContent(
         return
     }
 
+    if (group == ZafiroSettingsGroup.RuntimeControl) {
+        RuntimeControlSettingsContent()
+        return
+    }
+
     if (group == ZafiroSettingsGroup.Takeover) {
         TakeoverSettingsContent(
             onOpenRuleDetail = { id, name, index, isCreating ->

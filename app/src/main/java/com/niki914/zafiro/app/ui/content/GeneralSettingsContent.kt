@@ -13,13 +13,12 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.model.GeneralSettingsDialog
 import com.niki914.zafiro.app.ui.model.GeneralSettingsIntent
 import com.niki914.zafiro.app.ui.model.GeneralSettingsViewModel
 
 /**
- * General Settings：悬浮与通知、对话与交互、运行与控制 3 个分组。
- * 容器使用 SettingsSpecPageContent + GroupedCard，弹窗状态由 ViewModel 驱动。
+ * General Settings：悬浮与通知、对话与交互 2 个分组。
+ * 容器使用 SettingsSpecPageContent + GroupedCard，开关状态由 ViewModel 驱动。
  */
 private const val FLOATING_BALL_ROW_ID = "general.floating_ball"
 private const val FLOATING_BALL_AUTO_EXPAND_ROW_ID = "general.floating_ball_auto_expand"
@@ -29,9 +28,6 @@ private const val LOAD_LAST_ROW_ID = "general.load_last"
 private const val ALWAYS_SHOW_ACTIONS_ROW_ID = "general.always_show_message_actions"
 private const val VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID =
     "general.voice_assistant_isolated_session"
-private const val IDLE_TIMEOUT_ROW_ID = "general.idle_timeout"
-private const val RETRY_ATTEMPTS_ROW_ID = "general.retry_attempts"
-private const val KEEP_SCREEN_ON_ROW_ID = "general.keep_screen_on"
 
 @Composable
 fun GeneralSettingsContent(
@@ -100,28 +96,7 @@ fun GeneralSettingsContent(
                     ),
                 ),
             ),
-            // 分组 4：运行与控制
-            SettingsSectionSpec(
-                title = stringResource(R.string.ui_settings_general_group_runtime),
-                layout = SettingsSectionLayout.GroupedCard,
-                rows = listOf(
-                    SettingsRowSpec.Navigation(
-                        id = IDLE_TIMEOUT_ROW_ID,
-                        title = stringResource(R.string.ui_settings_general_idle_timeout),
-                        currentState = idleTimeoutLabel(uiState.idleTimeoutSeconds),
-                    ),
-                    SettingsRowSpec.Navigation(
-                        id = RETRY_ATTEMPTS_ROW_ID,
-                        title = stringResource(R.string.ui_settings_general_retry_attempts),
-                        currentState = retryAttemptsLabel(uiState.retryMaxAttempts),
-                    ),
-                    SettingsRowSpec.Toggle(
-                        id = KEEP_SCREEN_ON_ROW_ID,
-                        title = stringResource(R.string.ui_settings_general_keep_screen_on),
-                        checked = uiState.keepScreenOn,
-                    ),
-                ),
-            ),
+            // 分组 4：运行与控制已迁至独立页（RuntimeControl）
         ),
     )
 
@@ -129,21 +104,6 @@ fun GeneralSettingsContent(
         spec = spec,
         onAction = { action ->
             when (action) {
-                is SettingsRowAction.Navigate ->
-                    when (action.id) {
-                        IDLE_TIMEOUT_ROW_ID -> viewModel.sendIntent(
-                            GeneralSettingsIntent.OpenDialog(
-                                GeneralSettingsDialog.IdleTimeout
-                            )
-                        )
-
-                        RETRY_ATTEMPTS_ROW_ID -> viewModel.sendIntent(
-                            GeneralSettingsIntent.OpenDialog(
-                                GeneralSettingsDialog.RetryAttempts
-                            )
-                        )
-                    }
-
                 is SettingsRowAction.ToggleChanged ->
                     when (action.id) {
                         FLOATING_BALL_ROW_ID -> viewModel.sendIntent(
@@ -183,72 +143,10 @@ fun GeneralSettingsContent(
                         VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID -> viewModel.sendIntent(
                             GeneralSettingsIntent.ToggleVoiceAssistantIsolatedSession(action.checked)
                         )
-
-                        KEEP_SCREEN_ON_ROW_ID -> viewModel.sendIntent(
-                            GeneralSettingsIntent.ToggleKeepScreenOn(
-                                action.checked
-                            )
-                        )
                     }
 
                 else -> Unit
             }
         },
     )
-
-    SingleChoiceLiquidDialog(
-        visible = uiState.activeDialog == GeneralSettingsDialog.IdleTimeout,
-        onDismissRequest = { viewModel.sendIntent(GeneralSettingsIntent.DismissDialog) },
-        title = stringResource(R.string.ui_settings_general_idle_timeout),
-        hint = stringResource(R.string.ui_settings_general_idle_timeout_summary),
-        options = idleTimeoutOptions(),
-        selectedId = uiState.idleTimeoutSeconds.toString(),
-        optionId = { it.seconds.toString() },
-        optionLabel = { it.label },
-        onSelect = { option ->
-            viewModel.sendIntent(GeneralSettingsIntent.SelectIdleTimeout(option.seconds))
-        },
-    )
-
-    SingleChoiceLiquidDialog(
-        visible = uiState.activeDialog == GeneralSettingsDialog.RetryAttempts,
-        onDismissRequest = { viewModel.sendIntent(GeneralSettingsIntent.DismissDialog) },
-        title = stringResource(R.string.ui_settings_general_retry_attempts),
-        hint = stringResource(R.string.ui_settings_general_retry_summary),
-        options = retryAttemptsOptions(),
-        selectedId = uiState.retryMaxAttempts.toString(),
-        optionId = { it.toString() },
-        optionLabel = { it.toString() },
-        onSelect = { option ->
-            viewModel.sendIntent(GeneralSettingsIntent.SelectRetryMaxAttempts(option))
-        },
-    )
 }
-
-data class IdleTimeoutOption(
-    /** 持久化值：0 = 不超时。 */
-    val seconds: Long,
-    val label: String,
-)
-
-@Composable
-private fun idleTimeoutLabel(seconds: Long): String {
-    return idleTimeoutOptions().firstOrNull { it.seconds == seconds }?.label
-        ?: "$seconds"
-}
-
-@Composable
-private fun idleTimeoutOptions(): List<IdleTimeoutOption> {
-    val offLabel = stringResource(R.string.ui_settings_general_idle_timeout_off)
-    return listOf(
-        IdleTimeoutOption(seconds = 0L, label = offLabel),
-        IdleTimeoutOption(seconds = 30L, label = "30s"),
-        IdleTimeoutOption(seconds = 60L, label = "60s"),
-        IdleTimeoutOption(seconds = 90L, label = "90s"),
-        IdleTimeoutOption(seconds = 120L, label = "120s"),
-    )
-}
-
-private fun retryAttemptsLabel(attempts: Int): String = attempts.toString()
-
-private fun retryAttemptsOptions(): List<Int> = listOf(0, 1, 2, 3, 5)

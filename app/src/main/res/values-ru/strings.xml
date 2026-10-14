@@ -385,7 +385,6 @@
     <string name="ui_settings_general_group_appearance">Оформление и язык</string>
     <string name="ui_settings_general_group_floating_notification">Плавающий шар и уведомления</string>
     <string name="ui_settings_general_group_conversation">Диалог и взаимодействие</string>
-    <string name="ui_settings_general_group_runtime">Работа и управление</string>
     <string name="ui_settings_general_floating_ball">Плавающий шар</string>
     <string name="ui_settings_general_floating_ball_summary">Показывает состояние агента и быстрые действия в фоне</string>
     <string name="ui_settings_general_floating_ball_auto_expand">Автораскрытие плавающего шара</string>
@@ -406,6 +405,19 @@
     <string name="ui_settings_general_retry_summary">Автоматические повторы после неудачного запроса</string>
     <string name="ui_settings_general_keep_screen_on">Не гасить экран во время ответа</string>
     <string name="ui_settings_general_keep_screen_on_summary">Не гасить экран, пока агент отвечает и выполняет инструменты</string>
+    <string name="ui_settings_runtime_control">Управление выполнением</string>
+    <string name="ui_settings_runtime_control_summary">Лимиты, повторы и обнаружение зацикливания</string>
+    <string name="ui_settings_runtime_group_network">Сеть</string>
+    <string name="ui_settings_runtime_group_stability">Стабильность</string>
+    <string name="ui_settings_runtime_repetition_detection">Обнаружение повторов</string>
+    <string name="ui_settings_runtime_repetition_summary">Прерывает ответ, когда модель зацикливается; строгие режимы срабатывают раньше, но и чаще обрывают нормальный текст</string>
+    <string name="ui_settings_runtime_sensitivity_relaxed">Мягкая</string>
+    <string name="ui_settings_runtime_sensitivity_loose">Свободная</string>
+    <string name="ui_settings_runtime_sensitivity_standard">Стандартная</string>
+    <string name="ui_settings_runtime_sensitivity_strict">Строгая</string>
+    <string name="ui_settings_runtime_sensitivity_stricter">Более строгая</string>
+    <string name="ui_settings_runtime_sensitivity_strictest">Максимальная</string>
+    <string name="ui_settings_runtime_sensitivity_off">Выкл.</string>
     <string name="ui_settings_general_always_show_message_actions">Всегда показывать действия с сообщением</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">Выделенная сессия голосового ассистента</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">Изолировать диалоги голосового ассистента от истории основного чата</string>

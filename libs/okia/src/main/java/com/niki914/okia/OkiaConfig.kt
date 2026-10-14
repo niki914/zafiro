@@ -2,6 +2,7 @@ package com.niki914.okia
 
 import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.hooks.Hooks
+import com.niki914.okia.loop.RepetitionConfig
 import com.niki914.okia.loop.RequestLogger
 import com.niki914.okia.mcp.McpServer
 import com.niki914.okia.message.ThinkingLevel
@@ -41,7 +42,9 @@ data class OkiaConfig(
     /** 代理 URL（http/https/socks）；空串 = 直连。经传输层 ProxySelector 动态生效。 */
     val proxy: String = "",
     /** 请求级诊断出口；null = 不打日志。宿主注入（okia 不依赖日志库）。 */
-    val requestLogger: RequestLogger? = null
+    val requestLogger: RequestLogger? = null,
+    /** 复读检测阈值；null = 用库默认值（不检测的档位由宿主令其宽松到不可达）。 */
+    val repetitionConfig: RepetitionConfig? = null
 ) {
 
     // apiKey 与敏感 header 值脱敏；mcpServers 内 header 由 McpServer.toString 自行脱敏
@@ -76,6 +79,7 @@ data class OkiaConfig(
         var thinkingLevel: ThinkingLevel? = null
         var proxy: String = ""
         var requestLogger: RequestLogger? = null
+        var repetitionConfig: RepetitionConfig? = null
 
         // 组装不可变配置快照
         fun build(): OkiaConfig = OkiaConfig(
@@ -99,7 +103,8 @@ data class OkiaConfig(
             supportsImages = supportsImages,
             thinkingLevel = thinkingLevel,
             proxy = proxy,
-            requestLogger = requestLogger
+            requestLogger = requestLogger,
+            repetitionConfig = repetitionConfig
         )
         // 从现有快照复制全部字段（update 热更新的基础：只改 block 声明的字段）
         internal fun copyFrom(other: OkiaConfig): Builder {
@@ -124,6 +129,7 @@ data class OkiaConfig(
             thinkingLevel = other.thinkingLevel
             proxy = other.proxy
             requestLogger = other.requestLogger
+            repetitionConfig = other.repetitionConfig
             return this
         }
     }

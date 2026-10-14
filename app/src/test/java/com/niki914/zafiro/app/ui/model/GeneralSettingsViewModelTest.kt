@@ -18,9 +18,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -28,7 +26,7 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-// 保护：通用设置的加载与开关落盘；权限未授时开关不亮、不写仓；弹窗开关状态。
+// 保护：通用设置的加载与开关落盘；权限未授时开关不亮、不写仓。
 @OptIn(ExperimentalCoroutinesApi::class)
 class GeneralSettingsViewModelTest {
 
@@ -68,9 +66,6 @@ class GeneralSettingsViewModelTest {
         XRepo.setLoadLastConversationOnStartup(true)
         XRepo.setAlwaysShowMessageActions(false)
         XRepo.setVoiceAssistantIsolatedSession(false)
-        XRepo.setLlmIdleTimeoutSeconds(90L)
-        XRepo.setLlmRetryMaxAttempts(5)
-        XRepo.setKeepScreenOn(false)
         XRepo.setFloatingBallEnabled(true)
         XRepo.setResidentNotificationEnabled(true)
 
@@ -82,26 +77,9 @@ class GeneralSettingsViewModelTest {
         assertTrue(state.loadLastConversation)
         assertFalse(state.alwaysShowMessageActions)
         assertFalse(state.voiceAssistantIsolatedSession)
-        assertEquals(90L, state.idleTimeoutSeconds)
-        assertEquals(5, state.retryMaxAttempts)
-        assertFalse(state.keepScreenOn)
         assertTrue(state.floatingBallEnabled)
         assertTrue(state.residentNotificationEnabled)
         assertFalse(state.isLoading)
-        assertNull(state.activeDialog)
-    }
-
-    @Test
-    fun dialogState_openAndDismissWorkAsExpected() = runTest {
-        val viewModel = GeneralSettingsViewModel()
-
-        viewModel.sendIntent(GeneralSettingsIntent.OpenDialog(GeneralSettingsDialog.IdleTimeout))
-        advanceUntilIdle()
-        assertEquals(GeneralSettingsDialog.IdleTimeout, viewModel.uiStateFlow.value.activeDialog)
-
-        viewModel.sendIntent(GeneralSettingsIntent.DismissDialog)
-        advanceUntilIdle()
-        assertNull(viewModel.uiStateFlow.value.activeDialog)
     }
 
     @Test
@@ -202,21 +180,6 @@ class GeneralSettingsViewModelTest {
 
         assertFalse(viewModel.uiStateFlow.value.turnNotificationEnabled)
         assertFalse(XRepo.turnNotificationEnabled())
-    }
-
-    @Test
-    fun selectTimeoutsAndAttempts_updatesStateAndRepo() = runTest {
-        val viewModel = GeneralSettingsViewModel()
-
-        viewModel.sendIntent(GeneralSettingsIntent.SelectIdleTimeout(120L))
-        advanceUntilIdle()
-        assertEquals(120L, viewModel.uiStateFlow.value.idleTimeoutSeconds)
-        assertEquals(120L, XRepo.llmIdleTimeoutSeconds())
-
-        viewModel.sendIntent(GeneralSettingsIntent.SelectRetryMaxAttempts(2))
-        advanceUntilIdle()
-        assertEquals(2, viewModel.uiStateFlow.value.retryMaxAttempts)
-        assertEquals(2, XRepo.llmRetryMaxAttempts())
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.niki914.zafiro.repo
 
+import com.niki914.zafiro.settings.model.RepetitionSensitivity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -38,6 +39,9 @@ internal data class AppStateSettings(
     /** 传输层自动重试次数。 */
     @SerialName("llm_retry_max_attempts")
     val llmRetryMaxAttempts: Int = 3,
+    /** 复读检测灵敏度档位（RepetitionSensitivity.wireValue）。 */
+    @SerialName("repetition_sensitivity")
+    val repetitionSensitivity: String = "loose",
     /** 回答进行中保持屏幕常亮。 */
     @SerialName("keep_screen_on")
     val keepScreenOn: Boolean = true,
@@ -91,7 +95,13 @@ internal object AppStateSettingsCodec {
             json.decodeFromString(AppStateSettings.serializer(), jsonString).let {
                 // 损坏文件里的兜底：themeMode 空串回到 dark；markdown_scale 越界夹回可用区间。
                 val fixed = if (it.themeMode.isBlank()) it.copy(themeMode = "dark") else it
-                fixed.copy(markdownScale = fixed.markdownScale.coerceIn(0.6f, 1.4f))
+                // 灵敏度是开放字符串：未知值（手改 / 拼错 / 其他版本写入）回默认档，不崩。
+                fixed.copy(
+                    markdownScale = fixed.markdownScale.coerceIn(0.6f, 1.4f),
+                    repetitionSensitivity = RepetitionSensitivity.fromWire(
+                        fixed.repetitionSensitivity
+                    ).wireValue,
+                )
             }
         } catch (_: SerializationException) {
             AppStateSettings()

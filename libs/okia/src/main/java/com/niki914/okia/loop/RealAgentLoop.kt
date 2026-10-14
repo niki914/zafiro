@@ -187,7 +187,7 @@ internal class RealAgentLoop : AgentLoop {
 
         while (true) {
             // 每次段尝试独立 StreamState：重试丢弃上次尝试的 partial
-            val state = StreamState()
+            val state = StreamState(request.repetitionConfig)
             // 回合内段序号（从 1 起）：请求级日志的身份，含回合层重试
             val segment = turnAttempt + 1
             val segmentStartedAtMs = System.currentTimeMillis()
@@ -1067,15 +1067,15 @@ private sealed interface StreamSignal {
 }
 
 /** 每轮流式累积状态：partial 快照由它派生（thinking/text 进行中、toolCall 已 Ready）。 */
-private class StreamState {
+private class StreamState(repetitionConfig: RepetitionConfig? = null) {
     val blocks = mutableListOf<ContentBlock>() // 已完成的块（text / thinking / toolCall），顺序即流到达顺序
     val text = StringBuilder() // 进行中 text
     var textStarted = false
     val thinking = StringBuilder() // 进行中 thinking
     var thinkingStarted = false
-    // 复读检测：正文与思考各持独立实例（同阈值），块开始重置（跨块不累计）
-    val textRepetition = RepetitionDetector()
-    val thinkingRepetition = RepetitionDetector()
+    // 复读检测：正文与思考各持独立实例（阈值来自宿主灵敏度档），块开始重置（跨块不累计）
+    val textRepetition = repetitionConfig?.let { RepetitionDetector(it) } ?: RepetitionDetector()
+    val thinkingRepetition = repetitionConfig?.let { RepetitionDetector(it) } ?: RepetitionDetector()
     val pendingToolCalls = mutableListOf<PendingToolCall>() // 流式组装中（未 Ready，不占位）
     var usage: Usage? = null
     var responseModel: String? = null

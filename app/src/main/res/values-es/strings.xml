@@ -427,7 +427,6 @@
     <string name="ui_settings_general_group_appearance">Apariencia e idioma</string>
     <string name="ui_settings_general_group_floating_notification">Flotante y notificaciones</string>
     <string name="ui_settings_general_group_conversation">Conversación e interacción</string>
-    <string name="ui_settings_general_group_runtime">Ejecución y control</string>
     <string name="ui_settings_general_floating_ball">Bola flotante</string>
     <string name="ui_settings_general_floating_ball_summary">Mostrar estado del agente y acciones rápidas en segundo plano</string>
     <string name="ui_settings_general_floating_ball_auto_expand">Expandir la bola automáticamente</string>
@@ -448,6 +447,19 @@
     <string name="ui_settings_general_retry_summary">Reintentos automáticos tras un error de solicitud</string>
     <string name="ui_settings_general_keep_screen_on">Mantener la pantalla encendida al responder</string>
     <string name="ui_settings_general_keep_screen_on_summary">Mantener la pantalla encendida mientras el agente responde y ejecuta herramientas</string>
+    <string name="ui_settings_runtime_control">Control de ejecución</string>
+    <string name="ui_settings_runtime_control_summary">Límites, reintentos y detección de repeticiones</string>
+    <string name="ui_settings_runtime_group_network">Red</string>
+    <string name="ui_settings_runtime_group_stability">Estabilidad</string>
+    <string name="ui_settings_runtime_repetition_detection">Detección de repeticiones</string>
+    <string name="ui_settings_runtime_repetition_summary">Interrumpe el turno cuando el modelo se repite; los niveles más estrictos reaccionan antes, pero también pueden cortar contenido que no es un bucle</string>
+    <string name="ui_settings_runtime_sensitivity_relaxed">Relajada</string>
+    <string name="ui_settings_runtime_sensitivity_loose">Amplia</string>
+    <string name="ui_settings_runtime_sensitivity_standard">Estándar</string>
+    <string name="ui_settings_runtime_sensitivity_strict">Estricta</string>
+    <string name="ui_settings_runtime_sensitivity_stricter">Más estricta</string>
+    <string name="ui_settings_runtime_sensitivity_strictest">Muy estricta</string>
+    <string name="ui_settings_runtime_sensitivity_off">Desactivada</string>
     <string name="ui_settings_general_always_show_message_actions">Mostrar siempre las acciones de los mensajes</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">Sesión dedicada del asistente de voz</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">Mantener aisladas las conversaciones del asistente de voz del historial principal</string>

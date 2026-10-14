@@ -180,6 +180,7 @@ internal class OkiaSessionAssembler(
             thinkingLevel = config.thinkingLevel
             proxy = config.proxy
             requestLogger = androidRequestLogger
+            repetitionConfig = config.repetitionSensitivity.toRepetitionConfig()
         }
     }
 
