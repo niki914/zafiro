@@ -13,6 +13,7 @@ import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.FileRef
 import com.niki914.zafiro.api.model.isRunning
+import com.niki914.zafiro.app.conversation.ConversationBranchTree
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.ui.model.TextPacer
@@ -109,7 +110,8 @@ class HomeChatViewModel internal constructor(
             is HomeChatIntent.CameraCaptured -> attachCameraImage(intent.uri, intent.path)
             HomeChatIntent.StopGenerating -> stopGenerating()
             HomeChatIntent.NewConversation -> startNewConversation()
-            is HomeChatIntent.LoadConversation -> loadConversation(intent.id)
+            is HomeChatIntent.LoadConversation ->
+                loadConversation(intent.id, preferLatestBranch = true)
             is HomeChatIntent.ClearUnread -> clearUnread(intent.conversationId)
             is HomeChatIntent.DeleteConversation -> deleteConversationNow(intent.id)
             is HomeChatIntent.ToggleToolRun -> toggleToolRun(intent.turnId, intent.runStartIndex)
@@ -120,6 +122,7 @@ class HomeChatViewModel internal constructor(
             is HomeChatIntent.ToggleThinking -> toggleThinking(intent.turnId, intent.blockIndex)
             is HomeChatIntent.ToggleActionRow -> toggleActionRow(intent.turnId, intent.source)
             is HomeChatIntent.ReGenerateAt -> reGenerateAt(intent.turnId)
+            is HomeChatIntent.SwitchTurnBranch -> switchTurnBranch(intent.turnId, intent.delta)
             is HomeChatIntent.ForkAt -> forkAt(intent.turnId)
             is HomeChatIntent.RewindAt -> rewindAt(intent.turnId)
             is HomeChatIntent.ResolveApproval -> approvalApprover.settle(intent.decision)
@@ -301,11 +304,26 @@ class HomeChatViewModel internal constructor(
             else -> currentState.currentConversationTitle
         }
         val isFirstConversationAssignment = currentState.currentConversationId == null && id != null
+        val family = if (!id.isNullOrBlank()) {
+            runCatching { conversations.branchGroup(id) }.getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
+        val turnBranches = if (!id.isNullOrBlank()) {
+            ConversationBranchTree.computeTurnBranches(
+                currentConversationId = id,
+                turns = conversation.turns,
+                family = family,
+            )
+        } else {
+            emptyMap()
+        }
         updateState {
             copy(
                 turns = target,
                 currentConversationId = id,
                 currentConversationTitle = title,
+                turnBranches = turnBranches,
                 conversationVersion = conversationVersion + 1,
             )
         }
@@ -598,15 +616,34 @@ class HomeChatViewModel internal constructor(
                 Logger.d(LOG_TAG, "restore skipped lastOpenedConversationBlank")
                 return@launch
             }
-            loadConversation(conversationId)
+            loadConversation(conversationId, preferLatestBranch = true)
         }
     }
 
-    private suspend fun loadConversation(id: String) {
+    /**
+     * 载入会话。
+     *
+     * [preferLatestBranch] 为 true 时（列表点击、冷启动恢复）先落回分支组最新的一版：
+     * 「打开这个会话」的语义是看它最新长什么样。
+     * 翻页与重新生成后的载入自带明确目标，传 false。
+     */
+    private suspend fun loadConversation(id: String, preferLatestBranch: Boolean = false) {
+        val target = if (preferLatestBranch) {
+            runCatching {
+                val record = conversations.getConversation(id)
+                val rootId = record?.summary?.rootId
+                if (rootId.isNullOrBlank()) id else conversations.latestBranchId(rootId) ?: id
+            }.getOrDefault(id)
+        } else {
+            id
+        }
+        if (target != id) {
+            Logger.i(LOG_TAG, "load conversation id=$id resolved to latest branch=$target")
+        }
         val startedAtMs = System.currentTimeMillis()
-        Logger.i(LOG_TAG, "load conversation id=$id started")
+        Logger.i(LOG_TAG, "load conversation id=$target started")
         val leavingId = agent.conversation.value.id?.value
-        if (!leavingId.isNullOrBlank() && leavingId != id) {
+        if (!leavingId.isNullOrBlank() && leavingId != target) {
             runCatching { conversations.bindConfig(leavingId) }
                 .onFailure { throwable ->
                     Logger.w(LOG_TAG, "bindConfig failed leavingId=$leavingId", throwable)
@@ -615,44 +652,45 @@ class HomeChatViewModel internal constructor(
         draftSaveJob?.cancel()
         draftSaveJob = null
         resetPacers()
-        conversationBeingLoaded = id
+        conversationBeingLoaded = target
         updateState { copy(isLoadingConversation = true) }
         try {
-            val record = conversations.getConversation(id)
+            val record = conversations.getConversation(target)
             if (record == null) {
                 conversationBeingLoaded = null
                 Logger.w(
                     LOG_TAG,
-                    "load conversation id=$id notFound " +
+                    "load conversation id=$target notFound " +
                             "elapsedMs=${System.currentTimeMillis() - startedAtMs}",
                 )
                 return
             }
             val title = record.summary.title.takeIf { it.isNotBlank() }
             seenThinkingKeys.clear()
-            conversationBeingLoaded = id
-            val targetAgent = agentManager.switchTo(id)
+            conversationBeingLoaded = target
+            val targetAgent = agentManager.switchTo(target)
             updateState {
                 copy(
                     turns = emptyList(),
-                    currentConversationId = id,
+                    currentConversationId = target,
                     currentConversationTitle = title,
                     boundConfigId = record.configId,
+                    turnBranches = emptyMap(),
                 ).withClearedTransient()
             }
             applyConversation(targetAgent.conversation.value, animateTail = false)
-            conversations.setLastOpenedConversationId(id)
-            conversations.clearUnread(id)
+            conversations.setLastOpenedConversationId(target)
+            conversations.clearUnread(target)
             Logger.i(
                 LOG_TAG,
-                "load conversation done id=$id elapsedMs=${System.currentTimeMillis() - startedAtMs}",
+                "load conversation done id=$target elapsedMs=${System.currentTimeMillis() - startedAtMs}",
             )
         } catch (throwable: Throwable) {
             conversationBeingLoaded = null
             throw throwable
         } finally {
             updateState { copy(isLoadingConversation = false) }
-            if (agent.conversation.value.id?.value != id) conversationBeingLoaded = null
+            if (agent.conversation.value.id?.value != target) conversationBeingLoaded = null
         }
     }
 
@@ -685,6 +723,23 @@ class HomeChatViewModel internal constructor(
         if (agent.stream() == TurnStart.Started) {
             updateState { copy(input = "") }
         }
+    }
+
+    private suspend fun switchTurnBranch(turnId: Long, delta: Int) {
+        if (currentState.isGenerating) return
+        val branchState = currentState.turnBranches[turnId] ?: return
+        if (branchState.total <= 1) return
+        val currentIndex = branchState.current - 1
+        val targetIndex = currentIndex + delta
+        if (targetIndex !in branchState.variantConversationIds.indices) return
+        val targetId = branchState.variantConversationIds[targetIndex]
+        if (targetId == currentState.currentConversationId) return
+        Logger.i(
+            LOG_TAG,
+            "switch turn branch turnId=$turnId from=${currentIndex + 1} to=${targetIndex + 1} " +
+                    "total=${branchState.total} target=$targetId"
+        )
+        loadConversation(targetId)
     }
 
     private suspend fun forkAt(turnId: Long) {
@@ -730,9 +785,14 @@ class HomeChatViewModel internal constructor(
     internal suspend fun deleteConversationNow(id: String) {
         val startedAtMs = System.currentTimeMillis()
         Logger.i(LOG_TAG, "delete conversation id=$id started")
-        runCatching { agentManager.destroy(id) }
+        val groupIds = conversations.branchGroupIds(id)
+        groupIds.forEach { branchId ->
+            runCatching { agentManager.destroy(branchId) }
+        }
+        val currentOpenId = agent.conversation.value.id?.value
+        val deletingCurrent = id == currentOpenId || groupIds.contains(currentOpenId)
         conversations.deleteConversation(id)
-        if (id != agent.conversation.value.id?.value) {
+        if (!deletingCurrent) {
             Logger.d(LOG_TAG, "delete conversation id=$id notCurrent skipped")
             return
         }

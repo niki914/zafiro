@@ -275,7 +275,38 @@ internal class FakeHomeConversationStore(
     }
 
     override suspend fun deleteConversation(id: String) {
-        records.remove(id)
+        // 与仓储一致：删除一个会话 = 删掉它的整个分支组
+        val rootId = records[id]?.summary?.rootId ?: id
+        records.keys.filter { key ->
+            val summary = records[key]?.summary
+            key == rootId || summary?.rootId == rootId
+        }.forEach { records.remove(it) }
+    }
+
+    override suspend fun branchGroup(conversationId: String): List<ConversationSummary> {
+        val rootId = records[conversationId]?.summary?.rootId ?: return emptyList()
+        val group = records.values
+            .map { it.summary }
+            .filter { it.rootId == rootId }
+            .sortedBy { it.createdAt }
+        return if (group.size <= 1) emptyList() else group
+    }
+
+    override suspend fun branchGroupIds(conversationId: String): List<String> {
+        val rootId = records[conversationId]?.summary?.rootId ?: return listOf(conversationId)
+        return records.values
+            .map { it.summary }
+            .filter { it.rootId == rootId }
+            .sortedBy { it.createdAt }
+            .map { it.id }
+    }
+
+    override suspend fun latestBranchId(rootId: String): String? {
+        return records.values
+            .map { it.summary }
+            .filter { it.rootId == rootId }
+            .maxByOrNull { it.updatedAt }
+            ?.id
     }
 
     override suspend fun clearUnread(conversationId: String) {}
@@ -290,7 +321,7 @@ internal class FakeHomeConversationStore(
                 records.size.toLong(),
                 records.size.toLong(),
                 title,
-                0
+                0,
             ),
             draftText = "",
             snapshot = SessionSnapshot(id, null, 1, emptyList()),
@@ -341,8 +372,19 @@ internal class FakeHomeConversationStore(
             ForkKind.Rewind -> "Rewind · "
         }
         val id = "fork-${records.size}"
+        // Regenerate 聚成同一组：共享原始标题并记录父节点和分叉轮次；Fork/Rewind 另起一线
+        val isRegenerate = kind == ForkKind.Regenerate
+        val rootId = if (isRegenerate) source.summary.rootId else id
+        val parentId = if (isRegenerate) source.summary.id else null
+        val forkTurn = if (isRegenerate) turnIndex else null
         records[id] = source.copy(
-            summary = source.summary.copy(id = id, title = prefix + source.summary.title),
+            summary = source.summary.copy(
+                id = id,
+                title = if (isRegenerate) source.summary.title else prefix + source.summary.title,
+                rootId = rootId,
+                parentId = parentId,
+                forkTurn = forkTurn,
+            ),
             draftText = "",
             snapshot = SessionSnapshot(id, entries.lastOrNull()?.id, 1, entries),
         )

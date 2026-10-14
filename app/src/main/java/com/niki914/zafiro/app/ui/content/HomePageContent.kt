@@ -127,6 +127,7 @@ import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.conversation.TurnBranchState
 import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.PageChromeMenuItem
@@ -536,6 +537,10 @@ fun HomePageContent(
                 HomeChatIntent.ToggleActionRow(turnId, source)
             )
         },
+        turnBranches = uiState.turnBranches,
+        onSwitchTurnBranch = { turnId, delta ->
+            viewModel.sendIntent(HomeChatIntent.SwitchTurnBranch(turnId, delta))
+        },
     )
 
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()
@@ -789,6 +794,8 @@ private fun HomePageContentBody(
     expandedActionSource: ActionSource?,
     activeThinkingKey: String? = null,
     onToggleActionRow: (Long, ActionSource) -> Unit,
+    turnBranches: Map<Long, TurnBranchState> = emptyMap(),
+    onSwitchTurnBranch: (Long, Int) -> Unit = { _, _ -> },
 ) {
 
     // 底部避让总高：composer 底距 + 实测高度 + 统一视觉间距。列表贴底留白与箭头
@@ -910,6 +917,9 @@ private fun HomePageContentBody(
                     activeThinkingKey = activeThinkingKey,
                     onToggleActionRow = onToggleActionRow,
                     isGenerating = uiState.isGenerating,
+                    branchIndex = turnBranches[turn.id]?.current ?: 1,
+                    branchCount = turnBranches[turn.id]?.total ?: 1,
+                    onSwitchBranch = { delta -> onSwitchTurnBranch(turn.id, delta) },
                     modifier = turnTopPad.fillMaxWidth(),
                 )
             }
@@ -1218,6 +1228,9 @@ private fun HomeChatTurnItem(
     activeThinkingKey: String? = null,
     onToggleActionRow: (Long, ActionSource) -> Unit,
     isGenerating: Boolean,
+    branchIndex: Int = 1,
+    branchCount: Int = 1,
+    onSwitchBranch: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val alwaysVisible = actionsDisplay == MessageActionsDisplay.Always
@@ -1520,6 +1533,10 @@ private fun HomeChatTurnItem(
                 },
                 onReGenerate = { guardedReGenerate(turn.id) },
                 onFork = { guardedFork(turn.id) },
+                // 翻页器由该轮自身分支数驱动，各轮次独立显示
+                branchIndex = branchIndex,
+                branchCount = branchCount,
+                onSwitchBranch = onSwitchBranch,
             )
         }
     }

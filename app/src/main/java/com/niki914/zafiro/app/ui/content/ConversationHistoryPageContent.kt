@@ -31,7 +31,6 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -432,8 +431,11 @@ private fun ConversationHistoryItem(
     val displayTitle = parsedTitle.cleanTitle.ifBlank { untitledConversation }
     // 置顶段独占样式：高亮底色 + 隐去派生前缀图标，右上角只留时间；
     // 时间桶里的同一会话照旧普通样式，另用图钉标识它是置顶项。
+    // 派生前缀图标只服务 Fork / Rewind：重新生成由分支翻页器表达，不是图标。
+    val originKind = parsedTitle.originKind
+        ?.takeIf { it != ConversationOriginKind.Regenerate }
     val originIcon =
-        if (inPinnedSection) null else parsedTitle.originKind?.let { originKindToIcon(it) }
+        if (inPinnedSection) null else originKind?.let { originKindToIcon(it) }
     val showPinBadge = isPinned && !inPinnedSection
     val relativeTime = formatRelativeTime(conversation.updatedAt, currentTimeMillis)
 
@@ -596,8 +598,11 @@ private fun ConversationHistoryItem(
 }
 
 private fun originKindToIcon(kind: ConversationOriginKind): ImageVector = when (kind) {
-    ConversationOriginKind.Regenerate -> Icons.Default.Refresh
-    ConversationOriginKind.Fork -> Icons.AutoMirrored.Filled.CallSplit
+    // 重新生成与 Fork 共用同一图标（前缀里剥出的 Regenerate 也走这里）
+    ConversationOriginKind.Regenerate,
+    ConversationOriginKind.Fork,
+    -> Icons.AutoMirrored.Filled.CallSplit
+
     ConversationOriginKind.Rewind -> Icons.AutoMirrored.Filled.Undo
 }
 

@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.ui.model.home
 
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationRepo
+import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.conversation.ForkResult
 import com.niki914.zafiro.repo.XRepo
@@ -55,5 +56,17 @@ object DefaultHomeConversationStore : HomeConversationStore {
             turnIndex = turnIndex,
             kind = kind,
         )
+    }
+
+    override suspend fun branchGroup(conversationId: String): List<ConversationSummary> {
+        return ConversationRepo.branchGroup(conversationId)
+    }
+
+    override suspend fun latestBranchId(rootId: String): String? {
+        return ConversationRepo.latestBranchId(rootId)
+    }
+
+    override suspend fun branchGroupIds(conversationId: String): List<String> {
+        return ConversationRepo.branchGroupIds(conversationId)
     }
 }
