@@ -3,9 +3,11 @@ package com.niki914.zafiro.chat
 import com.niki914.logging.Logger
 import com.niki914.okia.ImageSaver
 import com.niki914.okia.Okia
+import com.niki914.okia.TurnOptions
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.error.RetryPolicy
+import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.hooks.SerializationHolder
 import com.niki914.okia.loop.RequestLogger
@@ -225,6 +227,43 @@ internal class OkiaSessionAssembler(
 
         LlmProtocol.OpenAiResponses -> OpenAIResponsesProtocol()
         LlmProtocol.AnthropicMessages -> AnthropicMessagesProtocol()
+    }
+
+    suspend fun generateSummary(
+        protocol: LlmProtocol,
+        config: ResolvedLlmConfig,
+        systemPrompt: String,
+        userPrompt: String,
+    ): String {
+        val endpoint = config.endpoint.ifBlank { protocolDefaultEndpointFallback(protocol) }
+        val wireProtocol = wireProtocolFor(protocol)
+        val session = Okia.open(wireProtocol) {
+            this.endpoint = endpoint
+            apiKey = config.apiKey
+            model = config.model
+            idleTimeoutSeconds = config.idleTimeoutSeconds ?: LLMController.NO_IDLE_TIMEOUT_SECONDS
+            retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
+            maxTokens = config.maxTokens
+            thinkingLevel = config.thinkingLevel
+            proxy = config.proxy
+            requestLogger = androidRequestLogger
+            repetitionConfig = config.repetitionSensitivity.toRepetitionConfig()
+        }
+        try {
+            var summary = ""
+            session.send(
+                text = userPrompt,
+                options = TurnOptions(systemPrompt = systemPrompt),
+            ) { event ->
+                if (event is TurnEvent.TurnCompleted) {
+                    summary = event.message.content.filterIsInstance<ContentBlock.Text>()
+                        .joinToString("\n") { it.text }
+                }
+            }
+            return summary
+        } finally {
+            session.close()
+        }
     }
 
     fun validateLlmConfig(config: RuntimeLlmConfig) {

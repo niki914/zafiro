@@ -45,14 +45,6 @@ class Compactor(
         const val TOOL_RESULT_MAX_CHARS = 2000
 
         /**
-         * 调试与测试 Mock 拦截器：输入当前已产生的有效用户轮次数，
-         * 返回 true 则强制触发压缩。
-         * 例如设置 `{ count -> count == 4 }` 可在第 4 句发言后触发。
-         */
-        @Volatile
-        var debugTriggerMock: ((userTurnsCount: Int) -> Boolean)? = null
-
-        /**
          * 判定是否应当触发压缩。
          */
         fun shouldCompact(
@@ -160,16 +152,15 @@ class Compactor(
             msg is Message.User && SummaryBlock.strip(textOf(msg)).payload == null
         }
 
-        val isMockTriggered = debugTriggerMock?.invoke(userTurnsCount) == true
         val isThresholdTriggered = shouldCompact(contextTokens, contextWindow, reserveTokens)
 
-        if (!force && !isMockTriggered && !isThresholdTriggered) {
+        if (!force && !isThresholdTriggered) {
             return false
         }
 
         Logger.i(
             LOG_TAG,
-            "starting compaction: force=$force mock=$isMockTriggered threshold=$isThresholdTriggered " +
+            "starting compaction: force=$force threshold=$isThresholdTriggered " +
                     "historySize=${history.size} userTurns=$userTurnsCount"
         )
 

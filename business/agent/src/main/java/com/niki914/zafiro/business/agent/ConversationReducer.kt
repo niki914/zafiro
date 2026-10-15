@@ -85,6 +85,26 @@ internal object ConversationReducer {
         )
     }
 
+    /**
+     * 追加上下文压缩分割线回合。
+     */
+    fun addCompactedDivider(conversation: Conversation): Reduced {
+        val cleared = conversation.copy(
+            turns = conversation.turns.map { turn ->
+                turn.copy(blocks = turn.blocks.filterNot { it is TurnBlock.Failure || it is TurnBlock.Retrying })
+            },
+        )
+        return Reduced(
+            conversation = cleared.copy(
+                turns = cleared.turns + ConversationTurn(
+                    id = turnIdAt(cleared.turns.size),
+                    userText = "",
+                    isCompactedDivider = true,
+                ),
+            ),
+        )
+    }
+
     /** 折叠一条事件。没有活跃回合（回合列表为空）时原样返回。 */
     fun reduce(state: Reduced, event: LlmStreamEvent): Reduced {
         val turnIndex = state.conversation.turns.lastIndex

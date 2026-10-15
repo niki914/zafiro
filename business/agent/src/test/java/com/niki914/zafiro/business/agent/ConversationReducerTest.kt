@@ -261,6 +261,19 @@ class ConversationReducerTest {
         )
     }
 
+    @Test
+    fun addCompactedDivider_appendsCompactedTurnWithPositionalId() {
+        val initial = ConversationReducer.startTurn(Conversation(), "q1", emptyList())
+        val withDivider = ConversationReducer.addCompactedDivider(initial.conversation)
+
+        assertEquals(2, withDivider.conversation.turns.size)
+        val dividerTurn = withDivider.conversation.turns[1]
+        assertEquals(turnIdAt(1), dividerTurn.id)
+        assertEquals("", dividerTurn.userText)
+        assertTrue(dividerTurn.isCompactedDivider)
+        assertTrue(dividerTurn.blocks.isEmpty())
+    }
+
     // ── 构造helper ──────────────────────────────────────────────────────────
 
     private fun startTurn(query: String): Reduced =

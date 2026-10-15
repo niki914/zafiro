@@ -135,6 +135,37 @@ class AgentImpl(
         if (!roundActive.compareAndSet(expect = false, update = true)) return TurnStart.Busy
 
         val query = draft.text
+        val isCompactCommand = draft.images.isEmpty() &&
+                draft.files.isEmpty() &&
+                query.trim().equals("/compact", ignoreCase = true)
+
+        if (isCompactCommand) {
+            draftFlow.value = Draft()
+            val token = ++roundToken
+            reducedStatus = AgentStateReducer.startRound()
+            emitStatus(reducedStatus.status)
+            streamJob = scope.launch {
+                try {
+                    ensureConversation(query)
+                    val compacted = engine.compact(force = true)
+                    if (compacted) {
+                        foldWith(ConversationReducer.addCompactedDivider(conversationFlow.value))
+                    }
+                } catch (throwable: Throwable) {
+                    if (throwable is CancellationException) throw throwable
+                    Logger.e(LOG_TAG, "compact round failed", throwable)
+                } finally {
+                    if (roundToken == token && statusFlow.value !is AgentState.Stopping) {
+                        reducedStatus = AgentStateReducer.reset()
+                        emitStatus(reducedStatus.status)
+                        streamJob = null
+                        roundActive.value = false
+                    }
+                }
+            }
+            return TurnStart.Started
+        }
+
         val images = draft.images.mapNotNull { image ->
             when (image) {
                 is DraftImage.Pending -> null

@@ -39,11 +39,6 @@ class CompactorTest {
     @get:Rule
     val silentLogger = SilentLoggerRule()
 
-    @After
-    fun tearDown() {
-        Compactor.debugTriggerMock = null
-    }
-
     private fun user(text: String): Message.User =
         Message.User(listOf(ContentBlock.Text(text)))
 
@@ -181,29 +176,25 @@ class CompactorTest {
     }
 
     @Test
-    fun `debug trigger mock forces compaction regardless of token threshold`() = runTest {
+    fun `force compaction ignores token threshold`() = runTest {
         val history = listOf(
             user("u1"), assistant("a1"),
             user("u2"), assistant("a2"),
-            user("u3"), assistant("a3"),
-            user("u4"), assistant("a4"),
         )
         val session = FakeSession(history)
-
-        Compactor.debugTriggerMock = { count -> count == 4 }
 
         var generatorCalled = false
         val compactor = Compactor(
             summaryGenerator = { _, _ ->
                 generatorCalled = true
-                "## Goal\nSummarized via mock"
+                "## Goal\nSummarized via force"
             }
         )
 
-        // contextTokens 极小，远未达到阈值
+        // contextTokens 极小，远未达到阈值，但 force = true
         val result = compactor.compact(
             session = session,
-            force = false,
+            force = true,
             contextTokens = 100L,
             contextWindow = 128000L,
         )
@@ -216,7 +207,63 @@ class CompactorTest {
         val text = appendedUser.content.filterIsInstance<ContentBlock.Text>().single().text
         val stripped = SummaryBlock.strip(text)
         assertEquals(2, stripped.payload?.keepTurns)
-        assertEquals("## Goal\nSummarized via mock", stripped.payload?.summary)
+        assertEquals("## Goal\nSummarized via force", stripped.payload?.summary)
+    }
+
+    @Test
+    fun `threshold compaction triggers when context exceeds window minus reserve`() = runTest {
+        val history = listOf(
+            user("u1"), assistant("a1"),
+            user("u2"), assistant("a2"),
+        )
+        val session = FakeSession(history)
+
+        var generatorCalled = false
+        val compactor = Compactor(
+            summaryGenerator = { _, _ ->
+                generatorCalled = true
+                "## Goal\nThreshold summarized"
+            },
+            reserveTokens = 1000L,
+        )
+
+        // contextTokens (9500) > contextWindow (10000) - reserveTokens (1000)
+        val result = compactor.compact(
+            session = session,
+            force = false,
+            contextTokens = 9500L,
+            contextWindow = 10000L,
+        )
+
+        assertTrue(result)
+        assertTrue(generatorCalled)
+        assertEquals(1, session.appended.size)
+    }
+
+    @Test
+    fun `does not compact when below threshold and not forced`() = runTest {
+        val history = listOf(user("u1"), assistant("a1"))
+        val session = FakeSession(history)
+
+        var generatorCalled = false
+        val compactor = Compactor(
+            summaryGenerator = { _, _ ->
+                generatorCalled = true
+                "## Goal\nSummary"
+            },
+            reserveTokens = 1000L,
+        )
+
+        val result = compactor.compact(
+            session = session,
+            force = false,
+            contextTokens = 1000L,
+            contextWindow = 10000L,
+        )
+
+        assertFalse(result)
+        assertFalse(generatorCalled)
+        assertEquals(0, session.appended.size)
     }
 
     @Test
