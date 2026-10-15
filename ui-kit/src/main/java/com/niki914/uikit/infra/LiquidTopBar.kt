@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
 import kotlinx.coroutines.delay
@@ -69,7 +70,7 @@ fun LiquidTopBar(
     onRightClick: (() -> Unit)? = null,
     onLeftButtonBoundsChanged: ((Rect) -> Unit)? = null,
     onRightButtonBoundsChanged: ((Rect) -> Unit)? = null,
-    backdrop: LayerBackdrop,
+    backdrop: Backdrop,
     topInset: Dp,
     titleHorizontalPadding: Dp,
     modifier: Modifier = Modifier,

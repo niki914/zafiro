@@ -32,12 +32,19 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.niki914.uikit.infra.nav.TitleBarScrollState
+
+val LocalScreenBackdrop: ProvidableCompositionLocal<Backdrop?> =
+    staticCompositionLocalOf { null }
 
 /** 底部安全距离中，系统导航栏 inset 之外额外留出的设计间距。 */
 private val BottomInsetSpacing = 50.dp
@@ -71,7 +78,9 @@ fun LiquidScreen(
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
+    val contentBackdrop = rememberLayerBackdrop()
     val chromeBackdrop = rememberLayerBackdrop()
+    val screenBackdrop = rememberCombinedBackdrop(contentBackdrop, chromeBackdrop)
     val titleHorizontalPadding = with(density) { 12.dp * 2 + 48.sp.toDp() }
     val dialogHostState = remember { LiquidDialogHostState() }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -134,11 +143,13 @@ fun LiquidScreen(
             ),
             LocalLiquidDialogHostState provides dialogHostState,
             LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
+            LocalScreenBackdrop provides screenBackdrop,
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(titleBarScrollConnection),
+                    .nestedScroll(titleBarScrollConnection)
+                    .layerBackdrop(contentBackdrop),
             ) {
                 content()
             }
@@ -186,7 +197,7 @@ fun LiquidScreen(
                 onRightClick = state.onRightClick,
                 onLeftButtonBoundsChanged = onLeftButtonBoundsChanged,
                 onRightButtonBoundsChanged = onRightButtonBoundsChanged,
-                backdrop = chromeBackdrop,
+                backdrop = screenBackdrop,
                 topInset = topInset,
                 titleHorizontalPadding = titleHorizontalPadding,
                 leftButton = leftButton,

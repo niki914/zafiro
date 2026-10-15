@@ -29,10 +29,13 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
 import com.niki914.uikit.base.LocalAppDarkTheme
@@ -46,7 +49,7 @@ fun ActionBarButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     enabled: Boolean = true,
-    backdrop: LayerBackdrop = rememberLayerBackdrop(),
+    backdrop: Backdrop = rememberLayerBackdrop(),
     onButtonBoundsChanged: ((Rect) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -121,11 +124,13 @@ fun ActionBarButton(
                     )
                 },
                 effects = {
+                    vibrancy()
+                    blur(4f.dp.toPx())
                     lens(
                         refractionHeight = 6f.dp.toPx(),
                         refractionAmount = size.height / 2f,
                         depthEffect = true,
-                        chromaticAberration = true
+                        chromaticAberration = true,
                     )
                 },
             )
