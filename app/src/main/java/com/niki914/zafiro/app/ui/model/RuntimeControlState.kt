@@ -9,6 +9,7 @@ sealed interface RuntimeControlDialog {
     data object IdleTimeout : RuntimeControlDialog
     data object RetryAttempts : RuntimeControlDialog
     data object RepetitionSensitivity : RuntimeControlDialog
+    data object CompactionThreshold : RuntimeControlDialog
 }
 
 data class RuntimeControlUiState(
@@ -16,6 +17,7 @@ data class RuntimeControlUiState(
     val retryMaxAttempts: Int = 3,
     val keepScreenOn: Boolean = true,
     val repetitionSensitivity: RepetitionSensitivity = RepetitionSensitivity.DEFAULT,
+    val compactionThresholdPercent: Int = 70,
     val activeDialog: RuntimeControlDialog? = null,
     val isLoading: Boolean = false,
 )
@@ -29,6 +31,7 @@ sealed interface RuntimeControlIntent {
     data class ToggleKeepScreenOn(val enabled: Boolean) : RuntimeControlIntent
     data class SelectRepetitionSensitivity(val sensitivity: RepetitionSensitivity) :
         RuntimeControlIntent
+    data class SelectCompactionThreshold(val percent: Int) : RuntimeControlIntent
 }
 
 class RuntimeControlViewModel :
@@ -48,6 +51,8 @@ class RuntimeControlViewModel :
             is RuntimeControlIntent.ToggleKeepScreenOn -> toggleKeepScreenOn(intent.enabled)
             is RuntimeControlIntent.SelectRepetitionSensitivity ->
                 selectRepetitionSensitivity(intent.sensitivity)
+            is RuntimeControlIntent.SelectCompactionThreshold ->
+                selectCompactionThreshold(intent.percent)
         }
     }
 
@@ -58,12 +63,14 @@ class RuntimeControlViewModel :
             val retryMaxAttempts = XRepo.llmRetryMaxAttempts()
             val keepScreenOn = XRepo.keepScreenOn()
             val repetitionSensitivity = XRepo.repetitionSensitivity()
+            val compactionThresholdPercent = XRepo.contextCompactionThresholdPercent()
             updateState {
                 copy(
                     idleTimeoutSeconds = idleTimeoutSeconds,
                     retryMaxAttempts = retryMaxAttempts,
                     keepScreenOn = keepScreenOn,
                     repetitionSensitivity = repetitionSensitivity,
+                    compactionThresholdPercent = compactionThresholdPercent,
                     isLoading = false,
                 )
             }
@@ -91,6 +98,11 @@ class RuntimeControlViewModel :
     private suspend fun selectRepetitionSensitivity(sensitivity: RepetitionSensitivity) {
         updateState { copy(repetitionSensitivity = sensitivity, activeDialog = null) }
         XRepo.setRepetitionSensitivity(sensitivity)
+    }
+
+    private suspend fun selectCompactionThreshold(percent: Int) {
+        updateState { copy(compactionThresholdPercent = percent, activeDialog = null) }
+        XRepo.setContextCompactionThresholdPercent(percent)
     }
 
     private companion object {

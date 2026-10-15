@@ -15,7 +15,7 @@ import kotlin.coroutines.coroutineContext
  * 会话上下文压缩调度器与摘要生成引擎。
  *
  * 核心设计：
- * 1. 触发判断：基于上下文窗口剩余 token（`contextTokens > contextWindow - reserveTokens`）或主动 Mock 拦截器；
+ * 1. 触发判断：基于上下文窗口占用阈值（默认 70%）或用户手动 /compact 强制触发；
  * 2. 对话序列化：展平历史为纯文本，剔除思考块（Thinking），截断大工具输出；
  * 3. 摘要生成：调用一过性摘要生成器产出高质量 Markdown 检查点；
  * 4. “无事发生”原则：用户取消或协程终止时，绝对不调用 [Okia.append]，保持会话树 0 污染；
@@ -23,7 +23,7 @@ import kotlin.coroutines.coroutineContext
  */
 class Compactor(
     private val summaryGenerator: SummaryGenerator,
-    private val reserveTokens: Long = DEFAULT_RESERVE_TOKENS,
+    var thresholdRatio: Float = DEFAULT_THRESHOLD_RATIO,
     private val keepTurns: Int = DEFAULT_KEEP_TURNS,
 ) {
 
@@ -35,8 +35,8 @@ class Compactor(
     companion object {
         private const val LOG_TAG = "niki914_zafiro_Compactor"
 
-        /** 默认预留缓冲 Token 数（对齐 Pi 的 reserveTokens）。 */
-        const val DEFAULT_RESERVE_TOKENS = 16384L
+        /** 默认自动压缩触发阈值（窗口占用的 70%）。 */
+        const val DEFAULT_THRESHOLD_RATIO = 0.70f
 
         /** 默认保留的最近活跃轮次数。 */
         const val DEFAULT_KEEP_TURNS = 2
@@ -50,10 +50,11 @@ class Compactor(
         fun shouldCompact(
             contextTokens: Long,
             contextWindow: Long,
-            reserveTokens: Long = DEFAULT_RESERVE_TOKENS,
+            thresholdRatio: Float = DEFAULT_THRESHOLD_RATIO,
         ): Boolean {
-            if (contextWindow <= 0 || contextTokens <= 0) return false
-            return contextTokens > contextWindow - reserveTokens
+            if (thresholdRatio <= 0f || contextWindow <= 0L || contextTokens <= 0L) return false
+            val thresholdTokens = (contextWindow * thresholdRatio).toLong()
+            return contextTokens >= thresholdTokens
         }
 
         /**
@@ -152,7 +153,7 @@ class Compactor(
             msg is Message.User && SummaryBlock.strip(textOf(msg)).payload == null
         }
 
-        val isThresholdTriggered = shouldCompact(contextTokens, contextWindow, reserveTokens)
+        val isThresholdTriggered = shouldCompact(contextTokens, contextWindow, thresholdRatio)
 
         if (!force && !isThresholdTriggered) {
             return false

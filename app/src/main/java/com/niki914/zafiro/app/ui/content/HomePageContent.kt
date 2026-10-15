@@ -73,6 +73,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -1252,7 +1253,10 @@ private fun HomeChatTurnItem(
     modifier: Modifier = Modifier,
 ) {
     if (turn.isCompactedDivider) {
-        CompactedDividerItem(modifier = modifier)
+        CompactedDividerItem(
+            isCompacting = turn.isCompacting,
+            modifier = modifier,
+        )
         return
     }
 
@@ -1566,28 +1570,47 @@ private fun HomeChatTurnItem(
 }
 
 @Composable
-private fun CompactedDividerItem(modifier: Modifier = Modifier) {
+private fun CompactedDividerItem(
+    isCompacting: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val dots = if (isCompacting) {
+        val dotCount by produceState(initialValue = 1) {
+            while (true) {
+                delay(400)
+                value = (value % 3) + 1
+            }
+        }
+        ".".repeat(dotCount)
+    } else {
+        ""
+    }
+
     Row(
         modifier = modifier
-            .padding(horizontal = 24.dp, vertical = 8.dp)
+            .padding(vertical = 6.dp)
             .fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         HorizontalDivider(
             modifier = Modifier.weight(1f),
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
         )
         Text(
-            text = stringResource(R.string.ui_home_conversation_compacted),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            text = if (isCompacting) {
+                "${stringResource(R.string.ui_home_conversation_compacting)}$dots"
+            } else {
+                stringResource(R.string.ui_home_conversation_compacted)
+            },
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
         )
         HorizontalDivider(
             modifier = Modifier.weight(1f),
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
         )
     }
 }
@@ -1773,4 +1796,39 @@ private fun HomeTitleConfigChip(
         }
     }
 }
+
+@Preview(
+    name = "Compacted Divider Alignment Preview",
+    showBackground = true,
+    widthDp = 400,
+    heightDp = 500,
+)
+@Composable
+private fun CompactedDividerAlignmentPreview() {
+    BaseTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            AssistantOutputText(
+                text = "这是一段用于测试两端对齐的 Markdown 文本。请观察下方分割线两端与本段文本起止边缘是否在同一条垂线上（start-to-start, end-to-end）。"
+            )
+
+            CompactedDividerItem(isCompacting = true)
+
+            AssistantOutputText(
+                text = "这是位于两条分割线中间的普通模型回复段落。"
+            )
+
+            CompactedDividerItem(isCompacting = false)
+
+            AssistantOutputText(
+                text = "这是压缩之后的新一轮回答。上方分割线展示的是「对话已压缩」完成态。"
+            )
+        }
+    }
+}
+
 

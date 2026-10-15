@@ -126,6 +126,7 @@ class AgentSessionEngine {
         val llmConfig = gateway.readLlmConfig(configId = boundConfigId.takeIf { it.isNotBlank() })
         sessionAssembler.validateLlmConfig(llmConfig)
         contextWindowFlow.value = llmConfig.contextWindowTokens
+        compactor.thresholdRatio = llmConfig.compactionThresholdPercent / 100f
         Logger.i(
             LOG_TAG,
             "config read provider=${llmConfig.provider} model=${llmConfig.model} " +
@@ -313,14 +314,12 @@ class AgentSessionEngine {
             val currentSession = state.okia
             val contextTokens = contextTokensOf(currentSession.conversation.value) ?: 0L
             val contextWindow = contextWindowTokens.value
-            if (Compactor.shouldCompact(contextTokens, contextWindow)) {
-                compactor.compact(
-                    session = currentSession,
-                    force = false,
-                    contextTokens = contextTokens,
-                    contextWindow = contextWindow,
-                )
-            }
+            compactor.compact(
+                session = currentSession,
+                force = false,
+                contextTokens = contextTokens,
+                contextWindow = contextWindow,
+            )
 
             streamPipeline.execute(
                 session = state.okia,

@@ -163,9 +163,9 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 - 在一个需求开始时，如果用户没有带着详细的计划，优先通过 `grill-me` 或 `grill-with-docs` 来快速与用户对齐认知
 - 在需要派发 subagent 的任务中，通过 `prompt-engineering` 或 `writing-for-agents` 来与它们对齐
 
-### 讲解
+### 讲解（推荐）
 
-- 需要向用户阐述复杂内容时，可以通过 `eli5` 或 `show-me` 帮助解答。eli5 是打比方，show-me 是用前端页面
+- 需要向用户阐述复杂内容时（如需要使用时序图、树状图、流程图等），可以通过 `answer-me-with-html` 帮助解答。
 
 ### 其他
 

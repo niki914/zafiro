@@ -120,4 +120,28 @@ class RuntimeControlViewModelTest {
         assertFalse(viewModel.uiStateFlow.value.keepScreenOn)
         assertFalse(XRepo.keepScreenOn())
     }
+
+    @Test
+    fun selectCompactionThreshold_updatesStateAndClosesDialogAndPersists() = runTest {
+        val viewModel = RuntimeControlViewModel()
+        assertEquals(70, viewModel.uiStateFlow.value.compactionThresholdPercent)
+
+        viewModel.sendIntent(
+            RuntimeControlIntent.OpenDialog(RuntimeControlDialog.CompactionThreshold)
+        )
+        advanceUntilIdle()
+        assertEquals(
+            RuntimeControlDialog.CompactionThreshold,
+            viewModel.uiStateFlow.value.activeDialog,
+        )
+
+        viewModel.sendIntent(
+            RuntimeControlIntent.SelectCompactionThreshold(80)
+        )
+        advanceUntilIdle()
+
+        assertEquals(80, viewModel.uiStateFlow.value.compactionThresholdPercent)
+        assertNull(viewModel.uiStateFlow.value.activeDialog)
+        assertEquals(80, XRepo.contextCompactionThresholdPercent())
+    }
 }

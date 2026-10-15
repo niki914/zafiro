@@ -420,6 +420,19 @@ class SettingsDomainCodecsTest {
         assertEquals(true, root["load_last_conversation_on_startup"]!!.jsonPrimitive.boolean)
     }
 
+    @Test
+    fun appStateCompactionThresholdIsClampedOrPreservesZero() {
+        fun thresholdOf(raw: String) =
+            AppStateSettingsCodec.parse("""{"context_compaction_threshold_percent":$raw}""").contextCompactionThresholdPercent
+
+        assertEquals(0, thresholdOf("0"))
+        assertEquals(30, thresholdOf("10"))
+        assertEquals(30, thresholdOf("-50"))
+        assertEquals(95, thresholdOf("120"))
+        assertEquals(70, thresholdOf("70"))
+        assertEquals(70, thresholdOf("\"invalid\""))
+    }
+
     // 保护：手改 tools/mcp/service.json 的 port 绕过设置页校验（1024..65535）。
     // 越界端口不会崩，但会让 MCP 服务静默起不来，所以读盘侧必须夹回可用区间。
     @Test

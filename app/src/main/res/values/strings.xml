@@ -37,7 +37,8 @@
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">新对话</string>
     <string name="ui_home_input_placeholder">输入消息...</string>
-    <string name="ui_home_conversation_compacted">Conversation compacted</string>
+    <string name="ui_home_conversation_compacted">对话已压缩</string>
+    <string name="ui_home_conversation_compacting">正在压缩</string>
     <string name="ui_tool_status_called">已调用</string>
     <string name="ui_tool_status_running">执行中</string>
     <string name="ui_tool_status_success">成功</string>
@@ -456,6 +457,10 @@
     <string name="ui_settings_runtime_control_summary">上限、重试与复读检测</string>
     <string name="ui_settings_runtime_group_network">网络</string>
     <string name="ui_settings_runtime_group_stability">稳定性</string>
+    <string name="ui_settings_runtime_group_compaction">上下文压缩</string>
+    <string name="ui_settings_runtime_compaction_threshold">自动压缩阈值</string>
+    <string name="ui_settings_runtime_compaction_threshold_summary">当上下文窗口占用达到设定阈值时自动压缩历史</string>
+    <string name="ui_settings_runtime_compaction_off">关闭</string>
     <string name="ui_settings_runtime_repetition_detection">复读检测</string>
     <string name="ui_settings_runtime_repetition_summary">模型持续重复输出时提前熔断；越严格越灵敏，但也越可能误判正常内容</string>
     <string name="ui_settings_runtime_sensitivity_relaxed">宽松</string>

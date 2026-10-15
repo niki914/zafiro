@@ -73,6 +73,7 @@ class AgentImpl(
     private val approvalFlow = MutableStateFlow<ApprovalRequest?>(null)
 
     private val roundActive = MutableStateFlow(false)
+    internal val isRoundActive: Boolean get() = roundActive.value
     private var streamJob: Job? = null
     private var roundToken = 0
     private var lastStatusEmitMs = 0L
@@ -144,14 +145,19 @@ class AgentImpl(
             val token = ++roundToken
             reducedStatus = AgentStateReducer.startRound()
             emitStatus(reducedStatus.status)
+            val previousConversation = conversationFlow.value
+            foldWith(ConversationReducer.addCompactingDivider(previousConversation))
             streamJob = scope.launch {
                 try {
                     ensureConversation(query)
                     val compacted = engine.compact(force = true)
                     if (compacted) {
-                        foldWith(ConversationReducer.addCompactedDivider(conversationFlow.value))
+                        foldWith(ConversationReducer.markCompacted(conversationFlow.value))
+                    } else {
+                        foldWith(Reduced(previousConversation))
                     }
                 } catch (throwable: Throwable) {
+                    foldWith(Reduced(previousConversation))
                     if (throwable is CancellationException) throw throwable
                     Logger.e(LOG_TAG, "compact round failed", throwable)
                 } finally {

@@ -41,6 +41,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -105,15 +106,72 @@ class AgentImplTest {
             assertEquals("", nonPersistentAgent.draft.value.text)
 
             var retries = 0
-            while (nonPersistentAgent.status.value.isRunning && retries++ < 50) {
-                delay(20)
+            while (nonPersistentAgent.isRoundActive && retries++ < 200) {
+                delay(50)
             }
+            assertFalse("Round did not finish in time", nonPersistentAgent.isRoundActive)
 
             val turns = nonPersistentAgent.conversation.value.turns
             assertTrue(turns.isNotEmpty())
             val lastTurn = turns.last()
             assertTrue(lastTurn.isCompactedDivider)
+            assertFalse(lastTurn.isCompacting)
             assertEquals("", lastTurn.userText)
+        } finally {
+            RuntimeEnvironment.clearForTest()
+        }
+    }
+
+    @Test
+    fun stream_withCompactCommand_onFailure_restoresPreviousConversation() = runBlocking {
+        val fakeHost = object : RuntimeHostGateway {
+            override suspend fun postNotification(
+                title: String,
+                content: String,
+                uri: String?
+            ): Boolean = true
+        }
+        RuntimeEnvironment.install(RuntimeBridge(settings = StubRuntimeSettingsGateway(), host = fakeHost))
+        try {
+            val nonPersistentAgent = AgentImpl(isPersistent = false)
+            val snapshot = SessionSnapshot(
+                id = "conv-1",
+                leafId = "e1",
+                version = 1,
+                entries = listOf(
+                    ConversationEntry(
+                        id = "e1",
+                        parentId = null,
+                        timestamp = System.currentTimeMillis(),
+                        message = Message.User(listOf(ContentBlock.Text("hello"))),
+                    )
+                )
+            )
+            nonPersistentAgent.engine.openSession(snapshot)
+            nonPersistentAgent.applySessionId(ConversationId("conv-1"))
+
+            // Generator that fails gracefully
+            nonPersistentAgent.engine.compactor = Compactor(
+                summaryGenerator = { _, _ -> throw RuntimeException("Network error during summary") }
+            )
+
+            val initialTurnsCount = nonPersistentAgent.conversation.value.turns.size
+
+            nonPersistentAgent.updateDraft { it.copy(text = "/compact") }
+            val startResult = nonPersistentAgent.stream()
+
+            assertEquals(TurnStart.Started, startResult)
+
+            var retries = 0
+            while (nonPersistentAgent.isRoundActive && retries++ < 200) {
+                delay(50)
+            }
+            assertFalse("Round did not finish in time", nonPersistentAgent.isRoundActive)
+
+            // Failed compaction must rollback to original turns, leaving zero traces
+            val turns = nonPersistentAgent.conversation.value.turns
+            assertEquals(initialTurnsCount, turns.size)
+            assertFalse(turns.any { it.isCompactedDivider })
         } finally {
             RuntimeEnvironment.clearForTest()
         }

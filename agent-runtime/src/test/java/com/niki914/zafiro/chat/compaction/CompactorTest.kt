@@ -211,7 +211,7 @@ class CompactorTest {
     }
 
     @Test
-    fun `threshold compaction triggers when context exceeds window minus reserve`() = runTest {
+    fun `threshold compaction triggers when context exceeds window occupancy threshold`() = runTest {
         val history = listOf(
             user("u1"), assistant("a1"),
             user("u2"), assistant("a2"),
@@ -224,14 +224,14 @@ class CompactorTest {
                 generatorCalled = true
                 "## Goal\nThreshold summarized"
             },
-            reserveTokens = 1000L,
+            thresholdRatio = 0.70f,
         )
 
-        // contextTokens (9500) > contextWindow (10000) - reserveTokens (1000)
+        // contextTokens (7500) >= contextWindow (10000) * 0.70 (7000)
         val result = compactor.compact(
             session = session,
             force = false,
-            contextTokens = 9500L,
+            contextTokens = 7500L,
             contextWindow = 10000L,
         )
 
@@ -251,13 +251,40 @@ class CompactorTest {
                 generatorCalled = true
                 "## Goal\nSummary"
             },
-            reserveTokens = 1000L,
+            thresholdRatio = 0.70f,
+        )
+
+        // contextTokens (6500) < contextWindow (10000) * 0.70 (7000)
+        val result = compactor.compact(
+            session = session,
+            force = false,
+            contextTokens = 6500L,
+            contextWindow = 10000L,
+        )
+
+        assertFalse(result)
+        assertFalse(generatorCalled)
+        assertEquals(0, session.appended.size)
+    }
+
+    @Test
+    fun `does not compact when threshold is zero or disabled`() = runTest {
+        val history = listOf(user("u1"), assistant("a1"))
+        val session = FakeSession(history)
+
+        var generatorCalled = false
+        val compactor = Compactor(
+            summaryGenerator = { _, _ ->
+                generatorCalled = true
+                "## Goal\nSummary"
+            },
+            thresholdRatio = 0f,
         )
 
         val result = compactor.compact(
             session = session,
             force = false,
-            contextTokens = 1000L,
+            contextTokens = 9999L,
             contextWindow = 10000L,
         )
 
