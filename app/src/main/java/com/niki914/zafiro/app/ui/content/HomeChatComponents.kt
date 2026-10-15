@@ -3,6 +3,7 @@ package com.niki914.zafiro.app.ui.content
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
+import com.kyant.backdrop.Backdrop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -493,6 +494,7 @@ fun LiquidChatComposer(
     pendingImages: List<HomeChatImage> = emptyList(),
     pendingFiles: List<HomeChatFile> = emptyList(),
     onAttachImageClick: () -> Unit = {},
+    backdrop: Backdrop? = null,
 ) {
     // 发送按钮恒亮：无文本点击时触发 Toast 提示，能不能点不靠颜色表达。
     // contextProgress 为 null（无记账）时不画环。
@@ -587,6 +589,7 @@ fun LiquidChatComposer(
             attachButton()
             sendButton()
         },
+        backdrop = backdrop,
         modifier = modifier.fillMaxWidth(),
         leadingContent = { attachButton() },
         trailingContent = { sendButton() },

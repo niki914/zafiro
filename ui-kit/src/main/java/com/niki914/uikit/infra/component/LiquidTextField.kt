@@ -8,6 +8,8 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+import com.kyant.backdrop.Backdrop
+
 @Composable
 fun LiquidTextField(
     value: String,
@@ -27,6 +29,7 @@ fun LiquidTextField(
     expandedLayout: Boolean = false,
     /** 展开布局下按钮行：左 leading 右 trailing，与文本区同一玻璃容器内。 */
     expandedActionsRow: (@Composable RowScope.() -> Unit)? = null,
+    backdrop: Backdrop? = null,
     leadingContent: (@Composable RowScope.() -> Unit)? = null,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
@@ -45,6 +48,7 @@ fun LiquidTextField(
         onTextLayout = onTextLayout,
         expandedLayout = expandedLayout,
         expandedActionsRow = expandedActionsRow,
+        backdrop = backdrop,
         leadingContent = leadingContent,
         trailingContent = trailingContent,
     )

@@ -44,14 +44,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.shape.G2FieldShape
 import java.util.concurrent.atomic.AtomicLong
 
@@ -152,10 +155,12 @@ private fun LiquidDialogSurface(
     actions: (@Composable RowScope.() -> Unit)? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val backdrop = rememberLayerBackdrop()
+    val fallbackBackdrop = rememberLayerBackdrop()
+    val resolvedBackdrop = LocalScreenBackdrop.current ?: fallbackBackdrop
+    val isDarkTheme = LocalAppDarkTheme.current
     val colorScheme = MaterialTheme.colorScheme
     val scrimColor = colorScheme.scrim.copy(alpha = 0.42f)
-    val panelSurfaceColor = colorScheme.surfaceContainerHigh.copy(alpha = 0.76f)
+    val panelSurfaceColor = LiquidGlassPresets.Dialog.surfaceColor(isDarkTheme, colorScheme)
     val panelTintColor = colorScheme.primaryContainer.copy(alpha = 0.18f)
     val interactionSource = remember { MutableInteractionSource() }
     val panelShape = G2FieldShape(48.dp)
@@ -245,12 +250,12 @@ private fun LiquidDialogSurface(
                     .heightIn(max = maxPanelHeight)
                     .verticalScroll(scrollState)
                     .drawBackdrop(
-                        backdrop = backdrop,
+                        backdrop = resolvedBackdrop,
                         shape = { panelShape },
+                        highlight = { LiquidGlassPresets.Dialog.highlight(isDarkTheme) },
+                        shadow = { LiquidGlassPresets.Dialog.shadow(isDarkTheme) },
                         effects = {
-                            vibrancy()
-                            blur(4.dp.toPx())
-                            lens(14.dp.toPx(), 28.dp.toPx())
+                            LiquidGlassPresets.Dialog.applyEffects(this, isDarkTheme)
                         },
                         onDrawSurface = {
                             drawRect(panelTintColor, blendMode = BlendMode.Hue)

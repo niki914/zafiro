@@ -355,10 +355,8 @@ internal fun LiquidPopoverSurface(
                     if (progress > 0.25f) ((progress - 0.25f) / 0.75f).coerceIn(0f, 1f) else 0f
 
                 // 默认颜色与 ActionBarButton 保持 100% 一致（透明白/灰色），支持自定义传入
-                val resolvedSurfaceColor = containerColor ?: (
-                        if (isDarkTheme) Color(0xFFAFAFAF).copy(alpha = 0.15f)
-                        else Color.White.copy(alpha = 0.22f)
-                        )
+                val resolvedSurfaceColor = containerColor
+                    ?: LiquidGlassPresets.Popover.surfaceColor(isDarkTheme, MaterialTheme.colorScheme)
 
                 Box(
                     modifier = Modifier
@@ -369,13 +367,8 @@ internal fun LiquidPopoverSurface(
                         .drawBackdrop(
                             backdrop = resolvedBackdrop,
                             shape = { panelShape },
-                            highlight = { Highlight.Ambient.copy(alpha = if (isDarkTheme) 1f else 0.4f) },
-                            shadow = {
-                                Shadow(
-                                    radius = 12.dp,
-                                    color = Color.Black.copy(if (isDarkTheme) 0.08f else 0.2f),
-                                )
-                            },
+                            highlight = { LiquidGlassPresets.Popover.highlight(isDarkTheme) },
+                            shadow = { LiquidGlassPresets.Popover.shadow(isDarkTheme) },
                             layerBlock = {
                                 if (!scrollable) {
                                     applyLiquidInteractiveTransform(
@@ -387,14 +380,7 @@ internal fun LiquidPopoverSurface(
                                 }
                             },
                             effects = {
-                                vibrancy()
-                                blur(if (isDarkTheme) 8.dp.toPx() else 12.dp.toPx())
-                                lens(
-                                    refractionHeight = 6.dp.toPx(),
-                                    refractionAmount = size.height / 2f,
-                                    depthEffect = true,
-                                    chromaticAberration = true,
-                                )
+                                LiquidGlassPresets.Popover.applyEffects(this, isDarkTheme)
                             },
                             onDrawSurface = {
                                 drawRect(resolvedSurfaceColor)
