@@ -19,10 +19,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.TitleBarCollapseThreshold
 import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.LocalPageTitle
+
+import com.niki914.uikit.infra.scrollbar.LiquidScrollableContainer
+import com.niki914.uikit.infra.scrollbar.rememberLiquidOverscrollController
+import com.niki914.uikit.infra.scrollbar.rememberScrollStateAdapter
 
 /**
  * 设置列表页容器，必须运行在 `LiquidScreen` 内容树内。
@@ -48,20 +53,35 @@ fun SettingsListPageContent(
     val collapseRangePx = with(LocalDensity.current) { TitleBarCollapseThreshold.toPx() }
 
     val resolvedBottomPadding = contentBottomPadding ?: liquidScreenBottomPadding()
+    val overscrollController = rememberLiquidOverscrollController()
+    val scrollbarState = rememberScrollStateAdapter(scrollState, overscrollController)
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(
-                start = 16.dp,
-                end = 16.dp,
-                // 顶部原来为 topPadding 与 24dp 两层叠加，此处保持等价
-                top = liquidScreenTopPadding(24.dp),
-                bottom = resolvedBottomPadding,
-            ),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+    // 精确接管顶栏折叠：内容滚出超过大标题高度或向上拉扯超滚时折叠；回弹归位或滚回顶部绝对变回透明
+    ReportTitleBarCollapsed {
+        scrollState.value > collapseRangePx ||
+            overscrollController.overscrollOffset.value < -collapseRangePx
+    }
+
+    LiquidScrollableContainer(
+        state = scrollbarState,
+        overscrollController = overscrollController,
+        topClearance = liquidScreenTopPadding(24.dp),
+        bottomClearance = resolvedBottomPadding,
+        modifier = modifier,
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    // 顶部原来为 topPadding 与 24dp 两层叠加，此处保持等价
+                    top = liquidScreenTopPadding(24.dp),
+                    bottom = resolvedBottomPadding,
+                ),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
         val pageTitle = LocalPageTitle.current
         if (pageTitle.isNotBlank()) {
             Text(
@@ -82,4 +102,5 @@ fun SettingsListPageContent(
         }
         content()
     }
+}
 }

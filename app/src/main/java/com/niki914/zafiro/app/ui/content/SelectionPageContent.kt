@@ -31,8 +31,12 @@ import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
+import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
+import com.niki914.uikit.infra.scrollbar.LiquidScrollableContainer
+import com.niki914.uikit.infra.scrollbar.rememberLiquidOverscrollController
+import com.niki914.uikit.infra.scrollbar.rememberScrollStateAdapter
 import com.niki914.zafiro.app.R
 
 data class SelectionOption(
@@ -150,29 +154,44 @@ fun SelectionPageContent(
     options: List<SelectionOption>,
 ) {
     val scrollState = rememberScrollState()
-    // 折叠状态由 LiquidScreen 经 nestedScroll 自动感知，页面不再上报。
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(
-                start = 16.dp,
-                end = 16.dp,
-                top = liquidScreenTopPadding(24.dp),
-                bottom = liquidScreenBottomPadding(),
-            ),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.ui_onboard_provider_pick_description),
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontSize = 18.sp,
-                lineHeight = 28.sp,
-            ),
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    val overscrollController = rememberLiquidOverscrollController()
+    val scrollbarState = rememberScrollStateAdapter(scrollState, overscrollController)
 
-        SelectionGroupCard(options = options, isDarkTheme = LocalAppDarkTheme.current)
+    ReportTitleBarCollapsed {
+        scrollState.value > 0 ||
+            overscrollController.overscrollOffset.value < 0f
+    }
+
+    LiquidScrollableContainer(
+        state = scrollbarState,
+        overscrollController = overscrollController,
+        topClearance = liquidScreenTopPadding(24.dp),
+        bottomClearance = liquidScreenBottomPadding(),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = liquidScreenTopPadding(24.dp),
+                    bottom = liquidScreenBottomPadding(),
+                ),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.ui_onboard_provider_pick_description),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 18.sp,
+                    lineHeight = 28.sp,
+                ),
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            SelectionGroupCard(options = options, isDarkTheme = LocalAppDarkTheme.current)
+        }
     }
 }
