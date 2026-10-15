@@ -43,6 +43,8 @@ data class LiquidGlassStyle(
     val highlightAlpha: (isDarkTheme: Boolean) -> Float = { if (it) 1f else 0.4f },
     /** 自定义高光实现（若提供则优先使用）。 */
     val customHighlight: ((isDarkTheme: Boolean) -> Highlight)? = null,
+    /** 自定义阴影实现（若提供则优先使用）。 */
+    val customShadow: ((isDarkTheme: Boolean) -> Shadow)? = null,
     /** 投影半径。 */
     val shadowRadius: Dp = 12.dp,
     /** 投影颜色。 */
@@ -87,10 +89,11 @@ data class LiquidGlassStyle(
      * 生成柔和环境阴影（Shadow）。
      */
     fun shadow(isDarkTheme: Boolean): Shadow {
-        return Shadow(
-            radius = shadowRadius,
-            color = shadowColor(isDarkTheme),
-        )
+        return customShadow?.invoke(isDarkTheme)
+            ?: Shadow(
+                radius = shadowRadius,
+                color = shadowColor(isDarkTheme),
+            )
     }
 }
 
@@ -104,7 +107,7 @@ object LiquidGlassPresets {
      * 同时保留符合预期的 76% surfaceContainerHigh 表面底色与沉浸 Hue 色相染色。
      */
     val Dialog = LiquidGlassStyle(
-        blurRadius = { isDark -> if (isDark) 8.dp else 16.dp },
+        blurRadius = { isDark -> if (isDark) 8.dp else 12.dp },
         refractionHeight = 24.dp,
         refractionAmount = { 48.dp.toPx() },
         depthEffect = true,
@@ -148,6 +151,22 @@ object LiquidGlassPresets {
         highlightAlpha = { isDark -> if (isDark) 1f else 0f },
         shadowRadius = 12.dp,
         shadowColor = { isDark -> Color.Black.copy(if (isDark) 0.08f else 0.2f) },
+    )
+
+    /**
+     * 普通输入框（LiquidTextField / LiquidSecretTextField）标准预设：
+     * 精致卡片内嵌质感，2dp 极浅清晰模糊，12dp 边缘高折射与 24dp 折射量，
+     * 搭配带细白边的 Default 高光（0.5dp 细白轮廓线）与标准阴影。
+     */
+    val TextField = LiquidGlassStyle(
+        blurRadius = { 2.dp },
+        refractionHeight = 12.dp,
+        refractionAmount = { 24.dp.toPx() },
+        depthEffect = true,
+        chromaticAberration = true,
+        surfaceColor = { _, colorScheme -> colorScheme.surfaceContainerHigh.copy(alpha = 0.64f) },
+        customHighlight = { Highlight.Default },
+        customShadow = { Shadow.Default },
     )
 
     /**

@@ -70,6 +70,10 @@ fun LiquidScreen(
     isOccluded: Boolean = false,
     leftButtonAlpha: Float = 1f,
     rightButtonAlpha: Float = 1f,
+    showLeftButton: Boolean? = null,
+    showRightButton: Boolean? = null,
+    onLeftClick: (() -> Unit)? = null,
+    onRightClick: (() -> Unit)? = null,
     onLeftButtonBoundsChanged: ((Rect) -> Unit)? = null,
     onRightButtonBoundsChanged: ((Rect) -> Unit)? = null,
     leftButton: (@Composable () -> Unit)? = null,
@@ -186,6 +190,11 @@ fun LiquidScreen(
                 .fillMaxWidth()
                 .height(chromeHeight),
         ) {
+            val resolvedShowLeftButton = showLeftButton ?: state.showLeftButton
+            val resolvedShowRightButton = showRightButton ?: state.showRightButton
+            val resolvedOnLeftClick = onLeftClick ?: state.onLeftClick
+            val resolvedOnRightClick = onRightClick ?: state.onRightClick
+
             LiquidTopBar(
                 title = state.title,
                 titleDirection = state.titleDirection,
@@ -193,11 +202,11 @@ fun LiquidScreen(
                 isOccluded = isOccluded,
                 leftButtonAlpha = leftButtonAlpha,
                 rightButtonAlpha = rightButtonAlpha,
-                showLeftButton = state.showLeftButton,
-                showRightButton = state.showRightButton,
+                showLeftButton = resolvedShowLeftButton,
+                showRightButton = resolvedShowRightButton,
                 actionsEnabled = actionsEnabled,
-                onLeftClick = state.onLeftClick,
-                onRightClick = state.onRightClick,
+                onLeftClick = resolvedOnLeftClick,
+                onRightClick = resolvedOnRightClick,
                 onLeftButtonBoundsChanged = onLeftButtonBoundsChanged,
                 onRightButtonBoundsChanged = onRightButtonBoundsChanged,
                 backdrop = screenBackdrop,

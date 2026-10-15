@@ -226,6 +226,9 @@ fun ZafiroApp(
         requestBack()
     }
 
+    val onLeftClick = bindAction(currentLeftAction, fallback = ::requestBack)
+    val onRightClick = bindAction(currentRightAction)
+
     // 上次已做过标题动画的条目：标题滑动只表达「换了页面」这一空间语义。
     // 同一条目内的标题刷新（会话标题出现、选中数量变化、切换配置）是活内容变了，
     // 不是位移，走 update 瞬切；否则它们会沿用上一次的导航方向反复左右滑。
@@ -244,8 +247,6 @@ fun ZafiroApp(
         if (currentChrome.menuItems.isEmpty()) {
             closeChromeMenu()
         }
-        val onLeftClick = bindAction(currentLeftAction, fallback = ::requestBack)
-        val onRightClick = bindAction(currentRightAction)
 
         val isPageChange = lastAnimatedEntryId != currentEntry.id
         lastAnimatedEntryId = currentEntry.id
@@ -304,6 +305,10 @@ fun ZafiroApp(
                     actionsEnabled = !isPageTransitioning,
                     isOccluded = isChromeMenuOpen || currentChrome.isTitleOccluded,
                     rightButtonAlpha = rightButtonAlpha,
+                    showLeftButton = showLeftButton,
+                    showRightButton = showRightButton,
+                    onLeftClick = onLeftClick,
+                    onRightClick = onRightClick,
                     onRightButtonBoundsChanged = { rightButtonBounds = it },
                     leftButton = currentLeftAction?.let { action ->
                         {

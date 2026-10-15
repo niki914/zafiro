@@ -87,6 +87,7 @@ import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.ActionBarButton
+import com.niki914.uikit.infra.LiquidGlassPresets
 import com.niki914.uikit.infra.component.LiquidTextField
 import com.niki914.uikit.infra.shape.G2BubbleShape
 import com.niki914.uikit.infra.shape.G2CardShape
@@ -590,6 +591,7 @@ fun LiquidChatComposer(
             sendButton()
         },
         backdrop = backdrop,
+        glassStyle = LiquidGlassPresets.ComposerBar,
         modifier = modifier.fillMaxWidth(),
         leadingContent = { attachButton() },
         trailingContent = { sendButton() },
