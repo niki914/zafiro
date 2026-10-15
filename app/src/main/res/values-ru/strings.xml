@@ -32,6 +32,8 @@
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">Новый диалог</string>
     <string name="ui_home_input_placeholder">Введите сообщение…</string>
+    <string name="ui_home_conversation_compacted">Диалог сжат</string>
+    <string name="ui_home_conversation_compacting">Сжатие</string>
     <string name="ui_tool_status_called">Вызван</string>
     <string name="ui_tool_status_running">Выполняется</string>
     <string name="ui_tool_status_success">Успешно</string>
@@ -408,6 +410,10 @@
     <string name="ui_settings_runtime_control_summary">Лимиты, повторы и обнаружение зацикливания</string>
     <string name="ui_settings_runtime_group_network">Сеть</string>
     <string name="ui_settings_runtime_group_stability">Стабильность</string>
+    <string name="ui_settings_runtime_group_compaction">Сжатие контекста</string>
+    <string name="ui_settings_runtime_compaction_threshold">Порог автосжатия</string>
+    <string name="ui_settings_runtime_compaction_threshold_summary">Автоматически сжимать историю при достижении порога окна контекста</string>
+    <string name="ui_settings_runtime_compaction_off">Выключено</string>
     <string name="ui_settings_runtime_repetition_detection">Обнаружение повторов</string>
     <string name="ui_settings_runtime_repetition_summary">Прерывает ответ, когда модель зацикливается; строгие режимы срабатывают раньше, но и чаще обрывают нормальный текст</string>
     <string name="ui_settings_runtime_sensitivity_relaxed">Мягкая</string>

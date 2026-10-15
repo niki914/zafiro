@@ -37,6 +37,8 @@
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">新しい会話</string>
     <string name="ui_home_input_placeholder">メッセージを入力...</string>
+    <string name="ui_home_conversation_compacted">会話が圧縮されました</string>
+    <string name="ui_home_conversation_compacting">圧縮中</string>
     <string name="ui_tool_status_called">呼び出し済み</string>
     <string name="ui_tool_status_running">実行中</string>
     <string name="ui_tool_status_success">成功</string>
@@ -449,6 +451,10 @@
     <string name="ui_settings_runtime_control_summary">上限・再試行・繰り返し検出</string>
     <string name="ui_settings_runtime_group_network">ネットワーク</string>
     <string name="ui_settings_runtime_group_stability">安定性</string>
+    <string name="ui_settings_runtime_group_compaction">コンテキスト圧縮</string>
+    <string name="ui_settings_runtime_compaction_threshold">自動圧縮しきい値</string>
+    <string name="ui_settings_runtime_compaction_threshold_summary">コンテキストウィンドウの使用率がしきい値に達したときに履歴を自動圧縮します</string>
+    <string name="ui_settings_runtime_compaction_off">オフ</string>
     <string name="ui_settings_runtime_repetition_detection">繰り返し検出</string>
     <string name="ui_settings_runtime_repetition_summary">モデルが同じ出力を繰り返したとき、ターンを早期に中断します。厳しくするほど感度は上がりますが、正常な内容を中断する可能性も高まります</string>
     <string name="ui_settings_runtime_sensitivity_relaxed">緩い</string>

@@ -9,6 +9,7 @@ import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.chat.ToolCallStatus
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -259,6 +260,35 @@ class ConversationReducerTest {
             secondWithText.conversation.turns[0].blocks.single().id,
             secondWithText.conversation.turns[1].blocks.single().id,
         )
+    }
+
+    @Test
+    fun addCompactedDivider_appendsCompactedTurnWithPositionalId() {
+        val initial = ConversationReducer.startTurn(Conversation(), "q1", emptyList())
+        val withDivider = ConversationReducer.addCompactedDivider(initial.conversation)
+
+        assertEquals(2, withDivider.conversation.turns.size)
+        val dividerTurn = withDivider.conversation.turns[1]
+        assertEquals(turnIdAt(1), dividerTurn.id)
+        assertEquals("", dividerTurn.userText)
+        assertTrue(dividerTurn.isCompactedDivider)
+        assertFalse(dividerTurn.isCompacting)
+        assertTrue(dividerTurn.blocks.isEmpty())
+    }
+
+    @Test
+    fun addCompactingDivider_and_markCompacted_transitionsStateCorrectly() {
+        val initial = ConversationReducer.startTurn(Conversation(), "q1", emptyList())
+        val compacting = ConversationReducer.addCompactingDivider(initial.conversation)
+
+        assertEquals(2, compacting.conversation.turns.size)
+        assertTrue(compacting.conversation.turns[1].isCompactedDivider)
+        assertTrue(compacting.conversation.turns[1].isCompacting)
+
+        val completed = ConversationReducer.markCompacted(compacting.conversation)
+        assertEquals(2, completed.conversation.turns.size)
+        assertTrue(completed.conversation.turns[1].isCompactedDivider)
+        assertFalse(completed.conversation.turns[1].isCompacting)
     }
 
     // ── 构造helper ──────────────────────────────────────────────────────────

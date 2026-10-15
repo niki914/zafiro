@@ -60,6 +60,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +73,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -898,9 +900,10 @@ private fun HomePageContentBody(
                     // 组归一化：点组内任意一条都弹/聚合到组尾（操作行在组尾 turn 下渲染）
                     val tailIndex = userGroupTailIndex(uiState.turns, index)
                     val tailTurn = uiState.turns[tailIndex]
-                    // 顶距：组中/组末用组内间隙与上一气泡连体；组首/单条维持 turn 分隔
+                    // 顶距：组中/组末用组内间隙与上一气泡连体；组首/单条维持 turn 分隔；分割线紧凑居中
                     val turnTopPad = when {
                         index == 0 -> Modifier
+                        turn.isCompactedDivider -> Modifier.padding(top = 8.dp, bottom = 8.dp)
                         position == UserBubblePosition.GroupMid || position == UserBubblePosition.GroupLast ->
                             Modifier.padding(top = UserBubbleGap)
 
@@ -1183,8 +1186,10 @@ private class GrantingTakePicture : ActivityResultContract<Uri, ActivityResult>(
  * 因此流式内容到达只会改变"自身→下一条"一侧，组首一侧的黏性由上一 turn 决定，组不随内容跳变。
  */
 private fun userBubblePosition(turns: List<HomeChatTurn>, index: Int): UserBubblePosition {
-    val stickyUp = index > 0 && turns[index - 1].blocks.isEmpty()
-    val stickyDown = index < turns.lastIndex && turns[index].blocks.isEmpty()
+    val current = turns.getOrNull(index)
+    if (current == null || current.isCompactedDivider) return UserBubblePosition.Single
+    val stickyUp = index > 0 && turns[index - 1].blocks.isEmpty() && !turns[index - 1].isCompactedDivider
+    val stickyDown = index < turns.lastIndex && turns[index].blocks.isEmpty() && !turns[index + 1].isCompactedDivider
     return when {
         stickyUp && stickyDown -> UserBubblePosition.GroupMid
         stickyUp -> UserBubblePosition.GroupLast
@@ -1199,16 +1204,17 @@ private fun userBubblePosition(turns: List<HomeChatTurn>, index: Int): UserBubbl
  */
 internal fun userGroupTailIndex(turns: List<HomeChatTurn>, index: Int): Int {
     var tail = index
-    while (tail < turns.lastIndex && turns[tail].blocks.isEmpty()) tail++
+    while (tail < turns.lastIndex && turns[tail].blocks.isEmpty() && !turns[tail].isCompactedDivider && !turns[tail + 1].isCompactedDivider) tail++
     return tail
 }
 
 /** index 所在 User 组的组内全部用户文本：按序、双换行分隔、跳过空白（纯图片 turn）。 */
 internal fun userGroupText(turns: List<HomeChatTurn>, index: Int): String {
     var head = index
-    while (head > 0 && turns[head - 1].blocks.isEmpty()) head--
+    while (head > 0 && turns[head - 1].blocks.isEmpty() && !turns[head - 1].isCompactedDivider) head--
     val tail = userGroupTailIndex(turns, index)
     return turns.subList(head, tail + 1)
+        .filterNot { it.isCompactedDivider }
         .map { it.userText }
         .filter { it.isNotBlank() }
         .joinToString("\n\n")
@@ -1246,6 +1252,14 @@ private fun HomeChatTurnItem(
     onSwitchBranch: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    if (turn.isCompactedDivider) {
+        CompactedDividerItem(
+            isCompacting = turn.isCompacting,
+            modifier = modifier,
+        )
+        return
+    }
+
     val alwaysVisible = actionsDisplay == MessageActionsDisplay.Always
     // Agent 操作行：仅正生成中的末轮隐藏；已结束的旧 turn 常显（复制无害，
     // 重新生成/分叉/回退在生成中点按弹 toast，见 guarded 回调）
@@ -1555,6 +1569,52 @@ private fun HomeChatTurnItem(
     }
 }
 
+@Composable
+private fun CompactedDividerItem(
+    isCompacting: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val dots = if (isCompacting) {
+        val dotCount by produceState(initialValue = 1) {
+            while (true) {
+                delay(400)
+                value = (value % 3) + 1
+            }
+        }
+        ".".repeat(dotCount)
+    } else {
+        ""
+    }
+
+    Row(
+        modifier = modifier
+            .padding(vertical = 6.dp)
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+        )
+        Text(
+            text = if (isCompacting) {
+                "${stringResource(R.string.ui_home_conversation_compacting)}$dots"
+            } else {
+                stringResource(R.string.ui_home_conversation_compacted)
+            },
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+        )
+    }
+}
+
 /**
  * 手势信任的贴底跟随状态机（外层聊天列表与内层 thinking/工具结果文本共用）。
  * 用户开始拖拽立即暂停跟随——流式新内容不再抢占滚动；
@@ -1736,4 +1796,39 @@ private fun HomeTitleConfigChip(
         }
     }
 }
+
+@Preview(
+    name = "Compacted Divider Alignment Preview",
+    showBackground = true,
+    widthDp = 400,
+    heightDp = 500,
+)
+@Composable
+private fun CompactedDividerAlignmentPreview() {
+    BaseTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            AssistantOutputText(
+                text = "这是一段用于测试两端对齐的 Markdown 文本。请观察下方分割线两端与本段文本起止边缘是否在同一条垂线上（start-to-start, end-to-end）。"
+            )
+
+            CompactedDividerItem(isCompacting = true)
+
+            AssistantOutputText(
+                text = "这是位于两条分割线中间的普通模型回复段落。"
+            )
+
+            CompactedDividerItem(isCompacting = false)
+
+            AssistantOutputText(
+                text = "这是压缩之后的新一轮回答。上方分割线展示的是「对话已压缩」完成态。"
+            )
+        }
+    }
+}
+
 

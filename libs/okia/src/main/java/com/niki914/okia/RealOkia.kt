@@ -1,6 +1,7 @@
 package com.niki914.okia
 
 import com.niki914.okia.conversation.Conversation
+import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.RealConversation
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.error.CallbackException
@@ -195,6 +196,14 @@ internal class RealOkia(
         // 再取消回合 job（阻塞工具不吃协程取消，直接 cancel 会永久挂住）。
         killDispatchedTools(turn.startEntryId)
         turn.job.cancelAndJoin()
+    }
+
+    override suspend fun append(message: Message): ConversationEntry = mutex.withLock {
+        check(!closed) { "Okia is closed" }
+        check(activeTurn == null) { "cannot append during active turn" }
+        val entry = tree.append(message)
+        publish()
+        entry
     }
 
     override suspend fun rewind(entryId: String) {

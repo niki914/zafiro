@@ -97,6 +97,8 @@ data class HomeChatTurn(
     val images: List<HomeChatImage> = emptyList(),
     val files: List<HomeChatFile> = emptyList(),
     val blocks: List<HomeChatBlock> = emptyList(),
+    val isCompactedDivider: Boolean = false,
+    val isCompacting: Boolean = false,
 )
 
 /**

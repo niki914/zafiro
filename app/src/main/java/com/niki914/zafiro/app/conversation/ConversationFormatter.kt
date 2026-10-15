@@ -17,6 +17,7 @@ import com.niki914.zafiro.api.model.ToolInvocation
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
 import com.niki914.zafiro.api.text.FilesBlock
+import com.niki914.zafiro.api.text.SummaryBlock
 import com.niki914.zafiro.business.agent.blockIdAt
 import com.niki914.zafiro.business.agent.turnIdAt
 
@@ -41,6 +42,7 @@ object ConversationFormatter {
     private const val MAX_TITLE_LENGTH = 40
     private const val MAX_PREVIEW_LENGTH = 120
     private const val ELLIPSIS = "..."
+    const val COMPACTED_PREVIEW_TEXT = "Conversation compacted"
 
     private val REGENERATE_KEYWORDS = setOf(
         "Regenerate",
@@ -166,8 +168,17 @@ object ConversationFormatter {
     private fun previewTextOf(message: Message?): String {
         val text = when (message) {
             // 用户文本先在头部切掉注入块：切出来的那段是给 agent 看的机器文本，
-            // 拿它当预览会把 <zfr-files> 摆到对话列表里
-            is Message.User -> FilesBlock.strip(message.textBlocks().joinToString("\n")).text
+            // 拿它当预览会把 <zfr-files> 或 <zfr-summary> 摆到对话列表里
+            is Message.User -> {
+                val raw = message.textBlocks().joinToString("\n")
+                val summaryStripped = SummaryBlock.strip(raw)
+                if (summaryStripped.payload != null) {
+                    val remainingText = FilesBlock.strip(summaryStripped.text).text.trim()
+                    if (remainingText.isEmpty()) COMPACTED_PREVIEW_TEXT else remainingText
+                } else {
+                    FilesBlock.strip(raw).text
+                }
+            }
             is Message.Assistant -> message.message.textBlocks().joinToString("\n")
             else -> ""
         }
@@ -204,15 +215,27 @@ object ConversationFormatter {
             when (val message = entry.message) {
                 is Message.User -> {
                     // 展示路径上的切头：落盘的这条消息带着注入块，
-                    // 切掉后才是用户当时真正打的话
-                    val stripped = FilesBlock.strip(message.textBlocks().joinToString("\n"))
-                    turns += ConversationTurn(
-                        id = turnIdAt(turns.size),
-                        userText = stripped.text,
-                        images = message.content.filterIsInstance<ContentBlock.Image>()
-                            .map { Attachment(path = it.path, mimeType = it.mimeType) },
-                        files = stripped.files,
-                    )
+                    // 切掉后才是用户当时真正打的话；
+                    // 压缩检查点生成特化分割线回合，摘要正文对用户完全隐形
+                    val rawText = message.textBlocks().joinToString("\n")
+                    val summaryStripped = SummaryBlock.strip(rawText)
+                    if (summaryStripped.payload != null) {
+                        turns += ConversationTurn(
+                            id = turnIdAt(turns.size),
+                            userText = "",
+                            isCompactedDivider = true,
+                        )
+                    } else {
+                        val stripped = FilesBlock.strip(rawText)
+                        turns += ConversationTurn(
+                            id = turnIdAt(turns.size),
+                            userText = stripped.text,
+                            images = message.content.filterIsInstance<ContentBlock.Image>()
+                                .map { Attachment(path = it.path, mimeType = it.mimeType) },
+                            files = stripped.files,
+                            isCompactedDivider = false,
+                        )
+                    }
                 }
 
                 is Message.Assistant -> {

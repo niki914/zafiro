@@ -4,7 +4,10 @@ package com.niki914.zafiro.business.agent
 import com.niki914.logging.Backend
 import com.niki914.logging.Level
 import com.niki914.logging.Logger
+import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
 import com.niki914.zafiro.api.Approver
 import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.AgentState
@@ -13,9 +16,11 @@ import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
+import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.chat.LlmStreamEvent
+import com.niki914.zafiro.chat.compaction.Compactor
 import com.niki914.zafiro.service.installService
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.RuntimeBridge
@@ -36,6 +41,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -59,6 +65,116 @@ class AgentImplTest {
     @Test
     fun stream_rejectsEmptyDraft() {
         assertEquals(TurnStart.DraftEmpty, agent.stream())
+    }
+
+    @Test
+    fun stream_withCompactCommand_triggersCompactionAndAddsDividerTurn() = runBlocking {
+        val fakeHost = object : RuntimeHostGateway {
+            override suspend fun postNotification(
+                title: String,
+                content: String,
+                uri: String?
+            ): Boolean = true
+        }
+        RuntimeEnvironment.install(RuntimeBridge(settings = StubRuntimeSettingsGateway(), host = fakeHost))
+        try {
+            val nonPersistentAgent = AgentImpl(isPersistent = false)
+            val snapshot = SessionSnapshot(
+                id = "conv-1",
+                leafId = "e1",
+                version = 1,
+                entries = listOf(
+                    ConversationEntry(
+                        id = "e1",
+                        parentId = null,
+                        timestamp = System.currentTimeMillis(),
+                        message = Message.User(listOf(ContentBlock.Text("hello"))),
+                    )
+                )
+            )
+            nonPersistentAgent.engine.openSession(snapshot)
+            nonPersistentAgent.applySessionId(ConversationId("conv-1"))
+
+            nonPersistentAgent.engine.compactor = Compactor(
+                summaryGenerator = { _, _ -> "## Goal\nMock summary" }
+            )
+
+            nonPersistentAgent.updateDraft { it.copy(text = "/compact") }
+            val startResult = nonPersistentAgent.stream()
+
+            assertEquals(TurnStart.Started, startResult)
+            assertEquals("", nonPersistentAgent.draft.value.text)
+
+            var retries = 0
+            while (nonPersistentAgent.isRoundActive && retries++ < 200) {
+                delay(50)
+            }
+            assertFalse("Round did not finish in time", nonPersistentAgent.isRoundActive)
+
+            val turns = nonPersistentAgent.conversation.value.turns
+            assertTrue(turns.isNotEmpty())
+            val lastTurn = turns.last()
+            assertTrue(lastTurn.isCompactedDivider)
+            assertFalse(lastTurn.isCompacting)
+            assertEquals("", lastTurn.userText)
+        } finally {
+            RuntimeEnvironment.clearForTest()
+        }
+    }
+
+    @Test
+    fun stream_withCompactCommand_onFailure_restoresPreviousConversation() = runBlocking {
+        val fakeHost = object : RuntimeHostGateway {
+            override suspend fun postNotification(
+                title: String,
+                content: String,
+                uri: String?
+            ): Boolean = true
+        }
+        RuntimeEnvironment.install(RuntimeBridge(settings = StubRuntimeSettingsGateway(), host = fakeHost))
+        try {
+            val nonPersistentAgent = AgentImpl(isPersistent = false)
+            val snapshot = SessionSnapshot(
+                id = "conv-1",
+                leafId = "e1",
+                version = 1,
+                entries = listOf(
+                    ConversationEntry(
+                        id = "e1",
+                        parentId = null,
+                        timestamp = System.currentTimeMillis(),
+                        message = Message.User(listOf(ContentBlock.Text("hello"))),
+                    )
+                )
+            )
+            nonPersistentAgent.engine.openSession(snapshot)
+            nonPersistentAgent.applySessionId(ConversationId("conv-1"))
+
+            // Generator that fails gracefully
+            nonPersistentAgent.engine.compactor = Compactor(
+                summaryGenerator = { _, _ -> throw RuntimeException("Network error during summary") }
+            )
+
+            val initialTurnsCount = nonPersistentAgent.conversation.value.turns.size
+
+            nonPersistentAgent.updateDraft { it.copy(text = "/compact") }
+            val startResult = nonPersistentAgent.stream()
+
+            assertEquals(TurnStart.Started, startResult)
+
+            var retries = 0
+            while (nonPersistentAgent.isRoundActive && retries++ < 200) {
+                delay(50)
+            }
+            assertFalse("Round did not finish in time", nonPersistentAgent.isRoundActive)
+
+            // Failed compaction must rollback to original turns, leaving zero traces
+            val turns = nonPersistentAgent.conversation.value.turns
+            assertEquals(initialTurnsCount, turns.size)
+            assertFalse(turns.any { it.isCompactedDivider })
+        } finally {
+            RuntimeEnvironment.clearForTest()
+        }
     }
 
     @Test

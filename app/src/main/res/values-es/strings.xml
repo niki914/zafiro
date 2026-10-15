@@ -37,6 +37,8 @@
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">Nueva conversación</string>
     <string name="ui_home_input_placeholder">Escriba un mensaje...</string>
+    <string name="ui_home_conversation_compacted">Conversación compactada</string>
+    <string name="ui_home_conversation_compacting">Compactando</string>
     <string name="ui_tool_status_called">Llamado</string>
     <string name="ui_tool_status_running">Ejecutando</string>
     <string name="ui_tool_status_success">Completado</string>
@@ -450,6 +452,10 @@
     <string name="ui_settings_runtime_control_summary">Límites, reintentos y detección de repeticiones</string>
     <string name="ui_settings_runtime_group_network">Red</string>
     <string name="ui_settings_runtime_group_stability">Estabilidad</string>
+    <string name="ui_settings_runtime_group_compaction">Compactación de contexto</string>
+    <string name="ui_settings_runtime_compaction_threshold">Umbral de compactación automática</string>
+    <string name="ui_settings_runtime_compaction_threshold_summary">Compactar automáticamente el historial cuando el uso de la ventana de contexto alcance el umbral</string>
+    <string name="ui_settings_runtime_compaction_off">Desactivado</string>
     <string name="ui_settings_runtime_repetition_detection">Detección de repeticiones</string>
     <string name="ui_settings_runtime_repetition_summary">Interrumpe el turno cuando el modelo se repite; los niveles más estrictos reaccionan antes, pero también pueden cortar contenido que no es un bucle</string>
     <string name="ui_settings_runtime_sensitivity_relaxed">Relajada</string>

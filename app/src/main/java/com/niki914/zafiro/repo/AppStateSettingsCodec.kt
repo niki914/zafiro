@@ -12,6 +12,8 @@ import kotlinx.serialization.json.Json
  * 序列化说明：字段声明顺序即写盘 key 顺序（与历史手写 encode 一致），
  * 缺 key 走默认值，未知 key（如已删除的旧字段）直接忽略，畸形 JSON 回全默认值。
  */
+const val DEFAULT_COMPACTION_THRESHOLD_PERCENT: Int = 70
+
 @Serializable
 internal data class AppStateSettings(
     @SerialName("onboarding_completed")
@@ -42,6 +44,9 @@ internal data class AppStateSettings(
     /** 复读检测灵敏度档位（RepetitionSensitivity.wireValue）。 */
     @SerialName("repetition_sensitivity")
     val repetitionSensitivity: String = "loose",
+    /** 上下文自动压缩阈值百分比（30..95，0 = 关闭，默认 70）。 */
+    @SerialName("context_compaction_threshold_percent")
+    val contextCompactionThresholdPercent: Int = DEFAULT_COMPACTION_THRESHOLD_PERCENT,
     /** 回答进行中保持屏幕常亮。 */
     @SerialName("keep_screen_on")
     val keepScreenOn: Boolean = true,
@@ -96,11 +101,16 @@ internal object AppStateSettingsCodec {
                 // 损坏文件里的兜底：themeMode 空串回到 dark；markdown_scale 越界夹回可用区间。
                 val fixed = if (it.themeMode.isBlank()) it.copy(themeMode = "dark") else it
                 // 灵敏度是开放字符串：未知值（手改 / 拼错 / 其他版本写入）回默认档，不崩。
+                val sanitizedCompactionThreshold = when {
+                    fixed.contextCompactionThresholdPercent == 0 -> 0
+                    else -> fixed.contextCompactionThresholdPercent.coerceIn(30, 95)
+                }
                 fixed.copy(
                     markdownScale = fixed.markdownScale.coerceIn(0.6f, 1.4f),
                     repetitionSensitivity = RepetitionSensitivity.fromWire(
                         fixed.repetitionSensitivity
                     ).wireValue,
+                    contextCompactionThresholdPercent = sanitizedCompactionThreshold,
                 )
             }
         } catch (_: SerializationException) {

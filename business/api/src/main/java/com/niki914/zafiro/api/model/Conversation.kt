@@ -71,4 +71,6 @@ data class ConversationTurn(
      */
     val files: List<FileRef> = emptyList(),
     val blocks: List<TurnBlock> = emptyList(),
+    val isCompactedDivider: Boolean = false,
+    val isCompacting: Boolean = false,
 )

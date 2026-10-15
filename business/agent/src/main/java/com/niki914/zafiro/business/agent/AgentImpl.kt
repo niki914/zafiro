@@ -73,6 +73,7 @@ class AgentImpl(
     private val approvalFlow = MutableStateFlow<ApprovalRequest?>(null)
 
     private val roundActive = MutableStateFlow(false)
+    internal val isRoundActive: Boolean get() = roundActive.value
     private var streamJob: Job? = null
     private var roundToken = 0
     private var lastStatusEmitMs = 0L
@@ -135,6 +136,42 @@ class AgentImpl(
         if (!roundActive.compareAndSet(expect = false, update = true)) return TurnStart.Busy
 
         val query = draft.text
+        val isCompactCommand = draft.images.isEmpty() &&
+                draft.files.isEmpty() &&
+                query.trim().equals("/compact", ignoreCase = true)
+
+        if (isCompactCommand) {
+            draftFlow.value = Draft()
+            val token = ++roundToken
+            reducedStatus = AgentStateReducer.startRound()
+            emitStatus(reducedStatus.status)
+            val previousConversation = conversationFlow.value
+            foldWith(ConversationReducer.addCompactingDivider(previousConversation))
+            streamJob = scope.launch {
+                try {
+                    ensureConversation(query)
+                    val compacted = engine.compact(force = true)
+                    if (compacted) {
+                        foldWith(ConversationReducer.markCompacted(conversationFlow.value))
+                    } else {
+                        foldWith(Reduced(previousConversation))
+                    }
+                } catch (throwable: Throwable) {
+                    foldWith(Reduced(previousConversation))
+                    if (throwable is CancellationException) throw throwable
+                    Logger.e(LOG_TAG, "compact round failed", throwable)
+                } finally {
+                    if (roundToken == token && statusFlow.value !is AgentState.Stopping) {
+                        reducedStatus = AgentStateReducer.reset()
+                        emitStatus(reducedStatus.status)
+                        streamJob = null
+                        roundActive.value = false
+                    }
+                }
+            }
+            return TurnStart.Started
+        }
+
         val images = draft.images.mapNotNull { image ->
             when (image) {
                 is DraftImage.Pending -> null

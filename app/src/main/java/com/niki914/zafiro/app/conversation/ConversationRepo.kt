@@ -397,7 +397,9 @@ object ConversationRepo {
     suspend fun renameConversation(id: String, title: String) {
         val trimmedTitle = title.trim()
         if (trimmedTitle.isEmpty()) return
-        dao().renameConversation(id = id, title = trimmedTitle)
+        val conversation = dao().getConversation(id) ?: return
+        val rootId = conversation.rootId.ifBlank { id }
+        dao().renameBranchGroup(rootId = rootId, title = trimmedTitle)
     }
 
     internal suspend fun closeForTest() {

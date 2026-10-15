@@ -4,12 +4,14 @@ import com.niki914.okia.Okia
 import com.niki914.okia.OkiaConfig
 import com.niki914.okia.TurnOptions
 import com.niki914.okia.conversation.Conversation
+import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.mcp.McpDiscoverySnapshot
 import com.niki914.okia.mcp.McpRefreshResult
 import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
 import com.niki914.zafiro.chat.util.SilentLoggerRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -58,6 +60,8 @@ class McpRefreshSchedulerTest {
             options: TurnOptions?,
             onEvent: suspend (TurnEvent) -> Unit,
         ): TurnResult = error("not used")
+
+        override suspend fun append(message: Message): ConversationEntry = error("not used")
 
         override suspend fun stop() = error("not used")
         override suspend fun rewind(entryId: String) = error("not used")

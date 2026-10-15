@@ -6,10 +6,13 @@ import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.error.RetryPolicy
 import com.niki914.okia.message.ContentBlock
+import com.niki914.okia.message.Message
 import com.niki914.okia.message.ThinkingLevel
+import com.niki914.okia.message.contextTokens
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.model.FileRef
+import com.niki914.zafiro.chat.compaction.Compactor
 import com.niki914.zafiro.chat.agentic.IngestedImage
 import com.niki914.zafiro.chat.agentic.PromptComposer
 import com.niki914.zafiro.chat.agentic.PromptComposerInput
@@ -69,6 +72,12 @@ class AgentSessionEngine {
 
     internal val toolRegistry: ToolRegistry get() = toolSynchronizer.toolRegistry
 
+    var compactor: Compactor = Compactor(
+        summaryGenerator = { systemPrompt, userPrompt ->
+            generateSummary(systemPrompt, userPrompt)
+        }
+    )
+
     internal var okia: Okia?
         get() = sessionAssembler.activeSession
         set(value) {
@@ -104,6 +113,11 @@ class AgentSessionEngine {
         prefixComposer.reset()
         contextWindowFlow.value = DEFAULT_CONTEXT_WINDOW_TOKENS
         boundConfigId = ""
+        compactor = Compactor(
+            summaryGenerator = { systemPrompt, userPrompt ->
+                generateSummary(systemPrompt, userPrompt)
+            }
+        )
     }
 
     suspend fun refresh(restore: SessionSnapshot? = null): LlmRuntimeSnapshot {
@@ -112,6 +126,7 @@ class AgentSessionEngine {
         val llmConfig = gateway.readLlmConfig(configId = boundConfigId.takeIf { it.isNotBlank() })
         sessionAssembler.validateLlmConfig(llmConfig)
         contextWindowFlow.value = llmConfig.contextWindowTokens
+        compactor.thresholdRatio = llmConfig.compactionThresholdPercent / 100f
         Logger.i(
             LOG_TAG,
             "config read provider=${llmConfig.provider} model=${llmConfig.model} " +
@@ -296,6 +311,16 @@ class AgentSessionEngine {
                 query
             }
 
+            val currentSession = state.okia
+            val contextTokens = contextTokensOf(currentSession.conversation.value) ?: 0L
+            val contextWindow = contextWindowTokens.value
+            compactor.compact(
+                session = currentSession,
+                force = false,
+                contextTokens = contextTokens,
+                contextWindow = contextWindow,
+            )
+
             streamPipeline.execute(
                 session = state.okia,
                 query = effectiveQuery,
@@ -348,6 +373,46 @@ class AgentSessionEngine {
 
     suspend fun ingestUserImage(uriString: String): IngestedImage? =
         imageManager.ingestUserImage(uriString)
+
+    suspend fun compact(force: Boolean = false): Boolean {
+        val session = okia ?: run {
+            refresh()
+            okia
+        } ?: return false
+        val state = runtimeState ?: run {
+            refresh()
+            runtimeState
+        } ?: return false
+        val contextTokens = contextTokensOf(session.conversation.value) ?: 0L
+        val contextWindow = contextWindowTokens.value
+        return compactor.compact(
+            session = session,
+            force = force,
+            contextTokens = contextTokens,
+            contextWindow = contextWindow,
+        )
+    }
+
+    private suspend fun generateSummary(systemPrompt: String, userPrompt: String): String {
+        val state = runtimeState ?: run {
+            refresh()
+            runtimeState
+        } ?: return ""
+        val protocol = state.sessionProtocol ?: LlmProtocol.Default
+        return sessionAssembler.generateSummary(
+            protocol = protocol,
+            config = state.snapshot.config,
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+        )
+    }
+
+    private fun contextTokensOf(conversation: Conversation?): Long? {
+        conversation?.live?.usage?.contextTokens?.let { return it }
+        return conversation?.history?.asReversed()?.firstNotNullOfOrNull { entry ->
+            (entry.message as? Message.Assistant)?.message?.usage?.contextTokens
+        }
+    }
 
     private data class RuntimeState(
         val snapshot: LlmRuntimeSnapshot,

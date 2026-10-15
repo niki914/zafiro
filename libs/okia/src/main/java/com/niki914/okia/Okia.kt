@@ -1,7 +1,9 @@
 package com.niki914.okia
 
 import com.niki914.okia.conversation.Conversation
+import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.message.Message
 import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.loop.AgentLoop
 import com.niki914.okia.loop.RealAgentLoop
@@ -48,6 +50,9 @@ interface Okia {
         options: TurnOptions? = null,
         onEvent: suspend (TurnEvent) -> Unit
     ): TurnResult
+
+    // 向会话树原子追加一条已成型的消息（不启动交互循环与 LLM 请求）。返回新条目。
+    suspend fun append(message: Message): ConversationEntry
 
     // 取消当前回合；kill-then-stop（先杀工具资源再取消 job）
     suspend fun stop(): Unit

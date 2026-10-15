@@ -29,6 +29,8 @@ internal fun Conversation.toHomeTurns(): List<HomeChatTurn> =
             images = turn.images.map { it.toHomeImage() },
             files = turn.files.map { it.toHomeFile() },
             blocks = turn.blocks.mapIndexed { blockIndex, block -> block.toHomeBlock(blockIndex) },
+            isCompactedDivider = turn.isCompactedDivider,
+            isCompacting = turn.isCompacting,
         )
     }
 

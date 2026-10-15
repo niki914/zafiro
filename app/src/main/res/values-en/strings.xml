@@ -37,6 +37,8 @@
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">New conversation</string>
     <string name="ui_home_input_placeholder">Type a message...</string>
+    <string name="ui_home_conversation_compacted">Conversation compacted</string>
+    <string name="ui_home_conversation_compacting">Compacting</string>
     <string name="ui_tool_status_called">Called</string>
     <string name="ui_tool_status_running">Running</string>
     <string name="ui_tool_status_success">Success</string>
@@ -450,6 +452,10 @@
     <string name="ui_settings_runtime_control_summary">Limits, retries, and repetition detection</string>
     <string name="ui_settings_runtime_group_network">Network</string>
     <string name="ui_settings_runtime_group_stability">Stability</string>
+    <string name="ui_settings_runtime_group_compaction">Context compaction</string>
+    <string name="ui_settings_runtime_compaction_threshold">Auto-compaction threshold</string>
+    <string name="ui_settings_runtime_compaction_threshold_summary">Automatically compact history when context window usage reaches threshold</string>
+    <string name="ui_settings_runtime_compaction_off">Off</string>
     <string name="ui_settings_runtime_repetition_detection">Repetition detection</string>
     <string name="ui_settings_runtime_repetition_summary">Aborts the turn when the model keeps repeating itself; stricter settings react sooner but are likelier to abort content that is not actually a loop</string>
     <string name="ui_settings_runtime_sensitivity_relaxed">Relaxed</string>

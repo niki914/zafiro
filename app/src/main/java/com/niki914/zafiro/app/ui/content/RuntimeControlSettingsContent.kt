@@ -25,6 +25,7 @@ private const val IDLE_TIMEOUT_ROW_ID = "runtime.idle_timeout"
 private const val RETRY_ATTEMPTS_ROW_ID = "runtime.retry_attempts"
 private const val REPETITION_SENSITIVITY_ROW_ID = "runtime.repetition_sensitivity"
 private const val KEEP_SCREEN_ON_ROW_ID = "runtime.keep_screen_on"
+private const val COMPACTION_THRESHOLD_ROW_ID = "runtime.compaction_threshold"
 
 @Composable
 fun RuntimeControlSettingsContent(
@@ -73,6 +74,17 @@ fun RuntimeControlSettingsContent(
                     ),
                 ),
             ),
+            SettingsSectionSpec(
+                title = stringResource(R.string.ui_settings_runtime_group_compaction),
+                layout = SettingsSectionLayout.GroupedCard,
+                rows = listOf(
+                    SettingsRowSpec.Navigation(
+                        id = COMPACTION_THRESHOLD_ROW_ID,
+                        title = stringResource(R.string.ui_settings_runtime_compaction_threshold),
+                        currentState = compactionThresholdLabel(uiState.compactionThresholdPercent),
+                    ),
+                ),
+            ),
         ),
     )
 
@@ -93,6 +105,12 @@ fun RuntimeControlSettingsContent(
                         REPETITION_SENSITIVITY_ROW_ID -> viewModel.sendIntent(
                             RuntimeControlIntent.OpenDialog(
                                 RuntimeControlDialog.RepetitionSensitivity
+                            )
+                        )
+
+                        COMPACTION_THRESHOLD_ROW_ID -> viewModel.sendIntent(
+                            RuntimeControlIntent.OpenDialog(
+                                RuntimeControlDialog.CompactionThreshold
                             )
                         )
                     }
@@ -150,6 +168,20 @@ fun RuntimeControlSettingsContent(
             viewModel.sendIntent(RuntimeControlIntent.SelectRepetitionSensitivity(option))
         },
     )
+
+    SingleChoiceLiquidDialog(
+        visible = uiState.activeDialog == RuntimeControlDialog.CompactionThreshold,
+        onDismissRequest = { viewModel.sendIntent(RuntimeControlIntent.DismissDialog) },
+        title = stringResource(R.string.ui_settings_runtime_compaction_threshold),
+        hint = stringResource(R.string.ui_settings_runtime_compaction_threshold_summary),
+        options = compactionThresholdOptions(),
+        selectedId = uiState.compactionThresholdPercent.toString(),
+        optionId = { it.percent.toString() },
+        optionLabel = { it.label },
+        onSelect = { option ->
+            viewModel.sendIntent(RuntimeControlIntent.SelectCompactionThreshold(option.percent))
+        },
+    )
 }
 
 data class IdleTimeoutOption(
@@ -190,3 +222,28 @@ private fun repetitionSensitivityLabels(): Map<RepetitionSensitivity, String> = 
     RepetitionSensitivity.Stricter to stringResource(R.string.ui_settings_runtime_sensitivity_stricter),
     RepetitionSensitivity.Strictest to stringResource(R.string.ui_settings_runtime_sensitivity_strictest),
 )
+
+data class CompactionThresholdOption(
+    val percent: Int,
+    val label: String,
+)
+
+@Composable
+private fun compactionThresholdLabel(percent: Int): String {
+    return compactionThresholdOptions().firstOrNull { it.percent == percent }?.label
+        ?: if (percent == 0) stringResource(R.string.ui_settings_runtime_compaction_off) else "$percent%"
+}
+
+@Composable
+private fun compactionThresholdOptions(): List<CompactionThresholdOption> {
+    val offLabel = stringResource(R.string.ui_settings_runtime_compaction_off)
+    return listOf(
+        CompactionThresholdOption(percent = 0, label = offLabel),
+        CompactionThresholdOption(percent = 50, label = "50%"),
+        CompactionThresholdOption(percent = 60, label = "60%"),
+        CompactionThresholdOption(percent = 70, label = "70%"),
+        CompactionThresholdOption(percent = 80, label = "80%"),
+        CompactionThresholdOption(percent = 90, label = "90%"),
+    )
+}
+

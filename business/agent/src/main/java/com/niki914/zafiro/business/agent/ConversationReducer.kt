@@ -85,6 +85,47 @@ internal object ConversationReducer {
         )
     }
 
+    /**
+     * 追加处于压缩中状态的上下文分割线回合。
+     */
+    fun addCompactingDivider(conversation: Conversation): Reduced {
+        val cleared = conversation.copy(
+            turns = conversation.turns.map { turn ->
+                turn.copy(blocks = turn.blocks.filterNot { it is TurnBlock.Failure || it is TurnBlock.Retrying })
+            },
+        )
+        return Reduced(
+            conversation = cleared.copy(
+                turns = cleared.turns + ConversationTurn(
+                    id = turnIdAt(cleared.turns.size),
+                    userText = "",
+                    isCompactedDivider = true,
+                    isCompacting = true,
+                ),
+            ),
+        )
+    }
+
+    /**
+     * 将最后一条压缩分割线标记为完成（已压缩）。
+     */
+    fun markCompacted(conversation: Conversation): Reduced {
+        val turns = conversation.turns.toMutableList()
+        val index = turns.indexOfLast { it.isCompactedDivider }
+        if (index >= 0) {
+            turns[index] = turns[index].copy(isCompacting = false)
+        }
+        return Reduced(conversation.copy(turns = turns))
+    }
+
+    /**
+     * 追加上下文压缩完成分割线回合。
+     */
+    fun addCompactedDivider(conversation: Conversation): Reduced {
+        val compacting = addCompactingDivider(conversation)
+        return markCompacted(compacting.conversation)
+    }
+
     /** 折叠一条事件。没有活跃回合（回合列表为空）时原样返回。 */
     fun reduce(state: Reduced, event: LlmStreamEvent): Reduced {
         val turnIndex = state.conversation.turns.lastIndex

@@ -84,6 +84,7 @@ class XRepoRuntimeGateway(
             idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },
             retryMaxAttempts = repo.llmRetryMaxAttempts(),
             repetitionSensitivity = repo.repetitionSensitivity(),
+            compactionThresholdPercent = repo.contextCompactionThresholdPercent(),
             // 空串/旧格式的 0 = 未设置：用户 > 云端 > 默认
             maxTokens = maxTokens,
             contextWindowTokens = contextWindowLimit.first,

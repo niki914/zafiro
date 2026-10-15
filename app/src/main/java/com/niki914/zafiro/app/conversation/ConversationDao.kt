@@ -136,8 +136,8 @@ interface ConversationDao {
     @Query("SELECT id FROM conversation WHERE root_id = :rootId ORDER BY created_at ASC")
     suspend fun listBranchGroupIds(rootId: String): List<String>
 
-    @Query("UPDATE conversation SET title = :title, title_edited = 1 WHERE id = :id")
-    suspend fun renameConversation(id: String, title: String): Int
+    @Query("UPDATE conversation SET title = :title, title_edited = 1 WHERE root_id = :rootId")
+    suspend fun renameBranchGroup(rootId: String, title: String): Int
 
     /**
      * 消息增量落盘原子化（问题 5 修复）：entry insert + leaf + 进度
