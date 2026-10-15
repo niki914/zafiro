@@ -124,6 +124,9 @@ import com.niki914.uikit.infra.component.OptionRow
 import com.niki914.uikit.infra.component.OptionSheet
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.uikit.infra.scrollbar.LiquidOverscrollContainer
+import com.niki914.uikit.infra.scrollbar.LiquidOverscrollController
+import com.niki914.uikit.infra.scrollbar.rememberLiquidOverscrollController
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.app.R
@@ -227,11 +230,14 @@ fun HomePageContent(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
+    val overscrollController = rememberLiquidOverscrollController()
 
     // Home 必须显式接管顶栏折叠信号：列表位置会由程序化驱动（自动贴底），且工具结果框
-    // 自带滚动子树——两者都是壳层累积量看不见的位移。其余页面保持自动感知。
+    // 自带滚动子树——两者都是壳层累积量看不见的位移；当向上超滚时，内容推入顶栏区，顶栏需变实体遮挡。
     ReportTitleBarCollapsed {
-        listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        listState.firstVisibleItemIndex > 0 ||
+            listState.firstVisibleItemScrollOffset > 0 ||
+            overscrollController.overscrollOffset.value < 0f
     }
 
     val imeBottom = with(density) { WindowInsets.ime.getBottom(this).toDp() }
@@ -465,6 +471,7 @@ fun HomePageContent(
         uiState = uiState,
         actionsDisplay = actionsDisplay,
         listState = listState,
+        overscrollController = overscrollController,
         composerBottomPadding = composerBottomPadding,
         composerGap = composerGap,
         composerHeight = composerHeight,
@@ -763,6 +770,7 @@ private fun HomePageContentBody(
     uiState: HomeChatUiState,
     actionsDisplay: MessageActionsDisplay,
     listState: LazyListState,
+    overscrollController: LiquidOverscrollController = rememberLiquidOverscrollController(),
     composerBottomPadding: Dp,
     composerGap: Dp,
     composerHeight: MutableState<Dp>,
@@ -861,74 +869,79 @@ private fun HomePageContentBody(
         modifier = Modifier
             .fillMaxSize()
     ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onContentTap,
-                ),
-            contentPadding = PaddingValues(
-                start = 20.dp,
-                top = liquidScreenTopPadding(24.dp),
-                end = 20.dp,
-                bottom = bottomClearance,
-            ),
+        LiquidOverscrollContainer(
+            overscrollController = overscrollController,
+            modifier = Modifier.fillMaxSize(),
         ) {
-            itemsIndexed(
-                items = uiState.turns,
-                key = { _, turn -> turn.id },
-            ) { index, turn ->
-                // User 气泡组内位置（渲染层：两个相邻 UserBubble 之间无任何内容即同组，见 userBubblePosition）
-                val position = userBubblePosition(uiState.turns, index)
-                // 组归一化：点组内任意一条都弹/聚合到组尾（操作行在组尾 turn 下渲染）
-                val tailIndex = userGroupTailIndex(uiState.turns, index)
-                val tailTurn = uiState.turns[tailIndex]
-                // 顶距：组中/组末用组内间隙与上一气泡连体；组首/单条维持 turn 分隔
-                val turnTopPad = when {
-                    index == 0 -> Modifier
-                    position == UserBubblePosition.GroupMid || position == UserBubblePosition.GroupLast ->
-                        Modifier.padding(top = UserBubbleGap)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onContentTap,
+                    ),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    top = liquidScreenTopPadding(24.dp),
+                    end = 20.dp,
+                    bottom = bottomClearance,
+                ),
+            ) {
+                itemsIndexed(
+                    items = uiState.turns,
+                    key = { _, turn -> turn.id },
+                ) { index, turn ->
+                    // User 气泡组内位置（渲染层：两个相邻 UserBubble 之间无任何内容即同组，见 userBubblePosition）
+                    val position = userBubblePosition(uiState.turns, index)
+                    // 组归一化：点组内任意一条都弹/聚合到组尾（操作行在组尾 turn 下渲染）
+                    val tailIndex = userGroupTailIndex(uiState.turns, index)
+                    val tailTurn = uiState.turns[tailIndex]
+                    // 顶距：组中/组末用组内间隙与上一气泡连体；组首/单条维持 turn 分隔
+                    val turnTopPad = when {
+                        index == 0 -> Modifier
+                        position == UserBubblePosition.GroupMid || position == UserBubblePosition.GroupLast ->
+                            Modifier.padding(top = UserBubbleGap)
 
-                    else -> Modifier.padding(top = TurnSeparator)
+                        else -> Modifier.padding(top = TurnSeparator)
+                    }
+                    HomeChatTurnItem(
+                        turn = turn,
+                        userBubblePosition = position,
+                        isLastTurn = index == uiState.turns.lastIndex,
+                        actionsDisplay = actionsDisplay,
+                        userGroupTailTurnId = tailTurn.id,
+                        userGroupTappable = tailTurn.blocks.isNotEmpty() || tailIndex == uiState.turns.lastIndex,
+                        userGroupText = userGroupText(uiState.turns, index),
+                        onContentTap = onContentTap,
+                        onReGenerate = onReGenerate,
+                        onFork = onFork,
+                        onRewind = onRewind,
+                        expandedToolRuns = expandedToolRuns,
+                        expandedToolResults = expandedToolResults,
+                        expandedThinking = expandedThinking,
+                        onToggleToolRun = onToggleToolRun,
+                        onToggleToolResult = onToggleToolResult,
+                        onToggleThinking = onToggleThinking,
+                        expandedActionTurnId = expandedActionTurnId,
+                        expandedActionSource = expandedActionSource,
+                        activeThinkingKey = activeThinkingKey,
+                        onToggleActionRow = onToggleActionRow,
+                        isGenerating = uiState.isGenerating,
+                        branchIndex = turnBranches[turn.id]?.current ?: 1,
+                        branchCount = turnBranches[turn.id]?.total ?: 1,
+                        onSwitchBranch = { delta -> onSwitchTurnBranch(turn.id, delta) },
+                        modifier = turnTopPad.fillMaxWidth(),
+                    )
                 }
-                HomeChatTurnItem(
-                    turn = turn,
-                    userBubblePosition = position,
-                    isLastTurn = index == uiState.turns.lastIndex,
-                    actionsDisplay = actionsDisplay,
-                    userGroupTailTurnId = tailTurn.id,
-                    userGroupTappable = tailTurn.blocks.isNotEmpty() || tailIndex == uiState.turns.lastIndex,
-                    userGroupText = userGroupText(uiState.turns, index),
-                    onContentTap = onContentTap,
-                    onReGenerate = onReGenerate,
-                    onFork = onFork,
-                    onRewind = onRewind,
-                    expandedToolRuns = expandedToolRuns,
-                    expandedToolResults = expandedToolResults,
-                    expandedThinking = expandedThinking,
-                    onToggleToolRun = onToggleToolRun,
-                    onToggleToolResult = onToggleToolResult,
-                    onToggleThinking = onToggleThinking,
-                    expandedActionTurnId = expandedActionTurnId,
-                    expandedActionSource = expandedActionSource,
-                    activeThinkingKey = activeThinkingKey,
-                    onToggleActionRow = onToggleActionRow,
-                    isGenerating = uiState.isGenerating,
-                    branchIndex = turnBranches[turn.id]?.current ?: 1,
-                    branchCount = turnBranches[turn.id]?.total ?: 1,
-                    onSwitchBranch = { delta -> onSwitchTurnBranch(turn.id, delta) },
-                    modifier = turnTopPad.fillMaxWidth(),
-                )
-            }
-            item(key = "bottom_anchor") {
-                Spacer(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp),
-                )
+                item(key = "bottom_anchor") {
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp),
+                    )
+                }
             }
         }
 
