@@ -1,6 +1,8 @@
+// 保护：会话历史投影为 UI 契约对象及列表预览生成的正确性（含标题清洗、多语言前缀、注入块剥离、压缩分割条与防 XML 泄露）。
 package com.niki914.zafiro.app.conversation
 
 import com.niki914.okia.conversation.ConversationEntry
+import com.niki914.okia.conversation.MessageEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
@@ -10,9 +12,13 @@ import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ToolOutcome
 import com.niki914.zafiro.api.model.TurnBlock
+import com.niki914.zafiro.api.text.SummaryBlock
 import com.niki914.zafiro.app.util.SilentLoggerRule
+import com.niki914.zafiro.business.agent.turnIdAt
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -312,6 +318,56 @@ class ConversationFormatterTest {
             .single() as TurnBlock.Tool
 
         assertEquals(ToolOutcome.Failed(message = ""), tool.outcome)
+    }
+
+    @Test
+    fun toConversation_mapsSummaryBlockToCompactedDividerTurn() {
+        val summaryText = SummaryBlock.block(
+            SummaryBlock.Payload(keepTurns = 2, summary = "## Goal\nSome summary")
+        )
+        val snapshot = snapshotOf(
+            Message.User(listOf(ContentBlock.Text("u1"))),
+            Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("a1")))),
+            Message.User(listOf(ContentBlock.Text(summaryText))),
+            Message.User(listOf(ContentBlock.Text("u2"))),
+        )
+
+        val conversation = ConversationFormatter.toConversation(snapshot)
+
+        assertEquals(3, conversation.turns.size)
+        // Turn 0: normal turn
+        assertFalse(conversation.turns[0].isCompactedDivider)
+        assertEquals("u1", conversation.turns[0].userText)
+        assertEquals(turnIdAt(0), conversation.turns[0].id)
+
+        // Turn 1: compacted divider
+        assertTrue(conversation.turns[1].isCompactedDivider)
+        assertEquals("", conversation.turns[1].userText)
+        assertEquals(turnIdAt(1), conversation.turns[1].id)
+        assertTrue(conversation.turns[1].blocks.isEmpty())
+
+        // Turn 2: normal turn after compaction
+        assertFalse(conversation.turns[2].isCompactedDivider)
+        assertEquals("u2", conversation.turns[2].userText)
+        assertEquals(turnIdAt(2), conversation.turns[2].id)
+    }
+
+    @Test
+    fun previewFromMessages_returnsCompactedPreviewForSummaryMessage() {
+        val summaryText = SummaryBlock.block(
+            SummaryBlock.Payload(keepTurns = 2, summary = "## Goal\nSome summary")
+        )
+        val preview = ConversationFormatter.previewFromMessages(
+            listOf(
+                MessageEntry(
+                    id = "e1",
+                    timestamp = 1000L,
+                    message = Message.User(listOf(ContentBlock.Text(summaryText))),
+                )
+            )
+        )
+
+        assertEquals(ConversationFormatter.COMPACTED_PREVIEW_TEXT, preview)
     }
 
     private fun snapshotOf(vararg messages: Message): SessionSnapshot {
