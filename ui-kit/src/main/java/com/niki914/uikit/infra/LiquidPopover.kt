@@ -59,9 +59,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
+import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
 import com.niki914.uikit.base.LocalAppDarkTheme
@@ -96,6 +99,7 @@ fun LiquidPopover(
     containerColor: Color? = null,
     scrollable: Boolean = false,
     onProgressChanged: ((Float) -> Unit)? = null,
+    backdrop: Backdrop? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val hostState = LocalLiquidDialogHostState.current
@@ -113,6 +117,7 @@ fun LiquidPopover(
                     containerColor = containerColor,
                     scrollable = scrollable,
                     onProgressChanged = onProgressChanged,
+                    backdrop = backdrop,
                     content = content,
                 )
             }
@@ -133,6 +138,7 @@ fun LiquidPopover(
             containerColor = containerColor,
             scrollable = scrollable,
             onProgressChanged = onProgressChanged,
+            backdrop = backdrop,
             content = content,
         )
     }
@@ -156,13 +162,15 @@ internal fun LiquidPopoverSurface(
     containerColor: Color? = null,
     scrollable: Boolean = false,
     onProgressChanged: ((Float) -> Unit)? = null,
+    backdrop: Backdrop? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val animationScope = rememberCoroutineScope()
     val interactiveHighlight = remember(animationScope) {
         InteractiveHighlight(animationScope = animationScope)
     }
-    val backdrop = rememberLayerBackdrop()
+    val fallbackBackdrop = rememberLayerBackdrop()
+    val resolvedBackdrop = backdrop ?: LocalScreenBackdrop.current ?: fallbackBackdrop
     val isDarkTheme = LocalAppDarkTheme.current
     val density = LocalDensity.current
     val statusBarTopPx = WindowInsets.statusBars.getTop(density).toFloat()
@@ -359,7 +367,7 @@ internal fun LiquidPopoverSurface(
                             height = with(density) { currentHeightPx.toDp() },
                         )
                         .drawBackdrop(
-                            backdrop = backdrop,
+                            backdrop = resolvedBackdrop,
                             shape = { panelShape },
                             highlight = { Highlight.Ambient.copy(alpha = if (isDarkTheme) 1f else 0.4f) },
                             shadow = {
@@ -379,6 +387,8 @@ internal fun LiquidPopoverSurface(
                                 }
                             },
                             effects = {
+                                vibrancy()
+                                blur(if (isDarkTheme) 8.dp.toPx() else 12.dp.toPx())
                                 lens(
                                     refractionHeight = 6.dp.toPx(),
                                     refractionAmount = size.height / 2f,

@@ -131,29 +131,32 @@ fun LiquidScreen(
         state.setActionBarHeight(actionBarHeight)
     }
 
-    Box(
-        modifier = modifier.fillMaxSize(),
+    CompositionLocalProvider(
+        LocalScreenBackdrop provides screenBackdrop,
+        LocalLiquidDialogHostState provides dialogHostState,
+        LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
     ) {
-        // Layer 1: page content
-        CompositionLocalProvider(
-            LocalLiquidScreenContentContext provides LiquidScreenContentContext(
-                topPadding = actionBarHeight,
-                bottomPadding = navigationBottom + BottomInsetSpacing,
-                actionButtonBottomPadding = navigationBottom + ActionButtonBottomSpacing,
-            ),
-            LocalLiquidDialogHostState provides dialogHostState,
-            LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
-            LocalScreenBackdrop provides screenBackdrop,
+        Box(
+            modifier = modifier.fillMaxSize(),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(titleBarScrollConnection)
-                    .layerBackdrop(contentBackdrop),
+            // Layer 1: page content
+            CompositionLocalProvider(
+                LocalLiquidScreenContentContext provides LiquidScreenContentContext(
+                    topPadding = actionBarHeight,
+                    bottomPadding = navigationBottom + BottomInsetSpacing,
+                    actionButtonBottomPadding = navigationBottom + ActionButtonBottomSpacing,
+                ),
             ) {
-                content()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(titleBarScrollConnection)
+                        .layerBackdrop(contentBackdrop)
+                        .background(MaterialTheme.colorScheme.background),
+                ) {
+                    content()
+                }
             }
-        }
 
         // Layer 2: action bar background
         AnimatedVisibility(
@@ -219,4 +222,5 @@ fun LiquidScreen(
             }
         }
     }
+}
 }
