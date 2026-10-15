@@ -10,6 +10,7 @@ import com.niki914.zafiro.api.model.TurnFailureCode
 import com.niki914.zafiro.api.model.TurnId
 import com.niki914.zafiro.chat.LlmErrorCode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ConversationUiMapperTest {
@@ -107,5 +108,20 @@ class ConversationUiMapperTest {
             HomeChatBlock.Error(null, LlmErrorCode.OutputTruncated),
             turn.blocks.single(),
         )
+    }
+
+    @Test
+    fun mapsIsCompactedDivider() {
+        val turn = Conversation(
+            turns = listOf(
+                ConversationTurn(
+                    id = TurnId("t0"),
+                    userText = "",
+                    isCompactedDivider = true,
+                )
+            ),
+        ).toHomeTurns().single()
+
+        assertTrue(turn.isCompactedDivider)
     }
 }

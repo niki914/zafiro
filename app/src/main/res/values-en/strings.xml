@@ -37,6 +37,7 @@
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">New conversation</string>
     <string name="ui_home_input_placeholder">Type a message...</string>
+    <string name="ui_home_conversation_compacted">Conversation compacted</string>
     <string name="ui_tool_status_called">Called</string>
     <string name="ui_tool_status_running">Running</string>
     <string name="ui_tool_status_success">Success</string>

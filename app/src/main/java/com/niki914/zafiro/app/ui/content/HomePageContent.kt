@@ -60,6 +60,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -898,9 +899,10 @@ private fun HomePageContentBody(
                     // 组归一化：点组内任意一条都弹/聚合到组尾（操作行在组尾 turn 下渲染）
                     val tailIndex = userGroupTailIndex(uiState.turns, index)
                     val tailTurn = uiState.turns[tailIndex]
-                    // 顶距：组中/组末用组内间隙与上一气泡连体；组首/单条维持 turn 分隔
+                    // 顶距：组中/组末用组内间隙与上一气泡连体；组首/单条维持 turn 分隔；分割线紧凑居中
                     val turnTopPad = when {
                         index == 0 -> Modifier
+                        turn.isCompactedDivider -> Modifier.padding(top = 8.dp, bottom = 8.dp)
                         position == UserBubblePosition.GroupMid || position == UserBubblePosition.GroupLast ->
                             Modifier.padding(top = UserBubbleGap)
 
@@ -1183,8 +1185,10 @@ private class GrantingTakePicture : ActivityResultContract<Uri, ActivityResult>(
  * 因此流式内容到达只会改变"自身→下一条"一侧，组首一侧的黏性由上一 turn 决定，组不随内容跳变。
  */
 private fun userBubblePosition(turns: List<HomeChatTurn>, index: Int): UserBubblePosition {
-    val stickyUp = index > 0 && turns[index - 1].blocks.isEmpty()
-    val stickyDown = index < turns.lastIndex && turns[index].blocks.isEmpty()
+    val current = turns.getOrNull(index)
+    if (current == null || current.isCompactedDivider) return UserBubblePosition.Single
+    val stickyUp = index > 0 && turns[index - 1].blocks.isEmpty() && !turns[index - 1].isCompactedDivider
+    val stickyDown = index < turns.lastIndex && turns[index].blocks.isEmpty() && !turns[index + 1].isCompactedDivider
     return when {
         stickyUp && stickyDown -> UserBubblePosition.GroupMid
         stickyUp -> UserBubblePosition.GroupLast
@@ -1199,16 +1203,17 @@ private fun userBubblePosition(turns: List<HomeChatTurn>, index: Int): UserBubbl
  */
 internal fun userGroupTailIndex(turns: List<HomeChatTurn>, index: Int): Int {
     var tail = index
-    while (tail < turns.lastIndex && turns[tail].blocks.isEmpty()) tail++
+    while (tail < turns.lastIndex && turns[tail].blocks.isEmpty() && !turns[tail].isCompactedDivider && !turns[tail + 1].isCompactedDivider) tail++
     return tail
 }
 
 /** index 所在 User 组的组内全部用户文本：按序、双换行分隔、跳过空白（纯图片 turn）。 */
 internal fun userGroupText(turns: List<HomeChatTurn>, index: Int): String {
     var head = index
-    while (head > 0 && turns[head - 1].blocks.isEmpty()) head--
+    while (head > 0 && turns[head - 1].blocks.isEmpty() && !turns[head - 1].isCompactedDivider) head--
     val tail = userGroupTailIndex(turns, index)
     return turns.subList(head, tail + 1)
+        .filterNot { it.isCompactedDivider }
         .map { it.userText }
         .filter { it.isNotBlank() }
         .joinToString("\n\n")
@@ -1246,6 +1251,11 @@ private fun HomeChatTurnItem(
     onSwitchBranch: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    if (turn.isCompactedDivider) {
+        CompactedDividerItem(modifier = modifier)
+        return
+    }
+
     val alwaysVisible = actionsDisplay == MessageActionsDisplay.Always
     // Agent 操作行：仅正生成中的末轮隐藏；已结束的旧 turn 常显（复制无害，
     // 重新生成/分叉/回退在生成中点按弹 toast，见 guarded 回调）
@@ -1552,6 +1562,33 @@ private fun HomeChatTurnItem(
                 onSwitchBranch = onSwitchBranch,
             )
         }
+    }
+}
+
+@Composable
+private fun CompactedDividerItem(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        )
+        Text(
+            text = stringResource(R.string.ui_home_conversation_compacted),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        )
     }
 }
 
