@@ -97,8 +97,7 @@ private fun AboutSettingsContentBody(
                     }
                 }
 
-                is SettingsRowAction.Click,
-                is SettingsRowAction.ToggleChanged -> Unit
+                else -> Unit
             }
         },
     )

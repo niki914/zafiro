@@ -484,6 +484,8 @@
     <string name="ui_settings_configure_protocol_hint">切换协议后，请确认端点与协议匹配。</string>
     <string name="ui_settings_configure_thinking_label">思考强度</string>
     <string name="ui_settings_configure_thinking_hint">留空（Provider Default）时使用 Provider 默认行为；过高时若 Provider 拒绝请自行调低。</string>
+    <string name="ui_settings_configure_thinking_start_label">Default</string>
+    <string name="ui_settings_configure_thinking_end_label">Max</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">例如：200000 或 200k</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">请填写有效数值（支持 k/m/b 后缀），不小于 256</string>

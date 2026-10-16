@@ -79,7 +79,7 @@ fun McpSettingsContent(
                 )
             }
 
-            is SettingsRowAction.Click -> Unit
+            else -> Unit
         }
     }
 }

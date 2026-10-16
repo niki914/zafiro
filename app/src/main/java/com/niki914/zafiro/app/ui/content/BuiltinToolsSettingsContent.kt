@@ -85,7 +85,7 @@ private fun BuiltinToolsSettingsContentBody(
                     }
                 }
 
-                is SettingsRowAction.Click -> Unit
+                else -> Unit
             }
         },
     )

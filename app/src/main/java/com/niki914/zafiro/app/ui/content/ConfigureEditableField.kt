@@ -8,4 +8,5 @@ enum class ConfigureEditableField {
     Proxy,
     MaxTokens,
     ContextWindow,
+    Thinking,
 }

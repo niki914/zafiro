@@ -1,6 +1,7 @@
 package com.niki914.uikit.infra.component
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -14,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -40,12 +42,14 @@ import com.niki914.uikit.infra.scrollbar.rememberScrollStateAdapter
  *
  * @param contentBottomPadding 内容区底部安全距离。null（默认）走壳层下发的
  * `liquidScreenBottomPadding()`；非空则严格使用传入值，供业务主动覆盖重写。
+ * @param onBackgroundTap 点击列表背景空白处时的回调（如用于收起已展开的滑块或输入框）。
  */
 @Composable
 fun SettingsListPageContent(
     description: String? = null,
     modifier: Modifier = Modifier,
     contentBottomPadding: Dp? = null,
+    onBackgroundTap: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState =
@@ -62,6 +66,14 @@ fun SettingsListPageContent(
             overscrollController.overscrollOffset.value < -collapseRangePx
     }
 
+    val contentModifier = if (onBackgroundTap != null) {
+        Modifier.pointerInput(onBackgroundTap) {
+            detectTapGestures(onTap = { onBackgroundTap() })
+        }
+    } else {
+        Modifier
+    }
+
     LiquidScrollableContainer(
         state = scrollbarState,
         overscrollController = overscrollController,
@@ -72,6 +84,7 @@ fun SettingsListPageContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .then(contentModifier)
                 .verticalScroll(scrollState)
                 .padding(
                     start = 16.dp,

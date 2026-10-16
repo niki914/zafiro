@@ -12,12 +12,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.infra.component.SettingExpandableSliderItem
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
@@ -35,16 +40,33 @@ fun SettingsSpecPageContent(
     contentAfterSections: @Composable ColumnScope.() -> Unit = {},
     onAction: (SettingsRowAction) -> Unit,
 ) {
+    var expandedSliderId by rememberSaveable {
+        mutableStateOf(
+            spec.sections.flatMap { it.rows }
+                .filterIsInstance<SettingsRowSpec.Slider>()
+                .firstOrNull { it.initiallyExpanded }
+                ?.id
+        )
+    }
+
     SettingsListPageContent(
         description = spec.description,
         modifier = modifier,
         contentBottomPadding = contentBottomPadding,
+        onBackgroundTap = { expandedSliderId = null },
     ) {
         contentBeforeSections()
         spec.sections.forEach { section ->
             SettingsSectionContent(
                 section = section,
-                onAction = onAction,
+                expandedSliderId = expandedSliderId,
+                onExpandedSliderChange = { expandedSliderId = it },
+                onAction = { action ->
+                    if (action !is SettingsRowAction.SliderChanged && action !is SettingsRowAction.SliderCommit) {
+                        expandedSliderId = null
+                    }
+                    onAction(action)
+                },
             )
         }
         contentAfterSections()
@@ -54,6 +76,8 @@ fun SettingsSpecPageContent(
 @Composable
 private fun SettingsSectionContent(
     section: SettingsSectionSpec,
+    expandedSliderId: String?,
+    onExpandedSliderChange: (String?) -> Unit,
     onAction: (SettingsRowAction) -> Unit,
 ) {
     if (section.rows.isEmpty()) {
@@ -67,6 +91,8 @@ private fun SettingsSectionContent(
                     SettingsRowContent(
                         row = row,
                         layout = section.layout,
+                        expandedSliderId = expandedSliderId,
+                        onExpandedSliderChange = onExpandedSliderChange,
                         onAction = onAction,
                     )
                     if (index != section.rows.lastIndex) {
@@ -83,6 +109,8 @@ private fun SettingsSectionContent(
                 section.rows.forEach { row ->
                     SettingsCardListRowContent(
                         row = row,
+                        expandedSliderId = expandedSliderId,
+                        onExpandedSliderChange = onExpandedSliderChange,
                         onAction = onAction,
                     )
                 }
@@ -94,12 +122,16 @@ private fun SettingsSectionContent(
 @Composable
 private fun SettingsCardListRowContent(
     row: SettingsRowSpec,
+    expandedSliderId: String?,
+    onExpandedSliderChange: (String?) -> Unit,
     onAction: (SettingsRowAction) -> Unit,
 ) {
     if (row is SettingsRowSpec.ToggleNavigation) {
         SettingsRowContent(
             row = row,
             layout = SettingsSectionLayout.CardList,
+            expandedSliderId = expandedSliderId,
+            onExpandedSliderChange = onExpandedSliderChange,
             onAction = onAction,
         )
     } else {
@@ -107,6 +139,8 @@ private fun SettingsCardListRowContent(
             SettingsRowContent(
                 row = row,
                 layout = SettingsSectionLayout.CardList,
+                expandedSliderId = expandedSliderId,
+                onExpandedSliderChange = onExpandedSliderChange,
                 onAction = onAction,
             )
         }
@@ -117,6 +151,8 @@ private fun SettingsCardListRowContent(
 private fun SettingsRowContent(
     row: SettingsRowSpec,
     layout: SettingsSectionLayout,
+    expandedSliderId: String?,
+    onExpandedSliderChange: (String?) -> Unit,
     onAction: (SettingsRowAction) -> Unit,
 ) {
     when (row) {
@@ -187,6 +223,24 @@ private fun SettingsRowContent(
             text = row.title,
             horizontalPadding = row.horizontalPadding,
             verticalPadding = row.verticalPadding,
+        )
+
+        is SettingsRowSpec.Slider -> SettingExpandableSliderItem(
+            title = row.title,
+            summary = row.summary,
+            value = row.value,
+            valueRange = row.valueRange,
+            steps = row.steps,
+            valueLabel = row.valueLabel,
+            startLabel = row.startLabel,
+            endLabel = row.endLabel,
+            enabled = row.enabled,
+            expanded = expandedSliderId == row.id,
+            onExpandedChange = { expanded ->
+                onExpandedSliderChange(if (expanded) row.id else null)
+            },
+            onValueChange = { onAction(SettingsRowAction.SliderChanged(row.id, it)) },
+            onValueCommit = { onAction(SettingsRowAction.SliderCommit(row.id, it)) },
         )
     }
 }

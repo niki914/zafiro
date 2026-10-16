@@ -479,7 +479,11 @@ private suspend fun PointerInputScope.inspectDragGestures(
         onDrag(drag, Offset.Zero)
         val upEvent = drag(
             pointerId = drag.id,
-            onDrag = { onDrag(it, it.positionChange()) },
+            onDrag = { change ->
+                val delta = change.positionChange()
+                change.consume()
+                onDrag(change, delta)
+            },
         )
         if (upEvent == null) {
             onDragCancel()

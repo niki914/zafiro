@@ -102,11 +102,7 @@ fun MarkdownScalePageContent(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = if (displayedPercent == 100) {
-                        "$displayedPercent% (${stringResource(R.string.ui_settings_markdown_scale_default)})"
-                    } else {
-                        "$displayedPercent%"
-                    },
+                    text = "$displayedPercent%",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -125,7 +121,7 @@ fun MarkdownScalePageContent(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 8.dp),
+                    modifier = Modifier.padding(end = 20.dp),
                 )
 
                 LiquidSlider(
@@ -145,7 +141,7 @@ fun MarkdownScalePageContent(
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(start = 8.dp),
+                    modifier = Modifier.padding(start = 20.dp),
                 )
             }
         }
