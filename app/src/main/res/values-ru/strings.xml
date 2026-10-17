@@ -443,6 +443,8 @@
     <string name="ui_settings_configure_protocol_hint">После смены протокола проверьте, что адрес соответствует протоколу.</string>
     <string name="ui_settings_configure_thinking_label">Уровень размышлений</string>
     <string name="ui_settings_configure_thinking_hint">Оставьте «Как у провайдера», чтобы использовать его поведение по умолчанию; понизьте уровень, если провайдер отклоняет высокий.</string>
+    <string name="ui_settings_configure_thinking_start_label">Default</string>
+    <string name="ui_settings_configure_thinking_end_label">Max</string>
     <string name="ui_settings_configure_max_tokens_label">Максимум токенов</string>
     <string name="ui_settings_configure_max_tokens_placeholder">Например: 200000 или 200k</string>
     <string name="ui_settings_configure_error_max_tokens_invalid">Введите корректное число (поддерживаются суффиксы k/m/b) не меньше 256</string>

@@ -260,6 +260,7 @@ fun LiquidToggle(
                                     val isStillPressed =
                                         currentEvent.changes.any { it.id == pointerId && it.pressed }
                                     if (!isStillPressed) {
+                                        currentEvent.changes.forEach { it.consume() }
                                         applyTransition(stateMachine.onThumbTap())
                                         return@awaitEachGesture
                                     }

@@ -30,9 +30,10 @@ object SettingsTokens {
     )
 
     // ── 尺寸与间距 ──
-    val ItemMinHeight: Dp = 64.dp
+    val ItemMinHeight: Dp = 0.dp // 纯 wrap_content 自适应，高度由标题/副标题行数与内边距完全决定
     val SlotGutter: Dp = 12.dp // 插槽之间的横向安全间距
     val TextSpacing: Dp = 2.dp // 标题与副标题之间的纵向间距
+    val SummaryStartIndent: Dp = 2.dp // 说明文案左侧微缩进，增强层级归属感并打破直切线
 
     // ── 刚性约束指标 ──
     /** 状态预览 (Preview) 占有效内容显示宽度的最大比例，严格禁止侵蚀标题空间 */
@@ -52,7 +53,8 @@ object SettingsTokens {
 
     // ── 排版字号 ──
     val TitleFontSize = 18.sp // 统一消灭 17sp 漂移
-    val SummaryFontSize = 14.sp
+    val SummaryFontSize = 13.sp
+    val SummaryLineHeight = 18.sp
     val PreviewFontSize = 14.sp
 
     // ── 动效标准 ──

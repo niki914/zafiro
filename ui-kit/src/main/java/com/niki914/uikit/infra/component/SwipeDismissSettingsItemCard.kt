@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -280,24 +281,46 @@ private fun SwipeDismissSettingsItemContent(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            if (!trailingActionText.isNullOrBlank()) {
-                Text(
-                    text = trailingActionText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = summaryColor,
-                    modifier = Modifier.onGloballyPositioned { layoutCoordinates ->
-                        onTrailingActionBoundsChange(layoutCoordinates.boundsInWindow())
-                    },
-                )
-            }
-
-            if (showChevron) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = summaryColor,
-                    modifier = Modifier.size(20.dp),
-                )
+            if (!trailingActionText.isNullOrBlank() || showChevron) {
+                val density = LocalDensity.current
+                Box(
+                    modifier = Modifier
+                        .defaultMinSize(minWidth = 64.dp, minHeight = 44.dp)
+                        .onGloballyPositioned { layoutCoordinates ->
+                            if (!trailingActionText.isNullOrBlank()) {
+                                val bounds = layoutCoordinates.boundsInWindow()
+                                // 延伸至卡片右边缘与上下内边距，确保点击卡片右侧任意位置稳定触发 trailing action (Edit)
+                                val extendedBounds = bounds.copy(
+                                    right = bounds.right + with(density) { 16.dp.toPx() },
+                                    top = bounds.top - with(density) { 12.dp.toPx() },
+                                    bottom = bounds.bottom + with(density) { 12.dp.toPx() },
+                                )
+                                onTrailingActionBoundsChange(extendedBounds)
+                            }
+                        },
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        if (!trailingActionText.isNullOrBlank()) {
+                            Text(
+                                text = trailingActionText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = summaryColor,
+                            )
+                        }
+                        if (showChevron) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = summaryColor,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
     }

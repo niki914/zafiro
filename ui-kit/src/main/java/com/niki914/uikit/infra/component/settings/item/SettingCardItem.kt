@@ -38,18 +38,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.component.LiquidSlider
 import com.niki914.uikit.infra.component.LiquidToggle
@@ -101,19 +105,34 @@ fun SettingCardItem(
         }
     }
 
+    val trailingAction: (() -> Unit)? = when {
+        !enabled -> null
+        effectiveTrailingSlot is SettingTrailingSlot.ActionText && effectiveTrailingSlot.onClick != null -> {
+            effectiveTrailingSlot.onClick
+        }
+        effectiveTrailingSlot is SettingTrailingSlot.Toggle && effectiveTrailingSlot.onCheckedChange != null && onClick != null -> {
+            val callback = effectiveTrailingSlot.onCheckedChange
+            val checked = effectiveTrailingSlot.checked
+            { callback(!checked) }
+        }
+        else -> null
+    }
+
     val effectiveOnClick = when {
         !enabled -> null
         onClick != null -> onClick
         isExpandable && onExpandedChange != null -> {
             { onExpandedChange(!isExpanded) }
         }
-        effectiveTrailingSlot is SettingTrailingSlot.Toggle && effectiveTrailingSlot.enabled -> {
+        effectiveTrailingSlot is SettingTrailingSlot.Toggle && effectiveTrailingSlot.enabled && trailingAction == null -> {
             effectiveTrailingSlot.onCheckedChange?.let { callback ->
                 { callback(!effectiveTrailingSlot.checked) }
             }
         }
         else -> null
     }
+
+    var trailingActionBounds by remember { mutableStateOf<Rect?>(null) }
 
     // 箭头旋转动画：展开时顺时针旋转 90°
     val animatedChevronRotation by animateFloatAsState(
@@ -143,6 +162,8 @@ fun SettingCardItem(
             shape = if (isStandaloneCard) shape else MaterialTheme.shapes.extraSmall,
             onClick = effectiveOnClick,
             onLongClick = onLongClick,
+            onTrailingActionClick = trailingAction,
+            trailingActionBoundsInWindow = if (trailingAction != null) trailingActionBounds else null,
         ) {
             SettingHeaderRowLayout(
                 leadingSlot = leadingSlot,
@@ -152,6 +173,7 @@ fun SettingCardItem(
                 animatedChevronRotation = animatedChevronRotation,
                 enabled = enabled,
                 onCardClick = effectiveOnClick,
+                onTrailingBoundsChanged = { trailingActionBounds = it },
             )
         }
 
@@ -192,10 +214,53 @@ private fun SettingHeaderRowLayout(
     animatedChevronRotation: Float,
     enabled: Boolean,
     onCardClick: (() -> Unit)? = null,
+    onTrailingBoundsChanged: ((Rect?) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val gutterPx = with(LocalDensity.current) { SettingsTokens.SlotGutter.roundToPx() }
-    val minHeightPx = with(LocalDensity.current) { SettingsTokens.ItemMinHeight.roundToPx() }
+    val density = LocalDensity.current
+
+    var previewBounds by remember { mutableStateOf<Rect?>(null) }
+    var actionBounds by remember { mutableStateOf<Rect?>(null) }
+
+    LaunchedEffect(previewBounds, actionBounds, trailingSlot) {
+        if (onTrailingBoundsChanged == null) return@LaunchedEffect
+
+        val hasTrailingAction = when (trailingSlot) {
+            is SettingTrailingSlot.ActionText -> trailingSlot.onClick != null
+            is SettingTrailingSlot.Toggle -> trailingSlot.onCheckedChange != null
+            else -> false
+        }
+
+        if (!hasTrailingAction) {
+            onTrailingBoundsChanged(null)
+            return@LaunchedEffect
+        }
+
+        val p = previewBounds
+        val a = actionBounds
+
+        if (p == null && a == null) {
+            onTrailingBoundsChanged(null)
+            return@LaunchedEffect
+        }
+
+        val left = minOf(p?.left ?: Float.MAX_VALUE, a?.left ?: Float.MAX_VALUE)
+        val right = maxOf(p?.right ?: Float.MIN_VALUE, a?.right ?: Float.MIN_VALUE)
+        val top = minOf(p?.top ?: Float.MAX_VALUE, a?.top ?: Float.MAX_VALUE)
+        val bottom = maxOf(p?.bottom ?: Float.MIN_VALUE, a?.bottom ?: Float.MIN_VALUE)
+
+        val minTargetWidthPx = with(density) { 64.dp.toPx() }
+        val rightPaddingPx = with(density) { SettingsTokens.ContentPadding.calculateRightPadding(LayoutDirection.Ltr).toPx() }
+        val verticalPaddingPx = with(density) { 12.dp.toPx() }
+
+        val finalRight = right + rightPaddingPx
+        val finalLeft = minOf(left - with(density) { 8.dp.toPx() }, finalRight - minTargetWidthPx)
+        val finalTop = top - verticalPaddingPx
+        val finalBottom = bottom + verticalPaddingPx
+
+        onTrailingBoundsChanged(Rect(finalLeft, finalTop, finalRight, finalBottom))
+    }
 
     Layout(
         content = {
@@ -210,12 +275,24 @@ private fun SettingHeaderRowLayout(
             }
 
             // 3. Trailing Preview Slot (限额 20%，End-to-End 右对齐向左生长)
-            Box(modifier = Modifier.layoutId(SettingHeaderSlotId.Preview)) {
+            Box(
+                modifier = Modifier
+                    .layoutId(SettingHeaderSlotId.Preview)
+                    .onGloballyPositioned { coords ->
+                        previewBounds = coords.boundsInWindow()
+                    }
+            ) {
                 SettingTrailingPreviewContent(trailingSlot = trailingSlot, enabled = enabled)
             }
 
             // 4. Trailing Action Slot (箭头或开关，固定尺寸，刚性优先)
-            Box(modifier = Modifier.layoutId(SettingHeaderSlotId.Action)) {
+            Box(
+                modifier = Modifier
+                    .layoutId(SettingHeaderSlotId.Action)
+                    .onGloballyPositioned { coords ->
+                        actionBounds = coords.boundsInWindow()
+                    }
+            ) {
                 SettingTrailingActionContent(
                     trailingSlot = trailingSlot,
                     animatedChevronRotation = animatedChevronRotation,
@@ -278,9 +355,8 @@ private fun SettingHeaderRowLayout(
             )
         )
 
-        // ── 步骤 5：整行总高度由各部分最大高度确定 (保证最多 4 行标题自适应) ──
+        // ── 步骤 5：整行总高度由各部分真实内容最大高度确定 (纯 wrap_content 自适应) ──
         val rowHeight = maxOf(
-            minHeightPx,
             centerPlaceable.height,
             leadingPlaceable.height,
             previewPlaceable.height,
@@ -419,7 +495,11 @@ private fun SettingCenterContent(
         if (!summary.isNullOrBlank()) {
             Text(
                 text = summary,
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = SettingsTokens.SummaryFontSize),
+                modifier = Modifier.padding(start = SettingsTokens.SummaryStartIndent),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = SettingsTokens.SummaryFontSize,
+                    lineHeight = SettingsTokens.SummaryLineHeight,
+                ),
                 color = summaryColor,
                 maxLines = SettingsTokens.MaxSummaryLines,
                 overflow = TextOverflow.Ellipsis,
@@ -460,11 +540,6 @@ private fun SettingTrailingPreviewContent(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.End,
-                modifier = Modifier.then(
-                    if (trailingSlot.onClick != null) {
-                        Modifier.clickable(onClick = trailingSlot.onClick)
-                    } else Modifier
-                ),
             )
         }
 
@@ -569,16 +644,21 @@ private fun SettingExpandableSlotContent(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    // 左侧极值文字
+                    // 左侧极值文字：44dp 高度居中与滑块轨道绝对垂直对齐
                     if (!expandableSlot.startLabel.isNullOrBlank()) {
-                        Text(
-                            text = expandableSlot.startLabel,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(end = 16.dp),
-                        )
+                        Box(
+                            modifier = Modifier.height(44.dp),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            Text(
+                                text = expandableSlot.startLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(end = 16.dp),
+                            )
+                        }
                     }
 
                     // 滑块轨道与刻度圆点
@@ -654,14 +734,19 @@ private fun SettingExpandableSlotContent(
                         }
                     }
 
-                    // 右侧极值文字
+                    // 右侧极值文字：44dp 高度居中与滑块轨道绝对垂直对齐
                     if (!expandableSlot.endLabel.isNullOrBlank()) {
-                        Text(
-                            text = expandableSlot.endLabel,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 16.dp),
-                        )
+                        Box(
+                            modifier = Modifier.height(44.dp),
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
+                            Text(
+                                text = expandableSlot.endLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 16.dp),
+                            )
+                        }
                     }
                 }
             }
