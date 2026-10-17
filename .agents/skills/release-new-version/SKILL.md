@@ -12,7 +12,7 @@ Repos involved:
 | Repo | Tag format | Release notes |
 |------|-----------|---------------|
 | `niki914/zafiro` (main, open source) | `v<code>-<name>` e.g. `v8-1.1.0` | Full bilingual notes |
-| `Xposed-Modules-Repo/com.niki914.nexus.agentic` (closed) | `<code>-<name>` e.g. `8-1.1.0` | Same feature entries, closing line points back to the main repo. **Optional — ask the user every time.** |
+| `Xposed-Modules-Repo/com.niki914.zafiro` (closed) | `<code>-<name>` e.g. `8-1.1.0` | Same feature entries, closing line points back to the main repo. **Optional — ask the user every time.** |
 
 One APK, two notes. CI builds and signs the APK and creates the Release when a tag is pushed to the main repo. There is no CI in the Xposed repo — its release is a manual `gh` operation. Never build locally.
 
@@ -64,37 +64,63 @@ Semver `x.y.z`:
 
 Propose one number with a one-line justification referencing the change list. Also report every location found in Phase 1 step 3 that needs the version string updated. Iterate with the user until explicit approval of both the number and the file list.
 
-## Phase 4 — Execute (main repo)
+## Phase 4 — Execute
 
-Confirm once more before anything irreversible. Then:
+Confirm once more before anything irreversible (exact version number, tag, target commit, and whether to publish to Xposed).
+
+Save the approved release notes into a temporary file (e.g. `/tmp/zafiro-release-notes.md`).
+
+### Automated Execution (Preferred)
+
+Run the release execution script from repo root:
+
+```bash
+# Main repo only:
+bash .agents/skills/release-new-version/scripts/release-exec.sh <new code> <new name> /tmp/zafiro-release-notes.md
+
+# Main repo + Xposed repo:
+bash .agents/skills/release-new-version/scripts/release-exec.sh <new code> <new name> /tmp/zafiro-release-notes.md --xposed
+```
+
+The script automates:
+1. Re-counting code lines badge (`update-code-badge.sh`).
+2. Updating `versionCode` and `versionName` in `app/build.gradle.kts`.
+3. Committing `release: bump to <new name>` and pushing to `origin main`.
+4. Creating tag `v<code>-<name>` and pushing to `origin`.
+5. Waiting for GitHub Actions release build CI to succeed (`gh run watch`).
+6. Updating the GitHub Release title to `Release - <name>` and replacing CI notes with approved bilingual notes.
+7. If `--xposed` is given: downloading APK, generating Xposed notes (with open-source links), and creating the Xposed release with `--latest` on `Xposed-Modules-Repo/com.niki914.zafiro`.
+
+### Manual Fallback Steps
+
+If running manually without the script:
 
 1. Update the code-line badge so it lands in the release commit:
    ```bash
-   bash scripts/update-code-badge.sh   # relative to the skill directory; the script cd's to the repo root itself
+   bash .agents/skills/release-new-version/scripts/update-code-badge.sh
    ```
-   It recounts production Kotlin + Python lines (excluding tests / build / generated) and rewrites the `kotlin-XX.Xk` badge in both READMEs. Include the README changes in the release commit.
-2. Update `versionCode = <new code>`, `versionName = "<new name>"` in `app/build.gradle.kts`, plus any other files from the approved list. Do not touch any other build config.
-3. Update module structure in both READMEs (`README.md` and `README_CN.md`) and AGENTS.md if modules were refactored or new modules were added.
-4. Audit and complete multilingual string parity across all modules. Daily development only implements English, leaving other locales incomplete. Inspect the actual supported locales across modules (e.g. via `ls` on `res/values-*`) and fill in missing strings. Translate contextually based on UI placement and function; avoid blind machine translation.
+2. Update `versionCode = <new code>`, `versionName = "<new name>"` in `app/build.gradle.kts`.
+3. Update module structure in both READMEs (`README.md` and `README_CN.md`) and AGENTS.md if applicable.
+4. Audit and complete multilingual string parity across all modules.
 5. Commit: `release: bump to <new name>`, push to `origin main`.
 6. Tag and push:
    ```bash
    git tag v<code>-<name>
    git push origin v<code>-<name>
    ```
-   Tag push triggers CI: build → sign → create Release. CI reads signing config from GitHub Secrets; do not expect signing to work anywhere else.
 7. Wait for CI:
    ```bash
-   gh run list --workflow=release.yml --limit=1    # find the latest run
-   gh run watch <run-id> --exit-status             # wait for it to finish
-   gh run view <run-id> --log-failed               # on failure, read only the failed steps
-   gh run rerun <run-id>                           # rerun after fixing
+   gh run watch <run-id> -R niki914/zafiro --exit-status
    ```
-8. Replace CI-generated release notes (they are a PR list) with the approved draft:
+8. Replace CI notes:
    ```bash
-   gh release edit <tag> -R niki914/zafiro --title "Release - <name>" --notes "<approved notes>"
+   gh release edit v<code>-<name> -R niki914/zafiro --title "Release - <name>" --notes "<approved notes>"
    ```
-   CI generates the release title as the raw tag name (e.g. `v9-1.2.0`); the historical format is `Release - <name>` — pass `--title` explicitly or the wrong title stays.
+9. (Optional) Xposed repo:
+   ```bash
+   gh release download v<code>-<name> -R niki914/zafiro -p "*.apk" --dir /tmp/
+   gh release create <code>-<name> /tmp/*.apk -R Xposed-Modules-Repo/com.niki914.zafiro --title "Release - <name>" --notes "<approved notes>" --latest
+   ```
 
 ### Release notes format
 
@@ -102,26 +128,12 @@ Historical releases follow this format strictly (no deviations):
 
 - **English first, Chinese after, separated by a single `---` line.** Never reverse the order.
 - **No language headers** (no `**English**` / `**中文**` labels) — the notes start directly with the numbered list. Blank line separates the `---` from the lists.
-- The `--title "Release - <name>"` from step 8 is part of the format, not optional. Set the title via `--title`, never inside the release note body.
+- The `--title "Release - <name>"` is part of the format, not optional. Set the title via `--title`, never inside the release note body.
 
 ## Phase 5 — Xposed repo (optional, ask first)
 
-Ask: "这次要发 Xposed 仓库吗？" If no, state clearly "本次未发 Xposed 仓库" and stop. If yes:
-
-```bash
-# download the APK from the main repo release
-gh release download <main-tag> -R niki914/zafiro -p "*.apk" --dir /tmp/
-
-# create the Xposed release
-gh release create <code>-<name> /tmp/<apk> \
-  -R Xposed-Modules-Repo/com.niki914.nexus.agentic \
-  --title "Release - <name>" \
-  --notes "<approved notes>"
-```
-
-`gh` operates on the current repo's remote by default — external repos always need `-R owner/repo`, and the token must have write access there.
-
-The Xposed notes use the same feature entries, but the closing line is `项目已开源：https://github.com/niki914/zafiro` (and its English counterpart) instead of a contribution invitation.
+Ask: "这次要发 Xposed 仓库吗？" If yes, pass `--xposed` to `release-exec.sh` or run step 9 manually.
+If no, run without `--xposed` and state clearly "本次未发 Xposed 仓库".
 
 ## Known pitfalls
 
