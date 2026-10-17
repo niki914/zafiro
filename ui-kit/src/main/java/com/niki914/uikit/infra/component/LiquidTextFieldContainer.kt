@@ -38,11 +38,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
+import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.infra.LiquidGlassPresets
+import com.niki914.uikit.infra.LiquidGlassStyle
 import com.niki914.uikit.infra.interaction.InteractiveHighlight
 import com.niki914.uikit.infra.interaction.LiquidInteractiveStyle
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
@@ -74,10 +75,14 @@ internal fun LiquidTextFieldContainer(
     expandedLayout: Boolean = false,
     /** 展开布局下按钮行：左 leading 右 trailing，与文本区同一玻璃容器内。 */
     expandedActionsRow: (@Composable RowScope.() -> Unit)? = null,
+    backdrop: Backdrop? = null,
+    glassStyle: LiquidGlassStyle = LiquidGlassPresets.TextField,
     leadingContent: (@Composable RowScope.() -> Unit)? = null,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
-    val backdrop = rememberLayerBackdrop()
+    val fallbackBackdrop = rememberLayerBackdrop()
+    val resolvedBackdrop = backdrop ?: fallbackBackdrop
+    val isDarkTheme = LocalAppDarkTheme.current
     val animationScope = rememberCoroutineScope()
     var isFocused by remember { mutableStateOf(false) }
     val interactiveHighlight = remember(animationScope) {
@@ -120,7 +125,7 @@ internal fun LiquidTextFieldContainer(
         colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
     }
     val surfaceColor = if (enabled) {
-        colorScheme.surfaceContainerHigh.copy(alpha = 0.64f)
+        glassStyle.surfaceColor(isDarkTheme, colorScheme)
     } else {
         colorScheme.surfaceContainer.copy(alpha = 0.42f)
     }
@@ -155,12 +160,12 @@ internal fun LiquidTextFieldContainer(
                 }
             }
             .drawBackdrop(
-                backdrop = backdrop,
+                backdrop = resolvedBackdrop,
                 shape = { fieldShape },
+                highlight = { glassStyle.highlight(isDarkTheme) },
+                shadow = { glassStyle.shadow(isDarkTheme) },
                 effects = {
-                    vibrancy()
-                    blur(2.dp.toPx())
-                    lens(12.dp.toPx(), 24.dp.toPx())
+                    glassStyle.applyEffects(this, isDarkTheme)
                 },
                 layerBlock = if (interactiveEffectsEnabled) {
                     {

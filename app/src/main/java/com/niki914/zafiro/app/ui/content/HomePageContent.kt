@@ -118,9 +118,19 @@ import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.LiquidMenuItem
 import com.niki914.uikit.infra.LiquidPopover
 import com.niki914.uikit.infra.LocalHasActiveDialog
+import com.niki914.uikit.infra.LocalScreenBackdrop
 import com.niki914.uikit.infra.PopoverAlignment
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.Role
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.niki914.uikit.infra.LiquidGlassPresets
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
+import com.niki914.uikit.infra.interaction.InteractiveHighlight
+import com.niki914.uikit.infra.interaction.LiquidButtonInteractiveStyle
+import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.component.OptionRow
 import com.niki914.uikit.infra.component.OptionSheet
@@ -813,6 +823,7 @@ private fun HomePageContentBody(
     // composerBottomPadding*2 + composerHeight，composer 顶上方留一个视觉间距
     val bottomClearance = composerBottomPadding + composerHeight.value + composerGap
     val density = LocalDensity.current
+    val chatBackdrop = rememberLayerBackdrop()
 
     // 附件入口：加号 → 选项单（Photos / Camera / File / Folder）。
     val context = LocalContext.current
@@ -879,6 +890,8 @@ private fun HomePageContentBody(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
+                    .layerBackdrop(chatBackdrop)
+                    .background(MaterialTheme.colorScheme.background)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -968,54 +981,97 @@ private fun HomePageContentBody(
             )
         }
 
-        LiquidChatComposer(
-            value = uiState.input,
-            onValueChange = onInputChange,
-            onSendClick = onSendClick,
-            onStopClick = onStopClick,
-            isGenerating = uiState.isGenerating,
-            contextProgress = uiState.contextProgress,
-            pendingImages = pendingImages,
-            pendingFiles = pendingFiles,
-            onAttachImageClick = { attachSheetVisible = true },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .onFocusChanged { focusState ->
-                    onComposerFocusChanged(focusState.hasFocus)
-                }
-                .focusRequester(composerFocusRequester)
-                .padding(
-                    start = 20.dp,
-                    end = 20.dp,
-                    bottom = composerBottomPadding,
-                )
-                // 放在 padding 之后：只测 composer 本体高度，不含底边距
-                .onSizeChanged { size ->
-                    composerHeight.value = with(density) { size.height.toDp() }
-                },
-        )
+        CompositionLocalProvider(
+            LocalScreenBackdrop provides chatBackdrop,
+        ) {
+            LiquidChatComposer(
+                value = uiState.input,
+                onValueChange = onInputChange,
+                onSendClick = onSendClick,
+                onStopClick = onStopClick,
+                isGenerating = uiState.isGenerating,
+                contextProgress = uiState.contextProgress,
+                pendingImages = pendingImages,
+                pendingFiles = pendingFiles,
+                onAttachImageClick = { attachSheetVisible = true },
+                backdrop = chatBackdrop,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .onFocusChanged { focusState ->
+                        onComposerFocusChanged(focusState.hasFocus)
+                    }
+                    .focusRequester(composerFocusRequester)
+                    .padding(
+                        start = 20.dp,
+                        end = 20.dp,
+                        bottom = composerBottomPadding,
+                    )
+                    // 放在 padding 之后：只测 composer 本体高度，不含底边距
+                    .onSizeChanged { size ->
+                        composerHeight.value = with(density) { size.height.toDp() }
+                    },
+            )
+        }
 
         // 解除贴底锚定且不在底部时出现：点击恢复跟随并平滑滚回底部
         val scrollToBottomScope = rememberCoroutineScope()
+        val scrollToBottomInteractiveHighlight = remember(scrollToBottomScope) {
+            InteractiveHighlight(animationScope = scrollToBottomScope)
+        }
+        val isDarkTheme = LocalAppDarkTheme.current
+        val scrollToBottomShape = CircleShape
+        val scrollToBottomSurfaceColor = LiquidGlassPresets.ScrollToBottom.surfaceColor(isDarkTheme, MaterialTheme.colorScheme)
+
         AnimatedVisibility(
             visible = !followBottom.value && !isAtBottom,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = bottomClearance),
-            enter = fadeIn(tween(160)) + scaleIn(tween(180), initialScale = 0.82f),
-            exit = fadeOut(tween(100)) + scaleOut(tween(120), targetScale = 0.86f),
+            enter = fadeIn(tween(160)),
+            exit = fadeOut(tween(100)),
         ) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .clickable {
+                    .drawBackdrop(
+                        backdrop = chatBackdrop,
+                        shape = { scrollToBottomShape },
+                        highlight = { LiquidGlassPresets.ScrollToBottom.highlight(isDarkTheme) },
+                        shadow = { LiquidGlassPresets.ScrollToBottom.shadow(isDarkTheme) },
+                        effects = {
+                            LiquidGlassPresets.ScrollToBottom.applyEffects(this, isDarkTheme)
+                        },
+                        layerBlock = {
+                            applyLiquidInteractiveTransform(
+                                style = LiquidButtonInteractiveStyle,
+                                pressProgress = scrollToBottomInteractiveHighlight.pressProgress,
+                                offset = scrollToBottomInteractiveHighlight.offset,
+                                size = size,
+                            )
+                        },
+                        onDrawSurface = {
+                            drawRect(scrollToBottomSurfaceColor)
+                        },
+                    )
+                    .clip(scrollToBottomShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        role = Role.Button,
+                    ) {
                         followBottom.value = true
                         scrollToBottomScope.launch {
                             listState.animateScrollToItem(uiState.turns.size)
                         }
-                    },
+                    }
+                    .then(scrollToBottomInteractiveHighlight.gestureModifier)
+                    .then(
+                        if (LiquidButtonInteractiveStyle.highlightEnabled) {
+                            scrollToBottomInteractiveHighlight.modifier
+                        } else {
+                            Modifier
+                        }
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

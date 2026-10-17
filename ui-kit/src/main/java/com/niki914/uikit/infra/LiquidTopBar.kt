@@ -12,6 +12,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -23,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,9 +42,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
-import kotlinx.coroutines.delay
 
 /**
  * 顶栏前景组件：基于插槽解耦与三大正交因子（滚动、遮挡、覆盖）驱动。
@@ -69,7 +70,7 @@ fun LiquidTopBar(
     onRightClick: (() -> Unit)? = null,
     onLeftButtonBoundsChanged: ((Rect) -> Unit)? = null,
     onRightButtonBoundsChanged: ((Rect) -> Unit)? = null,
-    backdrop: LayerBackdrop,
+    backdrop: Backdrop,
     topInset: Dp,
     titleHorizontalPadding: Dp,
     modifier: Modifier = Modifier,
@@ -91,32 +92,19 @@ fun LiquidTopBar(
     // 最终标题透明度：基础滚动透明度 × 遮挡避让因子
     val effectiveTitleAlpha = baseTitleAlpha * occludedAlpha
 
-    var retainedLeftButton by remember { mutableStateOf(leftButton) }
-    var retainedRightButton by remember { mutableStateOf(rightButton) }
-    val displayedLeftButton = leftButton ?: retainedLeftButton
-    val displayedRightButton = rightButton ?: retainedRightButton
-
-    LaunchedEffect(leftButton, showLeftButton) {
-        if (leftButton != null) {
-            retainedLeftButton = leftButton
-        } else if (!showLeftButton) {
-            delay(buttonDuration.toLong())
-            if (!showLeftButton) {
-                retainedLeftButton = null
-            }
-        }
+    var lastNonNullLeftButton by remember { mutableStateOf(leftButton) }
+    if (leftButton != null) {
+        lastNonNullLeftButton = leftButton
     }
+    val displayedLeftButton = leftButton ?: lastNonNullLeftButton
+    val isLeftButtonVisible = showLeftButton && leftButton != null
 
-    LaunchedEffect(rightButton, showRightButton) {
-        if (rightButton != null) {
-            retainedRightButton = rightButton
-        } else if (!showRightButton) {
-            delay(buttonDuration.toLong())
-            if (!showRightButton) {
-                retainedRightButton = null
-            }
-        }
+    var lastNonNullRightButton by remember { mutableStateOf(rightButton) }
+    if (rightButton != null) {
+        lastNonNullRightButton = rightButton
     }
+    val displayedRightButton = rightButton ?: lastNonNullRightButton
+    val isRightButtonVisible = showRightButton && rightButton != null
 
     Box(
         modifier = modifier
@@ -194,29 +182,30 @@ fun LiquidTopBar(
 
         // ── Leading Slot: Left Button ─────────────────────────────────────────
         displayedLeftButton?.let { buttonContent ->
-            val leftButtonScale by animateFloatAsState(
-                targetValue = if (showLeftButton) 1f else 0f,
-                animationSpec = tween(buttonDuration, easing = LinearOutSlowInEasing),
-                label = "leftButtonScale",
-            )
             AnimatedVisibility(
-                visible = showLeftButton,
+                visible = isLeftButtonVisible,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(top = topInset),
-                enter = fadeIn(tween(buttonDuration, easing = LinearOutSlowInEasing)),
-                exit = fadeOut(tween(buttonDuration, easing = LinearOutSlowInEasing)),
+                enter = fadeIn(tween(buttonDuration, easing = LinearOutSlowInEasing)) +
+                    scaleIn(
+                        initialScale = 0f,
+                        animationSpec = tween(buttonDuration, easing = LinearOutSlowInEasing),
+                    ),
+                exit = fadeOut(tween(buttonDuration, easing = LinearOutSlowInEasing)) +
+                    scaleOut(
+                        targetScale = 0f,
+                        animationSpec = tween(buttonDuration, easing = LinearOutSlowInEasing),
+                    ),
             ) {
                 Box(
                     Modifier.graphicsLayer {
-                        scaleX = leftButtonScale
-                        scaleY = leftButtonScale
                         alpha = leftButtonAlpha
                     },
                 ) {
                     ActionBarButton(
                         onClick = { onLeftClick?.invoke() },
-                        enabled = actionsEnabled,
+                        enabled = actionsEnabled && isLeftButtonVisible,
                         backdrop = backdrop,
                         onButtonBoundsChanged = onLeftButtonBoundsChanged,
                         content = buttonContent,
@@ -227,29 +216,30 @@ fun LiquidTopBar(
 
         // ── Trailing Slot: Right Button ────────────────────────────────────────
         displayedRightButton?.let { buttonContent ->
-            val rightButtonScale by animateFloatAsState(
-                targetValue = if (showRightButton) 1f else 0f,
-                animationSpec = tween(buttonDuration, easing = LinearOutSlowInEasing),
-                label = "rightButtonScale",
-            )
             AnimatedVisibility(
-                visible = showRightButton,
+                visible = isRightButtonVisible,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = topInset),
-                enter = fadeIn(tween(buttonDuration, easing = LinearOutSlowInEasing)),
-                exit = fadeOut(tween(buttonDuration, easing = LinearOutSlowInEasing)),
+                enter = fadeIn(tween(buttonDuration, easing = LinearOutSlowInEasing)) +
+                    scaleIn(
+                        initialScale = 0f,
+                        animationSpec = tween(buttonDuration, easing = LinearOutSlowInEasing),
+                    ),
+                exit = fadeOut(tween(buttonDuration, easing = LinearOutSlowInEasing)) +
+                    scaleOut(
+                        targetScale = 0f,
+                        animationSpec = tween(buttonDuration, easing = LinearOutSlowInEasing),
+                    ),
             ) {
                 Box(
                     Modifier.graphicsLayer {
-                        scaleX = rightButtonScale
-                        scaleY = rightButtonScale
                         alpha = rightButtonAlpha
                     },
                 ) {
                     ActionBarButton(
                         onClick = { onRightClick?.invoke() },
-                        enabled = actionsEnabled,
+                        enabled = actionsEnabled && isRightButtonVisible,
                         backdrop = backdrop,
                         onButtonBoundsChanged = onRightButtonBoundsChanged,
                         content = buttonContent,

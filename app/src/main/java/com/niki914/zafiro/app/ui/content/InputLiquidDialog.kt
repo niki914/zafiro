@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -23,7 +24,7 @@ import com.niki914.zafiro.app.R
 import kotlinx.coroutines.delay
 
 /**
- * 单输入框弹窗（沿用 [LiquidDialog] 形态）：单行、不可换行，弹出即聚焦。
+ * 单/多行输入框弹窗（沿用 [LiquidDialog] 形态）：弹出即聚焦。
  * 挂在 LiquidScreen 内容树内，返回键由弹窗接管。
  */
 @Composable
@@ -39,6 +40,9 @@ fun InputLiquidDialog(
     hint: String? = null,
     positiveEnabled: Boolean = true,
     enabled: Boolean = true,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
 ) {
     // 退出动画期间调用方已经把 value 清空，用最后一次可见的值把文字留住。
     var retainedValue by remember { mutableStateOf(value) }
@@ -80,7 +84,10 @@ fun InputLiquidDialog(
                 onValueChange = onValueChange,
                 placeholder = placeholder,
                 enabled = enabled,
-                singleLine = true,
+                singleLine = singleLine,
+                minLines = minLines,
+                maxLines = maxLines,
+                contentVerticalAlignment = if (singleLine) Alignment.CenterVertically else Alignment.Top,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)

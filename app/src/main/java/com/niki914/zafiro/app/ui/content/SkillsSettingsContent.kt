@@ -146,7 +146,7 @@ private fun SkillsSettingsContentBody(
                 }
 
                 is SettingsRowAction.ToggleChanged -> onEnabledChange(action.id, action.checked)
-                is SettingsRowAction.Click -> Unit
+                else -> Unit
             }
         },
     )

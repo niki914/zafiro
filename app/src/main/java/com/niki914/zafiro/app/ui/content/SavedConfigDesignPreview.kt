@@ -363,60 +363,15 @@ private fun SingleChoiceDialogPreview() {
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
             ) {
-                LiquidDialog(
+                SingleChoiceLiquidDialog(
                     visible = true,
                     onDismissRequest = {},
-                    title = {
-                        Text(
-                            text = "Protocol",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    },
-                    content = {
-                        MOCK_PROTOCOLS.forEach { item ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { selectedProtocol = item }
-                                    .padding(horizontal = 2.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                Icon(
-                                    imageVector = if (item == selectedProtocol) {
-                                        Icons.Default.RadioButtonChecked
-                                    } else {
-                                        Icons.Default.RadioButtonUnchecked
-                                    },
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = if (item == selectedProtocol) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-                                    },
-                                )
-                                Text(
-                                    text = item,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    },
-                    actions = {
-                        MaterialTintLiquidButton(
-                            text = "Cancel",
-                            onClick = {},
-                            modifier = Modifier.fillMaxWidth(),
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        )
-                    },
+                    title = "Protocol",
+                    options = MOCK_PROTOCOLS,
+                    selectedId = selectedProtocol,
+                    optionId = { it },
+                    optionLabel = { it },
+                    onSelect = { selectedProtocol = it },
                 )
             }
         }

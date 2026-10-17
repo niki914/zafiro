@@ -17,6 +17,7 @@ import com.niki914.zafiro.app.ui.model.RuntimeControlDialog
 import com.niki914.zafiro.app.ui.model.RuntimeControlIntent
 import com.niki914.zafiro.app.ui.model.RuntimeControlViewModel
 import com.niki914.zafiro.settings.model.RepetitionSensitivity
+import kotlin.math.roundToInt
 
 /**
  * 运行控制页：运行上限（空闲超时 / 重试次数）+ 复读检测（灵敏度）+ 运行偏好（屏幕常亮）。
@@ -45,15 +46,27 @@ fun RuntimeControlSettingsContent(
                 title = stringResource(R.string.ui_settings_runtime_group_network),
                 layout = SettingsSectionLayout.GroupedCard,
                 rows = listOf(
-                    SettingsRowSpec.Navigation(
+                    SettingsRowSpec.Slider(
                         id = IDLE_TIMEOUT_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_idle_timeout),
-                        currentState = idleTimeoutLabel(uiState.idleTimeoutSeconds),
+                        summary = stringResource(R.string.ui_settings_general_idle_timeout_summary),
+                        value = uiState.idleTimeoutSeconds.toFloat(),
+                        valueRange = 0f..120f,
+                        steps = 0,
+                        valueLabel = idleTimeoutLabel(uiState.idleTimeoutSeconds),
+                        startLabel = stringResource(R.string.ui_settings_general_idle_timeout_off),
+                        endLabel = "120s",
                     ),
-                    SettingsRowSpec.Navigation(
+                    SettingsRowSpec.Slider(
                         id = RETRY_ATTEMPTS_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_retry_attempts),
-                        currentState = retryAttemptsLabel(uiState.retryMaxAttempts),
+                        summary = stringResource(R.string.ui_settings_general_retry_summary),
+                        value = uiState.retryMaxAttempts.toFloat(),
+                        valueRange = 0f..5f,
+                        steps = 0,
+                        valueLabel = "${uiState.retryMaxAttempts}",
+                        startLabel = "0",
+                        endLabel = "5",
                     ),
                 ),
             ),
@@ -78,10 +91,16 @@ fun RuntimeControlSettingsContent(
                 title = stringResource(R.string.ui_settings_runtime_group_compaction),
                 layout = SettingsSectionLayout.GroupedCard,
                 rows = listOf(
-                    SettingsRowSpec.Navigation(
+                    SettingsRowSpec.Slider(
                         id = COMPACTION_THRESHOLD_ROW_ID,
                         title = stringResource(R.string.ui_settings_runtime_compaction_threshold),
-                        currentState = compactionThresholdLabel(uiState.compactionThresholdPercent),
+                        summary = stringResource(R.string.ui_settings_runtime_compaction_threshold_summary),
+                        value = uiState.compactionThresholdPercent.toFloat(),
+                        valueRange = 0f..95f,
+                        steps = 0,
+                        valueLabel = compactionThresholdLabel(uiState.compactionThresholdPercent),
+                        startLabel = stringResource(R.string.ui_settings_runtime_compaction_off),
+                        endLabel = "95%",
                     ),
                 ),
             ),
@@ -94,23 +113,9 @@ fun RuntimeControlSettingsContent(
             when (action) {
                 is SettingsRowAction.Navigate ->
                     when (action.id) {
-                        IDLE_TIMEOUT_ROW_ID -> viewModel.sendIntent(
-                            RuntimeControlIntent.OpenDialog(RuntimeControlDialog.IdleTimeout)
-                        )
-
-                        RETRY_ATTEMPTS_ROW_ID -> viewModel.sendIntent(
-                            RuntimeControlIntent.OpenDialog(RuntimeControlDialog.RetryAttempts)
-                        )
-
                         REPETITION_SENSITIVITY_ROW_ID -> viewModel.sendIntent(
                             RuntimeControlIntent.OpenDialog(
                                 RuntimeControlDialog.RepetitionSensitivity
-                            )
-                        )
-
-                        COMPACTION_THRESHOLD_ROW_ID -> viewModel.sendIntent(
-                            RuntimeControlIntent.OpenDialog(
-                                RuntimeControlDialog.CompactionThreshold
                             )
                         )
                     }
@@ -122,36 +127,44 @@ fun RuntimeControlSettingsContent(
                         )
                     }
 
+                is SettingsRowAction.SliderChanged ->
+                    when (action.id) {
+                        IDLE_TIMEOUT_ROW_ID -> {
+                            val rounded = action.value.roundToInt().coerceIn(0, 120).toLong()
+                            viewModel.sendIntent(RuntimeControlIntent.ChangeIdleTimeout(rounded))
+                        }
+
+                        RETRY_ATTEMPTS_ROW_ID -> {
+                            val attempts = action.value.roundToInt().coerceIn(0, 5)
+                            viewModel.sendIntent(RuntimeControlIntent.ChangeRetryMaxAttempts(attempts))
+                        }
+
+                        COMPACTION_THRESHOLD_ROW_ID -> {
+                            val percent = sanitizeCompactionThreshold(action.value)
+                            viewModel.sendIntent(RuntimeControlIntent.ChangeCompactionThreshold(percent))
+                        }
+                    }
+
+                is SettingsRowAction.SliderCommit ->
+                    when (action.id) {
+                        IDLE_TIMEOUT_ROW_ID -> {
+                            val rounded = action.value.roundToInt().coerceIn(0, 120).toLong()
+                            viewModel.sendIntent(RuntimeControlIntent.SelectIdleTimeout(rounded))
+                        }
+
+                        RETRY_ATTEMPTS_ROW_ID -> {
+                            val attempts = action.value.roundToInt().coerceIn(0, 5)
+                            viewModel.sendIntent(RuntimeControlIntent.SelectRetryMaxAttempts(attempts))
+                        }
+
+                        COMPACTION_THRESHOLD_ROW_ID -> {
+                            val percent = sanitizeCompactionThreshold(action.value)
+                            viewModel.sendIntent(RuntimeControlIntent.SelectCompactionThreshold(percent))
+                        }
+                    }
+
                 else -> Unit
             }
-        },
-    )
-
-    SingleChoiceLiquidDialog(
-        visible = uiState.activeDialog == RuntimeControlDialog.IdleTimeout,
-        onDismissRequest = { viewModel.sendIntent(RuntimeControlIntent.DismissDialog) },
-        title = stringResource(R.string.ui_settings_general_idle_timeout),
-        hint = stringResource(R.string.ui_settings_general_idle_timeout_summary),
-        options = idleTimeoutOptions(),
-        selectedId = uiState.idleTimeoutSeconds.toString(),
-        optionId = { it.seconds.toString() },
-        optionLabel = { it.label },
-        onSelect = { option ->
-            viewModel.sendIntent(RuntimeControlIntent.SelectIdleTimeout(option.seconds))
-        },
-    )
-
-    SingleChoiceLiquidDialog(
-        visible = uiState.activeDialog == RuntimeControlDialog.RetryAttempts,
-        onDismissRequest = { viewModel.sendIntent(RuntimeControlIntent.DismissDialog) },
-        title = stringResource(R.string.ui_settings_general_retry_attempts),
-        hint = stringResource(R.string.ui_settings_general_retry_summary),
-        options = retryAttemptsOptions(),
-        selectedId = uiState.retryMaxAttempts.toString(),
-        optionId = { it.toString() },
-        optionLabel = { it.toString() },
-        onSelect = { option ->
-            viewModel.sendIntent(RuntimeControlIntent.SelectRetryMaxAttempts(option))
         },
     )
 
@@ -168,49 +181,21 @@ fun RuntimeControlSettingsContent(
             viewModel.sendIntent(RuntimeControlIntent.SelectRepetitionSensitivity(option))
         },
     )
-
-    SingleChoiceLiquidDialog(
-        visible = uiState.activeDialog == RuntimeControlDialog.CompactionThreshold,
-        onDismissRequest = { viewModel.sendIntent(RuntimeControlIntent.DismissDialog) },
-        title = stringResource(R.string.ui_settings_runtime_compaction_threshold),
-        hint = stringResource(R.string.ui_settings_runtime_compaction_threshold_summary),
-        options = compactionThresholdOptions(),
-        selectedId = uiState.compactionThresholdPercent.toString(),
-        optionId = { it.percent.toString() },
-        optionLabel = { it.label },
-        onSelect = { option ->
-            viewModel.sendIntent(RuntimeControlIntent.SelectCompactionThreshold(option.percent))
-        },
-    )
 }
 
-data class IdleTimeoutOption(
-    /** 持久化值：0 = 不超时。 */
-    val seconds: Long,
-    val label: String,
-)
+private fun sanitizeCompactionThreshold(value: Float): Int {
+    val rounded = value.roundToInt()
+    return if (rounded < 15) 0 else rounded.coerceIn(30, 95)
+}
 
 @Composable
 private fun idleTimeoutLabel(seconds: Long): String {
-    return idleTimeoutOptions().firstOrNull { it.seconds == seconds }?.label
-        ?: "$seconds"
+    return if (seconds == 0L) {
+        stringResource(R.string.ui_settings_general_idle_timeout_off)
+    } else {
+        "${seconds}s"
+    }
 }
-
-@Composable
-private fun idleTimeoutOptions(): List<IdleTimeoutOption> {
-    val offLabel = stringResource(R.string.ui_settings_general_idle_timeout_off)
-    return listOf(
-        IdleTimeoutOption(seconds = 0L, label = offLabel),
-        IdleTimeoutOption(seconds = 30L, label = "30s"),
-        IdleTimeoutOption(seconds = 60L, label = "60s"),
-        IdleTimeoutOption(seconds = 90L, label = "90s"),
-        IdleTimeoutOption(seconds = 120L, label = "120s"),
-    )
-}
-
-private fun retryAttemptsLabel(attempts: Int): String = attempts.toString()
-
-private fun retryAttemptsOptions(): List<Int> = listOf(0, 1, 2, 3, 5)
 
 @Composable
 private fun repetitionSensitivityLabels(): Map<RepetitionSensitivity, String> = mapOf(
@@ -223,27 +208,12 @@ private fun repetitionSensitivityLabels(): Map<RepetitionSensitivity, String> = 
     RepetitionSensitivity.Strictest to stringResource(R.string.ui_settings_runtime_sensitivity_strictest),
 )
 
-data class CompactionThresholdOption(
-    val percent: Int,
-    val label: String,
-)
-
 @Composable
 private fun compactionThresholdLabel(percent: Int): String {
-    return compactionThresholdOptions().firstOrNull { it.percent == percent }?.label
-        ?: if (percent == 0) stringResource(R.string.ui_settings_runtime_compaction_off) else "$percent%"
-}
-
-@Composable
-private fun compactionThresholdOptions(): List<CompactionThresholdOption> {
-    val offLabel = stringResource(R.string.ui_settings_runtime_compaction_off)
-    return listOf(
-        CompactionThresholdOption(percent = 0, label = offLabel),
-        CompactionThresholdOption(percent = 50, label = "50%"),
-        CompactionThresholdOption(percent = 60, label = "60%"),
-        CompactionThresholdOption(percent = 70, label = "70%"),
-        CompactionThresholdOption(percent = 80, label = "80%"),
-        CompactionThresholdOption(percent = 90, label = "90%"),
-    )
+    return if (percent == 0) {
+        stringResource(R.string.ui_settings_runtime_compaction_off)
+    } else {
+        "$percent%"
+    }
 }
 

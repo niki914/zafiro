@@ -117,7 +117,7 @@ fun CustomPyToolsSettingsContent(
                     }
                 }
 
-                is SettingsRowAction.Click -> Unit
+                else -> Unit
             }
         },
     )

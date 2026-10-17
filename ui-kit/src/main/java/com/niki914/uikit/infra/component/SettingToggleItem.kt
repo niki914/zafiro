@@ -1,22 +1,13 @@
 package com.niki914.uikit.infra.component
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.niki914.uikit.infra.component.settings.item.SettingCardItem
+import com.niki914.uikit.infra.component.settings.item.SettingTrailingSlot
 
 /**
  * 组内开关子项：保持整行切换和透明 item 语义，由外层容器提供卡片边界。
+ * 现已全面统一接入 [SettingCardItem] 与 [SettingTrailingSlot.Toggle]。
  */
 @Composable
 fun SettingToggleItem(
@@ -27,42 +18,15 @@ fun SettingToggleItem(
     description: String? = null,
     enabled: Boolean = true,
 ) {
-    val currentChecked by rememberUpdatedState(checked)
-    SettingsItemSurface(
-        modifier = modifier,
-        enabled = enabled,
-        hapticFeedbackType = if (!currentChecked) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff,
-        onClick = { onCheckedChange(!currentChecked) },
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (description != null) {
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-
-        LiquidToggle(
+    SettingCardItem(
+        title = title,
+        summary = description,
+        trailingSlot = SettingTrailingSlot.Toggle(
             checked = checked,
             enabled = enabled,
-            onCheckedChange = { newChecked ->
-                if (enabled) onCheckedChange(newChecked)
-            },
-        )
-    }
+            onCheckedChange = onCheckedChange,
+        ),
+        enabled = enabled,
+        modifier = modifier,
+    )
 }

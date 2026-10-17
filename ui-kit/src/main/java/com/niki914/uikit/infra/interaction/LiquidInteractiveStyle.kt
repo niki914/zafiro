@@ -12,13 +12,13 @@ data class LiquidInteractiveStyle(
     val highlightEnabled: Boolean = true,
 )
 
-internal val LiquidButtonInteractiveStyle =
+val LiquidButtonInteractiveStyle =
     LiquidInteractiveStyle(
         pressScalePx = 4.dp,
         maxDragScalePx = 4.dp,
     )
 
-internal val ActionBarButtonInteractiveStyle =
+val ActionBarButtonInteractiveStyle =
     LiquidInteractiveStyle(
         pressScalePx = 24.dp,
         maxDragScalePx = 4.8.dp,

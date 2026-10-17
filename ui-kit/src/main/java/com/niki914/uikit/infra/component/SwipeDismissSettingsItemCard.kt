@@ -7,23 +7,15 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.drag
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -41,14 +33,14 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.niki914.uikit.infra.component.settings.item.SettingHeaderRowLayout
+import com.niki914.uikit.infra.component.settings.item.SettingLeadingSlot
+import com.niki914.uikit.infra.component.settings.item.SettingTrailingSlot
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 import com.niki914.uikit.infra.shape.G2CardShape
 import kotlin.math.abs
 import kotlin.math.absoluteValue
@@ -61,6 +53,8 @@ fun SwipeDismissSettingsItemCard(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     summary: String? = null,
+    leadingSlot: SettingLeadingSlot = SettingLeadingSlot.None,
+    trailingSlot: SettingTrailingSlot = SettingTrailingSlot.None,
     leadingContent: (@Composable () -> Unit)? = null,
     showChevron: Boolean = false,
     /** 尾随动作文字（如「编辑」），点击命中由 SettingsItemSurface 统一分发。 */
@@ -76,6 +70,35 @@ fun SwipeDismissSettingsItemCard(
     dampingRange: Dp = SwipeDismissSettingsItemDefaults.DampingRange,
     dismissIcon: ImageVector = Icons.Default.Delete,
 ) {
+    val effectiveLeadingSlot = remember(leadingSlot, leadingContent) {
+        when {
+            leadingSlot !is SettingLeadingSlot.None -> leadingSlot
+            leadingContent != null -> SettingLeadingSlot.Custom(leadingContent)
+            else -> SettingLeadingSlot.None
+        }
+    }
+
+    val effectiveTrailingSlot = remember(trailingSlot, trailingActionText, onTrailingActionClick, showChevron) {
+        when {
+            trailingSlot !is SettingTrailingSlot.None -> trailingSlot
+            !trailingActionText.isNullOrBlank() -> SettingTrailingSlot.ActionText(
+                text = trailingActionText,
+                showChevron = showChevron,
+                onClick = onTrailingActionClick,
+            )
+            showChevron -> SettingTrailingSlot.Chevron()
+            else -> SettingTrailingSlot.None
+        }
+    }
+
+    val trailingAction: (() -> Unit)? = when {
+        !enabled -> null
+        effectiveTrailingSlot is SettingTrailingSlot.ActionText && effectiveTrailingSlot.onClick != null -> {
+            effectiveTrailingSlot.onClick
+        }
+        else -> null
+    }
+
     var trailingActionBounds by remember { mutableStateOf<Rect?>(null) }
 
     val density = LocalDensity.current
@@ -101,7 +124,7 @@ fun SwipeDismissSettingsItemCard(
         label = "swipeDismissDistance",
     )
 
-    val shape = G2CardShape(28.dp)
+    val shape = G2CardShape(SettingsTokens.CardCornerRadius)
     val backgroundColor = lerp(
         start = MaterialTheme.colorScheme.surfaceContainer,
         stop = MaterialTheme.colorScheme.error,
@@ -206,99 +229,28 @@ fun SwipeDismissSettingsItemCard(
         )
         SettingsItemSurface(
             enabled = enabled,
+            contentPadding = SettingsTokens.ContentPadding,
+            minHeight = SettingsTokens.ItemMinHeight,
+            shape = shape,
             highlightPulseKey = highlightPulseKey,
             highlightPulseDurationMillis = highlightPulseDurationMillis,
             onClick = onClick,
-            onTrailingActionClick = onTrailingActionClick,
-            trailingActionBoundsInWindow = trailingActionBounds.takeIf { !trailingActionText.isNullOrBlank() },
+            onTrailingActionClick = trailingAction,
+            trailingActionBoundsInWindow = if (trailingAction != null) trailingActionBounds else null,
             modifier = Modifier
                 .offset { IntOffset(x = -animatedDistancePx.toInt(), y = 0) },
         ) {
-            SwipeDismissSettingsItemContent(
+            SettingHeaderRowLayout(
+                leadingSlot = effectiveLeadingSlot,
                 title = title,
                 summary = summary,
-                leadingContent = leadingContent,
-                showChevron = showChevron,
-                trailingActionText = trailingActionText,
-                onTrailingActionBoundsChange = { trailingActionBounds = it },
-                contentColor = contentColor,
+                trailingSlot = effectiveTrailingSlot,
+                enabled = enabled,
+                titleColor = contentColor,
                 summaryColor = summaryColor,
+                onCardClick = onClick,
+                onTrailingBoundsChanged = { trailingActionBounds = it },
             )
-        }
-    }
-}
-
-@Composable
-private fun SwipeDismissSettingsItemContent(
-    title: String,
-    summary: String?,
-    leadingContent: (@Composable () -> Unit)?,
-    showChevron: Boolean,
-    trailingActionText: String?,
-    onTrailingActionBoundsChange: (Rect?) -> Unit,
-    contentColor: Color,
-    summaryColor: Color,
-) {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val titleAreaMaxWidth = if (leadingContent != null) {
-            (maxWidth - 32.dp) * 0.66f
-        } else {
-            maxWidth * 0.66f
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            if (leadingContent != null) {
-                Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                    leadingContent()
-                }
-            }
-            Column(
-                modifier = Modifier.widthIn(max = titleAreaMaxWidth),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                    color = contentColor,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (!summary.isNullOrBlank()) {
-                    Text(
-                        text = summary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = summaryColor,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            if (!trailingActionText.isNullOrBlank()) {
-                Text(
-                    text = trailingActionText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = summaryColor,
-                    modifier = Modifier.onGloballyPositioned { layoutCoordinates ->
-                        onTrailingActionBoundsChange(layoutCoordinates.boundsInWindow())
-                    },
-                )
-            }
-
-            if (showChevron) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = summaryColor,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
         }
     }
 }

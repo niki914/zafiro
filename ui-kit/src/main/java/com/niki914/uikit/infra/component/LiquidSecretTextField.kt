@@ -13,6 +13,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
+import com.kyant.backdrop.Backdrop
+import com.niki914.uikit.infra.LiquidGlassPresets
+import com.niki914.uikit.infra.LiquidGlassStyle
+
 @Composable
 fun LiquidSecretTextField(
     value: String,
@@ -26,6 +30,8 @@ fun LiquidSecretTextField(
     enabled: Boolean = true,
     singleLine: Boolean = true,
     moveCursorToEndOnFocus: Boolean = false,
+    backdrop: Backdrop? = null,
+    glassStyle: LiquidGlassStyle = LiquidGlassPresets.TextField,
 ) {
     val contentDescription = if (visible) {
         toggleHiddenContentDescription
@@ -41,6 +47,8 @@ fun LiquidSecretTextField(
         enabled = enabled,
         singleLine = singleLine,
         moveCursorToEndOnFocus = moveCursorToEndOnFocus,
+        backdrop = backdrop,
+        glassStyle = glassStyle,
         visualTransformation = if (visible) {
             VisualTransformation.None
         } else {

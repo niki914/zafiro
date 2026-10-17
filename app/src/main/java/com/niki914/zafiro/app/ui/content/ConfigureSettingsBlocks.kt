@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.niki914.okia.message.ThinkingLevel
 import com.niki914.uikit.infra.ActionBarButton
+import com.niki914.uikit.infra.component.SettingExpandableSliderItem
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
@@ -21,6 +22,7 @@ import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
 import com.niki914.zafiro.settings.model.LlmProtocol
+import kotlin.math.roundToInt
 
 @Composable
 internal fun ConfigureIdentitySettingsBlock(
@@ -210,7 +212,6 @@ internal fun ConfigureProtocolSettingsBlock(
 ) {
     val onClearActiveField = fieldController.clearActiveField
     var showProtocolDialog by rememberSaveable { mutableStateOf(false) }
-    var showThinkingDialog by rememberSaveable { mutableStateOf(false) }
 
     SettingsGroupCard {
         SettingToggleItem(
@@ -236,14 +237,29 @@ internal fun ConfigureProtocolSettingsBlock(
             },
         )
         SettingsItemDivider()
-        // 思考强度行：Value Row（点击弹单选弹窗）
-        SettingsListItem(
+        // 思考强度：可折叠滑块（有极 8 档）
+        val thinkingOptions = thinkingLevelOptions()
+        val currentLevelIndex = thinkingOptions.indexOfFirst { it.wire == uiState.thinkingLevelWire }
+            .takeIf { it >= 0 } ?: 0
+        SettingExpandableSliderItem(
             title = stringResource(R.string.ui_settings_configure_thinking_label),
-            currentState = thinkingLevelLabel(uiState.thinkingLevelWire),
-            showChevron = true,
-            onClick = {
-                onClearActiveField()
-                showThinkingDialog = true
+            summary = stringResource(R.string.ui_settings_configure_thinking_hint),
+            value = currentLevelIndex.toFloat(),
+            onValueChange = { rawIndex ->
+                val idx = rawIndex.roundToInt().coerceIn(0, thinkingOptions.lastIndex)
+                onThinkingLevelSelected(thinkingOptions[idx].wire)
+            },
+            valueRange = 0f..thinkingOptions.lastIndex.toFloat(),
+            steps = thinkingOptions.size - 1,
+            valueLabel = thinkingOptions[currentLevelIndex].label,
+            startLabel = stringResource(R.string.ui_settings_configure_thinking_start_label),
+            endLabel = stringResource(R.string.ui_settings_configure_thinking_end_label),
+            enabled = !uiState.isSaving,
+            expanded = fieldController.expandedField == ConfigureEditableField.Thinking,
+            onExpandedChange = { expanded ->
+                fieldController.onExpandedFieldChange(
+                    if (expanded) ConfigureEditableField.Thinking else null
+                )
             },
         )
         SettingsItemDivider()
@@ -292,22 +308,6 @@ internal fun ConfigureProtocolSettingsBlock(
             onProtocolSelected(protocol.wireId)
         },
     )
-
-    // 思考强度弹窗：含「Provider 默认」（不发字段）+ 全部 level，全协议同一可选项
-    SingleChoiceLiquidDialog(
-        visible = showThinkingDialog,
-        onDismissRequest = { showThinkingDialog = false },
-        title = stringResource(R.string.ui_settings_configure_thinking_label),
-        hint = stringResource(R.string.ui_settings_configure_thinking_hint),
-        options = thinkingLevelOptions(),
-        selectedId = uiState.thinkingLevelWire,
-        optionId = { it.wire },
-        optionLabel = { it.label },
-        onSelect = { option ->
-            showThinkingDialog = false
-            onThinkingLevelSelected(option.wire)
-        },
-    )
 }
 
 /** 思考强度可选项：「Provider 默认」（空串 = 不发字段）+ 全部 ThinkingLevel。 */
@@ -316,6 +316,3 @@ private data class ThinkingLevelOption(val wire: String, val label: String)
 private fun thinkingLevelOptions(): List<ThinkingLevelOption> =
     listOf(ThinkingLevelOption("", "Provider Default")) +
             ThinkingLevel.entries.map { ThinkingLevelOption(it.wireValue, it.wireValue) }
-
-private fun thinkingLevelLabel(wire: String): String =
-    thinkingLevelOptions().firstOrNull { it.wire == wire }?.label ?: "Provider Default"

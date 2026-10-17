@@ -72,4 +72,18 @@ sealed interface SettingsRowSpec {
         override val id: String? = null
         override val enabled: Boolean = true
     }
+
+    data class Slider(
+        override val id: String,
+        override val title: String,
+        val summary: String? = null,
+        val value: Float,
+        val valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+        val steps: Int = 0,
+        val valueLabel: String? = null,
+        val startLabel: String? = null,
+        val endLabel: String? = null,
+        val initiallyExpanded: Boolean = false,
+        override val enabled: Boolean = true,
+    ) : SettingsRowSpec
 }

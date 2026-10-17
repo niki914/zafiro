@@ -93,8 +93,7 @@ private fun ExecutionRulesSettingsContentBody(
                     onOpenRuleDetail(item.name, index, false)
                 }
 
-                is SettingsRowAction.Click,
-                is SettingsRowAction.ToggleChanged -> Unit
+                else -> Unit
             }
         },
     )

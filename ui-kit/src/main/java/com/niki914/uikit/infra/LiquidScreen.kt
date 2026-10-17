@@ -32,12 +32,19 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.niki914.uikit.infra.nav.TitleBarScrollState
+
+val LocalScreenBackdrop: ProvidableCompositionLocal<Backdrop?> =
+    staticCompositionLocalOf { null }
 
 /** 底部安全距离中，系统导航栏 inset 之外额外留出的设计间距。 */
 private val BottomInsetSpacing = 50.dp
@@ -63,6 +70,10 @@ fun LiquidScreen(
     isOccluded: Boolean = false,
     leftButtonAlpha: Float = 1f,
     rightButtonAlpha: Float = 1f,
+    showLeftButton: Boolean? = null,
+    showRightButton: Boolean? = null,
+    onLeftClick: (() -> Unit)? = null,
+    onRightClick: (() -> Unit)? = null,
     onLeftButtonBoundsChanged: ((Rect) -> Unit)? = null,
     onRightButtonBoundsChanged: ((Rect) -> Unit)? = null,
     leftButton: (@Composable () -> Unit)? = null,
@@ -71,7 +82,9 @@ fun LiquidScreen(
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
+    val contentBackdrop = rememberLayerBackdrop()
     val chromeBackdrop = rememberLayerBackdrop()
+    val screenBackdrop = rememberCombinedBackdrop(contentBackdrop, chromeBackdrop)
     val titleHorizontalPadding = with(density) { 12.dp * 2 + 48.sp.toDp() }
     val dialogHostState = remember { LiquidDialogHostState() }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -122,27 +135,33 @@ fun LiquidScreen(
         state.setActionBarHeight(actionBarHeight)
     }
 
-    Box(
-        modifier = modifier.fillMaxSize(),
+    CompositionLocalProvider(
+        LocalScreenBackdrop provides screenBackdrop,
+        LocalLiquidDialogHostState provides dialogHostState,
+        LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
     ) {
-        // Layer 1: page content
-        CompositionLocalProvider(
-            LocalLiquidScreenContentContext provides LiquidScreenContentContext(
-                topPadding = actionBarHeight,
-                bottomPadding = navigationBottom + BottomInsetSpacing,
-                actionButtonBottomPadding = navigationBottom + ActionButtonBottomSpacing,
-            ),
-            LocalLiquidDialogHostState provides dialogHostState,
-            LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
+        Box(
+            modifier = modifier.fillMaxSize(),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(titleBarScrollConnection),
+            // Layer 1: page content
+            CompositionLocalProvider(
+                LocalLiquidScreenContentContext provides LiquidScreenContentContext(
+                    topPadding = actionBarHeight,
+                    bottomPadding = navigationBottom + BottomInsetSpacing,
+                    actionButtonBottomPadding = navigationBottom + ActionButtonBottomSpacing,
+                    isTitleCollapsible = state.isTitleCollapsible,
+                ),
             ) {
-                content()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(titleBarScrollConnection)
+                        .layerBackdrop(contentBackdrop)
+                        .background(MaterialTheme.colorScheme.background),
+                ) {
+                    content()
+                }
             }
-        }
 
         // Layer 2: action bar background
         AnimatedVisibility(
@@ -172,6 +191,11 @@ fun LiquidScreen(
                 .fillMaxWidth()
                 .height(chromeHeight),
         ) {
+            val resolvedShowLeftButton = showLeftButton ?: state.showLeftButton
+            val resolvedShowRightButton = showRightButton ?: state.showRightButton
+            val resolvedOnLeftClick = onLeftClick ?: state.onLeftClick
+            val resolvedOnRightClick = onRightClick ?: state.onRightClick
+
             LiquidTopBar(
                 title = state.title,
                 titleDirection = state.titleDirection,
@@ -179,14 +203,14 @@ fun LiquidScreen(
                 isOccluded = isOccluded,
                 leftButtonAlpha = leftButtonAlpha,
                 rightButtonAlpha = rightButtonAlpha,
-                showLeftButton = state.showLeftButton,
-                showRightButton = state.showRightButton,
+                showLeftButton = resolvedShowLeftButton,
+                showRightButton = resolvedShowRightButton,
                 actionsEnabled = actionsEnabled,
-                onLeftClick = state.onLeftClick,
-                onRightClick = state.onRightClick,
+                onLeftClick = resolvedOnLeftClick,
+                onRightClick = resolvedOnRightClick,
                 onLeftButtonBoundsChanged = onLeftButtonBoundsChanged,
                 onRightButtonBoundsChanged = onRightButtonBoundsChanged,
-                backdrop = chromeBackdrop,
+                backdrop = screenBackdrop,
                 topInset = topInset,
                 titleHorizontalPadding = titleHorizontalPadding,
                 leftButton = leftButton,
@@ -208,4 +232,5 @@ fun LiquidScreen(
             }
         }
     }
+}
 }

@@ -48,8 +48,7 @@ private fun SettingsHomePageContentBody(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> groupsById[action.id]?.let(onOpenGroup)
-                is SettingsRowAction.Click -> Unit
-                is SettingsRowAction.ToggleChanged -> Unit
+                else -> Unit
             }
         },
     )

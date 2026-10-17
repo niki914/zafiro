@@ -131,7 +131,7 @@ private fun TakeoverSettingsContentBody(
                     onItemEnabledChanged(index, action.checked)
                 }
 
-                is SettingsRowAction.Click -> Unit
+                else -> Unit
             }
         },
     )

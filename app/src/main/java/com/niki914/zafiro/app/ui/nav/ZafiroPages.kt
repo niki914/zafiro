@@ -239,6 +239,7 @@ data object CustomPyToolsPage : ZafiroPage {
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
     override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
 }
 
 data class CustomPyToolDetailPage(
@@ -285,5 +286,4 @@ data object MarkdownScalePage : ZafiroPage {
     override val leftAction: TopBarActionSpec =
         TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
     override val rightAction: TopBarActionSpec? = null
-    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
 }
