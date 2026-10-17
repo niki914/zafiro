@@ -52,6 +52,14 @@ internal class DiscoveryStreamableHttpMcpClient(
                 ) {
                     return false
                 }
+                // 服务端明确拒绝 2026 探测（4xx HTTP 错误码）：不支持或信封拒绝，回退 legacy。
+                if (e.statusCode != null && e.statusCode in 400..499) {
+                    return false
+                }
+                // 服务端返回格式/参数/协议拒绝错误码（-32600 / -32602 / -32020 等）：不支持 2026 形态，回退 legacy。
+                if (e.jsonRpcCode != null && e.jsonRpcCode in FALLBACK_JSONRPC_CODES) {
+                    return false
+                }
                 throw e
             }
         }
@@ -75,6 +83,7 @@ internal class DiscoveryStreamableHttpMcpClient(
                         "must list its supported versions; this shape is a protocol violation.)"
             )
         }
+        wire.recordProtocolVersion(server.name, DISCOVERY_VERSION)
         return true
     }
 
@@ -106,11 +115,14 @@ internal class DiscoveryStreamableHttpMcpClient(
     private fun modernMeta(): JsonObject = buildJsonObject {
         put("io.modelcontextprotocol/protocolVersion", DISCOVERY_VERSION)
         put("io.modelcontextprotocol/clientInfo", McpWire.clientInfo())
+        put("io.modelcontextprotocol/clientCapabilities", buildJsonObject { })
     }
 
     companion object {
 
         /** 2026 协议版本。 */
         const val DISCOVERY_VERSION = "2026-07-28"
+
+        private val FALLBACK_JSONRPC_CODES = intArrayOf(-32600, -32602, -32020)
     }
 }

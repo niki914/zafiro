@@ -5,6 +5,7 @@
 *.ipr
 *.iws
 /.worktrees/
+/.personal/
 
 /.pi/*
 !/.pi/skills/

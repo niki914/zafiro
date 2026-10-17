@@ -160,7 +160,7 @@ class AutoDetectMcpClientTest {
     @Test
     fun `unrelated probe error propagates`() = runBlocking {
         server.dispatcher = programmableServer(
-            onDiscover = { b -> rpcError(b, -32602, "bad params") },
+            onDiscover = { b -> rpcError(b, -32603, "internal error") },
             onLegacy = { b -> rpcResult(b, """{"tools":[]}""") }
         )
         val e = try {
@@ -169,6 +169,7 @@ class AutoDetectMcpClientTest {
             x
         }
         assertNotNull(e)
+        assertEquals(-32603, e!!.jsonRpcCode)
     }
 
     // ── 模式缓存 ─────────────────────────────────────────────────────────

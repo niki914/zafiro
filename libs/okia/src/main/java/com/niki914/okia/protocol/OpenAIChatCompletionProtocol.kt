@@ -7,6 +7,7 @@ import com.niki914.okia.message.StopReason
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.tooling.ToolDescriptor
+import com.niki914.okia.tooling.ToolSchemaSanitizer
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
@@ -357,7 +358,9 @@ class OpenAIChatCompletionProtocol(
             put("function", buildJsonObject {
                 put("name", tool.wireName)
                 put("description", tool.description)
-                tool.inputSchemaJson?.let { put("parameters", codec.parseToJsonElement(it)) }
+                tool.inputSchemaJson?.let {
+                    put("parameters", ToolSchemaSanitizer.sanitize(codec.parseToJsonElement(it)))
+                }
             })
         }
 

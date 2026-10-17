@@ -102,7 +102,8 @@ class DiscoveryStreamableHttpMcpClientTest {
     fun `discover request carries self-contained meta metadata`() = runBlocking {
         server.dispatcher = discoverServer()
         client.discoverTools(mcpServer())
-        val discover = parseJson(awaitRequests(2)[0])
+        val req = awaitRequests(2)[0]
+        val discover = parseJson(req)
         assertEquals("server/discover", discover["method"]?.jsonPrimitive?.content)
         val meta = discover["params"]!!.jsonObject["_meta"]!!.jsonObject
         assertEquals(
@@ -113,6 +114,9 @@ class DiscoveryStreamableHttpMcpClientTest {
             "okia",
             meta["io.modelcontextprotocol/clientInfo"]!!.jsonObject["name"]?.jsonPrimitive?.content
         )
+        assertNotNull(meta["io.modelcontextprotocol/clientCapabilities"])
+        assertEquals("2026-07-28", req.getHeader("MCP-Protocol-Version"))
+        assertEquals("server/discover", req.getHeader("Mcp-Method"))
     }
 
     @Test
@@ -127,12 +131,15 @@ class DiscoveryStreamableHttpMcpClientTest {
     fun `tools list request also carries meta`() = runBlocking {
         server.dispatcher = discoverServer()
         client.discoverTools(mcpServer())
-        val listBody = parseJson(awaitRequests(2)[1])
+        val req = awaitRequests(2)[1]
+        val listBody = parseJson(req)
         val meta = listBody["params"]!!.jsonObject["_meta"]!!.jsonObject
         assertEquals(
             "2026-07-28",
             meta["io.modelcontextprotocol/protocolVersion"]?.jsonPrimitive?.content
         )
+        assertEquals("2026-07-28", req.getHeader("MCP-Protocol-Version"))
+        assertEquals("tools/list", req.getHeader("Mcp-Method"))
     }
 
     @Test
@@ -223,11 +230,34 @@ class DiscoveryStreamableHttpMcpClientTest {
     }
 
     @Test
-    fun `probe propagates unrelated json-rpc errors`() = runBlocking {
+    fun `probe returns false on envelope or parameter rejection`() = runBlocking {
+        // -32602 (Invalid params, 如信封缺少 clientCapabilities) 回退 legacy
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val body = Json.parseToJsonElement(request.body.peek().readUtf8()).jsonObject
-                return rpcError(body, -32602, "invalid params")
+                return rpcError(body, -32602, "Invalid _meta envelope")
+            }
+        }
+        assertFalse(client.probe(mcpServer()))
+    }
+
+    @Test
+    fun `probe returns false on http 4xx error`() = runBlocking {
+        // 服务端直接回 HTTP 400/404/405 等拒绝信封
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse =
+                MockResponse().setResponseCode(400).setBody("Bad Request")
+        }
+        assertFalse(client.probe(mcpServer()))
+    }
+
+    @Test
+    fun `probe propagates internal server errors`() = runBlocking {
+        // -32603 内部错误不属于协议协商拒绝，必须向外传播
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val body = Json.parseToJsonElement(request.body.peek().readUtf8()).jsonObject
+                return rpcError(body, -32603, "internal error")
             }
         }
         val e = try {
@@ -236,7 +266,7 @@ class DiscoveryStreamableHttpMcpClientTest {
             x
         }
         assertNotNull(e)
-        assertEquals(-32602, e!!.jsonRpcCode)
+        assertEquals(-32603, e!!.jsonRpcCode)
     }
 
     // ── tools/call ───────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ import com.niki914.okia.message.ThinkingLevel
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.okia.message.Usage
 import com.niki914.okia.tooling.ToolDescriptor
+import com.niki914.okia.tooling.ToolSchemaSanitizer
 import com.niki914.okia.transport.HttpRequest
 import com.niki914.okia.transport.SseEventParser
 import com.niki914.okia.transport.SseLine
@@ -368,7 +369,9 @@ class AnthropicMessagesProtocol(
         buildJsonObject {
             put("name", tool.wireName)
             put("description", tool.description)
-            tool.inputSchemaJson?.let { put("input_schema", codec.parseToJsonElement(it)) }
+            tool.inputSchemaJson?.let {
+                put("input_schema", ToolSchemaSanitizer.sanitize(codec.parseToJsonElement(it)))
+            }
         }
 
     // ── 流解析 ─────────────────────────────────────────────────────────────
