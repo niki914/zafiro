@@ -33,6 +33,8 @@ class LiquidScreenContentContext internal constructor(
     /** 吸底动作按钮的底边距 = 系统导航栏 inset + 更小的设计间距。
      * 与内容留白分开：内容末尾留白要能“推”出一屏，按钮则要贴底不上浮。 */
     val actionButtonBottomPadding: Dp,
+    /** 宿主页面顶栏模式是否为 Collapsible。若为 false（Pinned），内容容器不渲染重复大标题。 */
+    val isTitleCollapsible: Boolean = true,
 )
 
 /** Collapsible 页的顶栏折叠阈值：与大标题滚走的距离一致（页面大标题淡出同用此值）。 */
@@ -108,6 +110,7 @@ fun ProvideLiquidScreenContentForPreview(
     topPadding: Dp = 0.dp,
     bottomPadding: Dp = 0.dp,
     actionButtonBottomPadding: Dp = 24.dp,
+    isTitleCollapsible: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(
@@ -115,6 +118,7 @@ fun ProvideLiquidScreenContentForPreview(
             topPadding = topPadding,
             bottomPadding = bottomPadding,
             actionButtonBottomPadding = actionButtonBottomPadding,
+            isTitleCollapsible = isTitleCollapsible,
         ),
         LocalNavigationEntry provides NavigationEntry(id = "preview", page = PreviewPage),
         content = content,

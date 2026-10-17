@@ -149,6 +149,7 @@ fun LiquidScreen(
                     topPadding = actionBarHeight,
                     bottomPadding = navigationBottom + BottomInsetSpacing,
                     actionButtonBottomPadding = navigationBottom + ActionButtonBottomSpacing,
+                    isTitleCollapsible = state.isTitleCollapsible,
                 ),
             ) {
                 Box(

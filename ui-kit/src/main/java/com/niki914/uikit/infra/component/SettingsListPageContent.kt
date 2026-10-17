@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.niki914.uikit.infra.LocalLiquidScreenContentContext
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.TitleBarCollapseThreshold
 import com.niki914.uikit.infra.liquidScreenBottomPadding
@@ -28,6 +29,7 @@ import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.LocalPageTitle
 
 import com.niki914.uikit.infra.scrollbar.LiquidScrollableContainer
+import com.niki914.uikit.infra.scrollbar.LiquidScrollbarDefaults
 import com.niki914.uikit.infra.scrollbar.rememberLiquidOverscrollController
 import com.niki914.uikit.infra.scrollbar.rememberScrollStateAdapter
 
@@ -55,15 +57,23 @@ fun SettingsListPageContent(
     val scrollState =
         rememberSaveable(saver = ScrollState.Saver, init = { ScrollState(initial = 0) })
     val collapseRangePx = with(LocalDensity.current) { TitleBarCollapseThreshold.toPx() }
+    val isTitleCollapsible = LocalLiquidScreenContentContext.current.isTitleCollapsible
 
     val resolvedBottomPadding = contentBottomPadding ?: liquidScreenBottomPadding()
     val overscrollController = rememberLiquidOverscrollController()
     val scrollbarState = rememberScrollStateAdapter(scrollState, overscrollController)
 
-    // 精确接管顶栏折叠：内容滚出超过大标题高度或向上拉扯超滚时折叠；回弹归位或滚回顶部绝对变回透明
+    // 精确接管顶栏折叠：
+    // - Collapsible 页：内容滚出超过大标题高度或向上拉扯超滚时折叠；回弹归位或滚回顶部绝对变回透明；
+    // - Pinned 页：首屏即常驻小标题，产生任何滚动或向上拉扯时显示顶栏背景，归零时背景恢复透明。
     ReportTitleBarCollapsed {
-        scrollState.value > collapseRangePx ||
-            overscrollController.overscrollOffset.value < -collapseRangePx
+        if (isTitleCollapsible) {
+            val upwardOverscrollPx = (-overscrollController.overscrollOffset.value).coerceAtLeast(0f)
+            val effectiveScrollPx = scrollState.value + upwardOverscrollPx / LiquidScrollbarDefaults.RubberBandDamping
+            effectiveScrollPx > collapseRangePx
+        } else {
+            scrollState.value > 0 || overscrollController.overscrollOffset.value < 0f
+        }
     }
 
     val contentModifier = if (onBackgroundTap != null) {
@@ -96,7 +106,7 @@ fun SettingsListPageContent(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
         val pageTitle = LocalPageTitle.current
-        if (pageTitle.isNotBlank()) {
+        if (isTitleCollapsible && pageTitle.isNotBlank()) {
             Text(
                 text = pageTitle,
                 style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
@@ -105,8 +115,10 @@ fun SettingsListPageContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .graphicsLayer {
-                        // 大标题随滚动连续淡出（跟随内容移动，与顶栏布尔动画互补）。
-                        alpha = 1f - (scrollState.value / collapseRangePx).coerceIn(0f, 1f)
+                        // 大标题随滚动与向上拉扯超滚连续淡出（跟随内容移动，与顶栏布尔动画互补）。
+                        val upwardOverscrollPx = (-overscrollController.overscrollOffset.value).coerceAtLeast(0f)
+                        val effectiveScrollPx = scrollState.value + upwardOverscrollPx / LiquidScrollbarDefaults.RubberBandDamping
+                        alpha = 1f - (effectiveScrollPx / collapseRangePx).coerceIn(0f, 1f)
                     },
             )
         }
