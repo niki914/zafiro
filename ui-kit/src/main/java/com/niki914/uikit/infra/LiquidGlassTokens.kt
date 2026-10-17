@@ -199,4 +199,22 @@ object LiquidGlassPresets {
         shadowRadius = 20.dp,
         shadowColor = { isDark -> Color.Black.copy(if (isDark) 0.06f else 0.12f) },
     )
+
+    /**
+     * 顶栏动作条背景（LiquidTopBar / ActionBar）预设：
+     * Progressive Blur 渐变毛玻璃，由状态栏向下至顶栏底部平滑淡出，
+     * 消除顶栏与内容区的硬分割线。
+     */
+    val TopBar = LiquidTopBarStyle()
 }
+
+/**
+ * 顶栏动作条（LiquidTopBar / ActionBar）渐变毛玻璃样式规范。
+ */
+@Immutable
+data class LiquidTopBarStyle(
+    val blurRadius: (isDarkTheme: Boolean) -> Dp = { 16.dp },
+    val tintIntensity: (isDarkTheme: Boolean) -> Float = { if (it) 0.72f else 0.65f },
+)
+
+
