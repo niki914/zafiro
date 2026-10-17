@@ -76,8 +76,10 @@ object LLMController {
     suspend fun ingestUserImage(uriString: String): IngestedImage? =
         defaultEngine.ingestUserImage(uriString)
 
-    internal fun buildMcpFailureNotice(failed: List<McpServerDiscoverySnapshot>): String =
-        TurnPrefixComposer().buildMcpFailureNotice(failed)
+    internal fun buildMcpNotice(
+        loading: List<McpServerDiscoverySnapshot> = emptyList(),
+        failed: List<McpServerDiscoverySnapshot> = emptyList(),
+    ): String = TurnPrefixComposer().buildMcpNotice(loading, failed)
 
     internal fun validateLlmConfig(config: LlmConfig) =
         defaultEngine.sessionAssembler.validateLlmConfig(config)

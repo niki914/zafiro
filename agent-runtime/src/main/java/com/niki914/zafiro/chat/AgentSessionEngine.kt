@@ -295,7 +295,7 @@ class AgentSessionEngine {
             )
 
             val notifications = TerminalSessionPool.drainPendingNotifications()
-            val mcpNotice = prefixComposer.mcpFailureNotice(state.okia)
+            val mcpNotice = prefixComposer.mcpNotice(state.okia)
             val injection = prefixComposer.buildInjectionPrefixes(files, mcpNotice, notifications)
             if (injection != null) {
                 Logger.i(

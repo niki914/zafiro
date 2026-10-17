@@ -19,34 +19,39 @@ internal class TurnPrefixComposer {
     }
 
     @Volatile
-    private var mcpFailureSignature: String? = null
+    private var mcpNoticeSignature: String? = null
 
     fun reset() {
-        mcpFailureSignature = null
+        mcpNoticeSignature = null
     }
 
     /**
-     * MCP 发现失败注入（#switch-refresh 配套）：send 前读发现快照，
-     * 仅 Failed 服务器注入说明；按「失败集合 + 错误摘要」签名去重。
+     * MCP 状态注入（#switch-refresh 配套）：send 前读发现快照，
+     * 对 Loading (Discovering/Idle) 与 Failed 服务器注入快照说明；按签名去重。
      */
-    suspend fun mcpFailureNotice(session: Okia?): String? {
+    suspend fun mcpNotice(session: Okia?): String? {
         val okia = session ?: return null
-        val servers = okia.getMcpDiscoverySnapshot().servers.values
+        val servers = okia.getMcpDiscoverySnapshot().servers.values.filter { it.enabled }
         Logger.i(
             LOG_TAG,
             "mcp discovery " + servers.sortedBy { it.serverName }
                 .joinToString(" ") { "${it.serverName}=${it.state}" },
         )
-        val failed =
-            servers.filter { it.state == McpDiscoveryState.Failed }.sortedBy { it.serverName }
-        if (failed.isEmpty()) {
-            mcpFailureSignature = null
+        val loading = servers.filter {
+            it.state == McpDiscoveryState.Discovering || it.state == McpDiscoveryState.Idle
+        }.sortedBy { it.serverName }
+        val failed = servers.filter {
+            it.state == McpDiscoveryState.Failed
+        }.sortedBy { it.serverName }
+        if (loading.isEmpty() && failed.isEmpty()) {
+            mcpNoticeSignature = null
             return null
         }
-        val signature = failed.joinToString("|") { "${it.serverName}:${it.errorMessage.orEmpty()}" }
-        if (signature == mcpFailureSignature) return null
-        mcpFailureSignature = signature
-        return buildMcpFailureNotice(failed)
+        val signature = "L:" + loading.joinToString(",") { it.serverName } +
+                "|F:" + failed.joinToString(",") { "${it.serverName}:${it.errorMessage.orEmpty()}" }
+        if (signature == mcpNoticeSignature) return null
+        mcpNoticeSignature = signature
+        return buildMcpNotice(loading = loading, failed = failed)
     }
 
     /** 拼注入前缀：文件块 + 瞬态通知块，排成「块\n\n块」。 */
@@ -64,19 +69,27 @@ internal class TurnPrefixComposer {
         return prefixes.takeIf { it.isNotEmpty() }?.joinToString("\n\n")
     }
 
-    /** 失败注入文案；格式对齐终端完成通知的元信息风格。 */
-    fun buildMcpFailureNotice(
-        failed: List<McpServerDiscoverySnapshot>,
-    ): String = buildString {
-        appendLine("[IMPORTANT: MCP discovery failed for the following servers; their tools are unavailable in this turn:")
-        failed.forEach { server ->
-            val reason =
-                server.errorMessage?.lineSequence()?.firstOrNull()?.take(120) ?: "unknown error"
-            appendLine("- ${server.serverName}: $reason")
-        }
-        append(
-            "Do not attempt to call their tools. If the task depends on them, " +
-                    "tell the user the MCP service is currently unavailable.]",
-        )
+    /** MCP 状态快照文案；格式对齐瞬态通知的元信息风格。 */
+    fun buildMcpNotice(
+        loading: List<McpServerDiscoverySnapshot> = emptyList(),
+        failed: List<McpServerDiscoverySnapshot> = emptyList(),
+    ): String {
+        if (loading.isEmpty() && failed.isEmpty()) return ""
+        return buildString {
+            append("[Note: MCP status snapshot when this message was sent")
+            if (loading.isNotEmpty()) {
+                append(". Some tools may not be ready at this moment")
+            }
+            appendLine(":")
+            if (loading.isNotEmpty()) {
+                appendLine("- Loading: " + loading.joinToString(", ") { it.serverName })
+            }
+            failed.forEach { server ->
+                val reason =
+                    server.errorMessage?.lineSequence()?.firstOrNull()?.trim()?.take(120)?.ifEmpty { null }
+                        ?: "unknown error"
+                appendLine("- Failed: ${server.serverName} ($reason)")
+            }
+        }.trimEnd() + "]"
     }
 }
