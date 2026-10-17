@@ -91,6 +91,8 @@ fun SettingCardItem(
     isStandaloneCard: Boolean = false,
     shape: Shape = G2CardShape(SettingsTokens.CardCornerRadius),
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    highlightPulseKey: Any? = null,
+    highlightPulseDurationMillis: Int = 500,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
 ) {
@@ -160,6 +162,8 @@ fun SettingCardItem(
             contentPadding = SettingsTokens.ContentPadding,
             minHeight = SettingsTokens.ItemMinHeight,
             shape = if (isStandaloneCard) shape else MaterialTheme.shapes.extraSmall,
+            highlightPulseKey = highlightPulseKey,
+            highlightPulseDurationMillis = highlightPulseDurationMillis,
             onClick = effectiveOnClick,
             onLongClick = onLongClick,
             onTrailingActionClick = trailingAction,
@@ -206,13 +210,15 @@ fun SettingCardItem(
  * 消除 BoxWithConstraints，用原生单次 MeasurePass 贯彻优先级分配与绝对居中。
  */
 @Composable
-private fun SettingHeaderRowLayout(
+internal fun SettingHeaderRowLayout(
     leadingSlot: SettingLeadingSlot,
     title: String,
     summary: String?,
     trailingSlot: SettingTrailingSlot,
-    animatedChevronRotation: Float,
-    enabled: Boolean,
+    animatedChevronRotation: Float = 0f,
+    enabled: Boolean = true,
+    titleColor: Color? = null,
+    summaryColor: Color? = null,
     onCardClick: (() -> Unit)? = null,
     onTrailingBoundsChanged: ((Rect?) -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -220,10 +226,11 @@ private fun SettingHeaderRowLayout(
     val gutterPx = with(LocalDensity.current) { SettingsTokens.SlotGutter.roundToPx() }
     val density = LocalDensity.current
 
+    var rowBounds by remember { mutableStateOf<Rect?>(null) }
     var previewBounds by remember { mutableStateOf<Rect?>(null) }
     var actionBounds by remember { mutableStateOf<Rect?>(null) }
 
-    LaunchedEffect(previewBounds, actionBounds, trailingSlot) {
+    LaunchedEffect(rowBounds, previewBounds, actionBounds, trailingSlot) {
         if (onTrailingBoundsChanged == null) return@LaunchedEffect
 
         val hasTrailingAction = when (trailingSlot) {
@@ -237,27 +244,28 @@ private fun SettingHeaderRowLayout(
             return@LaunchedEffect
         }
 
-        val p = previewBounds
-        val a = actionBounds
+        val p = previewBounds?.takeIf { it.width > 0f && it.height > 0f }
+        val a = actionBounds?.takeIf { it.width > 0f && it.height > 0f }
 
         if (p == null && a == null) {
             onTrailingBoundsChanged(null)
             return@LaunchedEffect
         }
 
+        val row = rowBounds ?: return@LaunchedEffect
+
         val left = minOf(p?.left ?: Float.MAX_VALUE, a?.left ?: Float.MAX_VALUE)
         val right = maxOf(p?.right ?: Float.MIN_VALUE, a?.right ?: Float.MIN_VALUE)
-        val top = minOf(p?.top ?: Float.MAX_VALUE, a?.top ?: Float.MAX_VALUE)
-        val bottom = maxOf(p?.bottom ?: Float.MIN_VALUE, a?.bottom ?: Float.MIN_VALUE)
 
         val minTargetWidthPx = with(density) { 64.dp.toPx() }
         val rightPaddingPx = with(density) { SettingsTokens.ContentPadding.calculateRightPadding(LayoutDirection.Ltr).toPx() }
-        val verticalPaddingPx = with(density) { 12.dp.toPx() }
+        val topPaddingPx = with(density) { SettingsTokens.ContentPadding.calculateTopPadding().toPx() }
+        val bottomPaddingPx = with(density) { SettingsTokens.ContentPadding.calculateBottomPadding().toPx() }
 
-        val finalRight = right + rightPaddingPx
+        val finalRight = maxOf(right + rightPaddingPx, row.right + rightPaddingPx)
         val finalLeft = minOf(left - with(density) { 8.dp.toPx() }, finalRight - minTargetWidthPx)
-        val finalTop = top - verticalPaddingPx
-        val finalBottom = bottom + verticalPaddingPx
+        val finalTop = row.top - topPaddingPx
+        val finalBottom = row.bottom + bottomPaddingPx
 
         onTrailingBoundsChanged(Rect(finalLeft, finalTop, finalRight, finalBottom))
     }
@@ -271,7 +279,13 @@ private fun SettingHeaderRowLayout(
 
             // 2. Center Content Slot
             Box(modifier = Modifier.layoutId(SettingHeaderSlotId.Center)) {
-                SettingCenterContent(title = title, summary = summary, enabled = enabled)
+                SettingCenterContent(
+                    title = title,
+                    summary = summary,
+                    enabled = enabled,
+                    titleColor = titleColor,
+                    summaryColor = summaryColor,
+                )
             }
 
             // 3. Trailing Preview Slot (限额 20%，End-to-End 右对齐向左生长)
@@ -282,7 +296,11 @@ private fun SettingHeaderRowLayout(
                         previewBounds = coords.boundsInWindow()
                     }
             ) {
-                SettingTrailingPreviewContent(trailingSlot = trailingSlot, enabled = enabled)
+                SettingTrailingPreviewContent(
+                    trailingSlot = trailingSlot,
+                    enabled = enabled,
+                    summaryColor = summaryColor,
+                )
             }
 
             // 4. Trailing Action Slot (箭头或开关，固定尺寸，刚性优先)
@@ -297,11 +315,16 @@ private fun SettingHeaderRowLayout(
                     trailingSlot = trailingSlot,
                     animatedChevronRotation = animatedChevronRotation,
                     enabled = enabled,
+                    actionColor = summaryColor,
                     onCardClick = onCardClick,
                 )
             }
         },
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coords ->
+                rowBounds = coords.boundsInWindow()
+            },
     ) { measurables, constraints ->
         val effectiveWidth = constraints.maxWidth
 
@@ -312,9 +335,14 @@ private fun SettingHeaderRowLayout(
         )
         val actionWidth = actionPlaceable.width
 
-        // ── 步骤 2：度量 Trailing Preview (严格 clamp 在有效宽度的 20% 以内) ──
+        // ── 步骤 2：度量 Trailing Preview (ActionText 保证至少 minTargetWidthPx，常规 Preview clamp 在有效宽度的 20% 以内) ──
         val previewMeasurable = measurables.first { it.layoutId == SettingHeaderSlotId.Preview }
-        val maxPreviewWidthPx = (effectiveWidth * SettingsTokens.MaxPreviewWidthRatio).roundToInt()
+        val maxPreviewWidthRatio = (effectiveWidth * SettingsTokens.MaxPreviewWidthRatio).roundToInt()
+        val minTargetWidthPx = with(this) { 64.dp.roundToPx() }
+        val maxPreviewWidthPx = when (trailingSlot) {
+            is SettingTrailingSlot.ActionText -> maxOf(maxPreviewWidthRatio, minTargetWidthPx)
+            else -> maxPreviewWidthRatio
+        }
         val shouldLockWidth = when (trailingSlot) {
             is SettingTrailingSlot.Preview -> trailingSlot.lockWidth == true
             else -> false
@@ -480,15 +508,17 @@ private fun SettingCenterContent(
     title: String,
     summary: String?,
     enabled: Boolean,
+    titleColor: Color? = null,
+    summaryColor: Color? = null,
 ) {
-    val titleColor = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-    val summaryColor = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+    val finalTitleColor = titleColor ?: if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    val finalSummaryColor = summaryColor ?: if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
 
     Column(verticalArrangement = Arrangement.spacedBy(SettingsTokens.TextSpacing)) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium.copy(fontSize = SettingsTokens.TitleFontSize),
-            color = titleColor,
+            color = finalTitleColor,
             maxLines = SettingsTokens.MaxTitleLines,
             overflow = TextOverflow.Ellipsis,
         )
@@ -500,7 +530,7 @@ private fun SettingCenterContent(
                     fontSize = SettingsTokens.SummaryFontSize,
                     lineHeight = SettingsTokens.SummaryLineHeight,
                 ),
-                color = summaryColor,
+                color = finalSummaryColor,
                 maxLines = SettingsTokens.MaxSummaryLines,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -513,8 +543,9 @@ private fun SettingCenterContent(
 private fun SettingTrailingPreviewContent(
     trailingSlot: SettingTrailingSlot,
     enabled: Boolean,
+    summaryColor: Color? = null,
 ) {
-    val defaultTextColor = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+    val defaultTextColor = summaryColor ?: if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
 
     when (trailingSlot) {
         is SettingTrailingSlot.Preview -> {
@@ -536,7 +567,7 @@ private fun SettingTrailingPreviewContent(
                     fontSize = SettingsTokens.PreviewFontSize,
                     fontWeight = FontWeight.SemiBold,
                 ),
-                color = MaterialTheme.colorScheme.primary,
+                color = summaryColor ?: MaterialTheme.colorScheme.primary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.End,
@@ -553,9 +584,10 @@ private fun SettingTrailingActionContent(
     trailingSlot: SettingTrailingSlot,
     animatedChevronRotation: Float,
     enabled: Boolean,
+    actionColor: Color? = null,
     onCardClick: (() -> Unit)? = null,
 ) {
-    val defaultIconTint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+    val defaultIconTint = actionColor ?: if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
 
     when (trailingSlot) {
         is SettingTrailingSlot.None -> Unit
