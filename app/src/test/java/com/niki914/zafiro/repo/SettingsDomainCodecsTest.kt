@@ -395,8 +395,8 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
-    fun appStateBlankThemeModeFallsBackToDark() {
-        assertEquals("dark", AppStateSettingsCodec.parse("""{"theme_mode":""}""").themeMode)
+    fun appStateBlankThemeModeFallsBackToLight() {
+        assertEquals("light", AppStateSettingsCodec.parse("""{"theme_mode":""}""").themeMode)
     }
 
     @Test

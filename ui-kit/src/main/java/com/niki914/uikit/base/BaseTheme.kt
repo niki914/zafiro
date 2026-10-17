@@ -50,7 +50,7 @@ fun resolveThemeColorScheme(
 }
 
 /** 全局深色模式单一来源，由 BaseTheme 提供；所有深色判断必须读它而非 isSystemInDarkTheme。 */
-val LocalAppDarkTheme = staticCompositionLocalOf { true }
+val LocalAppDarkTheme = staticCompositionLocalOf { false }
 
 @Composable
 fun BaseTheme(

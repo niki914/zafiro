@@ -28,10 +28,10 @@ internal data class AppStateSettings(
     val loadLastConversationOnStartup: Boolean = false,
     /** 主题深浅色模式；system/light/dark。 */
     @SerialName("theme_mode")
-    val themeMode: String = "dark",
+    val themeMode: String = "light",
     /** 主题种子色 ARGB hex；空串 = 跟随壁纸动态色。 */
     @SerialName("theme_seed_color")
-    val themeSeedColor: String = "",
+    val themeSeedColor: String = "FFFABD00",
     /** Markdown 字体排版缩放比例；基准为 1.0f (100%)。 */
     @SerialName("markdown_scale")
     val markdownScale: Float = 1.0f,
@@ -98,8 +98,8 @@ internal object AppStateSettingsCodec {
         return try {
             // 显式 serializer：与 ConversationRepo 一致（reified 重载在本模块不可用）。
             json.decodeFromString(AppStateSettings.serializer(), jsonString).let {
-                // 损坏文件里的兜底：themeMode 空串回到 dark；markdown_scale 越界夹回可用区间。
-                val fixed = if (it.themeMode.isBlank()) it.copy(themeMode = "dark") else it
+                // 损坏文件里的兜底：themeMode 空串回到 light；markdown_scale 越界夹回可用区间。
+                val fixed = if (it.themeMode.isBlank()) it.copy(themeMode = "light") else it
                 // 灵敏度是开放字符串：未知值（手改 / 拼错 / 其他版本写入）回默认档，不崩。
                 val sanitizedCompactionThreshold = when {
                     fixed.contextCompactionThresholdPercent == 0 -> 0
