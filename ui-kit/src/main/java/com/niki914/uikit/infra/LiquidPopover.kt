@@ -1,5 +1,6 @@
 package com.niki914.uikit.infra
 
+import android.view.MotionEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -37,11 +38,15 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -49,6 +54,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -212,18 +218,36 @@ internal fun LiquidPopoverSurface(
         onDismissRequest()
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // 心智对齐 DropdownMenu：完全透明的空白点击拦截区，绝无全局暗色阴影/Scrim
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismissRequest,
-                ),
-        )
+    val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+    var cardBounds by remember { mutableStateOf<Rect?>(null) }
 
+    LaunchedEffect(expanded) {
+        if (!expanded) {
+            cardBounds = null
+        }
+    }
+
+    DisposableEffect(expanded) {
+        if (!expanded) return@DisposableEffect onDispose {}
+
+        val unregister = GlobalTouchDispatcher.register { event ->
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                val bounds = cardBounds ?: anchorBounds
+                if (bounds != null) {
+                    val isInside = bounds.contains(Offset(event.x, event.y))
+                    if (!isInside) {
+                        currentOnDismissRequest()
+                    }
+                }
+            }
+        }
+
+        onDispose {
+            unregister()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         SubcomposeLayout(modifier = Modifier.fillMaxSize()) { constraints ->
             val anchor = anchorBounds ?: run {
                 val defaultButtonSizePx = with(density) { 48.dp.toPx() }
@@ -392,7 +416,10 @@ internal fun LiquidPopoverSurface(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = {},
-                        ),
+                        )
+                        .onGloballyPositioned { coordinates ->
+                            cardBounds = coordinates.boundsInWindow()
+                        },
                 ) {
                     Box(
                         modifier = Modifier

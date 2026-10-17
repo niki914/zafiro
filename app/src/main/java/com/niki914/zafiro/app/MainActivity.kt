@@ -2,6 +2,7 @@ package com.niki914.zafiro.app
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.MotionEvent
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -9,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.niki914.logging.Logger
+import com.niki914.uikit.infra.GlobalTouchDispatcher
 import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.ui.ZafiroApp
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
@@ -82,6 +84,11 @@ class MainActivity : AppCompatActivity() {
         val targetConversationId =
             intent?.getStringExtra(ApplicationService.EXTRA_TARGET_CONVERSATION_ID)
         findService<ApplicationService>()?.handleNavigationIntent(targetConversationId)
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        GlobalTouchDispatcher.dispatch(ev)
+        return super.dispatchTouchEvent(ev)
     }
 
     override fun onResume() {
