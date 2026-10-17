@@ -1,3 +1,4 @@
+// 保护：AgentSessionEngine 与 OKIA 会话生命周期、协议路由、热更新与流式事件契约
 package com.niki914.zafiro.chat
 
 import com.niki914.okia.Okia
@@ -48,19 +49,21 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-class LLMControllerOkiaTest {
+class AgentSessionEngineOkiaTest {
 
     @get:Rule
     val silentLogger = SilentLoggerRule()
 
+    private val engine = AgentSessionEngine()
+
     @Before
     fun setUp() {
-        LLMController.resetForTest()
+        engine.resetForTest()
     }
 
     @After
     fun tearDown() {
-        LLMController.resetForTest()
+        engine.resetForTest()
     }
 
     // ── 装配：protocol → 协议 ───────────────────────────────────────────────
@@ -76,12 +79,12 @@ class LLMControllerOkiaTest {
             )
         )
         val capturedProtocols = mutableListOf<LlmProtocol>()
-        LLMController.okiaFactory = LLMController.OkiaFactory { protocol, _, _ ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { protocol, _, _ ->
             capturedProtocols += protocol
             openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
         }
 
-        LLMController.refresh()
+        engine.refresh()
 
         assertEquals(listOf(LlmProtocol.DeepSeek), capturedProtocols)
     }
@@ -95,13 +98,13 @@ class LLMControllerOkiaTest {
                 llmConfig = validLlmConfig(idleTimeoutSeconds = 30L, retryMaxAttempts = 1),
             )
         )
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, _, _ ->
             openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
         }
 
-        LLMController.refresh()
-        assertEquals(30L, LLMController.okia?.config()?.idleTimeoutSeconds)
-        assertEquals(1, LLMController.okia?.config()?.retryPolicy?.maxAttempts)
+        engine.refresh()
+        assertEquals(30L, engine.okia?.config()?.idleTimeoutSeconds)
+        assertEquals(1, engine.okia?.config()?.retryPolicy?.maxAttempts)
 
         // 同一实例复用，仅改设置 → 热更新生效
         val gateway = installRuntimeSettingsGatewayForTest(
@@ -110,10 +113,10 @@ class LLMControllerOkiaTest {
             )
         )
         gateway.llmConfig = validLlmConfig(idleTimeoutSeconds = 90L, retryMaxAttempts = 5)
-        LLMController.refresh()
+        engine.refresh()
 
-        assertEquals(90L, LLMController.okia?.config()?.idleTimeoutSeconds)
-        assertEquals(5, LLMController.okia?.config()?.retryPolicy?.maxAttempts)
+        assertEquals(90L, engine.okia?.config()?.idleTimeoutSeconds)
+        assertEquals(5, engine.okia?.config()?.retryPolicy?.maxAttempts)
     }
 
     @Test
@@ -141,14 +144,14 @@ class LLMControllerOkiaTest {
                 ),
             )
         )
-        LLMController.okiaFactory = LLMController.OkiaFactory { apiType, restore, config ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { apiType, restore, config ->
             openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
         }
 
-        LLMController.refresh()
+        engine.refresh()
 
         // D25 注册装配：refresh 后 registry 只含启用的本地工具
-        val names = LLMController.toolRegistry.snapshot()
+        val names = engine.toolRegistry.snapshot()
             .map { it.descriptor.name }
             .toSet()
         assertEquals(setOf("shell", "py_x"), names)
@@ -164,13 +167,13 @@ class LLMControllerOkiaTest {
                 ),
             )
         )
-        LLMController.okiaFactory = LLMController.OkiaFactory { apiType, restore, config ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { apiType, restore, config ->
             openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
         }
 
-        LLMController.refresh()
+        engine.refresh()
 
-        val shell = LLMController.toolRegistry.snapshot()
+        val shell = engine.toolRegistry.snapshot()
             .firstOrNull { it.descriptor.name == "shell" }
         assertNotNull(shell)
         // 内置工具携带 inputSchemaJson（D25 描述合法性）；kind = Local
@@ -193,10 +196,10 @@ class LLMControllerOkiaTest {
             ),
             result = TurnResult.Completed(CompletionReason.Stop),
         )
-        LLMController.okiaFactory =
-            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
+        engine.okiaFactory =
+            AgentSessionEngine.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
-        val events = LLMController.stream("hello").toList()
+        val events = engine.stream("hello").toList()
 
         assertEquals(LlmStreamEvent.RoundStarted, events[0])
         assertEquals("hi", (events[1] as LlmStreamEvent.TextDelta).delta)
@@ -226,10 +229,10 @@ class LLMControllerOkiaTest {
                 )
             ),
         )
-        LLMController.okiaFactory =
-            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
+        engine.okiaFactory =
+            AgentSessionEngine.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
-        val events = LLMController.stream("hello").toList()
+        val events = engine.stream("hello").toList()
 
         val error = events.first { it is LlmStreamEvent.Error } as LlmStreamEvent.Error
         assertEquals("boom", error.message)
@@ -251,10 +254,10 @@ class LLMControllerOkiaTest {
                 return TurnResult.Completed(CompletionReason.Stop)
             }
         }
-        LLMController.okiaFactory =
-            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
+        engine.okiaFactory =
+            AgentSessionEngine.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
-        LLMController.stream("hello").toList()
+        engine.stream("hello").toList()
 
         val snapshot = capturedSnapshots.single()
         assertTrue(snapshot.systemPrompt.orEmpty().contains("Base"))
@@ -277,10 +280,10 @@ class LLMControllerOkiaTest {
                 return TurnResult.Completed(CompletionReason.Stop)
             }
         }
-        LLMController.okiaFactory =
-            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
+        engine.okiaFactory =
+            AgentSessionEngine.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
-        LLMController.stream("hello").toList()
+        engine.stream("hello").toList()
 
         // 设置页填的输出上限必须原样进请求快照（不是 okia 骨架的 4096）
         assertEquals(64_000, capturedSnapshots.single().maxTokens)
@@ -301,13 +304,13 @@ class LLMControllerOkiaTest {
                 return TurnResult.Completed(CompletionReason.Stop)
             }
         }
-        LLMController.okiaFactory =
-            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
+        engine.okiaFactory =
+            AgentSessionEngine.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(loop) }
 
-        LLMController.stream("hello").toList()
+        engine.stream("hello").toList()
         // 改设置：同一会话实例复用（不冷启），下一轮请求必须看到新值
         gateway.llmConfig = gateway.llmConfig.copy(maxTokens = 32_000)
-        LLMController.stream("again").toList()
+        engine.stream("again").toList()
 
         assertEquals(listOf(64_000, 32_000), capturedSnapshots.map { it.maxTokens })
     }
@@ -319,11 +322,11 @@ class LLMControllerOkiaTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, _, _ ->
             openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Aborted(StopCause.UserStop)))
         }
 
-        val events = LLMController.stream("hello").toList()
+        val events = engine.stream("hello").toList()
 
         // 停止不是错误：终态由 Agent 按打断结算，这里不能补错误卡（旧守卫会补一张「内部错误」）
         assertTrue(events.none { it is LlmStreamEvent.Error })
@@ -348,13 +351,13 @@ class LLMControllerOkiaTest {
                 return TurnResult.Completed(CompletionReason.Stop)
             }
         }
-        LLMController.okiaFactory =
-            LLMController.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(blockingLoop) }
+        engine.okiaFactory =
+            AgentSessionEngine.OkiaFactory { _, _, _ -> openOkiaWithStubLoop(blockingLoop) }
 
-        val firstJob = launch { LLMController.stream("q1").toList() }
+        val firstJob = launch { engine.stream("q1").toList() }
         entered.await()
         // 第二个并发 send：OKIA 活跃回合契约抛 IllegalStateException → TurnConflict
-        val secondEvents = LLMController.stream("q2").toList()
+        val secondEvents = engine.stream("q2").toList()
         val error = secondEvents.first { it is LlmStreamEvent.Error } as LlmStreamEvent.Error
         assertEquals(LlmErrorCode.TurnConflict, error.code)
 
@@ -369,17 +372,17 @@ class LLMControllerOkiaTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, restore, _ ->
             openOkiaWithStubLoop(
                 stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)),
                 restore
             )
         }
 
-        val id = LLMController.ensureSession()
+        val id = engine.ensureSession()
 
         assertTrue(id.isNotBlank())
-        assertEquals(id, LLMController.currentConversation.value?.id)
+        assertEquals(id, engine.currentConversation.value?.id)
     }
 
     @Test
@@ -387,13 +390,13 @@ class LLMControllerOkiaTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, restore, _ ->
             openOkiaWithStubLoop(
                 stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)),
                 restore
             )
         }
-        LLMController.refresh()
+        engine.refresh()
         val snapshot = SessionSnapshot(
             id = "session-restored",
             leafId = "e1",
@@ -414,10 +417,10 @@ class LLMControllerOkiaTest {
             ),
         )
 
-        LLMController.openSession(snapshot)
+        engine.openSession(snapshot)
 
-        assertEquals("session-restored", LLMController.currentConversation.value?.id)
-        val texts = LLMController.currentConversation.value?.history.orEmpty().map { entry ->
+        assertEquals("session-restored", engine.currentConversation.value?.id)
+        val texts = engine.currentConversation.value?.history.orEmpty().map { entry ->
             when (val message = entry.message) {
                 is Message.User -> message.content
                     .filterIsInstance<ContentBlock.Text>().map { it.text }.joinToString("\n")
@@ -437,7 +440,7 @@ class LLMControllerOkiaTest {
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig(provider = "deepseek"))
         )
         val capturedRestores = mutableListOf<SessionSnapshot?>()
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, restore, _ ->
             capturedRestores += restore
             openOkiaWithStubLoop(
                 stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)),
@@ -464,13 +467,13 @@ class LLMControllerOkiaTest {
             ),
         )
         // 以 deepseek 载入会话（树有内容）
-        LLMController.openSession(snapshot)
+        engine.openSession(snapshot)
 
         // 切到 anthropic 再 refresh：应带 restore 延续同一棵树（id + entries 不变）
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig(provider = "anthropic"))
         )
-        LLMController.refresh()
+        engine.refresh()
 
         val carried = capturedRestores.last()
         assertNotNull("provider switch must carry session snapshot", carried)
@@ -483,18 +486,18 @@ class LLMControllerOkiaTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, _ ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, restore, _ ->
             openOkiaWithStubLoop(
                 stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)),
                 restore
             )
         }
-        LLMController.refresh()
-        assertTrue(LLMController.currentConversation.value != null)
+        engine.refresh()
+        assertTrue(engine.currentConversation.value != null)
 
-        LLMController.resetConversation()
+        engine.resetConversation()
 
-        assertTrue(LLMController.currentConversation.value == null)
+        assertTrue(engine.currentConversation.value == null)
     }
 
     @Test
@@ -504,14 +507,14 @@ class LLMControllerOkiaTest {
         )
         installRuntimeSettingsGatewayForTest(gateway)
         var lastCreatedConfig: ResolvedLlmConfig? = null
-        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, config ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, restore, config ->
             lastCreatedConfig = config
             openOkiaWithStubLoop(
                 stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)),
                 restore
             )
         }
-        LLMController.refresh()
+        engine.refresh()
         assertEquals("model-v1", lastCreatedConfig?.model)
 
         // 外部新配置为 model-v2
@@ -530,7 +533,7 @@ class LLMControllerOkiaTest {
                 ),
             ),
         )
-        LLMController.openSession(snapshot)
+        engine.openSession(snapshot)
 
         assertEquals("model-v2", lastCreatedConfig?.model)
     }
@@ -550,7 +553,7 @@ class LLMControllerOkiaTest {
         installRuntimeSettingsGatewayForTest(gateway)
 
         val engine = AgentSessionEngine()
-        engine.okiaFactory = LLMController.OkiaFactory { _, _, _ ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, _, _ ->
             openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
         }
 
@@ -570,7 +573,7 @@ class LLMControllerOkiaTest {
         )
 
         val engine = AgentSessionEngine()
-        engine.okiaFactory = LLMController.OkiaFactory { _, _, _ ->
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, _, _ ->
             openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
         }
 

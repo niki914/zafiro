@@ -5,7 +5,6 @@ import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.app.notification.TurnNotificationManager
-import com.niki914.zafiro.chat.LLMController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -16,8 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * 消息级增量持久化器（T3，D3-1/D3-2/D3-8）。
  *
- * 观察 [LLMController.currentConversation]（当前会话快照流，实例切换自动
- * 重发射），对比已持久化条数，把新 commit 的消息增量插入 Room。
+ * 观察会话快照流（由各持久化 Agent 实例提供），对比已持久化条数，把新 commit 的消息增量插入 Room。
  * - 新增消息永远追加在 leaf 投影尾部（线性 append-only），drop(persistedCount)
  *   就是新消息；插入按 (conversation_id, id) 幂等（@Insert IGNORE），观察协程
  *   重启/切会话重复观察不重复写
@@ -37,7 +35,7 @@ object ConversationPersister {
 
     fun start(
         scope: CoroutineScope,
-        source: Flow<Conversation?> = LLMController.currentConversation
+        source: Flow<Conversation?>,
     ) {
         scope.launch {
             source.collect { snapshot ->

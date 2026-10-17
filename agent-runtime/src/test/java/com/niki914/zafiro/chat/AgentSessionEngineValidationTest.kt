@@ -1,15 +1,18 @@
+// 保护：AgentSessionEngine 与 LLM 配置校验契约；模型与端点缺失快速失败
 package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import org.junit.Assert.fail
 import org.junit.Test
 
-class LLMControllerValidationTest {
+class AgentSessionEngineValidationTest {
+
+    private val engine = AgentSessionEngine()
 
     @Test
     fun validateLlmConfig_throwsWhenEndpointIsBlank() {
         captureIllegalState {
-            LLMController.validateLlmConfig(
+            engine.validateLlmConfig(
                 RuntimeLlmConfig(
                     endpoint = " ",
                     model = "deepseek-chat",
@@ -21,7 +24,7 @@ class LLMControllerValidationTest {
     @Test
     fun validateLlmConfig_throwsWhenModelIsBlank() {
         captureIllegalState {
-            LLMController.validateLlmConfig(
+            engine.validateLlmConfig(
                 RuntimeLlmConfig(
                     endpoint = "https://example.com/v1",
                     model = "",

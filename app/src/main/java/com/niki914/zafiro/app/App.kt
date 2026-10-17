@@ -7,7 +7,6 @@ import com.google.android.material.color.DynamicColors
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.api.McpService
-import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.debug.DebugLogFile
@@ -48,9 +47,6 @@ class App : Application() {
         ContextProvider.provide(applicationContext)
         XRepo.init(this.applicationContext)
         ConversationRepo.init(this.applicationContext)
-        // T3：消息级增量持久化器（观察 LLMController 当前会话快照流，
-        // 独立于 UI 生命周期——回合可能在宿主后台跑，ViewModel 已销毁时仍落盘）
-        ConversationPersister.start(applicationScope)
         RuntimeEnvironment.install(createAppRuntimeBridge())
         // 依赖装配只发生在 AppServices（主进程组合根）
         AppServices.install(this)

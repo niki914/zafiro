@@ -104,8 +104,8 @@ internal class OkiaSessionAssembler(
 
     val currentConversation: StateFlow<Conversation?> get() = conversationFlow
 
-    var okiaFactory: LLMController.OkiaFactory =
-        LLMController.OkiaFactory { protocol, restore, config ->
+    var okiaFactory: AgentSessionEngine.OkiaFactory =
+        AgentSessionEngine.OkiaFactory { protocol, restore, config ->
             openOkiaWithDefaultProtocol(protocol, restore, config)
         }
 
@@ -116,7 +116,7 @@ internal class OkiaSessionAssembler(
         sessionForwardJob?.cancel()
         sessionForwardJob = null
         conversationFlow.value = null
-        okiaFactory = LLMController.OkiaFactory { protocol, restore, config ->
+        okiaFactory = AgentSessionEngine.OkiaFactory { protocol, restore, config ->
             openOkiaWithDefaultProtocol(protocol, restore, config)
         }
     }
@@ -187,7 +187,7 @@ internal class OkiaSessionAssembler(
             hooks += killToolResourcesHook
             hooks += fixIncompleteToolCallsHook
             hooks += compactPruningHook
-            idleTimeoutSeconds = config.idleTimeoutSeconds ?: LLMController.NO_IDLE_TIMEOUT_SECONDS
+            idleTimeoutSeconds = config.idleTimeoutSeconds ?: AgentSessionEngine.NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
             maxTokens = config.maxTokens
             toolRegistry = this@OkiaSessionAssembler.toolRegistry
@@ -241,7 +241,7 @@ internal class OkiaSessionAssembler(
             this.endpoint = endpoint
             apiKey = config.apiKey
             model = config.model
-            idleTimeoutSeconds = config.idleTimeoutSeconds ?: LLMController.NO_IDLE_TIMEOUT_SECONDS
+            idleTimeoutSeconds = config.idleTimeoutSeconds ?: AgentSessionEngine.NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
             maxTokens = config.maxTokens
             thinkingLevel = config.thinkingLevel

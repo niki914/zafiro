@@ -21,6 +21,7 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.DEFAULT_CONTEXT_WINDOW_TOKENS
 import com.niki914.zafiro.settings.model.LlmProtocol
+import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,8 +43,17 @@ import java.util.UUID
  * - 独立的流执行管道与回合状态（[LlmStreamPipeline]）。
  */
 class AgentSessionEngine {
-    private companion object {
+    companion object {
         const val LOG_TAG = "niki914_zafiro_AgentSessionEngine"
+        const val NO_IDLE_TIMEOUT_SECONDS = Long.MAX_VALUE / 1000
+    }
+
+    fun interface OkiaFactory {
+        suspend fun create(
+            protocol: LlmProtocol,
+            restore: SessionSnapshot?,
+            config: ResolvedLlmConfig,
+        ): Okia
     }
 
     val tenantId: String = UUID.randomUUID().toString()
@@ -84,7 +94,7 @@ class AgentSessionEngine {
             sessionAssembler.activeSession = value
         }
 
-    internal var okiaFactory: LLMController.OkiaFactory
+    internal var okiaFactory: OkiaFactory
         get() = sessionAssembler.okiaFactory
         set(value) {
             sessionAssembler.okiaFactory = value
@@ -179,7 +189,7 @@ class AgentSessionEngine {
             apiKey = configWithoutRuntimePrompt.apiKey
             model = configWithoutRuntimePrompt.model
             idleTimeoutSeconds = configWithoutRuntimePrompt.idleTimeoutSeconds
-                ?: LLMController.NO_IDLE_TIMEOUT_SECONDS
+                ?: NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts)
             maxTokens = configWithoutRuntimePrompt.maxTokens
             thinkingLevel = configWithoutRuntimePrompt.thinkingLevel
@@ -240,6 +250,7 @@ class AgentSessionEngine {
      */
     suspend fun openSession(restore: SessionSnapshot) {
         val startedAtMs = System.currentTimeMillis()
+        prefixComposer.reset()
         Logger.i(
             LOG_TAG,
             "open session id=${restore.id} entries=${restore.entries.size} started"
@@ -352,6 +363,7 @@ class AgentSessionEngine {
         Logger.i(LOG_TAG, "close session requested tenantId=$tenantId")
         TerminalSessionPool.closeTenantSessions(tenantId)
         sessionAssembler.closeSession()
+        prefixComposer.reset()
         runtimeState = null
         boundConfigId = ""
         Logger.i(LOG_TAG, "close session done")
@@ -360,6 +372,7 @@ class AgentSessionEngine {
     suspend fun resetConversation() {
         Logger.i(LOG_TAG, "reset conversation requested")
         sessionAssembler.resetConversation()
+        prefixComposer.reset()
         runtimeState = null
         boundConfigId = ""
         Logger.i(LOG_TAG, "reset conversation done")
@@ -413,6 +426,9 @@ class AgentSessionEngine {
             (entry.message as? Message.Assistant)?.message?.usage?.contextTokens
         }
     }
+
+    internal fun validateLlmConfig(config: RuntimeLlmConfig) =
+        sessionAssembler.validateLlmConfig(config)
 
     private data class RuntimeState(
         val snapshot: LlmRuntimeSnapshot,

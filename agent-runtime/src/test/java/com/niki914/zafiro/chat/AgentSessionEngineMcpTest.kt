@@ -1,3 +1,4 @@
+// 保护：AgentSessionEngine 与 MCP 发现时序、签名状态机及工具注册契约
 package com.niki914.zafiro.chat
 
 import com.niki914.okia.Okia
@@ -45,22 +46,24 @@ import org.junit.Test
  * - 装配：McpServerDefinition.Http → OkiaConfig.mcpServers（update 写入）
  * - 时序不变量：首次 refresh 恰好触发 1 次 discoverTools（启动 eager）；
  *   签名未变不刷；配置变化再刷；失败也更新签名（防风暴）
- * - 发现结果注册进 LLMController.toolRegistry（wireName = mcp__server__tool）
+ * - 发现结果注册进 engine.toolRegistry（wireName = mcp__server__tool）
  * 全程 fake（RecordingMcpClient），无真实网络。
  */
-class LLMControllerMcpTest {
+class AgentSessionEngineMcpTest {
 
     @get:Rule
     val silentLogger = SilentLoggerRule()
 
+    private val engine = AgentSessionEngine()
+
     @Before
     fun setUp() {
-        LLMController.resetForTest()
+        engine.resetForTest()
     }
 
     @After
     fun tearDown() {
-        LLMController.resetForTest()
+        engine.resetForTest()
     }
 
     @Test
@@ -69,14 +72,14 @@ class LLMControllerMcpTest {
             results = mapOf("server1" to listOf(McpDiscoveredTool("echo", "Echo", null))),
         )
         installGateway(server("server1", "http://127.0.0.1:3001/mcp"))
-        LLMController.okiaFactory = okiaFactoryWith(recording)
+        engine.okiaFactory = okiaFactoryWith(recording)
 
-        LLMController.refresh()
+        engine.refresh()
 
         recording.awaitDiscoveryCalls(1)
         assertEquals(listOf("server1"), recording.discoveredServers.map { it.name })
         // 发现结果注册进 registry（wireName 前缀 mcp__）
-        val wireNames = LLMController.toolRegistry.snapshot().map { it.descriptor.wireName }
+        val wireNames = engine.toolRegistry.snapshot().map { it.descriptor.wireName }
         assertTrue(wireNames.any { it.startsWith("mcp__server1__") })
     }
 
@@ -86,12 +89,12 @@ class LLMControllerMcpTest {
             results = mapOf("server1" to listOf(McpDiscoveredTool("echo", "Echo", null))),
         )
         installGateway(server("server1", "http://127.0.0.1:3001/mcp"))
-        LLMController.okiaFactory = okiaFactoryWith(recording)
+        engine.okiaFactory = okiaFactoryWith(recording)
 
-        LLMController.refresh()
+        engine.refresh()
         recording.awaitDiscoveryCalls(1)
         // 同配置再 refresh：签名未变 → 不触发
-        LLMController.refresh()
+        engine.refresh()
         recording.awaitDiscoveryCalls(1)
     }
 
@@ -104,9 +107,9 @@ class LLMControllerMcpTest {
             ),
         )
         installGateway(server("server1", "http://127.0.0.1:3001/mcp"))
-        LLMController.okiaFactory = okiaFactoryWith(recording)
+        engine.okiaFactory = okiaFactoryWith(recording)
 
-        LLMController.refresh()
+        engine.refresh()
         recording.awaitDiscoveryCalls(1)
 
         // 服务器变化（新增 server2）→ 签名变化 → 重新发现
@@ -114,7 +117,7 @@ class LLMControllerMcpTest {
             server("server1", "http://127.0.0.1:3001/mcp"),
             server("server2", "http://127.0.0.1:3002/mcp")
         )
-        LLMController.refresh()
+        engine.refresh()
         recording.awaitDiscoveryCalls(2)
         assertEquals(
             setOf("server1", "server2"),
@@ -132,14 +135,14 @@ class LLMControllerMcpTest {
             failTimes = 1, // 第一次失败，之后成功
         )
         installGateway(server("server1", "http://127.0.0.1:3001/mcp"))
-        LLMController.okiaFactory = okiaFactoryWith(recording)
+        engine.okiaFactory = okiaFactoryWith(recording)
 
-        LLMController.refresh()
+        engine.refresh()
         recording.awaitDiscoveryCalls(1)
         assertTrue(recording.failures > 0)
         // 退避重试后成功：工具最终注册（失败不阻塞重试）
         recording.awaitDiscoveryCalls(2)
-        val wireNames = LLMController.toolRegistry.snapshot().map { it.descriptor.wireName }
+        val wireNames = engine.toolRegistry.snapshot().map { it.descriptor.wireName }
         assertTrue(wireNames.any { it.startsWith("mcp__server1__") })
     }
 
@@ -159,16 +162,16 @@ class LLMControllerMcpTest {
             server("server1", "http://127.0.0.1:3001/mcp"),
             server("server2", "http://127.0.0.1:3002/mcp"),
         )
-        LLMController.okiaFactory = okiaFactoryWith(recording)
+        engine.okiaFactory = okiaFactoryWith(recording)
 
-        LLMController.refresh()
+        engine.refresh()
         recording.awaitDiscoveryCalls(2) // 首轮全量刷（两台各一次）
         assertTrue(recording.failures > 0)
         // 退避重试：server2 失败后仍再刷（旧行为在首轮失败后即停止）
         recording.awaitDiscoveryCalls(4)
 
         // 部分成功也注册：server1 工具已进 registry
-        val wireNames = LLMController.toolRegistry.snapshot().map { it.descriptor.wireName }
+        val wireNames = engine.toolRegistry.snapshot().map { it.descriptor.wireName }
         assertTrue(wireNames.any { it.startsWith("mcp__server1__") })
     }
 
@@ -183,9 +186,9 @@ class LLMControllerMcpTest {
                 headers = mapOf("Authorization" to "Bearer x"),
             ),
         )
-        LLMController.okiaFactory = okiaFactoryWith(recording)
+        engine.okiaFactory = okiaFactoryWith(recording)
 
-        LLMController.refresh()
+        engine.refresh()
         recording.awaitDiscoveryCalls(1)
 
         val seen = recording.discoveredServers.single()
@@ -221,7 +224,7 @@ class LLMControllerMcpTest {
         prompt = "Base",
     )
 
-    private fun okiaFactoryWith(client: McpClient) = LLMController.OkiaFactory { _, _, _ ->
+    private fun okiaFactoryWith(client: McpClient) = AgentSessionEngine.OkiaFactory { _, _, _ ->
         Okia.open(
             object : OkiaDependencies {
                 override val agentLoop = stubLoop()
@@ -232,7 +235,7 @@ class LLMControllerMcpTest {
             endpoint = "https://example.com/v1"
             apiKey = "test-key"
             // 与生产一致：注入 LLMController 持有的注册表（MCP 发现注册进它）
-            toolRegistry = LLMController.toolRegistry
+            toolRegistry = engine.toolRegistry
         }
     }
 

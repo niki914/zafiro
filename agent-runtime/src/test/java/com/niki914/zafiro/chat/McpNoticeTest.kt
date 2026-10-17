@@ -26,7 +26,7 @@ class McpNoticeTest {
 
     @Test
     fun loadingOnlyIncludesUnreadyNotice() {
-        val notice = LLMController.buildMcpNotice(
+        val notice = TurnPrefixComposer().buildMcpNotice(
             loading = listOf(
                 server("weather", McpDiscoveryState.Discovering),
                 server("database", McpDiscoveryState.Idle),
@@ -39,7 +39,7 @@ class McpNoticeTest {
 
     @Test
     fun failedOnlyExcludesUnreadyNotice() {
-        val notice = LLMController.buildMcpNotice(
+        val notice = TurnPrefixComposer().buildMcpNotice(
             failed = listOf(
                 server("search", McpDiscoveryState.Failed, "timeout after 5000ms"),
             ),
@@ -51,7 +51,7 @@ class McpNoticeTest {
 
     @Test
     fun mixedIncludesBothSectionsAndUnreadyNotice() {
-        val notice = LLMController.buildMcpNotice(
+        val notice = TurnPrefixComposer().buildMcpNotice(
             loading = listOf(server("weather", McpDiscoveryState.Discovering)),
             failed = listOf(server("search", McpDiscoveryState.Failed, "connection refused")),
         )
@@ -62,7 +62,7 @@ class McpNoticeTest {
 
     @Test
     fun truncatesMultilineErrorToFirstLine() {
-        val notice = LLMController.buildMcpNotice(
+        val notice = TurnPrefixComposer().buildMcpNotice(
             failed = listOf(server("docs", McpDiscoveryState.Failed, "line1\nline2\nline3")),
         )
         assertTrue(notice.contains("- Failed: docs (line1)"))
@@ -71,7 +71,7 @@ class McpNoticeTest {
 
     @Test
     fun missingErrorFallsBackToUnknown() {
-        val notice = LLMController.buildMcpNotice(
+        val notice = TurnPrefixComposer().buildMcpNotice(
             failed = listOf(server("docs", McpDiscoveryState.Failed)),
         )
         assertTrue(notice.contains("- Failed: docs (unknown error)"))
@@ -79,7 +79,7 @@ class McpNoticeTest {
 
     @Test
     fun emptyReturnsEmpty() {
-        val notice = LLMController.buildMcpNotice()
+        val notice = TurnPrefixComposer().buildMcpNotice()
         assertEquals("", notice)
     }
 }

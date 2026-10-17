@@ -1,3 +1,4 @@
+// 保护：AgentSessionEngine 与 Skill 注入 System Prompt、空列表容错与加载失败降级契约
 package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.util.SilentLoggerRule
@@ -12,9 +13,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-class LLMControllerRefreshSkillTest {
+class AgentSessionEngineRefreshSkillTest {
     @get:Rule
     val silentLogger = SilentLoggerRule()
+
+    private val engine = AgentSessionEngine()
 
     @Test
     fun refresh_passesEnabledSkillsIntoPrompt() = runTest {
@@ -31,7 +34,7 @@ class LLMControllerRefreshSkillTest {
             )
         )
 
-        val snapshot = LLMController.refresh()
+        val snapshot = engine.refresh()
 
         assertEquals(1, gateway.listEnabledSkillsCallCount)
         assertTrue(snapshot.prompt.finalSystemPrompt.contains("<available_skills>"))
@@ -44,7 +47,7 @@ class LLMControllerRefreshSkillTest {
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig())
         )
 
-        val snapshot = LLMController.refresh()
+        val snapshot = engine.refresh()
 
         assertEquals(1, gateway.listEnabledSkillsCallCount)
         assertFalse(snapshot.prompt.finalSystemPrompt.contains("## Skills (mandatory)"))
@@ -59,15 +62,15 @@ class LLMControllerRefreshSkillTest {
                 enabledSkills = listOf(skill(id = "skill-a", name = "Skill A")),
             )
         )
-        val previous = LLMController.refresh()
+        val previous = engine.refresh()
         gateway.failListEnabledSkills = IllegalStateException("skills failed")
 
         val firstEvent = withTimeoutOrNull(1_000) {
-            LLMController.stream("q").firstOrNull()
+            engine.stream("q").firstOrNull()
         }
 
         assertEquals(2, gateway.listEnabledSkillsCallCount)
-        assertEquals(previous, LLMController.snapshot())
+        assertEquals(previous, engine.snapshot())
         val error = firstEvent as? LlmStreamEvent.Error
         assertFalse(error?.message?.contains("skills failed") == true)
     }
