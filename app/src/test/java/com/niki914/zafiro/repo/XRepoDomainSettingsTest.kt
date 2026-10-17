@@ -47,10 +47,10 @@ class XRepoDomainSettingsTest {
         XRepo.init(context)
 
         XRepo.setOnboardingCompleted(true)
-        XRepo.setLoadLastConversationOnStartup(true)
+        XRepo.setLoadLastConversationOnStartup(false)
         XRepo.setLanguageTag("zh-CN")
 
-        assertTrue(XRepo.loadLastConversationOnStartup())
+        assertFalse(XRepo.loadLastConversationOnStartup())
         assertEquals("zh-CN", XRepo.languageTag())
         assertTrue(XRepo.onboardingCompleted())
         assertTrue(XRepo.voiceAssistantIsolatedSession())

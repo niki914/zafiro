@@ -606,7 +606,7 @@ class HomeChatViewModel internal constructor(
                 agent.updateDraft { it.copy(text = draft) }
             }
             val shouldRestore = runCatching { conversations.loadLastConversationOnStartup() }
-                .getOrDefault(false)
+                .getOrDefault(true)
             if (!shouldRestore) {
                 Logger.d(LOG_TAG, "restore skipped loadLastConversationOff")
                 return@launch

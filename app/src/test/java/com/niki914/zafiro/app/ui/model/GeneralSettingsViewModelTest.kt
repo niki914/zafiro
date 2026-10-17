@@ -63,7 +63,7 @@ class GeneralSettingsViewModelTest {
 
     @Test
     fun load_populatesSettingsFromRepo() = runTest {
-        XRepo.setLoadLastConversationOnStartup(true)
+        XRepo.setLoadLastConversationOnStartup(false)
         XRepo.setAlwaysShowMessageActions(false)
         XRepo.setVoiceAssistantIsolatedSession(false)
         XRepo.setFloatingBallEnabled(true)
@@ -74,7 +74,7 @@ class GeneralSettingsViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiStateFlow.value
-        assertTrue(state.loadLastConversation)
+        assertFalse(state.loadLastConversation)
         assertFalse(state.alwaysShowMessageActions)
         assertFalse(state.voiceAssistantIsolatedSession)
         assertTrue(state.floatingBallEnabled)

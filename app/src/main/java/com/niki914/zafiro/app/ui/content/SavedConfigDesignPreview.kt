@@ -309,7 +309,7 @@ private fun ModelConfigRedesignPreview() {
 @Composable
 private fun GeneralSettingsRedesignPreview() {
     BaseTheme {
-        var loadLastConversation by remember { mutableStateOf(false) }
+        var loadLastConversation by remember { mutableStateOf(true) }
         // 语言四选项（跟随系统 / 简体中文 / 繁體中文 / English）同协议弹窗形态，不另设 preview
 
         Column(

@@ -23,9 +23,9 @@ internal data class AppStateSettings(
     /** BCP-47 tag；空串 = 跟随系统语言。 */
     @SerialName("language_tag")
     val languageTag: String = "",
-    /** 冷启动是否恢复上次会话；false = 默认进入新对话。 */
+    /** 冷启动是否恢复上次会话；true = 默认进入上次会话。 */
     @SerialName("load_last_conversation_on_startup")
-    val loadLastConversationOnStartup: Boolean = false,
+    val loadLastConversationOnStartup: Boolean = true,
     /** 主题深浅色模式；system/light/dark。 */
     @SerialName("theme_mode")
     val themeMode: String = "light",

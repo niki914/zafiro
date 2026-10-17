@@ -13,7 +13,7 @@ data class GeneralSettingsUiState(
     val floatingBallAutoExpand: Boolean = true,
     val residentNotificationEnabled: Boolean = false,
     val turnNotificationEnabled: Boolean = false,
-    val loadLastConversation: Boolean = false,
+    val loadLastConversation: Boolean = true,
     val alwaysShowMessageActions: Boolean = true,
     val voiceAssistantIsolatedSession: Boolean = true,
     val isLoading: Boolean = false,
