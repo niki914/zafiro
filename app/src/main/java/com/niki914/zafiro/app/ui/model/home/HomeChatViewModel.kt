@@ -339,17 +339,20 @@ class HomeChatViewModel internal constructor(
         refreshAutoExpandedThinking()
 
         if (last != null && paceBlockIndex >= 0) {
+            val block = last.blocks.getOrNull(paceBlockIndex)
             val fullText = when (paceKind) {
-                "text" -> (last.blocks[paceBlockIndex] as HomeChatBlock.Text).text
-                else -> (last.blocks[paceBlockIndex] as HomeChatBlock.Thinking).text
+                "text" -> (block as? HomeChatBlock.Text)?.text
+                else -> (block as? HomeChatBlock.Thinking)?.text
             }
-            val pacer = if (paceKind == "text") textPacer else thinkingPacer
-            pacer.pace(fullText.length) { _, to ->
-                updateTailBlock(last.id, paceBlockIndex, paceKind == "text") { block ->
-                    when (block) {
-                        is HomeChatBlock.Text -> block.copy(text = fullText.take(to))
-                        is HomeChatBlock.Thinking -> block.copy(text = fullText.take(to))
-                        else -> block
+            if (fullText != null) {
+                val pacer = if (paceKind == "text") textPacer else thinkingPacer
+                pacer.pace(fullText.length) { _, to ->
+                    updateTailBlock(last.id, paceBlockIndex, paceKind == "text") { currentBlock ->
+                        when (currentBlock) {
+                            is HomeChatBlock.Text -> currentBlock.copy(text = fullText.take(to))
+                            is HomeChatBlock.Thinking -> currentBlock.copy(text = fullText.take(to))
+                            else -> currentBlock
+                        }
                     }
                 }
             }
@@ -416,7 +419,12 @@ class HomeChatViewModel internal constructor(
         draftSaveJob?.cancel()
         draftSaveJob = viewModelScope.launch {
             kotlinx.coroutines.delay(DRAFT_SAVE_DEBOUNCE_MS)
-            conversations.setDraftText(value)
+            try {
+                conversations.setDraftText(value)
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                Logger.w(LOG_TAG, "save draft failed: ${t.message}")
+            }
         }
     }
 
@@ -528,7 +536,14 @@ class HomeChatViewModel internal constructor(
         }
         draftSaveJob?.cancel()
         draftSaveJob = null
-        viewModelScope.launch { conversations.setDraftText("") }
+        viewModelScope.launch {
+            try {
+                conversations.setDraftText("")
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                Logger.w(LOG_TAG, "clear draft failed: ${t.message}")
+            }
+        }
         // 输入框以本类为准：发起即清空，不从 draft 读回
         updateState {
             copy(
@@ -616,7 +631,18 @@ class HomeChatViewModel internal constructor(
                 Logger.d(LOG_TAG, "restore skipped lastOpenedConversationBlank")
                 return@launch
             }
-            loadConversation(conversationId, preferLatestBranch = true)
+            try {
+                loadConversation(conversationId, preferLatestBranch = true)
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                Logger.e(
+                    LOG_TAG,
+                    "restoreStartupState failed for id=$conversationId, falling back to clean state: ${t.message}",
+                    t,
+                )
+                runCatching { conversations.setLastOpenedConversationId("") }
+                updateState { HomeChatUiState(input = currentState.input).withClearedTransient() }
+            }
         }
     }
 

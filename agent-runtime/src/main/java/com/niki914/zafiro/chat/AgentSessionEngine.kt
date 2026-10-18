@@ -134,7 +134,9 @@ class AgentSessionEngine {
         val refreshStartedAtMs = System.currentTimeMillis()
         val gateway = RuntimeEnvironment.awaitSettingsGateway()
         val llmConfig = gateway.readLlmConfig(configId = boundConfigId.takeIf { it.isNotBlank() })
-        sessionAssembler.validateLlmConfig(llmConfig)
+        if (restore == null) {
+            sessionAssembler.validateLlmConfig(llmConfig)
+        }
         contextWindowFlow.value = llmConfig.contextWindowTokens
         compactor.thresholdRatio = llmConfig.compactionThresholdPercent / 100f
         Logger.i(
@@ -144,10 +146,34 @@ class AgentSessionEngine {
                     "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
         )
         val protocol = LlmProtocol.fromWire(llmConfig.protocol)
-        val runtimeMcpServers = gateway.listMcpServers()
-        val customPyTools = gateway.listCustomPyTools()
-        val builtinSettings = gateway.listBuiltinToolSettings()
-        val enabledSkills = gateway.listEnabledSkills()
+        val runtimeMcpServers = try {
+            gateway.listMcpServers()
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            Logger.w(LOG_TAG, "listMcpServers failed: ${t.message}", t)
+            emptyList()
+        }
+        val customPyTools = try {
+            gateway.listCustomPyTools()
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            Logger.w(LOG_TAG, "listCustomPyTools failed: ${t.message}", t)
+            emptyList()
+        }
+        val builtinSettings = try {
+            gateway.listBuiltinToolSettings()
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            Logger.w(LOG_TAG, "listBuiltinToolSettings failed: ${t.message}", t)
+            emptyList()
+        }
+        val enabledSkills = try {
+            gateway.listEnabledSkills()
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            Logger.w(LOG_TAG, "listEnabledSkills failed: ${t.message}", t)
+            emptyList()
+        }
         val resolvedTools = toolManager.resolve(
             customPyTools = customPyTools,
             mcpServers = runtimeMcpServers,

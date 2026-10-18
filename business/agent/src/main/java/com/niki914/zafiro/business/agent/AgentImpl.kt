@@ -24,6 +24,7 @@ import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -56,7 +57,10 @@ class AgentImpl(
     val isPersistent: Boolean = true,
 ) : Agent {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Logger.e(LOG_TAG, "Uncaught exception in Agent scope: ${throwable.message}", throwable)
+    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + coroutineExceptionHandler)
 
     /** 持久化端口：仅当 isPersistent == true 时由 app 侧提供并在组合根 install。 */
     private fun store(): ConversationStore_Tmp = requireService()
@@ -263,8 +267,13 @@ class AgentImpl(
         reducedStatus = AgentStateReducer.reset()
         emitStatus(reducedStatus.status)
         scope.launch {
-            engine.stopCurrentRound()
-            engine.resetConversation()
+            try {
+                engine.stopCurrentRound()
+                engine.resetConversation()
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                Logger.w(LOG_TAG, "discard cleanup failed: ${t.message}", t)
+            }
         }
     }
 

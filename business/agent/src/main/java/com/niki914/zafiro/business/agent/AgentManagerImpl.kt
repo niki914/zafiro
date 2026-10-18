@@ -7,6 +7,7 @@ import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.chat.AgentSessionEngine
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,7 +29,15 @@ import java.util.concurrent.ConcurrentHashMap
  * 用户切换会话时，旧会话在后台继续静默执行；切回时直接复用正在运行或已跑完的 Agent。
  */
 class AgentManagerImpl(
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val scope: CoroutineScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, throwable ->
+            Logger.e(
+                "niki914_zafiro_AgentManagerImpl",
+                "Uncaught exception in AgentManager scope: ${throwable.message}",
+                throwable
+            )
+        }
+    ),
 ) : AgentManager {
 
     private companion object {
@@ -62,7 +71,12 @@ class AgentManagerImpl(
         } else {
             Logger.i(LOG_TAG, "loading new agent into container id=$conversationId")
             val newAgent = createPersistentAgent()
-            newAgent.load(ConversationId(conversationId))
+            try {
+                newAgent.load(ConversationId(conversationId))
+            } catch (t: Throwable) {
+                newAgent.release()
+                throw t
+            }
             registerActiveAgent(conversationId, newAgent)
             newAgent
         }
