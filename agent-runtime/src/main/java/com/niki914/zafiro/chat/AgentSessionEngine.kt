@@ -22,6 +22,7 @@ import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.DEFAULT_CONTEXT_WINDOW_TOKENS
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -146,34 +147,22 @@ class AgentSessionEngine {
                     "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
         )
         val protocol = LlmProtocol.fromWire(llmConfig.protocol)
-        val runtimeMcpServers = try {
+        val runtimeMcpServers = runCatchingCancellable {
             gateway.listMcpServers()
-        } catch (t: Throwable) {
-            if (t is CancellationException) throw t
-            Logger.w(LOG_TAG, "listMcpServers failed: ${t.message}", t)
-            emptyList()
-        }
-        val customPyTools = try {
+        }.onFailure {
+            Logger.w(LOG_TAG, "listMcpServers failed: ${it.message}", it)
+        }.getOrDefault(emptyList())
+        val customPyTools = runCatchingCancellable {
             gateway.listCustomPyTools()
-        } catch (t: Throwable) {
-            if (t is CancellationException) throw t
-            Logger.w(LOG_TAG, "listCustomPyTools failed: ${t.message}", t)
-            emptyList()
-        }
-        val builtinSettings = try {
+        }.onFailure {
+            Logger.w(LOG_TAG, "listCustomPyTools failed: ${it.message}", it)
+        }.getOrDefault(emptyList())
+        val builtinSettings = runCatchingCancellable {
             gateway.listBuiltinToolSettings()
-        } catch (t: Throwable) {
-            if (t is CancellationException) throw t
-            Logger.w(LOG_TAG, "listBuiltinToolSettings failed: ${t.message}", t)
-            emptyList()
-        }
-        val enabledSkills = try {
-            gateway.listEnabledSkills()
-        } catch (t: Throwable) {
-            if (t is CancellationException) throw t
-            Logger.w(LOG_TAG, "listEnabledSkills failed: ${t.message}", t)
-            emptyList()
-        }
+        }.onFailure {
+            Logger.w(LOG_TAG, "listBuiltinToolSettings failed: ${it.message}", it)
+        }.getOrDefault(emptyList())
+        val enabledSkills = gateway.listEnabledSkills()
         val resolvedTools = toolManager.resolve(
             customPyTools = customPyTools,
             mcpServers = runtimeMcpServers,

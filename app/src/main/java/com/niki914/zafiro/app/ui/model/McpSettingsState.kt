@@ -4,7 +4,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
-import com.niki914.xposed.api.util.xTry
+import com.niki914.zafiro.api.util.tryOrDefault
+import com.niki914.zafiro.api.util.tryOrNull
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.api.util.runCatchingCancellable
@@ -456,11 +457,8 @@ private fun normalizedHeadersOrError(input: String): McpHeadersParseResult {
     if (input.isBlank()) {
         return McpHeadersParseResult.Success(emptyMap())
     }
-    val element = try {
-        Json.parseToJsonElement(input)
-    } catch (_: Throwable) {
-        return McpHeadersParseResult.Error(R.string.mcp_error_headers_invalid_json)
-    }
+    val element = tryOrNull { Json.parseToJsonElement(input) }
+        ?: return McpHeadersParseResult.Error(R.string.mcp_error_headers_invalid_json)
     val jsonObject = element as? JsonObject
         ?: return McpHeadersParseResult.Error(R.string.mcp_error_headers_not_object)
     val headers = linkedMapOf<String, String>()
@@ -516,12 +514,12 @@ private fun headersToInput(headers: Map<String, String>): String {
 }
 
 private fun isValidUrl(value: String): Boolean {
-    return xTry("McpSettingsState.isValidUrl") {
+    return tryOrDefault(false) {
         val uri = URI(value)
         val scheme = uri.scheme?.lowercase()
         val isHttpScheme = scheme == "http" || scheme == "https"
         isHttpScheme && !uri.host.isNullOrBlank()
-    } ?: false
+    }
 }
 
 private fun firstInvalidFieldEffect(

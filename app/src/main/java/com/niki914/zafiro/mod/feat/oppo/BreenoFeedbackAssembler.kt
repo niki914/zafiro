@@ -1,6 +1,6 @@
 package com.niki914.zafiro.mod.feat.oppo
 
-import com.niki914.xposed.api.util.xTry
+import com.niki914.zafiro.api.util.tryOrNull
 import com.niki914.xposed.runtime.util.call
 
 object BreenoFeedbackAssembler {
@@ -30,7 +30,7 @@ object BreenoFeedbackAssembler {
         bean.call<Unit>(beanSetFeedbackInfoMethod, feedback)
     }
 
-    private fun instantiate(className: String, classLoader: ClassLoader?): Any? = xTry {
+    private fun instantiate(className: String, classLoader: ClassLoader?): Any? = tryOrNull {
         val clazz = Class.forName(className, false, classLoader)
         clazz.getDeclaredConstructor().newInstance()
     }

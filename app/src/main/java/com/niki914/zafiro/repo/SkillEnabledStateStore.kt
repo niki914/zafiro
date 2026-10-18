@@ -1,5 +1,7 @@
 package com.niki914.zafiro.repo
 
+import com.niki914.zafiro.api.util.tryIgnore
+import com.niki914.zafiro.api.util.tryOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -10,18 +12,20 @@ class SkillEnabledStateStore(
     private val statusFile: File,
 ) {
     fun readStates(): Map<String, Boolean> {
-        if (!statusFile.isFile) {
-            return emptyMap()
-        }
-        val root = SettingsJsonCodecUtils.parseObject(statusFile.readText(Charsets.UTF_8))
-        val enabled = with(SettingsJsonCodecUtils) { root.obj("enabled") } ?: return emptyMap()
-        return enabled
-            .mapNotNull { (id, value) ->
-                val enabledValue = runCatching { value.jsonPrimitive.booleanOrNull }.getOrNull()
-                    ?: return@mapNotNull null
-                id to enabledValue
+        return tryOrNull {
+            if (!statusFile.isFile) {
+                return@tryOrNull emptyMap()
             }
-            .toMap()
+            val root = SettingsJsonCodecUtils.parseObject(statusFile.readText(Charsets.UTF_8))
+            val enabled = with(SettingsJsonCodecUtils) { root.obj("enabled") } ?: return@tryOrNull emptyMap()
+            enabled
+                .mapNotNull { (id, value) ->
+                    val enabledValue = tryOrNull { value.jsonPrimitive.booleanOrNull }
+                        ?: return@mapNotNull null
+                    id to enabledValue
+                }
+                .toMap()
+        } ?: emptyMap()
     }
 
     fun isEnabled(id: String): Boolean {
@@ -37,11 +41,13 @@ class SkillEnabledStateStore(
     }
 
     private fun writeStates(states: Map<String, Boolean>) {
-        statusFile.parentFile?.mkdirs()
-        val enabled = JsonObject(
-            states.toSortedMap().mapValues { JsonPrimitive(it.value) },
-        )
-        val root = JsonObject(mapOf("enabled" to enabled))
-        statusFile.writeText(root.toString(), Charsets.UTF_8)
+        tryIgnore {
+            statusFile.parentFile?.mkdirs()
+            val enabled = JsonObject(
+                states.toSortedMap().mapValues { JsonPrimitive(it.value) },
+            )
+            val root = JsonObject(mapOf("enabled" to enabled))
+            statusFile.writeText(root.toString(), Charsets.UTF_8)
+        }
     }
 }

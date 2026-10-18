@@ -1,6 +1,7 @@
 package com.niki914.zafiro.repo
 
-import com.niki914.xposed.api.util.xTry
+import com.niki914.zafiro.api.util.tryIgnore
+import com.niki914.zafiro.api.util.tryOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,9 +43,9 @@ object UpdateCheckHolder {
         val version = _result.value?.remoteVersion
         _result.value = null
         if (version != null) {
-            // 记账失败只意味着下次可能再弹一次，不值得让写盘异常冒到 UI（xTry 不吃挂起块）
+            // 记账失败只意味着下次可能再弹一次，不值得让写盘异常冒到 UI
             withContext(Dispatchers.IO) {
-                runCatching { XRepo.setLastNotifiedUpdateVersion(version) }
+                tryIgnore { XRepo.setLastNotifiedUpdateVersion(version) }
             }
         }
     }
@@ -63,7 +64,7 @@ private object UpdateCheckApi {
 
     suspend fun check(currentVersion: String): UpdateCheckResult {
         return withContext(Dispatchers.IO) {
-            xTry { resolveUpdateOrNull(currentVersion) } ?: noUpdate()
+            tryOrNull { resolveUpdateOrNull(currentVersion) } ?: noUpdate()
         }
     }
 
@@ -112,7 +113,7 @@ private object UpdateCheckApi {
 
     private fun fetch(url: String): String? {
         val request = Request.Builder().url(url).build()
-        return xTry {
+        return tryOrNull {
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful && response.body != null) {
                     response.body!!.string()

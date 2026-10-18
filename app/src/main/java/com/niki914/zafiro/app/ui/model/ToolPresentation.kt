@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
+import com.niki914.zafiro.api.util.tryOrNull
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ToolPresentation.inputOf
 import com.niki914.zafiro.app.ui.model.ToolPresentation.previewOf
@@ -109,11 +110,9 @@ object ToolPresentation {
      */
     fun inputOf(name: String, argumentsJson: String?): String? {
         if (argumentsJson.isNullOrBlank()) return null
-        val args = try {
+        val args = tryOrNull {
             Json.parseToJsonElement(argumentsJson).jsonObject
-        } catch (_: Exception) {
-            return null
-        }
+        } ?: return null
         return when (name) {
             "terminal", "shell", "ssh" -> args["command"] ?: args["action"]
             "load_skill" -> args["id"]

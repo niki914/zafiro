@@ -1,24 +1,36 @@
+// githooks:ignore-file bare-catch 反射层静默探测：捕获所有反射异常
 package com.niki914.xposed.runtime.util
 
-import com.niki914.xposed.api.util.xTry
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
+import kotlinx.coroutines.CancellationException
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
 
-inline fun <reified T> Any.getField(fieldName: String): T? = xTry("getField:$fieldName") {
+@PublishedApi
+internal inline fun <R> reflectOrNull(block: () -> R): R? {
+    return try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Throwable) {
+        null
+    }
+}
+
+inline fun <reified T> Any.getField(fieldName: String): T? = reflectOrNull {
     XposedHelpers.getObjectField(this, fieldName) as? T
 }
 
-fun Any.getAllFields(): List<Field> = xTry("getAllFields") {
+fun Any.getAllFields(): List<Field> = reflectOrNull {
     val fields = mutableListOf<Field>()
     var clazz: Class<*>? = this.javaClass
 
     while (clazz != null && clazz != Any::class.java && clazz != Object::class.java) {
         clazz.declaredFields.forEach { field ->
-            xTry("setAccessible:${field.name}") { field.isAccessible = true }
+            reflectOrNull { field.isAccessible = true }
             fields.add(field)
         }
         clazz = clazz.superclass
@@ -26,45 +38,44 @@ fun Any.getAllFields(): List<Field> = xTry("getAllFields") {
     fields
 } ?: emptyList()
 
-inline fun <reified T> Any.call(methodName: String, vararg params: Any?): T? =
-    xTry("call:$methodName") {
-        XposedHelpers.callMethod(this, methodName, *params) as? T
-    }
+inline fun <reified T> Any.call(methodName: String, vararg params: Any?): T? = reflectOrNull {
+    XposedHelpers.callMethod(this, methodName, *params) as? T
+}
 
 fun resolveClass(
     typeName: String,
     lpparam: XC_LoadPackage.LoadPackageParam
-): Class<*>? = primitiveTypes[typeName] ?: xTry("resolveClass:$typeName") {
+): Class<*>? = primitiveTypes[typeName] ?: reflectOrNull {
     Class.forName(typeName, false, lpparam.classLoader)
 }
 
 fun resolveParamTypes(
     typeNames: List<String>,
     lpparam: XC_LoadPackage.LoadPackageParam
-): Array<Class<*>>? = xTry("resolveParamTypes") {
+): Array<Class<*>>? = reflectOrNull {
     val resolved = mutableListOf<Class<*>>()
     typeNames.forEach { typeName ->
-        val clazz = resolveClass(typeName, lpparam) ?: return@xTry null
+        val clazz = resolveClass(typeName, lpparam) ?: return@reflectOrNull null
         resolved += clazz
     }
     resolved.toTypedArray()
 }
 
-fun methodSignature(method: Method): String = xTry("methodSignature:${method.name}") {
+fun methodSignature(method: Method): String = reflectOrNull {
     val params = method.parameterTypes.joinToString(",") { it.name }
     "${method.returnType.name} ${method.name}($params)"
 } ?: ""
 
-fun constructorSignature(constructor: Constructor<*>): String = xTry("constructorSignature") {
+fun constructorSignature(constructor: Constructor<*>): String = reflectOrNull {
     val params = constructor.parameterTypes.joinToString(",") { it.name }
     "${constructor.declaringClass.name}($params)"
 } ?: ""
 
-fun Any.setTag(key: String, value: Any?) = xTry("setTag:$key") {
+fun Any.setTag(key: String, value: Any?) = reflectOrNull {
     XposedHelpers.setAdditionalInstanceField(this, key, value)
 }
 
-inline fun <reified T> Any.getTag(key: String): T? = xTry("getTag:$key") {
+inline fun <reified T> Any.getTag(key: String): T? = reflectOrNull {
     XposedHelpers.getAdditionalInstanceField(this, key) as? T
 }
 

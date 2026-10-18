@@ -1,7 +1,7 @@
 package com.niki914.xposed.runtime.runtime
 
 import com.niki914.logging.Logger
-import com.niki914.xposed.api.util.xTry
+import com.niki914.xposed.runtime.util.hookCatching
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -37,7 +37,7 @@ class Runtime(
         // 1. Execute synchronous hooks immediately on the current (main) thread
         syncHooks.forEach { hook ->
             val startedAtMs = System.currentTimeMillis()
-            val ok = xTry("Runtime#attach:${hook.name}") { hook.onHook(params) }
+            val ok = hookCatching("Runtime#attach:${hook.name}") { hook.onHook(params) }
             Logger.i(
                 LOG_TAG,
                 "sync hook ${hook.name} ok=${ok != null} " +
@@ -48,13 +48,13 @@ class Runtime(
         // 2. Execute asynchronous hooks requiring DexKit scanning in a background coroutine
         if (dexkitHooks.isNotEmpty()) {
             scope.launch {
-                xTry("Runtime#attach:dexkit") {
+                hookCatching("Runtime#attach:dexkit") {
                     val ms = measureTimeMillis {
                         System.loadLibrary("dexkit")
                         DexKitBridge.create(params.appInfo.sourceDir).use { bridge ->
                             dexkitHooks.forEach { hook ->
                                 val startedAtMs = System.currentTimeMillis()
-                                val ok = xTry("Runtime#attaching:${hook.name}") {
+                                val ok = hookCatching("Runtime#attaching:${hook.name}") {
                                     hook.onHookWithDexkit(
                                         params,
                                         bridge
