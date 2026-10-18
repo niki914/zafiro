@@ -10,6 +10,9 @@ import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.repo.PinnedConversation
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
+import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.api.util.tryOrDefault
+import com.niki914.zafiro.api.util.tryIgnore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,7 +79,7 @@ internal data class ConversationHistoryViewModelDependencies(
     val forkConversation: suspend (String) -> String?,
     val setConversationPinned: suspend (String, Boolean) -> Unit,
     val destroyAgent: (String) -> Unit = { id ->
-        runCatching {
+        tryIgnore {
             requireService<AgentManager>().destroy(
                 id
             )
@@ -86,8 +89,7 @@ internal data class ConversationHistoryViewModelDependencies(
         ConversationRepo.setHasUnread(id, unread)
     },
     val observeActiveStates: () -> Flow<Map<String, AgentState>> = {
-        runCatching { requireService<AgentManager>().activeStates }
-            .getOrDefault(MutableStateFlow(emptyMap()))
+        tryOrDefault(MutableStateFlow(emptyMap())) { requireService<AgentManager>().activeStates }
     },
 ) {
     companion object {
@@ -98,11 +100,10 @@ internal data class ConversationHistoryViewModelDependencies(
             renameConversation = { id, title -> ConversationRepo.renameConversation(id, title) },
             forkConversation = { id -> ConversationRepo.forkConversation(id) },
             setConversationPinned = { id, pinned -> XRepo.setConversationPinned(id, pinned) },
-            destroyAgent = { id -> runCatching { requireService<AgentManager>().destroy(id) } },
+            destroyAgent = { id -> tryIgnore { requireService<AgentManager>().destroy(id) } },
             setHasUnread = { id, unread -> ConversationRepo.setHasUnread(id, unread) },
             observeActiveStates = {
-                runCatching { requireService<AgentManager>().activeStates }
-                    .getOrDefault(MutableStateFlow(emptyMap()))
+                tryOrDefault(MutableStateFlow(emptyMap())) { requireService<AgentManager>().activeStates }
             },
         )
     }
@@ -220,11 +221,11 @@ class ConversationHistoryViewModel internal constructor(
     }
 
     private suspend fun clearUnread(id: String) {
-        runCatching { dependencies.setHasUnread(id, false) }
+        tryIgnore { dependencies.setHasUnread(id, false) }
     }
 
     private suspend fun loadPinnedSafely(): List<PinnedConversation> =
-        runCatching { dependencies.loadPinnedConversations() }.getOrDefault(emptyList())
+        tryOrDefault(emptyList()) { dependencies.loadPinnedConversations() }
 
     private suspend fun refreshPinned() {
         val pinned = loadPinnedSafely()
@@ -233,12 +234,12 @@ class ConversationHistoryViewModel internal constructor(
 
     private suspend fun delete(id: String) {
         updateState { copy(deleteErrorMessage = null) }
-        runCatching { dependencies.destroyAgent(id) }
+        tryIgnore { dependencies.destroyAgent(id) }
         if (id == currentState.activeConversationId) {
             sendEffect(ConversationHistoryEffect.DeleteActiveConversation(id))
             return
         }
-        runCatching { dependencies.deleteConversation(id) }.fold(
+        runCatchingCancellable { dependencies.deleteConversation(id) }.fold(
             onSuccess = { afterDelete(id) },
             onFailure = { throwable ->
                 updateState {
@@ -252,16 +253,16 @@ class ConversationHistoryViewModel internal constructor(
 
     /** 删除成功后的收尾：解置顶；活动会话由宿主删完后经同样路径收尾。列表行变动由 Room Flow 自动推送。 */
     private suspend fun afterDelete(id: String) {
-        runCatching { dependencies.setConversationPinned(id, false) }
+        tryIgnore { dependencies.setConversationPinned(id, false) }
         refreshPinned()
     }
 
     private suspend fun rename(id: String, title: String) {
-        runCatching { dependencies.renameConversation(id, title) }
+        tryIgnore { dependencies.renameConversation(id, title) }
     }
 
     private suspend fun fork(id: String) {
-        runCatching { dependencies.forkConversation(id) }.onSuccess { newId ->
+        runCatchingCancellable { dependencies.forkConversation(id) }.onSuccess { newId ->
             if (newId != null) {
                 sendEffect(ConversationHistoryEffect.OpenConversation(newId))
             }
@@ -269,7 +270,7 @@ class ConversationHistoryViewModel internal constructor(
     }
 
     private suspend fun setPinned(id: String, pinned: Boolean) {
-        runCatching { dependencies.setConversationPinned(id, pinned) }.onSuccess {
+        runCatchingCancellable { dependencies.setConversationPinned(id, pinned) }.onSuccess {
             refreshPinned()
         }
     }
@@ -278,7 +279,7 @@ class ConversationHistoryViewModel internal constructor(
         val ids = currentState.selectedIds
         if (ids.isEmpty()) return
         ids.forEach { id ->
-            runCatching { dependencies.setConversationPinned(id, pinned) }
+            tryIgnore { dependencies.setConversationPinned(id, pinned) }
         }
         refreshPinned()
     }
@@ -313,7 +314,7 @@ class ConversationHistoryViewModel internal constructor(
 
         var failureMessage: String? = null
         normalIds.forEach { id ->
-            runCatching {
+            runCatchingCancellable {
                 dependencies.destroyAgent(id)
                 dependencies.deleteConversation(id)
                 dependencies.setConversationPinned(id, false)
@@ -329,7 +330,7 @@ class ConversationHistoryViewModel internal constructor(
         }
 
         if (deleteActive) {
-            runCatching { dependencies.destroyAgent(activeId) }
+            tryIgnore { dependencies.destroyAgent(activeId) }
             sendEffect(ConversationHistoryEffect.DeleteActiveConversation(activeId))
         } else {
             refreshPinned()

@@ -9,7 +9,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingItem
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingsManager
 import com.niki914.zafiro.repo.BuiltinToolGroupMode
 import com.niki914.zafiro.repo.BuiltinToolGroups
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
 
 // 一级页组行：组状态由成员派生，永不落盘。
 data class BuiltinToolGroupUiItem(
@@ -86,7 +86,7 @@ class BuiltinToolSettingsViewModel :
                 descriptionArg = null,
             )
         }
-        runCatching {
+        runCatchingCancellable {
             manager.load()
         }.onSuccess { loadedItems ->
             Logger.d(LOG_TAG, "load tools=${loadedItems.size}")
@@ -95,9 +95,6 @@ class BuiltinToolSettingsViewModel :
                 baseState = currentState,
             )
         }.onFailure { throwable ->
-            if (throwable is CancellationException) {
-                throw throwable
-            }
             Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState {
                 copy(
@@ -147,7 +144,7 @@ class BuiltinToolSettingsViewModel :
         write: suspend () -> BuiltinToolResult,
         failLog: (String?) -> Unit,
     ) {
-        runCatching {
+        runCatchingCancellable {
             write()
         }.onSuccess { result ->
             if (result.ok) {
@@ -157,9 +154,6 @@ class BuiltinToolSettingsViewModel :
                 rollbackTo(fallback = fallback, error = result.message)
             }
         }.onFailure { throwable ->
-            if (throwable is CancellationException) {
-                throw throwable
-            }
             failLog(throwable.message)
             rollbackTo(
                 fallback = fallback,
@@ -169,14 +163,11 @@ class BuiltinToolSettingsViewModel :
     }
 
     private suspend fun refreshAfterSave(fallback: BuiltinToolSettingsUiState) {
-        runCatching {
+        runCatchingCancellable {
             manager.load()
         }.onSuccess { loadedItems ->
             applyLoadedItems(loadedItems = loadedItems, baseState = fallback)
-        }.onFailure { throwable ->
-            if (throwable is CancellationException) {
-                throw throwable
-            }
+        }.onFailure {
             applyLoadedItemsFallback(fallback = fallback)
         }
     }

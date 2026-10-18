@@ -22,7 +22,7 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool.readSession
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stderrText
 import com.niki914.zafiro.chat.agentic.shell.TerminalToolResponse.stdoutText
 import com.niki914.zafiro.util.ToolOutputTruncator
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -344,10 +344,10 @@ object TerminalSessionPool {
             )
         }
 
-        return try {
-            if (!state.inputLock.tryLock()) {
-                return TerminalInteractiveWriteOutcome.Busy(session)
-            }
+        if (!state.inputLock.tryLock()) {
+            return TerminalInteractiveWriteOutcome.Busy(session)
+        }
+        return runCatchingCancellable {
             try {
                 entry.session.write(text)
                 val writeResult = synchronized(state.lock) {
@@ -369,9 +369,7 @@ object TerminalSessionPool {
             } finally {
                 state.inputLock.unlock()
             }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
+        }.getOrElse { error ->
             TerminalInteractiveWriteOutcome.UnexpectedError(error)
         }
     }
@@ -456,63 +454,63 @@ object TerminalSessionPool {
             "command start session=$session commandLength=${command.length} timeoutMs=$timeoutMs"
         )
         return try {
-            when (val result = entry.session.exec(command = command, timeoutMillis = timeoutMs)) {
-                is TermResult.Success -> {
-                    if (result.value.timedOut) {
-                        Logger.i(
+            runCatchingCancellable {
+                when (val result = entry.session.exec(command = command, timeoutMillis = timeoutMs)) {
+                    is TermResult.Success -> {
+                        if (result.value.timedOut) {
+                            Logger.i(
+                                LOG_TAG,
+                                "command timed out session=$session " +
+                                        "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                            )
+                            TerminalCommandOutcome.Timeout(
+                                session = entry.handle,
+                                identity = entry.identity,
+                                result = result.value,
+                                elapsedSeconds = elapsedSeconds(startTimeMs),
+                            )
+                        } else {
+                            Logger.i(
+                                LOG_TAG,
+                                "command done session=$session exitCode=${result.value.exitCode} " +
+                                        "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                            )
+                            TerminalCommandOutcome.Success(
+                                session = entry.handle,
+                                identity = entry.identity,
+                                result = result.value,
+                                elapsedSeconds = elapsedSeconds(startTimeMs),
+                            )
+                        }
+                    }
+
+                    is TermResult.Failure -> {
+                        Logger.w(
                             LOG_TAG,
-                            "command timed out session=$session " +
+                            "command failed session=$session failure=${result.failure} " +
                                     "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
                         )
-                        TerminalCommandOutcome.Timeout(
+                        TerminalCommandOutcome.Failure(
                             session = entry.handle,
                             identity = entry.identity,
-                            result = result.value,
-                            elapsedSeconds = elapsedSeconds(startTimeMs),
-                        )
-                    } else {
-                        Logger.i(
-                            LOG_TAG,
-                            "command done session=$session exitCode=${result.value.exitCode} " +
-                                    "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
-                        )
-                        TerminalCommandOutcome.Success(
-                            session = entry.handle,
-                            identity = entry.identity,
-                            result = result.value,
+                            failure = result.failure,
                             elapsedSeconds = elapsedSeconds(startTimeMs),
                         )
                     }
                 }
-
-                is TermResult.Failure -> {
-                    Logger.w(
-                        LOG_TAG,
-                        "command failed session=$session failure=${result.failure} " +
-                                "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
-                    )
-                    TerminalCommandOutcome.Failure(
-                        session = entry.handle,
-                        identity = entry.identity,
-                        failure = result.failure,
-                        elapsedSeconds = elapsedSeconds(startTimeMs),
-                    )
-                }
+            }.getOrElse { error ->
+                Logger.w(
+                    LOG_TAG,
+                    "command unexpected error session=$session " +
+                            "errorType=${error::class.simpleName} message=${error.message} " +
+                            "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
+                )
+                TerminalCommandOutcome.UnexpectedError(
+                    session = entry.handle,
+                    throwable = error,
+                    elapsedSeconds = elapsedSeconds(startTimeMs),
+                )
             }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            Logger.w(
-                LOG_TAG,
-                "command unexpected error session=$session " +
-                        "errorType=${error::class.simpleName} message=${error.message} " +
-                        "elapsedMs=${System.currentTimeMillis() - startTimeMs}"
-            )
-            TerminalCommandOutcome.UnexpectedError(
-                session = entry.handle,
-                throwable = error,
-                elapsedSeconds = elapsedSeconds(startTimeMs),
-            )
         } finally {
             executeLock.unlock()
         }
@@ -563,7 +561,7 @@ object TerminalSessionPool {
             }
         }
         val execJob = holder.scope.launch(start = CoroutineStart.LAZY) {
-            try {
+            runCatchingCancellable {
                 when (val result =
                     entry.session.exec(command = command, timeoutMillis = timeoutMs)) {
                     is TermResult.Success -> synchronized(state.lock) {
@@ -574,9 +572,7 @@ object TerminalSessionPool {
                         state.failure = result.failure
                     }
                 }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
+            }.onFailure { error ->
                 synchronized(state.lock) {
                     state.unexpectedError = error
                 }
@@ -731,13 +727,11 @@ object TerminalSessionPool {
         }
         removed.interactiveState?.collectorJob?.cancel()
         val entry = removed.entry ?: return TerminalCloseOutcome.Closed
-        return try {
+        return runCatchingCancellable {
             entry.session.close()
             Logger.d(LOG_TAG, "session closed handle=$session")
             TerminalCloseOutcome.Closed
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
+        }.getOrElse { error ->
             Logger.w(
                 LOG_TAG,
                 "session close failed handle=$session errorType=${error::class.simpleName} " +
@@ -910,7 +904,7 @@ object TerminalSessionPool {
             interactiveStates[entry.handle] = state
         }
         val collectorJob = holder.scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            try {
+            runCatchingCancellable {
                 entry.session.stream.collect { chunk ->
                     // githooks:ignore monitor-lock 采集缓冲由 interactiveState 自己的锁保护，与读取侧同源
                     synchronized(state.lock) {
@@ -922,9 +916,7 @@ object TerminalSessionPool {
                 }
                 // githooks:ignore monitor-lock 同上
                 synchronized(state.lock) { state.ended = true }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
+            }.onFailure {
                 // 流异常结束同样视为会话终结（SSH 断连等）
                 // githooks:ignore monitor-lock 同上
                 synchronized(state.lock) { state.ended = true }

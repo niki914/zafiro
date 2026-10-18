@@ -12,7 +12,8 @@ import com.niki914.zafiro.chat.agentic.device.AppInfoProvider
 import com.niki914.zafiro.chat.agentic.device.AppMatchResult
 import com.niki914.zafiro.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.api.util.tryIgnore
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -33,12 +34,9 @@ class LaunchAppBuiltin : BuiltinTool() {
     override val inputSchemaJson: String? get() = LAUNCH_APP_SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
-        val args = try {
+        val args = runCatchingCancellable {
             parseArguments(request.argumentsJson)
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) {
-                throw throwable
-            }
+        }.getOrElse { throwable ->
             return BuiltinToolResult.failure(
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "launch_app arguments must be a JSON object with package_name or app_name.",
@@ -130,22 +128,21 @@ class LaunchAppBuiltin : BuiltinTool() {
         }
 
         for (identity in listOf("root", "shizuku")) {
-            val outcome = try {
+            val outcome = runCatchingCancellable {
                 TerminalSessionPool.openAndExecute(
                     identity = identity,
                     cwd = null,
                     command = command,
                     timeoutMs = LAUNCH_TIMEOUT_MS,
                 )
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
+            }.getOrElse { e ->
                 Logger.w(LOG_TAG, "am start exception identity=$identity: ${e.message}")
                 null
             }
             val session = (outcome as? TerminalCommandOutcome.Success)?.session
                 ?: (outcome as? TerminalCommandOutcome.Timeout)?.session
             if (session != null) {
-                runCatching { TerminalSessionPool.close(session) }
+                tryIgnore { TerminalSessionPool.close(session) }
             }
             if (outcome is TerminalCommandOutcome.Success && outcome.result.exitCode == 0) {
                 val stdout = outcome.result.stdout.toByteArray().decodeToString()

@@ -12,6 +12,8 @@ import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import com.niki914.zafiro.util.ToolOutputTruncator
+import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.api.util.tryOrNull
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.json.Json
@@ -63,13 +65,12 @@ Store the result of a run by printing from main; stdout is returned.
     override val inputSchemaJson: String? get() = SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
-        val args = try {
+        val args = runCatchingCancellable {
             parseArguments(request.argumentsJson)
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.getOrElse { throwable ->
             return invalidArguments(throwable.message ?: "Invalid JSON.")
         }
-        return try {
+        return runCatchingCancellable {
             when (args.action) {
                 "list" -> list()
                 "read" -> read(args.name)
@@ -82,8 +83,7 @@ Store the result of a run by printing from main; stdout is returned.
                     hint = "Use one of: list, read, write, delete, test.",
                 )
             }
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.getOrElse { throwable ->
             Logger.w(LOG_TAG, "py_meta_tools ${args.action} failed: ${throwable.message}")
             BuiltinToolResult.failure(
                 code = "PY_META_TOOLS_ERROR",
@@ -244,7 +244,7 @@ Store the result of a run by printing from main; stdout is returned.
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (t: Throwable) {
+        } catch (t: Throwable) { // githooks:ignore bare-catch 超时转为业务失败，其余取消正常放行
             BuiltinToolResult.failure(
                 code = "PYTHON_ERROR",
                 message = t.message ?: "Test run failed.",
@@ -274,25 +274,23 @@ Store the result of a run by printing from main; stdout is returned.
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (t: Throwable) {
+        } catch (t: Throwable) { // githooks:ignore bare-catch 自省超时转为结构化错误，其余取消正常放行
             return Introspection(
                 null,
                 null,
                 IntrospectionError("INTROSPECTION_FAILED", t.message ?: "Signature check failed.")
             )
         }
-        val json = try {
+        val json = tryOrNull {
             Json.parseToJsonElement(output.trim()).jsonObject
-        } catch (_: Exception) {
-            return Introspection(
-                null,
-                null,
-                IntrospectionError(
-                    "INTROSPECTION_FAILED",
-                    "Unexpected checker output: ${output.take(200)}"
-                )
+        } ?: return Introspection(
+            null,
+            null,
+            IntrospectionError(
+                "INTROSPECTION_FAILED",
+                "Unexpected checker output: ${output.take(200)}"
             )
-        }
+        )
         if (json["error"] != null) {
             val code = json["error"]!!.jsonPrimitive.contentOrNull ?: "INVALID_CODE"
             val line = json["line"]?.jsonPrimitive?.longOrNull

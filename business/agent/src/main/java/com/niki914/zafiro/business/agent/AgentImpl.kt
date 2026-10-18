@@ -22,6 +22,7 @@ import com.niki914.zafiro.chat.AgentSessionEngine
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.service.requireService
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -153,17 +154,21 @@ class AgentImpl(
             foldWith(ConversationReducer.addCompactingDivider(previousConversation))
             streamJob = scope.launch {
                 try {
-                    ensureConversation(query)
-                    val compacted = engine.compact(force = true)
-                    if (compacted) {
-                        foldWith(ConversationReducer.markCompacted(conversationFlow.value))
-                    } else {
+                    runCatchingCancellable {
+                        ensureConversation(query)
+                        val compacted = engine.compact(force = true)
+                        if (compacted) {
+                            foldWith(ConversationReducer.markCompacted(conversationFlow.value))
+                        } else {
+                            foldWith(Reduced(previousConversation))
+                        }
+                    }.onFailure { throwable ->
                         foldWith(Reduced(previousConversation))
+                        Logger.e(LOG_TAG, "compact round failed", throwable)
                     }
-                } catch (throwable: Throwable) {
+                } catch (e: CancellationException) {
                     foldWith(Reduced(previousConversation))
-                    if (throwable is CancellationException) throw throwable
-                    Logger.e(LOG_TAG, "compact round failed", throwable)
+                    throw e
                 } finally {
                     if (roundToken == token && statusFlow.value !is AgentState.Stopping) {
                         reducedStatus = AgentStateReducer.reset()
@@ -194,26 +199,27 @@ class AgentImpl(
         val token = ++roundToken
         streamJob = scope.launch {
             try {
-                val conversationId = ensureConversation(query)
-                Logger.i(
-                    LOG_TAG,
-                    "round started conversationId=${conversationId.value} queryLength=${query.length}"
-                )
-                engine.stream(query = query, images = contentImages, files = files)
-                    .collect { event ->
-                        fold(event)
+                runCatchingCancellable {
+                    val conversationId = ensureConversation(query)
+                    Logger.i(
+                        LOG_TAG,
+                        "round started conversationId=${conversationId.value} queryLength=${query.length}"
+                    )
+                    engine.stream(query = query, images = contentImages, files = files)
+                        .collect { event ->
+                            fold(event)
+                        }
+                }.onFailure { throwable ->
+                    Logger.e(
+                        LOG_TAG,
+                        "round failed errorType=${throwable::class.simpleName} message=${throwable.message}"
+                    )
+                    val message = throwable.message?.trim()?.takeIf(String::isNotEmpty)
+                    if (message != null) fold(LlmStreamEvent.Error(message = message))
+                    else {
+                        reducedStatus = AgentStateReducer.interrupt(reducedStatus)
+                        emitStatus(reducedStatus.status)
                     }
-            } catch (throwable: Throwable) {
-                if (throwable is CancellationException) throw throwable
-                Logger.e(
-                    LOG_TAG,
-                    "round failed errorType=${throwable::class.simpleName} message=${throwable.message}"
-                )
-                val message = throwable.message?.trim()?.takeIf(String::isNotEmpty)
-                if (message != null) fold(LlmStreamEvent.Error(message = message))
-                else {
-                    reducedStatus = AgentStateReducer.interrupt(reducedStatus)
-                    emitStatus(reducedStatus.status)
                 }
             } finally {
                 if (roundToken == token && statusFlow.value !is AgentState.Stopping) {
@@ -267,11 +273,10 @@ class AgentImpl(
         reducedStatus = AgentStateReducer.reset()
         emitStatus(reducedStatus.status)
         scope.launch {
-            try {
+            runCatchingCancellable {
                 engine.stopCurrentRound()
                 engine.resetConversation()
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
+            }.onFailure { t ->
                 Logger.w(LOG_TAG, "discard cleanup failed: ${t.message}", t)
             }
         }
@@ -287,10 +292,10 @@ class AgentImpl(
         emitStatus(reducedStatus.status)
         val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         cleanupScope.launch {
-            try {
+            runCatchingCancellable {
                 engine.stopCurrentRound()
                 engine.closeSession()
-            } catch (t: Throwable) {
+            }.onFailure { t ->
                 Logger.w(LOG_TAG, "release session cleanup failed", t)
             }
         }
@@ -333,7 +338,7 @@ class AgentImpl(
         fun attach(approver: Approver) {
             jobs.computeIfAbsent(approver) { app ->
                 scope.launch {
-                    try {
+                    runCatchingCancellable {
                         val decision = app.decide(request)
                         decisions[app] = decision
                         if (decision != ApprovalDecision.Abstain) {
@@ -341,8 +346,7 @@ class AgentImpl(
                         } else {
                             checkAllAbstained()
                         }
-                    } catch (t: Throwable) {
-                        if (t is CancellationException) throw t
+                    }.onFailure {
                         decisions[app] = ApprovalDecision.Abstain
                         checkAllAbstained()
                     }

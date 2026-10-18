@@ -24,7 +24,9 @@ import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.api.util.tryOrDefault
+import com.niki914.zafiro.api.util.tryIgnore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -146,7 +148,7 @@ class HomeChatViewModel internal constructor(
                 val currentId = currentState.currentConversationId
                 if (!currentId.isNullOrBlank()) {
                     viewModelScope.launch {
-                        runCatching {
+                        runCatchingCancellable {
                             conversations.updateConfigId(currentId, intent.id)
                         }.onFailure { throwable ->
                             Logger.w(
@@ -165,7 +167,7 @@ class HomeChatViewModel internal constructor(
     }
 
     private suspend fun refreshSavedConfigs() {
-        runCatching {
+        runCatchingCancellable {
             val document = configDependencies.loadConfigs()
             updateState {
                 copy(
@@ -305,7 +307,7 @@ class HomeChatViewModel internal constructor(
         }
         val isFirstConversationAssignment = currentState.currentConversationId == null && id != null
         val family = if (!id.isNullOrBlank()) {
-            runCatching { conversations.branchGroup(id) }.getOrDefault(emptyList())
+            tryOrDefault(emptyList()) { conversations.branchGroup(id) }
         } else {
             emptyList()
         }
@@ -331,7 +333,7 @@ class HomeChatViewModel internal constructor(
             val assignedId = id!!
             val boundConfig = currentState.boundConfigId!!
             viewModelScope.launch {
-                runCatching {
+                tryIgnore {
                     conversations.updateConfigId(assignedId, boundConfig)
                 }
             }
@@ -419,10 +421,9 @@ class HomeChatViewModel internal constructor(
         draftSaveJob?.cancel()
         draftSaveJob = viewModelScope.launch {
             kotlinx.coroutines.delay(DRAFT_SAVE_DEBOUNCE_MS)
-            try {
+            runCatchingCancellable {
                 conversations.setDraftText(value)
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
+            }.onFailure { t ->
                 Logger.w(LOG_TAG, "save draft failed: ${t.message}")
             }
         }
@@ -455,10 +456,9 @@ class HomeChatViewModel internal constructor(
      */
     private suspend fun attachFile(uri: String) {
         val startedAt = System.currentTimeMillis()
-        val result = try {
+        val result = runCatchingCancellable {
             files.attach(uri)
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.getOrElse { throwable ->
             Logger.w(LOG_TAG, "attach file failed uri=$uri reason=${throwable.message}")
             FileAttachResult.Unreadable
         }
@@ -510,7 +510,7 @@ class HomeChatViewModel internal constructor(
         if (settled.images.count { it is DraftImage.Ready } == before) {
             Logger.w(LOG_TAG, "camera ingest failed uri=$uri")
         }
-        runCatching { File(path).delete() }
+        runCatchingCancellable { File(path).delete() }
             .onFailure { Logger.w(LOG_TAG, "camera temp file delete failed path=$path") }
     }
 
@@ -537,10 +537,9 @@ class HomeChatViewModel internal constructor(
         draftSaveJob?.cancel()
         draftSaveJob = null
         viewModelScope.launch {
-            try {
+            runCatchingCancellable {
                 conversations.setDraftText("")
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
+            }.onFailure { t ->
                 Logger.w(LOG_TAG, "clear draft failed: ${t.message}")
             }
         }
@@ -589,9 +588,9 @@ class HomeChatViewModel internal constructor(
         viewModelScope.launch {
             refreshSavedConfigs()
             val startedAtMs = System.currentTimeMillis()
-            try {
+            runCatchingCancellable {
                 if (!leavingId.isNullOrBlank()) {
-                    runCatching { conversations.bindConfig(leavingId) }
+                    runCatchingCancellable { conversations.bindConfig(leavingId) }
                         .onFailure { throwable ->
                             Logger.w(LOG_TAG, "bindConfig failed leavingId=$leavingId", throwable)
                         }
@@ -605,8 +604,8 @@ class HomeChatViewModel internal constructor(
                     LOG_TAG,
                     "new conversation done elapsedMs=${System.currentTimeMillis() - startedAtMs}",
                 )
-            } catch (throwable: Throwable) {
-                if (throwable is CancellationException) throw throwable
+            }.onFailure { throwable ->
+                Logger.e(LOG_TAG, "new conversation failed", throwable)
             }
         }
     }
@@ -615,13 +614,12 @@ class HomeChatViewModel internal constructor(
         if (startupRestoreAttempted) return
         startupRestoreAttempted = true
         viewModelScope.launch {
-            val draft = runCatching { conversations.draftText() }.getOrDefault("")
+            val draft = tryOrDefault("") { conversations.draftText() }
             if (draft.isNotEmpty()) {
                 updateState { copy(input = draft) }
                 agent.updateDraft { it.copy(text = draft) }
             }
-            val shouldRestore = runCatching { conversations.loadLastConversationOnStartup() }
-                .getOrDefault(true)
+            val shouldRestore = tryOrDefault(true) { conversations.loadLastConversationOnStartup() }
             if (!shouldRestore) {
                 Logger.d(LOG_TAG, "restore skipped loadLastConversationOff")
                 return@launch
@@ -631,16 +629,15 @@ class HomeChatViewModel internal constructor(
                 Logger.d(LOG_TAG, "restore skipped lastOpenedConversationBlank")
                 return@launch
             }
-            try {
+            runCatchingCancellable {
                 loadConversation(conversationId, preferLatestBranch = true)
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
+            }.onFailure { t ->
                 Logger.e(
                     LOG_TAG,
                     "restoreStartupState failed for id=$conversationId, falling back to clean state: ${t.message}",
                     t,
                 )
-                runCatching { conversations.setLastOpenedConversationId("") }
+                tryIgnore { conversations.setLastOpenedConversationId("") }
                 updateState { HomeChatUiState(input = currentState.input).withClearedTransient() }
             }
         }
@@ -655,11 +652,11 @@ class HomeChatViewModel internal constructor(
      */
     private suspend fun loadConversation(id: String, preferLatestBranch: Boolean = false) {
         val target = if (preferLatestBranch) {
-            runCatching {
+            tryOrDefault(id) {
                 val record = conversations.getConversation(id)
                 val rootId = record?.summary?.rootId
                 if (rootId.isNullOrBlank()) id else conversations.latestBranchId(rootId) ?: id
-            }.getOrDefault(id)
+            }
         } else {
             id
         }
@@ -670,7 +667,7 @@ class HomeChatViewModel internal constructor(
         Logger.i(LOG_TAG, "load conversation id=$target started")
         val leavingId = agent.conversation.value.id?.value
         if (!leavingId.isNullOrBlank() && leavingId != target) {
-            runCatching { conversations.bindConfig(leavingId) }
+            runCatchingCancellable { conversations.bindConfig(leavingId) }
                 .onFailure { throwable ->
                     Logger.w(LOG_TAG, "bindConfig failed leavingId=$leavingId", throwable)
                 }
@@ -813,7 +810,7 @@ class HomeChatViewModel internal constructor(
         Logger.i(LOG_TAG, "delete conversation id=$id started")
         val groupIds = conversations.branchGroupIds(id)
         groupIds.forEach { branchId ->
-            runCatching { agentManager.destroy(branchId) }
+            tryIgnore { agentManager.destroy(branchId) }
         }
         val currentOpenId = agent.conversation.value.id?.value
         val deletingCurrent = id == currentOpenId || groupIds.contains(currentOpenId)

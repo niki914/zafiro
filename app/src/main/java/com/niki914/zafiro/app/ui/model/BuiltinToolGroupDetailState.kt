@@ -6,7 +6,8 @@ import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingItem
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolSettingsManager
 import com.niki914.zafiro.repo.BuiltinToolGroups
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.api.util.tryOrNull
 
 data class BuiltinToolGroupDetailUiState(
     val groupId: String = "",
@@ -52,15 +53,14 @@ class BuiltinToolGroupDetailViewModel :
     }
 
     private suspend fun load(groupId: String) {
-        val group =
-            runCatching { BuiltinToolGroups.find(groupId) }.getOrNull()
+        val group = tryOrNull { BuiltinToolGroups.find(groupId) }
         if (group == null) {
             Logger.w(LOG_TAG, "load failed unknown group=$groupId")
             updateState { copy(isLoading = false) }
             return
         }
         updateState { copy(groupId = groupId, titleRes = group.titleRes, isLoading = true) }
-        runCatching {
+        runCatchingCancellable {
             manager.load()
         }.onSuccess { items ->
             updateState {
@@ -72,9 +72,6 @@ class BuiltinToolGroupDetailViewModel :
                 )
             }
         }.onFailure { throwable ->
-            if (throwable is CancellationException) {
-                throw throwable
-            }
             Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState { copy(isLoading = false) }
         }
@@ -90,15 +87,12 @@ class BuiltinToolGroupDetailViewModel :
                 isSaving = true,
             )
         }
-        runCatching {
+        runCatchingCancellable {
             manager.setEnabled(name, enabled)
         }.onSuccess { result ->
             updateState { copy(isSaving = false) }
             Logger.i(LOG_TAG, "setEnabled ok=$name success=${result.ok}")
         }.onFailure { throwable ->
-            if (throwable is CancellationException) {
-                throw throwable
-            }
             Logger.w(LOG_TAG, "setEnabled failed tool=$name reason=${throwable.message}")
             updateState { copy(members = previousMembers, isSaving = false) }
         }

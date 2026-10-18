@@ -5,7 +5,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.device.AppInfo
 import com.niki914.zafiro.chat.agentic.device.AppInfoProvider
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -27,12 +27,9 @@ class FindInstalledAppsBuiltin : BuiltinTool() {
     override val inputSchemaJson: String? get() = FIND_INSTALLED_APPS_SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
-        val args = try {
+        val args = runCatchingCancellable {
             parseArguments(request.argumentsJson)
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) {
-                throw throwable
-            }
+        }.getOrElse { throwable ->
             return BuiltinToolResult.failure(
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "find_installed_apps arguments must be a JSON object with a query field.",
