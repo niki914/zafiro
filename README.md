@@ -5,12 +5,12 @@
 </div>
 
 <p align="center">
-  <img src="https://socialify.git.ci/niki914/zafiro/image?custom_description=Android+%C2%B7+Native+Agent+%C2%B7+Skills+%C2%B7+MCP%0APython+%2F+Phone-Use+%2F+Shell&description=1&font=Raleway&language=1&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjE4IDE4IDcyIDcyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiI%2BCiAgPCEtLSDog4zmma%2FvvJrlrp3nn7Pok50gLS0%2BCiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEwOCIgaGVpZ2h0PSIxMDgiIGZpbGw9IiMwRjUyQkEiLz4KCiAgPGcgc3Ryb2tlPSIjRkZGRkZGIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGZpbGw9Im5vbmUiPgogICAgPCEtLSDlt6bkvqflpJbova7lu5Pnur8gLS0%2BCiAgICA8cGF0aCBkPSJNNTQsMzQgTDQ0LDUyLjMgQzQ1LjQsNTMuNyA0NS40LDU1LjMgNDQsNTYuNyBMNTQsNzQiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgPCEtLSDlt6bkvqflhoXmo7Hnur8gLS0%2BCiAgICA8cGF0aCBkPSJNNTQsMzQgTDQ5LDUyLjMgQzQ5LjQsNTMuNyA0OS40LDU1LjMgNDksNTYuNyBMNTQsNzQiIHN0cm9rZS13aWR0aD0iMS41Ii8%2BCiAgICA8IS0tIOWPs%2BS%2Bp%2BWGheajsee6vyAtLT4KICAgIDxwYXRoIGQ9Ik01NCwzNCBMNTksNTIuMyBDNTguNiw1My43IDU4LjYsNTUuMyA1OSw1Ni43IEw1NCw3NCIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KICAgIDwhLS0g5Y%2Bz5L6n5aSW6L2u5buT57q%2FIC0tPgogICAgPHBhdGggZD0iTTU0LDM0IEw2NCw1Mi4zIEM2Mi42LDUzLjcgNjIuNiw1NS4zIDY0LDU2LjcgTDU0LDc0IiBzdHJva2Utd2lkdGg9IjIiLz4KICAgIDwhLS0g5Ye56Zm35bGC5LiK5LiL55WM6Z2i55qE5rC05bmz5qiq57q%2FIC0tPgogICAgPHBhdGggZD0iTTQ0LDUyLjMgTDY0LDUyLjMiIHN0cm9rZS13aWR0aD0iMS41Ii8%2BCiAgICA8cGF0aCBkPSJNNDQsNTYuNyBMNjQsNTYuNyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KICA8L2c%2BCjwvc3ZnPgo%3D&name=1&owner=1&pattern=Diagonal+Stripes&theme=Auto" alt="zafiro"/>
+  <img src="https://github.com/niki914/zafiro/blob/main/res/banner/socialify.svg?raw=true" alt="zafiro"/>
 </p>
 
 <p align="center">
   <a href="https://github.com/niki914/zafiro"><img src="https://img.shields.io/github/stars/niki914/zafiro?label=stars" alt="stars"/></a>
-  <a href="https://deepwiki.com/niki914/zafiro"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
+  <a href="https://deepwiki.com/niki914/zafiro"><img src="https://github.com/niki914/zafiro/blob/main/res/badges/ask_deepwiki.svg?raw=true" alt="Ask DeepWiki"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/v/release/niki914/zafiro?include_prereleases" alt="release"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/downloads/niki914/zafiro/total" alt="downloads"/></a>
   <img src="https://img.shields.io/badge/kotlin-86.4k-blue" alt="kotlin lines"/>
@@ -21,25 +21,35 @@
 
 Zafiro is an open-source intelligent Agent running on Android devices, with [BYOK](https://www.ibm.com/think/topics/byok) support. It understands your screen, controls your device, and carries out operations across apps — with full support for Skills, MCP, and memory. It can also run Shell and Python 3 natively and wrap tools on its own to perform tasks such as web search and file downloads, or connect to a remote dev machine via SSH.
 
-<table align="center">
-<tr>
-<tr>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__phone_use.gif?raw=true" alt="Zafiro picks and plays music in Spotify via Phone-Use" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__net_research.gif?raw=true" alt="Zafiro completes web research with headless web search and article reading via Python scripts" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__native.gif?raw=true" alt="Zafiro downloads an APK from the web via Python and installs it with Root" width="135" height="300"/></td>
-<td align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/zafiro__settings_screen.png?raw=true" alt="Zafiro settings screen" width="142" height="300"/></td>
-</tr>
-<tr>
-<td align="center">Device Control</td>
-<td align="center">Research</td>
-<td align="center">Install Apps from the Web</td>
-<td align="center">Settings</td>
-</tr>
-</tr>
+<table align="center" width="100%">
+  <tr>
+    <th width="25%" align="center">Phone-Use</th>
+    <th width="25%" align="center">HTML Generation</th>
+    <th width="25%" align="center">External Agents</th>
+    <th width="25%" align="center">Multimodal</th>
+  </tr>
+  <tr>
+    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__phone_control.gif?raw=true" alt="Autonomous mobile GUI navigation and device control via screen pointer" width="90%" /></td>
+    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__html_generation.gif?raw=true" alt="Dynamic code generation and instant local browser preview" width="90%" /></td>
+    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__pi_agent_mcp.gif?raw=true" alt="Android MCP server exposing system capabilities to external agents" width="90%" /></td>
+    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__image_understanding.jpg?raw=true" alt="On-device multimodal vision and image understanding" width="90%" /></td>
+  </tr>
+  <tr>
+    <th width="25%" align="center">Model Providers</th>
+    <th width="25%" align="center">Termux</th>
+    <th width="25%" align="center">Safety Guard</th>
+    <th width="25%" align="center">Session Management</th>
+  </tr>
+  <tr>
+    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__multi_providers.jpg?raw=true" alt="Custom LLM API keys and multi-provider configuration" width="90%" /></td>
+    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__remote_machine_ssh.jpg?raw=true" alt="Integrate remote dev machines via SSH and Termux" width="90%" /></td>
+    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__safety_guard.jpg?raw=true" alt="Human-in-the-loop permission guard and safety interception for sensitive Shell actions" width="90%" /></td>
+    <td width="25%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/demos/zafiro__conversation_management.jpg?raw=true" alt="Local conversation history management and session branching" width="90%" /></td>
+  </tr>
 </table>
 
 > [!IMPORTANT]
-> Zafiro runs via [Shizuku](https://github.com/RikkaApps/Shizuku) — no Root required; Root users get the full experience.
+> For native apps, Zafiro controls the phone via Accessibility Service; for non-native apps, it can also operate via [Shizuku](https://github.com/RikkaApps/Shizuku) without Root. Root users get the full experience.
 >
 > You can download a release from [Releases](https://github.com/niki914/zafiro/releases/latest), or choose to [build from source](#from-source).
 
@@ -55,14 +65,15 @@ Zafiro is an open-source intelligent Agent running on Android devices, with [BYO
 ### Device Control
 
 - **Screen Interaction** - open apps, pick music, order food — all done for you
-- **Fully Visible** - an on-screen mouse shows every step the Agent takes
+- **Fully Visible** - an on-screen pointer shows every step the Agent takes
 
 ### Agent System
 
 - **Out-of-the-Box** - built-in support for OpenAI, Anthropic, Google Gemini, DeepSeek, OpenRouter, Kimi, Alibaba Bailian, SiliconFlow, and more
 - **Extend as Needed** - full support for Skills and MCP, plus memory and a workspace — extend it your way
 - **Permission Management** - with configurable rules, every command and piece of code is under your control
-- **Conversation Control** - rewind, edit, and regenerate any turn at will; all conversation data stays strictly local, and models can be switched on the fly within the same session
+- **Context Management** - inspect context window usage at any time and compress it
+- **Conversation Management** - branch, rewind, and regenerate any turn; all conversation data stays strictly local, and models can be switched on the fly within the same session
 
 ### Python Tools
 
@@ -88,12 +99,15 @@ Through the [LSPosed](https://github.com/lsposed/lsposed) framework, Zafiro can 
 <details>
 <summary>Demos</summary>
 
-<table align="center">
-<tr>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno__github_mcp.gif?raw=true" alt="Zafiro voice assistant takeover demo" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/hyper__intro.gif?raw=true" alt="Zafiro voice assistant takeover demo" width="200"/></td>
-<td align="center" valign="middle"><img src="https://github.com/niki914/zafiro/blob/main/res/breeno__magisk.gif?raw=true" alt="Zafiro voice assistant takeover demo" width="200"/></td>
-</tr>
+<table align="center" width="100%">
+  <tr>
+    <th width="50%" align="center">Breeno</th>
+    <th width="50%" align="center">XiaoAi</th>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/takeover/breeno__termux.gif?raw=true" alt="ColorOS Breeno voice assistant takeover demo" width="80%" /></td>
+    <td width="50%" align="center"><img src="https://github.com/niki914/zafiro/blob/main/res/takeover/hyper__intro.gif?raw=true" alt="HyperOS XiaoAi voice assistant takeover demo" width="80%" /></td>
+  </tr>
 </table>
 
 </details>
@@ -179,19 +193,31 @@ keytool -genkeypair -v -keystore my-release.jks \
 
 Pull requests are welcome!
 
+### Steps
+
 1. Fork this project
 2. Create a feature branch (`git checkout -b feat/your-feature`)
 3. Commit your changes (`git commit -m 'feat: add your feature'`, following [Conventional Commits](https://www.conventionalcommits.org/en/))
 4. Push to the branch (`git push origin feat/your-feature`)
 5. Open a Pull Request
 
+### Using Your Coding Agent
+
+Before contributing using coding agents like Codex, make sure they have read the project's [AGENTS.md](AGENTS.md).
+
 ## Community
 
 - [Telegram](https://t.me/+ZPX2xtSl6RwyZGNl) — discuss, ask questions, give feedback
 - [GitHub Issues](https://github.com/niki914/zafiro/issues) — report bugs or request features
-- [Afdian](https://afdian.com/a/niki914) — support the developer
 
 When reporting an issue, please include as much detail as possible: phone model and Android version, system voice assistant and its version, Zafiro version, steps to reproduce, and screenshots or screen recordings.
+
+## Sponsorship
+
+We welcome sponsorships through the following channels:
+
+- [Afdian](https://afdian.com/a/niki914)
+- [![Tip in Crypto](https://tip.md/badge.svg)](https://tip.md/niki914) - 0x5f1469519c87edf2245ea04fbb54284c9b76ad3d
 
 ## License
 

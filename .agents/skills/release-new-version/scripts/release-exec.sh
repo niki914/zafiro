@@ -137,9 +137,18 @@ if [ "$PUBLISH_XPOSED" = true ]; then
     -e 's/Welcome to Star, Issue, and contribute/Open source: https:\/\/github.com\/niki914\/zafiro/g' \
     "$NOTES_FILE" > "$XPOSED_NOTES_FILE"
 
-  # If repo doesn't contain the specific link, append it cleanly to both language blocks
+  # If notes do not contain the open source link, append it to both English and Chinese blocks
   if ! grep -q "https://github.com/niki914/zafiro" "$XPOSED_NOTES_FILE"; then
-    echo -e "\nOpen source: https://github.com/niki914/zafiro\n\n---\n\n项目已开源：https://github.com/niki914/zafiro" > "$XPOSED_NOTES_FILE"
+    awk '
+      /^---$/ {
+        print "\nOpen source: https://github.com/niki914/zafiro\n\n---"
+        next
+      }
+      { print }
+      END {
+        print "\n项目已开源：https://github.com/niki914/zafiro"
+      }
+    ' "$XPOSED_NOTES_FILE" > "${XPOSED_NOTES_FILE}.tmp" && mv "${XPOSED_NOTES_FILE}.tmp" "$XPOSED_NOTES_FILE"
   fi
 
   gh release create "${XPOSED_TAG}" "$APK_FILE" \
