@@ -259,6 +259,12 @@ fun HomePageContent(
     val navigationBottom = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
     var isComposerFocused by remember { mutableStateOf(false) }
     val effectiveImeBottom = if (isComposerFocused) imeBottom else 0.dp
+    val isKeyboardActive = imeBottom > 0.dp || (isComposerFocused && uiState.input.isNotEmpty())
+    LaunchedEffect(isKeyboardActive) {
+        if (isKeyboardActive) {
+            viewModel.sendIntent(HomeChatIntent.Warmup)
+        }
+    }
     // 统一视觉底间距：键盘关闭时与 composer 底距一致，不随 ime 放大——键盘打开时
     // 额外空间全部由 composerBottomPadding 提供，箭头/消息的呼吸空间保持固定
     val composerGap = navigationBottom + 20.dp

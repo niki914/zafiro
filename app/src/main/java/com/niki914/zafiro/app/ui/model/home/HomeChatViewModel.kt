@@ -105,6 +105,7 @@ class HomeChatViewModel internal constructor(
         when (intent) {
             is HomeChatIntent.InputChanged -> onInputChanged(intent.value)
             HomeChatIntent.Send -> sendCurrentInput()
+            HomeChatIntent.Warmup -> agent.warmup()
             is HomeChatIntent.ImageAttached -> attachImage(intent.uri)
             is HomeChatIntent.ImageRemoved -> removeImage(intent.id)
             is HomeChatIntent.FileAttached -> attachFile(intent.uri)

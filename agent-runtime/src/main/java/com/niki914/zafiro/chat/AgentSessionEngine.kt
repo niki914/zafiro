@@ -33,6 +33,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 /**
@@ -131,7 +133,23 @@ class AgentSessionEngine {
         )
     }
 
-    suspend fun refresh(restore: SessionSnapshot? = null): LlmRuntimeSnapshot {
+    private val refreshMutex = Mutex()
+
+    /**
+     * 预热底层 Okia 会话与 MCP 工具发现。
+     * 幂等调用：无可用会话时触发首轮 refresh；已有会话时不做多余重装配。
+     */
+    suspend fun warmup() {
+        if (runtimeState == null) {
+            runCatchingCancellable {
+                refresh()
+            }.onFailure { throwable ->
+                Logger.d(LOG_TAG, "warmup skipped or failed: ${throwable.message}")
+            }
+        }
+    }
+
+    suspend fun refresh(restore: SessionSnapshot? = null): LlmRuntimeSnapshot = refreshMutex.withLock {
         val refreshStartedAtMs = System.currentTimeMillis()
         val gateway = RuntimeEnvironment.awaitSettingsGateway()
         val llmConfig = gateway.readLlmConfig(configId = boundConfigId.takeIf { it.isNotBlank() })
@@ -233,7 +251,7 @@ class AgentSessionEngine {
         val finalConfig =
             configWithoutRuntimePrompt.copy(finalSystemPrompt = prompt.finalSystemPrompt)
 
-        return LlmRuntimeSnapshot(finalConfig, resolvedTools, prompt).also { snapshot ->
+        return@withLock LlmRuntimeSnapshot(finalConfig, resolvedTools, prompt).also { snapshot ->
             runtimeState = RuntimeState(
                 snapshot = snapshot,
                 okia = activeSession,
