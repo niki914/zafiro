@@ -120,6 +120,22 @@ python3 .githooks/check_strings.py --all --stat # 输出全仓各模块多语言
 python3 .githooks/test_check_strings.py       # 跑多语言检查器的单元测试
 ```
 
+### 单文件 Token 上限检查 (check_tokens.py)
+
+限制单文件上限为 5,000 Tokens（按 `Tokens = bytes / 4` 换算，上限为 20,000 字节），防止大文件导致 AI Agent 上下文注意力衰减、工具调用截断与代码合并冲突。
+
+```sh
+python3 .githooks/check_tokens.py            # 增量：检查暂存区新增/修改的 .kt（钩子用的就是这个）
+python3 .githooks/check_tokens.py --all      # 全量：扫描全仓所有已跟踪的 .kt
+python3 .githooks/check_tokens.py --all app  # 全量，限定模块
+python3 .githooks/check_tokens.py --all --stat # 输出全仓各模块超标大盘
+python3 .githooks/test_check_tokens.py       # 跑 Token 检查器的单元测试
+```
+
+- **自动忽略**：排除 `libs/`、`build/` 等目录，排除 ViewBinding、Room `_Impl`、Navigation Directions 以及头部含 `@generated` / `DO NOT EDIT` 等非 Agent 产出的生成代码。
+- **放行方式**：在文件任意位置（推荐第一行）添加 `// githooks:ignore-file file-token-limit`。
+- **拆分指引**：阻断时会输出针对 Compose UI（拆子组件/Preview）、ViewModel（契约/领域服务下沉）、Repository（实体拆解/模型外置）、单元测试（按场景拆分）的具体操作步骤。
+
 清理存量建议先 `--all --stat` 看分布，再按模块 + 按规则分批推进：一批只清一种坏味道，diff 才好读。
 
 排除的路径在 `check.py` 的 `EXCLUDE_PREFIXES`，增量与全量共用同一份；目前默认排掉整个 `libs/`（内联的第三方库，不重构别人的代码风格）。

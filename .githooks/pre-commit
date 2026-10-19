@@ -10,5 +10,6 @@ fi
 exit_code=0
 python3 "$root/.githooks/check.py" --staged || exit_code=1
 python3 "$root/.githooks/check_strings.py" --staged || exit_code=1
+python3 "$root/.githooks/check_tokens.py" --staged || exit_code=1
 
 exit $exit_code
