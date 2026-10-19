@@ -299,11 +299,11 @@
     <string name="tool_group_android_native_summary">System-native actions: open links, search and launch apps, send notifications</string>
     <string name="tool_group_screen_operation">Screen Operation</string>
     <string name="tool_group_screen_operation_summary">Read and operate the screen via accessibility service or shell</string>
-    <string name="tool_custom_py_tools_entry">Custom Python tools</string>
+    <string name="tool_custom_py_tools_entry">Custom Python Tools</string>
     <string name="tool_custom_py_tools_entry_summary">Parameterized custom Python tools the agent can create, modify, and test-run</string>
 
     <!-- Python Tool Module -->
-    <string name="custom_py_tool_page_title">Python Meta Tools</string>
+    <string name="custom_py_tool_page_title">Custom Python Tools</string>
     <string name="custom_py_tool_page_description">Manage your Custom Python tools.</string>
     <string name="custom_py_tool_page_empty_description">Let your Agent create one, or tap the top right to add a new tool.</string>
     <string name="custom_py_tool_loading">Loading saved Custom Python tools...</string>
@@ -420,6 +420,7 @@
     <string name="ui_tool_display_screen_operation_shell">Screen Operation</string>
     <string name="ui_tool_display_screenshot">Screenshot</string>
     <string name="ui_tool_display_view_image">View Image</string>
+    <string name="ui_tool_display_py_meta_tools">Custom Python Tool</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_confirm_delete">Delete</string>
     <string name="ui_settings_section_general">General</string>
@@ -466,6 +467,8 @@
     <string name="ui_settings_runtime_sensitivity_strictest">Strictest</string>
     <string name="ui_settings_runtime_sensitivity_off">Off</string>
     <string name="ui_settings_general_always_show_message_actions">Always show message actions</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output">Always show detailed tool output</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output_summary">Very large output may cause UI stuttering</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">Dedicated voice assistant session</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">Keep voice assistant conversations isolated from main chat history</string>
     <string name="ui_settings_saved_configuration_title">Saved configurations</string>

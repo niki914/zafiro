@@ -419,6 +419,7 @@
     <string name="ui_tool_display_screen_operation_shell">屏幕操作</string>
     <string name="ui_tool_display_screenshot">截屏</string>
     <string name="ui_tool_display_view_image">查看图片</string>
+    <string name="ui_tool_display_py_meta_tools">自定义 Python 工具</string>
     <string name="dialog_cancel">取消</string>
     <string name="dialog_confirm_delete">删除</string>
     <string name="ui_settings_configure_endpoint_mismatch_title">更新端点</string>
@@ -471,6 +472,8 @@
     <string name="ui_settings_runtime_sensitivity_strictest">极严</string>
     <string name="ui_settings_runtime_sensitivity_off">关闭</string>
     <string name="ui_settings_general_always_show_message_actions">总是显示消息操作</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output">总是展示工具详细输出</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output_summary">输出内容过大可能会导致界面卡顿</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">语音助手独享一个会话</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">开启后语音助手对话不影响主界面历史；关闭则与主界面共用当前对话</string>
     <string name="ui_settings_saved_configuration_title">已保存配置</string>

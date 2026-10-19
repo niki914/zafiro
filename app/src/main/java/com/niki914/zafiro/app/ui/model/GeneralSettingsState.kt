@@ -15,6 +15,7 @@ data class GeneralSettingsUiState(
     val turnNotificationEnabled: Boolean = false,
     val loadLastConversation: Boolean = true,
     val alwaysShowMessageActions: Boolean = true,
+    val alwaysShowDetailedToolOutput: Boolean = false,
     val voiceAssistantIsolatedSession: Boolean = true,
     val isLoading: Boolean = false,
 )
@@ -27,6 +28,7 @@ sealed interface GeneralSettingsIntent {
     data class ToggleTurnNotification(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleLoadLastConversation(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleAlwaysShowMessageActions(val enabled: Boolean) : GeneralSettingsIntent
+    data class ToggleAlwaysShowDetailedToolOutput(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleVoiceAssistantIsolatedSession(val enabled: Boolean) : GeneralSettingsIntent
 }
 
@@ -49,6 +51,9 @@ class GeneralSettingsViewModel :
                 intent.enabled
             )
 
+            is GeneralSettingsIntent.ToggleAlwaysShowDetailedToolOutput ->
+                toggleAlwaysShowDetailedToolOutput(intent.enabled)
+
             is GeneralSettingsIntent.ToggleVoiceAssistantIsolatedSession ->
                 toggleVoiceAssistantIsolatedSession(intent.enabled)
         }
@@ -59,6 +64,7 @@ class GeneralSettingsViewModel :
         runCatching {
             val loadLastConversation = XRepo.loadLastConversationOnStartup()
             val alwaysShowMessageActions = XRepo.alwaysShowMessageActions()
+            val alwaysShowDetailedToolOutput = XRepo.alwaysShowDetailedToolOutput()
             val voiceAssistantIsolatedSession = XRepo.voiceAssistantIsolatedSession()
             val floatingBallEnabled = XRepo.floatingBallEnabled()
             val floatingBallAutoExpand = XRepo.floatingBallAutoExpand()
@@ -68,6 +74,7 @@ class GeneralSettingsViewModel :
                 copy(
                     loadLastConversation = loadLastConversation,
                     alwaysShowMessageActions = alwaysShowMessageActions,
+                    alwaysShowDetailedToolOutput = alwaysShowDetailedToolOutput,
                     voiceAssistantIsolatedSession = voiceAssistantIsolatedSession,
                     floatingBallEnabled = floatingBallEnabled,
                     floatingBallAutoExpand = floatingBallAutoExpand,
@@ -148,6 +155,11 @@ class GeneralSettingsViewModel :
             e.printStackTrace()
             throw e
         }
+    }
+
+    private suspend fun toggleAlwaysShowDetailedToolOutput(enabled: Boolean) {
+        updateState { copy(alwaysShowDetailedToolOutput = enabled) }
+        XRepo.setAlwaysShowDetailedToolOutput(enabled)
     }
 
     private suspend fun toggleVoiceAssistantIsolatedSession(enabled: Boolean) {

@@ -16,7 +16,9 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ToolPresentation.inputOf
 import com.niki914.zafiro.app.ui.model.ToolPresentation.previewOf
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.niki914.zafiro.remoteview.R as RemoteViewR
@@ -82,6 +84,7 @@ object ToolPresentation {
         "screen_operation_shell" -> R.string.ui_tool_display_screen_operation_shell
         "screenshot" -> R.string.ui_tool_display_screenshot
         "view_image" -> R.string.ui_tool_display_view_image
+        "py_meta_tools" -> R.string.ui_tool_display_py_meta_tools
         else -> null
     }
 
@@ -117,8 +120,72 @@ object ToolPresentation {
             "terminal", "shell", "ssh" -> args["command"] ?: args["action"]
             "load_skill" -> args["id"]
             "execute_python" -> args["code"]
+            "open_uri" -> args["uri"] ?: args["url"]
+            "launch_app" -> args["name"] ?: args["package_name"] ?: args["app"]
+            "find_installed_apps" -> args["query"] ?: args["keyword"]
+            "notify" -> args["content"] ?: args["title"]
+            "memory" -> args["content"] ?: args["query"]
+            "view_image" -> args["path"] ?: args["uri"]
+            "py_meta_tools" -> args["tool"] ?: args["action"]
+            "screen_operation_accessibility", "screen_operation_shell" -> args["action"]
             else -> null
-        }?.jsonPrimitive?.contentOrNull
+        }?.let { (it as? JsonPrimitive)?.contentOrNull }
+    }
+
+    /**
+     * 精简输出格式化：剔除无意义的协议信封（#!tool-result、JSON 包装）、屏蔽全屏 YAML 视图树巨量噪音，
+     * 提取实际有价值的文本结果；无法提取时回退原始文本。
+     */
+    fun formatConciseOutput(name: String, rawResult: String?): String? {
+        if (rawResult.isNullOrBlank()) return null
+        val unwrapped = if (rawResult.startsWith("#!tool-result")) {
+            if (rawResult.contains("\n\n")) {
+                rawResult.substringAfter("\n\n").trim()
+            } else {
+                rawResult.removePrefix("#!tool-result").trim()
+            }
+        } else rawResult.trim()
+
+        val json = tryOrNull { Json.parseToJsonElement(unwrapped).jsonObject }
+        if (json != null) {
+            // 1. 优先提取命令行/Python 执行的 stdout/output/stderr
+            val stdoutParts = listOf("stdout", "output", "stderr")
+                .mapNotNull { key -> json[key]?.jsonPrimitive?.contentOrNull }
+                .filter { it.isNotBlank() }
+            if (stdoutParts.isNotEmpty()) {
+                return stdoutParts.joinToString("\n")
+            }
+
+            // 2. find_installed_apps 列表提取
+            if (name == "find_installed_apps") {
+                val dataArray = tryOrNull { json["data"]?.jsonArray }
+                if (dataArray != null && dataArray.isNotEmpty()) {
+                    val apps = dataArray.mapNotNull { item ->
+                        val obj = tryOrNull { item.jsonObject } ?: return@mapNotNull null
+                        val appName = obj["app_name"]?.jsonPrimitive?.contentOrNull
+                        val pkg = obj["package_name"]?.jsonPrimitive?.contentOrNull
+                        if (!appName.isNullOrBlank() && !pkg.isNullOrBlank()) {
+                            "$appName ($pkg)"
+                        } else {
+                            appName ?: pkg
+                        }
+                    }
+                    if (apps.isNotEmpty()) return apps.joinToString("\n")
+                }
+            }
+
+            // 3. message 提示文案
+            val msg = json["message"]?.jsonPrimitive?.contentOrNull
+            if (!msg.isNullOrBlank()) return msg
+
+            // 4. data 标量
+            val data = json["data"]
+            if (data is JsonPrimitive && data.content.isNotBlank()) {
+                return data.content
+            }
+        }
+
+        return unwrapped
     }
 
     /** 输入预览：首段非空行压成单行；空 → null（只显示工具名）。 */

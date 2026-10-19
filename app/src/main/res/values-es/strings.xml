@@ -420,6 +420,7 @@
     <string name="ui_tool_display_screen_operation_shell">Operaciones de pantalla</string>
     <string name="ui_tool_display_screenshot">Captura de pantalla</string>
     <string name="ui_tool_display_view_image">Ver imagen</string>
+    <string name="ui_tool_display_py_meta_tools">Herramienta personalizada de Python</string>
     <string name="dialog_cancel">Cancelar</string>
     <string name="dialog_confirm_delete">Eliminar</string>
     <string name="ui_settings_section_general">General</string>
@@ -466,6 +467,8 @@
     <string name="ui_settings_runtime_sensitivity_strictest">Muy estricta</string>
     <string name="ui_settings_runtime_sensitivity_off">Desactivada</string>
     <string name="ui_settings_general_always_show_message_actions">Mostrar siempre las acciones de los mensajes</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output">Mostrar siempre la salida detallada de las herramientas</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output_summary">Salidas muy extensas pueden causar ralentizaciones en la interfaz</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">Sesión dedicada del asistente de voz</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">Mantener aisladas las conversaciones del asistente de voz del historial principal</string>
     <string name="ui_settings_saved_configuration_title">Configuraciones guardadas</string>

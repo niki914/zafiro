@@ -236,6 +236,7 @@ fun HomePageContent(
         }
     }
     val alwaysShowActions by XRepo.alwaysShowMessageActionsSetting.collectAsState()
+    val alwaysShowDetailedToolOutput by XRepo.alwaysShowDetailedToolOutputSetting.collectAsState()
     val actionsDisplay = if (alwaysShowActions) {
         MessageActionsDisplay.Always
     } else {
@@ -569,6 +570,7 @@ fun HomePageContent(
         onSwitchTurnBranch = { turnId, delta ->
             viewModel.sendIntent(HomeChatIntent.SwitchTurnBranch(turnId, delta))
         },
+        alwaysShowDetailed = alwaysShowDetailedToolOutput,
     )
 
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()
@@ -825,6 +827,7 @@ private fun HomePageContentBody(
     onToggleActionRow: (Long, ActionSource) -> Unit,
     turnBranches: Map<Long, TurnBranchState> = emptyMap(),
     onSwitchTurnBranch: (Long, Int) -> Unit = { _, _ -> },
+    alwaysShowDetailed: Boolean = false,
 ) {
 
     // 底部避让总高：composer 底距 + 实测高度 + 统一视觉间距。列表贴底留白与箭头
@@ -957,6 +960,7 @@ private fun HomePageContentBody(
                         branchIndex = turnBranches[turn.id]?.current ?: 1,
                         branchCount = turnBranches[turn.id]?.total ?: 1,
                         onSwitchBranch = { delta -> onSwitchTurnBranch(turn.id, delta) },
+                        alwaysShowDetailed = alwaysShowDetailed,
                         modifier = turnTopPad.fillMaxWidth(),
                     )
                 }
@@ -1315,6 +1319,7 @@ private fun HomeChatTurnItem(
     branchIndex: Int = 1,
     branchCount: Int = 1,
     onSwitchBranch: (Int) -> Unit = {},
+    alwaysShowDetailed: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     if (turn.isCompactedDivider) {
@@ -1475,6 +1480,7 @@ private fun HomeChatTurnItem(
                                     onToggleActionRow(turn.id, ActionSource.Agent)
                                 }
                             },
+                            alwaysShowDetailed = alwaysShowDetailed,
                         )
                         blockIndex = runEnd
                     } else {
