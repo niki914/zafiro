@@ -1,6 +1,8 @@
 # githooks
 
-提交前的坏味道检查。机制是 `pre-commit` 调 `check.py`，用它拦掉几类"写代码时容易顺手写进去、但没人愿意读到"的东西。
+提交前的坏味道与多语言对齐检查。机制是 `pre-commit` 依次调用：
+- `check.py`：拦掉几类"写代码时容易顺手写进去、但没人愿意读到"的 Kotlin 坏味道；
+- `check_strings.py`：检查修改过的 `strings.xml` 各语言版本键值是否严格对齐，防止漏写翻译。
 
 ## 启用
 
@@ -84,7 +86,19 @@ synchronized(lock) { swap() } // githooks:ignore monitor-lock 需要与回调原
 - 标记**写在源码里**，所以文件头的文件级标记即使不在本次 diff 里也照样生效，属于一次性决策。
 - 豁免数量会在汇总里报出来，不会被藏起来。
 
+## 多语言对齐检查 (check_strings.py)
+
+防止新增功能或文案时只写了基准语言（`values/strings.xml`）或英语，而遗漏了其它已支持语种（`values-ja`、`values-ru`、`values-es`、`values-b+zh+Hant` 等）。
+
+- **增量联动**：当暂存区中有任意 `strings.xml` 变动时，自动定位对应模块（如 `app/src/main/res`），并对其下**所有语种版本**进行键集合（Key Set）全量对比。
+- **严格对齐**：以基准语言 `values/strings.xml` 为唯一锚点，缺失 Key 或多出未定义 Key 均会直接阻断提交，并打印出具体差异项。
+- **免翻译豁免**：在基准文件中声明了 `translatable="false"` 的条目（如无需翻译的应用名或技术标识）自动豁免，不要求在其它语种中出现。
+- **标签支持**：覆盖 `<string>`、`<plurals>` 和 `<string-array>`。
+- **新增语种提示**：当暂存区新增全新的语言文件（如 `values-de/strings.xml`）时，输出提示提醒确认全项目语种支持清单，检查其它模块是否需同步支持。
+
 ## 命令
+
+### 代码坏味道检查 (check.py)
 
 ```sh
 python3 .githooks/check.py                    # 增量：只查暂存区新增行（钩子用的就是这个）
@@ -94,6 +108,16 @@ python3 .githooks/check.py --all --rule monitor-lock  # 只查一条规则
 python3 .githooks/check.py --all --stat       # 按模块出统计，可直接当清理工单
 python3 .githooks/check.py --list-rules       # 列出规则与级别
 python3 .githooks/test_check.py               # 跑测试
+```
+
+### 多语言对齐检查 (check_strings.py)
+
+```sh
+python3 .githooks/check_strings.py            # 增量：检查暂存区受影响的模块（钩子用的就是这个）
+python3 .githooks/check_strings.py --worktree # 检查工作区有改动的模块（未暂存 + 暂存）
+python3 .githooks/check_strings.py --all      # 全量：扫描全仓所有模块的 strings.xml
+python3 .githooks/check_strings.py --all --stat # 输出全仓各模块多语言键值统计大盘
+python3 .githooks/test_check_strings.py       # 跑多语言检查器的单元测试
 ```
 
 清理存量建议先 `--all --stat` 看分布，再按模块 + 按规则分批推进：一批只清一种坏味道，diff 才好读。
