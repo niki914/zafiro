@@ -1578,8 +1578,4 @@ class BuiltinToolApi internal constructor(
     ): Boolean {
         return this[toolName] ?: defaultEnabled
     }
-
-    private companion object {
-        private const val TERMINAL_TOOL_NAME = "terminal"
-    }
 }

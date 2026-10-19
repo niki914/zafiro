@@ -362,7 +362,6 @@
     <string name="feedback_bug_template">## Описание проблемы\n\n## Шаги воспроизведения\n\n## Ожидаемое поведение\n\n## Фактическое поведение\n\n## Информация об устройстве\n- Версия Android:\n- Ассистент (Breeno или другой):\n- Версия модуля:\n\n## Дополнительно\nМожно приложить логи, снимки экрана или записи — это поможет разобраться в проблеме.</string>
     <string name="conversation_fork_title">Ответвление · %1$s</string>
     <string name="conversation_rewind_title">Откат · %1$s</string>
-    <string name="ui_tool_display_terminal">Терминал</string>
     <string name="ui_tool_display_shell">Shell</string>
     <string name="ui_tool_display_ssh">SSH</string>
     <string name="ui_tool_display_load_skill">Загрузка навыка</string>

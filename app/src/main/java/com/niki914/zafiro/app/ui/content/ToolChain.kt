@@ -92,7 +92,7 @@ private val BlockFlingScrollPropagation: NestedScrollConnection = object : Neste
 // ── ToolChain — stateless, state driven by ViewModel ────────────────────
 
 /** 命令型工具（精确匹配）：结果体为「命令单行 + 输出」上下分段样式。 */
-private val CommandToolNames = setOf("terminal", "shell", "ssh", "execute_python")
+private val CommandToolNames = setOf("shell", "ssh", "execute_python")
 
 /**
  * Stateless tool call list. Single-tool: renders one [CollapsibleBlock] directly.
@@ -165,14 +165,6 @@ private fun SingleToolRow(
             inputPreview?.let { preview -> append(" · ").append(preview) }
         }
     }
-    val outputText = remember(status.name, status.resultText, status.failedReason, alwaysShowDetailed) {
-        if (alwaysShowDetailed) {
-            status.resultText ?: status.failedReason
-        } else {
-            ToolPresentation.formatConciseOutput(status.name, status.resultText)
-                ?: status.failedReason
-        }
-    }
     CollapsibleBlock(
         icon = ToolPresentation.forTool(status.name),
         title = title,
@@ -180,6 +172,15 @@ private fun SingleToolRow(
         isRunning = isRunning,
         onToggle = { if (!isRunning && hasResult) onToggle() },
     ) {
+        val outputText = remember(status.name, status.resultText, status.failedReason, alwaysShowDetailed) {
+            val text = if (alwaysShowDetailed) {
+                status.resultText ?: status.failedReason
+            } else {
+                ToolPresentation.formatConciseOutput(status.name, status.resultText)
+                    ?: status.failedReason
+            }
+            ToolPresentation.prettyPrintIfJson(text)
+        }
         val contentModifier = if (onContentClick != null) {
             Modifier.clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -367,14 +368,24 @@ private fun MiniCopyButton(text: String, modifier: Modifier = Modifier) {
 /** 兜底结果体：UI 与 Thinking 同款，正文只显示本地化「成功 / 失败」，失败红色。失败且有原因时附带展示原因。 */
 @Composable
 private fun FallbackResultBody(isFailed: Boolean, reason: String? = null) {
-    val text = if (isFailed && !reason.isNullOrBlank()) {
-        "${stringResource(R.string.ui_tool_status_failed)}: $reason"
+    val formattedReason = remember(reason) { ToolPresentation.prettyPrintIfJson(reason) }
+    val text = if (isFailed && !formattedReason.isNullOrBlank()) {
+        val prefix = stringResource(R.string.ui_tool_status_failed)
+        if (formattedReason.contains('\n')) {
+            "$prefix:\n$formattedReason"
+        } else {
+            "$prefix: $formattedReason"
+        }
     } else {
         stringResource(if (isFailed) R.string.ui_tool_status_failed else R.string.ui_tool_status_success)
     }
     Text(
         text = text,
-        style = MaterialTheme.typography.bodySmall,
+        style = if (formattedReason?.contains('\n') == true) {
+            MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+        } else {
+            MaterialTheme.typography.bodySmall
+        },
         color = if (isFailed) {
             MaterialTheme.colorScheme.error
         } else {

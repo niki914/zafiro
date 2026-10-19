@@ -15,7 +15,9 @@ import com.niki914.zafiro.api.util.tryOrNull
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ToolPresentation.inputOf
 import com.niki914.zafiro.app.ui.model.ToolPresentation.previewOf
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -51,7 +53,7 @@ object ToolPresentation {
         val python = ImageVector.vectorResource(R.drawable.python_logo)
         return when {
             name.contains("python", ignoreCase = true) -> python
-            name.contains("terminal", ignoreCase = true) || name.contains(
+            name.contains(
                 "shell",
                 ignoreCase = true
             ) || name.contains(
@@ -68,7 +70,6 @@ object ToolPresentation {
 
     /** 内置工具 → 本地化显示名 res id；Custom Tool / MCP 命中不了 → null（回退原始名）。 */
     fun displayNameResOf(name: String): Int? = when (name) {
-        "terminal" -> R.string.ui_tool_display_terminal
         "shell" -> R.string.ui_tool_display_shell
         "ssh" -> R.string.ui_tool_display_ssh
         "load_skill" -> R.string.ui_tool_display_load_skill
@@ -108,7 +109,7 @@ object ToolPresentation {
         )
 
     /**
-     * 工具参数原文：terminal 取完整 command、execute_python 取完整 code、load_skill 取 id；
+     * 工具参数原文：shell/ssh 取完整 command、execute_python 取完整 code、load_skill 取 id；
      * 其余工具 / 参数缺失 → null。复制按原文，展示按 [previewOf] 裁剪。
      */
     fun inputOf(name: String, argumentsJson: String?): String? {
@@ -117,7 +118,7 @@ object ToolPresentation {
             Json.parseToJsonElement(argumentsJson).jsonObject
         } ?: return null
         return when (name) {
-            "terminal", "shell", "ssh" -> args["command"] ?: args["action"]
+            "shell", "ssh" -> args["command"] ?: args["action"]
             "load_skill" -> args["id"]
             "execute_python" -> args["code"]
             "open_uri" -> args["uri"] ?: args["url"]
@@ -130,6 +131,32 @@ object ToolPresentation {
             "screen_operation_accessibility", "screen_operation_shell" -> args["action"]
             else -> null
         }?.let { (it as? JsonPrimitive)?.contentOrNull }
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    private val PrettyJson = Json {
+        prettyPrint = true
+        prettyPrintIndent = "  "
+    }
+
+    /**
+     * 若字符串是合法的 JSON 对象或数组，则进行 Pretty 缩进排版；
+     * 若不是 JSON、是标量或超过安全长度限制，则返回原始文本。
+     */
+    fun prettyPrintIfJson(raw: String?, maxChars: Int = 50_000): String? {
+        if (raw.isNullOrBlank()) return raw
+        val trimmed = raw.trim()
+        if (trimmed.length !in 2..maxChars) return raw
+        val first = trimmed.first()
+        val last = trimmed.last()
+        val isObject = first == '{' && last == '}'
+        val isArray = first == '[' && last == ']'
+        if (!isObject && !isArray) return raw
+        return tryOrNull {
+            val element = Json.parseToJsonElement(trimmed)
+            if (element is JsonPrimitive) return@tryOrNull raw
+            PrettyJson.encodeToString(JsonElement.serializer(), element)
+        } ?: raw
     }
 
     /**

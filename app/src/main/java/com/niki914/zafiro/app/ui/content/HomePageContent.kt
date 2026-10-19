@@ -1527,10 +1527,21 @@ private fun HomeChatTurnItem(
                                 ) {
                                     val body = errorUi.bodyRes?.let { stringResource(it) }
                                         ?: errorUi.body.orEmpty()
-                                    if (body.isNotEmpty()) {
+                                    val formattedBody = remember(body) {
+                                        ToolPresentation.prettyPrintIfJson(body)
+                                    }
+                                    if (!formattedBody.isNullOrEmpty()) {
+                                        val isMonospace = remember(formattedBody) {
+                                            formattedBody.contains('\n') || formattedBody.startsWith('{') || formattedBody.startsWith('[')
+                                        }
+                                        val style = if (isMonospace) {
+                                            MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+                                        } else {
+                                            MaterialTheme.typography.bodySmall
+                                        }
                                         ToolResultText(
-                                            text = body,
-                                            style = MaterialTheme.typography.bodySmall,
+                                            text = formattedBody,
+                                            style = style,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }

@@ -403,7 +403,6 @@
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
-    <string name="ui_tool_display_terminal">ターミナル</string>
     <string name="ui_tool_display_shell">Shell</string>
     <string name="ui_tool_display_ssh">SSH</string>
     <string name="ui_tool_display_load_skill">Skill 読み込み</string>

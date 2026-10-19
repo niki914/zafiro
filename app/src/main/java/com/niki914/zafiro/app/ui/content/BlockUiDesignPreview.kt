@@ -114,8 +114,8 @@ private fun BlockUiDesignPreview() {
 
             // 超长标题（外部文本）：右侧省略
             CollapsibleBlock(
-                icon = ToolPresentation.forTool("terminal"),
-                title = "Terminal · python3 -m pip install --upgrade torch torchvision torchaudio " +
+                icon = ToolPresentation.forTool("shell"),
+                title = "Shell · python3 -m pip install --upgrade torch torchvision torchaudio " +
                         "--index-url https://download.pytorch.org/whl/cu121 --no-cache-dir",
                 isExpanded = longTitleOpen,
                 onToggle = { longTitleOpen = !longTitleOpen },

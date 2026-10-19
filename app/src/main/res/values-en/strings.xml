@@ -404,7 +404,6 @@
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
-    <string name="ui_tool_display_terminal">Terminal</string>
     <string name="ui_tool_display_shell">Shell</string>
     <string name="ui_tool_display_ssh">SSH</string>
     <string name="ui_tool_display_load_skill">Load Skill</string>

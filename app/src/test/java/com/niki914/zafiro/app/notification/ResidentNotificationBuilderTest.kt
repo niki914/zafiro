@@ -179,12 +179,12 @@ class ResidentNotificationBuilderTest {
         assertEquals(
             context.getString(
                 RemoteViewR.string.floating_ball_tool_running,
-                context.getString(R.string.ui_tool_display_terminal),
+                context.getString(R.string.ui_tool_display_shell),
             ),
             ResidentNotificationBuilder.resolveBody(
                 AgentState.ToolRunning(
-                    toolName = "terminal",
-                    label = "terminal",
+                    toolName = "shell",
+                    label = "shell",
                     argumentsJson = null
                 ),
                 context,
