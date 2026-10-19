@@ -6,7 +6,8 @@ import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.XRepo
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.api.util.tryOrDefault
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 
@@ -90,7 +91,7 @@ class MemorySettingsViewModel :
     private suspend fun load() {
         updateState { copy(isLoading = true) }
         val startedAtMs = System.currentTimeMillis()
-        try {
+        runCatchingCancellable {
             val loadedItems = XRepo.memory.list()
             Logger.d(
                 LOG_TAG,
@@ -105,8 +106,7 @@ class MemorySettingsViewModel :
                     inlineError = null,
                 )
             }
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.onFailure { throwable ->
             Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState {
                 copy(
@@ -165,7 +165,7 @@ class MemorySettingsViewModel :
         }
 
         updateState { copy(isSaving = true, inlineError = null) }
-        try {
+        runCatchingCancellable {
             val updatedItems = currentState.items.toMutableList().also { mutableItems ->
                 val index = dialog.index
                 if (index == null || index !in mutableItems.indices) {
@@ -193,8 +193,7 @@ class MemorySettingsViewModel :
                 )
             }
             notifySettingsChanged()
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.onFailure { throwable ->
             Logger.w(LOG_TAG, "saveEditDialog failed reason=${throwable.message}")
             updateState {
                 copy(
@@ -229,7 +228,7 @@ class MemorySettingsViewModel :
         val previousItems = currentState.items
         if (index !in previousItems.indices) return
         updateState { copy(isSaving = true, deleteConfirmation = null, inlineError = null) }
-        try {
+        runCatchingCancellable {
             XRepo.memory.delete(index)
             Logger.i(LOG_TAG, "deleteItem succeeded index=$index")
             updateState {
@@ -241,10 +240,9 @@ class MemorySettingsViewModel :
                 )
             }
             notifySettingsChanged()
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.onFailure { throwable ->
             Logger.w(LOG_TAG, "deleteItem failed index=$index reason=${throwable.message}")
-            val reloadedItems = runCatching { XRepo.memory.list() }.getOrDefault(previousItems)
+            val reloadedItems = tryOrDefault(previousItems) { XRepo.memory.list() }
             updateState {
                 copy(
                     items = reloadedItems,

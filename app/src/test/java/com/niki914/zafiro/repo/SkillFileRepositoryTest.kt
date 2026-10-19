@@ -1,3 +1,4 @@
+// 保护：异常或损坏的单个技能及状态文件不影响其他正常技能的发现与加载
 package com.niki914.zafiro.repo
 
 import org.junit.Assert.assertEquals
@@ -157,6 +158,19 @@ class SkillFileRepositoryTest {
         )
         assertNotNull(repository.delete("missing"))
         assertNotNull(repository.delete("../escape"))
+    }
+
+    @Test
+    fun listAll_corruptedStatusJsonDoesNotBreakSkillScanning() {
+        val skillsRoot = temporaryFolder.newFolder("skills-corrupt-status")
+        writeSkill(skillsRoot, "skill-ok", skillContent(name = "OK Skill"))
+        File(skillsRoot, "status.json").writeText("{ malformed json ... }")
+
+        val repository = SkillFileRepository(skillsRoot)
+        val skills = repository.listAll()
+
+        assertEquals(listOf("skill-ok"), skills.map { it.id })
+        assertTrue(skills.first().enabled)
     }
 
     private fun writeSkill(root: File, id: String, content: String): File {

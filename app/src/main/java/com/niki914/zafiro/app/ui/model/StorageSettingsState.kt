@@ -8,7 +8,7 @@ import com.niki914.zafiro.repo.StorageApi
 import com.niki914.zafiro.repo.StorageKind
 import com.niki914.zafiro.repo.StorageUsage
 import com.niki914.zafiro.repo.XRepo
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
 
 enum class StorageCategory(
     val kind: StorageKind,
@@ -102,7 +102,7 @@ class StorageSettingsViewModel(
 
     private suspend fun load() {
         updateState { copy(isLoading = true) }
-        try {
+        runCatchingCancellable {
             val usage = provider.usage().associateBy { it.kind }
             updateState {
                 copy(
@@ -117,8 +117,7 @@ class StorageSettingsViewModel(
                     inlineError = null,
                 )
             }
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.onFailure { throwable ->
             Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState {
                 copy(
@@ -140,12 +139,11 @@ class StorageSettingsViewModel(
                 inlineError = null,
             )
         }
-        try {
+        runCatchingCancellable {
             provider.clear(category.kind)
             Logger.i(LOG_TAG, "clear succeeded category=${category.kind}")
             load()
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.onFailure { throwable ->
             Logger.w(LOG_TAG, "clear failed category=${category.kind} reason=${throwable.message}")
             load()
             updateState {

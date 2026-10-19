@@ -95,9 +95,14 @@ object ConversationPersister {
                 }
                 if (boundary) {
                     conversationId()?.let { id ->
-                        ConversationRepo.touchConversation(id)
-                        ConversationRepo.setHasUnread(id, true)
-                        TurnNotificationManager.onTurnEvent(id, state)
+                        try {
+                            ConversationRepo.touchConversation(id)
+                            ConversationRepo.setHasUnread(id, true)
+                            TurnNotificationManager.onTurnEvent(id, state)
+                        } catch (t: Throwable) {
+                            if (t is CancellationException) throw t
+                            Logger.w(LOG_TAG, "trackActivity failed for id=$id: ${t.message}", t)
+                        }
                     }
                 }
             }

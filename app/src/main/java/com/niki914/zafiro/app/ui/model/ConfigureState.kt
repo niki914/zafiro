@@ -13,8 +13,9 @@ import com.niki914.zafiro.repo.ModelCatalogApi
 import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.repo.TokenCountText
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.api.util.tryIgnore
 import com.niki914.zafiro.settings.model.LlmProtocol
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -228,7 +229,7 @@ class ConfigureViewModel internal constructor(
     }
 
     private suspend fun refreshSavedConfigs() {
-        try {
+        tryIgnore {
             val document = dependencies.loadDocument()
             updateState {
                 copy(
@@ -236,8 +237,6 @@ class ConfigureViewModel internal constructor(
                     activeConfigId = document.activeId,
                 )
             }
-        } catch (_: Throwable) {
-            // 忽略失败，保留当前状态
         }
     }
 
@@ -350,7 +349,7 @@ class ConfigureViewModel internal constructor(
         lastCatalogKey = null
         catalogFetchJob?.cancel()
         catalogFetchJob = null
-        try {
+        runCatchingCancellable {
             val document = dependencies.loadDocument()
             Logger.d(LOG_TAG, "initialize scene=$scene configs=${document.configs.size}")
             when (scene) {
@@ -368,8 +367,7 @@ class ConfigureViewModel internal constructor(
             initializedKey = key
             // 进页拉一次（Key 为空时内部短路，不发请求）
             scheduleCatalogFetch(immediate = true)
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.onFailure { throwable ->
             val message = throwable.message ?: throwable::class.java.simpleName
             Logger.w(LOG_TAG, "initialize failed scene=$scene reason=$message")
             val reason = ConfigureErrorReason.LoadSettingsFailed(message)
@@ -548,15 +546,14 @@ class ConfigureViewModel internal constructor(
             val modelsUrl = EndpointInference.modelsUrl(key.endpoint, protocol)
                 ?: return@launch
             lastCatalogKey = key
-            try {
+            runCatchingCancellable {
                 val catalog = dependencies.fetchModelCatalog(modelsUrl, key.apiKey, protocol)
                 // 云端事实随同一次响应落缓存：以 endpoint+model 为键，与「保存」解耦。
                 // 全缺字段（如 Google）时 facts 为空，不写，旧缓存保留。
                 if (catalog.facts.isNotEmpty()) {
-                    try {
+                    runCatchingCancellable {
                         dependencies.saveModelFacts(key.endpoint, catalog.facts)
-                    } catch (throwable: Throwable) {
-                        if (throwable is CancellationException) throw throwable
+                    }.onFailure { throwable ->
                         Logger.w(LOG_TAG, "save model facts failed: ${throwable.message}")
                     }
                 }
@@ -576,8 +573,7 @@ class ConfigureViewModel internal constructor(
                         copy(modelCatalog = ids)
                     }
                 }
-            } catch (throwable: Throwable) {
-                if (throwable is CancellationException) throw throwable
+            }.onFailure { throwable ->
                 Logger.w(LOG_TAG, "catalog fetch failed: ${throwable.message}")
             }
         }
@@ -827,7 +823,7 @@ class ConfigureViewModel internal constructor(
         updateState {
             copy(isSaving = true, inlineError = null)
         }
-        try {
+        runCatchingCancellable {
             val current = currentState
             val targetConfigId = current.editingConfigId ?: newConfigId()
             dependencies.upsertConfig(
@@ -855,8 +851,7 @@ class ConfigureViewModel internal constructor(
                 ConfigureScene.SettingsEdit,
                     -> sendEffect(ConfigureEffect.SettingsSaveSucceeded)
             }
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.onFailure { throwable ->
             val message = throwable.message ?: throwable::class.java.simpleName
             Logger.w(LOG_TAG, "save failed reason=$message")
             val reason = ConfigureErrorReason.SaveSettingsFailed(message)

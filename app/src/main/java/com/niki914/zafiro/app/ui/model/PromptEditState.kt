@@ -3,7 +3,7 @@ package com.niki914.zafiro.app.ui.model
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.repo.XRepo
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
 
 /**
  * System Prompt 整页编辑（MVI）。
@@ -61,7 +61,7 @@ class PromptEditViewModel : ComposeMVIViewModel<
 
     private suspend fun load() {
         updateState { copy(isLoading = true, loadError = false) }
-        try {
+        runCatchingCancellable {
             val prompt = XRepo.llmConfigs.prompt()
             Logger.d(LOG_TAG, "load succeeded length=${prompt.length}")
             updateState {
@@ -73,8 +73,7 @@ class PromptEditViewModel : ComposeMVIViewModel<
                 )
             }
             // prompt 不存在视为空内容可编辑，不报错；读 store 失败才视为 loadError
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.onFailure { throwable ->
             Logger.w(LOG_TAG, "load failed reason=${throwable.message}")
             updateState { copy(isLoading = false, loadError = true) }
         }
@@ -83,7 +82,7 @@ class PromptEditViewModel : ComposeMVIViewModel<
     private suspend fun save() {
         if (currentState.isSaving) return
         updateState { copy(isSaving = true) }
-        try {
+        runCatchingCancellable {
             XRepo.llmConfigs.savePrompt(currentState.content)
             Logger.i(LOG_TAG, "save succeeded length=${currentState.content.length}")
             updateState {
@@ -93,8 +92,7 @@ class PromptEditViewModel : ComposeMVIViewModel<
                 )
             }
             sendEffect(PromptEditEffect.Exit)
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
+        }.onFailure { throwable ->
             Logger.w(LOG_TAG, "save failed reason=${throwable.message}")
             updateState { copy(isSaving = false) }
         }

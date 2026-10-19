@@ -1,6 +1,6 @@
 package com.niki914.store
 
-import com.niki914.xposed.api.util.xTry
+import com.niki914.zafiro.api.util.tryOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
@@ -32,13 +32,13 @@ internal object IpcJsonMutator {
     }
 
     private fun parseJsonObject(json: String): JSONObject {
-        return xTry("IpcJsonMutator.parseJsonObject") {
+        return tryOrNull {
             if (json.isBlank()) JSONObject() else JSONObject(json)
         } ?: JSONObject()
     }
 
     private fun parseValueJson(valueJson: String): Any? {
-        return xTry("IpcJsonMutator.parseValueJson") {
+        return tryOrNull {
             val tokener = JSONTokener(valueJson)
             val value = tokener.nextValue()
             check(tokener.nextClean() == 0.toChar())

@@ -7,6 +7,9 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
 import android.widget.Toast
+import com.niki914.zafiro.api.util.runCatchingCancellable
+import com.niki914.zafiro.api.util.tryIgnore
+import com.niki914.zafiro.api.util.tryOrNull
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -467,7 +470,7 @@ fun HomePageContent(
             if (uiState.input.isBlank() && !uiState.isGenerating) {
                 repeat(AUTO_FOCUS_MAX_ATTEMPTS) {
                     delay(AUTO_FOCUS_RETRY_INTERVAL_MILLIS)
-                    val focused = runCatching { composerFocusRequester.requestFocus() }.isSuccess
+                    val focused = runCatchingCancellable { composerFocusRequester.requestFocus() }.isSuccess
                     if (focused) {
                         keyboardController?.show()
                         composerAutoFocusDone = true
@@ -874,7 +877,7 @@ private fun HomePageContentBody(
         } else {
             // 相机没写成（用户取消 / 相机拒绝）：清掉临时文件
             Logger.w(ATTACH_LOG_TAG, "camera result not ok resultCode=${result.resultCode}")
-            target?.file?.let { runCatching { it.delete() } }
+            target?.file?.let { tryIgnore { it.delete() } }
         }
     }
 
@@ -1178,9 +1181,9 @@ private fun isImportableImage(context: Context, uri: Uri, declaredType: String?)
     if (!isImage) return false
     // 超过图片管线上限的图会被 ingest 拒，而拒了之后草稿项是**静默消失**的，
     // 比「当一个文件附件」更糟。体积未知（-1）时放行，交给一致的上限去判。
-    val size = runCatching {
+    val size = tryOrNull {
         context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
-    }.getOrNull()
+    }
     return size == null || size <= IMAGE_MAX_BYTES
 }
 
@@ -1198,7 +1201,7 @@ private const val IMAGE_MAX_BYTES = 12 * 1024 * 1024L
 /**
  * 造一个相机可以写的输出目标。路径与 provider 都对不上时返回 null（理论上不会）。
  */
-private fun createCameraTarget(context: Context): CameraTarget? = runCatching {
+private fun createCameraTarget(context: Context): CameraTarget? = runCatchingCancellable {
     val dir = File(context.cacheDir, CAMERA_CAPTURE_DIR).apply { mkdirs() }
     val file = File(dir, "zafiro_capture_${System.currentTimeMillis()}.jpg")
     CameraTarget(

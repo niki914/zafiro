@@ -193,9 +193,14 @@ object ConversationFormatter {
         if (entries.isEmpty()) return emptyList()
         val byId = entries.associateBy { it.id }
         val target = leafId ?: entries.lastOrNull()?.id
+        val visited = HashSet<String>()
         val chain = buildList {
             var cursor = byId[target]
             while (cursor != null) {
+                if (!visited.add(cursor.id)) {
+                    Logger.w(LOG_TAG, "cycle detected in projectLeaf at entryId=${cursor.id}")
+                    break
+                }
                 add(cursor)
                 cursor = cursor.parentId?.let(byId::get)
             }

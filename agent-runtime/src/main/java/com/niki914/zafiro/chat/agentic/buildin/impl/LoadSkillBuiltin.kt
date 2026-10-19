@@ -5,7 +5,7 @@ import com.niki914.zafiro.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.util.ToolOutputTruncator
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -44,7 +44,7 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
             }
         }
 
-        return try {
+        return runCatchingCancellable {
             val skill = RuntimeEnvironment.awaitSettingsGateway().loadSkill(skillId)
                 ?: return TextToolResult.failure(
                     code = "SKILL_NOT_FOUND",
@@ -61,10 +61,7 @@ class LoadSkillBuiltin : TextResultBuiltinTool() {
             TextToolResult.success(
                 truncateSkillContent(skill.content, skill.absolutePath)
             )
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) {
-                throw throwable
-            }
+        }.getOrElse { throwable ->
             TextToolResult.failure(
                 code = "SETTINGS_READ_FAILED",
                 message = "Failed to load skill: ${throwable.message ?: throwable::class.java.simpleName}. " +

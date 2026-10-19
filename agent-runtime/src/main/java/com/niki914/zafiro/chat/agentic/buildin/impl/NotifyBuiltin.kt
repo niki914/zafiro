@@ -12,7 +12,7 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.service.requireService
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -34,12 +34,9 @@ class NotifyBuiltin : BuiltinTool() {
     override val inputSchemaJson: String? get() = NOTIFY_SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
-        val args = try {
+        val args = runCatchingCancellable {
             parseArguments(request.argumentsJson)
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) {
-                throw throwable
-            }
+        }.getOrElse { throwable ->
             return BuiltinToolResult.failure(
                 code = "INVALID_ARGUMENTS_JSON",
                 message = "notify arguments must be a JSON object with title, content, and optional uri fields.",

@@ -175,6 +175,71 @@ class RawStringTest(unittest.TestCase):
         self.assertEqual(rules_hit('val a = """x"""\n// 不再走\n'), ["legacy-comment"])
 
 
+class UncancellableRunCatchingTest(unittest.TestCase):
+    def test_bare_run_catching_is_flagged(self):
+        self.assertEqual(rules_hit("    val r = runCatching { work() }\n"), ["uncancellable-run-catching"])
+
+    def test_receiver_run_catching_is_flagged(self):
+        self.assertEqual(rules_hit("    val r = obj.runCatching { work() }\n"), ["uncancellable-run-catching"])
+
+    def test_map_catching_is_flagged(self):
+        self.assertEqual(rules_hit("    val r = res.mapCatching { it.toString() }\n"), ["uncancellable-run-catching"])
+
+    def test_import_run_catching_is_flagged(self):
+        self.assertEqual(rules_hit("import kotlin.runCatching\n"), ["uncancellable-run-catching"])
+
+    def test_cancellable_variants_are_allowed(self):
+        source = (
+            "    val a = runCatchingCancellable { work() }\n"
+            "    val b = obj.runCatchingCancellable { work() }\n"
+            "    val c = res.mapCatchingCancellable { it.toString() }\n"
+        )
+        self.assertEqual(rules_hit(source), [])
+
+    def test_comment_is_not_flagged(self):
+        self.assertEqual(rules_hit("// runCatching { work() }\n"), [])
+
+    def test_string_literal_is_not_flagged(self):
+        self.assertEqual(rules_hit('val msg = "runCatching is not safe here"\n'), [])
+
+    def test_ignore_marker_allows(self):
+        source = "    runCatching { work() } // githooks:ignore uncancellable-run-catching\n"
+        findings, ignored = findings_for(source)
+        self.assertEqual(findings, [])
+        self.assertEqual(ignored, 1)
+
+
+class BareCatchTest(unittest.TestCase):
+    def test_catch_throwable_is_flagged(self):
+        self.assertEqual(rules_hit("    } catch (t: Throwable) {\n"), ["bare-catch"])
+
+    def test_catch_exception_is_flagged(self):
+        self.assertEqual(rules_hit("    } catch (e: Exception) {\n"), ["bare-catch"])
+
+    def test_catch_underscore_exception_is_flagged(self):
+        self.assertEqual(rules_hit("    } catch (_: Exception) {\n"), ["bare-catch"])
+
+    def test_catch_specific_exception_is_allowed(self):
+        source = (
+            "    } catch (e: IOException) {\n"
+            "    } catch (e: CancellationException) {\n"
+            "    } catch (e: NoSuchFieldException) {\n"
+        )
+        self.assertEqual(rules_hit(source), [])
+
+    def test_comment_is_not_flagged(self):
+        self.assertEqual(rules_hit("// } catch (e: Exception) {\n"), [])
+
+    def test_string_literal_is_not_flagged(self):
+        self.assertEqual(rules_hit('val s = "catch (e: Exception)"\n'), [])
+
+    def test_ignore_marker_allows(self):
+        source = "    } catch (e: Throwable) { // githooks:ignore bare-catch\n"
+        findings, ignored = findings_for(source)
+        self.assertEqual(findings, [])
+        self.assertEqual(ignored, 1)
+
+
 class ScopeTest(unittest.TestCase):
     def test_libs_is_excluded(self):
         self.assertTrue(excluded("libs/libterm/Foo.kt"))
@@ -186,6 +251,8 @@ class ScopeTest(unittest.TestCase):
         self.assertEqual(SEVERITY["inline-fqn"], "warn")
         self.assertEqual(SEVERITY["log-api"], "block")
         self.assertEqual(SEVERITY["log-tag"], "warn")
+        self.assertEqual(SEVERITY["uncancellable-run-catching"], "block")
+        self.assertEqual(SEVERITY["bare-catch"], "warn")
 
 
 if __name__ == "__main__":

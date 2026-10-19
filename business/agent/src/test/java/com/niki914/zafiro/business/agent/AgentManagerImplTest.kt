@@ -26,6 +26,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -141,6 +142,17 @@ class AgentManagerImplTest {
         // 旧 Agent 依然完整保存在 activeAgents 中，再次 switchTo 仍是原实例
         val switchedBack = manager.switchTo("conv-1")
         assertSame(agent1, switchedBack)
+    }
+
+    @Test
+    fun startNewConversation_unconditionallyCreatesNewAgent_evenWhenScratchHasNoId() = runBlocking {
+        val manager = AgentManagerImpl()
+        val firstScratch = manager.main
+        assertNull(firstScratch.conversation.value.id)
+
+        val secondScratch = manager.startNewConversation()
+        assertNotSame(firstScratch, secondScratch)
+        assertSame(secondScratch, manager.main)
     }
 
     @Test

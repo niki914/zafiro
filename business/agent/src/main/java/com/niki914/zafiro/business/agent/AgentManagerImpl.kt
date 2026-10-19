@@ -7,6 +7,7 @@ import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.chat.AgentSessionEngine
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,7 +29,15 @@ import java.util.concurrent.ConcurrentHashMap
  * 用户切换会话时，旧会话在后台继续静默执行；切回时直接复用正在运行或已跑完的 Agent。
  */
 class AgentManagerImpl(
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val scope: CoroutineScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, throwable ->
+            Logger.e(
+                "niki914_zafiro_AgentManagerImpl",
+                "Uncaught exception in AgentManager scope: ${throwable.message}",
+                throwable
+            )
+        }
+    ),
 ) : AgentManager {
 
     private companion object {
@@ -40,7 +49,8 @@ class AgentManagerImpl(
     private val trackedAgentIds = ConcurrentHashMap.newKeySet<String>()
     private val statusTrackingJobs = ConcurrentHashMap<String, Job>()
     private val lastAccessedMs = ConcurrentHashMap<String, Long>()
-    private var scratchAgent: Agent = createPersistentAgent()
+    private var scratchRegistrationJob: Job? = null
+    private var scratchAgent: Agent = createPersistentAgent { scratchRegistrationJob = it }
 
     private val _mainFlow = MutableStateFlow(scratchAgent)
     override val mainFlow: StateFlow<Agent> = _mainFlow.asStateFlow()
@@ -62,7 +72,12 @@ class AgentManagerImpl(
         } else {
             Logger.i(LOG_TAG, "loading new agent into container id=$conversationId")
             val newAgent = createPersistentAgent()
-            newAgent.load(ConversationId(conversationId))
+            try {
+                newAgent.load(ConversationId(conversationId))
+            } catch (t: Throwable) {
+                newAgent.release()
+                throw t
+            }
             registerActiveAgent(conversationId, newAgent)
             newAgent
         }
@@ -73,16 +88,16 @@ class AgentManagerImpl(
     }
 
     override fun startNewConversation(): Agent {
-        val current = scratchAgent
-        val target = if (current.conversation.value.id != null) {
-            val next = createPersistentAgent()
-            scratchAgent = next
-            next
-        } else {
-            current
+        val prev = scratchAgent
+        if (prev.conversation.value.id == null) {
+            scratchRegistrationJob?.cancel()
+            prev.stop()
+            prev.release()
         }
-        _mainFlow.value = target
-        return target
+        val next = createPersistentAgent { scratchRegistrationJob = it }
+        scratchAgent = next
+        _mainFlow.value = next
+        return next
     }
 
     override fun createTaskAgent(isPersistent: Boolean): Agent {
@@ -158,18 +173,19 @@ class AgentManagerImpl(
         }
     }
 
-    private fun createPersistentAgent(): Agent {
+    private fun createPersistentAgent(onJobCreated: ((Job) -> Unit)? = null): Agent {
         val agent = AgentImpl(
             engine = AgentSessionEngine(),
             isPersistent = true,
         )
-        scope.launch {
+        val job = scope.launch {
             val conv = agent.conversation.first { !it.id?.value.isNullOrBlank() }
             val id = conv.id?.value
             if (!id.isNullOrBlank()) {
                 registerActiveAgent(id, agent)
             }
         }
+        onJobCreated?.invoke(job)
         return agent
     }
 }

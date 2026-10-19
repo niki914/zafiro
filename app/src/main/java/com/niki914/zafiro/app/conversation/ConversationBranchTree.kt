@@ -87,7 +87,8 @@ object ConversationBranchTree {
         summaryById: Map<String, ConversationSummary>,
     ): String? {
         var cursor = summaryById[conversationId] ?: return null
-        while (true) {
+        val visited = HashSet<String>()
+        while (visited.add(cursor.id)) {
             val forkTurn = cursor.forkTurn
             val parentId = cursor.parentId
             if (forkTurn == null || parentId == null) {
@@ -102,5 +103,6 @@ object ConversationBranchTree {
                 return cursor.id
             }
         }
+        return cursor.id
     }
 }

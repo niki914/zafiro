@@ -25,12 +25,14 @@ git config core.hooksPath .githooks
 
 合并提交不跑这个钩子；`git commit --no-verify` 也能绕过——它是纪律工具，不是安全边界。
 
-## 五条规则
+## 七条规则
 
 | 规则 | 级别 | 要求 |
 | --- | --- | --- |
 | `monitor-lock` | **阻断** | 不用 `synchronized(...)` / `@Synchronized`，改用 `Mutex` / 协程 |
 | `log-api` | **阻断** | 不用 `android.util.Log`、`println` / `print` / `System.out`，一律走 `com.niki914.logging.Logger` |
+| `uncancellable-run-catching` | **阻断** | 不用标准库 `runCatching` / `mapCatching`（会生吞协程取消与中断），改用 `runCatchingCancellable` |
+| `bare-catch` | 警告 | 不写裸 `catch (e: Throwable)` / `catch (e: Exception)`，改用 `runCatchingCancellable` / `tryOrNull` 或捕获具体异常类型 |
 | `legacy-comment` | 警告 | 注释只描述代码**现在**是什么样，不描述“曾经/不再”是什么样 |
 | `inline-fqn` | 警告 | 代码里用到的类要 `import`，不内联写全限定名 |
 | `log-tag` | 警告 | 日志 TAG 必须以 `niki914_zafiro_<ClassName>` 开头 |
@@ -43,6 +45,13 @@ git config core.hooksPath .githooks
 注意 `之前` / `以前` **不在**关键词表里：它们大多是"位置/顺序"含义（`截在条目之前`、`排在通知之前`），是有价值的注释。
 
 `inline-fqn` 有一条豁免：如果同名类已经 `import` 了，内联全限定名是在**消歧义**，不报。
+
+## 协程取消安全与异常治理
+
+Kotlin 标准库的 `runCatching` 和 `mapCatching` 会无差别捕获所有 `Throwable`，在协程环境下会生吞 `CancellationException` 与线程中断 `InterruptedException`，破坏协程生命周期的正常取消与结构化并发。
+
+- **`uncancellable-run-catching`（阻断）**：禁止直接调用标准库 `runCatching` / `mapCatching`。一律改用 `com.niki914.zafiro.api.util.runCatchingCancellable`（或 `mapCatchingCancellable`）。
+- **`bare-catch`（警告）**：捕获宽泛的 `Throwable` 或 `Exception` 会产生警告。应优先使用 `runCatchingCancellable`、`tryOrNull`、`tryOrDefault`、`tryIgnore`，或者捕获具体的受检异常（如 `IOException`、`JSONException`）。特殊场景（如底层 Binder 兜底或基础库实现）请加 `// githooks:ignore bare-catch` 或 `// githooks:ignore-file bare-catch`。
 
 ## 日志
 

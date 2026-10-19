@@ -1,5 +1,6 @@
 package com.niki914.zafiro.repo
 
+import com.niki914.zafiro.api.util.tryOrNull
 import com.niki914.zafiro.settings.model.RuntimeSkillValidation
 import java.io.File
 import java.nio.file.Files
@@ -79,32 +80,34 @@ class SkillPathResolver(
     }
 
     fun scanSkillFiles(): List<SkillPathResolution.Resolved> {
-        val firstLevelDirs = skillsRoot.listFiles()
-            ?.filter { it.isDirectory }
-            .orEmpty()
+        return tryOrNull {
+            val firstLevelDirs = tryOrNull { skillsRoot.listFiles() }
+                ?.filter { tryOrNull { it.isDirectory } == true }
+                .orEmpty()
 
-        val candidates = buildList {
-            firstLevelDirs.forEach { first ->
-                val oneLevelSkill = File(first, SKILL_FILE_NAME)
-                if (oneLevelSkill.isFile) {
-                    add(first.name)
-                }
-
-                first.listFiles()
-                    ?.filter { it.isDirectory }
-                    .orEmpty()
-                    .forEach { second ->
-                        val twoLevelSkill = File(second, SKILL_FILE_NAME)
-                        if (twoLevelSkill.isFile) {
-                            add("${first.name}/${second.name}")
-                        }
+            val candidates = buildList {
+                firstLevelDirs.forEach { first ->
+                    val oneLevelSkill = File(first, SKILL_FILE_NAME)
+                    if (tryOrNull { oneLevelSkill.isFile } == true) {
+                        add(first.name)
                     }
-            }
-        }
 
-        return candidates
-            .mapNotNull { id -> resolveSkillFile(id) as? SkillPathResolution.Resolved }
-            .sortedBy { it.id }
+                    tryOrNull { first.listFiles() }
+                        ?.filter { tryOrNull { it.isDirectory } == true }
+                        .orEmpty()
+                        .forEach { second ->
+                            val twoLevelSkill = File(second, SKILL_FILE_NAME)
+                            if (tryOrNull { twoLevelSkill.isFile } == true) {
+                                add("${first.name}/${second.name}")
+                            }
+                        }
+                }
+            }
+
+            candidates
+                .mapNotNull { id -> tryOrNull { resolveSkillFile(id) as? SkillPathResolution.Resolved } }
+                .sortedBy { it.id }
+        } ?: emptyList()
     }
 
     private fun isUnderSkillsRoot(file: File): Boolean {

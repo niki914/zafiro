@@ -1,5 +1,7 @@
 package com.niki914.zafiro.repo
 
+import com.niki914.zafiro.api.util.tryOrDefault
+import com.niki914.zafiro.api.util.tryOrNull
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 import com.niki914.zafiro.settings.model.RuntimeSkillValidation
@@ -20,21 +22,24 @@ class SkillFileRepository(
     private val stateStore = SkillEnabledStateStore(File(skillsRoot, STATUS_FILE_NAME))
 
     fun listAll(): List<RuntimeSkillMetadata> {
-        return resolver.scanSkillFiles().map(::metadataFor)
+        val resolvedList = tryOrNull { resolver.scanSkillFiles() }.orEmpty()
+        return resolvedList.mapNotNull { resolved ->
+            tryOrNull { metadataFor(resolved) }
+        }
     }
 
     fun listEnabled(): List<RuntimeSkillMetadata> {
         return listAll().filter { it.enabled }
     }
 
-    fun load(id: String): RuntimeLoadedSkill? {
-        val resolved = resolver.resolveSkillFile(id) as? SkillPathResolution.Resolved ?: return null
+    fun load(id: String): RuntimeLoadedSkill? = tryOrNull {
+        val resolved = resolver.resolveSkillFile(id) as? SkillPathResolution.Resolved ?: return@tryOrNull null
         if (!resolved.skillFile.isFile) {
-            return null
+            return@tryOrNull null
         }
         val content = resolved.skillFile.readText(Charsets.UTF_8)
         val metadata = parser.parse(resolved.id, content)
-        return RuntimeLoadedSkill(
+        RuntimeLoadedSkill(
             id = resolved.id,
             name = metadata.name,
             description = metadata.description,
@@ -42,7 +47,7 @@ class SkillFileRepository(
             absolutePath = resolved.skillFile.canonicalPath,
             absoluteDir = resolved.skillDir.canonicalPath,
             content = content,
-            enabled = stateStore.isEnabled(resolved.id),
+            enabled = tryOrDefault(true) { stateStore.isEnabled(resolved.id) },
         )
     }
 
@@ -109,7 +114,7 @@ class SkillFileRepository(
             relativePath = resolved.relativePath,
             absolutePath = resolved.skillFile.canonicalPath,
             absoluteDir = resolved.skillDir.canonicalPath,
-            enabled = stateStore.isEnabled(resolved.id),
+            enabled = tryOrDefault(true) { stateStore.isEnabled(resolved.id) },
         )
     }
 

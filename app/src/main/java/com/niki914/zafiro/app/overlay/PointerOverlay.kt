@@ -13,6 +13,7 @@ import android.view.animation.LinearInterpolator
 import android.widget.ImageView
 import com.niki914.zafiro.animation.PointerCurveMath
 import com.niki914.zafiro.animation.PointerCurveMath.MovementMode
+import com.niki914.zafiro.api.util.tryIgnore
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.chat.agentic.accessibility.IPointerOverlay
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -146,9 +147,8 @@ class PointerOverlay : IPointerOverlay {
             view?.animate()?.cancel()
             cancelAnim()
             if (attached) {
-                try {
+                tryIgnore {
                     wm?.removeViewImmediate(view)
-                } catch (_: Exception) {
                 }
                 attached = false
             }
@@ -312,11 +312,10 @@ class PointerOverlay : IPointerOverlay {
      */
     private fun tryAttach() {
         if (attached || wm == null || view == null || lp == null) return
-        try {
+        tryIgnore {
             view!!.alpha = 0f
             wm!!.addView(view, lp)
             attached = true
-        } catch (_: Exception) {
         }
     }
 
@@ -329,9 +328,8 @@ class PointerOverlay : IPointerOverlay {
         // convert absolute screen heading to a rotation relative to default.
         view?.rotation =
             Math.toDegrees((headingRad - PointerCurveMath.IDLE_HEADING_RAD).toDouble()).toFloat()
-        try {
+        tryIgnore {
             if (attached) wm?.updateViewLayout(view, p)
-        } catch (_: Exception) {
         }
     }
 

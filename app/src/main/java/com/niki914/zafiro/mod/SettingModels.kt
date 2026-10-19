@@ -1,6 +1,6 @@
 package com.niki914.zafiro.mod
 
-import com.niki914.xposed.api.util.xTry
+import com.niki914.zafiro.api.util.tryOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -103,7 +103,7 @@ internal fun parseJsonObject(jsonString: String?): JsonObject {
     if (jsonString.isNullOrBlank()) {
         return JsonObject(emptyMap())
     }
-    return xTry("parseJsonObject") {
+    return tryOrNull {
         json.parseToJsonElement(jsonString).jsonObject
     } ?: JsonObject(emptyMap())
 }

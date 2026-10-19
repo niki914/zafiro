@@ -22,6 +22,7 @@ import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.DEFAULT_CONTEXT_WINDOW_TOKENS
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -134,7 +135,9 @@ class AgentSessionEngine {
         val refreshStartedAtMs = System.currentTimeMillis()
         val gateway = RuntimeEnvironment.awaitSettingsGateway()
         val llmConfig = gateway.readLlmConfig(configId = boundConfigId.takeIf { it.isNotBlank() })
-        sessionAssembler.validateLlmConfig(llmConfig)
+        if (restore == null) {
+            sessionAssembler.validateLlmConfig(llmConfig)
+        }
         contextWindowFlow.value = llmConfig.contextWindowTokens
         compactor.thresholdRatio = llmConfig.compactionThresholdPercent / 100f
         Logger.i(
@@ -144,9 +147,21 @@ class AgentSessionEngine {
                     "hasApiKey=${llmConfig.apiKey.isNotBlank()} hasProxy=${llmConfig.proxy.isNotBlank()}"
         )
         val protocol = LlmProtocol.fromWire(llmConfig.protocol)
-        val runtimeMcpServers = gateway.listMcpServers()
-        val customPyTools = gateway.listCustomPyTools()
-        val builtinSettings = gateway.listBuiltinToolSettings()
+        val runtimeMcpServers = runCatchingCancellable {
+            gateway.listMcpServers()
+        }.onFailure {
+            Logger.w(LOG_TAG, "listMcpServers failed: ${it.message}", it)
+        }.getOrDefault(emptyList())
+        val customPyTools = runCatchingCancellable {
+            gateway.listCustomPyTools()
+        }.onFailure {
+            Logger.w(LOG_TAG, "listCustomPyTools failed: ${it.message}", it)
+        }.getOrDefault(emptyList())
+        val builtinSettings = runCatchingCancellable {
+            gateway.listBuiltinToolSettings()
+        }.onFailure {
+            Logger.w(LOG_TAG, "listBuiltinToolSettings failed: ${it.message}", it)
+        }.getOrDefault(emptyList())
         val enabledSkills = gateway.listEnabledSkills()
         val resolvedTools = toolManager.resolve(
             customPyTools = customPyTools,

@@ -1,5 +1,7 @@
+// githooks:ignore-file bare-catch 反射层静默探测：捕获所有反射异常
 package com.niki914.xposed.api.util
 
+import kotlinx.coroutines.CancellationException
 import java.lang.reflect.Field
 
 
@@ -13,10 +15,10 @@ fun dumpObjectShape(
 
     val clazz = obj.javaClass
     val fields = allFieldsOf(clazz).map { field ->
-        val value = runCatching {
+        val value = try {
             field.isAccessible = true
             field.get(obj)
-        }.getOrElse { error ->
+        } catch (error: Throwable) {
             return@map mapOf(
                 "name" to field.name,
                 "type" to field.type.name,
@@ -100,7 +102,7 @@ fun describeClassLoader(classLoader: ClassLoader?): String {
 }
 
 fun allFieldsOf(clazz: Class<*>): List<Field> =
-    xTry("allFieldsOf:${clazz.name}") {
+    inspectOrNull {
         val fields = mutableListOf<Field>()
         var current: Class<*>? = clazz
         while (current != null && current != Any::class.java) {
@@ -110,9 +112,9 @@ fun allFieldsOf(clazz: Class<*>): List<Field> =
         fields
     } ?: emptyList()
 
-fun superClassesOf(clazz: Class<*>): List<String> = xTry("superClassesOf:${clazz.name}") {
+fun superClassesOf(clazz: Class<*>): List<String> = inspectOrNull {
     val chain = mutableListOf<String>()
-    var current = clazz.superclass
+    var current: Class<*>? = clazz.superclass
     while (current != null && current != Any::class.java) {
         chain += current.name
         current = current.superclass
@@ -123,6 +125,14 @@ fun superClassesOf(clazz: Class<*>): List<String> = xTry("superClassesOf:${clazz
 fun findField(
     clazz: Class<*>,
     fieldName: String
-): Field? = xTry("findField:$fieldName") {
-    allFieldsOf(clazz).firstOrNull { it.name == fieldName }
+): Field? = allFieldsOf(clazz).firstOrNull { it.name == fieldName }
+
+private inline fun <R> inspectOrNull(block: () -> R): R? {
+    return try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Throwable) {
+        null
+    }
 }

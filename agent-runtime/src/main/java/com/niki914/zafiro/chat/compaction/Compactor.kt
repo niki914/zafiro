@@ -6,7 +6,7 @@ import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.okia.message.ToolCallOutcome
 import com.niki914.zafiro.api.text.SummaryBlock
-import kotlinx.coroutines.CancellationException
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
@@ -178,14 +178,9 @@ class Compactor(
         val userPrompt = CompactorPrompts.buildSummarizationUserPrompt(conversationText, previousSummary)
         val systemPrompt = CompactorPrompts.SUMMARIZATION_SYSTEM_PROMPT
 
-        val summaryResult: String
-        try {
-            summaryResult = summaryGenerator.generate(systemPrompt, userPrompt)
-        } catch (e: CancellationException) {
-            // 核心不变量：用户取消严禁生吞，不向会话树追加节点（“无事发生”）
-            Logger.i(LOG_TAG, "compaction cancelled by user or coroutine, leaving session untouched")
-            throw e
-        } catch (e: Throwable) {
+        val summaryResult = runCatchingCancellable {
+            summaryGenerator.generate(systemPrompt, userPrompt)
+        }.getOrElse { e ->
             Logger.w(LOG_TAG, "compaction failed gracefully due to error, skipping", e)
             return false
         }
