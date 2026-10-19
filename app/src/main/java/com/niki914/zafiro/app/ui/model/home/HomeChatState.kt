@@ -204,6 +204,7 @@ fun HomeChatUiState.withClearedTransient() = copy(
 sealed interface HomeChatIntent {
     data class InputChanged(val value: String) : HomeChatIntent
     data object Send : HomeChatIntent
+    data object Warmup : HomeChatIntent
 
     /** 相册选图完成：追加一个待落盘项，实现侧完成后从 draft 读回。失败时该项消失。 */
     data class ImageAttached(val uri: String) : HomeChatIntent

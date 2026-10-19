@@ -197,7 +197,7 @@ class McpExecutorTest {
         }
         val failure = executor(client).execute(mcpCall()) as ToolCallOutcome.Failure
         assertEquals("MCP JSON-RPC error: boom", failure.message)
-        assertNull(failure.content)
+        assertEquals("MCP JSON-RPC error: boom", failure.content)
     }
 
     @Test

@@ -582,6 +582,41 @@ class AgentSessionEngineOkiaTest {
         assertEquals(200_000L, engine.contextWindowTokens.value)
     }
 
+    @Test
+    fun warmup_initializesSessionWhenNull() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(validLlmConfig()),
+        )
+        val testEngine = AgentSessionEngine()
+        var factoryCalls = 0
+        testEngine.okiaFactory = AgentSessionEngine.OkiaFactory { _, _, _ ->
+            factoryCalls++
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)))
+        }
+
+        assertNull(testEngine.okia)
+        testEngine.warmup()
+        assertEquals(1, factoryCalls)
+        assertNotNull(testEngine.okia)
+
+        // 重复调用不重新建会话
+        testEngine.warmup()
+        assertEquals(1, factoryCalls)
+    }
+
+    @Test
+    fun warmup_ignoresMissingLlmConfigWithoutThrowing() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                validLlmConfig().copy(endpoint = "", model = ""),
+            ),
+        )
+        val testEngine = AgentSessionEngine()
+        // 不应抛出 LlmConfigRequiredException 崩溃
+        testEngine.warmup()
+        assertNull(testEngine.okia)
+    }
+
     // ── helpers ─────────────────────────────────────────────────────────────
 
     private fun validLlmConfig(

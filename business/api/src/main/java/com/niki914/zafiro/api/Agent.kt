@@ -141,6 +141,13 @@ interface Agent : AgentControl {
      * 传空串表示清除会话级专属绑定，由底层引擎回退读取全局激活配置。
      */
     fun bindConfig(configId: String)
+
+    /**
+     * 预热底层执行引擎与外部工具（如 MCP 发现）。
+     *
+     * 幂等无副作用：在用户拉起键盘或聚焦输入框时调用，提前触发后台 MCP 发现。
+     */
+    fun warmup() {}
 }
 
 /**

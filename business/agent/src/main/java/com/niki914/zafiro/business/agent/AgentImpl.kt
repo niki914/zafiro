@@ -133,6 +133,16 @@ class AgentImpl(
         draftFlow.value = Draft()
     }
 
+    override fun warmup() {
+        scope.launch {
+            runCatchingCancellable {
+                engine.warmup()
+            }.onFailure { throwable ->
+                Logger.d(LOG_TAG, "agent warmup skipped: ${throwable.message}")
+            }
+        }
+    }
+
     override fun stream(): TurnStart {
         val draft = draftFlow.value
         if (draft.text.isBlank() && draft.images.isEmpty() && draft.files.isEmpty()) {
