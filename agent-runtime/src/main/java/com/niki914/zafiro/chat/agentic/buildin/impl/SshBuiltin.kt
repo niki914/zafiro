@@ -345,7 +345,8 @@ open class SshBuiltin(
                   "type": "string",
                   "description": "Text to send for 'submit' or 'write' actions."
                 }
-              }
+              },
+              "required": []
             }
         """.trimIndent()
     }

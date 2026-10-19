@@ -233,7 +233,8 @@ class LaunchAppBuiltin : BuiltinTool() {
                   "type": "string",
                   "description": "App display name to launch. Fuzzy matching is allowed; ambiguous matches return candidates."
                 }
-              }
+              },
+              "required": []
             }
         """
     }

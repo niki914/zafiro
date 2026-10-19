@@ -393,7 +393,7 @@ Store the result of a run by printing from main; stdout is returned.
                 },
                 "name": {"type": "string", "description": "Tool name for read/write/delete/test. A py_ prefix is added automatically."},
                 "code": {"type": "string", "description": "Python source defining main(**kwargs), for write; or draft code for test."},
-                "args": {"type": "object", "description": "Sample arguments for action=test."},
+                "args": {"type": "object", "description": "Sample arguments for action=test.", "required": []},
                 "enabled": {"type": "boolean", "description": "write only: enable/disable the tool (default keeps current value)."},
                 "timeout_ms": {"type": "integer", "minimum": 1000, "maximum": 120000, "description": "Execution timeout (default 30000)."}
               },
