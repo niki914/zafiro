@@ -73,7 +73,7 @@ private fun MultiToolHeaderIconCandidatesPreview() {
                     isExpanded = index == 0,
                     onToggle = {},
                 ) {
-                    SampleToolRow("terminal", "Terminal · ls -la /home")
+                    SampleToolRow("shell", "Shell · ls -la /home")
                     SampleToolRow("python", "Python · count files in dir")
                     SampleToolRow("search_docs", "search_docs")
                     SampleToolRow("load_skill", "Skill · phone-use")
@@ -168,10 +168,10 @@ private fun LoadingStatesPreview() {
                 }
             }
 
-            // Terminal running：右上角 spinner
+            // Shell running：右上角 spinner
             CollapsibleBlock(
-                icon = ToolPresentation.forTool("terminal"),
-                title = "Terminal · ls -la /home/niki/projects",
+                icon = ToolPresentation.forTool("shell"),
+                title = "Shell · ls -la /home/niki/projects",
                 isRunning = true,
                 isExpanded = false,
                 onToggle = {},
@@ -188,8 +188,8 @@ private fun LoadingStatesPreview() {
 
             // 对照组：已完成的工具（箭头而非转圈）
             CollapsibleBlock(
-                icon = ToolPresentation.forTool("terminal"),
-                title = "Terminal · ls -la /home/niki/projects",
+                icon = ToolPresentation.forTool("shell"),
+                title = "Shell · ls -la /home/niki/projects",
                 isRunning = false,
                 isExpanded = false,
                 onToggle = {},

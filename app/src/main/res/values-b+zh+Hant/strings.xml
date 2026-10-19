@@ -298,11 +298,11 @@
     <string name="tool_group_android_native_summary">開啟連結、搜尋與啟動應用程式、傳送通知等系統原生操作</string>
     <string name="tool_group_screen_operation">螢幕操作</string>
     <string name="tool_group_screen_operation_summary">透過無障礙服務或 Shell 兩種方式讀取、操作螢幕</string>
-    <string name="tool_custom_py_tools_entry">自定义 Python 工具</string>
-    <string name="tool_custom_py_tools_entry_summary">Agent 可建立、修改與試運行的可傳參 自定义 Python 工具</string>
+    <string name="tool_custom_py_tools_entry">自訂 Python 工具</string>
+    <string name="tool_custom_py_tools_entry_summary">Agent 可建立、修改與試運行的可傳參 自訂 Python 工具</string>
 
     <!-- Python Tool Module -->
-    <string name="custom_py_tool_page_title">自定义 Python 工具</string>
+    <string name="custom_py_tool_page_title">自訂 Python 工具</string>
     <string name="custom_py_tool_page_description">管理你的 自定义 Python 工具。</string>
     <string name="custom_py_tool_page_empty_description">讓你的 Agent 幫你建立，或點擊右上角新增。</string>
     <string name="custom_py_tool_loading">正在讀取已儲存的 自定义 Python 工具…</string>
@@ -366,7 +366,6 @@
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
-    <string name="ui_tool_display_terminal">終端</string>
     <string name="ui_tool_display_shell">Shell</string>
     <string name="ui_tool_display_ssh">SSH</string>
     <string name="ui_tool_display_load_skill">載入技能</string>
@@ -382,6 +381,7 @@
     <string name="ui_tool_display_screen_operation_shell">螢幕操作</string>
     <string name="ui_tool_display_screenshot">擷取螢幕</string>
     <string name="ui_tool_display_view_image">檢視圖片</string>
+    <string name="ui_tool_display_py_meta_tools">自訂 Python 工具</string>
     <string name="dialog_cancel">取消</string>
     <string name="dialog_confirm_delete">刪除</string>
     <string name="ui_settings_section_general">一般</string>
@@ -428,6 +428,8 @@
     <string name="ui_settings_runtime_sensitivity_strictest">極嚴</string>
     <string name="ui_settings_runtime_sensitivity_off">關閉</string>
     <string name="ui_settings_general_always_show_message_actions">總是顯示訊息操作</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output">總是展示工具詳細輸出</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output_summary">輸出內容過大可能會導致介面卡頓</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">語音助理獨享一個對話</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">開啟後語音助理對話不影響主畫面歷史；關閉則與主畫面共用當前對話</string>
     <string name="ui_settings_saved_configuration_title">已儲存配置</string>

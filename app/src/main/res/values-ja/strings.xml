@@ -403,7 +403,6 @@
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
-    <string name="ui_tool_display_terminal">ターミナル</string>
     <string name="ui_tool_display_shell">Shell</string>
     <string name="ui_tool_display_ssh">SSH</string>
     <string name="ui_tool_display_load_skill">Skill 読み込み</string>
@@ -419,6 +418,7 @@
     <string name="ui_tool_display_screen_operation_shell">画面操作</string>
     <string name="ui_tool_display_screenshot">スクリーンショット</string>
     <string name="ui_tool_display_view_image">画像を表示</string>
+    <string name="ui_tool_display_py_meta_tools">カスタム Python ツール</string>
     <string name="dialog_cancel">キャンセル</string>
     <string name="dialog_confirm_delete">削除</string>
     <string name="ui_settings_section_general">一般</string>
@@ -465,6 +465,8 @@
     <string name="ui_settings_runtime_sensitivity_strictest">最も厳しい</string>
     <string name="ui_settings_runtime_sensitivity_off">オフ</string>
     <string name="ui_settings_general_always_show_message_actions">メッセージ操作を常に表示</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output">ツールの詳細出力を常に表示</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output_summary">出力が非常に大きい場合、画面のかくつきの原因となることがあります</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">音声アシスタント専用セッション</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">有効にすると音声アシスタントの会話が独立し、メイン画面の履歴に影響しません</string>
     <string name="ui_settings_saved_configuration_title">保存済みの設定</string>

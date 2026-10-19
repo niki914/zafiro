@@ -94,9 +94,6 @@ private val BlockFlingScrollPropagation: NestedScrollConnection = object : Neste
 /** 命令型工具（精确匹配）：结果体为「命令单行 + 输出」上下分段样式。 */
 private val CommandToolNames = setOf("shell", "ssh", "execute_python")
 
-/** 结果文本型工具（精确匹配）：结果体为等宽结果文本（可选中、无复制按钮）。 */
-private val ResultTextToolNames = setOf("load_skill")
-
 /**
  * Stateless tool call list. Single-tool: renders one [CollapsibleBlock] directly.
  * Multi-tool: renders a header [CollapsibleBlock] (title = count) whose expansion
@@ -113,6 +110,7 @@ fun ToolChain(
     modifier: Modifier = Modifier,
     /** 展开内容（工具结果）点击回调；null 时不拦截点击（head 仍只管展开/收起）。 */
     onContentClick: (() -> Unit)? = null,
+    alwaysShowDetailed: Boolean = false,
 ) {
     if (tools.size == 1) {
         val status = tools[0]
@@ -121,6 +119,7 @@ fun ToolChain(
             isOpen = 0 in expandedResults,
             onToggle = { onToggleResult(0) },
             onContentClick = onContentClick,
+            alwaysShowDetailed = alwaysShowDetailed,
         )
     } else {
         CollapsibleBlock(
@@ -138,6 +137,7 @@ fun ToolChain(
                             isOpen = index in expandedResults,
                             onToggle = { onToggleResult(index) },
                             onContentClick = onContentClick,
+                            alwaysShowDetailed = alwaysShowDetailed,
                         )
                     }
                 }
@@ -152,11 +152,12 @@ private fun SingleToolRow(
     isOpen: Boolean,
     onToggle: () -> Unit,
     onContentClick: (() -> Unit)? = null,
+    alwaysShowDetailed: Boolean = false,
 ) {
     val hasResult = status.resultText != null || status.failedReason != null
     val isRunning = status.state == HomeToolState.Running
-    // 命令型工具的输入预览已在结果体上半区展示，标题不再重复拼预览
-    val useCommandBody = status.name in CommandToolNames && !status.inputText.isNullOrBlank()
+    val isCustomPy = status.name == "py_meta_tools" && !status.inputText.isNullOrBlank()
+    val useCommandBody = (status.name in CommandToolNames || isCustomPy) && !status.inputText.isNullOrBlank()
     val inputPreview = ToolPresentation.previewOf(status.inputText)
     val title = buildString {
         append(status.displayNameRes?.let { stringResource(it) } ?: status.name)
@@ -171,6 +172,15 @@ private fun SingleToolRow(
         isRunning = isRunning,
         onToggle = { if (!isRunning && hasResult) onToggle() },
     ) {
+        val outputText = remember(status.name, status.resultText, status.failedReason, alwaysShowDetailed) {
+            val text = if (alwaysShowDetailed) {
+                status.resultText ?: status.failedReason
+            } else {
+                ToolPresentation.formatConciseOutput(status.name, status.resultText)
+                    ?: status.failedReason
+            }
+            ToolPresentation.prettyPrintIfJson(text)
+        }
         val contentModifier = if (onContentClick != null) {
             Modifier.clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -190,16 +200,21 @@ private fun SingleToolRow(
                 useCommandBody -> CodeToolBody(
                     command = inputPreview.orEmpty(),
                     copyText = status.inputText,
-                    output = displayOutput(status).trim(),
+                    output = (outputText ?: "").trim(),
                     isError = status.state == HomeToolState.Failed,
                 )
 
-                status.name in ResultTextToolNames && status.state != HomeToolState.Failed ->
-                    ResultTextBody(text = displayOutput(status).trim())
+                status.state == HomeToolState.Failed ->
+                    FallbackResultBody(
+                        isFailed = true,
+                        reason = status.failedReason ?: outputText,
+                    )
+
+                !outputText.isNullOrBlank() ->
+                    ResultTextBody(text = outputText.trim())
 
                 else ->
-                    // 兕底：正文只显示本地化「成功 / 失败」，失败红色。
-                    FallbackResultBody(isFailed = status.state == HomeToolState.Failed)
+                    FallbackResultBody(isFailed = false)
             }
         }
     }
@@ -350,12 +365,27 @@ private fun MiniCopyButton(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** 兜底结果体：UI 与 Thinking 同款，正文只显示本地化「成功 / 失败」，失败红色。 */
+/** 兜底结果体：UI 与 Thinking 同款，正文只显示本地化「成功 / 失败」，失败红色。失败且有原因时附带展示原因。 */
 @Composable
-private fun FallbackResultBody(isFailed: Boolean) {
+private fun FallbackResultBody(isFailed: Boolean, reason: String? = null) {
+    val formattedReason = remember(reason) { ToolPresentation.prettyPrintIfJson(reason) }
+    val text = if (isFailed && !formattedReason.isNullOrBlank()) {
+        val prefix = stringResource(R.string.ui_tool_status_failed)
+        if (formattedReason.contains('\n')) {
+            "$prefix:\n$formattedReason"
+        } else {
+            "$prefix: $formattedReason"
+        }
+    } else {
+        stringResource(if (isFailed) R.string.ui_tool_status_failed else R.string.ui_tool_status_success)
+    }
     Text(
-        text = stringResource(if (isFailed) R.string.ui_tool_status_failed else R.string.ui_tool_status_success),
-        style = MaterialTheme.typography.bodySmall,
+        text = text,
+        style = if (formattedReason?.contains('\n') == true) {
+            MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+        } else {
+            MaterialTheme.typography.bodySmall
+        },
         color = if (isFailed) {
             MaterialTheme.colorScheme.error
         } else {
@@ -387,25 +417,6 @@ private fun ResultTextBody(text: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-}
-
-/**
- * 提取展示用输出文本：
- * - 「#!tool-result」信封（execute_python 等文本协议工具）→ 取空行后的 payload；
- * - Hermes 扁平 JSON（terminal）→ 拼接 stdout/output/stderr 非空项；
- * - 其余原文。
- */
-private fun displayOutput(status: HomeToolStatus): String {
-    val raw = status.resultText ?: return status.failedReason.orEmpty()
-    if (raw.startsWith("#!tool-result")) {
-        val sep = raw.indexOf("\n\n")
-        return if (sep != -1) raw.substring(sep + 2) else raw
-    }
-    val json = runCatching { Json.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return raw
-    val parts = listOf("stdout", "output", "stderr")
-        .mapNotNull { key -> json[key]?.jsonPrimitive?.contentOrNull }
-        .filter { it.isNotBlank() }
-    return if (parts.isEmpty()) raw else parts.joinToString("\n")
 }
 
 // ── staggered entry ─────────────────────────────────────────────────────────

@@ -26,6 +26,8 @@ private const val RESIDENT_NOTIFICATION_ROW_ID = "general.resident_notification"
 private const val TURN_NOTIFICATION_ROW_ID = "general.turn_notification"
 private const val LOAD_LAST_ROW_ID = "general.load_last"
 private const val ALWAYS_SHOW_ACTIONS_ROW_ID = "general.always_show_message_actions"
+private const val ALWAYS_SHOW_DETAILED_TOOL_OUTPUT_ROW_ID =
+    "general.always_show_detailed_tool_output"
 private const val VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID =
     "general.voice_assistant_isolated_session"
 
@@ -89,6 +91,12 @@ fun GeneralSettingsContent(
                         checked = uiState.alwaysShowMessageActions,
                     ),
                     SettingsRowSpec.Toggle(
+                        id = ALWAYS_SHOW_DETAILED_TOOL_OUTPUT_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_always_show_detailed_tool_output),
+                        summary = stringResource(R.string.ui_settings_general_always_show_detailed_tool_output_summary),
+                        checked = uiState.alwaysShowDetailedToolOutput,
+                    ),
+                    SettingsRowSpec.Toggle(
                         id = VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_voice_assistant_isolated_session),
                         summary = stringResource(R.string.ui_settings_general_voice_assistant_isolated_session_summary),
@@ -136,6 +144,12 @@ fun GeneralSettingsContent(
 
                         ALWAYS_SHOW_ACTIONS_ROW_ID -> viewModel.sendIntent(
                             GeneralSettingsIntent.ToggleAlwaysShowMessageActions(
+                                action.checked
+                            )
+                        )
+
+                        ALWAYS_SHOW_DETAILED_TOOL_OUTPUT_ROW_ID -> viewModel.sendIntent(
+                            GeneralSettingsIntent.ToggleAlwaysShowDetailedToolOutput(
                                 action.checked
                             )
                         )

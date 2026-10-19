@@ -279,7 +279,7 @@
     <string name="tool_group_screen_operation_summary">Чтение экрана и действия на нём через службу специальных возможностей или shell</string>
     <string name="tool_custom_py_tools_entry">Свои инструменты на Python</string>
     <string name="tool_custom_py_tools_entry_summary">Ваши python-инструменты с параметрами: агент может создавать, изменять и запускать их для проверки</string>
-    <string name="custom_py_tool_page_title">Мета-инструменты Python</string>
+    <string name="custom_py_tool_page_title">Свои инструменты на Python</string>
     <string name="custom_py_tool_page_description">Управление вашими python-инструментами.</string>
     <string name="custom_py_tool_page_empty_description">Пусть агент создаст инструмент сам или нажмите на значок справа сверху, чтобы добавить новый.</string>
     <string name="custom_py_tool_loading">Загрузка сохранённых python-инструментов…</string>
@@ -362,7 +362,6 @@
     <string name="feedback_bug_template">## Описание проблемы\n\n## Шаги воспроизведения\n\n## Ожидаемое поведение\n\n## Фактическое поведение\n\n## Информация об устройстве\n- Версия Android:\n- Ассистент (Breeno или другой):\n- Версия модуля:\n\n## Дополнительно\nМожно приложить логи, снимки экрана или записи — это поможет разобраться в проблеме.</string>
     <string name="conversation_fork_title">Ответвление · %1$s</string>
     <string name="conversation_rewind_title">Откат · %1$s</string>
-    <string name="ui_tool_display_terminal">Терминал</string>
     <string name="ui_tool_display_shell">Shell</string>
     <string name="ui_tool_display_ssh">SSH</string>
     <string name="ui_tool_display_load_skill">Загрузка навыка</string>
@@ -378,6 +377,7 @@
     <string name="ui_tool_display_screen_operation_shell">Управление экраном</string>
     <string name="ui_tool_display_screenshot">Снимок экрана</string>
     <string name="ui_tool_display_view_image">Просмотр изображения</string>
+    <string name="ui_tool_display_py_meta_tools">Свой инструмент на Python</string>
     <string name="dialog_cancel">Отмена</string>
     <string name="dialog_confirm_delete">Удалить</string>
     <string name="ui_settings_section_general">Общие</string>
@@ -424,6 +424,8 @@
     <string name="ui_settings_runtime_sensitivity_strictest">Максимальная</string>
     <string name="ui_settings_runtime_sensitivity_off">Выкл.</string>
     <string name="ui_settings_general_always_show_message_actions">Всегда показывать действия с сообщением</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output">Всегда показывать подробный вывод инструментов</string>
+    <string name="ui_settings_general_always_show_detailed_tool_output_summary">Очень большой вывод может приводить к зависаниям интерфейса</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">Выделенная сессия голосового ассистента</string>
     <string name="ui_settings_general_voice_assistant_isolated_session_summary">Изолировать диалоги голосового ассистента от истории основного чата</string>
     <string name="ui_settings_saved_configuration_title">Сохранённые конфигурации</string>

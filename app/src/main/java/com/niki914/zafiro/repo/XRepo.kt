@@ -89,6 +89,7 @@ object XRepo {
         // 响应式 flow 是进程内单例状态：重置回声明默认值，测试互不污染。
         keepScreenOnField.flow.value = true
         alwaysShowMessageActionsField.flow.value = true
+        alwaysShowDetailedToolOutputField.flow.value = false
         voiceAssistantIsolatedSessionField.flow.value = true
         floatingBallEnabledField.flow.value = false
         residentNotificationEnabledField.flow.value = false
@@ -416,6 +417,20 @@ object XRepo {
 
     suspend fun setAlwaysShowMessageActions(value: Boolean) =
         alwaysShowMessageActionsField.set(value)
+
+    /** 总是展示工具详细输出开关的进程内热更新通道：默认关闭（精简模式）。 */
+    private val alwaysShowDetailedToolOutputField = ReactiveAppStateField(
+        default = false,
+        select = { alwaysShowDetailedToolOutput },
+        update = { copy(alwaysShowDetailedToolOutput = it) },
+    )
+    val alwaysShowDetailedToolOutputSetting: MutableStateFlow<Boolean>
+        get() = alwaysShowDetailedToolOutputField.flow
+
+    suspend fun alwaysShowDetailedToolOutput(): Boolean = alwaysShowDetailedToolOutputField.get()
+
+    suspend fun setAlwaysShowDetailedToolOutput(value: Boolean) =
+        alwaysShowDetailedToolOutputField.set(value)
 
     /** 语音助手独享会话开关的进程内热更新通道：读时回填初值，写时同步。默认开启。 */
     private val voiceAssistantIsolatedSessionField = ReactiveAppStateField(
@@ -1562,9 +1577,5 @@ class BuiltinToolApi internal constructor(
         defaultEnabled: Boolean
     ): Boolean {
         return this[toolName] ?: defaultEnabled
-    }
-
-    private companion object {
-        private const val TERMINAL_TOOL_NAME = "terminal"
     }
 }

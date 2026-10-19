@@ -53,6 +53,9 @@ internal data class AppStateSettings(
     /** 消息操作行（复制/重新生成/fork 等）是否常显。 */
     @SerialName("always_show_message_actions")
     val alwaysShowMessageActions: Boolean = true,
+    /** 是否总是展示工具调用的完整详细输出。 */
+    @SerialName("always_show_detailed_tool_output")
+    val alwaysShowDetailedToolOutput: Boolean = false,
     /** 是否启用 Agent 悬浮球。 */
     @SerialName("floating_ball_enabled")
     val floatingBallEnabled: Boolean = false,

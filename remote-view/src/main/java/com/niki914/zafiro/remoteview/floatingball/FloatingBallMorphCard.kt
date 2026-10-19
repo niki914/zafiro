@@ -652,7 +652,7 @@ private fun PreviewWaitingApproval() {
                 state = FloatingBallState.Expanded,
                 dockSide = DockSide.Right,
                 approvalRequest = ApprovalRequest.ToolExecution(
-                    toolName = "terminal",
+                    toolName = "shell",
                     command = "rm -rf /tmp/cache",
                     ruleName = "危险删除命令",
                     matchedPattern = "rm -rf",

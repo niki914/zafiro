@@ -483,7 +483,7 @@ private fun PreviewDetailCard() {
             Box(modifier = Modifier.padding(16.dp)) {
                 FloatingBallDetailCard(
                     request = ApprovalRequest.ToolExecution(
-                        toolName = "terminal",
+                        toolName = "shell",
                         command = "rm -rf /data/local/tmp/cache_logs_001.log",
                         ruleName = "危险删除命令",
                         matchedPattern = "rm -rf",
