@@ -182,16 +182,25 @@ class HomeChatViewModel internal constructor(
 
     // ── Agent 观察 ──────────────────────────────────────────────────────────
 
+    private fun detachBoundAgent() {
+        agentObserveJob?.cancel()
+        agentObserveJob = null
+        currentBoundAgent?.removeApprover(approvalApprover)
+        currentBoundAgent = null
+    }
+
+    private fun attachBoundAgent(newAgent: Agent) {
+        if (currentBoundAgent === newAgent) return
+        detachBoundAgent()
+        newAgent.addApprover(approvalApprover)
+        currentBoundAgent = newAgent
+        bindAgent(newAgent)
+    }
+
     private fun observeAgent() {
         viewModelScope.launch {
             agentManager.mainFlow.collect { newAgent ->
-                val prev = currentBoundAgent
-                if (prev !== newAgent) {
-                    prev?.removeApprover(approvalApprover)
-                    newAgent.addApprover(approvalApprover)
-                    currentBoundAgent = newAgent
-                    bindAgent(newAgent)
-                }
+                attachBoundAgent(newAgent)
             }
         }
     }
@@ -568,9 +577,10 @@ class HomeChatViewModel internal constructor(
 
     // ── 会话切换 ────────────────────────────────────────────────────────────
 
-    private fun startNewConversation() {
+    private suspend fun startNewConversation() {
         Logger.d(LOG_TAG, "start new conversation")
         val leavingId = agent.conversation.value.id?.value
+        detachBoundAgent()
         draftSaveJob?.cancel()
         draftSaveJob = null
         resetPacers()
@@ -583,11 +593,12 @@ class HomeChatViewModel internal constructor(
                 savedConfigs = currentState.savedConfigs,
                 globalActiveConfigId = currentState.globalActiveConfigId,
                 boundConfigId = null,
+                isLoadingConversation = true,
             )
         }
-        viewModelScope.launch {
+        val startedAtMs = System.currentTimeMillis()
+        try {
             refreshSavedConfigs()
-            val startedAtMs = System.currentTimeMillis()
             runCatchingCancellable {
                 if (!leavingId.isNullOrBlank()) {
                     runCatchingCancellable { conversations.bindConfig(leavingId) }
@@ -596,6 +607,7 @@ class HomeChatViewModel internal constructor(
                         }
                 }
                 val newAgent = agentManager.startNewConversation()
+                attachBoundAgent(newAgent)
                 if (currentInput.isNotEmpty()) {
                     newAgent.updateDraft { it.copy(text = currentInput) }
                 }
@@ -607,6 +619,8 @@ class HomeChatViewModel internal constructor(
             }.onFailure { throwable ->
                 Logger.e(LOG_TAG, "new conversation failed", throwable)
             }
+        } finally {
+            updateState { copy(isLoadingConversation = false) }
         }
     }
 
@@ -666,11 +680,14 @@ class HomeChatViewModel internal constructor(
         val startedAtMs = System.currentTimeMillis()
         Logger.i(LOG_TAG, "load conversation id=$target started")
         val leavingId = agent.conversation.value.id?.value
-        if (!leavingId.isNullOrBlank() && leavingId != target) {
-            runCatchingCancellable { conversations.bindConfig(leavingId) }
-                .onFailure { throwable ->
-                    Logger.w(LOG_TAG, "bindConfig failed leavingId=$leavingId", throwable)
-                }
+        if (leavingId != target) {
+            detachBoundAgent()
+            if (!leavingId.isNullOrBlank()) {
+                runCatchingCancellable { conversations.bindConfig(leavingId) }
+                    .onFailure { throwable ->
+                        Logger.w(LOG_TAG, "bindConfig failed leavingId=$leavingId", throwable)
+                    }
+            }
         }
         draftSaveJob?.cancel()
         draftSaveJob = null
@@ -692,6 +709,7 @@ class HomeChatViewModel internal constructor(
             seenThinkingKeys.clear()
             conversationBeingLoaded = target
             val targetAgent = agentManager.switchTo(target)
+            attachBoundAgent(targetAgent)
             updateState {
                 copy(
                     turns = emptyList(),
@@ -809,37 +827,18 @@ class HomeChatViewModel internal constructor(
         val startedAtMs = System.currentTimeMillis()
         Logger.i(LOG_TAG, "delete conversation id=$id started")
         val groupIds = conversations.branchGroupIds(id)
+        val currentOpenId = agent.conversation.value.id?.value
+        val deletingCurrent = id == currentOpenId || groupIds.contains(currentOpenId)
+        if (deletingCurrent) {
+            startNewConversation()
+        }
         groupIds.forEach { branchId ->
             tryIgnore { agentManager.destroy(branchId) }
         }
-        val currentOpenId = agent.conversation.value.id?.value
-        val deletingCurrent = id == currentOpenId || groupIds.contains(currentOpenId)
         conversations.deleteConversation(id)
         if (!deletingCurrent) {
             Logger.d(LOG_TAG, "delete conversation id=$id notCurrent skipped")
             return
-        }
-        draftSaveJob?.cancel()
-        draftSaveJob = null
-        resetPacers()
-        val currentInput = currentState.input
-        val newAgent = agentManager.startNewConversation()
-        if (currentInput.isNotEmpty()) {
-            newAgent.updateDraft { it.copy(text = currentInput) }
-        }
-        conversationBeingLoaded = null
-        seenThinkingKeys.clear()
-        conversations.setLastOpenedConversationId("")
-        updateState {
-            HomeChatUiState(
-                input = currentInput,
-                savedConfigs = currentState.savedConfigs,
-                globalActiveConfigId = currentState.globalActiveConfigId,
-                boundConfigId = null,
-            )
-        }
-        viewModelScope.launch {
-            refreshSavedConfigs()
         }
         Logger.i(
             LOG_TAG,
@@ -913,8 +912,7 @@ class HomeChatViewModel internal constructor(
         draftSaveJob = null
         // 在途请求交给其他来源（或按拒绝结算）；本类不再持有来源身份
         approvalApprover.detach()
-        currentBoundAgent?.removeApprover(approvalApprover)
-        agentObserveJob?.cancel()
+        detachBoundAgent()
         super.onCleared()
     }
 

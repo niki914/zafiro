@@ -12,14 +12,22 @@ import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.ConversationTurn
 import com.niki914.zafiro.api.model.TurnBlock
+import com.niki914.zafiro.api.Agent
+import com.niki914.zafiro.api.AgentControl
+import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.app.conversation.ForkKind
 import com.niki914.zafiro.app.ui.model.MainDispatcherRule
+import com.niki914.zafiro.app.ui.model.TextPacer
 import com.niki914.zafiro.business.agent.turnIdAt
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.service.ServiceRegistry
+import com.niki914.zafiro.service.installService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -226,6 +234,65 @@ class HomeChatViewModelTest {
         assertEquals(null, fixture.vm.uiStateFlow.value.currentConversationId)
         assertEquals("", fixture.store.lastOpenedConversationId())
         assertTrue(fixture.store.getConversation("saved") != null)
+    }
+
+    @Test
+    fun newConversation_detachesPreviousAgent_preventingTrailingEmissions() = runTest {
+        val store = FakeHomeConversationStore()
+        store.createRecord("conv-1", "hello")
+        val oldAgent = FakeHomeAgent(store)
+        val newAgent = FakeHomeAgent(store)
+        val agentFlow = MutableStateFlow<Agent>(oldAgent)
+        installService<AgentManager>(object : AgentManager {
+            override val main: Agent get() = agentFlow.value
+            override val mainFlow: StateFlow<Agent> = agentFlow.asStateFlow()
+            override suspend fun switchTo(conversationId: String): Agent {
+                oldAgent.load(ConversationId(conversationId))
+                agentFlow.value = oldAgent
+                return oldAgent
+            }
+
+            override fun startNewConversation(): Agent {
+                agentFlow.value = newAgent
+                return newAgent
+            }
+
+            override val activeStates: StateFlow<Map<String, AgentState>> = MutableStateFlow(emptyMap())
+            override fun createTaskAgent(isPersistent: Boolean): Agent = newAgent
+            override fun destroy(conversationId: String) {}
+            override val control: AgentControl = newAgent
+        })
+        val vm = HomeChatViewModel(
+            conversations = store,
+            textPacer = TextPacer(delayFn = {}),
+            thinkingPacer = TextPacer(delayFn = {}),
+        )
+        vm.sendIntent(HomeChatIntent.LoadConversation("conv-1"))
+        advanceUntilIdle()
+        assertEquals("conv-1", vm.uiStateFlow.value.currentConversationId)
+
+        // Switch to new conversation
+        vm.sendIntent(HomeChatIntent.NewConversation)
+        advanceUntilIdle()
+        assertNull(vm.uiStateFlow.value.currentConversationId)
+        assertTrue(vm.uiStateFlow.value.turns.isEmpty())
+
+        // Simulate old agent emitting trailing content in background
+        oldAgent.mutableConversation.value = Conversation(
+            id = ConversationId("conv-1"),
+            turns = listOf(
+                ConversationTurn(
+                    id = turnIdAt(0),
+                    userText = "hello",
+                    blocks = listOf(TurnBlock.Text("t0:0", "leak")),
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        // UI state must remain clean, unaffected by oldAgent
+        assertNull(vm.uiStateFlow.value.currentConversationId)
+        assertTrue(vm.uiStateFlow.value.turns.isEmpty())
     }
 
     @Test

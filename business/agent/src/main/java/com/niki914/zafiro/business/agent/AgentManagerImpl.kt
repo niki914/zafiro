@@ -49,7 +49,8 @@ class AgentManagerImpl(
     private val trackedAgentIds = ConcurrentHashMap.newKeySet<String>()
     private val statusTrackingJobs = ConcurrentHashMap<String, Job>()
     private val lastAccessedMs = ConcurrentHashMap<String, Long>()
-    private var scratchAgent: Agent = createPersistentAgent()
+    private var scratchRegistrationJob: Job? = null
+    private var scratchAgent: Agent = createPersistentAgent { scratchRegistrationJob = it }
 
     private val _mainFlow = MutableStateFlow(scratchAgent)
     override val mainFlow: StateFlow<Agent> = _mainFlow.asStateFlow()
@@ -87,16 +88,16 @@ class AgentManagerImpl(
     }
 
     override fun startNewConversation(): Agent {
-        val current = scratchAgent
-        val target = if (current.conversation.value.id != null) {
-            val next = createPersistentAgent()
-            scratchAgent = next
-            next
-        } else {
-            current
+        val prev = scratchAgent
+        if (prev.conversation.value.id == null) {
+            scratchRegistrationJob?.cancel()
+            prev.stop()
+            prev.release()
         }
-        _mainFlow.value = target
-        return target
+        val next = createPersistentAgent { scratchRegistrationJob = it }
+        scratchAgent = next
+        _mainFlow.value = next
+        return next
     }
 
     override fun createTaskAgent(isPersistent: Boolean): Agent {
@@ -172,18 +173,19 @@ class AgentManagerImpl(
         }
     }
 
-    private fun createPersistentAgent(): Agent {
+    private fun createPersistentAgent(onJobCreated: ((Job) -> Unit)? = null): Agent {
         val agent = AgentImpl(
             engine = AgentSessionEngine(),
             isPersistent = true,
         )
-        scope.launch {
+        val job = scope.launch {
             val conv = agent.conversation.first { !it.id?.value.isNullOrBlank() }
             val id = conv.id?.value
             if (!id.isNullOrBlank()) {
                 registerActiveAgent(id, agent)
             }
         }
+        onJobCreated?.invoke(job)
         return agent
     }
 }
