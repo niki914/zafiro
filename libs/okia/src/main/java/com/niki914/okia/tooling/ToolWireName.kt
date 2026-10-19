@@ -38,13 +38,13 @@ object ToolWireName {
     private const val MAX_SERVER_SEGMENT = 32
 
     /** 本地工具的线缆名：段规范化 + 长度截断。 */
-    fun forLocal(name: String): String = truncate(sanitizeSegment(name), MAX_LENGTH)
+    fun forLocal(name: String): String = truncate(sanitizeSegment(name, "tool"), MAX_LENGTH)
 
     /** MCP 工具线缆名：mcp__<server>__<tool>，分段截断保证 ≤ MAX_LENGTH。 */
     fun forMcp(serverName: String, toolName: String): String {
-        val server = truncate(sanitizeSegment(serverName), MAX_SERVER_SEGMENT)
+        val server = truncate(sanitizeSegment(serverName, "s"), MAX_SERVER_SEGMENT)
         val toolBudget = MAX_LENGTH - MCP_PREFIX.length - SEP.length - server.length
-        val tool = truncate(sanitizeSegment(toolName), toolBudget)
+        val tool = truncate(sanitizeSegment(toolName, "t"), toolBudget)
         return MCP_PREFIX + server + SEP + tool
     }
 
@@ -68,15 +68,21 @@ object ToolWireName {
         }
     }
 
-    private fun sanitizeSegment(name: String): String {
-        if (name.isEmpty()) return "_"
-        return buildString(name.length) {
+    private fun sanitizeSegment(name: String, prefix: String = "s"): String {
+        if (name.isEmpty()) return "${prefix}_empty"
+        val raw = buildString(name.length) {
             for (c in name) {
                 append(
                     if (c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c == '-' || c == '_') c
                     else '_'
                 )
             }
+        }
+        val clean = raw.replace(Regex("_+"), "_").trim('_')
+        return if (clean.any { it.isLetterOrDigit() }) {
+            clean
+        } else {
+            "${prefix}_${fnvHex(name).take(8)}"
         }
     }
 

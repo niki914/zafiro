@@ -233,18 +233,23 @@ internal class McpWire(
         val effectiveVersion = version ?: declaredVersion
         val sessionHeader = session?.let { mapOf("mcp-session-id" to it) } ?: emptyMap()
         val versionHeader = effectiveVersion?.let { mapOf("MCP-Protocol-Version" to it) } ?: emptyMap()
-        // SEP-2243: modern 模式下（携带版本信封的请求）需同时附带 Mcp-Method 头
-        val methodHeader = if (declaredVersion != null) {
+        // SEP-2243: modern 模式下（携带版本信封的请求）需同时附带 Mcp-Method 与 Mcp-Name 头
+        val (methodHeader, nameHeader) = if (declaredVersion != null) {
             val method = (body["method"] as? JsonPrimitive)?.contentOrNull
-            method?.let { mapOf("Mcp-Method" to it) } ?: emptyMap()
+            val params = body["params"] as? JsonObject
+            val name = (params?.get("name") as? JsonPrimitive)?.contentOrNull
+                ?: (params?.get("uri") as? JsonPrimitive)?.contentOrNull
+            val mHeader = method?.let { mapOf("Mcp-Method" to it) } ?: emptyMap()
+            val nHeader = name?.let { mapOf("Mcp-Name" to it) } ?: emptyMap()
+            mHeader to nHeader
         } else {
-            emptyMap()
+            emptyMap<String, String>() to emptyMap<String, String>()
         }
         val response = engine.unary(
             HttpRequest(
                 url = url,
                 method = "POST",
-                headers = DEFAULT_HEADERS + sessionHeader + versionHeader + methodHeader + server.headers,
+                headers = DEFAULT_HEADERS + sessionHeader + versionHeader + methodHeader + nameHeader + server.headers,
                 body = body.toString(),
                 timeouts = timeouts
             )

@@ -278,13 +278,17 @@ class DiscoveryStreamableHttpMcpClientTest {
         })
         val result = client.callTool(mcpServer(), "t", """{"k":1}""")
         assertEquals(listOf("out"), result.content.map { (it as McpContentBlock.Text).text })
-        val body = parseJson(awaitRequests(1)[0])
+        val req = awaitRequests(1)[0]
+        val body = parseJson(req)
         val params = body["params"]!!.jsonObject
         assertNotNull(params["_meta"])
         assertEquals("t", params["name"]?.jsonPrimitive?.content)
         assertEquals(
             1,
             params["arguments"]!!.jsonObject["k"]?.jsonPrimitive?.let { it.content.toIntOrNull() })
+        assertEquals("2026-07-28", req.getHeader("MCP-Protocol-Version"))
+        assertEquals("tools/call", req.getHeader("Mcp-Method"))
+        assertEquals("t", req.getHeader("Mcp-Name"))
     }
 
     @Test

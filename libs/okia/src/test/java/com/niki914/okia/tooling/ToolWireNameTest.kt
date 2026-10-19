@@ -14,11 +14,11 @@ class ToolWireNameTest {
 
     @Test
     fun forLocalKeepsDashAndUnderscoreAndReplacesOthers() {
-        // D2 B：- 与 _ 保留；点 / 空格 / 非 ASCII 替换为 _
+        // - 与 _ 保留；点 / 空格替换为 _；纯符号生成确定性哈希
         assertEquals("admin_tools_list", ToolWireName.forLocal("admin.tools.list"))
         assertEquals("list-files", ToolWireName.forLocal("list-files"))
         assertEquals("get_user_info", ToolWireName.forLocal("get user info"))
-        assertEquals("__", ToolWireName.forLocal("!!")) // 段内全部替换 → 全下划线
+        assertTrue(ToolWireName.forLocal("!!").startsWith("tool_"))
     }
 
     @Test
@@ -38,6 +38,23 @@ class ToolWireNameTest {
             ToolWireName.forMcp("my server", "admin.tools.list")
         )
         assertEquals("mcp__srv-a__get-sum", ToolWireName.forMcp("srv-a", "get-sum"))
+    }
+
+    @Test
+    fun forMcpUsesHashForPureNonAsciiServerNamesAndAvoidsUnderscoreExplosion() {
+        val name = ToolWireName.forMcp("高德地图", "maps_weather")
+        assertTrue("应以 mcp__s_ 开头：$name", name.startsWith("mcp__s_"))
+        assertTrue("应以 __maps_weather 结尾：$name", name.endsWith("__maps_weather"))
+        assertTrue("不应包含多余连续下划线：$name", !name.contains("____"))
+        assertEquals(name, ToolWireName.forMcp("高德地图", "maps_weather"))
+    }
+
+    @Test
+    fun forMcpCollapsesConsecutiveUnderscoresInMixedNames() {
+        assertEquals(
+            "mcp__amap__maps_weather",
+            ToolWireName.forMcp("高德_amap", "maps_weather")
+        )
     }
 
     @Test
