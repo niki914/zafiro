@@ -19,8 +19,8 @@ import com.niki914.zafiro.app.ui.model.ConfigureViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
 import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
-import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome__V2
-import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold__V2
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold
 
 /**
  * Saved Configuration 详情页（模板同 McpServerDetailContent）：
@@ -81,7 +81,7 @@ fun SavedConfigDetailContent(
     val isEditingActiveConfig = uiState.editingConfigId != null &&
             uiState.editingConfigId == uiState.activeConfigId
 
-    EditableSettingsDetailChrome__V2(
+    EditableSettingsDetailChrome(
         isCreating = page.isCreating,
         hasUnsavedChanges = { uiState.hasUnsavedChanges },
         unsavedFieldLabelRes = { uiState.unsavedFieldLabelRes() },
@@ -184,7 +184,7 @@ private fun SavedConfigDetailContentBody(
     } else {
         onboardingConfigurePolicy(uiState.providerSpec)
     }
-    EditableSettingsDetailFormScaffold__V2(
+    EditableSettingsDetailFormScaffold(
         actionText = stringResource(R.string.ui_settings_configure_save),
         requestedFocusField = requestedFocusField,
         onRequestedFocusHandled = onRequestedFocusHandled,

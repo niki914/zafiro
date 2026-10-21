@@ -28,8 +28,8 @@ import com.niki914.zafiro.app.ui.model.TextActionSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
 import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
-import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome__V2
-import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold__V2
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold
 import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 
 @Composable
@@ -41,7 +41,7 @@ fun TextActionsDetailContent(
     val uiState by viewModel.uiStateFlow.collectAsState()
     var requestedFocusField by rememberSaveable { mutableStateOf<TextActionEditableField?>(null) }
 
-    EditableSettingsDetailChrome__V2(
+    EditableSettingsDetailChrome(
         isCreating = page.isCreating,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
@@ -137,7 +137,7 @@ private fun TextActionsDetailContentBody(
     onRunInBackgroundChange: (Boolean) -> Unit,
     onSave: () -> Unit,
 ) {
-    EditableSettingsDetailFormScaffold__V2(
+    EditableSettingsDetailFormScaffold(
         actionText = stringResource(R.string.text_action_save_action),
         requestedFocusField = requestedFocusField,
         onRequestedFocusHandled = onRequestedFocusHandled,

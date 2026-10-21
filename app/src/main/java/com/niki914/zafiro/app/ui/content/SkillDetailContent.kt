@@ -17,7 +17,7 @@ import com.niki914.zafiro.app.ui.model.SkillSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
 import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
-import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome__V2
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
 
 @Composable
 fun SkillDetailContent(
@@ -27,7 +27,7 @@ fun SkillDetailContent(
     val viewModel = pageViewModel<SkillSettingsViewModel>()
     val uiState by viewModel.uiStateFlow.collectAsState()
 
-    EditableSettingsDetailChrome__V2(
+    EditableSettingsDetailChrome(
         isCreating = false,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges

@@ -18,7 +18,7 @@ import com.niki914.zafiro.app.ui.RegisterPageChrome
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 
 /**
- * 设置详情页顶层交互 Chrome（V2 版本）。
+ * 设置详情页顶层交互 Chrome。
  *
  * 统一管理：
  * 1. 顶部操作栏动作（如右上角删除按钮）。
@@ -27,7 +27,7 @@ import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
  * 4. 删除确认弹窗生命周期协同。
  */
 @Composable
-fun EditableSettingsDetailChrome__V2(
+fun EditableSettingsDetailChrome(
     isCreating: Boolean,
     hasUnsavedChanges: () -> Boolean,
     onDiscardChanges: () -> Unit,
@@ -128,7 +128,7 @@ fun EditableSettingsDetailChrome__V2(
  * 自动绑定未保存判断及变更字段资源解析。
  */
 @Composable
-fun <State, Field> EditableSettingsDetailChrome__V2(
+fun <State, Field> EditableSettingsDetailChrome(
     isCreating: Boolean,
     formSpec: FormSpec<State, Field>,
     baseline: State?,
@@ -140,7 +140,7 @@ fun <State, Field> EditableSettingsDetailChrome__V2(
     onDismissDeleteConfirmation: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    EditableSettingsDetailChrome__V2(
+    EditableSettingsDetailChrome(
         isCreating = isCreating,
         hasUnsavedChanges = { formSpec.hasChanges(baseline, current) },
         onDiscardChanges = onDiscardChanges,

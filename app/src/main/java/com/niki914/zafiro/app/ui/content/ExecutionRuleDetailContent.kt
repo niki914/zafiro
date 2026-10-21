@@ -28,8 +28,8 @@ import com.niki914.zafiro.app.ui.model.ExecutionRulesSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
 import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
-import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome__V2
-import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold__V2
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold
 import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
 
@@ -44,7 +44,7 @@ fun ExecutionRuleDetailContent(
         mutableStateOf<ExecutionRuleEditableField?>(null)
     }
 
-    EditableSettingsDetailChrome__V2(
+    EditableSettingsDetailChrome(
         isCreating = page.isCreating,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
@@ -141,7 +141,7 @@ private fun ExecutionRuleDetailContentBody(
 ) {
     var showEnabledModeDialog by rememberSaveable { mutableStateOf(false) }
 
-    EditableSettingsDetailFormScaffold__V2(
+    EditableSettingsDetailFormScaffold(
         actionText = stringResource(R.string.execution_rules_save_action),
         requestedFocusField = requestedFocusField,
         onRequestedFocusHandled = onRequestedFocusHandled,
