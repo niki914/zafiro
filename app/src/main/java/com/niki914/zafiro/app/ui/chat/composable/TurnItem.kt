@@ -7,12 +7,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -27,8 +25,6 @@ import com.niki914.zafiro.app.ui.chat.composable.attachment.HomeChatAttachmentRo
 import com.niki914.zafiro.app.ui.chat.composable.bubble.UserBubbleCornerRadius
 import com.niki914.zafiro.app.ui.chat.composable.bubble.UserBubblePosition
 import com.niki914.zafiro.app.ui.chat.composable.bubble.UserMessageBubble
-import com.niki914.zafiro.app.ui.content.BlockSpacing
-import com.niki914.zafiro.app.ui.content.TurnSeparator
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 
@@ -110,7 +106,6 @@ internal fun TurnItem(
         ) {
             TurnActionRow(
                 source = ActionSource.User,
-                display = actionsDisplay,
                 onCopy = { onCopyText(userGroupText) },
                 onReGenerate = onReGenerate,
                 onFork = onFork,
@@ -121,16 +116,7 @@ internal fun TurnItem(
         // ── 2. 助手生成流 ──
         if (turn.sections.isNotEmpty()) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        top = if (userBubblePosition == UserBubblePosition.Single) {
-                            TurnSeparator - BlockSpacing
-                        } else {
-                            0.dp
-                        }
-                    ),
-                verticalArrangement = Arrangement.spacedBy(BlockSpacing),
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 SectionList(
                     sections = turn.sections,
@@ -150,7 +136,6 @@ internal fun TurnItem(
                 ) {
                     TurnActionRow(
                         source = ActionSource.Agent,
-                        display = actionsDisplay,
                         onCopy = {
                             val allText = turn.sections
                                 .filterIsInstance<TurnSection.Text>()

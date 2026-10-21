@@ -196,14 +196,6 @@ internal fun HomePageContentBody(
                     val position = userBubblePosition(uiState.turns, index)
                     val tailIndex = userGroupTailIndex(uiState.turns, index)
                     val tailTurn = uiState.turns[tailIndex]
-                    val turnTopPad = when {
-                        index == 0 -> Modifier
-                        turn.isCompactedDivider -> Modifier.padding(top = 8.dp, bottom = 8.dp)
-                        position == UserBubblePosition.GroupMid || position == UserBubblePosition.GroupLast ->
-                            Modifier.padding(top = UserBubbleGap)
-
-                        else -> Modifier.padding(top = TurnSeparator)
-                    }
                     HomeChatTurnItem(
                         turn = turn,
                         userBubblePosition = position,
@@ -227,7 +219,7 @@ internal fun HomePageContentBody(
                         alwaysShowDetailed = alwaysShowDetailed,
                         userToggledKeys = uiState.userToggledKeys,
                         onToggleAction = onToggleActionKey,
-                        modifier = turnTopPad.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 item(key = "bottom_anchor") {

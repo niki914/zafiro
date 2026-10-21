@@ -2,7 +2,6 @@ package com.niki914.zafiro.app.ui.chat.composable.section
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
@@ -11,7 +10,6 @@ import androidx.compose.ui.Modifier
 import com.niki914.zafiro.app.ui.chat.composable.action.StandaloneActionCard
 import com.niki914.zafiro.app.ui.chat.model.TurnSection
 import com.niki914.zafiro.app.ui.chat.composable.text.AssistantOutputText
-import com.niki914.zafiro.app.ui.content.BlockSpacing
 
 /**
  * Level 2: 助手段落分流器。
@@ -30,7 +28,6 @@ internal fun SectionList(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(BlockSpacing),
     ) {
         sections.forEach { section ->
             when (section) {
