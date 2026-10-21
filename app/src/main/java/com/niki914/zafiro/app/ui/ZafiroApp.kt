@@ -50,6 +50,7 @@ import com.niki914.uikit.infra.LiquidScreenSwipeContent
 import com.niki914.uikit.infra.LiquidScreenTitle
 import com.niki914.uikit.infra.PopoverAlignment
 import com.niki914.uikit.infra.TitleDirection
+import com.niki914.uikit.infra.nav.LocalNavigationController
 import com.niki914.uikit.infra.nav.LocalNavigationEntry
 import com.niki914.uikit.infra.nav.LocalPageTitle
 import com.niki914.uikit.infra.nav.rememberNavigationController
@@ -382,6 +383,7 @@ fun ZafiroApp(
                                 pageChromeHost.registrarFor(entry.id)
                             }
                             CompositionLocalProvider(
+                                LocalNavigationController provides controller,
                                 LocalNavigationEntry provides entry,
                                 LocalPageChrome provides pageChromeRegistrar,
                                 LocalPageTitle provides resolveTitle(entry.page.titleSpec),

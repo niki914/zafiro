@@ -32,6 +32,20 @@ KNOWN_LOCALES = (
     "values-ru",
 )
 
+RE_ALLOWED_PARENS = re.compile(
+    r"\(\s*%\d*\$?[a-zA-Z]\s*\)"          # e.g. (%1$s), (%s), (%d)
+    r"|（\s*%\d*\$?[a-zA-Z]\s*）"        # fullwidth: （%1$s）
+    r"|\b[a-zA-Z_][a-zA-Z0-9_]*\([^)]*\)"  # code notation: main(), main(query: str)
+)
+
+
+@dataclass(frozen=True)
+class VerboseUiWarning:
+    path: str
+    key: str
+    text: str
+    reasons: tuple[str, ...]
+
 
 @dataclass(frozen=True)
 class ParsedStrings:
@@ -64,6 +78,7 @@ class ModuleReport:
     base_total: int
     target_reports: list[TargetLanguageReport]
     base_error: str | None = None
+    verbose_warnings: tuple[VerboseUiWarning, ...] = ()
 
     @property
     def has_error(self) -> bool:
@@ -127,6 +142,74 @@ def parse_strings_xml(content: str) -> tuple[ParsedStrings | None, str | None]:
         duplicates=duplicates,
         total_count=len(raw_names),
     ), None
+
+
+def is_key_ignored(raw_content: str, key: str) -> bool:
+    """检查条目是否带有行级/条目级豁免注释。"""
+    pattern = (
+        r"<!--[^\n]*?githooks:ignore[^\n]*?(?:all|verbose-ui)[^\n]*?-->"
+        r"\s*<(?:string|plurals|string-array)[^>]*name=[\"']"
+        + re.escape(key)
+        + r"[\"']"
+    )
+    return re.search(pattern, raw_content, re.DOTALL) is not None
+
+
+def check_verbose_ui(content: str, path: str) -> list[VerboseUiWarning]:
+    """检查中文 strings.xml 是否存在话痨违规（分号或解释性括号）。"""
+    m = STRINGS_PATTERN.match(path)
+    if not m:
+        return []
+    suffix = m.group(2)
+    # 仅检测中文语言包（默认 values/strings.xml 与 values-b+zh*）
+    if suffix != "" and not ("zh" in suffix):
+        return []
+
+    # 文件级豁免：<!-- githooks:ignore-file verbose-ui --> 或 all
+    if re.search(r"<!--.*?githooks:ignore-file\s+(?:all|verbose-ui).*?-->", content):
+        return []
+
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return []
+
+    warnings: list[VerboseUiWarning] = []
+    for child in root:
+        if child.tag in ("string", "plurals", "string-array"):
+            key = child.attrib.get("name", "")
+            if not key or is_key_ignored(content, key):
+                continue
+
+            texts: list[str] = []
+            if child.tag == "string":
+                if child.text:
+                    texts.append(child.text)
+            else:
+                for item in child.findall("item"):
+                    if item.text:
+                        texts.append(item.text)
+
+            for text in texts:
+                reasons: list[str] = []
+                if "；" in text or ";" in text:
+                    reasons.append("分号")
+
+                stripped = RE_ALLOWED_PARENS.sub("", text)
+                if any(p in stripped for p in ("（", "）", "(", ")")):
+                    reasons.append("括号")
+
+                if reasons:
+                    warnings.append(
+                        VerboseUiWarning(
+                            path=path,
+                            key=key,
+                            text=text.strip().replace("\n", " "),
+                            reasons=tuple(reasons),
+                        )
+                    )
+                    break
+    return warnings
 
 
 def find_all_res_dirs(root: str, scope: list[str]) -> set[str]:
@@ -268,6 +351,9 @@ def check_single_res_dir(
             base_error=f"基准语言 XML 解析失败: {base_err}",
         )
 
+    verbose_warnings: list[VerboseUiWarning] = []
+    verbose_warnings.extend(check_verbose_ui(base_content, base_path))
+
     target_reports: list[TargetLanguageReport] = []
     for suffix, target_path in sorted(locale_map.items()):
         if suffix == "":
@@ -303,6 +389,8 @@ def check_single_res_dir(
             )
             continue
 
+        verbose_warnings.extend(check_verbose_ui(target_content, target_path))
+
         missing = tuple(sorted(base_parsed.translatable_keys - target_parsed.all_keys))
         extra = tuple(
             sorted(
@@ -326,6 +414,7 @@ def check_single_res_dir(
         base_file=base_path,
         base_total=base_parsed.total_count,
         target_reports=target_reports,
+        verbose_warnings=tuple(verbose_warnings),
     )
 
 
@@ -386,6 +475,16 @@ def print_reports(reports: list[ModuleReport], warnings: list[str]) -> int:
             + ", ".join(KNOWN_LOCALES)
             + "），检查其他模块是否也需要同步补齐，避免遗漏。"
         )
+        print()
+
+    all_verbose_warnings = [w for r in reports for w in r.verbose_warnings]
+    if all_verbose_warnings:
+        print("githooks: [话痨警告] 检测到中文 UI 文案中包含分号或解释性括号：")
+        for w in all_verbose_warnings:
+            reasons_str = "与".join(w.reasons)
+            print(f"  {w.path}: 条目 [{w.key}] (包含{reasons_str})")
+            print(f"    原文: \"{w.text}\"")
+            print("    → 建议: 去掉解释性括号；分号请精简文字或改用双换行。UI 保持简洁专业，拒绝话痨。")
         print()
 
     has_error = False

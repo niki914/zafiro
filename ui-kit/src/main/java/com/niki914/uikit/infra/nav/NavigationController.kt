@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
@@ -187,4 +188,8 @@ fun <P : Page> rememberNavigationController(
                 holder.controller = it
             }
     }
+}
+
+val LocalNavigationController = staticCompositionLocalOf<NavigationController<*>> {
+    error("No NavigationController provided")
 }

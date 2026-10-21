@@ -20,6 +20,7 @@ import com.niki914.zafiro.app.ui.nav.OnboardingThemePage
 import com.niki914.zafiro.app.ui.nav.PromptEditPage
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
+import com.niki914.zafiro.app.ui.nav.SavedConfigPromptEditPage
 import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
 import com.niki914.zafiro.app.ui.nav.SettingsHomePage
 import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
@@ -41,6 +42,7 @@ import com.niki914.zafiro.app.ui.route.OnboardingThemeRoute
 import com.niki914.zafiro.app.ui.route.PromptEditRoute
 import com.niki914.zafiro.app.ui.route.ProviderPickPageRoute
 import com.niki914.zafiro.app.ui.route.SavedConfigDetailRoute
+import com.niki914.zafiro.app.ui.route.SavedConfigPromptEditRoute
 import com.niki914.zafiro.app.ui.route.SettingsDetailPageRoute
 import com.niki914.zafiro.app.ui.route.SettingsHomePageRoute
 import com.niki914.zafiro.app.ui.route.SettingsProviderPickPageRoute
@@ -94,6 +96,7 @@ fun ZafiroPageContent(
             page = page,
             onBack = onPop,
             onPopMultiple = onPopMultiple,
+            onPush = onPush,
         )
 
         DonePage -> DonePageRoute(
@@ -135,6 +138,11 @@ fun ZafiroPageContent(
         )
 
         PromptEditPage -> PromptEditRoute(
+            onBack = onPop,
+        )
+
+        is SavedConfigPromptEditPage -> SavedConfigPromptEditRoute(
+            page = page,
             onBack = onPop,
         )
 

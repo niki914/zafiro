@@ -233,6 +233,17 @@ data object PromptEditPage : ZafiroPage {
     override val rightAction: TopBarActionSpec? = null
 }
 
+data class SavedConfigPromptEditPage(
+    val configId: String?,
+    val providerId: String? = null,
+) : ZafiroPage {
+    override val routeKey: String = "saved-config-prompt-edit:${configId ?: providerId ?: "new"}"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_configure_prompt_label)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+}
+
 data object CustomPyToolsPage : ZafiroPage {
     override val routeKey: String = "custom-py-tools"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.custom_py_tool_page_title)

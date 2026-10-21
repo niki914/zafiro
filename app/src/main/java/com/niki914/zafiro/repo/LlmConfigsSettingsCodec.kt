@@ -12,7 +12,7 @@ import kotlinx.serialization.json.longOrNull
 
 /**
  * 一份 Saved Configuration（完整可切换的 LLM 接入配置）。
- * prompt 不在其中——prompt 是全局一份的行为层配置，由 [LlmConfigsDocument.prompt] 承载；
+ * 包含可选的独立 prompt（留空则回退至 [LlmConfigsDocument.prompt] 全局提示词）；
  * proxy 属于网络接入层，随配置走。
  */
 data class SavedLlmConfig(
@@ -26,6 +26,8 @@ data class SavedLlmConfig(
     val protocol: String,
     /** 视觉模型开关（图片输入支持），默认关。 */
     val supportsImages: Boolean = false,
+    /** 独立 system prompt；空串 = 未设置，运行时回落全局提示词。 */
+    val prompt: String = "",
     val proxy: String,
     /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: String = "",
@@ -85,6 +87,7 @@ internal object LlmConfigsSettingsCodec {
             model = obj.string(MODEL_KEY),
             protocol = obj.string(PROTOCOL_KEY),
             supportsImages = obj.boolean(SUPPORTS_IMAGES_KEY),
+            prompt = obj.string(PROMPT_KEY),
             proxy = obj.string(PROXY_KEY),
             thinkingLevel = obj.string(THINKING_LEVEL_KEY),
             // 数字值经 obj.string() 读成字面文本（128000 → "128000"）。
@@ -108,6 +111,7 @@ internal object LlmConfigsSettingsCodec {
                 MODEL_KEY to JsonPrimitive(config.model),
                 PROTOCOL_KEY to JsonPrimitive(config.protocol),
                 SUPPORTS_IMAGES_KEY to JsonPrimitive(config.supportsImages),
+                PROMPT_KEY to JsonPrimitive(config.prompt),
                 PROXY_KEY to JsonPrimitive(config.proxy),
                 THINKING_LEVEL_KEY to JsonPrimitive(config.thinkingLevel),
                 MAX_TOKENS_KEY to JsonPrimitive(config.maxTokensText),

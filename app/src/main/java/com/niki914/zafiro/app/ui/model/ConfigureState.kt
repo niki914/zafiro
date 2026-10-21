@@ -1,5 +1,6 @@
 package com.niki914.zafiro.app.ui.model
 
+import android.content.Context
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
@@ -79,6 +80,7 @@ data class ConfigureUiState(
     @param:StringRes val endpointErrorResId: Int? = null,
     @param:StringRes val modelErrorResId: Int? = null,
     @param:StringRes val apiKeyErrorResId: Int? = null,
+    val promptInput: String = "",
     val proxyInput: String = "",
     @param:StringRes val proxyErrorResId: Int? = null,
     /** 单次输出上限输入框；未设置时回显默认值，清空 = 不设置（落默认值）。 */
@@ -109,6 +111,7 @@ data class ConfigureSnapshot(
     val protocolWireId: String,
     val thinkingLevelWire: String,
     val supportsImages: Boolean,
+    val prompt: String,
     val proxy: String,
     val maxTokens: String,
     val contextWindow: String,
@@ -117,6 +120,46 @@ data class ConfigureSnapshot(
 val ConfigureUiState.hasUnsavedChanges: Boolean
     get() = scene != ConfigureScene.Onboarding &&
             initialSettingsSnapshot?.let { it != toSettingsSnapshot() } == true
+
+fun ConfigureUiState.unsavedFieldLabels(context: Context): List<String> {
+    val initial = initialSettingsSnapshot ?: return emptyList()
+    val current = toSettingsSnapshot()
+    return buildList {
+        if (initial.configName != current.configName) {
+            add(context.getString(R.string.ui_settings_configure_name_label))
+        }
+        if (initial.prompt != current.prompt) {
+            add(context.getString(R.string.ui_settings_configure_prompt_label))
+        }
+        if (initial.proxy != current.proxy) {
+            add(context.getString(R.string.ui_settings_configure_proxy_label))
+        }
+        if (initial.endpoint != current.endpoint) {
+            add(context.getString(R.string.ui_onboard_configure_endpoint_label))
+        }
+        if (initial.model != current.model) {
+            add(context.getString(R.string.ui_onboard_configure_model_label))
+        }
+        if (initial.apiKey != current.apiKey) {
+            add(context.getString(R.string.ui_onboard_configure_api_key_label))
+        }
+        if (initial.protocolWireId != current.protocolWireId) {
+            add(context.getString(R.string.ui_settings_configure_protocol_label))
+        }
+        if (initial.thinkingLevelWire != current.thinkingLevelWire) {
+            add(context.getString(R.string.ui_settings_configure_thinking_label))
+        }
+        if (initial.supportsImages != current.supportsImages) {
+            add(context.getString(R.string.ui_settings_configure_vision_label))
+        }
+        if (initial.maxTokens != current.maxTokens) {
+            add(context.getString(R.string.ui_settings_configure_max_tokens_label))
+        }
+        if (initial.contextWindow != current.contextWindow) {
+            add(context.getString(R.string.ui_settings_configure_context_window_label))
+        }
+    }
+}
 
 sealed interface ConfigureInlineError {
     data class LoadFailed(val reason: ConfigureErrorReason.LoadSettingsFailed) :
@@ -146,6 +189,7 @@ sealed interface ConfigureIntent {
     data class SelectProtocol(val wireId: String) : ConfigureIntent
     data class UpdateThinkingLevel(val wireValue: String) : ConfigureIntent
     data class UpdateSupportsImages(val enabled: Boolean) : ConfigureIntent
+    data class UpdatePrompt(val value: String) : ConfigureIntent
     data class UpdateProxy(val value: String) : ConfigureIntent
     data class UpdateMaxTokens(val value: String) : ConfigureIntent
     data class UpdateContextWindow(val value: String) : ConfigureIntent
@@ -291,6 +335,9 @@ class ConfigureViewModel internal constructor(
                 copy(supportsImages = intent.enabled)
             }
 
+            is ConfigureIntent.UpdatePrompt -> updateState {
+                copy(promptInput = intent.value, inlineError = null)
+            }
 
             is ConfigureIntent.UpdateProxy -> updateState {
                 copy(proxyInput = intent.value, proxyErrorResId = null, inlineError = null)
@@ -404,6 +451,7 @@ class ConfigureViewModel internal constructor(
                 endpointErrorResId = null,
                 modelErrorResId = null,
                 apiKeyErrorResId = null,
+                promptInput = "",
                 proxyInput = "",
                 proxyErrorResId = null,
                 // 不预填：留空让云端/默认值生效（预填会钉死用户值，云端永远不生效）
@@ -456,6 +504,7 @@ class ConfigureViewModel internal constructor(
                 endpointErrorResId = null,
                 modelErrorResId = null,
                 apiKeyErrorResId = null,
+                promptInput = "",
                 proxyInput = "",
                 proxyErrorResId = null,
                 // 不预填：留空让云端/默认值生效（预填会钉死用户值，云端永远不生效）
@@ -504,6 +553,7 @@ class ConfigureViewModel internal constructor(
                 endpointErrorResId = null,
                 modelErrorResId = null,
                 apiKeyErrorResId = null,
+                promptInput = target.prompt,
                 proxyInput = target.proxy,
                 proxyErrorResId = null,
                 // 落盘原始文本：空串 = 未设置（旧格式的 0 已在 codec 层归一为空），填过才回显用户值
@@ -878,6 +928,7 @@ private fun ConfigureUiState.toSavedLlmConfig(): SavedLlmConfig {
         protocol = protocolWireId,
         thinkingLevel = thinkingLevelWire,
         supportsImages = supportsImages,
+        prompt = promptInput.trim(),
         proxy = proxyInput,
         maxTokensText = maxTokensInput.trim(),
         contextWindowText = contextWindowInput.trim(),
@@ -900,6 +951,7 @@ private fun ConfigureUiState.toSettingsSnapshot(): ConfigureSnapshot {
         protocolWireId = protocolWireId,
         thinkingLevelWire = thinkingLevelWire,
         supportsImages = supportsImages,
+        prompt = promptInput.trim(),
         proxy = proxyInput.trim(),
         maxTokens = maxTokensInput.trim(),
         contextWindow = contextWindowInput.trim(),

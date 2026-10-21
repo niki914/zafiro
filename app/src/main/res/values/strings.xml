@@ -191,6 +191,7 @@
     <string name="ui_todo_page_description">将在后续版本支持，敬请期待。</string>
     <string name="unsaved_changes_dialog_title">有未保存的修改</string>
     <string name="unsaved_changes_dialog_text">确定退出吗？</string>
+    <string name="unsaved_changes_dialog_fields_prefix">以下内容尚未保存：</string>
     <string name="unsaved_changes_dialog_confirm_exit">确定</string>
     <string name="unsaved_changes_dialog_cancel">取消</string>
 
@@ -198,7 +199,10 @@
     <string name="ui_settings_configure_description">调整模型接入、提示词与代理配置。</string>
     <string name="ui_settings_configure_save">保存配置</string>
     <string name="ui_settings_configure_prompt_label">提示词</string>
+    <string name="ui_settings_configure_prompt_state_global">跟随全局</string>
+    <string name="ui_settings_configure_prompt_state_custom">已单独设置</string>
     <string name="prompt_editor_description">编辑 System Prompt。保存后，变更会在下次对话生效。</string>
+    <string name="config_prompt_editor_description">为此配置单独设置 System Prompt。留空使用全局提示词，切换配置后生效。</string>
     <string name="prompt_error_load_failed">读取提示词失败，请返回重试。</string>
     <string name="ui_settings_configure_proxy_label">代理</string>
     <string name="ui_settings_configure_proxy_placeholder">例如：http://127.0.0.1:7890</string>
@@ -331,7 +335,7 @@
     <string name="custom_py_tool_save_dialog_code_failed_title">代码校验未通过</string>
     <string name="custom_py_tool_save_dialog_code_failed_text">报错来自工具代码本身。\n\n修正代码后重新保存即可。</string>
     <string name="custom_py_tool_save_dialog_internal_failed_title">保存失败</string>
-    <string name="custom_py_tool_save_dialog_internal_failed_text">报错来自应用内部，与工具代码无关。\n\n请重试；若反复出现，请把这个弹窗里的报错反馈给我们。</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_text">报错来自应用内部，与工具代码无关。\n\n请重试，若反复出现请将弹窗报错反馈给我们。</string>
     <string name="custom_py_tool_save_dialog_action_cancel">取消</string>
     <string name="custom_py_tool_save_dialog_action_done">完成</string>
     <string name="custom_py_tool_save_dialog_action_close">关闭</string>
@@ -399,7 +403,7 @@
 
     <!-- XService notifications -->
 
-    <string name="feedback_bug_template">## 问题描述\n\n## 复现步骤\n\n## 预期行为\n\n## 实际行为\n\n## 设备信息\n- Android 版本：\n- 助手（小布或其他）：\n- 模块版本：\n\n## 更多\n可以补充日志、截图录屏等信息，以便于我们理解</string>
+    <string name="feedback_bug_template">## 问题描述\n\n## 复现步骤\n\n## 预期行为\n\n## 实际行为\n\n## 设备信息\n- Android 版本：\n- 宿主助手：\n- 模块版本：\n\n## 更多\n可以补充日志、截图录屏等信息，以便于我们理解</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
@@ -462,7 +466,7 @@
     <string name="ui_settings_runtime_compaction_threshold_summary">当上下文窗口占用达到设定阈值时自动压缩历史</string>
     <string name="ui_settings_runtime_compaction_off">关闭</string>
     <string name="ui_settings_runtime_repetition_detection">复读检测</string>
-    <string name="ui_settings_runtime_repetition_summary">模型持续重复输出时提前熔断；越严格越灵敏，但也越可能误判正常内容</string>
+    <string name="ui_settings_runtime_repetition_summary">模型持续重复输出时提前熔断。越严格越灵敏，也越容易误判正常内容。</string>
     <string name="ui_settings_runtime_sensitivity_relaxed">宽松</string>
     <string name="ui_settings_runtime_sensitivity_loose">较宽松</string>
     <string name="ui_settings_runtime_sensitivity_standard">标准</string>
@@ -474,7 +478,7 @@
     <string name="ui_settings_general_always_show_detailed_tool_output">总是展示工具详细输出</string>
     <string name="ui_settings_general_always_show_detailed_tool_output_summary">输出内容过大可能会导致界面卡顿</string>
     <string name="ui_settings_general_voice_assistant_isolated_session">语音助手独享一个会话</string>
-    <string name="ui_settings_general_voice_assistant_isolated_session_summary">开启后语音助手对话不影响主界面历史；关闭则与主界面共用当前对话</string>
+    <string name="ui_settings_general_voice_assistant_isolated_session_summary">开启后语音助手不记录到主界面。关闭则共享当前对话。</string>
     <string name="ui_settings_saved_configuration_title">已保存配置</string>
     <string name="ui_settings_saved_configuration_delete_title">删除配置</string>
     <string name="ui_settings_saved_configuration_delete_text">该配置将被删除，此操作无法恢复。</string>
@@ -485,20 +489,20 @@
     <string name="ui_settings_configure_protocol_label">协议</string>
     <string name="ui_settings_configure_protocol_hint">切换协议后，请确认端点与协议匹配。</string>
     <string name="ui_settings_configure_thinking_label">思考强度</string>
-    <string name="ui_settings_configure_thinking_hint">留空（Provider Default）时使用 Provider 默认行为；过高时若 Provider 拒绝请自行调低。</string>
+    <string name="ui_settings_configure_thinking_hint">默认遵循模型配置。若服务商报错请调低强度。</string>
     <string name="ui_settings_configure_thinking_start_label">Default</string>
     <string name="ui_settings_configure_thinking_end_label">Max</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">例如：200000 或 200k</string>
-    <string name="ui_settings_configure_error_max_tokens_invalid">请填写有效数值（支持 k/m/b 后缀），不小于 256</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">请填写不小于 256 的有效数值，支持 k/m/b</string>
     <string name="ui_settings_configure_context_window_label">上下文窗口</string>
     <string name="ui_settings_configure_context_window_placeholder">例如：1000000 或 1M</string>
-    <string name="ui_settings_configure_error_context_window_invalid">请填写有效数值（支持 k/m/b 后缀），不小于 1000</string>
+    <string name="ui_settings_configure_error_context_window_invalid">请填写不小于 1000 的有效数值，支持 k/m/b</string>
 
     <string name="ui_theme_mode_system">跟随系统</string>
     <string name="ui_theme_mode_light">浅色</string>
     <string name="ui_theme_mode_dark">深色</string>
-    <string name="ui_theme_color_dynamic">动态色（壁纸取色）</string>
+    <string name="ui_theme_color_dynamic">动态壁纸配色</string>
     <string name="ui_theme_color_rose">玫瑰粉</string>
     <string name="ui_theme_color_blossom">樱花粉</string>
     <string name="ui_theme_color_lavender">薰衣草紫</string>

@@ -41,6 +41,7 @@ class SettingsDomainCodecsTest {
                     model = "gpt-test",
                     protocol = "openai-responses",
                     thinkingLevel = "high",
+                    prompt = "dedicated prompt",
                     proxy = "http://proxy",
                     maxTokensText = "32k",
                     contextWindowText = "1M",
@@ -76,6 +77,7 @@ class SettingsDomainCodecsTest {
 
         assertEquals("", config.maxTokensText)
         assertEquals("", config.contextWindowText)
+        assertEquals("", config.prompt)
     }
 
     @Test
@@ -103,6 +105,7 @@ class SettingsDomainCodecsTest {
 
         assertEquals("", config.maxTokensText)
         assertEquals("", config.contextWindowText)
+        assertEquals("", config.prompt)
     }
 
     @Test

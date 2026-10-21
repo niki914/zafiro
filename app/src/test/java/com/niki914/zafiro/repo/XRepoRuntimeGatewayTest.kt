@@ -117,6 +117,73 @@ class XRepoRuntimeGatewayTest {
     }
 
     @Test
+    fun readLlmConfig_resolvesPromptWithFallbackHierarchy() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        XRepo.llmConfigs.savePrompt("Global System Prompt")
+        XRepo.llmConfigs.upsert(
+            SavedLlmConfig(
+                id = "cfg-custom-prompt",
+                name = "Custom",
+                provider = "openai",
+                endpoint = "https://api.openai.com",
+                apiKey = "k1",
+                model = "gpt-custom",
+                protocol = "openai-chat-completions",
+                prompt = "Independent Prompt",
+                proxy = "",
+            )
+        )
+        XRepo.llmConfigs.upsert(
+            SavedLlmConfig(
+                id = "cfg-empty-prompt",
+                name = "Empty",
+                provider = "openai",
+                endpoint = "https://api.openai.com",
+                apiKey = "k2",
+                model = "gpt-empty",
+                protocol = "openai-chat-completions",
+                prompt = "",
+                proxy = "",
+            )
+        )
+        XRepo.llmConfigs.upsert(
+            SavedLlmConfig(
+                id = "cfg-whitespace-prompt",
+                name = "Whitespace",
+                provider = "openai",
+                endpoint = "https://api.openai.com",
+                apiKey = "k3",
+                model = "gpt-whitespace",
+                protocol = "openai-chat-completions",
+                prompt = "   \n\t  ",
+                proxy = "",
+            )
+        )
+
+        val gateway = XRepoRuntimeGateway(XRepo)
+
+        // 1. 独立 prompt 存在且非空 -> 使用独立 prompt
+        val customConfig = gateway.readLlmConfig(configId = "cfg-custom-prompt")
+        assertEquals("Independent Prompt", customConfig.prompt)
+
+        // 2. 独立 prompt 为空串 -> 回退到全局 prompt
+        val emptyConfig = gateway.readLlmConfig(configId = "cfg-empty-prompt")
+        assertEquals("Global System Prompt", emptyConfig.prompt)
+
+        // 3. 独立 prompt 仅为纯空白字符 -> 回退到全局 prompt
+        val whitespaceConfig = gateway.readLlmConfig(configId = "cfg-whitespace-prompt")
+        assertEquals("Global System Prompt", whitespaceConfig.prompt)
+
+        // 4. 清空全局 prompt -> 空串
+        XRepo.llmConfigs.savePrompt("")
+        val noGlobalConfig = gateway.readLlmConfig(configId = "cfg-empty-prompt")
+        assertEquals("", noGlobalConfig.prompt)
+    }
+
+    @Test
     fun skillMethods_proxyEnabledListAndDetailFromXRepoSkills() = runTest {
         XRepo.installStoreForTest(FakeDomainSettingsStore())
         XRepo.init(context)

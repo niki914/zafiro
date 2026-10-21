@@ -86,15 +86,16 @@ synchronized(lock) { swap() } // githooks:ignore monitor-lock 需要与回调原
 - 标记**写在源码里**，所以文件头的文件级标记即使不在本次 diff 里也照样生效，属于一次性决策。
 - 豁免数量会在汇总里报出来，不会被藏起来。
 
-## 多语言对齐检查 (check_strings.py)
+## 多语言对齐与 UI 文案检查 (check_strings.py)
 
-防止新增功能或文案时只写了基准语言（`values/strings.xml`）或英语，而遗漏了其它已支持语种（`values-ja`、`values-ru`、`values-es`、`values-b+zh+Hant` 等）。
+防止新增功能或文案时只写了基准语言（`values/strings.xml`）或英语，而遗漏了其它已支持语种（`values-ja`、`values-ru`、`values-es`、`values-b+zh+Hant` 等），并对中文文案进行话痨与冗余标点把控。
 
 - **增量联动**：当暂存区中有任意 `strings.xml` 变动时，自动定位对应模块（如 `app/src/main/res`），并对其下**所有语种版本**进行键集合（Key Set）全量对比。
 - **严格对齐**：以基准语言 `values/strings.xml` 为唯一锚点，缺失 Key 或多出未定义 Key 均会直接阻断提交，并打印出具体差异项。
 - **免翻译豁免**：在基准文件中声明了 `translatable="false"` 的条目（如无需翻译的应用名或技术标识）自动豁免，不要求在其它语种中出现。
 - **标签支持**：覆盖 `<string>`、`<plurals>` 和 `<string-array>`。
 - **新增语种提示**：当暂存区新增全新的语言文件（如 `values-de/strings.xml`）时，输出提示提醒确认全项目语种支持清单，检查其它模块是否需同步支持。
+- **话痨与标点警告（`verbose-ui`，仅警告不阻断）**：检测中文 UI 文案中包含的分号（`；`/`;`）或解释性括号（`（）`/`()`）。UI 必须简洁专业、拒绝话痨：去掉多余括号解释，分号应精简为短句或改用双换行。动态占位符（如 `(%1$s)`）与代码标识（如 `main()`）自动放行；特殊场景可通过 `<!-- githooks:ignore verbose-ui [理由] -->` 或 `<!-- githooks:ignore-file verbose-ui -->` 放行。
 
 ## 命令
 

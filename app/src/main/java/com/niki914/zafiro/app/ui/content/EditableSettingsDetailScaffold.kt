@@ -26,6 +26,7 @@ fun EditableSettingsDetailChrome(
     isCreating: Boolean,
     hasUnsavedChanges: () -> Boolean,
     onDiscardChanges: () -> Unit,
+    unsavedFieldLabels: (() -> List<String>)? = null,
     onDelete: (() -> Unit)? = null,
     rightAction: TopBarActionSpec? = null,
     hasDeleteConfirmation: () -> Boolean = { false },
@@ -33,6 +34,7 @@ fun EditableSettingsDetailChrome(
     content: @Composable () -> Unit,
 ) {
     val latestHasUnsavedChanges by rememberUpdatedState(hasUnsavedChanges)
+    val latestUnsavedFieldLabels by rememberUpdatedState(unsavedFieldLabels)
     val latestOnDelete by rememberUpdatedState(onDelete)
     val latestRightAction by rememberUpdatedState(rightAction)
     val latestOnDiscardChanges by rememberUpdatedState(onDiscardChanges)
@@ -80,13 +82,26 @@ fun EditableSettingsDetailChrome(
 
     content()
 
+    // FIXME: 待重构。应收敛到 showUnsavedChangesDialog 为 true 时按需计算，避免每次重组都执行字段比对与构建
+    val changedFields = latestUnsavedFieldLabels?.invoke().orEmpty()
+    val dialogText = if (changedFields.isNotEmpty()) {
+        buildString {
+            appendLine(stringResource(R.string.unsaved_changes_dialog_fields_prefix))
+            changedFields.forEach { appendLine("• $it") }
+            append("\n")
+            append(stringResource(R.string.unsaved_changes_dialog_text))
+        }
+    } else {
+        stringResource(R.string.unsaved_changes_dialog_text)
+    }
+
     ConfirmationLiquidDialog(
         visible = showUnsavedChangesDialog,
         onDismissRequest = {
             showUnsavedChangesDialog = false
         },
         title = stringResource(R.string.unsaved_changes_dialog_title),
-        text = stringResource(R.string.unsaved_changes_dialog_text),
+        text = dialogText,
         negativeButtonText = stringResource(R.string.unsaved_changes_dialog_cancel),
         positiveButtonText = stringResource(R.string.unsaved_changes_dialog_confirm_exit),
         onNegativeClick = {

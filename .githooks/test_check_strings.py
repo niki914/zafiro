@@ -12,6 +12,7 @@ from check_strings import (
     ParsedStrings,
     TargetLanguageReport,
     check_single_res_dir,
+    check_verbose_ui,
     parse_name_status,
     parse_strings_xml,
 )
@@ -206,6 +207,81 @@ class CheckSingleResDirTest(unittest.TestCase):
         self.assertIsNotNone(report)
         self.assertTrue(report.has_error)
         self.assertIn("缺少基准语言文件", report.base_error)
+
+
+class VerboseUiCheckTest(unittest.TestCase):
+    def test_catches_semicolons_and_parentheses(self):
+        xml = """<resources>
+            <string name="s1">第一句；第二句</string>
+            <string name="s2">English; semicolon</string>
+            <string name="s3">说明（括号解释）</string>
+            <string name="s4">说明 (英文括号)</string>
+            <string name="s5">干净利落的文本</string>
+        </resources>"""
+        warnings = check_verbose_ui(xml, "app/src/main/res/values/strings.xml")
+        warn_keys = {w.key: w.reasons for w in warnings}
+        self.assertIn("s1", warn_keys)
+        self.assertIn("分号", warn_keys["s1"])
+        self.assertIn("s2", warn_keys)
+        self.assertIn("分号", warn_keys["s2"])
+        self.assertIn("s3", warn_keys)
+        self.assertIn("括号", warn_keys["s3"])
+        self.assertIn("s4", warn_keys)
+        self.assertIn("括号", warn_keys["s4"])
+        self.assertNotIn("s5", warn_keys)
+
+    def test_whitelists_placeholders_and_code(self):
+        xml = """<resources>
+            <string name="k1">待批准 (%1$s)</string>
+            <string name="k2">待批准 (%s)</string>
+            <string name="k3">共 (%d) 项</string>
+            <string name="k4">入口函数 main() 说明</string>
+            <string name="k5">签名 main(query: str) 参数</string>
+        </resources>"""
+        warnings = check_verbose_ui(xml, "app/src/main/res/values/strings.xml")
+        self.assertEqual(len(warnings), 0)
+
+    def test_respects_ignore_comments(self):
+        xml = """<resources>
+            <!-- githooks:ignore verbose-ui 必要测试 -->
+            <string name="k1">保留解释（括号）</string>
+            <!-- githooks:ignore all 全部放行 -->
+            <string name="k2">保留分号；测试</string>
+            <string name="k3">未豁免；报出警告</string>
+        </resources>"""
+        warnings = check_verbose_ui(xml, "app/src/main/res/values/strings.xml")
+        warn_keys = [w.key for w in warnings]
+        self.assertEqual(warn_keys, ["k3"])
+
+    def test_respects_file_level_ignore(self):
+        xml = """<!-- githooks:ignore-file verbose-ui -->
+        <resources>
+            <string name="k1">保留解释（括号）</string>
+            <string name="k2">保留分号；测试</string>
+        </resources>"""
+        warnings = check_verbose_ui(xml, "app/src/main/res/values/strings.xml")
+        self.assertEqual(len(warnings), 0)
+
+    def test_skips_non_chinese_locales(self):
+        xml = """<resources>
+            <string name="k1">Hello; world (explained)</string>
+        </resources>"""
+        warnings = check_verbose_ui(xml, "app/src/main/res/values-en/strings.xml")
+        self.assertEqual(len(warnings), 0)
+
+    def test_supports_traditional_chinese_and_plurals(self):
+        xml = """<resources>
+            <plurals name="items">
+                <item quantity="other">共有 %d 項；未完成</item>
+            </plurals>
+            <string-array name="tags">
+                <item>標籤（註解）</item>
+            </string-array>
+        </resources>"""
+        warnings = check_verbose_ui(xml, "app/src/main/res/values-b+zh+Hant/strings.xml")
+        warn_keys = {w.key: w.reasons for w in warnings}
+        self.assertIn("items", warn_keys)
+        self.assertIn("tags", warn_keys)
 
 
 if __name__ == "__main__":
