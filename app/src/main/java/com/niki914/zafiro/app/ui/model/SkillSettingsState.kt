@@ -57,6 +57,10 @@ data class SkillDetailFormState(
 val SkillDetailFormState.hasUnsavedChanges: Boolean
     get() = content != initialContent
 
+fun SkillDetailFormState.unsavedFieldLabelRes(): List<Int> {
+    return if (hasUnsavedChanges) listOf(R.string.ui_settings_skills) else emptyList()
+}
+
 data class SkillDeleteConfirmationState(
     val skillId: String,
     val title: String,

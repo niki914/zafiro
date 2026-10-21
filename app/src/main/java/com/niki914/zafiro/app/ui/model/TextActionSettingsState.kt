@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.settings.form.buildFormSpec
 import com.niki914.zafiro.repo.RuntimeTextAction
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.api.util.runCatchingCancellable
@@ -31,8 +32,20 @@ data class TextActionFormSnapshot(
     val runInBackground: Boolean,
 )
 
+val TextActionFormSpec = buildFormSpec<TextActionFormSnapshot, String> {
+    field("name", R.string.text_action_field_name) { it.name }
+    field("prompt", R.string.text_action_field_prompt) { it.prompt }
+    field("enabled", R.string.text_action_field_enabled) { it.enabled }
+    field("requiresScreenshot", R.string.text_action_field_screenshot) { it.requiresScreenshot }
+    field("runInBackground", R.string.text_action_field_background) { it.runInBackground }
+}
+
 val TextActionFormState.hasUnsavedChanges: Boolean
-    get() = initialSnapshot?.let { it != toSnapshot() } ?: false
+    get() = TextActionFormSpec.hasChanges(initialSnapshot, toSnapshot())
+
+fun TextActionFormState.unsavedFieldLabelRes(): List<Int> {
+    return TextActionFormSpec.dirtyFieldLabelRes(initialSnapshot, toSnapshot())
+}
 
 data class TextActionDeleteConfirmationState(
     val value: String,

@@ -39,7 +39,12 @@ import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsIntent
 import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsUiState
 import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.CustomPyToolDetailPage
+import com.niki914.zafiro.app.ui.settings.form.EditableDetailFieldController
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold
+import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 
 @Composable
 fun CustomPyToolDetailContent(
@@ -56,6 +61,9 @@ fun CustomPyToolDetailContent(
         isCreating = page.isCreating,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
+        },
+        unsavedFieldLabelRes = {
+            uiState.formState.unsavedFieldLabelRes()
         },
         onDelete = {
             viewModel.sendIntent(CustomPyToolSettingsIntent.RequestDelete)

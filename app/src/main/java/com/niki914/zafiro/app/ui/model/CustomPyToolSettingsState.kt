@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.settings.form.buildFormSpec
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.settings.model.RuntimeToolValidationOrigin
 import com.niki914.zafiro.api.util.runCatchingCancellable
@@ -39,8 +40,18 @@ data class CustomPyToolFormSnapshot(
     val enabled: Boolean,
 )
 
+val CustomPyToolFormSpec = buildFormSpec<CustomPyToolFormSnapshot, String> {
+    field("name", R.string.custom_py_tool_field_name) { it.name }
+    field("code", R.string.custom_py_tool_field_code) { it.code }
+    field("enabled", R.string.custom_py_tool_field_enabled) { it.enabled }
+}
+
 val CustomPyToolFormState.hasUnsavedChanges: Boolean
-    get() = initialSnapshot?.let { it != toSnapshot() } ?: false
+    get() = CustomPyToolFormSpec.hasChanges(initialSnapshot, toSnapshot())
+
+fun CustomPyToolFormState.unsavedFieldLabelRes(): List<Int> {
+    return CustomPyToolFormSpec.dirtyFieldLabelRes(initialSnapshot, toSnapshot())
+}
 
 data class CustomPyToolDeleteConfirmationState(
     val value: String,

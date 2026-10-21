@@ -7,6 +7,7 @@ import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.api.util.tryOrDefault
 import com.niki914.zafiro.api.util.tryOrNull
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.settings.form.buildFormSpec
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -45,8 +46,19 @@ data class McpServerFormSnapshot(
     val headersInputFallback: String,
 )
 
+val McpServerFormSpec = buildFormSpec<McpServerFormSnapshot, String> {
+    field("name", R.string.mcp_field_name) { it.name }
+    field("url", R.string.mcp_field_url) { it.url }
+    field("enabled", R.string.mcp_field_enabled) { it.enabled }
+    field("headers", R.string.mcp_field_headers) { it.headers to it.headersInputFallback }
+}
+
 val McpServerFormState.hasUnsavedChanges: Boolean
-    get() = initialSnapshot?.let { it != toSnapshot() } ?: false
+    get() = McpServerFormSpec.hasChanges(initialSnapshot, toSnapshot())
+
+fun McpServerFormState.unsavedFieldLabelRes(): List<Int> {
+    return McpServerFormSpec.dirtyFieldLabelRes(initialSnapshot, toSnapshot())
+}
 
 data class McpDeleteConfirmationState(
     val value: String,

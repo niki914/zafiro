@@ -26,7 +26,11 @@ import com.niki914.zafiro.app.ui.model.TextActionSettingsIntent
 import com.niki914.zafiro.app.ui.model.TextActionSettingsUiState
 import com.niki914.zafiro.app.ui.model.TextActionSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold
+import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 
 @Composable
 fun TextActionsDetailContent(
@@ -41,6 +45,9 @@ fun TextActionsDetailContent(
         isCreating = page.isCreating,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
+        },
+        unsavedFieldLabelRes = {
+            uiState.formState.unsavedFieldLabelRes()
         },
         onDelete = {
             viewModel.sendIntent(TextActionSettingsIntent.RequestDelete)

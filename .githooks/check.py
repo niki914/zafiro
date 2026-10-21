@@ -39,8 +39,8 @@ EXCLUDE_PREFIXES = (
 # 变化叙述注释的关键词。描述了"曾经/不再是什么"的注释一律不合格：
 # 注释只描述代码当前是什么样。加词就加在这里。
 NARRATIVE = re.compile(
-    r"不再|改为|改成|此前|原来|原本|原先|原为|曾经|旧版"
-    r"|\bno longer\b|\bused to\b|\bformerly\b|\bpreviously\b"
+    r"不再|改为|改成|此前|原来|原本|原先|原为|曾经|旧版|解决|修复"
+    r"|\bno longer\b|\bused to\b|\bformerly\b|\bpreviously\b|\bsolve\b|\bfixed\b"
     r"|\brenamed from\b|\bwas renamed\b",
     re.IGNORECASE,
 )

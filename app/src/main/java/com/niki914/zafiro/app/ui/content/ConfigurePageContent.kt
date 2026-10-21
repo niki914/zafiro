@@ -16,6 +16,8 @@ import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
 import com.niki914.zafiro.app.ui.model.EndpointMismatch
 import com.niki914.zafiro.app.ui.model.ProviderSpecs
+import com.niki914.zafiro.app.ui.settings.form.EditableDetailFieldController
+import com.niki914.zafiro.app.ui.settings.form.rememberEditableDetailFieldController
 import com.niki914.zafiro.settings.model.LlmProtocol
 
 @Composable

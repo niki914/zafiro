@@ -28,7 +28,11 @@ import com.niki914.zafiro.app.ui.model.TakeoverSettingsUiState
 import com.niki914.zafiro.app.ui.model.TakeoverSettingsViewModel
 import com.niki914.zafiro.app.ui.model.TakeoverTarget
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold
+import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 
 @Composable
 fun TakeoverRuleDetailContent(
@@ -43,6 +47,9 @@ fun TakeoverRuleDetailContent(
         isCreating = page.isCreating,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
+        },
+        unsavedFieldLabelRes = {
+            uiState.formState.unsavedFieldLabelRes()
         },
         onDelete = {
             viewModel.sendIntent(TakeoverSettingsIntent.RequestDelete)

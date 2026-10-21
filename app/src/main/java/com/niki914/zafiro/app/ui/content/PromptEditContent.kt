@@ -11,6 +11,8 @@ import com.niki914.zafiro.app.ui.model.PromptEditEffect
 import com.niki914.zafiro.app.ui.model.PromptEditIntent
 import com.niki914.zafiro.app.ui.model.PromptEditViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
 
 /**
  * System Prompt 整页编辑页：卡片点击进入，整页编辑 + 显式保存。
@@ -26,6 +28,7 @@ fun PromptEditContent(
     EditableSettingsDetailChrome(
         isCreating = false,
         hasUnsavedChanges = { uiState.hasUnsavedChanges },
+        unsavedFieldLabelRes = { uiState.unsavedFieldLabelRes() },
         onDiscardChanges = onBack,
     ) {
         FullScreenContentEditor(

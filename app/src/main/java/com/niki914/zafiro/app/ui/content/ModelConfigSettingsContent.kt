@@ -20,6 +20,7 @@ import com.niki914.zafiro.app.ui.model.ConfigureIntent
 import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureViewModel
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
 
 /**
  * Model Configuration 一级页：System Prompt 卡片（点击进整页编辑）+ Saved Configuration 列表。

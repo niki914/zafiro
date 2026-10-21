@@ -7,7 +7,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.nav.pageViewModel
@@ -18,8 +17,10 @@ import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
 import com.niki914.zafiro.app.ui.model.ConfigureViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
-import com.niki914.zafiro.app.ui.model.unsavedFieldLabels
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold
 
 /**
  * Saved Configuration 详情页（模板同 McpServerDetailContent）：
@@ -33,7 +34,6 @@ fun SavedConfigDetailContent(
     onOpenPromptEdit: () -> Unit = {},
     onSaveCompleted: () -> Unit = onBack,
 ) {
-    val context = LocalContext.current
     val viewModel = pageViewModel<ConfigureViewModel>(
         key = "saved-config-detail:${page.configId ?: page.providerId}",
     )
@@ -84,7 +84,7 @@ fun SavedConfigDetailContent(
     EditableSettingsDetailChrome(
         isCreating = page.isCreating,
         hasUnsavedChanges = { uiState.hasUnsavedChanges },
-        unsavedFieldLabels = { uiState.unsavedFieldLabels(context) },
+        unsavedFieldLabelRes = { uiState.unsavedFieldLabelRes() },
         onDiscardChanges = onBack,
         onDelete = if (page.isCreating || isEditingActiveConfig) {
             null

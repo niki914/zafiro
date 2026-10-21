@@ -26,7 +26,11 @@ import com.niki914.zafiro.app.ui.model.ExecutionRulesSettingsIntent
 import com.niki914.zafiro.app.ui.model.ExecutionRulesSettingsUiState
 import com.niki914.zafiro.app.ui.model.ExecutionRulesSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold
+import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
 
 @Composable
@@ -44,6 +48,9 @@ fun ExecutionRuleDetailContent(
         isCreating = page.isCreating,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
+        },
+        unsavedFieldLabelRes = {
+            uiState.formState.unsavedFieldLabelRes()
         },
         onDiscardChanges = onBack,
         onDelete = {

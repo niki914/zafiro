@@ -22,6 +22,8 @@ import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureUiState
+import com.niki914.zafiro.app.ui.settings.form.EditableDetailFieldController
+import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlin.math.roundToInt
 

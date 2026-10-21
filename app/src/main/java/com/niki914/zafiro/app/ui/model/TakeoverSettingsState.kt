@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.settings.form.buildFormSpec
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
@@ -48,8 +49,19 @@ data class TakeoverRuleFormSnapshot(
     val patterns: List<String>,
 )
 
+val TakeoverRuleFormSpec = buildFormSpec<TakeoverRuleFormSnapshot, String> {
+    field("name", R.string.takeover_field_name) { it.name }
+    field("target", R.string.takeover_field_target) { it.target }
+    field("enabled", R.string.takeover_field_enabled) { it.enabled }
+    field("patterns", R.string.takeover_field_patterns) { it.patterns }
+}
+
 val TakeoverRuleFormState.hasUnsavedChanges: Boolean
-    get() = initialSnapshot?.let { it != toSnapshot() } ?: false
+    get() = TakeoverRuleFormSpec.hasChanges(initialSnapshot, toSnapshot())
+
+fun TakeoverRuleFormState.unsavedFieldLabelRes(): List<Int> {
+    return TakeoverRuleFormSpec.dirtyFieldLabelRes(initialSnapshot, toSnapshot())
+}
 
 data class TakeoverDeleteConfirmationState(
     val value: String,

@@ -22,7 +22,7 @@ import com.niki914.uikit.infra.liquidScreenTopPadding
 /**
  * 整页内容编辑器骨架（infra）：描述文案 + 全页 TextField + 底部保存按钮 + 内联错误。
  * 从 SkillDetailContent 提取；Prompt 编辑页与 Skill 详情页共用。
- * 顶层 chrome（未保存确认、删除确认）仍由调用方经 [EditableSettingsDetailChrome] 提供。
+ * 顶层 chrome（未保存确认、删除确认）仍由调用方经 [com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome] 提供。
  */
 @Composable
 internal fun FullScreenContentEditor(
