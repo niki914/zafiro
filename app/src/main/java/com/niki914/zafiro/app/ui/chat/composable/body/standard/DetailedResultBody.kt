@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.chat.composable.body
+package com.niki914.zafiro.app.ui.chat.composable.body.standard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -12,13 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.niki914.zafiro.app.ui.chat.helper.CopyBtnGap
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
+import com.niki914.zafiro.app.ui.chat.helper.OutputBtnInset
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.content.CommandPanelPadX
-import com.niki914.zafiro.app.ui.content.CopyBtnGap
-import com.niki914.zafiro.app.ui.content.OutputBtnInset
 import com.niki914.zafiro.app.ui.content.OutputPadY
-import com.niki914.zafiro.app.ui.content.ToolResultText
+import com.niki914.zafiro.app.ui.chat.composable.text.ToolResultText
 
 /**
  * 通用详细结果排版：

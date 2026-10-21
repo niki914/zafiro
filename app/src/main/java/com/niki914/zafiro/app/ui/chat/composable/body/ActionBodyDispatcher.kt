@@ -2,6 +2,14 @@ package com.niki914.zafiro.app.ui.chat.composable.body
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.niki914.zafiro.app.ui.chat.composable.body.custom.CodeToolBody
+import com.niki914.zafiro.app.ui.chat.composable.body.custom.ErrorDetailBody
+import com.niki914.zafiro.app.ui.chat.composable.body.custom.ImagePreviewBody
+import com.niki914.zafiro.app.ui.chat.composable.body.custom.RetryingBody
+import com.niki914.zafiro.app.ui.chat.composable.body.custom.SkillBody
+import com.niki914.zafiro.app.ui.chat.composable.body.custom.ThinkingBody
+import com.niki914.zafiro.app.ui.chat.composable.body.standard.DetailedResultBody
+import com.niki914.zafiro.app.ui.chat.composable.body.standard.SimpleStatusBody
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 
 /**

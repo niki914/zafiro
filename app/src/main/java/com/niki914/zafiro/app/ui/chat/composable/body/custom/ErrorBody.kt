@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.chat.composable.body
+package com.niki914.zafiro.app.ui.chat.composable.body.custom
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,7 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
-import com.niki914.zafiro.app.ui.content.ToolResultText
+import com.niki914.zafiro.app.ui.chat.composable.text.ToolResultText
 
 /**
  * 错误信息正文排版（支持文本长按选中划词，右上角复制按钮提升至 Header 统一管理）。

@@ -22,13 +22,13 @@ import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.ui.chat.composable.section.SectionList
 import com.niki914.zafiro.app.ui.chat.model.TurnSection
 import com.niki914.zafiro.app.ui.chat.model.TurnUiModel
+import com.niki914.zafiro.app.ui.chat.composable.action.TurnActionRow
+import com.niki914.zafiro.app.ui.chat.composable.attachment.HomeChatAttachmentRow
+import com.niki914.zafiro.app.ui.chat.composable.bubble.UserBubbleCornerRadius
+import com.niki914.zafiro.app.ui.chat.composable.bubble.UserBubblePosition
+import com.niki914.zafiro.app.ui.chat.composable.bubble.UserMessageBubble
 import com.niki914.zafiro.app.ui.content.BlockSpacing
-import com.niki914.zafiro.app.ui.content.HomeChatAttachmentRow
-import com.niki914.zafiro.app.ui.content.TurnActionRow
 import com.niki914.zafiro.app.ui.content.TurnSeparator
-import com.niki914.zafiro.app.ui.content.UserBubbleCornerRadius
-import com.niki914.zafiro.app.ui.content.UserBubblePosition
-import com.niki914.zafiro.app.ui.content.UserMessageBubble
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 

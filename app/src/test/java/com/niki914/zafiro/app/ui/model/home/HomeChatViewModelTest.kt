@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui.model.home
 
 import com.niki914.okia.message.AssistantMessage
@@ -666,5 +667,51 @@ class HomeChatViewModelTest {
         advanceUntilIdle()
 
         assertEquals("fork-1", fixture.agent.lastLoadedId?.value)
+    }
+
+    @Test
+    fun reGenerateAt_withDistinctAgentInstances_streamsOnNewAgentNotOld() = runTest {
+        val store = FakeHomeConversationStore()
+        store.createRecord("conv-source", "first query")
+        store.setSnapshot(
+            "conv-source",
+            snapshotOf(
+                Message.User(listOf(ContentBlock.Text("first query"))),
+                Message.Assistant(AssistantMessage(listOf(ContentBlock.Text("old answer")))),
+            )
+        )
+
+        val oldAgent = FakeHomeAgent(store)
+        val newAgent = FakeHomeAgent(store)
+        val agentFlow = MutableStateFlow<Agent>(oldAgent)
+
+        installService<AgentManager>(object : AgentManager {
+            override val main: Agent get() = agentFlow.value
+            override val mainFlow: StateFlow<Agent> = agentFlow.asStateFlow()
+            override suspend fun switchTo(conversationId: String): Agent {
+                val target = if (conversationId == "conv-source") oldAgent else newAgent
+                target.load(ConversationId(conversationId))
+                agentFlow.value = target
+                return target
+            }
+            override fun startNewConversation(): Agent = newAgent
+            override fun destroy(conversationId: String) {}
+            override val activeStates: StateFlow<Map<String, AgentState>> = MutableStateFlow(emptyMap())
+            override fun createTaskAgent(isPersistent: Boolean): Agent = newAgent
+            override val control: AgentControl = oldAgent
+        })
+
+        val vm = HomeChatViewModel(conversations = store)
+        vm.sendIntent(HomeChatIntent.LoadConversation("conv-source"))
+        advanceUntilIdle()
+
+        // 触发重新生成
+        vm.sendIntent(HomeChatIntent.ReGenerateAt(0))
+        advanceUntilIdle()
+
+        // 断言 1：旧 Agent 不应当收到新的 draft 发送
+        assertEquals("Bug 暴露：旧 Agent 被错误写入！", 0, oldAgent.sentDrafts.size)
+        // 断言 2：新 Agent 必须收到 prompt 并发起流式生成
+        assertTrue("致命 Bug：新 Agent 根本没有收到 Regenerate 任务！", newAgent.sentDrafts.isNotEmpty())
     }
 }

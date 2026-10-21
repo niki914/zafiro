@@ -9,7 +9,6 @@ import com.niki914.zafiro.app.ui.chat.model.ActionContainerTone
 import com.niki914.zafiro.app.ui.chat.model.ActionUiModel
 import com.niki914.zafiro.app.ui.chat.model.TurnSection
 import com.niki914.zafiro.app.ui.chat.model.TurnUiModel
-import com.niki914.zafiro.app.ui.content.toAssistantErrorUi
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.app.ui.model.home.HomeChatBlock
 import com.niki914.zafiro.app.ui.model.home.HomeChatTurn

@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.chat.composable.body
+package com.niki914.zafiro.app.ui.chat.composable.body.custom
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -12,10 +12,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -27,12 +24,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.chat.helper.CopyBtnGap
 import com.niki914.zafiro.app.ui.chat.helper.CopyBtnSize
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
+import com.niki914.zafiro.app.ui.chat.helper.OutputBtnInset
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.content.CommandPanelPadX
 import com.niki914.zafiro.app.ui.content.CommandRowPadY
-import com.niki914.zafiro.app.ui.content.CopyBtnGap
 import com.niki914.zafiro.app.ui.content.OutputPadY
 
 @Composable
@@ -102,11 +100,10 @@ internal fun CodeToolBody(
 
             Spacer(modifier = Modifier.height(3.dp))
 
-            // 下段：控制台输出（文本占满行，按钮垫主动渐变防遮挡）
+            // 下段：控制台输出（遵循准则二/三，统一右上角 TopEnd 并通过内边距避让）
             val hasOutput = ui.output.isNotBlank()
             val runningPlaceholder = stringResource(R.string.ui_tool_status_running) + "..."
             val displayText = if (hasOutput) ui.output else if (ui.isRunning) runningPlaceholder else ""
-            var singleLine by remember(displayText) { mutableStateOf(!displayText.contains('\n')) }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -132,36 +129,15 @@ internal fun CodeToolBody(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = CommandPanelPadX, vertical = OutputPadY),
-                    onTextLayout = { singleLine = it.lineCount == 1 },
+                        .padding(horizontal = CommandPanelPadX, vertical = OutputPadY)
+                        .padding(end = if (hasOutput) OutputBtnInset else 0.dp),
                 )
                 if (hasOutput) {
-                    Box(
-                        modifier = Modifier
-                            .align(if (singleLine) Alignment.CenterEnd else Alignment.TopEnd)
-                            .width(CopyBtnSize + 16.dp)
-                            .height(CopyBtnSize + 8.dp)
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        Color.Transparent,
-                                        actualBackground.copy(alpha = 0.85f),
-                                        actualBackground,
-                                    )
-                                )
-                            ),
-                    )
                     MiniCopyButton(
                         text = ui.output,
-                        modifier = if (singleLine) {
-                            Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = CopyBtnGap)
-                        } else {
-                            Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(top = CopyBtnGap, end = CopyBtnGap)
-                        },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = CopyBtnGap, end = CopyBtnGap),
                     )
                 }
             }

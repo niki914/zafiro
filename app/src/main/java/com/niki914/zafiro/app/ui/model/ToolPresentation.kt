@@ -8,9 +8,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
 import com.niki914.zafiro.api.util.tryOrNull
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ToolPresentation.inputOf
@@ -41,9 +39,6 @@ object ToolPresentation {
     /** Thinking 图标：自绘 spark drawable（ic_thinking）。 */
     val ThinkingSource: IconSource = IconSource.DrawableRes(R.drawable.ic_thinking)
 
-    val Thinking: ImageVector
-        @Composable get() = ImageVector.vectorResource(R.drawable.ic_thinking)
-
     private val TerminalIcon = Icons.Filled.Terminal
     private val Skill = Icons.AutoMirrored.Filled.MenuBook
     private val Camera = Icons.Filled.CameraAlt
@@ -63,26 +58,6 @@ object ToolPresentation {
         name == "view_image" -> IconSource.Vector(ImageTool)
         name.contains("skill", ignoreCase = true) -> IconSource.Vector(Skill)
         else -> IconSource.Vector(Default)
-    }
-
-    @Composable
-    fun forTool(name: String): ImageVector {
-        val python = ImageVector.vectorResource(R.drawable.python_logo)
-        return when {
-            name.contains("python", ignoreCase = true) -> python
-            name.contains(
-                "shell",
-                ignoreCase = true
-            ) || name.contains(
-                "ssh",
-                ignoreCase = true
-            ) -> TerminalIcon
-
-            name == "screenshot" -> Camera
-            name == "view_image" -> ImageTool
-            name.contains("skill", ignoreCase = true) -> Skill
-            else -> Default
-        }
     }
 
     /** 内置工具 → 本地化显示名 res id；Custom Tool / MCP 命中不了 → null（回退原始名）。 */

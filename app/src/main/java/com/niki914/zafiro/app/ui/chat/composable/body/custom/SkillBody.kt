@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.chat.composable.body
+package com.niki914.zafiro.app.ui.chat.composable.body.custom
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
-import com.niki914.zafiro.app.ui.content.ToolResultText
+import com.niki914.zafiro.app.ui.chat.composable.text.ToolResultText
 
 private val CommandPanelPadX = 14.dp
 private val OutputPadY = 8.dp

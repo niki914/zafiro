@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.chat.composable.body
+package com.niki914.zafiro.app.ui.chat.composable.body.custom
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -6,7 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
-import com.niki914.zafiro.app.ui.content.ToolResultText
+import com.niki914.zafiro.app.ui.chat.composable.text.ToolResultText
 
 /**
  * 思考过程专属阅读排版：

@@ -10,7 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.niki914.zafiro.app.ui.chat.composable.action.StandaloneActionCard
 import com.niki914.zafiro.app.ui.chat.model.TurnSection
-import com.niki914.zafiro.app.ui.content.AssistantOutputText
+import com.niki914.zafiro.app.ui.chat.composable.text.AssistantOutputText
 import com.niki914.zafiro.app.ui.content.BlockSpacing
 
 /**

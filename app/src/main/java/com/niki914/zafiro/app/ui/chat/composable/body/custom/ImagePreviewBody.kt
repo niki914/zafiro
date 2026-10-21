@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.chat.composable.body
+package com.niki914.zafiro.app.ui.chat.composable.body.custom
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.content.BlockSpacing
-import com.niki914.zafiro.app.ui.content.HomeChatImageCard
+import com.niki914.zafiro.app.ui.chat.composable.attachment.HomeChatImageCard
 
 private val ToolImagePreviewSize = 96.dp
 
