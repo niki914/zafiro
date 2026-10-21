@@ -38,6 +38,9 @@ import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.chat.composable.text.AssistantMarkdownPreviewText
+import com.niki914.zafiro.app.ui.chat.composable.text.AssistantOutputText
+import com.niki914.zafiro.app.ui.chat.composable.text.LocalMarkdownScale
 import com.niki914.zafiro.app.ui.model.MarkdownScaleIntent
 import com.niki914.zafiro.app.ui.model.MarkdownScaleViewModel
 import com.niki914.zafiro.app.ui.model.MaxScaleRatio

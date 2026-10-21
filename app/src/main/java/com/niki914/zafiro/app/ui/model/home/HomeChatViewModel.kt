@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui.model.home
 
 import androidx.lifecycle.viewModelScope
@@ -89,7 +90,6 @@ class HomeChatViewModel internal constructor(
     /** 正在节流的思考块。 */
     private var pacedThinkingBlockId: String? = null
     private var conversationBeingLoaded: String? = null
-    private val seenThinkingKeys = mutableSetOf<String>()
 
     init {
         observeAgent()
@@ -117,12 +117,7 @@ class HomeChatViewModel internal constructor(
                 loadConversation(intent.id, preferLatestBranch = true)
             is HomeChatIntent.ClearUnread -> clearUnread(intent.conversationId)
             is HomeChatIntent.DeleteConversation -> deleteConversationNow(intent.id)
-            is HomeChatIntent.ToggleToolRun -> toggleToolRun(intent.turnId, intent.runStartIndex)
-            is HomeChatIntent.ToggleToolResult -> toggleToolResult(
-                intent.turnId, intent.runStartIndex, intent.toolIndex,
-            )
-
-            is HomeChatIntent.ToggleThinking -> toggleThinking(intent.turnId, intent.blockIndex)
+            is HomeChatIntent.ToggleActionKey -> toggleActionKey(intent.key, intent.isExpanded)
             is HomeChatIntent.ToggleActionRow -> toggleActionRow(intent.turnId, intent.source)
             is HomeChatIntent.ReGenerateAt -> reGenerateAt(intent.turnId)
             is HomeChatIntent.SwitchTurnBranch -> switchTurnBranch(intent.turnId, intent.delta)
@@ -337,6 +332,7 @@ class HomeChatViewModel internal constructor(
                 currentConversationTitle = title,
                 turnBranches = turnBranches,
                 conversationVersion = conversationVersion + 1,
+                userToggledKeys = if (id != currentConversationId) emptyMap() else userToggledKeys,
             )
         }
         if (isFirstConversationAssignment && !currentState.boundConfigId.isNullOrBlank()) {
@@ -398,13 +394,6 @@ class HomeChatViewModel internal constructor(
     }
 
     private fun refreshAutoExpandedThinking() {
-        val newActiveKey = currentState.turns.flatMap { turn ->
-            turn.blocks.mapIndexedNotNull { index, block ->
-                if (block is HomeChatBlock.Thinking && seenThinkingKeys.add("${turn.id}_$index") && !block.isComplete) {
-                    "${turn.id}_$index"
-                } else null
-            }
-        }.lastOrNull()
         // TODO: Move the auto-scroll decision from Compose's activeThinkingKey check into ViewModel state.
         val activeKeys = currentState.turns.flatMap { turn ->
             turn.blocks.mapIndexedNotNull { index, block ->
@@ -413,11 +402,6 @@ class HomeChatViewModel internal constructor(
         }
         updateState {
             copy(
-                expandedThinking = if (newActiveKey == null) expandedThinking
-                else (expandedThinking - autoExpandedThinking) + newActiveKey,
-                autoExpandedThinking = if (newActiveKey == null) autoExpandedThinking else setOf(
-                    newActiveKey
-                ),
                 activeThinkingKey = activeKeys.lastOrNull(),
             )
         }
@@ -560,7 +544,6 @@ class HomeChatViewModel internal constructor(
                 pendingImages = emptyList(),
                 pendingFiles = emptyList(),
                 activeThinkingKey = null,
-                autoExpandedThinking = emptySet(),
                 // 旧回合的操作行随新回合消失：旧 turn 失去 isLastTurn 后
                 // canToggleUserAction 变 false，不清则操作行永远挂着无法收回
                 expandedActionTurnId = null,
@@ -586,7 +569,6 @@ class HomeChatViewModel internal constructor(
         draftSaveJob = null
         resetPacers()
         conversationBeingLoaded = null
-        seenThinkingKeys.clear()
         val currentInput = currentState.input
         updateState {
             HomeChatUiState(
@@ -707,7 +689,6 @@ class HomeChatViewModel internal constructor(
                 return
             }
             val title = record.summary.title.takeIf { it.isNotBlank() }
-            seenThinkingKeys.clear()
             conversationBeingLoaded = target
             val targetAgent = agentManager.switchTo(target)
             attachBoundAgent(targetAgent)
@@ -754,7 +735,12 @@ class HomeChatViewModel internal constructor(
             LOG_TAG,
             "regenerate fork sourceId=$currentId turnId=$turnId newId=${result.newConversationId}"
         )
+        val preservedKeys = currentState.userToggledKeys.filterKeys { k ->
+            val id = k.substringBefore('_').toLongOrNull() ?: 0L
+            id < turnId
+        }
         loadConversation(result.newConversationId)
+        updateState { copy(userToggledKeys = preservedKeys) }
         agent.updateDraft { draft ->
             draft.copy(
                 text = result.promptText,
@@ -793,7 +779,12 @@ class HomeChatViewModel internal constructor(
             LOG_TAG,
             "fork sourceId=$currentId turnId=$turnId newId=${result.newConversationId}"
         )
+        val preservedKeys = currentState.userToggledKeys.filterKeys { k ->
+            val id = k.substringBefore('_').toLongOrNull() ?: 0L
+            id < turnId
+        }
         loadConversation(result.newConversationId)
+        updateState { copy(userToggledKeys = preservedKeys) }
     }
 
     private suspend fun rewindAt(turnId: Long) {
@@ -805,6 +796,10 @@ class HomeChatViewModel internal constructor(
             LOG_TAG,
             "rewind sourceId=$currentId turnId=$turnId newId=${result.newConversationId}"
         )
+        val preservedKeys = currentState.userToggledKeys.filterKeys { k ->
+            val id = k.substringBefore('_').toLongOrNull() ?: 0L
+            id < turnId
+        }
         loadConversation(result.newConversationId)
         agent.updateDraft { draft ->
             draft.copy(
@@ -820,6 +815,7 @@ class HomeChatViewModel internal constructor(
                 pendingFiles = result.files.map { it.toHomeFile() },
                 expandedActionTurnId = null,
                 expandedActionSource = null,
+                userToggledKeys = preservedKeys,
             )
         }
     }
@@ -849,53 +845,21 @@ class HomeChatViewModel internal constructor(
 
     // ── 展开态 ──────────────────────────────────────────────────────────────
 
-    private fun toggleToolRun(turnId: Long, runStartIndex: Int) {
-        val key = "${turnId}_${runStartIndex}"
+    private fun toggleActionKey(key: String, isExpanded: Boolean) {
         updateState {
-            copy(
-                expandedToolRuns = if (key in expandedToolRuns) {
-                    expandedToolRuns - key
-                } else {
-                    expandedToolRuns + key
-                },
-            )
-        }
-    }
-
-    private fun toggleToolResult(turnId: Long, runStartIndex: Int, toolIndex: Int) {
-        val key = "${turnId}_${runStartIndex}_${toolIndex}"
-        updateState {
-            copy(
-                expandedToolResults = if (key in expandedToolResults) {
-                    expandedToolResults - key
-                } else {
-                    expandedToolResults + key
-                },
-            )
-        }
-    }
-
-    private fun toggleThinking(turnId: Long, blockIndex: Int) {
-        val key = "${turnId}_$blockIndex"
-        updateState {
-            copy(
-                expandedThinking = if (key in expandedThinking) {
-                    expandedThinking - key
-                } else {
-                    expandedThinking + key
-                },
-                // 用户干预：移出自动展开跟踪，后续新块不再自动收起它
-                autoExpandedThinking = autoExpandedThinking - key,
-            )
+            copy(userToggledKeys = userToggledKeys + (key to isExpanded))
         }
     }
 
     private fun toggleActionRow(turnId: Long, source: ActionSource) {
         updateState {
-            if (expandedActionTurnId == turnId && expandedActionSource == source) {
-                return@updateState this
+            val currentTurnId = expandedActionTurnId
+            val currentSource = expandedActionSource
+            if (currentTurnId == turnId && currentSource == source) {
+                copy(expandedActionTurnId = null, expandedActionSource = null)
+            } else {
+                copy(expandedActionTurnId = turnId, expandedActionSource = source)
             }
-            copy(expandedActionTurnId = turnId, expandedActionSource = source)
         }
     }
 

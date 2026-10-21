@@ -143,19 +143,11 @@ data class HomeChatUiState(
      * 按 Turn ID 映射的局部变体分支状态。
      */
     val turnBranches: Map<Long, TurnBranchState> = emptyMap(),
-    val expandedToolRuns: Set<String> = emptySet(),
-    val expandedToolResults: Set<String> = emptySet(),
-    val expandedThinking: Set<String> = emptySet(),
+    val userToggledKeys: Map<String, Boolean> = emptyMap(),
     val expandedActionTurnId: Long? = null,
     val expandedActionSource: ActionSource? = null,
     /** 当前正在流式产生的思考块 key；仅驱动 thinking 块内滚动跟随。 */
     val activeThinkingKey: String? = null,
-    /**
-     * 仍处于「自动展开、未被用户干预」的思考块 key（"${turnId}_${blockIndex}"）。
-     * 新块首发时收起本集合中的旧块再展开新块；用户 toggle 过的块移出本集合，不再被自动收起。
-     * （首发与续接回声的区分改用 turns 中是否已存在同 id Thinking 块判断，见 applyEvent。）
-     */
-    val autoExpandedThinking: Set<String> = emptySet(),
     /**
      * 前台待裁决的审批请求；非空即渲染对应对话框。裁决用
      * [HomeChatIntent.ResolveApproval]，结算后归 null。
@@ -191,13 +183,10 @@ data class HomeChatUiState(
 fun HomeChatUiState.withClearedTransient() = copy(
     pendingImages = emptyList(),
     pendingFiles = emptyList(),
-    expandedToolRuns = emptySet(),
-    expandedToolResults = emptySet(),
-    expandedThinking = emptySet(),
+    userToggledKeys = emptyMap(),
     expandedActionTurnId = null,
     expandedActionSource = null,
     activeThinkingKey = null,
-    autoExpandedThinking = emptySet(),
     isConfigMenuVisible = false,
 )
 
@@ -229,11 +218,7 @@ sealed interface HomeChatIntent {
     data class LoadConversation(val id: String) : HomeChatIntent
     data class ClearUnread(val conversationId: String) : HomeChatIntent
     data class DeleteConversation(val id: String) : HomeChatIntent
-    data class ToggleToolRun(val turnId: Long, val runStartIndex: Int) : HomeChatIntent
-    data class ToggleToolResult(val turnId: Long, val runStartIndex: Int, val toolIndex: Int) :
-        HomeChatIntent
-
-    data class ToggleThinking(val turnId: Long, val blockIndex: Int) : HomeChatIntent
+    data class ToggleActionKey(val key: String, val isExpanded: Boolean) : HomeChatIntent
     data class ToggleActionRow(val turnId: Long, val source: ActionSource) : HomeChatIntent
     data class ReGenerateAt(val turnId: Long) : HomeChatIntent
 

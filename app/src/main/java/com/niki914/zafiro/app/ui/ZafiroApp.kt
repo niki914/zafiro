@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui
 
 import android.app.Activity
@@ -59,7 +60,7 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.crash.CrashReport
 import com.niki914.zafiro.app.crash.CrashReportDialog
-import com.niki914.zafiro.app.ui.content.LocalMarkdownScale
+import com.niki914.zafiro.app.ui.chat.composable.text.LocalMarkdownScale
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.model.ThemeController

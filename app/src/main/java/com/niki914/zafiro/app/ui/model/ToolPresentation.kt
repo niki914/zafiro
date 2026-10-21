@@ -8,9 +8,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
 import com.niki914.zafiro.api.util.tryOrNull
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ToolPresentation.inputOf
@@ -33,9 +31,13 @@ import com.niki914.zafiro.remoteview.R as RemoteViewR
  * 预留演进：后续可改为 agent 传的意图字段，直接展示"这个操作是要干啥"（如"罗列文件"），不再依赖参数猜。
  */
 object ToolPresentation {
+    sealed interface IconSource {
+        data class Vector(val vector: ImageVector) : IconSource
+        data class DrawableRes(@param:androidx.annotation.DrawableRes val resId: Int) : IconSource // githooks:ignore inline-fqn
+    }
+
     /** Thinking 图标：自绘 spark drawable（ic_thinking）。 */
-    val Thinking: ImageVector
-        @Composable get() = ImageVector.vectorResource(R.drawable.ic_thinking)
+    val ThinkingSource: IconSource = IconSource.DrawableRes(R.drawable.ic_thinking)
 
     private val TerminalIcon = Icons.Filled.Terminal
     private val Skill = Icons.AutoMirrored.Filled.MenuBook
@@ -48,24 +50,14 @@ object ToolPresentation {
     /** 多工具链头部图标：堆叠层。 */
     val Multi = Icons.Filled.Layers
 
-    @Composable
-    fun forTool(name: String): ImageVector {
-        val python = ImageVector.vectorResource(R.drawable.python_logo)
-        return when {
-            name.contains("python", ignoreCase = true) -> python
-            name.contains(
-                "shell",
-                ignoreCase = true
-            ) || name.contains(
-                "ssh",
-                ignoreCase = true
-            ) -> TerminalIcon
-
-            name == "screenshot" -> Camera
-            name == "view_image" -> ImageTool
-            name.contains("skill", ignoreCase = true) -> Skill
-            else -> Default
-        }
+    fun iconSourceForTool(name: String): IconSource = when {
+        name.contains("python", ignoreCase = true) -> IconSource.DrawableRes(R.drawable.python_logo)
+        name.contains("shell", ignoreCase = true) || name.contains("ssh", ignoreCase = true) ->
+            IconSource.Vector(TerminalIcon)
+        name == "screenshot" -> IconSource.Vector(Camera)
+        name == "view_image" -> IconSource.Vector(ImageTool)
+        name.contains("skill", ignoreCase = true) -> IconSource.Vector(Skill)
+        else -> IconSource.Vector(Default)
     }
 
     /** 内置工具 → 本地化显示名 res id；Custom Tool / MCP 命中不了 → null（回退原始名）。 */
