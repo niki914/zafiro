@@ -15,7 +15,9 @@ import com.niki914.zafiro.app.ui.model.SkillSettingsIntent
 import com.niki914.zafiro.app.ui.model.SkillSettingsUiState
 import com.niki914.zafiro.app.ui.model.SkillSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome__V2
 
 @Composable
 fun SkillDetailContent(
@@ -25,10 +27,13 @@ fun SkillDetailContent(
     val viewModel = pageViewModel<SkillSettingsViewModel>()
     val uiState by viewModel.uiStateFlow.collectAsState()
 
-    EditableSettingsDetailChrome(
+    EditableSettingsDetailChrome__V2(
         isCreating = false,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
+        },
+        unsavedFieldLabelRes = {
+            uiState.formState.unsavedFieldLabelRes()
         },
         onDelete = {
             viewModel.sendIntent(SkillSettingsIntent.RequestDelete)

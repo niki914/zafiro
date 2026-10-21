@@ -26,7 +26,11 @@ import com.niki914.zafiro.app.ui.model.TextActionSettingsIntent
 import com.niki914.zafiro.app.ui.model.TextActionSettingsUiState
 import com.niki914.zafiro.app.ui.model.TextActionSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome__V2
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold__V2
+import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 
 @Composable
 fun TextActionsDetailContent(
@@ -37,10 +41,13 @@ fun TextActionsDetailContent(
     val uiState by viewModel.uiStateFlow.collectAsState()
     var requestedFocusField by rememberSaveable { mutableStateOf<TextActionEditableField?>(null) }
 
-    EditableSettingsDetailChrome(
+    EditableSettingsDetailChrome__V2(
         isCreating = page.isCreating,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
+        },
+        unsavedFieldLabelRes = {
+            uiState.formState.unsavedFieldLabelRes()
         },
         onDelete = {
             viewModel.sendIntent(TextActionSettingsIntent.RequestDelete)
@@ -130,7 +137,7 @@ private fun TextActionsDetailContentBody(
     onRunInBackgroundChange: (Boolean) -> Unit,
     onSave: () -> Unit,
 ) {
-    EditableSettingsDetailFormScaffold(
+    EditableSettingsDetailFormScaffold__V2(
         actionText = stringResource(R.string.text_action_save_action),
         requestedFocusField = requestedFocusField,
         onRequestedFocusHandled = onRequestedFocusHandled,

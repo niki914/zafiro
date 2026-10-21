@@ -28,7 +28,11 @@ import com.niki914.zafiro.app.ui.model.TakeoverSettingsUiState
 import com.niki914.zafiro.app.ui.model.TakeoverSettingsViewModel
 import com.niki914.zafiro.app.ui.model.TakeoverTarget
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome__V2
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold__V2
+import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 
 @Composable
 fun TakeoverRuleDetailContent(
@@ -39,10 +43,13 @@ fun TakeoverRuleDetailContent(
     val uiState by viewModel.uiStateFlow.collectAsState()
     var requestedFocusField by rememberSaveable { mutableStateOf<TakeoverEditableField?>(null) }
 
-    EditableSettingsDetailChrome(
+    EditableSettingsDetailChrome__V2(
         isCreating = page.isCreating,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
+        },
+        unsavedFieldLabelRes = {
+            uiState.formState.unsavedFieldLabelRes()
         },
         onDelete = {
             viewModel.sendIntent(TakeoverSettingsIntent.RequestDelete)
@@ -132,7 +139,7 @@ private fun TakeoverRuleDetailContentBody(
     onPatternsInputChange: (String) -> Unit,
     onSave: () -> Unit,
 ) {
-    EditableSettingsDetailFormScaffold(
+    EditableSettingsDetailFormScaffold__V2(
         actionText = stringResource(R.string.takeover_save_action),
         requestedFocusField = requestedFocusField,
         onRequestedFocusHandled = onRequestedFocusHandled,

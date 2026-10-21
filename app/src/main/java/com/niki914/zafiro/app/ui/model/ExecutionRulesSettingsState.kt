@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.settings.form.buildFormSpec
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -38,8 +39,18 @@ data class ExecutionRuleFormSnapshot(
     val patterns: List<String>,
 )
 
+val ExecutionRuleFormSpec = buildFormSpec<ExecutionRuleFormSnapshot, String> {
+    field("name", R.string.execution_rules_field_name) { it.name }
+    field("enabledMode", R.string.execution_rules_field_enabled_mode) { it.enabledMode }
+    field("patterns", R.string.execution_rules_field_patterns) { it.patterns }
+}
+
 val ExecutionRuleFormState.hasUnsavedChanges: Boolean
-    get() = initialSnapshot?.let { it != toSnapshot() } ?: false
+    get() = ExecutionRuleFormSpec.hasChanges(initialSnapshot, toSnapshot())
+
+fun ExecutionRuleFormState.unsavedFieldLabelRes(): List<Int> {
+    return ExecutionRuleFormSpec.dirtyFieldLabelRes(initialSnapshot, toSnapshot())
+}
 
 data class ExecutionRuleDeleteConfirmationState(
     val value: String,

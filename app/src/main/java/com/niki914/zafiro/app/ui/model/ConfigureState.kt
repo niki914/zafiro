@@ -7,6 +7,7 @@ import com.niki914.logging.Logger
 import com.niki914.okia.message.ThinkingLevel
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.settings.form.buildFormSpec
 import com.niki914.zafiro.repo.CloudModelFacts
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.ModelCatalog
@@ -117,48 +118,26 @@ data class ConfigureSnapshot(
     val contextWindow: String,
 )
 
+val ConfigureFormSpec = buildFormSpec<ConfigureSnapshot, String> {
+    field("name", R.string.ui_settings_configure_name_label) { it.configName }
+    field("prompt", R.string.ui_settings_configure_prompt_label) { it.prompt }
+    field("proxy", R.string.ui_settings_configure_proxy_label) { it.proxy }
+    field("endpoint", R.string.ui_onboard_configure_endpoint_label) { it.endpoint }
+    field("model", R.string.ui_onboard_configure_model_label) { it.model }
+    field("apiKey", R.string.ui_onboard_configure_api_key_label) { it.apiKey }
+    field("protocol", R.string.ui_settings_configure_protocol_label) { it.protocolWireId }
+    field("thinking", R.string.ui_settings_configure_thinking_label) { it.thinkingLevelWire }
+    field("vision", R.string.ui_settings_configure_vision_label) { it.supportsImages }
+    field("maxTokens", R.string.ui_settings_configure_max_tokens_label) { it.maxTokens }
+    field("contextWindow", R.string.ui_settings_configure_context_window_label) { it.contextWindow }
+}
+
 val ConfigureUiState.hasUnsavedChanges: Boolean
     get() = scene != ConfigureScene.Onboarding &&
-            initialSettingsSnapshot?.let { it != toSettingsSnapshot() } == true
+            ConfigureFormSpec.hasChanges(initialSettingsSnapshot, toSettingsSnapshot())
 
-fun ConfigureUiState.unsavedFieldLabels(context: Context): List<String> {
-    val initial = initialSettingsSnapshot ?: return emptyList()
-    val current = toSettingsSnapshot()
-    return buildList {
-        if (initial.configName != current.configName) {
-            add(context.getString(R.string.ui_settings_configure_name_label))
-        }
-        if (initial.prompt != current.prompt) {
-            add(context.getString(R.string.ui_settings_configure_prompt_label))
-        }
-        if (initial.proxy != current.proxy) {
-            add(context.getString(R.string.ui_settings_configure_proxy_label))
-        }
-        if (initial.endpoint != current.endpoint) {
-            add(context.getString(R.string.ui_onboard_configure_endpoint_label))
-        }
-        if (initial.model != current.model) {
-            add(context.getString(R.string.ui_onboard_configure_model_label))
-        }
-        if (initial.apiKey != current.apiKey) {
-            add(context.getString(R.string.ui_onboard_configure_api_key_label))
-        }
-        if (initial.protocolWireId != current.protocolWireId) {
-            add(context.getString(R.string.ui_settings_configure_protocol_label))
-        }
-        if (initial.thinkingLevelWire != current.thinkingLevelWire) {
-            add(context.getString(R.string.ui_settings_configure_thinking_label))
-        }
-        if (initial.supportsImages != current.supportsImages) {
-            add(context.getString(R.string.ui_settings_configure_vision_label))
-        }
-        if (initial.maxTokens != current.maxTokens) {
-            add(context.getString(R.string.ui_settings_configure_max_tokens_label))
-        }
-        if (initial.contextWindow != current.contextWindow) {
-            add(context.getString(R.string.ui_settings_configure_context_window_label))
-        }
-    }
+fun ConfigureUiState.unsavedFieldLabelRes(): List<Int> {
+    return ConfigureFormSpec.dirtyFieldLabelRes(initialSettingsSnapshot, toSettingsSnapshot())
 }
 
 sealed interface ConfigureInlineError {

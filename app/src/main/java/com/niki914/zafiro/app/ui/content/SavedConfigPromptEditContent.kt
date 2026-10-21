@@ -13,6 +13,7 @@ import com.niki914.zafiro.app.ui.model.ConfigureIntent
 import com.niki914.zafiro.app.ui.model.ConfigureViewModel
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigPromptEditPage
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome__V2
 
 /**
  * 模型配置专属独立 System Prompt 编辑页。
@@ -38,9 +39,12 @@ fun SavedConfigPromptEditContent(
 
     val hasUnsavedChanges = localContent != configureUiState.promptInput
 
-    EditableSettingsDetailChrome(
+    EditableSettingsDetailChrome__V2(
         isCreating = false,
         hasUnsavedChanges = { hasUnsavedChanges },
+        unsavedFieldLabelRes = {
+            if (hasUnsavedChanges) listOf(R.string.ui_settings_configure_prompt_label) else emptyList()
+        },
         onDiscardChanges = onBack,
     ) {
         FullScreenContentEditor(

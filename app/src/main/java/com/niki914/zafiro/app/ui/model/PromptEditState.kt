@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.ui.model
 
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.api.util.runCatchingCancellable
 
@@ -25,6 +26,10 @@ data class PromptEditUiState(
 
 val PromptEditUiState.hasUnsavedChanges: Boolean
     get() = !isLoading && content != initialContent
+
+fun PromptEditUiState.unsavedFieldLabelRes(): List<Int> {
+    return if (hasUnsavedChanges) listOf(R.string.ui_settings_configure_prompt_label) else emptyList()
+}
 
 sealed interface PromptEditIntent {
     data object Load : PromptEditIntent

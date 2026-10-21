@@ -18,10 +18,6 @@ import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.content.EditableDetailFieldController
-import com.niki914.zafiro.app.ui.content.EditableSettingsDetailChrome
-import com.niki914.zafiro.app.ui.content.EditableSettingsDetailFormScaffold
-import com.niki914.zafiro.app.ui.content.SettingControlledExpandableTextItem
 import com.niki914.zafiro.app.ui.model.McpDeleteConfirmationState
 import com.niki914.zafiro.app.ui.model.McpInlineError
 import com.niki914.zafiro.app.ui.model.McpServerFormState
@@ -30,7 +26,12 @@ import com.niki914.zafiro.app.ui.model.McpSettingsIntent
 import com.niki914.zafiro.app.ui.model.McpSettingsUiState
 import com.niki914.zafiro.app.ui.model.McpSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
+import com.niki914.zafiro.app.ui.settings.form.EditableDetailFieldController
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome__V2
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold__V2
+import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 
 @Composable
 fun McpServerDetailContent(
@@ -41,10 +42,13 @@ fun McpServerDetailContent(
     val uiState by viewModel.uiStateFlow.collectAsState()
     var requestedFocusField by rememberSaveable { mutableStateOf<McpEditableField?>(null) }
 
-    EditableSettingsDetailChrome(
+    EditableSettingsDetailChrome__V2(
         isCreating = page.isCreating,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
+        },
+        unsavedFieldLabelRes = {
+            uiState.formState.unsavedFieldLabelRes()
         },
         onDelete = {
             viewModel.sendIntent(McpSettingsIntent.RequestDelete)
@@ -128,7 +132,7 @@ private fun McpServerDetailContentBody(
     onHeadersChange: (String) -> Unit,
     onSave: () -> Unit,
 ) {
-    EditableSettingsDetailFormScaffold(
+    EditableSettingsDetailFormScaffold__V2(
         actionText = stringResource(R.string.mcp_save_action),
         requestedFocusField = requestedFocusField,
         onRequestedFocusHandled = onRequestedFocusHandled,

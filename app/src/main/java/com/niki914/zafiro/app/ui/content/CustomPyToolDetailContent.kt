@@ -39,7 +39,12 @@ import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsIntent
 import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsUiState
 import com.niki914.zafiro.app.ui.model.CustomPyToolSettingsViewModel
 import com.niki914.zafiro.app.ui.model.hasUnsavedChanges
+import com.niki914.zafiro.app.ui.model.unsavedFieldLabelRes
 import com.niki914.zafiro.app.ui.nav.CustomPyToolDetailPage
+import com.niki914.zafiro.app.ui.settings.form.EditableDetailFieldController
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome__V2
+import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold__V2
+import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 
 @Composable
 fun CustomPyToolDetailContent(
@@ -52,10 +57,13 @@ fun CustomPyToolDetailContent(
         mutableStateOf<CustomPyToolEditableField?>(null)
     }
 
-    EditableSettingsDetailChrome(
+    EditableSettingsDetailChrome__V2(
         isCreating = page.isCreating,
         hasUnsavedChanges = {
             uiState.formState.hasUnsavedChanges
+        },
+        unsavedFieldLabelRes = {
+            uiState.formState.unsavedFieldLabelRes()
         },
         onDelete = {
             viewModel.sendIntent(CustomPyToolSettingsIntent.RequestDelete)
@@ -152,7 +160,7 @@ private fun CustomPyToolDetailContentBody(
     onEnabledChange: (Boolean) -> Unit,
     onSave: () -> Unit,
 ) {
-    EditableSettingsDetailFormScaffold(
+    EditableSettingsDetailFormScaffold__V2(
         actionText = stringResource(R.string.custom_py_tool_save_action),
         requestedFocusField = requestedFocusField,
         onRequestedFocusHandled = onRequestedFocusHandled,
