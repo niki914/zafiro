@@ -143,6 +143,7 @@ data class HomeChatUiState(
      * 按 Turn ID 映射的局部变体分支状态。
      */
     val turnBranches: Map<Long, TurnBranchState> = emptyMap(),
+    val userToggledKeys: Map<String, Boolean> = emptyMap(),
     val expandedToolRuns: Set<String> = emptySet(),
     val expandedToolResults: Set<String> = emptySet(),
     val expandedThinking: Set<String> = emptySet(),
@@ -191,6 +192,7 @@ data class HomeChatUiState(
 fun HomeChatUiState.withClearedTransient() = copy(
     pendingImages = emptyList(),
     pendingFiles = emptyList(),
+    userToggledKeys = emptyMap(),
     expandedToolRuns = emptySet(),
     expandedToolResults = emptySet(),
     expandedThinking = emptySet(),
@@ -234,6 +236,7 @@ sealed interface HomeChatIntent {
         HomeChatIntent
 
     data class ToggleThinking(val turnId: Long, val blockIndex: Int) : HomeChatIntent
+    data class ToggleActionKey(val key: String, val isExpanded: Boolean) : HomeChatIntent
     data class ToggleActionRow(val turnId: Long, val source: ActionSource) : HomeChatIntent
     data class ReGenerateAt(val turnId: Long) : HomeChatIntent
 

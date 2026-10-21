@@ -33,7 +33,14 @@ import com.niki914.zafiro.remoteview.R as RemoteViewR
  * 预留演进：后续可改为 agent 传的意图字段，直接展示"这个操作是要干啥"（如"罗列文件"），不再依赖参数猜。
  */
 object ToolPresentation {
+    sealed interface IconSource {
+        data class Vector(val vector: ImageVector) : IconSource
+        data class DrawableRes(@param:androidx.annotation.DrawableRes val resId: Int) : IconSource // githooks:ignore inline-fqn
+    }
+
     /** Thinking 图标：自绘 spark drawable（ic_thinking）。 */
+    val ThinkingSource: IconSource = IconSource.DrawableRes(R.drawable.ic_thinking)
+
     val Thinking: ImageVector
         @Composable get() = ImageVector.vectorResource(R.drawable.ic_thinking)
 
@@ -47,6 +54,16 @@ object ToolPresentation {
 
     /** 多工具链头部图标：堆叠层。 */
     val Multi = Icons.Filled.Layers
+
+    fun iconSourceForTool(name: String): IconSource = when {
+        name.contains("python", ignoreCase = true) -> IconSource.DrawableRes(R.drawable.python_logo)
+        name.contains("shell", ignoreCase = true) || name.contains("ssh", ignoreCase = true) ->
+            IconSource.Vector(TerminalIcon)
+        name == "screenshot" -> IconSource.Vector(Camera)
+        name == "view_image" -> IconSource.Vector(ImageTool)
+        name.contains("skill", ignoreCase = true) -> IconSource.Vector(Skill)
+        else -> IconSource.Vector(Default)
+    }
 
     @Composable
     fun forTool(name: String): ImageVector {

@@ -123,6 +123,7 @@ class HomeChatViewModel internal constructor(
             )
 
             is HomeChatIntent.ToggleThinking -> toggleThinking(intent.turnId, intent.blockIndex)
+            is HomeChatIntent.ToggleActionKey -> toggleActionKey(intent.key, intent.isExpanded)
             is HomeChatIntent.ToggleActionRow -> toggleActionRow(intent.turnId, intent.source)
             is HomeChatIntent.ReGenerateAt -> reGenerateAt(intent.turnId)
             is HomeChatIntent.SwitchTurnBranch -> switchTurnBranch(intent.turnId, intent.delta)
@@ -337,6 +338,7 @@ class HomeChatViewModel internal constructor(
                 currentConversationTitle = title,
                 turnBranches = turnBranches,
                 conversationVersion = conversationVersion + 1,
+                userToggledKeys = if (id != currentConversationId) emptyMap() else userToggledKeys,
             )
         }
         if (isFirstConversationAssignment && !currentState.boundConfigId.isNullOrBlank()) {
@@ -754,7 +756,12 @@ class HomeChatViewModel internal constructor(
             LOG_TAG,
             "regenerate fork sourceId=$currentId turnId=$turnId newId=${result.newConversationId}"
         )
+        val preservedKeys = currentState.userToggledKeys.filterKeys { k ->
+            val id = k.substringBefore('_').toLongOrNull() ?: 0L
+            id < turnId
+        }
         loadConversation(result.newConversationId)
+        updateState { copy(userToggledKeys = preservedKeys) }
         agent.updateDraft { draft ->
             draft.copy(
                 text = result.promptText,
@@ -793,7 +800,12 @@ class HomeChatViewModel internal constructor(
             LOG_TAG,
             "fork sourceId=$currentId turnId=$turnId newId=${result.newConversationId}"
         )
+        val preservedKeys = currentState.userToggledKeys.filterKeys { k ->
+            val id = k.substringBefore('_').toLongOrNull() ?: 0L
+            id < turnId
+        }
         loadConversation(result.newConversationId)
+        updateState { copy(userToggledKeys = preservedKeys) }
     }
 
     private suspend fun rewindAt(turnId: Long) {
@@ -805,6 +817,10 @@ class HomeChatViewModel internal constructor(
             LOG_TAG,
             "rewind sourceId=$currentId turnId=$turnId newId=${result.newConversationId}"
         )
+        val preservedKeys = currentState.userToggledKeys.filterKeys { k ->
+            val id = k.substringBefore('_').toLongOrNull() ?: 0L
+            id < turnId
+        }
         loadConversation(result.newConversationId)
         agent.updateDraft { draft ->
             draft.copy(
@@ -820,6 +836,7 @@ class HomeChatViewModel internal constructor(
                 pendingFiles = result.files.map { it.toHomeFile() },
                 expandedActionTurnId = null,
                 expandedActionSource = null,
+                userToggledKeys = preservedKeys,
             )
         }
     }
@@ -887,6 +904,12 @@ class HomeChatViewModel internal constructor(
                 // 用户干预：移出自动展开跟踪，后续新块不再自动收起它
                 autoExpandedThinking = autoExpandedThinking - key,
             )
+        }
+    }
+
+    private fun toggleActionKey(key: String, isExpanded: Boolean) {
+        updateState {
+            copy(userToggledKeys = userToggledKeys + (key to isExpanded))
         }
     }
 

@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
 import com.kyant.backdrop.Backdrop
+import com.niki914.zafiro.app.ui.chat.composable.body.AssistantCodeBlock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -80,6 +81,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.compose.components.MarkdownComponents
 import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.MarkdownCodeBlock
+import com.mikepenz.markdown.compose.elements.MarkdownCodeFence
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.elements.MarkdownCheckBox
 import com.mikepenz.markdown.m3.markdownTypography
@@ -243,6 +246,16 @@ private fun assistantMarkdownComponents(): MarkdownComponents = remember {
                 node = model.node,
                 style = model.typography.table,
             )
+        },
+        codeFence = { model ->
+            MarkdownCodeFence(model.content, model.node, style = model.typography.code) { code, _, style ->
+                AssistantCodeBlock(code = code, style = style)
+            }
+        },
+        codeBlock = { model ->
+            MarkdownCodeBlock(model.content, model.node, style = model.typography.code) { code, _, style ->
+                AssistantCodeBlock(code = code, style = style)
+            }
         },
         checkbox = { model -> MarkdownCheckBox(model.content, model.node, model.typography.text) },
     )
