@@ -79,7 +79,9 @@ class XRepoRuntimeGateway(
             supportsImages = active?.supportsImages ?: false,
             proxy = active?.proxy.orEmpty(),
             thinkingLevel = active?.thinkingLevel.orEmpty(),
-            prompt = doc.prompt,
+            prompt = active?.prompt?.trim()?.takeIf(String::isNotBlank)
+                ?: doc.prompt.trim().takeIf(String::isNotBlank)
+                ?: "",
             memories = memories,
             idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },
             retryMaxAttempts = repo.llmRetryMaxAttempts(),

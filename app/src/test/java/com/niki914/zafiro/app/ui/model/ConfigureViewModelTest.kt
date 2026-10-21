@@ -445,6 +445,33 @@ class ConfigureViewModelTest {
     }
 
     @Test
+    fun editingPrompt_marksDirtyAndSavesWithConfig() = runTest {
+        val deps = RecordingDeps()
+        deps.document = LlmConfigsDocument(
+            activeId = "cfg-a",
+            configs = listOf(savedLlmConfig("cfg-a")),
+        )
+        val viewModel = ConfigureViewModel(deps.toDependencies())
+        viewModel.sendIntent(ConfigureIntent.Initialize(ConfigureScene.SettingsEdit))
+        advanceUntilIdle()
+
+        viewModel.sendIntent(ConfigureIntent.UpdatePrompt("my custom prompt"))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiStateFlow.value.hasUnsavedChanges)
+
+        viewModel.sendIntent(ConfigureIntent.UpdatePrompt(""))
+        advanceUntilIdle()
+        assertFalse(viewModel.uiStateFlow.value.hasUnsavedChanges)
+
+        viewModel.sendIntent(ConfigureIntent.UpdatePrompt("final custom prompt"))
+        advanceUntilIdle()
+        viewModel.sendIntent(ConfigureIntent.Save)
+        advanceUntilIdle()
+
+        assertEquals("final custom prompt", deps.upserted.first().prompt)
+    }
+
+    @Test
     fun initialize_prefillsNameWithProviderBrandName() = runTest {
         val deps = RecordingDeps()
         val viewModel = ConfigureViewModel(deps.toDependencies())

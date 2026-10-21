@@ -29,3 +29,25 @@ inline fun <reified VM : ViewModel> pageViewModel(
         ViewModelProvider(entry, actualFactory)[finalKey, viewModelClass]
     }
 }
+
+@Composable
+inline fun <reified VM : ViewModel> parentPageViewModel(
+    key: String? = null,
+    factory: ViewModelProvider.Factory? = null,
+    noinline predicate: (Page) -> Boolean,
+): VM? {
+    val controller = LocalNavigationController.current
+    val parentEntry = controller.stack.lastOrNull { predicate(it.page) } ?: return null
+    val viewModelClass = VM::class.java
+    val defaultKey = viewModelClass.name
+    val finalKey = remember(defaultKey, key) {
+        if (key.isNullOrBlank()) defaultKey else "$defaultKey:$key"
+    }
+    val actualFactory = remember(factory) {
+        factory ?: ViewModelProvider.NewInstanceFactory()
+    }
+
+    return remember(parentEntry, finalKey, actualFactory) {
+        ViewModelProvider(parentEntry, actualFactory)[finalKey, viewModelClass]
+    }
+}

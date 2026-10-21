@@ -825,6 +825,7 @@ class LlmConfigsApi internal constructor(
                 endpoint = config.endpoint.trim(),
                 model = config.model.trim(),
                 protocol = config.protocol.trim().lowercase(),
+                prompt = config.prompt.trim(),
                 proxy = config.proxy.trim(),
                 createdAt = createdAt,
                 updatedAt = nowMillis,

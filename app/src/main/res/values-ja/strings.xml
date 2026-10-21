@@ -191,6 +191,7 @@
     <string name="ui_todo_page_description">今後のバージョンで対応予定です。お楽しみに。</string>
     <string name="unsaved_changes_dialog_title">未保存の変更があります</string>
     <string name="unsaved_changes_dialog_text">終了してもよろしいですか？</string>
+    <string name="unsaved_changes_dialog_fields_prefix">以下の変更が保存されていません：</string>
     <string name="unsaved_changes_dialog_confirm_exit">終了</string>
     <string name="unsaved_changes_dialog_cancel">キャンセル</string>
 
@@ -198,7 +199,10 @@
     <string name="ui_settings_configure_description">モデル連携、プロンプト、プロキシ設定を調整します。</string>
     <string name="ui_settings_configure_save">設定を保存</string>
     <string name="ui_settings_configure_prompt_label">プロンプト</string>
+    <string name="ui_settings_configure_prompt_state_global">グローバルを継承</string>
+    <string name="ui_settings_configure_prompt_state_custom">カスタム設定済み</string>
     <string name="prompt_editor_description">システムプロンプトを編集します。保存された変更は次回の会話から反映されます。</string>
+    <string name="config_prompt_editor_description">この設定専用の System Prompt を設定します。空欄の場合はグローバルプロンプトにフォールバックします。保存後、この設定に切り替えた際に適用されます。</string>
     <string name="prompt_error_load_failed">プロンプトの読み込みに失敗しました。戻って再試行してください。</string>
     <string name="ui_settings_configure_proxy_label">プロキシ</string>
     <string name="ui_settings_configure_proxy_placeholder">例：http://127.0.0.1:7890</string>
@@ -399,7 +403,7 @@
 
     <!-- XService notifications -->
 
-    <string name="feedback_bug_template">## 問題の説明\n\n## 再現手順\n\n## 期待される動作\n\n## 実際の動作\n\n## デバイス情報\n- Android バージョン：\n- アシスタント（Breeno またはその他）：\n- モジュールのバージョン：\n\n## その他\n理解を深めるため、ログやスクリーンショット、画面録画などを添付できます</string>
+    <string name="feedback_bug_template">## 問題の説明\n\n## 再現手順\n\n## 期待される動作\n\n## 実際の動作\n\n## デバイス情報\n- Android バージョン：\n- ホスト音声アシスタント：\n- モジュールのバージョン：\n\n## その他\n理解を深めるため、ログやスクリーンショット、画面録画などを添付できます</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
@@ -485,20 +489,20 @@
     <string name="ui_settings_configure_endpoint_mismatch_cancel_save">このまま保存</string>
     <string name="ui_settings_configure_protocol_hint">プロトコル切り替え後、エンドポイントがプロトコルと一致しているか確認してください。</string>
     <string name="ui_settings_configure_thinking_label">思考強度</string>
-    <string name="ui_settings_configure_thinking_hint">Provider Default のままにするとプロバイダーのデフォルト動作になります。高いレベルが拒否された場合は自分で下げてください。</string>
+    <string name="ui_settings_configure_thinking_hint">デフォルトでモデル推奨設定に従います。プロバイダーに拒絶された場合は強度を下げてください。</string>
     <string name="ui_settings_configure_thinking_start_label">Default</string>
     <string name="ui_settings_configure_thinking_end_label">Max</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">例：200000 または 200k</string>
-    <string name="ui_settings_configure_error_max_tokens_invalid">有効な数値（k/m/b 接尾辞対応）を 256 以上で入力してください</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">256 以上の有効な数値を入力してください。k/m/b に対応</string>
     <string name="ui_settings_configure_context_window_label">コンテキストウィンドウ</string>
     <string name="ui_settings_configure_context_window_placeholder">例：1000000 または 1M</string>
-    <string name="ui_settings_configure_error_context_window_invalid">有効な数値（k/m/b 接尾辞対応）を 1000 以上で入力してください</string>
+    <string name="ui_settings_configure_error_context_window_invalid">1000 以上の有効な数値を入力してください。k/m/b に対応</string>
 
     <string name="ui_theme_mode_system">システムに従う</string>
     <string name="ui_theme_mode_light">ライト</string>
     <string name="ui_theme_mode_dark">ダーク</string>
-    <string name="ui_theme_color_dynamic">ダイナミックカラー（壁紙から）</string>
+    <string name="ui_theme_color_dynamic">ダイナミック壁紙カラー</string>
     <string name="ui_theme_color_rose">ローズ</string>
     <string name="ui_theme_color_blossom">桜</string>
     <string name="ui_theme_color_lavender">ラベンダー</string>

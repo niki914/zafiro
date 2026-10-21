@@ -192,6 +192,7 @@
     <string name="ui_todo_page_description">Estará disponible en próximas versiones.</string>
     <string name="unsaved_changes_dialog_title">Cambios sin guardar</string>
     <string name="unsaved_changes_dialog_text">¿Está seguro de que desea salir?</string>
+    <string name="unsaved_changes_dialog_fields_prefix">Los siguientes cambios no se han guardado:</string>
     <string name="unsaved_changes_dialog_confirm_exit">Aceptar</string>
     <string name="unsaved_changes_dialog_cancel">Cancelar</string>
 
@@ -199,7 +200,10 @@
     <string name="ui_settings_configure_description">Ajustar la configuración del modelo, prompt del sistema y proxy.</string>
     <string name="ui_settings_configure_save">Guardar configuración</string>
     <string name="ui_settings_configure_prompt_label">Prompt del sistema</string>
+    <string name="ui_settings_configure_prompt_state_global">Global por defecto</string>
+    <string name="ui_settings_configure_prompt_state_custom">Personalizado</string>
     <string name="prompt_editor_description">Edita el System Prompt. Los cambios se aplicarán en la siguiente conversación tras guardar.</string>
+    <string name="config_prompt_editor_description">Configura un System Prompt dedicado para este modelo. Déjalo en blanco para usar el prompt global. Se aplicará al cambiar a esta configuración.</string>
     <string name="prompt_error_load_failed">No se pudo cargar el prompt. Vuelve atrás e inténtalo de nuevo.</string>
     <string name="ui_settings_configure_proxy_label">Proxy</string>
     <string name="ui_settings_configure_proxy_placeholder">Ejemplo: http://127.0.0.1:7890</string>
@@ -400,7 +404,7 @@
 
     <!-- XService notifications -->
 
-    <string name="feedback_bug_template">## Descripción del problema\n\n## Pasos para reproducir\n\n## Comportamiento esperado\n\n## Comportamiento real\n\n## Información del dispositivo\n- Versión de Android:\n- Asistente (Breeno u otro):\n- Versión del módulo:\n\n## Información adicional\nPuede adjuntar registros, capturas o grabaciones de pantalla para ayudarnos a entender el problema.</string>
+    <string name="feedback_bug_template">## Descripción del problema\n\n## Pasos para reproducir\n\n## Comportamiento esperado\n\n## Comportamiento real\n\n## Información del dispositivo\n- Versión de Android:\n- Asistente:\n- Versión del módulo:\n\n## Información adicional\nPuede adjuntar registros, capturas o grabaciones de pantalla para ayudarnos a entender el problema.</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_rewind_title">Rewind · %1$s</string>
     <!-- Tool display names -->
@@ -457,7 +461,7 @@
     <string name="ui_settings_runtime_compaction_threshold_summary">Compactar automáticamente el historial cuando el uso de la ventana de contexto alcance el umbral</string>
     <string name="ui_settings_runtime_compaction_off">Desactivado</string>
     <string name="ui_settings_runtime_repetition_detection">Detección de repeticiones</string>
-    <string name="ui_settings_runtime_repetition_summary">Interrumpe el turno cuando el modelo se repite; los niveles más estrictos reaccionan antes, pero también pueden cortar contenido que no es un bucle</string>
+    <string name="ui_settings_runtime_repetition_summary">Interrumpe el turno cuando el modelo se repite. Los niveles más estrictos reaccionan antes, pero pueden cortar contenido válido.</string>
     <string name="ui_settings_runtime_sensitivity_relaxed">Relajada</string>
     <string name="ui_settings_runtime_sensitivity_loose">Amplia</string>
     <string name="ui_settings_runtime_sensitivity_standard">Estándar</string>
@@ -486,20 +490,20 @@
     <string name="ui_settings_configure_endpoint_mismatch_cancel_save">Guardar tal cual</string>
     <string name="ui_settings_configure_protocol_hint">Tras cambiar el protocolo, asegúrese de que el endpoint sea compatible con dicho protocolo.</string>
     <string name="ui_settings_configure_thinking_label">Esfuerzo de razonamiento</string>
-    <string name="ui_settings_configure_thinking_hint">Deje en Provider Default para usar el comportamiento predeterminado del proveedor; redúzcalo si el proveedor rechaza un nivel alto.</string>
+    <string name="ui_settings_configure_thinking_hint">Sigue la configuración predeterminada del modelo. Reduzca la intensidad si el proveedor rechaza la solicitud.</string>
     <string name="ui_settings_configure_thinking_start_label">Default</string>
     <string name="ui_settings_configure_thinking_end_label">Max</string>
     <string name="ui_settings_configure_max_tokens_label">Max Tokens</string>
     <string name="ui_settings_configure_max_tokens_placeholder">Por ejemplo: 200000 o 200k</string>
-    <string name="ui_settings_configure_error_max_tokens_invalid">Introduzca un número válido (sufijos k/m/b admitidos) de al menos 256</string>
+    <string name="ui_settings_configure_error_max_tokens_invalid">Introduzca un número válido de al menos 256, admite k/m/b</string>
     <string name="ui_settings_configure_context_window_label">Ventana de contexto</string>
     <string name="ui_settings_configure_context_window_placeholder">Por ejemplo: 1000000 o 1M</string>
-    <string name="ui_settings_configure_error_context_window_invalid">Introduzca un número válido (sufijos k/m/b admitidos) de al menos 1000</string>
+    <string name="ui_settings_configure_error_context_window_invalid">Introduzca un número válido de al menos 1000, admite k/m/b</string>
 
     <string name="ui_theme_mode_system">Según el sistema</string>
     <string name="ui_theme_mode_light">Claro</string>
     <string name="ui_theme_mode_dark">Oscuro</string>
-    <string name="ui_theme_color_dynamic">Dinámico (del fondo)</string>
+    <string name="ui_theme_color_dynamic">Color de fondo dinámico</string>
     <string name="ui_theme_color_rose">Rosa</string>
     <string name="ui_theme_color_blossom">Flor</string>
     <string name="ui_theme_color_lavender">Lavanda</string>
