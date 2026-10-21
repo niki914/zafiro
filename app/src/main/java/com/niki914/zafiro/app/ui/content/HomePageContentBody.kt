@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,6 +52,8 @@ import com.niki914.zafiro.api.util.tryIgnore
 import com.niki914.zafiro.app.conversation.TurnBranchState
 import com.niki914.zafiro.app.ui.chat.composable.attachment.HomeChatAttachmentRow
 import com.niki914.zafiro.app.ui.chat.composable.bubble.UserBubblePosition
+import com.niki914.zafiro.app.ui.chat.composable.spacing.ContinuousUserBubbleSpacing
+import com.niki914.zafiro.app.ui.chat.composable.spacing.TurnSeparatorSpacing
 import com.niki914.zafiro.app.ui.chat.composable.turn.HomeChatTurnItem
 import com.niki914.zafiro.app.ui.chat.helper.userBubblePosition
 import com.niki914.zafiro.app.ui.chat.helper.userGroupTailIndex
@@ -196,31 +199,42 @@ internal fun HomePageContentBody(
                     val position = userBubblePosition(uiState.turns, index)
                     val tailIndex = userGroupTailIndex(uiState.turns, index)
                     val tailTurn = uiState.turns[tailIndex]
-                    HomeChatTurnItem(
-                        turn = turn,
-                        userBubblePosition = position,
-                        isLastTurn = index == uiState.turns.lastIndex,
-                        actionsDisplay = actionsDisplay,
-                        userGroupTailTurnId = tailTurn.id,
-                        userGroupTappable = tailTurn.blocks.isNotEmpty() || tailIndex == uiState.turns.lastIndex,
-                        userGroupText = userGroupText(uiState.turns, index),
-                        onContentTap = onContentTap,
-                        onReGenerate = onReGenerate,
-                        onFork = onFork,
-                        onRewind = onRewind,
-                        expandedActionTurnId = expandedActionTurnId,
-                        expandedActionSource = expandedActionSource,
-                        activeThinkingKey = activeThinkingKey,
-                        onToggleActionRow = onToggleActionRow,
-                        isGenerating = uiState.isGenerating,
-                        branchIndex = turnBranches[turn.id]?.current ?: 1,
-                        branchCount = turnBranches[turn.id]?.total ?: 1,
-                        onSwitchBranch = { delta -> onSwitchTurnBranch(turn.id, delta) },
-                        alwaysShowDetailed = alwaysShowDetailed,
-                        userToggledKeys = uiState.userToggledKeys,
-                        onToggleAction = onToggleActionKey,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        when {
+                            index == 0 -> {}
+                            turn.isCompactedDivider -> {}
+                            position == UserBubblePosition.GroupMid || position == UserBubblePosition.GroupLast ->
+                                ContinuousUserBubbleSpacing()
+
+                            else ->
+                                TurnSeparatorSpacing()
+                        }
+                        HomeChatTurnItem(
+                            turn = turn,
+                            userBubblePosition = position,
+                            isLastTurn = index == uiState.turns.lastIndex,
+                            actionsDisplay = actionsDisplay,
+                            userGroupTailTurnId = tailTurn.id,
+                            userGroupTappable = tailTurn.blocks.isNotEmpty() || tailIndex == uiState.turns.lastIndex,
+                            userGroupText = userGroupText(uiState.turns, index),
+                            onContentTap = onContentTap,
+                            onReGenerate = onReGenerate,
+                            onFork = onFork,
+                            onRewind = onRewind,
+                            expandedActionTurnId = expandedActionTurnId,
+                            expandedActionSource = expandedActionSource,
+                            activeThinkingKey = activeThinkingKey,
+                            onToggleActionRow = onToggleActionRow,
+                            isGenerating = uiState.isGenerating,
+                            branchIndex = turnBranches[turn.id]?.current ?: 1,
+                            branchCount = turnBranches[turn.id]?.total ?: 1,
+                            onSwitchBranch = { delta -> onSwitchTurnBranch(turn.id, delta) },
+                            alwaysShowDetailed = alwaysShowDetailed,
+                            userToggledKeys = uiState.userToggledKeys,
+                            onToggleAction = onToggleActionKey,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
                 item(key = "bottom_anchor") {
                     Spacer(

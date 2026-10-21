@@ -25,6 +25,10 @@ import com.niki914.zafiro.app.ui.chat.composable.attachment.HomeChatAttachmentRo
 import com.niki914.zafiro.app.ui.chat.composable.bubble.UserBubbleCornerRadius
 import com.niki914.zafiro.app.ui.chat.composable.bubble.UserBubblePosition
 import com.niki914.zafiro.app.ui.chat.composable.bubble.UserMessageBubble
+import com.niki914.zafiro.app.ui.chat.composable.spacing.AssistantToActionSpacing
+import com.niki914.zafiro.app.ui.chat.composable.spacing.UserAttachmentToTextSpacing
+import com.niki914.zafiro.app.ui.chat.composable.spacing.UserBubbleToActionSpacing
+import com.niki914.zafiro.app.ui.chat.composable.spacing.UserToAssistantSpacing
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 
@@ -63,7 +67,8 @@ internal fun TurnItem(
 
     Column(modifier = modifier.fillMaxWidth()) {
         // ── 1. 用户内容流 ──
-        if (turn.userImages.isNotEmpty() || turn.userFiles.isNotEmpty()) {
+        val hasAttachments = turn.userImages.isNotEmpty() || turn.userFiles.isNotEmpty()
+        if (hasAttachments) {
             BoxWithConstraints(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.CenterEnd,
@@ -76,6 +81,10 @@ internal fun TurnItem(
                     modifier = Modifier.widthIn(max = maxWidth * 0.82f),
                 )
             }
+        }
+
+        if (hasAttachments && turn.userText.isNotEmpty()) {
+            UserAttachmentToTextSpacing()
         }
 
         if (turn.userText.isNotEmpty()) {
@@ -104,17 +113,21 @@ internal fun TurnItem(
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut(),
         ) {
-            TurnActionRow(
-                source = ActionSource.User,
-                onCopy = { onCopyText(userGroupText) },
-                onReGenerate = onReGenerate,
-                onFork = onFork,
-                onRewind = onRewind,
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                UserBubbleToActionSpacing()
+                TurnActionRow(
+                    source = ActionSource.User,
+                    onCopy = { onCopyText(userGroupText) },
+                    onReGenerate = onReGenerate,
+                    onFork = onFork,
+                    onRewind = onRewind,
+                )
+            }
         }
 
         // ── 2. 助手生成流 ──
         if (turn.sections.isNotEmpty()) {
+            UserToAssistantSpacing()
             Column(
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -134,21 +147,24 @@ internal fun TurnItem(
                     enter = expandVertically() + fadeIn(),
                     exit = shrinkVertically() + fadeOut(),
                 ) {
-                    TurnActionRow(
-                        source = ActionSource.Agent,
-                        onCopy = {
-                            val allText = turn.sections
-                                .filterIsInstance<TurnSection.Text>()
-                                .joinToString("\n\n") { it.text }
-                            onCopyText(allText)
-                        },
-                        onReGenerate = onReGenerate,
-                        onFork = onFork,
-                        onRewind = onRewind,
-                        branchIndex = branchIndex,
-                        branchCount = branchCount,
-                        onSwitchBranch = onSwitchBranch,
-                    )
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        AssistantToActionSpacing()
+                        TurnActionRow(
+                            source = ActionSource.Agent,
+                            onCopy = {
+                                val allText = turn.sections
+                                    .filterIsInstance<TurnSection.Text>()
+                                    .joinToString("\n\n") { it.text }
+                                onCopyText(allText)
+                            },
+                            onReGenerate = onReGenerate,
+                            onFork = onFork,
+                            onRewind = onRewind,
+                            branchIndex = branchIndex,
+                            branchCount = branchCount,
+                            onSwitchBranch = onSwitchBranch,
+                        )
+                    }
                 }
             }
         }

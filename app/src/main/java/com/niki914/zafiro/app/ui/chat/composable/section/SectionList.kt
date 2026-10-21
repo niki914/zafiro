@@ -8,8 +8,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.niki914.zafiro.app.ui.chat.composable.action.StandaloneActionCard
-import com.niki914.zafiro.app.ui.chat.model.TurnSection
+import com.niki914.zafiro.app.ui.chat.composable.spacing.AssistantSectionSpacing
 import com.niki914.zafiro.app.ui.chat.composable.text.AssistantOutputText
+import com.niki914.zafiro.app.ui.chat.model.TurnSection
 
 /**
  * Level 2: 助手段落分流器。
@@ -29,7 +30,10 @@ internal fun SectionList(
     Column(
         modifier = modifier.fillMaxWidth(),
     ) {
-        sections.forEach { section ->
+        sections.forEachIndexed { index, section ->
+            if (index > 0) {
+                AssistantSectionSpacing()
+            }
             when (section) {
                 is TurnSection.Text -> {
                     AssistantOutputText(

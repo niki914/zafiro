@@ -2,12 +2,9 @@ package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.ui.unit.dp
 
-// ── 块 UI 密度参数表（折叠块 + 命令型工具正文 + turn 分隔共用）────────────────
-// 调视觉密度只改这一处；使用处按名引用或组合计算（如 TurnSeparator - BlockSpacing），
-// 不要散落魔法数字。
-internal val TurnSeparator = 42.dp    // turn 分隔总间距：UserMsg→agent 内容（补差 TurnSeparator - BlockSpacing）与 跨 turn（上一 turn 末尾→下一 UserMsg，LazyColumn item 顶距）共用
-internal val BlockSpacing = 12.dp      // 统一块间距：turn 内块间、头部↔展开内容、多工具链行间、命令↔输出缝隙
-internal val UserBubbleGap = 3.dp      // 连续 User 气泡组内间隙（纯 User turn 间 LazyColumn item 顶距）
+// ── 块 UI 密度参数表（折叠块 + 命令型工具正文共用）────────────────
+// 调视觉密度只改这一处；使用处按名引用或组合计算。不要散落魔法数字。
+internal val BlockSpacing = 12.dp      // 统一块间距：头部↔展开内容、多工具链行间、命令↔输出缝隙
 
 // ======
 internal val BlockHeaderInsetCollapsed = 16.dp // 呼吸：收起态 header 水平内收（收得深）
