@@ -33,10 +33,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kyant.backdrop.Backdrop
-import com.niki914.uikit.infra.ActionBarButton
-import com.niki914.uikit.infra.LiquidGlassPresets
-import com.niki914.uikit.infra.component.LiquidTextField
+import com.niki914.uikit.button.ZafiroActionButton
+import com.niki914.uikit.textfield.ZafiroTextField
+import com.niki914.uikit.textfield.ZafiroTextFieldStyle
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
@@ -58,7 +57,7 @@ private val ContextRingButtonDiameter = 48.sp
 
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-fun LiquidChatComposer(
+fun ZafiroChatComposer(
     value: String,
     onValueChange: (String) -> Unit,
     onSendClick: () -> Unit,
@@ -69,7 +68,6 @@ fun LiquidChatComposer(
     pendingImages: List<HomeChatImage> = emptyList(),
     pendingFiles: List<HomeChatFile> = emptyList(),
     onAttachImageClick: () -> Unit = {},
-    backdrop: Backdrop? = null,
 ) {
     // 发送按钮恒亮：无文本点击时触发 Toast 提示，能不能点不靠颜色表达。
     // contextProgress 为 null（无记账）时不画环。
@@ -96,7 +94,7 @@ fun LiquidChatComposer(
         CompositionLocalProvider(
             LocalContentColor provides MaterialTheme.colorScheme.primary,
         ) {
-            ActionBarButton(
+            ZafiroActionButton(
                 onClick = onAttachImageClick,
                 modifier = Modifier.offset(x = (-6).dp),
             ) {
@@ -120,13 +118,12 @@ fun LiquidChatComposer(
             Modifier.drawBehind { drawContextRing(progress, trackColor, progressColor) }
         }
         CompositionLocalProvider(LocalContentColor provides contentColor) {
-            ActionBarButton(
+            ZafiroActionButton(
                 onClick = if (isGenerating) onStopClick else onSendClick,
-                enabled = true,
-                // 环画在按钮自己的 modifier 上：与按钮同心，跟着 offset 一起走。
                 modifier = Modifier
                     .offset(x = 6.dp)
                     .then(ringModifier),
+                enabled = true,
             ) {
                 if (isGenerating) {
                     LoadingIndicator(
@@ -148,25 +145,24 @@ fun LiquidChatComposer(
     }
 
     // 唯一 BasicTextField 实例：expandedLayout 只切换容器内部布局，不重建字段
-    LiquidTextField(
+    ZafiroTextField(
         value = value,
         onValueChange = onValueChange,
+        modifier = modifier.fillMaxWidth(),
         placeholder = if (expanded) null else stringResource(R.string.ui_home_input_placeholder),
         enabled = true,
         singleLine = false,
         // 紧凑态恒单行；任何换行（wrap 或 \n）立即切展开态
         maxLines = if (expanded) EXPANDED_MAX_LINES else 1,
-        contentVerticalAlignment = if (expanded) Alignment.Top else Alignment.CenterVertically,
         minHeight = COMPACT_COMPOSER_MIN_HEIGHT,
+        contentVerticalAlignment = if (expanded) Alignment.Top else Alignment.CenterVertically,
         onTextLayout = onLayout,
         expandedLayout = expanded,
         expandedActionsRow = {
             attachButton()
             sendButton()
         },
-        backdrop = backdrop,
-        glassStyle = LiquidGlassPresets.ComposerBar,
-        modifier = modifier.fillMaxWidth(),
+        style = ZafiroTextFieldStyle.Composer,
         leadingContent = { attachButton() },
         trailingContent = { sendButton() },
     )

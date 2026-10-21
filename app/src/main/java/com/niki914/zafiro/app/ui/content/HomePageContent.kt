@@ -139,7 +139,7 @@ fun HomePageContent(
     // 额外空间全部由 composerBottomPadding 提供，箭头/消息的呼吸空间保持固定
     val composerGap = navigationBottom + 20.dp
     val composerBottomPadding = (effectiveImeBottom + 12.dp).coerceAtLeast(composerGap)
-    // composer 实测高度（默认 68dp = LiquidChatComposer 的 minHeight），首帧布局后回填
+    // composer 实测高度（默认 68dp = ZafiroChatComposer 的 minHeight），首帧布局后回填
     val composerHeight = remember { mutableStateOf(68.dp) }
     val bottomThresholdPx = with(density) { 24.dp.roundToPx() }
     val lastTurn = uiState.turns.lastOrNull()
