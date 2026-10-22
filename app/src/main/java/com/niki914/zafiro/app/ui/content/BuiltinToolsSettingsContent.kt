@@ -8,7 +8,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
 import com.niki914.uikit.infra.component.settings.SettingsRowSpec
@@ -16,6 +15,7 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.BuiltinToolGroupUiItem
 import com.niki914.zafiro.app.ui.model.BuiltinToolSettingsIntent
@@ -155,7 +155,7 @@ private fun builtinToolDescription(uiState: BuiltinToolSettingsUiState): String 
 @Composable
 private fun BuiltinToolsSettingsContentGroupedPreview() {
     MaterialTheme {
-        ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+        ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
             BuiltinToolsSettingsContentBody(
                 uiState = previewUiState(),
                 onItemEnabledChange = { _, _ -> },

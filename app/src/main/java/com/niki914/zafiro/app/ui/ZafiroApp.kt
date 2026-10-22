@@ -3,7 +3,6 @@ package com.niki914.zafiro.app.ui
 
 import android.app.Activity
 import android.os.SystemClock
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -44,23 +43,26 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.LiquidMenuItem
-import com.niki914.uikit.infra.LiquidPopover
-import com.niki914.uikit.infra.LiquidScreen
-import com.niki914.uikit.infra.LiquidScreenSwipeContent
-import com.niki914.uikit.infra.LiquidScreenTitle
-import com.niki914.uikit.infra.PopoverAlignment
+import com.niki914.uikit.menu.ZafiroDropdownMenu
+import com.niki914.uikit.menu.ZafiroMenuItem
+import com.niki914.uikit.menu.ZafiroMenuAlignment
+import com.niki914.uikit.screen.ZafiroScreen
+import com.niki914.uikit.screen.ZafiroScreenSwipeContent
+import com.niki914.uikit.screen.ZafiroScreenTitle
+import com.niki914.uikit.screen.ZafiroScreenTitleContent
+import com.niki914.uikit.screen.ZafiroScreenTitleText
+import com.niki914.uikit.screen.rememberZafiroScreenState
 import com.niki914.uikit.infra.TitleDirection
 import com.niki914.uikit.infra.nav.LocalNavigationController
 import com.niki914.uikit.infra.nav.LocalNavigationEntry
 import com.niki914.uikit.infra.nav.LocalPageTitle
 import com.niki914.uikit.infra.nav.rememberNavigationController
-import com.niki914.uikit.infra.rememberLiquidScreenState
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.crash.CrashReport
 import com.niki914.zafiro.app.crash.CrashReportDialog
 import com.niki914.zafiro.app.ui.chat.composable.text.LocalMarkdownScale
+import com.niki914.zafiro.app.ui.chat.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.model.ThemeController
@@ -93,7 +95,6 @@ fun ZafiroApp(
     val isDarkTheme = themePrefs.resolveDarkTheme(systemDarkTheme)
     val actionIconTint = if (isDarkTheme) Color.White else Color.Black
     val rootBackToHomeWindowMillis = 2_000L
-    val rootBackToHomeHint = stringResource(R.string.ui_root_back_to_home_hint)
     val pageChromeHost = rememberPageChromeHost()
     var chromeMenuExpanded by remember { mutableStateOf(false) }
     var rightButtonBounds by remember { mutableStateOf<Rect?>(null) }
@@ -156,7 +157,7 @@ fun ZafiroApp(
     val showRightButton = currentChrome.actionsVisible && currentRightAction != null
     val currentTitle = resolveScreenTitle(currentChrome, currentPage, currentEntry.id)
     val isTitleCollapsible = currentPage.titleMode == TitleBarMode.Collapsible
-    val screenState = rememberLiquidScreenState(
+    val screenState = rememberZafiroScreenState(
         title = currentTitle,
         isTitleCollapsible = isTitleCollapsible,
         showLeftButton = showLeftButton,
@@ -193,8 +194,7 @@ fun ZafiroApp(
             activity?.moveTaskToBack(true)
         } else {
             lastRootBackPressedAt = now
-            Toast.makeText(context.applicationContext, rootBackToHomeHint, Toast.LENGTH_SHORT)
-                .show()
+            ZafiroToast.show(R.string.ui_root_back_to_home_hint)
         }
     }
 
@@ -299,9 +299,9 @@ fun ZafiroApp(
             CompositionLocalProvider(
                 LocalMarkdownScale provides markdownScale,
             ) {
-                LiquidScreen(
+                ZafiroScreen(
                     state = screenState,
-                    // 折叠信号载体归属当前导航条目，由 LiquidScreen 经 nestedScroll 自动写入；
+                    // 折叠信号载体归属当前导航条目，由 ZafiroScreen 经 nestedScroll 自动写入；
                     // 条目存活期保留，导航切页同帧隔离，返回时首帧恢复离开前状态。
                     titleBarScroll = currentEntry.titleBarScroll,
                     actionsEnabled = !isPageTransitioning,
@@ -372,7 +372,7 @@ fun ZafiroApp(
                     },
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        LiquidScreenSwipeContent(
+                        ZafiroScreenSwipeContent(
                             targetState = currentEntry,
                             direction = controller.lastDirection,
                             modifier = Modifier.fillMaxSize(),
@@ -421,14 +421,14 @@ fun ZafiroApp(
                             }
                         }
 
-                        LiquidPopover(
+                        ZafiroDropdownMenu(
                             expanded = isChromeMenuOpen,
                             onDismissRequest = ::closeChromeMenu,
                             anchorBounds = rightButtonBounds,
-                            alignment = PopoverAlignment.BottomEnd,
+                            alignment = ZafiroMenuAlignment.BottomEnd,
                         ) {
                             currentChrome.menuItems.forEach { item ->
-                                LiquidMenuItem(
+                                ZafiroMenuItem(
                                     title = item.title,
                                     onClick = {
                                         closeChromeMenu()
@@ -457,10 +457,10 @@ private fun resolveScreenTitle(
     chrome: PageChromeContribution,
     page: ZafiroPage,
     entryId: String,
-): LiquidScreenTitle {
+): ZafiroScreenTitle {
     val key = chrome.titleKey ?: entryId
-    chrome.titleContent?.let { return LiquidScreenTitle.Content(content = it, key = key) }
-    return LiquidScreenTitle.Text(
+    chrome.titleContent?.let { return ZafiroScreenTitleContent(content = it, key = key) }
+    return ZafiroScreenTitleText(
         value = resolveTitle(chrome.titleSpec ?: page.titleSpec),
         key = key
     )

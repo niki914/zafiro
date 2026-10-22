@@ -14,7 +14,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
+import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.conversation.TurnBranchState
 import com.niki914.zafiro.app.ui.chat.composable.section.CompactedDividerItem
 import com.niki914.zafiro.app.ui.chat.composable.spacing.LocalChatSpacingDebug
@@ -40,7 +40,7 @@ import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 @Composable
 private fun ChatScreenProductionPreview() {
     BaseTheme {
-        ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+        ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
             HomePageContentBody(
                 actionsDisplay = MessageActionsDisplay.Always,
                 composerFocusRequester = remember { FocusRequester() },
@@ -132,7 +132,7 @@ private fun ChatScreenProductionPreview() {
 @Composable
 private fun ChatSpacingVisualizerPreview() {
     BaseTheme {
-        ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+        ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
             CompositionLocalProvider(LocalChatSpacingDebug provides true) {
                 HomePageContentBody(
                     actionsDisplay = MessageActionsDisplay.Always,

@@ -42,11 +42,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.logging.Logger
 import com.niki914.uikit.button.ZafiroScrollToBottomButton
-import com.niki914.uikit.infra.liquidScreenTopPadding
-import com.niki914.uikit.infra.scrollbar.LiquidOverscrollContainer
-import com.niki914.uikit.infra.scrollbar.LiquidOverscrollController
-import com.niki914.uikit.infra.scrollbar.rememberLiquidOverscrollController
 import com.niki914.uikit.screen.ZafiroLocalBackdropContainer
+import com.niki914.uikit.screen.zafiroScreenTopPadding
+import com.niki914.uikit.scroll.ZafiroOverscrollContainer
+import com.niki914.uikit.scroll.ZafiroOverscrollController
+import com.niki914.uikit.scroll.rememberZafiroOverscrollController
 import com.niki914.zafiro.api.util.tryIgnore
 import com.niki914.zafiro.app.conversation.TurnBranchState
 import com.niki914.zafiro.app.ui.chat.composable.attachment.HomeChatAttachmentRow
@@ -81,7 +81,7 @@ internal fun HomePageContentBody(
     uiState: HomeChatUiState,
     actionsDisplay: MessageActionsDisplay,
     listState: LazyListState,
-    overscrollController: LiquidOverscrollController = rememberLiquidOverscrollController(),
+    overscrollController: ZafiroOverscrollController = rememberZafiroOverscrollController(),
     composerBottomPadding: Dp,
     composerGap: Dp,
     composerHeight: MutableState<Dp>,
@@ -168,7 +168,7 @@ internal fun HomePageContentBody(
     ZafiroLocalBackdropContainer(
         modifier = Modifier.fillMaxSize(),
     ) { contentBackdropModifier ->
-        LiquidOverscrollContainer(
+        ZafiroOverscrollContainer(
             overscrollController = overscrollController,
             modifier = Modifier.fillMaxSize(),
         ) {
@@ -185,7 +185,7 @@ internal fun HomePageContentBody(
                     ),
                 contentPadding = PaddingValues(
                     start = 20.dp,
-                    top = liquidScreenTopPadding(24.dp),
+                    top = zafiroScreenTopPadding(24.dp),
                     end = 20.dp,
                     bottom = bottomClearance,
                 ),

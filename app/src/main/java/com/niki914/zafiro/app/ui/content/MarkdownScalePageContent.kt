@@ -30,13 +30,13 @@ import androidx.compose.ui.unit.sp
 import com.niki914.uikit.base.BaseTheme
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
-import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
-import com.niki914.uikit.infra.component.LiquidSlider
-import com.niki914.uikit.infra.liquidScreenActionButtonBottomPadding
-import com.niki914.uikit.infra.liquidScreenBottomPadding
-import com.niki914.uikit.infra.liquidScreenTopPadding
+import com.niki914.uikit.control.ZafiroSlider
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.uikit.infra.shape.G2CardShape
+import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
+import com.niki914.uikit.screen.zafiroActionButtonBottomPadding
+import com.niki914.uikit.screen.zafiroScreenBottomPadding
+import com.niki914.uikit.screen.zafiroScreenTopPadding
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.composable.text.AssistantMarkdownPreviewText
 import com.niki914.zafiro.app.ui.chat.composable.text.AssistantOutputText
@@ -65,8 +65,8 @@ fun MarkdownScalePageContent(
                 .fillMaxSize()
                 .verticalScroll(scrollState)
                 .padding(
-                    top = liquidScreenTopPadding(16.dp),
-                    bottom = liquidScreenBottomPadding(168.dp),
+                    top = zafiroScreenTopPadding(16.dp),
+                    bottom = zafiroScreenBottomPadding(168.dp),
                 )
                 .padding(horizontal = 16.dp),
         ) {
@@ -85,7 +85,7 @@ fun MarkdownScalePageContent(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = liquidScreenActionButtonBottomPadding(8.dp))
+                .padding(bottom = zafiroActionButtonBottomPadding(8.dp))
                 .clip(cardShape)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh, cardShape)
                 .pointerInput(Unit) { detectTapGestures { } }
@@ -114,7 +114,7 @@ fun MarkdownScalePageContent(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 滑块区域（左侧小 A，右侧大 A，中间 LiquidSlider）
+            // 滑块区域（左侧小 A，右侧大 A，中间 ZafiroSlider）
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -127,7 +127,7 @@ fun MarkdownScalePageContent(
                     modifier = Modifier.padding(end = 20.dp),
                 )
 
-                LiquidSlider(
+                ZafiroSlider(
                     value = { uiState.scale },
                     onValueChange = { newScale ->
                         viewModel.sendIntent(MarkdownScaleIntent.ChangeScale(newScale))
@@ -160,7 +160,7 @@ fun MarkdownScalePageContent(
 @Composable
 private fun MarkdownScalePagePreview() {
     BaseTheme {
-        ProvideLiquidScreenContentForPreview(
+        ProvideZafiroScreenContentForPreview(
             topPadding = 56.dp,
             bottomPadding = 32.dp,
             actionButtonBottomPadding = 24.dp,

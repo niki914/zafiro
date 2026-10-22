@@ -11,13 +11,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.infra.ConfirmationLiquidDialog
-import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
+import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsSegmentedSelector
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.TakeoverDeleteConfirmationState
 import com.niki914.zafiro.app.ui.model.TakeoverInlineError
@@ -260,7 +260,7 @@ private fun takeoverErrorText(
 @Composable
 private fun TakeoverRuleDetailContentPreview() {
     MaterialTheme {
-        ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+        ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
             TakeoverRuleDetailContentBody(
                 uiState = TakeoverSettingsUiState(
                     formState = TakeoverRuleFormState(
@@ -287,7 +287,7 @@ private fun TakeoverRuleDetailContentPreview() {
 @Composable
 private fun TakeoverRuleDetailRegexContentPreview() {
     MaterialTheme {
-        ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+        ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
             TakeoverRuleDetailContentBody(
                 uiState = TakeoverSettingsUiState(
                     formState = TakeoverRuleFormState(
@@ -316,7 +316,7 @@ private fun TakeoverDeleteConfirmationDialog(
     onDismissRequest: () -> Unit,
     onConfirmClick: () -> Unit,
 ) {
-    ConfirmationLiquidDialog(
+    ZafiroConfirmationDialog(
         visible = state != null,
         onDismissRequest = onDismissRequest,
         title = stringResource(R.string.takeover_delete_dialog_title),

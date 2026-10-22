@@ -1,7 +1,6 @@
 package com.niki914.zafiro.app.ui.content.mcp
 
 import android.content.ClipData
-import android.widget.Toast
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -19,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.infra.component.SettingToggleItem
@@ -30,6 +28,7 @@ import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.api.McpServiceStatus
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.chat.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 import com.niki914.zafiro.app.ui.settings.form.rememberEditableDetailFieldController
 import com.niki914.zafiro.app.ui.model.McpServiceSettingsIntent
@@ -57,7 +56,6 @@ fun McpServiceSettingsContent(
 
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.sendIntent(McpServiceSettingsIntent.Load)
@@ -140,7 +138,7 @@ fun McpServiceSettingsContent(
                         scope.launch {
                             clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
                         }
-                        Toast.makeText(context, R.string.ui_toast_copied, Toast.LENGTH_SHORT).show()
+                        ZafiroToast.show(R.string.ui_toast_copied)
                     }
                 },
             )

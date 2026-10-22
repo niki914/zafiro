@@ -10,7 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import com.niki914.uikit.infra.ConfirmationLiquidDialog
+import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.infra.component.SettingNavigationItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsListPageContent
@@ -86,7 +86,7 @@ fun ModelConfigSettingsContent(
         }
     }
 
-    ConfirmationLiquidDialog(
+    ZafiroConfirmationDialog(
         visible = pendingDeleteConfigId != null,
         onDismissRequest = { pendingDeleteConfigId = null },
         title = stringResource(R.string.ui_settings_saved_configuration_delete_title),

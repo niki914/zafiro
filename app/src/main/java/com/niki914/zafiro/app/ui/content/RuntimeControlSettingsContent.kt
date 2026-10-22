@@ -12,6 +12,7 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.uikit.dialog.ZafiroSingleChoiceDialog
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.RuntimeControlDialog
 import com.niki914.zafiro.app.ui.model.RuntimeControlIntent
@@ -168,7 +169,7 @@ fun RuntimeControlSettingsContent(
         },
     )
 
-    SingleChoiceLiquidDialog(
+    ZafiroSingleChoiceDialog(
         visible = uiState.activeDialog == RuntimeControlDialog.RepetitionSensitivity,
         onDismissRequest = { viewModel.sendIntent(RuntimeControlIntent.DismissDialog) },
         title = stringResource(R.string.ui_settings_runtime_repetition_detection),

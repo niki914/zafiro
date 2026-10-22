@@ -10,7 +10,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import com.niki914.uikit.infra.ConfirmationLiquidDialog
+import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageBackHandler
 import com.niki914.zafiro.app.ui.PageChromeContribution
@@ -103,7 +103,7 @@ fun EditableSettingsDetailChrome(
             stringResource(R.string.unsaved_changes_dialog_text)
         }
 
-        ConfirmationLiquidDialog(
+        ZafiroConfirmationDialog(
             visible = true,
             onDismissRequest = {
                 showUnsavedChangesDialog = false

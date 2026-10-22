@@ -12,12 +12,12 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.niki914.uikit.button.ZafiroTonalButton
 import com.niki914.uikit.infra.component.PageDescriptionText
 import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
-import com.niki914.uikit.infra.component.TintLiquidButton
-import com.niki914.uikit.infra.liquidScreenActionButtonBottomPadding
-import com.niki914.uikit.infra.liquidScreenBottomPadding
-import com.niki914.uikit.infra.liquidScreenTopPadding
+import com.niki914.uikit.screen.zafiroActionButtonBottomPadding
+import com.niki914.uikit.screen.zafiroScreenBottomPadding
+import com.niki914.uikit.screen.zafiroScreenTopPadding
 
 /**
  * 整页内容编辑器骨架（infra）：描述文案 + 全页 TextField + 底部保存按钮 + 内联错误。
@@ -42,9 +42,9 @@ internal fun FullScreenContentEditor(
                 .fillMaxSize()
                 .padding(horizontal = SettingsDetailPageDefaults.HorizontalPadding)
                 .padding(
-                    top = liquidScreenTopPadding(SettingsDetailPageDefaults.VerticalPadding),
+                    top = zafiroScreenTopPadding(SettingsDetailPageDefaults.VerticalPadding),
                     // 底部预留 = 底部安全距离 + 按钮位高，与吸底按钮的 bottom 同源，避免最后一行被遮挡
-                    bottom = liquidScreenBottomPadding() +
+                    bottom = zafiroScreenBottomPadding() +
                             SettingsDetailPageDefaults.RootVerticalSpacing +
                             SettingsDetailPageDefaults.ActionButtonReservedHeight,
                 ),
@@ -74,7 +74,7 @@ internal fun FullScreenContentEditor(
             }
         }
 
-        TintLiquidButton(
+        ZafiroTonalButton(
             text = actionText,
             enabled = enabled,
             isLoading = actionLoading,
@@ -84,7 +84,7 @@ internal fun FullScreenContentEditor(
                 .padding(
                     start = SettingsDetailPageDefaults.HorizontalPadding,
                     end = SettingsDetailPageDefaults.HorizontalPadding,
-                    bottom = liquidScreenActionButtonBottomPadding(),
+                    bottom = zafiroActionButtonBottomPadding(),
                 ),
         )
     }

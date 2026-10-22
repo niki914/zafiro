@@ -4,6 +4,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.component.TintLiquidButton
 
@@ -35,6 +37,8 @@ fun ZafiroTonalButton(
     lightContainerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     darkContainerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    buttonHeight: Dp = 56.dp,
+    isLoading: Boolean = false,
 ) {
     TintLiquidButton(
         text = text,
@@ -44,5 +48,7 @@ fun ZafiroTonalButton(
         lightContainerColor = lightContainerColor,
         darkContainerColor = darkContainerColor,
         contentColor = contentColor,
+        buttonHeight = buttonHeight,
+        isLoading = isLoading,
     )
 }

@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.core.os.LocaleListCompat
 import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.dialog.ZafiroSingleChoiceDialog
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
 import com.niki914.uikit.infra.component.settings.SettingsRowLeadingIcon
@@ -219,7 +220,7 @@ fun ThemeSettingsContent(
         },
     )
 
-    SingleChoiceLiquidDialog(
+    ZafiroSingleChoiceDialog(
         visible = uiState.languageDialogVisible,
         onDismissRequest = { viewModel.sendIntent(ThemeSettingsIntent.DismissLanguageDialog) },
         title = stringResource(R.string.ui_settings_general_language),

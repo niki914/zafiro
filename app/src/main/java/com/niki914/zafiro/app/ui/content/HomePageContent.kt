@@ -1,6 +1,5 @@
 package com.niki914.zafiro.app.ui.content
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
@@ -20,20 +19,20 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.infra.LocalHasActiveDialog
-import com.niki914.uikit.infra.ReportTitleBarCollapsed
+import com.niki914.uikit.dialog.LocalHasActiveDialog
+import com.niki914.uikit.screen.ReportTitleBarCollapsed
+import com.niki914.uikit.scroll.rememberZafiroOverscrollController
 import com.niki914.uikit.infra.nav.pageViewModel
-import com.niki914.uikit.infra.scrollbar.rememberLiquidOverscrollController
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.notification.TurnNotificationManager
+import com.niki914.zafiro.app.ui.chat.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.content.dialog.ScreenControlConsentDialog
 import com.niki914.zafiro.app.ui.content.dialog.ToolPermissionDialog
 import com.niki914.zafiro.app.ui.content.dialog.UpdateAvailableDialog
@@ -82,25 +81,18 @@ fun HomePageContent(
 
     // 附件失败提示：一次性 effect（不占状态）。
     // 三条文案按原因分（D22）：解析不出路径 / 没拿到全局文件访问权 / 读不到文件。
-    val attachToastContext = LocalContext.current
     LaunchedEffect(viewModel) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
-                is HomeChatEffect.FileAttachFailed -> Toast.makeText(
-                    attachToastContext,
+                is HomeChatEffect.FileAttachFailed -> ZafiroToast.show(
                     when (effect.reason) {
                         FileAttachReason.Unresolvable -> R.string.ui_home_attach_unresolvable
                         FileAttachReason.NoPermission -> R.string.ui_home_attach_no_permission
                         FileAttachReason.Unreadable -> R.string.ui_home_attach_unreadable
-                    },
-                    Toast.LENGTH_SHORT,
-                ).show()
+                    }
+                )
 
-                HomeChatEffect.EmptyInputAttempted -> Toast.makeText(
-                    attachToastContext,
-                    R.string.ui_toast_empty_input,
-                    Toast.LENGTH_SHORT,
-                ).show()
+                HomeChatEffect.EmptyInputAttempted -> ZafiroToast.show(R.string.ui_toast_empty_input)
             }
         }
     }
@@ -115,7 +107,7 @@ fun HomePageContent(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
-    val overscrollController = rememberLiquidOverscrollController()
+    val overscrollController = rememberZafiroOverscrollController()
 
     // Home 必须显式接管顶栏折叠信号：列表位置会由程序化驱动（自动贴底），且工具结果框
     // 自带滚动子树——两者都是壳层累积量看不见的位移；当向上超滚时，内容推入顶栏区，顶栏需变实体遮挡。

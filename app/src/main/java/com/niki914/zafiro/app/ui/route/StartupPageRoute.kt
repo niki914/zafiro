@@ -9,7 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
+import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.ui.content.StartupPageContent
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.nav.OnboardingThemePage
@@ -38,7 +38,7 @@ internal fun StartupPageRoute(
 private fun StartupPageRouteNormalPreview() {
     BaseTheme(darkTheme = false, dynamicColor = false) {
         Surface {
-            ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+            ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
                 StartupPageContent(
                     onDemoComplete = {},
                 )
