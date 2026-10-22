@@ -30,6 +30,7 @@ KNOWN_LOCALES = (
     "values-es",
     "values-ja",
     "values-ru",
+    "values-ar",
 )
 
 RE_ALLOWED_PARENS = re.compile(

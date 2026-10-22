@@ -21,10 +21,13 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import com.niki914.zafiro.app.ui.content.ResultScrollMaxHeight
 import com.niki914.zafiro.app.ui.content.rememberScrollFollowState
+import com.niki914.zafiro.app.ui.text.resolveContentTextAlign
+import com.niki914.zafiro.app.ui.text.resolveContentTextDirection
 
 // ── nested scroll: pass through user drag, block fling inertia ─────────────
 
@@ -51,7 +54,10 @@ internal fun ToolResultText(
     color: Color,
     /** active 思考块流式更新时自动滚到底跟随；用户手动拖动后暂停，滚回底部后恢复。 */
     autoScrollToEnd: Boolean = false,
+    textDirection: TextDirection? = null,
 ) {
+    val direction = textDirection ?: resolveContentTextDirection(text)
+    val textAlign = resolveContentTextAlign(direction)
     var overflow by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val shouldFollow by rememberScrollFollowState(
@@ -85,7 +91,10 @@ internal fun ToolResultText(
         SelectionContainer {
             Text(
                 text = text,
-                style = style,
+                style = style.copy(
+                    textDirection = direction,
+                    textAlign = textAlign,
+                ),
                 color = color,
                 maxLines = if (overflow) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,

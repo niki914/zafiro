@@ -52,6 +52,7 @@ private const val LANGUAGE_TAG_EN = "en"
 private const val LANGUAGE_TAG_ES = "es"
 private const val LANGUAGE_TAG_JA = "ja"
 private const val LANGUAGE_TAG_RU = "ru"
+private const val LANGUAGE_TAG_AR = "ar"
 
 /** 主题预设种子色（ARGB），顺序与 [ThemeColorLabelRes] 一一对应。 */
 internal val ThemeSeedColors: List<Int> = listOf(
@@ -95,6 +96,7 @@ private fun languageOptions(): List<LanguageOption> {
         LanguageOption(tag = LANGUAGE_TAG_ES, label = "Español"),
         LanguageOption(tag = LANGUAGE_TAG_JA, label = "日本語"),
         LanguageOption(tag = LANGUAGE_TAG_RU, label = "Русский"),
+        LanguageOption(tag = LANGUAGE_TAG_AR, label = "العربية"),
     )
 }
 

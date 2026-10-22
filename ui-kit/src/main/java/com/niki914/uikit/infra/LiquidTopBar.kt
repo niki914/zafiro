@@ -25,21 +25,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.Backdrop
@@ -185,7 +189,7 @@ fun LiquidTopBar(
             AnimatedVisibility(
                 visible = isLeftButtonVisible,
                 modifier = Modifier
-                    .align(Alignment.TopStart)
+                    .align(AbsoluteAlignment.TopLeft)
                     .padding(top = topInset),
                 enter = fadeIn(tween(buttonDuration, easing = LinearOutSlowInEasing)) +
                     scaleIn(
@@ -198,18 +202,20 @@ fun LiquidTopBar(
                         animationSpec = tween(buttonDuration, easing = LinearOutSlowInEasing),
                     ),
             ) {
-                Box(
-                    Modifier.graphicsLayer {
-                        alpha = leftButtonAlpha
-                    },
-                ) {
-                    ActionBarButton(
-                        onClick = { onLeftClick?.invoke() },
-                        enabled = actionsEnabled && isLeftButtonVisible,
-                        backdrop = backdrop,
-                        onButtonBoundsChanged = onLeftButtonBoundsChanged,
-                        content = buttonContent,
-                    )
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Box(
+                        Modifier.graphicsLayer {
+                            alpha = leftButtonAlpha
+                        },
+                    ) {
+                        ActionBarButton(
+                            onClick = { onLeftClick?.invoke() },
+                            enabled = actionsEnabled && isLeftButtonVisible,
+                            backdrop = backdrop,
+                            onButtonBoundsChanged = onLeftButtonBoundsChanged,
+                            content = buttonContent,
+                        )
+                    }
                 }
             }
         }
@@ -219,7 +225,7 @@ fun LiquidTopBar(
             AnimatedVisibility(
                 visible = isRightButtonVisible,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
+                    .align(AbsoluteAlignment.TopRight)
                     .padding(top = topInset),
                 enter = fadeIn(tween(buttonDuration, easing = LinearOutSlowInEasing)) +
                     scaleIn(
@@ -232,18 +238,20 @@ fun LiquidTopBar(
                         animationSpec = tween(buttonDuration, easing = LinearOutSlowInEasing),
                     ),
             ) {
-                Box(
-                    Modifier.graphicsLayer {
-                        alpha = rightButtonAlpha
-                    },
-                ) {
-                    ActionBarButton(
-                        onClick = { onRightClick?.invoke() },
-                        enabled = actionsEnabled && isRightButtonVisible,
-                        backdrop = backdrop,
-                        onButtonBoundsChanged = onRightButtonBoundsChanged,
-                        content = buttonContent,
-                    )
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Box(
+                        Modifier.graphicsLayer {
+                            alpha = rightButtonAlpha
+                        },
+                    ) {
+                        ActionBarButton(
+                            onClick = { onRightClick?.invoke() },
+                            enabled = actionsEnabled && isRightButtonVisible,
+                            backdrop = backdrop,
+                            onButtonBoundsChanged = onRightButtonBoundsChanged,
+                            content = buttonContent,
+                        )
+                    }
                 }
             }
         }

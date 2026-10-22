@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextDirection
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.chat.composable.text.ToolResultText
@@ -32,6 +33,7 @@ internal fun ErrorDetailBody(
                     MaterialTheme.typography.bodySmall
                 },
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
+                textDirection = if (ui.isMonospace) TextDirection.Ltr else null,
             )
         }
     }

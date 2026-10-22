@@ -5,13 +5,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.compose.components.MarkdownComponents
@@ -26,6 +31,8 @@ import com.mikepenz.markdown.model.rememberMarkdownState
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.zafiro.app.ui.chat.composable.body.custom.AssistantCodeBlock
 import com.niki914.zafiro.app.ui.content.AssistantMarkdownTable
+import com.niki914.zafiro.app.ui.text.resolveContentTextAlign
+import com.niki914.zafiro.app.ui.text.resolveContentTextDirection
 
 val LocalMarkdownScale = compositionLocalOf { 1.0f }
 
@@ -66,14 +73,23 @@ fun AssistantOutputText(
     modifier: Modifier = Modifier,
 ) {
     val markdownState = rememberMarkdownState(content = text, retainState = true)
+    val direction = remember(text) { resolveContentTextDirection(text, ignoreCode = true) }
+    val textAlign = resolveContentTextAlign(direction)
+    val layoutDirection = if (direction == TextDirection.Rtl) {
+        LayoutDirection.Rtl
+    } else {
+        LayoutDirection.Ltr
+    }
 
-    SelectionContainer(modifier = modifier.fillMaxWidth()) {
-        Markdown(
-            markdownState = markdownState,
-            modifier = Modifier.fillMaxWidth(),
-            typography = assistantMarkdownTypography(),
-            components = assistantMarkdownComponents(),
-        )
+    CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+        SelectionContainer(modifier = modifier.fillMaxWidth()) {
+            Markdown(
+                markdownState = markdownState,
+                modifier = Modifier.fillMaxWidth(),
+                typography = assistantMarkdownTypography(direction, textAlign),
+                components = assistantMarkdownComponents(),
+            )
+        }
     }
 }
 
@@ -103,16 +119,22 @@ private fun assistantMarkdownComponents(): MarkdownComponents = remember {
 
 @Composable
 private fun assistantMarkdownTypography(
+    direction: TextDirection,
+    textAlign: TextAlign,
     scale: Float = LocalMarkdownScale.current,
 ): MarkdownTypography {
     val bodyStyle = MaterialTheme.typography.bodyLarge.copy(
         fontSize = (17f * scale).sp,
         lineHeight = (26f * scale).sp,
+        textDirection = direction,
+        textAlign = textAlign,
     )
     val codeStyle = bodyStyle.copy(
         fontSize = (15f * scale).sp,
         lineHeight = (22f * scale).sp,
         fontFamily = FontFamily.Monospace,
+        textDirection = TextDirection.Ltr,
+        textAlign = TextAlign.Left,
     )
     val quoteStyle = bodyStyle.copy(
         fontSize = (16f * scale).sp,

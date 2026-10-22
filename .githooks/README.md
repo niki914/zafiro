@@ -88,7 +88,7 @@ synchronized(lock) { swap() } // githooks:ignore monitor-lock 需要与回调原
 
 ## 多语言对齐与 UI 文案检查 (check_strings.py)
 
-防止新增功能或文案时只写了基准语言（`values/strings.xml`）或英语，而遗漏了其它已支持语种（`values-ja`、`values-ru`、`values-es`、`values-b+zh+Hant` 等），并对中文文案进行话痨与冗余标点把控。
+防止新增功能或文案时只写了基准语言（`values/strings.xml`）或英语，而遗漏了其它已支持语种（`values-ja`、`values-ru`、`values-es`、`values-ar`、`values-b+zh+Hant` 等），并对中文文案进行话痨与冗余标点把控。
 
 - **增量联动**：当暂存区中有任意 `strings.xml` 变动时，自动定位对应模块（如 `app/src/main/res`），并对其下**所有语种版本**进行键集合（Key Set）全量对比。
 - **严格对齐**：以基准语言 `values/strings.xml` 为唯一锚点，缺失 Key 或多出未定义 Key 均会直接阻断提交，并打印出具体差异项。

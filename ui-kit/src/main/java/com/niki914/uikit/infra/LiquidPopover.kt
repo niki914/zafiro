@@ -364,11 +364,17 @@ internal fun LiquidPopoverSurface(
                 lerp(anchorHeightPx / 2f, with(density) { 20.dp.toPx() }, progress)
 
             // 绝对锚点贴齐：BottomEnd 严格锁定在 (anchor.right, anchor.top)，不加额外位移 margin
-            val currentLeft = when (alignment) {
+            val rawLeft = when (alignment) {
                 PopoverAlignment.BottomEnd -> anchor.right - currentWidthPx
                 PopoverAlignment.BottomCenter -> anchor.center.x - currentWidthPx / 2f
                 PopoverAlignment.BottomStart -> anchor.left
             }
+            val horizontalMarginPx = with(density) { 8.dp.toPx() }
+            val currentLeft = rawLeft.coerceIn(
+                horizontalMarginPx,
+                (constraints.maxWidth - currentWidthPx - horizontalMarginPx)
+                    .coerceAtLeast(horizontalMarginPx),
+            )
 
             val currentTop = anchor.top
 

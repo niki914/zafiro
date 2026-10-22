@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_permission_dialog_title">يطلب AI تنفيذ عملية</string>
+    <string name="tool_permission_request_intro">تريد أداة Zafiro \"%1$s\" تنفيذ الأمر التالي:</string>
+    <string name="tool_permission_matched_rule">القاعدة المطابقة \"%1$s\": %2$s</string>
+    <string name="tool_permission_allow">السماح مرة واحدة</string>
+    <string name="tool_permission_deny">رفض</string>
+    <string name="floating_ball_approval_pending">إجراء بانتظار الموافقة (%1$s)</string>
+    <string name="floating_ball_approval_reason_unknown">قيد الانتظار</string>
+    <string name="floating_ball_approval_view_details">اضغط لعرض التفاصيل</string>
+    <string name="floating_ball_tool_running">جارٍ تشغيل %1$s</string>
+    <string name="screen_control_consent_title">طلب إذن التحكم بالشاشة</string>
+    <string name="screen_control_consent_body">يحتاج Zafiro إلى أذونات إمكانية الوصول والعرض فوق التطبيقات للتحكم بالشاشة.</string>
+    <string name="screen_control_consent_agree">موافق</string>
+</resources>
