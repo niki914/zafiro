@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.repo
 
 import android.content.Context
@@ -531,6 +532,10 @@ object XRepo {
         select = { themeSeedColor },
         update = { copy(themeSeedColor = it) },
     )
+    private val themeStyleField = PlainAppStateField(
+        select = { themeStyle },
+        update = { copy(themeStyle = it) },
+    )
 
     suspend fun themeMode(): String = themeModeField.get()
 
@@ -539,6 +544,10 @@ object XRepo {
     suspend fun themeSeedColor(): String = themeSeedColorField.get()
 
     suspend fun setThemeSeedColor(hex: String) = themeSeedColorField.set(hex)
+
+    suspend fun themeStyle(): String = themeStyleField.get()
+
+    suspend fun setThemeStyle(style: String) = themeStyleField.set(style)
 
     private val pinnedConversationsField = PlainAppStateField(
         select = { pinnedConversations },

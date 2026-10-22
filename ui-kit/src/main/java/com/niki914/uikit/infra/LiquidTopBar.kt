@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.button.ZafiroActionButton
 
 /**
  * 顶栏前景组件：基于插槽解耦与三大正交因子（滚动、遮挡、覆盖）驱动。
@@ -203,7 +204,7 @@ fun LiquidTopBar(
                         alpha = leftButtonAlpha
                     },
                 ) {
-                    ActionBarButton(
+                    ZafiroActionButton(
                         onClick = { onLeftClick?.invoke() },
                         enabled = actionsEnabled && isLeftButtonVisible,
                         backdrop = backdrop,
@@ -237,7 +238,7 @@ fun LiquidTopBar(
                         alpha = rightButtonAlpha
                     },
                 ) {
-                    ActionBarButton(
+                    ZafiroActionButton(
                         onClick = { onRightClick?.invoke() },
                         enabled = actionsEnabled && isRightButtonVisible,
                         backdrop = backdrop,

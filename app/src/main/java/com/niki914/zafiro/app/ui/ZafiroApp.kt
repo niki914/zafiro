@@ -295,6 +295,7 @@ fun ZafiroApp(
             darkTheme = isDarkTheme,
             dynamicColor = themePrefs.seedColor == null,
             seedColor = seedColor,
+            themeStyle = themePrefs.themeStyle,
         ) {
             CompositionLocalProvider(
                 LocalMarkdownScale provides markdownScale,

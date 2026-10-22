@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.core.os.LocaleListCompat
 import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.dialog.ZafiroSingleChoiceDialog
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
@@ -46,6 +47,7 @@ import kotlin.math.roundToInt
  */
 private const val LANGUAGE_ROW_ID = "theme.language"
 private const val MARKDOWN_SCALE_ROW_ID = "theme.markdown_scale"
+private const val THEME_STYLE_ROW_ID = "theme.style"
 
 private const val LANGUAGE_TAG_ZH_CN = "zh-CN"
 private const val LANGUAGE_TAG_ZH_TW = "zh-TW"
@@ -139,6 +141,12 @@ fun ThemeSettingsContent(
     )
     val languageOptionList = languageOptions()
 
+    val themeStyleValue = when (prefs.themeStyle) {
+        ThemeStyle.LiquidGlass -> 0f
+        ThemeStyle.Material3 -> 1f
+        ThemeStyle.Material3Expressive -> 2f
+    }
+
     val spec = SettingsPageSpec(
         sections = listOf(
             SettingsSectionSpec(
@@ -161,6 +169,26 @@ fun ThemeSettingsContent(
                             "$currentScalePercent%"
                         },
                         leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Rounded.FormatSize),
+                    ),
+                ),
+            ),
+            SettingsSectionSpec(
+                layout = SettingsSectionLayout.GroupedCard,
+                rows = listOf(
+                    SettingsRowSpec.Slider(
+                        id = THEME_STYLE_ROW_ID,
+                        title = stringResource(R.string.ui_settings_theme_style_title),
+                        value = themeStyleValue,
+                        valueRange = 0f..2f,
+                        steps = 2,
+                        valueLabel = when (prefs.themeStyle) {
+                            ThemeStyle.LiquidGlass -> stringResource(R.string.ui_theme_style_liquid)
+                            ThemeStyle.Material3 -> stringResource(R.string.ui_theme_style_md3)
+                            ThemeStyle.Material3Expressive -> stringResource(R.string.ui_theme_style_md3e)
+                        },
+                        startLabel = stringResource(R.string.ui_theme_style_liquid),
+                        endLabel = stringResource(R.string.ui_theme_style_md3e),
+                        initiallyExpanded = true,
                     ),
                 ),
             ),
@@ -211,11 +239,38 @@ fun ThemeSettingsContent(
             )
         },
         onAction = { action ->
-            if (action is SettingsRowAction.Navigate) {
-                when (action.id) {
-                    LANGUAGE_ROW_ID -> viewModel.sendIntent(ThemeSettingsIntent.OpenLanguageDialog)
-                    MARKDOWN_SCALE_ROW_ID -> onPush(MarkdownScalePage)
+            when (action) {
+                is SettingsRowAction.Navigate -> {
+                    when (action.id) {
+                        LANGUAGE_ROW_ID -> viewModel.sendIntent(ThemeSettingsIntent.OpenLanguageDialog)
+                        MARKDOWN_SCALE_ROW_ID -> onPush(MarkdownScalePage)
+                    }
                 }
+                is SettingsRowAction.SliderChanged -> {
+                    if (action.id == THEME_STYLE_ROW_ID) {
+                        val style = when (action.value.roundToInt()) {
+                            0 -> ThemeStyle.LiquidGlass
+                            1 -> ThemeStyle.Material3
+                            else -> ThemeStyle.Material3Expressive
+                        }
+                        if (style != prefs.themeStyle) {
+                            scope.launch { ThemeController.setThemeStyle(style) }
+                        }
+                    }
+                }
+                is SettingsRowAction.SliderCommit -> {
+                    if (action.id == THEME_STYLE_ROW_ID) {
+                        val style = when (action.value.roundToInt()) {
+                            0 -> ThemeStyle.LiquidGlass
+                            1 -> ThemeStyle.Material3
+                            else -> ThemeStyle.Material3Expressive
+                        }
+                        if (style != prefs.themeStyle) {
+                            scope.launch { ThemeController.setThemeStyle(style) }
+                        }
+                    }
+                }
+                else -> Unit
             }
         },
     )

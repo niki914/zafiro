@@ -8,8 +8,9 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
+import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.LiquidGlassPresets
-import com.niki914.uikit.infra.LiquidGlassStyle
 import com.niki914.uikit.infra.LocalScreenBackdrop
 import com.niki914.uikit.infra.component.LiquidTextField
 
@@ -39,28 +40,54 @@ fun ZafiroTextField(
     leadingContent: (@Composable RowScope.() -> Unit)? = null,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
-    val glassStyle = when (style) {
-        ZafiroTextFieldStyle.Default -> LiquidGlassPresets.TextField
-        ZafiroTextFieldStyle.Composer -> LiquidGlassPresets.ComposerBar
+    when (LocalThemeStyle.current) {
+        ThemeStyle.LiquidGlass -> {
+            val glassStyle = when (style) {
+                ZafiroTextFieldStyle.Default -> LiquidGlassPresets.TextField
+                ZafiroTextFieldStyle.Composer -> LiquidGlassPresets.ComposerBar
+            }
+            LiquidTextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholder = placeholder,
+                modifier = modifier,
+                enabled = enabled,
+                singleLine = singleLine,
+                minLines = minLines,
+                maxLines = maxLines,
+                moveCursorToEndOnFocus = moveCursorToEndOnFocus,
+                minHeight = minHeight,
+                contentVerticalAlignment = contentVerticalAlignment,
+                onTextLayout = onTextLayout,
+                expandedLayout = expandedLayout,
+                expandedActionsRow = expandedActionsRow,
+                backdrop = backdrop,
+                glassStyle = glassStyle,
+                leadingContent = leadingContent,
+                trailingContent = trailingContent,
+            )
+        }
+        ThemeStyle.Material3,
+        ThemeStyle.Material3Expressive -> {
+            SolidTextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholder = placeholder,
+                modifier = modifier,
+                enabled = enabled,
+                singleLine = singleLine,
+                minLines = minLines,
+                maxLines = maxLines,
+                moveCursorToEndOnFocus = moveCursorToEndOnFocus,
+                minHeight = minHeight,
+                contentVerticalAlignment = contentVerticalAlignment,
+                onTextLayout = onTextLayout,
+                expandedLayout = expandedLayout,
+                expandedActionsRow = expandedActionsRow,
+                style = style,
+                leadingContent = leadingContent,
+                trailingContent = trailingContent,
+            )
+        }
     }
-    LiquidTextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = placeholder,
-        modifier = modifier,
-        enabled = enabled,
-        singleLine = singleLine,
-        minLines = minLines,
-        maxLines = maxLines,
-        moveCursorToEndOnFocus = moveCursorToEndOnFocus,
-        minHeight = minHeight,
-        contentVerticalAlignment = contentVerticalAlignment,
-        onTextLayout = onTextLayout,
-        expandedLayout = expandedLayout,
-        expandedActionsRow = expandedActionsRow,
-        backdrop = backdrop,
-        glassStyle = glassStyle,
-        leadingContent = leadingContent,
-        trailingContent = trailingContent,
-    )
 }

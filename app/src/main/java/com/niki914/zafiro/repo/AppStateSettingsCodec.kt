@@ -32,6 +32,9 @@ internal data class AppStateSettings(
     /** 主题种子色 ARGB hex；空串 = 跟随壁纸动态色。 */
     @SerialName("theme_seed_color")
     val themeSeedColor: String = "FFFABD00",
+    /** 主题设计语言风格；liquid/md3/md3e。 */
+    @SerialName("theme_style")
+    val themeStyle: String = "liquid",
     /** Markdown 字体排版缩放比例；基准为 1.0f (100%)。 */
     @SerialName("markdown_scale")
     val markdownScale: Float = 1.0f,
@@ -108,7 +111,12 @@ internal object AppStateSettingsCodec {
                     fixed.contextCompactionThresholdPercent == 0 -> 0
                     else -> fixed.contextCompactionThresholdPercent.coerceIn(30, 95)
                 }
+                val sanitizedThemeStyle = when (fixed.themeStyle) {
+                    "liquid", "md3", "md3e" -> fixed.themeStyle
+                    else -> "liquid"
+                }
                 fixed.copy(
+                    themeStyle = sanitizedThemeStyle,
                     markdownScale = fixed.markdownScale.coerceIn(0.6f, 1.4f),
                     repetitionSensitivity = RepetitionSensitivity.fromWire(
                         fixed.repetitionSensitivity
