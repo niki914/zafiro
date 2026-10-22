@@ -28,7 +28,7 @@ import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.api.McpServiceStatus
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.chat.helper.ZafiroToast
+import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 import com.niki914.zafiro.app.ui.settings.form.rememberEditableDetailFieldController
 import com.niki914.zafiro.app.ui.model.McpServiceSettingsIntent

@@ -5,7 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.niki914.uikit.infra.nav.pageViewModel
-import com.niki914.zafiro.app.ui.chat.helper.ZafiroToast
+import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.content.OnboardingPreferencesContent
 import com.niki914.zafiro.app.ui.model.OnboardingPreferencesEffect
 import com.niki914.zafiro.app.ui.model.OnboardingPreferencesIntent

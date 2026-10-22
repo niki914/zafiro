@@ -10,7 +10,7 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.composable.TurnItem
 import com.niki914.zafiro.app.ui.chat.composable.bubble.UserBubblePosition
 import com.niki914.zafiro.app.ui.chat.composable.section.CompactedDividerItem
-import com.niki914.zafiro.app.ui.chat.helper.ZafiroToast
+import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.chat.helper.honestCopyToClipboard
 import com.niki914.zafiro.app.ui.chat.mapper.toTurnUiModel
 import com.niki914.zafiro.app.ui.model.home.ActionSource

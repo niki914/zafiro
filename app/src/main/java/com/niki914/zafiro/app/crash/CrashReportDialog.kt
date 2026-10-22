@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.dialog.ZafiroDialog
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.chat.helper.ZafiroToast
+import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import kotlinx.coroutines.launch
 
 @Composable

@@ -62,7 +62,7 @@ import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.crash.CrashReport
 import com.niki914.zafiro.app.crash.CrashReportDialog
 import com.niki914.zafiro.app.ui.chat.composable.text.LocalMarkdownScale
-import com.niki914.zafiro.app.ui.chat.helper.ZafiroToast
+import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.model.ThemeController

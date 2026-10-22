@@ -30,7 +30,7 @@ import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.RegisterPageChrome
-import com.niki914.zafiro.app.ui.chat.helper.ZafiroToast
+import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.model.SkillInlineError
 import com.niki914.zafiro.app.ui.model.SkillListItem
 import com.niki914.zafiro.app.ui.model.SkillSettingsEffect
