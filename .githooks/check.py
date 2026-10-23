@@ -29,6 +29,7 @@ SEVERITY = {
     "log-tag": "warn",
     "uncancellable-run-catching": "block",
     "bare-catch": "warn",
+    "rounded-corner-shape": "block",
 }
 
 # 不做检查的路径前缀（增量与全量共用）。
@@ -76,6 +77,9 @@ UNCANCELLABLE_RUN_CATCHING = re.compile(
 )
 BARE_CATCH = re.compile(
     r"\bcatch\s*\(\s*(?:\w+|_)\s*:\s*(?:[\w.]+\.)?(?:Throwable|Exception)\s*\)"
+)
+ROUNDED_CORNER_SHAPE = re.compile(
+    r"\bRoundedCornerShape\s*\(|^\s*import\s+[\w.]*\bRoundedCornerShape\b"
 )
 
 
@@ -155,6 +159,12 @@ def hit_bare_catch(line: str, ctx: LineContext) -> bool:
     return BARE_CATCH.search(strip_strings(line)) is not None
 
 
+def hit_rounded_corner_shape(line: str, ctx: LineContext) -> bool:
+    if is_comment(line):
+        return False
+    return ROUNDED_CORNER_SHAPE.search(strip_strings(line)) is not None
+
+
 RULES = (
     (
         "monitor-lock",
@@ -197,6 +207,12 @@ RULES = (
         hit_bare_catch,
         "捕获了泛化异常 (Throwable/Exception)",
         "建议改用 runCatchingCancellable / tryOrNull，或捕获具体异常类型；确实需要时加 // githooks:ignore bare-catch",
+    ),
+    (
+        "rounded-corner-shape",
+        hit_rounded_corner_shape,
+        "使用了 RoundedCornerShape，项目要求统一使用 G2 连续圆角",
+        "改用 G2FieldShape / G2CardShape / G2BubbleShape；确实需要普通圆角时加 // githooks:ignore rounded-corner-shape",
     ),
 )
 

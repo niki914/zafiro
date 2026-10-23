@@ -3,11 +3,11 @@ package com.niki914.uikit.infra
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
@@ -195,18 +196,22 @@ private fun LiquidDialogSurface(
         onDismissRequest()
     }
 
+    val scaleAnimationSpec = if (effectiveVisible) {
+        tween<Float>(durationMillis = 240, easing = FastOutSlowInEasing)
+    } else {
+        tween<Float>(durationMillis = 180, easing = FastOutSlowInEasing)
+    }
+    val targetScale = if (effectiveVisible) 1f else 1.04f
+    val panelScale by animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = scaleAnimationSpec,
+        label = "liquidDialogPanelScale",
+    )
+
     AnimatedVisibility(
         visible = effectiveVisible,
-        enter = fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
-                scaleIn(
-                    initialScale = 1.04f,
-                    animationSpec = tween(240, easing = FastOutSlowInEasing),
-                ),
-        exit = fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
-                scaleOut(
-                    targetScale = 1.02f,
-                    animationSpec = tween(180, easing = FastOutSlowInEasing),
-                ),
+        enter = fadeIn(animationSpec = tween(120, easing = LinearEasing)),
+        exit = fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)),
     ) {
         BoxWithConstraints(
             modifier = modifier
@@ -245,6 +250,10 @@ private fun LiquidDialogSurface(
 
             Column(
                 modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = panelScale
+                        scaleY = panelScale
+                    }
                     .padding(horizontal = horizontalMargin, vertical = verticalMargin)
                     .widthIn(min = minPanelWidth, max = maxPanelWidth)
                     .heightIn(max = maxPanelHeight)

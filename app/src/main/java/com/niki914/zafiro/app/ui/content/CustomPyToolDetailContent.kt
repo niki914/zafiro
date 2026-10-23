@@ -23,9 +23,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.dialog.ZafiroDialog
+import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
@@ -384,20 +384,10 @@ private fun CustomPyToolSaveProgressDialog(
             }
         },
         actions = {
-            ZafiroButton(
+            ZafiroDialogButton(
                 text = spec.action,
                 onClick = onAction,
-                modifier = Modifier.weight(1f),
-                containerColor = if (spec.actionPrimary) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHighest
-                },
-                contentColor = if (spec.actionPrimary) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+                isPrimary = spec.actionPrimary,
             )
         },
     )

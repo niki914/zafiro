@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.infra.component.SettingsItemSurface
 import com.niki914.uikit.infra.shape.G2FieldShape
 
@@ -104,12 +103,10 @@ fun <T> ZafiroSingleChoiceDialog(
             }
         },
         actions = {
-            ZafiroButton(
+            ZafiroDialogButton(
                 text = cancelButtonText,
                 onClick = onDismissRequest,
-                modifier = Modifier.fillMaxWidth(),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                isPrimary = false,
             )
         },
     )

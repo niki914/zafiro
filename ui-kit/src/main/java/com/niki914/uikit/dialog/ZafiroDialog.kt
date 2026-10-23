@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.LiquidDialog
 
 @Composable
@@ -17,14 +19,31 @@ fun ZafiroDialog(
     actions: (@Composable RowScope.() -> Unit)? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    LiquidDialog(
-        visible = visible,
-        onDismissRequest = onDismissRequest,
-        modifier = modifier,
-        dismissOnBackgroundTap = dismissOnBackgroundTap,
-        title = title,
-        text = text,
-        actions = actions,
-        content = content,
-    )
+    when (LocalThemeStyle.current) {
+        ThemeStyle.LiquidGlass -> {
+            LiquidDialog(
+                visible = visible,
+                onDismissRequest = onDismissRequest,
+                modifier = modifier,
+                dismissOnBackgroundTap = dismissOnBackgroundTap,
+                title = title,
+                text = text,
+                actions = actions,
+                content = content,
+            )
+        }
+        ThemeStyle.Material3,
+        ThemeStyle.Material3Expressive -> {
+            MaterialDialog(
+                visible = visible,
+                onDismissRequest = onDismissRequest,
+                modifier = modifier,
+                dismissOnBackgroundTap = dismissOnBackgroundTap,
+                title = title,
+                text = text,
+                actions = actions,
+                content = content,
+            )
+        }
+    }
 }

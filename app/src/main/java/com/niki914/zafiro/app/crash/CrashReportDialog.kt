@@ -23,8 +23,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.dialog.ZafiroDialog
+import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import kotlinx.coroutines.launch
@@ -109,7 +109,12 @@ fun CrashReportDialog(
             }
         },
         actions = {
-            ZafiroButton(
+            ZafiroDialogButton(
+                text = stringResource(R.string.crash_dialog_close),
+                onClick = onDismiss,
+                isPrimary = false,
+            )
+            ZafiroDialogButton(
                 text = stringResource(R.string.crash_dialog_copy),
                 onClick = {
                     scope.launch {
@@ -124,16 +129,7 @@ fun CrashReportDialog(
                     }
                     ZafiroToast.show(R.string.crash_copied_toast)
                 },
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            )
-            ZafiroButton(
-                text = stringResource(R.string.crash_dialog_close),
-                onClick = onDismiss,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                isPrimary = true,
             )
         },
     )

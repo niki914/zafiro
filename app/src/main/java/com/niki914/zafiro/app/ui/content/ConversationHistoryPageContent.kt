@@ -59,9 +59,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.dialog.ZafiroDialog
+import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.uikit.infra.component.OptionRow
 import com.niki914.uikit.infra.component.OptionSheet
 import com.niki914.uikit.infra.component.SettingsGroupCard
@@ -892,28 +892,25 @@ private fun ConversationRenameDialog(
                 placeholder = stringResource(R.string.ui_conversation_rename_dialog_hint),
                 singleLine = true,
                 maxLines = 1,
+                backdrop = null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
             )
         },
         actions = {
-            ZafiroButton(
+            ZafiroDialogButton(
                 text = stringResource(R.string.ui_conversation_rename_dialog_cancel),
                 onClick = onDismissRequest,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                isPrimary = false,
             )
-            ZafiroButton(
+            ZafiroDialogButton(
                 text = stringResource(R.string.ui_conversation_rename_dialog_confirm),
                 enabled = titleInput.isNotBlank(),
                 onClick = {
                     activeConversation?.let { onConfirmClick(it, titleInput.trim()) }
                 },
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+                isPrimary = true,
             )
         },
     )

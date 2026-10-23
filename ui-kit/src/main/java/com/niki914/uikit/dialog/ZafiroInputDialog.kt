@@ -16,8 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.textfield.ZafiroTextField
 import kotlinx.coroutines.delay
 
@@ -62,19 +62,24 @@ fun ZafiroInputDialog(
         title = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                horizontalAlignment = Alignment.Start,
             ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 if (hint != null) {
                     Text(
                         text = hint,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp),
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
                     )
                 }
             }
@@ -89,6 +94,7 @@ fun ZafiroInputDialog(
                 minLines = minLines,
                 maxLines = maxLines,
                 moveCursorToEndOnFocus = true,
+                backdrop = null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
@@ -96,20 +102,16 @@ fun ZafiroInputDialog(
             )
         },
         actions = {
-            ZafiroButton(
+            ZafiroDialogButton(
                 text = negativeButtonText,
                 onClick = onNegativeClick,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
+                isPrimary = false,
             )
-            ZafiroButton(
+            ZafiroDialogButton(
                 text = positiveButtonText,
                 onClick = onPositiveClick,
                 enabled = positiveEnabled,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.weight(1f),
+                isPrimary = true,
             )
         },
     )

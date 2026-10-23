@@ -12,8 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.dialog.ZafiroDialog
+import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.composable.text.AssistantOutputText
 import com.niki914.zafiro.repo.UpdateCheckResult
@@ -66,23 +66,19 @@ internal fun UpdateAvailableDialog(
             }
         },
         actions = {
-            ZafiroButton(
+            ZafiroDialogButton(
+                text = stringResource(R.string.update_dialog_cancel),
+                onClick = onDismiss,
+                isPrimary = false,
+            )
+            ZafiroDialogButton(
                 text = stringResource(R.string.update_dialog_confirm),
                 onClick = {
                     update?.releaseUrl?.takeIf { it.isNotBlank() }
                         ?.let(uriHandler::openUri)
                     onDismiss()
                 },
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            )
-            ZafiroButton(
-                text = stringResource(R.string.update_dialog_cancel),
-                onClick = onDismiss,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                isPrimary = true,
             )
         },
     )

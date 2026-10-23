@@ -27,13 +27,14 @@ git config core.hooksPath .githooks
 
 合并提交不跑这个钩子；`git commit --no-verify` 也能绕过——它是纪律工具，不是安全边界。
 
-## 七条规则
+## 八条规则
 
 | 规则 | 级别 | 要求 |
 | --- | --- | --- |
 | `monitor-lock` | **阻断** | 不用 `synchronized(...)` / `@Synchronized`，改用 `Mutex` / 协程 |
 | `log-api` | **阻断** | 不用 `android.util.Log`、`println` / `print` / `System.out`，一律走 `com.niki914.logging.Logger` |
 | `uncancellable-run-catching` | **阻断** | 不用标准库 `runCatching` / `mapCatching`（会生吞协程取消与中断），改用 `runCatchingCancellable` |
+| `rounded-corner-shape` | **阻断** | 不用 `RoundedCornerShape`，统一使用 G2 连续圆角（`G2FieldShape` / `G2CardShape` / `G2BubbleShape`） |
 | `bare-catch` | 警告 | 不写裸 `catch (e: Throwable)` / `catch (e: Exception)`，改用 `runCatchingCancellable` / `tryOrNull` 或捕获具体异常类型 |
 | `legacy-comment` | 警告 | 注释只描述代码**现在**是什么样，不描述“曾经/不再”是什么样 |
 | `inline-fqn` | 警告 | 代码里用到的类要 `import`，不内联写全限定名 |
