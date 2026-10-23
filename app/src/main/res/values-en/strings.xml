@@ -501,9 +501,9 @@
     <string name="ui_settings_configure_error_context_window_invalid">Enter a valid number of at least 1000, supporting k/m/b</string>
 
     <string name="ui_settings_theme_style_title">Style</string>
-    <string name="ui_theme_style_liquid">Liquid Glass</string>
-    <string name="ui_theme_style_md3">Material 3</string>
-    <string name="ui_theme_style_md3e">Material 3 Expressive</string>
+    <string name="ui_theme_style_liquid">Glass</string>
+    <string name="ui_theme_style_md3">MD3</string>
+    <string name="ui_theme_style_md3e">MD3E</string>
 
     <string name="ui_theme_mode_system">Follow system</string>
     <string name="ui_theme_mode_light">Light</string>

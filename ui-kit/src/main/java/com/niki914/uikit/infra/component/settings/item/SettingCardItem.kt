@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.uikit.infra.component.settings.item
 
 import androidx.compose.animation.AnimatedVisibility
@@ -56,7 +57,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.component.LiquidSlider
-import com.niki914.uikit.infra.component.LiquidToggle
+import com.niki914.uikit.control.ZafiroSwitch
 import com.niki914.uikit.infra.component.SettingsItemSurface
 import com.niki914.uikit.infra.shape.G2CardShape
 import kotlin.math.abs
@@ -619,7 +620,7 @@ private fun SettingTrailingActionContent(
         }
 
         is SettingTrailingSlot.Toggle -> {
-            LiquidToggle(
+            ZafiroSwitch(
                 checked = trailingSlot.checked,
                 enabled = enabled && trailingSlot.enabled,
                 onCheckedChange = trailingSlot.onCheckedChange ?: { onCardClick?.invoke(); Unit },
