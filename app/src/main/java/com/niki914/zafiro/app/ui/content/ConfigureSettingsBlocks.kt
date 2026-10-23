@@ -268,7 +268,7 @@ internal fun ConfigureProtocolSettingsBlock(
                 onThinkingLevelSelected(thinkingOptions[idx].wire)
             },
             valueRange = 0f..thinkingOptions.lastIndex.toFloat(),
-            steps = thinkingOptions.size - 1,
+            steps = (thinkingOptions.size - 2).coerceAtLeast(0),
             valueLabel = thinkingOptions[currentLevelIndex].label,
             startLabel = stringResource(R.string.ui_settings_configure_thinking_start_label),
             endLabel = stringResource(R.string.ui_settings_configure_thinking_end_label),

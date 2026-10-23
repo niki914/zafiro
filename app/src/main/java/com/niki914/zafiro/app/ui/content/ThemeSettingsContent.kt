@@ -2,6 +2,7 @@ package com.niki914.zafiro.app.ui.content
 
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.FormatSize
@@ -12,7 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -78,6 +82,11 @@ internal val ThemeColorLabelRes: List<Int> = listOf(
     R.string.ui_theme_color_sunset,
 )
 
+data class ThemeStyleOption(
+    val style: ThemeStyle,
+    val label: String,
+)
+
 data class LanguageOption(
     /** BCP-47 tag；空串 = 跟随系统。 */
     val tag: String,
@@ -141,11 +150,12 @@ fun ThemeSettingsContent(
     )
     val languageOptionList = languageOptions()
 
-    val themeStyleValue = when (prefs.themeStyle) {
-        ThemeStyle.LiquidGlass -> 0f
-        ThemeStyle.Material3 -> 1f
-        ThemeStyle.Material3Expressive -> 2f
-    }
+    var themeStyleDialogVisible by rememberSaveable { mutableStateOf(false) }
+    val themeStyleOptions = listOf(
+        ThemeStyleOption(ThemeStyle.LiquidGlass, stringResource(R.string.ui_theme_style_liquid)),
+        ThemeStyleOption(ThemeStyle.Material3, stringResource(R.string.ui_theme_style_md3)),
+        ThemeStyleOption(ThemeStyle.Material3Expressive, stringResource(R.string.ui_theme_style_md3e)),
+    )
 
     val spec = SettingsPageSpec(
         sections = listOf(
@@ -175,20 +185,15 @@ fun ThemeSettingsContent(
             SettingsSectionSpec(
                 layout = SettingsSectionLayout.GroupedCard,
                 rows = listOf(
-                    SettingsRowSpec.Slider(
+                    SettingsRowSpec.Navigation(
                         id = THEME_STYLE_ROW_ID,
                         title = stringResource(R.string.ui_settings_theme_style_title),
-                        value = themeStyleValue,
-                        valueRange = 0f..2f,
-                        steps = 2,
-                        valueLabel = when (prefs.themeStyle) {
+                        currentState = when (prefs.themeStyle) {
                             ThemeStyle.LiquidGlass -> stringResource(R.string.ui_theme_style_liquid)
                             ThemeStyle.Material3 -> stringResource(R.string.ui_theme_style_md3)
                             ThemeStyle.Material3Expressive -> stringResource(R.string.ui_theme_style_md3e)
                         },
-                        startLabel = stringResource(R.string.ui_theme_style_liquid),
-                        endLabel = stringResource(R.string.ui_theme_style_md3e),
-                        initiallyExpanded = true,
+                        leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Rounded.AutoAwesome),
                     ),
                 ),
             ),
@@ -242,35 +247,28 @@ fun ThemeSettingsContent(
             when (action) {
                 is SettingsRowAction.Navigate -> {
                     when (action.id) {
+                        THEME_STYLE_ROW_ID -> themeStyleDialogVisible = true
                         LANGUAGE_ROW_ID -> viewModel.sendIntent(ThemeSettingsIntent.OpenLanguageDialog)
                         MARKDOWN_SCALE_ROW_ID -> onPush(MarkdownScalePage)
                     }
                 }
-                is SettingsRowAction.SliderChanged -> {
-                    if (action.id == THEME_STYLE_ROW_ID) {
-                        val style = when (action.value.roundToInt()) {
-                            0 -> ThemeStyle.LiquidGlass
-                            1 -> ThemeStyle.Material3
-                            else -> ThemeStyle.Material3Expressive
-                        }
-                        if (style != prefs.themeStyle) {
-                            scope.launch { ThemeController.setThemeStyle(style) }
-                        }
-                    }
-                }
-                is SettingsRowAction.SliderCommit -> {
-                    if (action.id == THEME_STYLE_ROW_ID) {
-                        val style = when (action.value.roundToInt()) {
-                            0 -> ThemeStyle.LiquidGlass
-                            1 -> ThemeStyle.Material3
-                            else -> ThemeStyle.Material3Expressive
-                        }
-                        if (style != prefs.themeStyle) {
-                            scope.launch { ThemeController.setThemeStyle(style) }
-                        }
-                    }
-                }
                 else -> Unit
+            }
+        },
+    )
+
+    ZafiroSingleChoiceDialog(
+        visible = themeStyleDialogVisible,
+        onDismissRequest = { themeStyleDialogVisible = false },
+        title = stringResource(R.string.ui_settings_theme_style_title),
+        options = themeStyleOptions,
+        selectedId = prefs.themeStyle.storageKey,
+        optionId = { it.style.storageKey },
+        optionLabel = ThemeStyleOption::label,
+        onSelect = { option ->
+            themeStyleDialogVisible = false
+            if (option.style != prefs.themeStyle) {
+                scope.launch { ThemeController.setThemeStyle(option.style) }
             }
         },
     )
