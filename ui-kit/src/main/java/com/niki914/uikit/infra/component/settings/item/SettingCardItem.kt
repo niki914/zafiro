@@ -56,7 +56,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.infra.component.LiquidSlider
+import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.control.ZafiroSlider
 import com.niki914.uikit.control.ZafiroSwitch
 import com.niki914.uikit.infra.component.SettingsItemSurface
 import com.niki914.uikit.infra.shape.G2CardShape
@@ -658,128 +660,65 @@ private fun SettingExpandableSlotContent(
         is SettingExpandableSlot.None -> Unit
 
         is SettingExpandableSlot.Slider -> {
-            val haptics = LocalHapticFeedback.current
-            var isDragging by remember { mutableStateOf(false) }
-            var dragProgress by remember { mutableFloatStateOf(expandableSlot.value) }
-            var lastSnappedValue by remember { mutableFloatStateOf(expandableSlot.value) }
+            val themeStyle = LocalThemeStyle.current
+            val isLiquid = themeStyle == ThemeStyle.LiquidGlass
 
-            LaunchedEffect(expandableSlot.value) {
-                if (!isDragging) {
-                    dragProgress = expandableSlot.value
-                    lastSnappedValue = expandableSlot.value
-                }
-            }
-
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = SettingsTokens.ContentPaddingStart, vertical = 12.dp),
+                    .padding(
+                        horizontal = SettingsTokens.ContentPaddingStart,
+                        vertical = if (isLiquid && expandableSlot.steps > 0) 12.dp else 8.dp,
+                    ),
+                verticalAlignment = if (isLiquid && expandableSlot.steps > 0) Alignment.Top else Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    // 左侧极值文字：44dp 高度居中与滑块轨道绝对垂直对齐
-                    if (!expandableSlot.startLabel.isNullOrBlank()) {
-                        Box(
-                            modifier = Modifier.height(44.dp),
-                            contentAlignment = Alignment.CenterStart,
-                        ) {
-                            Text(
-                                text = expandableSlot.startLabel,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(end = 16.dp),
-                            )
-                        }
-                    }
-
-                    // 滑块轨道与刻度圆点
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 4.dp),
+                // 左侧极值文字
+                if (!expandableSlot.startLabel.isNullOrBlank()) {
+                    Box(
+                        modifier = if (isLiquid && expandableSlot.steps > 0) Modifier.height(44.dp) else Modifier,
+                        contentAlignment = Alignment.CenterStart,
                     ) {
-                        LiquidSlider(
-                            value = { dragProgress },
-                            onValueChange = { raw ->
-                                isDragging = true
-                                dragProgress = raw
-                                if (expandableSlot.steps > 0) {
-                                    val stepSpan = (expandableSlot.valueRange.endInclusive - expandableSlot.valueRange.start) / expandableSlot.steps
-                                    val stepIndex = ((raw - expandableSlot.valueRange.start) / stepSpan).roundToInt().coerceIn(0, expandableSlot.steps)
-                                    val snapped = expandableSlot.valueRange.start + stepIndex * stepSpan
-                                    if (abs(snapped - lastSnappedValue) > 0.001f) {
-                                        lastSnappedValue = snapped
-                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        expandableSlot.onValueChange(snapped)
-                                    }
-                                } else {
-                                    expandableSlot.onValueChange(raw)
-                                }
-                            },
-                            onValueChangeFinished = {
-                                isDragging = false
-                                val finalVal = if (expandableSlot.steps > 0) {
-                                    val stepSpan = (expandableSlot.valueRange.endInclusive - expandableSlot.valueRange.start) / expandableSlot.steps
-                                    val stepIndex = ((dragProgress - expandableSlot.valueRange.start) / stepSpan).roundToInt().coerceIn(0, expandableSlot.steps)
-                                    val snapped = expandableSlot.valueRange.start + stepIndex * stepSpan
-                                    dragProgress = snapped
-                                    lastSnappedValue = snapped
-                                    expandableSlot.onValueChange(snapped)
-                                    snapped
-                                } else {
-                                    dragProgress
-                                }
-                                expandableSlot.onValueCommit?.invoke(finalVal)
-                                expandableSlot.onValueChangeFinished?.invoke()
-                            },
-                            valueRange = expandableSlot.valueRange,
-                            enabled = enabled && expandableSlot.enabled,
-                            modifier = Modifier.fillMaxWidth(),
+                        Text(
+                            text = expandableSlot.startLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = 16.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            softWrap = false,
                         )
-
-                        // 刻度吸附小圆点
-                        if (expandableSlot.steps > 0) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 4.dp, vertical = 2.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                val stepCount = expandableSlot.steps + 1
-                                val stepSpan = (expandableSlot.valueRange.endInclusive - expandableSlot.valueRange.start) / expandableSlot.steps
-                                for (i in 0 until stepCount) {
-                                    val targetVal = expandableSlot.valueRange.start + i * stepSpan
-                                    val isCurrent = abs(expandableSlot.value - targetVal) < (stepSpan / 2f)
-                                    Box(
-                                        modifier = Modifier
-                                            .size(if (isCurrent) 6.dp else 4.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                if (isCurrent) MaterialTheme.colorScheme.primary
-                                                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                                            ),
-                                    )
-                                }
-                            }
-                        }
                     }
+                }
 
-                    // 右侧极值文字：44dp 高度居中与滑块轨道绝对垂直对齐
-                    if (!expandableSlot.endLabel.isNullOrBlank()) {
-                        Box(
-                            modifier = Modifier.height(44.dp),
-                            contentAlignment = Alignment.CenterEnd,
-                        ) {
-                            Text(
-                                text = expandableSlot.endLabel,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 16.dp),
-                            )
-                        }
+                // 滑块轨道
+                ZafiroSlider(
+                    value = expandableSlot.value,
+                    onValueChange = expandableSlot.onValueChange,
+                    onValueCommit = expandableSlot.onValueCommit,
+                    onValueChangeFinished = expandableSlot.onValueChangeFinished,
+                    valueRange = expandableSlot.valueRange,
+                    steps = expandableSlot.steps,
+                    enabled = enabled && expandableSlot.enabled,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp),
+                )
+
+                // 右侧极值文字
+                if (!expandableSlot.endLabel.isNullOrBlank()) {
+                    Box(
+                        modifier = if (isLiquid && expandableSlot.steps > 0) Modifier.height(44.dp) else Modifier,
+                        contentAlignment = Alignment.CenterEnd,
+                    ) {
+                        Text(
+                            text = expandableSlot.endLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 16.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            softWrap = false,
+                        )
                     }
                 }
             }
