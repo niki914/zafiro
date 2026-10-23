@@ -94,7 +94,6 @@ fun ZafiroInputDialog(
                 minLines = minLines,
                 maxLines = maxLines,
                 moveCursorToEndOnFocus = true,
-                backdrop = null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)

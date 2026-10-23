@@ -892,7 +892,6 @@ private fun ConversationRenameDialog(
                 placeholder = stringResource(R.string.ui_conversation_rename_dialog_hint),
                 singleLine = true,
                 maxLines = 1,
-                backdrop = null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester),

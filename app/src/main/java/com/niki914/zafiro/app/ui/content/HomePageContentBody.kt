@@ -281,8 +281,6 @@ internal fun HomePageContentBody(
                     composerHeight.value = with(density) { size.height.toDp() }
                 },
             contextProgress = uiState.contextProgress,
-            pendingImages = pendingImages,
-            pendingFiles = pendingFiles,
             onAttachImageClick = { attachSheetVisible = true },
         )
 

@@ -2,23 +2,22 @@ package com.niki914.uikit.textfield
 
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
 import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.LiquidGlassPresets
-import com.niki914.uikit.infra.LocalScreenBackdrop
 import com.niki914.uikit.infra.component.LiquidTextField
 
-enum class ZafiroTextFieldStyle {
-    Default,
-    Composer,
-}
-
+/**
+ * 通用下划线文本输入框（专供 Dialog 等模态弹窗）：
+ * - 内部依据 [LocalThemeStyle] 纯粹分流：
+ *   - [ThemeStyle.LiquidGlass]: 圆角毛玻璃槽（[LiquidGlassPresets.TextField]，内部自治 rememberLayerBackdrop 隔离）。
+ *   - [ThemeStyle.Material3] / [ThemeStyle.Material3Expressive]: 纯下划线（[MaterialUnderlineTextField]，全透明底色，文字下方贴底指示线）。
+ */
 @Composable
 fun ZafiroTextField(
     value: String,
@@ -30,22 +29,14 @@ fun ZafiroTextField(
     minLines: Int = 1,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     moveCursorToEndOnFocus: Boolean = false,
-    minHeight: Dp = 52.dp,
-    contentVerticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
+    minHeight: Dp = 44.dp,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
     onTextLayout: ((TextLayoutResult?) -> Unit)? = null,
-    expandedLayout: Boolean = false,
-    expandedActionsRow: (@Composable RowScope.() -> Unit)? = null,
-    backdrop: Backdrop? = LocalScreenBackdrop.current,
-    style: ZafiroTextFieldStyle = ZafiroTextFieldStyle.Default,
     leadingContent: (@Composable RowScope.() -> Unit)? = null,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
     when (LocalThemeStyle.current) {
         ThemeStyle.LiquidGlass -> {
-            val glassStyle = when (style) {
-                ZafiroTextFieldStyle.Default -> LiquidGlassPresets.TextField
-                ZafiroTextFieldStyle.Composer -> LiquidGlassPresets.ComposerBar
-            }
             LiquidTextField(
                 value = value,
                 onValueChange = onValueChange,
@@ -57,19 +48,17 @@ fun ZafiroTextField(
                 maxLines = maxLines,
                 moveCursorToEndOnFocus = moveCursorToEndOnFocus,
                 minHeight = minHeight,
-                contentVerticalAlignment = contentVerticalAlignment,
+                visualTransformation = visualTransformation,
                 onTextLayout = onTextLayout,
-                expandedLayout = expandedLayout,
-                expandedActionsRow = expandedActionsRow,
-                backdrop = backdrop,
-                glassStyle = glassStyle,
+                backdrop = null,
+                glassStyle = LiquidGlassPresets.TextField,
                 leadingContent = leadingContent,
                 trailingContent = trailingContent,
             )
         }
         ThemeStyle.Material3,
         ThemeStyle.Material3Expressive -> {
-            SolidTextField(
+            MaterialUnderlineTextField(
                 value = value,
                 onValueChange = onValueChange,
                 placeholder = placeholder,
@@ -80,11 +69,8 @@ fun ZafiroTextField(
                 maxLines = maxLines,
                 moveCursorToEndOnFocus = moveCursorToEndOnFocus,
                 minHeight = minHeight,
-                contentVerticalAlignment = contentVerticalAlignment,
+                visualTransformation = visualTransformation,
                 onTextLayout = onTextLayout,
-                expandedLayout = expandedLayout,
-                expandedActionsRow = expandedActionsRow,
-                style = style,
                 leadingContent = leadingContent,
                 trailingContent = trailingContent,
             )

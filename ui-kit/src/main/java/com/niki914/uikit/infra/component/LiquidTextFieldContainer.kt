@@ -1,8 +1,6 @@
 package com.niki914.uikit.infra.component
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -68,13 +66,8 @@ internal fun LiquidTextFieldContainer(
     moveCursorToEndOnFocus: Boolean = false,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     minHeight: Dp = 52.dp,
-    /** 内容行（leading/文本/trailing）的纵向对齐。Top 用于多行输入框：内容随高度增长锚定顶部。 */
-    contentVerticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
+    contentVerticalAlignment: Alignment.Vertical = if (singleLine) Alignment.CenterVertically else Alignment.Top,
     onTextLayout: ((TextLayoutResult?) -> Unit)? = null,
-    /** 展开布局：leading/trailing 移到文本区下方独立行（文本行内不显示按钮）。 */
-    expandedLayout: Boolean = false,
-    /** 展开布局下按钮行：左 leading 右 trailing，与文本区同一玻璃容器内。 */
-    expandedActionsRow: (@Composable RowScope.() -> Unit)? = null,
     backdrop: Backdrop? = null,
     glassStyle: LiquidGlassStyle = LiquidGlassPresets.TextField,
     leadingContent: (@Composable RowScope.() -> Unit)? = null,
@@ -204,65 +197,41 @@ internal fun LiquidTextFieldContainer(
         textStyle = MaterialTheme.typography.bodyLarge.merge(
             TextStyle(color = textColor),
         ),
-        // 默认 cursorBrush 是固定黑色，不适配深色模式；跟随主题 primary
         cursorBrush = SolidColor(colorScheme.primary),
         onTextLayout = { layout -> onTextLayout?.invoke(layout) },
         decorationBox = { innerTextField ->
-            Column {
-                // 展开态文本区 top padding = 按钮自身 bottom padding
-                //（ActionBarButton 内建 vertical 12dp），上下留白对称
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(if (expandedLayout) Modifier.padding(top = 12.dp) else Modifier),
-                    verticalAlignment = contentVerticalAlignment,
-                ) {
-                    if (leadingContent != null && !expandedLayout) {
-                        CompositionLocalProvider(LocalContentColor provides trailingColor) {
-                            leadingContent(this@Row)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = contentVerticalAlignment,
+            ) {
+                if (leadingContent != null) {
+                    CompositionLocalProvider(LocalContentColor provides trailingColor) {
+                        leadingContent(this@Row)
                     }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .widthIn(min = 0.dp),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        if (textFieldValue.text.isEmpty() && placeholder != null) {
-                            Text(
-                                text = placeholder,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = placeholderColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        innerTextField()
-                    }
-
-                    if (trailingContent != null && !expandedLayout) {
-                        CompositionLocalProvider(LocalContentColor provides trailingColor) {
-                            trailingContent(this@Row)
-                        }
-                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
-                if (expandedLayout && expandedActionsRow != null) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (leadingContent != null) {
-                            CompositionLocalProvider(LocalContentColor provides trailingColor) {
-                                leadingContent(this@Row)
-                            }
-                        }
-                        if (trailingContent != null) {
-                            CompositionLocalProvider(LocalContentColor provides trailingColor) {
-                                trailingContent(this@Row)
-                            }
-                        }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .widthIn(min = 0.dp),
+                    contentAlignment = if (singleLine) Alignment.CenterStart else Alignment.TopStart,
+                ) {
+                    if (textFieldValue.text.isEmpty() && placeholder != null) {
+                        Text(
+                            text = placeholder,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = placeholderColor,
+                            maxLines = if (singleLine) 1 else Int.MAX_VALUE,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    innerTextField()
+                }
+
+                if (trailingContent != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    CompositionLocalProvider(LocalContentColor provides trailingColor) {
+                        trailingContent(this@Row)
                     }
                 }
             }

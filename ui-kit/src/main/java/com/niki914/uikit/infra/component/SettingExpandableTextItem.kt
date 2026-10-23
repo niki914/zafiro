@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
+import com.niki914.uikit.textfield.ZafiroOutlinedTextField
+import com.niki914.uikit.textfield.ZafiroSecretTextField
 
 @Composable
 fun SettingExpandableTextItem(
@@ -227,7 +229,7 @@ internal fun SettingExpandableTextItemContent(
             @Composable
             fun fieldContent(fieldModifier: Modifier) {
                 if (usesSecretField) {
-                    LiquidSecretTextField(
+                    ZafiroSecretTextField(
                         value = value,
                         onValueChange = onValueChange,
                         placeholder = placeholder,
@@ -253,7 +255,7 @@ internal fun SettingExpandableTextItemContent(
                             .focusRequester(focusRequester),
                     )
                 } else {
-                    LiquidTextField(
+                    ZafiroOutlinedTextField(
                         value = value,
                         onValueChange = onValueChange,
                         placeholder = placeholder,
