@@ -17,10 +17,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.niki914.uikit.base.LocalThemeStyle
@@ -49,9 +47,8 @@ fun ZafiroActionButton(
             content = content,
         )
     } else {
-        val density = LocalDensity.current
         val interactionSource = remember { MutableInteractionSource() }
-        val buttonSize = with(density) { 48.sp.toDp() }
+        val buttonSize = 48.dp
         val buttonBgColor = MaterialTheme.colorScheme.surfaceContainerHighest
 
         val motionModifier = if (themeStyle == ThemeStyle.Material3Expressive && enabled) {

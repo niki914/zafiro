@@ -5,8 +5,11 @@ import android.app.Activity
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -43,6 +46,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.menu.ZafiroDropdownMenu
 import com.niki914.uikit.menu.ZafiroMenuItem
 import com.niki914.uikit.menu.ZafiroMenuAlignment
@@ -315,60 +319,22 @@ fun ZafiroApp(
                     onRightButtonBoundsChanged = { rightButtonBounds = it },
                     leftButton = currentLeftAction?.let { action ->
                         {
-                            AnimatedContent(
-                                targetState = action.icon,
-                                transitionSpec = {
-                                    val iconAnimationSpec = tween<Float>(
-                                        durationMillis = 280,
-                                        easing = FastOutSlowInEasing,
-                                    )
-                                    (scaleIn(
-                                        initialScale = 1.18f,
-                                        animationSpec = iconAnimationSpec,
-                                    ) + fadeIn(animationSpec = iconAnimationSpec)).togetherWith(
-                                        scaleOut(
-                                            targetScale = 0.78f,
-                                            animationSpec = iconAnimationSpec,
-                                        ) + fadeOut(animationSpec = iconAnimationSpec)
-                                    )
-                                },
+                            TopBarActionIcon(
+                                action = action,
+                                themeStyle = themePrefs.themeStyle,
+                                tint = actionIconTint,
                                 label = "leftActionIcon",
-                            ) { imageVector ->
-                                ActionBarVectorIcon(
-                                    imageVector = imageVector,
-                                    contentDescription = action.contentDescription,
-                                    tint = actionIconTint,
-                                )
-                            }
+                            )
                         }
                     },
                     rightButton = currentRightAction?.let { action ->
                         {
-                            AnimatedContent(
-                                targetState = action.icon,
-                                transitionSpec = {
-                                    val iconAnimationSpec = tween<Float>(
-                                        durationMillis = 280,
-                                        easing = FastOutSlowInEasing,
-                                    )
-                                    (scaleIn(
-                                        initialScale = 1.18f,
-                                        animationSpec = iconAnimationSpec,
-                                    ) + fadeIn(animationSpec = iconAnimationSpec)).togetherWith(
-                                        scaleOut(
-                                            targetScale = 0.78f,
-                                            animationSpec = iconAnimationSpec,
-                                        ) + fadeOut(animationSpec = iconAnimationSpec)
-                                    )
-                                },
+                            TopBarActionIcon(
+                                action = action,
+                                themeStyle = themePrefs.themeStyle,
+                                tint = actionIconTint,
                                 label = "rightActionIcon",
-                            ) { imageVector ->
-                                ActionBarVectorIcon(
-                                    imageVector = imageVector,
-                                    contentDescription = action.contentDescription,
-                                    tint = actionIconTint,
-                                )
-                            }
+                            )
                         }
                     },
                 ) {
@@ -502,16 +468,74 @@ private fun resolveRightAction(
 }
 
 @Composable
+private fun TopBarActionIcon(
+    action: TopBarActionSpec,
+    themeStyle: ThemeStyle,
+    tint: Color,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val isLiquid = themeStyle == ThemeStyle.LiquidGlass
+
+    AnimatedContent(
+        targetState = action.icon,
+        transitionSpec = {
+            if (isLiquid) {
+                val iconAnimationSpec = tween<Float>(
+                    durationMillis = 280,
+                    easing = FastOutSlowInEasing,
+                )
+                (scaleIn(initialScale = 1.18f, animationSpec = iconAnimationSpec) + fadeIn(animationSpec = iconAnimationSpec)).togetherWith(
+                    scaleOut(targetScale = 0.78f, animationSpec = iconAnimationSpec) + fadeOut(animationSpec = iconAnimationSpec)
+                )
+            } else {
+                val enterSpec = tween<Float>(durationMillis = 220, easing = FastOutSlowInEasing)
+                val exitSpec = tween<Float>(durationMillis = 180, easing = FastOutSlowInEasing)
+                fadeIn(animationSpec = enterSpec).togetherWith(
+                    fadeOut(animationSpec = exitSpec)
+                )
+            }
+        },
+        label = label,
+        modifier = modifier,
+    ) { imageVector ->
+        val rotationModifier = if (!isLiquid) {
+            val rotation by transition.animateFloat(
+                transitionSpec = { tween(durationMillis = 220, easing = FastOutSlowInEasing) },
+                label = "${label}Rotation",
+            ) { state ->
+                when (state) {
+                    EnterExitState.PreEnter -> -90f
+                    EnterExitState.Visible -> 0f
+                    EnterExitState.PostExit -> 90f
+                }
+            }
+            Modifier.graphicsLayer { rotationZ = rotation }
+        } else {
+            Modifier
+        }
+
+        ActionBarVectorIcon(
+            imageVector = imageVector,
+            contentDescription = action.contentDescription,
+            tint = tint,
+            modifier = rotationModifier,
+        )
+    }
+}
+
+@Composable
 private fun ActionBarVectorIcon(
     imageVector: ImageVector,
     contentDescription: String?,
     tint: Color,
     size: Dp = 20.dp,
+    modifier: Modifier = Modifier,
 ) {
     Image(
         painter = rememberVectorPainter(imageVector),
         contentDescription = contentDescription,
-        modifier = Modifier.size(size),
+        modifier = modifier.size(size),
         colorFilter = ColorFilter.tint(tint),
     )
 }
