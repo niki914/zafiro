@@ -34,9 +34,13 @@ import com.niki914.uikit.control.ZafiroSlider
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
+import com.niki914.uikit.screen.ReportTitleBarCollapsed
 import com.niki914.uikit.screen.zafiroActionButtonBottomPadding
 import com.niki914.uikit.screen.zafiroScreenBottomPadding
 import com.niki914.uikit.screen.zafiroScreenTopPadding
+import com.niki914.uikit.scroll.ZafiroScrollableContainer
+import com.niki914.uikit.scroll.rememberZafiroOverscrollController
+import com.niki914.uikit.scroll.rememberZafiroScrollStateAdapter
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.composable.text.AssistantMarkdownPreviewText
 import com.niki914.zafiro.app.ui.chat.composable.text.AssistantOutputText
@@ -53,6 +57,12 @@ fun MarkdownScalePageContent(
 ) {
     val uiState by viewModel.uiStateFlow.collectAsState()
     val scrollState = rememberScrollState()
+    val overscrollController = rememberZafiroOverscrollController()
+    val scrollbarState = rememberZafiroScrollStateAdapter(scrollState, overscrollController)
+
+    ReportTitleBarCollapsed {
+        scrollState.value > 0 || overscrollController.overscrollOffset.value < 0f
+    }
 
     LaunchedEffect(Unit) {
         viewModel.sendIntent(MarkdownScaleIntent.Load)
@@ -60,21 +70,29 @@ fun MarkdownScalePageContent(
 
     Box(modifier = modifier.fillMaxSize()) {
         // 上半部：Markdown 预览流（消费经过 VM 节流后的 previewScale）
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(
-                    top = zafiroScreenTopPadding(16.dp),
-                    bottom = zafiroScreenBottomPadding(168.dp),
-                )
-                .padding(horizontal = 16.dp),
+        ZafiroScrollableContainer(
+            state = scrollbarState,
+            overscrollController = overscrollController,
+            topClearance = zafiroScreenTopPadding(16.dp),
+            bottomClearance = zafiroScreenBottomPadding(168.dp),
+            modifier = Modifier.fillMaxSize(),
         ) {
-            CompositionLocalProvider(LocalMarkdownScale provides uiState.previewScale) {
-                AssistantOutputText(
-                    text = AssistantMarkdownPreviewText.trim(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(
+                        top = zafiroScreenTopPadding(16.dp),
+                        bottom = zafiroScreenBottomPadding(168.dp),
+                    )
+                    .padding(horizontal = 16.dp),
+            ) {
+                CompositionLocalProvider(LocalMarkdownScale provides uiState.previewScale) {
+                    AssistantOutputText(
+                        text = AssistantMarkdownPreviewText.trim(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
 
