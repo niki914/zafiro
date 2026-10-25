@@ -126,7 +126,7 @@ fun SwipeDismissSettingsItemCard(
 
     val shape = G2CardShape(SettingsTokens.CardCornerRadius)
     val backgroundColor = lerp(
-        start = MaterialTheme.colorScheme.surfaceContainer,
+        start = MaterialTheme.colorScheme.surfaceContainerLow,
         stop = MaterialTheme.colorScheme.error,
         fraction = animatedProgress,
     )

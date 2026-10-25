@@ -93,7 +93,7 @@ fun SettingCardItem(
     enabled: Boolean = true,
     isStandaloneCard: Boolean = false,
     shape: Shape = G2CardShape(SettingsTokens.CardCornerRadius),
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
     highlightPulseKey: Any? = null,
     highlightPulseDurationMillis: Int = 500,
     onClick: (() -> Unit)? = null,

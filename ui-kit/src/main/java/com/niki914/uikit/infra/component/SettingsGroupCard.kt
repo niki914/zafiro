@@ -18,7 +18,7 @@ import com.niki914.uikit.infra.shape.G2CardShape
 /**
  * iOS 风分组卡片：外置章节标题 + 圆角卡片容器。
  * 排版抄自 ui/settings/StyledToggle 的 independent=true 分支，颜色走 MaterialTheme，
- * 深浅色由 colorScheme.surfaceContainer / onSurfaceVariant 自动适配。
+ * 深浅色由 colorScheme.surfaceContainerLow / onSurfaceVariant 自动适配。
  *
  * 卡片本身 clip 成圆角，方便子项（如 `SettingNavigationItem`）在按压渐变时
  * 不会溢出圆角边界。
@@ -30,7 +30,7 @@ fun SettingsGroupCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val titleColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-    val cardColor = MaterialTheme.colorScheme.surfaceContainer
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerLow
     val cardShape = G2CardShape(28.dp)
 
     Column(modifier = modifier.fillMaxWidth()) {
