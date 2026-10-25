@@ -27,14 +27,55 @@ import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.LiquidGlassPresets
 import com.niki914.uikit.infra.LocalScreenBackdrop
 import com.niki914.uikit.infra.interaction.InteractiveHighlight
 import com.niki914.uikit.infra.interaction.LiquidButtonInteractiveStyle
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 
+/**
+ * 滚动到底部快捷悬浮按钮门面（统一三模分流）：
+ * - [ThemeStyle.LiquidGlass]: 毛玻璃悬浮球与液态按压弹性形变；
+ * - [ThemeStyle.Material3] / [ThemeStyle.Material3Expressive]: M3 实体高辨识度悬浮圆钮（[MaterialScrollToBottomButton]，彻底切断 Backdrop FBO 抓取，MD3E 叠加弹性触感反馈）。
+ */
 @Composable
 fun ZafiroScrollToBottomButton(
+    visible: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    bottomClearance: Dp = 0.dp,
+    backdrop: Backdrop? = LocalScreenBackdrop.current,
+    icon: (@Composable () -> Unit)? = null,
+) {
+    when (LocalThemeStyle.current) {
+        ThemeStyle.LiquidGlass -> {
+            LiquidScrollToBottomButtonCore(
+                visible = visible,
+                onClick = onClick,
+                modifier = modifier,
+                bottomClearance = bottomClearance,
+                backdrop = backdrop,
+                icon = icon,
+            )
+        }
+
+        ThemeStyle.Material3,
+        ThemeStyle.Material3Expressive -> {
+            MaterialScrollToBottomButton(
+                visible = visible,
+                onClick = onClick,
+                modifier = modifier,
+                bottomClearance = bottomClearance,
+                icon = icon,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiquidScrollToBottomButtonCore(
     visible: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
