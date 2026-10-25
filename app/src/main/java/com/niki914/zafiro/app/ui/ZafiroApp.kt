@@ -133,8 +133,9 @@ fun ZafiroApp(
     val currentPage = currentEntry.page
     val currentChrome = pageChromeHost.stateFor(currentEntry.id)
     val isChromeMenuOpen = chromeMenuExpanded && currentChrome.menuItems.isNotEmpty()
+    val shouldFadeRightButton = themePrefs.themeStyle == ThemeStyle.LiquidGlass && isChromeMenuOpen
     val rightButtonAlpha by animateFloatAsState(
-        targetValue = if (isChromeMenuOpen) 0f else 1f,
+        targetValue = if (shouldFadeRightButton) 0f else 1f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "rightButtonAlpha",
     )

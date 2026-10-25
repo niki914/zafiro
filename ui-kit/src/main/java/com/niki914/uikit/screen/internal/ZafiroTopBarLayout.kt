@@ -90,8 +90,10 @@ internal fun ZafiroTopBarLayout(
     val titleDuration = 320
 
     // 遮挡因子动画：当外部浮层（如右上角菜单或模型切换浮层）展开时淡出，收起时淡入
+    // Material 模式下不隐藏标题，保留标准顶栏视觉并稳定锚点坐标
+    val shouldOcclude = isLiquid && isOccluded
     val occludedAlpha by animateFloatAsState(
-        targetValue = if (isOccluded) 0f else 1f,
+        targetValue = if (shouldOcclude) 0f else 1f,
         animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing),
         label = "zafiroTopBarOccludedAlpha",
     )
