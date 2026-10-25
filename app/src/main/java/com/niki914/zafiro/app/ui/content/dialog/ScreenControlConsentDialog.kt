@@ -6,8 +6,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import com.niki914.uikit.infra.LiquidDialog
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.uikit.dialog.ZafiroDialog
+import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.zafiro.app.R
 
 /**
@@ -18,7 +18,7 @@ internal fun ScreenControlConsentDialog(
     onAgree: () -> Unit,
     onDeny: () -> Unit,
 ) {
-    LiquidDialog(
+    ZafiroDialog(
         visible = true,
         onDismissRequest = onDeny,
         dismissOnBackgroundTap = false,
@@ -38,19 +38,15 @@ internal fun ScreenControlConsentDialog(
             )
         },
         actions = {
-            MaterialTintLiquidButton(
+            ZafiroDialogButton(
                 text = stringResource(R.string.screen_control_consent_deny),
                 onClick = onDeny,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                isPrimary = false,
             )
-            MaterialTintLiquidButton(
+            ZafiroDialogButton(
                 text = stringResource(R.string.screen_control_consent_agree),
                 onClick = onAgree,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+                isPrimary = true,
             )
         },
     )

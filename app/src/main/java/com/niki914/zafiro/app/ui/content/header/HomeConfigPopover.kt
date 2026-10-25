@@ -3,9 +3,9 @@ package com.niki914.zafiro.app.ui.content.header
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Rect
-import com.niki914.uikit.infra.LiquidMenuItem
-import com.niki914.uikit.infra.LiquidPopover
-import com.niki914.uikit.infra.PopoverAlignment
+import com.niki914.uikit.menu.ZafiroDropdownMenu
+import com.niki914.uikit.menu.ZafiroMenuAlignment
+import com.niki914.uikit.menu.ZafiroMenuItem
 import com.niki914.zafiro.app.ui.model.home.HomeChatUiState
 
 @Composable
@@ -25,15 +25,15 @@ internal fun HomeConfigPopover(
         }
     }
 
-    LiquidPopover(
+    ZafiroDropdownMenu(
         expanded = uiState.isConfigMenuVisible,
         onDismissRequest = onDismissRequest,
         anchorBounds = anchorBounds,
-        alignment = PopoverAlignment.BottomCenter,
+        alignment = ZafiroMenuAlignment.BottomCenter,
         scrollable = configs.size > 5,
     ) {
         configs.forEach { config ->
-            LiquidMenuItem(
+            ZafiroMenuItem(
                 title = config.name,
                 trailingText = config.modelId.takeIf { it != config.name },
                 checked = config.id == uiState.activeConfigId,

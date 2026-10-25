@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 
 @Composable
 fun <T> SettingsSegmentedSelector(
@@ -27,7 +28,12 @@ fun <T> SettingsSegmentedSelector(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(
+                start = SettingsTokens.ContentPaddingStart,
+                end = SettingsTokens.ContentPaddingEnd,
+                top = 16.dp,
+                bottom = 16.dp,
+            ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(

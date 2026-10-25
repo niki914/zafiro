@@ -8,10 +8,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import com.niki914.uikit.button.ZafiroTonalButton
 import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
-import com.niki914.uikit.infra.component.TintLiquidButton
-import com.niki914.uikit.infra.liquidScreenActionButtonBottomPadding
-import com.niki914.uikit.infra.liquidScreenBottomPadding
+import com.niki914.uikit.screen.zafiroActionButtonBottomPadding
+import com.niki914.uikit.screen.zafiroScreenBottomPadding
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.content.ThemeSettingsContent
 import com.niki914.zafiro.app.ui.nav.ProviderPickPage
@@ -26,11 +26,11 @@ internal fun OnboardingThemeRoute(
         ThemeSettingsContent(
             onPush = onPush,
             // 为吸底按钮留位，否则最后一张卡片会被盖住
-            contentBottomPadding = liquidScreenBottomPadding() +
+            contentBottomPadding = zafiroScreenBottomPadding() +
                     SettingsDetailPageDefaults.RootVerticalSpacing +
                     SettingsDetailPageDefaults.ActionButtonReservedHeight,
         )
-        TintLiquidButton(
+        ZafiroTonalButton(
             text = stringResource(R.string.ui_onboard_configure_next),
             onClick = { onPush(ProviderPickPage) },
             buttonHeight = SettingsDetailPageDefaults.ActionButtonReservedHeight,
@@ -40,7 +40,7 @@ internal fun OnboardingThemeRoute(
                 .padding(
                     start = SettingsDetailPageDefaults.HorizontalPadding,
                     end = SettingsDetailPageDefaults.HorizontalPadding,
-                    bottom = liquidScreenActionButtonBottomPadding(),
+                    bottom = zafiroActionButtonBottomPadding(),
                 ),
         )
     }

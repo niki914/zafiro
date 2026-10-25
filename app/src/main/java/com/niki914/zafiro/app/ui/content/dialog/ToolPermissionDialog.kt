@@ -14,8 +14,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.infra.LiquidDialog
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.uikit.dialog.ZafiroDialog
+import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.api.model.ApprovalRequest
 
@@ -28,7 +28,7 @@ internal fun ToolPermissionDialog(
     onAllow: () -> Unit,
     onDeny: () -> Unit,
 ) {
-    LiquidDialog(
+    ZafiroDialog(
         visible = true,
         onDismissRequest = onDeny,
         dismissOnBackgroundTap = false,
@@ -72,19 +72,15 @@ internal fun ToolPermissionDialog(
             }
         },
         actions = {
-            MaterialTintLiquidButton(
+            ZafiroDialogButton(
                 text = stringResource(R.string.tool_permission_deny),
                 onClick = onDeny,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                isPrimary = false,
             )
-            MaterialTintLiquidButton(
+            ZafiroDialogButton(
                 text = stringResource(R.string.tool_permission_allow),
                 onClick = onAllow,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+                isPrimary = true,
             )
         },
     )

@@ -16,9 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.infra.component.LiquidTextField
 import com.niki914.uikit.infra.component.OptionRow
 import com.niki914.uikit.infra.component.OptionSheet
+import com.niki914.uikit.textfield.ZafiroTextField
 import com.niki914.zafiro.app.R
 
 /**
@@ -48,7 +48,7 @@ fun ModelCatalogSheet(
         // 单高锁在屏高 50%~60%：内容不足撑到 50%，超长列表封顶 60% 内滚动
         bodyModifier = Modifier.heightIn(min = screenH * 0.5f, max = screenH * 0.6f),
         header = {
-            LiquidTextField(
+            ZafiroTextField(
                 value = query,
                 onValueChange = { query = it },
                 placeholder = stringResource(

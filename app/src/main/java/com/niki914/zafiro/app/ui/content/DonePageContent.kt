@@ -24,10 +24,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.niki914.uikit.button.ZafiroTonalButton
 import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
-import com.niki914.uikit.infra.component.TintLiquidButton
-import com.niki914.uikit.infra.liquidScreenActionButtonBottomPadding
-import com.niki914.uikit.infra.liquidScreenTopPadding
+import com.niki914.uikit.screen.zafiroActionButtonBottomPadding
+import com.niki914.uikit.screen.zafiroScreenTopPadding
 import com.niki914.zafiro.app.R
 
 @Composable
@@ -38,12 +38,12 @@ fun DonePageContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = liquidScreenTopPadding())
+            .padding(top = zafiroScreenTopPadding())
             .padding(
                 start = SettingsDetailPageDefaults.HorizontalPadding,
                 end = SettingsDetailPageDefaults.HorizontalPadding,
                 top = 24.dp,
-                bottom = liquidScreenActionButtonBottomPadding(),
+                bottom = zafiroActionButtonBottomPadding(),
             ),
     ) {
         Column(
@@ -100,7 +100,7 @@ fun DonePageContent(
                     )
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )
-            TintLiquidButton(
+            ZafiroTonalButton(
                 text = stringResource(R.string.ui_onboard_done_enter_home),
                 onClick = onEnterHome,
             )

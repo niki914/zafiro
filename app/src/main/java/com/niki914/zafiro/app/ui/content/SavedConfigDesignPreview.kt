@@ -32,15 +32,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.LiquidDialog
-import com.niki914.uikit.infra.LiquidScreen
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.uikit.button.ZafiroButton
+import com.niki914.uikit.dialog.ZafiroDialog
+import com.niki914.uikit.dialog.ZafiroSingleChoiceDialog
 import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.nav.TitleBarScrollState
-import com.niki914.uikit.infra.rememberLiquidScreenState
+import com.niki914.uikit.screen.ZafiroScreen
+import com.niki914.uikit.screen.rememberZafiroScreenState
 
 // ══════════════════════════════════════════════════════════════════════
 // 设计稿 preview（仅预览，方案敲定后拆进正式实现）：
@@ -339,22 +340,22 @@ private fun GeneralSettingsRedesignPreview() {
 
 /**
  * 选择弹窗：协议/语言共用一个组件。要点：
- * - 列表直接放 LiquidDialog content 内（面板自带 verticalScroll + 高度上限，
+ * - 列表直接放 ZafiroDialog content 内（面板自带 verticalScroll + 高度上限，
  *   不要自己再包 scroll 层）；
  * - actions 只有一个「取消」，选中项即点即应用即关闭；
- * - 弹窗必须在 LiquidScreen 组合树内挂载（经 host portal 渲染遮罩才盖满全屏）。
+ * - 弹窗必须在 ZafiroScreen 组合树内挂载（经 host portal 渲染遮罩才盖满全屏）。
  */
 @Preview(name = "Single Choice Dialog", showBackground = true, widthDp = 420, heightDp = 800)
 @Composable
 private fun SingleChoiceDialogPreview() {
     BaseTheme {
-        val screenState = rememberLiquidScreenState(
+        val screenState = rememberZafiroScreenState(
             showLeftButton = false,
             showRightButton = false,
             showBlurLayer = false,
         )
         var selectedProtocol by remember { mutableStateOf("openai-responses") }
-        LiquidScreen(
+        ZafiroScreen(
             state = screenState,
             titleBarScroll = remember { TitleBarScrollState() },
         ) {
@@ -363,7 +364,7 @@ private fun SingleChoiceDialogPreview() {
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
             ) {
-                SingleChoiceLiquidDialog(
+                ZafiroSingleChoiceDialog(
                     visible = true,
                     onDismissRequest = {},
                     title = "Protocol",

@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content
+package com.niki914.uikit.dialog
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,19 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.infra.LiquidDialog
-import com.niki914.uikit.infra.component.LiquidTextField
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
-import com.niki914.zafiro.app.R
+import com.niki914.uikit.textfield.ZafiroTextField
 import kotlinx.coroutines.delay
 
-/**
- * 单/多行输入框弹窗（沿用 [LiquidDialog] 形态）：弹出即聚焦。
- * 挂在 LiquidScreen 内容树内，返回键由弹窗接管。
- */
 @Composable
-fun InputLiquidDialog(
+fun ZafiroInputDialog(
     visible: Boolean,
     onDismissRequest: () -> Unit,
     title: String,
@@ -37,14 +31,17 @@ fun InputLiquidDialog(
     placeholder: String,
     positiveButtonText: String,
     onPositiveClick: () -> Unit,
+    modifier: Modifier = Modifier,
     hint: String? = null,
+    negativeButtonText: String = stringResource(android.R.string.cancel),
+    onNegativeClick: () -> Unit = onDismissRequest,
     positiveEnabled: Boolean = true,
     enabled: Boolean = true,
     singleLine: Boolean = true,
     minLines: Int = 1,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    dismissOnBackgroundTap: Boolean = true,
 ) {
-    // 退出动画期间调用方已经把 value 清空，用最后一次可见的值把文字留住。
     var retainedValue by remember { mutableStateOf(value) }
     LaunchedEffect(visible, value) {
         if (visible) retainedValue = value
@@ -57,15 +54,21 @@ fun InputLiquidDialog(
         }
     }
 
-    LiquidDialog(
+    ZafiroDialog(
         visible = visible,
         onDismissRequest = onDismissRequest,
+        modifier = modifier,
+        dismissOnBackgroundTap = dismissOnBackgroundTap,
         title = {
-            Column {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start,
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Start,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (hint != null) {
@@ -73,13 +76,16 @@ fun InputLiquidDialog(
                         text = hint,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
                     )
                 }
             }
         },
         content = {
-            LiquidTextField(
+            ZafiroTextField(
                 value = if (visible) value else retainedValue,
                 onValueChange = onValueChange,
                 placeholder = placeholder,
@@ -87,29 +93,24 @@ fun InputLiquidDialog(
                 singleLine = singleLine,
                 minLines = minLines,
                 maxLines = maxLines,
-                contentVerticalAlignment = if (singleLine) Alignment.CenterVertically else Alignment.Top,
+                moveCursorToEndOnFocus = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp)
+                    .padding(top = 8.dp)
                     .focusRequester(focusRequester),
             )
         },
         actions = {
-            MaterialTintLiquidButton(
+            ZafiroDialogButton(
+                text = negativeButtonText,
+                onClick = onNegativeClick,
+                isPrimary = false,
+            )
+            ZafiroDialogButton(
                 text = positiveButtonText,
                 onClick = onPositiveClick,
-                enabled = positiveEnabled && enabled,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            )
-            MaterialTintLiquidButton(
-                text = stringResource(R.string.dialog_cancel),
-                onClick = onDismissRequest,
-                enabled = enabled,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                enabled = positiveEnabled,
+                isPrimary = true,
             )
         },
     )

@@ -12,13 +12,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.ConfirmationLiquidDialog
-import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
+import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageBackHandler
 import com.niki914.zafiro.app.ui.PageChromeContribution
@@ -126,7 +126,7 @@ private fun StorageClearConfirmationDialog(
     onConfirmClick: () -> Unit,
 ) {
     if (state == null) return
-    ConfirmationLiquidDialog(
+    ZafiroConfirmationDialog(
         visible = true,
         onDismissRequest = onDismissRequest,
         title = stringResource(R.string.ui_settings_storage_clear_dialog_title),
@@ -165,7 +165,7 @@ private fun StorageInlineErrorText(error: StorageInlineError) {
 @Composable
 private fun StorageSettingsContentPreview() {
     BaseTheme(darkTheme = false, dynamicColor = false) {
-        ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+        ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
             StorageSettingsContentBody(
                 uiState = StorageSettingsUiState(
                     categories = StorageCategory.entries.mapIndexed { index, category ->

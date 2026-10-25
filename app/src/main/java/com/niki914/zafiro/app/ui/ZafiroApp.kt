@@ -3,11 +3,13 @@ package com.niki914.zafiro.app.ui
 
 import android.app.Activity
 import android.os.SystemClock
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -44,23 +46,27 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.LiquidMenuItem
-import com.niki914.uikit.infra.LiquidPopover
-import com.niki914.uikit.infra.LiquidScreen
-import com.niki914.uikit.infra.LiquidScreenSwipeContent
-import com.niki914.uikit.infra.LiquidScreenTitle
-import com.niki914.uikit.infra.PopoverAlignment
+import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.menu.ZafiroDropdownMenu
+import com.niki914.uikit.menu.ZafiroMenuItem
+import com.niki914.uikit.menu.ZafiroMenuAlignment
+import com.niki914.uikit.screen.ZafiroScreen
+import com.niki914.uikit.screen.ZafiroScreenSwipeContent
+import com.niki914.uikit.screen.ZafiroScreenTitle
+import com.niki914.uikit.screen.ZafiroScreenTitleContent
+import com.niki914.uikit.screen.ZafiroScreenTitleText
+import com.niki914.uikit.screen.rememberZafiroScreenState
 import com.niki914.uikit.infra.TitleDirection
 import com.niki914.uikit.infra.nav.LocalNavigationController
 import com.niki914.uikit.infra.nav.LocalNavigationEntry
 import com.niki914.uikit.infra.nav.LocalPageTitle
 import com.niki914.uikit.infra.nav.rememberNavigationController
-import com.niki914.uikit.infra.rememberLiquidScreenState
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.crash.CrashRecorder
 import com.niki914.zafiro.app.crash.CrashReport
 import com.niki914.zafiro.app.crash.CrashReportDialog
 import com.niki914.zafiro.app.ui.chat.composable.text.LocalMarkdownScale
+import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.model.AppLaunchDecision
 import com.niki914.zafiro.app.ui.model.StartupAssistantUi
 import com.niki914.zafiro.app.ui.model.ThemeController
@@ -93,7 +99,6 @@ fun ZafiroApp(
     val isDarkTheme = themePrefs.resolveDarkTheme(systemDarkTheme)
     val actionIconTint = if (isDarkTheme) Color.White else Color.Black
     val rootBackToHomeWindowMillis = 2_000L
-    val rootBackToHomeHint = stringResource(R.string.ui_root_back_to_home_hint)
     val pageChromeHost = rememberPageChromeHost()
     var chromeMenuExpanded by remember { mutableStateOf(false) }
     var rightButtonBounds by remember { mutableStateOf<Rect?>(null) }
@@ -128,8 +133,9 @@ fun ZafiroApp(
     val currentPage = currentEntry.page
     val currentChrome = pageChromeHost.stateFor(currentEntry.id)
     val isChromeMenuOpen = chromeMenuExpanded && currentChrome.menuItems.isNotEmpty()
+    val shouldFadeRightButton = themePrefs.themeStyle == ThemeStyle.LiquidGlass && isChromeMenuOpen
     val rightButtonAlpha by animateFloatAsState(
-        targetValue = if (isChromeMenuOpen) 0f else 1f,
+        targetValue = if (shouldFadeRightButton) 0f else 1f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "rightButtonAlpha",
     )
@@ -156,7 +162,7 @@ fun ZafiroApp(
     val showRightButton = currentChrome.actionsVisible && currentRightAction != null
     val currentTitle = resolveScreenTitle(currentChrome, currentPage, currentEntry.id)
     val isTitleCollapsible = currentPage.titleMode == TitleBarMode.Collapsible
-    val screenState = rememberLiquidScreenState(
+    val screenState = rememberZafiroScreenState(
         title = currentTitle,
         isTitleCollapsible = isTitleCollapsible,
         showLeftButton = showLeftButton,
@@ -193,8 +199,7 @@ fun ZafiroApp(
             activity?.moveTaskToBack(true)
         } else {
             lastRootBackPressedAt = now
-            Toast.makeText(context.applicationContext, rootBackToHomeHint, Toast.LENGTH_SHORT)
-                .show()
+            ZafiroToast.show(R.string.ui_root_back_to_home_hint)
         }
     }
 
@@ -295,13 +300,14 @@ fun ZafiroApp(
             darkTheme = isDarkTheme,
             dynamicColor = themePrefs.seedColor == null,
             seedColor = seedColor,
+            themeStyle = themePrefs.themeStyle,
         ) {
             CompositionLocalProvider(
                 LocalMarkdownScale provides markdownScale,
             ) {
-                LiquidScreen(
+                ZafiroScreen(
                     state = screenState,
-                    // 折叠信号载体归属当前导航条目，由 LiquidScreen 经 nestedScroll 自动写入；
+                    // 折叠信号载体归属当前导航条目，由 ZafiroScreen 经 nestedScroll 自动写入；
                     // 条目存活期保留，导航切页同帧隔离，返回时首帧恢复离开前状态。
                     titleBarScroll = currentEntry.titleBarScroll,
                     actionsEnabled = !isPageTransitioning,
@@ -314,65 +320,27 @@ fun ZafiroApp(
                     onRightButtonBoundsChanged = { rightButtonBounds = it },
                     leftButton = currentLeftAction?.let { action ->
                         {
-                            AnimatedContent(
-                                targetState = action.icon,
-                                transitionSpec = {
-                                    val iconAnimationSpec = tween<Float>(
-                                        durationMillis = 280,
-                                        easing = FastOutSlowInEasing,
-                                    )
-                                    (scaleIn(
-                                        initialScale = 1.18f,
-                                        animationSpec = iconAnimationSpec,
-                                    ) + fadeIn(animationSpec = iconAnimationSpec)).togetherWith(
-                                        scaleOut(
-                                            targetScale = 0.78f,
-                                            animationSpec = iconAnimationSpec,
-                                        ) + fadeOut(animationSpec = iconAnimationSpec)
-                                    )
-                                },
+                            TopBarActionIcon(
+                                action = action,
+                                themeStyle = themePrefs.themeStyle,
+                                tint = actionIconTint,
                                 label = "leftActionIcon",
-                            ) { imageVector ->
-                                ActionBarVectorIcon(
-                                    imageVector = imageVector,
-                                    contentDescription = action.contentDescription,
-                                    tint = actionIconTint,
-                                )
-                            }
+                            )
                         }
                     },
                     rightButton = currentRightAction?.let { action ->
                         {
-                            AnimatedContent(
-                                targetState = action.icon,
-                                transitionSpec = {
-                                    val iconAnimationSpec = tween<Float>(
-                                        durationMillis = 280,
-                                        easing = FastOutSlowInEasing,
-                                    )
-                                    (scaleIn(
-                                        initialScale = 1.18f,
-                                        animationSpec = iconAnimationSpec,
-                                    ) + fadeIn(animationSpec = iconAnimationSpec)).togetherWith(
-                                        scaleOut(
-                                            targetScale = 0.78f,
-                                            animationSpec = iconAnimationSpec,
-                                        ) + fadeOut(animationSpec = iconAnimationSpec)
-                                    )
-                                },
+                            TopBarActionIcon(
+                                action = action,
+                                themeStyle = themePrefs.themeStyle,
+                                tint = actionIconTint,
                                 label = "rightActionIcon",
-                            ) { imageVector ->
-                                ActionBarVectorIcon(
-                                    imageVector = imageVector,
-                                    contentDescription = action.contentDescription,
-                                    tint = actionIconTint,
-                                )
-                            }
+                            )
                         }
                     },
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        LiquidScreenSwipeContent(
+                        ZafiroScreenSwipeContent(
                             targetState = currentEntry,
                             direction = controller.lastDirection,
                             modifier = Modifier.fillMaxSize(),
@@ -421,14 +389,14 @@ fun ZafiroApp(
                             }
                         }
 
-                        LiquidPopover(
+                        ZafiroDropdownMenu(
                             expanded = isChromeMenuOpen,
                             onDismissRequest = ::closeChromeMenu,
                             anchorBounds = rightButtonBounds,
-                            alignment = PopoverAlignment.BottomEnd,
+                            alignment = ZafiroMenuAlignment.BottomEnd,
                         ) {
                             currentChrome.menuItems.forEach { item ->
-                                LiquidMenuItem(
+                                ZafiroMenuItem(
                                     title = item.title,
                                     onClick = {
                                         closeChromeMenu()
@@ -457,10 +425,10 @@ private fun resolveScreenTitle(
     chrome: PageChromeContribution,
     page: ZafiroPage,
     entryId: String,
-): LiquidScreenTitle {
+): ZafiroScreenTitle {
     val key = chrome.titleKey ?: entryId
-    chrome.titleContent?.let { return LiquidScreenTitle.Content(content = it, key = key) }
-    return LiquidScreenTitle.Text(
+    chrome.titleContent?.let { return ZafiroScreenTitleContent(content = it, key = key) }
+    return ZafiroScreenTitleText(
         value = resolveTitle(chrome.titleSpec ?: page.titleSpec),
         key = key
     )
@@ -501,16 +469,74 @@ private fun resolveRightAction(
 }
 
 @Composable
+private fun TopBarActionIcon(
+    action: TopBarActionSpec,
+    themeStyle: ThemeStyle,
+    tint: Color,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val isLiquid = themeStyle == ThemeStyle.LiquidGlass
+
+    AnimatedContent(
+        targetState = action.icon,
+        transitionSpec = {
+            if (isLiquid) {
+                val iconAnimationSpec = tween<Float>(
+                    durationMillis = 280,
+                    easing = FastOutSlowInEasing,
+                )
+                (scaleIn(initialScale = 1.18f, animationSpec = iconAnimationSpec) + fadeIn(animationSpec = iconAnimationSpec)).togetherWith(
+                    scaleOut(targetScale = 0.78f, animationSpec = iconAnimationSpec) + fadeOut(animationSpec = iconAnimationSpec)
+                )
+            } else {
+                val enterSpec = tween<Float>(durationMillis = 220, easing = FastOutSlowInEasing)
+                val exitSpec = tween<Float>(durationMillis = 180, easing = FastOutSlowInEasing)
+                fadeIn(animationSpec = enterSpec).togetherWith(
+                    fadeOut(animationSpec = exitSpec)
+                )
+            }
+        },
+        label = label,
+        modifier = modifier,
+    ) { imageVector ->
+        val rotationModifier = if (!isLiquid) {
+            val rotation by transition.animateFloat(
+                transitionSpec = { tween(durationMillis = 220, easing = FastOutSlowInEasing) },
+                label = "${label}Rotation",
+            ) { state ->
+                when (state) {
+                    EnterExitState.PreEnter -> -90f
+                    EnterExitState.Visible -> 0f
+                    EnterExitState.PostExit -> 90f
+                }
+            }
+            Modifier.graphicsLayer { rotationZ = rotation }
+        } else {
+            Modifier
+        }
+
+        ActionBarVectorIcon(
+            imageVector = imageVector,
+            contentDescription = action.contentDescription,
+            tint = tint,
+            modifier = rotationModifier,
+        )
+    }
+}
+
+@Composable
 private fun ActionBarVectorIcon(
     imageVector: ImageVector,
     contentDescription: String?,
     tint: Color,
     size: Dp = 20.dp,
+    modifier: Modifier = Modifier,
 ) {
     Image(
         painter = rememberVectorPainter(imageVector),
         contentDescription = contentDescription,
-        modifier = Modifier.size(size),
+        modifier = modifier.size(size),
         colorFilter = ColorFilter.tint(tint),
     )
 }

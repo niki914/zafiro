@@ -253,6 +253,30 @@ class ScopeTest(unittest.TestCase):
         self.assertEqual(SEVERITY["log-tag"], "warn")
         self.assertEqual(SEVERITY["uncancellable-run-catching"], "block")
         self.assertEqual(SEVERITY["bare-catch"], "warn")
+        self.assertEqual(SEVERITY["rounded-corner-shape"], "block")
+
+
+class RoundedCornerShapeTest(unittest.TestCase):
+    def test_rounded_corner_shape_call_is_flagged(self):
+        self.assertEqual(
+            rules_hit("    val shape = RoundedCornerShape(16.dp)\n"),
+            ["rounded-corner-shape"],
+        )
+
+    def test_rounded_corner_shape_import_is_flagged(self):
+        self.assertEqual(
+            rules_hit("import androidx.compose.foundation.shape.RoundedCornerShape\n"),
+            ["rounded-corner-shape"],
+        )
+
+    def test_comment_is_not_flagged(self):
+        self.assertEqual(rules_hit("    // RoundedCornerShape(16.dp)\n"), [])
+
+    def test_ignore_marker_allows(self):
+        self.assertEqual(
+            rules_hit("    val s = RoundedCornerShape(16.dp) // githooks:ignore rounded-corner-shape\n"),
+            [],
+        )
 
 
 if __name__ == "__main__":

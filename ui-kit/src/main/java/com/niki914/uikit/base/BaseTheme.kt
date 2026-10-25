@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
 import com.materialkolor.rememberDynamicColorScheme
 import com.niki914.uikit.base.theme.DarkColorScheme
@@ -32,16 +33,33 @@ fun resolveThemeColorScheme(
     darkTheme: Boolean,
     dynamicColor: Boolean = true,
     seedColor: Color? = null,
+    themeStyle: ThemeStyle = ThemeStyle.default(),
 ): ColorScheme {
+    val paletteStyle = when (themeStyle) {
+        ThemeStyle.Material3Expressive -> PaletteStyle.Expressive
+        else -> PaletteStyle.TonalSpot
+    }
     return when {
         seedColor != null -> dynamicColorScheme(
             seedColor = seedColor,
             isDark = darkTheme,
-            isAmoled = false
+            isAmoled = false,
+            style = paletteStyle,
         )
 
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            val systemScheme =
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (themeStyle == ThemeStyle.Material3Expressive) {
+                dynamicColorScheme(
+                    seedColor = systemScheme.primary,
+                    isDark = darkTheme,
+                    isAmoled = false,
+                    style = PaletteStyle.Expressive,
+                )
+            } else {
+                systemScheme
+            }
         }
 
         darkTheme -> DarkColorScheme
@@ -52,6 +70,33 @@ fun resolveThemeColorScheme(
 /** 全局深色模式单一来源，由 BaseTheme 提供；所有深色判断必须读它而非 isSystemInDarkTheme。 */
 val LocalAppDarkTheme = staticCompositionLocalOf { false }
 
+/** 应用支持的三种设计语言风格。 */
+enum class ThemeStyle(val storageKey: String) {
+    LiquidGlass("liquid"),
+    Material3("md3"),
+    Material3Expressive("md3e");
+
+    companion object {
+        /**
+         * 默认设计语言风格：
+         * Android 14 (API 34 / UPSIDE_DOWN_CAKE) 及以上具备成熟的 Backdrop / RenderEffect 渲染管线，默认 LiquidGlass；
+         * Android 14 以下设备渲染毛玻璃性能与视觉表现不佳，默认使用 Material3Expressive (MD3E)。
+         */
+        fun default(): ThemeStyle =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                LiquidGlass
+            } else {
+                Material3Expressive
+            }
+
+        fun fromStorageKey(value: String?): ThemeStyle =
+            entries.firstOrNull { it.storageKey == value } ?: default()
+    }
+}
+
+/** 全局主题设计语言单一来源，由 BaseTheme 提供。 */
+val LocalThemeStyle = staticCompositionLocalOf { ThemeStyle.default() }
+
 @Composable
 fun BaseTheme(
     darkTheme: Boolean = isSystemInDarkTheme(), // 判断系统是否为深色模式
@@ -60,19 +105,40 @@ fun BaseTheme(
     /** 非空时从种子色生成 Material 色板，忽略 dynamicColor。 */
     seedColor: Color? = null,
     paintWindowBackground: Boolean = true,
+    themeStyle: ThemeStyle = ThemeStyle.default(),
     content: @Composable () -> Unit, // 实际要应用主题的 Composable 内容
 ) {
+    val paletteStyle = when (themeStyle) {
+        ThemeStyle.Material3Expressive -> PaletteStyle.Expressive
+        else -> PaletteStyle.TonalSpot
+    }
+
     // 根据条件选择颜色方案
     val colorScheme = when {
         // 种子色优先：用户主动选定的主题颜色
         seedColor != null ->
-            rememberDynamicColorScheme(seedColor = seedColor, isDark = darkTheme, isAmoled = false)
+            rememberDynamicColorScheme(
+                seedColor = seedColor,
+                isDark = darkTheme,
+                isAmoled = false,
+                style = paletteStyle,
+            )
 
         // 如果启用动态颜色且 Android 版本 >= S (Android 12)
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current // 获取当前上下文
-            // 根据深色模式选择动态深色或浅色方案
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            val systemScheme =
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (themeStyle == ThemeStyle.Material3Expressive) {
+                rememberDynamicColorScheme(
+                    seedColor = systemScheme.primary,
+                    isDark = darkTheme,
+                    isAmoled = false,
+                    style = PaletteStyle.Expressive,
+                )
+            } else {
+                systemScheme
+            }
         }
 
         darkTheme -> DarkColorScheme // 如果是深色模式但不支持动态颜色，使用预定义深色方案
@@ -108,7 +174,10 @@ fun BaseTheme(
         }
     }
 
-    CompositionLocalProvider(LocalAppDarkTheme provides darkTheme) {
+    CompositionLocalProvider(
+        LocalAppDarkTheme provides darkTheme,
+        LocalThemeStyle provides themeStyle,
+    ) {
         // 应用 MaterialTheme
         MaterialTheme(
             colorScheme = colorScheme, // 使用选择的颜色方案

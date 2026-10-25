@@ -1,4 +1,4 @@
-package com.niki914.uikit.infra
+package com.niki914.uikit.dialog
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,10 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 
 @Composable
-fun ConfirmationLiquidDialog(
+fun ZafiroConfirmationDialog(
     visible: Boolean,
     onDismissRequest: () -> Unit,
     title: String,
@@ -25,7 +24,7 @@ fun ConfirmationLiquidDialog(
     modifier: Modifier = Modifier,
     dismissOnBackgroundTap: Boolean = true,
 ) {
-    LiquidDialog(
+    ZafiroDialog(
         visible = visible,
         onDismissRequest = onDismissRequest,
         modifier = modifier,
@@ -55,19 +54,15 @@ fun ConfirmationLiquidDialog(
             }
         },
         actions = {
-            MaterialTintLiquidButton(
-                text = positiveButtonText,
-                onClick = onPositiveClick,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            )
-            MaterialTintLiquidButton(
+            ZafiroDialogButton(
                 text = negativeButtonText,
                 onClick = onNegativeClick,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                isPrimary = false,
+            )
+            ZafiroDialogButton(
+                text = positiveButtonText,
+                onClick = onPositiveClick,
+                isPrimary = true,
             )
         },
     )

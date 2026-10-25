@@ -8,7 +8,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
+import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
 import com.niki914.uikit.infra.component.settings.SettingsRowSpec
@@ -80,7 +80,7 @@ private fun settingsHomePageSpec(
 private fun SettingsHomePageContentPreview() {
     BaseTheme(darkTheme = false, dynamicColor = false) {
         Surface {
-            ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+            ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
                 SettingsHomePageContentBody(
                     uiState = buildSettingsUiState(hiddenGroups = emptySet()),
                     onOpenGroup = {},

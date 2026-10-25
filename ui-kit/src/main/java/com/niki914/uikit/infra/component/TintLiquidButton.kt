@@ -83,10 +83,9 @@ fun TintLiquidButton(
     val isButtonInteractive = enabled && !isLoading
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = buttonHeight + 8.dp)
-            .then(modifier),
+            .heightIn(min = buttonHeight + 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         LiquidButton(

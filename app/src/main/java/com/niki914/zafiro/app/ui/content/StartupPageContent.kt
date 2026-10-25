@@ -48,9 +48,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.niki914.uikit.base.LocalAppDarkTheme
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.uikit.button.ZafiroButton
 import com.niki914.uikit.infra.component.SettingsDetailPageDefaults
-import com.niki914.uikit.infra.liquidScreenActionButtonBottomPadding
+import com.niki914.uikit.screen.zafiroActionButtonBottomPadding
 import com.niki914.zafiro.animation.PointerCurveMath
 import com.niki914.zafiro.app.R
 import kotlinx.coroutines.coroutineScope
@@ -353,7 +353,7 @@ fun StartupPageContent(
                     .padding(
                         start = SettingsDetailPageDefaults.HorizontalPadding,
                         end = SettingsDetailPageDefaults.HorizontalPadding,
-                        bottom = liquidScreenActionButtonBottomPadding(),
+                        bottom = zafiroActionButtonBottomPadding(),
                     )
                     .fillMaxWidth()
                     .zIndex(1f)
@@ -369,7 +369,7 @@ fun StartupPageContent(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                MaterialTintLiquidButton(
+                ZafiroButton(
                     text = stringResource(R.string.ui_onboard_startup_demo_button),
                     onClick = { onDemoComplete() },
                 )

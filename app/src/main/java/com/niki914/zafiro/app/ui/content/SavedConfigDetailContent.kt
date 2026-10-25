@@ -8,7 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import com.niki914.uikit.infra.ConfirmationLiquidDialog
+import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureEffect
@@ -134,7 +134,7 @@ fun SavedConfigDetailContent(
             onSelect = { viewModel.sendIntent(ConfigureIntent.SelectCatalogModel(it)) },
         )
 
-        ConfirmationLiquidDialog(
+        ZafiroConfirmationDialog(
             visible = showDeleteConfirmation,
             onDismissRequest = { showDeleteConfirmation = false },
             title = stringResource(R.string.ui_settings_saved_configuration_delete_title),

@@ -23,9 +23,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.infra.ConfirmationLiquidDialog
-import com.niki914.uikit.infra.LiquidDialog
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.uikit.dialog.ZafiroConfirmationDialog
+import com.niki914.uikit.dialog.ZafiroDialog
+import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
@@ -278,7 +278,7 @@ private fun CustomPyToolDeleteConfirmationDialog(
     onDismissRequest: () -> Unit,
     onConfirmClick: () -> Unit,
 ) {
-    ConfirmationLiquidDialog(
+    ZafiroConfirmationDialog(
         visible = state != null,
         onDismissRequest = onDismissRequest,
         title = stringResource(R.string.custom_py_tool_delete_dialog_title),
@@ -335,7 +335,7 @@ private fun CustomPyToolSaveProgressDialog(
         }
     }
 
-    LiquidDialog(
+    ZafiroDialog(
         visible = progress != null,
         onDismissRequest = onAction,
         dismissOnBackgroundTap = false,
@@ -384,20 +384,10 @@ private fun CustomPyToolSaveProgressDialog(
             }
         },
         actions = {
-            MaterialTintLiquidButton(
+            ZafiroDialogButton(
                 text = spec.action,
                 onClick = onAction,
-                modifier = Modifier.weight(1f),
-                containerColor = if (spec.actionPrimary) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHighest
-                },
-                contentColor = if (spec.actionPrimary) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+                isPrimary = spec.actionPrimary,
             )
         },
     )

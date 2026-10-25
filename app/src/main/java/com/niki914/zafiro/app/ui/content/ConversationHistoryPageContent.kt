@@ -59,21 +59,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.niki914.uikit.infra.ConfirmationLiquidDialog
-import com.niki914.uikit.infra.LiquidDialog
-import com.niki914.uikit.infra.ReportTitleBarCollapsed
-import com.niki914.uikit.infra.component.LiquidTextField
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
+import com.niki914.uikit.dialog.ZafiroConfirmationDialog
+import com.niki914.uikit.dialog.ZafiroDialog
+import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.uikit.infra.component.OptionRow
 import com.niki914.uikit.infra.component.OptionSheet
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemSurface
-import com.niki914.uikit.infra.liquidScreenBottomPadding
-import com.niki914.uikit.infra.liquidScreenTopPadding
-import com.niki914.uikit.infra.scrollbar.LiquidScrollableContainer
-import com.niki914.uikit.infra.scrollbar.rememberLazyListStateAdapter
-import com.niki914.uikit.infra.scrollbar.rememberLiquidOverscrollController
 import com.niki914.uikit.infra.shape.G2CardShape
+import com.niki914.uikit.screen.ReportTitleBarCollapsed
+import com.niki914.uikit.screen.zafiroScreenBottomPadding
+import com.niki914.uikit.screen.zafiroScreenTopPadding
+import com.niki914.uikit.scroll.ZafiroScrollableContainer
+import com.niki914.uikit.scroll.rememberZafiroLazyListStateAdapter
+import com.niki914.uikit.scroll.rememberZafiroOverscrollController
+import com.niki914.uikit.textfield.ZafiroTextField
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationOriginKind
@@ -228,7 +228,7 @@ internal fun ConversationHistoryPageContent(
         )
     }
 
-    // 重命名对话框 (LiquidDialog)
+    // 重命名对话框 (ZafiroDialog)
     ConversationRenameDialog(
         conversation = renamingConversation,
         onDismissRequest = {
@@ -241,7 +241,7 @@ internal fun ConversationHistoryPageContent(
         },
     )
 
-    // 删除确认对话框 (ConfirmationLiquidDialog)
+    // 删除确认对话框 (ZafiroConfirmationDialog)
     ConversationDeleteConfirmationDialog(
         conversation = deleteConfirmation,
         onDismissRequest = {
@@ -254,7 +254,7 @@ internal fun ConversationHistoryPageContent(
         },
     )
 
-    // 批量删除确认对话框 (ConfirmationLiquidDialog)
+    // 批量删除确认对话框 (ZafiroConfirmationDialog)
     ConversationBatchDeleteConfirmationDialog(
         visible = uiState.showBatchDeleteConfirmation,
         count = uiState.selectedIds.size,
@@ -298,8 +298,8 @@ private fun ConversationHistoryListContent(
     }
 
     val listState = rememberLazyListState()
-    val overscrollController = rememberLiquidOverscrollController()
-    val scrollbarState = rememberLazyListStateAdapter(listState, overscrollController)
+    val overscrollController = rememberZafiroOverscrollController()
+    val scrollbarState = rememberZafiroLazyListStateAdapter(listState, overscrollController)
 
     // 折叠信号取自列表自身的整数位置与刚体平移量：壳层累加量是手势增量之和，与真实位置有亚像素
     // 差，而本页阈值为 0.dp，半像素正残差就会让背景板永久不透明；当列表项较少发生向上超滚时，
@@ -319,11 +319,11 @@ private fun ConversationHistoryListContent(
         }
     }
 
-    LiquidScrollableContainer(
+    ZafiroScrollableContainer(
         state = scrollbarState,
         overscrollController = overscrollController,
-        topClearance = liquidScreenTopPadding(24.dp),
-        bottomClearance = liquidScreenBottomPadding(),
+        topClearance = zafiroScreenTopPadding(24.dp),
+        bottomClearance = zafiroScreenBottomPadding(),
         modifier = modifier.fillMaxSize(),
     ) {
         LazyColumn(
@@ -331,9 +331,9 @@ private fun ConversationHistoryListContent(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = 16.dp,
-                top = liquidScreenTopPadding(24.dp),
+                top = zafiroScreenTopPadding(24.dp),
                 end = 16.dp,
-                bottom = liquidScreenBottomPadding(),
+                bottom = zafiroScreenBottomPadding(),
             ),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -811,7 +811,7 @@ private fun ConversationHistoryMessageContent(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
-            .padding(top = liquidScreenTopPadding(24.dp), bottom = liquidScreenBottomPadding()),
+            .padding(top = zafiroScreenTopPadding(24.dp), bottom = zafiroScreenBottomPadding()),
         contentAlignment = Alignment.TopCenter,
     ) {
         SettingsGroupCard {
@@ -862,7 +862,7 @@ private fun ConversationRenameDialog(
 
     val activeConversation = conversation ?: retainedConversation
 
-    LiquidDialog(
+    ZafiroDialog(
         visible = conversation != null,
         onDismissRequest = onDismissRequest,
         title = {
@@ -886,7 +886,7 @@ private fun ConversationRenameDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            LiquidTextField(
+            ZafiroTextField(
                 value = titleInput,
                 onValueChange = { titleInput = it },
                 placeholder = stringResource(R.string.ui_conversation_rename_dialog_hint),
@@ -898,22 +898,18 @@ private fun ConversationRenameDialog(
             )
         },
         actions = {
-            MaterialTintLiquidButton(
+            ZafiroDialogButton(
                 text = stringResource(R.string.ui_conversation_rename_dialog_cancel),
                 onClick = onDismissRequest,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                isPrimary = false,
             )
-            MaterialTintLiquidButton(
+            ZafiroDialogButton(
                 text = stringResource(R.string.ui_conversation_rename_dialog_confirm),
                 enabled = titleInput.isNotBlank(),
                 onClick = {
                     activeConversation?.let { onConfirmClick(it, titleInput.trim()) }
                 },
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+                isPrimary = true,
             )
         },
     )
@@ -936,7 +932,7 @@ private fun ConversationDeleteConfirmationDialog(
     val title = activeConversation?.title?.let { ConversationFormatter.sanitizeDisplayTitle(it) }
         ?.ifBlank { untitledConversation }
         .orEmpty()
-    ConfirmationLiquidDialog(
+    ZafiroConfirmationDialog(
         visible = conversation != null,
         onDismissRequest = onDismissRequest,
         title = stringResource(R.string.ui_conversation_history_delete_dialog_title),
@@ -963,7 +959,7 @@ private fun ConversationBatchDeleteConfirmationDialog(
             retainedCount = count
         }
     }
-    ConfirmationLiquidDialog(
+    ZafiroConfirmationDialog(
         visible = visible,
         onDismissRequest = onDismissRequest,
         title = stringResource(R.string.ui_conversation_history_delete_dialog_title),

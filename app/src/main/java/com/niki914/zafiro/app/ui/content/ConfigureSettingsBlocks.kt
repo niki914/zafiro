@@ -13,7 +13,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.niki914.okia.message.ThinkingLevel
-import com.niki914.uikit.infra.ActionBarButton
+import com.niki914.uikit.button.ZafiroActionButton
+import com.niki914.uikit.dialog.ZafiroSingleChoiceDialog
 import com.niki914.uikit.infra.component.SettingExpandableSliderItem
 import com.niki914.uikit.infra.component.SettingNavigationItem
 import com.niki914.uikit.infra.component.SettingToggleItem
@@ -193,7 +194,7 @@ internal fun ConfigureConnectionSettingsBlock(
     }
 }
 
-/** 模型目录按钮：复用 LiquidScreen 左右按钮同款（Home 添加图片按钮同款）。 */
+/** 模型目录按钮：复用 ZafiroScreen 左右按钮同款（Home 添加图片按钮同款）。 */
 @Composable
 private fun ModelCatalogButton(
     enabled: Boolean,
@@ -203,7 +204,7 @@ private fun ModelCatalogButton(
     CompositionLocalProvider(
         LocalContentColor provides MaterialTheme.colorScheme.primary,
     ) {
-        ActionBarButton(
+        ZafiroActionButton(
             onClick = onClick,
             enabled = enabled,
         ) {
@@ -267,7 +268,7 @@ internal fun ConfigureProtocolSettingsBlock(
                 onThinkingLevelSelected(thinkingOptions[idx].wire)
             },
             valueRange = 0f..thinkingOptions.lastIndex.toFloat(),
-            steps = thinkingOptions.size - 1,
+            steps = (thinkingOptions.size - 2).coerceAtLeast(0),
             valueLabel = thinkingOptions[currentLevelIndex].label,
             startLabel = stringResource(R.string.ui_settings_configure_thinking_start_label),
             endLabel = stringResource(R.string.ui_settings_configure_thinking_end_label),
@@ -311,7 +312,7 @@ internal fun ConfigureProtocolSettingsBlock(
 
     // "deepseek" 协议与 openai-chat-completions 同壳，仅作存量存储值兼容，不再提供新选
     val selectableProtocols = LlmProtocol.entries.filter { it != LlmProtocol.DeepSeek }
-    SingleChoiceLiquidDialog(
+    ZafiroSingleChoiceDialog(
         visible = showProtocolDialog,
         onDismissRequest = { showProtocolDialog = false },
         title = stringResource(R.string.ui_settings_configure_protocol_label),

@@ -40,14 +40,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.niki914.logging.Logger
-import com.niki914.uikit.infra.LocalScreenBackdrop
-import com.niki914.uikit.infra.liquidScreenTopPadding
-import com.niki914.uikit.infra.scrollbar.LiquidOverscrollContainer
-import com.niki914.uikit.infra.scrollbar.LiquidOverscrollController
-import com.niki914.uikit.infra.scrollbar.rememberLiquidOverscrollController
+import com.niki914.uikit.button.ZafiroScrollToBottomButton
+import com.niki914.uikit.screen.ZafiroLocalBackdropContainer
+import com.niki914.uikit.screen.zafiroScreenTopPadding
+import com.niki914.uikit.scroll.ZafiroOverscrollContainer
+import com.niki914.uikit.scroll.ZafiroOverscrollController
+import com.niki914.uikit.scroll.rememberZafiroOverscrollController
 import com.niki914.zafiro.api.util.tryIgnore
 import com.niki914.zafiro.app.conversation.TurnBranchState
 import com.niki914.zafiro.app.ui.chat.composable.attachment.HomeChatAttachmentRow
@@ -58,7 +57,7 @@ import com.niki914.zafiro.app.ui.chat.composable.turn.HomeChatTurnItem
 import com.niki914.zafiro.app.ui.chat.helper.userBubblePosition
 import com.niki914.zafiro.app.ui.chat.helper.userGroupTailIndex
 import com.niki914.zafiro.app.ui.chat.helper.userGroupText
-import com.niki914.zafiro.app.ui.content.composer.LiquidChatComposer
+import com.niki914.zafiro.app.ui.content.composer.ZafiroChatComposer
 import com.niki914.zafiro.app.ui.content.helper.CameraTarget
 import com.niki914.zafiro.app.ui.content.helper.GrantingTakePicture
 import com.niki914.zafiro.app.ui.content.helper.createCameraTarget
@@ -82,7 +81,7 @@ internal fun HomePageContentBody(
     uiState: HomeChatUiState,
     actionsDisplay: MessageActionsDisplay,
     listState: LazyListState,
-    overscrollController: LiquidOverscrollController = rememberLiquidOverscrollController(),
+    overscrollController: ZafiroOverscrollController = rememberZafiroOverscrollController(),
     composerBottomPadding: Dp,
     composerGap: Dp,
     composerHeight: MutableState<Dp>,
@@ -118,7 +117,6 @@ internal fun HomePageContentBody(
     // composerBottomPadding*2 + composerHeight，composer 顶上方留一个视觉间距
     val bottomClearance = composerBottomPadding + composerHeight.value + composerGap
     val density = LocalDensity.current
-    val chatBackdrop = rememberLayerBackdrop()
 
     // 附件入口：加号 → 选项单（Photos / Camera / File / Folder）。
     val context = LocalContext.current
@@ -167,10 +165,10 @@ internal fun HomePageContentBody(
         }
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        LiquidOverscrollContainer(
+    ZafiroLocalBackdropContainer(
+        modifier = Modifier.fillMaxSize(),
+    ) { contentBackdropModifier ->
+        ZafiroOverscrollContainer(
             overscrollController = overscrollController,
             modifier = Modifier.fillMaxSize(),
         ) {
@@ -178,7 +176,7 @@ internal fun HomePageContentBody(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .layerBackdrop(chatBackdrop)
+                    .then(contentBackdropModifier)
                     .background(MaterialTheme.colorScheme.background)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -187,7 +185,7 @@ internal fun HomePageContentBody(
                     ),
                 contentPadding = PaddingValues(
                     start = 20.dp,
-                    top = liquidScreenTopPadding(24.dp),
+                    top = zafiroScreenTopPadding(24.dp),
                     end = 20.dp,
                     bottom = bottomClearance,
                 ),
@@ -262,42 +260,33 @@ internal fun HomePageContentBody(
             )
         }
 
-        CompositionLocalProvider(
-            LocalScreenBackdrop provides chatBackdrop,
-        ) {
-            LiquidChatComposer(
-                value = uiState.input,
-                onValueChange = onInputChange,
-                onSendClick = onSendClick,
-                onStopClick = onStopClick,
-                isGenerating = uiState.isGenerating,
-                contextProgress = uiState.contextProgress,
-                pendingImages = pendingImages,
-                pendingFiles = pendingFiles,
-                onAttachImageClick = { attachSheetVisible = true },
-                backdrop = chatBackdrop,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .onFocusChanged { focusState ->
-                        onComposerFocusChanged(focusState.hasFocus)
-                    }
-                    .focusRequester(composerFocusRequester)
-                    .padding(
-                        start = 20.dp,
-                        end = 20.dp,
-                        bottom = composerBottomPadding,
-                    )
-                    .onSizeChanged { size ->
-                        composerHeight.value = with(density) { size.height.toDp() }
-                    },
-            )
-        }
+        ZafiroChatComposer(
+            value = uiState.input,
+            onValueChange = onInputChange,
+            onSendClick = onSendClick,
+            onStopClick = onStopClick,
+            isGenerating = uiState.isGenerating,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .onFocusChanged { focusState ->
+                    onComposerFocusChanged(focusState.hasFocus)
+                }
+                .focusRequester(composerFocusRequester)
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    bottom = composerBottomPadding,
+                )
+                .onSizeChanged { size ->
+                    composerHeight.value = with(density) { size.height.toDp() }
+                },
+            contextProgress = uiState.contextProgress,
+            onAttachImageClick = { attachSheetVisible = true },
+        )
 
         val scrollToBottomScope = rememberCoroutineScope()
-        ScrollToBottomButton(
+        ZafiroScrollToBottomButton(
             visible = !followBottom.value && !isAtBottom,
-            bottomClearance = bottomClearance,
-            backdrop = chatBackdrop,
             onClick = {
                 followBottom.value = true
                 scrollToBottomScope.launch {
@@ -305,6 +294,7 @@ internal fun HomePageContentBody(
                 }
             },
             modifier = Modifier.align(Alignment.BottomCenter),
+            bottomClearance = bottomClearance,
         )
 
         if (uiState.isLoadingConversation) {

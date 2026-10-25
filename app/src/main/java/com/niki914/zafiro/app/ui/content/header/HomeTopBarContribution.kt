@@ -32,7 +32,7 @@ internal fun HomeTopBarContribution(
         PageChromeContribution(
             titleContent = titleContent,
             isTitleOccluded = isConfigMenuVisible,
-            actionsVisible = !isConfigMenuVisible,
+            actionsVisible = true,
             leftAction = TopBarActionSpec(
                 icon = Icons.Default.History,
                 onClick = {

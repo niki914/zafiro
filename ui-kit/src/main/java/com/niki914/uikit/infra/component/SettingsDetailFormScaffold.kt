@@ -27,11 +27,15 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.button.ZafiroButton
+import com.niki914.uikit.button.ZafiroTonalButton
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
 import com.niki914.uikit.infra.liquidScreenActionButtonBottomPadding
 import com.niki914.uikit.infra.liquidScreenBottomPadding
@@ -215,6 +219,24 @@ fun SettingsDetailFormScaffold(
             }
         }
 
+        val isDarkTheme = LocalAppDarkTheme.current
+        val resolvedActionButtonContainerColor = when {
+            actionButtonDarkContainerColor.isSpecified && actionButtonLightContainerColor.isSpecified -> {
+                if (isDarkTheme) actionButtonDarkContainerColor else actionButtonLightContainerColor
+            }
+            actionButtonDarkContainerColor.isSpecified -> actionButtonDarkContainerColor
+            actionButtonLightContainerColor.isSpecified -> actionButtonLightContainerColor
+            else -> MaterialTheme.colorScheme.primary
+        }
+        val resolvedActionButtonContentColor = when {
+            actionButtonDarkContentColor.isSpecified && actionButtonLightContentColor.isSpecified -> {
+                if (isDarkTheme) actionButtonDarkContentColor else actionButtonLightContentColor
+            }
+            actionButtonDarkContentColor.isSpecified -> actionButtonDarkContentColor
+            actionButtonLightContentColor.isSpecified -> actionButtonLightContentColor
+            else -> MaterialTheme.colorScheme.onPrimary
+        }
+
         if (secondaryActionText != null && onSecondaryActionClick != null) {
             Row(
                 modifier = Modifier
@@ -227,40 +249,37 @@ fun SettingsDetailFormScaffold(
                     ),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                TintLiquidButton(
+                ZafiroButton(
                     text = actionText,
                     enabled = actionEnabled,
                     onClick = onActionClick,
                     buttonHeight = SettingsDetailPageDefaults.ActionButtonReservedHeight,
-                    darkContainerColor = actionButtonDarkContainerColor,
-                    lightContainerColor = actionButtonLightContainerColor,
-                    darkContentColor = actionButtonDarkContentColor,
-                    lightContentColor = actionButtonLightContentColor,
+                    containerColor = resolvedActionButtonContainerColor,
+                    contentColor = resolvedActionButtonContentColor,
                     modifier = Modifier.weight(1f),
                 )
-                TintLiquidButton(
+                ZafiroTonalButton(
                     text = secondaryActionText,
                     enabled = secondaryActionEnabled,
                     onClick = onSecondaryActionClick,
                     buttonHeight = SettingsDetailPageDefaults.ActionButtonReservedHeight,
-                    darkContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     lightContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    darkContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                 )
             }
         } else {
-            TintLiquidButton(
+            ZafiroButton(
                 text = actionText,
                 enabled = actionEnabled,
                 onClick = onActionClick,
                 buttonHeight = SettingsDetailPageDefaults.ActionButtonReservedHeight,
-                darkContainerColor = actionButtonDarkContainerColor,
-                lightContainerColor = actionButtonLightContainerColor,
-                darkContentColor = actionButtonDarkContentColor,
-                lightContentColor = actionButtonLightContentColor,
+                containerColor = resolvedActionButtonContainerColor,
+                contentColor = resolvedActionButtonContentColor,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
                     .padding(
                         start = SettingsDetailPageDefaults.HorizontalPadding,
                         end = SettingsDetailPageDefaults.HorizontalPadding,

@@ -218,7 +218,7 @@
     <string name="memory_loading">Loading memories...</string>
     <string name="memory_editor_title_create">New Memory</string>
     <string name="memory_editor_title_edit">Edit Memory</string>
-    <string name="memory_field_content">Content</string>
+    <string name="memory_field_content">Enter content</string>
     <string name="memory_field_content_hint">For example: The user\'s birthday is Month X Day Y</string>
     <string name="memory_save_action">Save Memory</string>
     <string name="memory_cancel_action">Cancel</string>
@@ -499,6 +499,11 @@
     <string name="ui_settings_configure_context_window_label">Context Window</string>
     <string name="ui_settings_configure_context_window_placeholder">For example: 1000000 or 1M</string>
     <string name="ui_settings_configure_error_context_window_invalid">Enter a valid number of at least 1000, supporting k/m/b</string>
+
+    <string name="ui_settings_theme_style_title">Style</string>
+    <string name="ui_theme_style_liquid">Glass</string>
+    <string name="ui_theme_style_md3">MD3</string>
+    <string name="ui_theme_style_md3e">MD3E</string>
 
     <string name="ui_theme_mode_system">Follow system</string>
     <string name="ui_theme_mode_light">Light</string>

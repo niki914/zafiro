@@ -1,11 +1,6 @@
 package com.niki914.zafiro.app.ui.chat.helper
 
 import android.content.ClipData
-import android.content.Context
-import android.content.res.Configuration
-import android.widget.Toast
-import androidx.annotation.StringRes
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -29,51 +24,13 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.business.application.ApplicationService
-import com.niki914.zafiro.service.requireService
+import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import kotlinx.coroutines.launch
 
 internal val CopyBtnSize = 24.dp
 internal val CopyBtnGap = 4.dp
 internal val OutputBtnInset = 32.dp
 
-/**
- * 统一即时 Toast：主动 [cancel] 排队中的旧提示，消灭连续点击排队滞后；
- * 优先根据 [AppCompatDelegate.getApplicationLocales] 渲染文案，严格遵循应用内选定语言。
- */
-internal object ZafiroToast {
-    private var activeToast: Toast? = null
-
-    fun show(@StringRes resId: Int, duration: Int = Toast.LENGTH_SHORT) {
-        val appService = runCatchingCancellable { requireService<ApplicationService>() }.getOrNull() ?: return
-        val context = appService.getActivity() ?: appService.getApplication()
-        val text = resolveLocalizedString(context, resId)
-        show(context, text, duration)
-    }
-
-    fun show(text: CharSequence, duration: Int = Toast.LENGTH_SHORT) {
-        val appService = runCatchingCancellable { requireService<ApplicationService>() }.getOrNull() ?: return
-        val context = appService.getActivity() ?: appService.getApplication()
-        show(context, text, duration)
-    }
-
-    private fun show(context: Context, text: CharSequence, duration: Int) {
-        activeToast?.cancel()
-        val toast = Toast.makeText(context.applicationContext, text, duration)
-        activeToast = toast
-        toast.show()
-    }
-
-    private fun resolveLocalizedString(context: Context, @StringRes resId: Int): String {
-        val locales = AppCompatDelegate.getApplicationLocales()
-        if (locales.isEmpty) return context.getString(resId)
-        val targetLocale = locales[0] ?: return context.getString(resId)
-        val config = Configuration(context.resources.configuration).apply {
-            setLocale(targetLocale)
-        }
-        return context.createConfigurationContext(config).getString(resId)
-    }
-}
 
 /**
  * 诚实复制文本到剪贴板并给出触觉与 Toast 反馈：

@@ -1,9 +1,7 @@
-package com.niki914.zafiro.app.ui.content
+package com.niki914.uikit.dialog
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,40 +16,33 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.niki914.uikit.infra.LiquidDialog
-import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.component.SettingsItemSurface
 import com.niki914.uikit.infra.shape.G2FieldShape
-import com.niki914.zafiro.app.R
 
-/**
- * 单选弹窗（Protocol / Language 共用）。
- * - 列表直接放 LiquidDialog content（面板自带 verticalScroll + 高度上限，
- *   超长选项内部滚动，不要自己再包 scroll 层）；
- * - 选中即应用即关闭；actions 只有一个「取消」；
- * - 选项采用 SettingsItemSurface + G2FieldShape，按压态与 OptionSheet 的 OptionRow 对齐；
- * - 必须在 LiquidScreen 组合树内挂载（经 host portal 渲染遮罩）。
- */
 @Composable
-fun <T> SingleChoiceLiquidDialog(
+fun <T> ZafiroSingleChoiceDialog(
     visible: Boolean,
     onDismissRequest: () -> Unit,
     title: String,
-    hint: String? = null,
     options: List<T>,
     selectedId: String?,
     optionId: (T) -> String,
     optionLabel: (T) -> String,
     onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    hint: String? = null,
+    cancelButtonText: String = stringResource(android.R.string.cancel),
+    dismissOnBackgroundTap: Boolean = true,
 ) {
-    LiquidDialog(
+    ZafiroDialog(
         visible = visible,
         onDismissRequest = onDismissRequest,
+        modifier = modifier,
+        dismissOnBackgroundTap = dismissOnBackgroundTap,
         title = {
             Column {
                 Text(
@@ -112,12 +103,10 @@ fun <T> SingleChoiceLiquidDialog(
             }
         },
         actions = {
-            MaterialTintLiquidButton(
-                text = stringResource(R.string.dialog_cancel),
+            ZafiroDialogButton(
+                text = cancelButtonText,
                 onClick = onDismissRequest,
-                modifier = Modifier.fillMaxWidth(),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                isPrimary = false,
             )
         },
     )

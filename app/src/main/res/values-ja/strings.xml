@@ -499,6 +499,11 @@
     <string name="ui_settings_configure_context_window_placeholder">例：1000000 または 1M</string>
     <string name="ui_settings_configure_error_context_window_invalid">1000 以上の有効な数値を入力してください。k/m/b に対応</string>
 
+    <string name="ui_settings_theme_style_title">スタイル</string>
+    <string name="ui_theme_style_liquid">Glass</string>
+    <string name="ui_theme_style_md3">MD3</string>
+    <string name="ui_theme_style_md3e">MD3E</string>
+
     <string name="ui_theme_mode_system">システムに従う</string>
     <string name="ui_theme_mode_light">ライト</string>
     <string name="ui_theme_mode_dark">ダーク</string>

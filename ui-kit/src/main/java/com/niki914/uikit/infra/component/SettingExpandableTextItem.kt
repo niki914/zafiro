@@ -1,24 +1,9 @@
 package com.niki914.uikit.infra.component
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,16 +17,22 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
+import com.niki914.uikit.infra.component.settings.item.SettingCardItem
+import com.niki914.uikit.infra.component.settings.item.SettingExpandableSlot
+import com.niki914.uikit.infra.component.settings.item.SettingTrailingSlot
+import com.niki914.uikit.textfield.ZafiroOutlinedTextField
+import com.niki914.uikit.textfield.ZafiroSecretTextField
 
+/**
+ * 通用可折叠文本输入设置项（门面组件，基于统一 [SettingCardItem] 底座）：
+ * - 贯彻严格 Slot 体系与统一设计令牌 [SettingsTokens]；
+ * - 头部标题与箭头完全复用 [SettingCardItem]，消灭 4dp 边距漂移与 22dp/24dp 箭头尺寸漂移；
+ * - 展开区输入框无缝对接键盘避让 [LocalSettingsFormKeyboardAvoidance] 与焦点联动。
+ */
 @Composable
 fun SettingExpandableTextItem(
     title: String,
@@ -67,71 +58,19 @@ fun SettingExpandableTextItem(
     val isExpanded = expanded ?: internalExpanded
     val focusRequester = remember { FocusRequester() }
 
-    fun updateExpanded(value: Boolean) {
+    fun updateExpanded(newVal: Boolean) {
         if (expanded == null) {
-            internalExpanded = value
+            internalExpanded = newVal
         }
-        onExpandedChange?.invoke(value)
+        onExpandedChange?.invoke(newVal)
     }
 
-    LaunchedEffect(isExpanded) {
+    LaunchedEffect(isExpanded, enabled) {
         if (isExpanded && enabled) {
             focusRequester.requestFocus()
         }
     }
 
-    SettingExpandableTextItemContent(
-        title = title,
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = placeholder,
-        description = description,
-        expanded = isExpanded,
-        enabled = enabled,
-        minLines = minLines,
-        maxLines = maxLines,
-        secretVisible = secretVisible,
-        onToggleSecretVisibility = onToggleSecretVisibility,
-        toggleSecretVisibleContentDescription = toggleSecretVisibleContentDescription,
-        toggleSecretHiddenContentDescription = toggleSecretHiddenContentDescription,
-        focusRequester = focusRequester,
-        onToggleExpanded = {
-            if (enabled) {
-                updateExpanded(!isExpanded)
-            }
-        },
-        fieldTrailingContent = fieldTrailingContent,
-        modifier = modifier,
-    )
-}
-
-@Composable
-internal fun SettingExpandableTextItemContent(
-    title: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    description: String?,
-    expanded: Boolean,
-    enabled: Boolean,
-    minLines: Int,
-    maxLines: Int,
-    secretVisible: Boolean,
-    onToggleSecretVisibility: (() -> Unit)?,
-    toggleSecretVisibleContentDescription: String?,
-    toggleSecretHiddenContentDescription: String?,
-    focusRequester: FocusRequester,
-    onToggleExpanded: () -> Unit,
-    fieldTrailingContent: (@Composable () -> Unit)? = null,
-    modifier: Modifier = Modifier,
-) {
-    val animationSpec = tween<IntSize>(durationMillis = 320, easing = FastOutSlowInEasing)
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (expanded) 90f else 0f,
-        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
-        label = "settingExpandableTextItemArrowRotation",
-    )
-    val colorScheme = MaterialTheme.colorScheme
     val usesSecretField = onToggleSecretVisibility != null &&
             toggleSecretVisibleContentDescription != null &&
             toggleSecretHiddenContentDescription != null
@@ -143,9 +82,10 @@ internal fun SettingExpandableTextItemContent(
     val avoidanceKey = remember { Any() }
     var fieldBounds by remember { mutableStateOf<Rect?>(null) }
     var fieldFocused by remember { mutableStateOf(false) }
-    LaunchedEffect(keyboardAvoidance, expanded, fieldFocused, fieldBounds) {
+
+    LaunchedEffect(keyboardAvoidance, isExpanded, fieldFocused, fieldBounds) {
         val avoidance = keyboardAvoidance ?: return@LaunchedEffect
-        if (!expanded || !fieldFocused) {
+        if (!isExpanded || !fieldFocused) {
             avoidance.release(avoidanceKey)
         } else {
             avoidance.request(avoidanceKey)
@@ -153,81 +93,19 @@ internal fun SettingExpandableTextItemContent(
         }
     }
 
-    val titleColor = if (enabled) {
-        colorScheme.onSurface
-    } else {
-        colorScheme.onSurface.copy(alpha = 0.45f)
-    }
-    val secondaryTextColor = if (enabled) {
-        colorScheme.onSurfaceVariant
-    } else {
-        colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-    }
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize(animationSpec = animationSpec)
-            .padding(16.dp),
-    ) {
-        // 提示文本与标题同属「行头部」：点击目标必须整块覆盖，否则点提示会落到
-        // 表单脚手架的 background tap 上，表现为点了没反应。展开后的输入框不在此块内，
-        // 点输入框不会收起本行。
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (enabled) {
-                        Modifier.pointerInput(expanded) {
-                            detectTapGestures(onTap = { onToggleExpanded() })
-                        }
-                    } else {
-                        Modifier
-                    }
-                ),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                    color = titleColor,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = secondaryTextColor,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .graphicsLayer {
-                            rotationZ = arrowRotation
-                        },
-                )
-            }
-
-            if (description != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = secondaryTextColor,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-
-        if (expanded) {
-            Spacer(modifier = Modifier.height(12.dp))
+    SettingCardItem(
+        title = title,
+        summary = description,
+        modifier = modifier,
+        enabled = enabled,
+        isExpanded = isExpanded,
+        onExpandedChange = ::updateExpanded,
+        trailingSlot = SettingTrailingSlot.Chevron(),
+        expandableSlot = SettingExpandableSlot.Custom {
             @Composable
             fun fieldContent(fieldModifier: Modifier) {
                 if (usesSecretField) {
-                    LiquidSecretTextField(
+                    ZafiroSecretTextField(
                         value = value,
                         onValueChange = onValueChange,
                         placeholder = placeholder,
@@ -253,7 +131,7 @@ internal fun SettingExpandableTextItemContent(
                             .focusRequester(focusRequester),
                     )
                 } else {
-                    LiquidTextField(
+                    ZafiroOutlinedTextField(
                         value = value,
                         onValueChange = onValueChange,
                         placeholder = placeholder,
@@ -288,6 +166,6 @@ internal fun SettingExpandableTextItemContent(
             } else {
                 fieldContent(Modifier.fillMaxWidth())
             }
-        }
-    }
+        },
+    )
 }

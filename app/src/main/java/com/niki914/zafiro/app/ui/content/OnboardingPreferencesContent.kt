@@ -28,7 +28,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
+import com.niki914.uikit.dialog.ZafiroInputDialog
+import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.uikit.infra.component.SettingsDetailFormScaffold
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
@@ -153,7 +154,7 @@ fun OnboardingPreferencesContent(
         }
     }
 
-    InputLiquidDialog(
+    ZafiroInputDialog(
         visible = uiState.addRuleDialogVisible,
         onDismissRequest = { onIntent(OnboardingPreferencesIntent.DismissAddRuleDialog) },
         title = stringResource(R.string.ui_onboard_preferences_rule_add_title),
@@ -235,7 +236,7 @@ private fun previewState() = OnboardingPreferencesUiState(
 private fun OnboardingPreferencesLightPreview() {
     BaseTheme(darkTheme = false, dynamicColor = false) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+            ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
                 OnboardingPreferencesContent(uiState = previewState(), onIntent = {})
             }
         }
@@ -253,7 +254,7 @@ private fun OnboardingPreferencesLightPreview() {
 private fun OnboardingPreferencesDarkPreview() {
     BaseTheme(darkTheme = true, dynamicColor = false) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+            ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
                 OnboardingPreferencesContent(uiState = previewState(), onIntent = {})
             }
         }

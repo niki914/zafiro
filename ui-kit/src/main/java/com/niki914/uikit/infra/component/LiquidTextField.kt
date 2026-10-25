@@ -5,9 +5,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-
 import com.kyant.backdrop.Backdrop
 import com.niki914.uikit.infra.LiquidGlassPresets
 import com.niki914.uikit.infra.LiquidGlassStyle
@@ -24,13 +24,9 @@ fun LiquidTextField(
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     moveCursorToEndOnFocus: Boolean = false,
     minHeight: Dp = 52.dp,
-    /** 内容行（leading/文本/trailing）的纵向对齐。Top 用于多行输入框：内容随高度增长锚定顶部。 */
-    contentVerticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    contentVerticalAlignment: Alignment.Vertical = if (singleLine) Alignment.CenterVertically else Alignment.Top,
     onTextLayout: ((TextLayoutResult?) -> Unit)? = null,
-    /** 展开布局：leading/trailing 移到文本区下方独立行（文本行内不显示按钮）。 */
-    expandedLayout: Boolean = false,
-    /** 展开布局下按钮行：左 leading 右 trailing，与文本区同一玻璃容器内。 */
-    expandedActionsRow: (@Composable RowScope.() -> Unit)? = null,
     backdrop: Backdrop? = null,
     glassStyle: LiquidGlassStyle = LiquidGlassPresets.TextField,
     leadingContent: (@Composable RowScope.() -> Unit)? = null,
@@ -46,11 +42,10 @@ fun LiquidTextField(
         minLines = minLines,
         maxLines = maxLines,
         moveCursorToEndOnFocus = moveCursorToEndOnFocus,
+        visualTransformation = visualTransformation,
         minHeight = minHeight,
         contentVerticalAlignment = contentVerticalAlignment,
         onTextLayout = onTextLayout,
-        expandedLayout = expandedLayout,
-        expandedActionsRow = expandedActionsRow,
         backdrop = backdrop,
         glassStyle = glassStyle,
         leadingContent = leadingContent,

@@ -217,7 +217,7 @@
     <string name="memory_loading">正在讀取記憶…</string>
     <string name="memory_editor_title_create">新增記憶</string>
     <string name="memory_editor_title_edit">編輯記憶</string>
-    <string name="memory_field_content">內容</string>
+    <string name="memory_field_content">輸入內容</string>
     <string name="memory_field_content_hint">例如：使用者的生日是 X 月 Y 日</string>
     <string name="memory_save_action">儲存記憶</string>
     <string name="memory_cancel_action">取消</string>
@@ -483,6 +483,11 @@
     <string name="host_breeno_display_name">小布助手</string>
     <string name="host_xiaoai_display_name">小愛同學</string>
     <string name="feedback_bug_template">## 問題描述\n\n## 復現步驟\n\n## 預期行為\n\n## 實際行為\n\n## 設備資訊\n- Android 版本：\n- 宿主助理：\n- 模組版本：\n\n## 更多\n可以補充日誌、截圖錄屏等資訊，以便於我們理解</string>
+
+    <string name="ui_settings_theme_style_title">風格</string>
+    <string name="ui_theme_style_liquid">Glass</string>
+    <string name="ui_theme_style_md3">MD3</string>
+    <string name="ui_theme_style_md3e">MD3E</string>
 
     <string name="ui_theme_mode_system">跟隨系統</string>
     <string name="ui_theme_mode_light">淺色</string>

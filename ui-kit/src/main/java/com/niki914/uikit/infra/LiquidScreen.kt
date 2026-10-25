@@ -37,17 +37,17 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import android.os.Build
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.graphicsLayer
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.kyant.backdrop.drawPlainBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.runtimeShaderEffect
+import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.infra.internal.LiquidTopBarBackground
+import com.niki914.uikit.screen.ZafiroTopBar
+import com.niki914.uikit.screen.ZafiroTopBarDefaults
+import com.niki914.uikit.screen.internal.MaterialTopBarBackground
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.nav.TitleBarScrollState
 
@@ -96,9 +96,8 @@ fun LiquidScreen(
     val titleHorizontalPadding = with(density) { 12.dp * 2 + 48.sp.toDp() }
     val dialogHostState = remember { LiquidDialogHostState() }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val titleBarHeight = 56.dp
-    val buttonSlotHeight = 72.dp
-    val actionBarHeight = topInset + titleBarHeight
+    val buttonSlotHeight = ZafiroTopBarDefaults.ButtonSlotHeight
+    val actionBarHeight = topInset + buttonSlotHeight
     val chromeHeight = topInset + buttonSlotHeight
     val navigationBottomPx = WindowInsets.navigationBars.getBottom(density)
     val navigationBottom = with(density) { navigationBottomPx.toDp() }
@@ -148,6 +147,14 @@ fun LiquidScreen(
         LocalLiquidDialogHostState provides dialogHostState,
         LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
     ) {
+        val themeStyle = LocalThemeStyle.current
+        val isLiquid = themeStyle == ThemeStyle.LiquidGlass
+        val backdropCaptureModifier = if (isLiquid) {
+            Modifier.layerBackdrop(contentBackdrop)
+        } else {
+            Modifier
+        }
+
         Box(
             modifier = modifier.fillMaxSize(),
         ) {
@@ -164,7 +171,7 @@ fun LiquidScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .nestedScroll(titleBarScrollConnection)
-                        .layerBackdrop(contentBackdrop)
+                        .then(backdropCaptureModifier)
                         .background(MaterialTheme.colorScheme.background),
                 ) {
                     content()
@@ -180,70 +187,19 @@ fun LiquidScreen(
             enter = fadeIn(tween(320, easing = FastOutSlowInEasing)),
             exit = fadeOut(tween(320, easing = FastOutSlowInEasing)),
         ) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val isDarkTheme = LocalAppDarkTheme.current
-                val tintColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                val blurRadius = LiquidGlassPresets.TopBar.blurRadius(isDarkTheme)
-                val baseTintIntensity = LiquidGlassPresets.TopBar.tintIntensity(isDarkTheme)
-                val topInsetPx = with(density) { topInset.toPx() }
-                val fadeStartY = with(density) { (topInset + buttonSlotHeight / 2).toPx() }
-
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(chromeHeight)
-                        .graphicsLayer { alpha = barAlpha }
-                        .drawPlainBackdrop(
-                            backdrop = contentBackdrop,
-                            shape = { RectangleShape },
-                            exportedBackdrop = chromeBackdrop,
-                            effects = {
-                                blur(blurRadius.toPx())
-                                runtimeShaderEffect(
-                                    "ActionBarProgressiveBlur_v3",
-                                    """
-                                    uniform shader content;
-                                    uniform float2 size;
-                                    layout(color) uniform half4 tint;
-                                    uniform float tintIntensity;
-                                    uniform float progress;
-                                    uniform float fadeStartY;
-                                    uniform float topInset;
-
-                                    half4 main(float2 coord) {
-                                        // 从 fadeStartY（标题中线）向下衰减至 size.y 归零完全透明
-                                        float blurAlpha = smoothstep(size.y, fadeStartY, coord.y) * progress;
-                                        float tintAlpha = smoothstep(size.y, fadeStartY, coord.y) * progress;
-
-                                        // 向上到达屏幕顶部（0 ~ topInset 状态栏区间）时，底色浓度平滑升至 1.0，呈现纯正的 surfaceContainerHigh 原生背景色
-                                        float topSolidFactor = smoothstep(topInset, 0.0, coord.y);
-                                        float currentTintIntensity = mix(tintIntensity, 1.0, topSolidFactor);
-
-                                        return mix(content.eval(coord) * blurAlpha, tint * tintAlpha, currentTintIntensity);
-                                    }
-                                    """.trimIndent(),
-                                    "content",
-                                ) {
-                                    setFloatUniform("size", size.width, size.height)
-                                    setColorUniform("tint", tintColor)
-                                    setFloatUniform("tintIntensity", baseTintIntensity)
-                                    setFloatUniform("progress", barAlpha)
-                                    setFloatUniform("fadeStartY", fadeStartY)
-                                    setFloatUniform("topInset", topInsetPx)
-                                }
-                            },
-                        ),
+            if (isLiquid) {
+                LiquidTopBarBackground(
+                    contentBackdrop = contentBackdrop,
+                    chromeBackdrop = chromeBackdrop,
+                    chromeHeight = chromeHeight,
+                    buttonSlotHeight = buttonSlotHeight,
+                    topInset = topInset,
+                    barAlpha = barAlpha,
                 )
             } else {
-                // Android 13 以下统一采用 surfaceContainerHigh 整体容器背景
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(chromeHeight)
-                        .layerBackdrop(chromeBackdrop)
-                        .background(
-                            MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = barAlpha),
-                        ),
+                MaterialTopBarBackground(
+                    chromeHeight = chromeHeight,
+                    barAlpha = barAlpha,
                 )
             }
         }
@@ -262,23 +218,23 @@ fun LiquidScreen(
             val resolvedOnLeftClick = onLeftClick ?: state.onLeftClick
             val resolvedOnRightClick = onRightClick ?: state.onRightClick
 
-            LiquidTopBar(
+            ZafiroTopBar(
                 title = state.title,
                 titleDirection = state.titleDirection,
                 baseTitleAlpha = baseTitleAlpha,
+                topInset = topInset,
                 isOccluded = isOccluded,
                 leftButtonAlpha = leftButtonAlpha,
                 rightButtonAlpha = rightButtonAlpha,
                 showLeftButton = resolvedShowLeftButton,
                 showRightButton = resolvedShowRightButton,
                 actionsEnabled = actionsEnabled,
+                backdrop = screenBackdrop,
+                titleHorizontalPadding = titleHorizontalPadding,
                 onLeftClick = resolvedOnLeftClick,
                 onRightClick = resolvedOnRightClick,
                 onLeftButtonBoundsChanged = onLeftButtonBoundsChanged,
                 onRightButtonBoundsChanged = onRightButtonBoundsChanged,
-                backdrop = screenBackdrop,
-                topInset = topInset,
-                titleHorizontalPadding = titleHorizontalPadding,
                 leftButton = leftButton,
                 rightButton = rightButton,
                 overlayContent = overlayContent,

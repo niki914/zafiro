@@ -3,7 +3,6 @@ package com.niki914.zafiro.app.ui.content
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
@@ -19,8 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
-import com.niki914.uikit.infra.ConfirmationLiquidDialog
-import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
+import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
 import com.niki914.uikit.infra.component.settings.SettingsRowSpec
@@ -28,9 +26,11 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.RegisterPageChrome
+import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.model.SkillInlineError
 import com.niki914.zafiro.app.ui.model.SkillListItem
 import com.niki914.zafiro.app.ui.model.SkillSettingsEffect
@@ -54,15 +54,16 @@ fun SkillsSettingsContent(
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 SkillSettingsEffect.ShowNoSkillFileToast ->
-                    Toast.makeText(context, R.string.skill_import_no_skill_file, Toast.LENGTH_SHORT)
-                        .show()
+                    ZafiroToast.show(R.string.skill_import_no_skill_file)
 
-                is SkillSettingsEffect.ShowImportErrorToast ->
-                    Toast.makeText(
-                        context,
-                        effect.message ?: context.getString(effect.fallbackResId),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                is SkillSettingsEffect.ShowImportErrorToast -> {
+                    val msg = effect.message
+                    if (msg != null) {
+                        ZafiroToast.show(msg)
+                    } else {
+                        ZafiroToast.show(effect.fallbackResId)
+                    }
+                }
 
                 else -> {}
             }
@@ -82,8 +83,7 @@ fun SkillsSettingsContent(
                 viewModel.sendIntent(SkillSettingsIntent.Import(tempDir))
             } else {
                 tempDir.deleteRecursively()
-                Toast.makeText(context, R.string.skill_import_resolve_failed, Toast.LENGTH_SHORT)
-                    .show()
+                ZafiroToast.show(R.string.skill_import_resolve_failed)
             }
         }
     }
@@ -101,7 +101,7 @@ fun SkillsSettingsContent(
 
     val conflict = uiState.importConflict
     if (conflict != null) {
-        ConfirmationLiquidDialog(
+        ZafiroConfirmationDialog(
             visible = true,
             onDismissRequest = {
                 viewModel.sendIntent(SkillSettingsIntent.DismissImportConflict)
@@ -222,7 +222,7 @@ private fun skillPageDescription(uiState: SkillSettingsUiState): String {
 @Composable
 private fun SkillsSettingsContentLoadingPreview() {
     MaterialTheme {
-        ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+        ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
             SkillsSettingsContentBody(
                 uiState = SkillSettingsUiState(isLoading = true),
                 onOpenSkillDetail = { _, _ -> },
@@ -236,7 +236,7 @@ private fun SkillsSettingsContentLoadingPreview() {
 @Composable
 private fun SkillsSettingsContentEmptyPreview() {
     MaterialTheme {
-        ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+        ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
             SkillsSettingsContentBody(
                 uiState = SkillSettingsUiState(isLoading = false),
                 onOpenSkillDetail = { _, _ -> },
@@ -250,7 +250,7 @@ private fun SkillsSettingsContentEmptyPreview() {
 @Composable
 private fun SkillsSettingsContentLoadedPreview() {
     MaterialTheme {
-        ProvideLiquidScreenContentForPreview(topPadding = 0.dp) {
+        ProvideZafiroScreenContentForPreview(topPadding = 0.dp) {
             SkillsSettingsContentBody(
                 uiState = SkillSettingsUiState(
                     isLoading = false,
