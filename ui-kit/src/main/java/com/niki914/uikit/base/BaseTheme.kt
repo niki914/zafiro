@@ -33,7 +33,7 @@ fun resolveThemeColorScheme(
     darkTheme: Boolean,
     dynamicColor: Boolean = true,
     seedColor: Color? = null,
-    themeStyle: ThemeStyle = ThemeStyle.Material3,
+    themeStyle: ThemeStyle = ThemeStyle.default(),
 ): ColorScheme {
     val paletteStyle = when (themeStyle) {
         ThemeStyle.Material3Expressive -> PaletteStyle.Expressive
@@ -77,13 +77,25 @@ enum class ThemeStyle(val storageKey: String) {
     Material3Expressive("md3e");
 
     companion object {
+        /**
+         * 默认设计语言风格：
+         * Android 14 (API 34 / UPSIDE_DOWN_CAKE) 及以上具备成熟的 Backdrop / RenderEffect 渲染管线，默认 LiquidGlass；
+         * Android 14 以下设备渲染毛玻璃性能与视觉表现不佳，默认使用 Material3Expressive (MD3E)。
+         */
+        fun default(): ThemeStyle =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                LiquidGlass
+            } else {
+                Material3Expressive
+            }
+
         fun fromStorageKey(value: String?): ThemeStyle =
-            entries.firstOrNull { it.storageKey == value } ?: LiquidGlass
+            entries.firstOrNull { it.storageKey == value } ?: default()
     }
 }
 
 /** 全局主题设计语言单一来源，由 BaseTheme 提供。 */
-val LocalThemeStyle = staticCompositionLocalOf { ThemeStyle.Material3 }
+val LocalThemeStyle = staticCompositionLocalOf { ThemeStyle.default() }
 
 @Composable
 fun BaseTheme(
@@ -93,7 +105,7 @@ fun BaseTheme(
     /** 非空时从种子色生成 Material 色板，忽略 dynamicColor。 */
     seedColor: Color? = null,
     paintWindowBackground: Boolean = true,
-    themeStyle: ThemeStyle = ThemeStyle.Material3,
+    themeStyle: ThemeStyle = ThemeStyle.default(),
     content: @Composable () -> Unit, // 实际要应用主题的 Composable 内容
 ) {
     val paletteStyle = when (themeStyle) {

@@ -2,12 +2,12 @@ package com.niki914.zafiro.app.ui.content
 
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -144,7 +144,7 @@ fun ThemeSettingsContent(
     }
 
     val modeOptions = listOf(
-        Triple(ThemeMode.System, Icons.Rounded.BrightnessAuto, R.string.ui_theme_mode_system),
+        Triple(ThemeMode.System, Icons.Rounded.PhoneAndroid, R.string.ui_theme_mode_system),
         Triple(ThemeMode.Light, Icons.Rounded.LightMode, R.string.ui_theme_mode_light),
         Triple(ThemeMode.Dark, Icons.Rounded.DarkMode, R.string.ui_theme_mode_dark),
     )
@@ -193,7 +193,7 @@ fun ThemeSettingsContent(
                             ThemeStyle.Material3 -> stringResource(R.string.ui_theme_style_md3)
                             ThemeStyle.Material3Expressive -> stringResource(R.string.ui_theme_style_md3e)
                         },
-                        leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Rounded.AutoAwesome),
+                        leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Rounded.BrightnessAuto),
                     ),
                 ),
             ),

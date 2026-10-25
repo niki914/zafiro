@@ -33,7 +33,7 @@ data class ThemePrefs(
     val mode: ThemeMode = ThemeMode.Light,
     /** ARGB int；null = 壁纸动态色。 */
     val seedColor: Int? = 0xFFFABD00.toInt(),
-    val themeStyle: ThemeStyle = ThemeStyle.LiquidGlass,
+    val themeStyle: ThemeStyle = ThemeStyle.default(),
 ) {
     fun resolveDarkTheme(systemDark: Boolean): Boolean = when (mode) {
         ThemeMode.System -> systemDark
