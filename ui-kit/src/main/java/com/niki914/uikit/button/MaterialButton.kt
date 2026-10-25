@@ -88,11 +88,10 @@ fun MaterialButton(
 
     Button(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(buttonHeight)
-            .then(motionModifier)
-            .then(modifier),
+            .then(motionModifier),
         enabled = enabled && !isLoading,
         shape = buttonShape,
         interactionSource = interactionSource,
@@ -184,11 +183,10 @@ fun MaterialTonalButton(
 
     FilledTonalButton(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(buttonHeight)
-            .then(motionModifier)
-            .then(modifier),
+            .then(motionModifier),
         enabled = enabled && !isLoading,
         shape = buttonShape,
         interactionSource = interactionSource,

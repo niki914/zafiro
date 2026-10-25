@@ -27,11 +27,10 @@ fun MaterialTintLiquidButton(
     val disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             // 槽位比胶囊高 8dp，与 TintLiquidButton 一致：给按下的液态形变留量
-            .heightIn(min = 64.dp)
-            .then(modifier),
+            .heightIn(min = 64.dp),
         contentAlignment = Alignment.Center,
     ) {
         LiquidButton(

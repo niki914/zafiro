@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.settings.item.SettingCardItem
@@ -54,6 +55,15 @@ private fun SettingCardItemPreviewGallery() {
                 trailingSlot = SettingTrailingSlot.Preview(
                     text = "DeepSeek",
                     showChevron = true,
+                ),
+                onClick = {},
+            )
+            SettingsItemDivider()
+            SettingCardItem(
+                title = "服务运行状态 (无箭头 · 自动吞并 32dp 箭头预算)",
+                trailingSlot = SettingTrailingSlot.Preview(
+                    text = "Stopped",
+                    showChevron = false,
                 ),
                 onClick = {},
             )
@@ -191,6 +201,34 @@ private fun SettingCardItemPreviewGallery() {
                 trailingSlot = SettingTrailingSlot.Chevron(),
                 isStandaloneCard = true,
                 onClick = {},
+            )
+        }
+
+        // ── 场景 8: 表单输入项与导航项混合对齐测试 (Name · Prompt · Proxy) ──
+        SettingsGroupCard(title = "8. 表单输入与导航项混合对齐 (Name · Prompt · Proxy)") {
+            var name by remember { mutableStateOf("Zafiro Default") }
+            var proxy by remember { mutableStateOf("http://127.0.0.1:7890") }
+            SettingExpandableTextItem(
+                title = "Name",
+                value = name,
+                onValueChange = { name = it },
+                placeholder = "Enter config name",
+            )
+            SettingsItemDivider()
+            SettingCardItem(
+                title = "Prompt",
+                trailingSlot = SettingTrailingSlot.Preview(
+                    text = "Global fallback",
+                    showChevron = true,
+                ),
+                onClick = {},
+            )
+            SettingsItemDivider()
+            SettingExpandableTextItem(
+                title = "Proxy",
+                value = proxy,
+                onValueChange = { proxy = it },
+                placeholder = "Enter proxy URL",
             )
         }
     }

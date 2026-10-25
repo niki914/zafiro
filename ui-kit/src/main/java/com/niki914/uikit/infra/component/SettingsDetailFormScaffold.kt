@@ -279,6 +279,7 @@ fun SettingsDetailFormScaffold(
                 contentColor = resolvedActionButtonContentColor,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
                     .padding(
                         start = SettingsDetailPageDefaults.HorizontalPadding,
                         end = SettingsDetailPageDefaults.HorizontalPadding,

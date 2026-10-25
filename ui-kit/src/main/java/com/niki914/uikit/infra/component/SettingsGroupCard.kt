@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 import com.niki914.uikit.infra.shape.G2CardShape
 
 /**
@@ -39,7 +40,10 @@ fun SettingsGroupCard(
                 text = title,
                 style = MaterialTheme.typography.labelLarge,
                 color = titleColor,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(
+                    start = SettingsTokens.ContentPaddingStart,
+                    end = SettingsTokens.ContentPaddingEnd,
+                ),
             )
             Spacer(modifier = Modifier.height(8.dp))
         }

@@ -338,14 +338,16 @@ internal fun SettingHeaderRowLayout(
         )
         val actionWidth = actionPlaceable.width
 
-        // ── 步骤 2：度量 Trailing Preview (ActionText 保证至少 minTargetWidthPx，常规 Preview clamp 在有效宽度的 20% 以内) ──
+        // ── 步骤 2：度量 Trailing Preview (ActionText 保证至少 minTargetWidthPx，常规 Preview clamp 在有效宽度的 20% 以内；无 Action 时自动吸收闲置的箭头预算) ──
         val previewMeasurable = measurables.first { it.layoutId == SettingHeaderSlotId.Preview }
         val maxPreviewWidthRatio = (effectiveWidth * SettingsTokens.MaxPreviewWidthRatio).roundToInt()
         val minTargetWidthPx = with(this) { 64.dp.roundToPx() }
-        val maxPreviewWidthPx = when (trailingSlot) {
+        val unusedActionSpacePx = if (actionWidth == 0) with(this) { (SettingsTokens.ChevronSize + 8.dp).roundToPx() } else 0
+        val baseMaxPreviewWidthPx = when (trailingSlot) {
             is SettingTrailingSlot.ActionText -> maxOf(maxPreviewWidthRatio, minTargetWidthPx)
             else -> maxPreviewWidthRatio
         }
+        val maxPreviewWidthPx = baseMaxPreviewWidthPx + unusedActionSpacePx
         val shouldLockWidth = when (trailingSlot) {
             is SettingTrailingSlot.Preview -> trailingSlot.lockWidth == true
             else -> false
@@ -728,7 +730,11 @@ private fun SettingExpandableSlotContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = SettingsTokens.ContentPaddingStart, vertical = 12.dp),
+                    .padding(
+                        start = SettingsTokens.ContentPaddingStart,
+                        end = SettingsTokens.ContentPaddingEnd,
+                        bottom = SettingsTokens.ContentPaddingBottom,
+                    ),
                 content = expandableSlot.content,
             )
         }
