@@ -13,4 +13,7 @@ object XSettingsImpl : XSettings {
 
     override val floatingBallAutoExpand: StateFlow<Boolean>
         get() = XRepo.floatingBallAutoExpandSetting
+
+    override val appLanguageTag: StateFlow<String>
+        get() = XRepo.appLanguageTagSetting
 }

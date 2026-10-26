@@ -49,6 +49,8 @@ include(":business:files")
 include(":business:notification")
 include(":business:application")
 include(":business:permission")
+// 遥测实现。只有 :app 依赖它。
+include(":business:remote")
 
 // Vendored libraries (see libs/README.md)
 include(":libs:logging")

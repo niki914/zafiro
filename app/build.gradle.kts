@@ -83,6 +83,7 @@ dependencies {
     implementation(project(":business:files"))
     implementation(project(":business:application"))
     implementation(project(":business:notification"))
+    implementation(project(":business:remote"))
     implementation(project(":ui-kit"))
     implementation(project(":xposed-runtime"))
     implementation(project(":store"))
