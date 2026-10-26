@@ -1,0 +1,122 @@
+# 两端共用的埋点契约。
+# schema_version、contract_version、limits、channels 用协议里的名字。
+# limits 内的键与服务端 LIMITS 属性同名。事件白名单和扩展键是空的。
+schema_version: 1
+contract_version: 1
+
+limits:
+  bodyBytes: 32768
+  daysMin: 1
+  daysMax: 8
+  countsPerDay: 64
+  firstsPerDay: 64
+  unplannedEventsPerDay: 8
+  nameLength: 40
+  countNMin: 1
+  countNMax: 1000000
+  customKeys: 16
+  customUndeclaredKeys: 8
+  customStringLength: 40
+  brandLength: 64
+  modelLength: 64
+  installerLength: 100
+  tzOffsetMin: -720
+  tzOffsetMax: 840
+  metricMin: 0
+  metricMax: 2147483647
+  channelNameMin: 1
+  channelNameMax: 32
+  channelNamePattern: "[a-z0-9_]{1,32}"
+  langLength: 16
+  appLangLength: 16
+  localeRegionLength: 2
+  dayKeyLength: 36
+  activityWindowDays: 8
+  clientRetentionPastDays: 7
+  clockRollbackDays: 8
+  deletedDayMemoryDays: 9
+  revMin: 1
+  droppedDaysMin: 0
+  countsTruncatedMin: 0
+  versionCodeMin: 1
+
+channels:
+  - name: github
+    kind: official
+  - name: xposed
+    kind: repo
+  - name: unknown
+    kind: unknown
+  - name: dev
+    kind: dev
+  - name: legacy
+    kind: legacy
+
+config_keys:
+  - name: telemetry_enabled
+    type: bool
+    default: true
+  - name: report_interval_hours
+    type: int
+    default: 24
+    min: 24
+    max: 168
+  - name: config_ttl_hours
+    type: int
+    default: 12
+    min: 12
+    max: 168
+
+events: []
+
+custom_keys: []
+
+ram_gb_buckets: [2, 3, 4, 6, 8, 12, 16, 24]
+
+screen_width_buckets: [320, 360, 400, 480, 600, 720]
+
+screen_density_buckets:
+  - name: mdpi
+    dpi: 160
+  - name: hdpi
+    dpi: 240
+  - name: xhdpi
+    dpi: 320
+  - name: xxhdpi
+    dpi: 480
+  - name: xxxhdpi
+    dpi: 640
+
+build_types: [release, debug]
+
+profile_fields:
+  - name: api_level
+    json: device.api_level
+  - name: brand
+    json: device.brand
+    maxLength: 64
+  - name: model
+    json: device.model
+    maxLength: 64
+  - name: abi
+    json: device.abi
+  - name: ram_gb
+    json: device.ram_gb
+  - name: screen_class
+    json: device.screen_class
+  - name: lang
+    json: device.lang
+    maxLength: 16
+  - name: app_lang
+    json: app.app_lang
+    maxLength: 16
+  - name: locale_region
+    json: device.locale_region
+    length: 2
+  - name: tz_id
+    json: device.tz_id
+  - name: tz_offset_min
+    json: device.tz_offset_min
+  - name: installer
+    json: install.installer
+    maxLength: 100
