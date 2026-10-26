@@ -1,4 +1,4 @@
-// 保护：落盘字段名写错，或坏文件被覆盖后，重发会换掉 day_key
+// 保护：落盘字段名写错，或坏文件、缺 deleted_days 的旧文件被覆盖后，重发会换掉 day_key
 package com.niki914.zafiro.business.remote.ledger
 
 import com.niki914.logging.Backend
@@ -78,6 +78,7 @@ class LedgerJsonTest {
                     custom = mapOf("k" to CustomValue.Str("v")),
                 ),
             ),
+            deletedDays = listOf(earlier, today),
             seenEvents = listOf("tool_call"),
             envelopeCustom = mapOf("n" to CustomValue.Num(3)),
             droppedDays = 4,
@@ -110,17 +111,43 @@ class LedgerJsonTest {
             directory.deleteRecursively()
         }
     }
+
+    @Test
+    fun `a ledger file without deleted days reads as empty`() {
+        val today = LocalDate.parse("2026-10-26")
+        val state = LedgerState(lastActive = LastActive(today, 16), pages = listOf(storedPage(today)))
+        val obj = JSONObject(LedgerJson.encode(state))
+        obj.remove("deleted_days")
+        assertEquals(state, LedgerJson.decode(obj.toString()))
+    }
 }
 
 private val TOP_KEYS = setOf(
     "v",
     "last_active",
     "pages",
+    "deleted_days",
     "seen_events",
     "envelope_custom",
     "dropped_days",
     "send",
 )
+
+private fun storedPage(day: LocalDate): DayPage {
+    return DayPage(
+        day = day,
+        dayKey = "6f1c2a4e-8d3b-4c1a-9e2f-0b7d5a3c9e11",
+        rev = TelemetryContract.LIMIT_REV_MIN,
+        ackedRev = 0,
+        versionCode = 16,
+        prevActiveDay = null,
+        prevVersionCode = null,
+        counts = emptyList(),
+        countsTruncated = TelemetryContract.LIMIT_COUNTS_TRUNCATED_MIN,
+        firsts = emptyList(),
+        custom = emptyMap(),
+    )
+}
 
 private val PAGE_KEYS = setOf(
     "day",

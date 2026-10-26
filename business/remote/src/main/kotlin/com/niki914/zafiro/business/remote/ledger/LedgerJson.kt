@@ -7,7 +7,7 @@ import org.json.JSONObject
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
-/** `ledger.json` 与 schema §8 的字段一一对应。解析失败时返回 null，调用方不得覆盖原文件。 */
+/** `ledger.json`。解析失败时返回 null，调用方不得覆盖原文件。没有 `deleted_days` 时按空数组读。 */
 internal object LedgerJson {
     fun encode(state: LedgerState): String = encodeState(state).toString()
 
@@ -28,6 +28,7 @@ internal object LedgerJson {
             .put("v", state.v)
             .put("last_active", encodeLastActive(state.lastActive))
             .put("pages", encodePages(state.pages))
+            .put("deleted_days", encodeDays(state.deletedDays))
             .put("seen_events", encodeStrings(state.seenEvents))
             .put("envelope_custom", encodeCustom(state.envelopeCustom))
             .put("dropped_days", state.droppedDays)
@@ -41,6 +42,7 @@ internal object LedgerJson {
             v = version,
             lastActive = decodeLastActive(require(obj, "last_active")),
             pages = decodePages(requireArray(obj, "pages")),
+            deletedDays = decodeDeletedDays(obj),
             seenEvents = decodeStrings(requireArray(obj, "seen_events")),
             envelopeCustom = decodeCustom(requireObject(obj, "envelope_custom")),
             droppedDays = requireInt(obj, "dropped_days"),
@@ -176,6 +178,24 @@ internal object LedgerJson {
             }
         }
         return values
+    }
+
+    private fun encodeDays(days: List<LocalDate>): JSONArray {
+        val array = JSONArray()
+        for (day in days) array.put(day.toString())
+        return array
+    }
+
+    private fun decodeDeletedDays(obj: JSONObject): List<LocalDate> {
+        if (!obj.has("deleted_days")) return emptyList()
+        val array = requireArray(obj, "deleted_days")
+        val days = ArrayList<LocalDate>(array.length())
+        for (index in 0 until array.length()) {
+            val value = array.opt(index)
+            if (value !is String) throw BadLedgerJson()
+            days.add(parseDay(value))
+        }
+        return days
     }
 
     private fun encodeStrings(values: List<String>): JSONArray {
