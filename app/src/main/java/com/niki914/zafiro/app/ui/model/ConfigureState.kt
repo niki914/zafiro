@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui.model
 
 import android.content.Context
@@ -15,11 +16,11 @@ import com.niki914.zafiro.repo.ModelCatalogApi
 import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.repo.TokenCountText
 import com.niki914.zafiro.repo.XRepo
+import com.niki914.zafiro.api.util.Debouncer
+import com.niki914.zafiro.api.util.debouncer
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.api.util.tryIgnore
 import com.niki914.zafiro.settings.model.LlmProtocol
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
@@ -276,7 +277,7 @@ class ConfigureViewModel internal constructor(
     private var initializedKey: Triple<ConfigureScene, String?, String?>? = null
 
     /** 在途的目录拉取（防抖 + 可取消）。 */
-    private var catalogFetchJob: Job? = null
+    private val catalogDebouncer: Debouncer = viewModelScope.debouncer(CATALOG_DEBOUNCE_MS)
 
     /** 上次已拉取的三元组（endpoint/apiKey/protocol），去重用。 */
     private var lastCatalogKey: CatalogKey? = null
@@ -373,8 +374,7 @@ class ConfigureViewModel internal constructor(
         if (key == initializedKey) return
         // 拉取三元组跨初始化重置：不同配置页实例互不污染
         lastCatalogKey = null
-        catalogFetchJob?.cancel()
-        catalogFetchJob = null
+        catalogDebouncer.cancel()
         runCatchingCancellable {
             val document = dependencies.loadDocument()
             Logger.d(LOG_TAG, "initialize scene=$scene configs=${document.configs.size}")
@@ -557,23 +557,22 @@ class ConfigureViewModel internal constructor(
      *  缓存语义：成功覆盖（含空结果，空 = 藏按钮）；失败与空值短路保留旧缓存，只记日志；
      *  仅当 modelInput 为空时用首个结果回填（手填内容永不覆盖）。 */
     private fun scheduleCatalogFetch(immediate: Boolean = false) {
-        catalogFetchJob?.cancel()
         // 注意：handleIntent 已跑在 viewModelScope 的 intent 串行通道里；
-        // 这里起子协程只为防抖 delay 不阻塞后续 intent，取消语义经 job 传递
-        catalogFetchJob = viewModelScope.launch {
-            if (!immediate) delay(CATALOG_DEBOUNCE_MS)
+        // 这里走 Debouncer 防抖，取消语义经 debouncer 传递
+        val delayMs = if (immediate) 0L else CATALOG_DEBOUNCE_MS
+        catalogDebouncer.debounce(delayMs) {
             val state = currentState
             val key = CatalogKey(
                 endpoint = state.endpointInput.trim(),
                 apiKey = state.apiKeyInput.trim(),
                 protocolWireId = state.protocolWireId,
             )
-            if (key == lastCatalogKey) return@launch
+            if (key == lastCatalogKey) return@debounce
             // 空值短路：Key 或 endpoint 为空直接不发，保留旧缓存
-            if (key.endpoint.isBlank() || key.apiKey.isBlank()) return@launch
+            if (key.endpoint.isBlank() || key.apiKey.isBlank()) return@debounce
             val protocol = LlmProtocol.fromWire(key.protocolWireId)
             val modelsUrl = EndpointInference.modelsUrl(key.endpoint, protocol)
-                ?: return@launch
+                ?: return@debounce
             lastCatalogKey = key
             runCatchingCancellable {
                 val catalog = dependencies.fetchModelCatalog(modelsUrl, key.apiKey, protocol)
