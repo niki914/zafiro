@@ -1,3 +1,4 @@
+// 保护：工具截断输出目录（filesDir/tool_output）的多维容量与生命周期回收策略
 package com.niki914.zafiro.util
 
 import com.niki914.zafiro.chat.util.SilentLoggerRule

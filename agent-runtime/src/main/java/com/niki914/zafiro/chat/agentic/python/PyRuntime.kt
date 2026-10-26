@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.os.RemoteException
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.chat.agentic.python.PyRuntime.exec
 import com.niki914.zafiro.chat.agentic.python.PyRuntime.kill
 import com.niki914.zafiro.chat.agentic.python.PyRuntime.warmUp
@@ -100,10 +101,6 @@ object PyRuntime {
 
     @Volatile
     private var appContext: Context? = null
-
-    /** 每次 bind 重建：完成后 [connection] 回调读最新实例。 */
-    @Volatile
-    private var pendingBinder = CompletableDeferred<IBinder?>()
 
     /** Test hook: when set, all calls bypass the Binder layer. */
     @Volatile
@@ -307,18 +304,16 @@ object PyRuntime {
         // 被完成的是上一轮的 deferred，本轮 await 永远等不到 —— 表现为
         // 每次调用都连接超时、整会话不可用，只能重启 App。
         val deferred = CompletableDeferred<IBinder?>()
-        pendingBinder = deferred
         val conn = newConnection(deferred)
-        val bindAccepted = try {
+        val bindAccepted = runCatchingCancellable {
             ctx.bindService(
                 Intent(ctx, PythonWorkerService::class.java),
                 conn,
                 Context.BIND_AUTO_CREATE
             )
-        } catch (e: SecurityException) {
+        }.onFailure { e ->
             Logger.w(LOG_TAG, "bindService rejected: ${e.message}")
-            false
-        }
+        }.getOrDefault(false)
         if (!bindAccepted) {
             lastConnectFailure = "bindService rejected"
             service = null
@@ -381,7 +376,7 @@ object PyRuntime {
         if (testService != null) return
         connectionMutex.withLock {
             delay(PROCESS_DIE_SETTLE_MS)
-            val ctx = appContext ?: return@withLock
+            val ctx = appContext ?: ContextProvider.await().applicationContext.also { appContext = it }
             bindLocked(ctx)
             if (terminatePending) {
                 // 重连期间终止键已按：杀掉刚重连的 worker，终止在途 exec。

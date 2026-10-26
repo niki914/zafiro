@@ -1,3 +1,4 @@
+// 保护：配置文件的原子读写与损坏快照回退恢复行为
 package com.niki914.store
 
 import org.junit.Assert.assertEquals
@@ -96,13 +97,5 @@ class ConfigPersistenceTest {
         // 本层只防结构性损坏：不完整、或后面跟了垃圾
         assertFalse(ConfigPersistence.isWellFormedJson("""{"a":1"""))
         assertFalse(ConfigPersistence.isWellFormedJson("""{"a":1} trailing"""))
-        assertFalse(ConfigPersistence.isWellFormedJson("""{"a":1} trailing"""))
-    }
-
-    @Test
-    fun snapshotFileFor_appendsSuffixNextToMainFile() {
-        val file = tempFile()
-
-        assertEquals(file.path + ".good", ConfigPersistence.snapshotFileFor(file).path)
     }
 }

@@ -30,6 +30,12 @@ object ToolOutputRetention {
         val changed: Boolean get() = deletedFiles > 0
     }
 
+    private data class FileItem(
+        val file: File,
+        val lastModified: Long,
+        val length: Long,
+    )
+
     /**
      * 回收 [dir] 下的过期与超量文件。
      *
@@ -56,32 +62,32 @@ object ToolOutputRetention {
         var deletedFiles = 0
         var freedBytes = 0L
 
-        // 第一轮：超过保留期的文件直接回收
-        val survivors = ArrayList<File>(candidates.size)
+        // 第一轮：读取元数据并直接回收超过保留期的文件
+        val survivors = ArrayList<FileItem>(candidates.size)
         for (file in candidates) {
-            if (nowMs - file.lastModified() > ageLimit) {
-                val size = file.length()
+            val lastModified = file.lastModified()
+            val size = file.length()
+            if (nowMs - lastModified > ageLimit) {
                 if (deleteQuietly(file)) {
                     deletedFiles++
                     freedBytes += size
                 }
             } else {
-                survivors.add(file)
+                survivors.add(FileItem(file, lastModified, size))
             }
         }
 
-        // 第二轮：仍然超量/超体积时，从最旧的开始删
-        survivors.sortBy { it.lastModified() }
+        // 第二轮：仍然超量/超体积时，基于内存缓存时间排序，从最旧的开始删
+        survivors.sortBy { it.lastModified }
         var remainingFiles = survivors.size
-        var remainingBytes = survivors.sumOf { it.length() }
-        for (file in survivors) {
+        var remainingBytes = survivors.sumOf { it.length }
+        for (item in survivors) {
             if (remainingFiles <= fileLimit && remainingBytes <= byteLimit) break
-            val size = file.length()
-            if (deleteQuietly(file)) {
+            if (deleteQuietly(item.file)) {
                 deletedFiles++
-                freedBytes += size
+                freedBytes += item.length
                 remainingFiles--
-                remainingBytes -= size
+                remainingBytes -= item.length
             }
         }
 

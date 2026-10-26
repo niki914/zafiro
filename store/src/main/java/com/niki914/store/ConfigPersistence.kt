@@ -16,7 +16,7 @@ import java.io.IOException
  * 写入走 [AtomicFile]（写临时文件再替换），保证不会读到半个文件。
  * 读取额外做两件事：
  * 1. 内容必须可解析为 JSON，否则视为损坏；
- * 2. 损坏时回落到最近一次成功写入的快照（`<name>.good`）并就地修复主文件，
+ * 2. 损坏时回落到最近一次成功写入的快照（`<name>.good`）并写回主文件，
  *    用户无需清应用数据即可恢复该配置。
  */
 internal object ConfigPersistence {
