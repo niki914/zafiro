@@ -14,7 +14,7 @@ Repos involved:
 | `niki914/zafiro` (main, open source) | `v<code>-<name>` e.g. `v8-1.1.0` | Full bilingual notes |
 | `Xposed-Modules-Repo/com.niki914.zafiro` (closed) | `<code>-<name>` e.g. `8-1.1.0` | Same feature entries, closing line points back to the main repo. **Optional — ask the user every time.** |
 
-One APK, two notes. CI builds and signs the APK and creates the Release when a tag is pushed to the main repo. There is no CI in the Xposed repo — its release is a manual `gh` operation. Never build locally.
+CI builds and signs one APK when a tag is pushed to the main repo, stamps channel `github` into its APK Signing Block, and uploads that file as the GitHub Release asset. The Xposed repo has no CI. Its release is a manual `gh` operation: download that asset, stamp channel `xposed` over it, and upload the result. The signature and certificate stay the same. Never build locally.
 
 ## Phase 1 — Gather facts
 
@@ -89,7 +89,7 @@ The script automates:
 4. Creating tag `v<code>-<name>` and pushing to `origin`.
 5. Waiting for GitHub Actions release build CI to succeed (`gh run watch`).
 6. Updating the GitHub Release title to `Release - <name>` and replacing CI notes with approved bilingual notes.
-7. If `--xposed` is given: downloading APK, generating Xposed notes (with open-source links), and creating the Xposed release with `--latest` on `Xposed-Modules-Repo/com.niki914.zafiro`.
+7. If `--xposed` is given: downloading the GitHub Release APK, stamping channel `xposed` (`tools/apk_channel.py stamp`, which checks read-back and `apksigner verify`), generating Xposed notes (with open-source links), and creating the Xposed release with `--latest` on `Xposed-Modules-Repo/com.niki914.zafiro`.
 
 ### Manual Fallback Steps
 
@@ -116,10 +116,13 @@ If running manually without the script:
    ```bash
    gh release edit v<code>-<name> -R niki914/zafiro --title "Release - <name>" --notes "<approved notes>"
    ```
-9. (Optional) Xposed repo:
+9. (Optional) Xposed repo. Stamp `xposed` on the downloaded asset before uploading. `stamp` exits non-zero unless the channel reads back and `apksigner verify` passes:
    ```bash
-   gh release download v<code>-<name> -R niki914/zafiro -p "*.apk" --dir /tmp/
-   gh release create <code>-<name> /tmp/*.apk -R Xposed-Modules-Repo/com.niki914.zafiro --title "Release - <name>" --notes "<approved notes>" --latest
+   mkdir -p /tmp/zafiro-xposed
+   gh release download v<code>-<name> -R niki914/zafiro -p "*.apk" --dir /tmp/zafiro-xposed/
+   APK="$(echo /tmp/zafiro-xposed/*.apk)"
+   python3 tools/apk_channel.py stamp "$APK" "$APK" xposed
+   gh release create <code>-<name> "$APK" -R Xposed-Modules-Repo/com.niki914.zafiro --title "Release - <name>" --notes "<approved notes>" --latest
    ```
 
 ### Release notes format
@@ -132,12 +135,13 @@ Historical releases follow this format strictly (no deviations):
 
 ## Phase 5 — Xposed repo (optional, ask first)
 
-Ask: "这次要发 Xposed 仓库吗？" If yes, pass `--xposed` to `release-exec.sh` or run step 9 manually.
-If no, run without `--xposed` and state clearly "本次未发 Xposed 仓库".
+Ask: "这次要发 Xposed 仓库吗？" If yes, pass `--xposed` to `release-exec.sh` or run step 9 manually. The file uploaded there is the `xposed` stamp, not the GitHub asset as-is.
+If no, run without `--xposed` and state clearly "本次未发 Xposed 仓库". The GitHub Release asset still carries channel `github`.
 
 ## Known pitfalls
 
 - **CI build failure: Aliyun Maven mirror 502.** Overseas GitHub Actions runners intermittently fail on the Aliyun mirror if it is ordered before `mavenCentral()` / `gradlePluginPortal()` in `settings.gradle.kts`. Standard sources go first, Aliyun after. If CI fails on dependency resolution, check the mirror order.
+- **Channel stamp rejected.** `tools/apk_channel.py stamp` exits non-zero when `apksigner` is missing, the APK has no v2/v3 signing block, `apksigner verify` fails, the signer certificate changes, or the channel does not read back. `apksigner` is `build-tools/<version>/apksigner` under `ANDROID_HOME`, or the `APKSIGNER` path. CI has it after the release build. The Xposed stamp runs on the machine that runs this skill, so that machine needs it too. Do not upload a rejected file. Re-run the release CI; leave the keystore alone.
 - **Tag already exists / CI failed and needs a re-trigger.** The same tag cannot be pushed twice:
   ```bash
   git push origin :v<code>-<name>   # delete remote tag
@@ -149,6 +153,7 @@ If no, run without `--xposed` and state clearly "本次未发 Xposed 仓库".
 ## Hard rules
 
 - Never build locally. CI builds everything.
+- Stamp a distribution channel only with `tools/apk_channel.py stamp`. CI stamps `github` on the GitHub Release asset. The Xposed publish path stamps `xposed`. Names match `[a-z0-9_]{1,32}`. The stamp does not use the keystore.
 - Never modify `versionName` without explicit user approval.
 - Never push a tag without showing the user the exact tag and target commit first.
 - If any state is ambiguous (local ≠ remote, tag exists, CI red), stop and ask.
