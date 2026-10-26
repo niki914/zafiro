@@ -33,6 +33,7 @@ internal fun ComposerSendButton(
     modifier: Modifier = Modifier,
 ) {
     val themeStyle = LocalThemeStyle.current
+    val isExpressive = themeStyle == ThemeStyle.Material3Expressive
     val contentColor = MaterialTheme.colorScheme.primary
     val density = LocalDensity.current
     val buttonDiameter = with(density) { 48.sp.toDp() }
@@ -51,7 +52,16 @@ internal fun ComposerSendButton(
             enabled = true,
         ) {
             if (isGenerating) {
-                if (themeStyle == ThemeStyle.Material3) {
+                if (isExpressive) {
+                    LoadingIndicator(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clearAndSetSemantics {
+                                contentDescription = "Stop Button"
+                            },
+                        color = contentColor,
+                    )
+                } else {
                     CircularProgressIndicator(
                         modifier = Modifier
                             .size(22.dp)
@@ -60,15 +70,6 @@ internal fun ComposerSendButton(
                             },
                         color = contentColor,
                         strokeWidth = 2.dp,
-                    )
-                } else {
-                    LoadingIndicator(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clearAndSetSemantics {
-                                contentDescription = "Stop Button"
-                            },
-                        color = contentColor,
                     )
                 }
             } else {
