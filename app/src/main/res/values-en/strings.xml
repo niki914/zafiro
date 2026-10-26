@@ -64,6 +64,8 @@
     <string name="ui_home_file_category_archive">Archive</string>
     <string name="ui_home_file_category_apk">APK</string>
     <string name="ui_home_file_category_file">File</string>
+    <string name="ui_action_view">View</string>
+    <string name="ui_viewer_copy_all">Copy all</string>
     <string name="ui_toast_copied">Copied</string>
     <string name="ui_toast_generating">Generating, please wait</string>
     <string name="ui_toast_empty_input">Please enter a message</string>

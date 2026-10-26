@@ -28,6 +28,7 @@ import com.niki914.zafiro.app.ui.nav.SkillDetailPage
 import com.niki914.zafiro.app.ui.nav.StartupPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
+import com.niki914.zafiro.app.ui.nav.ViewerPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.route.BuiltinToolGroupDetailRoute
 import com.niki914.zafiro.app.ui.route.ConfigurePageRoute
@@ -50,6 +51,7 @@ import com.niki914.zafiro.app.ui.route.SkillDetailRoute
 import com.niki914.zafiro.app.ui.route.StartupPageRoute
 import com.niki914.zafiro.app.ui.route.TakeoverRuleDetailRoute
 import com.niki914.zafiro.app.ui.route.TextActionDetailRoute
+import com.niki914.zafiro.app.ui.route.ViewerPageRoute
 
 @Composable
 fun ZafiroPageContent(
@@ -189,5 +191,10 @@ fun ZafiroPageContent(
         )
 
         MarkdownScalePage -> MarkdownScalePageRoute()
+
+        is ViewerPage -> ViewerPageRoute(
+            page = page,
+            onBack = onPop,
+        )
     }
 }

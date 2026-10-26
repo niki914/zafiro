@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.ui.chat.composable.section.SectionList
 import com.niki914.zafiro.app.ui.chat.model.TurnSection
@@ -61,11 +63,19 @@ internal fun TurnItem(
     branchIndex: Int = 1,
     branchCount: Int = 1,
     onSwitchBranch: (Int) -> Unit = {},
+    safeZoneMinHeight: Dp = 0.dp,
+    userMessageMaxHeight: Dp = Dp.Unspecified,
+    onViewFullUserText: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val alwaysVisible = actionsDisplay == MessageActionsDisplay.Always
+    val rootModifier = if (safeZoneMinHeight > 0.dp) {
+        modifier.fillMaxWidth().heightIn(min = safeZoneMinHeight)
+    } else {
+        modifier.fillMaxWidth()
+    }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = rootModifier) {
         // ── 1. 用户内容流 ──
         val hasAttachments = turn.userImages.isNotEmpty() || turn.userFiles.isNotEmpty()
         if (hasAttachments) {
@@ -103,7 +113,12 @@ internal fun TurnItem(
                     ),
                 contentAlignment = Alignment.CenterEnd,
             ) {
-                UserMessageBubble(text = turn.userText, position = userBubblePosition)
+                UserMessageBubble(
+                    text = turn.userText,
+                    position = userBubblePosition,
+                    maxHeight = userMessageMaxHeight,
+                    onViewFull = onViewFullUserText,
+                )
             }
         }
 
@@ -144,8 +159,8 @@ internal fun TurnItem(
                 // 助手操作栏：严格遵守完成态护栏（生成中绝不露出）
                 AnimatedVisibility(
                     visible = canToggleAgentAction && (alwaysVisible || showAgentActionRow),
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut(),
+                    enter = fadeIn(),
+                    exit = fadeOut(),
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         AssistantToActionSpacing()
