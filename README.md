@@ -1,6 +1,6 @@
 <div align="right">
 
-**[中文](README_CN.md)** | English
+**[中文](README_CN.md) | [العربية](README_AR.md)** | English
 
 </div>
 
@@ -59,7 +59,7 @@ Zafiro is an open-source intelligent Agent running on Android devices, with [BYO
 
 - **[Material 3 Expressive](https://m3.material.io/) & Apple Liquid Glass** - a modern, polished interface
 - **Personalized Theming** - multiple theme colors with dark mode and dynamic color extraction
-- **Multilingual Support** - English, 中文, 日本語, Español, Русский
+- **Multilingual Support** - English, 中文, 日本語, Español, Русский, العربية
 - **Background Interaction** - sleek floating ball and notification tray UI to follow and interact with the Agent in real time
 
 ### Device Control

@@ -50,6 +50,7 @@ import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -232,8 +233,9 @@ internal fun SettingHeaderRowLayout(
     var rowBounds by remember { mutableStateOf<Rect?>(null) }
     var previewBounds by remember { mutableStateOf<Rect?>(null) }
     var actionBounds by remember { mutableStateOf<Rect?>(null) }
+    val layoutDirection = LocalLayoutDirection.current
 
-    LaunchedEffect(rowBounds, previewBounds, actionBounds, trailingSlot) {
+    LaunchedEffect(rowBounds, previewBounds, actionBounds, trailingSlot, layoutDirection) {
         if (onTrailingBoundsChanged == null) return@LaunchedEffect
 
         val hasTrailingAction = when (trailingSlot) {
@@ -261,12 +263,26 @@ internal fun SettingHeaderRowLayout(
         val right = maxOf(p?.right ?: Float.MIN_VALUE, a?.right ?: Float.MIN_VALUE)
 
         val minTargetWidthPx = with(density) { 64.dp.toPx() }
-        val rightPaddingPx = with(density) { SettingsTokens.ContentPadding.calculateRightPadding(LayoutDirection.Ltr).toPx() }
+        val edgePaddingPx = with(density) {
+            if (layoutDirection == LayoutDirection.Ltr) {
+                SettingsTokens.ContentPadding.calculateRightPadding(layoutDirection)
+            } else {
+                SettingsTokens.ContentPadding.calculateLeftPadding(layoutDirection)
+            }.toPx()
+        }
+        val gapPx = with(density) { 8.dp.toPx() }
         val topPaddingPx = with(density) { SettingsTokens.ContentPadding.calculateTopPadding().toPx() }
         val bottomPaddingPx = with(density) { SettingsTokens.ContentPadding.calculateBottomPadding().toPx() }
 
-        val finalRight = maxOf(right + rightPaddingPx, row.right + rightPaddingPx)
-        val finalLeft = minOf(left - with(density) { 8.dp.toPx() }, finalRight - minTargetWidthPx)
+        val finalLeft: Float
+        val finalRight: Float
+        if (layoutDirection == LayoutDirection.Ltr) {
+            finalRight = maxOf(right + edgePaddingPx, row.right + edgePaddingPx)
+            finalLeft = minOf(left - gapPx, finalRight - minTargetWidthPx)
+        } else {
+            finalLeft = minOf(left - edgePaddingPx, row.left - edgePaddingPx)
+            finalRight = maxOf(right + gapPx, finalLeft + minTargetWidthPx)
+        }
         val finalTop = row.top - topPaddingPx
         val finalBottom = row.bottom + bottomPaddingPx
 

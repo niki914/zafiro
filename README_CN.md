@@ -1,6 +1,6 @@
 <div align="right">
 
-**[English](README.md)** | 中文
+**[English](README.md) | [العربية](README_AR.md)** | 中文
 
 </div>
 
@@ -59,7 +59,7 @@ Zafiro 是一个运行在 Android 设备上的智能 Agent，完全开源，支�
 
 - **[Material 3 Expressive](https://m3.material.io/) & Apple Liquid Glass** - 现代、精美的界面
 - **个性化主题** - 多种主题色，支持深色模式与动态取色
-- **多语言支持** - English、中文、日本語、Español、Русский
+- **多语言支持** - English、中文、日本語、Español、Русский、العربية
 - **后台交互** - 支持美观的悬浮球和通知栏 UI，便于实时跟进 Agent
 
 ### 手机操控

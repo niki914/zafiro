@@ -10,16 +10,20 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.shape.G2FieldShape
+import com.niki914.zafiro.app.ui.text.resolveContentTextAlign
+import com.niki914.zafiro.app.ui.text.resolveContentTextDirection
 
 /** User 气泡在连续用户消息组内的位置（渲染层分组：组边界 = 相邻 UserBubble 之间存在任何内容，见 userBubblePosition）。 */
 enum class UserBubblePosition {
@@ -82,26 +86,32 @@ fun UserMessageBubble(
     }
     val hasTail = position == UserBubblePosition.Single || position == UserBubblePosition.GroupLast
 
+    val direction = resolveContentTextDirection(text)
+
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.CenterEnd,
+        contentAlignment = AbsoluteAlignment.CenterRight,
     ) {
-        Box(
-            modifier = Modifier
-                .widthIn(max = maxWidth * 0.82f)
-                .then(if (hasTail) Modifier.drawBehind { drawUserBubbleTail(bubbleBg) } else Modifier)
-                .clip(bubbleShape)
-                .background(bubbleBg, bubbleShape)
-                .padding(horizontal = 18.dp, vertical = 12.dp),
-            contentAlignment = Alignment.CenterEnd,
-        ) {
-            SelectionContainer {
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colorScheme.onSurface,
-                    textAlign = TextAlign.Start,
-                )
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Box(
+                modifier = Modifier
+                    .widthIn(max = maxWidth * 0.82f)
+                    .then(if (hasTail) Modifier.drawBehind { drawUserBubbleTail(bubbleBg) } else Modifier)
+                    .clip(bubbleShape)
+                    .background(bubbleBg, bubbleShape)
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                contentAlignment = AbsoluteAlignment.CenterRight,
+            ) {
+                SelectionContainer {
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            textDirection = direction,
+                            textAlign = resolveContentTextAlign(direction),
+                        ),
+                        color = colorScheme.onSurface,
+                    )
+                }
             }
         }
     }

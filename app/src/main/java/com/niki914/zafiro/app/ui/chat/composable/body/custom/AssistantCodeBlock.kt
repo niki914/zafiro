@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,7 +20,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.compose.LocalMarkdownColors
 import com.mikepenz.markdown.compose.LocalMarkdownDimens
@@ -65,41 +70,46 @@ internal fun AssistantCodeBlock(
         showHeader = false,
         code = code,
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = code,
-                color = textColor,
-                style = style,
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .padding(codeBlockPadding)
-                    .padding(end = if (isNotBlank) OutputBtnInset else 0.dp),
-            )
-
-            if (isNotBlank) {
-                // 右上角防穿模渐变：横向从 Transparent 过渡到真实合成底色，绝不使用带有黑色的高透明度脏斑
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .width(CopyBtnSize + 16.dp)
-                        .height(CopyBtnSize + 8.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color.Transparent,
-                                    actualBackgroundColor.copy(alpha = 0.85f),
-                                    actualBackgroundColor,
-                                )
-                            )
-                        ),
-                )
-
-                MiniCopyButton(
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Text(
                     text = code,
+                    color = textColor,
+                    style = style.copy(
+                        textDirection = TextDirection.Ltr,
+                        textAlign = TextAlign.Left,
+                    ),
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = CopyBtnGap, end = CopyBtnGap),
+                        .horizontalScroll(rememberScrollState())
+                        .padding(codeBlockPadding)
+                        .padding(end = if (isNotBlank) OutputBtnInset else 0.dp),
                 )
+
+                if (isNotBlank) {
+                    // 右上角防穿模渐变：横向从 Transparent 过渡到真实合成底色，绝不使用带有黑色的高透明度脏斑
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .width(CopyBtnSize + 16.dp)
+                            .height(CopyBtnSize + 8.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        Color.Transparent,
+                                        actualBackgroundColor.copy(alpha = 0.85f),
+                                        actualBackgroundColor,
+                                    )
+                                )
+                            ),
+                    )
+
+                    MiniCopyButton(
+                        text = code,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = CopyBtnGap, end = CopyBtnGap),
+                    )
+                }
             }
         }
     }

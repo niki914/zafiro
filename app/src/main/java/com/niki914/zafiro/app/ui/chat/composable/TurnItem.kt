@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.ui.chat.composable.section.SectionList
@@ -71,7 +71,7 @@ internal fun TurnItem(
         if (hasAttachments) {
             BoxWithConstraints(
                 modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.CenterEnd,
+                contentAlignment = AbsoluteAlignment.CenterRight,
             ) {
                 HomeChatAttachmentRow(
                     images = turn.userImages,
@@ -101,7 +101,7 @@ internal fun TurnItem(
                             }
                         },
                     ),
-                contentAlignment = Alignment.CenterEnd,
+                contentAlignment = AbsoluteAlignment.CenterRight,
             ) {
                 UserMessageBubble(text = turn.userText, position = userBubblePosition)
             }

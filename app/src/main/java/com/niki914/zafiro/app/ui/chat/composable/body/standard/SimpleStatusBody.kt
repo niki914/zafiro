@@ -12,8 +12,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.text.resolveContentTextAlign
+import com.niki914.zafiro.app.ui.text.resolveContentTextDirection
 import com.niki914.zafiro.app.ui.chat.helper.CopyBtnGap
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
 import com.niki914.zafiro.app.ui.chat.helper.OutputBtnInset
@@ -32,9 +35,14 @@ internal fun SimpleStatusBody(
     modifier: Modifier = Modifier,
 ) {
     if (ui.isRunning) {
+        val running = stringResource(R.string.ui_tool_status_running)
+        val direction = resolveContentTextDirection(running)
         Text(
-            text = stringResource(R.string.ui_tool_status_running),
-            style = MaterialTheme.typography.bodySmall,
+            text = running,
+            style = MaterialTheme.typography.bodySmall.copy(
+                textDirection = direction,
+                textAlign = resolveContentTextAlign(direction),
+            ),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = modifier,
         )
@@ -57,14 +65,27 @@ internal fun SimpleStatusBody(
         stringResource(if (ui.isFailed) R.string.ui_tool_status_failed else R.string.ui_tool_status_success)
     }
 
+    val direction = if (hasCopyableReason) {
+        TextDirection.Ltr
+    } else {
+        resolveContentTextDirection(text)
+    }
+
     Box(modifier = modifier.fillMaxWidth()) {
         SelectionContainer {
             Text(
                 text = text,
                 style = if (hasCopyableReason) {
-                    MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+                    MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        textDirection = direction,
+                        textAlign = resolveContentTextAlign(direction),
+                    )
                 } else {
-                    MaterialTheme.typography.bodySmall
+                    MaterialTheme.typography.bodySmall.copy(
+                        textDirection = direction,
+                        textAlign = resolveContentTextAlign(direction),
+                    )
                 },
                 color = if (ui.isFailed) {
                     MaterialTheme.colorScheme.error

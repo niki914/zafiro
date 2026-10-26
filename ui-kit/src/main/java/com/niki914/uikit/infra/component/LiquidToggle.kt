@@ -45,6 +45,8 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.lerp
@@ -90,6 +92,7 @@ fun LiquidToggle(
     val animatedFraction = remember { Animatable(if (checked) 1f else 0f) }
     val trackWidthPx = remember { mutableFloatStateOf(0f) }
     val density = LocalDensity.current
+    val dragDirection = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1f else 1f
     val progressAnimationSpec = spring(0.5f, 300f, 0.001f)
     val progressAnimation = remember { Animatable(0f) }
     val stateMachine = remember { LiquidToggleStateMachine(initialChecked = checked) }
@@ -195,13 +198,13 @@ fun LiquidToggle(
             modifier = Modifier
                 .padding(horizontal = 2.dp)
                 .graphicsLayer {
-                    translationX =
-                        animatedFraction.value * (trackWidthPx.floatValue - with(density) { thumbWidth.toPx() + 4.dp.toPx() })
+                    translationX = dragDirection * animatedFraction.value *
+                        (trackWidthPx.floatValue - with(density) { thumbWidth.toPx() + 4.dp.toPx() })
                 }
                 .then(
                     if (enabled) {
                         Modifier
-                            .pointerInput(enabled) {
+                            .pointerInput(enabled, dragDirection) {
                                 awaitEachGesture {
                                     val down = awaitFirstDown(requireUnconsumed = false)
                                     val draggableWidth =
@@ -231,7 +234,7 @@ fun LiquidToggle(
 
                                     fun dragBy(delta: Float) {
                                         val newFraction =
-                                            (animatedFraction.value + delta / draggableWidth).fastCoerceIn(
+                                            (animatedFraction.value + dragDirection * delta / draggableWidth).fastCoerceIn(
                                                 -0.3f,
                                                 1.3f
                                             )
