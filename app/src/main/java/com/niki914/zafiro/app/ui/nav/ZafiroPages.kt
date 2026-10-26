@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.niki914.uikit.infra.nav.Page
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 import com.niki914.zafiro.repo.BuiltinToolGroups
 
 sealed interface PageTitleSpec
@@ -298,3 +299,14 @@ data object MarkdownScalePage : ZafiroPage {
         TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
     override val rightAction: TopBarActionSpec? = null
 }
+
+data class ViewerPage(
+    val content: ViewerContent,
+) : ZafiroPage {
+    override val routeKey: String = "viewer:${content.routeKey}"
+    override val titleSpec: PageTitleSpec = NoTitle
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+}
+

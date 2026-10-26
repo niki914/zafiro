@@ -68,6 +68,7 @@ import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.app.ui.model.home.HomeChatUiState
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 import kotlinx.coroutines.launch
 
 /** 附件入口的日志 TAG（只在相机失败这类异常路径上用）。 */
@@ -112,6 +113,7 @@ internal fun HomePageContentBody(
     onSwitchTurnBranch: (Long, Int) -> Unit = { _, _ -> },
     alwaysShowDetailed: Boolean = false,
     onToggleActionKey: (key: String, isExpanded: Boolean) -> Unit = { _, _ -> },
+    onOpenViewer: (ViewerContent) -> Unit = {},
 ) {
     // 底部避让总高：composer 底距 + 实测高度 + 统一视觉间距。列表贴底留白与箭头
     // 位置同源；键盘关闭时（composerBottomPadding == composerGap）即为
@@ -245,6 +247,7 @@ internal fun HomePageContentBody(
                             onToggleAction = onToggleActionKey,
                             safeZoneMinHeight = safeZoneMinHeight,
                             userMessageMaxHeight = userMessageMaxHeight,
+                            onOpenViewer = onOpenViewer,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }

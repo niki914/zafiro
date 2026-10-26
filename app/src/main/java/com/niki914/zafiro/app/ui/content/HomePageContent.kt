@@ -46,6 +46,7 @@ import com.niki914.zafiro.app.ui.model.home.FileAttachReason
 import com.niki914.zafiro.app.ui.model.home.HomeChatEffect
 import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
 import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.repo.UpdateCheckHolder
@@ -71,6 +72,7 @@ fun HomePageContent(
     onActiveConversationChanged: (String?) -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenViewer: (ViewerContent) -> Unit = {},
 ) {
     val viewModel = pageViewModel<HomeChatViewModel>()
     val latestViewModel by rememberUpdatedState(viewModel)
@@ -140,7 +142,7 @@ fun HomePageContent(
     val bottomThresholdPx = with(density) { 24.dp.roundToPx() }
     val lastTurn = uiState.turns.lastOrNull()
     var pendingViewportAnchor by remember { mutableStateOf<ViewportAnchor?>(null) }
-    var lastFollowedConversationId by remember { mutableStateOf<String?>(null) }
+    var lastFollowedConversationId by rememberSaveable { mutableStateOf<String?>(null) }
 
     // 仅在结构性变化（新回合加入、会话切换/加载完成、生成状态变化）时触发贴底或锚定
     val bottomContentVersion = remember(
@@ -448,6 +450,7 @@ fun HomePageContent(
         onToggleActionKey = { key, isExpanded ->
             viewModel.sendIntent(HomeChatIntent.ToggleActionKey(key, isExpanded))
         },
+        onOpenViewer = onOpenViewer,
     )
 
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()

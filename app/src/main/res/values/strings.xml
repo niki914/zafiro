@@ -63,6 +63,8 @@
     <string name="ui_home_file_category_archive">压缩包</string>
     <string name="ui_home_file_category_apk">安装包</string>
     <string name="ui_home_file_category_file">文件</string>
+    <string name="ui_action_view">查看</string>
+    <string name="ui_viewer_copy_all">复制全部</string>
     <string name="ui_toast_copied">已复制</string>
     <string name="ui_toast_generating">生成中，请稍后</string>
     <string name="ui_toast_empty_input">请输入内容</string>
