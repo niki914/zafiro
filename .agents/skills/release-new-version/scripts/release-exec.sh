@@ -129,6 +129,13 @@ if [ "$PUBLISH_XPOSED" = true ]; then
     exit 1
   fi
 
+  # GitHub Release asset is channel github. Xposed gets the same bytes with xposed.
+  echo "Stamping xposed channel into $(basename "$APK_FILE")..."
+  if ! python3 "$REPO_ROOT/tools/apk_channel.py" stamp "$APK_FILE" "$APK_FILE" xposed; then
+    rm -rf "$DOWNLOAD_DIR"
+    exit 1
+  fi
+
   # Transform release notes for Xposed repository:
   # Replace contribution line with open source link as per skill convention
   XPOSED_NOTES_FILE="${DOWNLOAD_DIR}/xposed_notes.md"
