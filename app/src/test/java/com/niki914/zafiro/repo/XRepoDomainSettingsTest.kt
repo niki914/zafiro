@@ -99,7 +99,7 @@ class XRepoDomainSettingsTest {
     fun hydrateSettingsBackfillsAllReactiveFlows() = runTest {
         val store = FakeDomainSettingsStore(
             StoreDescriptorRegistry.APP_STATE_ID to
-                    """{"keep_screen_on":false,"always_show_message_actions":false,"floating_ball_enabled":true,"resident_notification_enabled":true,"floating_ball_auto_expand":false}""",
+                    """{"keep_screen_on":false,"always_show_message_actions":false,"floating_ball_enabled":true,"resident_notification_enabled":true,"floating_ball_auto_expand":false,"language_tag":"ja"}""",
         )
         XRepo.installStoreForTest(store)
         XRepo.init(context)
@@ -110,6 +110,7 @@ class XRepoDomainSettingsTest {
         assertFalse(XRepo.floatingBallEnabledSetting.value)
         assertFalse(XRepo.residentNotificationEnabledSetting.value)
         assertTrue(XRepo.floatingBallAutoExpandSetting.value)
+        assertEquals("", XRepo.appLanguageTagSetting.value)
 
         XRepo.hydrateSettings()
 
@@ -118,6 +119,7 @@ class XRepoDomainSettingsTest {
         assertTrue(XRepo.floatingBallEnabledSetting.value)
         assertTrue(XRepo.residentNotificationEnabledSetting.value)
         assertFalse(XRepo.floatingBallAutoExpandSetting.value)
+        assertEquals("ja", XRepo.appLanguageTagSetting.value)
     }
 
     @Test
@@ -156,6 +158,7 @@ class XRepoDomainSettingsTest {
         XRepo.setLastOpenedConversationId("  conv-1  ")
 
         assertEquals("zh-CN", XRepo.languageTag())
+        assertEquals("zh-CN", XRepo.appLanguageTagSetting.value)
         assertEquals("conv-1", XRepo.lastOpenedConversationId())
     }
 

@@ -20,4 +20,10 @@ interface XSettings {
      * 消费方：remote-view 的 `FloatingBallViewModel`。
      */
     val floatingBallAutoExpand: StateFlow<Boolean>
+
+    /**
+     * 应用内语言的 BCP 47 tag。空串表示跟随系统。
+     * 消费方：business:remote 上报 `app.app_lang`（空串或超过长度上限记 null）。
+     */
+    val appLanguageTag: StateFlow<String>
 }
