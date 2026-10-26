@@ -335,6 +335,7 @@ class HomeChatViewModel internal constructor(
                 userToggledKeys = if (id != currentConversationId) emptyMap() else userToggledKeys,
             )
         }
+        Logger.i(LOG_TAG, "applyConversation done id=$id turnsCount=${target.size}")
         if (isFirstConversationAssignment && !currentState.boundConfigId.isNullOrBlank()) {
             val assignedId = id!!
             val boundConfig = currentState.boundConfigId!!
@@ -519,7 +520,7 @@ class HomeChatViewModel internal constructor(
         agent.updateDraft { it.copy(text = trimmedInput) }
         // stream() is synchronous; don't let it consume Pending images before AgentImpl finishes ingest.
         agent.draft.first { draft -> draft.images.none { it is DraftImage.Pending } }
-        updateState { copy(isGenerating = true) }
+        updateState { copy(isGenerating = true, unreadTurnId = null) }
         val result = agent.stream()
         Logger.i(LOG_TAG, "send result=$result")
         if (result != TurnStart.Started) {
@@ -692,13 +693,18 @@ class HomeChatViewModel internal constructor(
             conversationBeingLoaded = target
             val targetAgent = agentManager.switchTo(target)
             attachBoundAgent(targetAgent)
+            val hadUnread = record.summary.hasUnread
+            val unreadTurnId = if (hadUnread) {
+                targetAgent.conversation.value.turns.indices.lastOrNull()?.toLong()
+            } else {
+                null
+            }
             updateState {
                 copy(
-                    turns = emptyList(),
                     currentConversationId = target,
                     currentConversationTitle = title,
                     boundConfigId = record.configId,
-                    turnBranches = emptyMap(),
+                    unreadTurnId = unreadTurnId,
                 ).withClearedTransient()
             }
             applyConversation(targetAgent.conversation.value, animateTail = false)
@@ -719,6 +725,7 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun clearUnread(id: String) {
         conversations.clearUnread(id)
+        updateState { copy(unreadTurnId = null) }
     }
 
     // ── 历史派生操作 ────────────────────────────────────────────────────────

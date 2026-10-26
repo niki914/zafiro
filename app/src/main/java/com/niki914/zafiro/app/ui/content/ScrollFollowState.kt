@@ -24,24 +24,36 @@ internal fun rememberScrollFollowState(
     isScrollInProgress: () -> Boolean,
     isAtEnd: () -> Boolean,
 ): MutableState<Boolean> {
-    val follow = remember { mutableStateOf(true) }
+    val followState = remember { mutableStateOf(true) }
     var hasPendingUserScrollDecision by remember { mutableStateOf(false) }
     val isUserDragging by interactionSource.collectIsDraggedAsState()
 
     LaunchedEffect(isUserDragging) {
         if (isUserDragging) {
-            follow.value = false
+            followState.value = false
             hasPendingUserScrollDecision = true
         }
     }
     LaunchedEffect(interactionSource) {
         snapshotFlow { isScrollInProgress() }
-            .collectLatest { isScrollInProgress ->
-                if (!isScrollInProgress && hasPendingUserScrollDecision) {
-                    follow.value = isAtEnd()
+            .collectLatest { inProgress ->
+                if (!inProgress && hasPendingUserScrollDecision) {
+                    followState.value = isAtEnd()
                     hasPendingUserScrollDecision = false
                 }
             }
     }
-    return follow
+    return remember {
+        object : MutableState<Boolean> {
+            override var value: Boolean
+                get() = followState.value
+                set(next) {
+                    followState.value = next
+                    hasPendingUserScrollDecision = false
+                }
+
+            override fun component1(): Boolean = followState.value
+            override fun component2(): (Boolean) -> Unit = { value = it }
+        }
+    }
 }

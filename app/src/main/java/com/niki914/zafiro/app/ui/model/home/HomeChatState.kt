@@ -139,6 +139,7 @@ data class HomeChatUiState(
     val conversationVersion: Int = 0,
     val currentConversationId: String? = null,
     val currentConversationTitle: String? = null,
+    val unreadTurnId: Long? = null,
     /**
      * 按 Turn ID 映射的局部变体分支状态。
      */

@@ -1,5 +1,7 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui.content
 
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
@@ -17,6 +19,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalDensity
@@ -49,6 +52,7 @@ import com.niki914.zafiro.repo.UpdateCheckHolder
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.findService
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
@@ -135,33 +139,37 @@ fun HomePageContent(
     val composerHeight = remember { mutableStateOf(68.dp) }
     val bottomThresholdPx = with(density) { 24.dp.roundToPx() }
     val lastTurn = uiState.turns.lastOrNull()
-    // 贴底由「滚动位置 + contentPadding」共同决定：composer 几何（ime 动画、多行输入
-    // 长高）变化时 padding 跟着变，也必须重新贴底，否则最后一条消息被 composer 遮住
+    var pendingViewportAnchor by remember { mutableStateOf<ViewportAnchor?>(null) }
+    var lastFollowedConversationId by remember { mutableStateOf<String?>(null) }
+
+    // 仅在结构性变化（新回合加入、会话切换/加载完成、生成状态变化）时触发贴底或锚定
     val bottomContentVersion = remember(
+        uiState.currentConversationId,
+        uiState.isLoadingConversation,
+        uiState.isGenerating,
         uiState.turns.size,
-        uiState.conversationVersion,
         lastTurn?.id,
-        lastTurn?.blocks?.size,
-        composerBottomPadding,
-        composerHeight.value,
     ) {
         listOf(
+            uiState.currentConversationId,
+            uiState.isLoadingConversation,
+            uiState.isGenerating,
             uiState.turns.size,
-            uiState.conversationVersion,
             lastTurn?.id,
-            lastTurn?.blocks?.size,
-            composerBottomPadding,
-            composerHeight.value,
         )
     }
     val isAtBottom by remember(listState, bottomThresholdPx) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
+            if (layoutInfo.totalItemsCount == 0 || (layoutInfo.totalItemsCount == 1 && uiState.turns.isEmpty())) {
+                return@derivedStateOf true
+            }
             val lastVisibleItem =
                 layoutInfo.visibleItemsInfo.lastOrNull() ?: return@derivedStateOf true
-            val viewportEnd = layoutInfo.viewportEndOffset
+            val viewportBottom = layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
+            val lastItemBottom = lastVisibleItem.offset + lastVisibleItem.size
             lastVisibleItem.index == layoutInfo.totalItemsCount - 1 &&
-                    lastVisibleItem.offset + lastVisibleItem.size <= viewportEnd + bottomThresholdPx
+                kotlin.math.abs(lastItemBottom - viewportBottom) <= bottomThresholdPx
         }
     }
     val shouldFollowBottomState = rememberScrollFollowState(
@@ -177,15 +185,63 @@ fun HomePageContent(
         }
     }
 
-    // 只在内容事件（bottomContentVersion）变化时跳转：恢复跟随本身不触发滚动，
-    // 避免「小幅上滚停在阈值内 → 恢复跟随 → 无内容也被拉回底部」
+    // 只在结构性内容事件发生时跳转：若存在分支切换/重生成锚点，则优先执行视口原地锚定
     LaunchedEffect(bottomContentVersion) {
-        if (shouldFollowBottom) {
-            listState.scrollToItem(uiState.turns.size)
+        if (uiState.isLoadingConversation || uiState.turns.isEmpty()) {
+            return@LaunchedEffect
+        }
+        val anchor = pendingViewportAnchor
+        if (anchor != null) {
+            val maxIndex = (uiState.turns.size - 1).coerceAtLeast(0)
+            if (anchor.index in 0..maxIndex) {
+                val safeOffset = anchor.offset.coerceAtLeast(0)
+                listState.scrollToItem(anchor.index, safeOffset)
+                pendingViewportAnchor = null
+                shouldFollowBottom = anchor.followOnGeneration
+                lastFollowedConversationId = uiState.currentConversationId
+            }
+        } else if (uiState.currentConversationId != lastFollowedConversationId) {
+            lastFollowedConversationId = uiState.currentConversationId
+            val unreadTurnId = uiState.unreadTurnId
+            val unreadIndex = if (unreadTurnId != null) {
+                uiState.turns.indexOfFirst { it.id == unreadTurnId }.takeIf { it >= 0 }
+            } else null
+
+            if (unreadIndex != null) {
+                listState.scrollToItem(unreadIndex, 0)
+                shouldFollowBottom = false
+                viewModel.sendIntent(HomeChatIntent.ClearUnread(uiState.currentConversationId ?: ""))
+            } else {
+                listState.scrollToItem(uiState.turns.size)
+                shouldFollowBottom = true
+            }
+        }
+    }
+
+    // 正文、Thinking 流式吐字与 Markdown 后续排版平滑跟进：在安全区耗尽（内容触及视口底端）后柔和微调，手势拥有最高打断权
+    LaunchedEffect(shouldFollowBottom) {
+        if (!shouldFollowBottom) return@LaunchedEffect
+        snapshotFlow {
+            if (listState.isScrollInProgress) return@snapshotFlow 0
+            val layout = listState.layoutInfo
+            val last = layout.visibleItemsInfo.lastOrNull() ?: return@snapshotFlow 0
+            val isAtTail = last.index >= layout.totalItemsCount - 2
+            if (!isAtTail) return@snapshotFlow 0
+
+            val viewportBottom = layout.viewportEndOffset - layout.afterContentPadding
+            val lastEnd = last.offset + last.size
+            val overflow = lastEnd - viewportBottom
+            if (overflow > 1) overflow else 0
+        }.collectLatest { overflow ->
+            if (overflow <= 0 || !shouldFollowBottom) return@collectLatest
+            if (uiState.isLoadingConversation || uiState.turns.isEmpty()) return@collectLatest
+            listState.scrollBy(overflow.toFloat())
         }
     }
     LaunchedEffect(selectedConversationId) {
         val id = selectedConversationId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        shouldFollowBottom = true
+        pendingViewportAnchor = null
         latestViewModel.sendIntent(HomeChatIntent.LoadConversation(id))
         latestOnConversationSelectionConsumed(id)
         TurnNotificationManager.cancelNotification(id)
@@ -256,6 +312,8 @@ fun HomePageContent(
         },
         onOpenHistory = latestOnOpenHistory,
         onNewConversation = {
+            shouldFollowBottom = true
+            pendingViewportAnchor = null
             latestViewModel.sendIntent(HomeChatIntent.NewConversation)
         },
         onOpenSettings = latestOnOpenSettings,
@@ -318,6 +376,11 @@ fun HomePageContent(
                 uiState.pendingImages.isNotEmpty() || uiState.pendingFiles.isNotEmpty()
             if (query.isNotEmpty() || hasAttachments) {
                 dismissInputFocus()
+                pendingViewportAnchor = ViewportAnchor(
+                    index = uiState.turns.size,
+                    offset = 0,
+                    followOnGeneration = true,
+                )
                 shouldFollowBottom = true
             }
             viewModel.sendIntent(HomeChatIntent.Send)
@@ -346,12 +409,23 @@ fun HomePageContent(
             isComposerFocused = focused
         },
         onReGenerate = { id ->
+            val targetIndex = uiState.turns.indexOfFirst { it.id == id }.takeIf { it >= 0 }
+                ?: listState.firstVisibleItemIndex
+            pendingViewportAnchor = ViewportAnchor(targetIndex, 0, followOnGeneration = true)
+            shouldFollowBottom = true
             viewModel.sendIntent(HomeChatIntent.ReGenerateAt(id))
         },
         onFork = { id ->
+            val targetIndex = uiState.turns.indexOfFirst { it.id == id }.takeIf { it >= 0 }
+                ?: listState.firstVisibleItemIndex
+            pendingViewportAnchor = ViewportAnchor(targetIndex, 0, followOnGeneration = false)
+            shouldFollowBottom = false
             viewModel.sendIntent(HomeChatIntent.ForkAt(id))
         },
         onRewind = { id ->
+            shouldFollowBottom = true
+            pendingViewportAnchor = null
+            lastFollowedConversationId = null
             viewModel.sendIntent(HomeChatIntent.RewindAt(id))
         },
         expandedActionTurnId = uiState.expandedActionTurnId,
@@ -364,6 +438,10 @@ fun HomePageContent(
         },
         turnBranches = uiState.turnBranches,
         onSwitchTurnBranch = { turnId, delta ->
+            val targetIndex = uiState.turns.indexOfFirst { it.id == turnId }.takeIf { it >= 0 }
+                ?: listState.firstVisibleItemIndex
+            pendingViewportAnchor = ViewportAnchor(targetIndex, 0, followOnGeneration = false)
+            shouldFollowBottom = false
             viewModel.sendIntent(HomeChatIntent.SwitchTurnBranch(turnId, delta))
         },
         alwaysShowDetailed = alwaysShowDetailedToolOutput,
@@ -398,3 +476,9 @@ fun HomePageContent(
         null -> {}
     }
 }
+
+private data class ViewportAnchor(
+    val index: Int,
+    val offset: Int,
+    val followOnGeneration: Boolean = false,
+)

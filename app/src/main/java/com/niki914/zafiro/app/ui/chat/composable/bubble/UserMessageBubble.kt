@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -18,6 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.infra.shape.G2FieldShape
 
@@ -47,6 +50,7 @@ fun UserMessageBubble(
     text: String,
     modifier: Modifier = Modifier,
     position: UserBubblePosition = UserBubblePosition.Single,
+    maxHeight: Dp = Dp.Unspecified,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val bubbleBg = colorScheme.primary.copy(alpha = 0.18f)
@@ -86,13 +90,22 @@ fun UserMessageBubble(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.CenterEnd,
     ) {
+        val bubbleModifier = Modifier
+            .widthIn(max = maxWidth * 0.82f)
+            .then(
+                if (maxHeight != Dp.Unspecified && maxHeight > 0.dp) {
+                    Modifier.heightIn(max = maxHeight)
+                } else {
+                    Modifier
+                }
+            )
+            .then(if (hasTail) Modifier.drawBehind { drawUserBubbleTail(bubbleBg) } else Modifier)
+            .clip(bubbleShape)
+            .background(bubbleBg, bubbleShape)
+            .padding(horizontal = 18.dp, vertical = 12.dp)
+
         Box(
-            modifier = Modifier
-                .widthIn(max = maxWidth * 0.82f)
-                .then(if (hasTail) Modifier.drawBehind { drawUserBubbleTail(bubbleBg) } else Modifier)
-                .clip(bubbleShape)
-                .background(bubbleBg, bubbleShape)
-                .padding(horizontal = 18.dp, vertical = 12.dp),
+            modifier = bubbleModifier,
             contentAlignment = Alignment.CenterEnd,
         ) {
             SelectionContainer {
@@ -101,6 +114,7 @@ fun UserMessageBubble(
                     style = MaterialTheme.typography.bodyLarge,
                     color = colorScheme.onSurface,
                     textAlign = TextAlign.Start,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
