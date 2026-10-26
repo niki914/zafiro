@@ -71,6 +71,29 @@ class SearchSnippetHelperTest {
     }
 
     @Test
+    fun extractSnippet_stripsMarkdownFormatting() {
+        val text = "### 标题说明\n\n这是一个**重要提示**，请务必留意"
+
+        val snippet = SearchSnippetHelper.extractSnippet(text, "重要提示")
+
+        assertEquals(false, snippet.contains("*"))
+        assertEquals(false, snippet.contains("#"))
+        assertTrue(snippet.contains("重要提示"))
+    }
+
+    @Test
+    fun extractSnippet_asymmetricDefaultKeepsKeywordCloseToLeadingEdge() {
+        val longPrefix = "这是一个很长很长很长很长的前置背景介绍"
+        val text = "$longPrefix，核心词汇在这里出现"
+
+        val snippet = SearchSnippetHelper.extractSnippet(text, "核心词汇")
+
+        // 默认 leadingRadius 为 5，前面只有 "..." + 5 个字，确保关键词不会被单行截断挤出视野
+        val index = snippet.indexOf("核心词汇")
+        assertTrue("关键词应位于开头附近，实际 index: $index", index in 3..9)
+    }
+
+    @Test
     fun findMatchRanges_findsAllOccurrencesCaseInsensitive() {
         val text = "Hello world, HELLO android, hello zafiro"
 

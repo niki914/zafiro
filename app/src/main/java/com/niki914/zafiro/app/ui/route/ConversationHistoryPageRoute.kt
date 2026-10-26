@@ -18,6 +18,7 @@ import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.PageChromeMenuItem
 import com.niki914.zafiro.app.ui.RegisterPageChrome
 import com.niki914.zafiro.app.ui.content.ConversationHistoryPageContent
+import com.niki914.zafiro.app.ui.content.ZafiroSearchBar
 import com.niki914.zafiro.app.ui.model.conversation.ConversationHistoryEffect
 import com.niki914.zafiro.app.ui.model.conversation.ConversationHistoryIntent
 import com.niki914.zafiro.app.ui.model.conversation.ConversationHistoryViewModel
@@ -78,13 +79,46 @@ internal fun ConversationHistoryPageRoute(
     // 选择态只在列表有内容时进入才有意义；加载 / 出错时不给入口。
     val canEnterSelection =
         uiState.conversations.isNotEmpty() && !uiState.isLoading && uiState.errorMessage == null
+
+    val isSearchEffective = uiState.isSearchActive || uiState.searchQuery.isNotEmpty()
+
+    val currentQuery by rememberUpdatedState(uiState.searchQuery)
+    val currentIsSearchEffective by rememberUpdatedState(isSearchEffective)
+
+    val searchTitleContent: @Composable () -> Unit = remember {
+        {
+            ZafiroSearchBar(
+                query = currentQuery,
+                onQueryChange = { query ->
+                    viewModel.sendIntent(ConversationHistoryIntent.UpdateSearchQuery(query))
+                },
+                isActive = currentIsSearchEffective,
+                onActiveChange = { active ->
+                    if (active) {
+                        viewModel.sendIntent(ConversationHistoryIntent.EnterSearch)
+                    } else {
+                        viewModel.sendIntent(ConversationHistoryIntent.ExitSearch)
+                    }
+                },
+                onClearQuery = {
+                    viewModel.sendIntent(ConversationHistoryIntent.UpdateSearchQuery(""))
+                },
+                onExitSearch = {
+                    viewModel.sendIntent(ConversationHistoryIntent.ExitSearch)
+                },
+            )
+        }
+    }
+
     val pageChromeContribution = remember(
         uiState.selecting,
+        isSearchEffective,
         canEnterSelection,
         selectionCountTitle,
         deleteLabel,
         pinLabel,
         unpinLabel,
+        searchTitleContent,
     ) {
         if (uiState.selecting) {
             PageChromeContribution(
@@ -128,8 +162,25 @@ internal fun ConversationHistoryPageRoute(
                     onConsumeBack = { viewModel.sendIntent(ConversationHistoryIntent.ExitSelection) },
                 ),
             )
-        } else {
+        } else if (isSearchEffective) {
+            // 搜索激活态：左右按钮全部退下隐藏，全宽显示搜索条，拦截返回手势退出搜索
             PageChromeContribution(
+                titleKey = "conversation_search",
+                titleContent = searchTitleContent,
+                leftAction = null,
+                rightAction = null,
+                backHandler = PageBackHandler(
+                    shouldConsumeBack = { true },
+                    onConsumeBack = {
+                        viewModel.sendIntent(ConversationHistoryIntent.ExitSearch)
+                    },
+                ),
+            )
+        } else {
+            // 默认态：居中胶囊搜索条，左右保留多选与返回按钮
+            PageChromeContribution(
+                titleKey = "conversation_search",
+                titleContent = searchTitleContent,
                 leftAction = if (canEnterSelection) {
                     TopBarActionSpec(
                         icon = Icons.Default.Checklist,

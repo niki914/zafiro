@@ -45,12 +45,26 @@ BARE_CATCH = re.compile(
 ROUNDED_CORNER_SHAPE = re.compile(
     r"\bRoundedCornerShape\s*\(|^\s*import\s+[\w.]*\bRoundedCornerShape\b"
 )
+CONTENT_DESC_ASSIGN_I18N = re.compile(
+    r"\bcontentDescription\s*(?::\s*[\w<>?.]+\s*)?=\s*(?:stringResource|stringResourceOrNull|getString\s*\(\s*R\.string)\b"
+)
+CONTENT_DESC_TRAILING_ASSIGN = re.compile(
+    r"\bcontentDescription\s*(?::\s*[\w<>?.]+\s*)?=\s*$"
+)
+I18N_RESOURCE_CALL = re.compile(
+    r"\b(?:stringResource|stringResourceOrNull|getString\s*\(\s*R\.string)\b"
+)
+CONTENT_DESC_LITERAL = re.compile(
+    r'\bcontentDescription\s*(?::\s*[\w<>?.]+\s*)?=\s*"([^"]*)"'
+)
 
 
 @dataclass(frozen=True)
 class LineContext:
     imported: frozenset[str]
     android_log: bool
+    lines: tuple[str, ...] = ()
+    lineno: int = 0
 
 
 def is_comment(line: str) -> bool:
@@ -127,6 +141,36 @@ def hit_rounded_corner_shape(line: str, ctx: LineContext) -> bool:
     if is_comment(line):
         return False
     return ROUNDED_CORNER_SHAPE.search(strip_strings(line)) is not None
+
+
+def hit_content_description_i18n(line: str, ctx: LineContext) -> bool:
+    if is_comment(line):
+        return False
+    literal_match = CONTENT_DESC_LITERAL.search(line)
+    if literal_match and any(ord(c) > 127 for c in literal_match.group(1)):
+        return True
+
+    clean = strip_strings(line)
+    if CONTENT_DESC_ASSIGN_I18N.search(clean):
+        return True
+
+    if CONTENT_DESC_TRAILING_ASSIGN.search(clean):
+        for next_line in ctx.lines[ctx.lineno : ctx.lineno + 3]:
+            stripped = strip_strings(next_line).strip()
+            if not stripped or is_comment(next_line):
+                continue
+            if I18N_RESOURCE_CALL.search(stripped):
+                return True
+            break
+    elif I18N_RESOURCE_CALL.search(clean):
+        for prev_line in reversed(ctx.lines[max(0, ctx.lineno - 4) : ctx.lineno - 1]):
+            stripped = strip_strings(prev_line).strip()
+            if not stripped or is_comment(prev_line):
+                continue
+            if CONTENT_DESC_TRAILING_ASSIGN.search(stripped):
+                return True
+            break
+    return False
 
 
 CODE_RULES: list[tuple[Rule, callable]] = [
@@ -213,6 +257,17 @@ CODE_RULES: list[tuple[Rule, callable]] = [
         ),
         hit_inline_fqn,
     ),
+    # 4. Category.I18N
+    (
+        Rule(
+            name="content-description-i18n",
+            category=Category.I18N,
+            severity=Severity.BLOCK,
+            description="contentDescription 使用了多语言资源或非英文文案，预期统一使用纯英文硬编码或 null",
+            hint="改用纯英文字符串（如 \"Close\"、\"Clear\"）或 null；确实需要多语言时加 // githooks:ignore content-description-i18n",
+        ),
+        hit_content_description_i18n,
+    ),
 ]
 
 CODE_RULE_DICT: dict[str, Rule] = {r.name: r for r, _ in CODE_RULES}
@@ -222,7 +277,11 @@ def file_context(lines: list[str]) -> LineContext:
     imported = frozenset(
         m.group(1).rsplit(".", 1)[-1] for m in map(IMPORT.match, lines) if m
     )
-    return LineContext(imported, any(ANDROID_LOG_IMPORT.match(l) for l in lines))
+    return LineContext(
+        imported=imported,
+        android_log=any(ANDROID_LOG_IMPORT.match(l) for l in lines),
+        lines=tuple(lines),
+    )
 
 
 def check_code_files(
@@ -255,9 +314,10 @@ def check_code_files(
             line_text = lines[lineno - 1]
             line_ignores = extract_line_ignores(lines, lineno)
             allowed = file_ignores | line_ignores
+            line_ctx = LineContext(ctx.imported, ctx.android_log, ctx.lines, lineno)
 
             for rule, hit_fn in target_rules:
-                if not hit_fn(line_text, ctx):
+                if not hit_fn(line_text, line_ctx):
                     continue
                 if is_rule_ignored(rule.name, allowed):
                     ignored_count += 1

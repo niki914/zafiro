@@ -8,6 +8,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -153,6 +154,16 @@ internal fun ZafiroTopBarLayout(
             .padding(horizontal = ZafiroTopBarDefaults.HorizontalPadding),
     ) {
         // ── Center Slot: Title ────────────────────────────────────────────────
+        val effectiveHorizontalPadding by animateDpAsState(
+            targetValue = if (!isLeftButtonVisible && !isRightButtonVisible) {
+                ZafiroTopBarDefaults.ExpandedContentPadding - ZafiroTopBarDefaults.HorizontalPadding
+            } else {
+                titleHorizontalPadding
+            },
+            animationSpec = tween(durationMillis = titleDuration, easing = FastOutSlowInEasing),
+            label = "zafiroTopBarHorizontalPadding",
+        )
+
         AnimatedContent(
             targetState = title,
             modifier = Modifier
@@ -160,7 +171,7 @@ internal fun ZafiroTopBarLayout(
                 .fillMaxWidth()
                 .padding(top = topInset)
                 .fillMaxHeight()
-                .padding(horizontal = titleHorizontalPadding),
+                .padding(horizontal = effectiveHorizontalPadding),
             contentKey = { it.key ?: it },
             transitionSpec = {
                 val titleEasing = FastOutSlowInEasing

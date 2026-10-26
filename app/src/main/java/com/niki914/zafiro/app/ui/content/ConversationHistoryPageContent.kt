@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui.content
 
 import android.text.format.DateUtils
@@ -54,6 +55,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -77,9 +80,11 @@ import com.niki914.uikit.textfield.ZafiroTextField
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationOriginKind
+import com.niki914.zafiro.app.conversation.ConversationSearchResult
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.ui.model.conversation.ConversationHistoryUiState
 import com.niki914.zafiro.app.ui.model.conversation.ConversationRunState
+import com.niki914.zafiro.app.ui.util.SearchHighlightHelper
 import com.niki914.zafiro.repo.PinnedConversation
 import kotlinx.coroutines.delay
 import java.util.Calendar
@@ -130,6 +135,9 @@ internal fun ConversationHistoryPageContent(
             deleteErrorMessage = uiState.deleteErrorMessage,
             selecting = uiState.selecting,
             selectedIds = uiState.selectedIds,
+            searchQuery = uiState.searchQuery,
+            isSearching = uiState.isSearching,
+            searchResults = uiState.searchResults,
             onConversationClick = onConversationClick,
             onConversationToggleSelection = onConversationToggleSelection,
             onConversationLongClick = { conversation ->
@@ -272,6 +280,9 @@ private fun ConversationHistoryListContent(
     deleteErrorMessage: String?,
     selecting: Boolean,
     selectedIds: Set<String>,
+    searchQuery: String = "",
+    isSearching: Boolean = false,
+    searchResults: List<ConversationSearchResult> = emptyList(),
     onConversationClick: (String) -> Unit,
     onConversationToggleSelection: (String) -> Unit,
     onConversationLongClick: (ConversationSummary) -> Unit,
@@ -280,21 +291,23 @@ private fun ConversationHistoryListContent(
     val deleteErrorPrefix = deleteErrorMessage?.let {
         stringResource(R.string.ui_conversation_history_delete_error, it)
     }
-    val sections = remember(conversations, pinnedConversations) {
-        groupByTimeline(conversations, pinnedConversations)
+    val isSearchingActive = searchQuery.isNotBlank()
+    val searchResultSummaries = remember(searchResults) { searchResults.map { it.summary } }
+    val effectiveConversations = if (isSearchingActive) searchResultSummaries else conversations
+    val searchResultById = remember(searchResults) {
+        searchResults.associateBy { it.summary.id }
+    }
+    val sections = remember(effectiveConversations, pinnedConversations) {
+        groupByTimeline(effectiveConversations, pinnedConversations)
     }
     val pinnedIds = remember(pinnedConversations) {
         pinnedConversations.map { it.id }.toSet()
     }
     var collapsedBuckets by rememberSaveable { mutableStateOf(emptySet<TimelineBucket>()) }
-    var initialPulseConsumed by rememberSaveable { mutableStateOf(false) }
-    val initialPulsedId = remember {
-        if (!initialPulseConsumed) {
-            initialPulseConsumed = true
-            activeConversationId
-        } else {
-            null
-        }
+    var initialPulsedId by rememberSaveable { mutableStateOf(activeConversationId) }
+    LaunchedEffect(Unit) {
+        delay(600L)
+        initialPulsedId = null
     }
 
     val listState = rememberLazyListState()
@@ -337,77 +350,98 @@ private fun ConversationHistoryListContent(
             ),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            sections.forEach { section ->
-            val expanded = section.bucket !in collapsedBuckets
-            // 一个 section = 一个 item：header 与它的行同住一个 item，折叠时靠 item
-            // 自身的高度动画把下方 section 平滑拉上来（布局推挤，不是各行各自补间，故不会互相穿透）。
-            item(key = "section_${section.bucket}", contentType = "timeline_section") {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    TimelineSectionHeader(
-                        title = stringResource(section.bucket.labelRes()),
-                        leadingIcon = if (section.bucket == TimelineBucket.Pinned) {
-                            Icons.Default.PushPin
-                        } else {
-                            null
-                        },
-                        isExpanded = expanded,
-                        onToggle = {
-                            collapsedBuckets = if (section.bucket in collapsedBuckets) {
-                                collapsedBuckets - section.bucket
-                            } else {
-                                collapsedBuckets + section.bucket
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    AnimatedVisibility(
-                        visible = expanded,
-                        enter = expandVertically(),
-                        exit = shrinkVertically(),
+            if (isSearchingActive && sections.isEmpty() && !isSearching) {
+                item(key = "search_empty") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
+                        Text(
+                            text = stringResource(R.string.ui_conversation_search_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            } else {
+                sections.forEach { section ->
+                    val expanded = section.bucket !in collapsedBuckets
+                    // 一个 section = 一个 item：header 与它的行同住一个 item，折叠时靠 item
+                    // 自身的高度动画把下方 section 平滑拉上来（布局推挤，不是各行各自补间，故不会互相穿透）。
+                    item(key = "section_${section.bucket}", contentType = "timeline_section") {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            section.conversations.forEach { conversation ->
-                                key(conversation.id) {
-                                    ConversationHistoryItem(
-                                        conversation = conversation,
-                                        isPinned = conversation.id in pinnedIds,
-                                        inPinnedSection = section.bucket == TimelineBucket.Pinned,
-                                        initialPulsed = conversation.id == initialPulsedId,
-                                        currentTimeMillis = currentTimeMillis,
-                                        selected = conversation.id in selectedIds,
-                                        runState = runStates[conversation.id]
-                                            ?: ConversationRunState.Idle,
-                                        onClick = {
-                                            if (selecting) {
-                                                onConversationToggleSelection(conversation.id)
-                                            } else {
-                                                onConversationClick(conversation.id)
-                                            }
-                                        },
-                                        onLongClick = {
-                                            if (selecting) {
-                                                onConversationToggleSelection(conversation.id)
-                                            } else {
-                                                onConversationLongClick(conversation)
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
+                            TimelineSectionHeader(
+                                title = stringResource(section.bucket.labelRes()),
+                                leadingIcon = if (section.bucket == TimelineBucket.Pinned) {
+                                    Icons.Default.PushPin
+                                } else {
+                                    null
+                                },
+                                isExpanded = expanded,
+                                onToggle = {
+                                    collapsedBuckets = if (section.bucket in collapsedBuckets) {
+                                        collapsedBuckets - section.bucket
+                                    } else {
+                                        collapsedBuckets + section.bucket
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            AnimatedVisibility(
+                                visible = expanded,
+                                enter = expandVertically(),
+                                exit = shrinkVertically(),
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    section.conversations.forEach { conversation ->
+                                        key(conversation.id) {
+                                            val matchedSnippet = searchResultById[conversation.id]?.matchedSnippet
+                                            ConversationHistoryItem(
+                                                conversation = conversation,
+                                                isPinned = conversation.id in pinnedIds,
+                                                inPinnedSection = section.bucket == TimelineBucket.Pinned,
+                                                initialPulsed = !isSearchingActive && conversation.id == initialPulsedId,
+                                                currentTimeMillis = currentTimeMillis,
+                                                selected = conversation.id in selectedIds,
+                                                runState = runStates[conversation.id]
+                                                    ?: ConversationRunState.Idle,
+                                                searchQuery = searchQuery,
+                                                matchedSnippet = matchedSnippet,
+                                                onClick = {
+                                                    if (selecting) {
+                                                        onConversationToggleSelection(conversation.id)
+                                                    } else {
+                                                        onConversationClick(conversation.id)
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    if (selecting) {
+                                                        onConversationToggleSelection(conversation.id)
+                                                    } else {
+                                                        onConversationLongClick(conversation)
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-        }
 
-        if (deleteErrorPrefix != null) {
+            if (deleteErrorPrefix != null) {
             item {
                 ConversationHistoryInlineErrorText(error = deleteErrorPrefix)
             }
@@ -439,6 +473,8 @@ private fun ConversationHistoryItem(
     runState: ConversationRunState,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    searchQuery: String = "",
+    matchedSnippet: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val untitledConversation = stringResource(R.string.ui_conversation_history_untitled)
@@ -446,6 +482,38 @@ private fun ConversationHistoryItem(
         ConversationFormatter.parseDisplayTitle(conversation.title)
     }
     val displayTitle = parsedTitle.cleanTitle.ifBlank { untitledConversation }
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val titleHighlightStyle = remember(primaryColor) {
+        SpanStyle(
+            fontWeight = FontWeight.Bold,
+            color = primaryColor,
+        )
+    }
+    val bodyHighlightStyle = remember(primaryColor, primaryContainer) {
+        SpanStyle(
+            fontWeight = FontWeight.Bold,
+            color = primaryColor,
+            background = primaryContainer.copy(alpha = 0.5f),
+        )
+    }
+
+    val displayTitleAnnotated = remember(displayTitle, searchQuery, titleHighlightStyle) {
+        if (searchQuery.isNotBlank()) {
+            SearchHighlightHelper.highlight(displayTitle, searchQuery, titleHighlightStyle)
+        } else {
+            AnnotatedString(displayTitle)
+        }
+    }
+
+    val previewText = matchedSnippet ?: conversation.lastMessagePreview
+    val displayPreviewAnnotated = remember(previewText, searchQuery, bodyHighlightStyle) {
+        if (searchQuery.isNotBlank() && previewText.isNotBlank()) {
+            SearchHighlightHelper.highlight(previewText, searchQuery, bodyHighlightStyle)
+        } else {
+            AnnotatedString(previewText)
+        }
+    }
     // 置顶段独占样式：高亮底色 + 隐去派生前缀图标，右上角只留时间；
     // 时间桶里的同一会话照旧普通样式，另用图钉标识它是置顶项。
     // 派生前缀图标只服务 Fork / Rewind：重新生成由分支翻页器表达，不是图标。
@@ -467,8 +535,9 @@ private fun ConversationHistoryItem(
         previousRunState = runState
     }
 
-    val pulseKey = remember(initialPulsed, transitionPulseKey) {
-        transitionPulseKey ?: if (initialPulsed) "initial_${conversation.id}" else null
+    val pulseKey = remember(initialPulsed, transitionPulseKey, searchQuery) {
+        if (searchQuery.isNotBlank()) null
+        else transitionPulseKey ?: if (initialPulsed) "initial_${conversation.id}" else null
     }
 
     val cardShape = remember { G2CardShape(20.dp) }
@@ -534,7 +603,7 @@ private fun ConversationHistoryItem(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = displayTitle,
+                        text = displayTitleAnnotated,
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -599,9 +668,9 @@ private fun ConversationHistoryItem(
                     }
                 }
 
-                if (conversation.lastMessagePreview.isNotBlank()) {
+                if (previewText.isNotBlank()) {
                     Text(
-                        text = conversation.lastMessagePreview,
+                        text = displayPreviewAnnotated,
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -766,7 +835,9 @@ private fun groupByTimeline(
             }
         }
     return buildList {
-        add(TimelineSection(TimelineBucket.Pinned, pinned))
+        if (pinned.isNotEmpty()) {
+            add(TimelineSection(TimelineBucket.Pinned, pinned))
+        }
         addAll(timeSections)
     }
 }

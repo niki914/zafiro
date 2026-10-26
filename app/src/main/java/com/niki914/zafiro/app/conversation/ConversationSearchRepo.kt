@@ -1,6 +1,8 @@
 package com.niki914.zafiro.app.conversation
 
 import com.niki914.logging.Logger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 历史会话搜索仓储：按标题与消息正文综合检索。
@@ -19,9 +21,9 @@ object ConversationSearchRepo {
      * 3. 若会话无落盘条目命中但其 [ConversationSummary.lastMessagePreview] 命中，降级提取该预览的片段；
      * 4. 标题与正文均未命中则过滤，结果保持会话 [ConversationSummary.updatedAt] 降序。
      */
-    suspend fun searchConversations(query: String): List<ConversationSearchResult> {
+    suspend fun searchConversations(query: String): List<ConversationSearchResult> = withContext(Dispatchers.IO) {
         val trimmed = query.trim()
-        if (trimmed.isEmpty()) return emptyList()
+        if (trimmed.isEmpty()) return@withContext emptyList()
 
         val startedAtMs = System.currentTimeMillis()
         val dao = ConversationRepo.dao()
@@ -68,6 +70,6 @@ object ConversationSearchRepo {
                     "matchingEntries=${matchingEntries.size} results=${results.size} " +
                     "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
         )
-        return results
+        results
     }
 }

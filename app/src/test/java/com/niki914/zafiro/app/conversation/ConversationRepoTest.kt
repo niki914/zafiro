@@ -5,8 +5,10 @@ package com.niki914.zafiro.app.conversation
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.niki914.okia.conversation.ConversationEntry
+import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
+import com.niki914.okia.message.ToolCallOutcome
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
