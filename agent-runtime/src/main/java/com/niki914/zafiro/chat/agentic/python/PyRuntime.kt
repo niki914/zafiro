@@ -8,7 +8,6 @@ import android.os.IBinder
 import android.os.RemoteException
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
-import com.niki914.zafiro.chat.agentic.python.PyRuntime.connection
 import com.niki914.zafiro.chat.agentic.python.PyRuntime.exec
 import com.niki914.zafiro.chat.agentic.python.PyRuntime.kill
 import com.niki914.zafiro.chat.agentic.python.PyRuntime.warmUp
@@ -25,8 +24,19 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
-class PythonWorkerUnavailableException :
-    IllegalStateException("Python worker is not connected")
+/**
+ * Python 桥不可用。[reason] 携带最后一次连接失败的原因，让工具层能回报可读诊断，
+ * 而不是只抛一个没有上下文的 IllegalStateException。
+ */
+class PythonWorkerUnavailableException(
+    reason: String? = null,
+) : IllegalStateException(
+    if (reason.isNullOrBlank()) {
+        "Python worker is not connected"
+    } else {
+        "Python worker unavailable: $reason"
+    }
+)
 
 /**
  * exec 的最终结果，供下游消费：
@@ -80,8 +90,13 @@ object PyRuntime {
     @Volatile
     private var service: IPythonWorkerService? = null
 
+    /** 当前生效的绑定。每次 bind 都换新实例，旧回调不会落到新一轮绑定上。 */
     @Volatile
-    private var bound = false
+    private var activeConnection: ServiceConnection? = null
+
+    /** 最后一次连接失败的原因，用于 [PythonWorkerUnavailableException] 的可读诊断。 */
+    @Volatile
+    private var lastConnectFailure: String? = null
 
     @Volatile
     private var appContext: Context? = null
@@ -105,7 +120,8 @@ object PyRuntime {
         terminatePending = false
         activeExecCount.set(0)
         service = null
-        bound = false
+        activeConnection = null
+        lastConnectFailure = null
         appContext = null
     }
 
@@ -124,17 +140,6 @@ object PyRuntime {
     private var terminatePending = false
 
     private val activeExecCount = AtomicInteger(0)
-
-    private val connection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-            binder?.linkToDeath(deathRecipient, 0)
-            pendingBinder.complete(binder)
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            service = null
-        }
-    }
 
     private val deathRecipient = IBinder.DeathRecipient {
         service = null
@@ -187,14 +192,14 @@ object PyRuntime {
 
     private suspend fun execInternal(code: String, timeoutMs: Long): PyExecOutput {
         ensureConnected()
-        var svc = testService ?: service ?: throw PythonWorkerUnavailableException()
+        var svc = testService ?: service ?: throw PythonWorkerUnavailableException(lastConnectFailure)
         if (!isHealthy(svc)) {
             killAndReconnect()
-            svc = testService ?: service ?: throw PythonWorkerUnavailableException()
+            svc = testService ?: service ?: throw PythonWorkerUnavailableException(lastConnectFailure)
             // 新进程冷启动中：等待就绪再执行，避免未就绪的 exec 被兜底超时
             // 误判为卡死而再次杀进程（循环重连）
             if (!isHealthy(svc)) {
-                throw PythonWorkerUnavailableException()
+                throw PythonWorkerUnavailableException(lastConnectFailure)
             }
         }
         return execOn(svc, code, timeoutMs)
@@ -249,7 +254,7 @@ object PyRuntime {
             throw e
         } catch (e: RemoteException) {
             service = null
-            throw PythonWorkerUnavailableException()
+            throw PythonWorkerUnavailableException(lastConnectFailure)
         }
     }
 
@@ -274,6 +279,18 @@ object PyRuntime {
         )
     }
 
+    /**
+     * 显式自愈：丢弃当前 worker 与绑定，下一次调用重新拉起解释器。
+     * 用于「解释器坏掉但进程还在」的场景，避免用户只能重启整个 App。
+     */
+    suspend fun restart() {
+        Logger.i(LOG_TAG, "python worker restart requested")
+        killAndReconnect()
+        if (testService == null && service == null) {
+            throw PythonWorkerUnavailableException(lastConnectFailure)
+        }
+    }
+
     private suspend fun ensureConnected() {
         if (testService != null || service != null) return
         connectionMutex.withLock {
@@ -285,38 +302,67 @@ object PyRuntime {
     }
 
     private suspend fun bindLocked(ctx: Context) {
-        if (bound) {
-            try {
-                ctx.unbindService(connection)
-            } catch (_: Exception) {
-            }
-            bound = false
-        }
-        bound = try {
+        unbindLocked(ctx)
+        // 先建 deferred 再 bindService：若 onServiceConnected 在赋值前回调，
+        // 被完成的是上一轮的 deferred，本轮 await 永远等不到 —— 表现为
+        // 每次调用都连接超时、整会话不可用，只能重启 App。
+        val deferred = CompletableDeferred<IBinder?>()
+        pendingBinder = deferred
+        val conn = newConnection(deferred)
+        val bindAccepted = try {
             ctx.bindService(
                 Intent(ctx, PythonWorkerService::class.java),
-                connection,
+                conn,
                 Context.BIND_AUTO_CREATE
             )
-        } catch (_: Throwable) {
+        } catch (e: SecurityException) {
+            Logger.w(LOG_TAG, "bindService rejected: ${e.message}")
             false
         }
-        if (!bound) {
+        if (!bindAccepted) {
+            lastConnectFailure = "bindService rejected"
             service = null
             return
         }
-        pendingBinder = CompletableDeferred()
-        val binder = withTimeoutOrNull(CONNECT_TIMEOUT_MS) { pendingBinder.await() }
+        activeConnection = conn
+        val binder = withTimeoutOrNull(CONNECT_TIMEOUT_MS) { deferred.await() }
         if (binder == null) {
-            bound = false
+            lastConnectFailure = "connect timeout ${CONNECT_TIMEOUT_MS}ms"
+            Logger.w(LOG_TAG, "python worker connect timeout")
+            unbindLocked(ctx)
             service = null
-            try {
-                ctx.unbindService(connection)
-            } catch (_: Exception) {
-            }
             return
         }
         service = IPythonWorkerService.Stub.asInterface(binder)
+        lastConnectFailure = null
+    }
+
+    /** 每次绑定使用独立的 ServiceConnection：避免旧连接的回调完成新一轮的 deferred。 */
+    private fun newConnection(deferred: CompletableDeferred<IBinder?>): ServiceConnection =
+        object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+                try {
+                    binder?.linkToDeath(deathRecipient, 0)
+                } catch (e: RemoteException) {
+                    Logger.w(LOG_TAG, "linkToDeath failed: ${e.message}")
+                }
+                deferred.complete(binder)
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                service = null
+            }
+        }
+
+    private fun unbindLocked(ctx: Context) {
+        val current = activeConnection ?: return
+        activeConnection = null
+        try {
+            ctx.unbindService(current)
+        } catch (e: IllegalArgumentException) {
+            // 尚未真正绑定时 unbind 会抛：忽略即可
+            Logger.d(LOG_TAG, "unbind ignored: ${e.message}")
+        }
     }
 
     private suspend fun killAndReconnect() {
@@ -328,20 +374,14 @@ object PyRuntime {
         if (target != null) {
             try {
                 withContext(Dispatchers.IO) { target.kill() }
-            } catch (_: Throwable) {
+            } catch (e: RemoteException) {
+                Logger.d(LOG_TAG, "kill skipped (process already gone): ${e.message}")
             }
         }
         if (testService != null) return
         connectionMutex.withLock {
             delay(PROCESS_DIE_SETTLE_MS)
             val ctx = appContext ?: return@withLock
-            if (bound) {
-                try {
-                    ctx.unbindService(connection)
-                } catch (_: Exception) {
-                }
-                bound = false
-            }
             bindLocked(ctx)
             if (terminatePending) {
                 // 重连期间终止键已按：杀掉刚重连的 worker，终止在途 exec。
