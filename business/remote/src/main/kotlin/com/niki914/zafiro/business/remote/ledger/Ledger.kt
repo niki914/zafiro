@@ -14,6 +14,7 @@ import java.util.UUID
  * 账页状态机。
  *
  * 一天一页。`prev_*` 在开页时写入，之后不重算。
+ * 删过账页的日期记在 `deleted_days`，还在删除记忆窗口内就不给这一天开新页。
  * 发送前先落盘。磁盘失败只记日志，内存停在上一份已经落盘的状态。
  */
 internal class Ledger(
@@ -81,7 +82,11 @@ internal class Ledger(
             if (result.isFailure) return null
             loaded = true
             when (val load = result.getOrThrow()) {
-                is LedgerLoad.Ready -> state = load.state
+                is LedgerLoad.Ready -> {
+                    state = load.state
+                    val trimmed = trimDeleted(load.state, today())
+                    if (trimmed != load.state) persist(trimmed)
+                }
                 LedgerLoad.Missing -> state = LedgerState.empty()
                 LedgerLoad.Unreadable -> {
                     writable = false
@@ -94,10 +99,11 @@ internal class Ledger(
     }
 
     private suspend fun persist(next: LedgerState): Boolean {
-        val saved = runCatchingCancellable { store.save(next) }
+        val trimmed = trimDeleted(next, today())
+        val saved = runCatchingCancellable { store.save(trimmed) }
         saved.onFailure { error -> Logger.w(LOG_TAG, "账页写入失败", error) }
         if (saved.isFailure) return false
-        state = next
+        state = trimmed
         return true
     }
 
@@ -139,21 +145,32 @@ private fun reduceMark(state: LedgerState, day: LocalDate, versionCode: Int): Le
     return rollBack(state, day, versionCode)
 }
 
-/** 回拨超过契约天数：清空最近活跃日，删掉这一天之后的页；这一天已有账页则复用。 */
+/** 回拨超过契约天数：清空最近活跃日，删掉这一天之后和保留期之外的页。已有账页则复用；删除记忆里有这一天则不记。 */
 private fun rollBack(state: LedgerState, day: LocalDate, versionCode: Int): LedgerState {
+    val base = trimDeleted(state, day)
     val oldest = day.minusDays(TelemetryContract.LIMIT_CLIENT_RETENTION_PAST_DAYS.toLong())
-    var dropped = state.droppedDays
-    val kept = state.pages.filter { page ->
+    var dropped = base.droppedDays
+    val removed = ArrayList<LocalDate>()
+    val kept = base.pages.filter { page ->
         val remove = page.day > day || page.day < oldest
         if (!remove) return@filter true
         if (page.ackedRev != page.rev) dropped += 1
+        removed.add(page.day)
         false
     }
-    val cleared = state.copy(lastActive = null, pages = kept, droppedDays = dropped)
+    val cleared = base.copy(
+        lastActive = null,
+        pages = kept,
+        droppedDays = dropped,
+        deletedDays = rememberDeleted(base.deletedDays, removed),
+    )
     val existing = kept.find { it.day == day }
-    if (existing == null) return openPage(cleared, day, versionCode, prev = null)
-    val restored = cleared.copy(lastActive = LastActive(existing.day, existing.versionCode))
-    return touchPage(restored, existing, versionCode)
+    if (existing != null) {
+        val restored = cleared.copy(lastActive = LastActive(existing.day, existing.versionCode))
+        return touchPage(restored, existing, versionCode)
+    }
+    if (day in cleared.deletedDays) return cleared
+    return openPage(cleared, day, versionCode, prev = null)
 }
 
 private fun touchPage(state: LedgerState, page: DayPage, versionCode: Int): LedgerState {
@@ -171,6 +188,7 @@ private fun openPage(
     versionCode: Int,
     prev: LastActive?,
 ): LedgerState {
+    if (day in state.deletedDays) return state
     val page = DayPage(
         day = day,
         dayKey = UUID.randomUUID().toString(),
@@ -191,15 +209,22 @@ private fun openPage(
 }
 
 private fun prune(state: LedgerState, today: LocalDate): LedgerState {
+    val base = trimDeleted(state, today)
     val oldest = today.minusDays(TelemetryContract.LIMIT_CLIENT_RETENTION_PAST_DAYS.toLong())
-    var dropped = state.droppedDays
-    val kept = state.pages.filter { page ->
+    var dropped = base.droppedDays
+    val removed = ArrayList<LocalDate>()
+    val kept = base.pages.filter { page ->
         if (page.day >= oldest) return@filter true
         if (page.ackedRev != page.rev) dropped += 1
+        removed.add(page.day)
         false
     }
-    if (kept.size == state.pages.size) return state
-    return state.copy(pages = kept, droppedDays = dropped)
+    if (removed.isEmpty()) return base
+    return base.copy(
+        pages = kept,
+        droppedDays = dropped,
+        deletedDays = rememberDeleted(base.deletedDays, removed),
+    )
 }
 
 private fun applyAck(
@@ -212,25 +237,39 @@ private fun applyAck(
     if (inflightDroppedDays != null) {
         dropped = (dropped - inflightDroppedDays).coerceAtLeast(TelemetryContract.LIMIT_DROPPED_DAYS_MIN)
     }
+    val removed = ArrayList<LocalDate>()
     val kept = state.pages.mapNotNull { page ->
         val sentRev = sent[page.dayKey] ?: return@mapNotNull page
-        if (page.day < today && sentRev == page.rev) return@mapNotNull null
+        if (page.day < today && sentRev == page.rev) {
+            removed.add(page.day)
+            return@mapNotNull null
+        }
         page.copy(ackedRev = sentRev)
     }
-    return state.copy(pages = kept, droppedDays = dropped)
+    return state.copy(
+        pages = kept,
+        droppedDays = dropped,
+        deletedDays = rememberDeleted(state.deletedDays, removed),
+    )
 }
 
 private fun dropPages(state: LedgerState, dayKeys: Collection<String>): LedgerState {
     if (dayKeys.isEmpty()) return state
     val drop = dayKeys.toSet()
     var dropped = state.droppedDays
+    val removed = ArrayList<LocalDate>()
     val kept = state.pages.filter { page ->
         if (page.dayKey !in drop) return@filter true
         if (page.ackedRev != page.rev) dropped += 1
+        removed.add(page.day)
         false
     }
-    if (kept.size == state.pages.size) return state
-    return state.copy(pages = kept, droppedDays = dropped)
+    if (removed.isEmpty()) return state
+    return state.copy(
+        pages = kept,
+        droppedDays = dropped,
+        deletedDays = rememberDeleted(state.deletedDays, removed),
+    )
 }
 
 /**
@@ -239,11 +278,36 @@ private fun dropPages(state: LedgerState, dayKeys: Collection<String>): LedgerSt
  */
 private fun clearPending(state: LedgerState): LedgerState {
     var dropped = state.droppedDays
+    val removed = ArrayList<LocalDate>()
     val kept = state.pages.filter { page ->
         if (page.ackedRev == page.rev) return@filter true
         dropped += 1
+        removed.add(page.day)
         false
     }
-    if (kept.size == state.pages.size) return state
-    return state.copy(pages = kept, droppedDays = dropped)
+    if (removed.isEmpty()) return state
+    return state.copy(
+        pages = kept,
+        droppedDays = dropped,
+        deletedDays = rememberDeleted(state.deletedDays, removed),
+    )
+}
+
+private fun trimDeleted(state: LedgerState, today: LocalDate): LedgerState {
+    val oldest = today.minusDays(TelemetryContract.LIMIT_DELETED_DAY_MEMORY_DAYS.toLong())
+    val kept = state.deletedDays.filter { it >= oldest }
+    if (kept.size == state.deletedDays.size) return state
+    return state.copy(deletedDays = kept)
+}
+
+private fun rememberDeleted(existing: List<LocalDate>, removed: List<LocalDate>): List<LocalDate> {
+    if (removed.isEmpty()) return existing
+    val seen = HashSet<LocalDate>(existing.size + removed.size)
+    seen.addAll(existing)
+    val added = ArrayList<LocalDate>()
+    for (day in removed) {
+        if (seen.add(day)) added.add(day)
+    }
+    if (added.isEmpty()) return existing
+    return existing + added
 }

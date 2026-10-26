@@ -1,4 +1,4 @@
-// 保护：账页迁移写错时，同一天会发出两行，或把开页时写死的 prev、回拨和过期页改掉
+// 保护：账页迁移写错时，同一天会发出两行，或把开页时写死的 prev、回拨、过期页和删过的日期改掉
 package com.niki914.zafiro.business.remote.ledger
 
 import com.niki914.logging.Backend
@@ -81,6 +81,7 @@ class LedgerTest {
         fx.ledger.onAck(mapOf(key to TelemetryContract.LIMIT_REV_MIN), day.plusDays(1))
         assertEquals(emptyList(), fx.saved().pages)
         assertEquals(day, fx.saved().lastActive?.day)
+        assertEquals(listOf(day), fx.saved().deletedDays)
     }
 
     @Test
@@ -128,6 +129,7 @@ class LedgerTest {
         assertEquals(emptyList(), fx.saved().pages)
         assertEquals(1, fx.saved().droppedDays)
         assertEquals(fx.clock.day, fx.saved().lastActive?.day)
+        assertEquals(listOf(fx.clock.day), fx.saved().deletedDays)
     }
 
     @Test
@@ -145,6 +147,7 @@ class LedgerTest {
         assertEquals(listOf(confirmed), fx.saved().pages.map { it.day })
         assertEquals(1, fx.saved().droppedDays)
         assertEquals(today, fx.saved().lastActive?.day)
+        assertEquals(listOf(today), fx.saved().deletedDays)
     }
 
     @Test
@@ -240,6 +243,7 @@ class LedgerTest {
         val initial = LedgerState(
             lastActive = LastActive(today, 16),
             pages = listOf(sample(ancient, "ancient"), sample(today, "today")),
+            deletedDays = listOf(today.minusDays(1)),
         )
         val fx = Fixture(today.toString(), initial)
         fx.clock.day = today.minusDays(TelemetryContract.LIMIT_CLOCK_ROLLBACK_DAYS.toLong())
@@ -280,6 +284,43 @@ class LedgerTest {
     }
 
     @Test
+    fun `a deleted day stays closed when the clock rolls back past the limit and returns`() = runBlocking {
+        val today = date("2026-10-26")
+        val rolled = today.minusDays(TelemetryContract.LIMIT_CLOCK_ROLLBACK_DAYS.toLong() + 1)
+        val fx = Fixture(
+            rolled.toString(),
+            LedgerState(
+                lastActive = LastActive(today, 16),
+                pages = listOf(sample(today, "later-key")),
+                deletedDays = listOf(rolled),
+            ),
+        )
+        fx.ledger.markActive(16)
+        assertEquals(emptyList(), fx.saved().pages)
+        fx.clock.day = today
+        fx.ledger.markActive(16)
+        assertEquals(emptyList(), fx.saved().pages)
+        assertNull(fx.saved().lastActive)
+    }
+
+    @Test
+    fun `deleted days older than the memory window are removed`() = runBlocking {
+        val today = date("2026-10-26")
+        val kept = today.minusDays(TelemetryContract.LIMIT_DELETED_DAY_MEMORY_DAYS.toLong())
+        val stale = kept.minusDays(1)
+        val fx = Fixture(
+            today.toString(),
+            LedgerState(
+                lastActive = LastActive(today, 16),
+                pages = listOf(sample(today)),
+                deletedDays = listOf(stale, kept),
+            ),
+        )
+        fx.ledger.markActive(16)
+        assertEquals(listOf(kept), fx.saved().deletedDays)
+    }
+
+    @Test
     fun `a page older than the retained week is dropped and a page inside it stays`() = runBlocking {
         val today = date("2026-10-26")
         val inside = today.minusDays(TelemetryContract.LIMIT_CLIENT_RETENTION_PAST_DAYS.toLong())
@@ -298,6 +339,7 @@ class LedgerTest {
         val snap = fx.ledger.snapshotForSend(today)
         assertEquals(listOf(inside, today), fx.saved().pages.map { it.day })
         assertEquals(1, fx.saved().droppedDays)
+        assertEquals(listOf(outside), fx.saved().deletedDays)
         assertEquals(listOf(today), snap.days.map { it.day })
     }
 

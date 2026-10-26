@@ -48,6 +48,8 @@ internal data class LedgerState(
     val v: Int = LEDGER_FILE_VERSION,
     val lastActive: LastActive? = null,
     val pages: List<DayPage> = emptyList(),
+    /** 删过账页的 UTC 日。缺省为空；超过删除记忆窗口的日期在账本读写时去掉。 */
+    val deletedDays: List<LocalDate> = emptyList(),
     val seenEvents: List<String> = emptyList(),
     val envelopeCustom: Map<String, CustomValue> = emptyMap(),
     val droppedDays: Int = 0,
