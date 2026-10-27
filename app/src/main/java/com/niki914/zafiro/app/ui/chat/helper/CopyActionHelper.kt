@@ -1,6 +1,7 @@
 package com.niki914.zafiro.app.ui.chat.helper
 
 import android.content.ClipData
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -42,12 +43,13 @@ internal suspend fun honestCopyToClipboard(
     text: String?,
     clipboard: Clipboard,
     hapticFeedback: HapticFeedback? = null,
+    @StringRes toastRes: Int = R.string.ui_toast_copied,
 ): Boolean {
     if (text.isNullOrBlank()) return false
     return runCatchingCancellable {
         clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
         hapticFeedback?.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        ZafiroToast.show(R.string.ui_toast_copied)
+        ZafiroToast.show(toastRes)
         true
     }.getOrDefault(false)
 }

@@ -1,6 +1,5 @@
 package com.niki914.zafiro.app.ui.content.mcp
 
-import android.content.ClipData
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -16,9 +15,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.infra.component.SettingToggleItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
@@ -28,7 +27,7 @@ import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.api.McpServiceStatus
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.helper.ZafiroToast
+import com.niki914.zafiro.app.ui.chat.helper.honestCopyToClipboard
 import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 import com.niki914.zafiro.app.ui.settings.form.rememberEditableDetailFieldController
 import com.niki914.zafiro.app.ui.model.McpServiceSettingsIntent
@@ -55,6 +54,7 @@ fun McpServiceSettingsContent(
     val tokenBringIntoViewRequester = remember { BringIntoViewRequester() }
 
     val clipboard = LocalClipboard.current
+    val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -136,9 +136,8 @@ fun McpServiceSettingsContent(
                 onClick = statusCopyText?.let { text ->
                     {
                         scope.launch {
-                            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
+                            honestCopyToClipboard(text = text, clipboard = clipboard, hapticFeedback = haptic)
                         }
-                        ZafiroToast.show(R.string.ui_toast_copied)
                     }
                 },
             )

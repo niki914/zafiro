@@ -173,7 +173,7 @@ internal fun HomePageContentBody(
     ) {
         val topPadding = zafiroScreenTopPadding(24.dp)
         val availableChatHeight = (maxHeight - topPadding - bottomClearance).coerceAtLeast(0.dp)
-        val userMessageMaxHeight = if (availableChatHeight > 0.dp) availableChatHeight * 0.35f else Dp.Unspecified
+        val userMessageMaxHeight = if (maxHeight > 0.dp) maxHeight * 0.35f else Dp.Unspecified
         ZafiroLocalBackdropContainer(
             modifier = Modifier.fillMaxSize(),
         ) { contentBackdropModifier ->
