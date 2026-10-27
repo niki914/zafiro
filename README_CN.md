@@ -13,7 +13,7 @@
   <a href="https://deepwiki.com/niki914/zafiro"><img src="https://github.com/niki914/zafiro/blob/main/res/badges/ask_deepwiki.svg?raw=true" alt="Ask DeepWiki"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/v/release/niki914/zafiro?include_prereleases" alt="release"/></a>
   <a href="https://github.com/niki914/zafiro/releases/latest"><img src="https://img.shields.io/github/downloads/niki914/zafiro/total" alt="downloads"/></a>
-  <img src="https://img.shields.io/badge/kotlin-87.7k-blue" alt="kotlin lines"/>
+  <img src="https://img.shields.io/badge/kotlin-88.7k-blue" alt="kotlin lines"/>
   <a href="https://app.codacy.com/gh/niki914/zafiro/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade"><img src="https://app.codacy.com/project/badge/Grade/b4cadbe5d2d74e3885106562cbd9715b" alt="Codacy"/></a>
 </p>
 
