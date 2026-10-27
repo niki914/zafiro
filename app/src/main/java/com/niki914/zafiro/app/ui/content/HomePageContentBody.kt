@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -67,6 +68,7 @@ import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.app.ui.model.home.HomeChatUiState
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 import kotlinx.coroutines.launch
 
 /** 附件入口的日志 TAG（只在相机失败这类异常路径上用）。 */
@@ -111,6 +113,7 @@ internal fun HomePageContentBody(
     onSwitchTurnBranch: (Long, Int) -> Unit = { _, _ -> },
     alwaysShowDetailed: Boolean = false,
     onToggleActionKey: (key: String, isExpanded: Boolean) -> Unit = { _, _ -> },
+    onOpenViewer: (ViewerContent) -> Unit = {},
 ) {
     // 底部避让总高：composer 底距 + 实测高度 + 统一视觉间距。列表贴底留白与箭头
     // 位置同源；键盘关闭时（composerBottomPadding == composerGap）即为
@@ -165,31 +168,37 @@ internal fun HomePageContentBody(
         }
     }
 
-    ZafiroLocalBackdropContainer(
-        modifier = Modifier.fillMaxSize(),
-    ) { contentBackdropModifier ->
-        ZafiroOverscrollContainer(
-            overscrollController = overscrollController,
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        val topPadding = zafiroScreenTopPadding(24.dp)
+        val availableChatHeight = (maxHeight - topPadding - bottomClearance).coerceAtLeast(0.dp)
+        val userMessageMaxHeight = if (availableChatHeight > 0.dp) availableChatHeight * 0.35f else Dp.Unspecified
+        ZafiroLocalBackdropContainer(
             modifier = Modifier.fillMaxSize(),
-        ) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(contentBackdropModifier)
-                    .background(MaterialTheme.colorScheme.background)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onContentTap,
-                    ),
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    top = zafiroScreenTopPadding(24.dp),
-                    end = 20.dp,
-                    bottom = bottomClearance,
-                ),
+        ) { contentBackdropModifier ->
+            ZafiroOverscrollContainer(
+                overscrollController = overscrollController,
+                modifier = Modifier.fillMaxSize(),
             ) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(contentBackdropModifier)
+                        .background(MaterialTheme.colorScheme.background)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onContentTap,
+                        ),
+                    contentPadding = PaddingValues(
+                        start = 20.dp,
+                        top = topPadding,
+                        end = 20.dp,
+                        bottom = bottomClearance,
+                    ),
+                ) {
                 itemsIndexed(
                     items = uiState.turns,
                     key = { _, turn -> turn.id },
@@ -197,6 +206,12 @@ internal fun HomePageContentBody(
                     val position = userBubblePosition(uiState.turns, index)
                     val tailIndex = userGroupTailIndex(uiState.turns, index)
                     val tailTurn = uiState.turns[tailIndex]
+                    val isLastTurn = index == uiState.turns.lastIndex
+                    val safeZoneMinHeight = if (isLastTurn) {
+                        availableChatHeight
+                    } else {
+                        0.dp
+                    }
                     Column(modifier = Modifier.fillMaxWidth()) {
                         when {
                             index == 0 -> {}
@@ -230,6 +245,9 @@ internal fun HomePageContentBody(
                             alwaysShowDetailed = alwaysShowDetailed,
                             userToggledKeys = uiState.userToggledKeys,
                             onToggleAction = onToggleActionKey,
+                            safeZoneMinHeight = safeZoneMinHeight,
+                            userMessageMaxHeight = userMessageMaxHeight,
+                            onOpenViewer = onOpenViewer,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -338,4 +356,5 @@ internal fun HomePageContentBody(
             onFolderClick = { folderPicker.launch(null) },
         )
     }
+}
 }

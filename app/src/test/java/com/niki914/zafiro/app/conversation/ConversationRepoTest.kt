@@ -1,5 +1,5 @@
 // 保护：会话仓储的持久化读写契约——建档/读回、leaf 与进度落盘、fork 派生、
-// 重新生成分支分组与列表收敛、删除级联、configId 往返，以及列表 Flow 随会话变更重新发射。
+// 重新生成分支分组与列表收敛、删除级联、configId 往返及 Flow 发射。
 package com.niki914.zafiro.app.conversation
 
 import android.content.Context

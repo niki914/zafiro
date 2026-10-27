@@ -15,6 +15,7 @@ internal val BlockRowGap = 8.dp          // 图标↔标题、标题↔尾部
 internal val BlockRowIcon = 13.dp        // 折叠行图标
 internal val BlockRowChevron = 18.dp     // 折叠行箭头（与 loader / 左图标视觉相近）
 internal val BlockLoaderSize = 20.dp     // 运行中 M3E LoadingIndicator（装在尾部圆底内）
+internal val BlockCircularLoaderSize = 16.dp // 运行中经典/Liquid CircularProgressIndicator
 
 internal val BlockContentInset = BlockHeaderInsetExpanded + BlockIconDot / 2
 internal val BlockContentTopGap = BlockContainerPadY // 标题底部→内容顶部 = 标题顶部→卡缘，纵向节奏均一（12-12-12）

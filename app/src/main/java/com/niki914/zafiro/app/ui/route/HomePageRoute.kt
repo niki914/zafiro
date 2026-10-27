@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import com.niki914.zafiro.app.ui.content.HomePageContent
 import com.niki914.zafiro.app.ui.nav.ConversationHistoryPage
 import com.niki914.zafiro.app.ui.nav.SettingsHomePage
+import com.niki914.zafiro.app.ui.nav.ViewerPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 
 @Composable
@@ -25,6 +26,9 @@ internal fun HomePageRoute(
         },
         onOpenSettings = {
             onPush(SettingsHomePage)
+        },
+        onOpenViewer = { content ->
+            onPush(ViewerPage(content))
         },
     )
 }

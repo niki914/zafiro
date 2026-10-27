@@ -61,6 +61,8 @@
     <string name="ui_home_file_category_archive">Архив</string>
     <string name="ui_home_file_category_apk">APK</string>
     <string name="ui_home_file_category_file">Файл</string>
+    <string name="ui_action_view">Просмотр</string>
+    <string name="ui_viewer_copy_all">Скопировать все</string>
     <string name="ui_toast_copied">Скопировано</string>
     <string name="ui_toast_generating">Идёт генерация, подождите</string>
     <string name="ui_toast_empty_input">Пожалуйста, введите сообщение</string>
@@ -107,6 +109,8 @@
     <string name="ui_conversation_rename_dialog_hint">Название диалога</string>
     <string name="ui_conversation_rename_dialog_confirm">Сохранить</string>
     <string name="ui_conversation_rename_dialog_cancel">Отмена</string>
+    <string name="ui_conversation_search_placeholder">Поиск по истории и сообщениям</string>
+    <string name="ui_conversation_search_empty">Похожих диалогов не найдено</string>
     <string name="ui_time_just_now">Только что</string>
     <string name="ui_time_minutes_ago">%1$d мин назад</string>
     <string name="ui_time_hours_ago">%1$d ч назад</string>

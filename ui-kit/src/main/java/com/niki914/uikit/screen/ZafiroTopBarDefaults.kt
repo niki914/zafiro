@@ -18,4 +18,7 @@ object ZafiroTopBarDefaults {
 
     /** 标题左右默认内边距（避让两侧 48dp 按钮 footprint 与 12dp 边距） */
     val TitleHorizontalPadding: Dp = 72.dp
+
+    /** 展开态内容与屏幕边距（与内容区卡片 16dp 保持垂直齐平） */
+    val ExpandedContentPadding: Dp = 16.dp
 }

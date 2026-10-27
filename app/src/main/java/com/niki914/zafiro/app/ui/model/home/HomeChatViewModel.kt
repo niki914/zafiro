@@ -25,6 +25,8 @@ import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellableContinuation
+import com.niki914.zafiro.api.util.Debouncer
+import com.niki914.zafiro.api.util.debouncer
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.api.util.tryOrDefault
 import com.niki914.zafiro.api.util.tryIgnore
@@ -70,7 +72,7 @@ class HomeChatViewModel internal constructor(
     private val agentManager: AgentManager get() = requireService()
     private val agent: Agent get() = agentManager.main
     private val files: FilesService get() = requireService()
-    private var draftSaveJob: Job? = null
+    private val draftDebouncer: Debouncer = viewModelScope.debouncer(DRAFT_SAVE_DEBOUNCE_MS)
     private var startupRestoreAttempted = false
     private var agentObserveJob: Job? = null
     private var currentBoundAgent: Agent? = null
@@ -335,6 +337,7 @@ class HomeChatViewModel internal constructor(
                 userToggledKeys = if (id != currentConversationId) emptyMap() else userToggledKeys,
             )
         }
+        Logger.i(LOG_TAG, "applyConversation done id=$id turnsCount=${target.size}")
         if (isFirstConversationAssignment && !currentState.boundConfigId.isNullOrBlank()) {
             val assignedId = id!!
             val boundConfig = currentState.boundConfigId!!
@@ -412,9 +415,7 @@ class HomeChatViewModel internal constructor(
     private fun onInputChanged(value: String) {
         updateState { copy(input = value) }
         agent.updateDraft { it.copy(text = value) }
-        draftSaveJob?.cancel()
-        draftSaveJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(DRAFT_SAVE_DEBOUNCE_MS)
+        draftDebouncer.debounce {
             runCatchingCancellable {
                 conversations.setDraftText(value)
             }.onFailure { t ->
@@ -519,7 +520,7 @@ class HomeChatViewModel internal constructor(
         agent.updateDraft { it.copy(text = trimmedInput) }
         // stream() is synchronous; don't let it consume Pending images before AgentImpl finishes ingest.
         agent.draft.first { draft -> draft.images.none { it is DraftImage.Pending } }
-        updateState { copy(isGenerating = true) }
+        updateState { copy(isGenerating = true, unreadTurnId = null) }
         val result = agent.stream()
         Logger.i(LOG_TAG, "send result=$result")
         if (result != TurnStart.Started) {
@@ -528,8 +529,7 @@ class HomeChatViewModel internal constructor(
             }
             return
         }
-        draftSaveJob?.cancel()
-        draftSaveJob = null
+        draftDebouncer.cancel()
         viewModelScope.launch {
             runCatchingCancellable {
                 conversations.setDraftText("")
@@ -565,8 +565,7 @@ class HomeChatViewModel internal constructor(
         Logger.d(LOG_TAG, "start new conversation")
         val leavingId = agent.conversation.value.id?.value
         detachBoundAgent()
-        draftSaveJob?.cancel()
-        draftSaveJob = null
+        draftDebouncer.cancel()
         resetPacers()
         conversationBeingLoaded = null
         val currentInput = currentState.input
@@ -672,8 +671,7 @@ class HomeChatViewModel internal constructor(
                     }
             }
         }
-        draftSaveJob?.cancel()
-        draftSaveJob = null
+        draftDebouncer.cancel()
         resetPacers()
         conversationBeingLoaded = target
         updateState { copy(isLoadingConversation = true) }
@@ -692,13 +690,18 @@ class HomeChatViewModel internal constructor(
             conversationBeingLoaded = target
             val targetAgent = agentManager.switchTo(target)
             attachBoundAgent(targetAgent)
+            val hadUnread = record.summary.hasUnread
+            val unreadTurnId = if (hadUnread) {
+                targetAgent.conversation.value.turns.indices.lastOrNull()?.toLong()
+            } else {
+                null
+            }
             updateState {
                 copy(
-                    turns = emptyList(),
                     currentConversationId = target,
                     currentConversationTitle = title,
                     boundConfigId = record.configId,
-                    turnBranches = emptyMap(),
+                    unreadTurnId = unreadTurnId,
                 ).withClearedTransient()
             }
             applyConversation(targetAgent.conversation.value, animateTail = false)
@@ -719,6 +722,7 @@ class HomeChatViewModel internal constructor(
 
     private suspend fun clearUnread(id: String) {
         conversations.clearUnread(id)
+        updateState { copy(unreadTurnId = null) }
     }
 
     // ── 历史派生操作 ────────────────────────────────────────────────────────
@@ -873,8 +877,7 @@ class HomeChatViewModel internal constructor(
     }
 
     override fun onCleared() {
-        draftSaveJob?.cancel()
-        draftSaveJob = null
+        draftDebouncer.cancel()
         // 在途请求交给其他来源（或按拒绝结算）；本类不再持有来源身份
         approvalApprover.detach()
         detachBoundAgent()

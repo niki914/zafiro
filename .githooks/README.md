@@ -28,7 +28,7 @@ git config core.hooksPath .githooks
 
 ## 规则分类全集 (Taxonomy)
 
-全体系规则按领域关注点划分为五大类，共 11 条规则：
+全体系规则按领域关注点划分为五大类，共 12 条规则：
 
 ```
                        ┌── Concurrency (monitor-lock)
@@ -42,7 +42,8 @@ git config core.hooksPath .githooks
     3. hygiene ────────┬── Narrative Legacy Comments (legacy-comment)
                        └── Inline Fully Qualified Names (inline-fqn)
 
-    4. i18n ─────────── Strings Alignment (strings-alignment 键集合一致性)
+    4. i18n ───────────┬── Strings Alignment (strings-alignment 键集合一致性)
+                       └── ContentDescription I18n (content-description-i18n 禁多语言资源)
 
     5. architecture ─── File Token & Size Budget (file-token-limit 5k tokens 限制)
 ```
@@ -61,6 +62,7 @@ git config core.hooksPath .githooks
 | **`hygiene`** (代码整洁) | `legacy-comment` | 警告 | 注释只描述代码**现在**是什么样，不描述“曾经/不再/修复了什么”（如“不再走旧路径”是不合格的） |
 | | `inline-fqn` | 警告 | 用到的类要 `import`，不内联写全限定名（同名类刻意消歧义除外） |
 | **`i18n`** (多语言资源) | `strings-alignment` | **阻断** | 以 `values/strings.xml` 为唯一锚点，所有支持语种严格对齐键集合，缺失或多出未定义 Key 均阻断 |
+| | `content-description-i18n` | **阻断** | 禁止 `contentDescription` 适配多语言资源（如 `stringResource`）或非英文文案，统一使用纯英文硬编码或 null |
 | **`architecture`** (工程架构) | `file-token-limit` | **阻断** | 限制单文件上限为 5,000 Tokens（20,000 字节），防止大文件导致 AI Agent 注意力衰减与合并冲突 |
 
 ---

@@ -165,7 +165,7 @@ object ConversationFormatter {
         return previewFromText(text)
     }
 
-    private fun previewTextOf(message: Message?): String {
+    internal fun previewTextOf(message: Message?): String {
         val text = when (message) {
             // 用户文本先在头部切掉注入块：切出来的那段是给 agent 看的机器文本，
             // 拿它当预览会把 <zfr-files> 或 <zfr-summary> 摆到对话列表里

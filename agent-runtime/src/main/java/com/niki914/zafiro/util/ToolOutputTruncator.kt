@@ -142,6 +142,8 @@ object ToolOutputTruncator {
         if (exportDir == null) return null
         return try {
             exportDir.mkdirs()
+            // 导出前先按保留策略回收旧文件，避免该目录无限增长
+            ToolOutputRetention.prune(exportDir)
             val target = File(exportDir, exportFileName())
             if (existingFile != null && existingFile.exists()) {
                 if (!existingFile.renameTo(target)) {
