@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Count production Kotlin + Python lines (excluding tests / build / generated)
+# Count production Kotlin + Python non-blank lines (excluding tests / build / generated)
 # and update the "kotlin-XX.Xk" badge in README.md and README_CN.md.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -10,7 +10,7 @@ if [ -z "$files" ]; then
   exit 1
 fi
 
-lines=$(printf '%s\n' "$files" | xargs wc -l | tail -1 | awk '{print $1}')
+lines=$(printf '%s\n' "$files" | xargs awk 'NF {c++} END {print c}' | awk '{s+=$1} END {print s}')
 k=$(awk -v n="$lines" 'BEGIN { printf "%.1fk", n/1000 }')
 badge="https://img.shields.io/badge/kotlin-${k}-blue"
 
