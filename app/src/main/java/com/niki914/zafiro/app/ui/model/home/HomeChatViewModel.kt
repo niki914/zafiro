@@ -125,7 +125,14 @@ class HomeChatViewModel internal constructor(
             is HomeChatIntent.SwitchTurnBranch -> switchTurnBranch(intent.turnId, intent.delta)
             is HomeChatIntent.ForkAt -> forkAt(intent.turnId)
             is HomeChatIntent.RewindAt -> rewindAt(intent.turnId)
-            is HomeChatIntent.ResolveApproval -> approvalApprover.settle(intent.decision)
+            is HomeChatIntent.ResolveApproval -> {
+                if (intent.decision == ApprovalDecision.Allow &&
+                    uiStateFlow.value.pendingApproval is ApprovalRequest.ScreenControlConsent
+                ) {
+                    viewModelScope.launch { XRepo.setPhoneUseConsentGranted(true) }
+                }
+                approvalApprover.settle(intent.decision)
+            }
             HomeChatIntent.OpenConfigMenu -> {
                 refreshSavedConfigs()
                 updateState { copy(isConfigMenuVisible = true) }

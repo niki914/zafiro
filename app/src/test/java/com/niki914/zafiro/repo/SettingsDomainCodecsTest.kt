@@ -370,6 +370,15 @@ class SettingsDomainCodecsTest {
     }
 
     @Test
+    fun appStatePhoneUseConsentGrantedDefaultsDisabledAndRoundTrips() {
+        assertFalse(AppStateSettingsCodec.parse("""{}""").phoneUseConsentGranted)
+
+        val json = AppStateSettingsCodec.encode(AppStateSettings(phoneUseConsentGranted = true))
+        assertTrue(jsonObject(json)["phone_use_consent_granted"]!!.jsonPrimitive.boolean)
+        assertTrue(AppStateSettingsCodec.parse(json).phoneUseConsentGranted)
+    }
+
+    @Test
     fun appStateVoiceAssistantIsolatedSessionDefaultsEnabledAndRoundTrips() {
         assertTrue(AppStateSettingsCodec.parse("""{}""").voiceAssistantIsolatedSession)
 

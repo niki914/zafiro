@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.chat.agentic.accessibility
 
 import android.accessibilityservice.AccessibilityService
@@ -14,6 +15,7 @@ import android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT
+import com.niki914.xsettings.XSettings
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.model.ApprovalDecision
@@ -32,6 +34,7 @@ import com.niki914.zafiro.chat.agentic.buildin.ScreenOperationError
 import com.niki914.zafiro.chat.agentic.shell.TerminalCommandOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
+import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -101,6 +104,7 @@ object AccessibilityController {
     private var shellIdentity: ShellIdentity = ShellIdentity.NONE
 
     private val permissions: PermissionManager get() = requireService()
+    private val xSettings: XSettings? get() = findService()
 
     private enum class ShellIdentity { ROOT, SHIZUKU, USER, NONE }
 
@@ -207,12 +211,13 @@ object AccessibilityController {
     suspend fun ensureService(): Result<Unit> {
         if (serviceInstance != null) return Result.success(Unit)
 
-        // 知情门（链外，引擎保持尽力尝试）：无障碍与悬浮窗缺一不可，任一未授权即先要同意。
-        // 后台弹不了窗 → 直接拒绝；拒绝不记忆，下次申请会再弹。
+        // 知情门（链外，引擎保持尽力尝试）：用户若已授予知情同意，直接放行；
+        // 未获得知情同意且无障碍或悬浮窗任一未授权时才拦截询问。同意即持久化落盘，拒绝不记忆。
+        val isConsentGranted = xSettings?.phoneUseConsentGranted?.value == true
         val needsAccess = permissions.status(Permission.ACCESSIBILITY) != PermissionState.GRANTED
         val needsOverlay = permissions.status(Permission.OVERLAY) != PermissionState.GRANTED
-        if (needsAccess || needsOverlay) {
-            val agentControl = runCatching { requireService<AgentControl>() }.getOrNull()
+        if (!isConsentGranted && (needsAccess || needsOverlay)) {
+            val agentControl = findService<AgentControl>()
             val decision = agentControl?.decideApproval(ApprovalRequest.ScreenControlConsent)
                 ?: ApprovalDecision.Deny
             if (decision != ApprovalDecision.Allow) {
@@ -224,6 +229,7 @@ object AccessibilityController {
                     )
                 )
             }
+            xSettings?.setPhoneUseConsentGranted(true)
         }
 
         // 逐个确保：已授权跳过，缺失才跑链。用户最多进出设置两次，已知代价。

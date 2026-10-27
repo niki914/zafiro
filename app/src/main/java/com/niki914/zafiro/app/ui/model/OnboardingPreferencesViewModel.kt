@@ -122,6 +122,9 @@ class OnboardingPreferencesViewModel :
         updateState { copy(isRequesting = true) }
         val accessibility = ensure(Permission.ACCESSIBILITY)
         val overlay = ensure(Permission.OVERLAY)
+        if (accessibility && overlay) {
+            XRepo.setPhoneUseConsentGranted(true)
+        }
         refreshPermissions()
         updateState { copy(isRequesting = false) }
         if (!accessibility || !overlay) toastDenied()
@@ -174,6 +177,11 @@ class OnboardingPreferencesViewModel :
         if (pm.status(Permission.NOTIFICATION) == PermissionState.GRANTED) {
             XRepo.setResidentNotificationEnabled(true)
         }
+        if (pm.status(Permission.ACCESSIBILITY) == PermissionState.GRANTED &&
+            pm.status(Permission.OVERLAY) == PermissionState.GRANTED
+        ) {
+            XRepo.setPhoneUseConsentGranted(true)
+        }
         updateState { copy(isRequesting = false) }
         if (!uiStateFlow.value.allGranted) toastDenied()
     }
@@ -200,6 +208,12 @@ class OnboardingPreferencesViewModel :
         }
         if (pm.status(Permission.NOTIFICATION) == PermissionState.GRANTED && !XRepo.residentNotificationEnabled()) {
             XRepo.setResidentNotificationEnabled(true)
+        }
+        if (pm.status(Permission.ACCESSIBILITY) == PermissionState.GRANTED &&
+            pm.status(Permission.OVERLAY) == PermissionState.GRANTED &&
+            !XRepo.phoneUseConsentGranted()
+        ) {
+            XRepo.setPhoneUseConsentGranted(true)
         }
         XRepo.executionRules.save(
             RuntimeExecutionRule(
