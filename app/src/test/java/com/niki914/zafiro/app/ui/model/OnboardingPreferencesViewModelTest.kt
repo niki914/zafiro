@@ -66,12 +66,14 @@ class OnboardingPreferencesViewModelTest {
 
         assertFalse(XRepo.floatingBallEnabled())
         assertFalse(XRepo.residentNotificationEnabled())
+        assertFalse(XRepo.phoneUseConsentGranted())
 
         viewModel.sendIntent(OnboardingPreferencesIntent.RequestAll)
         advanceUntilIdle()
 
         assertTrue(XRepo.floatingBallEnabled())
         assertTrue(XRepo.residentNotificationEnabled())
+        assertTrue(XRepo.phoneUseConsentGranted())
     }
 
     @Test
@@ -81,12 +83,14 @@ class OnboardingPreferencesViewModelTest {
 
         assertFalse(XRepo.floatingBallEnabled())
         assertFalse(XRepo.residentNotificationEnabled())
+        assertFalse(XRepo.phoneUseConsentGranted())
 
         viewModel.sendIntent(OnboardingPreferencesIntent.Complete)
         advanceUntilIdle()
 
         assertTrue(XRepo.floatingBallEnabled())
         assertTrue(XRepo.residentNotificationEnabled())
+        assertTrue(XRepo.phoneUseConsentGranted())
         assertTrue(XRepo.onboardingCompleted())
     }
 

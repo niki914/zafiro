@@ -102,6 +102,7 @@ object XRepo {
         floatingBallOpacityPercentField.flow.value = 60
         floatingBallSubmergedOffsetDpField.flow.value = 8
         languageTagField.flow.value = ""
+        phoneUseConsentGrantedField.flow.value = false
         mcpService.resetForTest()
         llmConfigs.resetForTest()
     }
@@ -550,6 +551,20 @@ object XRepo {
 
     suspend fun setFloatingBallSubmergedOffsetDp(value: Int) =
         floatingBallSubmergedOffsetDpField.set(value)
+
+    /** Phone Use（屏幕控制）知情同意状态的进程内热更新通道（app 以外的消费方经 XSettings 读写）。 */
+    private val phoneUseConsentGrantedField = ReactiveAppStateField(
+        default = false,
+        select = { phoneUseConsentGranted },
+        update = { copy(phoneUseConsentGranted = it) },
+    )
+    val phoneUseConsentGrantedSetting: MutableStateFlow<Boolean>
+        get() = phoneUseConsentGrantedField.flow
+
+    suspend fun phoneUseConsentGranted(): Boolean = phoneUseConsentGrantedField.get()
+
+    suspend fun setPhoneUseConsentGranted(value: Boolean) =
+        phoneUseConsentGrantedField.set(value)
 
     /** Markdown 排版缩放比例的进程内热更新通道：基准 1.0f。 */
     private val markdownScaleField = ReactiveAppStateField(

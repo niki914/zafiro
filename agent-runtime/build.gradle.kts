@@ -50,6 +50,7 @@ dependencies {
     implementation(project(":business:api"))
     implementation(project(":business:permission"))
     implementation(project(":business:notification"))
+    implementation(project(":xsettings"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("com.hashsequence:coil-resvg-android:1.1.2")

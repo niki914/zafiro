@@ -19,6 +19,9 @@ const val DEFAULT_COMPACTION_THRESHOLD_PERCENT: Int = 70
 internal data class AppStateSettings(
     @SerialName("onboarding_completed")
     val onboardingCompleted: Boolean = false,
+    /** Phone Use（屏幕控制）知情同意是否已获得用户授权。 */
+    @SerialName("phone_use_consent_granted")
+    val phoneUseConsentGranted: Boolean = false,
     @SerialName("last_opened_conversation_id")
     val lastOpenedConversationId: String = "",
     /** BCP-47 tag；空串 = 跟随系统语言。 */

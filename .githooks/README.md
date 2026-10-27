@@ -28,11 +28,12 @@ git config core.hooksPath .githooks
 
 ## 规则分类全集 (Taxonomy)
 
-全体系规则按领域关注点划分为五大类，共 12 条规则：
+全体系规则按领域关注点划分为五大类，共 13 条规则：
 
 ```
                        ┌── Concurrency (monitor-lock)
                        ├── Coroutine & Exception (uncancellable-run-catching, bare-catch)
+                       ├── Service Lookup (run-catching-require-service)
     1. safety ─────────┼── Logging API (log-api)
                        └── Log Tag Prefix (log-tag)
 
@@ -54,6 +55,7 @@ git config core.hooksPath .githooks
 | :--- | :--- | :--- | :--- |
 | **`safety`** (安全规范) | `monitor-lock` | **阻断** | 禁止使用 `synchronized(...)` / `@Synchronized`，改用 `Mutex` 或协程 |
 | | `uncancellable-run-catching` | **阻断** | 禁止调用标准库 `runCatching` / `mapCatching`（会生吞取消），一律改用 `runCatchingCancellable` |
+| | `run-catching-require-service` | **阻断** | 禁止使用 `runCatching` 包裹 `requireService`，可选服务统一改用 `findService<T>()` |
 | | `bare-catch` | 警告 | 不写裸 `catch (e: Throwable)` / `catch (e: Exception)`，改用 `runCatchingCancellable` / `tryOrNull` 或捕获具体受检异常 |
 | | `log-api` | **阻断** | 禁止使用 `android.util.Log`、`println` / `print` / `System.out`，一律走 `com.niki914.logging.Logger` |
 | | `log-tag` | 警告 | 日志 TAG 必须以 `niki914_zafiro_<ClassName>` 开头 |

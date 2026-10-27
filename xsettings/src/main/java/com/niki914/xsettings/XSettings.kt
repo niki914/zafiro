@@ -1,5 +1,6 @@
 package com.niki914.xsettings
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -26,4 +27,16 @@ interface XSettings {
      * 消费方：business:remote 上报 `app.app_lang`（空串或超过长度上限记 null）。
      */
     val appLanguageTag: StateFlow<String>
+
+    /**
+     * 屏幕控制（Phone Use）知情同意是否已获得用户授权。
+     * 消费方：agent-runtime 的 AccessibilityController。
+     */
+    val phoneUseConsentGranted: StateFlow<Boolean>
+        get() = MutableStateFlow(false)
+
+    /**
+     * 写入 Phone Use 知情同意授权状态。
+     */
+    suspend fun setPhoneUseConsentGranted(granted: Boolean) {}
 }

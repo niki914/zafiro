@@ -129,6 +129,50 @@ class UncancellableRunCatchingTest(unittest.TestCase):
         self.assertEqual(rules_hit("runCatchingCancellable { doWork() }\n"), [])
 
 
+class RunCatchingRequireServiceTest(unittest.TestCase):
+    def test_run_catching_cancellable_with_require_service_is_flagged(self):
+        self.assertEqual(
+            rules_hit("val s = runCatchingCancellable { requireService<Foo>() }\n"),
+            ["run-catching-require-service"],
+        )
+
+    def test_run_catching_with_require_service_is_flagged(self):
+        self.assertEqual(
+            rules_hit("val s = runCatching { requireService<Foo>() }\n"),
+            ["uncancellable-run-catching", "run-catching-require-service"],
+        )
+
+    def test_multiline_run_catching_require_service_is_flagged(self):
+        source = "val s = runCatchingCancellable {\n    requireService<Foo>()\n}\n"
+        self.assertEqual(
+            rules_hit(source),
+            ["run-catching-require-service", "run-catching-require-service"],
+        )
+
+    def test_find_service_is_allowed(self):
+        self.assertEqual(rules_hit("val s = findService<Foo>()\n"), [])
+
+    def test_standalone_require_service_is_allowed(self):
+        source = "class A {\n    fun f() {\n        val s = requireService<Foo>()\n    }\n}\n"
+        self.assertEqual(rules_hit(source), [])
+
+    def test_require_service_before_unrelated_run_catching_is_allowed(self):
+        source = "fun f() {\n    val a = runCatchingCancellable { 1 }\n    val b = requireService<Foo>()\n}\n"
+        self.assertEqual(rules_hit(source), [])
+
+    def test_comment_is_not_flagged(self):
+        self.assertEqual(rules_hit("// val s = runCatchingCancellable { requireService<Foo>() }\n"), [])
+
+    def test_string_literal_is_not_flagged(self):
+        self.assertEqual(rules_hit('val s = "runCatchingCancellable { requireService<Foo>() }"\n'), [])
+
+    def test_ignore_marker_allows(self):
+        source = "val s = runCatchingCancellable { requireService<Foo>() } // githooks:ignore run-catching-require-service\n"
+        findings, ignored = findings_for(source)
+        self.assertEqual(findings, [])
+        self.assertEqual(ignored, 1)
+
+
 class BareCatchTest(unittest.TestCase):
     def test_catch_throwable_is_flagged(self):
         self.assertEqual(rules_hit("} catch (t: Throwable) {\n"), ["bare-catch"])

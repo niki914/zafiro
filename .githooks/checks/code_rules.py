@@ -36,6 +36,9 @@ ANDROID_LOG_CALL = re.compile(r"(?<![\w.])Log\.[dviwe]\s*\(")
 PRINT_CALL = re.compile(r"(?<![\w.])(?:println|print)\s*\(|System\.out\b")
 TAG_DECL = re.compile(r'(?i)(?:val|var)\s+(\w+)\s*(?::\s*[\w<>?.]+\s*)?=\s*"([^"]*)"')
 LOGGER_LITERAL_TAG = re.compile(r'Logger\.[dviwe]\s*\(\s*"([^"]*)"')
+RUN_CATCHING_WORD = re.compile(r"\brunCatching(?:Cancellable)?\b")
+REQUIRE_SERVICE_WORD = re.compile(r"\brequireService\b")
+SCOPE_BOUNDARY = re.compile(r"\b(?:fun|class|interface|object)\b")
 UNCANCELLABLE_RUN_CATCHING = re.compile(
     r"\b(?:runCatching|mapCatching)\s*(?:[\(\{]|::)|^\s*import\s+[\w.]*\b(?:runCatching|mapCatching)\b"
 )
@@ -73,6 +76,14 @@ def is_comment(line: str) -> bool:
 
 def strip_strings(line: str) -> str:
     return STRING_LITERAL.sub('""', line)
+
+
+def strip_inline_comment(line: str) -> str:
+    clean = strip_strings(line)
+    idx = clean.find("//")
+    if idx != -1:
+        clean = clean[:idx]
+    return clean
 
 
 def raw_lines(lines: list[str]) -> set[int]:
@@ -129,6 +140,103 @@ def hit_uncancellable_run_catching(line: str, ctx: LineContext) -> bool:
     if is_comment(line):
         return False
     return UNCANCELLABLE_RUN_CATCHING.search(strip_strings(line)) is not None
+
+
+def hit_run_catching_require_service(line: str, ctx: LineContext) -> bool:
+    if is_comment(line):
+        return False
+
+    clean = strip_inline_comment(line)
+    has_rc = RUN_CATCHING_WORD.search(clean) is not None
+    has_req = REQUIRE_SERVICE_WORD.search(clean) is not None
+
+    if not has_rc and not has_req:
+        return False
+
+    # 1. Look behind: If candidate line has requireService, check if it's enclosed in runCatching.
+    if has_req:
+        req_match = REQUIRE_SERVICE_WORD.search(clean)
+        depth = 0
+        prefix = clean[: req_match.start()]
+        found_enclosing_rc = False
+
+        for i in range(len(prefix) - 1, -1, -1):
+            ch = prefix[i]
+            if ch == "}":
+                depth += 1
+            elif ch == "{":
+                if depth > 0:
+                    depth -= 1
+                else:
+                    sub = prefix[:i]
+                    if RUN_CATCHING_WORD.search(sub):
+                        return True
+                    if SCOPE_BOUNDARY.search(sub):
+                        return False
+                    break
+
+        if not found_enclosing_rc:
+            for line_idx in range(ctx.lineno - 2, max(-1, ctx.lineno - 42), -1):
+                prev_line = ctx.lines[line_idx]
+                if is_comment(prev_line):
+                    continue
+                prev_clean = strip_inline_comment(prev_line)
+                for i in range(len(prev_clean) - 1, -1, -1):
+                    ch = prev_clean[i]
+                    if ch == "}":
+                        depth += 1
+                    elif ch == "{":
+                        if depth > 0:
+                            depth -= 1
+                        else:
+                            sub = prev_clean[:i]
+                            if RUN_CATCHING_WORD.search(sub):
+                                return True
+                            if not sub.strip() and line_idx > 0:
+                                above_line = strip_inline_comment(ctx.lines[line_idx - 1])
+                                if RUN_CATCHING_WORD.search(above_line):
+                                    return True
+                            if SCOPE_BOUNDARY.search(sub):
+                                return False
+                            break
+
+    # 2. Look ahead: If candidate line has runCatching, check if requireService is inside its block.
+    if has_rc:
+        rc_match = RUN_CATCHING_WORD.search(clean)
+        depth = 0
+        found_open = False
+        first_rest = clean[rc_match.end() :]
+
+        lines_to_scan = [(ctx.lineno, first_rest)] + [
+            (i + 1, strip_inline_comment(ctx.lines[i]))
+            for i in range(ctx.lineno, min(len(ctx.lines), ctx.lineno + 40))
+        ]
+
+        for lineno, text in lines_to_scan:
+            if found_open and depth > 0:
+                for req_m in REQUIRE_SERVICE_WORD.finditer(text):
+                    prefix_depth = (
+                        depth
+                        + text[: req_m.start()].count("{")
+                        - text[: req_m.start()].count("}")
+                    )
+                    if prefix_depth > 0:
+                        return True
+
+            for ch in text:
+                if ch == "{":
+                    depth += 1
+                    found_open = True
+                elif ch == "}":
+                    if depth > 0:
+                        depth -= 1
+                        if depth == 0 and found_open:
+                            return False
+
+            if not found_open and lineno > ctx.lineno + 3:
+                break
+
+    return False
 
 
 def hit_bare_catch(line: str, ctx: LineContext) -> bool:
@@ -194,6 +302,16 @@ CODE_RULES: list[tuple[Rule, callable]] = [
             hint="改用 runCatchingCancellable / mapCatchingCancellable；确实需要生吞取消时加 // githooks:ignore uncancellable-run-catching",
         ),
         hit_uncancellable_run_catching,
+    ),
+    (
+        Rule(
+            name="run-catching-require-service",
+            category=Category.SAFETY,
+            severity=Severity.BLOCK,
+            description="使用了 runCatching 包裹 requireService，可选服务应使用 findService",
+            hint="改用 findService<T>()；确实需要时加 // githooks:ignore run-catching-require-service",
+        ),
+        hit_run_catching_require_service,
     ),
     (
         Rule(
