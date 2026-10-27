@@ -35,6 +35,18 @@ interface ConversationDao {
     )
     fun observeLatestBranches(): Flow<List<ConversationEntity>>
 
+    @Query(
+        """
+        SELECT * FROM conversation
+        WHERE updated_at = (
+            SELECT MAX(updated_at) FROM conversation AS sibling
+            WHERE sibling.root_id = conversation.root_id
+        )
+        ORDER BY updated_at DESC
+        """,
+    )
+    suspend fun listLatestBranches(): List<ConversationEntity>
+
     @Query("SELECT * FROM conversation WHERE id = :id LIMIT 1")
     suspend fun getConversationQuery(id: String): ConversationEntity?
 
@@ -74,6 +86,26 @@ interface ConversationDao {
             Logger.d(
                 LOG_TAG,
                 "query listEntries conversationId=$conversationId rows=${rows.size} " +
+                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+        }
+    }
+
+    @Query(
+        """
+        SELECT * FROM conversation_entry
+        WHERE message_json LIKE '%' || :query || '%'
+        ORDER BY timestamp DESC
+        """,
+    )
+    suspend fun searchEntriesQuery(query: String): List<ConversationEntryEntity>
+
+    suspend fun searchEntries(query: String): List<ConversationEntryEntity> {
+        val startedAtMs = System.currentTimeMillis()
+        return searchEntriesQuery(query).also { rows ->
+            Logger.d(
+                LOG_TAG,
+                "query searchEntries query=$query rows=${rows.size} " +
                         "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
             )
         }

@@ -102,26 +102,26 @@ fun ActionBarButton(
                 onDrawSurface = {
                     val progress = interactiveHighlight.pressProgress.coerceIn(0f, 1f)
 
-                    val outline = buttonShape.createOutline(size, layoutDirection, this)
-                    val innerShadowOffset = 4f.dp.toPx()
-                    val innerShadowBlurRadius = 4f.dp.toPx()
+                    if (progress > 0f) {
+                        val outline = buttonShape.createOutline(size, layoutDirection, this)
+                        val innerShadowOffset = 4f.dp.toPx()
+                        val innerShadowBlurRadius = 4f.dp.toPx()
 
-                    innerShadowLayer.alpha = progress
-                    innerShadowLayer.renderEffect =
-                        BlurEffect(innerShadowBlurRadius, innerShadowBlurRadius, TileMode.Decal)
-                    innerShadowLayer.record {
-                        drawOutline(outline, Color.Black.copy(0.2f))
-                        translate(0f, innerShadowOffset) {
-                            drawOutline(outline, Color.Transparent, blendMode = BlendMode.Clear)
+                        innerShadowLayer.alpha = progress
+                        innerShadowLayer.renderEffect =
+                            BlurEffect(innerShadowBlurRadius, innerShadowBlurRadius, TileMode.Decal)
+                        innerShadowLayer.record {
+                            drawOutline(outline, Color.Black.copy(0.2f))
+                            translate(0f, innerShadowOffset) {
+                                drawOutline(outline, Color.Transparent, blendMode = BlendMode.Clear)
+                            }
                         }
+                        drawLayer(innerShadowLayer)
                     }
-                    drawLayer(innerShadowLayer)
 
-                    drawRect(
-                        baseSurfaceColor.copy(
-                            alpha = progress.coerceIn(0.15f, 0.35f)
-                        )
-                    )
+                    val tintColor = colorScheme.primaryContainer.copy(alpha = 0.28f)
+                    drawRect(tintColor, blendMode = BlendMode.Hue)
+                    drawRect(baseSurfaceColor)
                 },
                 effects = {
                     LiquidGlassPresets.Button.applyEffects(this, isDarkTheme)

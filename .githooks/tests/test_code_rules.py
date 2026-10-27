@@ -148,6 +148,57 @@ class RoundedCornerShapeTest(unittest.TestCase):
         self.assertEqual(rules_hit("import androidx.compose.foundation.shape.RoundedCornerShape\n"), ["rounded-corner-shape"])
 
 
+class ContentDescriptionI18nTest(unittest.TestCase):
+    def test_string_resource_call_is_flagged(self):
+        self.assertEqual(
+            rules_hit('Icon(Icons.Default.Close, contentDescription = stringResource(R.string.exit))\n'),
+            ["content-description-i18n"],
+        )
+
+    def test_multiline_string_resource_is_flagged(self):
+        source = 'Icon(\n    contentDescription =\n        stringResource(R.string.exit)\n)\n'
+        self.assertEqual(
+            rules_hit(source),
+            ["content-description-i18n", "content-description-i18n"],
+        )
+
+    def test_non_ascii_literal_is_flagged(self):
+        self.assertEqual(
+            rules_hit('Icon(Icons.Default.Close, contentDescription = "退出搜索")\n'),
+            ["content-description-i18n"],
+        )
+
+    def test_english_literal_is_allowed(self):
+        self.assertEqual(
+            rules_hit('Icon(Icons.Default.Close, contentDescription = "Close")\n'),
+            [],
+        )
+
+    def test_null_content_description_is_allowed(self):
+        self.assertEqual(
+            rules_hit('Icon(Icons.Default.Close, contentDescription = null)\n'),
+            [],
+        )
+
+    def test_variable_assignment_is_allowed(self):
+        self.assertEqual(
+            rules_hit('Icon(Icons.Default.Close, contentDescription = action.contentDescription)\n'),
+            [],
+        )
+
+    def test_comment_is_not_flagged(self):
+        self.assertEqual(
+            rules_hit('// contentDescription = stringResource(R.string.exit)\n'),
+            [],
+        )
+
+    def test_ignore_marker_allows(self):
+        source = 'Icon(Icons.Default.Close, contentDescription = stringResource(R.string.exit)) // githooks:ignore content-description-i18n\n'
+        findings, ignored = findings_for(source)
+        self.assertEqual(findings, [])
+        self.assertEqual(ignored, 1)
+
+
 class IgnoreMarkerTest(unittest.TestCase):
     def test_same_line_marker_allows(self):
         source = "    synchronized(lock) { x() } // githooks:ignore monitor-lock 必须原子交换\n"

@@ -112,6 +112,8 @@
     <string name="ui_conversation_rename_dialog_hint">Título de la conversación</string>
     <string name="ui_conversation_rename_dialog_confirm">Guardar</string>
     <string name="ui_conversation_rename_dialog_cancel">Cancelar</string>
+    <string name="ui_conversation_search_placeholder">Buscar en historial y mensajes</string>
+    <string name="ui_conversation_search_empty">No se encontraron conversaciones coincidentes</string>
     <string name="ui_time_just_now">Ahora mismo</string>
     <string name="ui_time_minutes_ago">Hace %1$d m</string>
     <string name="ui_time_hours_ago">Hace %1$d h</string>

@@ -125,3 +125,14 @@ data class ConversationRecord(
     /** 绑定的 LLM 配置 id。空串表示未绑定（跟随全局活跃配置）。 */
     val configId: String = "",
 )
+
+/**
+ * 历史会话搜索结果条目：包含会话基础元信息及命中的正文 Snippet 与匹配来源。
+ */
+data class ConversationSearchResult(
+    val summary: ConversationSummary,
+    /** 正文命中时提取的上下文片段；若仅标题命中则为 null。 */
+    val matchedSnippet: String? = null,
+    val matchedInTitle: Boolean = false,
+    val matchedInBody: Boolean = false,
+)

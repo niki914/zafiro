@@ -20,6 +20,6 @@ val LiquidButtonInteractiveStyle =
 
 val ActionBarButtonInteractiveStyle =
     LiquidInteractiveStyle(
-        pressScalePx = 24.dp,
-        maxDragScalePx = 4.8.dp,
+        pressScalePx = 8.dp,
+        maxDragScalePx = 0.dp,
     )

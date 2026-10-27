@@ -138,17 +138,15 @@ object LiquidGlassPresets {
 
     /**
      * 动作按钮（ActionBarButton）预设：
-     * 4dp 精准局部模糊，6dp 边缘折射，深浅色自适应高光。
+     * 精致现代质感，4dp 局部模糊，6dp 边缘折射，搭配细白边 Default 高光（0.5dp 细白轮廓线）与沉稳 surfaceContainerHigh 底色，
+     * 与 ZafiroSearchBar 等顶栏组件达成 100% 同构一体化视觉。
      */
     val Button = LiquidGlassStyle(
         blurRadius = { 4.dp },
         refractionHeight = 6.dp,
         refractionAmount = { it.height / 2f },
-        surfaceColor = { isDark, _ ->
-            if (isDark) Color(0xFFAFAFAF).copy(alpha = 0.15f)
-            else Color.White.copy(alpha = 0.22f)
-        },
-        highlightAlpha = { isDark -> if (isDark) 1f else 0f },
+        surfaceColor = { _, colorScheme -> colorScheme.surfaceContainerHigh.copy(alpha = 0.64f) },
+        customHighlight = { Highlight.Default },
         shadowRadius = 12.dp,
         shadowColor = { isDark -> Color.Black.copy(if (isDark) 0.08f else 0.2f) },
     )

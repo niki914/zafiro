@@ -111,6 +111,8 @@
     <string name="ui_conversation_rename_dialog_hint">對話標題</string>
     <string name="ui_conversation_rename_dialog_confirm">確定</string>
     <string name="ui_conversation_rename_dialog_cancel">取消</string>
+    <string name="ui_conversation_search_placeholder">搜尋歷史對話與內容</string>
+    <string name="ui_conversation_search_empty">未找到相關對話</string>
     <string name="ui_time_just_now">剛剛</string>
     <string name="ui_time_minutes_ago">%1$d 分鐘前</string>
     <string name="ui_time_hours_ago">%1$d 小時前</string>

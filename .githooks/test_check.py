@@ -254,6 +254,7 @@ class ScopeTest(unittest.TestCase):
         self.assertEqual(SEVERITY["uncancellable-run-catching"], "block")
         self.assertEqual(SEVERITY["bare-catch"], "warn")
         self.assertEqual(SEVERITY["rounded-corner-shape"], "block")
+        self.assertEqual(SEVERITY["content-description-i18n"], "block")
 
 
 class RoundedCornerShapeTest(unittest.TestCase):
@@ -277,6 +278,51 @@ class RoundedCornerShapeTest(unittest.TestCase):
             rules_hit("    val s = RoundedCornerShape(16.dp) // githooks:ignore rounded-corner-shape\n"),
             [],
         )
+
+
+class ContentDescriptionI18nTest(unittest.TestCase):
+    def test_string_resource_call_is_flagged(self):
+        self.assertEqual(
+            rules_hit('Icon(Icons.Default.Close, contentDescription = stringResource(R.string.exit))\n'),
+            ["content-description-i18n"],
+        )
+
+    def test_multiline_string_resource_is_flagged(self):
+        source = 'Icon(\n    contentDescription =\n        stringResource(R.string.exit)\n)\n'
+        self.assertEqual(
+            rules_hit(source),
+            ["content-description-i18n", "content-description-i18n"],
+        )
+
+    def test_non_ascii_literal_is_flagged(self):
+        self.assertEqual(
+            rules_hit('Icon(Icons.Default.Close, contentDescription = "退出搜索")\n'),
+            ["content-description-i18n"],
+        )
+
+    def test_english_literal_is_allowed(self):
+        self.assertEqual(
+            rules_hit('Icon(Icons.Default.Close, contentDescription = "Close")\n'),
+            [],
+        )
+
+    def test_null_content_description_is_allowed(self):
+        self.assertEqual(
+            rules_hit('Icon(Icons.Default.Close, contentDescription = null)\n'),
+            [],
+        )
+
+    def test_comment_is_not_flagged(self):
+        self.assertEqual(
+            rules_hit('// contentDescription = stringResource(R.string.exit)\n'),
+            [],
+        )
+
+    def test_ignore_marker_allows(self):
+        source = 'Icon(Icons.Default.Close, contentDescription = stringResource(R.string.exit)) // githooks:ignore content-description-i18n\n'
+        findings, ignored = findings_for(source)
+        self.assertEqual(findings, [])
+        self.assertEqual(ignored, 1)
 
 
 if __name__ == "__main__":

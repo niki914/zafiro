@@ -1,8 +1,9 @@
-// 保护：历史页 ViewModel 的状态计算——加载成败落点、删除的活动/普通分流与收尾、批量置顶/删除状态保持与分流、重命名重载、分叉导航。
+// 保护：历史页 ViewModel 的状态计算——加载成败落点、删除的活动/普通分流与收尾、批量置顶/删除状态保持与分流、重命名重载、分叉导航及搜索防抖编排。
 package com.niki914.zafiro.app.ui.model.conversation
 
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.app.conversation.ConversationSearchResult
 import com.niki914.zafiro.app.conversation.ConversationSummary
 import com.niki914.zafiro.app.ui.model.MainDispatcherRule
 import com.niki914.zafiro.app.util.SilentLoggerRule
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -49,6 +51,8 @@ class ConversationHistoryViewModelTest {
         var forkResult: String? = null
         var loadError: Throwable? = null
         var deleteError: Throwable? = null
+        val searchQueries = mutableListOf<String>()
+        var searchResults: List<ConversationSearchResult> = emptyList()
 
         fun toDependencies(): ConversationHistoryViewModelDependencies =
             ConversationHistoryViewModelDependencies(
@@ -80,6 +84,10 @@ class ConversationHistoryViewModelTest {
                 },
                 forkConversation = { forkResult },
                 setConversationPinned = { id, pinned -> pinCalls += id to pinned },
+                searchConversations = { query ->
+                    searchQueries += query
+                    searchResults
+                },
             )
     }
 
@@ -375,5 +383,87 @@ class ConversationHistoryViewModelTest {
 
         assertEquals(listOf("a"), deps.destroyedIds)
         assertEquals(listOf("a"), deps.deletedIds)
+    }
+
+    @Test
+    fun updateSearchQuery_debouncesAndPopulatesResults() = runTest {
+        val deps = FakeDeps()
+        val result = ConversationSearchResult(
+            summary = summary("a"),
+            matchedSnippet = "...found it...",
+            matchedInTitle = false,
+            matchedInBody = true,
+        )
+        deps.searchResults = listOf(result)
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+
+        viewModel.sendIntent(ConversationHistoryIntent.UpdateSearchQuery("hello"))
+        // 推进 intent 分发，但不越过 250ms 防抖窗口
+        advanceTimeBy(50)
+
+        // 输入框 searchQuery 立即可见，isSearching 已标记，但查询还未发出
+        assertEquals("hello", viewModel.uiStateFlow.value.searchQuery)
+        assertTrue(viewModel.uiStateFlow.value.isSearching)
+        assertTrue(deps.searchQueries.isEmpty())
+
+        advanceUntilIdle()
+
+        // 防抖后：查询已发出，结果已填充
+        assertEquals(listOf("hello"), deps.searchQueries)
+        assertFalse(viewModel.uiStateFlow.value.isSearching)
+        assertEquals(1, viewModel.uiStateFlow.value.searchResults.size)
+        assertEquals("...found it...", viewModel.uiStateFlow.value.searchResults[0].matchedSnippet)
+    }
+
+    @Test
+    fun updateSearchQuery_rapidInputOnlyTriggersLastQuery() = runTest {
+        val deps = FakeDeps()
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+
+        viewModel.sendIntent(ConversationHistoryIntent.UpdateSearchQuery("h"))
+        advanceTimeBy(100)
+        viewModel.sendIntent(ConversationHistoryIntent.UpdateSearchQuery("he"))
+        advanceTimeBy(100)
+        viewModel.sendIntent(ConversationHistoryIntent.UpdateSearchQuery("hel"))
+        advanceUntilIdle()
+
+        // 只有最后一次查询被执行
+        assertEquals(listOf("hel"), deps.searchQueries)
+    }
+
+    @Test
+    fun exitSearch_cancelsDebounceAndResetsSearchActive() = runTest {
+        val deps = FakeDeps()
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+
+        viewModel.sendIntent(ConversationHistoryIntent.EnterSearch)
+        advanceTimeBy(10)
+        assertTrue(viewModel.uiStateFlow.value.isSearchActive)
+
+        viewModel.sendIntent(ConversationHistoryIntent.UpdateSearchQuery("hello"))
+        advanceTimeBy(10)
+        // 防抖窗口内退出搜索
+        viewModel.sendIntent(ConversationHistoryIntent.ExitSearch)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiStateFlow.value.isSearchActive)
+        assertEquals("", viewModel.uiStateFlow.value.searchQuery)
+        assertFalse(viewModel.uiStateFlow.value.isSearching)
+        assertTrue(viewModel.uiStateFlow.value.searchResults.isEmpty())
+        assertTrue(deps.searchQueries.isEmpty())
+    }
+
+    @Test
+    fun updateSearchQuery_blankQuerySkipsSearch() = runTest {
+        val deps = FakeDeps()
+        val viewModel = ConversationHistoryViewModel(deps.toDependencies())
+
+        viewModel.sendIntent(ConversationHistoryIntent.UpdateSearchQuery("   "))
+        advanceUntilIdle()
+
+        assertEquals("   ", viewModel.uiStateFlow.value.searchQuery)
+        assertFalse(viewModel.uiStateFlow.value.isSearching)
+        assertTrue(viewModel.uiStateFlow.value.searchResults.isEmpty())
+        assertTrue(deps.searchQueries.isEmpty())
     }
 }
