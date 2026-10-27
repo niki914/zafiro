@@ -19,7 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -31,6 +31,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
@@ -84,10 +87,21 @@ fun ZafiroChatComposer(
     onAttachImageClick: () -> Unit = {},
 ) {
     var expandedLatch by remember { mutableStateOf(false) }
+    var compactWidth by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val hysteresisPx = with(density) { 4.dp.toPx() }
     val expanded = value.contains('\n') || expandedLatch
+
     val onLayout: (TextLayoutResult?) -> Unit = { layout ->
-        if (layout != null && !expandedLatch && layout.lineCount > 1) {
-            expandedLatch = true
+        if (layout != null) {
+            if (!expandedLatch && layout.lineCount > 1) {
+                expandedLatch = true
+            } else if (expandedLatch && !value.contains('\n') && layout.lineCount == 1 && compactWidth > 0) {
+                val lineWidth = layout.getLineRight(0) - layout.getLineLeft(0)
+                if (lineWidth <= compactWidth - hysteresisPx) {
+                    expandedLatch = false
+                }
+            }
         }
     }
 
@@ -120,39 +134,82 @@ fun ZafiroChatComposer(
 
     @Composable
     fun ComposerInputContent(contentModifier: Modifier = Modifier) {
-        val movableInputCore = remember {
-            movableContentOf {
-                val textColor = colorScheme.onSurface
-                val placeholderColor = colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+        val textColor = colorScheme.onSurface
+        val placeholderColor = colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
 
-                BasicTextField(
-                    value = textFieldValue,
-                    onValueChange = { nextValue ->
-                        textFieldValue = nextValue
-                        if (nextValue.text != value) {
-                            onValueChange(nextValue.text)
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onFocusChanged { focusState ->
-                            isFocused = focusState.isFocused
-                        },
-                    singleLine = false,
-                    maxLines = if (expanded) EXPANDED_MAX_LINES else 1,
-                    textStyle = MaterialTheme.typography.bodyLarge.merge(
-                        TextStyle(color = textColor),
-                    ),
-                    cursorBrush = SolidColor(colorScheme.primary),
-                    onTextLayout = { layout -> onLayout(layout) },
-                    decorationBox = { innerTextField ->
+        BasicTextField(
+            value = textFieldValue,
+            onValueChange = { nextValue ->
+                textFieldValue = nextValue
+                if (nextValue.text != value) {
+                    onValueChange(nextValue.text)
+                }
+            },
+            modifier = contentModifier
+                .fillMaxWidth()
+                .heightIn(min = COMPACT_COMPOSER_MIN_HEIGHT)
+                .padding(horizontal = 18.dp, vertical = 12.dp)
+                .onFocusChanged { focusState ->
+                    isFocused = focusState.isFocused
+                },
+            singleLine = false,
+            maxLines = if (expanded) EXPANDED_MAX_LINES else 1,
+            textStyle = MaterialTheme.typography.bodyLarge.merge(
+                TextStyle(color = textColor),
+            ),
+            cursorBrush = SolidColor(colorScheme.primary),
+            onTextLayout = { layout -> onLayout(layout) },
+            decorationBox = { innerTextField ->
+                if (expanded) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .widthIn(min = 0.dp),
-                            contentAlignment = if (expanded) Alignment.TopStart else Alignment.CenterStart,
+                                .padding(top = 12.dp, bottom = 8.dp),
+                            contentAlignment = Alignment.TopStart,
                         ) {
-                            if (textFieldValue.text.isEmpty() && !expanded) {
+                            innerTextField()
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            ComposerAttachButton(onClick = onAttachImageClick)
+                            ComposerSendButton(
+                                isGenerating = isGenerating,
+                                contextProgress = contextProgress,
+                                onSendClick = onSendClick,
+                                onStopClick = onStopClick,
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ComposerAttachButton(
+                            onClick = onAttachImageClick,
+                            modifier = Modifier.layout { measurable, constraints ->
+                                val placeable = measurable.measure(constraints)
+                                layout(placeable.width - 6.dp.roundToPx(), placeable.height) {
+                                    placeable.placeRelative(0, 0)
+                                }
+                            },
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .widthIn(min = 0.dp)
+                                .onSizeChanged { size ->
+                                    if (size.width > 0) {
+                                        compactWidth = size.width
+                                    }
+                                },
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            if (textFieldValue.text.isEmpty()) {
                                 Text(
                                     text = stringResource(R.string.ui_home_input_placeholder),
                                     style = MaterialTheme.typography.bodyLarge,
@@ -163,67 +220,23 @@ fun ZafiroChatComposer(
                             }
                             innerTextField()
                         }
-                    },
-                )
-            }
-        }
-
-        if (expanded) {
-            Column(
-                modifier = contentModifier
-                    .fillMaxWidth()
-                    .heightIn(min = COMPACT_COMPOSER_MIN_HEIGHT)
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 8.dp),
-                    contentAlignment = Alignment.TopStart,
-                ) {
-                    movableInputCore()
+                        ComposerSendButton(
+                            isGenerating = isGenerating,
+                            contextProgress = contextProgress,
+                            onSendClick = onSendClick,
+                            onStopClick = onStopClick,
+                            modifier = Modifier.layout { measurable, constraints ->
+                                val placeable = measurable.measure(constraints)
+                                val shrinkPx = 6.dp.roundToPx()
+                                layout(placeable.width - shrinkPx, placeable.height) {
+                                    placeable.placeRelative(-shrinkPx, 0)
+                                }
+                            },
+                        )
+                    }
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    ComposerAttachButton(onClick = onAttachImageClick)
-                    ComposerSendButton(
-                        isGenerating = isGenerating,
-                        contextProgress = contextProgress,
-                        onSendClick = onSendClick,
-                        onStopClick = onStopClick,
-                    )
-                }
-            }
-        } else {
-            Row(
-                modifier = contentModifier
-                    .fillMaxWidth()
-                    .heightIn(min = COMPACT_COMPOSER_MIN_HEIGHT)
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ComposerAttachButton(onClick = onAttachImageClick)
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .widthIn(min = 0.dp),
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    movableInputCore()
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                ComposerSendButton(
-                    isGenerating = isGenerating,
-                    contextProgress = contextProgress,
-                    onSendClick = onSendClick,
-                    onStopClick = onStopClick,
-                )
-            }
-        }
+            },
+        )
     }
 
     when (themeStyle) {
