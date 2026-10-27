@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 // 保护：SshBuiltin 的凭据建联、显式寻址防静默跑、同 alias 掉线重建、别名域隔离与认证失败错误映射
 package com.niki914.zafiro.chat
 
@@ -154,6 +155,56 @@ class SshBuiltinTest {
         assertEquals("exited", cmdJson["status"]?.jsonPrimitive?.content)
         assertEquals(sessionId, cmdJson["session_id"]?.jsonPrimitive?.content)
         assertEquals("prod_server", cmdJson["alias"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun actionConnect_establishesSessionWithCredentials() = runTest {
+        val tool = TestSshBuiltin()
+
+        val connectResp = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "ssh",
+                argumentsJson = """{
+                    "action":"connect",
+                    "host":"192.168.1.100",
+                    "username":"ubuntu",
+                    "password":"secret",
+                    "alias":"prod_node"
+                }"""
+            )
+        )
+        val connectJson = Json.parseToJsonElement(connectResp).jsonObject
+        assertEquals("connected", connectJson["status"]?.jsonPrimitive?.content)
+        assertEquals("prod_node", connectJson["alias"]?.jsonPrimitive?.content)
+        assertEquals("ssh", connectJson["identity"]?.jsonPrimitive?.content)
+        val sessionId = connectJson["session_id"]!!.jsonPrimitive.content
+
+        // 建联后可正常下发命令
+        val cmdResp = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "ssh",
+                argumentsJson = """{"alias":"prod_node","command":"whoami"}"""
+            )
+        )
+        val cmdJson = Json.parseToJsonElement(cmdResp).jsonObject
+        assertEquals("exited", cmdJson["status"]?.jsonPrimitive?.content)
+        assertEquals(sessionId, cmdJson["session_id"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun actionConnect_withoutCredentials_returnsInvalidRequest() = runTest {
+        val tool = TestSshBuiltin()
+
+        val resp = tool.invokeRawJson(
+            BuiltinToolRequest(
+                name = "ssh",
+                argumentsJson = """{"action":"connect"}"""
+            )
+        )
+        val error = Json.parseToJsonElement(resp).jsonObject["error"]?.jsonObject
+        assertNotNull(error)
+        assertEquals("INVALID_REQUEST", error?.get("code")?.jsonPrimitive?.content)
+        assertTrue(error?.get("message")?.jsonPrimitive?.content?.contains("requires 'host'") == true)
     }
 
     // ── 3. 已有会话禁止携带连接凭据 (防止 Issue #295 混淆静默跑) ────────────

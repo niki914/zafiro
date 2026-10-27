@@ -34,16 +34,16 @@ open class SshBuiltin(
 
     override val description: String =
         "Execute commands on remote machines via SSH with persistent session state.\n\n" +
-                "Session Lifecycle:\n" +
-                "1. Connect: Provide 'host', 'username', and 'password' (optional: 'port', 'alias', 'workdir') to establish a new SSH connection. This assigns a session_id and optional alias.\n" +
-                "2. Command: Execute commands in an established session by passing 'session' (or 'alias') along with 'command'.\n" +
-                "3. Multi-Session: Multiple concurrent SSH connections to different remote hosts can be maintained. Use action='list' to see all active sessions.\n" +
-                "4. Stream & Input: Use action='read' to poll output, action='write' or action='submit' to send stdin, and action='close' to disconnect.\n\n" +
-                "STRICT RULES:\n" +
-                "1. When targeting a LIVE session via 'session' or 'alias', NEVER pass connection credentials. If a connection was dropped, reconnect by passing credentials with the SAME alias — the dead session is replaced automatically.\n" +
-                "2. Never run blocking interactive commands without non-interactive flags (e.g. do not run top, vim, nano, or unmetered ping).\n" +
-                "3. By default, commands run synchronously and return upon completion. If execution exceeds 'timeout' seconds, it degrades to background execution (status='running', timed_out=true).\n" +
-                "4. A session with a command still in flight rejects new commands. If that command is stuck, abandon it with action='write' + text \"\\u0003\" (Ctrl-C); if you just need the session now, run the next command in a new session (new alias)."
+                "Canonical Invocations:\n" +
+                "1. Connect: action='connect' with 'host', 'username', and 'password' (optional: 'port', 'alias', 'workdir').\n" +
+                "2. Command: pass 'session' (or 'alias') and 'command'.\n" +
+                "3. Stdin & Interrupt: action='submit' (sends newline) or action='write' (raw text, or \"\\u0003\" for Ctrl-C).\n" +
+                "4. Session Management: action='read' to poll background output, action='list' to view sessions, action='close' to disconnect.\n\n" +
+                "Rules:\n" +
+                "- Credentials: Pass credentials only with action='connect'. Existing sessions reject credentials.\n" +
+                "- Reconnect: If a session drops, call action='connect' with the same 'alias' and credentials to replace it.\n" +
+                "- Non-interactive: Use non-interactive flags for blocking commands (e.g. ping -c 3, top -b -n 1).\n" +
+                "- In-flight lock: A running command blocks new commands until completed or interrupted (Ctrl-C via action='write')."
 
     override val inputSchemaJson: String get() = SSH_SCHEMA
 
@@ -89,16 +89,21 @@ open class SshBuiltin(
             return handleConnect(sshArgs)
         }
         return TerminalToolResponse.invalidRequest(
-            "Either 'command', 'action', or SSH connection parameters ('host', 'username', 'password') are required."
+            "Either 'command' or action='connect' with connection credentials ('host', 'username', 'password') is required."
         )
     }
 
     override suspend fun handleAction(args: BaseSessionArgs): String {
+        if (args.action == SessionAction.CONNECT) {
+            val sshArgs = args as? SshArgs
+                ?: return TerminalToolResponse.invalidRequest("Missing SSH connection parameters.")
+            return handleConnect(sshArgs)
+        }
         if (args.action != SessionAction.LIST) {
             val sshArgs = args as? SshArgs
             if (sshArgs?.host != null || sshArgs?.username != null || sshArgs?.password != null) {
                 return TerminalToolResponse.invalidRequest(
-                    "Cannot specify connection credentials ('host', 'username', 'password') with action '${args.action?.name?.lowercase()}'."
+                    "Cannot specify connection credentials ('host', 'username', 'password') with action '${args.action?.name?.lowercase()}'. Use action='connect' to establish a new session."
                 )
             }
         }
@@ -301,15 +306,15 @@ open class SshBuiltin(
                 },
                 "session": {
                   "type": "string",
-                  "description": "Target session ID or alias. While the session is alive, connection credentials must NOT be included; pass them again (with the same alias) to rebuild a session that was dropped."
+                  "description": "Target session ID or alias of an active session."
                 },
                 "alias": {
                   "type": "string",
-                  "description": "Human-friendly alias for session naming (e.g. 'nas', 'prod-db'). Alias names are scoped to ssh sessions, so a local shell alias with the same name is unrelated. Registers alias during connect, or targets existing."
+                  "description": "Human-friendly alias for session naming (e.g. 'nas', 'prod-db'). Registers alias during action='connect', or targets existing session."
                 },
                 "host": {
                   "type": "string",
-                  "description": "Remote hostname or IP address (required when opening a new session)."
+                  "description": "Remote hostname or IP address (required for action='connect')."
                 },
                 "port": {
                   "type": "integer",
@@ -317,11 +322,11 @@ open class SshBuiltin(
                 },
                 "username": {
                   "type": "string",
-                  "description": "SSH username (required when opening a new session)."
+                  "description": "SSH username (required for action='connect')."
                 },
                 "password": {
                   "type": "string",
-                  "description": "SSH password (required when opening a new session)."
+                  "description": "SSH password (required for action='connect')."
                 },
                 "workdir": {
                   "type": "string",
@@ -330,20 +335,20 @@ open class SshBuiltin(
                 "timeout": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "Max seconds to wait for command execution before degrading to background (default 30). Set larger (e.g. 60 or 120) for longer commands."
+                  "description": "Max seconds to wait for command execution before degrading to background (default 30)."
                 },
                 "background": {
                   "type": "boolean",
-                  "description": "Run the command in background immediately and return status='running'. Avoid tight polling; use action='read' to collect output when the task should be done."
+                  "description": "Run the command in background immediately and return status='running'. Use action='read' to collect output."
                 },
                 "action": {
                   "type": "string",
-                  "enum": ["list", "read", "submit", "write", "close"],
-                  "description": "Session action: 'read', 'submit', 'write', 'close', 'list'."
+                  "enum": ["connect", "list", "read", "submit", "write", "close"],
+                  "description": "Session action: 'connect' to establish session, 'list' to show active sessions, 'read'/'submit'/'write'/'close' for session interaction."
                 },
                 "text": {
                   "type": "string",
-                  "description": "Text to send for 'submit' or 'write' actions."
+                  "description": "Text to send for 'submit' (adds newline) or 'write' (raw characters) actions."
                 }
               },
               "required": []

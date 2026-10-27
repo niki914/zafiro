@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
 import com.niki914.logging.Logger
@@ -396,6 +397,7 @@ abstract class BaseSessionBuiltin(
 
     protected open suspend fun handleAction(args: BaseSessionArgs): String {
         return when (args.action) {
+            SessionAction.CONNECT -> TerminalToolResponse.invalidRequest("Action 'connect' is not supported by $name.")
             SessionAction.LIST -> handleList()
             SessionAction.READ -> handleRead(args)
             SessionAction.SUBMIT -> handleSubmit(args)
@@ -825,6 +827,7 @@ abstract class BaseSessionBuiltin(
 }
 
 enum class SessionAction {
+    CONNECT,
     LIST,
     READ,
     SUBMIT,
@@ -834,6 +837,7 @@ enum class SessionAction {
     companion object {
         fun fromWireName(raw: String): SessionAction? {
             return when (raw.trim().lowercase()) {
+                "connect" -> CONNECT
                 "list" -> LIST
                 "read" -> READ
                 "submit" -> SUBMIT
