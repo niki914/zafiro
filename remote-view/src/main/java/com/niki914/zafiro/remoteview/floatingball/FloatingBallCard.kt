@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -69,6 +70,7 @@ fun FloatingBallActionButton(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    contentDescription: String? = null,
     backgroundColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.primaryContainer,
     border: BorderStroke? = null,
@@ -100,6 +102,7 @@ fun FloatingBallActionButton(
             .then(if (border != null) Modifier.border(border, CircleShape) else Modifier)
             .clickable(
                 enabled = enabled,
+                role = Role.Button,
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                     if (spinOnClick) {
@@ -114,7 +117,7 @@ fun FloatingBallActionButton(
     ) {
         Icon(
             imageVector = displayedIcon,
-            contentDescription = null,
+            contentDescription = contentDescription,
             tint = contentColor,
             modifier = Modifier
                 .size(iconSize)
@@ -139,6 +142,7 @@ fun FloatingBallCollapsedBall(
         icon = ImageVector.vectorResource(R.drawable.ic_remote_view),
         onClick = onClick,
         modifier = modifier,
+        contentDescription = "Floating Ball",
         backgroundColor = backgroundColor,
         contentColor = contentColor,
         iconSize = 18.dp,
