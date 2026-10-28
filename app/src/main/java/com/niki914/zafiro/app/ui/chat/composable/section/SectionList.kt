@@ -5,6 +5,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.niki914.zafiro.app.ui.chat.composable.action.StandaloneActionCard
@@ -16,8 +17,8 @@ import com.niki914.zafiro.app.ui.chat.model.TurnSection
  * Level 2: 助手段落分流器。
  * 纯粹的 when cases 分流：
  * - Text: 助手 Markdown 正文
- * - Thinking: 独立思考过程卡片
- * - ToolRun: 工具链（单工具 / 多工具）
+ * - Step: 独立步骤卡片（单步穿透或流式平铺）
+ * - WrappedSteps: 复合步骤收纳块
  * - Error: 系统/网络错误卡片
  * - Retrying: 重试中卡片
  */
@@ -31,37 +32,39 @@ internal fun SectionList(
         modifier = modifier.fillMaxWidth(),
     ) {
         sections.forEachIndexed { index, section ->
-            if (index > 0) {
-                AssistantSectionSpacing()
-            }
-            when (section) {
-                is TurnSection.Text -> {
-                    AssistantOutputText(
-                        text = section.text,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onContentTap,
-                            ),
-                    )
+            key(section.key) {
+                if (index > 0) {
+                    AssistantSectionSpacing()
                 }
+                when (section) {
+                    is TurnSection.Text -> {
+                        AssistantOutputText(
+                            text = section.text,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onContentTap,
+                                ),
+                        )
+                    }
 
-                is TurnSection.Thinking -> {
-                    StandaloneActionCard(action = section.action)
-                }
+                    is TurnSection.Step -> {
+                        StandaloneActionCard(action = section.action)
+                    }
 
-                is TurnSection.ToolRun -> {
-                    ActionClusterContainer(section = section)
-                }
+                    is TurnSection.WrappedSteps -> {
+                        WrappedStepsContainer(section = section)
+                    }
 
-                is TurnSection.Error -> {
-                    StandaloneActionCard(action = section.action)
-                }
+                    is TurnSection.Error -> {
+                        StandaloneActionCard(action = section.action)
+                    }
 
-                is TurnSection.Retrying -> {
-                    StandaloneActionCard(action = section.action)
+                    is TurnSection.Retrying -> {
+                        StandaloneActionCard(action = section.action)
+                    }
                 }
             }
         }
