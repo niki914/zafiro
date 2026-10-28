@@ -1,7 +1,6 @@
 package com.niki914.zafiro.app.ui.chat.composable.body.custom
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -26,12 +24,11 @@ import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.helper.CopyBtnGap
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
-import com.niki914.zafiro.app.ui.chat.helper.OutputBtnInset
 import com.niki914.zafiro.app.ui.chat.helper.tapToOpenViewer
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.content.CommandPanelPadX
-import com.niki914.zafiro.app.ui.content.CommandRowPadY
-import com.niki914.zafiro.app.ui.content.OutputPadY
+import com.niki914.zafiro.app.ui.content.CommandRowPadInner
+import com.niki914.zafiro.app.ui.content.CommandRowPadOuter
 import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
 import com.niki914.zafiro.app.ui.viewer.ViewerContent
 
@@ -76,7 +73,7 @@ internal fun CodeToolBody(
                     .tapToOpenViewer(enabled = canOpenCommandViewer) {
                         openViewer(ViewerContent.Text(commandText))
                     }
-                    .padding(vertical = CommandRowPadY)
+                    .padding(top = CommandRowPadOuter, bottom = CommandRowPadInner)
                     .padding(start = CommandPanelPadX, end = CopyBtnGap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -99,23 +96,26 @@ internal fun CodeToolBody(
 
             Spacer(modifier = Modifier.height(3.dp))
 
-            // 下段：控制台输出（遵循准则二/三，统一右上角 TopEnd 并通过内边距避让）
+            // 下段：控制台输出（垂直居中对齐复制按钮，超出尾部省略，整体裁剪 G2 圆角）
             val hasOutput = ui.output.isNotBlank()
             val runningPlaceholder = stringResource(R.string.ui_tool_status_running) + "..."
             val displayText = if (hasOutput) ui.output else if (ui.isRunning) runningPlaceholder else ""
             val canOpenOutputViewer = !ui.isRunning && hasOutput
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(bottomShape)
                     .background(background, bottomShape)
                     .tapToOpenViewer(enabled = canOpenOutputViewer) {
                         openViewer(ViewerContent.Text(ui.output))
-                    },
+                    }
+                    .padding(top = CommandRowPadInner, bottom = CommandRowPadOuter)
+                    .padding(start = CommandPanelPadX, end = CopyBtnGap),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = displayText,
-                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = when {
                         ui.isError -> MaterialTheme.colorScheme.error
                         !hasOutput && ui.isRunning -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -123,17 +123,13 @@ internal fun CodeToolBody(
                     },
                     maxLines = 6,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = CommandPanelPadX, vertical = OutputPadY)
-                        .padding(end = if (hasOutput) OutputBtnInset else 0.dp),
+                    modifier = Modifier.weight(1f),
                 )
+
                 if (hasOutput) {
+                    Spacer(modifier = Modifier.width(CopyBtnGap))
                     MiniCopyButton(
                         text = ui.output,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = CopyBtnGap, end = CopyBtnGap),
                     )
                 }
             }
