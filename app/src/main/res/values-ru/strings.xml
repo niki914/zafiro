@@ -63,6 +63,9 @@
     <string name="ui_home_file_category_file">Файл</string>
     <string name="ui_action_view">Просмотр</string>
     <string name="ui_viewer_copy_all">Скопировать все</string>
+    <string name="ui_image_unavailable">Недоступно</string>
+    <string name="ui_viewer_image_unavailable">Не удалось загрузить изображение</string>
+    <string name="ui_viewer_image_unavailable_desc">Файл изображения не существует или кеш был очищен</string>
     <string name="ui_toast_copied">Скопировано</string>
     <string name="ui_toast_generating">Идёт генерация, подождите</string>
     <string name="ui_toast_empty_input">Пожалуйста, введите сообщение</string>

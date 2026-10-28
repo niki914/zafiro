@@ -65,7 +65,6 @@ internal fun TurnItem(
     onSwitchBranch: (Int) -> Unit = {},
     safeZoneMinHeight: Dp = 0.dp,
     userMessageMaxHeight: Dp = Dp.Unspecified,
-    onViewFullUserText: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val alwaysVisible = actionsDisplay == MessageActionsDisplay.Always
@@ -117,7 +116,6 @@ internal fun TurnItem(
                     text = turn.userText,
                     position = userBubblePosition,
                     maxHeight = userMessageMaxHeight,
-                    onViewFull = onViewFullUserText,
                 )
             }
         }
