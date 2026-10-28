@@ -65,6 +65,9 @@
     <string name="ui_home_file_category_file">檔案</string>
     <string name="ui_action_view">查看</string>
     <string name="ui_viewer_copy_all">複製全部</string>
+    <string name="ui_image_unavailable">已失效</string>
+    <string name="ui_viewer_image_unavailable">無法載入圖片</string>
+    <string name="ui_viewer_image_unavailable_desc">圖片檔案不存在或快取已被清理</string>
     <string name="ui_toast_copied">已複製</string>
     <string name="ui_toast_generating">生成中，請稍後</string>
     <string name="ui_toast_empty_input">請輸入內容</string>

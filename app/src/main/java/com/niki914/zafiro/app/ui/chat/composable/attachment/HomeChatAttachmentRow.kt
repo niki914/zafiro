@@ -1,6 +1,5 @@
 package com.niki914.zafiro.app.ui.chat.composable.attachment
 
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,11 +19,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,8 +31,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,27 +39,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.uikit.infra.shape.G2CardShape
+import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.app.ui.model.home.formatFileNameMiddleTruncated
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-
-import com.niki914.zafiro.api.util.runCatchingCancellable
-
-/**
- * 落盘路径 → 异步解码 ImageBitmap（IO dispatcher，主线程零阻塞）。
- * null = 文件不存在/解码失败（显示占位底色）；解码完成自动刷新。
- */
-@Composable
-private fun rememberPathBitmap(path: String): ImageBitmap? =
-    produceState<ImageBitmap?>(initialValue = null, path) {
-        value = withContext(Dispatchers.IO) {
-            runCatchingCancellable {
-                BitmapFactory.decodeFile(path)?.asImageBitmap()
-            }.getOrNull()
-        }
-    }.value
+import com.niki914.zafiro.app.ui.helper.PathBitmapState
+import com.niki914.zafiro.app.ui.helper.rememberPathBitmapState
 
 /**
  * 卡片的顶部遮罩 + 右上角关闭钮（图片卡 / 文件卡共用）。
@@ -115,22 +97,62 @@ internal fun HomeChatImageCard(
     cornerRadius: Dp,
     onRemove: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     val shape = G2CardShape(cornerRadius)
-    val bitmap = rememberPathBitmap(image.path)
-    Box(
-        modifier = modifier
-            .size(size)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-    ) {
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
+    val state = rememberPathBitmapState(image.path)
+    val cardModifier = modifier
+        .size(size)
+        .clip(shape)
+        .background(MaterialTheme.colorScheme.surfaceVariant)
+        .then(
+            if (onClick != null) {
+                Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick,
+                )
+            } else {
+                Modifier
+            }
+        )
+
+    Box(modifier = cardModifier) {
+        when (state) {
+            PathBitmapState.Loading -> Unit
+            is PathBitmapState.Success -> {
+                Image(
+                    bitmap = state.bitmap,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+            PathBitmapState.Error -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.BrokenImage,
+                        contentDescription = "Broken Image Icon",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(if (size >= 100.dp) 32.dp else 20.dp),
+                    )
+                    if (size >= 100.dp) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.ui_image_unavailable),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
         }
         if (onRemove != null) {
             CardRemoveOverlay(
@@ -254,6 +276,7 @@ fun HomeChatAttachmentRow(
     modifier: Modifier = Modifier,
     onRemoveImage: ((String) -> Unit)? = null,
     onRemoveFile: ((String) -> Unit)? = null,
+    onImageClick: ((HomeChatImage) -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -269,6 +292,7 @@ fun HomeChatAttachmentRow(
                 size = cardSize,
                 cornerRadius = cornerRadius,
                 onRemove = onRemoveImage?.let { remove -> { remove(image.id) } },
+                onClick = onImageClick?.let { click -> { click(image) } },
             )
         }
         files.forEach { file ->

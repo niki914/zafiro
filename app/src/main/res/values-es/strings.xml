@@ -66,6 +66,9 @@
     <string name="ui_home_file_category_file">Archivo</string>
     <string name="ui_action_view">Ver</string>
     <string name="ui_viewer_copy_all">Copiar todo</string>
+    <string name="ui_image_unavailable">No disponible</string>
+    <string name="ui_viewer_image_unavailable">No se puede cargar la imagen</string>
+    <string name="ui_viewer_image_unavailable_desc">El archivo de imagen no existe o se ha borrado la caché</string>
     <string name="ui_toast_copied">Copiado al portapapeles</string>
     <string name="ui_toast_generating">Generando, espere un momento</string>
     <string name="ui_toast_empty_input">Por favor ingrese un mensaje</string>
