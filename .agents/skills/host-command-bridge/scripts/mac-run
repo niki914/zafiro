@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""
+Linux VM Client CLI (mac-run)
+Runs inside the Linux VM. Automatically calculates the relative path
+under ~/shared and delegates command execution to the Mac host daemon.
+"""
+
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+# Base shared directory on Linux VM
+SHARED_DIR = Path(os.path.expanduser("~/shared")).resolve()
+DAEMON_HOST = os.environ.get("MAC_COMMAND_HOST", "host.lima.internal")
+DAEMON_PORT = int(os.environ.get("MAC_COMMAND_PORT", "9876"))
+ENDPOINT = f"http://{DAEMON_HOST}:{DAEMON_PORT}/exec"
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: mac-run <command> [args...]")
+        print("Example: mac-run ./gradlew assembleDebug")
+        print("         mac-run open path/to/report.html")
+        sys.exit(1)
+
+    cwd = Path.cwd().resolve()
+    try:
+        rel_path = str(cwd.relative_to(SHARED_DIR))
+    except ValueError:
+        print(f"Error: Current directory '{cwd}' is not inside '{SHARED_DIR}'.", file=sys.stderr)
+        print("mac-run only works within projects located under ~/shared.", file=sys.stderr)
+        sys.exit(1)
+
+    cmd = sys.argv[1:]
+    payload = json.dumps({"rel_path": rel_path, "cmd": cmd}).encode("utf-8")
+
+    req = urllib.request.Request(
+        ENDPOINT,
+        data=payload,
+        headers={"Content-Type": "application/json"}
+    )
+
+    received_exit_code = False
+    exit_code = 1
+    try:
+        with urllib.request.urlopen(req) as resp:
+            for raw_line in resp:
+                line = raw_line.decode("utf-8", errors="replace")
+                if line.startswith("__EXIT_CODE__:"):
+                    try:
+                        exit_code = int(line.strip().split(":", 1)[1])
+                        received_exit_code = True
+                    except Exception:
+                        exit_code = 1
+                else:
+                    sys.stdout.write(line)
+                    sys.stdout.flush()
+    except urllib.error.HTTPError as e:
+        err_msg = e.read().decode("utf-8", errors="replace").strip()
+        print(f"[mac-run] HTTP {e.code}: {e.reason}", file=sys.stderr)
+        if err_msg:
+            print(f"[mac-run] {err_msg}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"Error connecting to Mac daemon at {ENDPOINT}: {e}", file=sys.stderr)
+        print("Ensure mac_command_daemon.py is running on your Mac host.", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n[mac-run] Interrupted by user.", file=sys.stderr)
+        sys.exit(130)
+
+    if not received_exit_code:
+        print("\n[mac-run] Stream ended unexpectedly without exit code from host.", file=sys.stderr)
+        sys.exit(1)
+
+    sys.exit(exit_code)
+
+
+if __name__ == "__main__":
+    main()
