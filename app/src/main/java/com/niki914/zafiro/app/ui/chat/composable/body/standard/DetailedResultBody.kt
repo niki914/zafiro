@@ -12,19 +12,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.niki914.zafiro.app.ui.chat.composable.text.ToolResultText
 import com.niki914.zafiro.app.ui.chat.helper.CopyBtnGap
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
 import com.niki914.zafiro.app.ui.chat.helper.OutputBtnInset
+import com.niki914.zafiro.app.ui.chat.helper.tapToOpenViewer
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.content.CommandPanelPadX
 import com.niki914.zafiro.app.ui.content.OutputPadY
-import com.niki914.zafiro.app.ui.chat.composable.text.ToolResultText
+import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 
 /**
  * 通用详细结果排版：
  * 在开启“总是展示工具详细输出”时生效；面板底色 + 等宽结果文本。
  * 仅当 [ActionBodyUi.Standard.Detailed.showCopyButton] 为 true 时才在右上角提供复制按钮。
  * 右上角若做防穿模处理，背景严格与当前面板颜色对齐，杜绝黑斑。
+ * 轻触面板可直接打开已美化格式的完整结果查看器，长按可在卡片内选词复制。
  */
 @Composable
 internal fun DetailedResultBody(
@@ -32,13 +36,19 @@ internal fun DetailedResultBody(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
 ) {
+    val openViewer = LocalViewerOpener.current
+    val canOpenViewer = ui.text.isNotBlank()
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .background(
                 containerColor,
                 RoundedCornerShape(16.dp),
-            ),
+            )
+            .tapToOpenViewer(enabled = canOpenViewer) {
+                openViewer(ViewerContent.Text(ui.text))
+            },
     ) {
         Box(
             modifier = Modifier
