@@ -24,7 +24,7 @@
 ├── agent-runtime/       # Agent 运行时：LLM 调用、工具/Skill/MCP 执行、Python 运行时
 ├── xsettings/           # 轻量配置模块（业务按需依赖）
 ├── store/               # Store 持久化、IPC 桥（XIpcBridge）
-├── ui-kit/              # 共享 Compose 组件、LiquidScreen 壳、导航
+├── ui-kit/              # 共享 Compose 组件（Zafiro* 元器件）、ZafiroScreen 壳、导航
 ├── remote-view/         # 跨进程 / 悬浮窗 RemoteView 视图
 ├── xposed-api/          # Xposed 事件类型、共享常量（主应用与宿主进程共享）
 ├── xposed-runtime/      # Xposed 运行时、Hook 基类
@@ -50,13 +50,13 @@ State 与 Effect 的区别是持久与一次性，分界的判据是「换个时
 
 ### 主界面 / Home / Compose
 
-这些都是指应用的主入口，Compose UI，具体的对话是在 HomChatViewModel 内通过 Agent API 维护。Compose 必须是无状态的，从配套的 MVI ViewModel 里取数据
+这些都是指应用的主入口，Compose UI，具体的对话是在 HomeChatViewModel 内通过 Agent API 维护。Compose 必须是无状态的，从配套的 MVI ViewModel 里取数据
 
 这是整个应用的根基，它的重要性和优先级最高
 
 ### UI 框架 / ui-kit
 
-导航、导航栏、弹窗、设置项都用 ui-kit 里既定的那套，不要另起一套。实现涉及导航、ViewModel、弹窗的业务前 MUST 调研已有代码作为参考
+导航、导航栏、弹窗、设置项都用 ui-kit 里既定的那套，不要另起一套。业务组件统一使用 ui-kit 导出的 Zafiro* 基础元器件（ZafiroDialog 等），底层实现了多种主题分流。实现涉及导航、ViewModel、弹窗的业务前 MUST 调研已有代码作为参考
 
 #### 导航
 
@@ -66,19 +66,19 @@ push 分正推与从左推（onPushFromLeft）两个方向，返回要配对使�
 
 #### 导航栏与左右上角按钮
 
-导航栏指 LiquidScreen 顶部的动作条，只有左右两个图标槽，内容由页面通过 PageChromeContribution 覆盖，页面不自己画
+导航栏指 ZafiroTopBar，有两个图标槽，内容由页面通过 PageChromeContribution 覆盖，页面不自己画
 
 背景色与标题由滚动状态自行感知切换，大部分页面不需要参与；左右按钮通常指这两个图标槽
 
 #### 弹窗类
 
-约定使用 LiquidDialog（ConfirmationLiquidDialog、SingleChoiceLiquidDialog 等），它必须挂在 LiquidScreen 的内容树里，返回键由弹窗自己接管
+约定使用 ZafiroDialog（ZafiroConfirmationDialog、ZafiroSingleChoiceDialog、ZafiroInputDialog 等），它必须挂在 ZafiroScreen 的内容树里，返回键由弹窗自己接管
 
 BottomSheet 用 OptionSheet
 
 #### 设置项
 
-设置页、设置列表、设置详情统一用 ui-kit 的 Settings* 组件（页面骨架、分组卡片、行、分隔线都有现成的），如无明确要求，禁止手搓
+设置列表页统一基于 SettingsPageSpec + SettingsSpecPageContent，编辑详情页统一使用 EditableSettingsDetailChrome + FormSpec 骨架；底层通用卡片与行使用 ui-kit 的 Settings* 系列，如无明确要求，禁止手搓
 
 ### 对话列表
 
