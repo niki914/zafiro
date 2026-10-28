@@ -46,7 +46,6 @@ import com.niki914.zafiro.app.ui.model.home.FileAttachReason
 import com.niki914.zafiro.app.ui.model.home.HomeChatEffect
 import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
 import com.niki914.zafiro.app.ui.model.home.HomeChatViewModel
-import com.niki914.zafiro.app.ui.viewer.ViewerContent
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.repo.UpdateCheckHolder
@@ -72,7 +71,6 @@ fun HomePageContent(
     onActiveConversationChanged: (String?) -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenViewer: (ViewerContent) -> Unit = {},
 ) {
     val viewModel = pageViewModel<HomeChatViewModel>()
     val latestViewModel by rememberUpdatedState(viewModel)
@@ -450,7 +448,6 @@ fun HomePageContent(
         onToggleActionKey = { key, isExpanded ->
             viewModel.sendIntent(HomeChatIntent.ToggleActionKey(key, isExpanded))
         },
-        onOpenViewer = onOpenViewer,
     )
 
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()

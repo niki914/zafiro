@@ -32,7 +32,6 @@ import com.niki914.zafiro.app.ui.chat.composable.spacing.UserAttachmentToTextSpa
 import com.niki914.zafiro.app.ui.chat.composable.spacing.UserBubbleToActionSpacing
 import com.niki914.zafiro.app.ui.chat.composable.spacing.UserToAssistantSpacing
 import com.niki914.zafiro.app.ui.model.home.ActionSource
-import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
 
 /**
@@ -66,8 +65,6 @@ internal fun TurnItem(
     onSwitchBranch: (Int) -> Unit = {},
     safeZoneMinHeight: Dp = 0.dp,
     userMessageMaxHeight: Dp = Dp.Unspecified,
-    onViewFullUserText: (() -> Unit)? = null,
-    onImageClick: ((HomeChatImage) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val alwaysVisible = actionsDisplay == MessageActionsDisplay.Always
@@ -91,7 +88,6 @@ internal fun TurnItem(
                     cardSize = 120.dp,
                     cornerRadius = UserBubbleCornerRadius,
                     modifier = Modifier.widthIn(max = maxWidth * 0.82f),
-                    onImageClick = onImageClick,
                 )
             }
         }
@@ -120,7 +116,6 @@ internal fun TurnItem(
                     text = turn.userText,
                     position = userBubblePosition,
                     maxHeight = userMessageMaxHeight,
-                    onViewFull = onViewFullUserText,
                 )
             }
         }

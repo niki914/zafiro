@@ -45,6 +45,8 @@ import com.niki914.zafiro.app.ui.model.home.HomeChatImage
 import com.niki914.zafiro.app.ui.model.home.formatFileNameMiddleTruncated
 import com.niki914.zafiro.app.ui.helper.PathBitmapState
 import com.niki914.zafiro.app.ui.helper.rememberPathBitmapState
+import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 
 /**
  * 卡片的顶部遮罩 + 右上角关闭钮（图片卡 / 文件卡共用）。
@@ -276,8 +278,10 @@ fun HomeChatAttachmentRow(
     modifier: Modifier = Modifier,
     onRemoveImage: ((String) -> Unit)? = null,
     onRemoveFile: ((String) -> Unit)? = null,
-    onImageClick: ((HomeChatImage) -> Unit)? = null,
 ) {
+    val openViewer = LocalViewerOpener.current
+    val allPaths = remember(images) { images.map { it.path } }
+
     Row(
         modifier = modifier
             // 宽度由调用方决定（贴内容宽或撑满）：不加 fillMaxWidth，
@@ -286,13 +290,15 @@ fun HomeChatAttachmentRow(
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        images.forEach { image ->
+        images.forEachIndexed { index, image ->
             HomeChatImageCard(
                 image = image,
                 size = cardSize,
                 cornerRadius = cornerRadius,
                 onRemove = onRemoveImage?.let { remove -> { remove(image.id) } },
-                onClick = onImageClick?.let { click -> { click(image) } },
+                onClick = {
+                    openViewer(ViewerContent.Image.of(allPaths, index))
+                },
             )
         }
         files.forEach { file ->

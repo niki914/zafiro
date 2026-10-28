@@ -78,7 +78,10 @@ import com.niki914.zafiro.app.ui.nav.ResTitle
 import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TitleBarMode
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
+import com.niki914.zafiro.app.ui.nav.ViewerPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
+import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 import com.niki914.zafiro.business.application.ApplicationService
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.findService
@@ -187,6 +190,15 @@ fun ZafiroApp(
 
     fun popToRight() {
         navigator.pop(direction = TitleDirection.Forward)
+    }
+
+    // staticCompositionLocalOf 的值一旦变化会重组其 content 整棵子树，必须 memo，
+    // 否则 ZafiroApp 每次重组（如右上按钮淡入淡出的逐帧动画）都会换一个新 lambda。
+    val openViewer: (ViewerContent) -> Unit = remember(navigator) {
+        { content ->
+            closeChromeMenu()
+            navigator.push(ViewerPage(content))
+        }
     }
 
     fun popOrMoveTaskToBack() {
@@ -356,6 +368,7 @@ fun ZafiroApp(
                                 LocalNavigationEntry provides entry,
                                 LocalPageChrome provides pageChromeRegistrar,
                                 LocalPageTitle provides resolveTitle(entry.page.titleSpec),
+                                LocalViewerOpener provides openViewer,
                             ) {
                                 saveableStateHolder.SaveableStateProvider(entry.id) {
                                     ZafiroPageContent(

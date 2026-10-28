@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 
 /** User 气泡在连续用户消息组内的位置（渲染层分组：组边界 = 相邻 UserBubble 之间存在任何内容，见 userBubblePosition）。 */
 enum class UserBubblePosition {
@@ -64,7 +66,6 @@ fun UserMessageBubble(
     modifier: Modifier = Modifier,
     position: UserBubblePosition = UserBubblePosition.Single,
     maxHeight: Dp = Dp.Unspecified,
-    onViewFull: (() -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val bubbleBg = colorScheme.primary.copy(alpha = 0.18f)
@@ -164,7 +165,9 @@ fun UserMessageBubble(
                 )
             }
 
-            if (isHeightCapped && hasVisualOverflow && onViewFull != null) {
+            val openViewer = LocalViewerOpener.current
+
+            if (isHeightCapped && hasVisualOverflow) {
                 val transparentBg = actualBubbleBg.copy(alpha = 0f)
 
                 // 1. 底部整行水平渐变蒙层：左淡右深，使最后一行向右平滑隐入气泡底色
@@ -199,7 +202,7 @@ fun UserMessageBubble(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = onViewFull,
+                            onClick = { openViewer(ViewerContent.Text(text)) },
                         )
                         .padding(start = 24.dp, end = 18.dp, bottom = 12.dp, top = 4.dp),
                 ) {

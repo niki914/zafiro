@@ -18,7 +18,6 @@ import com.niki914.zafiro.app.ui.chat.mapper.toTurnUiModel
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.HomeChatTurn
 import com.niki914.zafiro.app.ui.model.home.MessageActionsDisplay
-import com.niki914.zafiro.app.ui.viewer.ViewerContent
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,7 +49,6 @@ internal fun HomeChatTurnItem(
     onToggleAction: (key: String, nextExpanded: Boolean) -> Unit = { _, _ -> },
     safeZoneMinHeight: Dp = 0.dp,
     userMessageMaxHeight: Dp = Dp.Unspecified,
-    onOpenViewer: (ViewerContent) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (turn.isCompactedDivider) {
@@ -127,18 +125,6 @@ internal fun HomeChatTurnItem(
         onSwitchBranch = onSwitchBranch,
         safeZoneMinHeight = safeZoneMinHeight,
         userMessageMaxHeight = userMessageMaxHeight,
-        onViewFullUserText = { onOpenViewer(ViewerContent.Text(turn.userText)) },
-        onImageClick = { clickedImage ->
-            val allPaths = turn.images.map { it.path }
-            val initialIndex = turn.images.indexOf(clickedImage).coerceAtLeast(0)
-            onOpenViewer(
-                ViewerContent.Image(
-                    path = clickedImage.path,
-                    images = allPaths,
-                    initialIndex = initialIndex,
-                )
-            )
-        },
         modifier = modifier,
     )
 }
