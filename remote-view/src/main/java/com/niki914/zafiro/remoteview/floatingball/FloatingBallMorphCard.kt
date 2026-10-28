@@ -215,6 +215,7 @@ fun FloatingBallMorphCard(
                 FloatingBallActionButton(
                     icon = Icons.AutoMirrored.Filled.OpenInNew,
                     onClick = onJumpToApp,
+                    contentDescription = "Open in app",
                     backgroundColor = buttonBg,
                     contentColor = buttonIconTint,
                     enabled = progress >= 0.7f,
@@ -229,6 +230,7 @@ fun FloatingBallMorphCard(
                 FloatingBallActionButton(
                     icon = centerConfig.icon,
                     onClick = centerConfig.onClick,
+                    contentDescription = centerConfig.contentDescription,
                     backgroundColor = buttonBg,
                     contentColor = buttonIconTint,
                     enabled = progress >= 0.7f,
@@ -241,6 +243,7 @@ fun FloatingBallMorphCard(
                 FloatingBallActionButton(
                     icon = if (isApprovalPending) Icons.Filled.Close else Icons.Filled.CloseFullscreen,
                     onClick = if (isApprovalPending) onDeny else onMinimize,
+                    contentDescription = if (isApprovalPending) "Deny" else "Minimize",
                     backgroundColor = buttonBg,
                     contentColor = buttonIconTint,
                     enabled = progress >= 0.7f,
@@ -305,6 +308,7 @@ fun FloatingBallExpandedCardContent(
             FloatingBallActionButton(
                 icon = Icons.AutoMirrored.Filled.OpenInNew,
                 onClick = onJumpToApp,
+                contentDescription = "Open in app",
                 backgroundColor = buttonBg,
                 contentColor = buttonIconTint,
                 enabled = buttonsEnabled,
@@ -316,6 +320,7 @@ fun FloatingBallExpandedCardContent(
             FloatingBallActionButton(
                 icon = centerConfig.icon,
                 onClick = centerConfig.onClick,
+                contentDescription = centerConfig.contentDescription,
                 backgroundColor = buttonBg,
                 contentColor = buttonIconTint,
                 enabled = buttonsEnabled,
@@ -325,6 +330,7 @@ fun FloatingBallExpandedCardContent(
             FloatingBallActionButton(
                 icon = if (isApprovalPending) Icons.Filled.Close else Icons.Filled.CloseFullscreen,
                 onClick = if (isApprovalPending) onDeny else onMinimize,
+                contentDescription = if (isApprovalPending) "Deny" else "Minimize",
                 backgroundColor = buttonBg,
                 contentColor = buttonIconTint,
                 enabled = buttonsEnabled,
@@ -668,6 +674,7 @@ private data class CenterButtonConfig(
     val icon: ImageVector,
     val onClick: () -> Unit,
     val isToyMode: Boolean,
+    val contentDescription: String,
 )
 
 private fun resolveCenterButtonConfig(
@@ -677,9 +684,24 @@ private fun resolveCenterButtonConfig(
     onStop: () -> Unit,
 ): CenterButtonConfig {
     return when {
-        isApprovalPending -> CenterButtonConfig(Icons.Filled.Check, onAllow, isToyMode = false)
-        isStopEnabled -> CenterButtonConfig(Icons.Filled.Pause, onStop, isToyMode = false)
-        else -> CenterButtonConfig(Icons.Filled.AutoAwesome, {}, isToyMode = true)
+        isApprovalPending -> CenterButtonConfig(
+            Icons.Filled.Check,
+            onAllow,
+            isToyMode = false,
+            contentDescription = "Allow",
+        )
+        isStopEnabled -> CenterButtonConfig(
+            Icons.Filled.Pause,
+            onStop,
+            isToyMode = false,
+            contentDescription = "Stop",
+        )
+        else -> CenterButtonConfig(
+            Icons.Filled.AutoAwesome,
+            {},
+            isToyMode = true,
+            contentDescription = "Ready",
+        )
     }
 }
 

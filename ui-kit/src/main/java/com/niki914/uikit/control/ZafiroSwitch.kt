@@ -31,7 +31,7 @@ fun ZafiroSwitch(
         ThemeStyle.LiquidGlass -> {
             LiquidToggle(
                 checked = checked,
-                onCheckedChange = onCheckedChange ?: {},
+                onCheckedChange = onCheckedChange,
                 modifier = modifier,
                 enabled = enabled,
             )

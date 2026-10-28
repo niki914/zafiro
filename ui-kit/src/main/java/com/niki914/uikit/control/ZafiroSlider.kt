@@ -110,6 +110,7 @@ fun ZafiroSlider(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = enabled,
                     valueRange = valueRange,
+                    steps = steps,
                     visibilityThreshold = visibilityThreshold,
                     onValueChangeFinished = handleValueChangeFinished,
                 )

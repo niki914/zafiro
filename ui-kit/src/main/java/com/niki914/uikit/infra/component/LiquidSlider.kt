@@ -47,6 +47,11 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -87,6 +92,7 @@ fun LiquidSlider(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    steps: Int = 0,
     visibilityThreshold: Float = (valueRange.endInclusive - valueRange.start) / 1000f,
     onValueChangeFinished: (() -> Unit)? = null,
     backdrop: Backdrop = rememberLayerBackdrop(),
@@ -114,7 +120,25 @@ fun LiquidSlider(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp),
+            .height(44.dp)
+            .semantics(mergeDescendants = true) {
+                if (!enabled) disabled()
+                setProgress { targetValue ->
+                    val clamped = targetValue.coerceIn(valueRange.start, valueRange.endInclusive)
+                    if (clamped == value()) {
+                        false
+                    } else {
+                        currentOnValueChange(clamped)
+                        currentOnValueChangeFinished?.invoke()
+                        true
+                    }
+                }
+                progressBarRangeInfo = ProgressBarRangeInfo(
+                    current = value(),
+                    range = valueRange,
+                    steps = steps,
+                )
+            },
         contentAlignment = Alignment.CenterStart,
     ) {
         val trackWidth = constraints.maxWidth.toFloat().coerceAtLeast(1f)
@@ -293,6 +317,7 @@ fun LiquidSlider(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    steps: Int = 0,
     visibilityThreshold: Float = (valueRange.endInclusive - valueRange.start) / 1000f,
     onValueChangeFinished: (() -> Unit)? = null,
     backdrop: Backdrop = rememberLayerBackdrop(),
@@ -302,6 +327,7 @@ fun LiquidSlider(
     modifier = modifier,
     enabled = enabled,
     valueRange = valueRange,
+    steps = steps,
     visibilityThreshold = visibilityThreshold,
     onValueChangeFinished = onValueChangeFinished,
     backdrop = backdrop,

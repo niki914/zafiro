@@ -31,6 +31,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -127,12 +131,31 @@ fun SettingsItemSurface(
             }
     } else Modifier
 
+    val accessibilityModifier = Modifier.semantics {
+        if (!enabled) {
+            disabled()
+        }
+        if (enabled && currentOnClick != null) {
+            onClick {
+                currentOnClick?.invoke()
+                true
+            }
+        }
+        if (enabled && currentOnLongClick != null) {
+            onLongClick {
+                currentOnLongClick?.invoke()
+                true
+            }
+        }
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(animatedBackgroundColor, shape)
             .heightIn(min = minHeight)
+            .then(accessibilityModifier)
             .then(interactiveModifier)
             .padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically,
