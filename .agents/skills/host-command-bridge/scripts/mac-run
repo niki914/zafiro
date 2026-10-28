@@ -14,8 +14,8 @@ from pathlib import Path
 
 # Base shared directory on Linux VM
 SHARED_DIR = Path(os.path.expanduser("~/shared")).resolve()
-DAEMON_HOST = os.environ.get("MAC_BUILD_HOST", "host.lima.internal")
-DAEMON_PORT = int(os.environ.get("MAC_BUILD_PORT", "9876"))
+DAEMON_HOST = os.environ.get("MAC_COMMAND_HOST", "host.lima.internal")
+DAEMON_PORT = int(os.environ.get("MAC_COMMAND_PORT", "9876"))
 ENDPOINT = f"http://{DAEMON_HOST}:{DAEMON_PORT}/exec"
 
 
@@ -23,6 +23,7 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: mac-run <command> [args...]")
         print("Example: mac-run ./gradlew assembleDebug")
+        print("         mac-run open path/to/report.html")
         sys.exit(1)
 
     cwd = Path.cwd().resolve()
@@ -42,6 +43,7 @@ def main():
         headers={"Content-Type": "application/json"}
     )
 
+    received_exit_code = False
     exit_code = 1
     try:
         with urllib.request.urlopen(req) as resp:
@@ -50,18 +52,29 @@ def main():
                 if line.startswith("__EXIT_CODE__:"):
                     try:
                         exit_code = int(line.strip().split(":", 1)[1])
+                        received_exit_code = True
                     except Exception:
-                        pass
+                        exit_code = 1
                 else:
                     sys.stdout.write(line)
                     sys.stdout.flush()
+    except urllib.error.HTTPError as e:
+        err_msg = e.read().decode("utf-8", errors="replace").strip()
+        print(f"[mac-run] HTTP {e.code}: {e.reason}", file=sys.stderr)
+        if err_msg:
+            print(f"[mac-run] {err_msg}", file=sys.stderr)
+        sys.exit(1)
     except urllib.error.URLError as e:
         print(f"Error connecting to Mac daemon at {ENDPOINT}: {e}", file=sys.stderr)
-        print("Ensure mac_build_daemon.py is running on your Mac host.", file=sys.stderr)
+        print("Ensure mac_command_daemon.py is running on your Mac host.", file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
         print("\n[mac-run] Interrupted by user.", file=sys.stderr)
         sys.exit(130)
+
+    if not received_exit_code:
+        print("\n[mac-run] Stream ended unexpectedly without exit code from host.", file=sys.stderr)
+        sys.exit(1)
 
     sys.exit(exit_code)
 

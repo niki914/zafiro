@@ -106,7 +106,7 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 
 ### 日志与调试
 
-调试构建额外把同一条日志落到沙箱，如果 logcat 被冲掉了可以用 adb 把日志拉出来看。详情通过调用 `zafiro-qa` 技能来了解
+如果身处 lima Linux 环境, 请调用 `host-command-bridge` 来与主机 macOS 环境交互。调试构建额外把同一条日志落到沙箱，如果 logcat 被冲掉了可以用 adb 把日志拉出来看。详情通过调用 `zafiro-qa` 技能来了解
 
 ---
 
