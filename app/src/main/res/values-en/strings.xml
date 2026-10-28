@@ -43,9 +43,13 @@
     <string name="ui_tool_status_running">Running</string>
     <string name="ui_tool_status_success">Success</string>
     <string name="ui_tool_status_failed">Failed</string>
-    <plurals name="ui_tool_chain_count">
-        <item quantity="one">%d tool</item>
-        <item quantity="other">%d tools</item>
+    <plurals name="ui_steps_wrapped_count">
+        <item quantity="one">wrapped %d step</item>
+        <item quantity="other">wrapped %d steps</item>
+    </plurals>
+    <plurals name="ui_steps_collapse_count">
+        <item quantity="one">collapse %d step</item>
+        <item quantity="other">collapse %d steps</item>
     </plurals>
     <string name="ui_home_attach_sheet_title">Add to conversation</string>
     <string name="ui_home_attach_photos">Photos</string>

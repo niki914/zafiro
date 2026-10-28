@@ -22,7 +22,7 @@ data class TurnUiModel(
 
 /**
  * 助手段落：明确类型划分的结构化段落。
- * 包含：纯文本正文、独立思考过程卡片、工具链（单/多工具）、错误卡片与重试卡片。
+ * 包含：纯文本正文、独立步骤卡片（单步/流式平铺）、复合步骤收纳块、错误卡片与重试卡片。
  */
 sealed interface TurnSection {
     val key: String
@@ -33,16 +33,16 @@ sealed interface TurnSection {
         val text: String,
     ) : TurnSection
 
-    /** 独立思考过程卡片（绝不与工具混叠聚类） */
-    data class Thinking(
+    /** 独立步骤卡片（单步穿透或流式进行中平铺展示的 Thinking / Tool） */
+    data class Step(
         override val key: String,
         val action: ActionUiModel,
     ) : TurnSection
 
-    /** 工具链段落：连续的 1 个或多个工具调用 */
-    data class ToolRun(
+    /** 复合步骤收纳段落：连续 N >= 2 个已封顶步骤的收纳块 */
+    data class WrappedSteps(
         override val key: String,
-        val actions: List<ActionUiModel>,
+        val steps: List<ActionUiModel>,
         val isExpanded: Boolean = false,
         val onToggle: () -> Unit = {},
     ) : TurnSection
