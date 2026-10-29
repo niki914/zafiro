@@ -69,6 +69,7 @@ import com.niki914.zafiro.app.ui.RegisterPageChrome
 import com.niki914.zafiro.app.ui.chat.helper.honestCopyToClipboard
 import com.niki914.zafiro.app.ui.helper.PathBitmapState
 import com.niki914.zafiro.app.ui.helper.rememberPathBitmapState
+import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.app.ui.nav.NoTitle
 import com.niki914.zafiro.app.ui.nav.TextTitle
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
@@ -115,8 +116,12 @@ private fun TextViewerContent(
     val scope = rememberCoroutineScope()
     val copyAllLabel = stringResource(R.string.ui_viewer_copy_all)
 
+    val formattedText = remember(text) {
+        ToolPresentation.prettyPrintIfJson(text) ?: text
+    }
+
     RegisterPageChrome(
-        remember(copyAllLabel, text, onBack) {
+        remember(copyAllLabel, formattedText, onBack) {
             PageChromeContribution(
                 titleSpec = NoTitle,
                 leftAction = TopBarActionSpec(
@@ -135,7 +140,7 @@ private fun TextViewerContent(
                         onClick = {
                             scope.launch {
                                 honestCopyToClipboard(
-                                    text = text,
+                                    text = formattedText,
                                     clipboard = clipboard,
                                     hapticFeedback = haptic,
                                 )
@@ -175,7 +180,7 @@ private fun TextViewerContent(
             ) {
                 SelectionContainer {
                     Text(
-                        text = text,
+                        text = formattedText,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                     )

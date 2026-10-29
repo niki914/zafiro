@@ -38,11 +38,17 @@
     <string name="ui_tool_status_running">Выполняется</string>
     <string name="ui_tool_status_success">Успешно</string>
     <string name="ui_tool_status_failed">Ошибка</string>
-    <plurals name="ui_tool_chain_count">
-        <item quantity="one">%d инструмент</item>
-        <item quantity="few">%d инструмента</item>
-        <item quantity="many">%d инструментов</item>
-        <item quantity="other">%d инструмента</item>
+    <plurals name="ui_steps_wrapped_count">
+        <item quantity="one">свернут %d шаг</item>
+        <item quantity="few">свернуто %d шага</item>
+        <item quantity="many">свернуто %d шагов</item>
+        <item quantity="other">свернуто %d шагов</item>
+    </plurals>
+    <plurals name="ui_steps_collapse_count">
+        <item quantity="one">свернуть %d шаг</item>
+        <item quantity="few">свернуть %d шага</item>
+        <item quantity="many">свернуть %d шагов</item>
+        <item quantity="other">свернуть %d шагов</item>
     </plurals>
     <string name="ui_home_attach_sheet_title">Добавить в диалог</string>
     <string name="ui_home_attach_photos">Фото</string>

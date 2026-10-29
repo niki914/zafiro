@@ -9,11 +9,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.chat.composable.text.ToolResultText
+import com.niki914.zafiro.app.ui.chat.helper.tapToOpenViewer
+import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
+import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 
 /**
- * 错误信息正文排版（支持文本长按选中划词，右上角复制按钮提升至 Header 统一管理）。
+ * 错误信息正文排版（支持文本长按选中划词，右上角复制按钮提升至 Header 统一管理，轻按进入查看器）。
  */
 @Composable
 internal fun ErrorDetailBody(
@@ -21,8 +24,15 @@ internal fun ErrorDetailBody(
     modifier: Modifier = Modifier,
 ) {
     if (ui.body.isNullOrEmpty()) return
+    val openViewer = LocalViewerOpener.current
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .tapToOpenViewer(enabled = ui.body.isNotBlank()) {
+                openViewer(ViewerContent.Text(ui.body))
+            },
+    ) {
         SelectionContainer {
             ToolResultText(
                 text = ui.body,

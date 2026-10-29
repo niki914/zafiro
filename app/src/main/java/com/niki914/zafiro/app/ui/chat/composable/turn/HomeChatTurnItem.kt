@@ -100,6 +100,7 @@ internal fun HomeChatTurnItem(
         userToggledKeys = userToggledKeys,
         onToggleAction = onToggleAction,
         activeThinkingKey = activeThinkingKey,
+        isGenerating = isGenerating && isLastTurn,
     )
 
     TurnItem(
