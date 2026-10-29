@@ -17,14 +17,16 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.helper.CopyBtnGap
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
 import com.niki914.zafiro.app.ui.chat.helper.OutputBtnInset
+import com.niki914.zafiro.app.ui.chat.helper.tapToOpenViewer
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
-import com.niki914.zafiro.app.ui.model.ToolPresentation
+import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
+import com.niki914.zafiro.app.ui.viewer.ViewerContent
 
 /**
  * 通用极简状态排版：
  * 在未开启“总是展示工具详细输出”且无简略输出时生效。
- * 遵循准则零：极简卡片处于运行中/成功/纯失败时，无须显示复制按钮；
- * 仅当执行失败且有具体 reason 详情时，才在右上角提供复制按钮，并通过右侧内边距自然避让。
+ * 遵循准则零：极简卡片处于运行中/成功/纯失败时，无须显示复制按钮，亦不开放查看器；
+ * 仅当执行失败且有具体 reason 详情时，才在右上角提供复制按钮，并支持轻触进入查看器通读完整长报错。
  */
 @Composable
 internal fun SimpleStatusBody(
@@ -41,23 +43,30 @@ internal fun SimpleStatusBody(
         return
     }
 
-    val formattedReason = remember(ui.reason) { ToolPresentation.prettyPrintIfJson(ui.reason) }
-    val isMultiline = formattedReason?.contains('\n') == true
-    // 准则零：仅失败且有具体报错详情时才展示复制按钮
-    val hasCopyableReason = ui.isFailed && !formattedReason.isNullOrBlank()
+    val openViewer = LocalViewerOpener.current
+    val rawReason = remember(ui.reason) { ui.reason?.trim() }
+    val isMultiline = rawReason?.contains('\n') == true
+    // 准则零：仅失败且有具体报错详情时才展示复制按钮并允许打开全屏查看器
+    val hasCopyableReason = ui.isFailed && !rawReason.isNullOrBlank()
 
     val text = if (hasCopyableReason) {
         val prefix = stringResource(R.string.ui_tool_status_failed)
         if (isMultiline) {
-            "$prefix:\n$formattedReason"
+            "$prefix:\n$rawReason"
         } else {
-            "$prefix: $formattedReason"
+            "$prefix: $rawReason"
         }
     } else {
         stringResource(if (ui.isFailed) R.string.ui_tool_status_failed else R.string.ui_tool_status_success)
     }
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .tapToOpenViewer(enabled = hasCopyableReason) {
+                openViewer(ViewerContent.Text(rawReason.orEmpty()))
+            },
+    ) {
         SelectionContainer {
             Text(
                 text = text,
@@ -79,7 +88,7 @@ internal fun SimpleStatusBody(
 
         if (hasCopyableReason) {
             MiniCopyButton(
-                text = formattedReason,
+                text = rawReason,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = CopyBtnGap, end = CopyBtnGap),
