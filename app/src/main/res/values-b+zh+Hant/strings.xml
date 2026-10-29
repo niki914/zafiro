@@ -43,8 +43,11 @@
     <string name="ui_tool_status_running">執行中</string>
     <string name="ui_tool_status_success">成功</string>
     <string name="ui_tool_status_failed">失敗</string>
-    <plurals name="ui_tool_chain_count">
-        <item quantity="other">%d 個工具</item>
+    <plurals name="ui_steps_wrapped_count">
+        <item quantity="other">已折疊 %d 個步驟</item>
+    </plurals>
+    <plurals name="ui_steps_collapse_count">
+        <item quantity="other">收起 %d 個步驟</item>
     </plurals>
     <string name="ui_home_attach_sheet_title">加入對話</string>
     <string name="ui_home_attach_photos">照片</string>

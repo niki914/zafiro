@@ -43,9 +43,13 @@
     <string name="ui_tool_status_running">Ejecutando</string>
     <string name="ui_tool_status_success">Completado</string>
     <string name="ui_tool_status_failed">Error</string>
-    <plurals name="ui_tool_chain_count">
-        <item quantity="one">%d herramienta</item>
-        <item quantity="other">%d herramientas</item>
+    <plurals name="ui_steps_wrapped_count">
+        <item quantity="one">%d paso replegado</item>
+        <item quantity="other">%d pasos replegados</item>
+    </plurals>
+    <plurals name="ui_steps_collapse_count">
+        <item quantity="one">contraer %d paso</item>
+        <item quantity="other">contraer %d pasos</item>
     </plurals>
     <string name="ui_home_attach_sheet_title">Añadir a la conversación</string>
     <string name="ui_home_attach_photos">Fotos</string>

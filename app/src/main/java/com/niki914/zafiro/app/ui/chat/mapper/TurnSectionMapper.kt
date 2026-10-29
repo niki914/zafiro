@@ -19,21 +19,25 @@ import com.niki914.zafiro.app.ui.model.home.HomeToolState
  *
  * 核心对齐原则：
  * 1. 助手文本正文映射为 [TurnSection.Text]；
- * 2. 思考过程映射为独立 [TurnSection.Thinking]，绝不与工具混合聚类；
- * 3. 连续工具块映射为 [TurnSection.ToolRun]（内部包含 1 个或多个工具动作）；
+ * 2. 思考过程（Thinking）与工具调用（Tool）一视同仁，统一抽象为执行流中的“步骤（Step）”；
+ * 3. 步骤以非空正文 Text 为天然封顶哨兵进行分段切分：
+ *    - 流式进行中（未输出新正文且正在生成）：各步骤平铺外露（[TurnSection.Step]），保留转圈与展开态；
+ *    - 正文到达或已完成/冷启动时：
+ *      - 若步骤数 N = 1：单步穿透外露（[TurnSection.Step]），杜绝多余套娃；
+ *      - 若步骤数 N >= 2：收纳为复合步骤块 [TurnSection.WrappedSteps]，默认呈现折叠态；
  * 4. 系统/网络错误映射为独立 [TurnSection.Error]，专属 tertiaryContainer 且不可折叠；
- * 5. 重试中状态映射为独立 [TurnSection.Retrying]，专属 secondaryContainer 且不可折叠；
- * 6. 运行中（isRunning）的工具允许用户点击展开，若未手动收起默认可展开查看命令。
+ * 5. 重试中状态映射为独立 [TurnSection.Retrying]，专属 secondaryContainer 且不可折叠。
  */
 internal fun HomeChatTurn.toTurnUiModel(
     alwaysShowDetailed: Boolean = false,
     userToggledKeys: Map<String, Boolean> = emptyMap(),
     onToggleAction: (key: String, nextExpanded: Boolean) -> Unit = { _, _ -> },
     activeThinkingKey: String? = null,
+    isGenerating: Boolean = false,
 ): TurnUiModel {
     val sections = mutableListOf<TurnSection>()
-    val currentTools = mutableListOf<ActionUiModel>()
-    var toolRunIndex = 0
+    val currentSteps = mutableListOf<ActionUiModel>()
+    var wrappedIndex = 0
 
     fun hasSuccessor(index: Int): Boolean {
         for (i in (index + 1) until blocks.size) {
@@ -48,20 +52,57 @@ internal fun HomeChatTurn.toTurnUiModel(
         return false
     }
 
-    fun flushTools() {
-        if (currentTools.isEmpty()) return
-        val runKey = "${id}_tools_$toolRunIndex"
-        val isRunExpanded = userToggledKeys[runKey] ?: currentTools.any { it.isExpanded }
-        sections.add(
-            TurnSection.ToolRun(
-                key = runKey,
-                actions = currentTools.toList(),
-                isExpanded = isRunExpanded,
-                onToggle = { onToggleAction(runKey, !isRunExpanded) },
-            )
-        )
-        currentTools.clear()
-        toolRunIndex++
+    fun flushSteps(hasSuccessorText: Boolean) {
+        if (currentSteps.isEmpty()) return
+        val isSealed = hasSuccessorText || !isGenerating
+
+        if (!isSealed) {
+            // 流式进行中且后续无正文：保持平铺，正在执行的卡片保持运行态
+            for (step in currentSteps) {
+                sections.add(
+                    TurnSection.Step(
+                        key = step.key,
+                        action = step,
+                    )
+                )
+            }
+        } else {
+            // 已被正文封顶或会话已结束/冷启动
+            if (currentSteps.size == 1) {
+                // N = 1: 单步穿透外露
+                val singleStep = currentSteps.first()
+                sections.add(
+                    TurnSection.Step(
+                        key = singleStep.key,
+                        action = singleStep,
+                    )
+                )
+            } else {
+                // N >= 2: 复合步骤收纳包裹
+                val wrapKey = "${id}_wrapped_$wrappedIndex"
+                val isWrapExpanded = userToggledKeys[wrapKey] ?: false
+
+                // 收纳块内子步骤默认呈收起单行态，仅当用户显式点击该子步骤时展开
+                val wrappedSubSteps = currentSteps.map { action ->
+                    val isSubExpanded = userToggledKeys[action.key] ?: false
+                    action.copy(
+                        isExpanded = isSubExpanded,
+                        onToggle = { onToggleAction(action.key, !isSubExpanded) },
+                    )
+                }
+
+                sections.add(
+                    TurnSection.WrappedSteps(
+                        key = wrapKey,
+                        steps = wrappedSubSteps,
+                        isExpanded = isWrapExpanded,
+                        onToggle = { onToggleAction(wrapKey, !isWrapExpanded) },
+                    )
+                )
+                wrappedIndex++
+            }
+        }
+        currentSteps.clear()
     }
 
     for ((blockIndex, block) in blocks.withIndex()) {
@@ -76,7 +117,7 @@ internal fun HomeChatTurn.toTurnUiModel(
                 val defaultExpanded = !hasSuccessor(blockIndex)
                 val isExpanded = userToggledKeys[actionKey] ?: defaultExpanded
 
-                currentTools.add(
+                currentSteps.add(
                     ActionUiModel(
                         key = actionKey,
                         iconSource = ToolPresentation.iconSourceForTool(block.status.name),
@@ -94,9 +135,38 @@ internal fun HomeChatTurn.toTurnUiModel(
                 )
             }
 
+            is HomeChatBlock.Thinking -> {
+                val vmKey = "${id}_$blockIndex"
+                val actionKey = "${id}_thinking_$blockIndex"
+                val isRunning = !block.isComplete
+                val isUserToggled = actionKey in userToggledKeys
+                val defaultExpanded = !hasSuccessor(blockIndex)
+                val isExpanded = userToggledKeys[actionKey] ?: defaultExpanded
+
+                currentSteps.add(
+                    ActionUiModel(
+                        key = actionKey,
+                        iconSource = ToolPresentation.ThinkingSource,
+                        titleRes = R.string.ui_home_thinking_title,
+                        subtitlePreview = ToolPresentation.previewOf(block.text),
+                        isRunning = isRunning,
+                        isFailed = false,
+                        isExpanded = isExpanded,
+                        isUserToggled = isUserToggled,
+                        isThinking = true,
+                        body = ActionBodyUi.Custom.Thinking(
+                            text = block.text,
+                            isComplete = block.isComplete,
+                            autoScrollToEnd = isExpanded && vmKey == activeThinkingKey,
+                        ),
+                        onToggle = { onToggleAction(actionKey, !isExpanded) },
+                    )
+                )
+            }
+
             is HomeChatBlock.Text -> {
-                flushTools()
                 if (block.text.isNotBlank()) {
+                    flushSteps(hasSuccessorText = true)
                     sections.add(
                         TurnSection.Text(
                             key = "${id}_txt_$blockIndex",
@@ -106,41 +176,8 @@ internal fun HomeChatTurn.toTurnUiModel(
                 }
             }
 
-            is HomeChatBlock.Thinking -> {
-                flushTools()
-                val vmKey = "${id}_$blockIndex"
-                val actionKey = "${id}_thinking_$blockIndex"
-                val isRunning = !block.isComplete
-                val isUserToggled = actionKey in userToggledKeys
-                val defaultExpanded = !hasSuccessor(blockIndex)
-                val isExpanded = userToggledKeys[actionKey] ?: defaultExpanded
-
-                sections.add(
-                    TurnSection.Thinking(
-                        key = actionKey,
-                        action = ActionUiModel(
-                            key = actionKey,
-                            iconSource = ToolPresentation.ThinkingSource,
-                            titleRes = R.string.ui_home_thinking_title,
-                            subtitlePreview = ToolPresentation.previewOf(block.text),
-                            isRunning = isRunning,
-                            isFailed = false,
-                            isExpanded = isExpanded,
-                            isUserToggled = isUserToggled,
-                            isThinking = true,
-                            body = ActionBodyUi.Custom.Thinking(
-                                text = block.text,
-                                isComplete = block.isComplete,
-                                autoScrollToEnd = isExpanded && vmKey == activeThinkingKey,
-                            ),
-                            onToggle = { onToggleAction(actionKey, !isExpanded) },
-                        )
-                    )
-                )
-            }
-
             is HomeChatBlock.Error -> {
-                flushTools()
+                flushSteps(hasSuccessorText = false)
                 val actionKey = "${id}_error_$blockIndex"
                 val errorUi = toAssistantErrorUi(message = block.message, code = block.code, attempts = block.attempts)
                 val formattedBody = ToolPresentation.prettyPrintIfJson(errorUi.body)
@@ -173,7 +210,7 @@ internal fun HomeChatTurn.toTurnUiModel(
             }
 
             is HomeChatBlock.Retrying -> {
-                flushTools()
+                flushSteps(hasSuccessorText = false)
                 val actionKey = "${id}_retrying_$blockIndex"
                 sections.add(
                     TurnSection.Retrying(
@@ -201,7 +238,7 @@ internal fun HomeChatTurn.toTurnUiModel(
         }
     }
 
-    flushTools()
+    flushSteps(hasSuccessorText = false)
 
     return TurnUiModel(
         id = id,
