@@ -15,6 +15,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +55,12 @@ internal fun StandaloneActionCard(
     action: ActionUiModel,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    contentPadding: PaddingValues = PaddingValues(
+        start = BlockContentInset,
+        end = BlockContentInset,
+        top = BlockContentTopGap,
+        bottom = BlockContentBottomGap,
+    ),
     content: @Composable ColumnScope.() -> Unit = { ActionBodyDispatcher(ui = action.body) },
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -153,12 +160,7 @@ internal fun StandaloneActionCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(
-                        start = BlockContentInset,
-                        end = BlockContentInset,
-                        top = BlockContentTopGap,
-                        bottom = BlockContentBottomGap,
-                    ),
+                    .padding(contentPadding),
             ) {
                 content()
             }

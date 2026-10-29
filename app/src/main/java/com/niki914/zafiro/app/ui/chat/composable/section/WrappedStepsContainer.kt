@@ -2,16 +2,19 @@ package com.niki914.zafiro.app.ui.chat.composable.section
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.chat.composable.action.EmbeddedActionStep
 import com.niki914.zafiro.app.ui.chat.composable.action.StandaloneActionCard
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.chat.model.ActionUiModel
 import com.niki914.zafiro.app.ui.chat.model.TurnSection
-import com.niki914.zafiro.app.ui.content.BlockSpacing
+import com.niki914.zafiro.app.ui.content.BlockHeaderInsetExpanded
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 
 /**
@@ -51,11 +54,17 @@ internal fun WrappedStepsContainer(
     StandaloneActionCard(
         action = outerAction,
         modifier = modifier,
+        contentPadding = PaddingValues(
+            start = BlockHeaderInsetExpanded,
+            end = BlockHeaderInsetExpanded,
+            top = 6.dp,
+            bottom = 6.dp,
+        ),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(BlockSpacing)) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             section.steps.forEach { stepAction ->
                 key(stepAction.key) {
-                    StandaloneActionCard(action = stepAction)
+                    EmbeddedActionStep(action = stepAction)
                 }
             }
         }
