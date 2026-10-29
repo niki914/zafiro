@@ -39,7 +39,7 @@ internal fun HomeToolStatus.toActionBodyUi(alwaysShowDetailed: Boolean): ActionB
         } else {
             ToolPresentation.formatConciseOutput(name, resultText) ?: failedReason
         }
-        val output = ToolPresentation.prettyPrintIfJson(text).orEmpty().trim()
+        val output = text.orEmpty().trim()
         val isRunning = state == HomeToolState.Running
         return ActionBodyUi.Custom.Command(
             command = inputPreview,
@@ -57,11 +57,10 @@ internal fun HomeToolStatus.toActionBodyUi(alwaysShowDetailed: Boolean): ActionB
 
     // 2. 通用样式 (Standard Style)
     if (alwaysShowDetailed) {
-        val raw = (resultText ?: failedReason)?.trim()
-        val formatted = ToolPresentation.prettyPrintIfJson(raw).orEmpty()
-        val isMeaningful = formatted.isNotBlank()
+        val raw = (resultText ?: failedReason)?.trim().orEmpty()
+        val isMeaningful = raw.isNotBlank()
         return ActionBodyUi.Standard.Detailed(
-            text = formatted,
+            text = raw,
             isError = state == HomeToolState.Failed,
             showCopyButton = isMeaningful,
         )
@@ -69,19 +68,19 @@ internal fun HomeToolStatus.toActionBodyUi(alwaysShowDetailed: Boolean): ActionB
 
     // alwaysShowDetailed == false 简略模式：先提取 formatConciseOutput
     val conciseText = ToolPresentation.formatConciseOutput(name, resultText) ?: failedReason
-    val formattedConcise = ToolPresentation.prettyPrintIfJson(conciseText)?.trim()
+    val conciseTrimmed = conciseText?.trim()
 
     return when {
         state == HomeToolState.Failed -> {
             ActionBodyUi.Standard.Simple(
                 isFailed = true,
                 isRunning = false,
-                reason = failedReason ?: formattedConcise,
+                reason = failedReason ?: conciseTrimmed,
             )
         }
-        !formattedConcise.isNullOrBlank() -> {
+        !conciseTrimmed.isNullOrBlank() -> {
             ActionBodyUi.Standard.Detailed(
-                text = formattedConcise,
+                text = conciseTrimmed,
                 isError = false,
                 showCopyButton = false,
             )
