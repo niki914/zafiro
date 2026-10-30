@@ -226,6 +226,20 @@ data class TakeoverRuleDetailPage(
         if (isCreating) null else TopBarActionSpec(icon = Icons.Default.Delete, contentDescription = "Delete Button")
 }
 
+data class MaskingRuleDetailPage(
+    val ruleId: String?,
+    val ruleName: String,
+    val ruleIndex: Int,
+    val isCreating: Boolean = false,
+) : ZafiroPage {
+    override val routeKey: String = "masking-rule-detail:${ruleId ?: "new"}:$ruleIndex:$ruleName"
+    override val titleSpec: PageTitleSpec = TextTitle(ruleName)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? =
+        if (isCreating) null else TopBarActionSpec(icon = Icons.Default.Delete, contentDescription = "Delete Button")
+}
+
 data object PromptEditPage : ZafiroPage {
     override val routeKey: String = "prompt-edit"
     override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_configure_prompt_label)

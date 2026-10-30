@@ -228,9 +228,7 @@ class SessionMasker {
 
         val spanToPlaceholder = nonOverlappingSpans.associateWith { span ->
             rawToPlaceholder.getOrPut(span.raw) {
-                val normalizedKind = span.kind.trim().uppercase()
-                    .filter { it in 'A'..'Z' || it in '0'..'9' || it == '_' }
-                    .ifEmpty { "MASK" }
+                val normalizedKind = RuntimeMaskingRule.sanitizeKind(span.kind)
                 val index = kindCounters.merge(normalizedKind, 1, Int::plus)
                 "{{${normalizedKind}_$index}}"
             }

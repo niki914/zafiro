@@ -139,7 +139,7 @@ internal object RuleSettingsCodec {
                 val id = obj.string(ID_KEY).trim()
                 val name = obj.string(NAME_KEY).trim()
                 if (id.isBlank() || name.isBlank()) return@mapNotNull null
-                val kind = obj.string(KIND_KEY).trim().ifBlank { "API_KEY" }
+                val kind = MaskingRule.sanitizeKind(obj.string(KIND_KEY))
                 MaskingRule(
                     id = id,
                     name = name,

@@ -632,4 +632,34 @@
     <string name="text_action_error_save_failed">Failed to save action.</string>
     <string name="text_action_error_delete_failed">Failed to delete action.</string>
     <string name="crash_startup_copied_toast">Stack trace copied to clipboard. Please send it to the developer.</string>
+
+    <string name="ui_settings_masking_rules">Data Masking</string>
+    <string name="ui_settings_masking_rules_summary">Mask sensitive data before outbound requests</string>
+    <string name="masking_rules_page_description">Configure masking rules for sensitive data. Matches in outbound requests will be replaced with placeholders while local chats and tool executions retain raw data.</string>
+    <string name="masking_rules_empty_action_hint">Tap the top right to add your first masking rule.</string>
+    <string name="masking_rules_loading">Loading masking rules...</string>
+    <string name="masking_rules_editor_title_create">New Masking Rule</string>
+    <string name="masking_rules_editor_description">Sensitive data is only replaced with placeholders before outbound LLM requests. Local chat display and tool execution are unaffected.</string>
+    <string name="masking_rules_field_name">Rule Name</string>
+    <string name="masking_rules_field_name_hint">For example: API Key</string>
+    <string name="masking_rules_field_enabled">Enable Rule</string>
+    <string name="masking_rules_field_kind">Tag Kind</string>
+    <string name="masking_rules_field_kind_hint">API_KEY</string>
+    <string name="masking_rules_field_kind_description">Placeholder prefix. For example, API_KEY will be replaced with numbered placeholders.</string>
+    <string name="masking_rules_field_patterns">Patterns</string>
+    <string name="masking_rules_field_patterns_hint">For example: \bsk-[a-zA-Z0-9_\-]{20,}\b</string>
+    <string name="masking_rules_field_patterns_description">Enter one keyword or regular expression per line. Redaction triggers when any pattern matches.</string>
+    <string name="masking_rules_save_action">Save Rule</string>
+    <string name="masking_rules_error_name_required">Enter a rule name</string>
+    <string name="masking_rules_error_kind_required">Enter a tag kind</string>
+    <string name="masking_rules_error_kind_invalid">Tag kind is invalid</string>
+    <string name="masking_rules_error_patterns_required">Enter at least one pattern</string>
+    <string name="masking_rules_error_load_failed_generic">Failed to load masking rules</string>
+    <string name="masking_rules_error_load_failed">Failed to load masking rules: %1$s</string>
+    <string name="masking_rules_error_save_failed_generic">Failed to save masking rule</string>
+    <string name="masking_rules_error_save_failed">Failed to save masking rule: %1$s</string>
+    <string name="masking_rules_error_delete_failed_generic">Failed to delete masking rule</string>
+    <string name="masking_rules_error_delete_failed">Failed to delete masking rule: %1$s</string>
+    <string name="masking_rules_delete_dialog_title">Delete Masking Rule</string>
+    <string name="masking_rules_delete_dialog_text">Are you sure you want to delete the masking rule \"%1$s\"? This action cannot be undone.</string>
 </resources>

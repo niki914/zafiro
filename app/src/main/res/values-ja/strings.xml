@@ -630,4 +630,34 @@
     <string name="text_action_error_save_failed">アクションの保存に失敗しました。</string>
     <string name="text_action_error_delete_failed">アクションの削除に失敗しました。</string>
     <string name="crash_startup_copied_toast">スタックトレースをコピーしました。開発者に送信してください。</string>
+
+    <string name="ui_settings_masking_rules">データマスキング</string>
+    <string name="ui_settings_masking_rules_summary">外部リクエスト送信前に機密データをマスキング</string>
+    <string name="masking_rules_page_description">機密データのマスキングルールを設定します。外部送信時に一致した内容はプレースホルダーに置換され、ローカルの会話やツール実行では元のデータが保持されます。</string>
+    <string name="masking_rules_empty_action_hint">右上をタップして、最初のマスキングルールを追加してください。</string>
+    <string name="masking_rules_loading">マスキングルールを読み込み中…</string>
+    <string name="masking_rules_editor_title_create">新規マスキングルール</string>
+    <string name="masking_rules_editor_description">機密データは外部モデルへの送信前にのみプレースホルダーに置換されます。ローカルのチャット表示やツールの実行には影響しません。</string>
+    <string name="masking_rules_field_name">ルール名</string>
+    <string name="masking_rules_field_name_hint">例：API キー</string>
+    <string name="masking_rules_field_enabled">ルールを有効化</string>
+    <string name="masking_rules_field_kind">タグ種別</string>
+    <string name="masking_rules_field_kind_hint">API_KEY</string>
+    <string name="masking_rules_field_kind_description">プレースホルダーの接頭辞です。例えば API_KEY と入力すると番号付きのプレースホルダーに置換されます。</string>
+    <string name="masking_rules_field_patterns">マッチングルール</string>
+    <string name="masking_rules_field_patterns_hint">例：\bsk-[a-zA-Z0-9_\-]{20,}\b</string>
+    <string name="masking_rules_field_patterns_description">1行につき1つのキーワードまたは正規表現を入力します。いずれかにマッチした場合にマスキングされます。</string>
+    <string name="masking_rules_save_action">ルールを保存</string>
+    <string name="masking_rules_error_name_required">ルール名を入力してください</string>
+    <string name="masking_rules_error_kind_required">タグ種別を入力してください</string>
+    <string name="masking_rules_error_kind_invalid">タグ種別が無効です</string>
+    <string name="masking_rules_error_patterns_required">ルールを少なくとも1つ入力してください</string>
+    <string name="masking_rules_error_load_failed_generic">マスキングルールの読み込みに失敗しました</string>
+    <string name="masking_rules_error_load_failed">マスキングルールの読み込みに失敗しました：%1$s</string>
+    <string name="masking_rules_error_save_failed_generic">マスキングルールの保存に失敗しました</string>
+    <string name="masking_rules_error_save_failed">マスキングルールの保存に失敗しました：%1$s</string>
+    <string name="masking_rules_error_delete_failed_generic">マスキングルールの削除に失敗しました</string>
+    <string name="masking_rules_error_delete_failed">マスキングルールの削除に失敗しました：%1$s</string>
+    <string name="masking_rules_delete_dialog_title">マスキングルールの削除</string>
+    <string name="masking_rules_delete_dialog_text">マスキングルール「%1$s」を削除してもよろしいですか？この操作は取り消せません。</string>
 </resources>
