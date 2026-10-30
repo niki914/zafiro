@@ -168,6 +168,7 @@ internal fun HomePageContentBody(
         modifier = Modifier.fillMaxSize()
     ) {
         val topPadding = zafiroScreenTopPadding(24.dp)
+        val bottomAnchorHeight = 1.dp
         val availableChatHeight = (maxHeight - topPadding - bottomClearance).coerceAtLeast(0.dp)
         val userMessageMaxHeight = if (maxHeight > 0.dp) maxHeight * 0.35f else Dp.Unspecified
         ZafiroLocalBackdropContainer(
@@ -224,7 +225,7 @@ internal fun HomePageContentBody(
                                 val tailTurn = uiState.turns[tailIndex]
                                 val isLastTurn = index == uiState.turns.lastIndex
                                 val safeZoneMinHeight = if (isLastTurn) {
-                                    availableChatHeight
+                                    (availableChatHeight - bottomAnchorHeight).coerceAtLeast(0.dp)
                                 } else {
                                     0.dp
                                 }
@@ -271,7 +272,7 @@ internal fun HomePageContentBody(
                                 Spacer(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(1.dp),
+                                        .height(bottomAnchorHeight),
                                 )
                             }
                         }
