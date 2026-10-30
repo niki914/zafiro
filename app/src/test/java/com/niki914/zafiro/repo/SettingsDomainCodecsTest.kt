@@ -1,5 +1,7 @@
 package com.niki914.zafiro.repo
 
+// githooks:ignore-file file-token-limit
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
@@ -435,6 +437,26 @@ class SettingsDomainCodecsTest {
         assertEquals(95, thresholdOf("120"))
         assertEquals(70, thresholdOf("70"))
         assertEquals(70, thresholdOf("\"invalid\""))
+    }
+
+    // 保护：手改 app_state.json 的悬浮球透明度与贴边收起深度绕过设置页校验。
+    // 越界值会导致悬浮球不可见或脱离屏幕，读盘侧必须夹回可用区间。
+    @Test
+    fun appStateFloatingBallVisualParamsAreClamped() {
+        fun opacityOf(raw: String) =
+            AppStateSettingsCodec.parse("""{"floating_ball_opacity_percent":$raw}""").floatingBallOpacityPercent
+
+        fun offsetOf(raw: String) =
+            AppStateSettingsCodec.parse("""{"floating_ball_submerged_offset_dp":$raw}""").floatingBallSubmergedOffsetDp
+
+        assertEquals(10, opacityOf("-10"))
+        assertEquals(10, opacityOf("5"))
+        assertEquals(100, opacityOf("120"))
+        assertEquals(80, opacityOf("80"))
+
+        assertEquals(0, offsetOf("-5"))
+        assertEquals(35, offsetOf("50"))
+        assertEquals(15, offsetOf("15"))
     }
 
     // 保护：手改 tools/mcp/service.json 的 port 绕过设置页校验（1024..65535）。

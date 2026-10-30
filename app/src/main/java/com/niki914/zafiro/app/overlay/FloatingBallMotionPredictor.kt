@@ -33,7 +33,7 @@ class FloatingBallMotionPredictor(
     private val snapThresholdPx: Float,
     private val screenWidthPx: Int,
     private val ballWidthPx: Int,
-    private val submergedPx: Int,
+    var submergedPx: Int,
     private val minBallY: Int,
     private val maxBallY: Int,
     private val minVelocityThreshold: Float = 0.45f, // 0.45 px/ms = 450 px/s (提高起步阈值加大阻尼)

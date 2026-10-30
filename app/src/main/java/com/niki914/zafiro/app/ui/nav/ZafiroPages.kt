@@ -314,6 +314,15 @@ data object MarkdownScalePage : ZafiroPage {
     override val rightAction: TopBarActionSpec? = null
 }
 
+data object FloatingBallSettingsPage : ZafiroPage {
+    override val routeKey: String = "floating-ball-settings"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.ui_settings_general_floating_ball)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}
+
 data class ViewerPage(
     val content: ViewerContent,
 ) : ZafiroPage {

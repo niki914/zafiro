@@ -40,8 +40,10 @@ import com.niki914.zafiro.remoteview.floatingball.FloatingBallMorphCard
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallTokens
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallViewModel
+import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -136,7 +138,9 @@ object FloatingBallOverlayManager {
             val cardWidthPx = (FloatingBallTokens.expandedWidth * density).toInt()
             val cardHeightPx = (FloatingBallTokens.expandedHeight * density).toInt()
 
-            val submergedPx = (FloatingBallTokens.submergedOffset * density).toInt()
+            val currentOffsetDp = XRepo.floatingBallSubmergedOffsetDpSetting.value
+            val currentOpacityPercent = XRepo.floatingBallOpacityPercentSetting.value
+            val submergedPx = (currentOffsetDp * density).toInt()
             val initialX = if (dockSide.isLeft) {
                 -submergedPx
             } else {
@@ -291,11 +295,23 @@ object FloatingBallOverlayManager {
                     vmInstance.sendIntent(FloatingBallIntent.UpdatePosition(newYRatio))
                 },
             ).apply {
-                // 冷启动就停在淹没位（initialX 即贴边坐标），与吸附终态的不透明度一致
-                alpha = FloatingBallTokens.submergedAlpha
+                val initialAlpha = (currentOpacityPercent / 100f).coerceIn(0.1f, 1f)
+                updateVisualParams(currentOffsetDp, currentOpacityPercent)
+                alpha = initialAlpha
                 setViewTreeLifecycleOwner(owner)
                 setViewTreeSavedStateRegistryOwner(owner)
                 setViewTreeViewModelStoreOwner(owner)
+            }
+
+            owner.lifecycleScope.launch {
+                combine(
+                    XRepo.floatingBallSubmergedOffsetDpSetting,
+                    XRepo.floatingBallOpacityPercentSetting,
+                ) { offset, opacity ->
+                    offset to opacity
+                }.collect { (offset, opacity) ->
+                    ballLayout.updateVisualParams(offset, opacity)
+                }
             }
 
             val ballComposeView = ComposeView(appContext).apply {

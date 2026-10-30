@@ -445,6 +445,12 @@
     <string name="ui_settings_general_floating_ball_summary">バックグラウンド実行中にエージェントの状態とクイック操作を表示</string>
     <string name="ui_settings_general_floating_ball_auto_expand">フローティングボールの自動展開</string>
     <string name="ui_settings_general_floating_ball_auto_expand_summary">応答の完了時や承認が必要なときにフローティングボールを自動的に展開</string>
+    <string name="ui_settings_floating_ball_enable">フローティングボールを有効化</string>
+    <string name="ui_settings_floating_ball_auto_expand">自動展開</string>
+    <string name="ui_settings_floating_ball_opacity">固定時の不透明度</string>
+    <string name="ui_settings_floating_ball_opacity_summary">画面端に固定された時のフローティングボールの透明度</string>
+    <string name="ui_settings_floating_ball_submerged_offset">画面端の収納の深さ</string>
+    <string name="ui_settings_floating_ball_submerged_offset_summary">固定時に画面端に引き込む距離</string>
     <string name="ui_settings_general_resident_notification">常駐通知</string>
     <string name="ui_settings_general_resident_notification_summary">通知パネルにリアルタイムの状態とコントロールを表示</string>
     <string name="ui_settings_general_turn_notification">ターン通知</string>
