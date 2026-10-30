@@ -2,10 +2,12 @@ package com.niki914.zafiro.repo
 
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.array
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.boolean
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.enumOrDefault
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.orEmptyObjects
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.sanitized
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringArray
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringNonBlankOrNull
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringValues
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -23,15 +25,15 @@ internal object RuleSettingsCodec {
             .array(RULES_KEY)
             .orEmptyObjects()
             .mapNotNull { obj ->
-                val id = obj.string(ID_KEY).trim()
-                val name = obj.string(NAME_KEY).trim()
-                if (id.isBlank() || name.isBlank()) return@mapNotNull null
+                val id = obj.stringNonBlankOrNull(ID_KEY) ?: return@mapNotNull null
+                val name = obj.stringNonBlankOrNull(NAME_KEY) ?: return@mapNotNull null
                 ExecutionRule(
                     id = id,
                     name = name,
-                    enabledMode = ExecutionRuleEnabledMode.entries.firstOrNull {
-                        it.name == obj.string(ENABLED_MODE_KEY)
-                    } ?: ExecutionRuleEnabledMode.DISABLED,
+                    enabledMode = obj.enumOrDefault(
+                        ENABLED_MODE_KEY,
+                        ExecutionRuleEnabledMode.DISABLED,
+                    ),
                     patterns = obj.array(PATTERNS_KEY).stringValues(),
                 )
             }
@@ -82,24 +84,16 @@ internal object RuleSettingsCodec {
 
     fun parseTakeoverSettings(json: String): TakeoverSettings {
         val obj = parseObject(json)
-        val defaultTarget = TakeoverTarget.entries.firstOrNull {
-            it.name == obj.string(DEFAULT_TARGET_KEY)
-        } ?: TakeoverTarget.ZAFIRO
+        val defaultTarget = obj.enumOrDefault(DEFAULT_TARGET_KEY, TakeoverTarget.ZAFIRO)
         val rules = obj.array(RULES_KEY)
             .orEmptyObjects()
             .mapNotNull { ruleObj ->
-                val id = ruleObj.string(ID_KEY).trim()
-                val name = ruleObj.string(NAME_KEY).trim()
-                if (id.isBlank() || name.isBlank()) return@mapNotNull null
+                val id = ruleObj.stringNonBlankOrNull(ID_KEY) ?: return@mapNotNull null
+                val name = ruleObj.stringNonBlankOrNull(NAME_KEY) ?: return@mapNotNull null
                 TakeoverRule(
                     id = id,
                     name = name,
-                    target = TakeoverTarget.entries.firstOrNull {
-                        it.name == ruleObj.string(
-                            TARGET_KEY
-                        )
-                    }
-                        ?: TakeoverTarget.ZAFIRO,
+                    target = ruleObj.enumOrDefault(TARGET_KEY, TakeoverTarget.ZAFIRO),
                     enabled = ruleObj.boolean(ENABLED_KEY, default = true),
                     patterns = ruleObj.array(PATTERNS_KEY).stringValues(),
                 )
@@ -136,10 +130,9 @@ internal object RuleSettingsCodec {
             .array(RULES_KEY)
             .orEmptyObjects()
             .mapNotNull { obj ->
-                val id = obj.string(ID_KEY).trim()
-                val name = obj.string(NAME_KEY).trim()
-                if (id.isBlank() || name.isBlank()) return@mapNotNull null
-                val kind = MaskingRule.sanitizeKind(obj.string(KIND_KEY))
+                val id = obj.stringNonBlankOrNull(ID_KEY) ?: return@mapNotNull null
+                val name = obj.stringNonBlankOrNull(NAME_KEY) ?: return@mapNotNull null
+                val kind = obj.sanitized(KIND_KEY, MaskingRule::sanitizeKind)
                 MaskingRule(
                     id = id,
                     name = name,
