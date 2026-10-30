@@ -101,6 +101,8 @@ class PromptComposerTest {
         assertTrue(result.finalSystemPrompt.contains("# Harness rules"))
         assertTrue(result.finalSystemPrompt.contains("- Execution:"))
         assertTrue(result.finalSystemPrompt.contains("- Redaction:"))
+        assertTrue(result.finalSystemPrompt.contains(PromptComposer.TOOL_USE_ENFORCEMENT_GUIDANCE))
+        assertTrue(result.finalSystemPrompt.contains("ui_intent"))
     }
 
     @Test

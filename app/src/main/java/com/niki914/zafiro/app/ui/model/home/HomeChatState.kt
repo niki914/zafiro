@@ -62,6 +62,8 @@ data class HomeToolStatus(
     val displayNameRes: Int? = null,
     /** 工具参数原文（复制用）；显示预览由 UI 从原文裁剪。null → 只显示标题无预览、无复制。 */
     val inputText: String? = null,
+    /** 工具副标题（Header " · " 后展示的意图/摘要文本）；null → 仅显示标题。 */
+    val subtitle: String? = null,
     /** 工具返回的图片引用（view_image / screenshot 等），path 指向 image_cache 落盘文件。 */
     val images: List<HomeChatImage> = emptyList(),
 )
