@@ -1,4 +1,4 @@
-// 保护：ToolPresentation.prettyPrintIfJson 缩进排版；subtitleOf 意图优先裁决与参数降级，command 工具防裸露
+// 保护：ToolPresentation.prettyPrintIfJson 缩进排版；subtitleOf ui_intent 优先裁决与参数降级，command 工具防裸露
 package com.niki914.zafiro.app.ui.model
 
 import org.junit.Assert.assertEquals
@@ -68,23 +68,22 @@ class ToolPresentationTest {
 
     @Test
     fun subtitleOf_prefersExplicitIntentOverToolFallback() {
-        val args = """{"query":"微信","intent":"检查微信是否安装"}"""
+        val args = """{"query":"微信","ui_intent":"检查微信是否安装"}"""
         val result = ToolPresentation.subtitleOf("find_installed_apps", args)
         assertEquals("检查微信是否安装", result)
     }
 
     @Test
     fun subtitleOf_extractsExplicitIntentForCommandTool() {
-        val args = """{"command":"ls -lh","intent":"查看文件大小"}"""
+        val args = """{"command":"ls -lh","ui_intent":"查看文件大小"}"""
         val result = ToolPresentation.subtitleOf("shell", args)
         assertEquals("查看文件大小", result)
     }
 
     @Test
-    fun subtitleOf_supportsChineseIntentKey() {
-        val args = """{"code":"print(1)","意图":"运行测试脚本"}"""
-        val result = ToolPresentation.subtitleOf("execute_python", args)
-        assertEquals("运行测试脚本", result)
+    fun subtitleOf_ignoresLegacyIntentKeys() {
+        val args = """{"command":"ls -lh","intent":"查看文件大小","意图":"查看文件大小"}"""
+        assertNull(ToolPresentation.subtitleOf("shell", args))
     }
 
     @Test

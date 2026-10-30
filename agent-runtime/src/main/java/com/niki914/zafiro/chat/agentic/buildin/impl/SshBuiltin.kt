@@ -304,6 +304,9 @@ open class SshBuiltin(
                   "type": "string",
                   "description": "Command to execute on the remote machine."
                 },
+                "ui_intent": {
+                  "type": "string"
+                },
                 "session": {
                   "type": "string",
                   "description": "Target session ID or alias of an active session."

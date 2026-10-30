@@ -101,7 +101,7 @@ object ToolPresentation {
 
     /**
      * 工具副标题（Header " · " 后展示的意图/摘要文本）：
-     * 1. 最高话语权（显式意图）：优先读取 arguments 中的 intent / 意图（全工具通用，包括命令行、MCP）；
+     * 1. 最高话语权（显式意图）：优先读取 arguments 中的 ui_intent（全工具通用，包括命令行、MCP）；
      * 2. 次高话语权（工具特定降级）：若未显式指定意图，非命令行工具提取关键参数（应用名、搜索词、技能 ID 等）；
      *    命令行工具（shell/ssh/execute_python/py_meta_tools）默认不在 Header 重复外露代码命令，返回 null；
      * 3. 兜底：返回 null（Header 仅显示工具名，无 " · "）。
@@ -112,7 +112,7 @@ object ToolPresentation {
             Json.parseToJsonElement(argumentsJson).jsonObject
         } ?: return null
 
-        val explicitIntent = (args["intent"] ?: args["意图"])
+        val explicitIntent = args["ui_intent"]
             ?.let { (it as? JsonPrimitive)?.contentOrNull }
             ?.takeIf { it.isNotBlank() }
         if (explicitIntent != null) {
