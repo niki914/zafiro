@@ -144,6 +144,9 @@ in the result — read it back with shell commands (e.g. cat) when needed.
       "type": "string",
       "description": "Python 3.11 source code to execute. Print final result to stdout."
     },
+    "ui_intent": {
+      "type": "string"
+    },
     "timeout_ms": {
       "type": "integer",
       "minimum": 1000,

@@ -89,7 +89,11 @@ Returns an image reference (path, dimensions, size) on success.
         private val SCHEMA = """
 {
   "type": "object",
-  "properties": {},
+  "properties": {
+    "ui_intent": {
+      "type": "string"
+    }
+  },
   "required": []
 }
         """.trimIndent()
