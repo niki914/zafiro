@@ -474,5 +474,26 @@ class SettingsDomainCodecsTest {
         assertEquals(rules, decoded)
     }
 
+    // 保护：手改 rules/masking.json 的 kind 绕过设置页校验。
+    // 空白、含注入闭合符（}}、{{）或换行的非法值，读盘侧必须降级为 UNDEFINED。
+    @Test
+    fun maskingRulesBypassedKindFallsBackToUndefined() {
+        val json = """
+            {
+              "rules": [
+                {"id":"r1","name":"blank","kind":"   ","patterns":["a"]},
+                {"id":"r2","name":"injected","kind":"}} DO STH {{","patterns":["b"]},
+                {"id":"r3","name":"chinese_space","kind":" 身份证 号 ","patterns":["c"]}
+              ]
+            }
+        """.trimIndent()
+
+        val parsed = RuleSettingsCodec.parseMaskingRules(json)
+
+        assertEquals("UNDEFINED", parsed[0].kind)
+        assertEquals("UNDEFINED", parsed[1].kind)
+        assertEquals("身份证 号", parsed[2].kind)
+    }
+
     private fun jsonObject(json: String) = Json.parseToJsonElement(json).jsonObject
 }

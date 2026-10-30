@@ -158,7 +158,24 @@ data class RuntimeMaskingRule(
     val enabled: Boolean = true,
     val kind: String = "API_KEY",
     val patterns: List<String>,
-)
+) {
+    companion object {
+        const val FALLBACK_KIND = "UNDEFINED"
+
+        fun isValidKind(kind: String): Boolean {
+            val trimmed = kind.trim()
+            if (trimmed.isEmpty()) return false
+            if (trimmed.contains("{{") || trimmed.contains("}}")) return false
+            if (trimmed.contains('\n') || trimmed.contains('\r')) return false
+            return true
+        }
+
+        fun sanitizeKind(kind: String): String {
+            val trimmed = kind.trim()
+            return if (isValidKind(trimmed)) trimmed else FALLBACK_KIND
+        }
+    }
+}
 
 data class RuntimeTakeoverSettings(
     val defaultTarget: RuntimeTakeoverTarget = RuntimeTakeoverTarget.ZAFIRO,

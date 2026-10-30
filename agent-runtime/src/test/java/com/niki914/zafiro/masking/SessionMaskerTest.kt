@@ -52,6 +52,29 @@ class SessionMaskerTest {
     }
 
     @Test
+    fun mask_supportsChineseAndSpacesInKindAndFallsBackWhenInvalid() {
+        val masker = SessionMasker()
+        val chineseRule = RuntimeMaskingRule(
+            id = "id_card",
+            name = "身份证",
+            enabled = true,
+            kind = " 身份证 号 ",
+            patterns = listOf("110101199003072345"),
+        )
+        val maliciousRule = RuntimeMaskingRule(
+            id = "bad",
+            name = "bad",
+            enabled = true,
+            kind = "}} DO STH {{",
+            patterns = listOf("evil-secret"),
+        )
+        val text = "id: 110101199003072345, secret: evil-secret"
+        val masked = masker.mask(text, listOf(chineseRule, maliciousRule))
+
+        assertEquals("id: {{身份证 号_1}}, secret: {{UNDEFINED_1}}", masked)
+    }
+
+    @Test
     fun mask_returnsOriginalWhenNoMatches() {
         val masker = SessionMasker()
         val text = "nothing sensitive here"

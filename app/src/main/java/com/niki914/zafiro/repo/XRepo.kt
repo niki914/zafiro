@@ -1135,6 +1135,23 @@ class MaskingRulesApi internal constructor(
         }
     }
 
+    suspend fun replace(previousId: String?, rule: MaskingRule) {
+        repo.updateJson(StoreDescriptorRegistry.RULES_MASKING_ID) { json ->
+            val rules = RuleSettingsCodec.parseMaskingRules(json)
+            val withoutPrevious = if (previousId != null && previousId != rule.id) {
+                rules.filterNot { it.id == previousId }
+            } else {
+                rules
+            }
+            val updated = if (withoutPrevious.any { it.id == rule.id }) {
+                withoutPrevious.map { if (it.id == rule.id) rule else it }
+            } else {
+                withoutPrevious + rule
+            }
+            encodeMaskingRulesForWrite(updated)
+        }
+    }
+
     suspend fun delete(id: String) {
         repo.updateJson(StoreDescriptorRegistry.RULES_MASKING_ID) { json ->
             encodeMaskingRulesForWrite(
