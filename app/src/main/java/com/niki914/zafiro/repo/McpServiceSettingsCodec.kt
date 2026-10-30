@@ -1,7 +1,7 @@
 package com.niki914.zafiro.repo
 
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.boolean
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.int
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.intClamped
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringValues
@@ -21,7 +21,13 @@ internal object McpServiceSettingsCodec {
     fun parse(json: String): RuntimeMcpServiceConfig {
         val obj = parseObject(json)
         val enabled = obj.boolean(KEY_ENABLED, default = false)
-        val port = parsePort(obj)
+        // 读盘侧夹回可用区间：手改磁盘越界端口会导致服务无法启动。
+        val port = obj.intClamped(
+            KEY_PORT,
+            default = RuntimeMcpServiceConfig.DEFAULT_PORT,
+            min = RuntimeMcpServiceConfig.MIN_PORT,
+            max = RuntimeMcpServiceConfig.MAX_PORT,
+        )
         val host = obj.string(KEY_HOST).ifBlank { RuntimeMcpServiceConfig.DEFAULT_HOST }
         val token = obj.string(KEY_BEARER_TOKEN)
         val exposedTools = (obj[KEY_EXPOSED_TOOLS] as? JsonArray)?.stringValues()?.toSet()
@@ -35,19 +41,6 @@ internal object McpServiceSettingsCodec {
             exposedTools = exposedTools,
             keepScreenOn = keepScreenOn,
         )
-    }
-
-    /**
-     * 写入口（McpServiceSettingsState.updatePort）夹了 1024..65535，但手改磁盘文件
-     * 绕过了写入口。越界端口不会崩（引擎异常由 CoroutineExceptionHandler 兜住），
-     * 但会让服务静默起不来，所以读盘侧夹回可用区间。
-     */
-    private fun parsePort(obj: JsonObject): Int {
-        return obj.int(KEY_PORT, default = RuntimeMcpServiceConfig.DEFAULT_PORT)
-            .coerceIn(
-                RuntimeMcpServiceConfig.MIN_PORT,
-                RuntimeMcpServiceConfig.MAX_PORT,
-            )
     }
 
     fun encode(config: RuntimeMcpServiceConfig): String {

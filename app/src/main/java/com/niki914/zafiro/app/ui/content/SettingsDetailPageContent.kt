@@ -9,6 +9,7 @@ import com.niki914.zafiro.app.ui.content.mcp.McpSettingsContent
 import com.niki914.zafiro.app.ui.model.SettingsViewModel
 import com.niki914.zafiro.app.ui.nav.BuiltinToolGroupDetailPage
 import com.niki914.zafiro.app.ui.nav.ExecutionRuleDetailPage
+import com.niki914.zafiro.app.ui.nav.MaskingRuleDetailPage
 import com.niki914.zafiro.app.ui.nav.McpServerDetailPage
 import com.niki914.zafiro.app.ui.nav.PromptEditPage
 import com.niki914.zafiro.app.ui.nav.SavedConfigDetailPage
@@ -139,6 +140,22 @@ fun SettingsDetailPageContent(
         ExecutionRulesSettingsContent(
             onOpenRuleDetail = { name, index, isCreating ->
                 onPush(ExecutionRuleDetailPage(name, index, isCreating))
+            },
+        )
+        return
+    }
+
+    if (group == ZafiroSettingsGroup.MaskingRules) {
+        MaskingRulesSettingsContent(
+            onOpenRuleDetail = { id, name, index, isCreating ->
+                onPush(
+                    MaskingRuleDetailPage(
+                        ruleId = id,
+                        ruleName = name,
+                        ruleIndex = index,
+                        isCreating = isCreating,
+                    )
+                )
             },
         )
         return
