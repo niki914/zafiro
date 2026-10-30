@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content.helper
+package com.niki914.zafiro.app.ui.home.helper
 
 import android.content.ClipData
 import android.content.Context

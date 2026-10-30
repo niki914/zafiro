@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content.header
+package com.niki914.zafiro.app.ui.home.header
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
