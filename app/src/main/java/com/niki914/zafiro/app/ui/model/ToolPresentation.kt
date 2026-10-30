@@ -24,11 +24,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import com.niki914.zafiro.remoteview.R as RemoteViewR
 
 /**
- * 折叠块 UI 展示数据：图标、显示名（本地化 res id）、输入预览。纯函数对象。
- * 图标访问器 @Composable（python 走自绘 drawable）；显示名/预览为普通函数，
- * ViewModel 与 ConversationFormatter 均可调用（直播与恢复共用同一映射）。
- * inputOf 取工具参数原文（复制/全量展示用），previewOf 是发布于 [inputOf] 的显示变换（首行压平）；
- * 预留演进：后续可改为 agent 传的意图字段，直接展示"这个操作是要干啥"（如"罗列文件"），不再依赖参数猜。
+ * 折叠块 UI 展示数据：图标、显示名（本地化 res id）、输入预览与意图副标题。纯函数对象。
+ * 图标访问器 @Composable（python 走自绘 drawable）；显示名/副标题为普通函数，
+ * ViewModel 与 ConversationUiMapper 均可调用。
+ * inputOf 取工具参数原文（复制/全量展示用），subtitleOf 负责副标题裁决（意图优先 > 关键参数降级 > 兜底 null）。
  */
 object ToolPresentation {
     sealed interface IconSource {
@@ -99,6 +98,41 @@ object ToolPresentation {
             RemoteViewR.string.floating_ball_tool_running,
             displayName(context, toolName, label),
         )
+
+    /**
+     * 工具副标题（Header " · " 后展示的意图/摘要文本）：
+     * 1. 最高话语权（显式意图）：优先读取 arguments 中的 ui_intent（全工具通用，包括命令行、MCP）；
+     * 2. 次高话语权（工具特定降级）：若未显式指定意图，非命令行工具提取关键参数（应用名、搜索词、技能 ID 等）；
+     *    命令行工具（shell/ssh/execute_python/py_meta_tools）默认不在 Header 重复外露代码命令，返回 null；
+     * 3. 兜底：返回 null（Header 仅显示工具名，无 " · "）。
+     */
+    fun subtitleOf(name: String, argumentsJson: String?): String? {
+        if (argumentsJson.isNullOrBlank()) return null
+        val args = tryOrNull {
+            Json.parseToJsonElement(argumentsJson).jsonObject
+        } ?: return null
+
+        val explicitIntent = args["ui_intent"]
+            ?.let { (it as? JsonPrimitive)?.contentOrNull }
+            ?.takeIf { it.isNotBlank() }
+        if (explicitIntent != null) {
+            return previewOf(explicitIntent)
+        }
+
+        val fallback = when (name) {
+            "load_skill" -> args["id"]
+            "open_uri" -> args["uri"] ?: args["url"]
+            "launch_app" -> args["name"] ?: args["package_name"] ?: args["app"]
+            "find_installed_apps" -> args["query"] ?: args["keyword"]
+            "notify" -> args["content"] ?: args["title"]
+            "memory" -> args["content"] ?: args["query"]
+            "view_image" -> args["path"] ?: args["uri"]
+            "screen_operation_accessibility", "screen_operation_shell" -> args["action"]
+            else -> null
+        }?.let { (it as? JsonPrimitive)?.contentOrNull }
+
+        return previewOf(fallback)
+    }
 
     /**
      * 工具参数原文：shell/ssh 取完整 command、execute_python 取完整 code、load_skill 取 id；

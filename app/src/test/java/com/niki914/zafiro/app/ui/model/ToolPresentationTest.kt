@@ -1,4 +1,4 @@
-// 保护：ToolPresentation.prettyPrintIfJson 对合法 JSON 对象/数组进行缩进排版，对非 JSON、标量或超限字符串安全原样回退
+// 保护：ToolPresentation.prettyPrintIfJson 缩进排版；subtitleOf ui_intent 优先裁决与参数降级，command 工具防裸露
 package com.niki914.zafiro.app.ui.model
 
 import org.junit.Assert.assertEquals
@@ -64,5 +64,54 @@ class ToolPresentationTest {
         assertNull(ToolPresentation.prettyPrintIfJson(null))
         assertEquals("", ToolPresentation.prettyPrintIfJson(""))
         assertEquals("   ", ToolPresentation.prettyPrintIfJson("   "))
+    }
+
+    @Test
+    fun subtitleOf_prefersExplicitIntentOverToolFallback() {
+        val args = """{"query":"微信","ui_intent":"检查微信是否安装"}"""
+        val result = ToolPresentation.subtitleOf("find_installed_apps", args)
+        assertEquals("检查微信是否安装", result)
+    }
+
+    @Test
+    fun subtitleOf_extractsExplicitIntentForCommandTool() {
+        val args = """{"command":"ls -lh","ui_intent":"查看文件大小"}"""
+        val result = ToolPresentation.subtitleOf("shell", args)
+        assertEquals("查看文件大小", result)
+    }
+
+    @Test
+    fun subtitleOf_ignoresLegacyIntentKeys() {
+        val args = """{"command":"ls -lh","intent":"查看文件大小","意图":"查看文件大小"}"""
+        assertNull(ToolPresentation.subtitleOf("shell", args))
+    }
+
+    @Test
+    fun subtitleOf_commandToolWithoutIntentReturnsNull() {
+        val shellArgs = """{"command":"ls -lh /sdcard"}"""
+        assertNull(ToolPresentation.subtitleOf("shell", shellArgs))
+
+        val pythonArgs = """{"code":"import os\nprint(os.listdir('.'))"}"""
+        assertNull(ToolPresentation.subtitleOf("execute_python", pythonArgs))
+    }
+
+    @Test
+    fun subtitleOf_nonCommandToolWithoutIntentFallsBackToArgument() {
+        val findAppsArgs = """{"query":"微信"}"""
+        assertEquals("微信", ToolPresentation.subtitleOf("find_installed_apps", findAppsArgs))
+
+        val loadSkillArgs = """{"id":"github-pr"}"""
+        assertEquals("github-pr", ToolPresentation.subtitleOf("load_skill", loadSkillArgs))
+
+        val launchAppArgs = """{"name":"QQ"}"""
+        assertEquals("QQ", ToolPresentation.subtitleOf("launch_app", launchAppArgs))
+    }
+
+    @Test
+    fun subtitleOf_handlesNullAndMalformedJsonSafely() {
+        assertNull(ToolPresentation.subtitleOf("shell", null))
+        assertNull(ToolPresentation.subtitleOf("shell", ""))
+        assertNull(ToolPresentation.subtitleOf("shell", "{malformed json"))
+        assertNull(ToolPresentation.subtitleOf("unknown_tool", """{"unsupported_key":"value"}"""))
     }
 }

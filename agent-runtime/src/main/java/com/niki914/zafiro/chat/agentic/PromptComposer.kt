@@ -184,20 +184,19 @@ class PromptComposer {
 
         internal const val TOOL_USE_ENFORCEMENT_GUIDANCE =
             "# Tool use\n" +
-                    "Only invoke tools when the user's intent clearly requires system actions or " +
+                    "- Only invoke tools when the user's intent clearly requires system actions or " +
                     "external data. For casual conversation, conceptual discussion, or general queries, " +
                     "respond directly without calling any tools.\n" +
-                    "When an action is genuinely required, execute it immediately — do not describe " +
+                    "- When an action is genuinely required, execute it immediately — do not describe " +
                     "what you would do or end your turn with a promise of future action.\n" +
-                    "Never run high-privilege, intrusive, or diagnostic commands (e.g., root scans, " +
-                    "system state checks) unless the user explicitly requests them."
+                    "- Never run high-privilege, intrusive, or diagnostic commands (e.g., root scans, " +
+                    "system state checks) unless the user explicitly requests them.\n" +
+                    "- MUST pass a `ui_intent` argument (2-6 words, user's language) displayed on the UI. Use a neutral, tenseless phrase (e.g. \"Check disk usage\", \"搜索错误日志\", \"检查微信是否安装\")."
 
         internal const val HARNESS_RULES_GUIDANCE =
             "# Harness rules (configurable in Zafiro settings. MUST subject to user confirmation.)\n" +
                     "- Execution: Tool actions may be blocked by user-defined rules.\n" +
                     "- Redaction: Sensitive values (API keys, secrets) in context or tool outputs are masked as `{{KIND_N}}`. Treat placeholders as opaque values."
-
-        internal const val EXECUTION_RULES_GUIDANCE = HARNESS_RULES_GUIDANCE
 
         internal const val MEMORY_GUIDANCE =
             "You have persistent memory across sessions. Save durable facts using the memory " +

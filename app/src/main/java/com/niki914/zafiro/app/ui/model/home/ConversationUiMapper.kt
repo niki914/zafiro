@@ -87,6 +87,7 @@ private fun ToolInvocation.toStatus(outcome: ToolOutcome?): HomeToolStatus {
         failedReason = failedReason,
         displayNameRes = ToolPresentation.displayNameResOf(name),
         inputText = ToolPresentation.inputOf(name, argumentsJson),
+        subtitle = ToolPresentation.subtitleOf(name, argumentsJson),
         images = (outcome as? ToolOutcome.Succeeded)?.images.orEmpty().map { it.toHomeImage() },
     )
 }
