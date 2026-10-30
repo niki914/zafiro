@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content
+package com.niki914.zafiro.app.ui.home.composer.attach
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description

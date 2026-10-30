@@ -30,12 +30,12 @@ import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.ui.chat.composable.body.ActionBodyDispatcher
 import com.niki914.zafiro.app.ui.chat.model.ActionContainerTone
 import com.niki914.zafiro.app.ui.chat.model.ActionUiModel
-import com.niki914.zafiro.app.ui.content.BlockContainerPadY
-import com.niki914.zafiro.app.ui.content.BlockContentBottomGap
-import com.niki914.zafiro.app.ui.content.BlockContentInset
-import com.niki914.zafiro.app.ui.content.BlockContentTopGap
-import com.niki914.zafiro.app.ui.content.BlockHeaderInsetCollapsed
-import com.niki914.zafiro.app.ui.content.BlockHeaderInsetExpanded
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockContainerPadY
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockContentBottomGap
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockContentInset
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockContentTopGap
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockHeaderInsetCollapsed
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockHeaderInsetExpanded
 
 /** 折叠常态圆角（偏胶囊的对话气泡感） */
 private val BlockRadiusCollapsed = 24.dp
