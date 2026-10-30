@@ -1,5 +1,5 @@
 // githooks:ignore-file file-token-limit
-package com.niki914.zafiro.app.ui.content
+package com.niki914.zafiro.app.ui.home
 
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.WindowInsets
@@ -39,9 +39,9 @@ import com.niki914.zafiro.app.ui.helper.ZafiroToast
 import com.niki914.zafiro.app.ui.content.dialog.ScreenControlConsentDialog
 import com.niki914.zafiro.app.ui.content.dialog.ToolPermissionDialog
 import com.niki914.zafiro.app.ui.content.dialog.UpdateAvailableDialog
-import com.niki914.zafiro.app.ui.content.header.HomeConfigPopover
-import com.niki914.zafiro.app.ui.content.header.HomeTitleConfigChip
-import com.niki914.zafiro.app.ui.content.header.HomeTopBarContribution
+import com.niki914.zafiro.app.ui.home.header.HomeConfigPopover
+import com.niki914.zafiro.app.ui.home.header.HomeTitleConfigChip
+import com.niki914.zafiro.app.ui.home.header.HomeTopBarContribution
 import com.niki914.zafiro.app.ui.model.home.FileAttachReason
 import com.niki914.zafiro.app.ui.model.home.HomeChatEffect
 import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
@@ -371,19 +371,21 @@ fun HomePageContent(
             viewModel.sendIntent(HomeChatIntent.InputChanged(value))
         },
         onSendClick = {
-            val query = uiState.input.trim()
-            val hasAttachments =
-                uiState.pendingImages.isNotEmpty() || uiState.pendingFiles.isNotEmpty()
-            if (query.isNotEmpty() || hasAttachments) {
-                dismissInputFocus()
-                pendingViewportAnchor = ViewportAnchor(
-                    index = uiState.turns.size,
-                    offset = 0,
-                    followOnGeneration = true,
-                )
-                shouldFollowBottom = true
+            if (!uiState.isLoadingConversation) {
+                val query = uiState.input.trim()
+                val hasAttachments =
+                    uiState.pendingImages.isNotEmpty() || uiState.pendingFiles.isNotEmpty()
+                if (query.isNotEmpty() || hasAttachments) {
+                    dismissInputFocus()
+                    pendingViewportAnchor = ViewportAnchor(
+                        index = uiState.turns.size,
+                        offset = 0,
+                        followOnGeneration = true,
+                    )
+                    shouldFollowBottom = true
+                }
+                viewModel.sendIntent(HomeChatIntent.Send)
             }
-            viewModel.sendIntent(HomeChatIntent.Send)
         },
         onStopClick = {
             viewModel.sendIntent(HomeChatIntent.StopGenerating)

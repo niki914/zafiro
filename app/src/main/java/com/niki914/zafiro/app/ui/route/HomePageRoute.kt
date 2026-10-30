@@ -1,7 +1,7 @@
 package com.niki914.zafiro.app.ui.route
 
 import androidx.compose.runtime.Composable
-import com.niki914.zafiro.app.ui.content.HomePageContent
+import com.niki914.zafiro.app.ui.home.HomePageContent
 import com.niki914.zafiro.app.ui.nav.ConversationHistoryPage
 import com.niki914.zafiro.app.ui.nav.SettingsHomePage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage

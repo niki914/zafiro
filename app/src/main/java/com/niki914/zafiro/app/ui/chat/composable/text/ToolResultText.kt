@@ -24,7 +24,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import com.niki914.zafiro.app.ui.content.ResultScrollMaxHeight
-import com.niki914.zafiro.app.ui.content.rememberScrollFollowState
+import com.niki914.zafiro.app.ui.home.rememberScrollFollowState
 
 // ── nested scroll: pass through user drag, block fling inertia ─────────────
 
