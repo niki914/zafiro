@@ -417,7 +417,7 @@ private class MemoryLedgerStore(initial: LedgerState?) : LedgerStore {
 
 private fun date(text: String): LocalDate = LocalDate.parse(text)
 
-private fun sample(day: LocalDate, key: String = "6f1c2a4e-8d3b-4c1a-9e2f-0b7d5a3c9e11"): DayPage {
+private fun sample(day: LocalDate, key: String = "00000000-0000-4000-8000-000000000000"): DayPage {
     return DayPage(
         day = day,
         dayKey = key,
