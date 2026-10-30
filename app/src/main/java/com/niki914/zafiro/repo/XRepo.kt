@@ -36,6 +36,7 @@ import com.niki914.zafiro.settings.model.RuntimeBuiltinToolSetting as BuiltinToo
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
+import com.niki914.zafiro.settings.model.RuntimeMaskingRule as MaskingRule
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRuleValidation as TakeoverRuleValidation
@@ -53,6 +54,7 @@ object XRepo {
     val memory: MemoryApi = MemoryApi(this)
     val web: WebSettingsApi = WebSettingsApi()
     val executionRules: ExecutionRulesApi = ExecutionRulesApi(this)
+    val maskingRules: MaskingRulesApi = MaskingRulesApi(this)
     val takeoverRules: TakeoverRulesApi = TakeoverRulesApi(this)
     val agents: AgentApi = AgentApi(this)
     val skills: SkillApi = SkillApi(this)
@@ -1098,6 +1100,64 @@ class ExecutionRulesApi internal constructor(
             EXPLICIT_EMPTY_RULES_JSON
         } else {
             RuleSettingsCodec.encodeExecutionRules(rules)
+        }
+    }
+
+    private companion object {
+        private const val EXPLICIT_EMPTY_RULES_JSON = """{"rules":[],"_explicit":true}"""
+    }
+}
+
+class MaskingRulesApi internal constructor(
+    private val repo: XRepo,
+) {
+    suspend fun list(): List<MaskingRule> {
+        val json = repo.readJson(StoreDescriptorRegistry.RULES_MASKING_ID)
+        if (json == """{"rules":[]}""") {
+            return LocalSettingsDefaults.defaultMaskingRules
+        }
+        return RuleSettingsCodec.parseMaskingRules(json)
+    }
+
+    suspend fun get(id: String): MaskingRule? {
+        return list().firstOrNull { it.id == id }
+    }
+
+    suspend fun save(rule: MaskingRule) {
+        repo.updateJson(StoreDescriptorRegistry.RULES_MASKING_ID) { json ->
+            val rules = RuleSettingsCodec.parseMaskingRules(json)
+            val updated = if (rules.any { it.id == rule.id }) {
+                rules.map { if (it.id == rule.id) rule else it }
+            } else {
+                rules + rule
+            }
+            encodeMaskingRulesForWrite(updated)
+        }
+    }
+
+    suspend fun delete(id: String) {
+        repo.updateJson(StoreDescriptorRegistry.RULES_MASKING_ID) { json ->
+            encodeMaskingRulesForWrite(
+                RuleSettingsCodec.parseMaskingRules(json).filterNot { it.id == id },
+            )
+        }
+    }
+
+    suspend fun setEnabled(id: String, enabled: Boolean) {
+        repo.updateJson(StoreDescriptorRegistry.RULES_MASKING_ID) { json ->
+            encodeMaskingRulesForWrite(
+                RuleSettingsCodec.parseMaskingRules(json).map { rule ->
+                    if (rule.id == id) rule.copy(enabled = enabled) else rule
+                },
+            )
+        }
+    }
+
+    private fun encodeMaskingRulesForWrite(rules: List<MaskingRule>): String {
+        return if (rules.isEmpty()) {
+            EXPLICIT_EMPTY_RULES_JSON
+        } else {
+            RuleSettingsCodec.encodeMaskingRules(rules)
         }
     }
 

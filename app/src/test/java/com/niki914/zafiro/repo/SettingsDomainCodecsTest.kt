@@ -14,6 +14,7 @@ import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
+import com.niki914.zafiro.settings.model.RuntimeMaskingRule as MaskingRule
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
@@ -446,6 +447,31 @@ class SettingsDomainCodecsTest {
         assertEquals(RuntimeMcpServiceConfig.MIN_PORT, portOf("80"))
         assertEquals(RuntimeMcpServiceConfig.MAX_PORT, portOf("99999"))
         assertEquals(8791, portOf("8791"))
+    }
+
+    @Test
+    fun maskingRulesRoundTripPreservesFields() {
+        val rules = listOf(
+            MaskingRule(
+                id = "rule_1",
+                name = "default",
+                enabled = true,
+                kind = "API_KEY",
+                patterns = listOf("""\bsk-[a-zA-Z0-9_\-]{20,}\b"""),
+            ),
+            MaskingRule(
+                id = "rule_2",
+                name = "email",
+                enabled = false,
+                kind = "EMAIL",
+                patterns = listOf("""[\w.-]+@[\w.-]+\.\w+"""),
+            ),
+        )
+
+        val encoded = RuleSettingsCodec.encodeMaskingRules(rules)
+        val decoded = RuleSettingsCodec.parseMaskingRules(encoded)
+
+        assertEquals(rules, decoded)
     }
 
     private fun jsonObject(json: String) = Json.parseToJsonElement(json).jsonObject

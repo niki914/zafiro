@@ -40,7 +40,7 @@ class PromptComposer {
                 .takeIf { hasBuiltinTool(input, "load_skill") },
             TASK_COMPLETION_GUIDANCE.takeIf { hasAnyTool(input) },
             TOOL_USE_ENFORCEMENT_GUIDANCE.takeIf { hasAnyTool(input) },
-            EXECUTION_RULES_GUIDANCE.takeIf { hasAnyTool(input) },
+            HARNESS_RULES_GUIDANCE.takeIf { hasAnyTool(input) },
             MEMORY_GUIDANCE.takeIf { hasBuiltinTool(input, "memory") },
             SKILLS_GUIDANCE.takeIf { hasBuiltinTool(input, "load_skill") },
         ).joinToString(separator = "\n\n")
@@ -184,19 +184,20 @@ class PromptComposer {
 
         internal const val TOOL_USE_ENFORCEMENT_GUIDANCE =
             "# Tool use\n" +
-                    "You MUST use your tools to take action — do not describe what you would do " +
-                    "without actually doing it. When you say you will perform an action, you MUST " +
-                    "immediately make the corresponding tool call in the same response. Never end " +
-                    "your turn with a promise of future action — execute it now.\n" +
-                    "Every response should either (a) contain tool calls that make progress, or " +
-                    "(b) deliver a final result to the user."
+                    "Only invoke tools when the user's intent clearly requires system actions or " +
+                    "external data. For casual conversation, conceptual discussion, or general queries, " +
+                    "respond directly without calling any tools.\n" +
+                    "When an action is genuinely required, execute it immediately — do not describe " +
+                    "what you would do or end your turn with a promise of future action.\n" +
+                    "Never run high-privilege, intrusive, or diagnostic commands (e.g., root scans, " +
+                    "system state checks) unless the user explicitly requests them."
 
-        internal const val EXECUTION_RULES_GUIDANCE =
-            "# Execution rules\n" +
-                    "Tool actions may be blocked by Zafiro's app-level execution rules, which are " +
-                    "user-configurable in Zafiro settings — not system restrictions. A block means " +
-                    "the user declined the action or the rule is too strict; the user can adjust " +
-                    "the rule in Zafiro settings. Do not describe blocks as system policy."
+        internal const val HARNESS_RULES_GUIDANCE =
+            "# Harness rules (configurable in Zafiro settings. MUST subject to user confirmation.)\n" +
+                    "- Execution: Tool actions may be blocked by user-defined rules.\n" +
+                    "- Redaction: Sensitive values (API keys, secrets) in context or tool outputs are masked as `{{KIND_N}}`. Treat placeholders as opaque values."
+
+        internal const val EXECUTION_RULES_GUIDANCE = HARNESS_RULES_GUIDANCE
 
         internal const val MEMORY_GUIDANCE =
             "You have persistent memory across sessions. Save durable facts using the memory " +
