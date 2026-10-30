@@ -152,6 +152,14 @@ data class RuntimeTakeoverRule(
     val patterns: List<String>,
 )
 
+data class RuntimeMaskingRule(
+    val id: String,
+    val name: String,
+    val enabled: Boolean = true,
+    val kind: String = "API_KEY",
+    val patterns: List<String>,
+)
+
 data class RuntimeTakeoverSettings(
     val defaultTarget: RuntimeTakeoverTarget = RuntimeTakeoverTarget.ZAFIRO,
     val rules: List<RuntimeTakeoverRule> = emptyList(),

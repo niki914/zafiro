@@ -21,11 +21,14 @@ import com.niki914.okia.protocol.OpenAIChatCompletionCompat
 import com.niki914.okia.protocol.OpenAIChatCompletionProtocol
 import com.niki914.okia.protocol.OpenAIResponsesProtocol
 import com.niki914.okia.tooling.ToolRegistry
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.chat.agentic.AndroidImageLoader
 import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.SessionRegistry
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import com.niki914.zafiro.chat.compaction.ContextPruner
+import com.niki914.zafiro.masking.MaskingHook
+import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.settings.model.LlmProtocol
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import kotlinx.coroutines.CoroutineScope
@@ -97,6 +100,13 @@ internal class OkiaSessionAssembler(
     var activeSession: Okia? = null
     var sessionProtocol: LlmProtocol? = null
         private set
+
+    private val maskingHook = MaskingHook(
+        listMaskingRules = {
+            runCatchingCancellable { RuntimeEnvironment.awaitSettingsGateway().listMaskingRules() }
+                .getOrDefault(emptyList())
+        }
+    )
 
     private val conversationForwardScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val conversationFlow = MutableStateFlow<Conversation?>(null)
@@ -187,6 +197,7 @@ internal class OkiaSessionAssembler(
             hooks += killToolResourcesHook
             hooks += fixIncompleteToolCallsHook
             hooks += compactPruningHook
+            hooks += maskingHook
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: AgentSessionEngine.NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
             maxTokens = config.maxTokens

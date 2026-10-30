@@ -5,6 +5,7 @@ import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
+import com.niki914.zafiro.settings.model.RuntimeMaskingRule
 import com.niki914.zafiro.settings.model.RuntimeMcpServer
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 import com.niki914.zafiro.settings.model.RuntimeToolValidation
@@ -52,4 +53,6 @@ interface RuntimeSettingsGateway {
     ): RuntimeToolValidation?
 
     suspend fun listExecutionRules(): List<RuntimeExecutionRule>
+
+    suspend fun listMaskingRules(): List<RuntimeMaskingRule> = emptyList()
 }
