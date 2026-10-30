@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content
+package com.niki914.zafiro.app.ui.chat.composable.spacing
 
 import androidx.compose.ui.unit.dp
 
