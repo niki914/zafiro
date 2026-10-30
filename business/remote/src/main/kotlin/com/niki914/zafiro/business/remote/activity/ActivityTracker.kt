@@ -18,6 +18,7 @@ internal class ActivityTracker(
     private val ledger: Ledger,
     private val versionCode: Int,
     private val scope: CoroutineScope,
+    private val onActive: (suspend () -> Unit)? = null,
 ) : DefaultLifecycleObserver {
     private var observing = false
 
@@ -38,8 +39,11 @@ internal class ActivityTracker(
 
     private fun markToday() {
         scope.launch {
-            runCatchingCancellable { ledger.markActive(versionCode) }
-                .onFailure { error -> Logger.w(LOG_TAG, "活跃日记账失败", error) }
+            val result = runCatchingCancellable { ledger.markActive(versionCode) }
+            result.onFailure { error -> Logger.w(LOG_TAG, "活跃日记账失败", error) }
+            if (result.isSuccess) {
+                onActive?.invoke()
+            }
         }
     }
 

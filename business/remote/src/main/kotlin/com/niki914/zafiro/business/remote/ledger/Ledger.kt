@@ -45,17 +45,58 @@ internal class Ledger(
         }
     }
 
-    suspend fun onAck(sent: Map<String, Int>, today: LocalDate) {
+    suspend fun onAck(
+        sent: Map<String, Int>,
+        today: LocalDate,
+        nowMs: Long? = null,
+        nextRetryMs: Long? = null,
+    ) {
         mutex.withLock {
             val current = ready() ?: return@withLock
             val inflight = inflightDroppedDays
             val acked = applyAck(current, sent, today, inflight)
-            val pruned = prune(acked, today)
+            val withSend = if (nowMs != null && nextRetryMs != null) {
+                acked.copy(send = LedgerSend(lastOkMs = nowMs, nextRetryMs = nextRetryMs, failures = 0))
+            } else {
+                acked
+            }
+            val pruned = prune(withSend, today)
             if (pruned == current) {
                 if (inflight != null) inflightDroppedDays = null
                 return@withLock
             }
             if (persist(pruned)) inflightDroppedDays = null
+        }
+    }
+
+    suspend fun sendState(): LedgerSend? {
+        return mutex.withLock { ready()?.send }
+    }
+
+    suspend fun recordSendSuccess(nowMs: Long, nextRetryMs: Long) {
+        mutex.withLock {
+            val current = ready() ?: return@withLock
+            val next = current.copy(
+                send = LedgerSend(
+                    lastOkMs = nowMs,
+                    nextRetryMs = nextRetryMs,
+                    failures = 0,
+                )
+            )
+            persist(next)
+        }
+    }
+
+    suspend fun recordSendFailure(nextRetryMs: Long) {
+        mutex.withLock {
+            val current = ready() ?: return@withLock
+            val next = current.copy(
+                send = current.send.copy(
+                    failures = current.send.failures + 1,
+                    nextRetryMs = nextRetryMs,
+                )
+            )
+            persist(next)
         }
     }
 
