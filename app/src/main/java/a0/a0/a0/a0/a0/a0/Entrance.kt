@@ -125,6 +125,7 @@ class Entrance : IXposed() {
             120906L -> R.raw.com_heytap_speechassist_120906_config
             120909L -> R.raw.com_heytap_speechassist_120909_config
             130302L -> R.raw.com_heytap_speechassist_130302_config
+            130305L -> R.raw.com_heytap_speechassist_130305_config
             else -> null
         }
 
