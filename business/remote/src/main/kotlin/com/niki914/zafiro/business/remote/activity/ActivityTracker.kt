@@ -1,5 +1,6 @@
 package com.niki914.zafiro.business.remote.activity
 
+import androidx.annotation.MainThread
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -20,6 +21,7 @@ internal class ActivityTracker(
 ) : DefaultLifecycleObserver {
     private var observing = false
 
+    @MainThread
     fun attach() {
         markToday()
         if (observing) return

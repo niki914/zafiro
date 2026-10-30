@@ -1,5 +1,7 @@
 package com.niki914.zafiro.business.remote.ledger
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileNotFoundException
 
@@ -18,18 +20,18 @@ internal interface LedgerStore {
 internal class FileLedgerStore(directory: File) : LedgerStore {
     private val file = File(directory, LEDGER_FILE_NAME)
 
-    override suspend fun load(): LedgerLoad {
-        if (!file.exists()) return LedgerLoad.Missing
+    override suspend fun load(): LedgerLoad = withContext(Dispatchers.IO) {
+        if (!file.exists()) return@withContext LedgerLoad.Missing
         val text = try {
             AtomicText.read(file)
         } catch (_: FileNotFoundException) {
-            return LedgerLoad.Missing
+            return@withContext LedgerLoad.Missing
         }
-        val state = LedgerJson.decode(text) ?: return LedgerLoad.Unreadable
-        return LedgerLoad.Ready(state)
+        val state = LedgerJson.decode(text) ?: return@withContext LedgerLoad.Unreadable
+        LedgerLoad.Ready(state)
     }
 
-    override suspend fun save(state: LedgerState) {
+    override suspend fun save(state: LedgerState): Unit = withContext(Dispatchers.IO) {
         AtomicText.write(file, LedgerJson.encode(state))
     }
 

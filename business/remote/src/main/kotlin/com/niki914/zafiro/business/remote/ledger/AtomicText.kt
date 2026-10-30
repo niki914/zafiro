@@ -17,8 +17,8 @@ internal object AtomicText {
         var committed = false
         try {
             stream.write(text.toByteArray(Charsets.UTF_8))
-            committed = true
             atomic.finishWrite(stream)
+            committed = true
         } finally {
             if (!committed) atomic.failWrite(stream)
         }

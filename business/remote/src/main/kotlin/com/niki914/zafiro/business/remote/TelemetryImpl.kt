@@ -1,5 +1,6 @@
 package com.niki914.zafiro.business.remote
 
+import androidx.annotation.MainThread
 import com.niki914.zafiro.api.telemetry.CustomKeyDef
 import com.niki914.zafiro.api.telemetry.CustomValue
 import com.niki914.zafiro.api.telemetry.EventDef
@@ -30,6 +31,10 @@ class TelemetryImpl(
         scope = scope,
     )
 
+    /**
+     * 绑定活跃监听。需在主线程调用（内部注册 ProcessLifecycleOwner 依赖主线程）。
+     */
+    @MainThread
     fun attach() {
         tracker.attach()
     }
