@@ -630,4 +630,34 @@
     <string name="text_action_error_save_failed">保存动作失败。</string>
     <string name="text_action_error_delete_failed">删除动作失败。</string>
     <string name="crash_startup_copied_toast">堆栈信息已复制，请提交给开发者</string>
+
+    <string name="ui_settings_masking_rules">数据脱敏</string>
+    <string name="ui_settings_masking_rules_summary">外发请求前脱敏敏感数据</string>
+    <string name="masking_rules_page_description">配置敏感数据脱敏规则。外发请求中命中的内容将被替换为占位符，本地会话与工具执行仍使用原始数据。</string>
+    <string name="masking_rules_empty_action_hint">点击右上角，添加第一条脱敏规则。</string>
+    <string name="masking_rules_loading">正在读取脱敏规则…</string>
+    <string name="masking_rules_editor_title_create">新增脱敏规则</string>
+    <string name="masking_rules_editor_description">敏感数据仅在外发大模型前替换为占位符。本地聊天展示与工具执行不受影响。</string>
+    <string name="masking_rules_field_name">规则名称</string>
+    <string name="masking_rules_field_name_hint">例如：API 密钥</string>
+    <string name="masking_rules_field_enabled">启用规则</string>
+    <string name="masking_rules_field_kind">标签类型</string>
+    <string name="masking_rules_field_kind_hint">API_KEY</string>
+    <string name="masking_rules_field_kind_description">占位符标签前缀，例如填入 API_KEY 将替换为对应序号占位符。</string>
+    <string name="masking_rules_field_patterns">匹配规则</string>
+    <string name="masking_rules_field_patterns_hint">例如：\bsk-[a-zA-Z0-9_\-]{20,}\b</string>
+    <string name="masking_rules_field_patterns_description">每行输入一个关键字或正则表达式。命中任意一项即触发脱敏。</string>
+    <string name="masking_rules_save_action">保存规则</string>
+    <string name="masking_rules_error_name_required">请输入规则名称</string>
+    <string name="masking_rules_error_kind_required">请输入标签类型</string>
+    <string name="masking_rules_error_kind_invalid">标签类型不合法</string>
+    <string name="masking_rules_error_patterns_required">请输入至少一条规则</string>
+    <string name="masking_rules_error_load_failed_generic">读取脱敏规则失败</string>
+    <string name="masking_rules_error_load_failed">读取脱敏规则失败：%1$s</string>
+    <string name="masking_rules_error_save_failed_generic">保存脱敏规则失败</string>
+    <string name="masking_rules_error_save_failed">保存脱敏规则失败：%1$s</string>
+    <string name="masking_rules_error_delete_failed_generic">删除脱敏规则失败</string>
+    <string name="masking_rules_error_delete_failed">删除脱敏规则失败：%1$s</string>
+    <string name="masking_rules_delete_dialog_title">删除脱敏规则</string>
+    <string name="masking_rules_delete_dialog_text">确定要删除脱敏规则「%1$s」吗？此操作不可撤销。</string>
 </resources>

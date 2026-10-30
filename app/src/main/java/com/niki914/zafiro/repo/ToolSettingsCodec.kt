@@ -1,9 +1,11 @@
 package com.niki914.zafiro.repo
 
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.array
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.longClamped
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.orEmptyObjects
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringNonBlankOrNull
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -36,32 +38,23 @@ internal object ToolSettingsCodec {
             .array(TOOLS_KEY)
             .orEmptyObjects()
             .mapNotNull { obj ->
-                val name = obj.string(NAME_KEY).trim()
-                val code = obj.string(CODE_KEY)
-                if (name.isBlank() || code.isBlank()) return@mapNotNull null
+                val name = obj.stringNonBlankOrNull(NAME_KEY) ?: return@mapNotNull null
+                val code = obj.stringNonBlankOrNull(CODE_KEY) ?: return@mapNotNull null
                 CustomPyTool(
                     name = name,
                     code = code,
                     description = obj.string(DESCRIPTION_KEY),
                     schemaJson = obj.string(SCHEMA_KEY),
                     enabled = (obj[ENABLED_KEY] as? JsonPrimitive)?.booleanOrNull ?: true,
-                    timeoutMs = parseTimeoutMs(obj),
+                    // 读盘侧夹逼：手改磁盘负值会导致 withTimeout 抛错，极大值会导致永不超时。
+                    timeoutMs = obj.longClamped(
+                        TIMEOUT_KEY,
+                        default = CustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS,
+                        min = CustomPyTool.MIN_CUSTOM_PY_TOOL_TIMEOUT_MS,
+                        max = CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS,
+                    ),
                 )
             }
-    }
-
-    /**
-     * 写入口（CustomPyToolApi.validate / PyMetaToolsBuiltin）都夹了 1000..120000，
-     * 但手改磁盘文件绕过了写入口。负值会让 PyRuntime 的 withTimeout(negative)
-     * 抛 IllegalArgumentException，极大值则让工具永不超时，所以读盘侧也必须夹一次。
-     */
-    private fun parseTimeoutMs(obj: JsonObject): Long {
-        val raw = (obj[TIMEOUT_KEY] as? JsonPrimitive)?.longOrNull
-            ?: return CustomPyTool.DEFAULT_CUSTOM_PY_TOOL_TIMEOUT_MS
-        return raw.coerceIn(
-            CustomPyTool.MIN_CUSTOM_PY_TOOL_TIMEOUT_MS,
-            CustomPyTool.MAX_CUSTOM_PY_TOOL_TIMEOUT_MS,
-        )
     }
 
     fun encodeCustomPyTools(tools: List<CustomPyTool>): String {

@@ -80,6 +80,8 @@ BottomSheet 用 OptionSheet
 
 设置列表页统一基于 SettingsPageSpec + SettingsSpecPageContent，编辑详情页统一使用 EditableSettingsDetailChrome + FormSpec 骨架；底层通用卡片与行使用 ui-kit 的 Settings* 系列，如无明确要求，禁止手搓
 
+设置项读写需要经过 SettingsJsonCodecUtils 校验
+
 ### 对话列表
 
 AI 对话通常是以 list 的形式存放 messages，同时只会有一个对话在进行，数据结构：Conversation - List<Message>。应用通过 Room 数据库，将每次 AI 对话的内容持久化。对话列表指的是对话的列表，数据结构：ConversationList - List<Conversation>
@@ -138,6 +140,7 @@ AI 对话通常是以 list 的形式存放 messages，同时只会有一个对�
 
 ### 实现代码
 
+- 参考多个类似业务的实现，尤其是设置页表单
 - 坏味道由 `.githooks/` 在提交前拦（监视器锁、变化叙述注释、内联全限定名、绕过 Logger 的日志、日志 TAG 前缀）；规则、放行标记、按模块清理方式见 `.githooks/README.md`。需要提交时，无须提前阅读 Hooks，正常提交即可，有问题会被 Hooks 扫出
 - 不要使用后台任务进行编译或单测，使用同步方法
 - 禁止出现 [改两行 ui 字符串 -> 编译 -> 再改] 的行为，应该在确实需要时（比如做了重型重构后）编译

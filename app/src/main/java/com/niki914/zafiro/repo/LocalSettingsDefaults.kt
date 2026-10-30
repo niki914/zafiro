@@ -4,6 +4,7 @@ import android.content.Context
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode
+import com.niki914.zafiro.settings.model.RuntimeMaskingRule
 
 internal object LocalSettingsDefaults {
     const val DEFAULT_SYSTEM_PROMPT = ""
@@ -13,6 +14,9 @@ internal object LocalSettingsDefaults {
 
     /** 内置规则与 onboarding 配置页的默认规则共用同一显示名。 */
     const val DEFAULT_EXECUTION_RULE_NAME = "default"
+
+    const val DEFAULT_MASKING_RULE_ID = "builtin-default"
+    const val DEFAULT_MASKING_RULE_NAME = "default"
 
     /**
      * 内置默认规则。onboarding 配置页以它的 patterns 为初值（可删减），
@@ -53,6 +57,18 @@ internal object LocalSettingsDefaults {
                 "\\bsetprop\\b",
                 "\\bdd\\b",
                 "\\breboot\\b",
+            ),
+        ),
+    )
+
+    val defaultMaskingRules = listOf(
+        RuntimeMaskingRule(
+            id = DEFAULT_MASKING_RULE_ID,
+            name = DEFAULT_MASKING_RULE_NAME,
+            enabled = true,
+            kind = "API_KEY",
+            patterns = listOf(
+                """\bsk-[a-zA-Z0-9_\-]{20,}\b""",
             ),
         ),
     )

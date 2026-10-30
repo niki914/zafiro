@@ -587,4 +587,34 @@
     <string name="text_action_error_save_failed">Не удалось сохранить действие.</string>
     <string name="text_action_error_delete_failed">Не удалось удалить действие.</string>
     <string name="crash_startup_copied_toast">Трассировка стека скопирована. Отправьте её разработчику.</string>
+
+    <string name="ui_settings_masking_rules">Маскирование данных</string>
+    <string name="ui_settings_masking_rules_summary">Маскировать конфиденциальные данные перед отправкой</string>
+    <string name="masking_rules_page_description">Настройка правил маскирования конфиденциальных данных. Совпадения в исходящих запросах заменяются плейсхолдерами, а локальные чаты и выполнение инструментов используют исходные данные.</string>
+    <string name="masking_rules_empty_action_hint">Нажмите на значок справа сверху, чтобы добавить первое правило маскирования.</string>
+    <string name="masking_rules_loading">Загрузка правил маскирования…</string>
+    <string name="masking_rules_editor_title_create">Новое правило маскирования</string>
+    <string name="masking_rules_editor_description">Конфиденциальные данные заменяются плейсхолдерами только перед отправкой в модель. Локальное отображение чата и выполнение инструментов не затрагиваются.</string>
+    <string name="masking_rules_field_name">Название правила</string>
+    <string name="masking_rules_field_name_hint">Например: Ключ API</string>
+    <string name="masking_rules_field_enabled">Включить правило</string>
+    <string name="masking_rules_field_kind">Тип тега</string>
+    <string name="masking_rules_field_kind_hint">API_KEY</string>
+    <string name="masking_rules_field_kind_description">Префикс плейсхолдера. Например, API_KEY будет заменяться на нумерованные плейсхолдеры.</string>
+    <string name="masking_rules_field_patterns">Шаблоны</string>
+    <string name="masking_rules_field_patterns_hint">Например: \bsk-[a-zA-Z0-9_\-]{20,}\b</string>
+    <string name="masking_rules_field_patterns_description">Вводите по одному ключевому слову или регулярному выражению в строке. Маскирование срабатывает при совпадении с любым из них.</string>
+    <string name="masking_rules_save_action">Сохранить правило</string>
+    <string name="masking_rules_error_name_required">Введите название правила</string>
+    <string name="masking_rules_error_kind_required">Введите тип тега</string>
+    <string name="masking_rules_error_kind_invalid">Недопустимый тип тега</string>
+    <string name="masking_rules_error_patterns_required">Введите хотя бы один шаблон</string>
+    <string name="masking_rules_error_load_failed_generic">Ошибка загрузки правил маскирования</string>
+    <string name="masking_rules_error_load_failed">Ошибка загрузки правил маскирования: %1$s</string>
+    <string name="masking_rules_error_save_failed_generic">Ошибка сохранения правила маскирования</string>
+    <string name="masking_rules_error_save_failed">Ошибка сохранения правила маскирования: %1$s</string>
+    <string name="masking_rules_error_delete_failed_generic">Ошибка удаления правила маскирования</string>
+    <string name="masking_rules_error_delete_failed">Ошибка удаления правила маскирования: %1$s</string>
+    <string name="masking_rules_delete_dialog_title">Удалить правило маскирования</string>
+    <string name="masking_rules_delete_dialog_text">Удалить правило маскирования «%1$s»? Действие необратимо.</string>
 </resources>

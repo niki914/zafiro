@@ -4,7 +4,7 @@ import com.niki914.zafiro.repo.SettingsJsonCodecUtils.array
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.boolean
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.orEmptyObjects
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringNonBlankOrNull
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -16,10 +16,8 @@ internal object TextActionSettingsCodec {
             .array(ACTIONS_KEY)
             .orEmptyObjects()
             .mapNotNull { obj ->
-                val name = obj.string(NAME_KEY).trim()
-                val prompt = obj.string(PROMPT_KEY).trim()
-                // name / prompt 是动作的最小可用条件，缺一跳过（与 McpSettingsCodec 同风格）
-                if (name.isBlank() || prompt.isBlank()) return@mapNotNull null
+                val name = obj.stringNonBlankOrNull(NAME_KEY) ?: return@mapNotNull null
+                val prompt = obj.stringNonBlankOrNull(PROMPT_KEY) ?: return@mapNotNull null
                 RuntimeTextAction(
                     name = name,
                     prompt = prompt,
