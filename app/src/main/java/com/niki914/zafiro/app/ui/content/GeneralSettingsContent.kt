@@ -15,13 +15,14 @@ import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.GeneralSettingsIntent
 import com.niki914.zafiro.app.ui.model.GeneralSettingsViewModel
+import com.niki914.zafiro.app.ui.nav.FloatingBallSettingsPage
+import com.niki914.zafiro.app.ui.nav.ZafiroPage
 
 /**
  * General Settings：悬浮与通知、对话与交互 2 个分组。
  * 容器使用 SettingsSpecPageContent + GroupedCard，开关状态由 ViewModel 驱动。
  */
-private const val FLOATING_BALL_ROW_ID = "general.floating_ball"
-private const val FLOATING_BALL_AUTO_EXPAND_ROW_ID = "general.floating_ball_auto_expand"
+private const val FLOATING_BALL_NAV_ROW_ID = "general.floating_ball_nav"
 private const val RESIDENT_NOTIFICATION_ROW_ID = "general.resident_notification"
 private const val TURN_NOTIFICATION_ROW_ID = "general.turn_notification"
 private const val LOAD_LAST_ROW_ID = "general.load_last"
@@ -34,6 +35,7 @@ private const val VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID =
 @Composable
 fun GeneralSettingsContent(
     viewModel: GeneralSettingsViewModel = pageViewModel(),
+    onPush: (ZafiroPage) -> Unit = {},
 ) {
     val uiState by viewModel.uiStateFlow.collectAsState()
 
@@ -49,17 +51,10 @@ fun GeneralSettingsContent(
                 title = stringResource(R.string.ui_settings_general_group_floating_notification),
                 layout = SettingsSectionLayout.GroupedCard,
                 rows = listOf(
-                    SettingsRowSpec.Toggle(
-                        id = FLOATING_BALL_ROW_ID,
+                    SettingsRowSpec.Navigation(
+                        id = FLOATING_BALL_NAV_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_floating_ball),
                         summary = stringResource(R.string.ui_settings_general_floating_ball_summary),
-                        checked = uiState.floatingBallEnabled,
-                    ),
-                    SettingsRowSpec.Toggle(
-                        id = FLOATING_BALL_AUTO_EXPAND_ROW_ID,
-                        title = stringResource(R.string.ui_settings_general_floating_ball_auto_expand),
-                        summary = stringResource(R.string.ui_settings_general_floating_ball_auto_expand_summary),
-                        checked = uiState.floatingBallAutoExpand,
                     ),
                     SettingsRowSpec.Toggle(
                         id = RESIDENT_NOTIFICATION_ROW_ID,
@@ -112,18 +107,13 @@ fun GeneralSettingsContent(
         spec = spec,
         onAction = { action ->
             when (action) {
+                is SettingsRowAction.Navigate ->
+                    when (action.id) {
+                        FLOATING_BALL_NAV_ROW_ID -> onPush(FloatingBallSettingsPage)
+                    }
+
                 is SettingsRowAction.ToggleChanged ->
                     when (action.id) {
-                        FLOATING_BALL_ROW_ID -> viewModel.sendIntent(
-                            GeneralSettingsIntent.ToggleFloatingBall(
-                                action.checked
-                            )
-                        )
-
-                        FLOATING_BALL_AUTO_EXPAND_ROW_ID -> viewModel.sendIntent(
-                            GeneralSettingsIntent.ToggleFloatingBallAutoExpand(action.checked)
-                        )
-
                         RESIDENT_NOTIFICATION_ROW_ID -> viewModel.sendIntent(
                             GeneralSettingsIntent.ToggleResidentNotification(
                                 action.checked

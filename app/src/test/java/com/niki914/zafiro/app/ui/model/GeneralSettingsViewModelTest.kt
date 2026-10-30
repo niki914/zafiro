@@ -66,7 +66,6 @@ class GeneralSettingsViewModelTest {
         XRepo.setLoadLastConversationOnStartup(false)
         XRepo.setAlwaysShowMessageActions(false)
         XRepo.setVoiceAssistantIsolatedSession(false)
-        XRepo.setFloatingBallEnabled(true)
         XRepo.setResidentNotificationEnabled(true)
 
         val viewModel = GeneralSettingsViewModel()
@@ -77,43 +76,8 @@ class GeneralSettingsViewModelTest {
         assertFalse(state.loadLastConversation)
         assertFalse(state.alwaysShowMessageActions)
         assertFalse(state.voiceAssistantIsolatedSession)
-        assertTrue(state.floatingBallEnabled)
         assertTrue(state.residentNotificationEnabled)
         assertFalse(state.isLoading)
-    }
-
-    @Test
-    fun toggleFloatingBall_whenPermissionGranted_updatesStateAndRepo() = runTest {
-        installPermission(PermissionState.GRANTED)
-        val viewModel = GeneralSettingsViewModel()
-
-        assertFalse(viewModel.uiStateFlow.value.floatingBallEnabled)
-        assertFalse(XRepo.floatingBallEnabled())
-
-        viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBall(true))
-        advanceUntilIdle()
-
-        assertTrue(viewModel.uiStateFlow.value.floatingBallEnabled)
-        assertTrue(XRepo.floatingBallEnabled())
-
-        viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBall(false))
-        advanceUntilIdle()
-
-        assertFalse(viewModel.uiStateFlow.value.floatingBallEnabled)
-        assertFalse(XRepo.floatingBallEnabled())
-    }
-
-    @Test
-    fun toggleFloatingBall_whenPermissionMissing_staysOffAndEmitsNoEffect() = runTest {
-        installPermission(PermissionState.DENIED_BY_USER)
-        val viewModel = GeneralSettingsViewModel()
-
-        viewModel.sendIntent(GeneralSettingsIntent.ToggleFloatingBall(true))
-        advanceUntilIdle()
-
-        // 申请在 ViewModel 内完成，UI 层不参与；没授上则开关不亮、不落盘
-        assertFalse(viewModel.uiStateFlow.value.floatingBallEnabled)
-        assertFalse(XRepo.floatingBallEnabled())
     }
 
     @Test

@@ -447,6 +447,12 @@
     <string name="ui_settings_general_floating_ball_summary">Mostrar estado del agente y acciones rápidas en segundo plano</string>
     <string name="ui_settings_general_floating_ball_auto_expand">Expandir la bola automáticamente</string>
     <string name="ui_settings_general_floating_ball_auto_expand_summary">Expandir la bola flotante al terminar una respuesta o al requerir aprobación</string>
+    <string name="ui_settings_floating_ball_enable">Habilitar bola flotante</string>
+    <string name="ui_settings_floating_ball_auto_expand">Expandir automáticamente</string>
+    <string name="ui_settings_floating_ball_opacity">Opacidad al acoplar</string>
+    <string name="ui_settings_floating_ball_opacity_summary">Transparencia de la bola flotante cuando está acoplada al borde</string>
+    <string name="ui_settings_floating_ball_submerged_offset">Profundidad de acople</string>
+    <string name="ui_settings_floating_ball_submerged_offset_summary">Distancia retraída en el borde de la pantalla al acoplar</string>
     <string name="ui_settings_general_resident_notification">Notificación residente</string>
     <string name="ui_settings_general_resident_notification_summary">Mostrar estado en vivo y accesos directos en el panel de notificaciones</string>
     <string name="ui_settings_general_turn_notification">Notificaciones de eventos de turnos</string>

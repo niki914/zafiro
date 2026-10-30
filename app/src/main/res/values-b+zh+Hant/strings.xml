@@ -408,6 +408,12 @@
     <string name="ui_settings_general_floating_ball_summary">後台運行時顯示 Agent 狀態與快捷操作</string>
     <string name="ui_settings_general_floating_ball_auto_expand">懸浮球自動展開</string>
     <string name="ui_settings_general_floating_ball_auto_expand_summary">回答結束或需要授權時自動展開懸浮球</string>
+    <string name="ui_settings_floating_ball_enable">啟用懸浮球</string>
+    <string name="ui_settings_floating_ball_auto_expand">自動展開</string>
+    <string name="ui_settings_floating_ball_opacity">貼邊不透明度</string>
+    <string name="ui_settings_floating_ball_opacity_summary">懸浮球貼邊停靠時的透明度</string>
+    <string name="ui_settings_floating_ball_submerged_offset">貼邊收起深度</string>
+    <string name="ui_settings_floating_ball_submerged_offset_summary">停靠時縮進螢幕邊緣的距離</string>
     <string name="ui_settings_general_resident_notification">常駐通知</string>
     <string name="ui_settings_general_resident_notification_summary">在通知欄顯示實時狀態與控制入口</string>
     <string name="ui_settings_general_turn_notification">回合事件提醒</string>

@@ -407,6 +407,12 @@
     <string name="ui_settings_general_floating_ball_summary">Показывает состояние агента и быстрые действия в фоне</string>
     <string name="ui_settings_general_floating_ball_auto_expand">Автораскрытие плавающего шара</string>
     <string name="ui_settings_general_floating_ball_auto_expand_summary">Раскрывать плавающий шар, когда ответ готов или нужно подтверждение</string>
+    <string name="ui_settings_floating_ball_enable">Включить плавающий шар</string>
+    <string name="ui_settings_floating_ball_auto_expand">Автораскрытие</string>
+    <string name="ui_settings_floating_ball_opacity">Непрозрачность у края</string>
+    <string name="ui_settings_floating_ball_opacity_summary">Прозрачность плавающего шара при закреплении у края экрана</string>
+    <string name="ui_settings_floating_ball_submerged_offset">Глубина скрытия у края</string>
+    <string name="ui_settings_floating_ball_submerged_offset_summary">Расстояние, на которое шар прячется за край экрана</string>
     <string name="ui_settings_general_resident_notification">Постоянное уведомление</string>
     <string name="ui_settings_general_resident_notification_summary">Показывает текущее состояние и кнопки управления в шторке уведомлений</string>
     <string name="ui_settings_general_turn_notification">Уведомления о событиях раунда</string>

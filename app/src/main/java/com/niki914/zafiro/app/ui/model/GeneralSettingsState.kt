@@ -9,8 +9,6 @@ import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.service.requireService
 
 data class GeneralSettingsUiState(
-    val floatingBallEnabled: Boolean = false,
-    val floatingBallAutoExpand: Boolean = true,
     val residentNotificationEnabled: Boolean = false,
     val turnNotificationEnabled: Boolean = false,
     val loadLastConversation: Boolean = true,
@@ -22,8 +20,6 @@ data class GeneralSettingsUiState(
 
 sealed interface GeneralSettingsIntent {
     data object Load : GeneralSettingsIntent
-    data class ToggleFloatingBall(val enabled: Boolean) : GeneralSettingsIntent
-    data class ToggleFloatingBallAutoExpand(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleResidentNotification(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleTurnNotification(val enabled: Boolean) : GeneralSettingsIntent
     data class ToggleLoadLastConversation(val enabled: Boolean) : GeneralSettingsIntent
@@ -40,10 +36,6 @@ class GeneralSettingsViewModel :
     override suspend fun handleIntent(intent: GeneralSettingsIntent) {
         when (intent) {
             GeneralSettingsIntent.Load -> loadSettings()
-            is GeneralSettingsIntent.ToggleFloatingBall -> toggleFloatingBall(intent.enabled)
-            is GeneralSettingsIntent.ToggleFloatingBallAutoExpand ->
-                toggleFloatingBallAutoExpand(intent.enabled)
-
             is GeneralSettingsIntent.ToggleResidentNotification -> toggleResidentNotification(intent.enabled)
             is GeneralSettingsIntent.ToggleTurnNotification -> toggleTurnNotification(intent.enabled)
             is GeneralSettingsIntent.ToggleLoadLastConversation -> toggleLoadLastConversation(intent.enabled)
@@ -66,8 +58,6 @@ class GeneralSettingsViewModel :
             val alwaysShowMessageActions = XRepo.alwaysShowMessageActions()
             val alwaysShowDetailedToolOutput = XRepo.alwaysShowDetailedToolOutput()
             val voiceAssistantIsolatedSession = XRepo.voiceAssistantIsolatedSession()
-            val floatingBallEnabled = XRepo.floatingBallEnabled()
-            val floatingBallAutoExpand = XRepo.floatingBallAutoExpand()
             val residentNotificationEnabled = XRepo.residentNotificationEnabled()
             val turnNotificationEnabled = XRepo.turnNotificationEnabled()
             updateState {
@@ -76,8 +66,6 @@ class GeneralSettingsViewModel :
                     alwaysShowMessageActions = alwaysShowMessageActions,
                     alwaysShowDetailedToolOutput = alwaysShowDetailedToolOutput,
                     voiceAssistantIsolatedSession = voiceAssistantIsolatedSession,
-                    floatingBallEnabled = floatingBallEnabled,
-                    floatingBallAutoExpand = floatingBallAutoExpand,
                     residentNotificationEnabled = residentNotificationEnabled,
                     turnNotificationEnabled = turnNotificationEnabled,
                     isLoading = false,
@@ -97,22 +85,6 @@ class GeneralSettingsViewModel :
         val pm = requireService<PermissionManager>()
         return pm.status(permission) == PermissionState.GRANTED ||
                 pm.request(permission).finalState == PermissionState.GRANTED
-    }
-
-    private suspend fun toggleFloatingBall(enabled: Boolean) {
-        if (!enabled) {
-            updateState { copy(floatingBallEnabled = false) }
-            XRepo.setFloatingBallEnabled(false)
-            return
-        }
-        if (!ensurePermission(Permission.OVERLAY)) return
-        updateState { copy(floatingBallEnabled = true) }
-        XRepo.setFloatingBallEnabled(true)
-    }
-
-    private suspend fun toggleFloatingBallAutoExpand(enabled: Boolean) {
-        updateState { copy(floatingBallAutoExpand = enabled) }
-        XRepo.setFloatingBallAutoExpand(enabled)
     }
 
     private suspend fun toggleResidentNotification(enabled: Boolean) {

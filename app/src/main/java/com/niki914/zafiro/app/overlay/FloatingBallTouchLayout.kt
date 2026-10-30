@@ -51,7 +51,10 @@ internal class FloatingBallTouchLayout(
     private val density: Float get() = context.resources.displayMetrics.density
     private val ballWidthPx: Int get() = (FloatingBallTokens.buttonDiameter * density).toInt()
     private val ballHeightPx: Int get() = (FloatingBallTokens.buttonDiameter * density).toInt()
-    private val submergedPx: Int get() = (FloatingBallTokens.submergedOffset * density).toInt()
+    var submergedOffsetPx: Int = (FloatingBallTokens.submergedOffset * density).toInt()
+        private set
+    var submergedAlpha: Float = FloatingBallTokens.submergedAlpha
+        private set
     private val snapThresholdPx: Float get() = FloatingBallTokens.snapThreshold * density
     private val escapeDistancePx: Int get() = (FloatingBallTokens.escapeSnapDistance * density).toInt()
 
@@ -76,19 +79,36 @@ internal class FloatingBallTouchLayout(
 
     fun snapToEdge(dock: DockSide) {
         val screenWidth = context.resources.displayMetrics.widthPixels
-        val targetX = if (dock.isLeft) -submergedPx else screenWidth - (ballWidthPx - submergedPx)
+        val targetX = if (dock.isLeft) -submergedOffsetPx else screenWidth - (ballWidthPx - submergedOffsetPx)
         onDockSideChanged(dock)
-        animateBallTo(targetX, ballY, targetAlpha = FloatingBallTokens.submergedAlpha) {
+        animateBallTo(targetX, ballY, targetAlpha = submergedAlpha) {
             onSnapFinished(dock, true)
         }
     }
 
     fun applySubmerged(dock: DockSide) {
         val screenWidth = context.resources.displayMetrics.widthPixels
-        ballX = if (dock.isLeft) -submergedPx else screenWidth - (ballWidthPx - submergedPx)
+        ballX = if (dock.isLeft) -submergedOffsetPx else screenWidth - (ballWidthPx - submergedOffsetPx)
         lp.x = ballX
         if (isAttachedToWindow) {
             wm.updateViewLayout(this, lp)
+        }
+    }
+
+    fun updateVisualParams(offsetDp: Int, opacityPercent: Int) {
+        val newSubmergedPx = (offsetDp * density).toInt()
+        val newAlpha = (opacityPercent / 100f).coerceIn(0.1f, 1f)
+        submergedOffsetPx = newSubmergedPx
+        submergedAlpha = newAlpha
+        motionPredictor.submergedPx = newSubmergedPx
+        if (isSubmerged) {
+            val screenWidth = context.resources.displayMetrics.widthPixels
+            ballX = if (dockSide.isLeft) -newSubmergedPx else screenWidth - (ballWidthPx - newSubmergedPx)
+            lp.x = ballX
+            alpha = newAlpha
+            if (isAttachedToWindow) {
+                wm.updateViewLayout(this, lp)
+            }
         }
     }
 
@@ -100,7 +120,7 @@ internal class FloatingBallTouchLayout(
             snapThresholdPx = snapThresholdPx,
             screenWidthPx = screenWidth,
             ballWidthPx = ballWidthPx,
-            submergedPx = submergedPx,
+            submergedPx = submergedOffsetPx,
             minBallY = minBallY,
             maxBallY = maxBallY,
         )
@@ -204,7 +224,7 @@ internal class FloatingBallTouchLayout(
             targetX = prediction.targetX,
             targetY = prediction.targetY,
             duration = prediction.durationMillis,
-            targetAlpha = if (prediction.willSubmerge) FloatingBallTokens.submergedAlpha else 1f,
+            targetAlpha = if (prediction.willSubmerge) submergedAlpha else 1f,
         ) {
             val screenHeight = context.resources.displayMetrics.heightPixels
             val currentYRatio = ballY.toFloat() / screenHeight.coerceAtLeast(1)

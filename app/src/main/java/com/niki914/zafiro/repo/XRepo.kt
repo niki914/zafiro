@@ -98,6 +98,8 @@ object XRepo {
         residentNotificationEnabledField.flow.value = false
         turnNotificationEnabledField.flow.value = false
         floatingBallAutoExpandField.flow.value = true
+        floatingBallOpacityPercentField.flow.value = 60
+        floatingBallSubmergedOffsetDpField.flow.value = 8
         mcpService.resetForTest()
         llmConfigs.resetForTest()
     }
@@ -503,6 +505,34 @@ object XRepo {
 
     suspend fun setFloatingBallAutoExpand(value: Boolean) =
         floatingBallAutoExpandField.set(value)
+
+    /** 悬浮球贴边停靠不透明度百分比的进程内热更新通道（10..100，默认 60）。 */
+    private val floatingBallOpacityPercentField = ReactiveAppStateField(
+        default = 60,
+        select = { floatingBallOpacityPercent },
+        update = { copy(floatingBallOpacityPercent = it) },
+    )
+    val floatingBallOpacityPercentSetting: MutableStateFlow<Int>
+        get() = floatingBallOpacityPercentField.flow
+
+    suspend fun floatingBallOpacityPercent(): Int = floatingBallOpacityPercentField.get()
+
+    suspend fun setFloatingBallOpacityPercent(value: Int) =
+        floatingBallOpacityPercentField.set(value)
+
+    /** 悬浮球贴边收起深度的进程内热更新通道（dp，0..35，默认 8）。 */
+    private val floatingBallSubmergedOffsetDpField = ReactiveAppStateField(
+        default = 8,
+        select = { floatingBallSubmergedOffsetDp },
+        update = { copy(floatingBallSubmergedOffsetDp = it) },
+    )
+    val floatingBallSubmergedOffsetDpSetting: MutableStateFlow<Int>
+        get() = floatingBallSubmergedOffsetDpField.flow
+
+    suspend fun floatingBallSubmergedOffsetDp(): Int = floatingBallSubmergedOffsetDpField.get()
+
+    suspend fun setFloatingBallSubmergedOffsetDp(value: Int) =
+        floatingBallSubmergedOffsetDpField.set(value)
 
     /** Markdown 排版缩放比例的进程内热更新通道：基准 1.0f。 */
     private val markdownScaleField = ReactiveAppStateField(
