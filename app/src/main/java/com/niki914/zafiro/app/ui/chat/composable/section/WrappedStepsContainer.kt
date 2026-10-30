@@ -14,7 +14,7 @@ import com.niki914.zafiro.app.ui.chat.composable.action.StandaloneActionCard
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.chat.model.ActionUiModel
 import com.niki914.zafiro.app.ui.chat.model.TurnSection
-import com.niki914.zafiro.app.ui.content.BlockHeaderInsetExpanded
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockHeaderInsetExpanded
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 
 /**

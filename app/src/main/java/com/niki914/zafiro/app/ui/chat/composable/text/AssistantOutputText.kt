@@ -25,7 +25,6 @@ import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.zafiro.app.ui.chat.composable.body.custom.AssistantCodeBlock
-import com.niki914.zafiro.app.ui.content.AssistantMarkdownTable
 
 val LocalMarkdownScale = compositionLocalOf { 1.0f }
 

@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.home
+package com.niki914.zafiro.app.ui.chat.helper
 
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState

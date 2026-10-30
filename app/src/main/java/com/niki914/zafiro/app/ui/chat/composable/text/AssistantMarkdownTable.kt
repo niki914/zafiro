@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content
+package com.niki914.zafiro.app.ui.chat.composable.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
