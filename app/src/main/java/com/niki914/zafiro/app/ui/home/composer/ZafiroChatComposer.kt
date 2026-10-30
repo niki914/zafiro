@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content.composer
+package com.niki914.zafiro.app.ui.home.composer
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -54,8 +54,8 @@ import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.uikit.motion.springSquish
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.content.composer.attach.ComposerAttachButton
-import com.niki914.zafiro.app.ui.content.composer.send.ComposerSendButton
+import com.niki914.zafiro.app.ui.home.composer.attach.ComposerAttachButton
+import com.niki914.zafiro.app.ui.home.composer.send.ComposerSendButton
 
 /** 紧凑态 composer 最小高度：12dp 容器垂直 padding × 2 + 48sp 按钮 footprint。 */
 internal val COMPACT_COMPOSER_MIN_HEIGHT = 72.dp

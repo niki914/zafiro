@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content.composer.send
+package com.niki914.zafiro.app.ui.home.composer.send
 
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -21,7 +21,7 @@ import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.button.ZafiroActionButton
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.app.ui.content.composer.drawContextRingOverlay
+import com.niki914.zafiro.app.ui.home.composer.drawContextRingOverlay
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content.composer
+package com.niki914.zafiro.app.ui.home.composer
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable

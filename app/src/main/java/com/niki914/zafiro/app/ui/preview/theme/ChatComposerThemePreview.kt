@@ -19,7 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.base.ThemeStyle
-import com.niki914.zafiro.app.ui.content.composer.ZafiroChatComposer
+import com.niki914.zafiro.app.ui.home.composer.ZafiroChatComposer
 
 @Composable
 private fun ChatComposerSample(

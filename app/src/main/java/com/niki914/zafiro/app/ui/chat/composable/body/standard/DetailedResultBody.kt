@@ -18,8 +18,8 @@ import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
 import com.niki914.zafiro.app.ui.chat.helper.OutputBtnInset
 import com.niki914.zafiro.app.ui.chat.helper.tapToOpenViewer
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
-import com.niki914.zafiro.app.ui.content.CommandPanelPadX
-import com.niki914.zafiro.app.ui.content.OutputPadY
+import com.niki914.zafiro.app.ui.chat.composable.spacing.CommandPanelPadX
+import com.niki914.zafiro.app.ui.chat.composable.spacing.OutputPadY
 import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
 import com.niki914.zafiro.app.ui.viewer.ViewerContent
 

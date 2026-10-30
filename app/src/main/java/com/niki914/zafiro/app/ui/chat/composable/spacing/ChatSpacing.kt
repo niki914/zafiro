@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.niki914.zafiro.app.ui.content.BlockSpacing
 
 /** 控制 Spacing 是否处于可视化 Debug 模式（黑底色块审查）。 */
 val LocalChatSpacingDebug = compositionLocalOf { false }

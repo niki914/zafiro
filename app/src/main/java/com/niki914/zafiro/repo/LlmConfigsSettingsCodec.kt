@@ -1,14 +1,15 @@
 package com.niki914.zafiro.repo
 
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.array
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.boolean
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.long
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.orEmptyObjects
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringNonBlankOrNull
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.longOrNull
 
 /**
  * 一份 Saved Configuration（完整可切换的 LLM 接入配置）。
@@ -58,7 +59,7 @@ internal object LlmConfigsSettingsCodec {
     fun parse(json: String): LlmConfigsDocument {
         val root = parseObject(json)
         return LlmConfigsDocument(
-            activeId = root.string(ACTIVE_ID_KEY).takeIf(String::isNotBlank),
+            activeId = root.stringNonBlankOrNull(ACTIVE_ID_KEY),
             prompt = root.string(PROMPT_KEY),
             configs = root.array(CONFIGS_KEY).orEmptyObjects().mapNotNull(::parseConfig),
         )
@@ -77,7 +78,7 @@ internal object LlmConfigsSettingsCodec {
     }
 
     private fun parseConfig(obj: JsonObject): SavedLlmConfig? {
-        val id = obj.string(ID_KEY).trim().takeIf(String::isNotBlank) ?: return null
+        val id = obj.stringNonBlankOrNull(ID_KEY) ?: return null
         return SavedLlmConfig(
             id = id,
             name = obj.string(NAME_KEY).trim(),
@@ -86,7 +87,7 @@ internal object LlmConfigsSettingsCodec {
             apiKey = obj.string(API_KEY_KEY),
             model = obj.string(MODEL_KEY),
             protocol = obj.string(PROTOCOL_KEY),
-            supportsImages = obj.boolean(SUPPORTS_IMAGES_KEY),
+            supportsImages = obj.boolean(SUPPORTS_IMAGES_KEY, default = false),
             prompt = obj.string(PROMPT_KEY),
             proxy = obj.string(PROXY_KEY),
             thinkingLevel = obj.string(THINKING_LEVEL_KEY),
@@ -120,14 +121,6 @@ internal object LlmConfigsSettingsCodec {
                 UPDATED_AT_KEY to JsonPrimitive(config.updatedAt),
             )
         )
-    }
-
-    private fun JsonObject.long(key: String, default: Long): Long {
-        return (this[key] as? JsonPrimitive)?.longOrNull ?: default
-    }
-
-    private fun JsonObject.boolean(key: String): Boolean {
-        return (this[key] as? JsonPrimitive)?.booleanOrNull ?: false
     }
 
     private const val ACTIVE_ID_KEY = "active_id"

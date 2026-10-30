@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content.header
+package com.niki914.zafiro.app.ui.home.header
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.niki914.uikit.infra.shape.G2FieldShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
@@ -60,7 +60,7 @@ internal fun HomeTitleConfigChip(
                     latestOnAnchorBoundsChanged(coordinates.boundsInRoot())
                 }
             }
-            .clip(RoundedCornerShape(16.dp))
+            .clip(G2FieldShape(16.dp))
             .clickable(
                 enabled = hasConfigs,
                 interactionSource = remember { MutableInteractionSource() },
