@@ -111,8 +111,6 @@ internal fun HomeChatTurn.toTurnUiModel(
                 val actionKey = "${id}_tool_${block.status.callId ?: blockIndex}"
                 val isRunning = block.status.state == HomeToolState.Running
                 val bodyUi = block.status.toActionBodyUi(alwaysShowDetailed = alwaysShowDetailed)
-                val inputPreview = ToolPresentation.previewOf(block.status.inputText)
-                val isCommand = bodyUi is ActionBodyUi.Custom.Command
                 val isUserToggled = actionKey in userToggledKeys
                 val defaultExpanded = !hasSuccessor(blockIndex)
                 val isExpanded = userToggledKeys[actionKey] ?: defaultExpanded
@@ -123,7 +121,7 @@ internal fun HomeChatTurn.toTurnUiModel(
                         iconSource = ToolPresentation.iconSourceForTool(block.status.name),
                         title = if (block.status.displayNameRes == null) block.status.name else null,
                         titleRes = block.status.displayNameRes,
-                        subtitlePreview = if (!isCommand) inputPreview else null,
+                        subtitlePreview = block.status.subtitle,
                         isRunning = isRunning,
                         isFailed = block.status.state == HomeToolState.Failed,
                         isExpanded = isExpanded,
