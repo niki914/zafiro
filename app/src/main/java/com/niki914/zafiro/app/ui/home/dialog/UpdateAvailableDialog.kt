@@ -1,4 +1,4 @@
-package com.niki914.zafiro.app.ui.content.dialog
+package com.niki914.zafiro.app.ui.home.dialog
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth

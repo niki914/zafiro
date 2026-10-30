@@ -35,10 +35,11 @@ import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.notification.TurnNotificationManager
+import com.niki914.zafiro.app.ui.chat.helper.rememberScrollFollowState
 import com.niki914.zafiro.app.ui.helper.ZafiroToast
-import com.niki914.zafiro.app.ui.content.dialog.ScreenControlConsentDialog
-import com.niki914.zafiro.app.ui.content.dialog.ToolPermissionDialog
-import com.niki914.zafiro.app.ui.content.dialog.UpdateAvailableDialog
+import com.niki914.zafiro.app.ui.home.dialog.ScreenControlConsentDialog
+import com.niki914.zafiro.app.ui.home.dialog.ToolPermissionDialog
+import com.niki914.zafiro.app.ui.home.dialog.UpdateAvailableDialog
 import com.niki914.zafiro.app.ui.home.header.HomeConfigPopover
 import com.niki914.zafiro.app.ui.home.header.HomeTitleConfigChip
 import com.niki914.zafiro.app.ui.home.header.HomeTopBarContribution

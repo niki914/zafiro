@@ -56,10 +56,11 @@ import com.niki914.zafiro.app.ui.chat.helper.userBubblePosition
 import com.niki914.zafiro.app.ui.chat.helper.userGroupTailIndex
 import com.niki914.zafiro.app.ui.chat.helper.userGroupText
 import com.niki914.zafiro.app.ui.home.composer.ZafiroChatComposer
-import com.niki914.zafiro.app.ui.home.helper.CameraTarget
-import com.niki914.zafiro.app.ui.home.helper.GrantingTakePicture
-import com.niki914.zafiro.app.ui.home.helper.createCameraTarget
-import com.niki914.zafiro.app.ui.home.helper.isImportableImage
+import com.niki914.zafiro.app.ui.home.composer.attach.CameraTarget
+import com.niki914.zafiro.app.ui.home.composer.attach.GrantingTakePicture
+import com.niki914.zafiro.app.ui.home.composer.attach.HomeAttachmentSheet
+import com.niki914.zafiro.app.ui.home.composer.attach.createCameraTarget
+import com.niki914.zafiro.app.ui.home.composer.attach.isImportableImage
 import com.niki914.zafiro.app.ui.model.home.ActionSource
 import com.niki914.zafiro.app.ui.model.home.HomeChatFile
 import com.niki914.zafiro.app.ui.model.home.HomeChatImage

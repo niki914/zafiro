@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.ui.chat.composable.body.ActionBodyDispatcher
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.chat.model.ActionUiModel
-import com.niki914.zafiro.app.ui.content.BlockIconDot
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockIconDot
 
 /**
  * 复合步骤收纳容器内的轻量内嵌步骤行：
