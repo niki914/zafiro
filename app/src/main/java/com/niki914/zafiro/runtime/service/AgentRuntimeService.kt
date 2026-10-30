@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.runtime.service
 
 import android.app.NotificationChannel
@@ -22,6 +23,7 @@ import com.niki914.zafiro.api.TurnStart
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.TurnFailureCode
+import com.niki914.zafiro.api.model.isRunning
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.notification.ResidentNotificationBuilder
 import com.niki914.zafiro.app.notification.ResidentNotificationManager
@@ -45,6 +47,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -512,9 +515,9 @@ class AgentRuntimeService : Service() {
                     }
                 }
 
-                turnAgent.status.first { state ->
-                    state is AgentState.Idle
-                }
+                turnAgent.status
+                    .dropWhile { !it.isRunning }
+                    .first { !it.isRunning }
                 conversationJob.cancel()
             }
 
