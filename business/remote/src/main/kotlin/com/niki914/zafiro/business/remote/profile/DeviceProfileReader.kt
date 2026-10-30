@@ -118,7 +118,7 @@ internal object DeviceProfileReader {
     private fun clip(value: String, maxChars: Int): String =
         if (value.length <= maxChars) value else value.take(maxChars)
 
-    private fun signalsFrom(context: Context): DeviceSignals {
+    internal fun signalsFrom(context: Context): DeviceSignals {
         val configuration = context.resources.configuration
         val memory = ActivityManager.MemoryInfo()
         context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(memory)

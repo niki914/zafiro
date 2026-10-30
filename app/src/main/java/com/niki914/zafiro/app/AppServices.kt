@@ -6,6 +6,7 @@ import com.niki914.xsettings.XSettings
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.McpService
+import com.niki914.zafiro.api.telemetry.Telemetry
 import com.niki914.zafiro.app.conversation.RoomConversationStore_Tmp
 import com.niki914.zafiro.business.agent.AgentManagerImpl
 import com.niki914.zafiro.business.agent.ConversationStore_Tmp
@@ -17,8 +18,10 @@ import com.niki914.zafiro.business.notification.NotificationChannelManager
 import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionManagerImpl
+import com.niki914.zafiro.business.remote.TelemetryImpl
 import com.niki914.zafiro.mcp.service.McpServiceImpl
 import com.niki914.zafiro.mod.feat.ZafiroAccessibilityService
+import com.niki914.zafiro.repo.SharedHttp
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.repo.XSettingsImpl
 import com.niki914.zafiro.service.installService
@@ -66,5 +69,13 @@ object AppServices {
 
         // MCP 服务：把 Zafiro 的工具暴露成标准 MCP Streamable HTTP 端点
         installService<McpService>(McpServiceImpl { XRepo.mcpService.get() })
+
+        // 遥测服务：后台账本同步与活跃探测
+        val telemetry = TelemetryImpl(
+            context = application,
+            http = { SharedHttp.client },
+        )
+        telemetry.attach()
+        installService<Telemetry>(telemetry)
     }
 }

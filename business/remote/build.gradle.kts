@@ -17,6 +17,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -24,6 +28,7 @@ dependencies {
     implementation(project(":xsettings"))
     implementation(project(":libs:logging"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // 与 ui-kit、remote-view 的 lifecycle 2.8.7 对齐。仓库没有 version catalog。
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
 
