@@ -112,13 +112,19 @@ fun HomePageContent(
     val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
     val overscrollController = rememberZafiroOverscrollController()
+    val scrollOffsetThresholdPx = with(density) { 1.dp.roundToPx() }
 
     // Home 必须显式接管顶栏折叠信号：列表位置会由程序化驱动（自动贴底），且工具结果框
     // 自带滚动子树——两者都是壳层累积量看不见的位移；当向上超滚时，内容推入顶栏区，顶栏需变实体遮挡。
+    // 空会话或加载态下不存在列表内容，仅响应向上超滚。
     ReportTitleBarCollapsed {
-        listState.firstVisibleItemIndex > 0 ||
-            listState.firstVisibleItemScrollOffset > 0 ||
+        if (uiState.turns.isEmpty() || uiState.isLoadingConversation) {
             overscrollController.overscrollOffset.value < 0f
+        } else {
+            listState.firstVisibleItemIndex > 0 ||
+                listState.firstVisibleItemScrollOffset > scrollOffsetThresholdPx ||
+                overscrollController.overscrollOffset.value < 0f
+        }
     }
 
     val imeBottom = with(density) { WindowInsets.ime.getBottom(this).toDp() }
@@ -187,7 +193,11 @@ fun HomePageContent(
 
     // 只在结构性内容事件发生时跳转：若存在分支切换/重生成锚点，则优先执行视口原地锚定
     LaunchedEffect(bottomContentVersion) {
-        if (uiState.isLoadingConversation || uiState.turns.isEmpty()) {
+        if (uiState.turns.isEmpty()) {
+            listState.scrollToItem(0, 0)
+            return@LaunchedEffect
+        }
+        if (uiState.isLoadingConversation) {
             return@LaunchedEffect
         }
         val anchor = pendingViewportAnchor
