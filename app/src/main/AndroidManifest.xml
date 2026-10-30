@@ -71,6 +71,7 @@
             android:name="com.niki914.zafiro.app.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:theme="@style/Theme.Zafiro.Starting"
             android:windowSoftInputMode="adjustResize">
 
             <intent-filter>

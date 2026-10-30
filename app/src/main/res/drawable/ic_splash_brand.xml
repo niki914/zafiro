@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 启动屏多面体水晶线框：无背景，黑白深浅色模式自适应 -->
+
+    <!-- 左侧外轮廓线 -->
+    <path
+        android:pathData="M54,34 L44,52.3 C45.4,53.7 45.4,55.3 44,56.7 L54,74"
+        android:strokeWidth="2"
+        android:strokeColor="@color/splash_icon_color"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 左侧内棱线 -->
+    <path
+        android:pathData="M54,34 L49,52.3 C49.4,53.7 49.4,55.3 49,56.7 L54,74"
+        android:strokeWidth="1.5"
+        android:strokeColor="@color/splash_icon_color"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 右侧内棱线 -->
+    <path
+        android:pathData="M54,34 L59,52.3 C58.6,53.7 58.6,55.3 59,56.7 L54,74"
+        android:strokeWidth="1.5"
+        android:strokeColor="@color/splash_icon_color"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 右侧外轮廓线 -->
+    <path
+        android:pathData="M54,34 L64,52.3 C62.6,53.7 62.6,55.3 64,56.7 L54,74"
+        android:strokeWidth="2"
+        android:strokeColor="@color/splash_icon_color"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 凹陷层上下界面的水平横线 -->
+    <path
+        android:pathData="M44,52.3 L64,52.3"
+        android:strokeWidth="1.5"
+        android:strokeColor="@color/splash_icon_color"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M44,56.7 L64,56.7"
+        android:strokeWidth="1.5"
+        android:strokeColor="@color/splash_icon_color"
+        android:strokeLineCap="round" />
+</vector>

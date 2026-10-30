@@ -15,6 +15,13 @@
         <!-- Customize your theme here. -->
     </style>
 
+    <!-- 启动屏主题：纯黑白、无背景底卡、深浅色模式自适应 -->
+    <style name="Theme.Zafiro.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_brand</item>
+        <item name="postSplashScreenTheme">@style/Theme.AppDefault</item>
+    </style>
+
     <!-- 文本选择菜单入口：完全透明、无 dim、无窗口动画。 -->
     <style name="Theme.AppDefault.TextAction" parent="Theme.AppDefault">
         <item name="android:windowIsTranslucent">true</item>
