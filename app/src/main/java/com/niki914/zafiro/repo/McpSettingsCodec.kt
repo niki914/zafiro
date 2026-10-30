@@ -5,7 +5,7 @@ import com.niki914.zafiro.repo.SettingsJsonCodecUtils.enabledForAgent
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.obj
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.orEmptyObjects
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.parseObject
-import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
+import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringNonBlankOrNull
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -31,10 +31,9 @@ internal object McpSettingsCodec {
             .array(SERVERS_KEY)
             .orEmptyObjects()
             .mapNotNull { obj ->
-                val id = obj.string(ID_KEY).trim()
-                val name = obj.string(NAME_KEY).trim()
-                val url = obj.string(URL_KEY).trim()
-                if (id.isBlank() || name.isBlank() || url.isBlank()) return@mapNotNull null
+                val id = obj.stringNonBlankOrNull(ID_KEY) ?: return@mapNotNull null
+                val name = obj.stringNonBlankOrNull(NAME_KEY) ?: return@mapNotNull null
+                val url = obj.stringNonBlankOrNull(URL_KEY) ?: return@mapNotNull null
                 McpServer(
                     name = name,
                     url = url,

@@ -58,6 +58,11 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_execution_rules_summary,
         routeSuffix = "execution-rules",
     ),
+    MaskingRules(
+        titleRes = R.string.ui_settings_masking_rules,
+        summaryRes = R.string.ui_settings_masking_rules_summary,
+        routeSuffix = "masking-rules",
+    ),
     Theme(
         titleRes = R.string.ui_settings_general_group_appearance,
         summaryRes = null,

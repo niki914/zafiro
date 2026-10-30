@@ -63,6 +63,28 @@ internal object SettingsJsonCodecUtils {
         return JsonArray(values.map(String::trim).filter(String::isNotBlank).map(::JsonPrimitive))
     }
 
+    fun JsonObject.stringNonBlankOrNull(key: String): String? {
+        return string(key).trim().takeIf(String::isNotBlank)
+    }
+
+    inline fun <reified E : Enum<E>> JsonObject.enumOrDefault(key: String, default: E): E {
+        val raw = string(key).trim()
+        if (raw.isEmpty()) return default
+        return enumValues<E>().firstOrNull { it.name.equals(raw, ignoreCase = true) } ?: default
+    }
+
+    fun JsonObject.intClamped(key: String, default: Int, min: Int, max: Int): Int {
+        return int(key, default).coerceIn(min, max)
+    }
+
+    fun JsonObject.longClamped(key: String, default: Long, min: Long, max: Long): Long {
+        return long(key, default).coerceIn(min, max)
+    }
+
+    inline fun <T> JsonObject.sanitized(key: String, sanitize: (String) -> T): T {
+        return sanitize(string(key))
+    }
+
     fun enabledForAgent(element: JsonElement?, agentId: String): Boolean? {
         val agents = element as? JsonArray ?: return null
         return agents.any { item ->

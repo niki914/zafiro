@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.niki914.zafiro.app.ui.chat.composable.attachment.HomeChatImageCard
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
-import com.niki914.zafiro.app.ui.content.BlockSpacing
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockSpacing
 import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
 import com.niki914.zafiro.app.ui.viewer.ViewerContent
 

@@ -33,12 +33,12 @@ import com.niki914.uikit.base.ThemeStyle
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.chat.model.ActionUiModel
-import com.niki914.zafiro.app.ui.content.BlockCircularLoaderSize
-import com.niki914.zafiro.app.ui.content.BlockIconDot
-import com.niki914.zafiro.app.ui.content.BlockLoaderSize
-import com.niki914.zafiro.app.ui.content.BlockRowChevron
-import com.niki914.zafiro.app.ui.content.BlockRowGap
-import com.niki914.zafiro.app.ui.content.BlockRowIcon
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockCircularLoaderSize
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockIconDot
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockLoaderSize
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockRowChevron
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockRowGap
+import com.niki914.zafiro.app.ui.chat.composable.spacing.BlockRowIcon
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 
 /**

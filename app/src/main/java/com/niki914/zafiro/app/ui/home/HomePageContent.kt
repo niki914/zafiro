@@ -1,5 +1,5 @@
 // githooks:ignore-file file-token-limit
-package com.niki914.zafiro.app.ui.content
+package com.niki914.zafiro.app.ui.home
 
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.WindowInsets
@@ -35,13 +35,14 @@ import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.notification.TurnNotificationManager
+import com.niki914.zafiro.app.ui.chat.helper.rememberScrollFollowState
 import com.niki914.zafiro.app.ui.helper.ZafiroToast
-import com.niki914.zafiro.app.ui.content.dialog.ScreenControlConsentDialog
-import com.niki914.zafiro.app.ui.content.dialog.ToolPermissionDialog
-import com.niki914.zafiro.app.ui.content.dialog.UpdateAvailableDialog
-import com.niki914.zafiro.app.ui.content.header.HomeConfigPopover
-import com.niki914.zafiro.app.ui.content.header.HomeTitleConfigChip
-import com.niki914.zafiro.app.ui.content.header.HomeTopBarContribution
+import com.niki914.zafiro.app.ui.home.dialog.ScreenControlConsentDialog
+import com.niki914.zafiro.app.ui.home.dialog.ToolPermissionDialog
+import com.niki914.zafiro.app.ui.home.dialog.UpdateAvailableDialog
+import com.niki914.zafiro.app.ui.home.header.HomeConfigPopover
+import com.niki914.zafiro.app.ui.home.header.HomeTitleConfigChip
+import com.niki914.zafiro.app.ui.home.header.HomeTopBarContribution
 import com.niki914.zafiro.app.ui.model.home.FileAttachReason
 import com.niki914.zafiro.app.ui.model.home.HomeChatEffect
 import com.niki914.zafiro.app.ui.model.home.HomeChatIntent
@@ -112,13 +113,19 @@ fun HomePageContent(
     val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
     val overscrollController = rememberZafiroOverscrollController()
+    val scrollOffsetThresholdPx = with(density) { 1.dp.roundToPx() }
 
     // Home 必须显式接管顶栏折叠信号：列表位置会由程序化驱动（自动贴底），且工具结果框
     // 自带滚动子树——两者都是壳层累积量看不见的位移；当向上超滚时，内容推入顶栏区，顶栏需变实体遮挡。
+    // 空会话或加载态下不存在列表内容，仅响应向上超滚。
     ReportTitleBarCollapsed {
-        listState.firstVisibleItemIndex > 0 ||
-            listState.firstVisibleItemScrollOffset > 0 ||
+        if (uiState.turns.isEmpty() || uiState.isLoadingConversation) {
             overscrollController.overscrollOffset.value < 0f
+        } else {
+            listState.firstVisibleItemIndex > 0 ||
+                listState.firstVisibleItemScrollOffset > scrollOffsetThresholdPx ||
+                overscrollController.overscrollOffset.value < 0f
+        }
     }
 
     val imeBottom = with(density) { WindowInsets.ime.getBottom(this).toDp() }
@@ -187,7 +194,11 @@ fun HomePageContent(
 
     // 只在结构性内容事件发生时跳转：若存在分支切换/重生成锚点，则优先执行视口原地锚定
     LaunchedEffect(bottomContentVersion) {
-        if (uiState.isLoadingConversation || uiState.turns.isEmpty()) {
+        if (uiState.turns.isEmpty()) {
+            listState.scrollToItem(0, 0)
+            return@LaunchedEffect
+        }
+        if (uiState.isLoadingConversation) {
             return@LaunchedEffect
         }
         val anchor = pendingViewportAnchor
@@ -371,19 +382,21 @@ fun HomePageContent(
             viewModel.sendIntent(HomeChatIntent.InputChanged(value))
         },
         onSendClick = {
-            val query = uiState.input.trim()
-            val hasAttachments =
-                uiState.pendingImages.isNotEmpty() || uiState.pendingFiles.isNotEmpty()
-            if (query.isNotEmpty() || hasAttachments) {
-                dismissInputFocus()
-                pendingViewportAnchor = ViewportAnchor(
-                    index = uiState.turns.size,
-                    offset = 0,
-                    followOnGeneration = true,
-                )
-                shouldFollowBottom = true
+            if (!uiState.isLoadingConversation) {
+                val query = uiState.input.trim()
+                val hasAttachments =
+                    uiState.pendingImages.isNotEmpty() || uiState.pendingFiles.isNotEmpty()
+                if (query.isNotEmpty() || hasAttachments) {
+                    dismissInputFocus()
+                    pendingViewportAnchor = ViewportAnchor(
+                        index = uiState.turns.size,
+                        offset = 0,
+                        followOnGeneration = true,
+                    )
+                    shouldFollowBottom = true
+                }
+                viewModel.sendIntent(HomeChatIntent.Send)
             }
-            viewModel.sendIntent(HomeChatIntent.Send)
         },
         onStopClick = {
             viewModel.sendIntent(HomeChatIntent.StopGenerating)

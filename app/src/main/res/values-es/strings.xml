@@ -632,4 +632,34 @@
     <string name="text_action_error_save_failed">Error al guardar la acción.</string>
     <string name="text_action_error_delete_failed">Error al eliminar la acción.</string>
     <string name="crash_startup_copied_toast">Traza de pila copiada. Envíala al desarrollador.</string>
+
+    <string name="ui_settings_masking_rules">Enmascaramiento de datos</string>
+    <string name="ui_settings_masking_rules_summary">Enmascarar datos sensibles antes de solicitudes salientes</string>
+    <string name="masking_rules_page_description">Configure reglas de enmascaramiento para datos sensibles. Las coincidencias en solicitudes salientes se sustituirán por marcadores de posición mientras los chats locales y herramientas conservan los datos originales.</string>
+    <string name="masking_rules_empty_action_hint">Toque en la esquina superior derecha para añadir su primera regla de enmascaramiento.</string>
+    <string name="masking_rules_loading">Cargando reglas de enmascaramiento...</string>
+    <string name="masking_rules_editor_title_create">Nueva regla de enmascaramiento</string>
+    <string name="masking_rules_editor_description">Los datos sensibles solo se reemplazan por marcadores de posición antes de enviar solicitudes salientes. La visualización local y la ejecución de herramientas no se ven afectadas.</string>
+    <string name="masking_rules_field_name">Nombre de la regla</string>
+    <string name="masking_rules_field_name_hint">Ejemplo: Clave de API</string>
+    <string name="masking_rules_field_enabled">Habilitar regla</string>
+    <string name="masking_rules_field_kind">Tipo de etiqueta</string>
+    <string name="masking_rules_field_kind_hint">API_KEY</string>
+    <string name="masking_rules_field_kind_description">Prefijo del marcador de posición. Por ejemplo, API_KEY se reemplazará por marcadores numerados.</string>
+    <string name="masking_rules_field_patterns">Reglas</string>
+    <string name="masking_rules_field_patterns_hint">Ejemplo: \bsk-[a-zA-Z0-9_\-]{20,}\b</string>
+    <string name="masking_rules_field_patterns_description">Introduzca una palabra clave o expresión regular por línea. El enmascaramiento se activa cuando coincide cualquiera de ellas.</string>
+    <string name="masking_rules_save_action">Guardar regla</string>
+    <string name="masking_rules_error_name_required">Introduzca un nombre para la regla</string>
+    <string name="masking_rules_error_kind_required">Introduzca un tipo de etiqueta</string>
+    <string name="masking_rules_error_kind_invalid">Tipo de etiqueta no válido</string>
+    <string name="masking_rules_error_patterns_required">Introduzca al menos una regla</string>
+    <string name="masking_rules_error_load_failed_generic">Error al cargar las reglas de enmascaramiento</string>
+    <string name="masking_rules_error_load_failed">Error al cargar las reglas de enmascaramiento: %1$s</string>
+    <string name="masking_rules_error_save_failed_generic">Error al guardar la regla de enmascaramiento</string>
+    <string name="masking_rules_error_save_failed">Error al guardar la regla de enmascaramiento: %1$s</string>
+    <string name="masking_rules_error_delete_failed_generic">Error al eliminar la regla de enmascaramiento</string>
+    <string name="masking_rules_error_delete_failed">Error al eliminar la regla de enmascaramiento: %1$s</string>
+    <string name="masking_rules_delete_dialog_title">Eliminar regla de enmascaramiento</string>
+    <string name="masking_rules_delete_dialog_text">¿Está seguro de que desea eliminar la regla de enmascaramiento «%1$s»? Esta acción no se puede deshacer.</string>
 </resources>

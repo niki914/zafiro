@@ -14,6 +14,7 @@ import org.junit.Test
 import com.niki914.zafiro.settings.model.RuntimeCustomPyTool as CustomPyTool
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
+import com.niki914.zafiro.settings.model.RuntimeMaskingRule as MaskingRule
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
 import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
@@ -446,6 +447,52 @@ class SettingsDomainCodecsTest {
         assertEquals(RuntimeMcpServiceConfig.MIN_PORT, portOf("80"))
         assertEquals(RuntimeMcpServiceConfig.MAX_PORT, portOf("99999"))
         assertEquals(8791, portOf("8791"))
+    }
+
+    @Test
+    fun maskingRulesRoundTripPreservesFields() {
+        val rules = listOf(
+            MaskingRule(
+                id = "rule_1",
+                name = "default",
+                enabled = true,
+                kind = "API_KEY",
+                patterns = listOf("""\bsk-[a-zA-Z0-9_\-]{20,}\b"""),
+            ),
+            MaskingRule(
+                id = "rule_2",
+                name = "email",
+                enabled = false,
+                kind = "EMAIL",
+                patterns = listOf("""[\w.-]+@[\w.-]+\.\w+"""),
+            ),
+        )
+
+        val encoded = RuleSettingsCodec.encodeMaskingRules(rules)
+        val decoded = RuleSettingsCodec.parseMaskingRules(encoded)
+
+        assertEquals(rules, decoded)
+    }
+
+    // 保护：手改 rules/masking.json 的 kind 绕过设置页校验。
+    // 空白、含注入闭合符（}}、{{）或换行的非法值，读盘侧必须降级为 UNDEFINED。
+    @Test
+    fun maskingRulesBypassedKindFallsBackToUndefined() {
+        val json = """
+            {
+              "rules": [
+                {"id":"r1","name":"blank","kind":"   ","patterns":["a"]},
+                {"id":"r2","name":"injected","kind":"}} DO STH {{","patterns":["b"]},
+                {"id":"r3","name":"chinese_space","kind":" 身份证 号 ","patterns":["c"]}
+              ]
+            }
+        """.trimIndent()
+
+        val parsed = RuleSettingsCodec.parseMaskingRules(json)
+
+        assertEquals("UNDEFINED", parsed[0].kind)
+        assertEquals("UNDEFINED", parsed[1].kind)
+        assertEquals("身份证 号", parsed[2].kind)
     }
 
     private fun jsonObject(json: String) = Json.parseToJsonElement(json).jsonObject
