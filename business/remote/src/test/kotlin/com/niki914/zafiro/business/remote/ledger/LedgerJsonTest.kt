@@ -36,7 +36,7 @@ class LedgerJsonTest {
                     pages = listOf(
                         DayPage(
                             day = today,
-                            dayKey = "6f1c2a4e-8d3b-4c1a-9e2f-0b7d5a3c9e11",
+                            dayKey = SAMPLE_DAY_KEY,
                             rev = TelemetryContract.LIMIT_REV_MIN,
                             ackedRev = 0,
                             versionCode = 16,
@@ -66,7 +66,7 @@ class LedgerJsonTest {
             pages = listOf(
                 DayPage(
                     day = today,
-                    dayKey = "6f1c2a4e-8d3b-4c1a-9e2f-0b7d5a3c9e11",
+                    dayKey = SAMPLE_DAY_KEY,
                     rev = 2,
                     ackedRev = 1,
                     versionCode = 16,
@@ -133,10 +133,12 @@ private val TOP_KEYS = setOf(
     "send",
 )
 
+private const val SAMPLE_DAY_KEY = "00000000-0000-4000-8000-000000000000"
+
 private fun storedPage(day: LocalDate): DayPage {
     return DayPage(
         day = day,
-        dayKey = "6f1c2a4e-8d3b-4c1a-9e2f-0b7d5a3c9e11",
+        dayKey = SAMPLE_DAY_KEY,
         rev = TelemetryContract.LIMIT_REV_MIN,
         ackedRev = 0,
         versionCode = 16,

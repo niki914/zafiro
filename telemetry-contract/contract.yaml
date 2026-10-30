@@ -59,7 +59,7 @@ config_keys:
   - name: report_interval_hours
     type: int
     default: 24
-    min: 24
+    min: 1
     max: 168
   - name: config_ttl_hours
     type: int
