@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_permission_dialog_title">IA solicita execução de uma operação</string>
+    <string name="tool_permission_request_intro">A ferramenta do Zafiro "%1$s" deseja executar o seguinte comando:</string>
+    <string name="tool_permission_matched_rule">Regra correspondida "%1$s": %2$s</string>
+    <string name="tool_permission_allow">Permitir uma vez</string>
+    <string name="tool_permission_deny">Negar</string>
+    <string name="floating_ball_approval_pending">Ação pendente de aprovação (%1$s)</string>
+    <string name="floating_ball_approval_reason_unknown">Pendente</string>
+    <string name="floating_ball_approval_view_details">Clique para ver detalhes</string>
+    <string name="floating_ball_tool_running">Executando %1$s</string>
+    <string name="screen_control_consent_title">Solicitação de permissão de controle de tela</string>
+    <string name="screen_control_consent_body">O Zafiro precisa de permissões de acessibilidade e sobreposição de tela para controlar a tela.</string>
+    <string name="screen_control_consent_agree">Concordar</string>
+</resources>
