@@ -1,6 +1,7 @@
 # 两端共用的埋点契约。
 # schema_version、contract_version、limits、channels 用协议里的名字。
-# limits 内的键与服务端 LIMITS 属性同名。事件白名单和扩展键是空的。
+# limits 内的键与服务端 LIMITS 属性同名。
+# DayPage 包含: day_key, activity_day, rev, prev_day_key(可选跨天串联UUID), prev_active_day, prev_version_code, custom, counts, counts_truncated, firsts.
 schema_version: 1
 contract_version: 1
 
@@ -59,7 +60,7 @@ config_keys:
   - name: report_interval_hours
     type: int
     default: 24
-    min: 24
+    min: 1
     max: 168
   - name: config_ttl_hours
     type: int
@@ -67,9 +68,38 @@ config_keys:
     min: 12
     max: 168
 
-events: []
+# 业务埋点事件白名单（含 counts 聚合计数事件与 firsts 首次里程碑事件）
+events:
+  # 应用冷启动（含新用户、升级老用户首启及日常启动来源）
+  - name: app_cold_start
+    labels: [first_new, first_legacy_update, first_update, launcher, assistant, text_action, service]
+  # 应用从后台切回前台
+  - name: app_foreground
+  # 应用前台累计活跃时长（数值 n 为累计秒数）
+  - name: app_active_duration
+  # 完成新手引导向导并进入主页
+  - name: onboard_complete
+    labels: [deepseek, openai, anthropic, custom]
+  # 发起对话请求回合
+  - name: chat_turn_start
+    labels: [text, attachment]
+  # 对话请求回合结束终态结算
+  - name: chat_turn_end
+    labels: [success, stopped, error_network, error_auth_quota, error_model]
+  # 语音助手宿主接管唤醒
+  - name: takeover_invoke
+    labels: [breeno, xiaoai]
+  # 首次体验里程碑事件（专属 firsts 数组）
+  - name: first_onboard
+  - name: first_chat
+  - name: first_takeover
 
-custom_keys: []
+# 自定义扩展键白名单
+custom_keys:
+  # 记录在 DayPage.custom，用于区分设备在当天的启动分群
+  - name: user_cohort
+    target: day
+    type: string
 
 ram_gb_buckets: [2, 3, 4, 6, 8, 12, 16, 24]
 

@@ -20,6 +20,7 @@ import com.niki914.zafiro.api.Agent
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.TurnStart
+import com.niki914.zafiro.api.telemetry.Metrics
 import com.niki914.zafiro.api.model.AgentState
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.TurnFailureCode
@@ -202,11 +203,21 @@ class AgentRuntimeService : Service() {
             }
             Logger.i(LOG_TAG, "submit accepted queryLength=${q.length}")
 
+            val callingUid = getCallingUid()
+            val callingPackages = packageManager.getPackagesForUid(callingUid)
+            val host = callingPackages?.firstNotNullOfOrNull { HostApp.fromPackageName(it) }
+
             try {
                 cb.asBinder().linkToDeath(deathRecipient, 0)
             } catch (e: Exception) {
                 Logger.e(LOG_TAG, "submit failed linkToDeath error=${e.message}")
                 return
+            }
+
+            when (host) {
+                HostApp.Breeno -> Metrics.takeoverInvoke("breeno")
+                HostApp.XiaoAi -> Metrics.takeoverInvoke("xiaoai")
+                null -> Unit
             }
 
             val isIsolated = runBlocking { XRepo.voiceAssistantIsolatedSession() }

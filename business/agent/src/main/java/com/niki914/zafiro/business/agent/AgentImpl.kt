@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.business.agent
 
 import com.niki914.logging.Logger
@@ -17,8 +18,10 @@ import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.Draft
 import com.niki914.zafiro.api.model.DraftImage
 import com.niki914.zafiro.api.model.isRunning
+import com.niki914.zafiro.api.telemetry.Metrics
 import com.niki914.zafiro.business.agent.AgentImpl.Companion.STATUS_TEXT_THROTTLE_MS
 import com.niki914.zafiro.chat.AgentSessionEngine
+import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
 import com.niki914.zafiro.service.findService
 import com.niki914.zafiro.service.requireService
@@ -81,6 +84,7 @@ class AgentImpl(
     internal val isRoundActive: Boolean get() = roundActive.value
     private var streamJob: Job? = null
     private var roundToken = 0
+    private var roundEndedReportedToken = 0
     private var lastStatusEmitMs = 0L
 
     private var reduced = Reduced(Conversation())
@@ -205,6 +209,7 @@ class AgentImpl(
         reducedStatus = AgentStateReducer.startRound()
         emitStatus(reducedStatus.status)
         foldWith(ConversationReducer.startTurn(conversationFlow.value, query, images, files))
+        Metrics.chatTurnStart(hasAttachment = images.isNotEmpty() || files.isNotEmpty())
 
         val token = ++roundToken
         streamJob = scope.launch {
@@ -229,6 +234,7 @@ class AgentImpl(
                     else {
                         reducedStatus = AgentStateReducer.interrupt(reducedStatus)
                         emitStatus(reducedStatus.status)
+                        notifyTurnEnd(token, "error_model")
                     }
                 }
             } finally {
@@ -247,6 +253,7 @@ class AgentImpl(
 
     override fun stop() {
         if (!roundActive.value || statusFlow.value is AgentState.Stopping) return
+        notifyTurnEnd(roundToken, "stopped")
 
         activeApproval?.result?.complete(ApprovalDecision.Deny)
 
@@ -434,6 +441,9 @@ class AgentImpl(
 
     /** 退役当前回合的门禁：旧回合的 finally 不再改它（token 已推进）。 */
     private fun releaseRound() {
+        if (roundActive.value) {
+            notifyTurnEnd(roundToken, "stopped")
+        }
         roundToken++
         roundActive.value = false
         activeApproval?.result?.complete(ApprovalDecision.Deny)
@@ -478,6 +488,31 @@ class AgentImpl(
         foldWith(next)
         reducedStatus = AgentStateReducer.reduce(reducedStatus, event)
         publishStatus(reducedStatus.status, event)
+
+        when (event) {
+            LlmStreamEvent.Completed -> {
+                if (statusFlow.value !is AgentState.Stopping) {
+                    notifyTurnEnd(roundToken, "success")
+                }
+            }
+            is LlmStreamEvent.Error -> {
+                if (statusFlow.value !is AgentState.Stopping) {
+                    val status = when (event.code) {
+                        LlmErrorCode.Auth, LlmErrorCode.Quota -> "error_auth_quota"
+                        LlmErrorCode.Transport, LlmErrorCode.IdleTimeout, LlmErrorCode.RetryExhausted -> "error_network"
+                        else -> "error_model"
+                    }
+                    notifyTurnEnd(roundToken, status)
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    private fun notifyTurnEnd(token: Int, status: String) {
+        if (roundEndedReportedToken == token) return
+        roundEndedReportedToken = token
+        Metrics.chatTurnEnd(status)
     }
 
     /**

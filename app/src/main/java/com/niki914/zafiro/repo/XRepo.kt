@@ -100,6 +100,7 @@ object XRepo {
         floatingBallAutoExpandField.flow.value = true
         floatingBallOpacityPercentField.flow.value = 60
         floatingBallSubmergedOffsetDpField.flow.value = 8
+        languageTagField.flow.value = ""
         mcpService.resetForTest()
         llmConfigs.resetForTest()
     }
@@ -315,11 +316,14 @@ object XRepo {
         update = { copy(lastOpenedConversationId = it) },
         normalize = { it.trim() },
     )
-    private val languageTagField = PlainAppStateField(
+    /** 应用内语言的进程内热更新通道（空串表示跟随系统；app 以外经 XSettings.appLanguageTag 读）。 */
+    private val languageTagField = ReactiveAppStateField(
+        default = "",
         select = { languageTag },
         update = { copy(languageTag = it) },
-        normalize = { it.trim() },
     )
+    val appLanguageTagSetting: MutableStateFlow<String>
+        get() = languageTagField.flow
     private val loadLastConversationOnStartupField = PlainAppStateField(
         select = { loadLastConversationOnStartup },
         update = { copy(loadLastConversationOnStartup = it) },
@@ -360,7 +364,7 @@ object XRepo {
 
     suspend fun languageTag(): String = languageTagField.get()
 
-    suspend fun setLanguageTag(tag: String) = languageTagField.set(tag)
+    suspend fun setLanguageTag(tag: String) = languageTagField.set(tag.trim())
 
     suspend fun loadLastConversationOnStartup(): Boolean = loadLastConversationOnStartupField.get()
 

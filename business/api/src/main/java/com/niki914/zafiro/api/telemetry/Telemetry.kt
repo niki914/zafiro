@@ -20,11 +20,28 @@ interface Telemetry {
     fun setDayCustom(key: CustomKeyDef, value: CustomValue?)
 }
 
-/** 契约里声明过的事件。当前没有子类型。 */
-sealed interface EventDef
+/** 契约里声明过的事件。 */
+sealed interface EventDef {
+    val wireName: String
 
-/** 契约里声明过的扩展键。当前没有子类型。 */
-sealed interface CustomKeyDef
+    data object AppColdStart : EventDef { override val wireName = "app_cold_start" }
+    data object AppForeground : EventDef { override val wireName = "app_foreground" }
+    data object AppActiveDuration : EventDef { override val wireName = "app_active_duration" }
+    data object OnboardComplete : EventDef { override val wireName = "onboard_complete" }
+    data object ChatTurnStart : EventDef { override val wireName = "chat_turn_start" }
+    data object ChatTurnEnd : EventDef { override val wireName = "chat_turn_end" }
+    data object TakeoverInvoke : EventDef { override val wireName = "takeover_invoke" }
+    data object FirstOnboard : EventDef { override val wireName = "first_onboard" }
+    data object FirstChat : EventDef { override val wireName = "first_chat" }
+    data object FirstTakeover : EventDef { override val wireName = "first_takeover" }
+}
+
+/** 契约里声明过的扩展键。 */
+sealed interface CustomKeyDef {
+    val wireName: String
+
+    data object UserCohort : CustomKeyDef { override val wireName = "user_cohort" }
+}
 
 /** 扩展口的值：字符串、整数、布尔。 */
 sealed interface CustomValue {
