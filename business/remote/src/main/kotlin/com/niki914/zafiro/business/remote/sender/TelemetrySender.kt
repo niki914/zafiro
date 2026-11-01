@@ -1,6 +1,7 @@
 package com.niki914.zafiro.business.remote.sender
 
 import com.niki914.logging.Logger
+import com.niki914.zafiro.api.telemetry.CustomValue
 import com.niki914.zafiro.api.telemetry.TelemetryContract
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.api.util.tryOrNull
@@ -9,6 +10,7 @@ import com.niki914.zafiro.business.remote.config.RemoteConfig
 import com.niki914.zafiro.business.remote.config.RemoteConfigClient
 import com.niki914.zafiro.business.remote.ledger.InstallFacts
 import com.niki914.zafiro.business.remote.ledger.Ledger
+import com.niki914.zafiro.business.remote.ledger.PageCount
 import com.niki914.zafiro.business.remote.ledger.SendSnapshot
 import com.niki914.zafiro.business.remote.profile.DeviceProfile
 import com.niki914.zafiro.business.remote.profile.DeviceProfileReader
@@ -78,7 +80,7 @@ internal object TelemetryPayload {
         root.put("device", device)
 
         root.put("dropped_days", snapshot.droppedDays)
-        root.put("custom", JSONObject())
+        root.put("custom", encodeCustom(snapshot.envelopeCustom))
 
         val daysArray = JSONArray()
         for (page in snapshot.days) {
@@ -89,15 +91,47 @@ internal object TelemetryPayload {
             dayObj.put("rev", page.rev)
             dayObj.put("prev_active_day", page.prevActiveDay?.toString() ?: JSONObject.NULL)
             dayObj.put("prev_version_code", page.prevVersionCode ?: JSONObject.NULL)
-            dayObj.put("custom", JSONObject())
-            dayObj.put("counts", JSONArray())
+            dayObj.put("custom", encodeCustom(page.custom))
+            dayObj.put("counts", encodeCounts(page.counts))
             dayObj.put("counts_truncated", page.countsTruncated)
-            dayObj.put("firsts", JSONArray())
+            dayObj.put("firsts", encodeStrings(page.firsts))
             daysArray.put(dayObj)
         }
         root.put("days", daysArray)
 
         return root.toString()
+    }
+
+    private fun encodeCustom(custom: Map<String, CustomValue>): JSONObject {
+        val obj = JSONObject()
+        for ((key, value) in custom) {
+            when (value) {
+                is CustomValue.Str -> obj.put(key, value.value)
+                is CustomValue.Num -> obj.put(key, value.value)
+                is CustomValue.Bool -> obj.put(key, value.value)
+            }
+        }
+        return obj
+    }
+
+    private fun encodeCounts(counts: List<PageCount>): JSONArray {
+        val array = JSONArray()
+        for (count in counts) {
+            array.put(
+                JSONObject()
+                    .put("event", count.event)
+                    .put("label", count.label ?: JSONObject.NULL)
+                    .put("n", count.n)
+                    .put("custom", encodeCustom(count.custom)),
+            )
+        }
+        return array
+    }
+
+    private fun encodeStrings(strings: List<String>): JSONArray {
+        val array = JSONArray()
+        for (s in strings) array.put(s)
+        return array
     }
 }
 

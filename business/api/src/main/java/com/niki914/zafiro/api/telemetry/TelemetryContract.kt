@@ -70,6 +70,6 @@ object TelemetryContract {
     const val SCREEN_DENSITY_BUCKETS = "mdpi:160,hdpi:240,xhdpi:320,xxhdpi:480,xxxhdpi:640"
     const val BUILD_TYPES = "release,debug"
     const val PROFILE_FIELDS = "api_level,brand,model,abi,ram_gb,screen_class,lang,app_lang,locale_region,tz_id,tz_offset_min,installer"
-    const val EVENT_COUNT = 0
-    const val CUSTOM_KEY_COUNT = 0
+    const val EVENT_COUNT = 10
+    const val CUSTOM_KEY_COUNT = 1
 }

@@ -7,6 +7,7 @@ import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.AgentManager
 import com.niki914.zafiro.api.McpService
 import com.niki914.zafiro.api.telemetry.Telemetry
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.conversation.RoomConversationStore_Tmp
 import com.niki914.zafiro.business.agent.AgentManagerImpl
 import com.niki914.zafiro.business.agent.ConversationStore_Tmp
@@ -74,6 +75,9 @@ object AppServices {
         val telemetry = TelemetryImpl(
             context = application,
             http = { SharedHttp.client },
+            onboardingCompletedProvider = {
+                runCatchingCancellable { XRepo.onboardingCompleted() }.getOrDefault(false)
+            },
         )
         telemetry.attach()
         installService<Telemetry>(telemetry)

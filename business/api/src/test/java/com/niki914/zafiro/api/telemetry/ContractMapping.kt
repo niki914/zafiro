@@ -71,6 +71,6 @@ internal val SERVER_MAPPING: List<MappedConst> = listOf(
         "PROFILE_FIELDS",
         "api_level,brand,model,abi,ram_gb,screen_class,lang,app_lang,locale_region,tz_id,tz_offset_min,installer",
     ),
-    MappedConst("EVENT_COUNT", 0),
-    MappedConst("CUSTOM_KEY_COUNT", 0),
+    MappedConst("EVENT_COUNT", 10),
+    MappedConst("CUSTOM_KEY_COUNT", 1),
 )

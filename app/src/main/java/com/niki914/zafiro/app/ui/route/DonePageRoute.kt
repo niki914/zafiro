@@ -2,6 +2,8 @@ package com.niki914.zafiro.app.ui.route
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import com.niki914.zafiro.api.telemetry.Metrics
+import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.app.ui.content.DonePageContent
 import com.niki914.zafiro.app.ui.nav.HomePage
 import com.niki914.zafiro.app.ui.nav.OnboardingPreferencesPage
@@ -32,4 +34,8 @@ private suspend fun completeOnboarding() {
         return
     }
     XRepo.setOnboardingCompleted(true)
+    val active = runCatchingCancellable {
+        XRepo.llmConfigs.document().activeConfig()
+    }.getOrNull()
+    Metrics.onboardComplete(active?.provider?.lowercase()?.ifBlank { "unknown" } ?: "unknown")
 }
