@@ -379,6 +379,58 @@ class LedgerTest {
         fx.ledger.markActive(16)
         assertTrue(fx.ledger.snapshotForSend(fx.clock.day).days.isEmpty())
     }
+
+    @Test
+    fun `record accumulates counts for the same event and label`() = runBlocking {
+        val fx = Fixture("2026-10-26")
+        fx.ledger.record("chat_turn_start", "text", 2, emptyMap(), 16)
+        fx.ledger.record("chat_turn_start", "text", 3, emptyMap(), 16)
+        val page = fx.saved().pages.single()
+        assertEquals(1, page.counts.size)
+        assertEquals("chat_turn_start", page.counts[0].event)
+        assertEquals("text", page.counts[0].label)
+        assertEquals(5, page.counts[0].n)
+    }
+
+    @Test
+    fun `milestone event starting with first_ enters firsts and deduplicates across days`() = runBlocking {
+        val fx = Fixture("2026-10-26")
+        fx.ledger.record("first_chat", null, 1, emptyMap(), 16)
+        val page1 = fx.saved().pages.single()
+        assertEquals(listOf("first_chat"), page1.firsts)
+        assertTrue(page1.counts.isEmpty())
+
+        fx.clock.day = LocalDate.parse("2026-10-27")
+        fx.ledger.record("first_chat", null, 1, emptyMap(), 16)
+        val page2 = fx.saved().pages.find { it.day == LocalDate.parse("2026-10-27") }!!
+        assertTrue(page2.firsts.isEmpty())
+    }
+
+    @Test
+    fun `recording more than 64 distinct counts truncates and increments countsTruncated`() = runBlocking {
+        val fx = Fixture("2026-10-26")
+        for (i in 0 until 64) {
+            fx.ledger.record("event_$i", null, 1, emptyMap(), 16)
+        }
+        var page = fx.saved().pages.single()
+        assertEquals(64, page.counts.size)
+        assertEquals(0, page.countsTruncated)
+
+        fx.ledger.record("event_overflow", null, 1, emptyMap(), 16)
+        page = fx.saved().pages.single()
+        assertEquals(64, page.counts.size)
+        assertEquals(1, page.countsTruncated)
+    }
+
+    @Test
+    fun `user_cohort first_new cannot be overwritten by subsequent launcher on same day`() = runBlocking {
+        val fx = Fixture("2026-10-26")
+        fx.ledger.setDayCustom("user_cohort", CustomValue.Str("first_new"), 16)
+        assertEquals(CustomValue.Str("first_new"), fx.saved().pages.single().custom["user_cohort"])
+
+        fx.ledger.setDayCustom("user_cohort", CustomValue.Str("launcher"), 16)
+        assertEquals(CustomValue.Str("first_new"), fx.saved().pages.single().custom["user_cohort"])
+    }
 }
 
 private class Fixture(

@@ -1,6 +1,7 @@
 package com.niki914.zafiro.business.remote.ledger
 
 import com.niki914.logging.Logger
+import com.niki914.zafiro.api.telemetry.CustomValue
 import com.niki914.zafiro.api.telemetry.TelemetryContract
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import kotlinx.coroutines.sync.Mutex
@@ -31,6 +32,40 @@ internal class Ledger(
         mutex.withLock {
             val current = ready() ?: return@withLock
             val next = reduceMark(current, today(), versionCode)
+            if (next != current) persist(next)
+        }
+    }
+
+    suspend fun record(
+        event: String,
+        label: String? = null,
+        n: Int = 1,
+        custom: Map<String, CustomValue> = emptyMap(),
+        versionCode: Int,
+    ) {
+        mutex.withLock {
+            val current = ready() ?: return@withLock
+            val next = reduceRecord(current, today(), event, label, n, custom, versionCode)
+            if (next != current) persist(next)
+        }
+    }
+
+    suspend fun setDayCustom(key: String, value: CustomValue?, versionCode: Int) {
+        mutex.withLock {
+            val current = ready() ?: return@withLock
+            val next = reduceDayCustom(current, today(), key, value, versionCode)
+            if (next != current) persist(next)
+        }
+    }
+
+    suspend fun setEnvelopeCustom(key: String, value: CustomValue?) {
+        mutex.withLock {
+            val current = ready() ?: return@withLock
+            val next = if (value != null) {
+                current.copy(envelopeCustom = current.envelopeCustom + (key to value))
+            } else {
+                current.copy(envelopeCustom = current.envelopeCustom - key)
+            }
             if (next != current) persist(next)
         }
     }
@@ -246,6 +281,83 @@ private fun openPage(
     return state.copy(
         pages = state.pages + page,
         lastActive = LastActive(day, versionCode),
+    )
+}
+
+private fun reduceRecord(
+    state: LedgerState,
+    day: LocalDate,
+    event: String,
+    label: String?,
+    n: Int,
+    custom: Map<String, CustomValue>,
+    versionCode: Int,
+): LedgerState {
+    if (n < TelemetryContract.LIMIT_COUNT_N_MIN) return state
+    val marked = reduceMark(state, day, versionCode)
+    val page = marked.pages.find { it.day == day } ?: return marked
+
+    if (event.startsWith("first_")) {
+        if (event in marked.seenEvents) return marked
+        val updated = page.copy(firsts = page.firsts + event, rev = page.rev + 1)
+        return marked.copy(
+            pages = marked.pages.map { if (it.dayKey == page.dayKey) updated else it },
+            seenEvents = marked.seenEvents + event,
+        )
+    }
+
+    val existingIndex = page.counts.indexOfFirst { it.event == event && it.label == label }
+    val updatedCounts: List<PageCount>
+    var truncated = page.countsTruncated
+
+    if (existingIndex >= 0) {
+        val existing = page.counts[existingIndex]
+        val newN = (existing.n + n).coerceAtMost(TelemetryContract.LIMIT_COUNT_N_MAX)
+        val mergedCustom = if (custom.isEmpty()) existing.custom else existing.custom + custom
+        val updatedCount = existing.copy(n = newN, custom = mergedCustom)
+        updatedCounts = page.counts.toMutableList().apply { set(existingIndex, updatedCount) }
+    } else {
+        if (page.counts.size < TelemetryContract.LIMIT_COUNTS_PER_DAY) {
+            updatedCounts = page.counts + PageCount(
+                event = event,
+                label = label,
+                n = n.coerceAtMost(TelemetryContract.LIMIT_COUNT_N_MAX),
+                custom = custom,
+            )
+        } else {
+            updatedCounts = page.counts
+            truncated += 1
+        }
+    }
+
+    val updated = page.copy(
+        counts = updatedCounts,
+        countsTruncated = truncated,
+        rev = page.rev + 1,
+    )
+    return marked.copy(
+        pages = marked.pages.map { if (it.dayKey == page.dayKey) updated else it },
+    )
+}
+
+private fun reduceDayCustom(
+    state: LedgerState,
+    day: LocalDate,
+    key: String,
+    value: CustomValue?,
+    versionCode: Int,
+): LedgerState {
+    val marked = reduceMark(state, day, versionCode)
+    val page = marked.pages.find { it.day == day } ?: return marked
+    val existing = page.custom[key]
+    if (key == "user_cohort" && existing is CustomValue.Str && existing.value.startsWith("first_") && value is CustomValue.Str && !value.value.startsWith("first_")) {
+        return marked
+    }
+    val nextCustom = if (value != null) page.custom + (key to value) else page.custom - key
+    if (nextCustom == page.custom) return marked
+    val updated = page.copy(custom = nextCustom, rev = page.rev + 1)
+    return marked.copy(
+        pages = marked.pages.map { if (it.dayKey == page.dayKey) updated else it },
     )
 }
 

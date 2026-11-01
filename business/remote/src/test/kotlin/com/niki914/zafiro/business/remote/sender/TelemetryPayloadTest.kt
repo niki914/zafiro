@@ -1,8 +1,10 @@
 package com.niki914.zafiro.business.remote.sender
 
+import com.niki914.zafiro.api.telemetry.CustomValue
 import com.niki914.zafiro.api.telemetry.TelemetryContract
 import com.niki914.zafiro.business.remote.ledger.DayPage
 import com.niki914.zafiro.business.remote.ledger.InstallFacts
+import com.niki914.zafiro.business.remote.ledger.PageCount
 import com.niki914.zafiro.business.remote.ledger.SendSnapshot
 import com.niki914.zafiro.business.remote.profile.DeviceProfile
 import org.json.JSONObject
@@ -109,5 +111,75 @@ class TelemetryPayloadTest {
         assertEquals(1, day0.getInt("rev"))
         assertTrue(day0.isNull("prev_active_day"))
         assertTrue(day0.isNull("prev_version_code"))
+    }
+
+    @Test
+    fun `payload serializes counts firsts and custom properly`() {
+        val today = LocalDate.of(2026, 10, 30)
+        val count = PageCount("chat_turn_start", "text", 5, mapOf("mode" to CustomValue.Str("fast")))
+        val snapshot = SendSnapshot(
+            days = listOf(
+                DayPage(
+                    day = today,
+                    dayKey = "6f1c2a4e-8d3b-4c1a-9e2f-0b7d5a3c9e11",
+                    rev = 2,
+                    ackedRev = 0,
+                    versionCode = 16,
+                    prevActiveDay = null,
+                    prevVersionCode = null,
+                    counts = listOf(count),
+                    countsTruncated = 0,
+                    firsts = listOf("first_chat"),
+                    custom = mapOf("user_cohort" to CustomValue.Str("first_new")),
+                )
+            ),
+            droppedDays = 0,
+            envelopeCustom = mapOf("env_k" to CustomValue.Num(42)),
+        )
+
+        val installFacts = InstallFacts(
+            v = 1,
+            installStampMs = 12345L,
+            firstChannel = TelemetryContract.CHANNEL_GITHUB_NAME,
+            firstVersionCode = null,
+            installDay = "2026-10-25",
+        )
+
+        val profile = DeviceProfile(
+            apiLevel = 34,
+            lang = "zh-CN",
+            brand = "Xiaomi",
+            model = "23127PN0CC",
+            abi = "arm64-v8a",
+            ramGb = 12,
+            screenClass = "sw400_xxhdpi",
+            localeRegion = "CN",
+            tzId = "Asia/Shanghai",
+            tzOffsetMin = 480,
+        )
+
+        val jsonString = TelemetryPayload.build(
+            snapshot = snapshot,
+            today = today,
+            configVersion = null,
+            versionCode = 16,
+            currentChannel = TelemetryContract.CHANNEL_GITHUB_NAME,
+            buildType = "release",
+            appLang = null,
+            installFacts = installFacts,
+            installer = null,
+            profile = profile,
+        )
+
+        val root = JSONObject(jsonString)
+        assertEquals(42, root.getJSONObject("custom").getInt("env_k"))
+        val day0 = root.getJSONArray("days").getJSONObject(0)
+        assertEquals("first_new", day0.getJSONObject("custom").getString("user_cohort"))
+        assertEquals("first_chat", day0.getJSONArray("firsts").getString(0))
+        val count0 = day0.getJSONArray("counts").getJSONObject(0)
+        assertEquals("chat_turn_start", count0.getString("event"))
+        assertEquals("text", count0.getString("label"))
+        assertEquals(5, count0.getInt("n"))
+        assertEquals("fast", count0.getJSONObject("custom").getString("mode"))
     }
 }

@@ -23,6 +23,7 @@ import com.niki914.zafiro.business.remote.ledger.TELEMETRY_DIRECTORY_NAME
 import com.niki914.zafiro.business.remote.profile.DeviceProfileReader
 import com.niki914.zafiro.business.remote.profile.DeviceSignals
 import com.niki914.zafiro.business.remote.sender.TelemetrySender
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,6 +38,8 @@ const val DEFAULT_TELEMETRY_BASE_URL = "https://zafiro-telemetry.niki27687.worke
 private const val CONFIG_FILE_NAME = "config.json"
 private const val PERIODIC_CHECK_INTERVAL_MS = 60 * 60 * 1000L
 private const val INITIAL_REPORT_DELAY_MS = 3_000L
+private const val TELEMETRY_PREFS_NAME = "telemetry_facts"
+private const val KEY_TELEMETRY_VERSION = "telemetry_version"
 
 /**
  * [Telemetry] 的完整实现。
@@ -48,9 +51,15 @@ class TelemetryImpl(
     private val http: () -> OkHttpClient,
     baseUrl: String = DEFAULT_TELEMETRY_BASE_URL,
     clock: Clock = Clock.systemUTC(),
+    private val onboardingCompletedProvider: suspend () -> Boolean = { false },
 ) : Telemetry {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
+            Logger.e(LOG_TAG, "遥测后台任务未捕获异常", throwable)
+        }
+    )
+    private val versionCode: Int
     @Volatile
     private var cachedInstallFacts: InstallFacts? = null
     private val ledger: Ledger
@@ -62,7 +71,7 @@ class TelemetryImpl(
     init {
         val directory = File(context.filesDir, TELEMETRY_DIRECTORY_NAME)
         val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-        val versionCode = packageInfo.versionCode
+        versionCode = packageInfo.versionCode
         val isDebug = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         val apkFile = File(context.applicationInfo.sourceDir)
         val firstInstallTimeMs = packageInfo.firstInstallTime
@@ -108,6 +117,30 @@ class TelemetryImpl(
             versionCode = versionCode,
             scope = scope,
             onActive = { triggerSend(initialDelayMs = INITIAL_REPORT_DELAY_MS) },
+            onColdStart = {
+                runCatchingCancellable {
+                    val sp = context.getSharedPreferences(TELEMETRY_PREFS_NAME, Context.MODE_PRIVATE)
+                    val lastVersion = sp.getInt(KEY_TELEMETRY_VERSION, -1)
+                    val cohort = when {
+                        lastVersion == -1 -> {
+                            if (onboardingCompletedProvider()) "first_legacy_update" else "first_new"
+                        }
+                        lastVersion < versionCode -> "first_update"
+                        else -> "launcher"
+                    }
+                    if (lastVersion < versionCode) {
+                        sp.edit().putInt(KEY_TELEMETRY_VERSION, versionCode).apply()
+                    }
+                    ledger.setDayCustom(CustomKeyDef.UserCohort.wireName, CustomValue.Str(cohort), versionCode)
+                    ledger.record(
+                        event = EventDef.AppColdStart.wireName,
+                        label = cohort,
+                        n = 1,
+                        custom = emptyMap(),
+                        versionCode = versionCode,
+                    )
+                }.onFailure { error -> Logger.w(LOG_TAG, "冷启动状态标记失败", error) }
+            },
         )
     }
 
@@ -150,11 +183,35 @@ class TelemetryImpl(
         label: String?,
         n: Int,
         custom: Map<String, CustomValue>,
-    ) = Unit
+    ) {
+        scope.launch {
+            runCatchingCancellable {
+                ledger.record(
+                    event = event.wireName,
+                    label = label,
+                    n = n,
+                    custom = custom,
+                    versionCode = versionCode,
+                )
+            }.onFailure { error -> Logger.w(LOG_TAG, "遥测记账失败: ${event.wireName}", error) }
+        }
+    }
 
-    override fun setEnvelopeCustom(key: CustomKeyDef, value: CustomValue?) = Unit
+    override fun setEnvelopeCustom(key: CustomKeyDef, value: CustomValue?) {
+        scope.launch {
+            runCatchingCancellable {
+                ledger.setEnvelopeCustom(key.wireName, value)
+            }.onFailure { error -> Logger.w(LOG_TAG, "设置顶层扩展失败: ${key.wireName}", error) }
+        }
+    }
 
-    override fun setDayCustom(key: CustomKeyDef, value: CustomValue?) = Unit
+    override fun setDayCustom(key: CustomKeyDef, value: CustomValue?) {
+        scope.launch {
+            runCatchingCancellable {
+                ledger.setDayCustom(key.wireName, value, versionCode)
+            }.onFailure { error -> Logger.w(LOG_TAG, "设置日扩展失败: ${key.wireName}", error) }
+        }
+    }
 
     private companion object {
         const val LOG_TAG = "niki914_zafiro_TelemetryImpl"
