@@ -58,7 +58,7 @@ object TelemetryContract {
     const val CONFIG_KEY_TELEMETRY_ENABLED_DEFAULT = true
     const val CONFIG_KEY_REPORT_INTERVAL_HOURS_TYPE = "int"
     const val CONFIG_KEY_REPORT_INTERVAL_HOURS_DEFAULT = 24
-    const val CONFIG_KEY_REPORT_INTERVAL_HOURS_MIN = 24
+    const val CONFIG_KEY_REPORT_INTERVAL_HOURS_MIN = 1
     const val CONFIG_KEY_REPORT_INTERVAL_HOURS_MAX = 168
     const val CONFIG_KEY_CONFIG_TTL_HOURS_TYPE = "int"
     const val CONFIG_KEY_CONFIG_TTL_HOURS_DEFAULT = 12
@@ -70,6 +70,6 @@ object TelemetryContract {
     const val SCREEN_DENSITY_BUCKETS = "mdpi:160,hdpi:240,xhdpi:320,xxhdpi:480,xxxhdpi:640"
     const val BUILD_TYPES = "release,debug"
     const val PROFILE_FIELDS = "api_level,brand,model,abi,ram_gb,screen_class,lang,app_lang,locale_region,tz_id,tz_offset_min,installer"
-    const val EVENT_COUNT = 0
-    const val CUSTOM_KEY_COUNT = 0
+    const val EVENT_COUNT = 10
+    const val CUSTOM_KEY_COUNT = 1
 }

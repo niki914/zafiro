@@ -30,6 +30,7 @@ class FloatingBallViewModelTest {
     /** 假实现，默认自动展开开启；测试直接改 flow 即可切开关。 */
     private class FakeXSettings(
         override val floatingBallAutoExpand: MutableStateFlow<Boolean> = MutableStateFlow(true),
+        override val appLanguageTag: MutableStateFlow<String> = MutableStateFlow(""),
     ) : XSettings
 
     private val settings = FakeXSettings()

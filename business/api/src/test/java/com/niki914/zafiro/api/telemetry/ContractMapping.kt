@@ -57,7 +57,7 @@ internal val SERVER_MAPPING: List<MappedConst> = listOf(
     MappedConst("CONFIG_KEY_TELEMETRY_ENABLED_DEFAULT", true),
     MappedConst("CONFIG_KEY_REPORT_INTERVAL_HOURS_TYPE", "int"),
     MappedConst("CONFIG_KEY_REPORT_INTERVAL_HOURS_DEFAULT", 24),
-    MappedConst("CONFIG_KEY_REPORT_INTERVAL_HOURS_MIN", 24),
+    MappedConst("CONFIG_KEY_REPORT_INTERVAL_HOURS_MIN", 1),
     MappedConst("CONFIG_KEY_REPORT_INTERVAL_HOURS_MAX", 168),
     MappedConst("CONFIG_KEY_CONFIG_TTL_HOURS_TYPE", "int"),
     MappedConst("CONFIG_KEY_CONFIG_TTL_HOURS_DEFAULT", 12),
@@ -71,6 +71,6 @@ internal val SERVER_MAPPING: List<MappedConst> = listOf(
         "PROFILE_FIELDS",
         "api_level,brand,model,abi,ram_gb,screen_class,lang,app_lang,locale_region,tz_id,tz_offset_min,installer",
     ),
-    MappedConst("EVENT_COUNT", 0),
-    MappedConst("CUSTOM_KEY_COUNT", 0),
+    MappedConst("EVENT_COUNT", 10),
+    MappedConst("CUSTOM_KEY_COUNT", 1),
 )
