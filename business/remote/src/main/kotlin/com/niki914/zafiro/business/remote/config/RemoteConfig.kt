@@ -132,6 +132,7 @@ internal class RemoteConfigClient(
 
     suspend fun getOrFetch(versionCode: Int, nowMs: Long, force: Boolean = false): RemoteConfig {
         ensureLoaded()
+        if (baseUrl.isBlank()) return cached
         val ttlMs = cached.configTtlHours * 3600_000L
         if (!force && cached.fetchedAtMs > 0L && (nowMs - cached.fetchedAtMs) in 0L until ttlMs) {
             return cached
