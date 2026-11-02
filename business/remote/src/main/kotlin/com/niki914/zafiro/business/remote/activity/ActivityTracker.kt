@@ -22,6 +22,7 @@ internal class ActivityTracker(
     private val scope: CoroutineScope,
     private val onActive: (suspend () -> Unit)? = null,
     private val onColdStart: (suspend () -> Unit)? = null,
+    private val telemetryEnabledProvider: suspend () -> Boolean = { true },
 ) : DefaultLifecycleObserver {
     private var observing = false
     private var isColdStart = true
@@ -49,6 +50,7 @@ internal class ActivityTracker(
             isColdStart = false
         } else {
             scope.launch {
+                if (!telemetryEnabledProvider()) return@launch
                 runCatchingCancellable {
                     ledger.record(
                         event = EventDef.AppForeground.wireName,
@@ -69,6 +71,7 @@ internal class ActivityTracker(
             val seconds = ((SystemClock.elapsedRealtime() - start) / 1000L).toInt()
             if (seconds > 0) {
                 scope.launch {
+                    if (!telemetryEnabledProvider()) return@launch
                     runCatchingCancellable {
                         ledger.record(
                             event = EventDef.AppActiveDuration.wireName,

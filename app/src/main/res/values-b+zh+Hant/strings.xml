@@ -177,6 +177,12 @@
     <string name="ui_settings_about_telegram">Telegram 群組</string>
     <string name="ui_settings_about_feedback_feature">功能建議</string>
     <string name="ui_settings_about_feedback_bug">Bug 回報</string>
+    <string name="ui_settings_about_telemetry_title">診斷與使用情況</string>
+    <string name="ui_settings_about_telemetry_summary">發送匿名診斷數據，協助改進應用穩定性</string>
+    <string name="ui_settings_about_telemetry_dialog_title">診斷與使用情況</string>
+    <string name="ui_settings_about_telemetry_dialog_text">發送匿名診斷與效能數據，協助排查故障並提升穩定性。\n\n絕不收集個人數據、對話內容或敏感憑證。</string>
+    <string name="ui_settings_about_telemetry_dialog_positive">查看說明</string>
+    <string name="ui_settings_about_telemetry_dialog_negative">完成</string>
     <string name="ui_settings_about_version">版本</string>
 
     <string name="ui_settings_storage_description">查看各類快取佔用的空間，點選某一項即可清理。清理不會影響設定、記憶與對話記錄。</string>
