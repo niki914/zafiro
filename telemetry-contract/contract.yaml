@@ -1,7 +1,7 @@
 # 两端共用的埋点契约。
 # schema_version、contract_version、limits、channels 用协议里的名字。
 # limits 内的键与服务端 LIMITS 属性同名。
-# DayPage 包含: day_key, activity_day, rev, prev_day_key(可选跨天串联UUID), prev_active_day, prev_version_code, custom, counts, counts_truncated, firsts.
+# DayPage 包含: day_key, activity_day, rev, prev_active_day, prev_version_code, custom, counts, counts_truncated, firsts.
 schema_version: 1
 contract_version: 1
 
@@ -77,9 +77,8 @@ events:
   - name: app_foreground
   # 应用前台累计活跃时长（数值 n 为累计秒数）
   - name: app_active_duration
-  # 完成新手引导向导并进入主页
+  # 完成新手引导向导并进入主页（label 为活跃提供商名称字符串：^[a-z][a-z0-9_]*$ 且 <= 40 字符）
   - name: onboard_complete
-    labels: [deepseek, openai, anthropic, custom]
   # 发起对话请求回合
   - name: chat_turn_start
     labels: [text, attachment]
