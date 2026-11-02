@@ -179,6 +179,12 @@
     <string name="ui_settings_about_telegram">Grupo de Telegram</string>
     <string name="ui_settings_about_feedback_feature">Sugerir función</string>
     <string name="ui_settings_about_feedback_bug">Notificar error</string>
+    <string name="ui_settings_about_telemetry_title">Diagnóstico y uso</string>
+    <string name="ui_settings_about_telemetry_summary">Envía datos de diagnóstico anónimos para mejorar la estabilidad</string>
+    <string name="ui_settings_about_telemetry_dialog_title">Diagnóstico y uso</string>
+    <string name="ui_settings_about_telemetry_dialog_text">Envía datos anónimos de diagnóstico y rendimiento para solucionar problemas y mejorar la estabilidad.\n\nNunca recopila datos personales, conversaciones ni credenciales sensibles.</string>
+    <string name="ui_settings_about_telemetry_dialog_positive">Ver documentación</string>
+    <string name="ui_settings_about_telemetry_dialog_negative">Listo</string>
     <string name="ui_settings_about_version">Versión</string>
 
     <string name="ui_settings_storage_description">Consulta el espacio que ocupa cada caché y tócalo para borrarlo. Nunca se tocan los ajustes, los recuerdos ni las conversaciones.</string>

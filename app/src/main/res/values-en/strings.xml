@@ -179,6 +179,12 @@
     <string name="ui_settings_about_telegram">Telegram Group</string>
     <string name="ui_settings_about_feedback_feature">Feature Requests</string>
     <string name="ui_settings_about_feedback_bug">Bug Reports</string>
+    <string name="ui_settings_about_telemetry_title">Diagnostics &amp; Usage</string>
+    <string name="ui_settings_about_telemetry_summary">Send anonymous diagnostic data to help improve stability</string>
+    <string name="ui_settings_about_telemetry_dialog_title">Diagnostics &amp; Usage</string>
+    <string name="ui_settings_about_telemetry_dialog_text">Send anonymous diagnostic and performance data to help diagnose issues and improve stability.\n\nNever collects personal data, conversations, or sensitive credentials.</string>
+    <string name="ui_settings_about_telemetry_dialog_positive">View Documentation</string>
+    <string name="ui_settings_about_telemetry_dialog_negative">Done</string>
     <string name="ui_settings_about_version">Version</string>
 
     <string name="ui_settings_storage_description">See how much space each cache takes. Tap an item to clear it. Clearing never touches settings, memories, or conversations.</string>

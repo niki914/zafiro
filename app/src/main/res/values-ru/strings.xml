@@ -172,6 +172,12 @@
     <string name="ui_settings_about_telegram">Группа в Telegram</string>
     <string name="ui_settings_about_feedback_feature">Пожелания</string>
     <string name="ui_settings_about_feedback_bug">Сообщения об ошибках</string>
+    <string name="ui_settings_about_telemetry_title">Диагностика и использование</string>
+    <string name="ui_settings_about_telemetry_summary">Отправка анонимных данных диагностики для повышения стабильности</string>
+    <string name="ui_settings_about_telemetry_dialog_title">Диагностика и использование</string>
+    <string name="ui_settings_about_telemetry_dialog_text">Отправка анонимных данных диагностики и производительности для устранения неполадок и повышения стабильности.\n\nЛичные данные, диалоги и конфиденциальные учетные данные никогда не собираются.</string>
+    <string name="ui_settings_about_telemetry_dialog_positive">Документация</string>
+    <string name="ui_settings_about_telemetry_dialog_negative">Готово</string>
     <string name="ui_settings_about_version">Версия</string>
     <string name="ui_settings_storage_description">Показывает, сколько места занимает каждый кеш. Нажмите на пункт, чтобы очистить. Очистка не затрагивает настройки, память и диалоги.</string>
     <string name="ui_settings_storage_tool_output">Кеш вывода инструментов</string>

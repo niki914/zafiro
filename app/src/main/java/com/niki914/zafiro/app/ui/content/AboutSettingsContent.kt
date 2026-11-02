@@ -3,14 +3,23 @@ package com.niki914.zafiro.app.ui.content
 import android.content.Context
 import android.content.res.Configuration
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Feedback
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -19,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.uikit.dialog.ZafiroDialog
+import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
 import com.niki914.uikit.infra.component.settings.SettingsRowAction
 import com.niki914.uikit.infra.component.settings.SettingsRowLeadingIcon
@@ -39,6 +50,7 @@ import com.niki914.zafiro.app.ui.model.AboutSettingsViewModel
 import com.niki914.zafiro.app.ui.model.buildIssueUri
 
 private const val ABOUT_SETTINGS_ROW_ID_PREFIX = "about.item."
+private const val ABOUT_SETTINGS_TELEMETRY_ROW_ID = "about.item.telemetry"
 private const val LOG_TAG = "niki914_zafiro_AboutSettings"
 
 @Composable
@@ -47,6 +59,10 @@ fun AboutSettingsContent() {
     val uiState by viewModel.uiStateFlow.collectAsState()
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.sendIntent(AboutSettingsIntent.Load)
+    }
 
     LaunchedEffect(viewModel, uriHandler) {
         viewModel.uiEffect.collect { effect ->
@@ -71,6 +87,18 @@ fun AboutSettingsContent() {
         onItemClick = { itemId ->
             viewModel.sendIntent(AboutSettingsIntent.OpenItem(itemId))
         },
+        onToggleTelemetry = { enabled ->
+            viewModel.sendIntent(AboutSettingsIntent.ToggleTelemetry(enabled))
+        },
+        onShowPrivacyDialog = {
+            viewModel.sendIntent(AboutSettingsIntent.ShowPrivacyDialog)
+        },
+        onPrivacyDialogDismiss = {
+            viewModel.sendIntent(AboutSettingsIntent.DismissPrivacyDialog)
+        },
+        onPrivacyDialogViewDoc = {
+            viewModel.sendIntent(AboutSettingsIntent.OpenTelemetryDoc)
+        },
     )
 }
 
@@ -78,7 +106,53 @@ fun AboutSettingsContent() {
 private fun AboutSettingsContentBody(
     uiState: AboutSettingsUiState,
     onItemClick: (AboutSettingsItemId) -> Unit,
+    onToggleTelemetry: (Boolean) -> Unit = {},
+    onShowPrivacyDialog: () -> Unit = {},
+    onPrivacyDialogDismiss: () -> Unit = {},
+    onPrivacyDialogViewDoc: () -> Unit = {},
 ) {
+    if (uiState.showPrivacyDialog) {
+        ZafiroDialog(
+            visible = true,
+            onDismissRequest = onPrivacyDialogDismiss,
+            title = {
+                Text(
+                    text = stringResource(R.string.ui_settings_about_telemetry_dialog_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            content = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Text(
+                        text = stringResource(R.string.ui_settings_about_telemetry_dialog_text),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            actions = {
+                ZafiroDialogButton(
+                    text = stringResource(R.string.ui_settings_about_telemetry_dialog_negative),
+                    onClick = onPrivacyDialogDismiss,
+                    isPrimary = false,
+                )
+                ZafiroDialogButton(
+                    text = stringResource(R.string.ui_settings_about_telemetry_dialog_positive),
+                    onClick = onPrivacyDialogViewDoc,
+                    isPrimary = true,
+                )
+            },
+        )
+    }
+
     SettingsSpecPageContent(
         spec = aboutSettingsSpec(
             uiState = uiState,
@@ -88,12 +162,22 @@ private fun AboutSettingsContentBody(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> {
+                    if (action.id == ABOUT_SETTINGS_TELEMETRY_ROW_ID) {
+                        onShowPrivacyDialog()
+                        return@SettingsSpecPageContent
+                    }
                     val itemId =
                         aboutSettingsItemIdFromRowId(action.id) ?: return@SettingsSpecPageContent
                     val item = uiState.items.firstOrNull { it.id == itemId }
                         ?: return@SettingsSpecPageContent
                     if (item.canOpen) {
                         onItemClick(itemId)
+                    }
+                }
+
+                is SettingsRowAction.ToggleChanged -> {
+                    if (action.id == ABOUT_SETTINGS_TELEMETRY_ROW_ID) {
+                        onToggleTelemetry(action.checked)
                     }
                 }
 
@@ -122,9 +206,18 @@ private fun aboutSettingsSpec(
                 leadingIcon = item.leadingIcon(),
             )
         }
-    } + SettingsRowSpec.Value(
-        title = stringResource(R.string.ui_settings_about_version),
-        currentState = versionName,
+    } + listOf(
+        SettingsRowSpec.ToggleNavigation(
+            id = ABOUT_SETTINGS_TELEMETRY_ROW_ID,
+            title = stringResource(R.string.ui_settings_about_telemetry_title),
+            summary = stringResource(R.string.ui_settings_about_telemetry_summary),
+            checked = uiState.telemetryEnabled,
+            leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Default.Analytics),
+        ),
+        SettingsRowSpec.Value(
+            title = stringResource(R.string.ui_settings_about_version),
+            currentState = versionName,
+        ),
     )
 
     return SettingsPageSpec(

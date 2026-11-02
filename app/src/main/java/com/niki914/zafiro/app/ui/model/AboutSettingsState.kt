@@ -28,10 +28,17 @@ data class AboutSettingsItemUiState(
 
 data class AboutSettingsUiState(
     val items: List<AboutSettingsItemUiState> = emptyList(),
+    val telemetryEnabled: Boolean = true,
+    val showPrivacyDialog: Boolean = false,
 )
 
 sealed interface AboutSettingsIntent {
+    data object Load : AboutSettingsIntent
     data class OpenItem(val id: AboutSettingsItemId) : AboutSettingsIntent
+    data class ToggleTelemetry(val enabled: Boolean) : AboutSettingsIntent
+    data object ShowPrivacyDialog : AboutSettingsIntent
+    data object DismissPrivacyDialog : AboutSettingsIntent
+    data object OpenTelemetryDoc : AboutSettingsIntent
 }
 
 sealed interface AboutSettingsEffect {
@@ -52,8 +59,28 @@ class AboutSettingsViewModel :
 
     override suspend fun handleIntent(intent: AboutSettingsIntent) {
         when (intent) {
+            AboutSettingsIntent.Load -> loadSettings()
             is AboutSettingsIntent.OpenItem -> openItem(intent.id)
+            is AboutSettingsIntent.ToggleTelemetry -> toggleTelemetry(intent.enabled)
+            AboutSettingsIntent.ShowPrivacyDialog -> updateState { copy(showPrivacyDialog = true) }
+            AboutSettingsIntent.DismissPrivacyDialog -> updateState { copy(showPrivacyDialog = false) }
+            AboutSettingsIntent.OpenTelemetryDoc -> openTelemetryDoc()
         }
+    }
+
+    private suspend fun loadSettings() {
+        val enabled = XRepo.telemetryEnabled()
+        updateState { copy(telemetryEnabled = enabled) }
+    }
+
+    private suspend fun toggleTelemetry(enabled: Boolean) {
+        updateState { copy(telemetryEnabled = enabled) }
+        XRepo.setTelemetryEnabled(enabled)
+    }
+
+    private suspend fun openTelemetryDoc() {
+        updateState { copy(showPrivacyDialog = false) }
+        sendEffect(AboutSettingsEffect.OpenUri(TELEMETRY_DOC_URL))
     }
 
     private suspend fun openItem(id: AboutSettingsItemId) {
@@ -124,3 +151,4 @@ internal fun buildIssueUri(title: String, body: String): String {
 
 private const val FEATURE_FEEDBACK_TITLE = "[FEATURE] "
 private const val BUG_FEEDBACK_TITLE = "[BUG] "
+internal const val TELEMETRY_DOC_URL = "https://github.com/niki914/zafiro/blob/main/docs/TELEMETRY.md"

@@ -52,6 +52,7 @@ class TelemetryImpl(
     baseUrl: String = DEFAULT_TELEMETRY_BASE_URL,
     clock: Clock = Clock.systemUTC(),
     private val onboardingCompletedProvider: suspend () -> Boolean = { false },
+    private val telemetryEnabledProvider: suspend () -> Boolean = { true },
 ) : Telemetry {
 
     private val scope = CoroutineScope(
@@ -141,6 +142,7 @@ class TelemetryImpl(
                     )
                 }.onFailure { error -> Logger.w(LOG_TAG, "冷启动状态标记失败", error) }
             },
+            telemetryEnabledProvider = telemetryEnabledProvider,
         )
     }
 
@@ -186,6 +188,12 @@ class TelemetryImpl(
     ) {
         scope.launch {
             runCatchingCancellable {
+                val isUsageEvent = event !is EventDef.AppColdStart &&
+                    event !is EventDef.OnboardComplete &&
+                    event !is EventDef.FirstOnboard
+                if (isUsageEvent && !telemetryEnabledProvider()) {
+                    return@launch
+                }
                 ledger.record(
                     event = event.wireName,
                     label = label,
