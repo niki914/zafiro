@@ -10,6 +10,7 @@ import com.niki914.zafiro.api.telemetry.CustomValue
 import com.niki914.zafiro.api.telemetry.EventDef
 import com.niki914.zafiro.api.telemetry.Telemetry
 import com.niki914.zafiro.api.telemetry.TelemetryContract
+import com.niki914.zafiro.api.telemetry.sanitizeLabel
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.business.remote.activity.ActivityTracker
 import com.niki914.zafiro.business.remote.channel.ApkChannelReader
@@ -34,7 +35,6 @@ import okhttp3.OkHttpClient
 import java.io.File
 import java.time.Clock
 
-const val DEFAULT_TELEMETRY_BASE_URL = "https://zafiro-telemetry.niki27687.workers.dev"
 private const val CONFIG_FILE_NAME = "config.json"
 private const val PERIODIC_CHECK_INTERVAL_MS = 60 * 60 * 1000L
 private const val INITIAL_REPORT_DELAY_MS = 3_000L
@@ -49,7 +49,7 @@ private const val KEY_TELEMETRY_VERSION = "telemetry_version"
 class TelemetryImpl(
     context: Context,
     private val http: () -> OkHttpClient,
-    baseUrl: String = DEFAULT_TELEMETRY_BASE_URL,
+    private val baseUrl: String,
     clock: Clock = Clock.systemUTC(),
     private val onboardingCompletedProvider: suspend () -> Boolean = { false },
     private val telemetryEnabledProvider: suspend () -> Boolean = { true },
@@ -161,6 +161,7 @@ class TelemetryImpl(
     }
 
     private fun triggerSend(initialDelayMs: Long = 0L) {
+        if (baseUrl.isBlank()) return
         scope.launch {
             if (initialDelayMs > 0L) {
                 delay(initialDelayMs)
@@ -170,7 +171,7 @@ class TelemetryImpl(
     }
 
     private fun startPeriodicLoop() {
-        if (loopStarted) return
+        if (baseUrl.isBlank() || loopStarted) return
         loopStarted = true
         scope.launch {
             while (isActive) {
@@ -194,9 +195,10 @@ class TelemetryImpl(
                 if (isUsageEvent && !telemetryEnabledProvider()) {
                     return@launch
                 }
+                val cleanLabel = label?.let { sanitizeLabel(it) }
                 ledger.record(
                     event = event.wireName,
-                    label = label,
+                    label = cleanLabel,
                     n = n,
                     custom = custom,
                     versionCode = versionCode,

@@ -1,5 +1,7 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.business.remote.sender
 
+import com.niki914.zafiro.api.telemetry.CustomValue
 import com.niki914.zafiro.api.telemetry.TelemetryContract
 import com.niki914.zafiro.business.remote.config.RemoteConfig
 import com.niki914.zafiro.business.remote.config.RemoteConfigClient
@@ -11,6 +13,7 @@ import com.niki914.zafiro.business.remote.ledger.LedgerLoad
 import com.niki914.zafiro.business.remote.ledger.LedgerSend
 import com.niki914.zafiro.business.remote.ledger.LedgerState
 import com.niki914.zafiro.business.remote.ledger.LedgerStore
+import com.niki914.zafiro.business.remote.ledger.PageCount
 import com.niki914.zafiro.business.remote.profile.DeviceSignals
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -41,16 +44,16 @@ class TelemetrySenderTest {
 
     @Test
     fun `backoff progression doubles up to 24h ceiling`() {
-        assertEquals(15 * 60 * 1000L, computeBackoffMillis(1))
-        assertEquals(30 * 60 * 1000L, computeBackoffMillis(2))
-        assertEquals(60 * 60 * 1000L, computeBackoffMillis(3))
-        assertEquals(120 * 60 * 1000L, computeBackoffMillis(4))
-        assertEquals(240 * 60 * 1000L, computeBackoffMillis(5))
-        assertEquals(480 * 60 * 1000L, computeBackoffMillis(6))
-        assertEquals(960 * 60 * 1000L, computeBackoffMillis(7))
-        // Capped at 24 hours
-        assertEquals(24 * 3600 * 1000L, computeBackoffMillis(8))
-        assertEquals(24 * 3600 * 1000L, computeBackoffMillis(20))
+        assertEquals(3600_000L, computeBackoffMillis(1))
+        assertEquals(2 * 3600_000L, computeBackoffMillis(2))
+        assertEquals(4 * 3600_000L, computeBackoffMillis(3))
+        assertEquals(8 * 3600_000L, computeBackoffMillis(4))
+        assertEquals(16 * 3600_000L, computeBackoffMillis(5))
+        assertEquals(24 * 3600_000L, computeBackoffMillis(6))
+        assertEquals(24 * 3600_000L, computeBackoffMillis(7))
+        assertEquals(24 * 3600_000L, computeBackoffMillis(20))
+        // Capped by maxIntervalHours
+        assertEquals(3600_000L, computeBackoffMillis(4, maxIntervalHours = 1))
     }
 
     @Test
@@ -246,7 +249,270 @@ class TelemetrySenderTest {
 
         val sendState = ledger.sendState()
         assertEquals(2, sendState?.failures)
-        assertEquals(now + 30 * 60 * 1000L, sendState?.nextRetryMs)
+        assertEquals(now + 2 * 3600_000L, sendState?.nextRetryMs)
+    }
+
+    @Test
+    fun `maybeSend on 400 drops batch and increments dropped_days without retry`() = runBlocking {
+        val today = LocalDate.of(2026, 10, 30)
+        val now = today.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() + 3600_000L
+        val clock = Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC)
+        val dayKey = "bad-key-1"
+
+        val mockClient = OkHttpClient.Builder()
+            .addInterceptor(Interceptor { chain ->
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(400)
+                    .message("Bad Request")
+                    .body("""{"error":"bad_json"}""".toResponseBody("application/json".toMediaType()))
+                    .build()
+            })
+            .build()
+
+        val ledgerStore = MemoryLedgerStore()
+        ledgerStore.save(
+            LedgerState(
+                pages = listOf(
+                    DayPage(
+                        day = today,
+                        dayKey = dayKey,
+                        rev = 1,
+                        ackedRev = 0,
+                        versionCode = 16,
+                        prevActiveDay = null,
+                        prevVersionCode = null,
+                        counts = emptyList(),
+                        countsTruncated = 0,
+                        firsts = emptyList(),
+                        custom = emptyMap(),
+                    )
+                ),
+                send = LedgerSend(lastOkMs = null, nextRetryMs = 0L, failures = 2),
+            )
+        )
+        val ledger = Ledger(clock, ledgerStore)
+
+        val configFile = tempFolder.newFile("cfg_400.json")
+        val configStore = RemoteConfigStore(configFile)
+        configStore.save(RemoteConfig(configVersion = 1, enabled = true, reportIntervalHours = 24, configTtlHours = 12, fetchedAtMs = now))
+        val configClient = RemoteConfigClient(mockClient, "https://mock.local", configStore)
+
+        val sender = createSender(mockClient, ledger, configClient, clock)
+        sender.maybeSend()
+
+        // Page should be dropped, dropped_days incremented
+        val snapshot = ledger.snapshotForSend(today)
+        assertTrue(snapshot.days.isEmpty())
+        assertEquals(1, snapshot.droppedDays)
+
+        // No retry backoff: failures reset to 0, next retry scheduled at report interval
+        val sendState = ledger.sendState()
+        assertEquals(0, sendState?.failures)
+        assertEquals(now + 24 * 3600_000L, sendState?.nextRetryMs)
+    }
+
+    @Test
+    fun `maybeSend on non-retryable 4xx drops batch without retry`() = runBlocking {
+        for (code in listOf(404, 405, 415)) {
+            val today = LocalDate.of(2026, 10, 30)
+            val now = today.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() + 3600_000L
+            val clock = Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC)
+            val dayKey = "key-$code"
+
+            val mockClient = OkHttpClient.Builder()
+                .addInterceptor(Interceptor { chain ->
+                    Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(code)
+                        .message("Client Error")
+                        .body("""{"error":"error"}""".toResponseBody("application/json".toMediaType()))
+                        .build()
+                })
+                .build()
+
+            val ledgerStore = MemoryLedgerStore()
+            ledgerStore.save(
+                LedgerState(
+                    pages = listOf(
+                        DayPage(
+                            day = today,
+                            dayKey = dayKey,
+                            rev = 1,
+                            ackedRev = 0,
+                            versionCode = 16,
+                            prevActiveDay = null,
+                            prevVersionCode = null,
+                            counts = emptyList(),
+                            countsTruncated = 0,
+                            firsts = emptyList(),
+                            custom = emptyMap(),
+                        )
+                    )
+                )
+            )
+            val ledger = Ledger(clock, ledgerStore)
+
+            val configFile = tempFolder.newFile("cfg_$code.json")
+            val configStore = RemoteConfigStore(configFile)
+            configStore.save(RemoteConfig(configVersion = 1, enabled = true, reportIntervalHours = 24, configTtlHours = 12, fetchedAtMs = now))
+            val configClient = RemoteConfigClient(mockClient, "https://mock.local", configStore)
+
+            val sender = createSender(mockClient, ledger, configClient, clock)
+            sender.maybeSend()
+
+            val snapshot = ledger.snapshotForSend(today)
+            assertTrue(snapshot.days.isEmpty())
+            assertEquals(1, snapshot.droppedDays)
+
+            val sendState = ledger.sendState()
+            assertEquals(0, sendState?.failures)
+            assertEquals(now + 24 * 3600_000L, sendState?.nextRetryMs)
+        }
+    }
+
+    @Test
+    fun `maybeSend on 429 or 5xx backs off`() = runBlocking {
+        for (code in listOf(429, 500, 503)) {
+            val today = LocalDate.of(2026, 10, 30)
+            val now = today.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() + 3600_000L
+            val clock = Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC)
+
+            val mockClient = OkHttpClient.Builder()
+                .addInterceptor(Interceptor { chain ->
+                    Response.Builder()
+                        .request(chain.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(code)
+                        .message("Server / Rate Limit")
+                        .body("""{"error":"retry"}""".toResponseBody("application/json".toMediaType()))
+                        .build()
+                })
+                .build()
+
+            val ledgerStore = MemoryLedgerStore()
+            ledgerStore.save(
+                LedgerState(
+                    pages = listOf(
+                        DayPage(
+                            day = today,
+                            dayKey = "key-$code",
+                            rev = 1,
+                            ackedRev = 0,
+                            versionCode = 16,
+                            prevActiveDay = null,
+                            prevVersionCode = null,
+                            counts = emptyList(),
+                            countsTruncated = 0,
+                            firsts = emptyList(),
+                            custom = emptyMap(),
+                        )
+                    ),
+                    send = LedgerSend(lastOkMs = null, nextRetryMs = 0L, failures = 0),
+                )
+            )
+            val ledger = Ledger(clock, ledgerStore)
+
+            val configFile = tempFolder.newFile("cfg_retry_$code.json")
+            val configStore = RemoteConfigStore(configFile)
+            configStore.save(RemoteConfig(configVersion = 1, enabled = true, reportIntervalHours = 24, configTtlHours = 12, fetchedAtMs = now))
+            val configClient = RemoteConfigClient(mockClient, "https://mock.local", configStore)
+
+            val sender = createSender(mockClient, ledger, configClient, clock)
+            sender.maybeSend()
+
+            val snapshot = ledger.snapshotForSend(today)
+            assertEquals(1, snapshot.days.size)
+
+            val sendState = ledger.sendState()
+            assertEquals(1, sendState?.failures)
+            assertEquals(now + 3600_000L, sendState?.nextRetryMs)
+        }
+    }
+
+    @Test
+    fun `maybeSend splits oversized batch to fit within body limit`() = runBlocking {
+        val today = LocalDate.of(2026, 10, 30)
+        val now = today.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() + 3600_000L
+        val clock = Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC)
+
+        // Create 2 large pages that together exceed 32 KB (~24 KB each)
+        val customMap = (1..15).associate { "k$it" to CustomValue.Str("v".repeat(40)) }
+        val counts = (1..30).map { PageCount("chat_turn_start", "label$it", 1, customMap) }
+
+        val page1 = DayPage(
+            day = today.minusDays(1),
+            dayKey = "p1-key",
+            rev = 1,
+            ackedRev = 0,
+            versionCode = 16,
+            prevActiveDay = null,
+            prevVersionCode = null,
+            counts = counts,
+            countsTruncated = 0,
+            firsts = emptyList(),
+            custom = emptyMap(),
+        )
+        val page2 = DayPage(
+            day = today,
+            dayKey = "p2-key",
+            rev = 1,
+            ackedRev = 0,
+            versionCode = 16,
+            prevActiveDay = today.minusDays(1),
+            prevVersionCode = 16,
+            counts = counts,
+            countsTruncated = 0,
+            firsts = emptyList(),
+            custom = emptyMap(),
+        )
+
+        val batchSizes = mutableListOf<Int>()
+        val mockClient = OkHttpClient.Builder()
+            .addInterceptor(Interceptor { chain ->
+                val request = chain.request()
+                val bodyBuffer = okio.Buffer()
+                request.body?.writeTo(bodyBuffer)
+                val bodyBytes = bodyBuffer.readByteArray()
+                assertTrue(bodyBytes.size <= TelemetryContract.LIMIT_BODY_BYTES)
+
+                val json = org.json.JSONObject(String(bodyBytes, Charsets.UTF_8))
+                val daysArr = json.getJSONArray("days")
+                batchSizes.add(daysArr.length())
+
+                val acks = (0 until daysArr.length()).map { daysArr.getJSONObject(it).getString("day_key") }
+                val ackJson = acks.joinToString(prefix = "[\"", separator = "\",\"", postfix = "\"]")
+
+                Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("""{"ack":$ackJson,"rejected":[],"config_version":1}""".toResponseBody("application/json".toMediaType()))
+                    .build()
+            })
+            .build()
+
+        val ledgerStore = MemoryLedgerStore()
+        ledgerStore.save(LedgerState(pages = listOf(page1, page2)))
+        val ledger = Ledger(clock, ledgerStore)
+
+        val configFile = tempFolder.newFile("cfg_split.json")
+        val configStore = RemoteConfigStore(configFile)
+        configStore.save(RemoteConfig(configVersion = 1, enabled = true, reportIntervalHours = 24, configTtlHours = 12, fetchedAtMs = now))
+        val configClient = RemoteConfigClient(mockClient, "https://mock.local", configStore)
+
+        val sender = createSender(mockClient, ledger, configClient, clock)
+        sender.maybeSend()
+
+        // Verify that the batch of 2 was split into two 1-page requests
+        assertEquals(listOf(1, 1), batchSizes)
+
+        // All pages should be acked
+        val snapshot = ledger.snapshotForSend(today)
+        assertTrue(snapshot.days.isEmpty())
     }
 
     private fun createSender(
