@@ -34,12 +34,20 @@ android {
         }
     }
 
+    val packingDir = File(System.getProperty("user.home"), ".android_packing")
+    val signingPropsFile = File(packingDir, "signing.properties")
+
     signingConfigs {
         create("release") {
-            storeFile = file(project.property("RELEASE_STORE_FILE") as String)
-            storePassword = project.property("RELEASE_STORE_PASSWORD") as String
-            keyAlias = project.property("RELEASE_KEY_ALIAS") as String
-            keyPassword = project.property("RELEASE_KEY_PASSWORD") as String
+            if (signingPropsFile.exists()) {
+                val props = Properties().apply {
+                    signingPropsFile.inputStream().use { load(it) }
+                }
+                storeFile = File(packingDir, "zafiro.jks")
+                storePassword = props.getProperty("RELEASE_STORE_PASSWORD")
+                keyAlias = props.getProperty("RELEASE_KEY_ALIAS")
+                keyPassword = props.getProperty("RELEASE_KEY_PASSWORD")
+            }
         }
     }
 

@@ -35,23 +35,23 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Decode signing keystore
+      - name: Setup signing credentials
         env:
           KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
-        run: |
-          mkdir -p packing
-          printf '%s' "$KEYSTORE_BASE64" | base64 -d > packing/nexus_release.jks
-
-      - name: Build signed release APK
-        env:
           STORE_PW: ${{ secrets.SIGNING_STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           KEY_PW: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
-          ./gradlew assembleRelease --no-daemon --stacktrace \
-            -PRELEASE_STORE_PASSWORD="$STORE_PW" \
-            -PRELEASE_KEY_ALIAS="$KEY_ALIAS" \
-            -PRELEASE_KEY_PASSWORD="$KEY_PW"
+          mkdir -p ~/.android_packing
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > ~/.android_packing/zafiro.jks
+          {
+            printf 'RELEASE_STORE_PASSWORD=%s\n' "$STORE_PW"
+            printf 'RELEASE_KEY_ALIAS=%s\n' "$KEY_ALIAS"
+            printf 'RELEASE_KEY_PASSWORD=%s\n' "$KEY_PW"
+          } > ~/.android_packing/signing.properties
+
+      - name: Build signed release APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Resolve version name
         id: version

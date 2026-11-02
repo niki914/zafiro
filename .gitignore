@@ -52,6 +52,5 @@ pnpm-debug.log*
 ### External
 /.as-run/app.run.xml
 /libterm
-packing/
 media/
 nexus-res/
