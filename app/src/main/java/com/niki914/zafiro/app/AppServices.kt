@@ -75,6 +75,7 @@ object AppServices {
         val telemetry = TelemetryImpl(
             context = application,
             http = { SharedHttp.client },
+            baseUrl = BuildConfig.TELEMETRY_BASE_URL,
             onboardingCompletedProvider = {
                 runCatchingCancellable { XRepo.onboardingCompleted() }.getOrDefault(false)
             },

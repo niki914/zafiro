@@ -28,9 +28,12 @@ import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-internal fun computeBackoffMillis(failures: Int): Long {
-    val exponent = (failures - 1).coerceIn(0, 7)
-    return (15L * 60 * 1000L * (1L shl exponent)).coerceAtMost(24L * 3600 * 1000L)
+internal fun computeBackoffMillis(failures: Int, maxIntervalHours: Int = 24): Long {
+    if (failures <= 0) return 0L
+    val exponent = (failures - 1).coerceIn(0, 30)
+    val backoffHours = 1L shl exponent
+    val cappedHours = backoffHours.coerceAtMost(maxIntervalHours.toLong().coerceAtLeast(1L))
+    return cappedHours * 3600_000L
 }
 
 internal object TelemetryPayload {
@@ -208,6 +211,7 @@ internal class TelemetrySender(
     private val sendMutex = Mutex()
 
     suspend fun maybeSend() {
+        if (baseUrl.isBlank()) return
         if (!sendMutex.tryLock()) return
         try {
             sendInternal()
@@ -229,82 +233,107 @@ internal class TelemetrySender(
             return
         }
 
-        val today = clock.instant().atOffset(ZoneOffset.UTC).toLocalDate()
-        val snapshot = ledger.snapshotForSend(today)
-        if (snapshot.days.isEmpty()) {
-            val nextRetry = nowMs + config.reportIntervalHours * 3600_000L
-            ledger.recordSendSuccess(nowMs = sendState.lastOkMs ?: nowMs, nextRetryMs = nextRetry)
-            return
-        }
-
-        val currentChannel = if (apkFile != null) {
-            ApkChannelReader.currentChannel(isDebug, apkFile)
-        } else {
-            if (isDebug) TelemetryContract.CHANNEL_DEV_NAME else TelemetryContract.CHANNEL_UNKNOWN_NAME
-        }
-        val buildType = if (isDebug) "debug" else "release"
-        val appLang = appLangProvider()
-        val profile = DeviceProfileReader.read(signalsProvider(), nowMs)
-        val installFacts = installFactsProvider()
-        val installer = installerProvider()
-
-        val payload = TelemetryPayload.build(
-            snapshot = snapshot,
-            today = today,
-            configVersion = config.configVersion,
-            versionCode = versionCode,
-            currentChannel = currentChannel,
-            buildType = buildType,
-            appLang = appLang,
-            installFacts = installFacts,
-            installer = installer,
-            profile = profile,
-        )
-
-        val payloadBytes = payload.toByteArray(Charsets.UTF_8)
-        if (payloadBytes.size > TelemetryContract.LIMIT_BODY_BYTES) {
-            Logger.w(LOG_TAG, "遥测负载超出上限: ${payloadBytes.size}")
-            ledger.recordSendFailure(nowMs + 24 * 3600_000L)
-            return
-        }
-
-        val request = Request.Builder()
-            .url("$baseUrl/v1/usage")
-            .post(payloadBytes.toRequestBody("application/json; charset=utf-8".toMediaType()))
-            .build()
-
-        val outcome = runCatchingCancellable {
-            httpProvider().newCall(request).execute()
-        }
-
-        if (outcome.isFailure) {
-            val error = outcome.exceptionOrNull()
-            if (error != null) {
-                Logger.w(LOG_TAG, "遥测网络请求异常", error)
-            } else {
-                Logger.w(LOG_TAG, "遥测网络请求异常")
+        while (true) {
+            val today = clock.instant().atOffset(ZoneOffset.UTC).toLocalDate()
+            val snapshot = ledger.snapshotForSend(today)
+            if (snapshot.days.isEmpty()) {
+                val nextRetry = nowMs + config.reportIntervalHours * 3600_000L
+                val lastOk = ledger.sendState()?.lastOkMs ?: nowMs
+                ledger.recordSendSuccess(nowMs = lastOk, nextRetryMs = nextRetry)
+                return
             }
-            val backoff = computeBackoffMillis(sendState.failures + 1)
-            ledger.recordSendFailure(nowMs + backoff)
-            return
-        }
 
-        val response = outcome.getOrThrow()
-        response.use { res ->
-            when (res.code) {
-                200 -> {
-                    val bodyString = res.body?.string().orEmpty()
-                    handleSuccess(bodyString, snapshot, today, nowMs, config)
+            val currentChannel = if (apkFile != null) {
+                ApkChannelReader.currentChannel(isDebug, apkFile)
+            } else {
+                if (isDebug) TelemetryContract.CHANNEL_DEV_NAME else TelemetryContract.CHANNEL_UNKNOWN_NAME
+            }
+            val buildType = if (isDebug) "debug" else "release"
+            val appLang = appLangProvider()
+            val profile = DeviceProfileReader.read(signalsProvider(), nowMs)
+            val installFacts = installFactsProvider()
+            val installer = installerProvider()
+
+            val candidates = snapshot.days.take(TelemetryContract.LIMIT_DAYS_MAX)
+            var batchCount = candidates.size
+            var payload = ""
+            var payloadBytes = ByteArray(0)
+            while (batchCount > 0) {
+                val batchSnapshot = snapshot.copy(days = candidates.take(batchCount))
+                payload = TelemetryPayload.build(
+                    snapshot = batchSnapshot,
+                    today = today,
+                    configVersion = config.configVersion,
+                    versionCode = versionCode,
+                    currentChannel = currentChannel,
+                    buildType = buildType,
+                    appLang = appLang,
+                    installFacts = installFacts,
+                    installer = installer,
+                    profile = profile,
+                )
+                payloadBytes = payload.toByteArray(Charsets.UTF_8)
+                if (payloadBytes.size <= TelemetryContract.LIMIT_BODY_BYTES || batchCount == 1) {
+                    break
                 }
-                400 -> {
-                    Logger.w(LOG_TAG, "遥测请求被服务端拒收 (400): ${res.body?.string()}")
-                    ledger.recordSendFailure(nowMs + 24 * 3600_000L)
+                batchCount--
+            }
+
+            val batchPages = candidates.take(batchCount)
+            val batchSnapshot = snapshot.copy(days = batchPages)
+
+            val request = Request.Builder()
+                .url("$baseUrl/v1/usage")
+                .post(payloadBytes.toRequestBody("application/json; charset=utf-8".toMediaType()))
+                .build()
+
+            val outcome = runCatchingCancellable {
+                httpProvider().newCall(request).execute()
+            }
+
+            if (outcome.isFailure) {
+                val error = outcome.exceptionOrNull()
+                if (error != null) {
+                    Logger.w(LOG_TAG, "遥测网络请求异常", error)
+                } else {
+                    Logger.w(LOG_TAG, "遥测网络请求异常")
                 }
-                else -> {
-                    Logger.w(LOG_TAG, "遥测服务响应异常: ${res.code}")
-                    val backoff = computeBackoffMillis(sendState.failures + 1)
-                    ledger.recordSendFailure(nowMs + backoff)
+                val currentSend = ledger.sendState()
+                val failures = (currentSend?.failures ?: 0) + 1
+                val backoff = computeBackoffMillis(failures, config.reportIntervalHours)
+                ledger.recordSendFailure(nowMs + backoff)
+                return
+            }
+
+            val response = outcome.getOrThrow()
+            var ackedAny = false
+            val continueLoop = response.use { res ->
+                when (res.code) {
+                    200 -> {
+                        val bodyString = res.body?.string().orEmpty()
+                        ackedAny = handleSuccess(bodyString, batchSnapshot, today, nowMs, config)
+                        true
+                    }
+                    400, 404, 405, 415 -> {
+                        Logger.w(LOG_TAG, "遥测请求不可重试错误 (${res.code}): ${res.body?.string()}")
+                        ledger.onDropped(batchPages.map { it.dayKey })
+                        val nextRetry = nowMs + config.reportIntervalHours * 3600_000L
+                        ledger.recordSendSuccess(nowMs = nowMs, nextRetryMs = nextRetry)
+                        false
+                    }
+                    else -> {
+                        Logger.w(LOG_TAG, "遥测服务可重试响应异常 (${res.code})")
+                        val currentSend = ledger.sendState()
+                        val failures = (currentSend?.failures ?: 0) + 1
+                        val backoff = computeBackoffMillis(failures, config.reportIntervalHours)
+                        ledger.recordSendFailure(nowMs + backoff)
+                        false
+                    }
                 }
+            }
+
+            if (!continueLoop || !ackedAny) {
+                return
             }
         }
     }
@@ -315,7 +344,7 @@ internal class TelemetrySender(
         today: LocalDate,
         nowMs: Long,
         config: RemoteConfig,
-    ) {
+    ): Boolean {
         val root = tryOrNull { JSONObject(bodyString) }
         val ackArray = root?.optJSONArray("ack")
         val ackMap = mutableMapOf<String, Int>()
@@ -350,6 +379,8 @@ internal class TelemetrySender(
         if (serverConfigVersion != null && (config.configVersion == null || serverConfigVersion > config.configVersion)) {
             configClient.getOrFetch(versionCode, nowMs, force = true)
         }
+
+        return ackMap.isNotEmpty() || (rejectedArray != null && rejectedArray.length() > 0)
     }
 
     private companion object {
