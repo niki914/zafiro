@@ -10,6 +10,7 @@ import com.niki914.zafiro.api.telemetry.CustomValue
 import com.niki914.zafiro.api.telemetry.EventDef
 import com.niki914.zafiro.api.telemetry.Telemetry
 import com.niki914.zafiro.api.telemetry.TelemetryContract
+import com.niki914.zafiro.api.telemetry.sanitizeLabel
 import com.niki914.zafiro.api.util.runCatchingCancellable
 import com.niki914.zafiro.business.remote.activity.ActivityTracker
 import com.niki914.zafiro.business.remote.channel.ApkChannelReader
@@ -194,9 +195,10 @@ class TelemetryImpl(
                 if (isUsageEvent && !telemetryEnabledProvider()) {
                     return@launch
                 }
+                val cleanLabel = label?.let { sanitizeLabel(it) }
                 ledger.record(
                     event = event.wireName,
-                    label = label,
+                    label = cleanLabel,
                     n = n,
                     custom = custom,
                     versionCode = versionCode,
