@@ -10,6 +10,8 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -70,5 +72,60 @@ class AboutSettingsViewModelTest {
 
         val effect = effectDeferred.await() as AboutSettingsEffect.OpenFeedbackIssue
         assertEquals("[BUG] ", effect.title)
+    }
+
+    @Test
+    fun toggleTelemetry_updatesStateAndPersists() = runTest {
+        val viewModel = AboutSettingsViewModel()
+        assertTrue(viewModel.uiStateFlow.value.telemetryEnabled)
+
+        viewModel.sendIntent(AboutSettingsIntent.ToggleTelemetry(false))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiStateFlow.value.telemetryEnabled)
+        assertFalse(XRepo.telemetryEnabled())
+    }
+
+    @Test
+    fun load_readsTelemetryEnabledFromRepo() = runTest {
+        XRepo.setTelemetryEnabled(false)
+        val viewModel = AboutSettingsViewModel()
+
+        viewModel.sendIntent(AboutSettingsIntent.Load)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiStateFlow.value.telemetryEnabled)
+    }
+
+    @Test
+    fun showAndDismissPrivacyDialog_transitionsState() = runTest {
+        val viewModel = AboutSettingsViewModel()
+        assertFalse(viewModel.uiStateFlow.value.showPrivacyDialog)
+
+        viewModel.sendIntent(AboutSettingsIntent.ShowPrivacyDialog)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiStateFlow.value.showPrivacyDialog)
+
+        viewModel.sendIntent(AboutSettingsIntent.DismissPrivacyDialog)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiStateFlow.value.showPrivacyDialog)
+    }
+
+    @Test
+    fun openTelemetryDoc_closesDialogAndEmitsUri() = runTest {
+        val viewModel = AboutSettingsViewModel()
+        viewModel.sendIntent(AboutSettingsIntent.ShowPrivacyDialog)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiStateFlow.value.showPrivacyDialog)
+
+        val effectDeferred = async { viewModel.uiEffect.first() }
+        viewModel.sendIntent(AboutSettingsIntent.OpenTelemetryDoc)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiStateFlow.value.showPrivacyDialog)
+        assertEquals(
+            AboutSettingsEffect.OpenUri(TELEMETRY_DOC_URL),
+            effectDeferred.await(),
+        )
     }
 }

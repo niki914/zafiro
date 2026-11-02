@@ -78,6 +78,9 @@ object AppServices {
             onboardingCompletedProvider = {
                 runCatchingCancellable { XRepo.onboardingCompleted() }.getOrDefault(false)
             },
+            telemetryEnabledProvider = {
+                runCatchingCancellable { XRepo.telemetryEnabled() }.getOrDefault(true)
+            },
         )
         telemetry.attach()
         installService<Telemetry>(telemetry)
