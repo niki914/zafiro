@@ -16,6 +16,7 @@
 .env.*.local
 *.md
 !/.agents/skills/**/*.md
+!/docs/**/*.md
 
 ### Android / Gradle
 **/.gradle/
