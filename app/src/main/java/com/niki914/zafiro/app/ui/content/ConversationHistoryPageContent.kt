@@ -73,8 +73,7 @@ import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.uikit.screen.ReportTitleBarCollapsed
 import com.niki914.uikit.screen.zafiroScreenBottomPadding
 import com.niki914.uikit.screen.zafiroScreenTopPadding
-import com.niki914.uikit.scroll.ZafiroScrollableContainer
-import com.niki914.uikit.scroll.rememberZafiroLazyListStateAdapter
+import com.niki914.uikit.scroll.ZafiroOverscrollContainer
 import com.niki914.uikit.scroll.rememberZafiroOverscrollController
 import com.niki914.uikit.textfield.ZafiroTextField
 import com.niki914.zafiro.app.R
@@ -312,7 +311,6 @@ private fun ConversationHistoryListContent(
 
     val listState = rememberLazyListState()
     val overscrollController = rememberZafiroOverscrollController()
-    val scrollbarState = rememberZafiroLazyListStateAdapter(listState, overscrollController)
 
     // 折叠信号取自列表自身的整数位置与刚体平移量：壳层累加量是手势增量之和，与真实位置有亚像素
     // 差，而本页阈值为 0.dp，半像素正残差就会让背景板永久不透明；当列表项较少发生向上超滚时，
@@ -332,11 +330,8 @@ private fun ConversationHistoryListContent(
         }
     }
 
-    ZafiroScrollableContainer(
-        state = scrollbarState,
+    ZafiroOverscrollContainer(
         overscrollController = overscrollController,
-        topClearance = zafiroScreenTopPadding(24.dp),
-        bottomClearance = zafiroScreenBottomPadding(),
         modifier = modifier.fillMaxSize(),
     ) {
         LazyColumn(
