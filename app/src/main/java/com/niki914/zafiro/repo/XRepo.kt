@@ -95,6 +95,7 @@ object XRepo {
         alwaysShowDetailedToolOutputField.flow.value = false
         voiceAssistantIsolatedSessionField.flow.value = true
         floatingBallEnabledField.flow.value = false
+        telemetryEnabledField.flow.value = true
         residentNotificationEnabledField.flow.value = false
         turnNotificationEnabledField.flow.value = false
         floatingBallAutoExpandField.flow.value = true
@@ -467,6 +468,18 @@ object XRepo {
     suspend fun floatingBallEnabled(): Boolean = floatingBallEnabledField.get()
 
     suspend fun setFloatingBallEnabled(value: Boolean) = floatingBallEnabledField.set(value)
+
+    /** 遥测上报开关的进程内热更新通道：读时回填初值，写时同步。 */
+    private val telemetryEnabledField = ReactiveAppStateField(
+        default = true,
+        select = { telemetryEnabled },
+        update = { copy(telemetryEnabled = it) },
+    )
+    val telemetryEnabledSetting: MutableStateFlow<Boolean> get() = telemetryEnabledField.flow
+
+    suspend fun telemetryEnabled(): Boolean = telemetryEnabledField.get()
+
+    suspend fun setTelemetryEnabled(value: Boolean) = telemetryEnabledField.set(value)
 
     /** 常驻通知栏开关的进程内热更新通道 */
     private val residentNotificationEnabledField = ReactiveAppStateField(

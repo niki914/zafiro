@@ -37,6 +37,7 @@ sealed interface SettingsRowSpec {
         override val title: String,
         val summary: String? = null,
         val checked: Boolean,
+        val leadingIcon: SettingsRowLeadingIcon? = null,
         override val enabled: Boolean = true,
     ) : SettingsRowSpec
 

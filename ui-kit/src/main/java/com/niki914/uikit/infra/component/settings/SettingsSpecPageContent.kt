@@ -176,19 +176,18 @@ private fun SettingsRowItem(
         }
 
         is SettingsRowSpec.ToggleNavigation -> {
-            require(isCardList) {
-                "SettingsRowSpec.ToggleNavigation requires SettingsSectionLayout.CardList."
-            }
+            val leadingSlot = row.leadingIcon?.toSettingLeadingSlot() ?: SettingLeadingSlot.None
             SettingCardItem(
                 title = row.title,
                 summary = row.summary,
+                leadingSlot = leadingSlot,
                 trailingSlot = SettingTrailingSlot.Toggle(
                     checked = row.checked,
                     onCheckedChange = { checked ->
                         onAction(SettingsRowAction.ToggleChanged(row.id, checked))
                     },
                 ),
-                isStandaloneCard = true,
+                isStandaloneCard = isCardList,
                 enabled = row.enabled,
                 onClick = { onAction(SettingsRowAction.Navigate(row.id)) },
             )

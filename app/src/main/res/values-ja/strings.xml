@@ -177,6 +177,12 @@
     <string name="ui_settings_about_telegram">Telegram グループ</string>
     <string name="ui_settings_about_feedback_feature">機能のリクエスト</string>
     <string name="ui_settings_about_feedback_bug">バグ報告</string>
+    <string name="ui_settings_about_telemetry_title">診断と使用状況</string>
+    <string name="ui_settings_about_telemetry_summary">匿名の診断データを送信して安定性向上を支援</string>
+    <string name="ui_settings_about_telemetry_dialog_title">診断と使用状況</string>
+    <string name="ui_settings_about_telemetry_dialog_text">匿名の診断とパフォーマンスデータを送信し、問題のトラブルシューティングと安定性の向上を支援します。\n\n個人データ、会話内容、機密認証情報は一切収集しません。</string>
+    <string name="ui_settings_about_telemetry_dialog_positive">ドキュメントを表示</string>
+    <string name="ui_settings_about_telemetry_dialog_negative">完了</string>
     <string name="ui_settings_about_version">バージョン</string>
 
     <string name="ui_settings_storage_description">各種キャッシュの使用量を確認し、タップして削除できます。設定・記憶・会話履歴には影響しません。</string>
