@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.chat.helper.ChatTextDirection
 import com.niki914.zafiro.app.ui.viewer.LocalViewerOpener
 import com.niki914.zafiro.app.ui.viewer.ViewerContent
 
@@ -146,23 +147,27 @@ fun UserMessageBubble(
             SelectionContainer(
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
             ) {
-                Text(
-                    text = text,
-                    style = textStyle,
-                    color = colorScheme.onSurface,
-                    textAlign = TextAlign.Start,
-                    maxLines = maxLines,
-                    overflow = TextOverflow.Ellipsis,
-                    onTextLayout = { layoutResult ->
-                        if (isHeightCapped) {
-                            val overflow = layoutResult.hasVisualOverflow ||
-                                (layoutResult.lineCount > 0 && layoutResult.isLineEllipsized(layoutResult.lineCount - 1))
-                            if (hasVisualOverflow != overflow) {
-                                hasVisualOverflow = overflow
+                // 波斯语/阿拉伯语用户消息在 RTL 方向下渲染：TextAlign.Start 落到右侧。
+                // 气泡本身仍固定在右侧，不做镜像。
+                ChatTextDirection(text = text) {
+                    Text(
+                        text = text,
+                        style = textStyle,
+                        color = colorScheme.onSurface,
+                        textAlign = TextAlign.Start,
+                        maxLines = maxLines,
+                        overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { layoutResult ->
+                            if (isHeightCapped) {
+                                val overflow = layoutResult.hasVisualOverflow ||
+                                    (layoutResult.lineCount > 0 && layoutResult.isLineEllipsized(layoutResult.lineCount - 1))
+                                if (hasVisualOverflow != overflow) {
+                                    hasVisualOverflow = overflow
+                                }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
 
             val openViewer = LocalViewerOpener.current
