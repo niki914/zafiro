@@ -5,13 +5,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.compose.components.MarkdownComponents
@@ -25,6 +28,7 @@ import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.zafiro.app.ui.chat.composable.body.custom.AssistantCodeBlock
+import com.niki914.zafiro.app.ui.chat.helper.ChatTextDirection
 
 val LocalMarkdownScale = compositionLocalOf { 1.0f }
 
@@ -66,13 +70,15 @@ fun AssistantOutputText(
 ) {
     val markdownState = rememberMarkdownState(content = text, retainState = true)
 
-    SelectionContainer(modifier = modifier.fillMaxWidth()) {
-        Markdown(
-            markdownState = markdownState,
-            modifier = Modifier.fillMaxWidth(),
-            typography = assistantMarkdownTypography(),
-            components = assistantMarkdownComponents(),
-        )
+    ChatTextDirection(text = text) {
+        SelectionContainer(modifier = modifier.fillMaxWidth()) {
+            Markdown(
+                markdownState = markdownState,
+                modifier = Modifier.fillMaxWidth(),
+                typography = assistantMarkdownTypography(),
+                components = assistantMarkdownComponents(),
+            )
+        }
     }
 }
 
@@ -88,12 +94,22 @@ private fun assistantMarkdownComponents(): MarkdownComponents = remember {
         },
         codeFence = { model ->
             MarkdownCodeFence(model.content, model.node, style = model.typography.code) { code, _, style ->
-                AssistantCodeBlock(code = code, style = style)
+                // 代码始终 LTR：RTL 消息里的代码块也不跟随右对齐。
+                CompositionLocalProvider(
+                    LocalLayoutDirection provides LayoutDirection.Ltr,
+                ) {
+                    AssistantCodeBlock(code = code, style = style)
+                }
             }
         },
         codeBlock = { model ->
             MarkdownCodeBlock(model.content, model.node, style = model.typography.code) { code, _, style ->
-                AssistantCodeBlock(code = code, style = style)
+                // 代码始终 LTR：RTL 消息里的代码块也不跟随右对齐。
+                CompositionLocalProvider(
+                    LocalLayoutDirection provides LayoutDirection.Ltr,
+                ) {
+                    AssistantCodeBlock(code = code, style = style)
+                }
             }
         },
         checkbox = { model -> MarkdownCheckBox(model.content, model.node, model.typography.text) },
