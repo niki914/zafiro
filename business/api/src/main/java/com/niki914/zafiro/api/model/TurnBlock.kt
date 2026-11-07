@@ -50,6 +50,9 @@ sealed interface TurnBlock {
         val message: String?,
         val code: TurnFailureCode? = null,
         val attempts: Int? = null,
+        /** r21 Item 3f：本次请求实际路由到的模型 label（「模型名 · 配置名」），
+         *  轮值开启时让错误卡片定位「是哪个模型出了问题」。null = 未携带。 */
+        val model: String? = null,
     ) : TurnBlock
 
     /**

@@ -56,6 +56,9 @@ sealed interface LlmStreamEvent {
         val code: LlmErrorCode? = null,
         /** RetryExhausted 专属：已耗尽的重试次数（来自 RetryScheduled 事件，非字符串解析）。 */
         val attempts: Int? = null,
+        /** r21 Item 3f：本次请求实际路由到的模型 label（「模型名 · 配置名」），
+         *  轮值开启时让 UI 错误卡片定位「是哪个模型出了问题」。null = 未携带（旧路径）。 */
+        val model: String? = null,
     ) : LlmStreamEvent
 
     /**

@@ -10,6 +10,7 @@ import com.niki914.okia.message.ContentBlock
 import com.niki914.xposed.api.util.LockState
 import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.stream.LlmStreamEventMapper
+import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +48,10 @@ internal class LlmStreamPipeline {
         images: List<ContentBlock.Image>,
         systemPrompt: String,
         channel: SendChannel<LlmStreamEvent>,
+        /** r21 Item 3f：本次请求实际路由到的模型 label（「模型名 · 配置名」）。
+         *  轮值开启时每次请求都不同，调用方从当前 snapshot.config.revolverLabel 取。
+         *  null = 未携带（旧路径 / 非轮值）。 */
+        model: String? = null,
     ) {
         turnActiveFlow.value = true
         val startedAtMs = System.currentTimeMillis()
@@ -95,7 +100,13 @@ internal class LlmStreamPipeline {
                                         "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                             )
                         }
-                        emit(it)
+                        // r21 Item 3f：把路由到的模型 label 补到映射出来的 Error 上
+                        // （mapper 无 per-请求 context，label 由 pipeline 在发射前附加）。
+                        val labelled = when (it) {
+                            is LlmStreamEvent.Error -> it.copy(model = model)
+                            else -> it
+                        }
+                        emit(labelled)
                     }
                 }
             } catch (throwable: Throwable) {
@@ -115,6 +126,7 @@ internal class LlmStreamPipeline {
                             message = throwable.message?.trim()?.ifEmpty { null },
                             throwable = throwable,
                             code = throwable.toUserErrorCode(),
+                            model = model,
                         )
                     )
                 }
@@ -134,6 +146,7 @@ internal class LlmStreamPipeline {
                         message = error.message.trim().ifEmpty { null },
                         throwable = error.cause,
                         code = RetryableErrorClassifier.classify(error),
+                        model = model,
                     )
                 )
             }
@@ -145,7 +158,7 @@ internal class LlmStreamPipeline {
                             "resultType=${result?.let { it::class.simpleName } ?: "null"} " +
                             "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                 )
-                emit(LlmStreamEvent.Error(message = null, code = null))
+                emit(LlmStreamEvent.Error(message = null, code = null, model = model))
             }
             if (!streamErrorReported) {
                 Logger.i(
@@ -156,6 +169,20 @@ internal class LlmStreamPipeline {
         } finally {
             turnActiveFlow.value = false
             AccessibilityController.onTurnEnd()
+            // r23：回合终态（成功 / 流错误 / 失败 / 无终态兜底 都到达此 finally）。
+            // 清除「轮值回答未决」标记——只有回答收到后，下一个请求才可在冷却解锁点
+            // 到点时再次选中该模型。generateSummary 走独立 Okia（不挂 RevolverRouterHook），
+            // 从不登记未决标记，故只需清本轮路由到的那个配置。
+            try {
+                val gateway = RuntimeEnvironment.awaitSettingsGateway()
+                val routed = gateway.revolverLastRoutedConfigId()
+                if (routed != null) gateway.revolverAnswerReceived(routed)
+            } catch (e: Exception) {
+                Logger.w(
+                    LOG_TAG,
+                    "revolver answer-received clearing failed: ${e.message}",
+                )
+            }
         }
     }
 

@@ -367,6 +367,8 @@ internal object ConversationReducer {
             message = event.message,
             code = event.code.toFailureCode(),
             attempts = event.attempts,
+            // r21 Item 3f：路由到的模型 label（轮值开启时定位出错模型）
+            model = event.model,
         ),
     )
 

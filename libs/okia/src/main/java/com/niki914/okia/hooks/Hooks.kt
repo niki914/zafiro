@@ -35,6 +35,13 @@ interface Hooks {
     // unary（MCP 等其他网络请求）不触发。
     suspend fun afterRequest(request: HttpRequest) {}
 
+    // r27 F17：单个 LLM 请求的流收集完成后触发（每段 tool-loop 一次，
+    // 一次回合最多 N 次）。与 afterRequest（headers 到达即触发）不同：
+    // 本时点意味着本次请求的完整助手消息已 commit——轮值等「上一回答已收」
+    // 类速率门控据此解除挂起。默认空实现，零破坏现有 Hooks 实现。
+    // unary（MCP 等其他网络请求）不触发。
+    suspend fun afterRequestStream(request: HttpRequest) {}
+
     // 工具执行前：审批 / 拦截 / 参数改写（阻断机制见开放问题 6.1）
     suspend fun beforeToolCall(call: ToolCallHolder) {}
 

@@ -51,6 +51,10 @@ dependencies {
     implementation(project(":business:permission"))
     implementation(project(":business:notification"))
     implementation(project(":xsettings"))
+    // IAB：文件上传回传依赖 androidx FileProvider
+    implementation("androidx.core:core:1.15.0")
+    // IAB：下载目录走 SAF 树（OpenDocumentTree 选中的文件夹）写入，需要 DocumentFile
+    implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("com.hashsequence:coil-resvg-android:1.1.2")

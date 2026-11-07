@@ -16,6 +16,7 @@ class BuiltinToolTest {
 
         assertEquals(
             listOf(
+                "browser",
                 "execute_python",
                 "find_installed_apps",
                 "launch_app",

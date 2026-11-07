@@ -13,6 +13,7 @@ import com.niki914.zafiro.repo.CloudModelFacts
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.ModelCatalog
 import com.niki914.zafiro.repo.ModelCatalogApi
+import com.niki914.zafiro.repo.RevolverParams
 import com.niki914.zafiro.repo.SavedLlmConfig
 import com.niki914.zafiro.repo.TokenCountText
 import com.niki914.zafiro.repo.XRepo
@@ -96,6 +97,16 @@ data class ConfigureUiState(
     val initialSettingsSnapshot: ConfigureSnapshot? = null,
     val savedConfigs: List<SavedConfigSummary> = emptyList(),
     val activeConfigId: String? = null,
+    /** 轮值（revolver）开关：跨多个保存配置按轮转调度，摊平单 key 限频。 */
+    val revolverEnabled: Boolean = false,
+    /** 轮值候选配置 id（按轮转顺序）；有效项 < 2 时轮值不生效。 */
+    val revolverConfigIds: List<String> = emptyList(),
+    /** 轮值每模型每周期请求数（configId → 权重；缺键 = 默认 1）。 */
+    val revolverCounts: Map<String, Int> = emptyMap(),
+    /** 轮值每模型冷却秒数（configId → 答完到下次同模型请求的间隔；缺键 = 0 即无冷却）。 */
+    val revolverDelays: Map<String, Long> = emptyMap(),
+    /** 非 null 时应弹出轮值候选多选弹窗。 */
+    val showRevolverPicker: Boolean = false,
     /** 非 null 时应弹出端点不匹配确认弹窗。 */
     val pendingEndpointMismatch: EndpointMismatch? = null,
     /** 模型目录扫描缓存：为空 = 不显示扫描按钮；非空 = 显示按钮。 */
@@ -181,6 +192,33 @@ sealed interface ConfigureIntent {
     data object HideModelCatalogSheet : ConfigureIntent
     data class SelectCatalogModel(val modelId: String) : ConfigureIntent
 
+    /** 轮值开关：开/关（候选列表在开关关闭时清空；开启但候选 < 2 由仓库层自动失效）。 */
+    data class ToggleRevolver(val enabled: Boolean) : ConfigureIntent
+
+    /** 打开轮值候选多选弹窗。 */
+    data object OpenRevolverPicker : ConfigureIntent
+
+    /** 关闭轮值候选多选弹窗。 */
+    data object DismissRevolverPicker : ConfigureIntent
+
+    /** 确认弹窗内的勾选，落盘轮值候选列表。 */
+    data class ConfirmRevolverSelection(val configIds: List<String>) : ConfigureIntent
+
+    /** 在弹窗内切换单个候选的勾选状态（每步实时落盘）。 */
+    data class ToggleRevolverCandidate(val configId: String) : ConfigureIntent
+
+    /** 移除轮值候选（实时落盘）。 */
+    data class RemoveRevolverCandidate(val configId: String) : ConfigureIntent
+
+    /** 上移/下移轮值候选的顺序（offset = +1 下移 / -1 上移；实时落盘）。 */
+    data class ReorderRevolver(val configId: String, val offset: Int) : ConfigureIntent
+
+    /** 设置某模型每周期请求数（权重；实时落盘）。 */
+    data class SetRevolverCount(val configId: String, val value: Int) : ConfigureIntent
+
+    /** 设置某模型冷却秒数（答完到下次同模型请求的间隔；实时落盘）。 */
+    data class SetRevolverDelay(val configId: String, val value: Long) : ConfigureIntent
+
     /** 确认端点不匹配弹窗：点击更新。 */
     data object ConfirmEndpointMismatch : ConfigureIntent
 
@@ -218,6 +256,15 @@ internal data class ConfigureViewModelDependencies(
     val upsertConfig: suspend (SavedLlmConfig) -> String?,
     val deleteConfig: suspend (String) -> Unit,
     val setActiveConfig: suspend (String) -> Unit,
+    val revolver: suspend () -> Pair<Boolean, List<String>>,
+    val setRevolver: suspend (Boolean, List<String>) -> Unit,
+    val revolverParams: suspend () -> RevolverParams,
+    val setRevolverParams: suspend (
+        enabled: Boolean,
+        ids: List<String>,
+        counts: Map<String, Int>,
+        delays: Map<String, Long>,
+    ) -> Unit,
     val fetchModelCatalog: suspend (modelsUrl: String, apiKey: String, protocol: LlmProtocol) -> ModelCatalog,
     val saveModelFacts: suspend (endpoint: String, factsByModel: Map<String, CloudModelFacts>) -> Unit,
     val revisions: Flow<Long> = emptyFlow(),
@@ -228,6 +275,12 @@ internal data class ConfigureViewModelDependencies(
             upsertConfig = { XRepo.llmConfigs.upsert(it) },
             deleteConfig = { XRepo.llmConfigs.delete(it) },
             setActiveConfig = { XRepo.llmConfigs.setActive(it) },
+            revolver = { XRepo.llmConfigs.revolver() },
+            setRevolver = { enabled, configIds -> XRepo.llmConfigs.setRevolver(enabled, configIds) },
+            revolverParams = { XRepo.llmConfigs.revolverParams() },
+            setRevolverParams = { enabled, ids, counts, delays ->
+                XRepo.llmConfigs.setRevolverParams(enabled, ids, counts, delays)
+            },
             fetchModelCatalog = { modelsUrl, apiKey, protocol ->
                 ModelCatalogApi.fetch(modelsUrl, apiKey, protocol)
             },
@@ -255,13 +308,148 @@ class ConfigureViewModel internal constructor(
     private suspend fun refreshSavedConfigs() {
         tryIgnore {
             val document = dependencies.loadDocument()
+            val params = dependencies.revolverParams()
             updateState {
                 copy(
                     savedConfigs = summariesOf(document),
                     activeConfigId = document.activeId,
+                    revolverEnabled = params.enabled,
+                    revolverConfigIds = params.configIds,
+                    revolverCounts = params.counts,
+                    revolverDelays = params.delays,
                 )
             }
         }
+    }
+
+    /** 统一落盘轮值完整参数（开关 + 候选顺序 + 每模型请求数 + 每模型冷却秒数）。
+     *  r21 所有轮值控件共享这条写路径，避免 r20「改一处丢另一处」的丢字段 bug。
+     *  r22：[closePicker] 决定写完后是否同步关掉候选弹窗。默认 false（实时编辑保留弹窗打开，
+     *  只在用户点 scrim / 点「确认」/ 翻 master 开关时才关闭），修「每点一次弹窗就关」的体验问题。 */
+    private suspend fun persistRevolver(
+        enabled: Boolean,
+        ids: List<String>,
+        counts: Map<String, Int>,
+        delays: Map<String, Long>,
+        closePicker: Boolean = false,
+    ) {
+        dependencies.setRevolverParams(enabled, ids, counts, delays)
+        val params = dependencies.revolverParams()
+        updateState {
+            copy(
+                revolverEnabled = params.enabled,
+                revolverConfigIds = params.configIds,
+                revolverCounts = params.counts,
+                revolverDelays = params.delays,
+                showRevolverPicker = if (closePicker) false else showRevolverPicker,
+            )
+        }
+    }
+
+    /** 轮值开关：关闭即清空候选；开启但有效候选 < 2 时保持 on，由仓库层自动失效（不写盘）。
+     *  r22：翻 master 开关 = 「收工」语义 → 关弹窗（closePicker=true）。 */
+    private suspend fun toggleRevolver(enabled: Boolean) {
+        val current = currentState
+        val ids = if (enabled) current.revolverConfigIds else emptyList()
+        persistRevolver(
+            enabled = enabled,
+            ids = ids,
+            counts = current.revolverCounts,
+            delays = current.revolverDelays,
+            closePicker = true,
+        )
+    }
+
+    /** 切换单个候选的勾选状态（实时落盘；候选顺序保持其余项不变，新勾选追加到末尾）。
+     *  r22：保留弹窗打开（closePicker=false），让用户能连续勾/取消多颗模型，修 Item 1b。 */
+    private suspend fun toggleRevolverCandidate(configId: String) {
+        val current = currentState
+        val ids = if (configId in current.revolverConfigIds) {
+            current.revolverConfigIds - configId
+        } else {
+            current.revolverConfigIds + configId
+        }
+        persistRevolver(
+            enabled = current.revolverEnabled || ids.size >= 2,
+            ids = ids,
+            counts = current.revolverCounts,
+            delays = current.revolverDelays,
+            closePicker = false,
+        )
+    }
+
+    /** 移除候选（实时落盘；权重/冷却一并清掉该 id 的键）。
+     *  r22：保留弹窗打开（closePicker=false）；本 intent 仅作"清键"的备用路径
+     *  （picker 里点 ✅ 取消勾选走 toggleRevolverCandidate，已覆盖）。 */
+    private suspend fun removeRevolverCandidate(configId: String) {
+        val current = currentState
+        persistRevolver(
+            enabled = current.revolverEnabled,
+            ids = current.revolverConfigIds - configId,
+            counts = current.revolverCounts - configId,
+            delays = current.revolverDelays - configId,
+            closePicker = false,
+        )
+    }
+
+    /** 弹窗「确认」：所有控件已实时落盘，此步只重读仓库态并关闭弹窗（幂等）。
+     *  r22：「确认」= 收工 → 关弹窗（closePicker=true）。 */
+    private suspend fun confirmRevolverSelection(configIds: List<String>) {
+        val current = currentState
+        persistRevolver(
+            enabled = current.revolverEnabled,
+            ids = configIds,
+            counts = current.revolverCounts,
+            delays = current.revolverDelays,
+            closePicker = true,
+        )
+    }
+
+    /** 调整候选顺序：按 offset 移动 configId（+1 下移 / -1 上移，越界则夹紧）。
+     *  r22：保留弹窗打开（closePicker=false），用户继续调顺序不重开。 */
+    private suspend fun reorderRevolver(configId: String, offset: Int) {
+        val current = currentState
+        val ids = current.revolverConfigIds.toMutableList()
+        val from = ids.indexOf(configId)
+        if (from == -1) return
+        val to = (from + offset).coerceIn(0, ids.size - 1)
+        if (to == from) return
+        ids.removeAt(from)
+        ids.add(to, configId)
+        persistRevolver(
+            enabled = current.revolverEnabled,
+            ids = ids,
+            counts = current.revolverCounts,
+            delays = current.revolverDelays,
+            closePicker = false,
+        )
+    }
+
+    /** 设置某模型每周期请求数（权重，实时落盘；0 = 该模型本轮跳过）。
+     *  r22：保留弹窗打开（closePicker=false），用户继续调权重/冷却。 */
+    private suspend fun setRevolverCount(configId: String, value: Int) {
+        val current = currentState
+        persistRevolver(
+            enabled = current.revolverEnabled,
+            ids = current.revolverConfigIds,
+            counts = current.revolverCounts + (configId to value.coerceAtLeast(0)),
+            delays = current.revolverDelays,
+            closePicker = false,
+        )
+    }
+
+    /** 设置某模型冷却秒数（实时落盘；0 = 无冷却）。
+     *  r22：保留弹窗打开（closePicker=false），用户继续调冷却。 */
+    private suspend fun setRevolverDelay(configId: String, value: Long) {
+        val current = currentState
+        // r23 Item 1：滑杆 0..120s，上抛前 coerce 双端保护（滑杆已限 0..120，这里兜底）。
+        persistRevolver(
+            enabled = current.revolverEnabled,
+            ids = current.revolverConfigIds,
+            counts = current.revolverCounts,
+            delays = current.revolverDelays + (configId to value.coerceIn(0L, 120L)),
+            closePicker = false,
+        )
     }
 
     override fun initUiState(): ConfigureUiState = ConfigureUiState()
@@ -360,6 +548,34 @@ class ConfigureViewModel internal constructor(
                     showModelCatalogSheet = false,
                 )
             }
+
+            is ConfigureIntent.ToggleRevolver -> toggleRevolver(intent.enabled)
+
+            ConfigureIntent.OpenRevolverPicker -> updateState {
+                copy(showRevolverPicker = true)
+            }
+
+            ConfigureIntent.DismissRevolverPicker -> updateState {
+                copy(showRevolverPicker = false)
+            }
+
+            is ConfigureIntent.ConfirmRevolverSelection ->
+                confirmRevolverSelection(intent.configIds)
+
+            is ConfigureIntent.ToggleRevolverCandidate ->
+                toggleRevolverCandidate(intent.configId)
+
+            is ConfigureIntent.RemoveRevolverCandidate ->
+                removeRevolverCandidate(intent.configId)
+
+            is ConfigureIntent.ReorderRevolver ->
+                reorderRevolver(intent.configId, intent.offset)
+
+            is ConfigureIntent.SetRevolverCount ->
+                setRevolverCount(intent.configId, intent.value)
+
+            is ConfigureIntent.SetRevolverDelay ->
+                setRevolverDelay(intent.configId, intent.value)
         }
     }
 

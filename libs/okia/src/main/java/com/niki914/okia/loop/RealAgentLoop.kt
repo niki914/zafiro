@@ -269,6 +269,20 @@ internal class RealAgentLoop : AgentLoop {
                             assistant.stopReason?.name,
                             false
                         )
+                        // r27 F17：本次 LLM 请求的流已完整收集成功（助手消息 commit 后）→
+                        // 触发 per-请求流终态时点。轮值等速率门控在此解除挂起
+                        // （上一回答已收），与 afterRequest（headers 到达即触发）形成双时点。
+                        // 失败/取消路径【不】触发：门控保留属主 stage，LlmStreamPipeline
+                        // 的回合终态安全网负责兜底。
+                        // 注意：触发用 runSegment 的局部 [httpRequest] 作标识——
+                        // sendWithTransportRetry 内部 beforeRequest 的改写结果
+                        // 只在该次 attempt 内消费；跨重试时每次重发的请求体一致
+                        // （同一 httpengine 输入 + 同一 hook 链），因此用原始体做标识
+                        // 与「本次尝试的候选」语义一致，且调用方（RevolverRouterHook）
+                        // 只按 configId 查 [RevolverRouterHook.lastPick] 即可。
+                        hookStep(request, onEvent, "afterRequestStream") {
+                            it.afterRequestStream(httpRequest)
+                        }?.let { return SegmentOutcome.Finished(it) }
                         return SegmentOutcome.Success(assistant)
                     } catch (e: StreamTerminated) {
                         request.requestLogger?.completed(

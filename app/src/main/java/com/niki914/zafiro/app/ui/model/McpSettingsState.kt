@@ -534,6 +534,14 @@ private fun isValidUrl(value: String): Boolean {
     }
 }
 
+/** IAB 地址栏：输入看起来是 URL 才直接导航，否则走 Google 搜索。 */
+fun isLikelyUrl(input: String): Boolean {
+    val trimmed = input.trim()
+    if (trimmed.isEmpty()) return false
+    if (trimmed.contains("://") || trimmed.startsWith("www.", ignoreCase = true)) return true
+    return isValidUrl(trimmed)
+}
+
 private fun firstInvalidFieldEffect(
     nameErrorResId: Int?,
     urlErrorResId: Int?,

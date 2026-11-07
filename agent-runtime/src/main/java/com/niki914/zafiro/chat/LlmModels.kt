@@ -26,6 +26,10 @@ data class ResolvedLlmConfig(
     val thinkingLevel: ThinkingLevel? = null,
     /** 复读检测灵敏度档位。 */
     val repetitionSensitivity: RepetitionSensitivity = RepetitionSensitivity.DEFAULT,
+    /** r21 Item 3f：本次请求实际路由到的模型 label（「模型名 · 配置名」），
+     *  由 AgentSessionEngine.refresh 从 RuntimeLlmConfig.revolverLabel 透传；
+     *  stream 出错时随 LlmStreamEvent.Error.model 带给 UI。空串 = 未携带。 */
+    val revolverLabel: String = "",
 )
 
 data class ResolvedTools(

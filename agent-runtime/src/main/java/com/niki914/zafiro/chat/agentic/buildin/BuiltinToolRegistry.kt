@@ -1,5 +1,6 @@
 package com.niki914.zafiro.chat.agentic.buildin
 
+import com.niki914.zafiro.chat.agentic.buildin.impl.BrowserBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExecutePythonBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.FindInstalledAppsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
@@ -41,6 +42,7 @@ class BuiltinToolRegistry(
                 ScreenOperationShellBuiltin(),
                 ScreenshotBuiltin(),
                 ViewImageBuiltin(),
+                BrowserBuiltin(),
             )
         )
     }
