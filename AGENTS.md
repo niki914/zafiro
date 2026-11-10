@@ -81,5 +81,14 @@ Owner prerequisite: Actions must be **enabled** on the fork (Actions tab → "I 
 - `AgentSessionEngineOkiaTest.ensureSession_createsInstanceAndReturnsTreeId` is a flaky upstream test (listed as `flaky:` in known_test_failures.txt).
 - I can inspect built APKs in the sandbox (`pyaxmlparser` in a venv) to verify manifest facts, but cannot run them.
 
+- Dictation bug root cause (2nd round): UI state tied to composable lifetime. The compact<->expanded composer switch disposed the mic button and with it the recognizer. Long-lived work (recognizer, timers) must be owned above the layout that shows it.
+- `TurnCompleted` in Okia fires once per user turn (last message only). Per-request usage lives on each committed assistant message: meter by watching committed history, de-duplicated by entry id.
+- Okia keeps the user message committed when a request fails. A clean retry on another model = restore a pre-turn `export()` snapshot via `refresh(restore=...)` (works for empty conversations; `rewind` cannot).
+- Fallback is only safe before any output/tool call (`FallbackPolicy`); recovery after output continues the SAME conversation instead (never re-run finished work).
+- Room: bump version + write a `Migration` + test it by opening a hand-built old-version file (see `MigrationTest`); a bad migration crashes every schedule.
+- Backups contain API keys in plain text (ADR-0006 deferred by owner). Restore is staged and applied in `App.onCreate` before any DB/settings file opens.
+- Owner rule: research + LIST for approval before adding abilities/skills/MCPs/actions (`docs/APPROVAL_LIST.md`).
+- Pure Kotlin logic (even from `app`) can be verified in the sandbox by copying it into a scratch copy of `autonomy/core` (junit available); used for BackupArchive.
+
 ## Status
 Evidence-based status: ROADMAP.md and TESTING.md. As of 2026-11-10: `feat/foundation` builds and passes the CI gate (APK artifact `zafiro-autonomous-debug-apk` on the run); **nothing has been verified on a physical phone yet**; `main` is still pristine upstream; no PR opened.
