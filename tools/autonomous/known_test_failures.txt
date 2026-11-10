@@ -12,4 +12,4 @@ com.niki914.zafiro.app.conversation.ConversationPersisterTest.trackActivity_bump
 # asynchronously. Passed in 3 earlier runs; failed once on e8d3ebb with agent-runtime untouched.
 flaky:com.niki914.zafiro.chat.AgentSessionEngineOkiaTest.ensureSession_createsInstanceAndReturnsTreeId
 # Minimum number of tests that must run (guards against a compile break silently dropping whole modules). Baseline 1715 + ours.
-MIN_TESTS=1790
+MIN_TESTS=1860
