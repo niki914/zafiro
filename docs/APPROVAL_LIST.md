@@ -20,6 +20,53 @@ this session) / UNVERIFIED. Licenses were read from each repo's LICENSE file; SK
 Honest summary: of these nine, only **social-media-skills** (and a slice of **Agent-Reach**) give Zafiro new abilities that work
 on a phone. Most of the rest are desktop video/render tooling; the useful route to them is a hosted MCP, not bundling.
 
-## B. Still to list (research in progress, nothing added)
-Abilities/tools, default skills (GitHub + your Claude-account skills), text actions, MCP servers, AutoGLM/Ruto-GLM-style
-features. Each will be listed here with licence, risk and a yes/no box for you.
+## B. New abilities (built-in tools). Tick the ones you approve
+
+Today Zafiro has: screenshot, view image, memory, screen operation, find/launch apps, notify, shell/Python, web, MCP, skills.
+All items below are PROPOSED (not in the app). "Unattended" = what a scheduled run may do without asking.
+
+| # | Ability | Why it helps | Permission / risk | Unattended default |
+|---|---|---|---|---|
+| 1 | `take_over` (ask a human, then continue) | AutoGLM-style hand-off for login, CAPTCHA, 2FA, payment. Maps to the NEEDS_HUMAN state I just built | none | notify + wait, then NEEDS_HUMAN |
+| 2 | `wait` (seconds, or until a screen change) | Apps need time to load; avoids burning tool calls | none | allowed |
+| 3 | Gestures: long-press, double-tap, swipe, back/home (if not already in screen operation) | Needed to use "any app" | accessibility (already used) | allowed within budget |
+| 4 | `clipboard` read/write | Move text between apps | none (Android 12 shows a toast on read) | allowed |
+| 5 | `device_info` (battery, network, storage, time, zone) | Tasks that react to phone state | none | allowed |
+| 6 | `http_request` (GET/POST, size/time limits, deny-list for private IPs) | Call any API without writing Python | internet; can leak data | ask / deny for POST |
+| 7 | `schedule_task` (agent creates/edits its own tasks) | "Remind me / do X every Monday" from chat | none; can create runaway work, so a per-day cap | ask |
+| 8 | `text_to_speech` | Spoken reports | none | allowed |
+| 9 | Alarm / timer / calendar-event / share / open-URL via system intents | Real phone actions the user confirms | none (user taps confirm) | allowed |
+| 10 | Compose SMS / email (opens the composer, does NOT send) | Drafts for you to send | none | allowed (draft only) |
+| 11 | Send SMS / email / post | Outward-facing; irreversible | SMS permission etc. | **Deny** |
+| 12 | Read notifications | React to messages, OTP-free 2FA reading is NOT proposed | special access, privacy-sensitive | later |
+| 13 | Contacts / calendar / location read | Personal assistant tasks | runtime permissions, privacy | later |
+| 14 | File read/write in a shared "Zafiro" folder | Hand files to/from other apps | scoped storage | allowed in folder |
+
+My recommendation to start: 1, 2, 3, 4, 5, 8, 9, 10 (low risk, high value). 6 and 7 next. 11-13 only when you ask.
+
+## C. Text actions (selected-text / screen menu)
+Today: Explain, Screen, Translate. Proposed: Summarize, Improve writing, Fix grammar, Make shorter, Make longer, Friendlier tone,
+Formal tone, Reply to this, Extract action items, Create a scheduled task from this. (Prompts only; no permissions.)
+
+## D. Default skills (deletable, as you asked)
+From your suggestions (licenses read, MIT): the 17 `charlie947/social-media-skills` (voice-builder, post-writer, hook-generator,
+reels-scripting, youtube-thumbnail, content-matrix, niche-research, ...), plus 3-4 planning skills adapted from `garrytan/gstack`.
+From your Claude account (names only; I have not read their contents here, and ownership/licence must be confirmed before
+bundling, because some may be Anthropic-provided and not yours to redistribute): logo-design, brand-guidelines, deep-research,
+stop-slop, course-creation, pptx-beautiful, theme-factory, skill-creator, mcp-builder, internal-comms, doc-coauthoring,
+morning, i-have-adhd. Anthropic's own docx/pdf/pptx/xlsx skills are source-available, NOT open: I will not bundle them.
+Skills that need a desktop (Node/Bun/Chrome/ffmpeg) will not work on the phone and are excluded.
+
+## E. MCP servers
+Zafiro's MCP client supports HTTP with static headers only. **No OAuth yet**, so every connector in your Claude account
+(Gmail, Calendar, Drive, Sheets, Notion, Supabase, Vercel, Higgsfield, HyperFrames, Metricool, BlogSEO, Vibe Prospecting,
+AnimatedWebs) cannot be used from Zafiro until MCP-OAuth is built (roadmap phase 4, about a week of work, needed for all of them).
+Usable now without OAuth (URLs from memory, **UNVERIFIED: I will test each endpoint before adding**): DeepWiki (public repo docs,
+no key), Context7 (library docs, optional key), GitHub MCP (personal access token header), Exa/Brave search (API key header).
+Rule I will apply: read-only first; any MCP tool that sends, posts, deletes or spends money defaults to Ask/Deny when unattended.
+
+## F. AutoGLM / "Ruto-GLM"
+AutoGLM (Open-AutoGLM, Apache-2.0) = screenshot -> vision model -> one action per step (tap, swipe, type, long-press, double-tap,
+launch app, back/home, wait, take_over, note, interact) with confirmation for sensitive actions. Zafiro already has the
+screenshot/vision/tap/type/launch loop; the gaps are items 1-3 above (take_over, wait, gestures) and a "sensitive screen"
+confirmation. I still do not have a link for "Ruto-GLM": please send it and I will compare feature by feature instead of guessing.
