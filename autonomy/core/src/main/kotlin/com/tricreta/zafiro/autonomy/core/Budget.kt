@@ -39,6 +39,12 @@ class BudgetTracker(private val budget: Budget, private val startedAtMs: Long) {
         tokens += input + output
     }
 
+    /** Set the absolute token total (the Android layer reads it from the agent's cumulative usage). Never decreases. */
+    @Synchronized
+    fun setTokens(total: Long) {
+        if (total > tokens) tokens = total
+    }
+
     @Synchronized
     fun stepsUsed(): Int = steps
 

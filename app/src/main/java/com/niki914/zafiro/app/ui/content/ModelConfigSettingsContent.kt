@@ -7,18 +7,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
+import com.niki914.uikit.dialog.ZafiroSingleChoiceDialog
 import com.niki914.uikit.infra.component.SettingNavigationItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
+import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ConfigureIntent
 import com.niki914.zafiro.app.ui.model.ConfigureScene
 import com.niki914.zafiro.app.ui.model.ConfigureViewModel
+import com.niki914.zafiro.app.ui.model.FallbackChainIntent
+import com.niki914.zafiro.app.ui.model.FallbackChainViewModel
+import com.niki914.zafiro.app.ui.model.SavedConfigSummary
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
 
@@ -66,6 +72,8 @@ fun ModelConfigSettingsContent(
                 )
             }
 
+            FallbackModelsBlock()
+
             SavedConfigurationBlock(
                 configs = uiState.savedConfigs.map { summary ->
                     summary.copy(isActive = summary.id == uiState.activeConfigId)
@@ -99,6 +107,46 @@ fun ModelConfigSettingsContent(
                 viewModel.sendIntent(ConfigureIntent.DeleteConfig(configId))
             }
             pendingDeleteConfigId = null
+        },
+    )
+}
+
+@Composable
+private fun FallbackModelsBlock() {
+    val viewModel = pageViewModel<FallbackChainViewModel>(key = "settings-fallback")
+    val uiState by viewModel.uiStateFlow.collectAsState()
+    var editingSlot by rememberSaveable { mutableStateOf<Int?>(null) }
+    val noneLabel = stringResource(R.string.fallback_slot_none)
+    val options = remember(uiState.configs, noneLabel) {
+        listOf(SavedConfigSummary(id = "", name = noneLabel, modelId = "", isActive = false)) + uiState.configs
+    }
+
+    LaunchedEffect(viewModel) { viewModel.sendIntent(FallbackChainIntent.Load) }
+
+    SettingsGroupCard {
+        uiState.slots.forEachIndexed { index, configId ->
+            if (index > 0) SettingsItemDivider()
+            SettingNavigationItem(
+                title = stringResource(R.string.fallback_slot_title, index + 1),
+                summary = if (index == 0) stringResource(R.string.fallback_section_summary) else null,
+                currentState = options.firstOrNull { it.id == configId }?.name ?: noneLabel,
+                onClick = { editingSlot = index },
+            )
+        }
+    }
+
+    val slot = editingSlot
+    ZafiroSingleChoiceDialog(
+        visible = slot != null,
+        onDismissRequest = { editingSlot = null },
+        title = stringResource(R.string.fallback_dialog_title, (slot ?: 0) + 1),
+        options = options,
+        selectedId = slot?.let { uiState.slots.getOrNull(it) }.orEmpty(),
+        optionId = { it.id },
+        optionLabel = { if (it.modelId.isBlank()) it.name else "${it.name} (${it.modelId})" },
+        onSelect = {
+            slot?.let { index -> viewModel.sendIntent(FallbackChainIntent.SetSlot(index, it.id)) }
+            editingSlot = null
         },
     )
 }

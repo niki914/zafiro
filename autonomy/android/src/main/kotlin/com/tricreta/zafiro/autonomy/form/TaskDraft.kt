@@ -6,6 +6,8 @@ import com.tricreta.zafiro.autonomy.data.TaskEntity
 import com.tricreta.zafiro.autonomy.data.TriggerTypes
 import com.tricreta.zafiro.autonomy.data.WEEKDAYS
 import com.tricreta.zafiro.autonomy.data.daysToMask
+import com.tricreta.zafiro.autonomy.data.maskToDays
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -14,9 +16,9 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.util.UUID
 
-enum class ScheduleKind { MANUAL, ONCE, DAILY, WEEKDAYS, INTERVAL }
+enum class ScheduleKind { MANUAL, ONCE, DAILY, WEEKDAYS, WEEKLY, MONTHLY, INTERVAL }
 
-enum class DraftField { NAME, PROMPT, TIME, INTERVAL, STEPS, MINUTES }
+enum class DraftField { NAME, PROMPT, TIME, INTERVAL, STEPS, MINUTES, TOKENS, RECOVERIES, DAYS, DAY_OF_MONTH }
 
 sealed interface DraftResult {
     data class Ok(val task: TaskEntity) : DraftResult
@@ -37,6 +39,18 @@ data class TaskDraft(
     val everyMinutes: String = "60",
     val maxSteps: String = "30",
     val maxMinutes: String = "10",
+    /** For WEEKLY: the chosen days. */
+    val days: Set<DayOfWeek> = WEEKDAYS,
+    /** For MONTHLY: 1..31, or "last". Short months clamp (31 runs on the 30th, or 28th/29th in February). */
+    val dayOfMonth: String = "1",
+    /** Thousands of billable tokens a run may use; blank = unlimited. */
+    val maxTokensK: String = "300",
+    /** Extra turns allowed after the first (failures continued, unmet success criteria retried). */
+    val recoveries: String = "2",
+    /** Plain-language definition of done; verified by the agent before a run counts as a success. Blank = no check. */
+    val successCriteria: String = "",
+    /** Saved model configuration to use; blank = whichever is active. */
+    val configId: String = "",
 ) {
 
     /**
@@ -56,6 +70,15 @@ data class TaskDraft(
         if (steps == null || steps !in 1..500) return DraftResult.Invalid(DraftField.STEPS, "Max tool calls must be a number from 1 to 500.")
         val minutes = maxMinutes.trim().toLongOrNull()
         if (minutes == null || minutes !in 1..240) return DraftResult.Invalid(DraftField.MINUTES, "Max minutes must be a number from 1 to 240.")
+        val tokensK: Long = if (maxTokensK.isBlank()) {
+            -1L
+        } else {
+            maxTokensK.trim().toLongOrNull()?.takeIf { it in 10..10_000 }
+                ?: return DraftResult.Invalid(DraftField.TOKENS, "Token limit must be 10 to 10000 (thousands), or empty for no limit.")
+        }
+        val recoveryCount = recoveries.trim().toIntOrNull()
+        if (recoveryCount == null || recoveryCount !in 0..5) return DraftResult.Invalid(DraftField.RECOVERIES, "Recovery attempts must be a number from 0 to 5.")
+        var monthDay = 1
 
         var type = TriggerTypes.NONE
         var onceAt: String? = null
@@ -89,17 +112,37 @@ data class TaskDraft(
                 tod = time.toString()
                 mask = daysToMask(WEEKDAYS)
             }
+            ScheduleKind.WEEKLY -> {
+                if (days.isEmpty()) return DraftResult.Invalid(DraftField.DAYS, "Choose at least one day.")
+                type = TriggerTypes.WEEKLY
+                tod = time.toString()
+                mask = daysToMask(days)
+            }
+            ScheduleKind.MONTHLY -> {
+                val text = dayOfMonth.trim().lowercase()
+                monthDay = if (text == "last") {
+                    -1
+                } else {
+                    text.toIntOrNull()?.takeIf { it in 1..31 }
+                        ?: return DraftResult.Invalid(DraftField.DAY_OF_MONTH, "Day of month must be 1 to 31, or \"last\".")
+                }
+                type = TriggerTypes.MONTHLY
+                tod = time.toString()
+            }
         }
         return DraftResult.Ok(
             TaskEntity(
                 id = id, name = name.trim(), prompt = prompt.trim(), enabled = enabled,
                 triggerType = type, onceAt = onceAt, intervalMinutes = interval, anchorMs = anchor, timeOfDay = tod,
-                daysMask = mask, dayOfMonth = 1,
+                daysMask = mask, dayOfMonth = monthDay,
                 zoneId = "", // follow the device's time zone
                 createdAtMs = createdAtMs ?: nowMs, updatedAtMs = nowMs,
                 misfireGraceMs = Duration.ofHours(2).toMillis(), overlap = "SKIP",
-                maxSteps = steps, maxDurationMs = minutes * 60_000L, configId = "",
+                maxSteps = steps, maxDurationMs = minutes * 60_000L, configId = configId,
                 approvalTimeoutMs = Duration.ofMinutes(10).toMillis(),
+                maxTokens = if (tokensK < 0) -1L else tokensK * 1_000L,
+                successCriteria = successCriteria.trim(),
+                recoveries = recoveryCount,
             ),
         )
     }
@@ -115,9 +158,16 @@ data class TaskDraft(
                     TriggerTypes.ONCE -> ScheduleKind.ONCE
                     TriggerTypes.INTERVAL -> ScheduleKind.INTERVAL
                     TriggerTypes.DAILY -> ScheduleKind.DAILY
-                    TriggerTypes.WEEKLY -> ScheduleKind.WEEKDAYS
+                    TriggerTypes.WEEKLY -> if (maskToDays(t.daysMask) == WEEKDAYS) ScheduleKind.WEEKDAYS else ScheduleKind.WEEKLY
+                    TriggerTypes.MONTHLY -> ScheduleKind.MONTHLY
                     else -> ScheduleKind.MANUAL
                 },
+                days = maskToDays(t.daysMask).ifEmpty { WEEKDAYS },
+                dayOfMonth = if (t.dayOfMonth < 0) "last" else t.dayOfMonth.toString(),
+                maxTokensK = if (t.maxTokens < 0) "" else (t.maxTokens / 1_000L).coerceAtLeast(10).toString(),
+                recoveries = t.recoveries.toString(),
+                successCriteria = t.successCriteria,
+                configId = t.configId,
                 date = onceDateTime?.toLocalDate() ?: today,
                 time = onceDateTime?.toLocalTime()
                     ?: t.timeOfDay?.let { runCatching { LocalTime.parse(it) }.getOrNull() }

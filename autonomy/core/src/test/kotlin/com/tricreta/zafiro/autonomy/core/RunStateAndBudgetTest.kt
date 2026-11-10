@@ -83,4 +83,15 @@ class RunStateAndBudgetTest {
         t.setSteps(5)
         assertEquals(Breach.STEPS, t.check(0))
     }
+
+    @Test
+    fun `setTokens is absolute never decreases and trips the token limit`() {
+        val t = BudgetTracker(Budget(maxSteps = null, maxDurationMs = null, maxTokens = 1_000), startedAtMs = 0)
+        t.setTokens(600)
+        assertNull(t.check(0))
+        t.setTokens(400)
+        assertEquals(600, t.tokensUsed())
+        t.setTokens(1_000)
+        assertEquals(Breach.TOKENS, t.check(0))
+    }
 }

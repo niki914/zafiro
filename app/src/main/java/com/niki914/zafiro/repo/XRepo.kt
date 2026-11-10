@@ -330,6 +330,11 @@ object XRepo {
         select = { loadLastConversationOnStartup },
         update = { copy(loadLastConversationOnStartup = it) },
     )
+    private val llmFallbackChainField = PlainAppStateField(
+        select = { llmFallbackChain },
+        update = { copy(llmFallbackChain = it) },
+        normalize = { ids -> ids.map(String::trim).filter(String::isNotEmpty).distinct() },
+    )
     private val llmIdleTimeoutSecondsField = PlainAppStateField(
         select = { llmIdleTimeoutSeconds },
         update = { copy(llmIdleTimeoutSeconds = it) },
@@ -369,6 +374,10 @@ object XRepo {
     suspend fun setLanguageTag(tag: String) = languageTagField.set(tag.trim())
 
     suspend fun loadLastConversationOnStartup(): Boolean = loadLastConversationOnStartupField.get()
+
+    suspend fun llmFallbackChain(): List<String> = llmFallbackChainField.get()
+
+    suspend fun setLlmFallbackChain(ids: List<String>) = llmFallbackChainField.set(ids)
 
     suspend fun llmIdleTimeoutSeconds(): Long = llmIdleTimeoutSecondsField.get()
 

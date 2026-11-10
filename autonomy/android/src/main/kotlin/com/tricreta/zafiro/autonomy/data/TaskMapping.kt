@@ -59,8 +59,7 @@ fun TaskEntity.toSpec(deviceZone: ZoneId = ZoneId.systemDefault()): TaskSpec = T
 fun TaskEntity.toBudget(): Budget = Budget(
     maxSteps = maxSteps.takeIf { it >= 0 },
     maxDurationMs = maxDurationMs.takeIf { it >= 0 },
-    // Token budgets are not enforced yet: the engine exposes context size, not cumulative usage (see ARCHITECTURE 2.5).
-    maxTokens = null,
+    maxTokens = maxTokens.takeIf { it >= 0 },
 )
 
 /** Human-readable schedule for lists. */

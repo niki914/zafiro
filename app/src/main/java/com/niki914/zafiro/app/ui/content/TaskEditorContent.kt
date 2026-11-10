@@ -23,6 +23,7 @@ import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.ui.model.SavedConfigSummary
 import com.niki914.zafiro.app.ui.model.TaskEditorEffect
 import com.niki914.zafiro.app.ui.model.TaskEditorIntent
 import com.niki914.zafiro.app.ui.model.TaskEditorUiState
@@ -34,6 +35,7 @@ import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailChrome
 import com.niki914.zafiro.app.ui.settings.form.EditableSettingsDetailFormScaffold
 import com.niki914.zafiro.app.ui.settings.form.SettingControlledExpandableTextItem
 import com.tricreta.zafiro.autonomy.form.ScheduleKind
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -41,7 +43,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private enum class TaskEditorField { Name, Prompt, Interval, Steps, Minutes }
+private enum class TaskEditorField { Name, Prompt, Interval, Steps, Minutes, DayOfMonth, Tokens, Recoveries, Criteria }
 
 /**
  * Create / edit a scheduled task. Date and time come from the system pickers (they follow the phone's 12h/24h setting), so a
@@ -112,14 +114,31 @@ private fun TaskEditorBody(
     val draft = form.draft
     val busy = uiState.isSaving
     var showKindDialog by rememberSaveable { mutableStateOf(false) }
+    var showModelDialog by rememberSaveable { mutableStateOf(false) }
 
     val kindLabels = mapOf(
         ScheduleKind.MANUAL to stringResource(R.string.task_kind_manual),
         ScheduleKind.ONCE to stringResource(R.string.task_kind_once),
         ScheduleKind.DAILY to stringResource(R.string.task_kind_daily),
         ScheduleKind.WEEKDAYS to stringResource(R.string.task_kind_weekdays),
+        ScheduleKind.WEEKLY to stringResource(R.string.task_kind_weekly),
+        ScheduleKind.MONTHLY to stringResource(R.string.task_kind_monthly),
         ScheduleKind.INTERVAL to stringResource(R.string.task_kind_interval),
     )
+    val dayLabels = listOf(
+        DayOfWeek.MONDAY to stringResource(R.string.day_mon),
+        DayOfWeek.TUESDAY to stringResource(R.string.day_tue),
+        DayOfWeek.WEDNESDAY to stringResource(R.string.day_wed),
+        DayOfWeek.THURSDAY to stringResource(R.string.day_thu),
+        DayOfWeek.FRIDAY to stringResource(R.string.day_fri),
+        DayOfWeek.SATURDAY to stringResource(R.string.day_sat),
+        DayOfWeek.SUNDAY to stringResource(R.string.day_sun),
+    )
+    val activeModelLabel = stringResource(R.string.task_field_model_active)
+    val modelOptions = remember(uiState.configs, activeModelLabel) {
+        listOf(SavedConfigSummary(id = "", name = activeModelLabel, modelId = "", isActive = false)) + uiState.configs
+    }
+    val selectedModel = modelOptions.firstOrNull { it.id == draft.configId } ?: modelOptions.first()
     val is24h = DateFormat.is24HourFormat(context)
     val zone = ZoneId.systemDefault()
     val zoneText = stringResource(R.string.task_field_timezone_value, zoneLabel(zone))
@@ -184,7 +203,7 @@ private fun TaskEditorBody(
                     onClick = { pickDate(context, draft.date) { onIntent(TaskEditorIntent.DatePicked(it)) } },
                 )
             }
-            if (draft.kind == ScheduleKind.ONCE || draft.kind == ScheduleKind.DAILY || draft.kind == ScheduleKind.WEEKDAYS) {
+            if (draft.kind in setOf(ScheduleKind.ONCE, ScheduleKind.DAILY, ScheduleKind.WEEKDAYS, ScheduleKind.WEEKLY, ScheduleKind.MONTHLY)) {
                 SettingsItemDivider()
                 SettingNavigationItem(
                     title = stringResource(R.string.task_field_time),
@@ -192,6 +211,29 @@ private fun TaskEditorBody(
                     currentState = formatTime(draft.time, is24h),
                     enabled = !busy,
                     onClick = { pickTime(context, draft.time, is24h) { onIntent(TaskEditorIntent.TimePicked(it)) } },
+                )
+            }
+            if (draft.kind == ScheduleKind.WEEKLY) {
+                dayLabels.forEach { (day, label) ->
+                    SettingsItemDivider()
+                    SettingToggleItem(
+                        title = label,
+                        checked = day in draft.days,
+                        enabled = !busy,
+                        onCheckedChange = { onIntent(TaskEditorIntent.DayToggled(day, it)) },
+                    )
+                }
+            }
+            if (draft.kind == ScheduleKind.MONTHLY) {
+                SettingsItemDivider()
+                SettingControlledExpandableTextItem(
+                    field = TaskEditorField.DayOfMonth,
+                    controller = fieldController,
+                    title = stringResource(R.string.task_field_day_of_month),
+                    value = draft.dayOfMonth,
+                    onValueChange = { onIntent(TaskEditorIntent.DayOfMonthChanged(it)) },
+                    placeholder = stringResource(R.string.task_field_day_of_month_hint),
+                    enabled = !busy,
                 )
             }
             if (draft.kind == ScheduleKind.INTERVAL) {
@@ -230,6 +272,47 @@ private fun TaskEditorBody(
             )
         }
 
+        SettingsGroupCard {
+            SettingNavigationItem(
+                title = stringResource(R.string.task_field_model),
+                currentState = selectedModel.name,
+                enabled = !busy,
+                onClick = { showModelDialog = true },
+            )
+            SettingsItemDivider()
+            SettingControlledExpandableTextItem(
+                field = TaskEditorField.Tokens,
+                controller = fieldController,
+                title = stringResource(R.string.task_field_max_tokens),
+                value = draft.maxTokensK,
+                onValueChange = { onIntent(TaskEditorIntent.TokensChanged(it)) },
+                placeholder = stringResource(R.string.task_field_max_tokens_hint),
+                enabled = !busy,
+            )
+            SettingsItemDivider()
+            SettingControlledExpandableTextItem(
+                field = TaskEditorField.Recoveries,
+                controller = fieldController,
+                title = stringResource(R.string.task_field_recoveries),
+                value = draft.recoveries,
+                onValueChange = { onIntent(TaskEditorIntent.RecoveriesChanged(it)) },
+                placeholder = stringResource(R.string.task_field_recoveries_hint),
+                enabled = !busy,
+            )
+            SettingsItemDivider()
+            SettingControlledExpandableTextItem(
+                field = TaskEditorField.Criteria,
+                controller = fieldController,
+                title = stringResource(R.string.task_field_criteria),
+                value = draft.successCriteria,
+                onValueChange = { onIntent(TaskEditorIntent.CriteriaChanged(it)) },
+                placeholder = stringResource(R.string.task_field_criteria_hint),
+                enabled = !busy,
+                minLines = 2,
+                maxLines = 6,
+            )
+        }
+
         if (isEditing) {
             SettingsGroupCard {
                 SettingNavigationItem(
@@ -240,6 +323,20 @@ private fun TaskEditorBody(
             }
         }
     }
+
+    ZafiroSingleChoiceDialog(
+        visible = showModelDialog,
+        onDismissRequest = { showModelDialog = false },
+        title = stringResource(R.string.task_field_model_dialog_title),
+        options = modelOptions,
+        selectedId = selectedModel.id,
+        optionId = { it.id },
+        optionLabel = { if (it.modelId.isBlank()) it.name else "${it.name} (${it.modelId})" },
+        onSelect = {
+            showModelDialog = false
+            onIntent(TaskEditorIntent.ConfigPicked(it.id))
+        },
+    )
 
     ZafiroSingleChoiceDialog(
         visible = showKindDialog,

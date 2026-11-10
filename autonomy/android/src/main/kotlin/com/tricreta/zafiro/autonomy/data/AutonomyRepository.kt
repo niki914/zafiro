@@ -107,6 +107,8 @@ class AutonomyRepository(
 
     suspend fun heartbeat(id: Long, steps: Int) = dao.heartbeat(id, nowMs(), steps)
 
+    suspend fun recordRecoveries(id: Long, recoveries: Int) = dao.setRecoveries(id, recoveries)
+
     suspend fun finish(
         id: Long, state: RunState, summary: String?, error: String?, conversationId: String?, steps: Int,
     ) {

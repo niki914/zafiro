@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.app.ui.settings.form.buildFormSpec
 import com.tricreta.zafiro.autonomy.AutonomyGraph
 import com.tricreta.zafiro.autonomy.data.TaskEntity
@@ -13,6 +14,7 @@ import com.tricreta.zafiro.autonomy.form.DraftResult
 import com.tricreta.zafiro.autonomy.form.ScheduleKind
 import com.tricreta.zafiro.autonomy.form.TaskDraft
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -34,6 +36,12 @@ val TaskEditorFormSpec = buildFormSpec<TaskEditorForm, String> {
     field("interval", R.string.task_field_interval) { it.draft.everyMinutes }
     field("steps", R.string.task_field_max_steps) { it.draft.maxSteps }
     field("minutes", R.string.task_field_max_minutes) { it.draft.maxMinutes }
+    field("days", R.string.task_field_days) { it.draft.days }
+    field("dayOfMonth", R.string.task_field_day_of_month) { it.draft.dayOfMonth }
+    field("tokens", R.string.task_field_max_tokens) { it.draft.maxTokensK }
+    field("recoveries", R.string.task_field_recoveries) { it.draft.recoveries }
+    field("criteria", R.string.task_field_criteria) { it.draft.successCriteria }
+    field("model", R.string.task_field_model) { it.draft.configId }
 }
 
 data class TaskEditorUiState(
@@ -44,6 +52,7 @@ data class TaskEditorUiState(
     val isSaving: Boolean = false,
     val error: TaskEditorError? = null,
     val deleteConfirmation: String? = null,
+    val configs: List<SavedConfigSummary> = emptyList(),
 )
 
 data class TaskEditorError(val field: DraftField?, val message: String)
@@ -65,6 +74,12 @@ sealed interface TaskEditorIntent {
     data class EveryChanged(val value: String) : TaskEditorIntent
     data class StepsChanged(val value: String) : TaskEditorIntent
     data class MinutesChanged(val value: String) : TaskEditorIntent
+    data class DayToggled(val day: DayOfWeek, val selected: Boolean) : TaskEditorIntent
+    data class DayOfMonthChanged(val value: String) : TaskEditorIntent
+    data class TokensChanged(val value: String) : TaskEditorIntent
+    data class RecoveriesChanged(val value: String) : TaskEditorIntent
+    data class CriteriaChanged(val value: String) : TaskEditorIntent
+    data class ConfigPicked(val configId: String) : TaskEditorIntent
     data object Save : TaskEditorIntent
     data object RequestDelete : TaskEditorIntent
     data object DismissDeleteConfirmation : TaskEditorIntent
@@ -101,6 +116,14 @@ class TaskEditorViewModel : ComposeMVIViewModel<TaskEditorIntent, TaskEditorUiSt
             is TaskEditorIntent.EveryChanged -> edit { copy(everyMinutes = intent.value) }
             is TaskEditorIntent.StepsChanged -> edit { copy(maxSteps = intent.value) }
             is TaskEditorIntent.MinutesChanged -> edit { copy(maxMinutes = intent.value) }
+            is TaskEditorIntent.DayToggled -> edit {
+                copy(days = if (intent.selected) days + intent.day else days - intent.day)
+            }
+            is TaskEditorIntent.DayOfMonthChanged -> edit { copy(dayOfMonth = intent.value) }
+            is TaskEditorIntent.TokensChanged -> edit { copy(maxTokensK = intent.value) }
+            is TaskEditorIntent.RecoveriesChanged -> edit { copy(recoveries = intent.value) }
+            is TaskEditorIntent.CriteriaChanged -> edit { copy(successCriteria = intent.value) }
+            is TaskEditorIntent.ConfigPicked -> edit { copy(configId = intent.configId) }
             TaskEditorIntent.Save -> save()
             TaskEditorIntent.RequestDelete -> updateState { copy(deleteConfirmation = existing?.name.orEmpty()) }
             TaskEditorIntent.DismissDeleteConfirmation -> updateState { copy(deleteConfirmation = null) }
@@ -123,7 +146,8 @@ class TaskEditorViewModel : ComposeMVIViewModel<TaskEditorIntent, TaskEditorUiSt
         } else {
             TaskEditorForm(TaskDraft.new(today), true)
         }
-        updateState { copy(taskId = taskId, form = form, initial = form, isLoading = false, error = null) }
+        val configs = runCatching { summariesOf(XRepo.llmConfigs.document()) }.getOrDefault(emptyList())
+        updateState { copy(taskId = taskId, form = form, initial = form, isLoading = false, error = null, configs = configs) }
     }
 
     private suspend fun save() {
@@ -139,7 +163,6 @@ class TaskEditorViewModel : ComposeMVIViewModel<TaskEditorIntent, TaskEditorUiSt
             is DraftResult.Ok -> {
                 val keep = existing
                 val task = if (keep == null) result.task else result.task.copy(
-                    configId = keep.configId,
                     misfireGraceMs = keep.misfireGraceMs,
                     overlap = keep.overlap,
                     approvalTimeoutMs = keep.approvalTimeoutMs,

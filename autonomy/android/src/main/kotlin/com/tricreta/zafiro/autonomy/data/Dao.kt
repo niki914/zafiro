@@ -70,6 +70,9 @@ interface AutonomyDao {
         id: Long, state: String, now: Long, summary: String?, error: String?, conversationId: String?, steps: Int,
     )
 
+    @Query("UPDATE run SET recoveries = :recoveries WHERE id = :id")
+    suspend fun setRecoveries(id: Long, recoveries: Int)
+
     @Query("UPDATE run SET heartbeatMs = :now, steps = :steps WHERE id = :id")
     suspend fun heartbeat(id: Long, now: Long, steps: Int)
 

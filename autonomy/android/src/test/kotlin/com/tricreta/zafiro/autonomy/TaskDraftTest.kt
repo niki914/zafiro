@@ -112,4 +112,67 @@ class TaskDraftTest {
         val days = setOf(DayOfWeek.MONDAY, DayOfWeek.SUNDAY)
         assertEquals(days, maskToDays(daysToMask(days)))
     }
+
+    @Test
+    fun `chosen weekdays become the trigger and survive editing`() {
+        val days = setOf(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY, DayOfWeek.SATURDAY)
+        val t = ok(base.copy(kind = ScheduleKind.WEEKLY, days = days))
+        assertEquals(days, (t.toSpec(nairobi).trigger as TimeTrigger.Weekly).days)
+        val back = TaskDraft.from(t, today)
+        assertEquals(ScheduleKind.WEEKLY, back.kind)
+        assertEquals(days, back.days)
+    }
+
+    @Test
+    fun `mon to fri stored as weekly is shown as the weekdays preset`() {
+        assertEquals(ScheduleKind.WEEKDAYS, TaskDraft.from(ok(base.copy(kind = ScheduleKind.WEEKDAYS)), today).kind)
+    }
+
+    @Test
+    fun `weekly with no day chosen is rejected`() {
+        assertEquals(DraftField.DAYS, invalid(base.copy(kind = ScheduleKind.WEEKLY, days = emptySet())).field)
+    }
+
+    @Test
+    fun `monthly accepts a day number or last and rejects nonsense`() {
+        val day = ok(base.copy(kind = ScheduleKind.MONTHLY, dayOfMonth = "15"))
+        assertEquals(TimeTrigger.Monthly(15, LocalTime.of(8, 0)), day.toSpec(nairobi).trigger)
+        val last = ok(base.copy(kind = ScheduleKind.MONTHLY, dayOfMonth = "Last"))
+        assertEquals(TimeTrigger.Monthly(TimeTrigger.LAST_DAY, LocalTime.of(8, 0)), last.toSpec(nairobi).trigger)
+        assertEquals("last", TaskDraft.from(last, today).dayOfMonth)
+        assertEquals(DraftField.DAY_OF_MONTH, invalid(base.copy(kind = ScheduleKind.MONTHLY, dayOfMonth = "32")).field)
+        assertEquals(DraftField.DAY_OF_MONTH, invalid(base.copy(kind = ScheduleKind.MONTHLY, dayOfMonth = "soon")).field)
+    }
+
+    @Test
+    fun `token limit is stored in tokens and blank means unlimited`() {
+        val limited = ok(base.copy(maxTokensK = "250"))
+        assertEquals(250_000L, limited.maxTokens)
+        assertEquals(250_000L, limited.toBudget().maxTokens)
+        assertEquals("250", TaskDraft.from(limited, today).maxTokensK)
+        val unlimited = ok(base.copy(maxTokensK = ""))
+        assertEquals(-1L, unlimited.maxTokens)
+        assertNull(unlimited.toBudget().maxTokens)
+        assertEquals("", TaskDraft.from(unlimited, today).maxTokensK)
+        assertEquals(DraftField.TOKENS, invalid(base.copy(maxTokensK = "5")).field)
+        assertEquals(DraftField.TOKENS, invalid(base.copy(maxTokensK = "lots")).field)
+    }
+
+    @Test
+    fun `recovery attempts are bounded`() {
+        assertEquals(0, ok(base.copy(recoveries = "0")).recoveries)
+        assertEquals(5, ok(base.copy(recoveries = "5")).recoveries)
+        assertEquals(DraftField.RECOVERIES, invalid(base.copy(recoveries = "6")).field)
+        assertEquals(DraftField.RECOVERIES, invalid(base.copy(recoveries = "-1")).field)
+    }
+
+    @Test
+    fun `model and success criteria round trip instead of being reset on edit`() {
+        val t = ok(base.copy(configId = "cfg-nim", successCriteria = "  The report file exists  "))
+        assertEquals("cfg-nim", t.configId)
+        assertEquals("The report file exists", t.successCriteria)
+        val back = TaskDraft.from(t, today)
+        assertEquals("cfg-nim", back.configId)
+        assertEquals("The report file exists", back.successCriteria)
+    }
 }

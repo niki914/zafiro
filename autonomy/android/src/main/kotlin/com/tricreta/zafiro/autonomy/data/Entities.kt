@@ -1,5 +1,6 @@
 package com.tricreta.zafiro.autonomy.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -37,6 +38,12 @@ data class TaskEntity(
     val configId: String,
     /** Unanswered approval requests are denied after this long. */
     val approvalTimeoutMs: Long,
+    /** Billable-token ceiling for one run (see TokenUsage.billable); -1 = unlimited. Added in schema v2. */
+    @ColumnInfo(defaultValue = "-1") val maxTokens: Long = -1,
+    /** Plain-language definition of "done". When set, the agent must verify it before the run counts as a success. */
+    @ColumnInfo(defaultValue = "''") val successCriteria: String = "",
+    /** Extra turns allowed after the first: failures retried, unmet criteria re-attempted. 0 = never recover. */
+    @ColumnInfo(defaultValue = "2") val recoveries: Int = 2,
 )
 
 @Entity(
@@ -62,6 +69,8 @@ data class RunEntity(
     val steps: Int = 0,
     val heartbeatMs: Long? = null,
     val manual: Boolean = false,
+    /** How many recovery turns this run needed (failures continued, criteria re-attempted). Added in schema v2. */
+    @ColumnInfo(defaultValue = "0") val recoveries: Int = 0,
 )
 
 @Entity(tableName = "cursor")

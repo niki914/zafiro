@@ -16,6 +16,12 @@ interface RuntimeSettingsGateway {
         configId: String? = null,
     ): RuntimeLlmConfig
 
+    /**
+     * Ordered ids of saved configs to try when the model in use fails with a provider fault (credits, key, rate limit,
+     * outage). [primaryConfigId] blank = the active config. Already filtered: no blanks, unknown ids, or the model in use.
+     */
+    suspend fun fallbackChain(primaryConfigId: String?): List<String> = emptyList()
+
     suspend fun listEnabledSkills(): List<RuntimeSkillMetadata> = emptyList()
 
     suspend fun loadSkill(id: String): RuntimeLoadedSkill? = null

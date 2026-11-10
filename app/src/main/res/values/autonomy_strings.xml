@@ -50,14 +50,41 @@
     <string name="task_field_max_steps">Max tool calls per run</string>
     <string name="task_field_max_minutes">Max minutes per run</string>
     <string name="task_field_enabled">Enabled</string>
+    <string name="task_field_days">Days</string>
+    <string name="task_field_day_of_month">Day of the month (1-31 or "last")</string>
+    <string name="task_field_day_of_month_hint">1</string>
+    <string name="task_field_max_tokens">Token limit per run (thousands)</string>
+    <string name="task_field_max_tokens_hint">300 (empty = no limit)</string>
+    <string name="task_field_recoveries">Recovery attempts</string>
+    <string name="task_field_recoveries_hint">2</string>
+    <string name="task_field_criteria">Success criteria (optional)</string>
+    <string name="task_field_criteria_hint">The summary email is in my Sent folder.</string>
+    <string name="task_field_model">Model</string>
+    <string name="task_field_model_active">Active model</string>
+    <string name="task_field_model_dialog_title">Model for this task</string>
+    <string name="task_section_limits">Limits and recovery</string>
+    <string name="task_section_limits_summary">Recovery continues a run after a temporary error and checks your success criteria. It never repeats finished work.</string>
+    <string name="day_mon">Monday</string>
+    <string name="day_tue">Tuesday</string>
+    <string name="day_wed">Wednesday</string>
+    <string name="day_thu">Thursday</string>
+    <string name="day_fri">Friday</string>
+    <string name="day_sat">Saturday</string>
+    <string name="day_sun">Sunday</string>
     <string name="task_field_timezone">Time zone</string>
     <string name="task_field_timezone_value">Phone time zone (%1$s)</string>
     <string name="task_field_timezone_summary">Follows your phone: if it changes zone, the task moves with it.</string>
 
+    <string name="fallback_section_summary">If the model you chose runs out of credits, rejects the key or is down before it answers, Zafiro retries the same request on these models in order. It never retries after it has started writing or used a tool.</string>
+    <string name="fallback_slot_title">Fallback model %1$d</string>
+    <string name="fallback_slot_none">None</string>
+    <string name="fallback_dialog_title">Fallback model %1$d</string>
     <string name="task_kind_manual">Manual only</string>
     <string name="task_kind_once">Once</string>
     <string name="task_kind_daily">Every day</string>
-    <string name="task_kind_weekdays">Weekdays</string>
+    <string name="task_kind_weekdays">Weekdays (Mon-Fri)</string>
+    <string name="task_kind_weekly">Chosen days of the week</string>
+    <string name="task_kind_monthly">Every month</string>
     <string name="task_kind_interval">Every N minutes</string>
     <string name="task_kind_dialog_title">Repeat</string>
 

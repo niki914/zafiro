@@ -619,6 +619,106 @@ class AgentSessionEngineOkiaTest {
 
     // ── helpers ─────────────────────────────────────────────────────────────
 
+    // ── provider fallback ───────────────────────────────────────────────────
+
+    private fun failingLoop(code: LLMErrorCode, text: String? = null): AgentLoop {
+        val error = LLMError(code, "provider said no")
+        val events = buildList {
+            add(TurnEvent.TurnStarted("q"))
+            if (text != null) add(TurnEvent.TextDelta(0, text, AssistantMessage(listOf(ContentBlock.Text(text)))))
+            add(TurnEvent.TurnFailed(AssistantMessage(emptyList()), error))
+        }
+        return stubLoop(events, TurnResult.Failed(error))
+    }
+
+    private fun okLoop(): AgentLoop = stubLoop(
+        listOf(
+            TurnEvent.TurnStarted("q"),
+            TurnEvent.TextDelta(0, "from backup", AssistantMessage(listOf(ContentBlock.Text("from backup")))),
+            TurnEvent.TurnCompleted(AssistantMessage(listOf(ContentBlock.Text("from backup")))),
+        ),
+        TurnResult.Completed(CompletionReason.Stop),
+    )
+
+    private fun fallbackGateway(chain: List<String>) = object : FakeRuntimeSettingsGateway(llmConfig = validLlmConfig()) {
+        override suspend fun readLlmConfig(agentId: String, configId: String?): RuntimeLlmConfig =
+            validLlmConfig().copy(model = configId.takeUnless { it.isNullOrBlank() } ?: "primary")
+
+        override suspend fun fallbackChain(primaryConfigId: String?): List<String> = chain
+    }
+
+    @Test
+    fun stream_fallsBackToNextModelWhenCreditsRunOut_withCleanHistory() = runTest {
+        installRuntimeSettingsGatewayForTest(fallbackGateway(listOf("backup")))
+        val modelsUsed = mutableListOf<String>()
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, restore, config ->
+            modelsUsed += config.model
+            openOkiaWithStubLoop(if (config.model == "backup") okLoop() else failingLoop(LLMErrorCode.Quota), restore)
+        }
+        engine.bindConfig("primary")
+
+        val events = engine.stream("hello").toList()
+
+        assertTrue("no error should reach the user: $events", events.none { it is LlmStreamEvent.Error })
+        assertTrue(events.any { it is LlmStreamEvent.Retrying && it.reason == "fallback model" })
+        assertEquals("from backup", events.filterIsInstance<LlmStreamEvent.TextDelta>().single().delta)
+        assertEquals(LlmStreamEvent.Completed, events.last())
+        assertEquals(listOf("primary", "backup"), modelsUsed.distinct())
+        val userMessages = engine.okia!!.conversation.value.history.count { it.message is Message.User }
+        assertEquals("the failed attempt's user message must not be left behind", 1, userMessages)
+        assertEquals("the next turn must try the owner's model first again", "primary", engine.boundConfigId)
+    }
+
+    @Test
+    fun stream_doesNotFallBackAfterOutputWasProduced() = runTest {
+        installRuntimeSettingsGatewayForTest(fallbackGateway(listOf("backup")))
+        var backupCreated = false
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, restore, config ->
+            if (config.model == "backup") backupCreated = true
+            openOkiaWithStubLoop(failingLoop(LLMErrorCode.Transport, text = "partial"), restore)
+        }
+        engine.bindConfig("primary")
+
+        val events = engine.stream("hello").toList()
+
+        assertEquals(1, events.count { it is LlmStreamEvent.Error })
+        assertTrue("a retry after visible output could duplicate it or repeat a side effect", !backupCreated)
+    }
+
+    @Test
+    fun stream_reportsTheErrorWhenEveryModelFails() = runTest {
+        installRuntimeSettingsGatewayForTest(fallbackGateway(listOf("b1", "b2")))
+        val modelsUsed = mutableListOf<String>()
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, restore, config ->
+            modelsUsed += config.model
+            openOkiaWithStubLoop(failingLoop(LLMErrorCode.Quota), restore)
+        }
+        engine.bindConfig("primary")
+
+        val events = engine.stream("hello").toList()
+
+        val errors = events.filterIsInstance<LlmStreamEvent.Error>()
+        assertEquals(1, errors.size)
+        assertEquals(LlmErrorCode.Quota, errors.single().code)
+        assertEquals(listOf("primary", "b1", "b2"), modelsUsed.distinct())
+    }
+
+    @Test
+    fun stream_doesNotFallBackOnNonProviderErrors() = runTest {
+        installRuntimeSettingsGatewayForTest(fallbackGateway(listOf("backup")))
+        var backupCreated = false
+        engine.okiaFactory = AgentSessionEngine.OkiaFactory { _, restore, config ->
+            if (config.model == "backup") backupCreated = true
+            openOkiaWithStubLoop(failingLoop(LLMErrorCode.ContextOverflow), restore)
+        }
+        engine.bindConfig("primary")
+
+        val events = engine.stream("hello").toList()
+
+        assertEquals(1, events.count { it is LlmStreamEvent.Error })
+        assertTrue(!backupCreated)
+    }
+
     private fun validLlmConfig(
         provider: String = "deepseek",
         protocol: String = LlmProtocol.OpenAiResponses.wireId,
