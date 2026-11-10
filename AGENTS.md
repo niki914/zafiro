@@ -90,5 +90,9 @@ Owner prerequisite: Actions must be **enabled** on the fork (Actions tab → "I 
 - Owner rule: research + LIST for approval before adding abilities/skills/MCPs/actions (`docs/APPROVAL_LIST.md`).
 - Pure Kotlin logic (even from `app`) can be verified in the sandbox by copying it into a scratch copy of `autonomy/core` (junit available); used for BackupArchive.
 
+- Release APK: `.github/workflows/release.yml` (signed + minified, normal GitHub release). Needs repo secrets RELEASE_KEYSTORE_B64, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS=zafiro, added by the OWNER (the agent may not write secrets). Key was generated 2026-11-10 and handed to the owner; losing it means no in-place updates. Debug builds (rolling pre-release) are signed with a different, public key, so switching between them needs an uninstall.
+- Upstream sync: `.github/workflows/upstream-sync.yml` weekly; issue or `sync/upstream-<date>` branch. Re-run english_only.py after merging.
+- Tools added: wait, device_info, clipboard, http_request, take_over, compose_message (draft only). Not built: long-press/double-tap, schedule_task, contacts/location/notification reading, real SMS/email send, MCP OAuth.
+
 ## Status
 Evidence-based status: ROADMAP.md and TESTING.md. As of 2026-11-10: `feat/foundation` builds and passes the CI gate (APK artifact `zafiro-autonomous-debug-apk` on the run); **nothing has been verified on a physical phone yet**; `main` is still pristine upstream; no PR opened.
