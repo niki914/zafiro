@@ -21,6 +21,7 @@ import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionManagerImpl
 import com.niki914.zafiro.business.remote.TelemetryImpl
 import com.niki914.zafiro.mcp.service.McpServiceImpl
+import com.niki914.zafiro.mcp.service.McpToolAdapter
 import com.niki914.zafiro.mod.feat.ZafiroAccessibilityService
 import com.niki914.zafiro.repo.SharedHttp
 import com.niki914.zafiro.repo.XRepo
@@ -69,7 +70,16 @@ object AppServices {
         installService<XSettings>(XSettingsImpl)
 
         // MCP 服务：把 Zafiro 的工具暴露成标准 MCP Streamable HTTP 端点
-        installService<McpService>(McpServiceImpl { XRepo.mcpService.get() })
+        // 2026-11-10: McpToolAdapter 只遍历 builtinRegistry（Kotlin 内置工具），自定义 py_*
+        // 工具从来不可见于 MCP，只能经 py_meta_tools 间接调用。注入运行期读取口后，它们
+        // 作为标准 MCP 工具直接暴露；每次重建都重新读取，新增/删除无需重启 app。
+        installService<McpService>(
+            McpServiceImpl(
+                toolAdapter = McpToolAdapter(
+                    customToolsProvider = { XRepo.customPyTools.list() },
+                ),
+            ) { XRepo.mcpService.get() }
+        )
 
         // 遥测服务：后台账本同步与活跃探测
         val telemetry = TelemetryImpl(

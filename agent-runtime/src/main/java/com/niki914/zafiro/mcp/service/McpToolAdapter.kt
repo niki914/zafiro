@@ -9,6 +9,9 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.buildin.RawJsonBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
+import com.niki914.zafiro.chat.agentic.python.CustomPyToolExecutor
+import com.niki914.zafiro.chat.LocalTool
+import com.niki914.zafiro.settings.model.RuntimeCustomPyTool
 import com.niki914.zafiro.chat.agentic.stream.ParsedToolResult
 import com.niki914.zafiro.settings.model.RuntimeMcpServiceConfig
 import io.modelcontextprotocol.kotlin.sdk.server.Server
@@ -21,6 +24,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -32,6 +36,18 @@ import java.io.File
 class McpToolAdapter(
     private val builtinRegistry: BuiltinToolRegistry = BuiltinToolRegistry.default(),
     private val tenantId: String = "mcp-host",
+    /**
+     * Custom python tools (`py_*`) to expose as first-class MCP tools.
+     *
+     * `buildServer` below iterates only [builtinRegistry], which holds exactly the Kotlin
+     * built-ins. Custom tools were therefore invisible over MCP no matter what
+     * `exposedTools` said in service.json, and clients had to reach them indirectly via
+     * `py_meta_tools`. The provider is read on every rebuild, so a saved tool shows up
+     * without restarting the app.
+     */
+    private val customToolsProvider: suspend () -> List<RuntimeCustomPyTool> = { emptyList() },
+    /** Executes a custom python tool; [CustomPyToolExecutor] is the chat path's executor. */
+    private val customExecutor: CustomPyToolExecutor = CustomPyToolExecutor(),
 ) {
     private companion object {
         private const val LOG_TAG = "niki914_zafiro_McpToolAdapter"
@@ -68,7 +84,74 @@ class McpToolAdapter(
             }
         }
 
+        // Custom python tools live outside [builtinRegistry], so they were never reachable
+        // over MCP. Expose the enabled ones; a name that collides with a builtin is skipped
+        // so the builtin keeps winning (MCP rejects duplicate tool names).
+        val builtinNames = exposedTools.map { it.name }.toSet()
+        // The MCP SDK's server factory is not a coroutine, so read the provider blocking.
+        val customTools = runBlocking { customToolsProvider() }
+            .filter {
+                it.enabled && it.name.isNotBlank() &&
+                    it.name !in builtinNames && !it.name.startsWith("mcp__")
+            }
+        Logger.i(LOG_TAG, "adding ${customTools.size} custom python tools")
+        for (tool in customTools) {
+            val schema = parseInputSchema(tool.schemaJson)
+            server.addTool(
+                name = tool.name,
+                description = tool.description.ifBlank { "Python tool ${tool.name}." },
+                inputSchema = schema,
+            ) { request: CallToolRequest ->
+                executeCustomTool(tool, request)
+            }
+        }
+
         return server
+    }
+
+    /** Runs a custom python tool through the same executor the chat path uses. */
+    private suspend fun executeCustomTool(
+        tool: RuntimeCustomPyTool,
+        request: CallToolRequest,
+    ): CallToolResult = withContext(AgentTenantContext(tenantId)) {
+        val argsJson = request.arguments?.toString() ?: "{}"
+        Logger.i(LOG_TAG, "custom tool invoke start: ${tool.name}")
+        val startTime = System.currentTimeMillis()
+        try {
+            val localTool = LocalTool.Py(
+                name = tool.name,
+                description = tool.description,
+                code = tool.code,
+                inputSchemaJson = tool.schemaJson.ifBlank { null },
+                timeoutMs = tool.timeoutMs,
+            )
+            val resultJson = customExecutor.execute(localTool, argsJson)
+            val durationMs = System.currentTimeMillis() - startTime
+            val isError = resultJson.contains("\"ok\":false")
+            Logger.i(LOG_TAG, "custom tool invoke end: ${tool.name} isError=$isError durationMs=$durationMs")
+            CallToolResult(
+                content = listOf(TextContent(text = resultJson)),
+                isError = isError,
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.w(LOG_TAG, "custom tool ${tool.name} failed: ${e.message}")
+            CallToolResult(
+                content = listOf(
+                    TextContent(
+                        text = JsonObject(
+                            mapOf(
+                                "ok" to JsonPrimitive(false),
+                                "tool" to JsonPrimitive(tool.name),
+                                "error" to JsonPrimitive(e.message ?: e::class.simpleName ?: "error"),
+                            )
+                        ).toString()
+                    )
+                ),
+                isError = true,
+            )
+        }
     }
 
     private suspend fun executeTool(tool: BuiltinTool, request: CallToolRequest): CallToolResult =
