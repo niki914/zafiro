@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**', 'sync/**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write   # needed only to publish results to the ci-logs branch
+
+env:
+  GRADLE_ARGS: >-
+    --no-daemon --stacktrace --console=plain
+    -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
+  CI_LOG_DIR: ci-work
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'   # Chaquopy build python
+
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare
+        run: mkdir -p "$CI_LOG_DIR"
+
+      - name: Fork policy checks (English-only resources, no phone-home)
+        id: python_check
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          {
+            python3 tools/autonomous/english_only.py
+            git diff --exit-code -- '*.xml' || { echo "english_only.py is not idempotent: run it and commit"; exit 1; }
+            ! grep -R "workers.dev" --include=*.kts --include=*.kt . || { echo "upstream telemetry endpoint present"; exit 1; }
+          } 2>&1 | tee "$CI_LOG_DIR/python_check.log"
+
+      - name: Assemble debug APK
+        id: assemble
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug $GRADLE_ARGS 2>&1 | tee "$CI_LOG_DIR/assemble.log"
+
+      - name: Unit tests
+        id: unit_tests
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./gradlew testDebugUnitTest --continue $GRADLE_ARGS 2>&1 | tee "$CI_LOG_DIR/unit_tests.log"
+
+      - name: Lint (reported, not blocking until baseline is known)
+        id: lint
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./gradlew lintDebug --continue $GRADLE_ARGS 2>&1 | tee "$CI_LOG_DIR/lint.log"
+
+      - name: Upload debug APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zafiro-autonomous-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            **/build/reports/tests/**
+            **/build/reports/lint-results-debug.html
+            ci-work/*.log
+          if-no-files-found: ignore
+
+      - name: Build results bundle
+        if: always()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OUTCOME_PYTHON_CHECK: ${{ steps.python_check.outcome }}
+          OUTCOME_ASSEMBLE: ${{ steps.assemble.outcome }}
+          OUTCOME_UNIT_TESTS: ${{ steps.unit_tests.outcome }}
+          OUTCOME_LINT: ${{ steps.lint.outcome }}
+        run: python3 tools/autonomous/ci_report.py "$RUNNER_TEMP/ci-bundle" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish results to ci-logs branch
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          set -e
+          SHA7="${GITHUB_SHA::7}"
+          git config --global user.name "ci-bot"
+          git config --global user.email "ci-bot@users.noreply.github.com"
+          rm -rf "$RUNNER_TEMP/logs-repo" && mkdir "$RUNNER_TEMP/logs-repo" && cd "$RUNNER_TEMP/logs-repo"
+          git init -q
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          if git ls-remote --exit-code --heads origin ci-logs >/dev/null 2>&1; then
+            git fetch -q --depth=1 origin ci-logs && git checkout -q -b ci-logs FETCH_HEAD
+          else
+            git checkout -q --orphan ci-logs
+          fi
+          DEST="runs/${GITHUB_REF_NAME//\//_}"
+          rm -rf "$DEST" && mkdir -p "$DEST"
+          cp -r "$RUNNER_TEMP"/ci-bundle/. "$DEST"/
+          echo "$SHA7" > "$DEST/sha.txt"
+          git add -A && git commit -q -m "ci results for $SHA7 on $GITHUB_REF_NAME" || true
+          git push -q origin ci-logs
+
+      - name: Fail the job if a blocking step failed
+        if: always()
+        run: |
+          echo "python_check=${{ steps.python_check.outcome }} assemble=${{ steps.assemble.outcome }} unit_tests=${{ steps.unit_tests.outcome }} lint=${{ steps.lint.outcome }}"
+          [ "${{ steps.python_check.outcome }}" = "success" ] && [ "${{ steps.assemble.outcome }}" = "success" ] && [ "${{ steps.unit_tests.outcome }}" = "success" ]

@@ -95,7 +95,7 @@ object XRepo {
         alwaysShowDetailedToolOutputField.flow.value = false
         voiceAssistantIsolatedSessionField.flow.value = true
         floatingBallEnabledField.flow.value = false
-        telemetryEnabledField.flow.value = true
+        telemetryEnabledField.flow.value = false
         residentNotificationEnabledField.flow.value = false
         turnNotificationEnabledField.flow.value = false
         floatingBallAutoExpandField.flow.value = true

@@ -68,7 +68,7 @@ internal data class AppStateSettings(
     val floatingBallEnabled: Boolean = false,
     /** 是否启用匿名体验改善计划数据上报；false = 仅保留基础冷启动与版本可用性统计。 */
     @SerialName("telemetry_enabled")
-    val telemetryEnabled: Boolean = true,
+    val telemetryEnabled: Boolean = false,
     /** 是否启用常驻通知栏。 */
     @SerialName("resident_notification_enabled")
     val residentNotificationEnabled: Boolean = false,
