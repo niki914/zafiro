@@ -4,9 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.niki914.logging.Logger
-import com.tricreta.zafiro.api.Approver
-import com.tricreta.zafiro.api.model.ApprovalDecision
-import com.tricreta.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.api.Approver
+import com.niki914.zafiro.api.model.ApprovalDecision
+import com.niki914.zafiro.api.model.ApprovalRequest
 import com.tricreta.zafiro.autonomy.AutonomyGraph
 import com.tricreta.zafiro.autonomy.AutonomyNotifier
 import com.tricreta.zafiro.autonomy.data.AutonomyRepository

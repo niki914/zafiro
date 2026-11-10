@@ -1,12 +1,12 @@
 package com.tricreta.zafiro.autonomy.run
 
 import com.niki914.logging.Logger
-import com.tricreta.zafiro.api.AgentManager
-import com.tricreta.zafiro.api.TurnStart
-import com.tricreta.zafiro.api.model.AgentState
-import com.tricreta.zafiro.api.model.Draft
-import com.tricreta.zafiro.api.model.TurnBlock
-import com.tricreta.zafiro.api.model.isRunning
+import com.niki914.zafiro.api.AgentManager
+import com.niki914.zafiro.api.TurnStart
+import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.Draft
+import com.niki914.zafiro.api.model.TurnBlock
+import com.niki914.zafiro.api.model.isRunning
 import com.tricreta.zafiro.autonomy.AutonomyNotifier
 import com.tricreta.zafiro.autonomy.core.Breach
 import com.tricreta.zafiro.autonomy.core.BudgetTracker
@@ -15,7 +15,7 @@ import com.tricreta.zafiro.autonomy.data.AutonomyRepository
 import com.tricreta.zafiro.autonomy.data.RunEntity
 import com.tricreta.zafiro.autonomy.data.TaskEntity
 import com.tricreta.zafiro.autonomy.data.toBudget
-import com.tricreta.zafiro.service.requireService
+import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
@@ -132,12 +132,12 @@ class RunExecutor(
                     summary = lastText
                 }
                 error != null -> finalState = RunState.FAILED
-                failure != null || outcome == com.tricreta.zafiro.api.model.TurnOutcome.Failed -> {
+                failure != null || outcome == com.niki914.zafiro.api.model.TurnOutcome.Failed -> {
                     finalState = RunState.FAILED
                     error = "The agent failed: ${failure?.code ?: "unknown"}${failure?.message?.let { " - $it" } ?: ""}"
                     summary = lastText
                 }
-                outcome == com.tricreta.zafiro.api.model.TurnOutcome.Completed -> {
+                outcome == com.niki914.zafiro.api.model.TurnOutcome.Completed -> {
                     finalState = RunState.SUCCEEDED
                     summary = lastText ?: "Completed with no text report."
                 }
