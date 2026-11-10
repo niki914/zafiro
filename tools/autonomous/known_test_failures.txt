@@ -7,5 +7,9 @@ com.niki914.zafiro.app.notification.TurnNotificationManagerTest.onTurnEvent_when
 com.niki914.zafiro.app.notification.TurnNotificationManagerTest.onTurnEvent_whenTriggeredByHost_skipsNotification
 com.niki914.zafiro.app.notification.TurnNotificationManagerTest.onTurnEvent_whenVisibleInForeground_skipsNotification
 com.niki914.zafiro.app.conversation.ConversationPersisterTest.trackActivity_bumpsUpdatedAtOnApprovalAndTurnEnd
+# Upstream tests that are NON-DETERMINISTIC (pass on some runs of the same code). Tolerated by the gate but always reported.
+# flaky: AgentSessionEngineOkiaTest asserts currentConversation.value right after ensureSession(); that StateFlow is published
+# asynchronously. Passed in 3 earlier runs; failed once on e8d3ebb with agent-runtime untouched.
+flaky:com.niki914.zafiro.chat.AgentSessionEngineOkiaTest.ensureSession_createsInstanceAndReturnsTreeId
 # Minimum number of tests that must run (guards against a compile break silently dropping whole modules). Baseline 1715 + ours.
-MIN_TESTS=1770
+MIN_TESTS=1790

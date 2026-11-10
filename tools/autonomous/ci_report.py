@@ -48,17 +48,21 @@ for xml in xmls:
             failures.append((case.get("classname"), case.get("name"), (bad.get("message") or "")[:300],
                              (bad.text or "")[:1200]))
 
-known, min_tests = set(), 0
+known, flaky, min_tests = set(), set(), 0
 kpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "known_test_failures.txt")
 if os.path.exists(kpath):
     for l in open(kpath, encoding="utf-8"):
         l = l.strip()
         if l.startswith("MIN_TESTS="):
             min_tests = int(l.split("=", 1)[1])
+        elif l.startswith("flaky:"):
+            flaky.add(l[len("flaky:"):].strip())
         elif l and not l.startswith("#"):
             known.add(l)
-new_failures = [f for f in failures if "%s.%s" % (f[0], f[1]) not in known]
+tolerated = known | flaky
+new_failures = [f for f in failures if "%s.%s" % (f[0], f[1]) not in tolerated]
 known_hit = [f for f in failures if "%s.%s" % (f[0], f[1]) in known]
+flaky_hit = [f for f in failures if "%s.%s" % (f[0], f[1]) in flaky]
 env = os.environ.get
 reasons = []
 if env("OUTCOME_ASSEMBLE") != "success":
@@ -81,8 +85,12 @@ lines.append("| step | outcome |")
 lines.append("|---|---|")
 for name in ("python_check", "assemble", "unit_tests", "lint"):
     lines.append("| %s | %s |" % (name, os.environ.get("OUTCOME_" + name.upper(), "n/a")))
-lines += ["", "Unit tests: %d run, %d failed (%d known upstream, %d NEW), %d skipped" %
-          (total, len(failures), len(known_hit), len(new_failures), skipped), ""]
+lines += ["", "Unit tests: %d run, %d failed (%d known upstream, %d flaky upstream, %d NEW), %d skipped" %
+          (total, len(failures), len(known_hit), len(flaky_hit), len(new_failures), skipped), ""]
+if flaky_hit:
+    lines.append("## Flaky upstream tests that failed this run (non-deterministic; see known_test_failures.txt)")
+    for cls, nm, msg, _ in flaky_hit:
+        lines.append("- `%s.%s`" % (cls, nm))
 if new_failures:
     lines.append("## NEW failing tests")
     for cls, nm, msg, _ in new_failures[:60]:
