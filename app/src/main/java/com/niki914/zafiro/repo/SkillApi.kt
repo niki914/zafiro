@@ -63,10 +63,17 @@ class SkillApi internal constructor(
             }
             // Each bundled skill is seeded once; a skill the owner deleted must not come back at the next start.
             val seededFile = File(skillsTargetDir, SEEDED_IDS_FILE_NAME)
+            val offByDefault = runCatching {
+                context.assets.open(DISABLED_BY_DEFAULT_ASSET).bufferedReader().use { it.readLines().map(String::trim).filter(String::isNotEmpty).toSet() }
+            }.getOrDefault(emptySet())
             val seeded = runCatching { seededFile.readLines().toMutableSet() }.getOrDefault(mutableSetOf())
             for (skillId in assetEntries) {
                 val targetDir = File(skillsTargetDir, skillId)
                 if (!targetDir.exists() && skillId in seeded) continue
+                // Bulk-pack skills start switched OFF: ~150 enabled descriptions would bloat every request. The owner turns on what they use.
+                if (skillId !in seeded && skillId in offByDefault) {
+                    SkillEnabledStateStore(File(skillsTargetDir, SkillFileRepository.STATUS_FILE_NAME)).setEnabled(skillId, false)
+                }
                 seeded += skillId
                 val assetDir = "$DEFAULT_SKILLS_ASSET_PATH/$skillId"
                 val files = try {
@@ -96,6 +103,7 @@ class SkillApi internal constructor(
         private const val DEFAULT_SKILLS_ASSET_PATH = "skills"
         private const val SEED_MARKER_FILE_NAME = ".seed"
         private const val SEEDED_IDS_FILE_NAME = ".seeded_ids"
+        private const val DISABLED_BY_DEFAULT_ASSET = "skills_disabled_by_default.txt"
         private const val SKILL_FILE_NAME = "SKILL.md"
 
         /**

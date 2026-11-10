@@ -94,5 +94,9 @@ Owner prerequisite: Actions must be **enabled** on the fork (Actions tab → "I 
 - Upstream sync: `.github/workflows/upstream-sync.yml` weekly; issue or `sync/upstream-<date>` branch. Re-run english_only.py after merging.
 - Tools added: wait, device_info, clipboard, http_request, take_over, compose_message (draft only). Not built: long-press/double-tap, schedule_task, contacts/location/notification reading, real SMS/email send, MCP OAuth.
 
+- Releases: bump `versionName`/`versionCode` in app/build.gradle.kts BEFORE pushing a `release/**` branch; the in-app updater compares versionName with the latest release tag (semver). Update check reads TricretA/my-zafiro. Agent cannot push tags (proxy); branch push triggers release.yml.
+- Skills: ~175 bundled in app/src/main/assets/skills; ids listed in skills_disabled_by_default.txt start OFF. Source: plugin libraries under ~/.claude/plugins/synced (check each plugin's LICENSE first).
+- NOT built yet (owner asked 2026-11-10): agent profiles + call_agent, self-improving memory, parallel multi-agent, sidebar/drawer redesign, device-admin.
+
 ## Status
 Evidence-based status: ROADMAP.md and TESTING.md. As of 2026-11-10: `feat/foundation` builds and passes the CI gate (APK artifact `zafiro-autonomous-debug-apk` on the run); **nothing has been verified on a physical phone yet**; `main` is still pristine upstream; no PR opened.

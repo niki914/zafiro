@@ -73,6 +73,7 @@ class App : Application() {
         }
         applicationScope.launch {
             runCatching { XRepo.seedTextActions() }
+            runCatching { XRepo.seedMcpServers() }
         }
         applicationScope.launch {
             PyRuntime.warmUp()

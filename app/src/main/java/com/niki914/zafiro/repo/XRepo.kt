@@ -241,6 +241,27 @@ object XRepo {
      * 只追加用户列表里没有的工具，不覆盖用户对同名工具的修改；
      * 用户已删除的 seed 会被复活（tools 无删除墓碑，无法区分"未装过"与"删过"）。
      */
+    /**
+     * Offers a few public MCP servers that need no login, once each and switched OFF (the owner enables what they want).
+     * URLs are the providers' documented endpoints but could not be reached from the build sandbox: UNVERIFIED until enabled on a phone.
+     */
+    suspend fun seedMcpServers() {
+        val marker = File(context().filesDir, "settings/.mcp_offered")
+        val offered = TextActionDefaults.readOffered(marker)
+        val defaults = listOf(
+            McpServer("DeepWiki", "https://mcp.deepwiki.com/mcp", enabled = false),
+            McpServer("Context7", "https://mcp.context7.com/mcp", enabled = false),
+        ).filter { it.name !in offered }
+        if (defaults.isEmpty()) return
+        updateJsonOrFalse(StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID) { json ->
+            val existing = McpSettingsCodec.parseServers(json)
+            val names = existing.map { it.name }.toSet()
+            val missing = defaults.filter { it.name !in names }
+            if (missing.isEmpty()) null else McpSettingsCodec.encodeServers(existing + missing)
+        }
+        TextActionDefaults.writeOffered(marker, offered + defaults.map { it.name })
+    }
+
     /** Adds the bundled text actions once each; ones the owner deleted are not re-added. */
     suspend fun seedTextActions() {
         val marker = File(context().filesDir, "settings/.text_actions_offered")
