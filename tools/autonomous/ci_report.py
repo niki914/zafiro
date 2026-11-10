@@ -72,6 +72,13 @@ with open(os.path.join(out, "summary.md"), "w") as f:
 for name in ("python_check", "assemble", "unit_tests", "lint"):
     with open(os.path.join(out, name + ".tail.log"), "w") as f:
         f.write(tail(os.path.join(logs, name + ".log")))
+for name in ("assemble", "unit_tests", "diagnose"):
+    path = os.path.join(logs, name + ".log")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8", errors="replace") as src:
+            lines_all = src.readlines()
+        with open(os.path.join(out, name + ".head.log"), "w") as dst:
+            dst.writelines(lines_all[:1500])
 with open(os.path.join(out, "failures.txt"), "w") as f:
     for cls, nm, msg, trace in failures:
         f.write("=== %s.%s\n%s\n%s\n\n" % (cls, nm, msg, trace))

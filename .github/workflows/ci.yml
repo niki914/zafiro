@@ -62,6 +62,17 @@ jobs:
           set -o pipefail
           ./gradlew assembleDebug $GRADLE_ARGS 2>&1 | tee "$CI_LOG_DIR/assemble.log"
 
+      - name: Diagnose failed assemble (classpath of the autonomy modules)
+        if: steps.assemble.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          {
+            echo "=== autonomy:android debugCompileClasspath";
+            ./gradlew :autonomy:android:dependencies --configuration debugCompileClasspath --no-daemon --console=plain -q 2>&1 | head -120
+            echo "=== voice debugCompileClasspath";
+            ./gradlew :voice:dependencies --configuration debugCompileClasspath --no-daemon --console=plain -q 2>&1 | head -60
+          } > "$CI_LOG_DIR/diagnose.log" 2>&1 || true
+
       - name: Unit tests
         id: unit_tests
         continue-on-error: true
