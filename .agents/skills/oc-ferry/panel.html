@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>OC Ferry · 控制面板</title>
+<style>
+:root{
+  --bg:#f4f6f9; --card:#ffffff; --text:#1b1f24; --muted:#6b7280;
+  --border:#e3e8ef; --primary:#2563eb; --primary-text:#ffffff;
+  --ok:#059669; --ok-bg:#e7f7f0; --warn:#b45309; --warn-bg:#fdf3e3;
+  --limit:#c2410c; --limit-bg:#fff0e6; --off:#64748b; --off-bg:#eef1f5;
+  --danger:#dc2626; --danger-bg:#fdecec; --shadow:0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f141a; --card:#1a212b; --text:#e6edf3; --muted:#9aa7b4;
+    --border:#2b3542; --primary:#3b82f6; --primary-text:#ffffff;
+    --ok:#34d399; --ok-bg:#12362c; --warn:#fbbf24; --warn-bg:#3a2c12;
+    --limit:#fb923c; --limit-bg:#3a2113; --off:#94a3b8; --off-bg:#242d38;
+    --danger:#f87171; --danger-bg:#3a1c1c; --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text); font-size:15px; line-height:1.55;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+.topbar{
+  position:sticky; top:0; z-index:5; display:flex; align-items:center;
+  justify-content:space-between; gap:12px; background:var(--card);
+  border-bottom:1px solid var(--border);
+  padding:calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 16px) 12px calc(env(safe-area-inset-left) + 16px);
+}
+.brand{display:flex;align-items:center;gap:10px;min-height:44px}
+.logo{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:var(--primary);color:var(--primary-text);font-weight:700;font-size:14px}
+h1{font-size:17px;margin:0;font-weight:650}
+.badge{font-size:12px;font-weight:600;padding:6px 10px;border-radius:999px;background:var(--off-bg);color:var(--off);min-height:32px;display:inline-flex;align-items:center}
+.badge.good{background:var(--ok-bg);color:var(--ok)}
+.badge.bad{background:var(--danger-bg);color:var(--danger)}
+main{
+  max-width:680px; margin:0 auto;
+  padding:14px calc(env(safe-area-inset-right) + 14px) calc(env(safe-area-inset-bottom) + 32px) calc(env(safe-area-inset-left) + 14px);
+}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+h2{font-size:14px;font-weight:650;margin:0 0 12px;letter-spacing:.02em}
+.hint{color:var(--muted);font-size:13px;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cell{background:var(--bg);border-radius:12px;padding:10px 12px;min-height:60px}
+.label{display:block;color:var(--muted);font-size:12px;margin-bottom:2px}
+.value{display:block;font-size:15px;font-weight:650;word-break:break-all}
+.row{display:flex;gap:8px;align-items:stretch}
+input[type=password],input[type=text]{
+  flex:1; min-width:0; min-height:44px; padding:10px 12px; font-size:16px;
+  border:1px solid var(--border); border-radius:10px; background:var(--bg); color:var(--text);
+}
+.btn{
+  min-height:44px; padding:10px 14px; border:1px solid var(--border); border-radius:10px;
+  background:var(--card); color:var(--text); font-size:14px; font-weight:600;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.btn.primary{background:var(--primary);color:var(--primary-text);border-color:var(--primary)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.small{min-height:44px;padding:8px 12px;font-size:13px}
+.btn.wide{grid-column:1 / -1}
+.btn:disabled{opacity:.55;cursor:default}
+.cards4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.stat{border:1px solid var(--border);border-radius:14px;padding:12px;background:var(--card);min-height:76px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-size:24px;line-height:1.1}
+.stat small{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%}
+.stat.ok b,.stat.ok small{color:var(--ok)} .stat.ok .dot{background:var(--ok)}
+.stat.warn b,.stat.warn small{color:var(--warn)} .stat.warn .dot{background:var(--warn)}
+.stat.limit b,.stat.limit small{color:var(--limit)} .stat.limit .dot{background:var(--limit)}
+.stat.off b,.stat.off small{color:var(--off)} .stat.off .dot{background:var(--off)}
+.toolbar{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.notice{padding:10px 12px;border-radius:10px;background:var(--off-bg);color:var(--text);font-size:13px;margin-bottom:12px;min-height:44px;display:flex;align-items:center}
+.notice.error{background:var(--danger-bg);color:var(--danger)}
+.notice.loading{background:var(--warn-bg);color:var(--warn)}
+.list{display:flex;flex-direction:column;gap:10px}
+.model{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.model-head{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 6px}
+.expand{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;gap:8px;background:transparent;border:0;color:var(--text);font-size:14px;font-weight:600;text-align:left;padding:6px;cursor:pointer}
+.chev{width:16px;flex:none;color:var(--muted)}
+.name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.tag{flex:none;font-size:11px;font-weight:700;padding:4px 8px;border-radius:999px;white-space:nowrap}
+.tag.ok{background:var(--ok-bg);color:var(--ok)}
+.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.tag.limit{background:var(--limit-bg);color:var(--limit)}
+.tag.off{background:var(--off-bg);color:var(--off)}
+.pick{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 8px;color:var(--muted);font-size:12px;white-space:nowrap;cursor:pointer}
+.pick-box{width:22px;height:22px;accent-color:var(--primary)}
+.model-detail{padding:4px 14px 10px;border-top:1px solid var(--border)}
+.kv{display:flex;gap:10px;padding:6px 0;font-size:12.5px;border-bottom:1px dashed var(--border)}
+.kv:last-child{border-bottom:0}
+.kv .k{flex:none;width:76px;color:var(--muted)}
+.kv .v{flex:1;min-width:0;word-break:break-all;color:var(--text)}
+.model-actions{padding:0 14px 12px}
+.model-actions .btn{width:100%}
+.empty{color:var(--muted);font-size:13px;text-align:center;padding:18px 8px}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:8px 0 0;line-height:1.6}
+@media (max-width:360px){.grid,.cards4,.toolbar{grid-template-columns:1fr}.btn.wide{grid-column:auto}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo">OC</span><h1>OC Ferry</h1></div>
+  <span id="badge" class="badge">连接中…</span>
+</header>
+
+<main>
+  <section class="card">
+    <h2>服务状态</h2>
+    <div class="grid">
+      <div class="cell"><span class="label">状态</span><strong class="value" id="stState">—</strong></div>
+      <div class="cell"><span class="label">端口</span><strong class="value" id="stPort">—</strong></div>
+      <div class="cell"><span class="label">上游</span><strong class="value" id="stUpstream">—</strong></div>
+      <div class="cell"><span class="label">已缓存模型数</span><strong class="value" id="stCached">—</strong></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>本机 API Key</h2>
+    <p class="hint">仅保存在本设备浏览器的 localStorage，不会写进 URL，也不会发到任何第三方。本页是免鉴权静态页，不含任何数据；填入 key 后数据接口才会返回内容。</p>
+    <div class="row">
+      <input id="apiKey" type="password" autocomplete="off" placeholder="粘贴 &lt;data_dir&gt;/api-key 的内容">
+      <button id="saveKey" class="btn primary" type="button">保存</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>模型状态</h2>
+    <div class="cards4">
+      <div class="stat ok"><b id="cntAvailable">0</b><small><span class="dot"></span>可用 · 带工具</small></div>
+      <div class="stat warn"><b id="cntChatOnly">0</b><small><span class="dot"></span>仅对话 · 关闭工具</small></div>
+      <div class="stat limit"><b id="cntLimited">0</b><small><span class="dot"></span>限流 · 暂不提供</small></div>
+      <div class="stat off"><b id="cntOffline">0</b><small><span class="dot"></span>下线 · 不提供</small></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn" type="button" data-act="refresh">检测全部</button>
+      <button class="btn" type="button" data-act="import">写入客户端</button>
+      <button class="btn" type="button" data-act="probe-selected">重新体检</button>
+      <button class="btn" type="button" data-act="clear-selection">取消选中</button>
+      <button class="btn danger wide" type="button" data-act="cleanup">清理自己写入的条目</button>
+    </div>
+
+    <div id="notice" class="notice" hidden></div>
+    <div id="modelList" class="list"></div>
+  </section>
+
+  <footer>
+    面板只在本机 127.0.0.1 可达，不对外暴露。检测会自动发送简短请求、消耗少量免费额度；<br>
+    通过只代表这一次能按协议产生动作，上游不提供剩余额度查询，免费池随时变化。
+  </footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var KEY = 'oc-ferry-api-key';
+  var busy = 0;
+  var $ = function (id) { return document.getElementById(id); };
+  var LABEL = {
+    available: '可用', chat_only: '仅对话', rate_limited: '限流',
+    offline: '下线', unknown: '未知'
+  };
+  var CLS = {
+    available: 'ok', chat_only: 'warn', rate_limited: 'limit',
+    offline: 'off', unknown: 'off'
+  };
+
+  function getKey() {
+    try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; }
+  }
+  function setKey(v) {
+    try { localStorage.setItem(KEY, v); }
+    catch (e) { notice('无法保存到 localStorage：' + e.message, true, false); }
+  }
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function notice(msg, isError, isLoading) {
+    var box = $('notice');
+    box.hidden = false;
+    box.className = 'notice' + (isError ? ' error' : (isLoading ? ' loading' : ''));
+    box.textContent = msg;
+  }
+  function clearNotice() {
+    if (!busy) { $('notice').hidden = true; $('notice').textContent = ''; }
+  }
+  function setDisabled(flag) {
+    var nodes = document.querySelectorAll('button[data-act],button[data-probe],input.pick-box');
+    for (var i = 0; i < nodes.length; i += 1) { nodes[i].disabled = flag; }
+  }
+  function start(label) {
+    busy += 1;
+    setDisabled(true);
+    notice(label, false, true);
+  }
+  function done(msg, isError) {
+    busy = Math.max(0, busy - 1);
+    setDisabled(false);
+    if (msg) { notice(msg, !!isError, false); } else { clearNotice(); }
+  }
+
+  /* 同源 fetch：只带 Authorization（POST 另带 Content-Type），
+     绝不手动设置 Origin —— 浏览器自动添加的同源 Origin 由服务端放行。 */
+  function api(path, opts) {
+    opts = opts || {};
+    var headers = { 'Authorization': 'Bearer ' + getKey() };
+    if (opts.body) { headers['Content-Type'] = 'application/json'; }
+    return fetch(path, {
+      method: opts.method || 'GET',
+      headers: headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      cache: 'no-store'
+    }).then(function (resp) {
+      var ct = resp.headers.get('Content-Type') || '';
+      var parsed = ct.indexOf('application/json') >= 0 ? resp.json() : resp.text();
+      return parsed.then(function (data) {
+        if (!resp.ok) {
+          var detail = (data && data.error && data.error.message)
+            ? data.error.message
+            : (typeof data === 'string' ? data.slice(0, 200) : 'HTTP ' + resp.status);
+          throw new Error('HTTP ' + resp.status + '：' + detail);
+        }
+        return data;
+      });
+    });
+  }
+
+  function fmtTime(ts) {
+    if (!ts) { return '—'; }
+    try { return new Date(Number(ts) * 1000).toLocaleString(); }
+    catch (e) { return String(ts); }
+  }
+  function renderHealth(h) {
+    $('stState').textContent = h.status === 'ok' ? '运行中' : (h.status || '未知');
+    $('stPort').textContent = h.port ? String(h.port) : '—';
+    $('stUpstream').textContent = h.upstream_configured ? (h.upstream_host || '已配置') : '未配置';
+    $('stCached').textContent = String(
+      h.cache_entries != null ? h.cache_entries : (h.models_registered || 0));
+    var ok = h.status === 'ok';
+    $('badge').textContent = ok ? '已连接' : '未连接';
+    $('badge').className = 'badge ' + (ok ? 'good' : 'bad');
+  }
+  function renderCounts(counts) {
+    counts = counts || {};
+    $('cntAvailable').textContent = String(counts.available || 0);
+    $('cntChatOnly').textContent = String(counts.chat_only || 0);
+    $('cntLimited').textContent = String(counts.rate_limited || 0);
+    $('cntOffline').textContent = String(counts.offline || 0);
+  }
+  function renderModels(data, visible) {
+    var list = $('modelList');
+    list.innerHTML = '';
+    var models = data.models || [];
+    var selection = data.selection || '';
+    if (!models.length) {
+      list.appendChild(el('p', 'empty',
+        '还没有模型，点「检测全部」开始（会自动发送简短请求，消耗少量免费额度）。'));
+      return;
+    }
+    models.forEach(function (m) {
+      var st = m.status || 'unknown';
+      var card = el('div', 'model');
+
+      var head = el('div', 'model-head');
+      var toggle = el('button', 'expand');
+      toggle.type = 'button';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.appendChild(el('span', 'chev', '▸'));
+      toggle.appendChild(el('span', 'name', m.name || m.id));
+      toggle.appendChild(el('span', 'tag ' + (CLS[st] || 'off'), LABEL[st] || st));
+      head.appendChild(toggle);
+
+      var pick = el('label', 'pick');
+      var box = el('input', 'pick-box');
+      box.type = 'checkbox';
+      box.checked = (selection === m.id);
+      box.setAttribute('data-pick', m.id);
+      pick.appendChild(box);
+      pick.appendChild(el('span', '', '选中'));
+      head.appendChild(pick);
+      card.appendChild(head);
+
+      var detail = el('div', 'model-detail');
+      detail.hidden = true;
+      var rows = [
+        ['模型 ID', m.id],
+        ['上游 ID', m.upstream_model || '—'],
+        ['客户端可见', visible[m.id] ? '是' : '否'],
+        ['判定码', m.verdict || '—'],
+        ['工具', m.tools_enabled ? '开启' : '关闭'],
+        ['负载', m.load_state || '—'],
+        ['能力指纹', m.fingerprint || '—'],
+        ['体检时间', fmtTime(m.checked_at)],
+        ['原因', m.reason || '—']
+      ];
+      rows.forEach(function (pair) {
+        var row = el('div', 'kv');
+        row.appendChild(el('span', 'k', pair[0]));
+        row.appendChild(el('span', 'v', pair[1]));
+        detail.appendChild(row);
+      });
+      card.appendChild(detail);
+
+      var actions = el('div', 'model-actions');
+      var again = el('button', 'btn small', '只重测这一个');
+      again.type = 'button';
+      again.setAttribute('data-probe', m.id);
+      actions.appendChild(again);
+      card.appendChild(actions);
+
+      toggle.addEventListener('click', function () {
+        detail.hidden = !detail.hidden;
+        toggle.querySelector('.chev').textContent = detail.hidden ? '▸' : '▾';
+        toggle.setAttribute('aria-expanded', String(!detail.hidden));
+      });
+      box.addEventListener('change', function () {
+        selectModel(box.checked ? m.id : null);
+      });
+      again.addEventListener('click', function () { probeOne(m.id); });
+      list.appendChild(card);
+    });
+  }
+
+  function loadAll() {
+    start('正在加载状态…');
+    return Promise.all([api('/health'), api('/v1/models'), api('/admin/status')])
+      .then(function (res) {
+        renderHealth(res[0]);
+        renderCounts(res[2].counts);
+        var visible = {};
+        var items = (res[1] && res[1].data) || [];
+        items.forEach(function (item) {
+          if (item && item.oc_ferry && item.oc_ferry.model_id) {
+            visible[item.oc_ferry.model_id] = true;
+          }
+        });
+        renderModels(res[2], visible);
+        done('');
+      })
+      .catch(function (err) {
+        done('加载失败：' + err.message + '（请检查 API Key 与服务是否在运行）', true);
+      });
+  }
+
+  function act(label, path, body, okText) {
+    start(label);
+    return api(path, { method: 'POST', body: body || {} })
+      .then(function (data) { done(okText ? okText(data) : label + '完成'); })
+      .catch(function (err) { done(label + '失败：' + err.message, true); });
+  }
+  function probeOne(id) {
+    return act('正在重测该模型（消耗少量免费额度）…', '/admin/probe', { model: id },
+      function (d) {
+        return '重测完成：' + (d.status || '—') + '（' + (d.verdict || '—') + '）';
+      }).then(loadAll);
+  }
+  function selectModel(id) {
+    return act(id ? '正在更新选中模型…' : '正在取消选中…', '/admin/selection',
+      id ? { model: id } : { clear: true },
+      function () { return id ? '已选中模型' : '已取消选中'; }).then(loadAll);
+  }
+
+  var ACTIONS = {
+    refresh: function () {
+      act('正在检测全部模型（会消耗少量免费额度）…', '/admin/refresh', {},
+        function (d) {
+          return '检测完成：发现 ' + (d.discovered || 0) + ' 个免费模型';
+        }).then(loadAll);
+    },
+    import: function () {
+      act('正在写入客户端配置…', '/admin/import', {},
+        function (d) {
+          return d.changed
+            ? ('已写入 ' + (d.added || 0) + ' 个条目，保留 ' + (d.kept || 0) + ' 条用户配置')
+            : '内容没有变化，未落盘';
+        }).then(loadAll);
+    },
+    'probe-selected': function () {
+      var boxes = document.querySelectorAll('input.pick-box');
+      var picked = '';
+      for (var i = 0; i < boxes.length; i += 1) {
+        if (boxes[i].checked) { picked = boxes[i].getAttribute('data-pick'); break; }
+      }
+      if (!picked) { notice('请先勾选一个模型', true, false); return; }
+      probeOne(picked);
+    },
+    'clear-selection': function () {
+      act('正在取消选中…', '/admin/selection', { clear: true },
+        function () { return '已取消选中'; }).then(loadAll);
+    },
+    cleanup: function () {
+      /* 服务刻意不提供 /admin/cleanup HTTP 路由：清场是有副作用的动作，
+         统一由 CLI cleanup / serve 退出时完成。这里只给明确提示，不伪造接口。 */
+      start('清理条目');
+      done('服务未提供清理接口。请在本机执行 CLI：'
+        + 'python oc_ferry.py cleanup（或停止 serve 时会自动清场）；'
+        + '只移除 OC Ferry 自己打过标记的条目，用户手写配置不受影响。', true);
+    }
+  };
+
+  function closestAct(node) {
+    while (node && node !== document) {
+      if (node.getAttribute && node.getAttribute('data-act')) { return node; }
+      node = node.parentNode;
+    }
+    return null;
+  }
+  document.addEventListener('click', function (e) {
+    var btn = closestAct(e.target);
+    if (!btn) { return; }
+    var fn = ACTIONS[btn.getAttribute('data-act')];
+    if (fn) { fn(); }
+  });
+
+  /* /health 是仅回环、免 Bearer、零敏感字段的存活探针：即使还没输 key，
+     静态页也能显示「运行中 / 端口 / 上游」。模型数据仍需 Bearer。 */
+  function loadHealth() {
+    return api('/health')
+      .then(function (h) { renderHealth(h); })
+      .catch(function () {
+        $('badge').textContent = '未连接';
+        $('badge').className = 'badge bad';
+      });
+  }
+
+  $('saveKey').addEventListener('click', function () {
+    setKey($('apiKey').value.trim());
+    loadAll();
+  });
+  $('apiKey').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { setKey($('apiKey').value.trim()); loadAll(); }
+  });
+  $('apiKey').value = getKey();
+  loadHealth();
+  if (getKey()) {
+    loadAll();
+  } else {
+    notice('页面已加载（免鉴权、零数据）。请填入本机 API Key（位于 <data_dir>/api-key，'
+      + 'serve 启动时会打印），然后点「保存」以加载模型数据。', false, false);
+  }
+})();
+</script>
+</body>
+</html>
