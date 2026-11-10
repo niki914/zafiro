@@ -99,6 +99,7 @@ dependencies {
     implementation(project(":xsettings"))
     implementation(project(":libs:logging"))
     implementation(project(":business:api"))
+    implementation(project(":business:screen"))
     implementation(project(":business:agent"))
     implementation(project(":remote-view"))
 

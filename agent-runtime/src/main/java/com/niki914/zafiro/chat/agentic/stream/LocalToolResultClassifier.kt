@@ -35,8 +35,11 @@ data class ParsedToolResult(
         private val TEXT_RESULT_TOOL_NAMES = setOf(
             "execute_python",
             "load_skill",
+            "screen_operation",
             "screen_operation_accessibility",
             "screen_operation_shell",
+            "screens",
+            "show",
         )
 
         /**

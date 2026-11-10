@@ -20,6 +20,9 @@ import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
+import com.niki914.zafiro.api.screen.NodeInfo
+import com.niki914.zafiro.api.screen.Rect as ScreenRect
+import com.niki914.zafiro.api.screen.SemanticType
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionResult
@@ -386,6 +389,41 @@ object AccessibilityController {
         }
 
         return Result.success(ScreenSnapshot(yaml, currentVersion, nodeCache.size))
+    }
+
+    /** 给 phone 屏把这次缓存摊成扁平节点。子节点先不组树，搜索按文本过滤就够。 */
+    internal fun exportedNodes(): List<NodeInfo> {
+        return nodeCache.entries
+            .sortedBy { it.key }
+            .map { (index, node) -> node.toScreenNode(index) }
+    }
+
+    internal fun screenSize(): Pair<Int, Int> = cachedScreenWidth to cachedScreenHeight
+
+    private fun AccessibilityNodeInfo.toScreenNode(
+        index: Int,
+    ): NodeInfo {
+        val rect = AndroidRect()
+        getBoundsInScreen(rect)
+        val semantic = PruningRules.mapSemanticType(className?.toString().orEmpty(), null)
+        val type = try {
+            SemanticType.valueOf(semantic.name)
+        } catch (_: IllegalArgumentException) {
+            SemanticType.CONTAINER
+        }
+        return NodeInfo(
+            index = index,
+            semanticType = type,
+            text = text?.toString().orEmpty(),
+            contentDesc = contentDescription?.toString().orEmpty(),
+            bounds = ScreenRect(rect.left, rect.top, rect.right, rect.bottom),
+            isClickable = isClickable,
+            isLongClickable = isLongClickable,
+            isEditable = isEditable,
+            isScrollable = isScrollable,
+            isChecked = isChecked,
+            children = emptyList(),
+        )
     }
 
     /**

@@ -44,6 +44,8 @@ include(":xsettings")
 
 // Business 层：契约（api）与实现（agent）分离，业务方只依赖 api。
 include(":business:api")
+// 屏幕契约。纯 JVM，只有签名。实现以后再注册到 ServiceRegistry。
+include(":business:screen")
 include(":business:agent")
 include(":business:files")
 include(":business:notification")
