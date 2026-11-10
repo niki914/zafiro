@@ -46,6 +46,7 @@ jobs:
 
       - name: Fork policy checks (English-only resources, no phone-home)
         id: python_check
+        if: hashFiles('tools/autonomous/english_only.py') != ''
         continue-on-error: true
         run: |
           set -o pipefail

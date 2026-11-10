@@ -1,6 +1,5 @@
 package com.tricreta.zafiro.autonomy.ui
 
-import android.Manifest
 import android.app.AlarmManager
 import android.content.Intent
 import android.net.Uri
@@ -10,7 +9,6 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -52,6 +50,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionState
+import com.niki914.zafiro.service.requireService
 import com.tricreta.zafiro.autonomy.AutonomyGraph
 import com.tricreta.zafiro.autonomy.core.RunState
 import com.tricreta.zafiro.autonomy.data.RunEntity
@@ -74,13 +76,16 @@ class AutonomyActivity : ComponentActivity() {
 
     private val resumeTick = mutableIntStateOf(0)
 
-    private val notificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         val graph = AutonomyGraph.get(this)
+        // Notifications are how results and approvals reach the user: ask through PermissionManager, like the rest of the app.
+        graph.scope.launch {
+            val pm = requireService<PermissionManager>()
+            if (pm.status(Permission.NOTIFICATION) != PermissionState.GRANTED) {
+                runCatching { pm.request(Permission.NOTIFICATION) }
+            }
+        }
         setContent {
             val dark = androidx.compose.foundation.isSystemInDarkTheme()
             val scheme = when {

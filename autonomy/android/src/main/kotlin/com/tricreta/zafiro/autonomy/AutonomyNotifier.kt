@@ -94,7 +94,7 @@ class AutonomyNotifier(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     private fun safeNotify(id: Int, n: Notification) {
-        // POST_NOTIFICATIONS may be denied on Android 13+; a denied permission must never crash a run.
+        // The notification permission may be denied on Android 13+; a denied permission must never crash a run.
         if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
             runCatching { NotificationManagerCompat.from(context).notify(id, n) }
         }

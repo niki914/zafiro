@@ -38,6 +38,7 @@ android {
 dependencies {
     api(project(":autonomy:core"))
     implementation(project(":business:api"))
+    implementation(project(":business:permission"))
     implementation(project(":libs:logging"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")

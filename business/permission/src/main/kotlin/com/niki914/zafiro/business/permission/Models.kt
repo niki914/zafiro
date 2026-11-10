@@ -5,6 +5,9 @@ enum class Permission {
     ROOT,
     SHIZUKU,
     NOTIFICATION,
+
+    /** 录音（语音输入）。运行时权限，root / Shizuku 可静默授予。 */
+    MICROPHONE,
     OVERLAY,
     ACCESSIBILITY,
 

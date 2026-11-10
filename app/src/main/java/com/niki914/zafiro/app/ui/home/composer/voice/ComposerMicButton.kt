@@ -1,10 +1,6 @@
 package com.niki914.zafiro.app.ui.home.composer.voice
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
@@ -19,14 +15,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import com.niki914.uikit.button.ZafiroActionButton
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionState
+import com.niki914.zafiro.service.requireService
 import com.tricreta.zafiro.voice.SpeechState
 import com.tricreta.zafiro.voice.TranscriptMerger
 import com.tricreta.zafiro.voice.VoiceInput
+import kotlinx.coroutines.launch
 
 /**
  * Dictation button for the chat composer. Tap to start, tap again to finish. Live partial text appears in the input box
@@ -54,8 +55,20 @@ internal fun ComposerMicButton(
         voice.start { finalText -> latestOnChange(TranscriptMerger.merge(baseText, finalText)) }
     }
 
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) begin() else Toast.makeText(context, "Microphone permission is needed for voice input.", Toast.LENGTH_SHORT).show()
+    val scope = rememberCoroutineScope()
+
+    // Microphone access goes through PermissionManager like every other permission (root/Shizuku can grant it silently).
+    fun beginWithPermission() {
+        scope.launch {
+            val pm = requireService<PermissionManager>()
+            val granted = pm.status(Permission.MICROPHONE) == PermissionState.GRANTED ||
+                pm.request(Permission.MICROPHONE).finalState == PermissionState.GRANTED
+            if (granted) {
+                begin()
+            } else {
+                Toast.makeText(context, "Microphone permission is needed for voice input.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     // Live partial transcript.
@@ -72,13 +85,7 @@ internal fun ComposerMicButton(
     val tint = if (listening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     CompositionLocalProvider(LocalContentColor provides tint) {
         ZafiroActionButton(
-            onClick = {
-                when {
-                    listening -> voice.stop()
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED -> begin()
-                    else -> permission.launch(Manifest.permission.RECORD_AUDIO)
-                }
-            },
+            onClick = { if (listening) voice.stop() else beginWithPermission() },
             modifier = modifier,
         ) {
             Icon(
