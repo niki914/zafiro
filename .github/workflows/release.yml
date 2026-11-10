@@ -4,12 +4,13 @@ name: release
 #   RELEASE_KEYSTORE_B64   base64 of zafiro-release.jks
 #   RELEASE_STORE_PASSWORD password of the keystore (the key uses the same one)
 #   RELEASE_KEY_ALIAS      zafiro
-# Run: Actions > release > Run workflow (pick the branch), or push a tag like v1.11.0.
+# Run: Actions > release > Run workflow (pick the branch), push a tag like v1.11.0, or push a branch named release/<anything>.
 # Keep the keystore safe: an update can only replace an installed app if it is signed with the SAME key.
 on:
   workflow_dispatch:
   push:
     tags: ['v*']
+    branches: ['release/**']
 permissions:
   contents: write
 env:
