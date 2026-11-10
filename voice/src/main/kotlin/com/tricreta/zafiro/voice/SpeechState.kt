@@ -5,15 +5,6 @@ import com.tricreta.zafiro.voice.dictation.DictationSession.Fault
 
 enum class SpeechProblem { NO_SPEECH, NO_RECOGNIZER, PERMISSION, NETWORK, BUSY, AUDIO, OTHER }
 
-sealed interface SpeechState {
-    data object Idle : SpeechState
-
-    /** [transcript] is everything heard so far in this dictation (all segments plus the live partial). */
-    data class Listening(val transcript: String) : SpeechState
-
-    data class Failed(val problem: SpeechProblem, val message: String) : SpeechState
-}
-
 object SpeechErrors {
     data class Mapped(val problem: SpeechProblem, val message: String, val fault: Fault)
 

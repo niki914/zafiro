@@ -44,6 +44,7 @@ object ProviderSpecs {
         AnthropicSpec,
         OpenAiSpec,
         OpenRouterSpec,
+        NvidiaSpec,
         DeepSeekSpec,
         GoogleSpec,
         KimiSpec,
@@ -202,6 +203,31 @@ private data object SiliconFlowSpec : ProviderSpec {
             lightContainerColorRes = R.color.provider_siliconflow_button_light_container,
             darkContentColorRes = R.color.provider_siliconflow_button_dark_content,
             lightContentColorRes = R.color.provider_siliconflow_button_light_content,
+        ),
+    )
+}
+
+/**
+ * NVIDIA NIM (build.nvidia.com). OpenAI-compatible, so it reuses the chat-completions protocol and the generic `/models`
+ * discovery: the model picker lists what the user's own key can use, including NVIDIA's free hosted models.
+ * The default id below is only a placeholder known to exist at the time of writing; whether a given model supports tool
+ * calling is per-model on NVIDIA's side, so pick a model marked for tool use if the agent cannot call tools.
+ */
+private data object NvidiaSpec : ProviderSpec {
+    override val id: String = "nvidia"
+    override val brandName: String = "NVIDIA NIM"
+    override val officialEndpoint: String = "https://integrate.api.nvidia.com/v1/chat/completions"
+    override val exampleModelId: String = "meta/llama-3.3-70b-instruct"
+    override val allowsCustomEndpointInNewConfig: Boolean = false
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.nvidia
+    override val tintIcon: Boolean = true
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_nvidia_button_container,
+            lightContainerColorRes = R.color.provider_nvidia_button_container,
+            darkContentColorRes = R.color.provider_nvidia_button_content,
+            lightContentColorRes = R.color.provider_nvidia_button_content,
         ),
     )
 }
