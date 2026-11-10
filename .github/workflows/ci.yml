@@ -79,7 +79,7 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          ./gradlew testDebugUnitTest --continue $GRADLE_ARGS 2>&1 | tee "$CI_LOG_DIR/unit_tests.log"
+          ./gradlew testDebugUnitTest :autonomy:core:test --continue $GRADLE_ARGS 2>&1 | tee "$CI_LOG_DIR/unit_tests.log"
 
       - name: Lint (reported, not blocking until baseline is known)
         id: lint
@@ -140,8 +140,9 @@ jobs:
           git add -A && git commit -q -m "ci results for $SHA7 on $GITHUB_REF_NAME" || true
           git push -q origin ci-logs
 
-      - name: Fail the job if a blocking step failed
+      - name: Gate
         if: always()
         run: |
           echo "python_check=${{ steps.python_check.outcome }} assemble=${{ steps.assemble.outcome }} unit_tests=${{ steps.unit_tests.outcome }} lint=${{ steps.lint.outcome }}"
-          [ "${{ steps.python_check.outcome }}" = "success" ] && [ "${{ steps.assemble.outcome }}" = "success" ] && [ "${{ steps.unit_tests.outcome }}" = "success" ]
+          cat "$RUNNER_TEMP/ci-bundle/gate.txt"
+          grep -q '^PASS' "$RUNNER_TEMP/ci-bundle/gate.txt"

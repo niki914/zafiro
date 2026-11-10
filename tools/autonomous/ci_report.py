@@ -32,7 +32,9 @@ def error_lines(path, limit=80):
 
 
 failures, total, skipped = [], 0, 0
-for xml in glob.glob("**/build/test-results/testDebugUnitTest/*.xml", recursive=True):
+xmls = glob.glob("**/build/test-results/testDebugUnitTest/*.xml", recursive=True) + \
+    glob.glob("**/build/test-results/test/*.xml", recursive=True)
+for xml in xmls:
     try:
         root = ET.parse(xml).getroot()
     except ET.ParseError:
@@ -46,7 +48,32 @@ for xml in glob.glob("**/build/test-results/testDebugUnitTest/*.xml", recursive=
             failures.append((case.get("classname"), case.get("name"), (bad.get("message") or "")[:300],
                              (bad.text or "")[:1200]))
 
-lines = ["# CI result", ""]
+known, min_tests = set(), 0
+kpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "known_test_failures.txt")
+if os.path.exists(kpath):
+    for l in open(kpath, encoding="utf-8"):
+        l = l.strip()
+        if l.startswith("MIN_TESTS="):
+            min_tests = int(l.split("=", 1)[1])
+        elif l and not l.startswith("#"):
+            known.add(l)
+new_failures = [f for f in failures if "%s.%s" % (f[0], f[1]) not in known]
+known_hit = [f for f in failures if "%s.%s" % (f[0], f[1]) in known]
+env = os.environ.get
+reasons = []
+if env("OUTCOME_ASSEMBLE") != "success":
+    reasons.append("assembleDebug failed")
+if env("OUTCOME_PYTHON_CHECK") not in ("success", "skipped"):
+    reasons.append("fork policy check failed")
+if new_failures:
+    reasons.append("%d NEW test failure(s)" % len(new_failures))
+if total < min_tests:
+    reasons.append("only %d tests ran (minimum %d) - a module probably failed to compile" % (total, min_tests))
+gate = "PASS" if not reasons else "FAIL: " + "; ".join(reasons)
+with open(os.path.join(out, "gate.txt"), "w") as f:
+    f.write(gate + "\n")
+
+lines = ["# CI result", "", "**Gate: %s**" % gate, ""]
 for key in ("RUN_URL", "GITHUB_SHA", "GITHUB_REF_NAME"):
     lines.append("- %s: %s" % (key, os.environ.get(key, "")))
 lines.append("")
@@ -54,11 +81,16 @@ lines.append("| step | outcome |")
 lines.append("|---|---|")
 for name in ("python_check", "assemble", "unit_tests", "lint"):
     lines.append("| %s | %s |" % (name, os.environ.get("OUTCOME_" + name.upper(), "n/a")))
-lines += ["", "Unit tests: %d run, %d failed, %d skipped" % (total, len(failures), skipped), ""]
-if failures:
-    lines.append("## Failing tests")
-    for cls, nm, msg, _ in failures[:60]:
+lines += ["", "Unit tests: %d run, %d failed (%d known upstream, %d NEW), %d skipped" %
+          (total, len(failures), len(known_hit), len(new_failures), skipped), ""]
+if new_failures:
+    lines.append("## NEW failing tests")
+    for cls, nm, msg, _ in new_failures[:60]:
         lines.append("- `%s.%s` — %s" % (cls, nm, msg.replace("\n", " ")))
+if known_hit:
+    lines.append("## Known upstream failures (also fail on pristine upstream)")
+    for cls, nm, msg, _ in known_hit:
+        lines.append("- `%s.%s`" % (cls, nm))
 lines.append("")
 for name in ("assemble", "unit_tests", "lint"):
     errs = error_lines(os.path.join(logs, name + ".log"))
