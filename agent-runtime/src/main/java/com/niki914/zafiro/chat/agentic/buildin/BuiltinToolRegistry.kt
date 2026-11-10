@@ -6,6 +6,9 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ClipboardBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.ComposeMessageBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.HttpRequestBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.TakeOverBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.DeviceInfoBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.NotifyBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.WaitBuiltin
@@ -38,6 +41,9 @@ class BuiltinToolRegistry(
                 WaitBuiltin(),
                 DeviceInfoBuiltin(),
                 ClipboardBuiltin(),
+                HttpRequestBuiltin(),
+                TakeOverBuiltin(),
+                ComposeMessageBuiltin(),
                 OpenUriBuiltin(),
                 LoadSkillBuiltin(),
                 ShellBuiltin(),

@@ -1,6 +1,6 @@
 # Approval list
 
-**Status 2026-11-10 (owner approved "everything, as long as nothing breaks"):** shipped = tools `wait`, `device_info`, `clipboard`; 10 extra text actions; 21 bundled skills (account skills minus Claude-only/desktop-script ones). NOT shipped (needs real work or has real risk): take_over UI, gestures, http_request, schedule_task, send SMS/email, notification/contacts/location, MCP OAuth, node/ffmpeg (see CHANGELOG). Original list below.
+**Status 2026-11-10 (owner approved "everything, as long as nothing breaks"):** shipped = tools `wait`, `device_info`, `clipboard`; 10 extra text actions; 21 bundled skills (account skills minus Claude-only/desktop-script ones). Also shipped: http_request, take_over, compose_message (draft only). Swipe/scroll/tap already existed. NOT shipped: long-press/double-tap gestures, schedule_task, real SMS/email sending, notification/contacts/location reading, MCP OAuth, node/ffmpeg (see CHANGELOG). Original list below.
 
 (Original text) Nothing here is added until the owner approves it
 

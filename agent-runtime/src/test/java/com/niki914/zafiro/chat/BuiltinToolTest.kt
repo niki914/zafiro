@@ -17,9 +17,11 @@ class BuiltinToolTest {
         assertEquals(
             listOf(
                 "clipboard",
+                "compose_message",
                 "device_info",
                 "execute_python",
                 "find_installed_apps",
+                "http_request",
                 "launch_app",
                 "load_skill",
                 "memory",
@@ -31,6 +33,7 @@ class BuiltinToolTest {
                 "screenshot",
                 "shell",
                 "ssh",
+                "take_over",
                 "view_image",
                 "wait",
             ),
