@@ -142,7 +142,8 @@ class OpenAIResponsesProtocol(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: SerializationException) {
-                emit(ProtocolEvent.Error(e))
+                val preview = event.data.take(160).replace("\n", " ").trim()
+                emit(ProtocolEvent.Error(SerializationException("malformed chunk ($preview): ${e.message}", e)))
                 failed = true
             } catch (e: IllegalStateException) {
                 // 协议自身错误（status 异常等）；loop 的流终止哨兵（StreamCompleted）
@@ -153,7 +154,7 @@ class OpenAIResponsesProtocol(
         }
         // 流结束无 response.completed：协议不完整
         if (!failed && !state.finished) {
-            emit(ProtocolEvent.Error(IllegalStateException("stream ended without response.completed")))
+            emit(ProtocolEvent.Error(IllegalStateException("stream ended without response.completed (server disconnected prematurely)")))
         }
     }
 

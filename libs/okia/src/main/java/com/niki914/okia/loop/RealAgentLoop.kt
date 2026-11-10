@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.onTimeout
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 
 /**
  * 回合驱动（T6 工具循环 + T7 分层重试与 idle）：模型 ↔ 工具循环，直到
@@ -655,7 +656,7 @@ internal class RealAgentLoop : AgentLoop {
                     // retryable（协议层判定的临时错误，如 Anthropic overloaded_error）→
                     // Transport 可重试；其余（畸形 JSON 等）→ Parse 不可重试（问题 2）
                     if (event.retryable) LLMErrorCode.Transport else LLMErrorCode.Parse,
-                    "stream parse error",
+                    formatStreamErrorMessage(event.cause),
                     event.cause
                 )
             )
@@ -1150,3 +1151,38 @@ private const val MAX_ERROR_BODY_CHARS = 2000
 private fun truncatedToolCallMessage(name: String): String =
     "Tool call \"$name\" was not executed: the response hit the output limit, " +
             "so its arguments may be truncated."
+
+private fun formatStreamErrorMessage(cause: Throwable): String {
+    val message = cause.message?.trim()
+    val isKnownProtocolIssue = when (cause) {
+        is SerializationException -> !message.isNullOrBlank()
+        is IllegalStateException -> !message.isNullOrBlank() && (
+            message.contains("stream ended without") ||
+                message.contains("unsupported finish_reason") ||
+                message.contains("stream error") ||
+                message.contains("response.failed") ||
+                message.contains("chunk is not a json object") ||
+                message.contains("Completed")
+        )
+        else -> false
+    }
+
+    if (isKnownProtocolIssue && !message.isNullOrBlank()) {
+        val detail = when {
+            message.contains("server disconnected prematurely") -> message
+            message.contains("stream ended without finish_reason") ||
+                message.contains("stream ended without message_stop") ||
+                message.contains("stream ended without response.completed") ->
+                "$message (server disconnected prematurely)"
+            else -> message
+        }
+        return "stream parse error: $detail"
+    }
+
+    val stackTrace = cause.stackTraceToString().trim()
+    return if (!message.isNullOrBlank()) {
+        "stream parse error: $message\n$stackTrace"
+    } else {
+        "stream parse error:\n$stackTrace"
+    }
+}
