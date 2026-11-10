@@ -39,6 +39,15 @@ android {
     val signingPropsFile = File(packingDir, "signing.properties")
 
     signingConfigs {
+        // Fork: every CI debug build must carry the SAME signature, otherwise Android refuses to install a new build over the
+        // old one. CI runners are ephemeral and would otherwise mint a new random debug key each run. This key is public on
+        // purpose (debug only, standard practice); release builds keep using the secret release key below.
+        getByName("debug") {
+            storeFile = rootProject.file("tools/autonomous/zafiro-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         create("release") {
             if (signingPropsFile.exists()) {
                 val props = Properties().apply {
