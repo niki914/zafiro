@@ -241,6 +241,16 @@ object XRepo {
      * 只追加用户列表里没有的工具，不覆盖用户对同名工具的修改；
      * 用户已删除的 seed 会被复活（tools 无删除墓碑，无法区分"未装过"与"删过"）。
      */
+    /** Adds the bundled text actions once each; ones the owner deleted are not re-added. */
+    suspend fun seedTextActions() {
+        val marker = File(context().filesDir, "settings/.text_actions_offered")
+        val offered = TextActionDefaults.readOffered(marker)
+        val existing = textActions.list().map { it.name }.toSet()
+        val toAdd = TextActionDefaults.toAdd(existing, offered)
+        toAdd.forEach { textActions.replace(null, it) }
+        TextActionDefaults.writeOffered(marker, offered + existing.intersect(TextActionDefaults.all.map { it.name }.toSet()) + toAdd.map { it.name })
+    }
+
     suspend fun seedPyTools() {
         val context = context()
         updateJsonOrFalse(StoreDescriptorRegistry.TOOLS_PY_ID) { json ->

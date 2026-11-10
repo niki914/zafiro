@@ -16,6 +16,8 @@ class BuiltinToolTest {
 
         assertEquals(
             listOf(
+                "clipboard",
+                "device_info",
                 "execute_python",
                 "find_installed_apps",
                 "launch_app",
@@ -30,6 +32,7 @@ class BuiltinToolTest {
                 "shell",
                 "ssh",
                 "view_image",
+                "wait",
             ),
             registry.all().map { it.name }.sorted()
         )

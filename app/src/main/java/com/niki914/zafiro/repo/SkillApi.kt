@@ -61,8 +61,13 @@ class SkillApi internal constructor(
             } catch (_: IOException) {
                 emptyList()
             }
+            // Each bundled skill is seeded once; a skill the owner deleted must not come back at the next start.
+            val seededFile = File(skillsTargetDir, SEEDED_IDS_FILE_NAME)
+            val seeded = runCatching { seededFile.readLines().toMutableSet() }.getOrDefault(mutableSetOf())
             for (skillId in assetEntries) {
                 val targetDir = File(skillsTargetDir, skillId)
+                if (!targetDir.exists() && skillId in seeded) continue
+                seeded += skillId
                 val assetDir = "$DEFAULT_SKILLS_ASSET_PATH/$skillId"
                 val files = try {
                     context.assets.list(assetDir)?.toList().orEmpty()
@@ -73,6 +78,10 @@ class SkillApi internal constructor(
                     runCatching { context.assets.open("$assetDir/$name") }.getOrNull()
                 }
                 reseedSkill(targetDir, files, openAsset)
+            }
+            runCatching {
+                skillsTargetDir.mkdirs()
+                seededFile.writeText(seeded.sorted().joinToString("\n"))
             }
         }
     }
@@ -86,6 +95,7 @@ class SkillApi internal constructor(
         const val SKILLS_DIR_NAME = "skills"
         private const val DEFAULT_SKILLS_ASSET_PATH = "skills"
         private const val SEED_MARKER_FILE_NAME = ".seed"
+        private const val SEEDED_IDS_FILE_NAME = ".seeded_ids"
         private const val SKILL_FILE_NAME = "SKILL.md"
 
         /**

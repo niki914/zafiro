@@ -4,3 +4,5 @@ Copyright (c) 2026 TricretA
 Based on Zafiro, Copyright (c) 2026 niki914, MIT License (https://github.com/niki914/zafiro).
 
 Design inspiration (no code copied yet): DroidBridge (Apache-2.0), ClosePaw (Apache-2.0).
+
+Bundled default skills (Apache-2.0, copied from the owner's Claude account, SKILL.md only): algorithmic-art, brand-guidelines, canvas-design, internal-comms, mcp-builder, theme-factory, web-artifacts-builder. Other bundled skills (logo-design, deep-research, course-creation, doc-coauthoring, i-have-adhd, stop-slop, gsap-*) are owner-provided.

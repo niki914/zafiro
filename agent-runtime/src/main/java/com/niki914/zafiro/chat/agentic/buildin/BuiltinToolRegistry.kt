@@ -5,7 +5,10 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.FindInstalledAppsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LaunchAppBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.LoadSkillBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.MemoryBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.ClipboardBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.DeviceInfoBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.NotifyBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.WaitBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.OpenUriBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationAccessibilityBuiltin
@@ -32,6 +35,9 @@ class BuiltinToolRegistry(
                 PyMetaToolsBuiltin(),
                 MemoryBuiltin(),
                 NotifyBuiltin(),
+                WaitBuiltin(),
+                DeviceInfoBuiltin(),
+                ClipboardBuiltin(),
                 OpenUriBuiltin(),
                 LoadSkillBuiltin(),
                 ShellBuiltin(),

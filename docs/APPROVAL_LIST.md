@@ -1,4 +1,8 @@
-# Approval list: nothing here is added until the owner approves it
+# Approval list
+
+**Status 2026-11-10 (owner approved "everything, as long as nothing breaks"):** shipped = tools `wait`, `device_info`, `clipboard`; 10 extra text actions; 21 bundled skills (account skills minus Claude-only/desktop-script ones). NOT shipped (needs real work or has real risk): take_over UI, gestures, http_request, schedule_task, send SMS/email, notification/contacts/location, MCP OAuth, node/ffmpeg (see CHANGELOG). Original list below.
+
+(Original text) Nothing here is added until the owner approves it
 
 Rule (owner, 2026-11-10): research and list; the owner approves; then it is built. Evidence tags: VERIFIED (read from the source
 this session) / UNVERIFIED. Licenses were read from each repo's LICENSE file; SKILL.md contents were NOT inspected unless noted.
