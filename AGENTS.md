@@ -66,5 +66,13 @@ Owner prerequisite: Actions must be **enabled** on the fork (Actions tab → "I 
 - Device Admin does NOT make an app unkillable or higher priority (see ARCHITECTURE §Reliability). Real levers: foreground service, battery-optimisation exemption, OEM autostart/whitelist, Shizuku/root-granted app-ops/standby bucket, watchdog + missed-run recording.
 - DroidBridge scheduling design is the model (Rust code not reusable); Operit = WorkManager-only + LGPL; Blurr = personal-use license.
 
+## Lessons learned (append as we go)
+- Upstream package prefix is `com.niki914.zafiro.*` (api, service, business…). Ours is `com.tricreta.zafiro.autonomy.*`. Mixing them up produced "Unresolved reference 'api'" (our prefix resolves, the sub-package doesn't) — read the compiler message before suspecting the build.
+- Upstream has an architecture guard test (`PermissionEntryGuardTest`): permissions are requested ONLY through `PermissionManager` (never `checkSelfPermission(`, `requestPermissions(`, or `POST_NOTIFICATIONS` outside manifests). We added `Permission.MICROPHONE` there (Shizuku/root can grant it silently).
+- Pristine upstream fails 6 unit tests on Linux CI (listed in `tools/autonomous/known_test_failures.txt`); CI fails only on NEW failures or if fewer than MIN_TESTS ran. Lint has 3 pre-existing errors in `app`; lint is reported, not gating.
+- Pushing to a branch cancels its in-flight CI (concurrency). Don't push while waiting for a run you need.
+- JVM method names in tests can't contain `:` (e.g. "08:00") — use `0800`.
+- Maven Central via the sandbox proxy sometimes returns 429: just retry `gradle test` in `autonomy/core`.
+
 ## Status
-See ROADMAP.md (evidence-based) and TESTING.md.
+Evidence-based status: ROADMAP.md and TESTING.md. As of 2026-11-10: `feat/foundation` builds and passes the CI gate (APK artifact `zafiro-autonomous-debug-apk` on the run); **nothing has been verified on a physical phone yet**; `main` is still pristine upstream; no PR opened.
