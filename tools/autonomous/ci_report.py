@@ -76,3 +76,17 @@ with open(os.path.join(out, "failures.txt"), "w") as f:
     for cls, nm, msg, trace in failures:
         f.write("=== %s.%s\n%s\n%s\n\n" % (cls, nm, msg, trace))
 print("\n".join(lines[:40]))
+
+
+def annotate(title, text, limit=14000):
+    """Emit a GitHub error annotation (readable through the check-runs API even when logs are not)."""
+    text = text[-limit:]
+    esc = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    print("::error title=%s::%s" % (title, esc))
+
+
+annotate("ci-summary", "\n".join(lines))
+for name in ("python_check", "assemble", "unit_tests", "lint"):
+    t = tail(os.path.join(logs, name + ".log"), 70)
+    if t and t != "(missing)":
+        annotate("ci-" + name + "-tail", t)

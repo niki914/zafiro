@@ -107,8 +107,9 @@ jobs:
 
       - name: Publish results to ci-logs branch
         if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
         run: |
-          set -e
+          set -ex
           SHA7="${GITHUB_SHA::7}"
           git config --global user.name "ci-bot"
           git config --global user.email "ci-bot@users.noreply.github.com"
