@@ -12,7 +12,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.tricreta.zafiro.autonomy.core.RunState
 import com.tricreta.zafiro.autonomy.run.ApprovalReceiver
-import com.tricreta.zafiro.autonomy.ui.AutonomyActivity
 
 /** Own channels so no upstream notification enum has to change. */
 class AutonomyNotifier(private val context: Context) {
@@ -87,10 +86,13 @@ class AutonomyNotifier(private val context: Context) {
         return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
-    private fun openApp(): PendingIntent = PendingIntent.getActivity(
-        context, 0, Intent(context, AutonomyActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-    )
+    /** Opens the one and only Zafiro app (its launcher activity). */
+    private fun openApp(): PendingIntent {
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ?: Intent()
+        return PendingIntent.getActivity(context, 0, launch, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
 
     @SuppressLint("MissingPermission")
     private fun safeNotify(id: Int, n: Notification) {

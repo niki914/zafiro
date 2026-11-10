@@ -16,6 +16,9 @@ import kotlinx.coroutines.launch
 class TriggerReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val reason = intent.action ?: "unknown"
+        // The JVM caches the default zone for the life of the process. Drop the cache when the phone says the zone changed,
+        // so tasks that follow the device zone are recomputed against the NEW zone.
+        if (reason == Intent.ACTION_TIMEZONE_CHANGED) java.util.TimeZone.setDefault(null)
         Logger.i(LOG_TAG, "trigger received: $reason")
         val pending = goAsync()
         val graph = AutonomyGraph.get(context)

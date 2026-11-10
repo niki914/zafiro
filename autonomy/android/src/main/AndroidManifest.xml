@@ -12,20 +12,6 @@
 
     <application>
 
-        <!-- Task management screen. Separate launcher entry so no upstream UI file has to change. -->
-        <activity
-            android:name=".ui.AutonomyActivity"
-            android:exported="true"
-            android:label="@string/autonomy_launcher_label"
-            android:icon="@drawable/ic_autonomy"
-            android:launchMode="singleTask"
-            android:theme="@android:style/Theme.Material.NoActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
         <!-- Alarm delivery and every reason to reconcile (boot, package update, clock/zone change, alarm permission). -->
         <receiver
             android:name=".schedule.TriggerReceiver"

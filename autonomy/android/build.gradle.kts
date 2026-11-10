@@ -1,9 +1,9 @@
 // autonomy:android — Android shell of the scheduler: Room store, AlarmManager projection, receivers,
-// foreground service, run executor, approvals, notifications, and a small management screen.
+// foreground service, run executor, approvals, notifications. No UI here: the Tasks screens live in the app module and use
+// Zafiro's own design system.
 // Pure scheduling logic lives in :autonomy:core.
 plugins {
     id("com.android.library")
-    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
 
@@ -22,10 +22,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    buildFeatures {
-        compose = true
     }
 
     testOptions {
@@ -47,9 +43,6 @@ dependencies {
     implementation("androidx.room:room-runtime:2.7.2")
     implementation("androidx.room:room-ktx:2.7.2")
     ksp("androidx.room:room-compiler:2.7.2")
-
-    implementation("androidx.compose.material3:material3:1.5.0-alpha22")
-    implementation("androidx.activity:activity-compose:1.10.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.2.10")

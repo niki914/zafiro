@@ -99,6 +99,7 @@ internal fun ConversationHistoryPageContent(
     onConversationPin: ((String, Boolean) -> Unit)? = null,
     onConfirmBatchDelete: (() -> Unit)? = null,
     onDismissBatchDelete: (() -> Unit)? = null,
+    onOpenTasks: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var sheetConversation by remember { mutableStateOf<ConversationSummary?>(null) }
@@ -142,6 +143,7 @@ internal fun ConversationHistoryPageContent(
             onConversationLongClick = { conversation ->
                 sheetConversation = conversation
             },
+            onOpenTasks = onOpenTasks,
             modifier = modifier,
         )
     }
@@ -285,6 +287,7 @@ private fun ConversationHistoryListContent(
     onConversationClick: (String) -> Unit,
     onConversationToggleSelection: (String) -> Unit,
     onConversationLongClick: (ConversationSummary) -> Unit,
+    onOpenTasks: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val deleteErrorPrefix = deleteErrorMessage?.let {
@@ -345,6 +348,11 @@ private fun ConversationHistoryListContent(
             ),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            if (!isSearchingActive && !selecting) {
+                item(key = "tasks_entry", contentType = "tasks_entry") {
+                    HistoryTasksEntry(onClick = onOpenTasks)
+                }
+            }
             if (isSearchingActive && sections.isEmpty() && !isSearching) {
                 item(key = "search_empty") {
                     Box(

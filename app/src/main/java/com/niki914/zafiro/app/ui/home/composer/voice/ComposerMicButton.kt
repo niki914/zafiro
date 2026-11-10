@@ -30,8 +30,8 @@ import com.tricreta.zafiro.voice.VoiceInput
 import kotlinx.coroutines.launch
 
 /**
- * Dictation button for the chat composer. Tap to start, tap again to finish. Live partial text appears in the input box
- * (appended to whatever was already typed); the final transcript replaces the partial one. Nothing is sent automatically.
+ * Dictation button for the chat composer. Tap to start; it keeps listening through pauses and accumulates everything you say
+ * into the input box (after whatever was already typed) until you tap again. Nothing is sent automatically.
  */
 @Composable
 internal fun ComposerMicButton(
@@ -52,7 +52,9 @@ internal fun ComposerMicButton(
 
     fun begin() {
         baseText = value
-        voice.start { finalText -> latestOnChange(TranscriptMerger.merge(baseText, finalText)) }
+        // Continuous dictation: the callback receives the FULL transcript so far, so it is always re-applied on top of what
+        // was typed before the mic was tapped (later speech can never overwrite earlier speech).
+        voice.start { transcript -> latestOnChange(TranscriptMerger.merge(baseText, transcript)) }
     }
 
     val scope = rememberCoroutineScope()
@@ -71,11 +73,7 @@ internal fun ComposerMicButton(
         }
     }
 
-    // Live partial transcript.
     LaunchedEffect(state) {
-        (state as? SpeechState.Listening)?.partial?.takeIf { it.isNotBlank() }?.let {
-            latestOnChange(TranscriptMerger.merge(baseText, it))
-        }
         (state as? SpeechState.Failed)?.let {
             Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
             voice.clearError()

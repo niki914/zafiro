@@ -30,6 +30,9 @@ class AutonomyGraph private constructor(context: Context) {
         @Volatile
         private var instance: AutonomyGraph? = null
 
+        /** For code that runs after the app started (ViewModels). Fails loudly if the installer did not run. */
+        fun require(): AutonomyGraph = checkNotNull(instance) { "AutonomyGraph is not installed" }
+
         fun get(context: Context): AutonomyGraph =
             instance ?: synchronized(this) { instance ?: AutonomyGraph(context).also { instance = it } }
     }

@@ -31,6 +31,7 @@ internal fun ConversationHistoryPageRoute(
     onBack: () -> Unit,
     onConversationSelected: (String) -> Unit,
     onCurrentConversationDeleted: suspend (String) -> Unit,
+    onOpenTasks: () -> Unit = {},
 ) {
     val viewModel = pageViewModel<ConversationHistoryViewModel>()
     val uiState by viewModel.uiStateFlow.collectAsState()
@@ -206,6 +207,7 @@ internal fun ConversationHistoryPageRoute(
 
     ConversationHistoryPageContent(
         uiState = uiState,
+        onOpenTasks = onOpenTasks,
         onConversationClick = { id ->
             viewModel.sendIntent(ConversationHistoryIntent.ClearUnread(id))
             latestOnConversationSelected(id)

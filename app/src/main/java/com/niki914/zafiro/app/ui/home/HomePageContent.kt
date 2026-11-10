@@ -72,11 +72,13 @@ fun HomePageContent(
     onActiveConversationChanged: (String?) -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenTasks: () -> Unit = {},
 ) {
     val viewModel = pageViewModel<HomeChatViewModel>()
     val latestViewModel by rememberUpdatedState(viewModel)
     val latestOnOpenHistory by rememberUpdatedState(onOpenHistory)
     val latestOnOpenSettings by rememberUpdatedState(onOpenSettings)
+    val latestOnOpenTasks by rememberUpdatedState(onOpenTasks)
     val latestOnConversationSelectionConsumed by rememberUpdatedState(
         onConversationSelectionConsumed
     )
@@ -328,6 +330,7 @@ fun HomePageContent(
             latestViewModel.sendIntent(HomeChatIntent.NewConversation)
         },
         onOpenSettings = latestOnOpenSettings,
+        onOpenTasks = latestOnOpenTasks,
         titleContent = titleContent,
     )
 

@@ -1,32 +1,39 @@
 package com.tricreta.zafiro.voice
 
 import android.speech.SpeechRecognizer
+import com.tricreta.zafiro.voice.dictation.DictationSession.Fault
 
 enum class SpeechProblem { NO_SPEECH, NO_RECOGNIZER, PERMISSION, NETWORK, BUSY, AUDIO, OTHER }
 
 sealed interface SpeechState {
     data object Idle : SpeechState
 
-    /** [partial] is the live transcript so far (may be empty). */
-    data class Listening(val partial: String) : SpeechState
+    /** [transcript] is everything heard so far in this dictation (all segments plus the live partial). */
+    data class Listening(val transcript: String) : SpeechState
 
     data class Failed(val problem: SpeechProblem, val message: String) : SpeechState
 }
 
 object SpeechErrors {
-    /** Maps SpeechRecognizer.ERROR_* to a problem and a message that tells the user what to do. */
-    fun map(code: Int): Pair<SpeechProblem, String> = when (code) {
+    data class Mapped(val problem: SpeechProblem, val message: String, val fault: Fault)
+
+    /** Maps SpeechRecognizer.ERROR_* to a user message and to the retry policy class used by the dictation loop. */
+    fun map(code: Int): Mapped = when (code) {
         SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
-            SpeechProblem.NO_SPEECH to "I didn't catch that. Tap the mic and try again."
-        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
-            SpeechProblem.PERMISSION to "Microphone permission is needed for voice input."
-        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT, SpeechRecognizer.ERROR_SERVER ->
-            SpeechProblem.NETWORK to "Speech recognition needs an internet connection right now."
+            Mapped(SpeechProblem.NO_SPEECH, "I didn't catch that. Tap the mic and try again.", Fault.NO_SPEECH)
         SpeechRecognizer.ERROR_RECOGNIZER_BUSY ->
-            SpeechProblem.BUSY to "The speech service is busy. Try again in a moment."
+            Mapped(SpeechProblem.BUSY, "The speech service is busy. Try again in a moment.", Fault.BUSY)
+        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT, SpeechRecognizer.ERROR_SERVER,
+        SpeechRecognizer.ERROR_SERVER_DISCONNECTED, SpeechRecognizer.ERROR_TOO_MANY_REQUESTS ->
+            Mapped(SpeechProblem.NETWORK, "Speech recognition needs a working internet connection.", Fault.TRANSIENT)
+        // Raised when a session is torn down underneath us; retrying a fresh session normally works.
+        SpeechRecognizer.ERROR_CLIENT ->
+            Mapped(SpeechProblem.OTHER, "Voice input was interrupted. Try again.", Fault.TRANSIENT)
+        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
+            Mapped(SpeechProblem.PERMISSION, "Microphone permission is needed for voice input.", Fault.FATAL)
         SpeechRecognizer.ERROR_AUDIO ->
-            SpeechProblem.AUDIO to "The microphone could not be used. Is another app recording?"
-        else -> SpeechProblem.OTHER to "Voice input failed (code $code)."
+            Mapped(SpeechProblem.AUDIO, "The microphone could not be used. Is another app recording?", Fault.FATAL)
+        else -> Mapped(SpeechProblem.OTHER, "Voice input failed (code $code).", Fault.FATAL)
     }
 }
 

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Zafiro Autonomous strings live in their own file so upstream string merges never conflict with them. -->
+<resources>
+    <string name="tasks_entry_title">Scheduled tasks</string>
+    <string name="tasks_entry_summary">Run instructions automatically, even when Zafiro is closed</string>
+    <string name="tasks_page_title">Scheduled tasks</string>
+    <string name="tasks_page_description">Tasks run at their time even when Zafiro is closed. Android can delay or stop background apps, so anything missed is recorded under Recent runs.</string>
+
+    <string name="tasks_section_reliability">Reliability</string>
+    <string name="tasks_section_tasks">Your tasks</string>
+    <string name="tasks_section_runs">Recent runs</string>
+    <string name="tasks_empty">No scheduled tasks yet. Tap + to create one, or run the self-test below.</string>
+    <string name="tasks_runs_empty">Nothing has run yet.</string>
+
+    <string name="tasks_rel_alarms">Alarms and reminders</string>
+    <string name="tasks_rel_allowed">Allowed</string>
+    <string name="tasks_rel_not_allowed">Not allowed</string>
+    <string name="tasks_rel_battery">Battery optimisation</string>
+    <string name="tasks_rel_exempt">Exempt</string>
+    <string name="tasks_rel_restricted">Restricted</string>
+    <string name="tasks_rel_next_wake">Next wake-up</string>
+    <string name="tasks_rel_none">None scheduled</string>
+    <string name="tasks_rel_allow_alarms">Allow exact alarms</string>
+    <string name="tasks_rel_allow_alarms_summary">Required for tasks to run on time</string>
+    <string name="tasks_rel_exempt_action">Exempt Zafiro from battery limits</string>
+    <string name="tasks_rel_exempt_action_summary">Stops Android from pausing Zafiro in the background</string>
+    <string name="tasks_rel_phone_setup">Phone-specific setup</string>
+    <string name="tasks_rel_self_test">Run a self-test in 1 minute</string>
+    <string name="tasks_rel_self_test_summary">Proves your phone wakes Zafiro on time</string>
+    <string name="tasks_rel_setup_open">Open settings</string>
+    <string name="tasks_rel_setup_close">Close</string>
+    <string name="tasks_rel_setup_note">General guidance for this brand; menus differ between models. The self-test is the real check.</string>
+
+    <string name="tasks_run_now">Run now</string>
+    <string name="tasks_state_disabled">Paused</string>
+
+    <string name="task_editor_title_create">New task</string>
+    <string name="task_editor_title_edit">Edit task</string>
+    <string name="task_editor_description">Describe what Zafiro should do and when. It runs on its own, with limits you set.</string>
+    <string name="task_editor_save">Save task</string>
+    <string name="task_field_name">Name</string>
+    <string name="task_field_name_hint">Morning email check</string>
+    <string name="task_field_prompt">What should Zafiro do?</string>
+    <string name="task_field_prompt_hint">Check my inbox and send me a summary of anything urgent.</string>
+    <string name="task_field_schedule">Repeat</string>
+    <string name="task_field_date">Date</string>
+    <string name="task_field_time">Time</string>
+    <string name="task_field_interval">Every N minutes</string>
+    <string name="task_field_interval_hint">60</string>
+    <string name="task_field_max_steps">Max tool calls per run</string>
+    <string name="task_field_max_minutes">Max minutes per run</string>
+    <string name="task_field_enabled">Enabled</string>
+    <string name="task_field_timezone">Time zone</string>
+    <string name="task_field_timezone_value">Phone time zone (%1$s)</string>
+    <string name="task_field_timezone_summary">Follows your phone: if it changes zone, the task moves with it.</string>
+
+    <string name="task_kind_manual">Manual only</string>
+    <string name="task_kind_once">Once</string>
+    <string name="task_kind_daily">Every day</string>
+    <string name="task_kind_weekdays">Weekdays</string>
+    <string name="task_kind_interval">Every N minutes</string>
+    <string name="task_kind_dialog_title">Repeat</string>
+
+    <string name="task_delete_title">Delete task?</string>
+    <string name="task_delete_text">\"%1$s\" and its run history will be deleted.</string>
+    <string name="task_run_title">Run details</string>
+    <string name="task_run_report">Report</string>
+    <string name="task_run_problem">Problem</string>
+    <string name="task_run_log">Log</string>
+</resources>

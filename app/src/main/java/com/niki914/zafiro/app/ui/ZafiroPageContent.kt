@@ -29,7 +29,13 @@ import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
 import com.niki914.zafiro.app.ui.nav.StartupPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
+import com.niki914.zafiro.app.ui.nav.TaskEditorPage
+import com.niki914.zafiro.app.ui.nav.TaskRunPage
+import com.niki914.zafiro.app.ui.nav.TasksPage
 import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
+import com.niki914.zafiro.app.ui.content.TaskEditorContent
+import com.niki914.zafiro.app.ui.content.TaskRunContent
+import com.niki914.zafiro.app.ui.content.TasksPageContent
 import com.niki914.zafiro.app.ui.nav.ViewerPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.route.BuiltinToolGroupDetailRoute
@@ -131,6 +137,7 @@ fun ZafiroPageContent(
                 onPopToRight()
             },
             onCurrentConversationDeleted = onCurrentConversationDeleted,
+            onOpenTasks = { onPush(TasksPage) },
         )
 
         SettingsHomePage -> SettingsHomePageRoute(
@@ -198,6 +205,18 @@ fun ZafiroPageContent(
                 onPush(CustomPyToolDetailPage(name, index, isCreating))
             },
         )
+
+        TasksPage -> TasksPageContent(
+            onOpenEditor = { taskId -> onPush(TaskEditorPage(taskId)) },
+            onOpenRun = { runId -> onPush(TaskRunPage(runId)) },
+        )
+
+        is TaskEditorPage -> TaskEditorContent(
+            page = page,
+            onBack = onPop,
+        )
+
+        is TaskRunPage -> TaskRunContent(page = page)
 
         MarkdownScalePage -> MarkdownScalePageRoute()
 

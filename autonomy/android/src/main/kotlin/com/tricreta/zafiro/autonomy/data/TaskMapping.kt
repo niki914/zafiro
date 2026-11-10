@@ -3,6 +3,7 @@ package com.tricreta.zafiro.autonomy.data
 import com.tricreta.zafiro.autonomy.core.Budget
 import com.tricreta.zafiro.autonomy.core.MisfirePolicy
 import com.tricreta.zafiro.autonomy.core.OverlapPolicy
+import com.tricreta.zafiro.autonomy.core.ZoneResolver
 import com.tricreta.zafiro.autonomy.core.TaskSpec
 import com.tricreta.zafiro.autonomy.core.TimeTrigger
 import java.time.DayOfWeek
@@ -44,11 +45,12 @@ fun TaskEntity.toTrigger(): TimeTrigger? = when (triggerType) {
     else -> throw IllegalArgumentException("unknown trigger type $triggerType")
 }
 
-fun TaskEntity.toSpec(): TaskSpec = TaskSpec(
+/** [deviceZone] is injected so tests can simulate a phone in any zone; production uses the device's current zone. */
+fun TaskEntity.toSpec(deviceZone: ZoneId = ZoneId.systemDefault()): TaskSpec = TaskSpec(
     id = id,
     enabled = enabled,
     trigger = toTrigger(),
-    zone = ZoneId.of(zoneId),
+    zone = ZoneResolver.resolve(zoneId, deviceZone),
     createdAt = Instant.ofEpochMilli(createdAtMs),
     misfire = if (misfireGraceMs < 0) MisfirePolicy.Skip else MisfirePolicy.RunLate(Duration.ofMillis(misfireGraceMs)),
     overlap = OverlapPolicy.valueOf(overlap),
@@ -70,4 +72,4 @@ fun TaskEntity.describeSchedule(): String = when (triggerType) {
     TriggerTypes.WEEKLY -> if (maskToDays(daysMask) == WEEKDAYS) "Weekdays at $timeOfDay" else "Weekly at $timeOfDay"
     TriggerTypes.MONTHLY -> "Monthly (day ${if (dayOfMonth < 0) "last" else dayOfMonth.toString()}) at $timeOfDay"
     else -> triggerType
-} + " · $zoneId"
+}
