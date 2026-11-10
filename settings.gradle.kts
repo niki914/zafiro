@@ -43,6 +43,9 @@ include(":agent-runtime")
 include(":autonomy:core")
 include(":autonomy:android")
 
+// Zafiro Autonomous: voice-to-text input
+include(":voice")
+
 // 本地配置读取口：给 app 模块以外的模块按需依赖，见 xsettings/XSettings.kt 的「懒」规则。
 include(":xsettings")
 

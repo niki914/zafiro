@@ -58,6 +58,7 @@ import com.tricreta.zafiro.autonomy.data.RunEntity
 import com.tricreta.zafiro.autonomy.data.RunEventEntity
 import com.tricreta.zafiro.autonomy.data.TaskEntity
 import com.tricreta.zafiro.autonomy.data.describeSchedule
+import com.tricreta.zafiro.autonomy.reliability.OemGuide
 import com.tricreta.zafiro.autonomy.schedule.AlarmProjection
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -211,6 +212,20 @@ private fun StatusCard(graph: AutonomyGraph, resumeTick: Int) {
                 "Last check: ${fmt(snap?.reconciledAtMs)} (${snap?.reason ?: "never"})",
                 style = MaterialTheme.typography.bodySmall,
             )
+            val advice = remember { OemGuide.adviceForThisPhone() }
+            var showAdvice by remember { mutableStateOf(false) }
+            TextButton(onClick = { showAdvice = !showAdvice }) {
+                Text(if (showAdvice) "Hide ${advice.vendorLabel} setup" else "Show ${advice.vendorLabel} setup")
+            }
+            if (showAdvice) {
+                Text(
+                    "These steps are general guidance for this brand and may differ on your model. " +
+                        "The \"Self-test in 1 min\" button is the real check.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                advice.steps.forEachIndexed { i, step -> Text("${i + 1}. $step", style = MaterialTheme.typography.bodySmall) }
+                TextButton(onClick = { OemGuide.openSettings(context, advice) }) { Text("Open phone settings") }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (!exact && Build.VERSION.SDK_INT >= 31) {
                     TextButton(onClick = {

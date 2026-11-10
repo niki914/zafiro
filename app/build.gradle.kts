@@ -103,6 +103,7 @@ dependencies {
     implementation(project(":business:agent"))
     implementation(project(":remote-view"))
     implementation(project(":autonomy:android"))
+    implementation(project(":voice"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation(project(":libs:okia"))
