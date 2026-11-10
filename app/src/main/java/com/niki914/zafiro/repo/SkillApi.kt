@@ -72,7 +72,7 @@ class SkillApi internal constructor(
                 if (!targetDir.exists() && skillId in seeded) continue
                 // Bulk-pack skills start switched OFF: ~150 enabled descriptions would bloat every request. The owner turns on what they use.
                 if (skillId !in seeded && skillId in offByDefault) {
-                    SkillEnabledStateStore(File(skillsTargetDir, SkillFileRepository.STATUS_FILE_NAME)).setEnabled(skillId, false)
+                    SkillEnabledStateStore(File(skillsTargetDir, "status.json")).setEnabled(skillId, false)
                 }
                 seeded += skillId
                 val assetDir = "$DEFAULT_SKILLS_ASSET_PATH/$skillId"
