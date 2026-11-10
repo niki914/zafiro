@@ -402,6 +402,11 @@ object ConversationRepo {
         dao().renameBranchGroup(rootId = rootId, title = trimmedTitle)
     }
 
+    /** 备份读取：会话行与消息行同一事务，导出时库仍可写入。 */
+    internal suspend fun readConsistentForBackup(): ConversationTableSnapshot {
+        return dao().readConsistentForBackup()
+    }
+
     internal suspend fun closeForTest() {
         synchronized(this) {
             database?.close()

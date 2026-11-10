@@ -201,4 +201,27 @@ interface ConversationDao {
         insertConversation(conversation)
         insertEntries(entries)
     }
+
+    @Query("SELECT * FROM conversation")
+    suspend fun listAllConversations(): List<ConversationEntity>
+
+    @Query("SELECT * FROM conversation_entry")
+    suspend fun listAllEntries(): List<ConversationEntryEntity>
+
+    /**
+     * 备份读取：会话行和消息行同一事务，避免导出时写到一半。
+     */
+    @Transaction
+    suspend fun readConsistentForBackup(): ConversationTableSnapshot {
+        return ConversationTableSnapshot(
+            conversations = listAllConversations(),
+            entries = listAllEntries(),
+        )
+    }
 }
+
+/** 一次事务里读出的会话表和消息表。 */
+data class ConversationTableSnapshot(
+    val conversations: List<ConversationEntity>,
+    val entries: List<ConversationEntryEntity>,
+)

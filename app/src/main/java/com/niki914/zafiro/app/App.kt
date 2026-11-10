@@ -14,6 +14,7 @@ import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
 import com.niki914.zafiro.app.wakelock.AgentWakeLockController
+import com.niki914.zafiro.backup.DebugBackupHook
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionState
@@ -70,6 +71,12 @@ class App : Application() {
         }
         applicationScope.launch {
             PyRuntime.warmUp()
+        }
+        // 临时调试入口。第 3 步删除。只在 debug 构建把全量备份写进应用私有目录。
+        if (BuildConfig.DEBUG) {
+            applicationScope.launch {
+                DebugBackupHook.exportOnce(this@App)
+            }
         }
 
         observeFloatingBall()
