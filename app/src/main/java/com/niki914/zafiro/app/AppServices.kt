@@ -26,6 +26,7 @@ import com.niki914.zafiro.repo.SharedHttp
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.repo.XSettingsImpl
 import com.niki914.zafiro.service.installService
+import com.tricreta.zafiro.autonomy.AutonomyInstaller
 
 /**
  * 主进程的组合根：`installService` 只在这里出现。
@@ -85,5 +86,8 @@ object AppServices {
         )
         telemetry.attach()
         installService<Telemetry>(telemetry)
+
+        // Zafiro Autonomous: scheduler wiring (alarm, receivers, run service). See autonomy/android.
+        AutonomyInstaller.install(application)
     }
 }

@@ -28,6 +28,12 @@ class BudgetTracker(private val budget: Budget, private val startedAtMs: Long) {
         steps++
     }
 
+    /** Set the absolute step count (the Android layer derives it from the conversation's tool blocks). Never decreases. */
+    @Synchronized
+    fun setSteps(total: Int) {
+        if (total > steps) steps = total
+    }
+
     @Synchronized
     fun recordTokens(input: Long, output: Long) {
         tokens += input + output

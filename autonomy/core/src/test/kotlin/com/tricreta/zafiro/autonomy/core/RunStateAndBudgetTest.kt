@@ -72,4 +72,15 @@ class RunStateAndBudgetTest {
         assertNull(t.check(Long.MAX_VALUE / 2))
         assertNull(t.remainingMs(0))
     }
+
+    @Test
+    fun `setSteps is absolute and never decreases`() {
+        val t = BudgetTracker(Budget(maxSteps = 5, maxDurationMs = null, maxTokens = null), 0)
+        t.setSteps(4)
+        assertNull(t.check(0))
+        t.setSteps(2)
+        assertEquals(4, t.stepsUsed())
+        t.setSteps(5)
+        assertEquals(Breach.STEPS, t.check(0))
+    }
 }
