@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only. LeakCanary adds its own "Leaks" launcher icon, which looks like a second app next to Zafiro.
+     This is LeakCanary's documented switch; leak detection itself keeps working (notifications still appear). -->
+<resources>
+    <bool name="leak_canary_add_launcher_icon">false</bool>
+</resources>
