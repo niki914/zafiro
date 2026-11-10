@@ -14,9 +14,7 @@ permissions:
   contents: write   # needed only to publish results to the ci-logs branch
 
 env:
-  GRADLE_ARGS: >-
-    --no-daemon --stacktrace --console=plain
-    -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
+  GRADLE_ARGS: --no-daemon --stacktrace --console=plain
   CI_LOG_DIR: ci-work
 
 jobs:
@@ -42,7 +40,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Prepare
-        run: mkdir -p "$CI_LOG_DIR"
+        run: |
+          mkdir -p "$CI_LOG_DIR" "$HOME/.gradle"
+          echo "org.gradle.jvmargs=-Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" >> "$HOME/.gradle/gradle.properties"
 
       - name: Fork policy checks (English-only resources, no phone-home)
         id: python_check
