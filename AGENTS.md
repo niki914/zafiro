@@ -74,5 +74,12 @@ Owner prerequisite: Actions must be **enabled** on the fork (Actions tab → "I 
 - JVM method names in tests can't contain `:` (e.g. "08:00") — use `0800`.
 - Maven Central via the sandbox proxy sometimes returns 429: just retry `gradle test` in `autonomy/core`.
 
+- Debug builds also contain LeakCanary, which adds its own launcher alias ("Leaks"); it is disabled via `app/src/debug/res/values/leakcanary.xml`. Verify launcher count by reading the built APK, not by assuming.
+- Android's `SpeechRecognizer` is single-utterance. Continuous dictation = restart loop (`voice/.../dictation/DictationSession`). Never treat its first result as "done".
+- Never parse user-typed times: use system pickers. Tasks store a blank zone = follow the device zone (`ZoneResolver`).
+- UI for features belongs in the app module using ui-kit settings components (template: Text actions / Python tools pages); `autonomy` has no UI.
+- `AgentSessionEngineOkiaTest.ensureSession_createsInstanceAndReturnsTreeId` is a flaky upstream test (listed as `flaky:` in known_test_failures.txt).
+- I can inspect built APKs in the sandbox (`pyaxmlparser` in a venv) to verify manifest facts, but cannot run them.
+
 ## Status
 Evidence-based status: ROADMAP.md and TESTING.md. As of 2026-11-10: `feat/foundation` builds and passes the CI gate (APK artifact `zafiro-autonomous-debug-apk` on the run); **nothing has been verified on a physical phone yet**; `main` is still pristine upstream; no PR opened.
