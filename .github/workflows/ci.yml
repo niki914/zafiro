@@ -140,6 +140,23 @@ jobs:
           git add -A && git commit -q -m "ci results for $SHA7 on $GITHUB_REF_NAME" || true
           git push -q origin ci-logs
 
+      - name: Publish debug APK to a rolling pre-release (direct download link)
+        if: always() && steps.assemble.outcome == 'success' && github.event_name == 'push'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -ex
+          TAG="debug-${GITHUB_REF_NAME//\//-}"
+          APK="$(ls app/build/outputs/apk/debug/*.apk | head -1)"
+          cp "$APK" "$RUNNER_TEMP/zafiro-autonomous-debug.apk"
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" "$RUNNER_TEMP/zafiro-autonomous-debug.apk" \
+            --prerelease --target "$GITHUB_SHA" \
+            --title "Debug build: $GITHUB_REF_NAME @ ${GITHUB_SHA::7}" \
+            --notes "Debug-signed test build of branch $GITHUB_REF_NAME at commit $GITHUB_SHA. Not a release. See TESTING.md before relying on it. Download: https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/zafiro-autonomous-debug.apk"
+          echo "APK_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/zafiro-autonomous-debug.apk" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Gate
         if: always()
         run: |
