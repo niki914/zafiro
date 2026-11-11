@@ -56,6 +56,8 @@ import com.niki914.uikit.motion.springSquish
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.home.composer.attach.ComposerAttachButton
 import com.niki914.zafiro.app.ui.home.composer.send.ComposerSendButton
+import com.niki914.zafiro.app.ui.home.composer.voice.ComposerMicButton
+import com.niki914.zafiro.app.ui.home.composer.voice.rememberDictationController
 
 /** 紧凑态 composer 最小高度：12dp 容器垂直 padding × 2 + 48sp 按钮 footprint。 */
 internal val COMPACT_COMPOSER_MIN_HEIGHT = 72.dp
@@ -86,6 +88,8 @@ fun ZafiroChatComposer(
     contextProgress: Float? = null,
     onAttachImageClick: () -> Unit = {},
 ) {
+    // Owned here, above the compact/expanded layout switch, so dictation survives the layout changing while you speak.
+    val dictation = rememberDictationController(value = value, onValueChange = onValueChange)
     var expandedLatch by remember { mutableStateOf(false) }
     var compactWidth by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -176,12 +180,15 @@ fun ZafiroChatComposer(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             ComposerAttachButton(onClick = onAttachImageClick)
-                            ComposerSendButton(
-                                isGenerating = isGenerating,
-                                contextProgress = contextProgress,
-                                onSendClick = onSendClick,
-                                onStopClick = onStopClick,
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (!isGenerating) ComposerMicButton(controller = dictation)
+                                ComposerSendButton(
+                                    isGenerating = isGenerating,
+                                    contextProgress = contextProgress,
+                                    onSendClick = onSendClick,
+                                    onStopClick = onStopClick,
+                                )
+                            }
                         }
                     }
                 } else {
@@ -220,6 +227,7 @@ fun ZafiroChatComposer(
                             }
                             innerTextField()
                         }
+                        if (!isGenerating) ComposerMicButton(controller = dictation)
                         ComposerSendButton(
                             isGenerating = isGenerating,
                             contextProgress = contextProgress,

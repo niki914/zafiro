@@ -39,6 +39,7 @@ internal object PermissionSpec {
 
     /** op 名与权限名不同：`POST_NOTIFICATIONS` 权限对应 `POST_NOTIFICATION` op。 */
     const val OP_POST_NOTIFICATION = "POST_NOTIFICATION"
+    const val OP_RECORD_AUDIO = "RECORD_AUDIO"
     const val OP_MANAGE_EXTERNAL_STORAGE = "MANAGE_EXTERNAL_STORAGE"
     const val OP_SYSTEM_ALERT_WINDOW = "SYSTEM_ALERT_WINDOW"
 
@@ -52,6 +53,11 @@ internal object PermissionSpec {
                     appOps = listOf(OP_POST_NOTIFICATION),
                 )
             }
+
+        Permission.MICROPHONE -> GrantMechanism.Runtime(
+            names = listOf(Manifest.permission.RECORD_AUDIO),
+            appOps = listOf(OP_RECORD_AUDIO),
+        )
 
         // <30 没有 all-files，语义回到运行时权限（读写两条；26-28 上 WRITE 兼给 READ）
         Permission.STORAGE ->

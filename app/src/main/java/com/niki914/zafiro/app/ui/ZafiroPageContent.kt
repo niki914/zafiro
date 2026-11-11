@@ -1,5 +1,10 @@
 package com.niki914.zafiro.app.ui
 
+import com.niki914.zafiro.app.ui.model.HomeNavEvents
+import com.niki914.zafiro.app.ui.content.AgentEditorContent
+import com.niki914.zafiro.app.ui.content.AgentsPageContent
+import com.niki914.zafiro.app.ui.nav.AgentEditorPage
+import com.niki914.zafiro.app.ui.nav.AgentsPage
 import androidx.compose.runtime.Composable
 import com.niki914.uikit.infra.nav.NavigationEntry
 import com.niki914.zafiro.app.ui.content.CustomPyToolDetailContent
@@ -29,7 +34,13 @@ import com.niki914.zafiro.app.ui.nav.SettingsProviderPickPage
 import com.niki914.zafiro.app.ui.nav.SkillDetailPage
 import com.niki914.zafiro.app.ui.nav.StartupPage
 import com.niki914.zafiro.app.ui.nav.TakeoverRuleDetailPage
+import com.niki914.zafiro.app.ui.nav.TaskEditorPage
+import com.niki914.zafiro.app.ui.nav.TaskRunPage
+import com.niki914.zafiro.app.ui.nav.TasksPage
 import com.niki914.zafiro.app.ui.nav.TextActionDetailPage
+import com.niki914.zafiro.app.ui.content.TaskEditorContent
+import com.niki914.zafiro.app.ui.content.TaskRunContent
+import com.niki914.zafiro.app.ui.content.TasksPageContent
 import com.niki914.zafiro.app.ui.nav.ViewerPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
 import com.niki914.zafiro.app.ui.route.BuiltinToolGroupDetailRoute
@@ -131,6 +142,13 @@ fun ZafiroPageContent(
                 onPopToRight()
             },
             onCurrentConversationDeleted = onCurrentConversationDeleted,
+            onOpenTasks = { onPush(TasksPage) },
+            onNewChat = {
+                HomeNavEvents.newChatRequested.value = true
+                onPopToRight()
+            },
+            onOpenAgents = { onPush(AgentsPage) },
+            onOpenSettings = { onPush(SettingsHomePage) },
         )
 
         SettingsHomePage -> SettingsHomePageRoute(
@@ -198,6 +216,27 @@ fun ZafiroPageContent(
                 onPush(CustomPyToolDetailPage(name, index, isCreating))
             },
         )
+
+        AgentsPage -> AgentsPageContent(
+            onOpenEditor = { agentId -> onPush(AgentEditorPage(agentId)) },
+        )
+
+        is AgentEditorPage -> AgentEditorContent(
+            page = page,
+            onBack = onPop,
+        )
+
+        TasksPage -> TasksPageContent(
+            onOpenEditor = { taskId -> onPush(TaskEditorPage(taskId)) },
+            onOpenRun = { runId -> onPush(TaskRunPage(runId)) },
+        )
+
+        is TaskEditorPage -> TaskEditorContent(
+            page = page,
+            onBack = onPop,
+        )
+
+        is TaskRunPage -> TaskRunContent(page = page)
 
         MarkdownScalePage -> MarkdownScalePageRoute()
 

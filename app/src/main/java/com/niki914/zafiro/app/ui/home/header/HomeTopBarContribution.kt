@@ -18,14 +18,17 @@ internal fun HomeTopBarContribution(
     onOpenHistory: () -> Unit,
     onNewConversation: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenTasks: () -> Unit = {},
     titleContent: @Composable () -> Unit,
 ) {
     val newConversationMenuLabel = stringResource(R.string.ui_home_menu_new_conversation)
     val settingsMenuLabel = stringResource(R.string.ui_settings_menu_entry)
+    val tasksMenuLabel = stringResource(R.string.tasks_entry_title)
 
     val pageChromeContribution = remember(
         newConversationMenuLabel,
         settingsMenuLabel,
+        tasksMenuLabel,
         titleContent,
         isConfigMenuVisible,
     ) {
@@ -52,6 +55,16 @@ internal fun HomeTopBarContribution(
                             onDismissConfigMenu()
                         }
                         onNewConversation()
+                    },
+                ),
+                PageChromeMenuItem(
+                    key = "scheduled_tasks",
+                    title = tasksMenuLabel,
+                    onClick = {
+                        if (isConfigMenuVisible) {
+                            onDismissConfigMenu()
+                        }
+                        onOpenTasks()
                     },
                 ),
                 PageChromeMenuItem(

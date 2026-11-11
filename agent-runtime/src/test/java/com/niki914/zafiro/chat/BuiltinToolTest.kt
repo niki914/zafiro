@@ -16,10 +16,16 @@ class BuiltinToolTest {
 
         assertEquals(
             listOf(
+                "agent",
+                "clipboard",
+                "compose_message",
+                "device_info",
                 "execute_python",
                 "find_installed_apps",
+                "http_request",
                 "launch_app",
                 "load_skill",
+                "lock_screen",
                 "memory",
                 "notify",
                 "open_uri",
@@ -29,7 +35,9 @@ class BuiltinToolTest {
                 "screenshot",
                 "shell",
                 "ssh",
+                "take_over",
                 "view_image",
+                "wait",
             ),
             registry.all().map { it.name }.sorted()
         )

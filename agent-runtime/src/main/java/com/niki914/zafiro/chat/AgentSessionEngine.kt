@@ -12,6 +12,7 @@ import com.niki914.okia.message.contextTokens
 import com.niki914.okia.tooling.ToolRegistry
 import com.niki914.zafiro.api.AgentControl
 import com.niki914.zafiro.api.model.FileRef
+import com.niki914.zafiro.api.model.TokenUsage
 import com.niki914.zafiro.chat.compaction.Compactor
 import com.niki914.zafiro.chat.agentic.IngestedImage
 import com.niki914.zafiro.chat.agentic.PromptComposer
@@ -105,6 +106,19 @@ class AgentSessionEngine {
 
     val currentConversation: StateFlow<Conversation?> get() = sessionAssembler.currentConversation
     val keepScreenOn: StateFlow<Boolean> get() = streamPipeline.turnActive
+
+    private val usageMeter = UsageMeter()
+
+    /** Cumulative token usage of every model request this engine made (budget enforcement for unattended runs). */
+    val usageTotals: StateFlow<TokenUsage> get() = usageMeter.totals
+
+    /** Feed the committed history to the meter; call on every conversation change. */
+    fun observeUsage(conversation: Conversation?) {
+        val entries = conversation?.history?.mapNotNull { entry ->
+            (entry.message as? Message.Assistant)?.let { entry.id to it.message.usage }
+        } ?: return
+        usageMeter.ingest(entries)
+    }
 
     /** 当前生效配置的上下文窗口；[refresh] 时随配置一起落。读者：`AgentImpl.contextUsage` 的分母。 */
     private val contextWindowFlow = MutableStateFlow(DEFAULT_CONTEXT_WINDOW_TOKENS)
@@ -296,7 +310,70 @@ class AgentSessionEngine {
         )
     }
 
+    /**
+     * One user turn, with provider fallback: if the model in use fails with a provider fault (credits gone, key rejected,
+     * rate limit, outage) before producing anything, the same turn is re-run from the pre-turn state on the next model
+     * in the owner's fallback chain. See [FallbackPolicy] for exactly when that is allowed.
+     */
     fun stream(
+        query: String,
+        images: List<ContentBlock.Image> = emptyList(),
+        files: List<FileRef> = emptyList(),
+    ): Flow<LlmStreamEvent> = channelFlow {
+        val primaryConfigId = boundConfigId
+        val chain = runCatchingCancellable {
+            RuntimeEnvironment.awaitSettingsGateway().fallbackChain(primaryConfigId.takeIf { it.isNotBlank() })
+        }.onFailure {
+            Logger.w(LOG_TAG, "fallbackChain unavailable: ${it.message}")
+        }.getOrDefault(emptyList())
+        if (chain.isEmpty()) {
+            streamOnce(query, images, files).collect { send(it) }
+            return@channelFlow
+        }
+
+        val beforeTurn = runCatchingCancellable {
+            refresh()
+            runtimeState?.okia?.export()
+        }.getOrNull()
+        val candidates = listOf(primaryConfigId) + chain
+        var pendingError: LlmStreamEvent.Error? = null
+        var terminalSent = false
+        try {
+            for ((index, configId) in candidates.withIndex()) {
+                val isLast = index == candidates.lastIndex
+                if (index > 0) {
+                    val restored = beforeTurn != null && runCatchingCancellable {
+                        bindConfig(configId)
+                        refresh(restore = beforeTurn)
+                    }.onFailure { Logger.w(LOG_TAG, "fallback to $configId unavailable: ${it.message}") }.isSuccess
+                    if (!restored) continue
+                    Logger.i(LOG_TAG, "fallback attempt $index configId=$configId")
+                    send(LlmStreamEvent.Retrying(attempt = index, maxAttempts = candidates.size - 1, delayMs = 0, reason = "fallback model"))
+                }
+                var sawOutput = false
+                var swallowed: LlmStreamEvent.Error? = null
+                streamOnce(query, images, files).collect { event ->
+                    if (FallbackPolicy.isOutput(event)) sawOutput = true
+                    if (event is LlmStreamEvent.Error && FallbackPolicy.shouldFallBack(event.code, sawOutput, isLast)) {
+                        swallowed = event
+                    } else {
+                        if (event is LlmStreamEvent.Error || event is LlmStreamEvent.Completed) terminalSent = true
+                        send(event)
+                    }
+                }
+                val failure = swallowed ?: break
+                pendingError = failure
+                Logger.w(LOG_TAG, "turn failed on configId='$configId' code=${failure.code}; trying next model")
+            }
+            // Every remaining candidate was unusable: the user must still see why the turn failed.
+            if (!terminalSent) pendingError?.let { send(it) }
+        } finally {
+            // The fallback is for this turn only: the next turn tries the owner's chosen model first again.
+            bindConfig(primaryConfigId)
+        }
+    }
+
+    private fun streamOnce(
         query: String,
         images: List<ContentBlock.Image> = emptyList(),
         files: List<FileRef> = emptyList(),

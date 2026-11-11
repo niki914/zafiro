@@ -21,6 +21,8 @@ data class UpdateCheckResult(
     val releaseUrl: String?,
     /** GitHub release 正文原文（markdown）；为 null 时弹窗只显示标题与提示行。 */
     val releaseNotes: String?,
+    /** Direct download of the release's .apk (for the in-app updater); null when the release has none. */
+    val apkUrl: String? = null,
 )
 
 object UpdateCheckHolder {
@@ -56,9 +58,9 @@ private object UpdateCheckApi {
     private val json = Json { ignoreUnknownKeys = true }
 
     private const val GITHUB_API_LATEST =
-        "https://api.github.com/repos/niki914/zafiro/releases/latest"
+        "https://api.github.com/repos/TricretA/my-zafiro/releases/latest"
     private const val GITHUB_API_LATEST_ANY =
-        "https://api.github.com/repos/niki914/zafiro/releases?per_page=1"
+        "https://api.github.com/repos/TricretA/my-zafiro/releases?per_page=1"
 
     private val semverRe = Regex("""(\d+\.\d+\.\d+)""")
 
@@ -104,6 +106,11 @@ private object UpdateCheckApi {
             remoteVersion = remoteVersion,
             releaseUrl = releaseUrl,
             releaseNotes = releaseNotes?.takeIf { it.isNotEmpty() },
+            apkUrl = (obj["assets"] as? JsonArray)?.firstNotNullOfOrNull { asset ->
+                val a = asset as? JsonObject ?: return@firstNotNullOfOrNull null
+                val name = a["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                if (name.endsWith(".apk")) a["browser_download_url"]?.jsonPrimitive?.contentOrNull else null
+            },
         )
     }
 

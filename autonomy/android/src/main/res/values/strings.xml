@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="autonomy_launcher_label">Zafiro Tasks</string>
+    <string name="autonomy_channel_running">Scheduled task running</string>
+    <string name="autonomy_channel_results">Scheduled task results</string>
+    <string name="autonomy_channel_approvals">Scheduled task approvals</string>
+</resources>

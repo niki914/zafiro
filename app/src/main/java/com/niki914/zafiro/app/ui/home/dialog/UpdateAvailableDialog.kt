@@ -1,5 +1,10 @@
 package com.niki914.zafiro.app.ui.home.dialog
 
+import android.widget.Toast
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.niki914.zafiro.repo.ApkInstaller
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -28,6 +33,8 @@ internal fun UpdateAvailableDialog(
     onDismiss: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     ZafiroDialog(
         visible = update?.hasUpdate == true,
         onDismissRequest = onDismiss,
@@ -74,8 +81,15 @@ internal fun UpdateAvailableDialog(
             ZafiroDialogButton(
                 text = stringResource(R.string.update_dialog_confirm),
                 onClick = {
-                    update?.releaseUrl?.takeIf { it.isNotBlank() }
-                        ?.let(uriHandler::openUri)
+                    val apk = update?.apkUrl
+                    if (apk != null) {
+                        scope.launch {
+                            Toast.makeText(context, "Downloading the update...", Toast.LENGTH_SHORT).show()
+                            ApkInstaller.downloadAndInstall(context, apk)?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+                        }
+                    } else {
+                        update?.releaseUrl?.takeIf { it.isNotBlank() }?.let(uriHandler::openUri)
+                    }
                     onDismiss()
                 },
                 isPrimary = true,

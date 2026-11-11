@@ -1,6 +1,7 @@
 package com.niki914.zafiro.repo
 
 import com.niki914.logging.Logger
+import com.niki914.zafiro.chat.FallbackPolicy
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.RuntimeSettingsGateway
 import com.niki914.zafiro.settings.model.DEFAULT_CONTEXT_WINDOW_TOKENS
@@ -24,6 +25,16 @@ class XRepoRuntimeGateway(
         const val SOURCE_PROVIDER = "provider"
         const val SOURCE_OPENROUTER = "openrouter"
         const val SOURCE_DEFAULT = "default"
+    }
+
+    override suspend fun fallbackChain(primaryConfigId: String?): List<String> {
+        val doc = repo.llmConfigs.document()
+        return FallbackPolicy.resolveChain(
+            primaryId = primaryConfigId,
+            activeId = doc.activeId,
+            configured = repo.llmFallbackChain(),
+            existingIds = doc.configs.map { it.id }.toSet(),
+        )
     }
 
     override suspend fun readLlmConfig(agentId: String, configId: String?): RuntimeLlmConfig {

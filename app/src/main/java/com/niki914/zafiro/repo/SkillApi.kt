@@ -61,8 +61,20 @@ class SkillApi internal constructor(
             } catch (_: IOException) {
                 emptyList()
             }
+            // Each bundled skill is seeded once; a skill the owner deleted must not come back at the next start.
+            val seededFile = File(skillsTargetDir, SEEDED_IDS_FILE_NAME)
+            val offByDefault = runCatching {
+                context.assets.open(DISABLED_BY_DEFAULT_ASSET).bufferedReader().use { it.readLines().map(String::trim).filter(String::isNotEmpty).toSet() }
+            }.getOrDefault(emptySet())
+            val seeded = runCatching { seededFile.readLines().toMutableSet() }.getOrDefault(mutableSetOf())
             for (skillId in assetEntries) {
                 val targetDir = File(skillsTargetDir, skillId)
+                if (!targetDir.exists() && skillId in seeded) continue
+                // Bulk-pack skills start switched OFF: ~150 enabled descriptions would bloat every request. The owner turns on what they use.
+                if (skillId !in seeded && skillId in offByDefault) {
+                    SkillEnabledStateStore(File(skillsTargetDir, "status.json")).setEnabled(skillId, false)
+                }
+                seeded += skillId
                 val assetDir = "$DEFAULT_SKILLS_ASSET_PATH/$skillId"
                 val files = try {
                     context.assets.list(assetDir)?.toList().orEmpty()
@@ -73,6 +85,10 @@ class SkillApi internal constructor(
                     runCatching { context.assets.open("$assetDir/$name") }.getOrNull()
                 }
                 reseedSkill(targetDir, files, openAsset)
+            }
+            runCatching {
+                skillsTargetDir.mkdirs()
+                seededFile.writeText(seeded.sorted().joinToString("\n"))
             }
         }
     }
@@ -86,6 +102,8 @@ class SkillApi internal constructor(
         const val SKILLS_DIR_NAME = "skills"
         private const val DEFAULT_SKILLS_ASSET_PATH = "skills"
         private const val SEED_MARKER_FILE_NAME = ".seed"
+        private const val SEEDED_IDS_FILE_NAME = ".seeded_ids"
+        private const val DISABLED_BY_DEFAULT_ASSET = "skills_disabled_by_default.txt"
         private const val SKILL_FILE_NAME = "SKILL.md"
 
         /**

@@ -281,6 +281,36 @@ data class CustomPyToolDetailPage(
         if (isCreating) null else TopBarActionSpec(icon = Icons.Default.Delete, contentDescription = "Delete Button")
 }
 
+/** Scheduled tasks (Zafiro Autonomous). Entered from the History sidebar and the Home menu. */
+data object TasksPage : ZafiroPage {
+    override val routeKey: String = "tasks"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.tasks_page_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}
+
+/** Create ([taskId] null) or edit a scheduled task. */
+data class TaskEditorPage(val taskId: String?) : ZafiroPage {
+    override val routeKey: String = "task-editor:${taskId ?: "new"}"
+    override val titleSpec: PageTitleSpec =
+        ResTitle(if (taskId == null) R.string.task_editor_title_create else R.string.task_editor_title_edit)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? =
+        if (taskId == null) null else TopBarActionSpec(icon = Icons.Default.Delete, contentDescription = "Delete Button")
+}
+
+/** Report and log of one run. */
+data class TaskRunPage(val runId: Long) : ZafiroPage {
+    override val routeKey: String = "task-run:$runId"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.task_run_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+}
+
 data class SkillDetailPage(
     val skillId: String,
     val skillTitle: String,
@@ -333,3 +363,24 @@ data class ViewerPage(
     override val rightAction: TopBarActionSpec? = null
 }
 
+
+/** Agents the owner defined (Zafiro Autonomous). */
+data object AgentsPage : ZafiroPage {
+    override val routeKey: String = "agents"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.agents_page_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}
+
+/** Create ([agentId] null) or edit an agent. */
+data class AgentEditorPage(val agentId: String?) : ZafiroPage {
+    override val routeKey: String = "agent-editor:${agentId ?: "new"}"
+    override val titleSpec: PageTitleSpec =
+        ResTitle(if (agentId == null) R.string.agent_editor_title_create else R.string.agent_editor_title_edit)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? =
+        if (agentId == null) null else TopBarActionSpec(icon = Icons.Default.Delete, contentDescription = "Delete Button")
+}

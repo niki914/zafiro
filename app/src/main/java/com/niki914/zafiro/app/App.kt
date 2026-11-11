@@ -1,5 +1,6 @@
 package com.niki914.zafiro.app
 
+import com.niki914.zafiro.backup.BackupManager
 import android.app.ActivityManager
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
@@ -44,6 +45,8 @@ class App : Application() {
         // 非主进程（目前只有 `:python`）不初始化主进程状态：上下文与持久化只属于主进程
         //（否则 ContextProvider 从未 provide，PyRuntime.warmUp 会永远挂起）
         if (!isMainProcess()) return
+        // A staged backup restore must be applied before any settings file or database is opened.
+        BackupManager.applyPendingRestore(this)
         ContextProvider.provide(applicationContext)
         XRepo.init(this.applicationContext)
         ConversationRepo.init(this.applicationContext)
@@ -67,6 +70,10 @@ class App : Application() {
         }
         applicationScope.launch {
             XRepo.seedPyTools()
+        }
+        applicationScope.launch {
+            runCatching { XRepo.seedTextActions() }
+            runCatching { XRepo.seedMcpServers() }
         }
         applicationScope.launch {
             PyRuntime.warmUp()

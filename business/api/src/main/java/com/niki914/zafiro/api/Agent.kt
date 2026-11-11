@@ -1,9 +1,11 @@
 package com.niki914.zafiro.api
 
 import com.niki914.zafiro.api.model.ContextUsage
+import com.niki914.zafiro.api.model.TokenUsage
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.Draft
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -46,6 +48,13 @@ interface Agent : AgentControl {
      * 读者：Compose 的上下文环；将来的长对话自动压缩触发点。
      */
     val contextUsage: StateFlow<ContextUsage?>
+
+    /**
+     * Cumulative token usage of every model request this agent made (all steps of all turns).
+     * Unlike [contextUsage] (the size of the live prompt) this only grows; it is what token budgets are checked against.
+     */
+    val tokenUsage: StateFlow<TokenUsage>
+        get() = MutableStateFlow(TokenUsage())
 
     /**
      * 用户输入草稿：一段文本 + N 张图。多客户端共享同一份。

@@ -1,6 +1,7 @@
 // githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui.home
 
+import com.niki914.zafiro.app.ui.model.HomeNavEvents
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
@@ -72,11 +73,13 @@ fun HomePageContent(
     onActiveConversationChanged: (String?) -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenTasks: () -> Unit = {},
 ) {
     val viewModel = pageViewModel<HomeChatViewModel>()
     val latestViewModel by rememberUpdatedState(viewModel)
     val latestOnOpenHistory by rememberUpdatedState(onOpenHistory)
     val latestOnOpenSettings by rememberUpdatedState(onOpenSettings)
+    val latestOnOpenTasks by rememberUpdatedState(onOpenTasks)
     val latestOnConversationSelectionConsumed by rememberUpdatedState(
         onConversationSelectionConsumed
     )
@@ -316,6 +319,16 @@ fun HomePageContent(
         }
     }
 
+    val newChatRequested by HomeNavEvents.newChatRequested.collectAsState()
+    LaunchedEffect(newChatRequested) {
+        if (newChatRequested) {
+            HomeNavEvents.newChatRequested.value = false
+            shouldFollowBottom = true
+            pendingViewportAnchor = null
+            latestViewModel.sendIntent(HomeChatIntent.NewConversation)
+        }
+    }
+
     HomeTopBarContribution(
         isConfigMenuVisible = uiState.isConfigMenuVisible,
         onDismissConfigMenu = {
@@ -328,6 +341,7 @@ fun HomePageContent(
             latestViewModel.sendIntent(HomeChatIntent.NewConversation)
         },
         onOpenSettings = latestOnOpenSettings,
+        onOpenTasks = latestOnOpenTasks,
         titleContent = titleContent,
     )
 

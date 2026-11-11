@@ -1,0 +1,48 @@
+name: upstream-sync
+# Weekly (and on demand): look for new commits in niki914/zafiro so new upstream features are never missed.
+# Clean merge  -> pushes sync/upstream-<date> (ci.yml builds and tests it) and opens an issue to review/merge.
+# Conflict     -> opens an issue listing the new upstream commits; resolve by hand (see UPSTREAM_SYNC.md).
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: write
+  issues: write
+  actions: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/foundation
+          fetch-depth: 0
+      - name: Compare with upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          git config user.name "upstream-sync"
+          git config user.email "upstream-sync@users.noreply.github.com"
+          git remote add upstream https://github.com/niki914/zafiro.git
+          git fetch --no-tags upstream
+          BRANCH=$(git ls-remote --symref upstream HEAD | awk '/^ref:/ {sub("refs/heads/","",$2); print $2}')
+          BEHIND=$(git rev-list --count HEAD..upstream/$BRANCH)
+          echo "upstream branch=$BRANCH new commits=$BEHIND"
+          if [ "$BEHIND" = "0" ]; then echo "Up to date with upstream."; exit 0; fi
+          LIST=$(git log --no-merges --pretty='- %h %s' HEAD..upstream/$BRANCH | head -40)
+          DATE=$(date +%Y%m%d)
+          TITLE="Upstream has $BEHIND new commit(s) ($DATE)"
+          if gh issue list --state open --search "Upstream has in:title" --json number --jq '.[0].number' | grep -q .; then
+            echo "An upstream-sync issue is already open; not opening another."; exit 0
+          fi
+          if git merge --no-edit upstream/$BRANCH >/tmp/merge.log 2>&1; then
+            git push origin HEAD:refs/heads/sync/upstream-$DATE
+            gh workflow run ci.yml --ref sync/upstream-$DATE || echo "could not start CI; run it from the Actions tab"
+            BODY=$(printf 'New upstream commits merged cleanly into branch `sync/upstream-%s`. CI is building and testing it.\n\nNext: check the CI result on that branch, run `python3 tools/autonomous/english_only.py` (upstream is Chinese), then merge into feat/foundation.\n\n%s\n' "$DATE" "$LIST")
+          else
+            git merge --abort || true
+            BODY=$(printf 'New upstream commits CONFLICT with this fork. Merge by hand following UPSTREAM_SYNC.md.\n\n%s\n\nConflict output:\n```\n%s\n```\n' "$LIST" "$(head -30 /tmp/merge.log)")
+          fi
+          gh issue create --title "$TITLE" --body "$BODY"

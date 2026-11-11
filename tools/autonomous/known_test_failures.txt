@@ -1,0 +1,15 @@
+# Upstream tests that already fail on Linux CI with UNMODIFIED upstream code (baseline run: branch fix/baseline-upstream-tests,
+# commit 2561bd5 on upstream c9b5b6a). They are NOT hidden: every CI report lists them. CI only fails on failures not listed here.
+# Remove a line as soon as the test is fixed or upstream fixes it. Format: fully.qualified.Class.methodName
+com.niki914.zafiro.app.notification.TurnNotificationManagerTest.onTurnEvent_whenOtherConversationActive_postsNotification
+com.niki914.zafiro.app.notification.TurnNotificationManagerTest.onTurnEvent_whenDisabled_doesNotPostNotification
+com.niki914.zafiro.app.notification.TurnNotificationManagerTest.onTurnEvent_whenVisibleConversationMatchesButAppInBackground_postsNotification
+com.niki914.zafiro.app.notification.TurnNotificationManagerTest.onTurnEvent_whenTriggeredByHost_skipsNotification
+com.niki914.zafiro.app.notification.TurnNotificationManagerTest.onTurnEvent_whenVisibleInForeground_skipsNotification
+com.niki914.zafiro.app.conversation.ConversationPersisterTest.trackActivity_bumpsUpdatedAtOnApprovalAndTurnEnd
+# Upstream tests that are NON-DETERMINISTIC (pass on some runs of the same code). Tolerated by the gate but always reported.
+# flaky: AgentSessionEngineOkiaTest asserts currentConversation.value right after ensureSession(); that StateFlow is published
+# asynchronously. Passed in 3 earlier runs; failed once on e8d3ebb with agent-runtime untouched.
+flaky:com.niki914.zafiro.chat.AgentSessionEngineOkiaTest.ensureSession_createsInstanceAndReturnsTreeId
+# Minimum number of tests that must run (guards against a compile break silently dropping whole modules). Baseline 1715 + ours.
+MIN_TESTS=1860

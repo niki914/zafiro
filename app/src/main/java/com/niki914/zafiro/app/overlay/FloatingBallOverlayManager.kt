@@ -279,6 +279,12 @@ object FloatingBallOverlayManager {
                 initialBallY = initialY,
                 dockSideProvider = { dockSide },
                 isSubmergedProvider = { isSubmerged },
+                onDismissed = {
+                    // Dropped on the X: turn the ball off like the setting does; the existing observer removes the overlay.
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                        XRepo.setFloatingBallEnabled(false)
+                    }
+                },
                 onRequestExpand = {
                     val currentDock = vmInstance.uiStateFlow.value.dockSide
                     cardLayout.openAt(ballLayout.ballX, ballLayout.ballY, currentDock)

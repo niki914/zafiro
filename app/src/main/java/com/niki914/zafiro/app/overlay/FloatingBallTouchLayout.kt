@@ -30,7 +30,11 @@ internal class FloatingBallTouchLayout(
     private val onDockSideChanged: (DockSide) -> Unit,
     private val onSnapFinished: (DockSide, Boolean) -> Unit,
     private val onPositionUpdated: (Float) -> Unit,
+    private val onDismissed: () -> Unit = {},
 ) : FrameLayout(context) {
+
+    private val dismissTarget = FloatingBallDismissTarget(context, wm)
+    private var overDismiss = false
 
     private val dockSide: DockSide get() = dockSideProvider()
     private val isSubmerged: Boolean get() = isSubmergedProvider()
@@ -191,10 +195,20 @@ internal class FloatingBallTouchLayout(
                 if (isAttachedToWindow) {
                     wm.updateViewLayout(this, lp)
                 }
+                dismissTarget.show()
+                overDismiss = dismissTarget.update(ballX + ballWidthPx / 2f, ballY + ballHeightPx / 2f)
                 return true
             }
 
             MotionEvent.ACTION_UP -> {
+                dismissTarget.hide()
+                if (overDismiss) {
+                    overDismiss = false
+                    isDragging = false
+                    motionPredictor.reset()
+                    onDismissed()
+                    return true
+                }
                 if (isDragging) {
                     isDragging = false
                     motionPredictor.recordPoint(ev.rawX, ev.rawY, ev.eventTime)
@@ -206,6 +220,8 @@ internal class FloatingBallTouchLayout(
             }
 
             MotionEvent.ACTION_CANCEL -> {
+                dismissTarget.hide()
+                overDismiss = false
                 if (isDragging) {
                     isDragging = false
                     val prediction = motionPredictor.predict(ballX, ballY, ev.eventTime)
@@ -303,6 +319,7 @@ internal class FloatingBallTouchLayout(
     }
 
     override fun onDetachedFromWindow() {
+        dismissTarget.hide()
         super.onDetachedFromWindow()
         positionAnimator?.cancel()
         motionPredictor.reset()

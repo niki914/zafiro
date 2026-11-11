@@ -20,12 +20,13 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.niki914.zafiro"
+        applicationId = "com.niki914.zafiro.auto"
         minSdk = 26
         targetSdk = 34
-        versionName = "1.10.1"
-        versionCode = 18
-        buildConfigField("String", "TELEMETRY_BASE_URL", "\"https://zafiro-telemetry.niki27687.workers.dev\"")
+        versionName = "1.12.0"
+        versionCode = 20
+        // Fork policy: no phone-home. A blank base URL makes every telemetry/remote-config path a no-op.
+        buildConfigField("String", "TELEMETRY_BASE_URL", "\"\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
@@ -38,6 +39,15 @@ android {
     val signingPropsFile = File(packingDir, "signing.properties")
 
     signingConfigs {
+        // Fork: every CI debug build must carry the SAME signature, otherwise Android refuses to install a new build over the
+        // old one. CI runners are ephemeral and would otherwise mint a new random debug key each run. This key is public on
+        // purpose (debug only, standard practice); release builds keep using the secret release key below.
+        getByName("debug") {
+            storeFile = rootProject.file("tools/autonomous/zafiro-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         create("release") {
             if (signingPropsFile.exists()) {
                 val props = Properties().apply {
@@ -101,6 +111,8 @@ dependencies {
     implementation(project(":business:api"))
     implementation(project(":business:agent"))
     implementation(project(":remote-view"))
+    implementation(project(":autonomy:android"))
+    implementation(project(":voice"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation(project(":libs:okia"))

@@ -13,6 +13,7 @@ import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.Attachment
 import com.niki914.zafiro.api.model.ContextUsage
+import com.niki914.zafiro.api.model.TokenUsage
 import com.niki914.zafiro.api.model.Conversation
 import com.niki914.zafiro.api.model.ConversationId
 import com.niki914.zafiro.api.model.Draft
@@ -105,6 +106,8 @@ class AgentImpl(
             }
         }.stateIn(scope, SharingStarted.Eagerly, null)
 
+    override val tokenUsage: StateFlow<TokenUsage> get() = engine.usageTotals
+
     override val status: StateFlow<AgentState> =
         combine(statusFlow, approvalFlow) { engineState, pending ->
             pending?.let { AgentState.WaitingApproval(it) } ?: engineState
@@ -114,6 +117,9 @@ class AgentImpl(
 
     init {
         engine.agentControlProvider = { this }
+        scope.launch {
+            engine.currentConversation.collect { engine.observeUsage(it) }
+        }
         scope.launch {
             draftFlow.collect { draft ->
                 for (pending in draft.images.filterIsInstance<DraftImage.Pending>()) ingest(pending)
