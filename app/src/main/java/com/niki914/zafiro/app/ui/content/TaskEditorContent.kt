@@ -115,6 +115,7 @@ private fun TaskEditorBody(
     val busy = uiState.isSaving
     var showKindDialog by rememberSaveable { mutableStateOf(false) }
     var showModelDialog by rememberSaveable { mutableStateOf(false) }
+    var showAgentDialog by rememberSaveable { mutableStateOf(false) }
 
     val kindLabels = mapOf(
         ScheduleKind.MANUAL to stringResource(R.string.task_kind_manual),
@@ -138,6 +139,12 @@ private fun TaskEditorBody(
     val modelOptions = remember(uiState.configs, activeModelLabel) {
         listOf(SavedConfigSummary(id = "", name = activeModelLabel, modelId = "", isActive = false)) + uiState.configs
     }
+    val noAgentLabel = stringResource(R.string.task_field_agent_none)
+    val agentOptions = remember(uiState.agents, noAgentLabel) {
+        listOf(SavedConfigSummary(id = "", name = noAgentLabel, modelId = "", isActive = false)) +
+            uiState.agents.filter { it.enabled }.map { SavedConfigSummary(id = it.id, name = it.name, modelId = "", isActive = false) }
+    }
+    val selectedAgent = agentOptions.firstOrNull { it.id == draft.agentId } ?: agentOptions.first()
     val selectedModel = modelOptions.firstOrNull { it.id == draft.configId } ?: modelOptions.first()
     val is24h = DateFormat.is24HourFormat(context)
     val zone = ZoneId.systemDefault()
@@ -274,6 +281,21 @@ private fun TaskEditorBody(
 
         SettingsGroupCard {
             SettingNavigationItem(
+                title = stringResource(R.string.task_field_agent),
+                summary = stringResource(R.string.task_field_agent_summary),
+                currentState = selectedAgent.name,
+                enabled = !busy,
+                onClick = { showAgentDialog = true },
+            )
+            SettingsItemDivider()
+            SettingToggleItem(
+                title = stringResource(R.string.task_field_learn),
+                checked = draft.learn,
+                enabled = !busy,
+                onCheckedChange = { onIntent(TaskEditorIntent.LearnChanged(it)) },
+            )
+            SettingsItemDivider()
+            SettingNavigationItem(
                 title = stringResource(R.string.task_field_model),
                 currentState = selectedModel.name,
                 enabled = !busy,
@@ -323,6 +345,20 @@ private fun TaskEditorBody(
             }
         }
     }
+
+    ZafiroSingleChoiceDialog(
+        visible = showAgentDialog,
+        onDismissRequest = { showAgentDialog = false },
+        title = stringResource(R.string.task_field_agent),
+        options = agentOptions,
+        selectedId = selectedAgent.id,
+        optionId = { it.id },
+        optionLabel = { it.name },
+        onSelect = {
+            showAgentDialog = false
+            onIntent(TaskEditorIntent.AgentPicked(it.id))
+        },
+    )
 
     ZafiroSingleChoiceDialog(
         visible = showModelDialog,

@@ -8,6 +8,7 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.app.ui.settings.form.buildFormSpec
 import com.tricreta.zafiro.autonomy.AutonomyGraph
+import com.tricreta.zafiro.autonomy.data.AgentProfileEntity
 import com.tricreta.zafiro.autonomy.data.TaskEntity
 import com.tricreta.zafiro.autonomy.form.DraftField
 import com.tricreta.zafiro.autonomy.form.DraftResult
@@ -42,6 +43,8 @@ val TaskEditorFormSpec = buildFormSpec<TaskEditorForm, String> {
     field("recoveries", R.string.task_field_recoveries) { it.draft.recoveries }
     field("criteria", R.string.task_field_criteria) { it.draft.successCriteria }
     field("model", R.string.task_field_model) { it.draft.configId }
+    field("agent", R.string.task_field_agent) { it.draft.agentId }
+    field("learn", R.string.task_field_learn) { it.draft.learn }
 }
 
 data class TaskEditorUiState(
@@ -53,6 +56,7 @@ data class TaskEditorUiState(
     val error: TaskEditorError? = null,
     val deleteConfirmation: String? = null,
     val configs: List<SavedConfigSummary> = emptyList(),
+    val agents: List<AgentProfileEntity> = emptyList(),
 )
 
 data class TaskEditorError(val field: DraftField?, val message: String)
@@ -80,6 +84,8 @@ sealed interface TaskEditorIntent {
     data class RecoveriesChanged(val value: String) : TaskEditorIntent
     data class CriteriaChanged(val value: String) : TaskEditorIntent
     data class ConfigPicked(val configId: String) : TaskEditorIntent
+    data class AgentPicked(val agentId: String) : TaskEditorIntent
+    data class LearnChanged(val value: Boolean) : TaskEditorIntent
     data object Save : TaskEditorIntent
     data object RequestDelete : TaskEditorIntent
     data object DismissDeleteConfirmation : TaskEditorIntent
@@ -124,6 +130,8 @@ class TaskEditorViewModel : ComposeMVIViewModel<TaskEditorIntent, TaskEditorUiSt
             is TaskEditorIntent.RecoveriesChanged -> edit { copy(recoveries = intent.value) }
             is TaskEditorIntent.CriteriaChanged -> edit { copy(successCriteria = intent.value) }
             is TaskEditorIntent.ConfigPicked -> edit { copy(configId = intent.configId) }
+            is TaskEditorIntent.AgentPicked -> edit { copy(agentId = intent.agentId) }
+            is TaskEditorIntent.LearnChanged -> edit { copy(learn = intent.value) }
             TaskEditorIntent.Save -> save()
             TaskEditorIntent.RequestDelete -> updateState { copy(deleteConfirmation = existing?.name.orEmpty()) }
             TaskEditorIntent.DismissDeleteConfirmation -> updateState { copy(deleteConfirmation = null) }
@@ -147,7 +155,8 @@ class TaskEditorViewModel : ComposeMVIViewModel<TaskEditorIntent, TaskEditorUiSt
             TaskEditorForm(TaskDraft.new(today), true)
         }
         val configs = runCatching { summariesOf(XRepo.llmConfigs.document()) }.getOrDefault(emptyList())
-        updateState { copy(taskId = taskId, form = form, initial = form, isLoading = false, error = null, configs = configs) }
+        val agents = runCatching { graph.repo.agents() }.getOrDefault(emptyList())
+        updateState { copy(taskId = taskId, form = form, initial = form, isLoading = false, error = null, configs = configs, agents = agents) }
     }
 
     private suspend fun save() {

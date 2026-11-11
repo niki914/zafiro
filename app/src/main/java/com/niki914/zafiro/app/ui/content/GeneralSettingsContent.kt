@@ -1,5 +1,8 @@
 package com.niki914.zafiro.app.ui.content
 
+import com.niki914.zafiro.app.admin.ZafiroDeviceAdminReceiver
+import android.content.ComponentName
+import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -45,6 +48,7 @@ private const val ALWAYS_SHOW_DETAILED_TOOL_OUTPUT_ROW_ID =
     "general.always_show_detailed_tool_output"
 private const val VOICE_ASSISTANT_ISOLATED_SESSION_ROW_ID =
     "general.voice_assistant_isolated_session"
+private const val DEVICE_ADMIN_ROW_ID = "general.device_admin"
 private const val BACKUP_CREATE_ROW_ID = "general.backup_create"
 private const val BACKUP_RESTORE_ROW_ID = "general.backup_restore"
 
@@ -56,6 +60,12 @@ fun GeneralSettingsContent(
     val uiState by viewModel.uiStateFlow.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val adminComponent = remember { ComponentName(context, ZafiroDeviceAdminReceiver::class.java) }
+    val dpm = remember { context.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager }
+    var adminActive by remember { mutableStateOf(dpm?.isAdminActive(adminComponent) == true) }
+    val adminLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        adminActive = dpm?.isAdminActive(adminComponent) == true
+    }
     var stagedRestore by remember { mutableStateOf<BackupArchive.Summary?>(null) }
 
     val createBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
@@ -134,6 +144,18 @@ fun GeneralSettingsContent(
                 ),
             ),
             SettingsSectionSpec(
+                title = stringResource(R.string.device_admin_group_title),
+                layout = SettingsSectionLayout.GroupedCard,
+                rows = listOf(
+                    SettingsRowSpec.Navigation(
+                        id = DEVICE_ADMIN_ROW_ID,
+                        title = stringResource(R.string.device_admin_title),
+                        summary = stringResource(R.string.device_admin_summary),
+                        currentState = stringResource(if (adminActive) R.string.agents_state_on else R.string.agents_state_off),
+                    ),
+                ),
+            ),
+            SettingsSectionSpec(
                 title = stringResource(R.string.backup_group_title),
                 layout = SettingsSectionLayout.GroupedCard,
                 rows = listOf(
@@ -160,6 +182,18 @@ fun GeneralSettingsContent(
                 is SettingsRowAction.Navigate ->
                     when (action.id) {
                         FLOATING_BALL_NAV_ROW_ID -> onPush(FloatingBallSettingsPage)
+                        DEVICE_ADMIN_ROW_ID -> {
+                            if (adminActive) {
+                                runCatching { dpm?.removeActiveAdmin(adminComponent) }
+                                adminActive = dpm?.isAdminActive(adminComponent) == true
+                            } else {
+                                adminLauncher.launch(
+                                    Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                                        .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+                                        .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, context.getString(R.string.device_admin_explanation)),
+                                )
+                            }
+                        }
                         BACKUP_CREATE_ROW_ID -> createBackup.launch(BackupManager.suggestedFileName())
                         BACKUP_RESTORE_ROW_ID -> pickBackup.launch(arrayOf("application/zip", "application/octet-stream"))
                     }

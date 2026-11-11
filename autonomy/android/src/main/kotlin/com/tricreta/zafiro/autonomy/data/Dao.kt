@@ -101,4 +101,23 @@ interface AutonomyDao {
 
     @Query("DELETE FROM run_event WHERE runId NOT IN (SELECT id FROM run)")
     suspend fun pruneOrphanEvents()
+
+    // --- agent profiles ---
+    @Query("SELECT * FROM agent_profile ORDER BY name COLLATE NOCASE")
+    fun observeAgents(): Flow<List<AgentProfileEntity>>
+
+    @Query("SELECT * FROM agent_profile ORDER BY name COLLATE NOCASE")
+    suspend fun agents(): List<AgentProfileEntity>
+
+    @Query("SELECT * FROM agent_profile WHERE id = :id")
+    suspend fun agent(id: String): AgentProfileEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAgent(agent: AgentProfileEntity)
+
+    @Query("DELETE FROM agent_profile WHERE id = :id")
+    suspend fun deleteAgent(id: String)
+
+    @Query("UPDATE task SET agentId = '' WHERE agentId = :id")
+    suspend fun detachAgentFromTasks(id: String)
 }

@@ -175,4 +175,16 @@ class TaskDraftTest {
         assertEquals("cfg-nim", back.configId)
         assertEquals("The report file exists", back.successCriteria)
     }
+
+    @Test
+    fun `agent and learning switch round trip`() {
+        val t = ok(base.copy(agentId = "agent-1", learn = false))
+        assertEquals("agent-1", t.agentId)
+        assertEquals(false, t.learn)
+        val back = TaskDraft.from(t, today)
+        assertEquals("agent-1", back.agentId)
+        assertEquals(false, back.learn)
+        assertEquals(true, ok(base).learn)
+        assertEquals("", ok(base).agentId)
+    }
 }

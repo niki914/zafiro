@@ -44,6 +44,10 @@ data class TaskEntity(
     @ColumnInfo(defaultValue = "''") val successCriteria: String = "",
     /** Extra turns allowed after the first: failures retried, unmet criteria re-attempted. 0 = never recover. */
     @ColumnInfo(defaultValue = "2") val recoveries: Int = 2,
+    /** Agent profile that performs this task; blank = a plain run. Added in schema v3. */
+    @ColumnInfo(defaultValue = "''") val agentId: String = "",
+    /** After the run, the agent saves lessons to memory. Added in schema v3. */
+    @ColumnInfo(defaultValue = "1") val learn: Boolean = true,
 )
 
 @Entity(
@@ -87,4 +91,23 @@ data class RunEventEntity(
     /** info | tool | approval | limit | error */
     val kind: String,
     val text: String,
+)
+
+/** A reusable agent: instructions + model + guidance on tools/skills. Added in schema v3. */
+@Entity(tableName = "agent_profile")
+data class AgentProfileEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val instructions: String,
+    /** Saved model config id; blank = the active one. */
+    val configId: String,
+    /** Comma-separated tool names the agent should stick to; blank = no restriction (guidance, not a sandbox). */
+    val tools: String,
+    /** Comma-separated skill ids the agent loads first. */
+    val skills: String,
+    /** Only one agent that uses the screen runs at a time; others run in parallel. */
+    val usesScreen: Boolean,
+    val enabled: Boolean,
+    val createdAtMs: Long,
+    val updatedAtMs: Long,
 )

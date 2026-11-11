@@ -363,3 +363,24 @@ data class ViewerPage(
     override val rightAction: TopBarActionSpec? = null
 }
 
+
+/** Agents the owner defined (Zafiro Autonomous). */
+data object AgentsPage : ZafiroPage {
+    override val routeKey: String = "agents"
+    override val titleSpec: PageTitleSpec = ResTitle(R.string.agents_page_title)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? = null
+    override val titleMode: TitleBarMode = TitleBarMode.Collapsible
+}
+
+/** Create ([agentId] null) or edit an agent. */
+data class AgentEditorPage(val agentId: String?) : ZafiroPage {
+    override val routeKey: String = "agent-editor:${agentId ?: "new"}"
+    override val titleSpec: PageTitleSpec =
+        ResTitle(if (agentId == null) R.string.agent_editor_title_create else R.string.agent_editor_title_edit)
+    override val leftAction: TopBarActionSpec =
+        TopBarActionSpec(icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back Button")
+    override val rightAction: TopBarActionSpec? =
+        if (agentId == null) null else TopBarActionSpec(icon = Icons.Default.Delete, contentDescription = "Delete Button")
+}

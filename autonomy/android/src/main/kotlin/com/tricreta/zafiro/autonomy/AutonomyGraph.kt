@@ -2,8 +2,11 @@ package com.tricreta.zafiro.autonomy
 
 import android.app.Application
 import android.content.Context
+import com.niki914.zafiro.api.AgentDelegator
+import com.niki914.zafiro.service.installService
 import com.tricreta.zafiro.autonomy.data.AutonomyDatabase
 import com.tricreta.zafiro.autonomy.data.AutonomyRepository
+import com.tricreta.zafiro.autonomy.run.DelegateRunner
 import com.tricreta.zafiro.autonomy.run.RunExecutor
 import com.tricreta.zafiro.autonomy.schedule.AlarmProjection
 import com.tricreta.zafiro.autonomy.schedule.AutonomyScheduler
@@ -42,6 +45,7 @@ class AutonomyGraph private constructor(context: Context) {
 object AutonomyInstaller {
     fun install(application: Application) {
         val graph = AutonomyGraph.get(application)
+        installService<AgentDelegator>(DelegateRunner(graph.repo, graph.scope))
         // Re-arm the alarm and record anything missed whenever the process starts.
         graph.scope.launch { graph.scheduler.reconcile("app_start") }
     }

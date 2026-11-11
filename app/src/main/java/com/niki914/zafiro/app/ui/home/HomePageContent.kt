@@ -1,6 +1,7 @@
 // githooks:ignore-file file-token-limit
 package com.niki914.zafiro.app.ui.home
 
+import com.niki914.zafiro.app.ui.model.HomeNavEvents
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
@@ -315,6 +316,16 @@ fun HomePageContent(
                     titleAnchorBounds = bounds
                 },
             )
+        }
+    }
+
+    val newChatRequested by HomeNavEvents.newChatRequested.collectAsState()
+    LaunchedEffect(newChatRequested) {
+        if (newChatRequested) {
+            HomeNavEvents.newChatRequested.value = false
+            shouldFollowBottom = true
+            pendingViewportAnchor = null
+            latestViewModel.sendIntent(HomeChatIntent.NewConversation)
         }
     }
 

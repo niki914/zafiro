@@ -22,6 +22,8 @@ class AutonomyRepository(
     fun observeRuns(limit: Int = 60): Flow<List<RunEntity>> = dao.observeRuns(limit)
 
     suspend fun task(id: String): TaskEntity? = dao.task(id)
+
+    suspend fun recentRuns(taskId: String, limit: Int): List<RunEntity> = dao.runsForTask(taskId, limit)
     suspend fun tasks(): List<TaskEntity> = dao.tasks()
     suspend fun events(runId: Long): List<RunEventEntity> = dao.events(runId)
     suspend fun run(id: Long): RunEntity? = dao.run(id)
@@ -106,6 +108,17 @@ class AutonomyRepository(
     }
 
     suspend fun heartbeat(id: Long, steps: Int) = dao.heartbeat(id, nowMs(), steps)
+
+    fun observeAgents() = dao.observeAgents()
+    suspend fun agents(): List<AgentProfileEntity> = dao.agents()
+    suspend fun agent(id: String): AgentProfileEntity? = dao.agent(id)
+    suspend fun saveAgent(agent: AgentProfileEntity) = dao.upsertAgent(agent)
+
+    /** Deleting an agent detaches it from tasks (they keep running as plain tasks) instead of leaving a dangling id. */
+    suspend fun deleteAgent(id: String) {
+        dao.detachAgentFromTasks(id)
+        dao.deleteAgent(id)
+    }
 
     suspend fun recordRecoveries(id: Long, recoveries: Int) = dao.setRecoveries(id, recoveries)
 

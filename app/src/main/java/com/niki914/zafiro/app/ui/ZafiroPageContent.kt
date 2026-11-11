@@ -1,5 +1,10 @@
 package com.niki914.zafiro.app.ui
 
+import com.niki914.zafiro.app.ui.model.HomeNavEvents
+import com.niki914.zafiro.app.ui.content.AgentEditorContent
+import com.niki914.zafiro.app.ui.content.AgentsPageContent
+import com.niki914.zafiro.app.ui.nav.AgentEditorPage
+import com.niki914.zafiro.app.ui.nav.AgentsPage
 import androidx.compose.runtime.Composable
 import com.niki914.uikit.infra.nav.NavigationEntry
 import com.niki914.zafiro.app.ui.content.CustomPyToolDetailContent
@@ -138,6 +143,12 @@ fun ZafiroPageContent(
             },
             onCurrentConversationDeleted = onCurrentConversationDeleted,
             onOpenTasks = { onPush(TasksPage) },
+            onNewChat = {
+                HomeNavEvents.newChatRequested.value = true
+                onPopToRight()
+            },
+            onOpenAgents = { onPush(AgentsPage) },
+            onOpenSettings = { onPush(SettingsHomePage) },
         )
 
         SettingsHomePage -> SettingsHomePageRoute(
@@ -204,6 +215,15 @@ fun ZafiroPageContent(
             onOpenToolDetail = { name, index, isCreating ->
                 onPush(CustomPyToolDetailPage(name, index, isCreating))
             },
+        )
+
+        AgentsPage -> AgentsPageContent(
+            onOpenEditor = { agentId -> onPush(AgentEditorPage(agentId)) },
+        )
+
+        is AgentEditorPage -> AgentEditorContent(
+            page = page,
+            onBack = onPop,
         )
 
         TasksPage -> TasksPageContent(

@@ -16,6 +16,7 @@ class BuiltinToolTest {
 
         assertEquals(
             listOf(
+                "agent",
                 "clipboard",
                 "compose_message",
                 "device_info",
@@ -24,6 +25,7 @@ class BuiltinToolTest {
                 "http_request",
                 "launch_app",
                 "load_skill",
+                "lock_screen",
                 "memory",
                 "notify",
                 "open_uri",

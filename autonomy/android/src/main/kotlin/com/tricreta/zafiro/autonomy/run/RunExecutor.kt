@@ -10,7 +10,11 @@ import com.niki914.zafiro.api.model.TurnOutcome
 import com.niki914.zafiro.api.model.TurnBlock
 import com.niki914.zafiro.api.model.isRunning
 import com.tricreta.zafiro.autonomy.AutonomyNotifier
+import com.tricreta.zafiro.autonomy.core.AgentBrief
 import com.tricreta.zafiro.autonomy.core.Breach
+import com.tricreta.zafiro.autonomy.core.PastRun
+import com.tricreta.zafiro.autonomy.core.Reflection
+import com.tricreta.zafiro.autonomy.core.RunHistory
 import com.tricreta.zafiro.autonomy.core.BudgetTracker
 import com.tricreta.zafiro.autonomy.core.Decision
 import com.tricreta.zafiro.autonomy.core.RecoveryConfig
@@ -82,7 +86,10 @@ class RunExecutor(
         val approver = ScheduledRunApprover(run.id, task.name, task.approvalTimeoutMs, repo, notifier)
         agent.addApprover(approver)
         try {
-            if (task.configId.isNotBlank()) agent.bindConfig(task.configId)
+            val profile = task.agentId.takeIf { it.isNotBlank() }?.let { repo.agent(it) }?.takeIf { it.enabled }
+            val configId = task.configId.ifBlank { profile?.configId.orEmpty() }
+            if (configId.isNotBlank()) agent.bindConfig(configId)
+            if (profile != null) repo.event(run.id, "info", "agent: ${profile.name}")
 
             coroutineScope {
                 val watchdog = launch {
@@ -108,7 +115,21 @@ class RunExecutor(
                 }
 
                 try {
-                    var prompt = buildPrompt(task)
+                    val history = RunHistory.format(
+                        repo.recentRuns(task.id, 6).filter { it.id != run.id && it.state != RunState.MISSED.name && it.finishedAtMs != null }.map {
+                            PastRun(
+                                whenText = java.time.Instant.ofEpochMilli(it.finishedAtMs ?: it.createdAtMs).atZone(java.time.ZoneId.systemDefault())
+                                    .format(java.time.format.DateTimeFormatter.ofPattern("d MMM HH:mm", java.util.Locale.ENGLISH)),
+                                state = it.state, summary = it.summary, error = it.error,
+                            )
+                        },
+                    )
+                    val base = buildPrompt(task, history)
+                    var prompt = if (profile == null) base else AgentBrief.compose(
+                        profile.name, profile.instructions,
+                        profile.tools.split(',').filter { it.isNotBlank() }, profile.skills.split(',').filter { it.isNotBlank() },
+                        base, delegated = false,
+                    )
                     var turnNumber = 0
                     while (true) {
                         turnNumber++
@@ -150,6 +171,11 @@ class RunExecutor(
                             }
                         }
                     }
+                    steps = agent.conversation.value.turns.sumOf { turn -> turn.blocks.count { it is TurnBlock.Tool } }
+                    // Self-learning: one extra turn lets the agent save lessons to memory. Never past a budget limit.
+                    if (task.learn && breach.get() == null && finalState in setOf(RunState.SUCCEEDED, RunState.FAILED, RunState.NEEDS_HUMAN)) {
+                        runCatching { reflect(agent) }.onFailure { Logger.w(LOG_TAG, "reflection skipped: ${it.message}") }
+                    }
                 } finally {
                     watchdog.cancel(); stepCounter.cancel(); tokenCounter.cancel()
                 }
@@ -157,7 +183,6 @@ class RunExecutor(
 
             val conv = agent.conversation.value
             conversationId = conv.id?.value
-            steps = conv.turns.sumOf { turn -> turn.blocks.count { it is TurnBlock.Tool } }
         } catch (e: CancellationException) {
             finalState = RunState.CANCELLED
             error = "Cancelled (the service was stopped)."
@@ -225,7 +250,13 @@ class RunExecutor(
         return TurnReport(end = end, failureCode = failure?.code?.name, lastText = lastText, breach = breach)
     }
 
-    private fun buildPrompt(task: TaskEntity): String = buildString {
+    /** One short extra turn after the run: the agent saves durable lessons with its memory tool. Failure here never changes the run's result. */
+    private suspend fun reflect(agent: Agent) {
+        if (startTurn(agent, Reflection.PROMPT) != TurnStart.Started) return
+        if (!waitForTurnEnd(agent, REFLECTION_MS, System.currentTimeMillis())) agent.stop()
+    }
+
+    private fun buildPrompt(task: TaskEntity, history: String = ""): String = buildString {
         appendLine("You are running UNATTENDED as the scheduled task \"${task.name}\". No human is watching right now.")
         appendLine("Rules:")
         appendLine("- Work only toward the task below.")
@@ -240,6 +271,10 @@ class RunExecutor(
         }
         appendLine("- Finish with a short plain-text report: what you did, and whether the goal was achieved.")
         appendLine("- " + StatusProtocol.INSTRUCTION)
+        if (history.isNotBlank()) {
+            appendLine()
+            appendLine(history)
+        }
         appendLine()
         appendLine("TASK:")
         append(task.prompt)
@@ -256,6 +291,7 @@ class RunExecutor(
         const val WATCHDOG_MS = 1_000L
         const val HARD_CEILING_PAD_MS = 60_000L
         const val MAX_RECOVERIES = 5
+        const val REFLECTION_MS = 120_000L
         const val START_RETRIES = 40
         const val START_RETRY_MS = 50L
         const val BACKOFF_POLL_MS = 500L

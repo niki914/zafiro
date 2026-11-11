@@ -51,6 +51,10 @@ data class TaskDraft(
     val successCriteria: String = "",
     /** Saved model configuration to use; blank = whichever is active. */
     val configId: String = "",
+    /** Agent profile that performs the task; blank = a plain run. */
+    val agentId: String = "",
+    /** After the run the agent saves lessons to memory. */
+    val learn: Boolean = true,
 ) {
 
     /**
@@ -143,6 +147,8 @@ data class TaskDraft(
                 maxTokens = if (tokensK < 0) -1L else tokensK * 1_000L,
                 successCriteria = successCriteria.trim(),
                 recoveries = recoveryCount,
+                agentId = agentId,
+                learn = learn,
             ),
         )
     }
@@ -168,6 +174,8 @@ data class TaskDraft(
                 recoveries = t.recoveries.toString(),
                 successCriteria = t.successCriteria,
                 configId = t.configId,
+                agentId = t.agentId,
+                learn = t.learn,
                 date = onceDateTime?.toLocalDate() ?: today,
                 time = onceDateTime?.toLocalTime()
                     ?: t.timeOfDay?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
