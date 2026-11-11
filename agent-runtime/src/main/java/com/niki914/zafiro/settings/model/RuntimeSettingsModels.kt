@@ -42,6 +42,30 @@ data class RuntimeLlmConfig(
     val repetitionSensitivity: RepetitionSensitivity = RepetitionSensitivity.DEFAULT,
     /** 上下文自动压缩阈值百分比（例如 70 表示 70%，0 表示关闭）。 */
     val compactionThresholdPercent: Int = 70,
+    /** r21 Item 3d：本次请求实际路由到的配置 label（「模型名 · 设置里的 config 名」）。
+     *  轮值开启时每次请求都是当前选定那份配置；UI 错误卡片据此定位「是哪个模型出了问题」。
+     *  默认空串保持向后兼容（非轮值 / 单配置场景也填这份配置的 label）。 */
+    val revolverLabel: String = "",
+)
+
+/**
+ * 轮值（model revolver）一次候选选取结果。由
+ * [com.niki914.zafiro.settings.RuntimeSettingsGateway.pickRevolverCandidate] 返回；
+ * router hook 据此把请求重指到该候选（endpoint / apiKey / model / 协议）。
+ * 纯进程内瞬时值（[apiKey] 不落盘）；[waitMs] = 调用方在 dispatch 前必须等待的墙钟毫秒
+ * （0 = 立即发送）：覆盖「向同一模型连续请求」与「轮值换到不同模型」两种间隔。
+ */
+data class RuntimeRevolverPick(
+    val configId: String,
+    val endpoint: String,
+    val apiKey: String,
+    val model: String,
+    /** LlmProtocol.wireId，如 "openai-responses" / "anthropic-messages"。 */
+    val protocol: String,
+    /** 配置展示名（「模型名 · 设置里的配置名」），UI 错误卡片定位用。 */
+    val label: String,
+    /** 调用方 dispatch 前须等待的毫秒数（0 = 立即）。 */
+    val waitMs: Long,
 )
 
 enum class RuntimeAgentMemoryMode {

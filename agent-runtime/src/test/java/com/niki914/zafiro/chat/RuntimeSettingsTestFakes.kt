@@ -11,6 +11,7 @@ import com.niki914.zafiro.settings.model.RuntimeExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
 import com.niki914.zafiro.settings.model.RuntimeMcpServer
+import com.niki914.zafiro.settings.model.RuntimeRevolverPick
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 import com.niki914.zafiro.settings.model.RuntimeToolValidation
 
@@ -70,6 +71,22 @@ internal open class FakeRuntimeSettingsGateway(
         loadSkillCallCount++
         failLoadSkill?.let { throw it }
         return loadedSkills[id]
+    }
+
+    var pickCallCount: Int = 0
+        private set
+    /** 脚本化的轮值候选序列（按 pick 调用次序出队；排空后返回 [pickFallback]）。 */
+    var pickSequence: ArrayDeque<RuntimeRevolverPick?> = ArrayDeque()
+    var pickFallback: RuntimeRevolverPick? = null
+    var failPickWith: Throwable? = null
+
+    override suspend fun pickRevolverCandidate(
+        agentId: String,
+        configId: String?,
+    ): RuntimeRevolverPick? {
+        pickCallCount++
+        failPickWith?.let { throw it }
+        return pickSequence.removeFirstOrNull() ?: pickFallback
     }
 
     override suspend fun listMcpServers(): List<RuntimeMcpServer> = mcpServers

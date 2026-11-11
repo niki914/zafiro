@@ -206,6 +206,11 @@ class AgentSessionEngine {
             thinkingLevel = llmConfig.thinkingLevel.takeIf(String::isNotBlank)
                 ?.let(ThinkingLevel::fromWire),
             repetitionSensitivity = llmConfig.repetitionSensitivity,
+            // r21 Item 3f：把 gateway 路由到的模型 label 透传进 snapshot，
+            // 出错时随 LlmStreamEvent.Error.model 带给 UI 错误卡片。
+            revolverLabel = llmConfig.revolverLabel.ifBlank {
+                llmConfig.model
+            },
         )
 
         val previousSession = runtimeState?.okia
@@ -371,6 +376,9 @@ class AgentSessionEngine {
                 images = images,
                 systemPrompt = state.snapshot.config.finalSystemPrompt,
                 channel = this,
+                model = state.snapshot.config.revolverLabel.ifBlank {
+                    state.snapshot.config.model
+                }.ifBlank { null },
             )
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {

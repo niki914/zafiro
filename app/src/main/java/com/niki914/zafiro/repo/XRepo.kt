@@ -579,6 +579,84 @@ object XRepo {
 
     suspend fun setMarkdownScale(value: Float) = markdownScaleField.set(value)
 
+    /** IAB 聊天内实时窗口开关的进程内热更新通道。 */
+    private val showLiveIabInChatField = ReactiveAppStateField(
+        default = false,
+        select = { showLiveIabInChat },
+        update = { copy(showLiveIabInChat = it) },
+    )
+    val showLiveIabInChatSetting: MutableStateFlow<Boolean>
+        get() = showLiveIabInChatField.flow
+
+    suspend fun showLiveIabInChat(): Boolean = showLiveIabInChatField.get()
+
+    suspend fun setShowLiveIabInChat(value: Boolean) = showLiveIabInChatField.set(value)
+
+    /** IAB 浮动窗几何的进程内热更新通道（IabPaneGeometryCodec.encode 产物）。 */
+    private val iabPaneGeometryField = ReactiveAppStateField(
+        default = null,
+        select = { iabPaneGeometry },
+        update = { copy(iabPaneGeometry = it) },
+    )
+    val iabPaneGeometrySetting: MutableStateFlow<String?>
+        get() = iabPaneGeometryField.flow
+
+    suspend fun iabPaneGeometry(): String? = iabPaneGeometryField.get()
+
+    suspend fun setIabPaneGeometry(value: String?) = iabPaneGeometryField.set(value)
+
+    /** IAB 标签上限的进程内热更新通道（1..8，越界夹回）。 */
+    private val iabMaxTabsField = ReactiveAppStateField(
+        default = 4,
+        select = { iabMaxTabs },
+        update = { copy(iabMaxTabs = it) },
+    )
+    val iabMaxTabsSetting: MutableStateFlow<Int>
+        get() = iabMaxTabsField.flow
+
+    suspend fun iabMaxTabs(): Int = iabMaxTabsField.get()
+
+    suspend fun setIabMaxTabs(value: Int) = iabMaxTabsField.set(value.coerceIn(1, 8))
+
+    /** r23 Item 3：IAB 下载目录的进程内热更新通道（空串 = 默认内部目录）。 */
+    private val iabDownloadDirField = ReactiveAppStateField(
+        default = "",
+        select = { iabDownloadDir },
+        update = { copy(iabDownloadDir = it) },
+    )
+    val iabDownloadDirSetting: MutableStateFlow<String>
+        get() = iabDownloadDirField.flow
+
+    suspend fun iabDownloadDir(): String = iabDownloadDirField.get()
+
+    suspend fun setIabDownloadDir(value: String) = iabDownloadDirField.set(value.trim())
+
+    /** r24 Item 5：IAB 下载目录 SAF 树 URI 的进程内热更新通道（空串 = 未选，走 [iabDownloadDirField] / 默认内部目录）。 */
+    private val iabDownloadDirTreeField = ReactiveAppStateField(
+        default = "",
+        select = { iabDownloadDirTree },
+        update = { copy(iabDownloadDirTree = it) },
+    )
+    val iabDownloadDirTreeSetting: MutableStateFlow<String>
+        get() = iabDownloadDirTreeField.flow
+
+    suspend fun iabDownloadDirTree(): String = iabDownloadDirTreeField.get()
+
+    suspend fun setIabDownloadDirTree(value: String) = iabDownloadDirTreeField.set(value.trim())
+
+    /** r24 Item 5：树顶层文件夹显示名（设置行尾预览 / 日志；可空串）。 */
+    private val iabDownloadDirTreeNameField = ReactiveAppStateField(
+        default = "",
+        select = { iabDownloadDirTreeName },
+        update = { copy(iabDownloadDirTreeName = it) },
+    )
+    val iabDownloadDirTreeNameSetting: MutableStateFlow<String>
+        get() = iabDownloadDirTreeNameField.flow
+
+    suspend fun iabDownloadDirTreeName(): String = iabDownloadDirTreeNameField.get()
+
+    suspend fun setIabDownloadDirTreeName(value: String) = iabDownloadDirTreeNameField.set(value.trim())
+
     /**
      * 回填型设置 flow 的统一冷启动回填：flow 初值是猜的默认值，必须有人调一次
      * 读盘才能对齐真值。MainActivity.onCreate 同步调用。
@@ -828,6 +906,14 @@ class AgentApi internal constructor(
     }
 }
 
+/** 轮值（revolver）完整参数快照；id 顺序即轮转顺序。 */
+data class RevolverParams(
+    val enabled: Boolean,
+    val configIds: List<String>,
+    val counts: Map<String, Int>,
+    val delays: Map<String, Long>,
+)
+
 /**
  * Saved Configuration 多份保存的 LLM 接入配置（active 那份即生效配置）。
  * - 新建保存时置 active；编辑非 active 配置不改变归属
@@ -879,6 +965,84 @@ class LlmConfigsApi internal constructor(
         if (updated) {
             bumpRevision()
         }
+    }
+
+    /** 轮值（revolver）：enabled + 候选配置 id 列表（按轮转顺序）。 */
+    suspend fun revolver(): Pair<Boolean, List<String>> {
+        val doc = document()
+        return doc.revolverEnabled to doc.revolverConfigs().map(SavedLlmConfig::id)
+    }
+
+    /**
+     * 轮值完整状态（r21 Item 3a–3d）：
+     * - [configIds]：按轮转顺序排列的候选 id（子功能 a 的「顺序」）。
+     * - [counts]：configId → 每周期请求次数（子功能 b 权重；缺键 = 默认 1）。
+     * - [delays]：configId → 冷却秒数（子功能 c；缺键 / 0 = 无冷却）。
+     */
+    suspend fun revolverParams(): RevolverParams {
+        val doc = document()
+        val aliveIds = doc.revolverConfigs().map(SavedLlmConfig::id)
+        val ids = if (aliveIds.isEmpty()) doc.revolverConfigIds else aliveIds
+        val counts = ids.associateWith { doc.revolverCounts[it] ?: 1 }
+        val delays = ids.associateWith { doc.revolverDelays[it] ?: 0L }
+        return RevolverParams(doc.revolverEnabled, ids, counts, delays)
+    }
+
+    /**
+     * 设置轮值完整参数（开关 + 候选顺序 + 每模型请求数 + 每模型冷却秒数）。
+     * 候选 id 只保留仍存在的配置；counts/delays 只保留仍存活的候选键；
+     * enabled=true 但有效候选 < 2 时自动关轮值（单 key 轮值无意义）。
+     * @param ids 轮转顺序（子功能 a）；@param counts 权重（子功能 b）；@param delays 冷却（子功能 c）。
+     */
+    suspend fun setRevolverParams(
+        enabled: Boolean,
+        ids: List<String>,
+        counts: Map<String, Int>,
+        delays: Map<String, Long>,
+    ) {
+        val existingIds = document().configs.map(SavedLlmConfig::id).toSet()
+        val validIds = ids.map { it.trim() }
+            .distinct()
+            .filter { it.isNotBlank() && it in existingIds }
+        val nextEnabled = enabled && validIds.size >= 2
+        // 权重 / 冷却只针对仍存活的候选；缺键补默认（权重 1 / 冷却 0）。
+        val nextCounts = validIds.associateWith { id -> (counts[id] ?: 1).coerceAtLeast(0) }
+        val nextDelays = validIds.associateWith { id -> (delays[id] ?: 0L).coerceAtLeast(0L) }
+        val updated = repo.updateJsonOrFalse(StoreDescriptorRegistry.LLM_CONFIGS_ID) { json ->
+            val doc = LlmConfigsSettingsCodec.parse(json)
+            val nextIds = validIds.filter { it in doc.configs.map(SavedLlmConfig::id) }
+            val unchanged =
+                doc.revolverEnabled == nextEnabled &&
+                doc.revolverConfigIds == nextIds &&
+                doc.revolverCounts == nextCounts &&
+                doc.revolverDelays == nextDelays
+            if (unchanged) return@updateJsonOrFalse null
+            LlmConfigsSettingsCodec.encode(
+                doc.copy(
+                    revolverEnabled = nextEnabled,
+                    revolverConfigIds = nextIds,
+                    revolverCounts = nextCounts,
+                    revolverDelays = nextDelays,
+                )
+            )
+        }
+        if (updated) {
+            bumpRevision()
+        }
+    }
+
+    /**
+     * 设置轮值开关与候选列表（r20 语义；r21 保持：只改顺序，不清空已存权重/冷却）。
+     * 候选 id 只保留仍存在的配置；enabled=true 但有效候选 < 2 时自动关轮值。
+     */
+    suspend fun setRevolver(enabled: Boolean, configIds: List<String>) {
+        val current = revolverParams()
+        setRevolverParams(
+            enabled = enabled,
+            ids = configIds,
+            counts = current.counts,
+            delays = current.delays,
+        )
     }
 
     /** @return null = 成功；非 null = 用户可读的失败原因 */
@@ -939,7 +1103,25 @@ class LlmConfigsApi internal constructor(
                 doc.activeId != targetId -> doc.activeId
                 else -> remaining.first().id
             }
-            LlmConfigsSettingsCodec.encode(doc.copy(configs = remaining, activeId = nextActiveId))
+            // 轮值候选里被删的 id 剪掉；剪完 < 2 个则轮值自动失效（读端同样兜底）
+            val nextRevolverIds = doc.revolverConfigIds.filter { it != targetId }
+            val nextRevolverEnabled =
+                doc.revolverEnabled && nextRevolverIds.size >= 2
+            // r21 3b/3c：权重与冷却里被删的键一并剪掉（悬空键会让读端展开出死候选）
+            val nextCounts = doc.revolverCounts.keys.filter { it != targetId }
+                .associateWith { doc.revolverCounts.getValue(it) }
+            val nextDelays = doc.revolverDelays.keys.filter { it != targetId }
+                .associateWith { doc.revolverDelays.getValue(it) }
+            LlmConfigsSettingsCodec.encode(
+                doc.copy(
+                    configs = remaining,
+                    activeId = nextActiveId,
+                    revolverEnabled = nextRevolverEnabled,
+                    revolverConfigIds = nextRevolverIds,
+                    revolverCounts = nextCounts,
+                    revolverDelays = nextDelays,
+                )
+            )
         }
         if (!deleted) return
         bumpRevision()

@@ -198,6 +198,9 @@ internal class OkiaSessionAssembler(
             hooks += fixIncompleteToolCallsHook
             hooks += compactPruningHook
             hooks += maskingHook
+            // r22c B4：每次发送尝试前按轮值候选重指请求（冷却等待在网关内完成）。
+            // 只挂主会话；generateSummary 的独立 Okia 不走轮值。
+            hooks += RevolverRouterHook
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: AgentSessionEngine.NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
             maxTokens = config.maxTokens

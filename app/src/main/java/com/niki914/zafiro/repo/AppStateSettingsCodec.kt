@@ -96,7 +96,53 @@ internal data class AppStateSettings(
     /** 全局输入框草稿文本（跨会话/新建会话保持，冷启动自动恢复）。 */
     @SerialName("draft_text")
     val draftText: String = "",
+    /** 是否在聊天界面显示实时 IAB 浮动窗口。 */
+    @SerialName("show_live_iab_in_chat")
+    val showLiveIabInChat: Boolean = false,
+    /** IAB 浮动窗几何（IabPaneGeometryCodec.encode 产物）；null = 走默认。 */
+    @SerialName("iab_pane_geometry")
+    val iabPaneGeometry: String? = null,
+    /** IAB 标签上限（1..8，越界夹回）。 */
+    @SerialName("iab_max_tabs")
+    val iabMaxTabs: Int = 4,
+    /** r23 Item 3 / r24 Item 5：IAB 下载目录（绝对路径；空串 = 默认内部目录 filesDir/downloads）。r24 起 SAF 树（[iabDownloadDirTree]）设值时优先写入树内；本字段保留作本地文件回退路径（两者互不冲突，树失败静默回落到此）。 */
+    @SerialName("iab_download_dir")
+    val iabDownloadDir: String = "",
+    /** r24 Item 5：IAB 下载目录 SAF 树 URI（OpenDocumentTree 选中文件夹的持久化 URI；空串 = 未选，走 [iabDownloadDir] / 默认内部目录）。 */
+    @SerialName("iab_download_dir_tree")
+    val iabDownloadDirTree: String = "",
+    /** r24 Item 5：树顶层文件夹显示名（设置行尾预览 / 日志用；可空，缺失时不影响功能）。 */
+    @SerialName("iab_download_dir_tree_name")
+    val iabDownloadDirTreeName: String = "",
 )
+
+/** IAB 浮动窗几何：宽高为可用区域占比，xy 为偏移锚点占比。 */
+@Serializable
+data class IabPaneGeometry(
+    @SerialName("width")
+    val widthRatio: Float = 0.7f,
+    @SerialName("height")
+    val heightRatio: Float = 0.4f,
+    @SerialName("x")
+    val xRatio: Float = 1f,
+    @SerialName("y")
+    val yRatio: Float = 0f,
+)
+
+internal object IabPaneGeometryCodec {
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
+
+    fun parse(raw: String?): IabPaneGeometry =
+        raw?.let {
+            runCatching { json.decodeFromString(IabPaneGeometry.serializer(), it) }.getOrNull()
+        } ?: IabPaneGeometry()
+
+    fun encode(geo: IabPaneGeometry): String =
+        json.encodeToString(IabPaneGeometry.serializer(), geo)
+}
 
 /** 一条置顶记录：置顶时刻用于与最后交互时间取 max 排序（越晚置顶/越晚交互越靠前）。 */
 @Serializable
@@ -128,6 +174,8 @@ internal object AppStateSettingsCodec {
                     "liquid", "md3", "md3e" -> fixed.themeStyle
                     else -> ThemeStyle.default().storageKey
                 }
+                // IAB 标签上限是开放整数：越界夹回 1..8。
+                val sanitizedIabMaxTabs = fixed.iabMaxTabs.coerceIn(1, 8)
                 fixed.copy(
                     themeStyle = sanitizedThemeStyle,
                     markdownScale = fixed.markdownScale.coerceIn(0.6f, 1.4f),
@@ -137,6 +185,7 @@ internal object AppStateSettingsCodec {
                     contextCompactionThresholdPercent = sanitizedCompactionThreshold,
                     floatingBallOpacityPercent = fixed.floatingBallOpacityPercent.coerceIn(10, 100),
                     floatingBallSubmergedOffsetDp = fixed.floatingBallSubmergedOffsetDp.coerceIn(0, 35),
+                    iabMaxTabs = sanitizedIabMaxTabs,
                 )
             }
         } catch (_: SerializationException) {
