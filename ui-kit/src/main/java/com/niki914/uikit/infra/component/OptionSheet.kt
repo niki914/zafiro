@@ -16,13 +16,19 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.niki914.uikit.infra.LocalSheetBackdropBlur
 import com.niki914.uikit.infra.shape.G2FieldShape
 import kotlinx.coroutines.launch
 
@@ -35,6 +41,7 @@ import kotlinx.coroutines.launch
  * - [bodyModifier] 透传给「标题 + header + content」的容器，调用方按需加高度约束
  *   （例如把单锁在屏高 50%~60%）。
  * - 单圆角用 G2，与 composer / 对话框 / 卡片同语言；sheet 在独立窗口里，
+ *   背后虚化交给页面侧，强度跟随本 sheet 的实际展开进度。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +58,14 @@ fun OptionSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
+    // 页面虚化强度取 sheet 自身进度：已被遮住的像素高度 / sheet 自身高度，
+    // 拖拽与开合全程同帧同步，收起后由 onDispose 归零。
+    val backdropBlur = LocalSheetBackdropBlur.current
+    val windowHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
+    DisposableEffect(backdropBlur) {
+        onDispose { backdropBlur.update(0f) }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
@@ -65,6 +80,14 @@ fun OptionSheet(
     ) {
         Column(Modifier
             .fillMaxWidth()
+            .onGloballyPositioned { coordinates ->
+                val sheetHeightPx = coordinates.size.height.toFloat()
+                if (windowHeightPx > 0f && sheetHeightPx > 0f) {
+                    backdropBlur.update(
+                        (windowHeightPx - coordinates.positionInRoot().y) / sheetHeightPx
+                    )
+                }
+            }
             .padding(bottom = 24.dp)) {
             Column(modifier = bodyModifier.fillMaxWidth()) {
                 if (title != null) {
