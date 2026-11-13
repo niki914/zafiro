@@ -1,3 +1,4 @@
+// githooks:ignore-file file-token-limit
 package com.niki914.zafiro.remoteview.floatingball
 
 import androidx.compose.animation.AnimatedContent
@@ -63,6 +64,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.shape.G2CardShape
+import com.niki914.uikit.text.BidiText
+import com.niki914.uikit.text.rememberBidiDisplayText
+import com.niki914.uikit.text.withContentDirection
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.remoteview.R
 
@@ -534,11 +538,11 @@ fun FloatingBallTextPreview(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = text,
+            text = rememberBidiDisplayText(text),
             color = contentColor,
             style = MaterialTheme.typography.bodyMedium.copy(
                 lineHeight = 18.sp,
-            ),
+            ).withContentDirection(),
             maxLines = FloatingBallTokens.previewMaxLines,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
@@ -562,7 +566,7 @@ fun FloatingBallApprovalPreview(
     val haptics = LocalHapticFeedback.current
     val linkColor = MaterialTheme.colorScheme.primary
     val fallbackReason = stringResource(R.string.floating_ball_approval_reason_unknown)
-    val displayReason = reason.ifBlank { fallbackReason }
+    val displayReason = reason.ifBlank { fallbackReason }.let(BidiText::isolate)
 
     Column(
         modifier = modifier

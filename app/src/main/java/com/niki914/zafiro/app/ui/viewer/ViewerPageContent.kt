@@ -14,13 +14,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.screen.ReportTitleBarCollapsed
@@ -61,6 +62,8 @@ import com.niki914.uikit.screen.zafiroScreenTopPadding
 import com.niki914.uikit.scroll.ZafiroScrollableContainer
 import com.niki914.uikit.scroll.rememberZafiroOverscrollController
 import com.niki914.uikit.scroll.rememberZafiroScrollStateAdapter
+import com.niki914.uikit.text.BidiSelectionContainer
+import com.niki914.uikit.text.rememberBidiDisplayText
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageBackHandler
 import com.niki914.zafiro.app.ui.PageChromeContribution
@@ -116,9 +119,10 @@ private fun TextViewerContent(
     val scope = rememberCoroutineScope()
     val copyAllLabel = stringResource(R.string.ui_viewer_copy_all)
 
-    val formattedText = remember(text) {
-        ToolPresentation.prettyPrintIfJson(text) ?: text
-    }
+    val prettyJson = remember(text) { ToolPresentation.prettyPrintIfJson(text) }
+    val formattedText = prettyJson ?: text
+    // JSON 保持 LTR
+    val displayText = if (prettyJson != null) formattedText else rememberBidiDisplayText(formattedText)
 
     RegisterPageChrome(
         remember(copyAllLabel, formattedText, onBack) {
@@ -178,11 +182,13 @@ private fun TextViewerContent(
                     )
                     .padding(horizontal = 20.dp),
             ) {
-                SelectionContainer {
+                BidiSelectionContainer(stripMarks = displayText != formattedText) {
                     Text(
-                        text = formattedText,
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = displayText,
+                        style = MaterialTheme.typography.bodyLarge
+                            .copy(textDirection = if (prettyJson != null) TextDirection.Ltr else TextDirection.Content),
                         color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }

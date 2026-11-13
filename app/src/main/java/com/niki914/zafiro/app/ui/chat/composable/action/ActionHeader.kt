@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.text.BidiText
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
 import com.niki914.zafiro.app.ui.chat.model.ActionBodyUi
 import com.niki914.zafiro.app.ui.chat.model.ActionUiModel
@@ -77,7 +78,8 @@ internal fun ActionHeader(
         append(action.titleRes?.let { stringResource(it) } ?: action.title.orEmpty())
         action.subtitlePreview?.let { preview ->
             append(" · ")
-            append(preview)
+            // 模型写的意图单独隔离，不和前面的工具名混排
+            append(BidiText.isolate(preview))
         }
     }
 

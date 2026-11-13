@@ -3,7 +3,6 @@ package com.niki914.zafiro.app.ui.chat.composable.body.standard
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,6 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.text.BidiSelectionContainer
+import com.niki914.uikit.text.BidiText
+import com.niki914.uikit.text.withContentDirection
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.helper.CopyBtnGap
 import com.niki914.zafiro.app.ui.chat.helper.MiniCopyButton
@@ -52,9 +54,9 @@ internal fun SimpleStatusBody(
     val text = if (hasCopyableReason) {
         val prefix = stringResource(R.string.ui_tool_status_failed)
         if (isMultiline) {
-            "$prefix:\n$rawReason"
+            "$prefix:\n${BidiText.forDisplay(rawReason)}"
         } else {
-            "$prefix: $rawReason"
+            "$prefix: ${BidiText.isolate(rawReason)}"
         }
     } else {
         stringResource(if (ui.isFailed) R.string.ui_tool_status_failed else R.string.ui_tool_status_success)
@@ -67,11 +69,11 @@ internal fun SimpleStatusBody(
                 openViewer(ViewerContent.Text(rawReason.orEmpty()))
             },
     ) {
-        SelectionContainer {
+        BidiSelectionContainer(stripMarks = hasCopyableReason && !BidiText.hasBidiControls(rawReason.orEmpty())) {
             Text(
                 text = text,
                 style = if (hasCopyableReason) {
-                    MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+                    MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace).withContentDirection()
                 } else {
                     MaterialTheme.typography.bodySmall
                 },
