@@ -265,4 +265,16 @@ class BidiTextTest {
             BidiText.isolate("נסה שוב בעוד 10–20 שניות"),
         )
     }
+
+    @Test
+    fun `isolate wraps each paragraph of a multiline value separately`() {
+        assertEquals(
+            "${lri}Remember English first.${pdi}\n${rli}זה זיכרון ארוך בעברית עם כמה מילים${pdi}",
+            BidiText.isolate("Remember English first.\nזה זיכרון ארוך בעברית עם כמה מילים"),
+        )
+        assertEquals(
+            "${rli}שורה ראשונה בעברית${pdi}\r\n\n${lri}second line${pdi}",
+            BidiText.isolate("שורה ראשונה בעברית\r\n\nsecond line"),
+        )
+    }
 }

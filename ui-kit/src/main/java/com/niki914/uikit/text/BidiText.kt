@@ -58,6 +58,8 @@ object BidiText {
     private val singleNumber = Regex(NUMBER)
 
     // 纯文本里用反引号包住的行内代码（用户输入或未渲染的 Markdown）
+    /** 一段的内容：Unicode 双向算法里段落分隔符（B 类）之间的文字。 */
+    private val paragraphBody = Regex("[^\\n\\r\\u001C-\\u001E\\u0085\\u2029]+")
     private val codeSpan = Regex("`[^`\\n]+`")
 
     /**
@@ -235,9 +237,14 @@ object BidiText {
     /** 用 [LRI] 或 [RLI] 隔离一段嵌在其他文本里的用户/模型内容（如工具意图、拒绝原因）。 */
     fun isolate(text: String): String {
         if (text.isEmpty() || hasBidiControls(text)) return text
-        if (directionOf(text) != BidiDirection.Rtl) return "$LRI$text$PDI"
+        // 隔离在段落分隔符处结束：每段按自己的方向单独隔离
+        return paragraphBody.replace(text) { isolateParagraph(it.value) }
+    }
+
+    private fun isolateParagraph(paragraph: String): String {
+        if (directionOf(paragraph) != BidiDirection.Rtl) return "$LRI$paragraph$PDI"
         // RTL 隔离区里的区间、路径同样会被打乱，内部也标出孤岛
-        return "$RLI${isolateLtrIslands(text)}$PDI"
+        return "$RLI${isolateLtrIslands(paragraph)}$PDI"
     }
 
     private fun paragraphForDisplay(paragraph: String): String {

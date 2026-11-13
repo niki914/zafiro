@@ -1030,7 +1030,7 @@ private fun ConversationDeleteConfirmationDialog(
         visible = conversation != null,
         onDismissRequest = onDismissRequest,
         title = stringResource(R.string.ui_conversation_history_delete_dialog_title),
-        text = stringResource(R.string.ui_conversation_history_delete_dialog_text, title),
+        text = stringResource(R.string.ui_conversation_history_delete_dialog_text, BidiText.isolate(title)),
         negativeButtonText = stringResource(R.string.ui_conversation_history_delete_dialog_cancel),
         positiveButtonText = stringResource(R.string.ui_conversation_history_delete_dialog_confirm),
         onNegativeClick = onDismissRequest,

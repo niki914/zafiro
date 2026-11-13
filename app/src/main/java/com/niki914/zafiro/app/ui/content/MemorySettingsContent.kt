@@ -25,6 +25,7 @@ import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.component.SwipeDismissSettingsItemCard
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
+import com.niki914.uikit.text.BidiText
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.PageBackHandler
 import com.niki914.zafiro.app.ui.PageChromeContribution
@@ -129,7 +130,7 @@ private fun MemorySettingsContentBody(
                 uiState.items.forEachIndexed { index, item ->
                     key(index to item) {
                         SwipeDismissSettingsItemCard(
-                            title = item,
+                            title = BidiText.isolate(item),
                             enabled = !uiState.isSaving,
                             onClick = {
                                 onStartEdit(index)
@@ -188,7 +189,7 @@ private fun MemoryDeleteConfirmationDialog(
         visible = state != null,
         onDismissRequest = onDismissRequest,
         title = stringResource(R.string.memory_delete_dialog_title),
-        text = stringResource(R.string.memory_delete_dialog_text, deleteValue),
+        text = stringResource(R.string.memory_delete_dialog_text, BidiText.isolate(deleteValue)),
         negativeButtonText = stringResource(R.string.memory_delete_dialog_cancel),
         positiveButtonText = stringResource(R.string.memory_delete_dialog_confirm),
         onNegativeClick = onDismissRequest,
