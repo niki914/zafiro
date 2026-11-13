@@ -60,6 +60,7 @@ internal object BackupExporter {
                 snapshot.pyInstallApkDir,
                 snapshot.pyDownloadFileDir,
             ).toByteArray()
+            built[BackupPartition.TextActions.jsonName] = snapshot.textActionsJson.toByteArray()
             built += skillEntries(snapshot)
         }
         if (BackupGroup.ExecutionRules in request.groups) {

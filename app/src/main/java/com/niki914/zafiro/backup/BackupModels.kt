@@ -101,6 +101,14 @@ enum class BackupPartition(
         listKey = "tools",
         honorsExplicitEmpty = false,
     ),
+    TextActions(
+        id = "text_actions",
+        group = BackupGroup.Tools,
+        apply = Apply.Items,
+        singletonApply = null,
+        listKey = "actions",
+        honorsExplicitEmpty = true,
+    ),
     ExecutionRules(
         id = "execution_rules",
         group = BackupGroup.ExecutionRules,
@@ -206,6 +214,7 @@ data class BackupSnapshot(
     val mcpServiceJson: String = """{"enabled":false,"bearerToken":""}""",
     val builtinToolsJson: String = """{"version":2,"enabled":{}}""",
     val pyToolsJson: String = """{"tools":[]}""",
+    val textActionsJson: String = """{"actions":[]}""",
     val executionRulesJson: String = """{"rules":[]}""",
     val takeoverRulesJson: String = """{"default_target":"ZAFIRO","rules":[]}""",
     val maskingRulesJson: String = """{"rules":[]}""",
