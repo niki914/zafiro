@@ -17,8 +17,11 @@ internal val backupJson: Json = Json {
 internal const val FORMAT_VERSION: Int = 1
 internal const val DOWNLOADS_PLACEHOLDER: String = "__ZAFIRO_DOWNLOADS__"
 
-private val neverExportKeys = setOf(
-    "onboarding_completed",
+/** 引导完成状态。随偏好导出；包里没有这个键时保留本机的值。 */
+internal const val ONBOARDING_COMPLETED = "onboarding_completed"
+
+/** 只留在本机的偏好。 */
+internal val neverExportKeys = setOf(
     "phone_use_consent_granted",
     "last_notified_update_version",
 )

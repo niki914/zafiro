@@ -72,9 +72,10 @@ class App : Application() {
         applicationScope.launch {
             PyRuntime.warmUp()
         }
-        // 临时调试入口。第 3 步删除。只在 debug 构建把全量备份写进应用私有目录。
+        // 临时调试入口。第 3 步删除。先导入 backup/import.zafiro，再导出调试备份。
         if (BuildConfig.DEBUG) {
             applicationScope.launch {
+                DebugBackupHook.importOnce(this@App)
                 DebugBackupHook.exportOnce(this@App)
             }
         }

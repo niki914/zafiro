@@ -14,8 +14,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * 从现网存储读出导出用的快照。规则类分区保持原文，显式空标记不被重新编码。
- * 文本动作与智能体注册表不在六组里，这里不读。
+ * 从现网存储读出导出用的快照。规则和文本动作按读到的 JSON 写入，显式空标记留在文档里。
+ * 智能体注册表不在备份组里，这里不读。
  */
 internal object BackupLiveSource {
 
@@ -32,6 +32,7 @@ internal object BackupLiveSource {
             mcpServiceJson = XRepo.readJson(StoreDescriptorRegistry.TOOLS_MCP_SERVICE_ID),
             builtinToolsJson = XRepo.readJson(StoreDescriptorRegistry.TOOLS_BUILTIN_ID),
             pyToolsJson = XRepo.readJson(StoreDescriptorRegistry.TOOLS_PY_ID),
+            textActionsJson = XRepo.readJson(StoreDescriptorRegistry.TOOLS_TEXT_ACTIONS_ID),
             executionRulesJson = XRepo.readJson(StoreDescriptorRegistry.RULES_EXECUTION_ID),
             takeoverRulesJson = XRepo.readJson(StoreDescriptorRegistry.RULES_TAKEOVER_ID),
             maskingRulesJson = XRepo.readJson(StoreDescriptorRegistry.RULES_MASKING_ID),

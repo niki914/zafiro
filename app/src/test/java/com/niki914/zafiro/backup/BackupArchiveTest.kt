@@ -1,7 +1,7 @@
 // 保护：.zafiro 的导出与检视契约。分区条数被数错、三种空状态被折成一种、
 // 密钥被写进搬家文件、同一张图打成两份、会话里留下绝对路径、只导出对话时丢掉
 // config_id、更高格式版本被当成当前版本、未知分区导致整包失败、路径含 .. 仍被接受、
-// 显式空标记在写出时被重新编码丢掉，这些改动会让检视或下一次恢复做错。
+// 显式空标记在写出时被重新编码丢掉、引导完成状态没进偏好，这些改动会让检视或下一次恢复做错。
 package com.niki914.zafiro.backup
 
 import com.niki914.okia.message.ContentBlock
@@ -12,6 +12,7 @@ import com.niki914.zafiro.api.text.FilesBlock
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -39,6 +40,7 @@ class BackupArchiveTest {
             mcpServiceJson = """{"enabled":false,"bearerToken":""}""",
             builtinToolsJson = """{"version":2,"enabled":{"a":true,"b":false,"c":true,"d":true,"e":false}}""",
             pyToolsJson = """{"tools":[{},{},{},{},{},{}]}""",
+            textActionsJson = """{"actions":[{},{}]}""",
             executionRulesJson = """{"rules":[{},{}]}""",
             takeoverRulesJson = """{"default_target":"ZAFIRO","rules":[{},{},{}]}""",
             maskingRulesJson = """{"rules":[{},{},{},{}]}""",
@@ -59,6 +61,7 @@ class BackupArchiveTest {
                 "skills" to 2,
                 "builtin_tools" to 5,
                 "py_tools" to 6,
+                "text_actions" to 2,
                 "execution_rules" to 2,
                 "takeover_rules" to 3,
                 "masking_rules" to 4,
@@ -291,18 +294,16 @@ class BackupArchiveTest {
     }
 
     @Test
-    fun deviceFlagsStayOutOfPreferences() {
+    fun onboardingIsExportedAndOtherDeviceFlagsStayOut() {
         val snapshot = BackupSnapshot(
-            appStateJson = """{"onboarding_completed":false,"phone_use_consent_granted":true,"last_notified_update_version":"9","theme_mode":"dark"}""",
+            appStateJson = """{"onboarding_completed":true,"phone_use_consent_granted":true,"last_notified_update_version":"9","theme_mode":"dark"}""",
         )
         val prefs = parseObjectOrNull(
             inspected(archive(request(BackupGroup.Config), snapshot)).texts.getValue("preferences"),
         )!!
 
-        assertTrue(
-            listOf("onboarding_completed", "phone_use_consent_granted", "last_notified_update_version")
-                .all { prefs[it] == null },
-        )
+        assertEquals(true, (prefs["onboarding_completed"] as JsonPrimitive).booleanOrNull)
+        assertTrue(prefs["phone_use_consent_granted"] == null && prefs["last_notified_update_version"] == null)
         assertEquals("dark", (prefs["theme_mode"] as JsonPrimitive).content)
     }
 
