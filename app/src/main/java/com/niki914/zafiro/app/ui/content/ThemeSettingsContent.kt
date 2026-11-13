@@ -9,6 +9,11 @@ import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -17,9 +22,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.os.LocaleListCompat
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.base.ThemeStyle
@@ -59,6 +71,45 @@ private const val LANGUAGE_TAG_EN = "en"
 private const val LANGUAGE_TAG_ES = "es"
 private const val LANGUAGE_TAG_JA = "ja"
 private const val LANGUAGE_TAG_RU = "ru"
+
+/**
+ * 引导外观页标题下的说明，同一行。
+ * 右侧「导入数据」按全文占位并留出间距；左侧问句只拿剩余宽度，不够就省略。
+ * 问句颜色对齐 [com.niki914.uikit.infra.component.PageDescriptionText]。
+ * 「导入数据」用主题色加下划线，这一轮不接收点击。
+ */
+@Composable
+private fun ExistingBackupHint() {
+    val style = MaterialTheme.typography.titleMedium.copy(
+        fontSize = 16.sp,
+        lineHeight = 28.sp,
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.ui_onboard_existing_backup_lead),
+            style = style,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = stringResource(R.string.ui_onboard_existing_backup_action),
+            style = style,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.primary,
+            textDecoration = TextDecoration.Underline,
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.padding(start = 16.dp),
+        )
+    }
+}
 
 /** 主题预设种子色（ARGB），顺序与 [ThemeColorLabelRes] 一一对应。 */
 internal val ThemeSeedColors: List<Int> = listOf(
@@ -114,6 +165,7 @@ private fun languageOptions(): List<LanguageOption> {
 fun ThemeSettingsContent(
     viewModel: ThemeSettingsViewModel = pageViewModel(),
     contentBottomPadding: Dp? = null,
+    showExistingBackupHint: Boolean = false,
     onPush: (ZafiroPage) -> Unit,
 ) {
     val uiState by viewModel.uiStateFlow.collectAsState()
@@ -203,6 +255,11 @@ fun ThemeSettingsContent(
     SettingsSpecPageContent(
         spec = spec,
         contentBottomPadding = contentBottomPadding,
+        contentBeforeSections = {
+            if (showExistingBackupHint) {
+                ExistingBackupHint()
+            }
+        },
         contentAfterSections = {
             SelectionGroupCard(
                 options = modeOptions.map { (mode, icon, labelRes) ->

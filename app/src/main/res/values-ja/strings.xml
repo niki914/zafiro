@@ -11,6 +11,8 @@
     <string name="ui_onboard_configure_title">モデル連携情報の設定</string>
     <string name="ui_onboard_configure_description">モデル設定を入力すると、すぐに利用を開始できます。</string>
     <string name="ui_onboard_configure_next">次へ</string>
+    <string name="ui_onboard_existing_backup_lead">バックアップはありますか？</string>
+    <string name="ui_onboard_existing_backup_action">データを読み込む</string>
     <string name="ui_onboard_configure_endpoint_override_title">カスタムエンドポイント</string>
     <string name="ui_onboard_configure_endpoint_override_description_off">デフォルトのエンドポイントを使用</string>
     <string name="ui_onboard_configure_endpoint_override_description_on">カスタムエンドポイントを使用</string>
@@ -444,6 +446,12 @@
     <string name="ui_settings_section_general">一般</string>
     <string name="ui_settings_general">一般設定</string>
     <string name="ui_settings_general_summary">起動と実行時の動作</string>
+    <string name="ui_settings_backup">バックアップと復元</string>
+    <string name="ui_settings_backup_description">設定、会話、ルールを書き出すか読み込む</string>
+    <string name="ui_settings_backup_export">書き出す</string>
+    <string name="ui_settings_backup_export_summary">内容を選んでファイルに保存</string>
+    <string name="ui_settings_backup_import">読み込む</string>
+    <string name="ui_settings_backup_import_summary">バックアップファイルから復元</string>
     <string name="ui_settings_general_group_appearance">外観と言語</string>
     <string name="ui_settings_general_group_floating_notification">フローティングと通知</string>
     <string name="ui_settings_general_group_conversation">会話と操作</string>

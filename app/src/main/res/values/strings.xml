@@ -11,6 +11,8 @@
     <string name="ui_onboard_configure_title">配置模型接入信息</string>
     <string name="ui_onboard_configure_description">填写模型配置，完成后即可开始使用。</string>
     <string name="ui_onboard_configure_next">下一步</string>
+    <string name="ui_onboard_existing_backup_lead">已有备份？</string>
+    <string name="ui_onboard_existing_backup_action">导入数据</string>
     <string name="ui_onboard_configure_endpoint_override_title">自定义接口</string>
     <string name="ui_onboard_configure_endpoint_override_description_off">使用默认端点</string>
     <string name="ui_onboard_configure_endpoint_override_description_on">将使用自定义端点</string>
@@ -450,6 +452,12 @@
     <string name="ui_settings_section_general">通用</string>
     <string name="ui_settings_general">通用设置</string>
     <string name="ui_settings_general_summary">启动与运行行为</string>
+    <string name="ui_settings_backup">备份与恢复</string>
+    <string name="ui_settings_backup_description">导出或导入配置、对话和规则</string>
+    <string name="ui_settings_backup_export">导出</string>
+    <string name="ui_settings_backup_export_summary">选择内容，保存成文件</string>
+    <string name="ui_settings_backup_import">导入</string>
+    <string name="ui_settings_backup_import_summary">从备份文件恢复</string>
     <string name="ui_settings_general_group_appearance">外观与语言</string>
     <string name="ui_settings_general_group_floating_notification">悬浮与通知</string>
     <string name="ui_settings_general_group_conversation">对话与交互</string>
