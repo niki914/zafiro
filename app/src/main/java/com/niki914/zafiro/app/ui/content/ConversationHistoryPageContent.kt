@@ -54,12 +54,15 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
@@ -75,6 +78,8 @@ import com.niki914.uikit.screen.zafiroScreenBottomPadding
 import com.niki914.uikit.screen.zafiroScreenTopPadding
 import com.niki914.uikit.scroll.ZafiroOverscrollContainer
 import com.niki914.uikit.scroll.rememberZafiroOverscrollController
+import com.niki914.uikit.text.BidiText
+import com.niki914.uikit.text.toTextDirection
 import com.niki914.uikit.textfield.ZafiroTextField
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.conversation.ConversationFormatter
@@ -599,7 +604,8 @@ private fun ConversationHistoryItem(
                 ) {
                     Text(
                         text = displayTitleAnnotated,
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                            .withListBidi(displayTitleAnnotated.text),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -666,7 +672,8 @@ private fun ConversationHistoryItem(
                 if (previewText.isNotBlank()) {
                     Text(
                         text = displayPreviewAnnotated,
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp)
+                            .withListBidi(displayPreviewAnnotated.text),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -676,6 +683,17 @@ private fun ConversationHistoryItem(
             }
         }
     }
+}
+
+/** 列表里的标题与预览：词序按文字自身方向，对齐仍跟随界面，列表保持整齐。 */
+@Composable
+private fun TextStyle.withListBidi(text: String): TextStyle {
+    val direction = remember(text) { BidiText.directionOf(text) }
+    val alignLeft = LocalLayoutDirection.current == LayoutDirection.Ltr
+    return copy(
+        textDirection = direction.toTextDirection(),
+        textAlign = if (alignLeft) TextAlign.Left else TextAlign.Right,
+    )
 }
 
 private fun originKindToIcon(kind: ConversationOriginKind): ImageVector = when (kind) {

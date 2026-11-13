@@ -46,6 +46,8 @@ import com.niki914.uikit.infra.interaction.InteractiveHighlight
 import com.niki914.uikit.infra.interaction.LiquidInteractiveStyle
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 import com.niki914.uikit.infra.shape.G2FieldShape
+import com.niki914.uikit.text.BidiText
+import com.niki914.uikit.text.withBidiDirection
 
 private val LiquidTextFieldInteractiveStyle =
     LiquidInteractiveStyle(
@@ -196,7 +198,7 @@ internal fun LiquidTextFieldContainer(
         visualTransformation = visualTransformation,
         textStyle = MaterialTheme.typography.bodyLarge.merge(
             TextStyle(color = textColor),
-        ),
+        ).withBidiDirection(BidiText.fieldDirectionOf(textFieldValue.text)),
         cursorBrush = SolidColor(colorScheme.primary),
         onTextLayout = { layout -> onTextLayout?.invoke(layout) },
         decorationBox = { innerTextField ->

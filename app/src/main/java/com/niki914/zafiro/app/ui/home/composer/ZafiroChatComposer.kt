@@ -53,6 +53,8 @@ import com.niki914.uikit.infra.interaction.LiquidInteractiveStyle
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.uikit.motion.springSquish
+import com.niki914.uikit.text.BidiText
+import com.niki914.uikit.text.withBidiDirection
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.home.composer.attach.ComposerAttachButton
 import com.niki914.zafiro.app.ui.home.composer.send.ComposerSendButton
@@ -156,7 +158,7 @@ fun ZafiroChatComposer(
             maxLines = if (expanded) EXPANDED_MAX_LINES else 1,
             textStyle = MaterialTheme.typography.bodyLarge.merge(
                 TextStyle(color = textColor),
-            ),
+            ).withBidiDirection(BidiText.fieldDirectionOf(textFieldValue.text)),
             cursorBrush = SolidColor(colorScheme.primary),
             onTextLayout = { layout -> onLayout(layout) },
             decorationBox = { innerTextField ->

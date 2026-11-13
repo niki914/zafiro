@@ -45,6 +45,8 @@ import com.niki914.uikit.base.LocalThemeStyle
 import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.uikit.motion.springSquish
+import com.niki914.uikit.text.BidiText
+import com.niki914.uikit.text.withBidiDirection
 
 /**
  * Material 输入框共享核心逻辑（状态双向同步、焦点、光标定位、动效计算与内部排版）：
@@ -164,7 +166,7 @@ private fun MaterialTextFieldCore(
             visualTransformation = visualTransformation,
             textStyle = MaterialTheme.typography.bodyLarge.merge(
                 TextStyle(color = textColor),
-            ),
+            ).withBidiDirection(BidiText.fieldDirectionOf(textFieldValue.text)),
             cursorBrush = SolidColor(colorScheme.primary),
             onTextLayout = { layout -> onTextLayout?.invoke(layout) },
             decorationBox = { innerTextField ->
