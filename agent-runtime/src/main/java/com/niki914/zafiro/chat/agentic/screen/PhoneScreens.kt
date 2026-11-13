@@ -32,8 +32,9 @@ import com.niki914.zafiro.chat.agentic.toImageToolResult
 import com.niki914.zafiro.chat.agentic.toToolError
 import kotlinx.coroutines.CancellationException
 
+// Phase 1 glue: connects to AccessibilityController directly; to be replaced in Phase 2 by DefaultDisplayPort.
 /**
- * 只有手机这一块屏。看和点进现有无障碍/shell，show 进现有启动和 ACTION_VIEW，
+ * 只有手机这一块屏。看和点进现有无障碍/shell，open 进现有启动和 ACTION_VIEW，
  * 截屏进现有 capture-and-ingest。虚拟屏和浏览器先拒绝。
  */
 object PhoneScreens : Screens {
@@ -182,17 +183,17 @@ private class PhoneScreen : Screen {
 
     override suspend fun show(target: ShowTarget): ShowResult {
         return when (target) {
-            is ShowTarget.AppName -> shown(LaunchAppBuiltin().showOnPhone(null, target.name))
-            is ShowTarget.PackageName -> shown(LaunchAppBuiltin().showOnPhone(target.packageName, null))
+            is ShowTarget.AppName -> LaunchAppBuiltin().showOnPhone(null, target.name)
+            is ShowTarget.PackageName -> LaunchAppBuiltin().showOnPhone(target.packageName, null)
             is ShowTarget.Uri -> {
                 val opened = OpenUriBuiltin().openForScreen(target.uri)
-                if (opened.ok) ShowResult.Shown(snapshot()) else ShowResult.Failed(opened.code)
+                if (opened.ok) {
+                    ShowResult.Shown(opened.message)
+                } else {
+                    ShowResult.Failed(opened.code)
+                }
             }
         }
-    }
-
-    private suspend fun shown(result: ShowResult): ShowResult {
-        return if (result is ShowResult.Shown) ShowResult.Shown(snapshot()) else result
     }
 
     private suspend fun onTarget(

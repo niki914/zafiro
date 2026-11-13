@@ -18,8 +18,10 @@ class ScreensBuiltin__V2 : TextResultBuiltinTool() {
     override val name: String = "screens"
     override val defaultEnabled: Boolean = true
     override val description: String =
-        "List screens, open a virtual_display or browser, or close a screen other than phone. " +
-            "Use the returned id with screen_operation, screenshot, and show."
+        "Manage screen surfaces. Operations: 'list' (list all active screens with their id, " +
+            "kind, and dimensions), 'open' (create a new 'virtual_display' or 'browser' screen), " +
+            "'close' (destroy an active screen other than 'phone'). Use the returned screen id with " +
+            "screen_operation, screenshot, and open."
     override val inputSchemaJson: String? = SCHEMA
 
     override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult {
@@ -72,9 +74,21 @@ class ScreensBuiltin__V2 : TextResultBuiltinTool() {
             {
               "type": "object",
               "properties": {
-                "operation": { "type": "string", "description": "list, open, or close." },
-                "kind": { "type": "string", "description": "virtual_display or browser. Required for open." },
-                "screen": { "type": "string", "description": "Required for close." }
+                "operation": {
+                  "type": "string",
+                  "description": "Operation to perform: 'list' (list all screens), 'open' (open new screen surface), 'close' (close an existing screen)."
+                },
+                "kind": {
+                  "type": "string",
+                  "description": "Screen kind to open: 'virtual_display' or 'browser'. Required when operation is 'open'."
+                },
+                "screen": {
+                  "type": "string",
+                  "description": "Screen ID to close (e.g. 'vd_1'). Main device screen 'phone' cannot be closed. Required when operation is 'close'."
+                },
+                "ui_intent": {
+                  "type": "string"
+                }
               },
               "required": ["operation"]
             }
