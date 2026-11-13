@@ -235,8 +235,9 @@ object BidiText {
     /** 用 [LRI] 或 [RLI] 隔离一段嵌在其他文本里的用户/模型内容（如工具意图、拒绝原因）。 */
     fun isolate(text: String): String {
         if (text.isEmpty() || hasBidiControls(text)) return text
-        val open = if (directionOf(text) == BidiDirection.Rtl) RLI else LRI
-        return "$open$text$PDI"
+        if (directionOf(text) != BidiDirection.Rtl) return "$LRI$text$PDI"
+        // RTL 隔离区里的区间、路径同样会被打乱，内部也标出孤岛
+        return "$RLI${isolateLtrIslands(text)}$PDI"
     }
 
     private fun paragraphForDisplay(paragraph: String): String {

@@ -260,5 +260,9 @@ class BidiTextTest {
     fun `isolate wraps embedded text by its own direction`() {
         assertEquals("${rli}בדוק את הקובץ${pdi}", BidiText.isolate("בדוק את הקובץ"))
         assertEquals("${lri}check the file${pdi}", BidiText.isolate("check the file"))
+        assertEquals(
+            "${rli}נסה שוב בעוד ${lri}10–20${pdi} שניות${pdi}",
+            BidiText.isolate("נסה שוב בעוד 10–20 שניות"),
+        )
     }
 }
