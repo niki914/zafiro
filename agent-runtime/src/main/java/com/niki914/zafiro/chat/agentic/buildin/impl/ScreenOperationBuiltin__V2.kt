@@ -22,8 +22,9 @@ class ScreenOperationBuiltin__V2 : TextResultBuiltinTool() {
     override val name: String = "screen_operation"
     override val defaultEnabled: Boolean = true
     override val description: String =
-        "Read and act on one screen. Pass screen id (phone, or an id returned by screens). " +
-            "Pass a node token or x,y. This tool does not choose an injection mechanism."
+        "Read and interact with a screen surface (UI tree node actions, gestures, keys, text injection, " +
+            "search). Provide target 'screen' ('phone' for the default device display, or an id from screens) " +
+            "and 'operation'."
     override val inputSchemaJson: String? = SCHEMA
 
     override suspend fun invokeText(request: BuiltinToolRequest): TextToolResult {
@@ -149,26 +150,78 @@ class ScreenOperationBuiltin__V2 : TextResultBuiltinTool() {
             {
               "type": "object",
               "properties": {
-                "screen": { "type": "string" },
+                "screen": {
+                  "type": "string",
+                  "description": "Target screen ID, e.g. 'phone' for the default device display, or an id from screens."
+                },
                 "operation": {
                   "type": "string",
-                  "description": "read, tap, long_click, scroll_forward, scroll_backward, set_text, search, swipe, key, history_back, history_forward, tabs, new_tab, close_tab, switch_tab."
+                  "description": "Operation to perform: read, tap, long_click, scroll_forward, scroll_backward, set_text, search, swipe, key, history_back, history_forward, tabs, new_tab, close_tab, switch_tab."
                 },
-                "token": { "type": "string" },
-                "x": { "type": "number" },
-                "y": { "type": "number" },
-                "text": { "type": "string" },
-                "keywords": { "type": "array", "items": { "type": "string" } },
-                "match_mode": { "type": "string" },
-                "limit": { "type": "number" },
-                "start_x": { "type": "number" },
-                "start_y": { "type": "number" },
-                "end_x": { "type": "number" },
-                "end_y": { "type": "number" },
-                "duration": { "type": "number" },
-                "code": { "type": "number" },
-                "url": { "type": "string" },
-                "tab_id": { "type": "string" }
+                "token": {
+                  "type": "string",
+                  "description": "Target node token '{version}_{index}' from the latest read snapshot (e.g. 'a3f2_42'). Required for set_text; preferred for tap, long_click, scroll_*."
+                },
+                "x": {
+                  "type": "number",
+                  "description": "Physical X coordinate in screen pixels. Fallback for tap, long_click, scroll_* when target is not in node tree."
+                },
+                "y": {
+                  "type": "number",
+                  "description": "Y coordinate. Same as `x`." 
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Text to type into targeted field. Required for set_text."
+                },
+                "keywords": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Keywords to search against node text and content descriptions. Required for search."
+                },
+                "match_mode": {
+                  "type": "string",
+                  "description": "Search match mode: 'any' (default) or 'all'."
+                },
+                "limit": {
+                  "type": "number",
+                  "description": "Maximum number of search results to return (default 10)."
+                },
+                "start_x": {
+                  "type": "number",
+                  "description": "Swipe start X in screen pixels. Required for swipe."
+                },
+                "start_y": {
+                  "type": "number",
+                  "description": "Swipe start Y. Same as `start_x`."
+                },
+                "end_x": {
+                  "type": "number",
+                  "description": "Swipe end X in screen pixels. Required for swipe."
+                },
+                "end_y": {
+                  "type": "number",
+                  "description": "Swipe end Y. Same as `end_x`."
+                },
+                "duration": {
+                  "type": "number",
+                  "description": "Swipe duration in milliseconds (default 300)."
+                },
+                "code": {
+                  "type": "number",
+                  "description": "Android key code to inject (e.g. 4 for BACK, 3 for HOME). Required for key."
+                },
+                "url": {
+                  "type": "string",
+                  "description": "URL to navigate to or open tab with."
+                },
+                "tab_id": {
+                  "type": "string",
+                  "description": "Browser tab identifier. Required for close_tab and switch_tab."
+                },
+                "ui_intent": {
+                  "type": "string"
+                }
               },
               "required": ["screen", "operation"]
             }

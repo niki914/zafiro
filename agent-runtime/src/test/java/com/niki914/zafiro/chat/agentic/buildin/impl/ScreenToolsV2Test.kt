@@ -113,17 +113,17 @@ class ScreenToolsV2Test {
     }
 
     @Test
-    fun showUriIsPassedThrough() = runTest {
-        val result = invokeText("show", """{"screen":"phone","uri":"https://example.com"}""")
+    fun openUriIsPassedThrough() = runTest {
+        val result = invokeText("open", """{"screen":"phone","uri":"https://example.com"}""")
 
-        assertEquals("tree", result.payload)
+        assertEquals(TextToolResult.Status.Success, result.status)
         assertEquals(ShowTarget.Uri("https://example.com"), screen.shown)
     }
 
     @Test
-    fun twoShowIdentifiersAreRejectedBeforeShow() = runTest {
+    fun twoOpenIdentifiersAreRejectedBeforeOpen() = runTest {
         val result = invokeText(
-            "show",
+            "open",
             """{"screen":"phone","app_name":"微信","uri":"https://example.com"}""",
         )
 
@@ -133,7 +133,7 @@ class ScreenToolsV2Test {
 
     @Test
     fun ambiguousAppNameReturnsCandidates() = runTest {
-        val result = invokeText("show", """{"screen":"phone","app_name":"微信"}""")
+        val result = invokeText("open", """{"screen":"phone","app_name":"微信"}""")
 
         assertEquals(SCREEN_AMBIGUOUS_APP, result.code)
         assertTrue(result.payload.contains("com.tencent.mm\t微信"))
@@ -247,7 +247,7 @@ class ScreenToolsV2Test {
                     ),
                 )
             }
-            return ShowResult.Shown(snap)
+            return ShowResult.Shown("opened")
         }
     }
 

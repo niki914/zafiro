@@ -5,8 +5,6 @@ import android.content.Intent
 import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.api.screen.AppHit
-import com.niki914.zafiro.api.screen.PhoneScreenId
-import com.niki914.zafiro.api.screen.ScreenSnapshot
 import com.niki914.zafiro.api.screen.ShowResult
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
@@ -64,7 +62,7 @@ class LaunchAppBuiltin : BuiltinTool() {
         return launchPackage(packageName = packageName, appInfo = null)
     }
 
-    /** phone 的 show 走同一条匹配和启动。成功时的快照由屏再抓一次。 */
+    /** phone 的 open 走同一条匹配和启动。 */
     internal suspend fun showOnPhone(packageName: String?, appName: String?): ShowResult {
         val result = if (!packageName.isNullOrBlank()) {
             launchPackage(packageName, null)
@@ -188,19 +186,7 @@ class LaunchAppBuiltin : BuiltinTool() {
     }
 
     private fun BuiltinToolResult.toScreenShow(): ShowResult {
-        if (ok) {
-            return ShowResult.Shown(
-                ScreenSnapshot(
-                    screen = PhoneScreenId,
-                    version = "",
-                    width = 0,
-                    height = 0,
-                    url = null,
-                    nodes = emptyList(),
-                    yaml = message,
-                ),
-            )
-        }
+        if (ok) return ShowResult.Shown(message)
         if (code == "AMBIGUOUS_APP_MATCH") {
             val name = data["app_name"]?.jsonPrimitive?.contentOrNull.orEmpty()
             val hits = (data["candidates"] as? JsonArray).orEmpty().mapNotNull { element ->

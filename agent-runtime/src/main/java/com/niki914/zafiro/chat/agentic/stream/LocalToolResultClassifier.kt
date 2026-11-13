@@ -40,6 +40,7 @@ data class ParsedToolResult(
             "screen_operation_shell",
             "screens",
             "show",
+            "open",
         )
 
         /**

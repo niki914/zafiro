@@ -50,7 +50,7 @@ class OpenUriBuiltin : BuiltinTool() {
         return openForScreen(uri)
     }
 
-    /** phone 的 show(Uri) 走同一条 ACTION_VIEW。 */
+    /** phone 的 open(Uri) 走同一条 ACTION_VIEW。 */
     internal suspend fun openForScreen(uri: String): BuiltinToolResult {
         if (uri.isBlank()) {
             return BuiltinToolResult.failure(

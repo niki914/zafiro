@@ -48,7 +48,7 @@ sealed interface ShowTarget {
 data class AppHit(val packageName: String, val label: String)
 
 sealed interface ShowResult {
-    data class Shown(val snapshot: ScreenSnapshot) : ShowResult
+    data class Shown(val message: String? = null) : ShowResult
     data class Ambiguous(val name: String, val candidates: List<AppHit>) : ShowResult
     data class Unsupported(val target: String) : ShowResult
     data class Failed(val code: String) : ShowResult

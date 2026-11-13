@@ -284,7 +284,7 @@ class XRepoDomainSettingsTest {
         assertEquals(1, store.writeIds.count { it == StoreDescriptorRegistry.TOOLS_BUILTIN_ID })
         val settings = XRepo.builtinTools.list().associateBy { it.name }
         assertFalse(settings.getValue("screen_operation").enabled)
-        assertFalse(settings.getValue("show").enabled)
+        assertFalse(settings.getValue("open").enabled)
         assertTrue(settings.getValue("shell").enabled)
 
         // 未知的组返回校验错误且不写盘
@@ -313,9 +313,9 @@ class XRepoDomainSettingsTest {
         XRepo.installStoreForTest(store)
         XRepo.init(context)
 
-        val show = XRepo.builtinTools.list().first { it.name == "show" }
+        val open = XRepo.builtinTools.list().first { it.name == "open" }
 
-        assertTrue(show.enabled)
+        assertTrue(open.enabled)
         assertTrue(store.writeIds.isEmpty())
     }
 
@@ -323,15 +323,15 @@ class XRepoDomainSettingsTest {
     fun builtinV2ExplicitDisabledFlagIsHonored() = runTest {
         val store = FakeDomainSettingsStore(
             StoreDescriptorRegistry.TOOLS_BUILTIN_ID to ToolSettingsCodec.encodeBuiltinEnabled(
-                mapOf("show" to false)
+                mapOf("open" to false)
             )
         )
         XRepo.installStoreForTest(store)
         XRepo.init(context)
 
-        val show = XRepo.builtinTools.list().first { it.name == "show" }
+        val open = XRepo.builtinTools.list().first { it.name == "open" }
 
-        assertFalse(show.enabled)
+        assertFalse(open.enabled)
         assertTrue(store.writeIds.isEmpty())
     }
 

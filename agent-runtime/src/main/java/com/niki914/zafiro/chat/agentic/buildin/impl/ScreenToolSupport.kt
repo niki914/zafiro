@@ -116,7 +116,7 @@ internal fun actToText(result: ActResult): TextToolResult {
 
 internal fun showToText(result: ShowResult): TextToolResult {
     return when (result) {
-        is ShowResult.Shown -> TextToolResult.success(result.snapshot.yaml)
+        is ShowResult.Shown -> TextToolResult.success(result.message.orEmpty())
         is ShowResult.Ambiguous -> TextToolResult.failure(
             code = SCREEN_AMBIGUOUS_APP,
             message = "Multiple apps match '${result.name}'.",
@@ -126,7 +126,7 @@ internal fun showToText(result: ShowResult): TextToolResult {
         )
         is ShowResult.Unsupported -> TextToolResult.failure(
             code = SCREEN_UNSUPPORTED,
-            message = "This screen does not support show of ${result.target}.",
+            message = "This screen does not support opening ${result.target}.",
         )
         is ShowResult.Failed -> TextToolResult.failure(
             code = result.code,

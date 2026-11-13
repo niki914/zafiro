@@ -20,12 +20,12 @@ class BuiltinToolTest {
                 "load_skill",
                 "memory",
                 "notify",
+                "open",
                 "py_meta_tools",
                 "screen_operation",
                 "screens",
                 "screenshot",
                 "shell",
-                "show",
                 "ssh",
                 "view_image",
             ),
@@ -36,7 +36,7 @@ class BuiltinToolTest {
     @Test
     fun screenTools_areDefaultEnabled() {
         val registry = BuiltinToolRegistry.default()
-        listOf("screen_operation", "screenshot", "show", "screens").forEach { name ->
+        listOf("screen_operation", "screenshot", "open", "screens").forEach { name ->
             assertEquals(true, registry.find(name)?.defaultEnabled)
         }
     }

@@ -140,9 +140,9 @@ class PhoneScreenMvpTest {
     }
 
     @Test
-    fun showUriEntersExistingOpen() = runTest {
+    fun openUriEntersExistingOpen() = runTest {
         withTimeout(2_000) {
-            val result = text("show", """{"screen":"phone","uri":"https://example.com"}""")
+            val result = text("open", """{"screen":"phone","uri":"https://example.com"}""")
 
             assertEquals("URI_OPEN_FAILED", result.code)
             assertFalse(result.code == SCREEN_SERVICE_UNAVAILABLE)

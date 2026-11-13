@@ -17,8 +17,9 @@ class ScreenshotBuiltin__V2 : BuiltinTool() {
     override val name: String = "screenshot"
     override val defaultEnabled: Boolean = true
     override val description: String =
-        "Capture one screen as an image. The screen argument selects which surface. " +
-            "Image width and height belong to that screen."
+        "Capture a full screenshot image of the specified screen surface. Provide 'screen' " +
+            "('phone' for default device screen, or an id from screens). Returns the ingested image " +
+            "path and dimensions. Use view_image or vision analysis to inspect visual state."
     override val inputSchemaJson: String? = SCHEMA
 
     override suspend fun invoke(request: BuiltinToolRequest): BuiltinToolResult {
@@ -79,7 +80,13 @@ class ScreenshotBuiltin__V2 : BuiltinTool() {
             {
               "type": "object",
               "properties": {
-                "screen": { "type": "string" }
+                "screen": {
+                  "type": "string",
+                  "description": "Target screen ID to capture, e.g. 'phone' for the default device display."
+                },
+                "ui_intent": {
+                  "type": "string"
+                }
               },
               "required": ["screen"]
             }
@@ -93,6 +100,7 @@ internal class ScreenImageUnavailable(
     message: String,
 ) : RuntimeException(message)
 
+// Phase 1 glue: connects to AccessibilityController directly; to be replaced in Phase 2 by DefaultDisplayPort.
 /** phone 截屏成功时，ingest 结果已经在 captureForTool 里做完。跨挂起点用 volatile，不靠线程局部。 */
 internal object LastPhoneCapture {
     @Volatile

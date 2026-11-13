@@ -48,7 +48,7 @@ object BuiltinToolGroups {
             members = listOf(
                 "screen_operation",
                 "screenshot",
-                "show",
+                "open",
                 "screens",
             ),
         ),
