@@ -11,6 +11,8 @@
     <string name="ui_onboard_configure_title">Configure Model Access</string>
     <string name="ui_onboard_configure_description">Enter your model settings to get started.</string>
     <string name="ui_onboard_configure_next">Next</string>
+    <string name="ui_onboard_existing_backup_lead">Already have a backup?</string>
+    <string name="ui_onboard_existing_backup_action">Import data</string>
     <string name="ui_onboard_configure_endpoint_override_title">Custom Endpoint</string>
     <string name="ui_onboard_configure_endpoint_override_description_off">Using default endpoint</string>
     <string name="ui_onboard_configure_endpoint_override_description_on">Using custom endpoint</string>
@@ -446,6 +448,12 @@
     <string name="ui_settings_section_general">General</string>
     <string name="ui_settings_general">General Settings</string>
     <string name="ui_settings_general_summary">Startup and runtime behavior</string>
+    <string name="ui_settings_backup">Backup &amp; Restore</string>
+    <string name="ui_settings_backup_description">Export or import settings, chats, and rules</string>
+    <string name="ui_settings_backup_export">Export</string>
+    <string name="ui_settings_backup_export_summary">Choose what to save</string>
+    <string name="ui_settings_backup_import">Import</string>
+    <string name="ui_settings_backup_import_summary">Restore from a file</string>
     <string name="ui_settings_general_group_appearance">Appearance &amp; Language</string>
     <string name="ui_settings_general_group_floating_notification">Floating &amp; Notifications</string>
     <string name="ui_settings_general_group_conversation">Conversation &amp; Interaction</string>

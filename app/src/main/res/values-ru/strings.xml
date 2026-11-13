@@ -8,6 +8,8 @@
     <string name="ui_onboard_configure_title">Настройка доступа к модели</string>
     <string name="ui_onboard_configure_description">Введите параметры модели, чтобы начать.</string>
     <string name="ui_onboard_configure_next">Далее</string>
+    <string name="ui_onboard_existing_backup_lead">Уже есть резервная копия?</string>
+    <string name="ui_onboard_existing_backup_action">Импортировать данные</string>
     <string name="ui_onboard_configure_endpoint_override_title">Свой адрес сервера</string>
     <string name="ui_onboard_configure_endpoint_override_description_off">Используется адрес по умолчанию</string>
     <string name="ui_onboard_configure_endpoint_override_description_on">Используется свой адрес</string>
@@ -406,6 +408,12 @@
     <string name="ui_settings_section_general">Общие</string>
     <string name="ui_settings_general">Общие настройки</string>
     <string name="ui_settings_general_summary">Поведение при запуске и работе</string>
+    <string name="ui_settings_backup">Резервная копия</string>
+    <string name="ui_settings_backup_description">Экспорт или импорт настроек, чатов и правил</string>
+    <string name="ui_settings_backup_export">Экспорт</string>
+    <string name="ui_settings_backup_export_summary">Выберите, что сохранить в файл</string>
+    <string name="ui_settings_backup_import">Импорт</string>
+    <string name="ui_settings_backup_import_summary">Восстановить из файла</string>
     <string name="ui_settings_general_group_appearance">Оформление и язык</string>
     <string name="ui_settings_general_group_floating_notification">Плавающий шар и уведомления</string>
     <string name="ui_settings_general_group_conversation">Диалог и взаимодействие</string>

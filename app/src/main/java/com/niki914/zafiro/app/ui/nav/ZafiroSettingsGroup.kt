@@ -73,6 +73,11 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_general_summary,
         routeSuffix = "general-settings",
     ),
+    Backup(
+        titleRes = R.string.ui_settings_backup,
+        summaryRes = null,
+        routeSuffix = "backup",
+    ),
     Storage(
         titleRes = R.string.ui_settings_storage,
         summaryRes = R.string.ui_settings_storage_summary,

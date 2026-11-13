@@ -11,6 +11,8 @@
     <string name="ui_onboard_configure_title">Configurar modelo</string>
     <string name="ui_onboard_configure_description">Complete la configuración del modelo para empezar a usar Zafiro.</string>
     <string name="ui_onboard_configure_next">Siguiente</string>
+    <string name="ui_onboard_existing_backup_lead">¿Ya tienes una copia de seguridad?</string>
+    <string name="ui_onboard_existing_backup_action">Importar datos</string>
     <string name="ui_onboard_configure_endpoint_override_title">Endpoint personalizado</string>
     <string name="ui_onboard_configure_endpoint_override_description_off">Usar endpoint predeterminado</string>
     <string name="ui_onboard_configure_endpoint_override_description_on">Se usará un endpoint personalizado</string>
@@ -446,6 +448,12 @@
     <string name="ui_settings_section_general">General</string>
     <string name="ui_settings_general">Ajustes generales</string>
     <string name="ui_settings_general_summary">Comportamiento de inicio y ejecución</string>
+    <string name="ui_settings_backup">Copia y restauración</string>
+    <string name="ui_settings_backup_description">Exportar o importar ajustes, chats y reglas</string>
+    <string name="ui_settings_backup_export">Exportar</string>
+    <string name="ui_settings_backup_export_summary">Elige qué guardar en un archivo</string>
+    <string name="ui_settings_backup_import">Importar</string>
+    <string name="ui_settings_backup_import_summary">Restaurar desde un archivo</string>
     <string name="ui_settings_general_group_appearance">Apariencia e idioma</string>
     <string name="ui_settings_general_group_floating_notification">Flotante y notificaciones</string>
     <string name="ui_settings_general_group_conversation">Conversación e interacción</string>
