@@ -427,6 +427,12 @@
     <string name="ui_backup_strategy_merge">Объединить</string>
     <string name="ui_backup_strategy_overwrite">Перезаписать</string>
     <string name="ui_backup_restart">Перезапустить сейчас</string>
+    <string name="ui_backup_export_done">Экспортировано</string>
+    <string name="ui_backup_import_invalid">Недействительный файл резервной копии</string>
+    <string name="ui_backup_export_failed">Не удалось экспортировать</string>
+    <string name="ui_backup_import_failed">Не удалось импортировать</string>
+    <string name="ui_backup_data_unchanged">Данные не изменены</string>
+    <string name="ui_backup_failure_copied">Скопировано</string>
     <string name="ui_backup_select_all">Выбрать все</string>
     <string name="ui_backup_select_none">Снять выбор</string>
     <string name="ui_backup_restoring">Восстановление</string>

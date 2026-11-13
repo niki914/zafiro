@@ -14,7 +14,6 @@ import com.niki914.zafiro.app.notification.ResidentNotificationManager
 import com.niki914.zafiro.app.notification.TurnNotificationManager
 import com.niki914.zafiro.app.overlay.FloatingBallOverlayManager
 import com.niki914.zafiro.app.wakelock.AgentWakeLockController
-import com.niki914.zafiro.backup.DebugBackupHook
 import com.niki914.zafiro.business.permission.Permission
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionState
@@ -56,28 +55,18 @@ class App : Application() {
         applicationScope.launch {
             UpdateCheckHolder.runOnce(BuildConfig.VERSION_NAME)
         }
-        applicationScope.launch {
-            XRepo.tryPutDefaultSettings()
-        }
+        StartupWrites.track(
+            applicationScope,
+            { XRepo.tryPutDefaultSettings() },
+            { XRepo.skills.seedDefaults() },
+            { XRepo.seedPyTools() },
+        )
         // OpenRouter 公共目录预热：免鉴权后台抓，30 分钟内不重拉；失败保留旧缓存
         applicationScope.launch {
             XRepo.cloudFacts.refreshOpenRouterIfStale()
         }
         applicationScope.launch {
-            XRepo.skills.seedDefaults()
-        }
-        applicationScope.launch {
-            XRepo.seedPyTools()
-        }
-        applicationScope.launch {
             PyRuntime.warmUp()
-        }
-        // 临时调试入口。第 3 步删除。先导入 backup/import.zafiro，再导出调试备份。
-        if (BuildConfig.DEBUG) {
-            applicationScope.launch {
-                DebugBackupHook.importOnce(this@App)
-                DebugBackupHook.exportOnce(this@App)
-            }
         }
 
         observeFloatingBall()

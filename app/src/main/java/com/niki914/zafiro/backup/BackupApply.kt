@@ -21,6 +21,7 @@ data class BackupApplyFailure(
     val partitionId: String,
     val message: String,
     val rolledBack: Boolean,
+    val stackTrace: String = "",
 )
 
 data class BackupApplyReport(
@@ -41,6 +42,9 @@ enum class ApplyRejectReason {
 sealed interface BackupApplyResult {
     data class Report(val report: BackupApplyReport) : BackupApplyResult
     data class Rejected(val reason: ApplyRejectReason) : BackupApplyResult
+
+    /** 停在下一组之前，已经写上的按快照写回去了。 */
+    data object Cancelled : BackupApplyResult
 }
 
 /**
@@ -56,6 +60,7 @@ internal object BackupImporter {
         source: File,
         selectedGroups: Set<BackupGroup>,
         strategy: BackupStrategy,
+        isCancelled: () -> Boolean = { false },
     ): BackupApplyResult = withContext(Dispatchers.IO) {
         apply(
             source = source,
@@ -67,6 +72,7 @@ internal object BackupImporter {
             sync = { partitions ->
                 if (BackupPartition.Preferences in partitions) syncPreferenceRuntime()
             },
+            isCancelled = isCancelled,
         )
     }
 
@@ -120,7 +126,9 @@ internal object BackupImporter {
         snapshotsDir: File,
         nowMillis: Long,
         sync: suspend (Set<BackupPartition>) -> Unit = {},
+        isCancelled: () -> Boolean = { false },
     ): BackupApplyResult {
+        if (isCancelled()) return BackupApplyResult.Cancelled
         if (selectedGroups.isEmpty()) return BackupApplyResult.Report(emptyReport())
         val opened = openArchive(source)
         if (opened is OpenArchive.Bad) return BackupApplyResult.Rejected(opened.reason)
@@ -132,6 +140,7 @@ internal object BackupImporter {
         val partitions = BackupPartition.entries.filter { partition ->
             partition.group in selectedGroups && partition.id in ready.summary.partitions
         }
+        if (isCancelled()) return BackupApplyResult.Cancelled
         val snapshot = runCatchingCancellable {
             writeSnapshot(store.read(), selectedGroups, snapshotsDir, nowMillis)
         }.getOrElse { throwable ->
@@ -139,7 +148,8 @@ internal object BackupImporter {
                 emptyReport(failure = failureOf(SNAPSHOT_PARTITION, throwable, rolledBack = false)),
             )
         }
-        return applyPartitions(ready.entries, partitions, strategy, store, snapshot, sync)
+        if (isCancelled()) return BackupApplyResult.Cancelled
+        return applyPartitions(ready.entries, partitions, strategy, store, snapshot, sync, isCancelled)
     }
 
     private suspend fun applyPartitions(
@@ -149,12 +159,14 @@ internal object BackupImporter {
         store: BackupStore,
         snapshot: File,
         sync: suspend (Set<BackupPartition>) -> Unit,
+        isCancelled: () -> Boolean,
     ): BackupApplyResult {
         val applied = mutableListOf<BackupPartition>()
         val counts = linkedMapOf<String, PartitionChangeCounts>()
         var current = partitions.firstOrNull()?.id ?: SNAPSHOT_PARTITION
         val outcome = runCatchingCancellable {
             for (partition in partitions) {
+                if (isCancelled()) return@applyPartitions onCancel(applied, counts, snapshot, store, current)
                 current = partition.id
                 val write = planPartition(
                     partition = partition,
@@ -168,10 +180,12 @@ internal object BackupImporter {
                 counts[partition.id] = write.counts
                 applied += partition
             }
+            if (isCancelled()) return@applyPartitions onCancel(applied, counts, snapshot, store, current)
         }
         val thrown = outcome.exceptionOrNull()
         if (thrown != null) {
-            val rolledBack = rollback(applied, snapshot, store)
+            val rollbackError = rollback(applied, snapshot, store)
+            val rolledBack = rollbackError == null
             val committed = if (rolledBack) emptySet() else applied.toSet()
             return BackupApplyResult.Report(
                 BackupApplyReport(
@@ -200,13 +214,32 @@ internal object BackupImporter {
         )
     }
 
+    private suspend fun onCancel(
+        applied: List<BackupPartition>,
+        counts: Map<String, PartitionChangeCounts>,
+        snapshot: File,
+        store: BackupStore,
+        current: String,
+    ): BackupApplyResult {
+        val error = rollback(applied, snapshot, store)
+        if (error == null) return BackupApplyResult.Cancelled
+        return BackupApplyResult.Report(
+            BackupApplyReport(
+                counts = counts,
+                snapshotPath = snapshot.absolutePath,
+                failure = failureOf(current, error, rolledBack = false),
+                restartRequired = restartRequired(applied),
+            ),
+        )
+    }
+
     private suspend fun rollback(
         applied: List<BackupPartition>,
         snapshot: File,
         store: BackupStore,
-    ): Boolean {
+    ): Throwable? {
         val opened = openArchive(snapshot)
-        val ready = opened as? OpenArchive.Ready ?: return false
+        val ready = opened as? OpenArchive.Ready ?: return IllegalStateException("snapshot unreadable")
         return runCatchingCancellable {
             for (partition in applied.asReversed()) {
                 val write = planPartition(
@@ -219,7 +252,7 @@ internal object BackupImporter {
                 )
                 applyWrite(store, write)
             }
-        }.isSuccess
+        }.exceptionOrNull()
     }
 }
 
@@ -344,7 +377,7 @@ private fun failureOf(
     rolledBack: Boolean,
 ): BackupApplyFailure {
     val message = throwable.message?.takeIf { it.isNotBlank() } ?: throwable.javaClass.simpleName
-    return BackupApplyFailure(partitionId, message, rolledBack)
+    return BackupApplyFailure(partitionId, message, rolledBack, throwable.stackTraceToString())
 }
 
 private const val SNAPSHOT_DIR = "backup/snapshots"

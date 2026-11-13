@@ -2,7 +2,8 @@
 // 没选的组被写进去、显式空被读成内置默认、引导完成状态没随偏好写回或旧包把本机的值抹掉、
 // 电话同意和版本号被导入、同一张图再写一遍、
 // 下载目录占位符留在工具代码里、.seed 没落盘、坏包仍然改本地、前面写成功的分区
-// 在失败后不退回、快照超过三份或丢掉密钥，这些改动会让恢复结果和报告对不上。
+// 在失败后不退回、快照超过三份或丢掉密钥、唯一分区写完后取消仍当成成功，
+// 这些改动会让恢复结果和报告对不上。
 package com.niki914.zafiro.backup
 
 import com.niki914.okia.message.ContentBlock
@@ -388,6 +389,85 @@ class BackupApplyTest {
 
         assertEquals(listOf("mcp_service"), report.restartRequired)
         assertEquals("""{"enabled":false,"bearerToken":""}""", store.mcpServiceJson)
+    }
+
+    @Test
+    fun cancelBeforeNextGroupRollsBackWhatWasWritten() {
+        val store = harness.memoryStore()
+        val localModels = """{"active_id":"local","prompt":"","configs":[]}"""
+        val localState = """{"onboarding_completed":false}"""
+        store.modelsJson = localModels
+        store.appStateJson = localState
+        val incoming = BackupSnapshot(
+            modelsJson = """{"active_id":"imported","prompt":"","configs":[]}""",
+            appStateJson = """{"onboarding_completed":true}""",
+        )
+        var stop = false
+        val result = harness.apply(
+            harness.archive(harness.request(BackupGroup.Config), incoming),
+            setOf(BackupGroup.Config),
+            BackupStrategy.Overwrite,
+            store,
+        ) {
+            if (store.modelsJson != localModels) stop = true
+            stop
+        }
+
+        assertTrue(result is BackupApplyResult.Cancelled)
+        assertEquals(localModels, store.modelsJson)
+        assertEquals(localState, store.appStateJson)
+    }
+
+    @Test
+    fun cancelWhoseRollbackFailsDoesNotClaimTheWriteWasUndone() {
+        val store = harness.memoryStore()
+        val localModels = """{"active_id":"local","prompt":"","configs":[]}"""
+        store.modelsJson = localModels
+        val incoming = BackupSnapshot(
+            modelsJson = """{"active_id":"imported","prompt":"","configs":[]}""",
+            appStateJson = """{"onboarding_completed":true}""",
+        )
+        val result = harness.apply(
+            harness.archive(harness.request(BackupGroup.Config), incoming),
+            setOf(BackupGroup.Config),
+            BackupStrategy.Overwrite,
+            store,
+        ) {
+            if (store.modelsJson != localModels) {
+                store.failPartition = BackupPartition.Models
+                true
+            } else {
+                false
+            }
+        }
+
+        val report = (result as BackupApplyResult.Report).report
+        assertEquals(false, report.failure?.rolledBack)
+        assertTrue(store.modelsJson.contains("imported"))
+    }
+
+    @Test
+    fun cancelDuringTheOnlyPartitionRollsThatWriteBack() {
+        val store = harness.memoryStore()
+        val localRules =
+            """{"rules":[{"id":"local-rule","name":"Local","enabled_mode":"ALWAYS","patterns":["rm"]}]}"""
+        store.executionRulesJson = localRules
+        var stop = false
+        val result = harness.apply(
+            harness.archive(
+                harness.request(BackupGroup.ExecutionRules),
+                BackupSnapshot(executionRulesJson = """{"rules":[],"_explicit":true}"""),
+            ),
+            setOf(BackupGroup.ExecutionRules),
+            BackupStrategy.Overwrite,
+            store,
+        ) {
+            if (store.executionRulesJson != localRules) stop = true
+            stop
+        }
+
+        assertTrue(result is BackupApplyResult.Cancelled)
+        assertEquals(localRules, store.executionRulesJson)
     }
 
     private val harness get() = BackupApplyHarness(folder)

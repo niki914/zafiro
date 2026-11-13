@@ -467,6 +467,12 @@
     <string name="ui_backup_strategy_merge">Merge</string>
     <string name="ui_backup_strategy_overwrite">Overwrite</string>
     <string name="ui_backup_restart">Restart now</string>
+    <string name="ui_backup_export_done">Exported</string>
+    <string name="ui_backup_import_invalid">Not a valid backup file</string>
+    <string name="ui_backup_export_failed">Export failed</string>
+    <string name="ui_backup_import_failed">Import failed</string>
+    <string name="ui_backup_data_unchanged">Data was not changed</string>
+    <string name="ui_backup_failure_copied">Copied</string>
     <string name="ui_backup_select_all">Select all</string>
     <string name="ui_backup_select_none">Select none</string>
     <string name="ui_backup_restoring">Restoring</string>
