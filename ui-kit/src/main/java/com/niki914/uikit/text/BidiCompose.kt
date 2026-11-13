@@ -84,7 +84,8 @@ private fun ClipEntry.withoutInsertedMarks(): ClipEntry {
 private const val INLINE_CONTENT_TAG = "androidx.compose.foundation.text.inlineContent"
 
 /**
- * RTL 段落的显示隔离：把 [BidiText.ltrIslands] 找到的孤岛（加上 [extraIslands]，如行内代码）包进 LRI…PDI。
+ * RTL 段落的显示标记：[BidiText.ltrIslands] 找到的孤岛（加上 [extraIslands]，如行内代码）两端插入
+ * [BidiText.islandMarks] 给出的字符。
  * 样式、链接与其他注解随原文一起保留；段落样式按原范围整体重新应用，插入的控制符不切开段落；
  * 与内嵌图片重叠的孤岛跳过，避免拆开占位符。
  */
@@ -99,15 +100,16 @@ fun AnnotatedString.isolateLtrIslands(extraIslands: List<IntRange> = emptyList()
     val source = if (paragraphs.isEmpty()) this else flatMapAnnotations { range ->
         if (range.item is ParagraphStyle) emptyList() else listOf(range)
     }
-    // 原文位置 -> 插入控制符后的位置（落在孤岛起点时位于 LRI 之前，落在孤岛之后时位于 PDI 之后）
+    // 原文位置 -> 插入控制符后的位置（落在孤岛起点时位于起始标记之前，落在孤岛之后时位于结束标记之后）
     fun shifted(index: Int) = index + islands.count { it.first < index } + islands.count { it.last < index }
     return buildAnnotatedString {
         var cursor = 0
-        for (island in islands) {
+        for ((island, marks) in islands.zip(BidiText.islandMarks(text, islands))) {
+            val (open, close) = marks
             append(source.subSequence(cursor, island.first))
-            append(BidiText.LRI)
+            append(open)
             append(source.subSequence(island.first, island.last + 1))
-            append(BidiText.PDI)
+            append(close)
             cursor = island.last + 1
         }
         append(source.subSequence(cursor, source.length))

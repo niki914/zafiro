@@ -1,4 +1,4 @@
-// 保护：在库生成的 AnnotatedString 上插入隔离符时，链接覆盖的文字与段落范围保持不变；按片复制段落样式会多出段落边界。
+// 保护：在库生成的 AnnotatedString 上插入方向标记时，链接覆盖的文字与段落范围保持不变；按片复制段落样式会多出段落边界。
 package com.niki914.uikit.text
 
 import androidx.compose.ui.text.LinkAnnotation
@@ -15,7 +15,7 @@ import org.junit.Test
 class BidiAnnotatedStringTest {
 
     @Test
-    fun `islands are isolated while link and span ranges keep covering the same text`() {
+    fun `islands are marked while link and span ranges keep covering the same text`() {
         val source = buildAnnotatedString {
             append("קרא ")
             withLink(LinkAnnotation.Url("https://example.com")) { append("src/main.kt") }
@@ -25,7 +25,7 @@ class BidiAnnotatedStringTest {
 
         val isolated = source.isolateLtrIslands()
 
-        assertEquals("קרא ⁦src/main.kt⁩ עכשיו", isolated.text)
+        assertEquals("קרא \u200Esrc/main.kt\u200E עכשיו", isolated.text)
         val link = isolated.getLinkAnnotations(0, isolated.length).single()
         assertEquals("src/main.kt", isolated.text.substring(link.start, link.end))
     }

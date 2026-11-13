@@ -102,7 +102,7 @@ internal fun readableText(content: String, node: ASTNode): String = buildString 
 @Composable
 internal fun rememberBlockDirection(content: String, node: ASTNode): BidiDirection? {
     val source = content.substring(node.startOffset, node.endOffset)
-    return remember(source) { BidiText.directionOf(readableText(content, node)) }
+    return remember(source) { BidiText.directionOf(readableText(content, node), backtickCode = false) }
 }
 
 /**

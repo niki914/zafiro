@@ -8,11 +8,11 @@ import org.junit.Test
 
 class BidiTextTest {
 
-    private val lrm = "‎"
-    private val rlm = "‏"
-    private val lri = "⁦"
-    private val rli = "⁧"
-    private val pdi = "⁩"
+    private val lrm = "\u200E"
+    private val rlm = "\u200F"
+    private val lri = "\u2066"
+    private val rli = "\u2067"
+    private val pdi = "\u2069"
 
     @Test
     fun `hebrew that opens with english words is rtl`() {
@@ -47,6 +47,11 @@ class BidiTextTest {
         val text = "תריץ --dry-run --verbose ./build.sh /tmp/out https://example.com"
 
         assertEquals(BidiDirection.Rtl, BidiText.directionOf(text))
+    }
+
+    @Test
+    fun `backtick code does not vote`() {
+        assertEquals(BidiDirection.Rtl, BidiText.directionOf("הרץ `adb shell pm list packages` עכשיו"))
     }
 
     @Test
@@ -103,25 +108,124 @@ class BidiTextTest {
     }
 
     @Test
+    fun `arithmetic between numbers is isolated as one run`() {
+        assertEquals("${lri}6*7${pdi}", BidiText.isolateLtrIslands("6*7"))
+        assertEquals("חשב ${lri}10 + 20 = 30${pdi} עכשיו", BidiText.forDisplay("חשב 10 + 20 = 30 עכשיו"))
+    }
+
+    @Test
+    fun `backtick code in plain text is isolated as one run`() {
+        assertEquals(
+            "הרץ ${lrm}`su -c 'id -u'`${lrm} עכשיו",
+            BidiText.forDisplay("הרץ `su -c 'id -u'` עכשיו"),
+        )
+    }
+
+    @Test
+    fun `dates and versions are isolated whole or not at all`() {
+        assertEquals("נפגש ב${lri}12/11/2026${pdi} בשעה 10:30", BidiText.isolateLtrIslands("נפגש ב12/11/2026 בשעה 10:30"))
+        assertEquals("גרסה v1.2.3+456 עכשיו", BidiText.isolateLtrIslands("גרסה v1.2.3+456 עכשיו"))
+    }
+
+    @Test
+    fun `islands get strong marks so a latin phrase around them stays one run`() {
+        assertEquals("הרץ npm run build ${lrm}--prod${lrm} עכשיו", BidiText.forDisplay("הרץ npm run build --prod עכשיו"))
+        assertEquals(
+            "צריך Python (${lrm}3.10–3.12${lrm}) בשביל זה",
+            BidiText.forDisplay("צריך Python (3.10–3.12) בשביל זה"),
+        )
+        assertEquals(
+            "תריץ ${lrm}--dry-run${lrm} ${lrm}./build.sh${lrm} ${lrm}/tmp/out${lrm}",
+            BidiText.forDisplay("תריץ --dry-run ./build.sh /tmp/out"),
+        )
+    }
+
+    @Test
+    fun `code with rtl letters is isolated instead of marked`() {
+        assertEquals("הרץ ${lri}`echo \"שלום\"`${pdi} עכשיו", BidiText.forDisplay("הרץ `echo \"שלום\"` עכשיו"))
+        // ADLAM CAPITAL LETTER ALIF (U+1E900) is outside the BMP: two UTF-16 chars, one RTL letter
+        val adlam = "\uD83A\uDD00"
+        assertEquals("קרא ${lri}`echo $adlam`${pdi} עכשיו", BidiText.forDisplay("קרא `echo $adlam` עכשיו"))
+    }
+
+    @Test
+    fun `numbers without a latin neighbour are isolated so later numbers keep their place`() {
+        assertEquals("הערכים הם 1, ${lri}10–20${pdi}, 2, 3 עכשיו", BidiText.forDisplay("הערכים הם 1, 10–20, 2, 3 עכשיו"))
+        assertEquals("בין ${lrm}10–20${lrm} seconds", BidiText.forDisplay("בין 10–20 seconds"))
+        assertEquals(
+            "הערכים הם 1, ${lri}10–20${pdi}, 2, 3 (API) עכשיו",
+            BidiText.forDisplay("הערכים הם 1, 10–20, 2, 3 (API) עכשיו"),
+        )
+    }
+
+    @Test
+    fun `letters inside an isolated island are not context for a number island`() {
+        assertEquals(
+            "הערכים הם 1, ${lri}10–20${pdi}, 2, 3 ${lri}`echo שלום`${pdi} עכשיו",
+            BidiText.forDisplay("הערכים הם 1, 10–20, 2, 3 `echo שלום` עכשיו"),
+        )
+        assertEquals(
+            "${lri}`שלום echo`${pdi} ${lri}10–20${pdi}, 2, 3 עכשיו",
+            BidiText.forDisplay("`שלום echo` 10–20, 2, 3 עכשיו"),
+        )
+    }
+
+    @Test
+    fun `a multiline isolated island keeps its line break as a context boundary`() {
+        val text = "API  echo\nשלום  10–20, 2, 3 עכשיו"
+        assertEquals(
+            listOf(lri.single() to pdi.single(), lri.single() to pdi.single()),
+            BidiText.islandMarks(text, listOf(4..14, 16..20)),
+        )
+    }
+
+    @Test
+    fun `arabic indic digits keep their own rtl behaviour`() {
+        assertEquals("من ١٠–٢٠ ثانية", BidiText.isolateLtrIslands("من ١٠–٢٠ ثانية"))
+        assertEquals("הרץ ${lri}`echo ٣`${pdi} עכשיו", BidiText.forDisplay("הרץ `echo ٣` עכשיו"))
+    }
+
+    @Test
+    fun `an rtl paragraph that opens with an island still gets an rtl base`() {
+        assertEquals("${rlm}${lrm}--verbose${lrm} עוזר לראות הכול", BidiText.forDisplay("--verbose עוזר לראות הכול"))
+        assertEquals("${lri}10–20${pdi} שניות בערך", BidiText.forDisplay("10–20 שניות בערך"))
+    }
+
+    @Test
+    fun `first strong detection skips the inside of an isolate`() {
+        assertEquals("${rlm}${lri}`שלום`${pdi} API מחזיר תשובה", BidiText.forDisplay("`שלום` API מחזיר תשובה"))
+    }
+
+    @Test
+    fun `literal backticks in parsed markdown are plain characters`() {
+        val text = "Hello ` one two three four five six ` שלום"
+        assertEquals(BidiDirection.Ltr, BidiText.directionOf(text, backtickCode = false))
+
+        val prose = "הסימן ` אומר start והסימן ` אומר end"
+        val ticks = listOf(prose.indexOf('`'), prose.lastIndexOf('`')).map { it..it }
+        assertEquals(ticks, BidiText.ltrIslands(prose, extra = ticks))
+    }
+
+    @Test
     fun `hyphenated names are not ranges`() {
         assertEquals("COVID-19 v2-3", BidiText.isolateLtrIslands("COVID-19 v2-3"))
     }
 
     @Test
     fun `technical tokens in rtl paragraphs are isolated without their trailing punctuation`() {
-        assertEquals("קרא את ${lri}src/main.kt${pdi}.", BidiText.forDisplay("קרא את src/main.kt."))
-        assertEquals("הרץ עם ${lri}--dry-run${pdi} קודם", BidiText.forDisplay("הרץ עם --dry-run קודם"))
+        assertEquals("קרא את ${lrm}src/main.kt${lrm}.", BidiText.forDisplay("קרא את src/main.kt."))
+        assertEquals("הרץ עם ${lrm}--dry-run${lrm} קודם", BidiText.forDisplay("הרץ עם --dry-run קודם"))
     }
 
     @Test
     fun `brackets around a path stay outside the isolate as a pair`() {
-        assertEquals("ראה (${lri}../src/app.ts${pdi}) עכשיו", BidiText.forDisplay("ראה (../src/app.ts) עכשיו"))
+        assertEquals("ראה (${lrm}../src/app.ts${lrm}) עכשיו", BidiText.forDisplay("ראה (../src/app.ts) עכשיו"))
     }
 
     @Test
     fun `brackets that belong to a path or url stay inside the isolate`() {
-        assertEquals("ראה ${lri}src/(old)${pdi} עכשיו", BidiText.forDisplay("ראה src/(old) עכשיו"))
-        assertEquals("(${lri}https://example.com/a(b)${pdi})", BidiText.isolateLtrIslands("(https://example.com/a(b))"))
+        assertEquals("ראה ${lrm}src/(old)${lrm} עכשיו", BidiText.forDisplay("ראה src/(old) עכשיו"))
+        assertEquals("(${lrm}https://example.com/a(b)${lrm})", BidiText.isolateLtrIslands("(https://example.com/a(b))"))
     }
 
     @Test(timeout = 1_000)

@@ -83,7 +83,9 @@ internal fun AssistantMarkdownTable(
     // 列序随调用方提供的表格方向（RTL 表格第一列在右侧），每个单元格的文字按自己的方向排版
     val tableSource = content.substring(node.startOffset, node.endOffset)
     val cellDirections = remember(tableSource) {
-        cellsByRow.map { row -> row.map { cell -> BidiText.directionOf(readableText(content, cell)) } }
+        cellsByRow.map { row ->
+            row.map { cell -> BidiText.directionOf(readableText(content, cell), backtickCode = false) }
+        }
     }
 
     val columnWidths = remember(node, content, style, density, textMeasurer, cellPadding) {
