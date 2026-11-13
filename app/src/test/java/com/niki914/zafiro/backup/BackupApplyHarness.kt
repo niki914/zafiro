@@ -30,6 +30,7 @@ internal class BackupApplyHarness(
         groups: Set<BackupGroup>,
         strategy: BackupStrategy,
         store: MemoryBackupStore,
+        isCancelled: () -> Boolean = { false },
     ): BackupApplyResult = runBlocking {
         withTimeout(5_000) {
             BackupImporter.apply(
@@ -39,6 +40,7 @@ internal class BackupApplyHarness(
                 store = store,
                 snapshotsDir = store.snapshotsDir,
                 nowMillis = 1_700_000_000_000,
+                isCancelled = isCancelled,
             )
         }
     }

@@ -471,6 +471,12 @@
     <string name="ui_backup_strategy_merge">合并</string>
     <string name="ui_backup_strategy_overwrite">覆盖</string>
     <string name="ui_backup_restart">立即重启</string>
+    <string name="ui_backup_export_done">已导出</string>
+    <string name="ui_backup_import_invalid">不是有效的备份文件</string>
+    <string name="ui_backup_export_failed">导出失败</string>
+    <string name="ui_backup_import_failed">导入失败</string>
+    <string name="ui_backup_data_unchanged">数据未修改</string>
+    <string name="ui_backup_failure_copied">已复制</string>
     <string name="ui_backup_select_all">全选</string>
     <string name="ui_backup_select_none">全不选</string>
     <string name="ui_backup_restoring">正在恢复</string>

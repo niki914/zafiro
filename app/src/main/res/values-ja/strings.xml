@@ -465,6 +465,12 @@
     <string name="ui_backup_strategy_merge">統合</string>
     <string name="ui_backup_strategy_overwrite">上書き</string>
     <string name="ui_backup_restart">今すぐ再起動</string>
+    <string name="ui_backup_export_done">書き出しました</string>
+    <string name="ui_backup_import_invalid">有効なバックアップファイルではありません</string>
+    <string name="ui_backup_export_failed">書き出しに失敗しました</string>
+    <string name="ui_backup_import_failed">読み込みに失敗しました</string>
+    <string name="ui_backup_data_unchanged">データは変更されていません</string>
+    <string name="ui_backup_failure_copied">コピーしました</string>
     <string name="ui_backup_select_all">すべて選択</string>
     <string name="ui_backup_select_none">すべて解除</string>
     <string name="ui_backup_restoring">復元しています</string>
