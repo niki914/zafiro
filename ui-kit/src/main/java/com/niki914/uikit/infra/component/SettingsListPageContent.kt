@@ -28,7 +28,7 @@ import com.niki914.uikit.infra.liquidScreenBottomPadding
 import com.niki914.uikit.infra.liquidScreenTopPadding
 import com.niki914.uikit.infra.nav.LocalPageTitle
 
-import com.niki914.uikit.infra.scrollbar.LiquidScrollableContainer
+import com.niki914.uikit.scroll.ZafiroScrollableContainer
 import com.niki914.uikit.infra.scrollbar.LiquidScrollbarDefaults
 import com.niki914.uikit.infra.scrollbar.rememberLiquidOverscrollController
 import com.niki914.uikit.infra.scrollbar.rememberScrollStateAdapter
@@ -84,7 +84,7 @@ fun SettingsListPageContent(
         Modifier
     }
 
-    LiquidScrollableContainer(
+    ZafiroScrollableContainer(
         state = scrollbarState,
         overscrollController = overscrollController,
         topClearance = liquidScreenTopPadding(24.dp),
