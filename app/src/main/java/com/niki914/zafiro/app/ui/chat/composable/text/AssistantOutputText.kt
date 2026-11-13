@@ -2,15 +2,17 @@ package com.niki914.zafiro.app.ui.chat.composable.text
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,7 +26,10 @@ import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.uikit.text.BidiSelectionContainer
+import com.niki914.uikit.text.BidiText
 import com.niki914.zafiro.app.ui.chat.composable.body.custom.AssistantCodeBlock
+import org.intellij.markdown.MarkdownTokenTypes
 
 val LocalMarkdownScale = compositionLocalOf { 1.0f }
 
@@ -65,14 +70,18 @@ fun AssistantOutputText(
     modifier: Modifier = Modifier,
 ) {
     val markdownState = rememberMarkdownState(content = text, retainState = true)
+    // 原文自带方向控制符时不插入隔离符，复制时也不清理
+    val isolate = remember(text) { !BidiText.hasBidiControls(text) }
 
-    SelectionContainer(modifier = modifier.fillMaxWidth()) {
-        Markdown(
-            markdownState = markdownState,
-            modifier = Modifier.fillMaxWidth(),
-            typography = assistantMarkdownTypography(),
-            components = assistantMarkdownComponents(),
-        )
+    BidiSelectionContainer(stripMarks = isolate, modifier = modifier.fillMaxWidth()) {
+        CompositionLocalProvider(LocalBidiIsolation provides isolate) {
+            Markdown(
+                markdownState = markdownState,
+                modifier = Modifier.fillMaxWidth(),
+                typography = assistantMarkdownTypography(),
+                components = assistantMarkdownComponents(),
+            )
+        }
     }
 }
 
@@ -80,25 +89,45 @@ fun AssistantOutputText(
 private fun assistantMarkdownComponents(): MarkdownComponents = remember {
     markdownComponents(
         table = { model ->
-            AssistantMarkdownTable(
-                content = model.content,
-                node = model.node,
-                style = model.typography.table,
-            )
+            ProvideLayoutDirection(rememberBlockDirection(model.content, model.node)) {
+                AssistantMarkdownTable(
+                    content = model.content,
+                    node = model.node,
+                    style = model.typography.table,
+                )
+            }
         },
         codeFence = { model ->
-            MarkdownCodeFence(model.content, model.node, style = model.typography.code) { code, _, style ->
-                AssistantCodeBlock(code = code, style = style)
+            LtrCode {
+                MarkdownCodeFence(model.content, model.node, style = model.typography.code.ltr()) { code, _, style ->
+                    AssistantCodeBlock(code = code, style = style)
+                }
             }
         },
         codeBlock = { model ->
-            MarkdownCodeBlock(model.content, model.node, style = model.typography.code) { code, _, style ->
-                AssistantCodeBlock(code = code, style = style)
+            LtrCode {
+                MarkdownCodeBlock(model.content, model.node, style = model.typography.code.ltr()) { code, _, style ->
+                    AssistantCodeBlock(code = code, style = style)
+                }
             }
         },
         checkbox = { model -> MarkdownCheckBox(model.content, model.node, model.typography.text) },
+        paragraph = { model -> BidiParagraph(model) },
+        heading1 = { model -> BidiHeader(model, model.typography.h1) },
+        heading2 = { model -> BidiHeader(model, model.typography.h2) },
+        heading3 = { model -> BidiHeader(model, model.typography.h3) },
+        heading4 = { model -> BidiHeader(model, model.typography.h4) },
+        heading5 = { model -> BidiHeader(model, model.typography.h5) },
+        heading6 = { model -> BidiHeader(model, model.typography.h6) },
+        setextHeading1 = { model -> BidiHeader(model, model.typography.h1, MarkdownTokenTypes.SETEXT_CONTENT) },
+        setextHeading2 = { model -> BidiHeader(model, model.typography.h2, MarkdownTokenTypes.SETEXT_CONTENT) },
+        blockQuote = { model -> BidiBlockQuote(model) },
+        orderedList = { model -> BidiOrderedList(model) },
+        unorderedList = { model -> BidiBulletList(model) },
     )
 }
+
+private fun TextStyle.ltr(): TextStyle = copy(textDirection = TextDirection.Ltr)
 
 @Composable
 private fun assistantMarkdownTypography(
