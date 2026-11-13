@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <!-- 调试版在系统文本选择菜单里与正式版同屏，改名以便区分 -->
+        <activity
+            android:name="com.niki914.zafiro.app.trigger.TextActionActivity"
+            android:label="@string/text_action_menu_label_debug"
+            tools:replace="android:label" />
+    </application>
+</manifest>
