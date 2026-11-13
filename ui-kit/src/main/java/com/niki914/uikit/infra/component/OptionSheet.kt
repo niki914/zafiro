@@ -13,10 +13,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +38,7 @@ import kotlinx.coroutines.launch
  *   [onDismissRequest] 与动作，避免 sheet 闪现消失。
  * - [bodyModifier] 透传给「标题 + header + content」的容器，调用方按需加高度约束
  *   （例如把单锁在屏高 50%~60%）。
+ * - [dismissible] 为 false 时，点遮罩、下拉、系统返回都留在展开态。
  * - 单圆角用 G2，与 composer / 对话框 / 卡片同语言；sheet 在独立窗口里，
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,17 +48,33 @@ fun OptionSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     title: String? = null,
+    dismissible: Boolean = true,
     bodyModifier: Modifier = Modifier,
     header: @Composable ColumnScope.() -> Unit = {},
     content: @Composable ColumnScope.(dismissThen: (() -> Unit) -> Unit) -> Unit,
 ) {
     if (!visible) return
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // confirmValueChange 在 SheetState 创建时记下。lambda 必须稳定，并在调用时读最新值，
+    // 否则锁不上中途变锁的单，或者每次重组都把单的展开状态重置。
+    val dismissibleState = rememberUpdatedState(dismissible)
+    val confirmValueChange = remember<(SheetValue) -> Boolean> {
+        { target -> target != SheetValue.Hidden || dismissibleState.value }
+    }
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        confirmValueChange = confirmValueChange,
+    )
     val scope = rememberCoroutineScope()
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
+        sheetGesturesEnabled = dismissible,
+        properties = ModalBottomSheetProperties(
+            shouldDismissOnBackPress = dismissible,
+            shouldDismissOnClickOutside = dismissible,
+        ),
         // 只圆上面两角：底边贴在屏幕外
         shape = G2FieldShape(
             topStart = 32.dp,
@@ -79,7 +100,9 @@ fun OptionSheet(
                 header()
                 content { action ->
                     scope.launch {
+                        if (!dismissibleState.value) return@launch
                         sheetState.hide()
+                        if (sheetState.isVisible) return@launch
                         onDismissRequest()
                         action()
                     }

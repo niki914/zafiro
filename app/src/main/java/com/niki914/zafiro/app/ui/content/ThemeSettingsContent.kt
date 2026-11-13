@@ -1,6 +1,11 @@
 package com.niki914.zafiro.app.ui.content
 
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.DarkMode
@@ -9,13 +14,11 @@ import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Translate
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,7 +28,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,7 +57,9 @@ import com.niki914.zafiro.app.ui.model.ThemeSettingsEffect
 import com.niki914.zafiro.app.ui.model.ThemeSettingsIntent
 import com.niki914.zafiro.app.ui.model.ThemeSettingsViewModel
 import com.niki914.zafiro.app.ui.nav.MarkdownScalePage
+import com.niki914.zafiro.app.ui.nav.SettingsDetailPage
 import com.niki914.zafiro.app.ui.nav.ZafiroPage
+import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -76,10 +84,14 @@ private const val LANGUAGE_TAG_RU = "ru"
  * 引导外观页标题下的说明，同一行。
  * 右侧「导入数据」按全文占位并留出间距；左侧问句只拿剩余宽度，不够就省略。
  * 问句颜色对齐 [com.niki914.uikit.infra.component.PageDescriptionText]。
- * 「导入数据」用主题色加下划线，这一轮不接收点击。
+ * 「导入数据」用主题色加下划线。点它进入备份与恢复，返回逻辑与 Markdown 缩放相同。
  */
 @Composable
-private fun ExistingBackupHint() {
+private fun ExistingBackupHint(
+    onImport: () -> Unit,
+) {
+    val haptics = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
     val style = MaterialTheme.typography.titleMedium.copy(
         fontSize = 16.sp,
         lineHeight = 28.sp,
@@ -106,7 +118,18 @@ private fun ExistingBackupHint() {
             textDecoration = TextDecoration.Underline,
             maxLines = 1,
             softWrap = false,
-            modifier = Modifier.padding(start = 16.dp),
+            modifier = Modifier
+                .padding(start = 16.dp)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        onImport()
+                    },
+                )
+                .padding(vertical = 4.dp),
         )
     }
 }
@@ -257,7 +280,9 @@ fun ThemeSettingsContent(
         contentBottomPadding = contentBottomPadding,
         contentBeforeSections = {
             if (showExistingBackupHint) {
-                ExistingBackupHint()
+                ExistingBackupHint(
+                    onImport = { onPush(SettingsDetailPage(ZafiroSettingsGroup.Backup)) },
+                )
             }
         },
         contentAfterSections = {
