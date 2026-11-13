@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -95,6 +96,7 @@ fun LiquidScreen(
     val screenBackdrop = rememberCombinedBackdrop(contentBackdrop, chromeBackdrop)
     val titleHorizontalPadding = with(density) { 12.dp * 2 + 48.sp.toDp() }
     val dialogHostState = remember { LiquidDialogHostState() }
+    val sheetBackdropBlurState = remember { SheetBackdropBlurState() }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val buttonSlotHeight = ZafiroTopBarDefaults.ButtonSlotHeight
     val actionBarHeight = topInset + buttonSlotHeight
@@ -146,6 +148,7 @@ fun LiquidScreen(
         LocalScreenBackdrop provides screenBackdrop,
         LocalLiquidDialogHostState provides dialogHostState,
         LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
+        LocalSheetBackdropBlur provides sheetBackdropBlurState,
     ) {
         val themeStyle = LocalThemeStyle.current
         val isLiquid = themeStyle == ThemeStyle.LiquidGlass
@@ -155,104 +158,112 @@ fun LiquidScreen(
             Modifier
         }
 
+        val sheetBlurRadius = 15f * sheetBackdropBlurState.progress
+
         Box(
             modifier = modifier.fillMaxSize(),
         ) {
-            // Layer 1: page content
-            CompositionLocalProvider(
-                LocalLiquidScreenContentContext provides LiquidScreenContentContext(
-                    topPadding = actionBarHeight,
-                    bottomPadding = navigationBottom + BottomInsetSpacing,
-                    actionButtonBottomPadding = navigationBottom + ActionButtonBottomSpacing,
-                    isTitleCollapsible = state.isTitleCollapsible,
-                ),
+            // Layer 1~3 一体：页面内容与顶栏一起虚化，浮层（Layer 4）留在外层保持清晰。
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(sheetBlurRadius.dp),
             ) {
+                // Layer 1: page content
+                CompositionLocalProvider(
+                    LocalLiquidScreenContentContext provides LiquidScreenContentContext(
+                        topPadding = actionBarHeight,
+                        bottomPadding = navigationBottom + BottomInsetSpacing,
+                        actionButtonBottomPadding = navigationBottom + ActionButtonBottomSpacing,
+                        isTitleCollapsible = state.isTitleCollapsible,
+                    ),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .nestedScroll(titleBarScrollConnection)
+                            .then(backdropCaptureModifier)
+                            .background(MaterialTheme.colorScheme.background),
+                    ) {
+                        content()
+                    }
+                }
+
+                // Layer 2: action bar background
+                AnimatedVisibility(
+                    visible = state.showBlurLayer,
+                    modifier = Modifier
+                        .zIndex(2f)
+                        .align(Alignment.TopCenter),
+                    enter = fadeIn(tween(320, easing = FastOutSlowInEasing)),
+                    exit = fadeOut(tween(320, easing = FastOutSlowInEasing)),
+                ) {
+                    if (isLiquid) {
+                        LiquidTopBarBackground(
+                            contentBackdrop = contentBackdrop,
+                            chromeBackdrop = chromeBackdrop,
+                            chromeHeight = chromeHeight,
+                            buttonSlotHeight = buttonSlotHeight,
+                            topInset = topInset,
+                            barAlpha = barAlpha,
+                        )
+                    } else {
+                        MaterialTopBarBackground(
+                            chromeHeight = chromeHeight,
+                            barAlpha = barAlpha,
+                        )
+                    }
+                }
+
+                // Layer 3: action bar foreground
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .nestedScroll(titleBarScrollConnection)
-                        .then(backdropCaptureModifier)
-                        .background(MaterialTheme.colorScheme.background),
+                        .zIndex(3f)
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(chromeHeight),
                 ) {
-                    content()
+                    val resolvedShowLeftButton = showLeftButton ?: state.showLeftButton
+                    val resolvedShowRightButton = showRightButton ?: state.showRightButton
+                    val resolvedOnLeftClick = onLeftClick ?: state.onLeftClick
+                    val resolvedOnRightClick = onRightClick ?: state.onRightClick
+
+                    ZafiroTopBar(
+                        title = state.title,
+                        titleDirection = state.titleDirection,
+                        baseTitleAlpha = baseTitleAlpha,
+                        topInset = topInset,
+                        isOccluded = isOccluded,
+                        leftButtonAlpha = leftButtonAlpha,
+                        rightButtonAlpha = rightButtonAlpha,
+                        showLeftButton = resolvedShowLeftButton,
+                        showRightButton = resolvedShowRightButton,
+                        actionsEnabled = actionsEnabled,
+                        backdrop = screenBackdrop,
+                        titleHorizontalPadding = titleHorizontalPadding,
+                        onLeftClick = resolvedOnLeftClick,
+                        onRightClick = resolvedOnRightClick,
+                        onLeftButtonBoundsChanged = onLeftButtonBoundsChanged,
+                        onRightButtonBoundsChanged = onRightButtonBoundsChanged,
+                        leftButton = leftButton,
+                        rightButton = rightButton,
+                        overlayContent = overlayContent,
+                    )
                 }
             }
 
-        // Layer 2: action bar background
-        AnimatedVisibility(
-            visible = state.showBlurLayer,
-            modifier = Modifier
-                .zIndex(2f)
-                .align(Alignment.TopCenter),
-            enter = fadeIn(tween(320, easing = FastOutSlowInEasing)),
-            exit = fadeOut(tween(320, easing = FastOutSlowInEasing)),
-        ) {
-            if (isLiquid) {
-                LiquidTopBarBackground(
-                    contentBackdrop = contentBackdrop,
-                    chromeBackdrop = chromeBackdrop,
-                    chromeHeight = chromeHeight,
-                    buttonSlotHeight = buttonSlotHeight,
-                    topInset = topInset,
-                    barAlpha = barAlpha,
-                )
-            } else {
-                MaterialTopBarBackground(
-                    chromeHeight = chromeHeight,
-                    barAlpha = barAlpha,
-                )
-            }
-        }
-
-
-        // Layer 3: action bar foreground
-        Box(
-            modifier = Modifier
-                .zIndex(3f)
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(chromeHeight),
-        ) {
-            val resolvedShowLeftButton = showLeftButton ?: state.showLeftButton
-            val resolvedShowRightButton = showRightButton ?: state.showRightButton
-            val resolvedOnLeftClick = onLeftClick ?: state.onLeftClick
-            val resolvedOnRightClick = onRightClick ?: state.onRightClick
-
-            ZafiroTopBar(
-                title = state.title,
-                titleDirection = state.titleDirection,
-                baseTitleAlpha = baseTitleAlpha,
-                topInset = topInset,
-                isOccluded = isOccluded,
-                leftButtonAlpha = leftButtonAlpha,
-                rightButtonAlpha = rightButtonAlpha,
-                showLeftButton = resolvedShowLeftButton,
-                showRightButton = resolvedShowRightButton,
-                actionsEnabled = actionsEnabled,
-                backdrop = screenBackdrop,
-                titleHorizontalPadding = titleHorizontalPadding,
-                onLeftClick = resolvedOnLeftClick,
-                onRightClick = resolvedOnRightClick,
-                onLeftButtonBoundsChanged = onLeftButtonBoundsChanged,
-                onRightButtonBoundsChanged = onRightButtonBoundsChanged,
-                leftButton = leftButton,
-                rightButton = rightButton,
-                overlayContent = overlayContent,
-            )
-        }
-
-        // Layer 4: dialog & popover host
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(4f),
-        ) {
-            dialogHostState.entries.forEach { entry ->
-                key(entry.id) {
-                    entry.content()
+            // Layer 4: dialog & popover host
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(4f),
+            ) {
+                dialogHostState.entries.forEach { entry ->
+                    key(entry.id) {
+                        entry.content()
+                    }
                 }
             }
         }
     }
-}
 }
