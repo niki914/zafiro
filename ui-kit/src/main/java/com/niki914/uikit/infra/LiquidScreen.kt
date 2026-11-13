@@ -69,6 +69,9 @@ private val ActionButtonBottomSpacing = 24.dp
  * Layer 2 (zIndex 2) - Action bar background (毛玻璃 + surface 渐变底色)
  * Layer 3 (zIndex 3) - Action bar foreground (LiquidTopBar)
  * Layer 4 (zIndex 4) - LiquidDialogHost 浮层与弹窗
+ *
+ * 另有一层不参与分层的 sheet 蒙版（zIndex 3.5）：盖住内容与顶栏、位于浮层之下，透明度跟 sheet 的
+ * 占屏进度走（见 [SheetProgressState]）。
  */
 @Composable
 fun LiquidScreen(
@@ -96,7 +99,7 @@ fun LiquidScreen(
     val screenBackdrop = rememberCombinedBackdrop(contentBackdrop, chromeBackdrop)
     val titleHorizontalPadding = with(density) { 12.dp * 2 + 48.sp.toDp() }
     val dialogHostState = remember { LiquidDialogHostState() }
-    val sheetBackdropBlurState = remember { SheetBackdropBlurState() }
+    val sheetProgressState = remember { SheetProgressState() }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val buttonSlotHeight = ZafiroTopBarDefaults.ButtonSlotHeight
     val actionBarHeight = topInset + buttonSlotHeight
@@ -148,7 +151,7 @@ fun LiquidScreen(
         LocalScreenBackdrop provides screenBackdrop,
         LocalLiquidDialogHostState provides dialogHostState,
         LocalHasActiveDialog provides dialogHostState.hasActiveDialog,
-        LocalSheetBackdropBlur provides sheetBackdropBlurState,
+        LocalSheetProgress provides sheetProgressState,
     ) {
         val themeStyle = LocalThemeStyle.current
         val isLiquid = themeStyle == ThemeStyle.LiquidGlass
@@ -158,7 +161,8 @@ fun LiquidScreen(
             Modifier
         }
 
-        val sheetBlurRadius = 15f * sheetBackdropBlurState.progress
+        val sheetProgress = sheetProgressState.progress
+        val sheetBlurRadius = 15f * sheetProgress
 
         Box(
             modifier = modifier.fillMaxSize(),
@@ -251,6 +255,15 @@ fun LiquidScreen(
                     )
                 }
             }
+
+            // sheet 蒙版：M3 的 scrim 由锚点目标驱动，下拉过半就整块消失；这里换成 sheet 的
+            // 实际占屏进度，sheet 还在屏上蒙版就还在。没有 sheet 时 progress 为 0，等于不画。
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(3.5f)
+                    .background(Color.Black.copy(alpha = 0.32f * sheetProgress)),
+            )
 
             // Layer 4: dialog & popover host
             Box(
