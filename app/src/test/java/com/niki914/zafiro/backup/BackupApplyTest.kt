@@ -271,8 +271,8 @@ class BackupApplyTest {
         )
 
         harness.apply(
-            harness.archive(harness.request(BackupGroup.Tools), snapshot),
-            setOf(BackupGroup.Tools),
+            harness.archive(harness.request(BackupGroup.Skills), snapshot),
+            setOf(BackupGroup.Skills),
             BackupStrategy.Overwrite,
             store,
         ).succeeded()

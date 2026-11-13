@@ -2,9 +2,10 @@ package com.niki914.zafiro.backup
 
 import kotlinx.serialization.json.JsonElement
 
-/** 界面上可勾选的六组。一组对应一个或多个分区，选中则整组分区都在包里。 */
+/** 界面上可勾选的组。一组对应一个或多个分区，选中则整组分区都在包里。 */
 enum class BackupGroup(val id: String) {
     Tools("tools"),
+    Skills("skills"),
     Conversations("conversations"),
     Config("config"),
     ExecutionRules("execution_rules"),
@@ -79,7 +80,7 @@ enum class BackupPartition(
     ),
     Skills(
         id = "skills",
-        group = BackupGroup.Tools,
+        group = BackupGroup.Skills,
         apply = Apply.Items,
         singletonApply = null,
         listKey = null,

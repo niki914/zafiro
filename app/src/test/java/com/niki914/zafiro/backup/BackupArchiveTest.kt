@@ -265,7 +265,7 @@ class BackupArchiveTest {
                 ),
             ),
         )
-        val file = archive(request(BackupGroup.Tools), snapshot)
+        val file = archive(request(BackupGroup.Skills), snapshot)
         val seed = (readZip(file) as ZipRead.Ok)
             .entries.getValue("partitions/skills/phone-use/.seed")
             .toString(Charsets.UTF_8)
@@ -286,7 +286,7 @@ class BackupArchiveTest {
                 ),
             ),
         )
-        val packed = (readZip(archive(request(BackupGroup.Tools), snapshot)) as ZipRead.Ok)
+        val packed = (readZip(archive(request(BackupGroup.Skills), snapshot)) as ZipRead.Ok)
             .entries.getValue("partitions/skills/termux/.seed")
             .toString(Charsets.UTF_8)
 
