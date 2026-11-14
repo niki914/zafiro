@@ -46,7 +46,6 @@ class ScreenToolsV2Test {
     fun setUp() {
         ServiceRegistry.clearForTest()
         ContextProvider.clearForTest()
-        LastPhoneCapture.clear()
         screen = RecordingScreen(phone, listOf(node(3, "微信"), node(4, "设置")))
         screens = RecordingScreens(screen)
         installService<Screens>(screens)

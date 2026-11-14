@@ -98,6 +98,8 @@ dependencies {
     implementation(project(":store"))
     implementation(project(":xsettings"))
     implementation(project(":libs:logging"))
+    implementation(project(":accessibility"))
+    implementation(project(":business:screen"))
     implementation(project(":business:api"))
     implementation(project(":business:screen"))
     implementation(project(":business:agent"))

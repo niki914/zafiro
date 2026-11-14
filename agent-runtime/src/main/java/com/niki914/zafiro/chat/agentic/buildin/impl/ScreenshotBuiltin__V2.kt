@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic.buildin.impl
 
 import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.api.screen.ScreenImageUnavailable
 import com.niki914.zafiro.chat.agentic.SharedImageCodec
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
@@ -10,8 +11,7 @@ import com.niki914.zafiro.chat.agentic.toImageToolResult
 import com.niki914.zafiro.chat.agentic.toToolError
 
 /**
- * 按 screen 取这一块屏自己的帧。phone 的 image() 已经走完 capture-and-ingest 时，
- * 结果放在 [LastPhoneCapture]，这里直接交回去。
+ * 按 screen 取这一块屏自己的帧，并统一 ingest 写入沙箱图片缓存。
  */
 class ScreenshotBuiltin__V2 : BuiltinTool() {
     override val name: String = "screenshot"
@@ -46,13 +46,11 @@ class ScreenshotBuiltin__V2 : BuiltinTool() {
         val frame = try {
             screen.image()
         } catch (error: ScreenImageUnavailable) {
-            LastPhoneCapture.clear()
             return BuiltinToolResult.failure(
                 code = error.code,
                 message = error.message ?: error.code,
             )
         }
-        LastPhoneCapture.take()?.let { return it }
         if (ContextProvider.awaitIfAvailable() == null) {
             return BuiltinToolResult.failure(
                 code = "CODEC_UNAVAILABLE",
@@ -91,32 +89,5 @@ class ScreenshotBuiltin__V2 : BuiltinTool() {
               "required": ["screen"]
             }
         """.trimIndent()
-    }
-}
-
-/** phone 截屏失败时从 [com.niki914.zafiro.api.screen.Screen.image] 抛出，工具把它变成原来的错误码。 */
-internal class ScreenImageUnavailable(
-    val code: String,
-    message: String,
-) : RuntimeException(message)
-
-// Phase 1 glue: connects to AccessibilityController directly; to be replaced in Phase 2 by DefaultDisplayPort.
-/** phone 截屏成功时，ingest 结果已经在 captureForTool 里做完。跨挂起点用 volatile，不靠线程局部。 */
-internal object LastPhoneCapture {
-    @Volatile
-    private var pending: BuiltinToolResult? = null
-
-    fun offer(result: BuiltinToolResult) {
-        pending = result
-    }
-
-    fun take(): BuiltinToolResult? {
-        val result = pending
-        pending = null
-        return result
-    }
-
-    fun clear() {
-        pending = null
     }
 }

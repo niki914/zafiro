@@ -51,7 +51,7 @@ class OpenUriBuiltin : BuiltinTool() {
     }
 
     /** phone 的 open(Uri) 走同一条 ACTION_VIEW。 */
-    internal suspend fun openForScreen(uri: String): BuiltinToolResult {
+    suspend fun openForScreen(uri: String): BuiltinToolResult {
         if (uri.isBlank()) {
             return BuiltinToolResult.failure(
                 code = "MISSING_REQUIRED_FIELD",

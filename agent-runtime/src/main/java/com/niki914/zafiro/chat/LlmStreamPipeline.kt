@@ -8,7 +8,6 @@ import com.niki914.okia.loop.TurnResult
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.xposed.api.util.LockState
-import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
 import com.niki914.zafiro.chat.agentic.stream.LlmStreamEventMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.SendChannel
@@ -155,7 +154,6 @@ internal class LlmStreamPipeline {
             }
         } finally {
             turnActiveFlow.value = false
-            AccessibilityController.onTurnEnd()
         }
     }
 
