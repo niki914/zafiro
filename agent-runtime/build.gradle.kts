@@ -48,6 +48,7 @@ dependencies {
     implementation(project(":libs:okia"))
     implementation(project(":libs:libterm-runtime"))
     implementation(project(":business:api"))
+    implementation(project(":business:screen"))
     implementation(project(":business:permission"))
     implementation(project(":business:notification"))
     implementation(project(":xsettings"))
