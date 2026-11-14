@@ -201,4 +201,49 @@ interface ConversationDao {
         insertConversation(conversation)
         insertEntries(entries)
     }
+
+    @Query("SELECT * FROM conversation")
+    suspend fun listAllConversations(): List<ConversationEntity>
+
+    @Query("SELECT * FROM conversation_entry")
+    suspend fun listAllEntries(): List<ConversationEntryEntity>
+
+    /**
+     * 备份读取：会话行和消息行同一事务，避免导出时写到一半。
+     */
+    @Transaction
+    suspend fun readConsistentForBackup(): ConversationTableSnapshot {
+        return ConversationTableSnapshot(
+            conversations = listAllConversations(),
+            entries = listAllEntries(),
+        )
+    }
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertConversations(entities: List<ConversationEntity>)
+
+    @Query("DELETE FROM conversation_entry WHERE conversation_id = :conversationId")
+    suspend fun deleteEntriesOf(conversationId: String)
+
+    /**
+     * 备份写回：删除、替换会话行、换掉这些会话的消息，一次事务提交。
+     * 先删消息再替换会话行，避免 REPLACE 触发外键级联把刚写入的消息清掉。
+     */
+    @Transaction
+    suspend fun applyBackupTransaction(
+        deleteIds: List<String>,
+        conversations: List<ConversationEntity>,
+        entries: List<ConversationEntryEntity>,
+    ) {
+        deleteIds.forEach { id -> deleteConversation(id) }
+        conversations.forEach { row -> deleteEntriesOf(row.id) }
+        if (conversations.isNotEmpty()) upsertConversations(conversations)
+        if (entries.isNotEmpty()) insertEntries(entries)
+    }
 }
+
+/** 一次事务里读出的会话表和消息表。 */
+data class ConversationTableSnapshot(
+    val conversations: List<ConversationEntity>,
+    val entries: List<ConversationEntryEntity>,
+)

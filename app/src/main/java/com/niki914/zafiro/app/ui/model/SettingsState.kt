@@ -74,6 +74,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
             titleRes = R.string.ui_settings_section_general,
             groups = listOf(
                 ZafiroSettingsGroup.Theme,
+                ZafiroSettingsGroup.Backup,
                 ZafiroSettingsGroup.GeneralSettings,
             ),
         ),
