@@ -60,6 +60,8 @@ I18N_RESOURCE_CALL = re.compile(
 CONTENT_DESC_LITERAL = re.compile(
     r'\bcontentDescription\s*(?::\s*[\w<>?.]+\s*)?=\s*"([^"]*)"'
 )
+SETTINGS_ITEM_DIVIDER = re.compile(r"\bSettingsItemDivider\b")
+BUSINESS_MAIN_PREFIX = "app/src/main/"
 
 
 @dataclass(frozen=True)
@@ -68,6 +70,7 @@ class LineContext:
     android_log: bool
     lines: tuple[str, ...] = ()
     lineno: int = 0
+    path: str = ""
 
 
 def is_comment(line: str) -> bool:
@@ -281,6 +284,17 @@ def hit_content_description_i18n(line: str, ctx: LineContext) -> bool:
     return False
 
 
+def hit_settings_item_divider(line: str, ctx: LineContext) -> bool:
+    if is_comment(line):
+        return False
+    path = ctx.path.replace("\\", "/")
+    if not path.startswith(BUSINESS_MAIN_PREFIX):
+        return False
+    if "/preview/" in path or path.rsplit("/", 1)[-1].endswith("Preview.kt"):
+        return False
+    return SETTINGS_ITEM_DIVIDER.search(strip_strings(line)) is not None
+
+
 CODE_RULES: list[tuple[Rule, callable]] = [
     # 1. Category.SAFETY
     (
@@ -353,6 +367,16 @@ CODE_RULES: list[tuple[Rule, callable]] = [
             hint="改用 G2FieldShape / G2CardShape / G2BubbleShape；确实需要普通圆角时加 // githooks:ignore rounded-corner-shape",
         ),
         hit_rounded_corner_shape,
+    ),
+    (
+        Rule(
+            name="settings-item-divider",
+            category=Category.UI,
+            severity=Severity.BLOCK,
+            description="业务页面手写了 SettingsItemDivider",
+            hint="设置行改用 SettingsConnectedGroup，接缝由分组按主题绘制；整段文案和空状态继续用 SettingsGroupCard。确实要写时加 // githooks:ignore settings-item-divider",
+        ),
+        hit_settings_item_divider,
     ),
     # 3. Category.HYGIENE
     (
@@ -432,7 +456,7 @@ def check_code_files(
             line_text = lines[lineno - 1]
             line_ignores = extract_line_ignores(lines, lineno)
             allowed = file_ignores | line_ignores
-            line_ctx = LineContext(ctx.imported, ctx.android_log, ctx.lines, lineno)
+            line_ctx = LineContext(ctx.imported, ctx.android_log, ctx.lines, lineno, path)
 
             for rule, hit_fn in target_rules:
                 if not hit_fn(line_text, line_ctx):

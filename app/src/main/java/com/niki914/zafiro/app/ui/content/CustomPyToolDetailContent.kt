@@ -27,8 +27,7 @@ import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.dialog.ZafiroDialog
 import com.niki914.uikit.dialog.ZafiroDialogButton
 import com.niki914.uikit.infra.component.SettingToggleItem
-import com.niki914.uikit.infra.component.SettingsGroupCard
-import com.niki914.uikit.infra.component.SettingsItemDivider
+import com.niki914.uikit.infra.component.SettingsConnectedGroup
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.chat.composable.text.ToolResultText
@@ -200,26 +199,33 @@ private fun CustomPyToolIdentitySettingsBlock(
     onNameChange: (String) -> Unit,
     onEnabledChange: (Boolean) -> Unit,
 ) {
-    SettingsGroupCard {
-        SettingControlledExpandableTextItem(
-            field = CustomPyToolEditableField.Name,
-            controller = fieldController,
-            title = stringResource(R.string.custom_py_tool_field_name),
-            value = uiState.formState.name,
-            onValueChange = onNameChange,
-            placeholder = stringResource(R.string.custom_py_tool_field_name_hint),
-            description = customPyToolFieldErrorText(uiState.formState.nameErrorResId),
-            enabled = !uiState.isSaving,
-            minLines = 1,
-            maxLines = 1,
-        )
-        SettingsItemDivider()
-        SettingToggleItem(
-            title = stringResource(R.string.custom_py_tool_field_enabled),
-            checked = uiState.formState.enabled,
-            enabled = !uiState.isSaving,
-            onCheckedChange = onEnabledChange,
-        )
+    SettingsConnectedGroup {
+        item { shape, isStandalone, _ ->
+            SettingControlledExpandableTextItem(
+                field = CustomPyToolEditableField.Name,
+                controller = fieldController,
+                title = stringResource(R.string.custom_py_tool_field_name),
+                value = uiState.formState.name,
+                onValueChange = onNameChange,
+                placeholder = stringResource(R.string.custom_py_tool_field_name_hint),
+                description = customPyToolFieldErrorText(uiState.formState.nameErrorResId),
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 1,
+                maxLines = 1,
+            )
+        }
+        item { shape, isStandalone, _ ->
+            SettingToggleItem(
+                title = stringResource(R.string.custom_py_tool_field_enabled),
+                checked = uiState.formState.enabled,
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                onCheckedChange = onEnabledChange,
+            )
+        }
     }
 }
 
@@ -229,20 +235,24 @@ private fun CustomPyToolCodeSettingsBlock(
     fieldController: EditableDetailFieldController<CustomPyToolEditableField>,
     onCodeChange: (String) -> Unit,
 ) {
-    SettingsGroupCard {
-        SettingControlledExpandableTextItem(
-            field = CustomPyToolEditableField.Code,
-            controller = fieldController,
-            title = stringResource(R.string.custom_py_tool_field_code),
-            value = uiState.formState.code,
-            onValueChange = onCodeChange,
-            placeholder = stringResource(R.string.custom_py_tool_field_code_hint),
-            description = uiState.formState.codeErrorMessage
-                ?: customPyToolFieldErrorText(uiState.formState.codeErrorResId),
-            enabled = !uiState.isSaving,
-            minLines = 6,
-            maxLines = 16,
-        )
+    SettingsConnectedGroup {
+        item { shape, isStandalone, _ ->
+            SettingControlledExpandableTextItem(
+                field = CustomPyToolEditableField.Code,
+                controller = fieldController,
+                title = stringResource(R.string.custom_py_tool_field_code),
+                value = uiState.formState.code,
+                onValueChange = onCodeChange,
+                placeholder = stringResource(R.string.custom_py_tool_field_code_hint),
+                description = uiState.formState.codeErrorMessage
+                    ?: customPyToolFieldErrorText(uiState.formState.codeErrorResId),
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 6,
+                maxLines = 16,
+            )
+        }
     }
 }
 

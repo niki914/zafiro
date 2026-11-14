@@ -13,8 +13,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.infra.component.SettingToggleItem
+import com.niki914.uikit.infra.component.SettingsConnectedGroup
 import com.niki914.uikit.infra.component.SettingsGroupCard
-import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsSegmentedSelector
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
@@ -148,29 +148,36 @@ private fun TakeoverRuleDetailContentBody(
         inlineErrorText = takeoverInlineErrorText(uiState.inlineError),
         actionEnabled = !uiState.isSaving,
     ) { fieldController ->
-        SettingsGroupCard {
-            SettingControlledExpandableTextItem(
-                field = TakeoverEditableField.Name,
-                controller = fieldController,
-                title = stringResource(R.string.takeover_field_name),
-                value = uiState.formState.name,
-                onValueChange = onNameChange,
-                placeholder = stringResource(R.string.takeover_field_name_hint),
-                description = takeoverFieldErrorText(uiState.formState.nameErrorResId),
-                enabled = !uiState.isSaving,
-                minLines = 1,
-                maxLines = 1,
-            )
-            SettingsItemDivider()
-            SettingToggleItem(
-                title = stringResource(R.string.takeover_field_enabled),
-                checked = uiState.formState.enabled,
-                enabled = !uiState.isSaving,
-                onCheckedChange = {
-                    fieldController.clearActiveField()
-                    onEnabledChange(it)
-                },
-            )
+        SettingsConnectedGroup {
+            item { shape, isStandalone, _ ->
+                SettingControlledExpandableTextItem(
+                    field = TakeoverEditableField.Name,
+                    controller = fieldController,
+                    title = stringResource(R.string.takeover_field_name),
+                    value = uiState.formState.name,
+                    onValueChange = onNameChange,
+                    placeholder = stringResource(R.string.takeover_field_name_hint),
+                    description = takeoverFieldErrorText(uiState.formState.nameErrorResId),
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    minLines = 1,
+                    maxLines = 1,
+                )
+            }
+            item { shape, isStandalone, _ ->
+                SettingToggleItem(
+                    title = stringResource(R.string.takeover_field_enabled),
+                    checked = uiState.formState.enabled,
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    onCheckedChange = {
+                        fieldController.clearActiveField()
+                        onEnabledChange(it)
+                    },
+                )
+            }
         }
 
         SettingsGroupCard {
@@ -187,21 +194,25 @@ private fun TakeoverRuleDetailContentBody(
             )
         }
 
-        SettingsGroupCard {
-            SettingControlledExpandableTextItem(
-                field = TakeoverEditableField.Patterns,
-                controller = fieldController,
-                title = stringResource(R.string.takeover_field_patterns),
-                value = uiState.formState.patternsInput,
-                onValueChange = onPatternsInputChange,
-                placeholder = stringResource(R.string.takeover_field_patterns_hint),
-                description = uiState.formState.patternsErrorResId?.let { errorResId ->
-                    stringResource(errorResId)
-                } ?: stringResource(R.string.takeover_field_patterns_description),
-                enabled = !uiState.isSaving,
-                minLines = 4,
-                maxLines = 8,
-            )
+        SettingsConnectedGroup {
+            item { shape, isStandalone, _ ->
+                SettingControlledExpandableTextItem(
+                    field = TakeoverEditableField.Patterns,
+                    controller = fieldController,
+                    title = stringResource(R.string.takeover_field_patterns),
+                    value = uiState.formState.patternsInput,
+                    onValueChange = onPatternsInputChange,
+                    placeholder = stringResource(R.string.takeover_field_patterns_hint),
+                    description = uiState.formState.patternsErrorResId?.let { errorResId ->
+                        stringResource(errorResId)
+                    } ?: stringResource(R.string.takeover_field_patterns_description),
+                    enabled = !uiState.isSaving,
+                    shape = shape,
+                    isStandaloneCard = isStandalone,
+                    minLines = 4,
+                    maxLines = 8,
+                )
+            }
         }
     }
 }

@@ -13,8 +13,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.dialog.ZafiroConfirmationDialog
 import com.niki914.uikit.infra.component.SettingToggleItem
-import com.niki914.uikit.infra.component.SettingsGroupCard
-import com.niki914.uikit.infra.component.SettingsItemDivider
+import com.niki914.uikit.infra.component.SettingsConnectedGroup
 import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.uikit.screen.ProvideZafiroScreenContentForPreview
 import com.niki914.zafiro.app.R
@@ -173,26 +172,33 @@ private fun McpIdentitySettingsBlock(
     onNameChange: (String) -> Unit,
     onEnabledChange: (Boolean) -> Unit,
 ) {
-    SettingsGroupCard {
-        SettingControlledExpandableTextItem(
-            field = McpEditableField.Name,
-            controller = fieldController,
-            title = stringResource(R.string.mcp_field_name),
-            value = uiState.formState.name,
-            onValueChange = onNameChange,
-            placeholder = stringResource(R.string.mcp_field_name_hint),
-            description = mcpFieldErrorText(uiState.formState.nameErrorResId),
-            enabled = !uiState.isSaving,
-            minLines = 1,
-            maxLines = 1,
-        )
-        SettingsItemDivider()
-        SettingToggleItem(
-            title = stringResource(R.string.mcp_field_enabled),
-            checked = uiState.formState.enabled,
-            enabled = !uiState.isSaving,
-            onCheckedChange = onEnabledChange,
-        )
+    SettingsConnectedGroup {
+        item { shape, isStandalone, _ ->
+            SettingControlledExpandableTextItem(
+                field = McpEditableField.Name,
+                controller = fieldController,
+                title = stringResource(R.string.mcp_field_name),
+                value = uiState.formState.name,
+                onValueChange = onNameChange,
+                placeholder = stringResource(R.string.mcp_field_name_hint),
+                description = mcpFieldErrorText(uiState.formState.nameErrorResId),
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 1,
+                maxLines = 1,
+            )
+        }
+        item { shape, isStandalone, _ ->
+            SettingToggleItem(
+                title = stringResource(R.string.mcp_field_enabled),
+                checked = uiState.formState.enabled,
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                onCheckedChange = onEnabledChange,
+            )
+        }
     }
 }
 
@@ -203,32 +209,39 @@ private fun McpConnectionSettingsBlock(
     onUrlChange: (String) -> Unit,
     onHeadersChange: (String) -> Unit,
 ) {
-    SettingsGroupCard {
-        SettingControlledExpandableTextItem(
-            field = McpEditableField.Url,
-            controller = fieldController,
-            title = stringResource(R.string.mcp_field_url),
-            value = uiState.formState.url,
-            onValueChange = onUrlChange,
-            placeholder = stringResource(R.string.mcp_field_url_hint),
-            description = mcpFieldErrorText(uiState.formState.urlErrorResId),
-            enabled = !uiState.isSaving,
-            minLines = 1,
-            maxLines = 1,
-        )
-        SettingsItemDivider()
-        SettingControlledExpandableTextItem(
-            field = McpEditableField.Headers,
-            controller = fieldController,
-            title = stringResource(R.string.mcp_field_headers),
-            value = uiState.formState.headersInput,
-            onValueChange = onHeadersChange,
-            placeholder = stringResource(R.string.mcp_field_headers_hint),
-            description = mcpFieldErrorText(uiState.formState.headersErrorResId),
-            enabled = !uiState.isSaving,
-            minLines = 4,
-            maxLines = 10,
-        )
+    SettingsConnectedGroup {
+        item { shape, isStandalone, _ ->
+            SettingControlledExpandableTextItem(
+                field = McpEditableField.Url,
+                controller = fieldController,
+                title = stringResource(R.string.mcp_field_url),
+                value = uiState.formState.url,
+                onValueChange = onUrlChange,
+                placeholder = stringResource(R.string.mcp_field_url_hint),
+                description = mcpFieldErrorText(uiState.formState.urlErrorResId),
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 1,
+                maxLines = 1,
+            )
+        }
+        item { shape, isStandalone, _ ->
+            SettingControlledExpandableTextItem(
+                field = McpEditableField.Headers,
+                controller = fieldController,
+                title = stringResource(R.string.mcp_field_headers),
+                value = uiState.formState.headersInput,
+                onValueChange = onHeadersChange,
+                placeholder = stringResource(R.string.mcp_field_headers_hint),
+                description = mcpFieldErrorText(uiState.formState.headersErrorResId),
+                enabled = !uiState.isSaving,
+                shape = shape,
+                isStandaloneCard = isStandalone,
+                minLines = 4,
+                maxLines = 10,
+            )
+        }
     }
 }
 

@@ -23,11 +23,11 @@ class CliResolutionTest(unittest.TestCase):
         self.assertIn("strings-alignment", rules)
         self.assertIn("content-description-i18n", rules)
         self.assertIn("rounded-corner-shape", rules)
-        self.assertEqual(len(rules), 12)
+        self.assertEqual(len(rules), 14)
 
     def test_category_filter_limits_rules(self):
         rules = resolve_active_rules(["ui"], None)
-        self.assertEqual(rules, {"rounded-corner-shape", "verbose-ui"})
+        self.assertEqual(rules, {"rounded-corner-shape", "settings-item-divider", "verbose-ui"})
 
         arch_rules = resolve_active_rules(["architecture"], None)
         self.assertEqual(arch_rules, {"file-token-limit"})
@@ -35,7 +35,14 @@ class CliResolutionTest(unittest.TestCase):
         safety_rules = resolve_active_rules(["safety"], None)
         self.assertEqual(
             safety_rules,
-            {"monitor-lock", "uncancellable-run-catching", "bare-catch", "log-api", "log-tag"},
+            {
+                "monitor-lock",
+                "uncancellable-run-catching",
+                "run-catching-require-service",
+                "bare-catch",
+                "log-api",
+                "log-tag",
+            },
         )
 
         i18n_rules = resolve_active_rules(["i18n"], None)
@@ -56,7 +63,7 @@ class CliResolutionTest(unittest.TestCase):
     def test_code_wrapper_rules_resolve_only_code_rules(self):
         from check import RULE_NAMES
         rules = resolve_active_rules(None, [",".join(RULE_NAMES)])
-        self.assertEqual(len(rules), 9)
+        self.assertEqual(len(rules), 11)
         self.assertNotIn("strings-alignment", rules)
         self.assertNotIn("verbose-ui", rules)
         self.assertNotIn("file-token-limit", rules)
