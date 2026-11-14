@@ -42,3 +42,11 @@ interface Screens {
 
     suspend fun close(id: ScreenId): CloseResult
 }
+
+open class ScreenTreeUnavailable(message: String) : RuntimeException(message)
+
+open class ScreenImageUnavailable(
+    val code: String,
+    message: String? = null,
+) : RuntimeException(message ?: code)
+
