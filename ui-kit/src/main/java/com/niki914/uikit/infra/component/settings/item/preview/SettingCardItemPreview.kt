@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,13 +24,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.ThemeStyle
+import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.SettingExpandableTextItem
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
+import com.niki914.uikit.infra.component.settings.SettingsPageSpec
+import com.niki914.uikit.infra.component.settings.SettingsRowLeadingIcon
+import com.niki914.uikit.infra.component.settings.SettingsRowSpec
+import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
+import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.component.settings.item.SettingCardItem
 import com.niki914.uikit.infra.component.settings.item.SettingExpandableSlot
 import com.niki914.uikit.infra.component.settings.item.SettingLeadingSlot
 import com.niki914.uikit.infra.component.settings.item.SettingTrailingSlot
+import com.niki914.uikit.infra.component.settings.resolveConnectedShape
+import com.niki914.uikit.infra.component.settings.resolveSettingIconColors
 
 @Composable
 private fun SettingCardItemPreviewGallery() {
@@ -231,25 +242,190 @@ private fun SettingCardItemPreviewGallery() {
                 placeholder = "Enter proxy URL",
             )
         }
+
+        // ── 场景 9: 接缝卡片与多彩图标三模分流演示 (Connected Cards & Expressive Palette) ──
+        Text(
+            text = "9. 接缝卡片与多彩图标三模分流演示",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        val isLiquid = LocalThemeStyle.current == ThemeStyle.LiquidGlass
+        val demoItems = remember {
+            listOf(
+                Triple("Music Management", "Manage folders, refresh library", Icons.Default.Settings),
+                Triple("Appearance", "Themes, layout, and visual styles", Icons.Default.Info),
+                Triple("Playback", "Audio behavior, crossfade, and equalizer", Icons.Default.Star),
+            )
+        }
+        if (isLiquid) {
+            // LiquidGlass 模式：单体卡片 + Hairline 分割线
+            SettingsGroupCard(title = "LiquidGlass 模式：单体卡片 + Hairline 分割线") {
+                demoItems.forEachIndexed { index, (title, summary, icon) ->
+                    val (containerColor, tint) = resolveSettingIconColors(
+                        row = SettingsRowSpec.Navigation(id = "preview_$index", title = title),
+                        index = index,
+                    )
+                    SettingCardItem(
+                        title = title,
+                        summary = summary,
+                        leadingSlot = SettingLeadingSlot.CircularIcon(
+                            imageVector = icon,
+                            containerColor = containerColor,
+                            tint = tint,
+                        ),
+                        trailingSlot = SettingTrailingSlot.Chevron(),
+                        onClick = {},
+                    )
+                    if (index != demoItems.lastIndex) {
+                        SettingsItemDivider()
+                    }
+                }
+            }
+        } else {
+            // M3 / Expressive 模式：接缝卡片 (Connected Cards) · 3dp 间距与接缝圆角
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                demoItems.forEachIndexed { index, (title, summary, icon) ->
+                    val itemShape = resolveConnectedShape(index, demoItems.size)
+                    val (containerColor, tint) = resolveSettingIconColors(
+                        row = SettingsRowSpec.Navigation(id = "preview_$index", title = title),
+                        index = index,
+                    )
+                    SettingCardItem(
+                        title = title,
+                        summary = summary,
+                        leadingSlot = SettingLeadingSlot.CircularIcon(
+                            imageVector = icon,
+                            containerColor = containerColor,
+                            tint = tint,
+                        ),
+                        trailingSlot = SettingTrailingSlot.Chevron(),
+                        isStandaloneCard = true,
+                        shape = itemShape,
+                        onClick = {},
+                    )
+                }
+            }
+        }
     }
 }
 
-@Preview(name = "SettingCardItem Light Preview", showBackground = true, widthDp = 420, heightDp = 1800)
+@Preview(name = "Expressive Dark Preview", showBackground = true, widthDp = 420, heightDp = 2200)
+@Composable
+private fun SettingCardItemExpressiveDarkPreview() {
+    ProvideLiquidScreenContentForPreview {
+        BaseTheme(darkTheme = true, dynamicColor = false, themeStyle = ThemeStyle.Material3Expressive) {
+            Surface {
+                SettingCardItemPreviewGallery()
+            }
+        }
+    }
+}
+
+@Preview(name = "Material 3 Dark Preview", showBackground = true, widthDp = 420, heightDp = 2200)
+@Composable
+private fun SettingCardItemMaterial3DarkPreview() {
+    ProvideLiquidScreenContentForPreview {
+        BaseTheme(darkTheme = true, dynamicColor = false, themeStyle = ThemeStyle.Material3) {
+            Surface {
+                SettingCardItemPreviewGallery()
+            }
+        }
+    }
+}
+
+@Preview(name = "Liquid Glass Dark Preview", showBackground = true, widthDp = 420, heightDp = 2200)
+@Composable
+private fun SettingCardItemLiquidDarkPreview() {
+    ProvideLiquidScreenContentForPreview {
+        BaseTheme(darkTheme = true, dynamicColor = false, themeStyle = ThemeStyle.LiquidGlass) {
+            Surface {
+                SettingCardItemPreviewGallery()
+            }
+        }
+    }
+}
+
+@Preview(name = "SettingCardItem Light Preview", showBackground = true, widthDp = 420, heightDp = 2200)
 @Composable
 private fun SettingCardItemLightPreview() {
-    BaseTheme(darkTheme = false, dynamicColor = false) {
-        Surface {
-            SettingCardItemPreviewGallery()
+    ProvideLiquidScreenContentForPreview {
+        BaseTheme(darkTheme = false, dynamicColor = false) {
+            Surface {
+                SettingCardItemPreviewGallery()
+            }
         }
     }
 }
 
-@Preview(name = "SettingCardItem Dark Preview", showBackground = true, widthDp = 420, heightDp = 1800)
+@Preview(name = "SettingCardItem Dark Preview", showBackground = true, widthDp = 420, heightDp = 2200)
 @Composable
 private fun SettingCardItemDarkPreview() {
-    BaseTheme(darkTheme = true, dynamicColor = false) {
-        Surface {
-            SettingCardItemPreviewGallery()
+    ProvideLiquidScreenContentForPreview {
+        BaseTheme(darkTheme = true, dynamicColor = false) {
+            Surface {
+                SettingCardItemPreviewGallery()
+            }
         }
     }
+}
+
+@Preview(name = "SettingsSpec Full Page Expressive Dark", showBackground = true, widthDp = 420, heightDp = 600)
+@Composable
+private fun SettingsSpecFullPageExpressiveDarkPreview() {
+    ProvideLiquidScreenContentForPreview {
+        BaseTheme(darkTheme = true, dynamicColor = false, themeStyle = ThemeStyle.Material3Expressive) {
+            Surface {
+                SampleSettingsSpecPage()
+            }
+        }
+    }
+}
+
+@Preview(name = "SettingsSpec Full Page Liquid Dark", showBackground = true, widthDp = 420, heightDp = 600)
+@Composable
+private fun SettingsSpecFullPageLiquidDarkPreview() {
+    ProvideLiquidScreenContentForPreview {
+        BaseTheme(darkTheme = true, dynamicColor = false, themeStyle = ThemeStyle.LiquidGlass) {
+            Surface {
+                SampleSettingsSpecPage()
+            }
+        }
+    }
+}
+
+@Composable
+private fun SampleSettingsSpecPage() {
+    SettingsSpecPageContent(
+        spec = SettingsPageSpec(
+            sections = listOf(
+                SettingsSectionSpec(
+                    title = "核心配置项",
+                    rows = listOf(
+                        SettingsRowSpec.Navigation(
+                            id = "preview.music",
+                            title = "Music Management",
+                            summary = "Manage folders, refresh library",
+                            leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Default.Settings),
+                        ),
+                        SettingsRowSpec.Navigation(
+                            id = "preview.appearance",
+                            title = "Appearance",
+                            summary = "Themes, layout, and visual styles",
+                            leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Default.Info),
+                        ),
+                        SettingsRowSpec.Navigation(
+                            id = "preview.playback",
+                            title = "Playback",
+                            summary = "Audio behavior, crossfade, and equalizer",
+                            leadingIcon = SettingsRowLeadingIcon.Vector(Icons.Default.Star),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        onAction = {},
+    )
 }

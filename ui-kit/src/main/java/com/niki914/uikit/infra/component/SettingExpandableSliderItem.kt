@@ -6,10 +6,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
 import com.niki914.uikit.infra.component.settings.item.SettingCardItem
 import com.niki914.uikit.infra.component.settings.item.SettingExpandableSlot
 import com.niki914.uikit.infra.component.settings.item.SettingTrailingSlot
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
+import com.niki914.uikit.infra.shape.G2CardShape
 
 /**
  * 通用可折叠设置滑块项（门面组件，基于统一 [SettingCardItem] 底座）：
@@ -31,6 +34,8 @@ fun SettingExpandableSliderItem(
     endLabel: String? = null,
     steps: Int = 0,
     enabled: Boolean = true,
+    shape: Shape = G2CardShape(SettingsTokens.CardCornerRadius),
+    isStandaloneCard: Boolean = false,
     initiallyExpanded: Boolean = false,
     expanded: Boolean? = null,
     onExpandedChange: ((Boolean) -> Unit)? = null,
@@ -74,5 +79,7 @@ fun SettingExpandableSliderItem(
         isExpanded = isExpanded,
         onExpandedChange = ::updateExpanded,
         enabled = enabled,
+        shape = shape,
+        isStandaloneCard = isStandaloneCard,
     )
 }

@@ -28,7 +28,7 @@ sealed interface SettingLeadingSlot {
         val tint: Color? = null,
     ) : SettingLeadingSlot
 
-    /** 带 56dp 圆形背景的图标 (专供 About 页等大图标展示) */
+    /** 带圆形背景的图标 (支持自定义底座色彩与图标着色) */
     data class CircularIcon(
         val painter: Painter? = null,
         val imageVector: ImageVector? = null,

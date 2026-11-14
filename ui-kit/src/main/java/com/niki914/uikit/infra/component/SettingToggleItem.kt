@@ -2,8 +2,11 @@ package com.niki914.uikit.infra.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import com.niki914.uikit.infra.component.settings.item.SettingCardItem
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 import com.niki914.uikit.infra.component.settings.item.SettingTrailingSlot
+import com.niki914.uikit.infra.shape.G2CardShape
 
 /**
  * 组内开关子项：保持整行切换和透明 item 语义，由外层容器提供卡片边界。
@@ -17,6 +20,8 @@ fun SettingToggleItem(
     modifier: Modifier = Modifier,
     description: String? = null,
     enabled: Boolean = true,
+    shape: Shape = G2CardShape(SettingsTokens.CardCornerRadius),
+    isStandaloneCard: Boolean = false,
 ) {
     SettingCardItem(
         title = title,
@@ -27,6 +32,8 @@ fun SettingToggleItem(
             onCheckedChange = onCheckedChange,
         ),
         enabled = enabled,
+        shape = shape,
+        isStandaloneCard = isStandaloneCard,
         modifier = modifier,
     )
 }
