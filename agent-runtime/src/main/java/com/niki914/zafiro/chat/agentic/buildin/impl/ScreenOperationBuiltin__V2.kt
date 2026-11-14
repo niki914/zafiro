@@ -8,7 +8,7 @@ import com.niki914.zafiro.api.screen.Target
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.TextResultBuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.TextToolResult
-import com.niki914.zafiro.chat.agentic.screen.ScreenTreeUnavailable
+import com.niki914.zafiro.api.screen.ScreenTreeUnavailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
 

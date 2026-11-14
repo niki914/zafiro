@@ -15,11 +15,10 @@ import com.niki914.zafiro.animation.PointerCurveMath
 import com.niki914.zafiro.animation.PointerCurveMath.MovementMode
 import com.niki914.zafiro.api.util.tryIgnore
 import com.niki914.zafiro.app.R
-import com.niki914.zafiro.chat.agentic.accessibility.IPointerOverlay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-class PointerOverlay : IPointerOverlay {
+class PointerOverlay {
 
     companion object {
         private const val FADE_DURATION_MS = 300L
@@ -40,7 +39,7 @@ class PointerOverlay : IPointerOverlay {
 
     // Mutable state
     @Volatile
-    override var isShowing = false
+    var isShowing = false
         private set
 
     private var curX = 0f
@@ -104,10 +103,10 @@ class PointerOverlay : IPointerOverlay {
     }
 
     // ============================================================
-    // IPointerOverlay
+    // Pointer Animation and Actions
     // ============================================================
 
-    override fun show(x: Float, y: Float) {
+    fun show(x: Float, y: Float) {
         isShowing = true
         handler.post {
             view?.animate()?.cancel()
@@ -122,7 +121,7 @@ class PointerOverlay : IPointerOverlay {
         }
     }
 
-    override fun hide() {
+    fun hide() {
         isShowing = false
         handler.post {
             cancelAutoHide()
@@ -132,7 +131,7 @@ class PointerOverlay : IPointerOverlay {
         }
     }
 
-    override fun keepAlive() {
+    fun keepAlive() {
         handler.post {
             if (isShowing) {
                 scheduleAutoHide()
@@ -140,7 +139,7 @@ class PointerOverlay : IPointerOverlay {
         }
     }
 
-    override fun dispose() {
+    fun dispose() {
         isShowing = false
         handler.post {
             cancelAutoHide()
@@ -155,7 +154,7 @@ class PointerOverlay : IPointerOverlay {
         }
     }
 
-    override suspend fun animateTo(
+    suspend fun animateTo(
         x: Float, y: Float, mode: MovementMode,
     ) {
         if (!attached) return
@@ -173,7 +172,7 @@ class PointerOverlay : IPointerOverlay {
         handler.post { if (isShowing) scheduleAutoHide() }
     }
 
-    override suspend fun showSwipe(
+    suspend fun showSwipe(
         sx: Float, sy: Float, ex: Float, ey: Float, duration: Long,
     ) {
         if (!attached) return

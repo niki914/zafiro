@@ -20,7 +20,7 @@ import com.niki914.zafiro.business.notification.NotificationChannelManagerImpl
 import com.niki914.zafiro.api.screen.Screens
 import com.niki914.zafiro.business.permission.PermissionManager
 import com.niki914.zafiro.business.permission.PermissionManagerImpl
-import com.niki914.zafiro.chat.agentic.screen.PhoneScreens
+import com.niki914.zafiro.app.screen.AppScreens
 import com.niki914.zafiro.business.remote.TelemetryImpl
 import com.niki914.zafiro.mcp.service.McpServiceImpl
 import com.niki914.zafiro.mod.feat.ZafiroAccessibilityService
@@ -64,7 +64,7 @@ object AppServices {
             )
         )
         // phone 从进程启动就在。虚拟屏和浏览器这一轮不装。
-        installService<Screens>(PhoneScreens)
+        installService<Screens>(AppScreens)
         // 附件落地（SAF uri → 真实路径 + 全局文件访问权）：自持 PermissionManager，零构造参数
         installService<FilesService>(FilesServiceImpl())
         installService<NotificationChannelManager>(NotificationChannelManagerImpl(application))

@@ -63,7 +63,7 @@ class LaunchAppBuiltin : BuiltinTool() {
     }
 
     /** phone 的 open 走同一条匹配和启动。 */
-    internal suspend fun showOnPhone(packageName: String?, appName: String?): ShowResult {
+    suspend fun showOnPhone(packageName: String?, appName: String?): ShowResult {
         val result = if (!packageName.isNullOrBlank()) {
             launchPackage(packageName, null)
         } else {

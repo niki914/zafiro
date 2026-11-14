@@ -75,7 +75,7 @@ class ShellPointerDriver(
                 return@withContext true
             }
             if (tryTerm(LibTerm.openUserTerm(), command)) return@withContext true
-            fallbackProcessExec(command)
+            false
         }
 
         private suspend fun tryTerm(term: Term, command: String): Boolean {
@@ -94,24 +94,6 @@ class ShellPointerDriver(
 
         private suspend fun closeQuietly(term: Term) {
             runCatchingCancellable { term.close() }
-        }
-
-        private fun fallbackProcessExec(command: String): Boolean {
-            return runCatchingCancellable {
-                val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
-                try {
-                    val exitCode = process.waitFor()
-                    if (exitCode != 0) {
-                        Logger.w(TAG, "Shell command failed exitCode=$exitCode: $command")
-                    }
-                    exitCode == 0
-                } finally {
-                    process.destroy()
-                }
-            }.getOrElse { error ->
-                Logger.w(TAG, "Shell exec exception: ${error.message}")
-                false
-            }
         }
     }
 }
