@@ -202,6 +202,28 @@ class PointerOverlay {
         handler.post { if (isShowing) scheduleAutoHide() }
     }
 
+    /**
+     * 沿直线从起点走到终点，时长由调用方给定。
+     * 调用方已经把指针送到起点，并在同时开始一段相同时长的真实滑动。
+     */
+    suspend fun stroke(
+        x1: Float, y1: Float, x2: Float, y2: Float, durationMs: Long,
+    ) {
+        if (!attached) return
+        isShowing = true
+        handler.post {
+            scheduleAutoHide()
+            view?.animate()?.cancel()
+            view?.alpha = 1f
+        }
+        cancelAnim()
+        val swipe = PointerCurveMath.buildTrajectory(
+            x1, y1, curHeading, x2, y2, MovementMode.TRANSLATE, screenW, screenH,
+        )
+        animateAlongRaw(swipe, durationMs)
+        handler.post { if (isShowing) scheduleAutoHide() }
+    }
+
     // ============================================================
     // Animation
     // ============================================================
