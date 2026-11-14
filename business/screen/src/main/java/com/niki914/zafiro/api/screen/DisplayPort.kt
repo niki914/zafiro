@@ -21,7 +21,7 @@ interface DisplayPort {
 
     suspend fun perform(token: SemanticToken, action: NodeAction, text: String?): ActionStatus
 
-    suspend fun inject(action: PointerAction)
+    suspend fun inject(action: PointerAction): ActionStatus
 
     suspend fun show(target: ShowTarget): ShowStatus
 }
