@@ -2,7 +2,10 @@ package com.niki914.zafiro.app.ui.content
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -14,15 +17,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.LocalAppDarkTheme
 import com.niki914.uikit.infra.component.SettingsGroupCard
-import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListItem
 import com.niki914.uikit.infra.component.SettingsListPageContent
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
+import com.niki914.uikit.infra.component.settings.resolveSettingIconColors
+import com.niki914.uikit.infra.shape.G2CardShape
 import com.niki914.zafiro.app.R
 
 data class SelectionOption(
@@ -50,15 +56,23 @@ data class SelectionOption(
 @Composable
 internal fun SelectionOptionRow(
     option: SelectionOption,
-    isDarkTheme: Boolean,
+    isDarkTheme: Boolean = LocalAppDarkTheme.current,
+    shape: Shape = G2CardShape(SettingsTokens.CardCornerRadius),
+    isStandaloneCard: Boolean = false,
+    index: Int = 0,
 ) {
     val brandContainer = if (isDarkTheme) option.darkContainerColor else option.lightContainerColor
     val brandContent = if (isDarkTheme) option.darkContentColor else option.lightContentColor
     val brandIcon = if (isDarkTheme) option.darkIconColor else option.lightIconColor
+
+    val (defaultContainer, defaultTint) = resolveSettingIconColors(key = "selection_option", index = index)
+
     SettingsListItem(
         title = option.title,
         showChevron = !option.selected,
         enabled = true,
+        shape = shape,
+        isStandaloneCard = isStandaloneCard,
         trailingContent = if (option.selected) {
             {
                 Icon(
@@ -80,7 +94,7 @@ internal fun SelectionOptionRow(
                     .background(
                         option.leadingSwatchColor
                             ?: brandContainer
-                            ?: MaterialTheme.colorScheme.surfaceContainerHighest
+                            ?: defaultContainer
                     ),
             ) {
                 val iconRes = option.leadingIconRes
@@ -93,7 +107,7 @@ internal fun SelectionOptionRow(
                             !option.tintLeadingIcon -> Color.Unspecified
                             brandIcon != null -> brandIcon
                             brandContent != null -> brandContent
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            else -> defaultTint
                         },
                         modifier = Modifier.size(24.dp),
                     )
@@ -101,7 +115,7 @@ internal fun SelectionOptionRow(
                     Icon(
                         imageVector = iconVector,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = defaultTint,
                         modifier = Modifier.size(24.dp),
                     )
                 } else if (option.leadingSwatchColor != null && option.selected) {
@@ -118,20 +132,24 @@ internal fun SelectionOptionRow(
     )
 }
 
-/** 分组卡片形式的选项列表：组内 divider 分隔。 */
+/** 分组卡片形式的选项列表：在 M3 / Expressive 下自动展开为 3dp 接缝卡片，在 Liquid 下保持单体卡片 + 分割线。 */
 @Composable
 internal fun SelectionGroupCard(
     options: List<SelectionOption>,
-    isDarkTheme: Boolean,
     modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = LocalAppDarkTheme.current,
 ) {
-    SettingsGroupCard(modifier = modifier) {
-        options.forEachIndexed { index, option ->
-            SelectionOptionRow(option, isDarkTheme)
-            if (index != options.lastIndex) {
-                SettingsItemDivider()
-            }
-        }
+    SettingsGroupCard(
+        items = options,
+        modifier = modifier,
+    ) { option, shape, isStandalone, index ->
+        SelectionOptionRow(
+            option = option,
+            isDarkTheme = isDarkTheme,
+            shape = shape,
+            isStandaloneCard = isStandalone,
+            index = index,
+        )
     }
 }
 

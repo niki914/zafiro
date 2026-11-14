@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        调试版文本选择菜单入口名：与正式版共用同一套 intent-filter（仅 applicationId 后缀不同），
+        系统菜单里会并排出现两条，靠文案区分。定义为 debug 专属 key，任何语种都没有本地化子项，
+        因此各 locale 一律显示这一串。
+    -->
+    <string name="text_action_menu_label_debug" translatable="false">Zafiro Debug</string>
+</resources>

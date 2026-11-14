@@ -98,6 +98,7 @@ fun SettingCardItem(
     highlightPulseDurationMillis: Int = 500,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.ContextClick,
 ) {
     val isExpandable = expandableSlot !is SettingExpandableSlot.None
 
@@ -169,6 +170,7 @@ fun SettingCardItem(
             highlightPulseDurationMillis = highlightPulseDurationMillis,
             onClick = effectiveOnClick,
             onLongClick = onLongClick,
+            hapticFeedbackType = hapticFeedbackType,
             onTrailingActionClick = trailingAction,
             trailingActionBoundsInWindow = if (trailingAction != null) trailingActionBounds else null,
         ) {
