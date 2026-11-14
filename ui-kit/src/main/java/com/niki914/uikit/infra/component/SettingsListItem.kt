@@ -3,9 +3,13 @@ package com.niki914.uikit.infra.component
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import com.niki914.uikit.infra.component.settings.item.SettingCardItem
 import com.niki914.uikit.infra.component.settings.item.SettingLeadingSlot
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 import com.niki914.uikit.infra.component.settings.item.SettingTrailingSlot
+import com.niki914.uikit.infra.shape.G2CardShape
 
 /**
  * 基础列表项组件：现已全面统一接入 [SettingCardItem] 底座与 Slot 体系。
@@ -19,11 +23,14 @@ fun SettingsListItem(
     currentState: String? = null,
     enabled: Boolean = true,
     showChevron: Boolean = false,
+    shape: Shape = G2CardShape(SettingsTokens.CardCornerRadius),
+    isStandaloneCard: Boolean = false,
     highlightPulseKey: Any? = null,
     highlightPulseDurationMillis: Int = 500,
     leadingContent: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
+    hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.ContextClick,
 ) {
     val leadingSlot = if (leadingContent != null) {
         SettingLeadingSlot.Custom(leadingContent)
@@ -47,9 +54,12 @@ fun SettingsListItem(
         leadingSlot = leadingSlot,
         trailingSlot = trailingSlot,
         enabled = enabled,
+        shape = shape,
+        isStandaloneCard = isStandaloneCard,
         highlightPulseKey = highlightPulseKey,
         highlightPulseDurationMillis = highlightPulseDurationMillis,
         onClick = onClick,
+        hapticFeedbackType = hapticFeedbackType,
         modifier = modifier,
     )
 }

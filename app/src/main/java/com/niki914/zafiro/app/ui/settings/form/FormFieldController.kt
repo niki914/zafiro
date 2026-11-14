@@ -6,9 +6,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import com.niki914.uikit.infra.component.SettingExpandableTextItem
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
+import com.niki914.uikit.infra.shape.G2CardShape
 
 /**
  * 编辑详情页字段展开与焦点状态控制器。
@@ -67,6 +70,8 @@ fun <Field : Enum<Field>> SettingControlledExpandableTextItem(
     placeholder: String,
     description: String? = null,
     enabled: Boolean = true,
+    shape: Shape = G2CardShape(SettingsTokens.CardCornerRadius),
+    isStandaloneCard: Boolean = false,
     minLines: Int = 1,
     maxLines: Int = 1,
     secretVisible: Boolean = false,
@@ -82,6 +87,8 @@ fun <Field : Enum<Field>> SettingControlledExpandableTextItem(
         placeholder = placeholder,
         description = description,
         enabled = enabled,
+        shape = shape,
+        isStandaloneCard = isStandaloneCard,
         expanded = controller.expandedField == field,
         minLines = minLines,
         maxLines = maxLines,
@@ -109,6 +116,8 @@ fun <State, Field : Enum<Field>> SettingControlledExpandableTextItem(
     placeholder: String,
     description: String? = null,
     enabled: Boolean = true,
+    shape: Shape = G2CardShape(SettingsTokens.CardCornerRadius),
+    isStandaloneCard: Boolean = false,
     minLines: Int = 1,
     maxLines: Int = 1,
     secretVisible: Boolean = false,
@@ -126,6 +135,8 @@ fun <State, Field : Enum<Field>> SettingControlledExpandableTextItem(
         placeholder = placeholder,
         description = description,
         enabled = enabled,
+        shape = shape,
+        isStandaloneCard = isStandaloneCard,
         minLines = minLines,
         maxLines = maxLines,
         secretVisible = secretVisible,

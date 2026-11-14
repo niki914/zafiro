@@ -15,16 +15,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.base.LocalThemeStyle
+import com.niki914.uikit.base.ThemeStyle
 import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.SettingsItemDivider
 import com.niki914.uikit.infra.component.SettingsListPageContent
 import com.niki914.uikit.infra.component.settings.item.SettingCardItem
 import com.niki914.uikit.infra.component.settings.item.SettingExpandableSlot
 import com.niki914.uikit.infra.component.settings.item.SettingLeadingSlot
+import com.niki914.uikit.infra.component.settings.item.SettingsTokens
 import com.niki914.uikit.infra.component.settings.item.SettingTrailingSlot
+import com.niki914.uikit.infra.shape.G2CardShape
 
 /**
  * 统一设置页面 Spec 驱动渲染引擎 (V1 基于新底座)：
@@ -87,19 +92,63 @@ private fun SettingsSectionContent(
         return
     }
 
+    val sectionGroupKey = section.title ?: section.rows.firstOrNull()?.id?.substringBeforeLast('.') ?: "section"
+
     when (section.layout) {
         SettingsSectionLayout.GroupedCard -> {
-            SettingsGroupCard(title = section.title) {
-                section.rows.forEachIndexed { index, row ->
-                    SettingsRowItem(
-                        row = row,
-                        isCardList = false,
-                        expandedSliderId = expandedSliderId,
-                        onExpandedSliderChange = onExpandedSliderChange,
-                        onAction = onAction,
-                    )
-                    if (index != section.rows.lastIndex) {
-                        SettingsItemDivider()
+            val themeStyle = LocalThemeStyle.current
+            val isConnectedCard = (themeStyle != ThemeStyle.LiquidGlass)
+
+            if (isConnectedCard) {
+                // ── M3 / Expressive 模式：Python 工具卡片同款 Connected Shapes，无分割线，3dp 物理间距 ──
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (!section.title.isNullOrBlank()) {
+                        Text(
+                            text = section.title,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(
+                                start = SettingsTokens.ContentPaddingStart,
+                                end = SettingsTokens.ContentPaddingEnd,
+                            ),
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        section.rows.forEachIndexed { index, row ->
+                            val itemShape = resolveConnectedShape(index, section.rows.size)
+                            SettingsRowItem(
+                                row = row,
+                                isCardList = true,
+                                shape = itemShape,
+                                index = index,
+                                groupKey = sectionGroupKey,
+                                expandedSliderId = expandedSliderId,
+                                onExpandedSliderChange = onExpandedSliderChange,
+                                onAction = onAction,
+                            )
+                        }
+                    }
+                }
+            } else {
+                // ── Liquid 模式：维持现有的单体卡片 + 细分割线 ──
+                SettingsGroupCard(title = section.title) {
+                    section.rows.forEachIndexed { index, row ->
+                        SettingsRowItem(
+                            row = row,
+                            isCardList = false,
+                            index = index,
+                            groupKey = sectionGroupKey,
+                            expandedSliderId = expandedSliderId,
+                            onExpandedSliderChange = onExpandedSliderChange,
+                            onAction = onAction,
+                        )
+                        if (index != section.rows.lastIndex) {
+                            SettingsItemDivider()
+                        }
                     }
                 }
             }
@@ -122,10 +171,12 @@ private fun SettingsSectionContent(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    section.rows.forEach { row ->
+                    section.rows.forEachIndexed { index, row ->
                         SettingsRowItem(
                             row = row,
                             isCardList = true,
+                            index = index,
+                            groupKey = sectionGroupKey,
                             expandedSliderId = expandedSliderId,
                             onExpandedSliderChange = onExpandedSliderChange,
                             onAction = onAction,
@@ -144,10 +195,15 @@ private fun SettingsRowItem(
     expandedSliderId: String?,
     onExpandedSliderChange: (String?) -> Unit,
     onAction: (SettingsRowAction) -> Unit,
+    shape: Shape? = null,
+    index: Int = 0,
+    groupKey: String? = null,
 ) {
+    val cardShape = shape ?: G2CardShape(SettingsTokens.CardCornerRadius)
+
     when (row) {
         is SettingsRowSpec.Navigation -> {
-            val leadingSlot = row.leadingIcon?.toSettingLeadingSlot() ?: SettingLeadingSlot.None
+            val leadingSlot = row.leadingIcon?.toSettingLeadingSlot(row, index, groupKey) ?: SettingLeadingSlot.None
             val trailingSlot = if (row.currentState != null) {
                 SettingTrailingSlot.Preview(text = row.currentState, showChevron = true)
             } else {
@@ -159,6 +215,7 @@ private fun SettingsRowItem(
                 leadingSlot = leadingSlot,
                 trailingSlot = trailingSlot,
                 isStandaloneCard = isCardList,
+                shape = cardShape,
                 enabled = row.enabled,
                 onClick = { onAction(SettingsRowAction.Navigate(row.id)) },
             )
@@ -170,13 +227,14 @@ private fun SettingsRowItem(
                 summary = row.summary,
                 trailingSlot = SettingTrailingSlot.Toggle(checked = row.checked),
                 isStandaloneCard = isCardList,
+                shape = cardShape,
                 enabled = row.enabled,
                 onClick = { onAction(SettingsRowAction.ToggleChanged(row.id, !row.checked)) },
             )
         }
 
         is SettingsRowSpec.ToggleNavigation -> {
-            val leadingSlot = row.leadingIcon?.toSettingLeadingSlot() ?: SettingLeadingSlot.None
+            val leadingSlot = row.leadingIcon?.toSettingLeadingSlot(row, index, groupKey) ?: SettingLeadingSlot.None
             SettingCardItem(
                 title = row.title,
                 summary = row.summary,
@@ -188,13 +246,14 @@ private fun SettingsRowItem(
                     },
                 ),
                 isStandaloneCard = isCardList,
+                shape = cardShape,
                 enabled = row.enabled,
                 onClick = { onAction(SettingsRowAction.Navigate(row.id)) },
             )
         }
 
         is SettingsRowSpec.Value -> {
-            val leadingSlot = row.leadingIcon?.toSettingLeadingSlot() ?: SettingLeadingSlot.None
+            val leadingSlot = row.leadingIcon?.toSettingLeadingSlot(row, index, groupKey) ?: SettingLeadingSlot.None
             val trailingSlot = if (row.currentState != null) {
                 SettingTrailingSlot.Preview(text = row.currentState, showChevron = false)
             } else {
@@ -206,6 +265,7 @@ private fun SettingsRowItem(
                 leadingSlot = leadingSlot,
                 trailingSlot = trailingSlot,
                 isStandaloneCard = isCardList,
+                shape = cardShape,
                 enabled = row.enabled,
                 onClick = null,
             )
@@ -216,6 +276,7 @@ private fun SettingsRowItem(
                 title = row.title,
                 summary = row.summary,
                 isStandaloneCard = isCardList,
+                shape = cardShape,
                 enabled = row.enabled,
                 onClick = { onAction(SettingsRowAction.Click(row.id)) },
             )
@@ -226,6 +287,7 @@ private fun SettingsRowItem(
                 title = row.title,
                 summary = row.summary,
                 isStandaloneCard = isCardList,
+                shape = cardShape,
                 enabled = row.enabled,
                 onClick = { onAction(SettingsRowAction.Click(row.id)) },
             )
@@ -264,6 +326,7 @@ private fun SettingsRowItem(
                     onValueCommit = { onAction(SettingsRowAction.SliderCommit(row.id, it)) },
                 ),
                 isStandaloneCard = isCardList,
+                shape = cardShape,
                 enabled = row.enabled,
             )
         }
@@ -271,14 +334,23 @@ private fun SettingsRowItem(
 }
 
 @Composable
-private fun SettingsRowLeadingIcon.toSettingLeadingSlot(): SettingLeadingSlot {
+private fun SettingsRowLeadingIcon.toSettingLeadingSlot(
+    row: SettingsRowSpec,
+    index: Int = 0,
+    groupKey: String? = null,
+): SettingLeadingSlot {
+    val (containerColor, tint) = resolveSettingIconColors(row = row, index = index, groupKey = groupKey)
     return when (this) {
         is SettingsRowLeadingIcon.Vector -> SettingLeadingSlot.CircularIcon(
             imageVector = imageVector,
+            containerColor = containerColor,
+            tint = tint,
         )
 
         is SettingsRowLeadingIcon.PainterResource -> SettingLeadingSlot.CircularIcon(
             painter = painterResource(id = drawableResId),
+            containerColor = containerColor,
+            tint = tint,
         )
     }
 }
