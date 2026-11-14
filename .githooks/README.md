@@ -28,7 +28,7 @@ git config core.hooksPath .githooks
 
 ## 规则分类全集 (Taxonomy)
 
-全体系规则按领域关注点划分为五大类，共 13 条规则：
+全体系规则按领域关注点划分为五大类，共 14 条规则：
 
 ```
                        ┌── Concurrency (monitor-lock)
@@ -38,6 +38,7 @@ git config core.hooksPath .githooks
                        └── Log Tag Prefix (log-tag)
 
     2. ui ─────────────┬── Design System Shapes (rounded-corner-shape -> G2)
+                       ├── Settings Row Joint (settings-item-divider -> SettingsConnectedGroup)
                        └── Copywriting & Punctuations (verbose-ui)
 
     3. hygiene ────────┬── Narrative Legacy Comments (legacy-comment)
@@ -60,6 +61,7 @@ git config core.hooksPath .githooks
 | | `log-api` | **阻断** | 禁止使用 `android.util.Log`、`println` / `print` / `System.out`，一律走 `com.niki914.logging.Logger` |
 | | `log-tag` | 警告 | 日志 TAG 必须以 `niki914_zafiro_<ClassName>` 开头 |
 | **`ui`** (界面与文案) | `rounded-corner-shape` | **阻断** | 禁止使用原生 `RoundedCornerShape`，项目要求统一使用 G2 连续圆角（`G2FieldShape` / `G2CardShape` / `G2BubbleShape`） |
+| | `settings-item-divider` | **阻断** | 禁止 `app/src/main` 业务页手写 `SettingsItemDivider`。设置行改用 `SettingsConnectedGroup`。`ui-kit`、`preview/` 和 `*Preview.kt` 不在范围内 |
 | | `verbose-ui` | 警告 | 检测中文 UI 文案中的分号与解释性括号。文案必须简洁专业、拒绝话痨：去掉多余括号解释，分号精简为短句或改用换行 |
 | **`hygiene`** (代码整洁) | `legacy-comment` | 警告 | 注释只描述代码**现在**是什么样，不描述“曾经/不再/修复了什么”（如“不再走旧路径”是不合格的） |
 | | `inline-fqn` | 警告 | 用到的类要 `import`，不内联写全限定名（同名类刻意消歧义除外） |
@@ -156,7 +158,7 @@ python3 .githooks/test_check_tokens.py                          # 历史单测�
 │   ├── models.py               # Rule, Finding, Severity, Category 基础模型
 │   └── reporter.py             # 终端格式化、自适应列宽动态统计表
 ├── checks/                     # 各分类规则执行器
-│   ├── code_rules.py           # 8 条 Kotlin 代码规范与正则检查
+│   ├── code_rules.py           # 11 条 Kotlin 代码规范与正则检查
 │   ├── strings_rules.py        # 多语言 XML 严格对齐与 UI 文案话痨检查
 │   └── tokens_rules.py         # 5,000 Tokens 单文件上限与拆分建议
 └── tests/                      # 纯函数单元测试集

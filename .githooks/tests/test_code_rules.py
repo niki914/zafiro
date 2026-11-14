@@ -184,6 +184,41 @@ class BareCatchTest(unittest.TestCase):
         self.assertEqual(rules_hit("} catch (e: IOException) {\n"), [])
 
 
+class SettingsItemDividerTest(unittest.TestCase):
+    RULE = {"settings-item-divider"}
+    BUSINESS = "app/src/main/java/com/niki914/zafiro/app/ui/content/Foo.kt"
+
+    def _hit(self, source: str, path: str):
+        lines = list(range(1, len(source.splitlines()) + 1))
+        res = check_code_files({path: source}, {path: lines}, self.RULE)
+        return [f.rule for f in res.findings], res.ignored
+
+    def test_business_call_is_flagged(self):
+        self.assertEqual(self._hit("    SettingsItemDivider()\n", self.BUSINESS)[0], ["settings-item-divider"])
+
+    def test_ui_kit_call_is_not_flagged(self):
+        path = "ui-kit/src/main/java/com/niki914/uikit/infra/component/SettingsGroupCard.kt"
+        self.assertEqual(self._hit("                    SettingsItemDivider()\n", path)[0], [])
+
+    def test_preview_file_is_not_flagged(self):
+        path = "app/src/main/java/com/niki914/zafiro/app/ui/content/SavedConfigDesignPreview.kt"
+        self.assertEqual(self._hit("                SettingsItemDivider()\n", path)[0], [])
+
+    def test_preview_directory_is_not_flagged(self):
+        path = "app/src/main/java/com/niki914/zafiro/app/ui/preview/theme/TextFieldThemePreview.kt"
+        self.assertEqual(self._hit("    SettingsItemDivider()\n", path)[0], [])
+
+    def test_comment_and_string_are_not_flagged(self):
+        source = '// SettingsItemDivider()\nval sample = "SettingsItemDivider()"\n'
+        self.assertEqual(self._hit(source, self.BUSINESS)[0], [])
+
+    def test_ignore_comment_is_counted(self):
+        source = "    SettingsItemDivider() // githooks:ignore settings-item-divider\n"
+        findings, ignored = self._hit(source, self.BUSINESS)
+        self.assertEqual(findings, [])
+        self.assertEqual(ignored, 1)
+
+
 class RoundedCornerShapeTest(unittest.TestCase):
     def test_rounded_corner_shape_call_is_flagged(self):
         self.assertEqual(rules_hit("val shape = RoundedCornerShape(12.dp)\n"), ["rounded-corner-shape"])
